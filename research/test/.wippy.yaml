@@ -41,7 +41,7 @@ workspace:
     kickside/connection: ../../../kickside/platform/connection
     kickside/contract: ../../../kickside/core/contract
     kickside/core: ../../../kickside/core/core
-    kickside/doc2md: ../../../../../../kicksideai/converters/doc2md
+    kickside/doc2md: ../../../converters/doc2md
     kickside/execution: ../../../kickside/core/execution
     kickside/jobs: ../../../kickside/core/jobs
     kickside/models: ../../../kickside/platform/models
