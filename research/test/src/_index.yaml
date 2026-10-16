@@ -466,7 +466,7 @@ entries:
     meta: {type: test, suite: kickside_research}
     source: file://structured_report_test.lua
     method: run
-    modules: [registry]
+    modules: [registry, json]
     imports:
       test: wippy.test:test
       deliver: kickside.research:deliver
