@@ -16,9 +16,7 @@ Four independently installable modules for the KickSide application:
 
 Install a package through **System → Modules** in KickSide. The [module installation guide](https://github.com/kicksideai/docs/blob/main/getting-started/first-module.md) explains requirements and bindings.
 
-![Dashboard lists installed surfaces in a fictional demonstration workspace](https://raw.githubusercontent.com/kicksideai/docs/main/using/assets/components/dashboard.png)
-
-![Research task setup in a fictional demonstration workspace](https://raw.githubusercontent.com/kicksideai/docs/main/using/assets/components/research.png)
+![KickSide components with fictional demonstration data: the dashboard, a research report, and first-agent onboarding](https://raw.githubusercontent.com/kicksideai/docs/main/assets/readme/components-overview.webp)
 
 License: [KickSide Community License 1.0](LICENSE.md) · [Third-party notices](THIRD_PARTY_NOTICES.md).
 
