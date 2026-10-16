@@ -1,0 +1,9 @@
+**/.wippy/
+**/node_modules/
+**/ui/dist/
+**/ui/coverage/
+
+# Local build and agent state
+**/.local/
+**/__pycache__/
+*.py[cod]

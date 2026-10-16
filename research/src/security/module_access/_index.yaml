@@ -1,0 +1,44 @@
+version: '1.0'
+namespace: kickside.research.security
+entries:
+- name: module_access
+  kind: security.policy
+  meta:
+    title: Research
+    surface: kickside.research
+    intent: module_access
+    includes:
+    - kickside.research.security:module_runtime
+    - kickside.research.security:research_endpoint_access
+  groups: []
+  policy:
+    resources:
+    - kickside.research:detail.endpoint
+    - kickside.research:status.endpoint
+    - kickside.research:submit.endpoint
+    actions: access
+    effect: allow
+- name: module_runtime
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.research:*
+    - kickside.research.agents:*
+    - kickside.research.events:*
+    - kickside.research.migrations:*
+    - kickside.research.security:*
+    - kickside.research.traits:*
+    actions:
+    - registry.get
+    - registry.find
+    - contract.get
+    - contract.open
+    - contract.call
+    - contract.implementations
+    - contract.security
+    - funcs.call
+    - funcs.security
+    effect: allow

@@ -1,0 +1,59 @@
+version: "1.0"
+namespace: app.env
+
+# Harness env: a file store (mirrors the app's app.env:store id) plus an OS-backed
+# store and the SSO_* variables the e2e seed reads from the process environment.
+# Harness-only; excluded from publish.
+
+entries:
+  - name: store
+    kind: env.storage.file
+    meta:
+      type: envstorage
+    file_path: ./.wippy/test.env
+    auto_create: true
+
+  - name: os
+    kind: env.storage.os
+    meta:
+      type: envstorage
+
+  - name: sso_oidc_issuer
+    kind: env.variable
+    meta:
+      private: true
+    variable: SSO_OIDC_ISSUER
+    storage: app.env:os
+    default: ""
+
+  - name: sso_oidc_client_id
+    kind: env.variable
+    meta:
+      private: true
+    variable: SSO_OIDC_CLIENT_ID
+    storage: app.env:os
+    default: ""
+
+  - name: sso_oidc_client_secret
+    kind: env.variable
+    meta:
+      private: true
+    variable: SSO_OIDC_CLIENT_SECRET
+    storage: app.env:os
+    default: ""
+
+  - name: sso_allowed_domains
+    kind: env.variable
+    meta:
+      private: true
+    variable: SSO_ALLOWED_DOMAINS
+    storage: app.env:os
+    default: ""
+
+  - name: sso_public_base_path
+    kind: env.variable
+    meta:
+      private: true
+    variable: SSO_PUBLIC_BASE_PATH
+    storage: app.env:os
+    default: "/api/public/sso"

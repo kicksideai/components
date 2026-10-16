@@ -1,0 +1,6 @@
+ui/node_modules/
+ui/dist/
+node_modules/
+*.tsbuildinfo
+# Runtime state + downloaded harness modules (re-fetched via `wippy install`).
+.wippy/

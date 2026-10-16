@@ -1,0 +1,30 @@
+organization: kickside
+module: research
+type: plugin
+description: Research — registry-driven research app with a native page and dataflow plus a canonical Research Block for optional composition.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+homepage: https://wippy.ai
+keywords:
+  - kickside
+  - research
+  - dataflow
+  - inbox
+embed:
+  - kickside.research:ui_fs
+exclude_meta:
+  type:
+    - test
+    - test_helper
+    - test_support
+exclude:
+  - "app:**"
+  - "app.env:**"
+  - "test/**"
+  - "ui/node_modules/**"
+  - "ui/node_modules:**"
+  - "ui/coverage/**"
+  - "ui/coverage:**"
+  - "tests/**"
+  - "test-support/**"
+  - "app.**:**"

@@ -1,0 +1,37 @@
+version: "1.0"
+namespace: kickside.research.agents
+
+# The research agent. agent.gen1 entries must live in a namespace ending in
+# `.agents`. It carries the webscout web_researcher trait (search / read / links),
+# so a dataflow agent node researches the supplied prompt and finishes with
+# the structured report the delivery node appends to its research thread.
+
+entries:
+  - name: researcher
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: Research Analyst
+      class: [research]
+      icon: tabler:world-search
+    prompt: |
+      You are a research analyst. Read the `prompt` field in the supplied input.
+      Conduct thorough web research on it using your tools: search the web,
+      read the most relevant pages, and cross-reference findings across sources.
+
+      When you have gathered enough, call the finish tool with the structured
+      report required by its schema. Supply exactly these fields:
+        - "title": a concise, descriptive report title
+        - "summary": a 2-4 sentence executive summary
+        - "key_points": an array of 5-8 strings, the key findings (each grounded
+          in what you found)
+        - "sources": an array of objects { "title": <source name or page title>,
+          "url": <the exact page URL you read> }
+          for the pages you actually visited — use the real URLs from your tools
+
+      Be factual, cite real pages you read with their URLs, avoid speculation.
+    model: class:fast
+    temperature: 0.3
+    max_tokens: 8000
+    traits:
+      - id: kickside.webscout.traits:web_researcher

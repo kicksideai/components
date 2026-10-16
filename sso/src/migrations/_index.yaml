@@ -1,0 +1,17 @@
+version: "1.0"
+namespace: kickside.sso.migrations
+
+# target_db is injected by the root kickside.sso:target_db requirement.
+entries:
+  - name: 01_identities
+    kind: function.lua
+    meta:
+      type: migration
+      comment: Create app_user_identities table (provider identity ↔ app_users link)
+      depends_on:
+        - ns:wippy.migration
+      timestamp: "2026-06-18T00:00:01Z"
+    source: file://01_identities.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

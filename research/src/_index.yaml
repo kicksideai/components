@@ -1,0 +1,467 @@
+version: "1.0"
+namespace: kickside.research
+
+# Research over canonical threads: kickside.research:request ensures an
+# actor-scoped kickside.core thread + a `request` event and starts an agent
+# dataflow AS the requester (ambient actor). The agent reports progress + the
+# result back as thread events (request / progress / result / failed) via the
+# report_progress tool and the deliver node. The thread is the source of truth; a
+# registered projection (projection_worker) folds those events into
+# kickside_research_run. The actor's realtime stream drives the UI, which loads the
+# read model then folds the same live events.
+#
+# Self-contained: ships + serves its own Research page web component (./static at
+# /research-app).
+
+entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: Research
+      comment: Research over canonical threads — request contract + agent dataflow + progress/result thread events, materialized by the run projection into kickside_research_run.
+
+  # ─── Vocabulary + read model (projection over the canonical research thread) ──
+  - name: consts
+    kind: library.lua
+    meta: { name: consts, comment: Thread class, event types, status, thread + projection seams, projection vocab, db id resolver, external_ref builder. }
+    source: file://consts.lua
+    modules: [registry]
+
+  # Read-model persistence: research's own kickside_research_run table. The projection
+  # writes (apply), the API reads (list/get), the deletable contract tears down.
+  - name: repo
+    kind: library.lua
+    meta: { name: repo, comment: "Read-model SQL for kickside_research_run: apply (projection fold), list_by_actor/get (read), delete_by_thread (cleanup)." }
+    source: file://repo.lua
+    modules: [sql, json, time]
+    imports:
+      research_consts: kickside.research:consts
+
+  - name: state
+    kind: library.lua
+    meta: { name: state, comment: "Read model: reads kickside_research_run (list/get/summary), actor-scoped. No fold here -- the projection worker owns the fold." }
+    source: file://state.lua
+    modules: [security]
+    imports:
+      research_repo: kickside.research:repo
+      component: kickside.component:component
+      research_consts: kickside.research:consts
+
+  # The projection worker: the runner invokes it with each new event batch; it folds
+  # request/progress/result/failed into research's own kickside_research_run table.
+  - name: projection_worker
+    kind: function.lua
+    meta: { type: projection.worker, comment: "Research read-model projection worker -- folds run events into kickside_research_run." }
+    source: file://projection.lua
+    method: run
+    imports:
+      research_repo: kickside.research:repo
+
+  # ─── Request contract (kickside.research:request) ────────────────────
+  # The canonical seam: ensure thread + request event under the caller's identity,
+  # then start the agent dataflow as the requester.
+  - name: request
+    kind: contract.definition
+    meta:
+      name: request
+      title: Research Request
+      comment: Request a research run. Ensures a canonical actor-scoped thread + request event and starts the agent dataflow as the requester. agent_id is required (no default).
+    methods:
+      - name: request
+        description: Start a research run under the caller's identity.
+        input_schemas:
+          - definition: |
+              { "type": "object", "properties": { "prompt": { "type": "string" }, "ctx": { "type": "object" }, "agent_id": { "type": "string" }, "max_iterations": { "type": "integer" }, "research_id": { "type": "string" } }, "required": ["prompt", "agent_id"] }
+            format: application/schema+json
+        output_schemas:
+          - definition: |
+              { "type": "object", "properties": { "ok": { "type": "boolean" }, "research_id": { "type": "string" }, "thread_id": { "type": "string" }, "status": { "type": "string" } }, "required": ["ok"] }
+            format: application/schema+json
+
+  - name: request_func
+    kind: function.lua
+    meta: { comment: "kickside.research:request -- ensure thread + request event, start the agent dataflow (ambient actor)." }
+    source: file://request.lua
+    method: request
+    modules: [security, funcs, uuid]
+    imports:
+      flow: userspace.dataflow.flow:flow
+      research_consts: kickside.research:consts
+      deliver_format: kickside.research:deliver_format
+
+  - name: request_binding
+    kind: contract.binding
+    meta:
+      title: Research Request Service
+      comment: Default research request implementation.
+    contracts:
+      - contract: kickside.research:request
+        default: true
+        methods:
+          request: kickside.research:request_func
+
+  # The research-run component KIND. A research run is created as this kind
+  # (impl_id = kickside.research:research_kind), so thread creation reads this one
+  # binding and auto-applies its declared projection -- no register_projection call.
+  # meta.ports declares the data streams this kind EMITS on its own run thread: request
+  # (the run's first event), progress, and result are dir:out trigger SOURCES (you
+  # read what the run produces), never sinks. Thread subscription is a deferred phase,
+  # so these are listed in the source catalog but not yet pulled; failed is an
+  # error/audit event (announced:false). projections declares the read model the
+  # engine materializes on create.
+  - name: research_kind
+    kind: contract.binding
+    meta:
+      title: Research Run
+      icon: tabler:world-search
+      comment: Events emitted by a research run — request, live progress, and final result.
+      class:
+        - kickside.research
+      events:
+        input: []
+        output:
+          - type: "kickside.research.events:request"
+          - type: "kickside.research.events:progress"
+          - type: "kickside.research.events:result"
+          - type: "kickside.research.events:failed"
+      ports:
+        - dir: out
+          mode: trigger
+          via: thread
+          class: kickside.research
+          type: "kickside.research.events:request"
+          title: Research requested
+        - dir: out
+          mode: trigger
+          via: thread
+          class: kickside.research
+          type: "kickside.research.events:progress"
+          title: Research progress
+        - dir: out
+          mode: trigger
+          via: thread
+          class: kickside.research
+          type: "kickside.research.events:result"
+          title: Research result
+        # failed is an error/audit event, not a sync source.
+        - dir: out
+          mode: trigger
+          via: thread
+          class: kickside.research
+          type: "kickside.research.events:failed"
+          announced: false
+      projections:
+        - kind: "kickside.research:run"
+          worker_ref: "func://kickside.research:projection_worker"
+          input_mode: prefetch_events
+      # A consumed thread must be drain-aware: the run projection reads the event log,
+      # so retention floors GC at the projection cursor and never prunes events it has
+      # not yet drained (event_days is only the time floor for already-consumed events).
+      retention:
+        event_days: 30
+        drain_aware: true
+    contracts:
+      - contract: kickside.contract:component
+        methods:
+          get_status: kickside.core.threads:thread_status
+      # Deleting a research run tears down its read-model row(s) so kickside_research_run
+      # never outlives its component (component_id == thread_id).
+      - contract: kickside.contract:deletable
+        context_required:
+          - component_id
+        methods:
+          delete: kickside.research:delete_run
+
+  - name: delete_run
+    kind: function.lua
+    meta: { comment: "kickside.contract:deletable.delete for a research run -- removes its kickside_research_run row(s)." }
+    source: file://delete_run.lua
+    method: handle
+    modules: [ctx]
+    imports:
+      research_repo: kickside.research:repo
+
+  # ─── Read-model database (kickside_research_run) ─────────────────────
+  - name: __dependency.wippy.migration
+    version: '*'
+    kind: ns.dependency
+    meta:
+      comment: Migration system dependency for the research read model.
+    component: wippy/migration
+
+  - name: dep.kickside.blocks
+    version: '*'
+    kind: ns.dependency
+    meta:
+      comment: Canonical typed Block declaration, durable parking, and Signal resume for Research.
+    component: kickside/blocks
+
+  - name: dep.kickside.contract
+    version: '*'
+    kind: ns.dependency
+    meta:
+      comment: Research run kinds implement the shared component and deletable contracts.
+    component: kickside/contract
+
+  - name: dep.kickside.core
+    version: '*'
+    kind: ns.dependency
+    meta:
+      comment: Research lifecycle, event append/read, projection, and status use canonical Core threads.
+    component: kickside/core
+
+  - name: dep.kickside.component
+    kind: ns.dependency
+    version: '*'
+    component: kickside/component
+
+  - name: dep.kickside.webscout
+    version: '*'
+    kind: ns.dependency
+    meta:
+      comment: The Research Analyst carries Webscout's grounded web-research trait.
+    component: kickside/webscout
+
+  - name: dep.kickside.agents
+    version: '*'
+    kind: ns.dependency
+    meta:
+      comment: The Research Analyst and Deep Research trait run on the shared Agent platform.
+    component: kickside/agents
+
+  - name: dep.kickside.models
+    version: '*'
+    kind: ns.dependency
+    meta:
+      comment: The Research Analyst resolves its model through the shared model classes.
+    component: kickside/models
+
+  - name: dep.wippy.dataflow
+    version: '*'
+    kind: ns.dependency
+    meta:
+      comment: Native research requests execute through the package-owned Dataflow graph.
+    component: wippy/dataflow
+
+  - name: target_db
+    kind: ns.requirement
+    meta:
+      comment: SQL database resource backing the kickside_research_run read model.
+    default: app:db
+    targets:
+      - entry: kickside.research.migrations:01_research_run
+        path: .meta.target_db
+      - entry: kickside.research.migrations:02_block_signal
+        path: .meta.target_db
+      - entry: kickside.research:db_config
+        path: .meta.db_id
+
+  # Resolved DB id for the read model. The target_db requirement rewrites .meta.db_id
+  # here; consts.db_id() reads it back so the repo binds the configured database.
+  - name: db_config
+    kind: registry.entry
+    meta:
+      comment: Holds the configured research DB id (rewritten by the target_db requirement).
+      db_id: app:db
+
+  # ─── Shared requirements ─────────────────────────────────────────────
+  # The firewalled API router the submit endpoint attaches to.
+  - name: api_router
+    kind: ns.requirement
+    meta:
+      comment: HTTP router the research submit endpoint attaches to.
+    default: app:api
+    targets:
+      - entry: kickside.research:submit.endpoint
+        path: .meta.router
+      - entry: kickside.research:status.endpoint
+        path: .meta.router
+      - entry: kickside.research:detail.endpoint
+        path: .meta.router
+
+  # The HTTP server the research page static mount attaches to.
+  - name: ui_server
+    kind: ns.requirement
+    meta:
+      comment: HTTP server the research UI static mounts attach to.
+    default: app:gateway
+    targets:
+      - entry: kickside.research:ui_static
+        path: .meta.server
+
+  # ─── Research page UI (self-served web component) ─────────────────────
+  - name: ui_fs
+    kind: fs.directory
+    meta:
+      comment: Built research-app web component bundle.
+    directory: ./static
+
+  - name: ui_static
+    kind: http.static
+    meta:
+      server: app:gateway
+    path: /research-app
+    fs: kickside.research:ui_fs
+    options:
+      # Stable bundle name (index.js) — without revalidation the browser caches it
+      # hard and never picks up rebuilds.
+      cache: "no-cache"
+
+  - name: research_view
+    kind: registry.entry
+    meta:
+      type: view.component
+      name: research_view
+      title: Research
+      announced: true
+      tag_name: research-app
+      base_path: research-app
+      entry_point: index.js
+      icon: tabler:world-search
+
+  # Module-owned nav entry: installing this module adds the Research surface to the
+  # nav; uninstalling removes it. The host renders route_name "research" by mounting
+  # the research-app web component by tag.
+  - name: nav_item
+    kind: registry.entry
+    meta:
+      type: ui.nav_item
+      section: ""
+      path: /research
+      route_name: research
+      title: Research
+      comment: Ask an agent to research a topic and report back with sources.
+      icon: tabler:world-search
+      order: 50
+      render: component
+      component_tag: research-app
+
+  # ─── Submit: POST /research -> start the research dataflow ───────────
+  - name: submit
+    kind: function.lua
+    meta: { comment: "POST /research — call the kickside.research:request contract under the caller." }
+    source: file://submit.lua
+    method: handler
+    modules: [http, json, security, contract]
+
+  - name: submit.endpoint
+    kind: http.endpoint
+    meta: { router: app:api }
+    method: POST
+    func: submit
+    path: /research
+
+  - name: status
+    kind: function.lua
+    meta: { comment: "GET /research/list — the caller's research runs folded on read (newest first)." }
+    source: file://status.lua
+    method: handler
+    modules: [http, security]
+    imports:
+      research_state: kickside.research:state
+
+  - name: status.endpoint
+    kind: http.endpoint
+    meta: { router: app:api }
+    method: GET
+    func: status
+    path: /research/list
+
+  - name: detail
+    kind: function.lua
+    meta: { comment: "GET /research/{id}/events — the run's canonical thread events (request/progress/result/failed) + folded summary." }
+    source: file://detail.lua
+    method: handler
+    modules: [http, security, funcs, json]
+    imports:
+      research_state: kickside.research:state
+      research_consts: kickside.research:consts
+
+  - name: detail.endpoint
+    kind: http.endpoint
+    meta: { router: app:api }
+    method: GET
+    func: detail
+    path: /research/{id}/events
+
+  # The research agent (kickside.research.agents:researcher, webscout web_researcher
+  # trait) runs in the dataflow with the report_progress tool; its result feeds the
+  # deliver node, which appends it to the canonical thread.
+
+  # ─── Agent tool: report intermediary progress to the research thread ──
+  - name: report_progress
+    kind: function.lua
+    meta:
+      type: tool
+      title: Report Research Progress
+      comment: Post an intermediary research update (current step, findings so far, next-step ETA).
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "description": "Short status, e.g. searching / reading / analyzing" },
+            "step": { "type": "string", "description": "What you are doing right now" },
+            "findings": { "type": "array", "items": { "type": "string" }, "description": "Key findings so far" },
+            "eta": { "type": "string", "description": "Rough estimate of the next step / time remaining" },
+            "urls": { "type": "array", "items": { "type": "string" }, "description": "Source URLs gathered so far" }
+          },
+          "required": ["step"]
+        }
+      output_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "success": { "type": "boolean", "description": "true when the progress event was recorded; false with error otherwise." },
+            "recorded": { "type": "boolean" },
+            "error": { "type": "string", "description": "Failure reason when success is false." }
+          }
+        }
+      llm_alias: ReportProgress
+      llm_description: Report your intermediary research progress so the requester sees live updates. Call this between major steps.
+    source: file://report_progress.lua
+    method: handle
+    modules: [ctx, funcs]
+    imports:
+      research_consts: kickside.research:consts
+
+  # ─── Dataflow terminal nodes: result / failure -> thread events ──────
+  - name: deliver_format
+    kind: library.lua
+    meta: { name: deliver_format, comment: "Structured research report validation and markdown rendering shared by deliver and tests." }
+    source: file://deliver_format.lua
+
+  - name: deliver
+    kind: function.lua
+    meta: { comment: "Dataflow node — append the research RESULT (markdown + urls) to the canonical thread." }
+    source: file://deliver.lua
+    method: handler
+    modules: [funcs, logger]
+    imports:
+      research_consts: kickside.research:consts
+      deliver_format: kickside.research:deliver_format
+
+  - name: deliver_error
+    kind: function.lua
+    meta: { comment: "Dataflow error node — append a FAILED event to the canonical thread." }
+    source: file://deliver.lua
+    method: error_handler
+    modules: [funcs, logger]
+    imports:
+      research_consts: kickside.research:consts
+      deliver_format: kickside.research:deliver_format
+
+  # ─── Test suite ──────────────────────────────────────────────────────
+  - name: deliver_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_research
+      group: Research
+      comment: deliver node report normalization + inbox-create payload shaping.
+    source: file://deliver_test.lua
+    method: run
+    modules: [json, contract]
+    imports:
+      test: wippy.test:test
+      deliver: kickside.research:deliver

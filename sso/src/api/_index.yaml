@@ -1,0 +1,285 @@
+version: "1.0"
+namespace: kickside.sso.api
+
+entries:
+  - name: credential_config_read
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      actions: registry.get
+      resources: kickside.sso:credential_config
+      effect: allow
+
+  - name: credential_eligibility_policy
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      actions: [funcs.call, registry.find]
+      resources: [kickside.contract:host_credential_eligibility]
+      effect: allow
+
+  # The public, pre-auth SSO endpoints (providers/start/callback) carry no caller
+  # identity, so they run under this fixed reader actor to discover sso.provider
+  # descriptors (registry.find) and read SSO settings (open the settings contract)
+  # when deciding which providers to offer and resolving a provider for a login.
+  - name: public_reader_policy
+    kind: security.policy
+    meta: { comment: The public SSO reader may scan the registry for provider descriptors and open the settings contract. }
+    policy:
+      resources:
+        - "*"
+      actions:
+        - registry.find
+        - registry.get
+        - contract.get
+        - contract.open
+        - contract.call
+        # The settings service serves reads from a store-backed cache, so
+        # resolving a provider needs read access to that store.
+        - store.get
+        - store.key.get
+      effect: allow
+
+  # The login flow (start/callback) additionally reads/writes the in-flight flow
+  # store (PKCE/state/nonce, keyed by state), so its endpoints add this grant.
+  - name: flow_store_policy
+    kind: security.policy
+    meta: { comment: The public SSO flow may read/write its own in-flight flow store. }
+    policy:
+      resources:
+        - kickside.sso:flow_store
+      actions:
+        - store.get
+        - store.set
+        - store.delete
+        - store.key.get
+        - store.key.set
+        - store.key.delete
+      effect: allow
+
+  # The connectors call provider HTTPS endpoints (OIDC issuer discovery, token
+  # exchange, userinfo). Scoped to https:// since a generic OIDC issuer may be
+  # any host; mirrors the trusted-product OAuth egress the user group already has.
+  - name: provider_http_egress_policy
+    kind: security.policy
+    meta: { comment: The public SSO flow may make outbound HTTPS requests to provider OAuth/OIDC endpoints. }
+    policy:
+      resources:
+        - https://*
+      actions:
+        - http_client.request
+      effect: allow
+
+  - name: list_providers
+    kind: function.lua
+    meta:
+      comment: GET /api/sso/providers — enabled providers for the login UI.
+    source: file://list_providers.lua
+    modules:
+      - http
+    imports:
+      sso_config: kickside.sso:config
+      sso_providers_registry: kickside.sso:providers_registry
+    method: handler
+    security:
+      actor:
+        id: kickside.sso.api:public_reader
+      policies:
+        - kickside.sso.api:public_reader_policy
+
+  - name: list_providers.endpoint
+    kind: http.endpoint
+    meta:
+      comment: GET /sso/providers on the public router.
+    method: GET
+    func: list_providers
+    path: /sso/providers
+
+  - name: list_admin_providers
+    kind: function.lua
+    meta:
+      comment: GET /api/sso/providers (admin) — every provider descriptor + setting metadata/values for the config panel.
+    source: file://list_admin_providers.lua
+    modules:
+      - http
+      - security
+      - registry
+      - contract
+    imports:
+      sso_consts: kickside.sso:consts
+      sso_providers_registry: kickside.sso:providers_registry
+    method: handler
+
+  - name: list_admin_providers.endpoint
+    kind: http.endpoint
+    meta:
+      comment: GET /sso/providers on the authenticated router (admin-gated by the firewall allowlist).
+    method: GET
+    func: list_admin_providers
+    path: /sso/providers
+
+  - name: list_connections
+    kind: function.lua
+    meta:
+      comment: GET /api/sso/connections — the current user's linked identities.
+    source: file://list_connections.lua
+    modules:
+      - http
+      - security
+    imports:
+      identities_repo: kickside.sso.persist:identities_repo
+    method: handler
+
+  - name: list_connections.endpoint
+    kind: http.endpoint
+    meta:
+      comment: GET /sso/connections on the authenticated router.
+    method: GET
+    func: list_connections
+    path: /sso/connections
+
+  - name: link_start
+    kind: function.lua
+    meta:
+      comment: POST /api/sso/{provider}/link — start linking a provider to the current account.
+    source: file://link.lua
+    modules:
+      - http
+      - security
+      - crypto
+      - hash
+    imports:
+      sso_consts: kickside.sso:consts
+      sso_config: kickside.sso:config
+      sso_util: kickside.sso:util
+      sso_providers: kickside.sso.connectors:providers
+      sso_provisioner: kickside.sso.persist:provisioner
+      sso_flow_store: kickside.sso.flow:flow_store
+      sso_cookies: kickside.sso.flow:cookies
+      sso_reqinfo: kickside.sso.flow:reqinfo
+    method: start_link
+    security:
+      policies: [kickside.sso.api:credential_eligibility_policy, kickside.sso.api:credential_config_read]
+
+  - name: link_start.endpoint
+    kind: http.endpoint
+    meta:
+      comment: POST /sso/{provider}/link on the authenticated router.
+    method: POST
+    func: link_start
+    path: /sso/{provider}/link
+
+  # Shares link.lua with link_start, so it must declare the same module-level
+  # require set (link.lua resolves all its requires at load, before either method
+  # runs) — not only what unlink itself uses.
+  - name: unlink
+    kind: function.lua
+    meta:
+      comment: DELETE /api/sso/{provider}/link — unlink a provider from the current account.
+    source: file://link.lua
+    modules:
+      - http
+      - security
+      - crypto
+      - hash
+    imports:
+      sso_consts: kickside.sso:consts
+      sso_config: kickside.sso:config
+      sso_util: kickside.sso:util
+      sso_providers: kickside.sso.connectors:providers
+      sso_provisioner: kickside.sso.persist:provisioner
+      sso_flow_store: kickside.sso.flow:flow_store
+      sso_cookies: kickside.sso.flow:cookies
+      sso_reqinfo: kickside.sso.flow:reqinfo
+    method: unlink
+
+  - name: unlink.endpoint
+    kind: http.endpoint
+    meta:
+      comment: DELETE /sso/{provider}/link on the authenticated router.
+    method: DELETE
+    func: unlink
+    path: /sso/{provider}/link
+
+  - name: start
+    kind: function.lua
+    meta:
+      comment: Begins a login — PKCE/state/nonce, flow cookie, redirect to the provider.
+    source: file://start.lua
+    modules:
+      - http
+      - crypto
+      - hash
+    imports:
+      sso_consts: kickside.sso:consts
+      sso_config: kickside.sso:config
+      sso_util: kickside.sso:util
+      sso_providers: kickside.sso.connectors:providers
+      sso_flow_store: kickside.sso.flow:flow_store
+      sso_cookies: kickside.sso.flow:cookies
+      sso_reqinfo: kickside.sso.flow:reqinfo
+    method: handler
+    security:
+      actor:
+        id: kickside.sso.api:public_reader
+      policies:
+        - kickside.sso.api:public_reader_policy
+        - kickside.sso.api:flow_store_policy
+        - kickside.sso.api:provider_http_egress_policy
+
+  - name: start.endpoint
+    kind: http.endpoint
+    meta:
+      comment: GET /sso/{provider}/start on the public router.
+    method: GET
+    func: start
+    path: /sso/{provider}/start
+
+  - name: callback
+    kind: function.lua
+    meta:
+      comment: Completes a login or link — verify state, exchange code, provision/link, mint session.
+    source: file://callback.lua
+    modules:
+      - http
+    imports:
+      sso_consts: kickside.sso:consts
+      sso_providers: kickside.sso.connectors:providers
+      sso_provisioner: kickside.sso.persist:provisioner
+      sso_session: kickside.sso:session
+      sso_flow_store: kickside.sso.flow:flow_store
+      sso_cookies: kickside.sso.flow:cookies
+      sso_reqinfo: kickside.sso.flow:reqinfo
+      sso_redirect: kickside.sso.flow:redirect
+      sso_config: kickside.sso:config
+    method: handler
+    # The callback completes a login: after discovering the provider and reading
+    # the in-flight flow (public_reader + flow_store), it loads/creates the user
+    # and mints a session through the same kickside.users:user_provisioning seam
+    # the password login uses — so it carries the Users-owned login-runtime policy
+    # bundle (db, actor-create, scope resolution, and token minting).
+    security:
+      actor:
+        id: kickside.sso.api:public_reader
+      policies:
+        - kickside.sso.api:public_reader_policy
+        - kickside.sso.api:flow_store_policy
+        - kickside.sso.api:provider_http_egress_policy
+        - kickside.users.security:login_db_access
+        - kickside.sso.api:credential_eligibility_policy
+        - kickside.users.security:login_settings_read
+        - kickside.users.security:login_env_read
+        - kickside.users.security:login_actor_create
+        - kickside.users.security:session_group_policy_read
+        - kickside.users.security:session_group_set_projection
+        - kickside.users.security:login_role_resolve
+        - kickside.users.security:login_scope_compose
+        - kickside.users.security:login_token_mint
+
+  - name: callback.endpoint
+    kind: http.endpoint
+    meta:
+      comment: GET /sso/{provider}/callback on the public router.
+    method: GET
+    func: callback
+    path: /sso/{provider}/callback

@@ -1,0 +1,31 @@
+organization: kickside
+module: agent-onboarding
+type: plugin
+description: Per-user first-agent onboarding with the installed agents capability catalog.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+embed:
+- kickside.agent_onboarding:ui_fs
+exclude_meta:
+  type:
+  - test
+  - test_helper
+  - test_support
+exclude:
+- test/**
+- test:**
+- ui/node_modules/**
+- ui/node_modules:**
+- .wippy/**
+- .wippy:**
+- static/*.map
+- tests/**
+- test-support/**
+- app:**
+- app.**:**
+visibility: public
+homepage: https://kickside.ai
+keywords:
+- kickside
+- onboarding
+- agents

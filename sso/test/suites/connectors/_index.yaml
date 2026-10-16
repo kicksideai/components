@@ -1,0 +1,32 @@
+version: "1.0"
+namespace: kickside.sso.connectors
+
+entries:
+  - name: jwk_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+      comment: JWK→SPKI-PEM DER round-trip — a JWT signed by the fixture key verifies via the derived PEM.
+    source: file://jwk_test.lua
+    modules: [crypto]
+    imports:
+      test: wippy.test:test
+      sso_jwk: kickside.sso.connectors:jwk
+    method: run_tests
+
+  - name: oidc_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+      comment: Connector authorize-URL building + id_token claim validation (iss/aud/exp/nonce).
+    source: file://oidc_test.lua
+    modules: [crypto]
+    imports:
+      test: wippy.test:test
+      sso_oidc: kickside.sso.connectors:oidc
+      sso_github: kickside.sso.connectors:github
+    method: run_tests

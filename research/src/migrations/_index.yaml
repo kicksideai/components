@@ -1,0 +1,33 @@
+version: "1.0"
+namespace: kickside.research.migrations
+
+# target_db is injected by the root kickside.research:target_db requirement.
+entries:
+  - name: 01_research_run
+    kind: function.lua
+    meta:
+      type: migration
+      target_db: app:db
+      comment: kickside_research_run read-model table
+      depends_on:
+        - ns:wippy.migration
+      timestamp: "2026-06-24T00:00:01Z"
+    source: file://01_research_run.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+
+  - name: 02_block_signal
+    kind: function.lua
+    meta:
+      type: migration
+      target_db: app:db
+      comment: kickside_research_block_signal correlation table
+      depends_on:
+        - ns:wippy.migration
+        - kickside.research.migrations:01_research_run
+      timestamp: "2026-07-06T00:00:01Z"
+    source: file://02_block_signal.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

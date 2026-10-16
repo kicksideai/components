@@ -1,0 +1,49 @@
+version: '1.0'
+workspace:
+  replacements:
+    kickside/agent-onboarding: ..
+    kickside/agents: ../../../kickside/platform/agents
+    kickside/blocks: ../../../kickside/platform/blocks
+    kickside/component: ../../../kickside/core/component
+    kickside/connection: ../../../kickside/platform/connection
+    kickside/contract: ../../../kickside/core/contract
+    kickside/core: ../../../kickside/core/core
+    kickside/doc2md: ../../../converters/doc2md
+    kickside/execution: ../../../kickside/core/execution
+    kickside/inbox: ../../../kickside/platform/inbox
+    kickside/jobs: ../../../kickside/core/jobs
+    kickside/models: ../../../kickside/platform/models
+    kickside/settings: ../../../kickside/platform/settings
+    kickside/transform: ../../../kickside/platform/transform
+    kickside/ui: ../../../kickside/platform/ui
+    kickside/uploads: ../../../kickside/platform/uploads
+    kickside/users: ../../../kickside/platform/users
+    kickside/widgets: ../../../kickside/platform/widgets
+vars:
+  http_port: 19247
+  pg_database: agent_onboarding_test
+security:
+  strict_mode: true
+override:
+  app:db:file: ':memory:'
+  app:gateway:addr: :${http_port}
+profiles:
+  postgres:
+    override:
+      app:db:kind: db.sql.postgres
+      app:db:host: 127.0.0.1
+      app:db:port: 5433
+      app:db:database: ${pg_database}
+      app:db:username: kickside
+      app:db:password: kickside
+      app:db:options.sslmode: disable
+directories:
+  modules: .wippy
+  src: .
+registry:
+  dispatch_internal_kinds:
+  - registry.entry
+  - ns.requirement
+  - ns.dependency
+  - ns.definition
+  - security.scope

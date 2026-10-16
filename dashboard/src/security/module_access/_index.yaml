@@ -1,0 +1,38 @@
+version: '1.0'
+namespace: kickside.dashboard.security
+entries:
+- name: module_access
+  kind: security.policy
+  meta:
+    title: Dashboard
+    surface: kickside.dashboard
+    intent: module_access
+    includes:
+    - kickside.dashboard.security:module_runtime
+    - kickside.dashboard.security:dashboard_endpoint_access
+  groups: []
+  policy:
+    resources:
+    - kickside.dashboard:overview.endpoint
+    actions: access
+    effect: allow
+- name: module_runtime
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.dashboard:*
+    - kickside.dashboard.security:*
+    actions:
+    - registry.get
+    - registry.find
+    - contract.get
+    - contract.open
+    - contract.call
+    - contract.implementations
+    - contract.security
+    - funcs.call
+    - funcs.security
+    effect: allow

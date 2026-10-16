@@ -1,0 +1,53 @@
+version: '1.0'
+override:
+  'kickside.research:request_binding:contracts':
+    - contract: kickside.research:request
+      default: true
+      methods:
+        request: app:research_request_stub
+registry:
+  dispatch_internal_kinds:
+  - registry.entry
+  - ns.requirement
+  - ns.dependency
+  - ns.definition
+  - security.scope
+  enable_history: true
+  history_type: memory
+vars:
+  pg_host: 127.0.0.1
+  pg_port: 5433
+  pg_database: research_test
+  pg_username: kickside
+  pg_password: kickside
+profiles:
+  postgres:
+    override:
+      app:db:kind: db.sql.postgres
+      app:db:host: ${pg_host}
+      app:db:port: ${pg_port}
+      app:db:database: ${pg_database}
+      app:db:username: ${pg_username}
+      app:db:password: ${pg_password}
+      app:db:options.sslmode: disable
+      app:db:pool.max_open: 8
+      app:db:pool.max_idle: 4
+workspace:
+  replacements:
+    kickside/research: ..
+    kickside/agents: ../../../kickside/platform/agents
+    kickside/blocks: ../../../kickside/platform/blocks
+    kickside/component: ../../../kickside/core/component
+    kickside/connection: ../../../kickside/platform/connection
+    kickside/contract: ../../../kickside/core/contract
+    kickside/core: ../../../kickside/core/core
+    kickside/doc2md: ../../../../../../kicksideai/converters/doc2md
+    kickside/execution: ../../../kickside/core/execution
+    kickside/jobs: ../../../kickside/core/jobs
+    kickside/models: ../../../kickside/platform/models
+    kickside/settings: ../../../kickside/platform/settings
+    kickside/transform: ../../../kickside/platform/transform
+    kickside/uploads: ../../../kickside/platform/uploads
+    kickside/users: ../../../kickside/platform/users
+    kickside/webscout: ../../../providers/webscout
+    kickside/security: ../../../kickside/platform/security

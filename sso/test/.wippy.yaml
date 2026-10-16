@@ -1,0 +1,60 @@
+version: '1.0'
+override:
+  kickside.sso.api:provider_http_egress_policy:policy.actions:
+  - http_client.request
+  - http_client.private_ip
+  kickside.sso.api:provider_http_egress_policy:policy.resources:
+  - https://*
+  - http://127.0.0.1:${http_port}/api/public/fixture/*
+  - 127.0.0.1
+  kickside.sso.providers.github:provider:data.endpoints.token: http://127.0.0.1:${http_port}/api/public/fixture/exchange
+  kickside.sso.providers.github:provider:data.endpoints.userinfo: http://127.0.0.1:${http_port}/api/public/fixture/userinfo
+  kickside.sso.providers.github:provider:data.endpoints.emails: http://127.0.0.1:${http_port}/api/public/fixture/emails
+  app:gateway:addr: :${http_port}
+  app:db:file: ${sqlite_path}
+  kickside.users.security:tokens:data.token_key_env: ''
+  kickside.users.security:tokens:data.token_key: 0123456789abcdef0123456789abcdef
+workspace:
+  replacements:
+    kickside/security: ../../../kickside/platform/security
+    kickside/realtime-dispatch: ../../../kickside/core/realtime-dispatch
+    kickside/automation: ../../../kickside/platform/automation
+    kickside/component: ../../../kickside/core/component
+    kickside/core: ../../../kickside/core/core
+    kickside/jobs: ../../../kickside/core/jobs
+    kickside/sso: ..
+    kickside/settings: ../../../kickside/platform/settings
+    kickside/contract: ../../../kickside/core/contract
+    kickside/users: ../../../kickside/platform/users
+    kickside/execution: ../../../kickside/core/execution
+    kickside/sso-google: ../../../providers/sso-google
+    kickside/sso-microsoft: ../../../providers/sso-microsoft
+    kickside/sso-github: ../../../providers/sso-github
+    kickside/sso-oidc: ../../../providers/sso-oidc
+vars:
+  http_port: 19118
+  sqlite_path: ':memory:'
+  pg_host: localhost
+  pg_port: 5433
+  pg_database: kickside_test_sso
+  pg_username: kickside
+  pg_password: kickside
+profiles:
+  postgres:
+    override:
+      app:db:kind: db.sql.postgres
+      app:db:host: ${pg_host}
+      app:db:port: ${pg_port}
+      app:db:database: ${pg_database}
+      app:db:username: ${pg_username}
+      app:db:password: ${pg_password}
+      app:db:options.sslmode: disable
+      app:db:pool.max_open: 16
+      app:db:pool.max_idle: 8
+registry:
+  dispatch_internal_kinds:
+  - registry.entry
+  - ns.requirement
+  - ns.dependency
+  - ns.definition
+  - security.scope

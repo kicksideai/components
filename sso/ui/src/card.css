@@ -1,0 +1,86 @@
+@import "@wippy-fe/theme/theme-config.css";
+
+/* A provider's admin card. Re-skinned onto the shared .ap-* block chrome (the
+   canonical connection-provider/storage card in platform/settings), so an SSO
+   provider pane is visually identical to every other provider settings card.
+   Styled only with the universal --p-* theme vocabulary so it inherits the host
+   theme inside the shadow DOM — no hardcoded colors, no per-provider accents. */
+:host { display: block; height: 100%; min-height: 0; }
+:host > div { height: 100%; min-height: 0; }
+*, *::before, *::after { box-sizing: border-box; }
+
+.ap {
+  --system-surface-gutter: var(--kickside-system-surface-gutter, 24px);
+  font-family: inherit;
+  display: flex; flex-direction: column; height: 100%; min-height: 0;
+  color: var(--p-text-color); background: var(--p-content-background);
+}
+.ap-body { flex: 1; overflow-y: auto; padding: 0 0 28px; }
+
+.ap-bar {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: 100%;
+  padding: 12px var(--system-surface-gutter); background: var(--p-content-background);
+  position: sticky; top: 0; z-index: 3; border-bottom: 1px solid var(--p-content-border-color);
+}
+.ap-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 14px;
+  border-radius: 8px; border: 1px solid transparent; font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: filter .15s, background .15s, opacity .15s;
+}
+.ap-btn:disabled { opacity: .45; cursor: default; }
+.ap-btn-primary { background: var(--p-primary-color); color: var(--p-button-primary-color); }
+.ap-btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
+.ap-btn-ghost { background: transparent; border-color: var(--p-content-border-color); color: var(--p-text-color); }
+.ap-btn-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--p-text-color) 8%, transparent); }
+.ap-btn svg { width: 16px; height: 16px; }
+
+.ap-err { background: color-mix(in srgb, var(--p-danger-500) 12%, transparent); color: var(--p-danger-600, var(--p-danger-500)); }
+.ap-msg-inline { display: inline-flex; align-items: center; gap: 4px; margin-right: auto; padding: 0 11px; height: 34px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+.ap-msg-inline svg { width: 15px; height: 15px; }
+.ap-saved { display: inline-flex; align-items: center; gap: 4px; margin-right: auto; font-size: 12px; font-weight: 600; color: var(--p-primary-color); }
+.ap-saved svg { width: 15px; height: 15px; }
+
+.ap-cards { display: flex; flex-direction: column; gap: 16px; padding: 16px var(--system-surface-gutter) 0; }
+.ap-card { background: var(--p-content-background); border: 1px solid var(--p-content-border-color); border-radius: 14px; padding: 16px 18px; }
+.ap-h { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: var(--p-text-color); letter-spacing: -.2px; }
+.ap-h svg { width: 17px; height: 17px; color: var(--p-text-muted-color); }
+.ap-sub { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12.5px; color: var(--p-text-muted-color); margin: 4px 0 12px; }
+.ap-link { display: inline-flex; align-items: center; gap: 3px; color: var(--p-primary-color); text-decoration: none; font-weight: 600; }
+.ap-link:hover { text-decoration: underline; }
+.ap-link svg { width: 13px; height: 13px; }
+
+.ap-blabel { display: block; font-size: 11.5px; font-weight: 700; color: var(--p-text-muted-color); text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 6px; }
+.ap-binput {
+  width: 100%; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--p-content-border-color);
+  background: var(--p-content-background); color: var(--p-text-color); font: inherit; font-size: 13px; box-sizing: border-box;
+}
+select.ap-binput { cursor: pointer; }
+.ap-binput:focus { outline: none; border-color: var(--p-primary-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-primary-color) 18%, transparent); }
+.ap-binput-invalid, .ap-binput-invalid:focus { border-color: var(--p-danger-500); }
+.ap-hint { font-size: 11.5px; color: var(--p-text-muted-color); margin: 8px 0 0; }
+.ap-hint-err { color: var(--p-danger-600, var(--p-danger-500)); }
+
+/* A labeled toggle row: text on the left, switch on the right. */
+.ap-toggle-row { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+.ap-toggle-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.ap-toggle-name { font-size: 13px; font-weight: 600; color: var(--p-text-color); }
+.ap-toggle-desc { font-size: 12px; color: var(--p-text-muted-color); }
+
+/* Real toggle switch for bool settings. Track fills with the primary tone when
+   on; the knob slides. Token-driven so it tracks the host theme in light + dark. */
+.ks-switch {
+  flex: 0 0 auto; position: relative; width: 40px; height: 22px; padding: 0; border: none;
+  border-radius: 999px; cursor: pointer; background: color-mix(in srgb, var(--p-text-color) 22%, transparent);
+  transition: background .18s;
+}
+.ks-switch.on { background: var(--p-primary-color); }
+.ks-switch:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-primary-color) 30%, transparent); }
+.ks-switch-knob {
+  position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--p-button-primary-color); box-shadow: 0 1px 2px color-mix(in srgb, var(--p-text-color) 25%, transparent);
+  transition: transform .18s;
+}
+.ks-switch.on .ks-switch-knob { transform: translateX(18px); }
+
+@keyframes ks-spin { to { transform: rotate(360deg); } }
+.spin { animation: ks-spin .8s linear infinite; }

@@ -1,0 +1,337 @@
+version: '1.0'
+namespace: app
+entries:
+- name: db
+  kind: db.sql.sqlite
+  foreign_keys: true
+  meta:
+    comment: In-memory DB for the research harness.
+  file: ':memory:'
+- name: env_storage
+  kind: env.storage.file
+  meta:
+    type: envstorage
+  file_path: ./.wippy/test.env
+  auto_create: true
+- name: processes
+  kind: process.host
+  lifecycle:
+    auto_start: true
+- name: gateway
+  kind: http.service
+  addr: :${http_port}
+- name: api
+  kind: http.router
+  meta:
+    server: gateway
+  prefix: /api
+- name: api_public
+  kind: http.router
+  meta:
+    comment: Isolated router for transitive Session and Views endpoints not exercised
+      here.
+    server: gateway
+  prefix: /public
+- name: user
+  kind: security.policy
+  meta:
+    comment: Permissive scope the research suite runs under.
+  groups:
+  - research_test
+  policy:
+    resources: '*'
+    actions: '*'
+    effect: allow
+- name: uploads
+  kind: fs.directory
+  directory: ./.wippy/uploads
+  auto_init: true
+- name: dep.kickside.blocks
+  kind: ns.dependency
+  version: '*'
+  component: kickside/blocks
+  parameters:
+  - name: kickside.blocks:process_host
+    value: app:processes
+- name: dep.kickside.contract
+  kind: ns.dependency
+  version: '*'
+  component: kickside/contract
+- name: dep.kickside.core
+  kind: ns.dependency
+  version: '*'
+  component: kickside/core
+  parameters:
+  - name: kickside.core:target_db
+    value: app:db
+  - name: kickside.core.lifecycle:process_host
+    value: app:processes
+  - name: kickside.core.lifecycle:user_lifecycle_grant
+    value:
+      subject_id: app:user
+      subject_type: group
+      access_mask: 2
+  - name: kickside.core.lifecycle:admin_lifecycle_grant
+    value:
+      subject_id: app:user
+      subject_type: group
+      access_mask: 3
+  - name: kickside.core.retention:process_host
+    value: app:processes
+  - name: kickside.core.threads:process_host
+    value: app:processes
+  - name: kickside.core.projections:process_host
+    value: app:processes
+  - name: kickside.core.retention:api_router
+    value: app:api
+  - name: kickside.core.threads:api_router
+    value: app:api
+  - name: kickside.core.threads.hydration:api_router
+    value: app:api
+  - name: kickside.core.projections:api_router
+    value: app:api
+  - name: kickside.core.retention:env_storage
+    value: app:env_storage
+  - name: kickside.core.projections:env_storage
+    value: app:env_storage
+  - name: kickside.core.retention:user_security_scope
+    value: app:user
+  - name: kickside.core.threads:user_security_scope
+    value: app:user
+  - name: kickside.core.threads.hydration:user_security_scope
+    value: app:user
+
+- name: dep.kickside.component
+  kind: ns.dependency
+  version: '*'
+  component: kickside/component
+  parameters:
+  - name: kickside.component:target_db
+    value: app:db
+  - name: kickside.component:api_router
+    value: app:api
+  - name: kickside.component:lifecycle_impl
+    value: kickside.core.lifecycle:component_lifecycle_impl
+
+- name: dep.kickside.settings
+  kind: ns.dependency
+  version: '*'
+  component: kickside/settings
+  parameters:
+  - name: kickside.settings:target_db
+    value: app:db
+  - name: kickside.settings:api_router
+    value: app:api
+  - name: kickside.settings:ui_server
+    value: app:gateway
+- name: dep.kickside.jobs
+  kind: ns.dependency
+  version: '*'
+  component: kickside/jobs
+  parameters:
+  - name: kickside.core.jobs:target_db
+    value: app:db
+  - name: kickside.core.jobs:temp_fs
+    value: app:uploads
+  - name: kickside.core.jobs:process_host
+    value: app:processes
+  - name: kickside.core.jobs:api_router
+    value: app:api
+  - name: kickside.core.scheduler:process_host
+    value: app:processes
+  - name: kickside.core.scheduler:env_storage
+    value: app:env_storage
+
+- name: dep.kickside.agents
+  kind: ns.dependency
+  version: '*'
+  component: kickside/agents
+  parameters:
+  - name: kickside.agents:api_router
+    value: app:api
+  - name: kickside.agents:ui_server
+    value: app:gateway
+
+- name: dep.kickside.models
+  kind: ns.dependency
+  version: '*'
+  component: kickside/models
+  parameters:
+  - name: kickside.models:target_db
+    value: app:db
+  - name: kickside.models:api_router
+    value: app:api
+  - name: kickside.models:ui_server
+    value: app:gateway
+  - name: kickside.models:process_host
+    value: app:processes
+
+- name: dep.kickside.connection
+  kind: ns.dependency
+  version: '*'
+  component: kickside/connection
+  parameters:
+  - name: kickside.connection:api_router
+    value: app:api
+  - name: kickside.connection:ui_server
+    value: app:gateway
+
+- name: dep.kickside.transform
+  kind: ns.dependency
+  version: '*'
+  component: kickside/transform
+  parameters:
+  - name: kickside.transform:api_router
+    value: app:api
+  - name: kickside.transform:ui_server
+    value: app:gateway
+  - name: kickside.transform:env_storage
+    value: app:env_storage
+  - name: kickside.transform.security:user_security_scope
+    value: app:user
+- name: dep.kickside.uploads
+  kind: ns.dependency
+  version: '*'
+  component: kickside/uploads
+  parameters:
+  - name: kickside.uploads:api_router
+    value: app:api
+  - name: kickside.uploads:ui_server
+    value: app:gateway
+  - name: kickside.uploads:database_resource
+    value: app:db
+  - name: kickside.uploads:env_storage
+    value: app:env_storage
+  - name: kickside.uploads:storage_id
+    value: app:uploads
+  - name: kickside.uploads.security:user_security_scope
+    value: app:user
+- name: dep.kickside.users
+  kind: ns.dependency
+  version: '*'
+  component: kickside/users
+  parameters:
+  - name: kickside.users:api_router
+    value: app:api
+  - name: kickside.users:public_router
+    value: app:api_public
+  - name: kickside.users:ui_server
+    value: app:gateway
+  - name: kickside.users:target_db
+    value: app:db
+  - name: kickside.users:env_storage
+    value: app:env_storage
+  - name: kickside.users:user_security_scope
+    value: app:user
+  - name: kickside.users:admin_security_scope
+    value: app:user
+  - name: kickside.users:login_role_resource
+    value: app:*
+- name: dep.wippy.relay
+  kind: ns.dependency
+  version: '*'
+  component: wippy/relay
+  parameters:
+  - name: application_host
+    value: app:processes
+  - name: env_storage
+    value: app:env_storage
+  - name: user_security_scope
+    value: app:user
+- name: dep.wippy.llm
+  kind: ns.dependency
+  version: '*'
+  component: wippy/llm
+  parameters:
+  - name: env_storage
+    value: app:env_storage
+  - name: process_host
+    value: app:processes
+- name: dep.wippy.migration
+  kind: ns.dependency
+  version: '*'
+  component: wippy/migration
+  parameters:
+  - name: app_db
+    value: app:db
+- name: dep.wippy.bootloader
+  kind: ns.dependency
+  version: '*'
+  meta:
+    comment: Provides env storage/process host so bootloader entries decode in this
+      harness.
+  component: wippy/bootloader
+  parameters:
+  - name: application_host
+    value: app:processes
+  - name: env_storage
+    value: app:env_storage
+- name: dep.wippy.views
+  kind: ns.dependency
+  version: '*'
+  meta:
+    comment: Views dependency required by session/dataflow module entries.
+  component: wippy/views
+  parameters:
+  - name: api_router
+    value: app:api_public
+  - name: env_storage
+    value: app:env_storage
+- name: dep.wippy.session
+  kind: ns.dependency
+  version: '*'
+  meta:
+    comment: Session dependency required by wippy/dataflow entries loaded with research.
+  component: wippy/session
+  parameters:
+  - name: api_router
+    value: app:api_public
+  - name: database_resource
+    value: app:db
+  - name: default_host
+    value: app:processes
+  - name: env_storage
+    value: app:env_storage
+  - name: delegation_func_id
+    value: userspace.dataflow.session:delegate
+- name: dep.wippy.dataflow
+  kind: ns.dependency
+  version: '*'
+  component: wippy/dataflow
+  parameters:
+  - name: target_db
+    value: app:db
+  - name: process_host
+    value: app:processes
+  - name: api_router
+    value: app:api
+- name: dep.wippy.test
+  kind: ns.dependency
+  component: wippy/test
+  version: '*'
+- name: branding_fs
+  kind: fs.directory
+  directory: .
+  auto_init: true
+- version: '*'
+  name: kickside_inbox
+  kind: ns.dependency
+  meta: {}
+  component: kickside/inbox
+  parameters:
+  - name: kickside.inbox:api_router
+    value: app:api
+  - name: kickside.inbox:ui_server
+    value: app:gateway
+
+- name: dep.wippy.facade
+  kind: ns.dependency
+  component: wippy/facade
+  version: '*'
+  parameters:
+  - name: server
+    value: app:gateway
+  - name: router
+    value: app:api_public
+  - name: content_fs
+    value: app:branding_fs

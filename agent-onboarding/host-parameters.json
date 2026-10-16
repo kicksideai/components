@@ -1,0 +1,6 @@
+[
+  {
+    "name": "kickside.agent_onboarding:ui_server",
+    "value": "app:gateway"
+  }
+]

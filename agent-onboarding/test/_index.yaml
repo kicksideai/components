@@ -1,0 +1,116 @@
+version: '1.0'
+namespace: agent_onboarding_test
+entries:
+- name: dep.kickside.security
+  kind: ns.dependency
+  version: '*'
+  component: kickside/security
+  parameters:
+    - {name: api_router, value: app:api}
+    - {name: ui_server, value: app:gateway}
+    - {name: target_db, value: app:db}
+    - {name: process_host, value: app:processes}
+
+- name: branding_fs
+  kind: fs.directory
+  directory: .
+- name: module
+  kind: ns.dependency
+  component: kickside/agent-onboarding
+  version: '*'
+  parameters:
+  - name: kickside.ui:api_router
+    value: app:api
+  - name: kickside.ui:public_api_router
+    value: app:api_public
+  - name: kickside.ui:ui_server
+    value: app:gateway
+  - name: kickside.ui.security:admin_scope
+    value: app:user
+  - name: kickside.widgets:ui_server
+    value: app:gateway
+  - name: kickside.widgets:api_router
+    value: app:api
+  - name: kickside.users:env_storage
+    value: app:env_storage
+  - name: kickside.users:public_router
+    value: app:api_public
+  - name: kickside.users:api_router
+    value: app:api
+  - name: kickside.users:ui_server
+    value: app:gateway
+  - name: kickside.users:target_db
+    value: app:db
+  - name: kickside.users:user_security_scope
+    value: app:user
+  - name: kickside.users:admin_security_scope
+    value: app:user
+  - name: kickside.users:login_role_resource
+    value: app:*
+  - name: kickside.ui:branding_fs
+    value: agent_onboarding_test:branding_fs
+
+- name: test
+  kind: ns.dependency
+  component: wippy/test
+  version: '*'
+- name: scope
+  kind: security.policy
+  policy:
+    resources: '*'
+    actions: '*'
+    effect: allow
+- name: no_instance
+  kind: security.policy
+  policy:
+    resources: kickside.ui:system_onboarding
+    actions: access
+    effect: deny
+- name: probe
+  kind: function.lua
+  source: file://probe.lua
+  method: run
+  modules:
+  - security
+  - registry
+  - funcs
+  imports:
+    splash: kickside.ui:splash
+    agents: kickside.agents.binding:user_agents_func
+    component: kickside.component:component
+- name: suite
+  kind: function.lua
+  meta:
+    type: test
+    suite: agent_onboarding
+    group: First agent onboarding
+  source: file://suite.lua
+  method: run
+  modules:
+  - funcs
+  - security
+  - uuid
+  - registry
+  imports:
+    test: wippy.test:test
+
+- name: no_agent_creation
+  kind: security.policy
+  policy:
+    actions: access
+    resources: kickside.agents.api:create_user_agent.endpoint
+    effect: deny
+
+- name: no_model_list
+  kind: security.policy
+  policy:
+    actions: access
+    resources: kickside.models.api:list_models.endpoint
+    effect: deny
+
+- name: no_model_classes
+  kind: security.policy
+  policy:
+    actions: access
+    resources: kickside.models.api:list_model_classes.endpoint
+    effect: deny

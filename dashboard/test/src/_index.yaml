@@ -1,0 +1,129 @@
+version: "1.0"
+namespace: app
+
+# Standalone harness for kickside/dashboard. The discovery suite is pure over an
+# injected stub registry, so the harness only has to boot cleanly: it provides the
+# env storage + process host + a permissive actor scope the bootloader needs, then
+# the co-located overview_test suite (re-hosted below) runs in isolation.
+
+entries:
+  - name: db
+    kind: db.sql.sqlite
+    foreign_keys: true
+    meta:
+      comment: Throwaway in-memory DB to satisfy the transitive migration dependency; dashboard owns no tables.
+    file: ":memory:"
+
+  - name: env_storage
+    kind: env.storage.file
+    meta:
+      type: envstorage
+    file_path: ./.wippy/test.env
+    auto_create: true
+
+  - name: processes
+    kind: process.host
+    lifecycle:
+      auto_start: true
+
+  - name: gateway
+    kind: http.service
+    meta:
+      comment: Test HTTP server (backs the dashboard static mount + api router).
+    addr: :19111
+    lifecycle:
+      auto_start: true
+
+  - name: api
+    kind: http.router
+    meta:
+      comment: Test API router the overview endpoint attaches to.
+      server: gateway
+    prefix: /api
+
+  - name: user
+    kind: security.policy
+    meta:
+      comment: Permissive scope the dashboard suite runs under.
+    groups:
+      - dashboard_test
+    policy:
+      resources: '*'
+      actions: '*'
+      effect: allow
+
+  - name: dep.kickside.dashboard
+    kind: ns.dependency
+    version: "*"
+    meta:
+      comment: Dashboard package under test, wired only to harness-owned resources.
+    component: "kickside/dashboard"
+    parameters:
+      - name: api_router
+        value: app:api
+      - name: ui_server
+        value: app:gateway
+      - { name: kickside.dashboard.security:user_security_scope, value: app:user }
+
+  - name: dep.wippy.bootloader
+    kind: ns.dependency
+    version: '*'
+    meta:
+      comment: Bootloader applies boot config (encryption key) on boot.
+    component: "wippy/bootloader"
+    parameters:
+      - name: application_host
+        value: app:processes
+      - name: env_storage
+        value: app:env_storage
+
+  - name: dep.wippy.migration
+    kind: ns.dependency
+    version: '*'
+    meta:
+      comment: Migration framework transitively pulled in; dashboard owns no migrations.
+    component: "wippy/migration"
+    parameters:
+      - name: app_db
+        value: app:db
+
+  - name: dep.wippy.test
+    kind: ns.dependency
+    version: '*'
+    component: wippy/test
+
+  - name: dashboard_overview_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_dashboard
+      group: KickSide Dashboard
+      comment: discovery.overview() -- card per nav item, description resolution (entry/view/module), private omission, ordering, empty state (re-hosted from module source).
+    source: file://overview_test.lua
+    method: run
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+      discovery: kickside.dashboard:discovery
+      dashboard_types: kickside.dashboard:types
+
+  - name: user_endpoint_policy_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: member_endpoint_policy
+    source: file://user_endpoint_policy_test.lua
+    method: run
+    modules:
+    - registry
+    - security
+    imports:
+      test: wippy.test:test
+
+  - name: dep.member_endpoint_contract
+    kind: ns.dependency
+    component: kickside/contract
+    version: '*'
+    parameters:
+    - name: kickside.contract.http:user_security_scope
+      value: app:user

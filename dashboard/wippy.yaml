@@ -1,0 +1,31 @@
+organization: kickside
+module: dashboard
+type: plugin
+description: KickSide dashboard — a registry-driven deployment overview. Discovers the installed navigable surfaces (view.components / ui.nav_items) and renders each as a card with the human description pulled from the entry meta and the owning module's ns.definition. No hardcoded module list; the page reflects whatever is installed.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+homepage: https://wippy.ai
+keywords:
+  - kickside
+  - dashboard
+  - overview
+embed:
+  - kickside.dashboard:ui_fs
+exclude_meta:
+  type:
+    - test
+    - test_helper
+    - test_support
+exclude:
+  - "wippy.lock"
+  - ".wippy/**"
+  - "app:**"
+  - "app.env:**"
+  - "test/**"
+  - "ui/node_modules/**"
+  - "ui/node_modules:**"
+  - "ui/coverage/**"
+  - "ui/coverage:**"
+  - "tests/**"
+  - "test-support/**"
+  - "app.**:**"

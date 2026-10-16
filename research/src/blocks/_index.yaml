@@ -1,0 +1,114 @@
+version: "1.0"
+namespace: kickside.research
+
+# Research publishes one canonical Signal-backed Block. The package owns the research run,
+# terminal-event correlation, and arm worker; Blocks owns durable parking and Signal
+# resume. Visual Workflows is only one possible consumer of the declaration.
+
+entries:
+  - name: block.research
+    kind: registry.entry
+    meta:
+      type: kickside.block
+      public: true
+      title: Research
+      description: Runs a research agent, waits for its terminal event, and returns stable result references.
+    data:
+      block:
+        api_version: kickside.block/v1
+        input:
+          type: object
+          additionalProperties: true
+        config:
+          type: object
+          additionalProperties: false
+          required: [agent_id, prompt]
+          properties:
+            agent_id:
+              type: string
+              minLength: 1
+              title: Agent
+              picker: wc-agent-picker
+            prompt:
+              type: string
+              minLength: 1
+              title: Prompt
+              format: textarea
+            max_iterations:
+              type: integer
+              title: Max iterations
+              default: 20
+              minimum: 1
+              maximum: 50
+        output:
+          type: object
+          additionalProperties: true
+          required: [outcome, research_id, thread_id]
+          properties:
+            outcome: { type: string, enum: [result, failed] }
+            research_id: { type: string }
+            thread_id: { type: string }
+            result_ref: { type: object }
+            failed_ref: { type: object }
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+        ports:
+          - { id: result, label: Result, direction: out, condition: "output.outcome == 'result'" }
+          - { id: research_failed, label: Research failed, direction: out, condition: "output.outcome == 'failed'" }
+          - { id: failed, label: Block failed, direction: out }
+        presentation:
+          category: Agents
+          icon: tabler:world-search
+          hue: violet
+          blurb: Run grounded research and continue with durable references to its result.
+        execution:
+          kind: wait
+          arm_id: kickside.research:arm_research_block
+
+  # ─── Durable Block-Signal correlation ─────────────────────────────────
+  - name: block_signal_repo
+    kind: library.lua
+    meta: { comment: "SQL correlation store for armed Research Block Signals." }
+    source: file://block_signal_repo.lua
+    modules: [sql, time]
+    imports:
+      research_consts: kickside.research:consts
+
+  - name: arm_research_block
+    kind: function.lua
+    meta: { comment: "Canonical Research Block arm: starts one idempotent research run and registers its terminal-event projection." }
+    source: file://block_signal.lua
+    method: arm
+    modules: [contract, security, funcs, json]
+    imports:
+      research_consts: kickside.research:consts
+      block_signal_repo: kickside.research:block_signal_repo
+
+  - name: resume_research_block_signal
+    kind: function.lua
+    meta: { type: projection.worker, comment: "Projection worker (prefetch_events, replay from thread start) -- resumes the parked Block when the research thread appends its result/failed event." }
+    source: file://block_signal.lua
+    method: resume_from_event
+    modules: [contract, security, funcs, json]
+    imports:
+      research_consts: kickside.research:consts
+      block_signal_repo: kickside.research:block_signal_repo
+
+  - name: block_contract_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_research
+      group: Research
+      comment: Research publishes one strict canonical wait Block without depending on visual Workflows.
+    source: file://block_contract_test.lua
+    method: run
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+      worker: kickside.core.projections.persist:worker

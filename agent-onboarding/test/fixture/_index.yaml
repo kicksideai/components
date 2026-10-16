@@ -1,0 +1,30 @@
+version: '1.0'
+namespace: kickside.onboarding_fixture
+entries:
+- name: installed
+  kind: registry.entry
+  meta:
+    type: agent.trait
+    title: Installed fixture capability
+    public: true
+    icon: tabler:test-pipe
+    context_schema:
+      type: object
+      properties:
+        focus:
+          type: string
+  prompt: Answer using the requested format.
+- name: second
+  kind: registry.entry
+  meta:
+    type: agent.trait
+    title: Second installed fixture capability
+    public: true
+  prompt: Follow the user instructions.
+- name: private
+  kind: registry.entry
+  meta:
+    type: agent.trait
+    title: Private fixture capability
+    public: true
+    private: true

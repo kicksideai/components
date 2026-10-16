@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "include-component-in-tag": true,
+  "separate-pull-requests": false,
+  "bump-minor-pre-major": true,
+  "last-release-sha": "78150481d5b8f74e84d82519ccb29918a7ae6e38",
+  "packages": {
+    "dashboard": {
+      "component": "dashboard",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "research": {
+      "component": "research",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "agent-onboarding": {
+      "component": "agent-onboarding",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "sso": {
+      "component": "sso",
+      "changelog-path": "CHANGELOG.md",
+      "exclude-paths": [
+        "sso/.wippy",
+        "sso/test",
+        "sso/test-support",
+        "sso/tests",
+        "sso/ui/coverage",
+        "sso/ui/dist",
+        "sso/ui/node_modules"
+      ]
+    }
+  }
+}

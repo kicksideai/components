@@ -1,0 +1,3 @@
+organization: kickside
+module: dashboard-test
+description: Standalone runnable harness that boots kickside/dashboard and runs its suite.

@@ -1,0 +1,29 @@
+version: "1.0"
+namespace: kickside.dashboard.security
+
+entries:
+  - name: dashboard_endpoint_access
+    kind: security.policy
+    meta:
+      comment: Members access dashboard views and static assets.
+    groups: []
+    policy:
+      resources:
+      - kickside.dashboard:dashboard_view
+      - kickside.dashboard:ui_static
+      actions: access
+      effect: allow
+
+  - name: user_security_scope
+    kind: ns.requirement
+    default: kickside.security.groups:members
+    meta:
+      value_kind: security.scope
+      comment: Application security group that may reach the dashboard endpoints.
+    targets:
+      - entry: kickside.dashboard.security:dashboard_endpoint_access
+        path: ".groups +="
+      - entry: kickside.dashboard.security:module_access
+        path: .groups +=
+      - entry: kickside.dashboard.security:module_runtime
+        path: .groups +=

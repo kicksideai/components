@@ -1,0 +1,17 @@
+version: "1.0"
+namespace: kickside.sso.flow
+
+entries:
+  - name: flow_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+      comment: cookies (build/read/expire) + reqinfo (host/scheme/public_base) request helpers.
+    source: file://flow_test.lua
+    imports:
+      test: wippy.test:test
+      sso_cookies: kickside.sso.flow:cookies
+      sso_reqinfo: kickside.sso.flow:reqinfo
+    method: run_tests

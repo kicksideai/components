@@ -1,0 +1,372 @@
+@import "@wippy-fe/theme/theme-config.css";
+
+/* The host element + the WippyVueElement mount wrapper need a definite height,
+   or the inner height:100% chain collapses to content height and the surface
+   overflows its slot without scrolling. */
+:host { display: block; height: 100%; min-height: 0; }
+:host > div { height: 100%; min-height: 0; }
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Research surface. Styled only with the universal --p-* theme vocabulary so it
+   renders correctly inside the shadow DOM of any Wippy host (no SPA tokens),
+   which is also what makes the research implementation swappable per deployment. */
+.kx {
+  font-family: inherit;
+  color: var(--p-text-color);
+  background: var(--p-content-background);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.kx-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 20px 24px 14px; flex-wrap: wrap;
+}
+.kx-head-icon {
+  width: 40px; height: 40px; border-radius: 11px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--p-primary-color) 14%, transparent);
+  color: var(--p-primary-color);
+}
+.kx-head-icon svg { width: 22px; height: 22px; }
+.kx-head-text { min-width: 0; }
+.kx-title { font-size: 17px; font-weight: 700; color: var(--p-text-color); margin: 0; }
+.kx-sub { font-size: 13px; color: var(--p-text-muted-color); margin: 2px 0 0; }
+
+.kx-body { flex: 1; min-height: 0; padding: 6px 24px 24px; display: flex; flex-direction: column; gap: 18px; }
+
+.kx-compose {
+  display: flex; flex-direction: column; gap: 12px; padding: 16px; box-sizing: border-box;
+  max-width: 1100px; border: 1px solid var(--p-content-border-color); border-radius: 14px;
+  background: var(--p-content-background);
+}
+.kx-input {
+  width: 100%; box-sizing: border-box; height: 34px; padding: 0 12px; font: inherit; font-size: 13px;
+  color: var(--p-text-color); background: var(--p-content-background);
+  border: 1px solid var(--p-content-border-color); border-radius: 8px; transition: border-color .15s, box-shadow .15s;
+}
+.kx-prompt { height: auto; min-height: 46px; padding: 9px 12px; line-height: 1.45; resize: vertical; }
+.kx-input:focus { outline: none; border-color: var(--p-primary-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-primary-color) 18%, transparent); }
+.kx-input:disabled { opacity: .55; cursor: default; }
+.kx-input::placeholder { color: var(--p-text-muted-color); }
+
+.kx-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 34px; padding: 0 16px; border-radius: 8px; border: 1px solid transparent;
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: filter .15s, background .15s, opacity .15s;
+}
+.kx-btn:disabled { opacity: .45; cursor: default; }
+.kx-btn svg { width: 16px; height: 16px; }
+.kx-btn-primary { background: var(--p-primary-color); color: var(--p-primary-contrast-color); }
+.kx-btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
+
+.kx-err {
+  padding: 9px 12px; border-radius: 10px; font-size: 13px;
+  background: color-mix(in srgb, var(--p-danger-500) 12%, transparent);
+  color: var(--p-danger-600, var(--p-danger-500));
+}
+
+.kx-section { display: flex; flex-direction: column; gap: 10px; }
+.kx-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--p-text-muted-color); margin: 0; }
+.kx-list {
+  display: flex; flex-direction: column; list-style: none; margin: 0; padding: 0;
+  border: 1px solid var(--p-content-border-color); border-radius: 14px; overflow: hidden;
+  background: var(--p-content-background); max-width: 1100px;
+}
+.kx-row {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-bottom: 1px solid var(--p-content-border-color);
+}
+.kx-row:last-child { border-bottom: none; }
+.kx-row-ico { width: 18px; height: 18px; flex: none; color: var(--p-primary-color); }
+.kx-row-ico.done { color: var(--p-success-500); }
+.kx-id { min-width: 0; }
+.kx-name { font-size: 14px; font-weight: 600; color: var(--p-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.kx-empty {
+  text-align: center; padding: 56px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.kx-empty-title { font-size: 15px; font-weight: 700; color: var(--p-text-color); }
+.kx-empty-sub { font-size: 13px; color: var(--p-text-muted-color); max-width: 360px; }
+
+.spin { animation: kx-spin 1s linear infinite; }
+@keyframes kx-spin { to { transform: rotate(360deg); } }
+
+/* Collapsible run rows: the row is a column (head button + expandable result). */
+.kx-row { display: block; padding: 0; }
+.kx-row-head {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px 16px; background: none; border: none; cursor: pointer;
+  text-align: left; color: inherit; font: inherit;
+}
+.kx-row-head:hover { background: color-mix(in srgb, var(--p-text-color) 4%, transparent); }
+/* Expanded run: tint the header so the open row reads as active. */
+.kx-row.open > .kx-row-head { background: color-mix(in srgb, var(--p-primary-color) 7%, transparent); }
+.kx-id { flex: 1; }
+.kx-row-ico.complete { color: var(--p-success-500); }
+.kx-row-ico.failed { color: var(--p-danger-500); }
+.kx-chev { width: 16px; height: 16px; flex: none; color: var(--p-text-muted-color); }
+.kx-live { width: 14px; height: 14px; color: var(--p-primary-color); vertical-align: -2px; margin-left: 6px; }
+
+.kx-result {
+  padding: 6px 16px 16px 46px; font-size: 13px; line-height: 1.55;
+  color: var(--p-text-color); border-top: 1px solid var(--p-content-border-color);
+}
+.kx-result h3 { font-size: 15px; font-weight: 700; margin: 12px 0 4px; }
+.kx-result h4 { font-size: 13px; font-weight: 700; color: var(--p-text-muted-color); margin: 10px 0 2px; }
+.kx-result p { margin: 6px 0; }
+.kx-result li { margin: 2px 0 2px 18px; }
+.kx-result a { color: var(--p-primary-color); text-decoration: none; }
+.kx-result a:hover { text-decoration: underline; }
+.kx-result-empty { color: var(--p-text-muted-color); font-style: italic; }
+
+/* Compose controls: agent picker (fills) · iterations (fixed) · submit (auto). A
+   grid keeps explicit widths so nothing overlaps regardless of the picker's
+   intrinsic size. */
+.kx-controls { display: grid; grid-template-columns: 1fr 110px auto; gap: 12px; align-items: end; }
+.kx-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kx-field-label { font-size: 11px; font-weight: 600; color: var(--p-text-muted-color); text-transform: uppercase; letter-spacing: .03em; }
+.kx-field wc-agent-picker { display: block; width: 100%; }
+.kx-iter-input { width: 100%; text-align: center; }
+.kx-controls-btn { height: 34px; white-space: nowrap; }
+@media (max-width: 560px) { .kx-controls { grid-template-columns: 1fr; } }
+
+/* Richer log rows: a step line + optional nested findings + ETA. */
+.kx-log-body { min-width: 0; flex: 1; }
+.kx-log-find { margin: 3px 0 0; padding-left: 16px; list-style: disc; color: var(--p-text-muted-color); }
+.kx-log-find li { margin: 1px 0; }
+.kx-log-eta { font-size: 11px; color: var(--p-text-muted-color); margin-top: 2px; }
+
+/* Expanded run: high-level state, source chips, progress timeline, report. */
+.kx-detail {
+  border-top: 1px solid var(--p-content-border-color);
+  background: color-mix(in srgb, var(--p-text-color) 2%, transparent);
+}
+.kx-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 10px 46px;
+  border-bottom: 1px solid var(--p-content-border-color);
+}
+.kx-run-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.kx-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 9px;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--p-text-color);
+  background: var(--p-content-background);
+}
+.kx-status-pill svg { width: 14px; height: 14px; }
+.kx-status-pill.running,
+.kx-status-pill.pending {
+  color: var(--p-primary-color);
+  background: color-mix(in srgb, var(--p-primary-color) 10%, transparent);
+  border-color: color-mix(in srgb, var(--p-primary-color) 22%, var(--p-content-border-color));
+}
+.kx-status-pill.complete {
+  color: var(--p-success-600, var(--p-success-500));
+  background: color-mix(in srgb, var(--p-success-500) 11%, transparent);
+  border-color: color-mix(in srgb, var(--p-success-500) 24%, var(--p-content-border-color));
+}
+.kx-status-pill.failed {
+  color: var(--p-danger-600, var(--p-danger-500));
+  background: color-mix(in srgb, var(--p-danger-500) 10%, transparent);
+  border-color: color-mix(in srgb, var(--p-danger-500) 24%, var(--p-content-border-color));
+}
+.kx-run-time {
+  font-size: 12px;
+  color: var(--p-text-muted-color);
+  white-space: nowrap;
+}
+.kx-source-strip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.kx-source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 170px;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--p-content-border-color);
+  color: var(--p-primary-color);
+  background: var(--p-content-background);
+  text-decoration: none;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kx-source-chip svg { width: 13px; height: 13px; flex: none; }
+.kx-source-chip:hover { background: color-mix(in srgb, var(--p-primary-color) 8%, transparent); }
+.kx-source-more {
+  font-size: 12px;
+  color: var(--p-text-muted-color);
+  white-space: nowrap;
+}
+.kx-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(270px, .44fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 16px 16px 46px;
+  align-items: start;
+}
+.kx-panel {
+  min-width: 0;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 10px;
+  background: var(--p-content-background);
+  overflow: hidden;
+}
+.kx-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 8px 11px;
+  border-bottom: 1px solid var(--p-content-border-color);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--p-text-muted-color);
+}
+.kx-panel-title svg { width: 15px; height: 15px; color: var(--p-primary-color); }
+.kx-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.kx-timeline-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 9px;
+  padding: 0 0 13px;
+}
+.kx-timeline-row:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 24px;
+  bottom: 0;
+  width: 1px;
+  background: var(--p-content-border-color);
+}
+.kx-timeline-dot {
+  position: relative;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--p-primary-color);
+  background: color-mix(in srgb, var(--p-primary-color) 10%, var(--p-content-background));
+  border: 1px solid color-mix(in srgb, var(--p-primary-color) 22%, var(--p-content-border-color));
+}
+.kx-timeline-row.failed .kx-timeline-dot {
+  color: var(--p-danger-500);
+  background: color-mix(in srgb, var(--p-danger-500) 10%, var(--p-content-background));
+  border-color: color-mix(in srgb, var(--p-danger-500) 24%, var(--p-content-border-color));
+}
+.kx-timeline-row.live .kx-timeline-dot {
+  color: var(--p-primary-color);
+}
+.kx-timeline-dot svg { width: 14px; height: 14px; }
+.kx-timeline-body { min-width: 0; padding-top: 1px; }
+.kx-timeline-title {
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--p-text-color);
+}
+.kx-timeline-text {
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--p-text-muted-color);
+  overflow-wrap: anywhere;
+}
+.kx-finding-list {
+  margin: 7px 0 0;
+  padding-left: 16px;
+  color: var(--p-text-color);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.kx-finding-list li { margin: 2px 0; }
+.kx-next-step {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--p-text-muted-color);
+}
+.kx-report-panel { min-height: 210px; }
+.kx-report-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 166px;
+  padding: 18px;
+  text-align: center;
+  color: var(--p-text-muted-color);
+  font-size: 13px;
+}
+.kx-report-empty svg { width: 17px; height: 17px; color: var(--p-primary-color); }
+.kx-log { list-style: none; margin: 0; padding: 8px 16px 8px 46px; display: flex; flex-direction: column; gap: 4px; }
+.kx-log-row { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; line-height: 1.5; color: var(--p-text-color); }
+.kx-log-ico { width: 14px; height: 14px; flex: none; margin-top: 2px; color: var(--p-primary-color); }
+.kx-log-row.failed .kx-log-ico { color: var(--p-danger-500); }
+.kx-log-row.result .kx-log-ico { color: var(--p-success-500); }
+.kx-log-text { min-width: 0; word-break: break-word; }
+.kx-muted { color: var(--p-text-muted-color); }
+.kx-detail .kx-result { padding-top: 8px; }
+
+@media (max-width: 860px) {
+  .kx-detail-head {
+    align-items: flex-start;
+    flex-direction: column;
+    padding-left: 16px;
+  }
+  .kx-source-strip { justify-content: flex-start; }
+  .kx-detail-grid {
+    grid-template-columns: 1fr;
+    padding-left: 16px;
+  }
+}
+
+/* Canonical primary-button contrast: the theme's dark-mode contrast token is
+   near-black, which is muddy and low-contrast on the mid-tone brand primary.
+   Correct the token at the shadow host in dark mode -- every primary CTA in this
+   component (whatever its class) inherits white text. Token-driven, not per-button. */
+@media (prefers-color-scheme: dark) {
+  :host { --p-primary-contrast-color: var(--p-surface-0) !important; }
+}

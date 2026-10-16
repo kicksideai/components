@@ -1,0 +1,29 @@
+version: '1.0'
+registry:
+  enable_history: true
+  history_type: memory
+workspace:
+  replacements:
+    kickside/dashboard: ..
+    kickside/contract: ../../../kickside/core/contract
+vars:
+  sqlite_path: ':memory:'
+  http_port: 19111
+  pg_host: 127.0.0.1
+  pg_port: 5433
+  pg_database: dashboard_test
+  pg_username: kickside
+  pg_password: kickside
+override:
+  app:db:file: ${sqlite_path}
+  app:gateway:addr: :${http_port}
+profiles:
+  postgres:
+    override:
+      app:db:kind: db.sql.postgres
+      app:db:host: ${pg_host}
+      app:db:port: ${pg_port}
+      app:db:database: ${pg_database}
+      app:db:username: ${pg_username}
+      app:db:password: ${pg_password}
+      app:db:options.sslmode: disable

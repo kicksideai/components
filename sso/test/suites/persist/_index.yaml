@@ -1,0 +1,21 @@
+version: "1.0"
+namespace: kickside.sso.persist
+
+entries:
+  - name: provisioner_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+      comment: Provisioning policy against the real DB + kickside users store + settings — find/link/create/deny + unlink guard.
+    source: file://provisioner_test.lua
+    modules: [contract, security, sql, time]
+    imports:
+      test: wippy.test:test
+      sso_provisioner: kickside.sso.persist:provisioner
+      sso_consts: kickside.sso:consts
+      user_repo: kickside.users.persist:user_repo
+      user_groups_repo: kickside.users.persist:user_groups_repo
+      identities_repo: kickside.sso.persist:identities_repo
+    method: run_tests

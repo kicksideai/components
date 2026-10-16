@@ -1,0 +1,99 @@
+version: '1.0'
+namespace: kickside.agent_onboarding
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: First-agent onboarding
+  readme: file://README.md
+- name: dep.agents
+  kind: ns.dependency
+  component: kickside/agents
+  version: '*'
+- name: dep.component
+  kind: ns.dependency
+  component: kickside/component
+  version: '*'
+- name: dep.ui
+  kind: ns.dependency
+  component: kickside/ui
+  version: '*'
+- name: dep.users
+  kind: ns.dependency
+  component: kickside/users
+  version: '*'
+- name: dep.settings
+  kind: ns.dependency
+  component: kickside/settings
+  version: '*'
+- name: dep.widgets
+  kind: ns.dependency
+  component: kickside/widgets
+  version: '*'
+- name: eligibility
+  kind: function.lua
+  source: file://eligibility.lua
+  modules:
+  - security
+  imports:
+    component: kickside.component:component
+    agent_types: kickside.agents:types
+    component_types: kickside.component:types
+  method: check
+- name: ui_server
+  kind: ns.requirement
+  default: app:gateway
+  meta:
+    value_kind: http.service
+    comment: Host server for the onboarding web component.
+  targets:
+  - entry: kickside.agent_onboarding:ui_static
+    path: .meta.server
+- name: ui_fs
+  kind: fs.directory
+  directory: ./static
+- name: ui_static
+  kind: http.static
+  path: /kickside-agent-onboarding
+  fs: kickside.agent_onboarding:ui_fs
+  options:
+    cache: no-cache
+- name: onboarding_view
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: First-agent onboarding
+    description: Choose capabilities and create a personal agent.
+    tag_name: kickside-agent-onboarding
+    base_path: /kickside-agent-onboarding
+    entry_point: index.js
+    announced: true
+    auto_register: true
+  props:
+    type: object
+    properties: {}
+- name: splash.first_agent
+  kind: registry.entry
+  meta:
+    type: ui.splash
+    id: first_agent
+    presentation: dialog
+    title: Your first agent
+    icon: tabler:robot
+    scope: user
+    audience: all
+    priority: 50
+    eligibility: kickside.agent_onboarding:eligibility
+    required_access:
+    - kickside.agents.api:create_user_agent.endpoint
+    - kickside.models.api:list_models.endpoint
+    - kickside.models.api:list_model_classes.endpoint
+- name: splash.first_agent.step.create
+  kind: registry.entry
+  meta:
+    type: ui.splash.step
+    splash: first_agent
+    id: create
+    title: Create your first agent
+    order: 10
+    component_tag: kickside-agent-onboarding

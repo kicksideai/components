@@ -1,0 +1,46 @@
+version: '1.0'
+namespace: kickside.sso.security
+entries:
+- name: module_access
+  kind: security.policy
+  meta:
+    title: SSO
+    surface: kickside.sso
+    intent: module_access
+    member_scope: kickside.contract.http:user_security_scope
+    includes:
+    - kickside.sso.security:module_runtime
+  groups: []
+  policy:
+    resources:
+    - kickside.sso.api:link_start.endpoint
+    - kickside.sso.api:list_connections.endpoint
+    - kickside.sso.api:unlink.endpoint
+    actions: access
+    effect: allow
+- name: module_runtime
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.sso:*
+    - kickside.sso.api:*
+    - kickside.sso.connectors:*
+    - kickside.sso.env:*
+    - kickside.sso.flow:*
+    - kickside.sso.migrations:*
+    - kickside.sso.persist:*
+    - kickside.sso.security:*
+    actions:
+    - registry.get
+    - registry.find
+    - contract.get
+    - contract.open
+    - contract.call
+    - contract.implementations
+    - contract.security
+    - funcs.call
+    - funcs.security
+    effect: allow

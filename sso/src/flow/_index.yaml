@@ -1,0 +1,34 @@
+version: "1.0"
+namespace: kickside.sso.flow
+
+entries:
+  - name: flow_store
+    kind: library.lua
+    meta:
+      comment: One-time, TTL'd server-side storage for the in-flight login flow, keyed by state.
+    source: file://flow_store.lua
+    modules:
+      - store
+      - json
+    imports:
+      sso_consts: kickside.sso:consts
+
+  - name: cookies
+    kind: library.lua
+    meta:
+      comment: Set-Cookie builder + Cookie-header parser (the http response exposes only set_header).
+    source: file://cookies.lua
+
+  - name: reqinfo
+    kind: library.lua
+    meta:
+      comment: Derives request origin/scheme (honoring proxy headers) for callback URLs and Secure cookies.
+    source: file://reqinfo.lua
+
+  - name: redirect
+    kind: library.lua
+    meta:
+      comment: Open-redirect guard for the post-login target + URL-fragment handoff.
+    source: file://redirect.lua
+    imports:
+      sso_util: kickside.sso:util

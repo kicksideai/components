@@ -1,0 +1,139 @@
+version: "1.0"
+namespace: kickside.dashboard
+
+# Registry-driven deployment overview. The dashboard discovers the installed
+# navigable surfaces (ui.nav_item / view.component registry entries) and renders
+# each as a card with the human description pulled from the entry meta and the
+# owning module's ns.definition. No hardcoded module list — the page reflects
+# whatever is installed. Permission-agnostic: the host router enforces auth.
+
+entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta:
+      title: KickSide Dashboard
+      comment: Registry-driven deployment overview — discovers the installed navigable surfaces and renders each as a card with its description, pulled from the entry meta and the owning module's ns.definition.
+
+  # ─── Dependency interface (ns.requirement) ───────────────────────────
+  # The consuming host attaches the overview endpoint to api_router (which must
+  # enforce auth + endpoint_firewall — the handler does no auth of its own) and
+  # serves the built bundle from ui_server.
+  - name: api_router
+    kind: ns.requirement
+    meta:
+      comment: HTTP router the dashboard overview endpoint attaches to. Must enforce auth + endpoint_firewall.
+    default: app:api
+    targets:
+      - entry: kickside.dashboard:overview.endpoint
+        path: .meta.router
+
+  - name: ui_server
+    kind: ns.requirement
+    meta:
+      comment: HTTP server the dashboard UI static mount attaches to.
+    default: app:gateway
+    targets:
+      - entry: kickside.dashboard:ui_static
+        path: .meta.server
+
+  - name: ui_fs
+    kind: fs.directory
+    meta:
+      comment: Built kickside-dashboard web component bundle.
+    directory: ./static
+
+  - name: ui_static
+    kind: http.static
+    meta:
+      server: app:gateway
+    path: /kickside-dashboard
+    fs: kickside.dashboard:ui_fs
+    options:
+      cache: no-cache
+
+  - name: dashboard_view
+    kind: registry.entry
+    meta:
+      type: view.component
+      name: dashboard_view
+      title: Dashboard
+      comment: At-a-glance overview of the navigable surfaces installed in this deployment.
+      icon: tabler:layout-dashboard
+      announced: true
+      tag_name: kickside-dashboard
+      base_path: kickside-dashboard
+      entry_point: index.js
+
+  # Module-owned nav entry: installing this module adds the Dashboard surface to
+  # the nav; uninstalling removes it. render: component mounts the
+  # kickside-dashboard web component by tag, so the host needs no app code. Low
+  # order so the dashboard sits near the top of the navigation.
+  - name: nav_item
+    kind: registry.entry
+    access: kickside.dashboard:overview.endpoint
+    meta:
+      type: ui.nav_item
+      section: ""
+      path: /
+      route_name: home
+      title: Dashboard
+      comment: Your workspace and everything installed in it.
+      icon: tabler:layout-dashboard
+      order: 0
+      render: component
+      component_tag: kickside-dashboard
+
+  # ─── Libraries ───────────────────────────────────────────────────────
+  - name: types
+    kind: library.lua
+    meta: { name: types, comment: "Registry meta.type vocabulary (ui.nav_item, view.component, ns.definition) + defaults." }
+    source: file://types.lua
+
+  - name: discovery
+    kind: library.lua
+    meta: { name: discovery, comment: "Build the deployment overview from the registry — surfaces + per-card description resolution (entry meta, view.component, module ns.definition)." }
+    source: file://discovery.lua
+    imports:
+      dashboard_types: kickside.dashboard:types
+
+  # ─── API ──────────────────────────────────────────────────────────────
+  - name: overview
+    kind: function.lua
+    meta:
+      comment: GET /dashboard/overview — installed navigable surfaces with resolved descriptions.
+    source: file://overview.lua
+    method: handler
+    modules: [http, registry]
+    imports:
+      discovery: kickside.dashboard:discovery
+      dashboard_types: kickside.dashboard:types
+
+  - name: overview.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: overview
+    path: /dashboard/overview
+
+  # ─── Test ──────────────────────────────────────────────────────────────
+  - name: overview_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_dashboard
+      group: KickSide Dashboard
+      comment: discovery.overview() — card per nav item, description resolution (entry/view/module), private omission, ordering, empty state.
+    source: file://overview_test.lua
+    method: run
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+      discovery: kickside.dashboard:discovery
+      dashboard_types: kickside.dashboard:types
+
+  - name: dep.kickside.contract
+    kind: ns.dependency
+    component: kickside/contract
+    version: '*'

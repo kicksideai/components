@@ -1,0 +1,360 @@
+version: "1.0"
+namespace: kickside.sso
+
+entries:
+  - name: definition
+    kind: ns.definition
+    meta:
+      title: KickSide SSO
+      comment: User single sign-on via OAuth2/OIDC providers (Google, Microsoft/Entra, GitHub, generic OIDC). Pluggable connectors, settings-driven configuration, account linking by verified email.
+
+  - name: dep.kickside.settings
+    kind: ns.dependency
+    component: kickside/settings
+    version: '*'
+
+  - name: dep.kickside.users
+    kind: ns.dependency
+    component: kickside/users
+    version: '*'
+
+  - name: dep.wippy.migration
+    kind: ns.dependency
+    component: wippy/migration
+    version: '*'
+
+  # ─── Dependency interface (ns.requirement) ───────────────────────────
+  - name: credential_eligibility
+    kind: ns.requirement
+    meta:
+      description: Optional host credential eligibility function; a configured guard fails closed.
+    default: ''
+    targets:
+      - entry: kickside.sso:credential_config
+        path: .meta.credential_eligibility
+      - entry: kickside.sso.api:credential_eligibility_policy
+        path: ".policy.resources +="
+
+  - name: credential_config
+    kind: registry.entry
+    meta: {credential_eligibility: ''}
+
+  - name: target_db
+    kind: ns.requirement
+    meta:
+      comment: SQL database resource backing app_user_identities.
+      description: SQL database resource backing app_user_identities.
+    targets:
+      - entry: kickside.sso.migrations:01_identities
+        path: .meta.target_db
+      - entry: kickside.sso:db_config
+        path: .meta.db_id
+
+  - name: public_api_router
+    kind: ns.requirement
+    meta:
+      value_kind: http.router
+      comment: Public (unauthenticated) HTTP router the login + callback endpoints attach to.
+      description: Public (unauthenticated) HTTP router the login + callback endpoints attach to.
+    targets:
+      - entry: kickside.sso.api:start.endpoint
+        path: .meta.router
+      - entry: kickside.sso.api:callback.endpoint
+        path: .meta.router
+      - entry: kickside.sso.api:list_providers.endpoint
+        path: .meta.router
+
+  - name: api_router
+    kind: ns.requirement
+    meta:
+      value_kind: http.router
+      comment: Authenticated HTTP router the account-linking endpoints attach to.
+      description: Authenticated HTTP router the account-linking endpoints attach to.
+    targets:
+      - entry: kickside.sso.api:list_admin_providers.endpoint
+        path: .meta.router
+      - entry: kickside.sso.api:list_connections.endpoint
+        path: .meta.router
+      - entry: kickside.sso.api:link_start.endpoint
+        path: .meta.router
+      - entry: kickside.sso.api:unlink.endpoint
+        path: .meta.router
+
+  # Resolved DB id for the persist layer. The target_db requirement rewrites
+  # .meta.db_id here; sso_consts.db_id() reads it back so the repos bind the
+  # configured database, not a hardcoded literal.
+  - name: db_config
+    kind: registry.entry
+    meta:
+      comment: Holds the configured SSO DB id (rewritten by the target_db requirement).
+
+  # ─── In-flight login flow storage ────────────────────────────────────
+  - name: flow_store
+    kind: store.memory
+    meta:
+      comment: One-time, TTL'd storage for in-flight SSO login flows, keyed by state.
+    cleanup_interval: 15m
+    lifecycle:
+      auto_start: true
+    max_size: 10000
+
+  # ─── Core libraries ──────────────────────────────────────────────────
+  - name: providers_registry
+    kind: library.lua
+    meta: { comment: Registry-driven provider discovery — finds sso.provider descriptors and normalizes them. }
+    source: file://providers_registry.lua
+    modules: [registry]
+
+  - name: consts
+    kind: library.lua
+    meta: { comment: "Settings vocabulary, locked-password sentinel, flow cookie, DB id resolver." }
+    source: file://consts.lua
+    modules: [registry]
+    imports:
+      sso_providers_registry: kickside.sso:providers_registry
+
+  - name: util
+    kind: library.lua
+    meta: { comment: Percent/form/base64url encoding helpers. }
+    source: file://util.lua
+    modules: [base64]
+
+  - name: config
+    kind: library.lua
+    meta: { comment: Reads SSO configuration (global + per-provider) through the settings contract. }
+    source: file://config.lua
+    modules: [contract]
+    imports:
+      sso_consts: kickside.sso:consts
+      sso_providers_registry: kickside.sso:providers_registry
+
+  - name: session
+    kind: library.lua
+    meta: { comment: Mints a session token through the user_provisioning contract (mirrors the password-login path). }
+    source: file://session.lua
+    modules: [contract]
+
+  # ─── Settings validation (validate_func) ─────────────────────────────
+  # Shared enable-gate logic. Each provider submodule declares its OWN validate
+  # function (wired to its enabled setting) that composes this — providers gate
+  # independently and can add their own rules before delegating here.
+  - name: provider_gate
+    kind: library.lua
+    meta: { comment: Shared SSO enable-gate; each provider's own validate composes it. Plan-gating seam. }
+    source: file://provider_gate.lua
+    imports:
+      sso_consts: kickside.sso:consts
+      sso_config: kickside.sso:config
+
+  # ─── Pure-logic test suite ───────────────────────────────────────────
+  - name: setting_enabled
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition", comment: Master SSO switch. }
+    namespace: kickside.sso
+    key: enabled
+    value_type: bool
+    default: false
+    description: Enable single sign-on. When off, no providers are offered.
+    scope: global
+    editable: true
+    visible: false
+
+  - name: setting_auto_provision
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition", comment: Auto-create accounts on first SSO login. }
+    namespace: kickside.sso
+    key: auto_provision
+    value_type: bool
+    default: false
+    description: Create an account on first login when the verified email domain is allowed.
+    scope: global
+    editable: true
+    visible: false
+
+  - name: setting_allowed_email_domains
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition", comment: Domains permitted to auto-provision. }
+    namespace: kickside.sso
+    key: allowed_email_domains
+    value_type: json
+    default: []
+    description: Email domains allowed to auto-create an account (e.g. ["kickside.com"]). Empty denies all auto-provisioning.
+    scope: global
+    editable: true
+    visible: false
+    schema: { kind: string_list }
+
+  - name: setting_default_group
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition", comment: Group assigned to auto-provisioned users. }
+    namespace: kickside.sso
+    key: default_group
+    value_type: string
+    default: ""
+    description: Security group id assigned to newly auto-provisioned users (optional).
+    scope: global
+    editable: true
+    visible: false
+    schema: { kind: group_ref }
+
+  - name: setting_group_claim_name
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition", comment: IdP claim carrying the user's groups. }
+    namespace: kickside.sso
+    key: group_claim_name
+    value_type: string
+    default: "groups"
+    description: Name of the id_token/userinfo claim that carries the IdP group list (default "groups").
+    scope: global
+    editable: true
+    visible: false
+
+  - name: setting_group_mapping
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition", comment: Maps IdP group strings to internal security group ids. }
+    namespace: kickside.sso
+    key: group_mapping
+    value_type: json
+    default: {}
+    description: JSON object mapping an IdP group string to an internal security group id (e.g. {"engineering":"app.security:user"}). Unmapped IdP groups are ignored; SSO-managed memberships are reconciled on every login.
+    scope: global
+    editable: true
+    visible: false
+    schema: { kind: mapping, value_source: security_scopes }
+
+  - name: setting_post_login_redirect_allowlist
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition", comment: Allowed absolute post-login redirect origins. }
+    namespace: kickside.sso
+    key: post_login_redirect_allowlist
+    value_type: json
+    default: []
+    description: Absolute URL origins permitted as a post-login redirect target. Same-origin paths are always allowed.
+    scope: global
+    editable: true
+    visible: false
+    schema: { kind: string_list }
+
+  - name: setting_public_base_path
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition", comment: Mount path of the public SSO endpoints. }
+    namespace: kickside.sso
+    key: public_base_path
+    value_type: string
+    default: "/api/public/sso"
+    description: Path where the public SSO endpoints are mounted (public router prefix + /sso). Used to build absolute authorize/callback URLs.
+    scope: global
+    editable: true
+    visible: false
+
+  # ─── UI component (login buttons + connected-logins panel) ───────────
+  # Self-contained: the module BUILDS (ui/), SHIPS (static/), and SERVES (its own
+  # http.static) its bundle, exposed as a view.component the host mounts by tag
+  # (mode="buttons" on the login page, mode="account" in profile settings).
+  - name: ui_server
+    kind: ns.requirement
+    meta:
+      value_kind: http.service
+      comment: HTTP server the SSO UI bundle is served from.
+      description: HTTP server the SSO UI bundle is served from.
+    targets:
+      - entry: kickside.sso:ui_static
+        path: .meta.server
+
+  - name: ui_fs
+    kind: fs.directory
+    meta: { comment: Built SSO web component bundle (from ui/). }
+    directory: ./static
+    auto_init: true
+
+  - name: ui_static
+    kind: http.static
+    meta:
+      comment: Serves the SSO web component bundle at /kickside-sso.
+    path: /kickside-sso
+    fs: kickside.sso:ui_fs
+    options:
+      # Stable bundle names (index.js/admin.js) — without revalidation browsers
+      # cache them hard and never pick up a rebuild.
+      cache: "no-cache"
+      mime_types:
+        .js: application/javascript
+        .css: text/css
+        .map: application/json
+
+  - name: sso_view
+    kind: registry.entry
+    meta:
+      type: view.component
+      name: sso_view
+      title: Single sign-on
+      tag_name: kickside-sso
+      base_path: kickside-sso
+      entry_point: index.js
+      auto_register: false
+      secure: false
+      announced: true
+    props:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [buttons, account]
+          default: buttons
+          description: buttons (default) renders the Continue-with-provider sign-in buttons for the login page; account renders the connected-logins panel that connects/disconnects providers for an authenticated user.
+
+  # Admin provider-config panel — a second element from the same bundle dir
+  # (admin.js), mounted by the System "Single sign-on" tab.
+  - name: sso_admin_view
+    kind: registry.entry
+    meta:
+      type: view.component
+      name: sso_admin_view
+      title: Single sign-on
+      tag_name: kickside-sso-admin
+      base_path: kickside-sso
+      entry_point: admin.js
+      auto_register: false
+      secure: false
+      announced: true
+
+  # The generic provider card (provider.js). The admin shell discovers providers
+  # and mounts this once per provider, configured from the registry — a provider
+  # is rendered without any per-provider component. A provider needing a bespoke
+  # card declares its own ui_component tag + view.component instead.
+  - name: sso_provider_card_view
+    kind: registry.entry
+    meta:
+      type: view.component
+      name: sso_provider_card_view
+      title: Provider
+      tag_name: kickside-sso-provider
+      base_path: kickside-sso
+      entry_point: provider.js
+      auto_register: false
+      secure: false
+      announced: true
+
+  # Module-owned Settings block: the Global SSO configuration. Each provider
+  # submodule declares its OWN block in the same "Single sign-on" group; the
+  # Settings page discovers them at /settings/blocks and mounts kickside-sso-admin
+  # per block, handing each its `config`. This block's { scope: "global" } tells
+  # the admin to render only the module-wide Global section (no provider cards).
+  - name: block.sso
+    kind: registry.entry
+    meta:
+      type: kickside.settings:block
+      comment: Global single sign-on configuration.
+    key: sso
+    title: Single sign-on
+    icon: tabler:shield-lock
+    group: Single sign-on
+    order: 0
+    component_tag: kickside-sso-admin
+    config:
+      scope: global
+
+  - name: dep.kickside.contract
+    kind: ns.dependency
+    component: kickside/contract
+    version: '*'

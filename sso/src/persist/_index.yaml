@@ -1,0 +1,29 @@
+version: "1.0"
+namespace: kickside.sso.persist
+
+entries:
+  - name: identities_repo
+    kind: library.lua
+    meta:
+      comment: CRUD for app_user_identities (provider identity ↔ app_users link).
+    source: file://identities_repo.lua
+    modules:
+      - sql
+      - uuid
+      - time
+    imports:
+      sso_consts: kickside.sso:consts
+
+  - name: provisioner
+    kind: library.lua
+    meta:
+      credential_admission: host
+      comment: Maps a verified identity to a local user — find, link-by-email, auto-create, deny.
+    source: file://provisioner.lua
+    modules:
+      - contract
+    imports:
+      credential_eligibility: kickside.contract:credential_eligibility
+      sso_consts: kickside.sso:consts
+      sso_config: kickside.sso:config
+      identities_repo: kickside.sso.persist:identities_repo

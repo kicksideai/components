@@ -1,0 +1,15 @@
+:host { display:block; min-width:0; color:var(--p-text-color); }
+.onboarding { box-sizing:border-box; width:100%; }
+.onboarding-intro { margin-bottom:16px; }
+.onboarding-intro p { margin:0; }
+p { line-height:1.5; }
+.onboarding-form { display:grid; gap:16px; }
+fieldset { border:0; padding:0; margin:0; display:grid; gap:10px; min-width:0; }
+label { font-weight:600; }
+summary:focus-visible { outline:var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color); outline-offset:var(--p-focus-ring-offset); box-shadow:var(--p-focus-ring-shadow); }
+.hint { color:var(--p-text-muted-color); font-size:.9rem; margin:0 0 8px; }
+.capabilities { border:1px solid var(--p-content-border-color); border-radius:14px; padding:14px; display:grid; gap:12px; }
+details { margin-top:8px; }
+summary { cursor:pointer; padding:8px 0; }
+.error { color:var(--p-danger-600, var(--p-danger-500)); background:color-mix(in srgb,var(--p-danger-600, var(--p-danger-500)) 8%,transparent); border-radius:10px; padding:12px; margin:0; }
+.actions { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin-top:8px; }

@@ -1,0 +1,608 @@
+version: "1.0"
+namespace: app
+
+# Standalone harness for kickside/sso. Provides the host resources the module and
+# its deps require (app:db, routers with token_auth, env storage, permissive
+# scopes), wires settings + kickside/users, and boots the bootloader so all
+# migrations run. suites/ registers the existing module tests alongside the
+# harness tests; release sources exclude test entries. Harness-only.
+
+entries:
+  - name: dep.kickside.security
+    kind: ns.dependency
+    version: '*'
+    component: kickside/security
+    parameters:
+      - {name: api_router, value: app:api}
+      - {name: ui_server, value: app:gateway}
+      - {name: target_db, value: app:db}
+      - {name: process_host, value: app:processes}
+
+  - name: dep.wippy.test
+    kind: ns.dependency
+    component: wippy/test
+    version: "*"
+
+  - name: providers_registry_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+      comment: Registry-driven provider discovery + extensibility (a harness-declared descriptor surfaces with no code change).
+    source: file://providers_registry_test.lua
+    modules: [security, contract]
+    imports:
+      test: wippy.test:test
+      sso_providers_registry: kickside.sso:providers_registry
+      sso_config: kickside.sso:config
+      sso_providers: kickside.sso.connectors:providers
+    method: run_tests
+
+  - name: oidc_email_trust_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+    source: file://oidc_email_trust_test.lua
+    imports:
+      test: wippy.test:test
+      sso_oidc: kickside.sso.connectors:oidc
+    method: run_tests
+
+  - name: seed_plan_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+      comment: The boot seed plans auto_provision and default_group together with the domain allowlist, and the seed actor may read every bootstrap variable.
+    source: file://seed_plan_test.lua
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+      sso_seed_plan: kickside.sso.env:seed_plan
+    method: run_tests
+
+  - name: session_sandbox_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+    source: file://session_sandbox_test.lua
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+    method: run_tests
+
+  - name: db
+    kind: db.sql.sqlite
+    foreign_keys: true
+    meta:
+      comment: In-memory database for the slice tests.
+    file: "${sqlite_path}"
+
+  - name: env_storage
+    kind: env.storage.file
+    meta:
+      type: envstorage
+    file_path: ./.wippy/test.env
+    auto_create: true
+
+  - name: uploads
+    kind: fs.directory
+    meta:
+      comment: Harness-owned temporary filesystem for job runtime artifacts.
+    directory: ./.wippy/uploads
+    auto_init: true
+
+  - name: processes
+    kind: process.host
+    lifecycle:
+      auto_start: true
+
+  - name: gateway
+    kind: http.service
+    meta:
+      comment: Test HTTP server.
+    # An ephemeral port: harnesses of concurrent suite runs never collide on a
+    # fixed port, whose failed bind would stall this runtime's service starts.
+    addr: :0
+    lifecycle:
+      auto_start: true
+
+  - name: api.public
+    kind: http.router
+    meta:
+      comment: Public (no-auth) router for the SSO login/callback + kickside users login.
+      server: gateway
+    middleware:
+      - token_auth
+    options:
+      token_store: kickside.users.security:tokens
+    prefix: /api/public
+
+  - name: api
+    kind: http.router
+    meta:
+      comment: Authenticated router for SSO link/connections + kickside users /user/me.
+      server: gateway
+    middleware:
+      - token_auth
+    post_middleware:
+      - endpoint_firewall
+    options:
+      token_store: kickside.users.security:tokens
+    prefix: /api/v1
+
+  # Permissive named scopes the session-mint path resolves (default group =
+  # app.security:user, admin group = app.security:admin).
+  - name: user_scope
+    kind: security.policy
+    groups:
+      - app.security:user
+    policy:
+      resources: '*'
+      actions: '*'
+      effect: allow
+
+  - name: admin_scope
+    kind: security.policy
+    groups:
+      - app.security:admin
+    policy:
+      resources: '*'
+      actions: '*'
+      effect: allow
+
+  # The kickside/sso module under test loads through its local replacement. Its
+  # production dependencies own Settings and Users; the harness supplies only
+  # concrete host resource values below.
+
+  # The SSO provider modules under test — each its own module (descriptor +
+  # credentials + its own enable-gate) depending on the sso core. Loaded here so
+  # the discovery/resolve/validate suites see the shipped providers.
+  - name: dep.kickside.sso
+    version: '*'
+    kind: ns.dependency
+    meta:
+      comment: SSO mounted as the single package root; this harness supplies every host and transitive seam.
+    component: kickside/sso
+    parameters:
+    - name: kickside.sso:credential_eligibility
+      value: kickside.users.binding:credential_eligibility
+    - name: kickside.sso:target_db
+      value: app:db
+    - name: kickside.sso:public_api_router
+      value: app:api.public
+    - name: kickside.sso:api_router
+      value: app:api
+    - name: kickside.sso:ui_server
+      value: app:gateway
+    - name: kickside.settings:target_db
+      value: app:db
+    - name: kickside.settings:api_router
+      value: app:api
+    - name: kickside.settings:ui_server
+      value: app:gateway
+    - name: kickside.users:env_storage
+      value: app.env:store
+    - name: kickside.users:public_router
+      value: app:api.public
+    - name: kickside.users:api_router
+      value: app:api
+    - name: kickside.users:ui_server
+      value: app:gateway
+    - name: kickside.users:target_db
+      value: app:db
+    - name: kickside.users:user_security_scope
+      value: app.security:user
+    - name: kickside.users:admin_security_scope
+      value: app.security:admin
+    - name: kickside.users:login_role_resource
+      value: app.security:*
+    - name: kickside.component:target_db
+      value: app:db
+    - name: kickside.component:api_router
+      value: app:api
+    - name: kickside.component:lifecycle_impl
+      value: kickside.core.lifecycle:component_lifecycle_impl
+    - name: kickside.core:target_db
+      value: app:db
+    - name: kickside.core.lifecycle:process_host
+      value: app:processes
+    - name: kickside.core.lifecycle:user_lifecycle_grant
+      value:
+        subject_id: app.security:user
+        subject_type: group
+        access_mask: 2
+    - name: kickside.core.lifecycle:admin_lifecycle_grant
+      value:
+        subject_id: app.security:admin
+        subject_type: group
+        access_mask: 3
+    - name: kickside.core.retention:process_host
+      value: app:processes
+    - name: kickside.core.threads:process_host
+      value: app:processes
+    - name: kickside.core.retention:api_router
+      value: app:api
+    - name: kickside.core.threads:api_router
+      value: app:api
+    - name: kickside.core.projections:api_router
+      value: app:api
+    - name: kickside.core.retention:user_security_scope
+      value: app.security:user
+    - name: kickside.core.threads:user_security_scope
+      value: app.security:user
+    - name: kickside.core.jobs:target_db
+      value: app:db
+    - name: kickside.core.jobs:process_host
+      value: app:processes
+    - name: wippy.migration:app_db
+      value: app:db
+    - name: wippy.views:api_router
+      value: app:api
+    - name: wippy.views:env_storage
+      value: app.env:store
+    - name: wippy.bootloader:application_host
+      value: app:processes
+    - name: wippy.bootloader:env_storage
+      value: app:env_storage
+
+  - name: dep.kickside.automation
+    kind: ns.dependency
+    version: '*'
+    meta:
+      comment: Source-mounted automation graph; its UI and API mounts use the harness gateway and router.
+    component: kickside/automation
+    parameters:
+    - name: kickside.automation:target_db
+      value: app:db
+    - name: kickside.automation:api_router
+      value: app:api
+    - name: kickside.automation:ui_server
+      value: app:gateway
+    - name: kickside.automation.engine:process_host
+      value: app:processes
+    - name: kickside.component:target_db
+      value: app:db
+    - name: kickside.component:api_router
+      value: app:api
+    - name: kickside.component:lifecycle_impl
+      value: kickside.core.lifecycle:component_lifecycle_impl
+    - name: kickside.core:target_db
+      value: app:db
+    - name: kickside.core.lifecycle:process_host
+      value: app:processes
+    - name: kickside.core.lifecycle:user_lifecycle_grant
+      value:
+        subject_id: app.security:user
+        subject_type: group
+        access_mask: 2
+    - name: kickside.core.lifecycle:admin_lifecycle_grant
+      value:
+        subject_id: app.security:admin
+        subject_type: group
+        access_mask: 3
+    - name: kickside.core.retention:process_host
+      value: app:processes
+    - name: kickside.core.threads:process_host
+      value: app:processes
+    - name: kickside.core.retention:api_router
+      value: app:api
+    - name: kickside.core.threads:api_router
+      value: app:api
+    - name: kickside.core.projections:api_router
+      value: app:api
+    - name: kickside.core.retention:user_security_scope
+      value: app.security:user
+    - name: kickside.core.threads:user_security_scope
+      value: app.security:user
+    - name: kickside.core.jobs:target_db
+      value: app:db
+    - name: kickside.core.jobs:process_host
+      value: app:processes
+    - name: wippy.migration:app_db
+      value: app:db
+    - name: wippy.views:api_router
+      value: app:api
+    - name: wippy.views:env_storage
+      value: app.env:store
+
+  - name: dep.kickside.sso_google
+    kind: ns.dependency
+    meta: { comment: Google SSO provider module. }
+    component: "kickside/sso-google"
+    version: '*'
+
+  - name: dep.kickside.sso_microsoft
+    kind: ns.dependency
+    meta: { comment: Microsoft SSO provider module. }
+    component: "kickside/sso-microsoft"
+    version: '*'
+
+  - name: dep.kickside.sso_github
+    kind: ns.dependency
+    meta: { comment: GitHub SSO provider module. }
+    component: "kickside/sso-github"
+    version: '*'
+
+  - name: dep.kickside.sso_oidc
+    kind: ns.dependency
+    meta: { comment: Generic OIDC SSO provider module. }
+    component: "kickside/sso-oidc"
+    version: '*'
+
+  - name: dep.wippy.bootloader
+    kind: ns.dependency
+    meta:
+      comment: Bootloader applies every dep's migrations on boot.
+    component: "wippy/bootloader"
+    version: '*'
+    parameters:
+      - name: wippy.bootloader:application_host
+        value: app:processes
+      - name: wippy.bootloader:env_storage
+        value: app:env_storage
+      - name: kickside.sso:target_db
+        value: app:db
+      - name: kickside.sso:public_api_router
+        value: app:api.public
+      - name: kickside.sso:api_router
+        value: app:api
+      - name: kickside.sso:ui_server
+        value: app:gateway
+      - name: kickside.settings:target_db
+        value: app:db
+      - name: kickside.settings:api_router
+        value: app:api
+      - name: kickside.settings:ui_server
+        value: app:gateway
+      - name: kickside.users:env_storage
+        value: app.env:store
+      - name: kickside.users:public_router
+        value: app:api.public
+      - name: kickside.users:api_router
+        value: app:api
+      - name: kickside.users:ui_server
+        value: app:gateway
+      - name: kickside.users:target_db
+        value: app:db
+      - name: kickside.users:user_security_scope
+        value: app.security:user
+      - name: kickside.users:admin_security_scope
+        value: app.security:admin
+      - name: kickside.users:login_role_resource
+        value: app.security:*
+      - name: wippy.migration:app_db
+        value: app:db
+
+  - name: seed_settings
+    kind: function.lua
+    meta:
+      comment: Seeds the OIDC provider settings from the environment for the live e2e (no-op without SSO_OIDC_ISSUER).
+      type: bootloader
+      order: 100
+      requires:
+        - wippy.migration:migration_bootloader
+    source: file://seed_settings.lua
+    modules: [env, contract]
+    method: run
+
+  # ─── Registry-driven extensibility fixture ───────────────────────────
+  # A fake OIDC provider declared only in the harness: a single sso.provider
+  # descriptor + its credential settings, no module code. providers_registry_test
+  # asserts it surfaces in discovery / enabled_providers / resolve, proving a new
+  # IdP needs nothing but a descriptor entry. Static endpoints keep resolve offline.
+  - name: provider.okta
+    kind: registry.entry
+    meta: { type: sso.provider, comment: Harness-only fake OIDC provider for the extensibility test. }
+    id: okta
+    label: Okta (test)
+    icon: tabler:shield-lock
+    engine: oidc
+    settings_ns: kickside.sso.providers.okta
+    endpoints:
+      issuer: https://okta.test
+      authorize: https://okta.test/oauth2/v1/authorize
+      token: https://okta.test/oauth2/v1/token
+      userinfo: https://okta.test/oauth2/v1/userinfo
+      jwks: https://okta.test/oauth2/v1/keys
+    trust_email: false
+    trust_email_setting: allow_unverified_email
+    default_scopes: [openid, email, profile]
+    order: 50
+
+  - name: validate_okta
+    kind: function.lua
+    meta: { comment: "Harness Okta enable-gate — its own validate, composing the shared gate." }
+    source: file://validate_okta.lua
+    imports:
+      sso_provider_gate: kickside.sso:provider_gate
+    method: validate
+
+  - name: setting_okta_enabled
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition", comment: Enable the harness Okta provider. }
+    namespace: kickside.sso.providers.okta
+    key: enabled
+    value_type: bool
+    default: false
+    description: Offer the harness Okta provider.
+    scope: global
+    editable: true
+    visible: false
+    validate_func: app:validate_okta
+
+  - name: setting_okta_client_id
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition", comment: Harness Okta client id. }
+    namespace: kickside.sso.providers.okta
+    key: client_id
+    value_type: string
+    default: ""
+    description: Okta client id.
+    scope: global
+    editable: true
+    visible: false
+
+  - name: setting_okta_client_secret
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition", comment: Harness Okta client secret. }
+    namespace: kickside.sso.providers.okta
+    key: client_secret
+    value_type: secret
+    default: ""
+    description: Okta client secret.
+    scope: global
+    editable: true
+    visible: false
+
+  - name: setting_okta_allow_unverified_email
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.sso.providers.okta
+    key: allow_unverified_email
+    value_type: bool
+    default: false
+    description: Allow an email address that the provider did not verify.
+    scope: global
+    editable: true
+    visible: false
+
+  - name: github_endpoints_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_sso }
+    source: file://github_endpoints_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      github: kickside.sso.connectors:github
+
+  - name: user_endpoint_policy_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: member_endpoint_policy
+    source: file://user_endpoint_policy_test.lua
+    method: run
+    modules:
+    - registry
+    - security
+    imports:
+      test: wippy.test:test
+
+  - name: dep.member_endpoint_contract
+    kind: ns.dependency
+    component: kickside/contract
+    version: '*'
+    parameters:
+    - name: kickside.contract.http:user_security_scope
+      value: app.security:user
+
+  - name: bot_exclusion_test
+    kind: function.lua
+    meta: {type: test, suite: kickside_sso}
+    source: file://bot_exclusion_test.lua
+    security:
+      actor: {id: app:test_runner}
+      policies: [app:admin_scope]
+    method: run
+    modules: [sql, crypto, contract, security, registry, http_client, json, funcs]
+    imports:
+      test: wippy.test:test
+      user_repo: kickside.users.persist:user_repo
+      user_groups_repo: kickside.users.persist:user_groups_repo
+      user_lifecycle_repo: kickside.users.persist:user_lifecycle_repo
+      identities_repo: kickside.sso.persist:identities_repo
+      sso_provisioner: kickside.sso.persist:provisioner
+      sso_session: kickside.sso:session
+      sso_consts: kickside.sso:consts
+      session_index: kickside.users.persist:session_index
+      oauth_fixture: app:oauth_provider_fixture
+      sso_flow_store: kickside.sso.flow:flow_store
+
+  - name: bot_sso_escalation
+    kind: security.policy
+    groups: [app:bot_sso_escalation]
+    policy:
+      resources: [test:sso_escalation]
+      actions: access
+      effect: allow
+
+  - name: oauth_provider_fixture_store
+    kind: store.memory
+    lifecycle: {auto_start: true}
+    max_size: 1000
+
+  - name: oauth_provider_fixture
+    kind: library.lua
+    source: file://oauth_provider_fixture.lua
+    modules: [http, store, json, crypto]
+
+  - name: oauth_fixture_exchange
+    kind: function.lua
+    source: file://oauth_provider_fixture.lua
+    method: exchange
+    security:
+      actor: {id: app:oauth_provider_fixture}
+      policies: [app:admin_scope]
+    modules: [http, store, json, crypto]
+
+  - name: oauth_fixture_exchange.endpoint
+    kind: http.endpoint
+    meta: {router: app:api.public}
+    path: /fixture/exchange
+    method: POST
+    func: oauth_fixture_exchange
+
+  - name: oauth_fixture_userinfo
+    kind: function.lua
+    source: file://oauth_provider_fixture.lua
+    method: userinfo
+    security:
+      actor: {id: app:oauth_provider_fixture}
+      policies: [app:admin_scope]
+    modules: [http, store, json, crypto]
+
+  - name: oauth_fixture_userinfo.endpoint
+    kind: http.endpoint
+    meta: {router: app:api.public}
+    path: /fixture/userinfo
+    method: GET
+    func: oauth_fixture_userinfo
+
+  - name: oauth_fixture_emails
+    kind: function.lua
+    source: file://oauth_provider_fixture.lua
+    method: emails
+    security:
+      actor: {id: app:oauth_provider_fixture}
+      policies: [app:admin_scope]
+    modules: [http, store, json, crypto]
+
+  - name: oauth_fixture_emails.endpoint
+    kind: http.endpoint
+    meta: {router: app:api.public}
+    path: /fixture/emails
+    method: GET
+    func: oauth_fixture_emails
+
+  - name: oauth_fixture_landing
+    kind: function.lua
+    source: file://oauth_provider_fixture.lua
+    method: landing
+    security:
+      actor: {id: app:oauth_provider_fixture}
+      policies: [app:admin_scope]
+    modules: [http, store, json, crypto]
+
+  - name: oauth_fixture_landing.endpoint
+    kind: http.endpoint
+    meta: {router: app:api.public}
+    path: /fixture/landing
+    method: GET
+    func: oauth_fixture_landing

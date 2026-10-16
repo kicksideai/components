@@ -1,0 +1,51 @@
+version: "1.0"
+namespace: kickside.sso.connectors
+
+entries:
+  - name: jwk
+    kind: library.lua
+    meta:
+      comment: JWT/JWKS helpers — base64url, JWK→PEM (SPKI DER), id_token segment decode.
+    source: file://jwk.lua
+    modules:
+      - base64
+      - json
+      - http_client
+    imports:
+      sso_util: kickside.sso:util
+
+  - name: oidc
+    kind: library.lua
+    meta:
+      comment: Generic OIDC engine — discovery, authorize URL, code exchange, id_token validation, userinfo.
+    source: file://oidc.lua
+    modules:
+      - http_client
+      - json
+      - crypto
+      - logger
+    imports:
+      sso_util: kickside.sso:util
+      sso_jwk: kickside.sso.connectors:jwk
+
+  - name: github
+    kind: library.lua
+    meta:
+      comment: GitHub OAuth2 connector — token exchange + /user + /user/emails.
+    source: file://github.lua
+    modules:
+      - http_client
+      - json
+    imports:
+      sso_util: kickside.sso:util
+
+  - name: providers
+    kind: library.lua
+    meta:
+      comment: Resolves a provider name to a connector descriptor and dispatches authorize/complete.
+    source: file://providers.lua
+    imports:
+      sso_consts: kickside.sso:consts
+      sso_config: kickside.sso:config
+      sso_oidc: kickside.sso.connectors:oidc
+      sso_github: kickside.sso.connectors:github

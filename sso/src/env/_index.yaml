@@ -1,0 +1,184 @@
+version: "1.0"
+namespace: kickside.sso.env
+
+# Deployment-time SSO bootstrap. Blank variables are a no-op; a complete
+# provider credential set is written through kickside/settings on boot and
+# that provider is enabled. Runtime configuration stays settings-driven.
+
+entries:
+  - name: envs
+    kind: env.storage.os
+    meta:
+      type: envstorage
+      comment: OS storage for SSO bootstrap variables.
+
+  - name: google_client_id
+    kind: env.variable
+    meta:
+      comment: Google SSO OAuth client id.
+      private: true
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_GOOGLE_CLIENT_ID
+
+  - name: google_client_secret
+    kind: env.variable
+    meta:
+      comment: Google SSO OAuth client secret.
+      private: true
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_GOOGLE_CLIENT_SECRET
+
+  - name: microsoft_client_id
+    kind: env.variable
+    meta:
+      comment: Microsoft/Entra SSO application client id.
+      private: true
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_MICROSOFT_CLIENT_ID
+
+  - name: microsoft_client_secret
+    kind: env.variable
+    meta:
+      comment: Microsoft/Entra SSO client secret.
+      private: true
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_MICROSOFT_CLIENT_SECRET
+
+  - name: microsoft_tenant
+    kind: env.variable
+    meta:
+      comment: Microsoft/Entra tenant id, domain, common, or organizations.
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_MICROSOFT_TENANT
+
+  - name: github_client_id
+    kind: env.variable
+    meta:
+      comment: GitHub SSO OAuth app client id.
+      private: true
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_GITHUB_CLIENT_ID
+
+  - name: github_client_secret
+    kind: env.variable
+    meta:
+      comment: GitHub SSO OAuth app client secret.
+      private: true
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_GITHUB_CLIENT_SECRET
+
+  - name: oidc_issuer
+    kind: env.variable
+    meta:
+      comment: Generic OIDC issuer URL for SSO.
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_OIDC_ISSUER
+
+  - name: oidc_client_id
+    kind: env.variable
+    meta:
+      comment: Generic OIDC SSO client id.
+      private: true
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_OIDC_CLIENT_ID
+
+  - name: oidc_client_secret
+    kind: env.variable
+    meta:
+      comment: Generic OIDC SSO client secret.
+      private: true
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_OIDC_CLIENT_SECRET
+
+  - name: allowed_email_domains
+    kind: env.variable
+    meta:
+      comment: Comma-separated SSO auto-provision email domains.
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_ALLOWED_EMAIL_DOMAINS
+
+  - name: default_group
+    kind: env.variable
+    meta:
+      comment: Security group id assigned to SSO auto-provisioned users. Without it they are created with no group.
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_DEFAULT_GROUP
+
+  - name: public_base_path
+    kind: env.variable
+    meta:
+      comment: Optional public SSO base path override.
+    storage: kickside.sso.env:envs
+    variable: KICKSIDE_SSO_PUBLIC_BASE_PATH
+
+  - name: seed_plan
+    kind: library.lua
+    meta:
+      comment: Pure seed planning — turns the raw bootstrap env values into the ordered global settings to write.
+    source: file://seed_plan.lua
+
+  - name: seed.env_read
+    kind: security.policy
+    meta:
+      surface: kickside.sso.seed
+      intent: boot_env_seed
+      comment: The SSO env seed may read only the SSO bootstrap variables.
+    policy:
+      resources:
+        - kickside.sso.env:google_client_id
+        - kickside.sso.env:google_client_secret
+        - kickside.sso.env:microsoft_client_id
+        - kickside.sso.env:microsoft_client_secret
+        - kickside.sso.env:microsoft_tenant
+        - kickside.sso.env:github_client_id
+        - kickside.sso.env:github_client_secret
+        - kickside.sso.env:oidc_issuer
+        - kickside.sso.env:oidc_client_id
+        - kickside.sso.env:oidc_client_secret
+        - kickside.sso.env:allowed_email_domains
+        - kickside.sso.env:default_group
+        - kickside.sso.env:public_base_path
+      actions:
+        - env.get
+      effect: allow
+
+  - name: seed.settings_write
+    kind: security.policy
+    meta:
+      surface: kickside.sso.seed
+      intent: boot_settings_seed
+      comment: The SSO env seed writes only through the settings contract, which still runs provider validation.
+    policy:
+      resources:
+        - kickside.settings:settings
+        - kickside.settings:*
+        - kickside.settings.api:put_settings.endpoint
+        - set
+      actions:
+        - contract.get
+        - contract.open
+        - contract.call
+        - access
+      effect: allow
+
+  - name: seed_sso_settings
+    kind: function.lua
+    meta:
+      type: bootloader
+      order: 45
+      comment: Seeds SSO settings from env when complete provider credentials are present.
+      requires:
+        - kickside.settings:cache_bootloader
+    source: file://seed_sso_settings.lua
+    security:
+      actor:
+        id: kickside.sso.env:seed_sso_settings
+      policies:
+        - kickside.sso.env:seed.env_read
+        - kickside.sso.env:seed.settings_write
+    modules:
+      - env
+      - contract
+    imports:
+      sso_seed_plan: kickside.sso.env:seed_plan
+    method: run

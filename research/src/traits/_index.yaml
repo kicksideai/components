@@ -1,0 +1,62 @@
+version: "1.0"
+namespace: kickside.research.traits
+
+# Agent-facing research capability: a tool any agent can call to trigger a
+# canonical research run and wait for the sourced report, plus the trait that
+# bundles it. Mirrors the webscout traits layout (tools + trait in one slice).
+# The run itself still flows through kickside.research:request -> the canonical
+# thread + dataflow; this is just the caller-side seam.
+
+entries:
+  - name: deep_research
+    kind: function.lua
+    meta:
+      type: tool
+      title: Deep Research
+      comment: Run a web research run and wait for the sourced markdown report.
+      tags: [research, web, tool]
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "prompt": { "type": "string", "description": "What to research" },
+            "agent_id": { "type": "string", "description": "Optional agent id to run the research; defaults to the research agent" },
+            "max_iterations": { "type": "integer", "description": "Optional cap on agent iterations (1-50)" }
+          },
+          "required": ["prompt"]
+        }
+      output_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "success": { "type": "boolean", "description": "true when the research completed with a report; false with error when the run failed, timed out, was cancelled or the request was refused. Unavailable request, store or thread infrastructure fails the call with a typed error." },
+            "research_id": { "type": "string" },
+            "thread_id": { "type": "string" },
+            "status": { "type": "string" },
+            "report": { "type": "string", "description": "Final sourced markdown report when the run completes." },
+            "error": { "type": "string", "description": "Failure reason when success is false." }
+          }
+        }
+      llm_alias: DeepResearch
+      llm_description: Run a web research on the given prompt and wait for the result. Returns a markdown report with sources. Blocks until the research completes (up to a few minutes); use it when a question needs current, sourced web information.
+    source: file://deep_research.lua
+    method: handle
+    modules: [contract, security, time]
+    imports:
+      research_state: kickside.research:state
+      research_consts: kickside.research:consts
+
+  # The capability trait: wear it on any agent to give it the DeepResearch tool.
+  - name: deep_researcher
+    kind: registry.entry
+    meta:
+      title: Deep Researcher
+      type: agent.trait
+      public: true
+      comment: Trigger a web research run and get back a sourced markdown report.
+      tags: [research, web]
+      icon: tabler:world-search
+    prompt: |
+      You can run a deep web research with the DeepResearch tool: pass a prompt and you get back a markdown report with sources. The call blocks until the research finishes, so call it once and use the returned report. Use it when a question needs current, sourced web information you do not already have.
+    tools:
+      - kickside.research.traits:deep_research

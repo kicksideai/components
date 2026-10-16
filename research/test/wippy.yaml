@@ -1,0 +1,6 @@
+organization: kickside
+module: research-test
+description: Isolated pure harness for research delivery payload tests.
+directories:
+  modules: .wippy
+  src: ./src

@@ -1,0 +1,117 @@
+@import "@wippy-fe/theme/theme-config.css";
+
+/* SSO admin shell. Re-skinned onto the shared .ap-* block chrome (the canonical
+   connection-provider/storage card in platform/settings), so the Global pane and
+   every provider pane share one card frame, gutter, and header treatment. Styled
+   only with the universal --p-* theme vocabulary so it inherits the host theme
+   inside the shadow DOM. */
+:host { display: block; height: 100%; min-height: 0; }
+:host > div { height: 100%; min-height: 0; }
+*, *::before, *::after { box-sizing: border-box; }
+
+.ap {
+  --system-surface-gutter: var(--kickside-system-surface-gutter, 24px);
+  font-family: inherit;
+  display: flex; flex-direction: column; height: 100%; min-height: 0;
+  color: var(--p-text-color); background: var(--p-content-background);
+}
+.ap-body { flex: 1; overflow-y: auto; padding: 0 0 28px; }
+
+/* Provider mode: the child provider card owns its own full .ap chrome (toolbar +
+   card + gutter), so its host fills this pane flush — no doubled gutter. */
+.ap-providers { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ap-providers .ks-wcmount { display: block; flex: 1; min-height: 0; }
+.ap-providers .ks-wcmount > div { height: 100%; min-height: 0; }
+.ks-wcmount-fail { font-size: 12px; color: var(--p-text-muted-color); margin: 16px var(--system-surface-gutter); padding: 14px; border: 1px dashed var(--p-content-border-color); border-radius: 14px; }
+
+.ap-bar {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: 100%;
+  padding: 12px var(--system-surface-gutter); background: var(--p-content-background);
+  position: sticky; top: 0; z-index: 3; border-bottom: 1px solid var(--p-content-border-color);
+}
+.ap-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 14px;
+  border-radius: 8px; border: 1px solid transparent; font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: filter .15s, background .15s, opacity .15s;
+}
+.ap-btn:disabled { opacity: .45; cursor: default; }
+.ap-btn-primary { background: var(--p-primary-color); color: var(--p-button-primary-color); }
+.ap-btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
+.ap-btn-ghost { background: transparent; border-color: var(--p-content-border-color); color: var(--p-text-color); }
+.ap-btn-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--p-text-color) 8%, transparent); }
+.ap-btn svg { width: 16px; height: 16px; }
+.ap-saved { display: inline-flex; align-items: center; gap: 4px; margin-right: auto; font-size: 12px; font-weight: 600; color: var(--p-primary-color); }
+.ap-saved svg { width: 15px; height: 15px; }
+
+.ap-msg { margin: 12px var(--system-surface-gutter) 0; padding: 9px 12px; border-radius: 8px; font-size: 13px; }
+.ap-err { background: color-mix(in srgb, var(--p-danger-500) 12%, transparent); color: var(--p-danger-600, var(--p-danger-500)); }
+.ap-loading { display: flex; align-items: center; gap: 8px; color: var(--p-text-muted-color); font-size: 13px; padding: 24px; }
+
+.ap-cards { display: flex; flex-direction: column; gap: 16px; padding: 16px var(--system-surface-gutter) 0; }
+.ap-card { background: var(--p-content-background); border: 1px solid var(--p-content-border-color); border-radius: 14px; padding: 16px 18px; }
+.ap-h { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: var(--p-text-color); letter-spacing: -.2px; }
+.ap-h svg { width: 17px; height: 17px; color: var(--p-text-muted-color); }
+.ap-sub { font-size: 12.5px; color: var(--p-text-muted-color); margin: 4px 0 12px; }
+
+.ap-blabel { display: block; font-size: 11.5px; font-weight: 700; color: var(--p-text-muted-color); text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 6px; }
+.ap-binput {
+  width: 100%; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--p-content-border-color);
+  background: var(--p-content-background); color: var(--p-text-color); font: inherit; font-size: 13px; box-sizing: border-box;
+}
+select.ap-binput {
+  cursor: pointer;
+}
+.ap-binput:focus { outline: none; border-color: var(--p-primary-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-primary-color) 18%, transparent); }
+.ap-binput-invalid, .ap-binput-invalid:focus { border-color: var(--p-danger-500); }
+.ap-hint { font-size: 11.5px; color: var(--p-text-muted-color); margin: 8px 0 0; }
+.ap-hint-err { color: var(--p-danger-600, var(--p-danger-500)); }
+
+/* A labeled toggle row: text on the left, switch on the right. */
+.ap-toggle-row { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+.ap-toggle-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.ap-toggle-name { font-size: 13px; font-weight: 600; color: var(--p-text-color); }
+.ap-toggle-desc { font-size: 12px; color: var(--p-text-muted-color); }
+
+.ap-icon-btn {
+  width: 34px; height: 34px; flex: 0 0 auto; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--p-content-border-color); background: transparent; color: var(--p-text-muted-color); cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.ap-icon-btn:hover { color: var(--p-text-color); background: color-mix(in srgb, var(--p-text-color) 8%, transparent); }
+.ap-icon-btn svg { width: 16px; height: 16px; }
+
+/* Per-group spacing + field spacing inside a card (copied from the reference
+   provider card so grouped global options read identically). */
+.pv-group + .pv-group { margin-top: 22px; }
+.pv-group-title {
+  display: flex; align-items: center; gap: 6px; margin: 22px 0 10px; font-size: 11px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--p-text-muted-color);
+}
+.pv-group-title svg { width: 14px; height: 14px; }
+.pv-field { margin-bottom: 16px; }
+.pv-field:last-child { margin-bottom: 0; }
+
+/* Real toggle switch for bool settings. Track fills with the primary tone when
+   on; the knob slides. Token-driven so it tracks the host theme in light + dark. */
+.ks-switch {
+  flex: 0 0 auto; position: relative; width: 40px; height: 22px; padding: 0; border: none;
+  border-radius: 999px; cursor: pointer; background: color-mix(in srgb, var(--p-text-color) 22%, transparent);
+  transition: background .18s;
+}
+.ks-switch.on { background: var(--p-primary-color); }
+.ks-switch:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-primary-color) 30%, transparent); }
+.ks-switch-knob {
+  position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--p-button-primary-color); box-shadow: 0 1px 2px color-mix(in srgb, var(--p-text-color) 25%, transparent);
+  transition: transform .18s;
+}
+.ks-switch.on .ks-switch-knob { transform: translateX(18px); }
+
+/* Mapping editor: rows of input + select + remove, full width inside the field. */
+.ks-map { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.ks-map-row { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 8px; align-items: center; }
+.ks-map-arrow { color: var(--p-text-muted-color); width: 15px; height: 15px; }
+.ks-map-add { align-self: flex-start; }
+
+@keyframes ks-spin { to { transform: rotate(360deg); } }
+.spin { animation: ks-spin .8s linear infinite; }

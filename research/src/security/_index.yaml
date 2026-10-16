@@ -1,0 +1,29 @@
+version: "1.0"
+namespace: kickside.research.security
+
+entries:
+  - name: research_endpoint_access
+    kind: security.policy
+    meta:
+      comment: Members access research views and static assets.
+    groups: []
+    policy:
+      resources:
+      - kickside.research:research_view
+      - kickside.research:ui_static
+      actions: access
+      effect: allow
+
+  - name: user_security_scope
+    kind: ns.requirement
+    default: kickside.security.groups:members
+    meta:
+      value_kind: security.scope
+      comment: Application security group that may reach the research endpoints.
+    targets:
+      - entry: kickside.research.security:research_endpoint_access
+        path: ".groups +="
+      - entry: kickside.research.security:module_access
+        path: .groups +=
+      - entry: kickside.research.security:module_runtime
+        path: .groups +=

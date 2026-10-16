@@ -1,0 +1,167 @@
+@import "@wippy-fe/theme/theme-config.css";
+
+/* The host element + the WippyVueElement mount wrapper need a definite height,
+   or the inner height:100% chain collapses to content height and the surface
+   overflows its slot without scrolling. */
+:host { display: block; height: 100%; min-height: 0; }
+:host > div { height: 100%; min-height: 0; }
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Dashboard overview surface. Styled only with the universal --p-* theme
+   vocabulary so it renders correctly inside the shadow DOM of any Wippy host
+   (no SPA tokens), which is what keeps the bundle deployment-agnostic. The
+   accent is the host primary color, so it adopts each deployment's brand. */
+.kx {
+  font-family: inherit;
+  color: var(--p-text-color);
+  background: var(--p-content-background);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.kx-hero {
+  position: relative; overflow: hidden;
+  padding: 30px 28px 28px;
+  border-bottom: 1px solid var(--p-content-border-color);
+  background:
+    radial-gradient(820px 240px at 0% -60%, color-mix(in srgb, var(--p-primary-color) 20%, transparent), transparent 70%),
+    radial-gradient(620px 200px at 100% -80%, color-mix(in srgb, var(--p-primary-color) 12%, transparent), transparent 70%),
+    var(--p-content-background);
+}
+.kx-hero-inner {
+  display: flex; align-items: center; gap: 16px; width: 100%;
+}
+.kx-hero-mark {
+  width: 54px; height: 54px; border-radius: 14px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--p-primary-color) 88%, #fff),
+    color-mix(in srgb, var(--p-primary-color) 70%, #000));
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--p-primary-color) 38%, transparent);
+}
+.kx-hero-mark svg { width: 28px; height: 28px; }
+.kx-hero-text { min-width: 0; flex: 1; }
+.kx-hero-title {
+  font-size: 23px; font-weight: 800; letter-spacing: -.02em; margin: 0;
+  color: var(--p-text-color);
+}
+.kx-hero-sub { font-size: 13.5px; color: var(--p-text-muted-color); margin: 4px 0 0; }
+.kx-hero-chip {
+  flex: none; align-self: flex-start;
+  font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 6px;
+  color: var(--p-primary-color);
+  background: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--p-primary-color) 26%, transparent);
+}
+
+.kx-err {
+  margin: 16px 24px 0; padding: 9px 12px; border-radius: 10px; font-size: 13px;
+  background: color-mix(in srgb, var(--p-danger-500) 12%, transparent);
+  color: var(--p-danger-600, var(--p-danger-500));
+}
+
+.kx-body { flex: 1; min-height: 0; padding: 22px 28px 28px; }
+.kx-loading {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--p-text-muted-color); font-size: 13px; padding: 24px;
+}
+
+.kx-empty {
+  text-align: center; padding: 56px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.kx-empty-ico { width: 40px; height: 40px; color: var(--p-text-muted-color); opacity: .6; }
+.kx-empty-title { font-size: 15px; font-weight: 700; color: var(--p-text-color); }
+.kx-empty-sub { font-size: 13px; color: var(--p-text-muted-color); max-width: 360px; }
+
+/* ── Surface grid ─────────────────────────────────────────────────────── */
+.kx-grid {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+}
+
+.kx-card {
+  position: relative; overflow: hidden; text-align: left; font: inherit; cursor: pointer;
+  /* Title row stays content-sized; the icon's 2-row span dumps its extra height
+     into the description row, so title baselines match across cards whose
+     descriptions wrap differently. */
+  display: grid; grid-template-columns: 46px 1fr; grid-template-rows: auto 1fr;
+  column-gap: 14px; row-gap: 6px; align-items: start;
+  padding: 18px 18px 20px;
+  border: 1px solid var(--p-content-border-color); border-radius: 14px;
+  background: var(--p-content-background); color: var(--p-text-color);
+  transition: border-color .18s, box-shadow .18s, transform .18s;
+}
+/* Soft primary glow that fades in on hover — gives the card depth without a
+   second color. */
+.kx-card::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(440px 150px at 100% 0%,
+    color-mix(in srgb, var(--p-primary-color) 12%, transparent), transparent 60%);
+  opacity: 0; transition: opacity .18s;
+}
+.kx-card > * { position: relative; }
+.kx-card:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--p-primary-color) 45%, var(--p-content-border-color));
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--p-text-color) 10%, transparent);
+  transform: translateY(-2px);
+}
+.kx-card:hover:not(:disabled)::before { opacity: 1; }
+.kx-card:focus-visible {
+  border-color: var(--p-focus-ring-color);
+  outline: none;
+  box-shadow: var(--p-focus-ring-shadow);
+}
+.kx-card-static { cursor: default; }
+
+.kx-card-icon {
+  grid-row: 1 / span 2; width: 46px; height: 46px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--p-primary-color);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--p-primary-color) 18%, transparent),
+    color-mix(in srgb, var(--p-primary-color) 8%, transparent));
+  border: 1px solid color-mix(in srgb, var(--p-primary-color) 18%, transparent);
+  transition: transform .18s;
+}
+.kx-card:hover:not(:disabled) .kx-card-icon { transform: scale(1.06); }
+.kx-card-icon svg { width: 23px; height: 23px; }
+.kx-card-name {
+  grid-column: 2; align-self: center;
+  font-size: 15.5px; font-weight: 700; color: var(--p-text-color);
+  padding-right: 22px; letter-spacing: -.01em;
+}
+.kx-card-desc {
+  grid-column: 2; font-size: 12.5px; line-height: 1.5;
+  color: var(--p-text-muted-color);
+}
+.kx-card-go {
+  position: absolute; top: 18px; right: 16px;
+  color: var(--p-text-muted-color); opacity: 0;
+  transition: opacity .18s, transform .18s, color .18s;
+}
+.kx-card-go svg { width: 17px; height: 17px; }
+.kx-card:hover:not(:disabled) .kx-card-go {
+  opacity: 1; transform: translateX(3px); color: var(--p-primary-color);
+}
+
+.spin { animation: kx-spin 1s linear infinite; }
+@keyframes kx-spin { to { transform: rotate(360deg); } }
+
+/* Phone: shrink the hero gutter and mark, let the surface-count chip wrap below
+   the title instead of squeezing the row, and reduce the body padding so cards
+   keep their width. The surface grid already collapses to one column via its
+   minmax(min(100%, 280px)) track. */
+@media (max-width: 640px) {
+  .kx-hero { padding: 22px 18px 20px; }
+  .kx-hero-inner { flex-wrap: wrap; gap: 12px; }
+  .kx-hero-mark { width: 46px; height: 46px; border-radius: 14px; }
+  .kx-hero-mark svg { width: 24px; height: 24px; }
+  .kx-hero-title { font-size: 20px; }
+  .kx-body { padding: 18px 18px 22px; }
+}

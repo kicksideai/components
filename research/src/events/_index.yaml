@@ -1,0 +1,65 @@
+version: "1.0"
+namespace: kickside.research.events
+
+# Event-type entries for the research run thread (kickside.research:consts.EVENT).
+# id (namespace:name) must equal the event's `type` string verbatim -- automation's
+# event catalog and the Block-Signal terminal projection resolve schemas/entries this
+# way (kickside.core.threads.event, e.g. platform/uploads/src/events/_index.yaml).
+
+entries:
+  - name: request
+    kind: registry.entry
+    meta:
+      type: kickside.core.threads.event
+      title: Research request
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        research_id: { type: string, minLength: 1 }
+        prompt: { type: string, minLength: 1 }
+        ctx: { type: object }
+        agent_id: { type: string, minLength: 1 }
+        actor_id: { type: string, minLength: 1 }
+      required: [research_id, prompt, agent_id, actor_id]
+
+  - name: progress
+    kind: registry.entry
+    meta:
+      type: kickside.core.threads.event
+      title: Research progress
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        status: { type: string }
+        step: { type: string }
+        eta: { type: string }
+        findings: { type: array, items: { type: string } }
+        urls: { type: array, items: { type: string } }
+      required: [status, step, findings, eta, urls]
+
+  - name: result
+    kind: registry.entry
+    meta:
+      type: kickside.core.threads.event
+      title: Research result
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        markdown: { type: string, minLength: 1 }
+        urls: { type: array, items: { type: string } }
+      required: [markdown]
+
+  - name: failed
+    kind: registry.entry
+    meta:
+      type: kickside.core.threads.event
+      title: Research failed
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]

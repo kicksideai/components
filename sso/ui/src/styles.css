@@ -1,0 +1,63 @@
+@import "@wippy-fe/theme/theme-config.css";
+
+:host { display: block; }
+*, *::before, *::after { box-sizing: border-box; }
+
+.sso {
+  font-family: inherit;
+  color: var(--p-text-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sso-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--p-content-border-color);
+  background: var(--p-content-background);
+  color: var(--p-text-color);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+/* color-mix on text color stays correct in both light and dark; --p-surface-100
+   is not remapped for dark and would glare. */
+.sso-btn:hover { background: color-mix(in srgb, var(--p-text-color) 8%, transparent); }
+.sso-btn:disabled { opacity: 0.6; cursor: default; }
+
+.sso-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--p-content-border-color);
+  background: var(--p-content-background);
+}
+.sso-row .meta { display: flex; flex-direction: column; gap: 2px; }
+.sso-row .name { font-size: 14px; font-weight: 500; }
+.sso-row .sub { font-size: 12px; color: var(--p-text-muted-color); }
+
+.sso-link, .sso-unlink {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--p-content-border-color);
+  background: transparent;
+  color: var(--p-text-color);
+}
+.sso-unlink { color: var(--p-danger-600, var(--p-danger-500)); border-color: color-mix(in srgb, var(--p-danger-500) 40%, transparent); }
+
+.sso-msg { font-size: 13px; padding: 8px 12px; border-radius: 10px; }
+.sso-err { background: color-mix(in srgb, var(--p-danger-500) 12%, transparent); color: var(--p-danger-600, var(--p-danger-500)); }
+.sso-ok { background: color-mix(in srgb, var(--p-primary-500) 12%, transparent); color: var(--p-primary-600, var(--p-primary-500)); }
+.sso-muted { color: var(--p-text-muted-color); font-size: 13px; }

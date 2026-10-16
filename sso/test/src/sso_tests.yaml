@@ -1,0 +1,60 @@
+version: "1.0"
+namespace: kickside.sso
+
+entries:
+  - name: sso_logic_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+      comment: Pure-logic — base64url, url encoding, redirect guard, consts helpers.
+    source: file://sso_logic_test.lua
+    imports:
+      test: wippy.test:test
+      sso_util: kickside.sso:util
+      sso_redirect: kickside.sso.flow:redirect
+      sso_consts: kickside.sso:consts
+    method: run_tests
+
+  - name: settings_validate_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+      comment: validate_func through the settings writer — provider enable requires credentials/issuer.
+    source: file://settings_validate_test.lua
+    modules: [contract, security]
+    imports:
+      test: wippy.test:test
+    method: run_tests
+
+  - name: sso_tab_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+      comment: the module contributes a discoverable kickside.settings:block mounting kickside-sso-admin.
+    source: file://sso_tab_test.lua
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+    method: run_tests
+
+  - name: auth_boundary_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_sso
+      group: KickSide SSO
+      comment: SSO callback reuses the Users-owned login sandbox and declares its production dependencies directly.
+    source: file://auth_boundary_test.lua
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+    method: run_tests
+
+  # ─── Settings definitions (kickside.settings:definition) ─────────────
+  # Global
