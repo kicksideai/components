@@ -20,10 +20,11 @@ entries:
           "type": "object",
           "properties": {
             "prompt": { "type": "string", "description": "What to research" },
+            "topic": { "type": "string", "description": "What to research when prompt is absent" },
             "agent_id": { "type": "string", "description": "Optional agent id to run the research; defaults to the research agent" },
             "max_iterations": { "type": "integer", "description": "Optional cap on agent iterations (1-50)" }
           },
-          "required": ["prompt"]
+          "anyOf": [{ "required": ["prompt"] }, { "required": ["topic"] }]
         }
       output_schema: |
         {
