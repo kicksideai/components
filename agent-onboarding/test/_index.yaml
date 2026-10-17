@@ -19,6 +19,8 @@ entries:
   component: kickside/agent-onboarding
   version: '*'
   parameters:
+  - name: kickside.agent_onboarding:ui_server
+    value: app:gateway
   - name: kickside.ui:api_router
     value: app:api
   - name: kickside.ui:public_api_router

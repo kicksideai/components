@@ -1,7 +1,7 @@
 organization: kickside
 module: sso
 type: plugin
-description: KickSide SSO — user single sign-on via OAuth2/OIDC identity providers (Google, Microsoft/Entra, GitHub, generic OIDC). Pluggable connectors, settings-driven configuration, account linking by verified email.
+description: User single sign-on via OAuth2/OIDC identity providers.
 license: LicenseRef-KickSide-Community-1.0
 repository: https://github.com/kicksideai/components
 homepage: https://wippy.ai

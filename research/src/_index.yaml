@@ -155,12 +155,10 @@ entries:
         - kind: "kickside.research:run"
           worker_ref: "func://kickside.research:projection_worker"
           input_mode: prefetch_events
-      # A consumed thread must be drain-aware: the run projection reads the event log,
-      # so retention floors GC at the projection cursor and never prunes events it has
-      # not yet drained (event_days is only the time floor for already-consumed events).
+      # The run projection reads the event log. Core retention floors GC at valid
+      # projection cursors, and event_days applies only to consumed events.
       retention:
         event_days: 30
-        drain_aware: true
     contracts:
       - contract: kickside.contract:component
         methods:
@@ -247,8 +245,8 @@ entries:
   - name: target_db
     kind: ns.requirement
     meta:
+      value_kind: db.sql
       comment: SQL database resource backing the kickside_research_run read model.
-    default: app:db
     targets:
       - entry: kickside.research.migrations:01_research_run
         path: .meta.target_db
@@ -263,15 +261,14 @@ entries:
     kind: registry.entry
     meta:
       comment: Holds the configured research DB id (rewritten by the target_db requirement).
-      db_id: app:db
 
   # ─── Shared requirements ─────────────────────────────────────────────
   # The firewalled API router the submit endpoint attaches to.
   - name: api_router
     kind: ns.requirement
     meta:
+      value_kind: http.router
       comment: HTTP router the research submit endpoint attaches to.
-    default: app:api
     targets:
       - entry: kickside.research:submit.endpoint
         path: .meta.router
@@ -284,8 +281,8 @@ entries:
   - name: ui_server
     kind: ns.requirement
     meta:
+      value_kind: http.service
       comment: HTTP server the research UI static mounts attach to.
-    default: app:gateway
     targets:
       - entry: kickside.research:ui_static
         path: .meta.server
@@ -299,8 +296,7 @@ entries:
 
   - name: ui_static
     kind: http.static
-    meta:
-      server: app:gateway
+    meta: {}
     path: /research-app
     fs: kickside.research:ui_fs
     options:
@@ -347,7 +343,7 @@ entries:
 
   - name: submit.endpoint
     kind: http.endpoint
-    meta: { router: app:api }
+    meta: {}
     method: POST
     func: submit
     path: /research
@@ -363,7 +359,7 @@ entries:
 
   - name: status.endpoint
     kind: http.endpoint
-    meta: { router: app:api }
+    meta: {}
     method: GET
     func: status
     path: /research/list
@@ -380,7 +376,7 @@ entries:
 
   - name: detail.endpoint
     kind: http.endpoint
-    meta: { router: app:api }
+    meta: {}
     method: GET
     func: detail
     path: /research/{id}/events
