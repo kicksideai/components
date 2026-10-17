@@ -68,9 +68,9 @@ resource access determine which tools are available.
 ### Host requirements
 
 Bind these exact requirement IDs through the module’s dependency declaration
-or Hub plan. Existing explicit bindings take precedence over defaults.
+or Hub plan.
 
-| Requirement | Declared default |
+| Requirement | Required host binding |
 | --- | --- |
 | [`kickside.research:target_db`](src/_index.yaml) | `app:db` |
 | [`kickside.research:api_router`](src/_index.yaml) | `app:api` |
@@ -80,7 +80,7 @@ or Hub plan. Existing explicit bindings take precedence over defaults.
 ## Links
 
 - [KickSide](https://kickside.ai)
-- [Module authoring](https://kicksideai.github.io/docs/building-modules/)
+- [Module authoring](https://github.com/kicksideai/docs/blob/main/building-modules/index.md)
 - [Wippy documentation](https://wippy.ai)
 - [Wippy Hub](https://hub.wippy.ai/kickside/research)
 

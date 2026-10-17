@@ -7,7 +7,6 @@ entries:
     kind: function.lua
     meta:
       type: migration
-      target_db: app:db
       comment: kickside_research_run read-model table
       depends_on:
         - ns:wippy.migration
@@ -21,7 +20,6 @@ entries:
     kind: function.lua
     meta:
       type: migration
-      target_db: app:db
       comment: kickside_research_block_signal correlation table
       depends_on:
         - ns:wippy.migration

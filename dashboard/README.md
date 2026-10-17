@@ -48,18 +48,18 @@ Open **Dashboard** to select an installed navigable surface. Cards come from vis
 ### Host requirements
 
 Bind these exact requirement IDs through the module’s dependency declaration
-or Hub plan. Existing explicit bindings take precedence over defaults.
+or Hub plan.
 
-| Requirement | Declared default |
+| Requirement | Host binding or default |
 | --- | --- |
-| [`kickside.dashboard:api_router`](src/_index.yaml) | `app:api` |
-| [`kickside.dashboard:ui_server`](src/_index.yaml) | `app:gateway` |
-| [`kickside.dashboard.security:user_security_scope`](src/security/_index.yaml) | `kickside.security.groups:members` |
+| [`kickside.dashboard:api_router`](src/_index.yaml) | Host binds `app:api` |
+| [`kickside.dashboard:ui_server`](src/_index.yaml) | Host binds `app:gateway` |
+| [`kickside.dashboard.security:user_security_scope`](src/security/_index.yaml) | Default: `kickside.security.groups:members` |
 
 ## Links
 
 - [KickSide](https://kickside.ai)
-- [Module authoring](https://kicksideai.github.io/docs/building-modules/)
+- [Module authoring](https://github.com/kicksideai/docs/blob/main/building-modules/index.md)
 - [Wippy documentation](https://wippy.ai)
 - [Wippy Hub](https://hub.wippy.ai/kickside/dashboard)
 

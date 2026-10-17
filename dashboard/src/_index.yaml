@@ -22,8 +22,8 @@ entries:
   - name: api_router
     kind: ns.requirement
     meta:
+      value_kind: http.router
       comment: HTTP router the dashboard overview endpoint attaches to. Must enforce auth + endpoint_firewall.
-    default: app:api
     targets:
       - entry: kickside.dashboard:overview.endpoint
         path: .meta.router
@@ -31,8 +31,8 @@ entries:
   - name: ui_server
     kind: ns.requirement
     meta:
+      value_kind: http.service
       comment: HTTP server the dashboard UI static mount attaches to.
-    default: app:gateway
     targets:
       - entry: kickside.dashboard:ui_static
         path: .meta.server
@@ -45,8 +45,7 @@ entries:
 
   - name: ui_static
     kind: http.static
-    meta:
-      server: app:gateway
+    meta: {}
     path: /kickside-dashboard
     fs: kickside.dashboard:ui_fs
     options:
@@ -111,8 +110,7 @@ entries:
 
   - name: overview.endpoint
     kind: http.endpoint
-    meta:
-      router: app:api
+    meta: {}
     method: GET
     func: overview
     path: /dashboard/overview

@@ -50,6 +50,19 @@ local function define_tests()
                 test.eq(requirement.data.default, "kickside.security.groups:members", id)
             end
         end)
+        test.it("requires typed host resources without host defaults", function()
+            local requirements = {
+                ["kickside.dashboard:api_router"] = "http.router",
+                ["kickside.dashboard:ui_server"] = "http.service",
+            }
+            for id, value_kind in pairs(requirements) do
+                local requirement, err = registry.get(id)
+                test.is_nil(err, id)
+                test.not_nil(requirement, id)
+                test.eq(requirement.meta.value_kind, value_kind, id)
+                test.is_nil(requirement.data.default, id)
+            end
+        end)
         test.it("admits owned member endpoints and rejects other modules", function()
             local policy, err = security.policy("kickside.dashboard.security:module_access")
             test.is_nil(err)

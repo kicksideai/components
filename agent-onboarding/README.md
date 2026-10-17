@@ -20,8 +20,8 @@ ownership, and the authenticated endpoint for reopening a dismissed prompt.
 ## Development
 
 Wippy 0.3.47a, Node.js 22, npm, Make, and Python 3 supply the validation tools.
-Run `make setup`, `make test`, `make test-ui`, `make typecheck`, `make build`,
-and `make lint` in this directory. PostgreSQL uses the harness's `postgres`
+Run `make setup`, `make test`, `make typecheck`, `make build`, and `make lint`
+in this directory. PostgreSQL uses the harness's `postgres`
 profile and `vars.pg_database`; create a scratch database and drop it after
 the gate. SQLite uses an in-memory database.
 
@@ -40,8 +40,8 @@ repository Release Please configuration.
 ### Host requirements
 
 Bind these exact requirement IDs through the module’s dependency declaration
-or Hub plan. Existing explicit bindings take precedence over defaults.
+or Hub plan.
 
-| Requirement | Declared default |
+| Requirement | Required host binding |
 | --- | --- |
 | [`kickside.agent_onboarding:ui_server`](src/_index.yaml) | `app:gateway` |

@@ -42,7 +42,6 @@ entries:
   method: check
 - name: ui_server
   kind: ns.requirement
-  default: app:gateway
   meta:
     value_kind: http.service
     comment: Host server for the onboarding web component.
@@ -54,6 +53,7 @@ entries:
   directory: ./static
 - name: ui_static
   kind: http.static
+  meta: {}
   path: /kickside-agent-onboarding
   fs: kickside.agent_onboarding:ui_fs
   options:
