@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.22 (2026-10-16)
+
+- Accept the research topic at the tool schema boundary and validate structured reports.
+
 ## 0.1.18 (2026-10-08)
 
 - fix: preserve native result bounds and refresh selected model limits (f048bdd)
