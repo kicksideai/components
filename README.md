@@ -16,7 +16,7 @@ Four independently installable modules for the KickSide application:
 
 Install a package through **System → Modules** in KickSide. The [module installation guide](https://github.com/kicksideai/docs/blob/main/getting-started/first-module.md) explains requirements and bindings.
 
-![KickSide components with fictional demonstration data: the dashboard, a research report, and first-agent onboarding](https://raw.githubusercontent.com/kicksideai/docs/main/assets/readme/components-overview.webp)
+![KickSide components with fictional demonstration data: the dashboard, research setup, and first-agent onboarding](https://raw.githubusercontent.com/kicksideai/docs/main/assets/readme/components-overview.webp)
 
 License: [KickSide Community License 1.0](LICENSE.md) · [Third-party notices](THIRD_PARTY_NOTICES.md).
 

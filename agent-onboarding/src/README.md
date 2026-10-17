@@ -23,8 +23,11 @@ The host supplies the UI eligibility hook, sequential splash progression, and th
 
 ## Capabilities
 
-General-purpose creates an agent with the agents owner's defaults. The module
-ships no capability IDs, presets, or capability-module dependencies.
+The initial selection contains `kickside.agents.traits:trait_master`
+(**All Capabilities**), `kickside.agents.traits:artifacts` (**Artifacts**), and
+`kickside.uploads.traits:file_manager` (**File Manager**). All Capabilities starts
+with `inject_trait_catalog: true`. The member can change this selection using
+the installed capability catalog.
 
 The shared `wc-agent-trait-picker` reads `GET /api/v1/agents/traits` at runtime,
 using the same public installed catalog as the Agents form. Installing any module
@@ -34,7 +37,8 @@ Private capabilities follow the agents catalog's visibility rules.
 The user can select any set of capabilities. An empty selection omits `traits`
 and `trait_contexts` from the create request, so the agents defaults apply.
 A nonempty selection sends exactly the selected IDs and their picker contexts.
-Onboarding adds no capabilities to either path.
+The initial UI selection supplies the defaults above; clearing it uses the
+agents module's creation defaults.
 
 ## Component and creation
 

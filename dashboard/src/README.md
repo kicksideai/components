@@ -7,7 +7,7 @@ renders each one as a card with its icon, name, and a human description.
 
 ## What it does
 
-- `GET /dashboard/overview` discovers the installed navigable surfaces via
+- `GET /api/v1/dashboard/overview` discovers the installed navigable surfaces via
   `registry.find` (`view.component` and `ui.nav_item` entries), pulls a human
   description for each from the entry meta and the owning module's
   `ns.definition`, and returns `[{ id, label, description, icon, route_name }]`.
@@ -37,16 +37,16 @@ static/                built bundle (served by http.static)
 ```
 make build      # cd ui && npm install && npm run build  → static/index.js
 make lint       # wippy lint
-make publish    # ../release.sh dashboard — public, --embed kickside.dashboard:ui_fs
 ```
 
 ## Wiring
 
 The consuming host wires this module via `ns.dependency`:
 
-- `api_router` (default `app:api`) — the router `/dashboard/overview` attaches to.
-  Must enforce auth + endpoint_firewall; the handler does no auth of its own.
-- `ui_server` (default `app:gateway`) — the HTTP server the static bundle mount
+- `api_router` (host-supplied authenticated router) — the router `/dashboard/overview` attaches to.
+  It enforces token authentication and endpoint access; the handler and
+  discovery retain caller-scoped visibility.
+- `ui_server` (host-supplied HTTP server) — the HTTP server the static bundle mount
   attaches to.
 
 The module declares its own `ui.nav_item` (route_name `home`,

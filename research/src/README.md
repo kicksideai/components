@@ -7,8 +7,7 @@ read model — each contributed through registry entries, no edits to the host.
 ## Flow
 
 1. The Research page (`research-app` web component) takes a prompt and POSTs
-   `{prompt, agent_id}` to `/research`. The published `topic` input remains accepted
-   until installed callers and saved graphs are inventoried and migrated.
+   `{prompt, agent_id}` to `/research`. The HTTP adapter also accepts the published `topic` input.
 2. `submit` calls the `kickside.research:request` contract, which ensures a
    canonical actor-scoped thread, appends the `request` event, and starts a
    dataflow: a web-research agent (`kickside.research.agents:researcher`,
@@ -40,6 +39,6 @@ Threads, projections, and retention live in `kickside/core`; the dataflow engine
 in `wippy/dataflow`. Visual Workflows may discover the Block but are not required
 by this module. The native page, request contract, and dataflow remain first-class.
 
-Before updating an existing installation, let active research runs finish on their
-saved graphs. The manual pre-update procedure records the zero-active-run check.
-Completed reports, events and registry identities retain their stored form.
+Update through **System → Modules → Update all**, then restart the installation.
+The module preserves published inputs and stored reports. Data-shape changes
+belong to forward migrations shipped by the owning module.

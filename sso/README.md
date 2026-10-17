@@ -7,8 +7,8 @@ of the existing `app_users` / token-store auth, without replacing password login
 ## What it does
 
 - **Pluggable connectors.** Providers are connector libraries dispatched by
-  `connectors/providers.lua` (the extension seam). Built-ins: `google`,
-  `microsoft`, `github`, and a generic `oidc` connector (issuer discovery via
+  `connectors/providers.lua` (the extension seam). Install provider packages for `google`,
+  `microsoft`, `github`, or a generic `oidc` connector (issuer discovery via
   `.well-known/openid-configuration`, so any compliant IdP works by configuration
   alone).
 - **Settings-driven.** Providers are enabled and credentialed from the System →
@@ -22,7 +22,7 @@ of the existing `app_users` / token-store auth, without replacing password login
   verified email domain is on the configurable allowlist; otherwise it is denied.
   The account remains pending until its provider identity and Users-owned group
   memberships are complete, and a failed callback resumes safely on retry.
-- **Sessions.** Reuses the same token store (`userspace.user.security:tokens`) and
+- **Sessions.** Reuses the same token store (through `kickside.users:user_provisioning`) and
   actor/scope model as password login, so `GET /user/me`, groups, sharing, and the
   `token_auth` middleware all work unchanged.
 
@@ -68,10 +68,10 @@ otherwise), `email_verified` required before any auto-provision or link unless
 the provider has an explicit email-trust setting, and a post-login redirect
 allowlist (open-redirect guard).
 
-## Out of scope (for now)
+## Supported protocols
 
-Subscription / team-plan gating (a `validate_func` seam is in place), SAML, and
-SCIM / IdP-group mapping.
+The module supports OAuth2/OIDC. SAML and SCIM/IdP-group mapping are outside
+its protocol surface. Provider enablement runs the declared validation gate.
 
 ## Quick start
 
@@ -98,3 +98,20 @@ against a dedicated scratch database and drop it after the run.
 [KickSide Community License 1.0](LICENSE).
 
 [KickSide](https://kickside.ai) · [Module authoring](https://kicksideai.github.io/docs/building-modules/)
+
+## Use
+
+Configure an installed SSO provider in **System → Settings**, including its client credentials and callback. The provider’s validated identity and provisioning rules determine login and linking. Service OAuth connections are separate from sign-in providers; installing one does not configure the other.
+
+### Host requirements
+
+Bind these exact requirement IDs through the module’s dependency declaration
+or Hub plan. Existing explicit bindings take precedence over defaults.
+
+| Requirement | Declared default |
+| --- | --- |
+| [`kickside.sso:credential_eligibility`](src/_index.yaml) | Empty string |
+| [`kickside.sso:target_db`](src/_index.yaml) | Host supplies the value |
+| [`kickside.sso:public_api_router`](src/_index.yaml) | Host supplies the value |
+| [`kickside.sso:api_router`](src/_index.yaml) | Host supplies the value |
+| [`kickside.sso:ui_server`](src/_index.yaml) | Host supplies the value |

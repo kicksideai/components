@@ -8,8 +8,9 @@ and `wippy install`. Bind the host resources declared in
 the generic splash eligibility and navigation contract.
 
 The platform setup wizard runs first for administrators. The personal prompt
-then offers General-purpose (default) or any set of installed capabilities,
-an agent name, and an optional model. Creation uses the agents module under
+then selects **All Capabilities**, **Artifacts**, and **File Manager** by default.
+The user supplies an agent name, adjusts those capabilities, and optionally
+chooses a model. Creation uses the agents module under
 the current user's identity and opens the agent's chat. Owned agents suppress
 the prompt; shared agents do not. Completion and dismissal persist per user.
 
@@ -18,7 +19,7 @@ ownership, and the authenticated endpoint for reopening a dismissed prompt.
 
 ## Development
 
-Wippy 0.3.44a, Node.js 22, npm, Make, and Python 3 supply the validation tools.
+Wippy 0.3.47a, Node.js 22, npm, Make, and Python 3 supply the validation tools.
 Run `make setup`, `make test`, `make test-ui`, `make typecheck`, `make build`,
 and `make lint` in this directory. PostgreSQL uses the harness's `postgres`
 profile and `vars.pg_database`; create a scratch database and drop it after
@@ -31,3 +32,16 @@ repository Release Please configuration.
 ## License
 
 [KickSide Community License 1.0](LICENSE).
+
+## Reference
+
+- [Module reference](src/README.md)
+
+### Host requirements
+
+Bind these exact requirement IDs through the module’s dependency declaration
+or Hub plan. Existing explicit bindings take precedence over defaults.
+
+| Requirement | Declared default |
+| --- | --- |
+| [`kickside.agent_onboarding:ui_server`](src/_index.yaml) | `app:gateway` |

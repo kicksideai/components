@@ -17,10 +17,6 @@ wippy install
 Apply host bindings and migrations through the application install plan.
 Install the module and bind the declared host resources. Its cards come from installed navigation and view metadata.
 
-## Key concepts
-
-See the [registry and API reference](src/README.md) for the module contract.
-
 ## Requirements
 
 Wippy 0.3.x; repository validation uses 0.3.47a. Use current Hub dependencies
@@ -33,15 +29,32 @@ Frontend development also uses Node.js 22, npm, and Make.
 From this module directory:
 
 ```sh
-cd test
-wippy install
-cd ..
+make lockrefresh
 make lint
 make test
 ```
 
 Edit frontend source under `ui/` and run `make build` from this directory;
 commit regenerated tracked assets with the source.
+
+## Use
+
+Open **Dashboard** to select an installed navigable surface. Cards come from visible navigation and view declarations. A missing card requires checking installation, declarations, and the caller’s access; the dashboard does not supply domain metrics.
+
+## Reference
+
+- [Module reference](src/README.md)
+
+### Host requirements
+
+Bind these exact requirement IDs through the module’s dependency declaration
+or Hub plan. Existing explicit bindings take precedence over defaults.
+
+| Requirement | Declared default |
+| --- | --- |
+| [`kickside.dashboard:api_router`](src/_index.yaml) | `app:api` |
+| [`kickside.dashboard:ui_server`](src/_index.yaml) | `app:gateway` |
+| [`kickside.dashboard.security:user_security_scope`](src/security/_index.yaml) | `kickside.security.groups:members` |
 
 ## Links
 
