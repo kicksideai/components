@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.20 (2026-10-17)
+
+- Declare registry entry requirements with value_kind and default bindings.
+
 ## 0.1.16 (2026-10-08)
 
 - chore: refresh locks to latest published dependencies (362c931)

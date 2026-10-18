@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.23 (2026-10-17)
+
+- Declare registry entry requirements with value_kind and default bindings.
+
 ## 0.1.22 (2026-10-16)
 
 - Accept the research topic at the tool schema boundary and validate structured reports.
