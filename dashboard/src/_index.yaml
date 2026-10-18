@@ -21,6 +21,7 @@ entries:
   # serves the built bundle from ui_server.
   - name: api_router
     kind: ns.requirement
+    default: app:api
     meta:
       value_kind: http.router
       comment: HTTP router the dashboard overview endpoint attaches to. Must enforce auth + endpoint_firewall.
@@ -30,6 +31,7 @@ entries:
 
   - name: ui_server
     kind: ns.requirement
+    default: app:gateway
     meta:
       value_kind: http.service
       comment: HTTP server the dashboard UI static mount attaches to.

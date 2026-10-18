@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6 (2026-10-17)
+
+- Declare registry entry requirements with value_kind and default bindings.
+
 ## 0.1.2 (2026-10-08)
 
 - test(agent-onboarding): reject all exact npm semver forms (372b2d2)

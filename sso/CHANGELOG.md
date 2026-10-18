@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.40 (2026-10-17)
+
+- Refresh packaged module descriptions and documentation.
+
 ## 0.1.38 (2026-10-14)
 
 - Publish SSO from the components repository with unchanged package and registry identities.
