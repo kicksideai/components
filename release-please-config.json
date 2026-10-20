@@ -4,7 +4,7 @@
   "include-component-in-tag": true,
   "separate-pull-requests": false,
   "bump-minor-pre-major": true,
-  "last-release-sha": "78150481d5b8f74e84d82519ccb29918a7ae6e38",
+  "bootstrap-sha": "6eb4b97a1a9df6c0c819b79e12c5ac6c8da2501a",
   "packages": {
     "dashboard": {
       "component": "dashboard",
