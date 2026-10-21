@@ -2,5 +2,6 @@
   "dashboard": "0.1.20",
   "research": "0.1.23",
   "agent-onboarding": "0.1.6",
-  "sso": "0.1.40"
+  "sso": "0.1.40",
+  "storage-s3": "0.1.0"
 }
