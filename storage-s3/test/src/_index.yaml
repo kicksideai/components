@@ -19,21 +19,6 @@ entries:
     upload_query_repo: kickside.uploads.persist:upload_query_repo
     component: kickside.component:component
     http_errors: kickside.contract:http_errors
-- name: upload_read_probe
-  kind: function.lua
-  modules:
-  - security
-  - contract
-  source: file://upload_read_probe.lua
-  method: read
-  imports:
-    raw_api: app:upload_raw_fixture
-    api: app:upload_get_fixture
-    probe: app:upload_http_probe
-    artifacts: app:upload_artifacts_fixture
-    delete_api: app:upload_delete_fixture
-    execution_identity: kickside.execution:execution_identity
-    types: kickside.uploads:types
 - name: upload_artifacts_fixture
   kind: library.lua
   source: file://fixtures/artifacts.lua
@@ -63,81 +48,6 @@ entries:
     component: kickside.component:component
     types: kickside.uploads:types
     http_errors: kickside.contract:http_errors
-- name: upload_artifacts_probe
-  kind: function.lua
-  modules:
-  - security
-  - contract
-  source: file://upload_read_probe.lua
-  method: artifacts
-  imports:
-    raw_api: app:upload_raw_fixture
-    api: app:upload_get_fixture
-    probe: app:upload_http_probe
-    artifacts: app:upload_artifacts_fixture
-    delete_api: app:upload_delete_fixture
-    execution_identity: kickside.execution:execution_identity
-    types: kickside.uploads:types
-- name: upload_delete_probe
-  kind: function.lua
-  modules:
-  - security
-  - contract
-  source: file://upload_read_probe.lua
-  method: delete
-  imports:
-    raw_api: app:upload_raw_fixture
-    api: app:upload_get_fixture
-    probe: app:upload_http_probe
-    artifacts: app:upload_artifacts_fixture
-    delete_api: app:upload_delete_fixture
-    execution_identity: kickside.execution:execution_identity
-    types: kickside.uploads:types
-- name: upload_identity_probe
-  kind: function.lua
-  source: file://upload_read_probe.lua
-  method: frozen
-  modules:
-  - security
-  - contract
-  imports:
-    raw_api: app:upload_raw_fixture
-    api: app:upload_get_fixture
-    probe: app:upload_http_probe
-    artifacts: app:upload_artifacts_fixture
-    delete_api: app:upload_delete_fixture
-    execution_identity: kickside.execution:execution_identity
-    types: kickside.uploads:types
-- name: upload_events_probe
-  kind: function.lua
-  source: file://upload_read_probe.lua
-  method: events
-  modules:
-  - security
-  - contract
-  imports:
-    raw_api: app:upload_raw_fixture
-    api: app:upload_get_fixture
-    probe: app:upload_http_probe
-    artifacts: app:upload_artifacts_fixture
-    delete_api: app:upload_delete_fixture
-    execution_identity: kickside.execution:execution_identity
-    types: kickside.uploads:types
-- name: upload_raw_probe
-  kind: function.lua
-  modules:
-  - security
-  - contract
-  source: file://upload_read_probe.lua
-  method: raw
-  imports:
-    raw_api: app:upload_raw_fixture
-    api: app:upload_get_fixture
-    probe: app:upload_http_probe
-    artifacts: app:upload_artifacts_fixture
-    delete_api: app:upload_delete_fixture
-    execution_identity: kickside.execution:execution_identity
-    types: kickside.uploads:types
 - name: upload_raw_fixture
   kind: library.lua
   source: file://fixtures/get_raw.lua
@@ -221,14 +131,6 @@ entries:
     comment: Separate router for wippy/views so its component routes do not collide with KickSide component endpoints.
     server: gateway
   prefix: /public
-- name: callback_probe
-  kind: function.lua
-  meta:
-    comment: Test callback target for durable upload callback jobs.
-  source: file://callback_probe.lua
-  modules:
-  - sql
-  method: handle
 - name: admit_upload
   kind: function.lua
   meta:
@@ -237,43 +139,6 @@ entries:
   imports:
     upload_lib: kickside.uploads:uploads
   method: run
-- name: failing_stage
-  kind: function.lua
-  meta:
-    comment: Test-only universal upload stage that fails when explicitly requested.
-  source: file://failing_stage.lua
-  method: process
-- name: types.failing
-  kind: registry.entry
-  meta:
-    type: upload.type
-    title: Failing Test File
-    comment: Test-only upload type for pipeline error context.
-  type_key: failing
-  priority: -100
-  mime_types:
-  - application/x-kickside-failing-stage-test
-  extensions:
-  - failtest
-  pipeline:
-  - func: app:failing_stage
-    title: Failing Test Stage
-- name: failing_stage.universal
-  kind: registry.entry
-  meta:
-    type: upload.stage
-    comment: Test-only universal stage for pipeline error context.
-  scope: universal
-  priority: -100
-  title: Failing Test Stage
-  func: app:failing_stage
-- name: rasterize_fixtures
-  kind: library.lua
-  meta:
-    type: test_helper
-  source: file://rasterize_fixtures.lua
-  modules:
-  - base64
 - name: dep.kickside.uploads
   version: '*'
   kind: ns.dependency
@@ -431,29 +296,12 @@ entries:
     - db.get
     - fs.get
     effect: allow
-- name: resource_probe
-  kind: function.lua
-  source: file://resource_probe.lua
-  method: run
-  imports:
-    uploads_resources: kickside.uploads.binding:uploads_resources
 - name: no_actor_creation
   kind: security.policy
   policy:
     resources: '*'
     actions: security.actor.create
     effect: deny
-- name: attachment_agent_probe
-  kind: function.lua
-  source: file://attachment_agent_probe.lua
-  method: run
-  modules:
-  - funcs
-  - security
-  imports:
-    agent_context: wippy.agent:context
-    prompt_builder: wippy.session:prompt_builder
-    file_provider: kickside.uploads.binding:file_provider_func
 - name: attachment_owner_only
   kind: security.policy
   policy:
@@ -505,30 +353,6 @@ entries:
     - security.policy.get
     - security.policy_group.get
     effect: allow
-- name: upload_list_read_model_fixture
-  kind: library.lua
-  source: file://list_read_model_fixture.lua
-  modules:
-  - ctx
-- name: upload_list_fixture
-  kind: library.lua
-  source: file://fixtures/list_uploads.lua
-  modules:
-  - security
-  imports:
-    http: app:upload_http_probe
-    http_errors: kickside.contract:http_errors
-    upload_response: kickside.uploads.api:upload_response
-    upload_read_model: app:upload_list_read_model_fixture
-    types: kickside.uploads:types
-- name: upload_list_error_probe
-  kind: function.lua
-  source: file://list_error_probe.lua
-  method: run
-  imports:
-    api: app:upload_list_fixture
-    http: app:upload_http_probe
-    model: app:upload_list_read_model_fixture
 - name: dep.kickside.security
   kind: ns.dependency
   component: kickside/security
@@ -542,17 +366,6 @@ entries:
     value: app:db
   - name: process_host
     value: app:processes
-- name: archive_prepare_probe
-  kind: function.lua
-  source: file://archive_prepare_probe.lua
-  method: prepare
-- name: archive_prepare_probe.stage
-  kind: registry.entry
-  meta:
-    type: upload.stage
-  scope: universal
-  prepare_archive: app:archive_prepare_probe
-  priority: 0
 - name: dep.kickside.storage_s3
   kind: ns.dependency
   component: kickside/storage-s3

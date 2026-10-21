@@ -21,7 +21,7 @@ entries:
 - name: dep.kickside.settings
   kind: ns.dependency
   component: kickside/settings
-  version: '*'
+  version: '>=0.2.0'
 - name: dep.wippy.bootloader
   kind: ns.dependency
   component: wippy/bootloader

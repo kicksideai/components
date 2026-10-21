@@ -1,5 +1,5 @@
 .wippy/
-wippy.lock
+/wippy.lock
 ui/node_modules/
 ui/dist/
 static/*.map
