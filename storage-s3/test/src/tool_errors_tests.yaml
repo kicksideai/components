@@ -1,0 +1,11 @@
+version: '1.0'
+namespace: kickside.uploads.tool_errors
+entries:
+- name: tool_errors_scope
+  kind: security.policy
+  groups:
+  - tool_errors_scope
+  policy:
+    resources: '*'
+    actions: '*'
+    effect: allow

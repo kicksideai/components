@@ -1,0 +1,16 @@
+version: '1.0'
+namespace: kickside.storage_s3.persist
+entries:
+- name: locations
+  kind: library.lua
+  source: file://locations.lua
+  modules:
+  - sql
+  - time
+  - uuid
+  imports:
+    storage_types: kickside.storage_s3.storage:types
+    catalog: kickside.uploads.binding:storage_catalog
+- name: legacy_import
+  kind: library.lua
+  source: file://legacy_import.lua

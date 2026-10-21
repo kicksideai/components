@@ -1,0 +1,8 @@
+organization: kickside
+module: storage-s3-harness
+type: application
+description: Standalone application harness explicitly installing the optional S3
+  extension.
+directories:
+  modules: .wippy
+  src: .

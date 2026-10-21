@@ -1,0 +1,12 @@
+version: '1.0'
+namespace: kickside.storage_s3.uploads
+entries:
+- name: hooks
+  kind: library.lua
+  source: file://hooks.lua
+  imports:
+    policy: kickside.storage_s3.policy:policy
+    jobs: kickside.core.jobs:jobs
+    offload: kickside.storage_s3.storage:offload
+  modules:
+  - time

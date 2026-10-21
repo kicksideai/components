@@ -1,0 +1,84 @@
+version: '1.0'
+namespace: app.storage_s3
+entries:
+- name: unit_tests
+  kind: function.lua
+  meta:
+    type: test
+    suite: upload_storage
+  source: file://unit_tests.lua
+  method: run
+  modules:
+  - fs
+  - sql
+  - uuid
+  - registry
+  - funcs
+  - security
+  imports:
+    test: wippy.test:test
+    policy: kickside.storage_s3.policy:policy
+    locations: kickside.storage_s3.persist:locations
+    records: kickside.uploads.persist:upload_record_repo
+    resources: kickside.uploads.binding:uploads_resources
+    offload: app.storage_s3:offload_fixture
+    cloud: app.storage_s3:fake_cloud
+    backend: app.storage_s3:backend_fixture
+    racing_fs: app.storage_s3:racing_fs
+    legacy_import: kickside.storage_s3.persist:legacy_import
+- name: fake_cloud
+  kind: library.lua
+  source: file://fake_cloud.lua
+- name: racing_fs
+  kind: library.lua
+  source: file://racing_fs.lua
+  modules:
+  - fs
+- name: backend_fixture
+  kind: library.lua
+  source: file://../fixtures/storage_backend.lua
+  modules:
+  - uuid
+  - registry
+  imports:
+    fs: app.storage_s3:racing_fs
+    cloudstorage: app.storage_s3:fake_cloud
+    locations: kickside.storage_s3.persist:locations
+- name: settings_probe
+  kind: function.lua
+  source: file://settings_probe.lua
+  method: run
+  modules:
+  - ctx
+  imports:
+    inspect: app.storage_s3:inspect_fixture
+    probe: app:upload_http_probe
+- name: inspect_fixture
+  kind: library.lua
+  source: file://../fixtures/storage_inspect.lua
+  modules:
+  - security
+  - registry
+  - cloudstorage
+  - uuid
+  - env
+  - contract
+  - funcs
+  imports:
+    http: app:upload_http_probe
+    backend: kickside.storage_s3.storage:backend
+    policy: kickside.storage_s3.policy:policy
+    uploads_resources: kickside.storage_s3:resources
+- name: offload_fixture
+  kind: library.lua
+  source: file://../fixtures/storage_offload.lua
+  modules:
+  - fs
+  - hash
+  - time
+  imports:
+    storage_types: kickside.storage_s3.storage:types
+    cloudstorage: app.storage_s3:fake_cloud
+    backend: kickside.storage_s3.storage:backend
+    locations: kickside.storage_s3.persist:locations
+    uploads_resources: kickside.storage_s3:resources

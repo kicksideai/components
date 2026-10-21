@@ -1,0 +1,69 @@
+version: '1.0'
+override:
+  app:db:file: ${sqlite_path}
+  kickside.core.jobs.service:worker.service:lifecycle.auto_start: false
+workspace:
+  replacements:
+    kickside/realtime-dispatch: ${kickside_root}/core/realtime-dispatch
+    kickside/component: ${kickside_root}/core/component
+    kickside/contract: ${kickside_root}/core/contract
+    kickside/core: ${kickside_root}/core/core
+    kickside/jobs: ${kickside_root}/core/jobs
+    kickside/uploads: ${kickside_root}/platform/uploads
+    kickside/execution: ${kickside_root}/core/execution
+    kickside/users: ${kickside_root}/platform/users
+    kickside/security: ${kickside_root}/platform/security
+    kickside/realtime: ${kickside_root}/platform/realtime
+    kickside/settings: ${kickside_root}/platform/settings
+    kickside/pdf2image: ${kickside_root}/../converters/pdf2image
+    kickside/storage-s3: ..
+    kickside/knowledge: ${kickside_root}/platform/knowledge
+    kickside/models: ${kickside_root}/platform/models
+vars:
+  sqlite_path: ':memory:'
+  pg_host: localhost
+  pg_port: 5433
+  pg_database: kickside_test_uploads
+  pg_username: kickside
+  pg_password: kickside
+  s3_endpoint: http://127.0.0.1:18333
+  s3_bucket: ks-upload-storage
+  s3_prefix: native-tests
+  kickside_root: ../../../kickside
+profiles:
+  s3_restart:
+    override:
+      app.storage_s3:restart_test:meta.type: test
+  s3:
+    override:
+      app.storage_s3:live_tests:meta.type: test
+      app.storage_s3:s3:bucket: ${s3_bucket}
+      app.storage_s3:s3:endpoint: ${s3_endpoint}
+      app.storage_s3:prefix:default: ${s3_prefix}
+      kickside.storage_s3:config:meta.s3_id: app.storage_s3:s3
+      app.storage_s3:ingest_test:meta.type: test
+  postgres:
+    override:
+      app:dedup_migration_db:kind: db.sql.postgres
+      app:dedup_migration_db:host: ${pg_host}
+      app:dedup_migration_db:port: ${pg_port}
+      app:dedup_migration_db:database: ${pg_database}
+      app:dedup_migration_db:username: ${pg_username}
+      app:dedup_migration_db:password: ${pg_password}
+      app:dedup_migration_db:options.sslmode: disable
+      app:db:kind: db.sql.postgres
+      app:db:host: ${pg_host}
+      app:db:port: ${pg_port}
+      app:db:database: ${pg_database}
+      app:db:username: ${pg_username}
+      app:db:password: ${pg_password}
+      app:db:options.sslmode: disable
+      app:db:pool.max_open: 16
+      app:db:pool.max_idle: 8
+registry:
+  dispatch_internal_kinds:
+  - registry.entry
+  - ns.requirement
+  - ns.dependency
+  - ns.definition
+  - security.scope

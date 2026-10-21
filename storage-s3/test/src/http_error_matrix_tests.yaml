@@ -1,0 +1,7 @@
+version: '1.0'
+namespace: app.http_errors_test
+entries:
+- name: contract
+  kind: ns.dependency
+  component: kickside/contract
+  version: '*'

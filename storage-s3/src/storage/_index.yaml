@@ -1,0 +1,29 @@
+version: '1.0'
+namespace: kickside.storage_s3.storage
+entries:
+- name: types
+  kind: library.lua
+  source: file://types.lua
+- name: backend
+  kind: library.lua
+  source: file://backend.lua
+  modules:
+  - fs
+  - cloudstorage
+  - uuid
+  - registry
+  imports:
+    locations: kickside.storage_s3.persist:locations
+- name: offload
+  kind: library.lua
+  source: file://offload.lua
+  modules:
+  - fs
+  - cloudstorage
+  - hash
+  - time
+  imports:
+    storage_types: kickside.storage_s3.storage:types
+    locations: kickside.storage_s3.persist:locations
+    backend: kickside.storage_s3.storage:backend
+    uploads_resources: kickside.storage_s3:resources

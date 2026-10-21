@@ -1,0 +1,3 @@
+version: '1.0'
+namespace: app.http_errors_test
+entries: []
