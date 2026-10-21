@@ -1,0 +1,55 @@
+version: '1.0'
+namespace: kickside.storage_s3.api
+entries:
+- name: inspect
+  kind: function.lua
+  source: file://inspect.lua
+  method: handle
+  modules:
+  - http
+  - security
+  - registry
+  - cloudstorage
+  - uuid
+  - contract
+  - funcs
+  imports:
+    backend: kickside.storage_s3.storage:backend
+    policy: kickside.storage_s3.policy:policy
+    uploads_resources: kickside.storage_s3:resources
+- name: inspect.endpoint
+  kind: http.endpoint
+  method: GET
+  path: /storage-s3
+  func: inspect
+- name: test.endpoint
+  kind: http.endpoint
+  method: POST
+  path: /storage-s3/test
+  func: inspect
+- name: configure
+  kind: function.lua
+  source: file://inspect.lua
+  method: configure
+  modules:
+  - http
+  - security
+  - registry
+  - cloudstorage
+  - uuid
+  - contract
+  - funcs
+  imports:
+    backend: kickside.storage_s3.storage:backend
+    policy: kickside.storage_s3.policy:policy
+    uploads_resources: kickside.storage_s3:resources
+- name: configure.endpoint
+  kind: http.endpoint
+  method: POST
+  path: /storage-s3
+  func: configure
+- name: reset.endpoint
+  kind: http.endpoint
+  method: DELETE
+  path: /storage-s3
+  func: configure

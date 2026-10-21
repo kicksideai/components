@@ -1,0 +1,9 @@
+.wippy/
+/wippy.lock
+ui/node_modules/
+ui/dist/
+static/*.map
+static/**/*.map
+.local/
+test/src/fixtures/
+test/*.sqlite*

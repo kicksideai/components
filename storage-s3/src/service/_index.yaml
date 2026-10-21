@@ -1,0 +1,137 @@
+version: '1.0'
+namespace: kickside.storage_s3.service
+entries:
+- name: host
+  kind: process.host
+  lifecycle:
+    auto_start: true
+- name: projection
+  kind: library.lua
+  source: file://projection.lua
+  modules:
+  - registry
+  - hash
+  imports:
+    policy: kickside.storage_s3.policy:policy
+    locations: kickside.storage_s3.persist:locations
+    uploads_resources: kickside.storage_s3:resources
+    canonical_json: kickside.contract:canonical_json
+- name: controller
+  kind: process.lua
+  source: file://controller.lua
+  method: main
+  modules:
+  - process
+  - channel
+  - time
+  - events
+  - logger
+  imports:
+    projection: kickside.storage_s3.service:projection
+- name: controller.service
+  kind: process.service
+  host: kickside.storage_s3.service:host
+  process: kickside.storage_s3.service:controller
+  lifecycle:
+    depends_on:
+    - wippy.bootloader:bootloader.service
+    auto_start: true
+    restart:
+      initial_delay: 2s
+      max_delay: 60s
+      max_attempts: 0
+    security:
+      groups:
+      - kickside.storage_s3.service:controller_scope
+- name: reads
+  kind: security.policy
+  groups:
+  - kickside.storage_s3.service:controller_scope
+  policy:
+    resources: '*'
+    actions:
+    - registry.get
+    - registry.find
+    - db.get
+    - env.get
+    - contract.get
+    - contract.open
+    - contract.call
+    - funcs.call
+    - events.subscribe
+    - process.send
+    - process.registry.register
+    - process.registry.lookup
+    effect: allow
+- name: overlay_owner
+  kind: security.policy
+  groups:
+  - kickside.storage_s3.service:controller_scope
+  policy:
+    resources: kickside.storage_s3.service:controller
+    actions:
+    - registry.overlay.get
+    - registry.overlay.apply
+    effect: allow
+- name: overlay_entries
+  kind: security.policy
+  groups:
+  - kickside.storage_s3.service:controller_scope
+  policy:
+    resources: kickside.storage_s3.runtime:*
+    actions:
+    - registry.overlay.create.cloudstorage.s3
+    - registry.overlay.update.cloudstorage.s3
+    - registry.overlay.delete.cloudstorage.s3
+    - registry.overlay.create.registry.entry
+    - registry.overlay.update.registry.entry
+    - registry.overlay.delete.registry.entry
+    effect: allow
+- name: request
+  kind: function.lua
+  meta:
+    private: true
+  source: file://request.lua
+  method: deliver
+  modules:
+  - process
+  - channel
+  - time
+  - uuid
+  security:
+    actor:
+      id: system:kickside.storage_s3.request
+    policies:
+    - kickside.storage_s3.service:request_transport
+- name: request_transport
+  kind: security.policy
+  meta:
+    private: true
+  policy:
+    resources: '*'
+    actions:
+    - process.send
+    - process.registry.lookup
+    effect: allow
+- name: offload_job
+  kind: process.lua
+  source: file://offload_job.lua
+  method: main
+  meta:
+    comment: Durable post-processing file placement; conversion and KB ingestion have independent retry budgets.
+  security:
+    actor:
+      id: system:kickside.storage_s3.offload
+    policies:
+    - kickside.storage_s3.security:cloud
+    - kickside.storage_s3.security:filesystem
+    - kickside.uploads.security:uploads_resource_access
+    - kickside.uploads.security:retention_db_access
+  imports:
+    jobs: kickside.core.jobs:jobs
+    job_types: kickside.core.jobs:types
+    upload_types: kickside.uploads:types
+    locations: kickside.storage_s3.persist:locations
+    offload: kickside.storage_s3.storage:offload
+    uploads_resources: kickside.storage_s3:resources
+    upload_query_repo: kickside.uploads.binding:storage_catalog

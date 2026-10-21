@@ -31,6 +31,16 @@
         "sso/ui/dist",
         "sso/ui/node_modules"
       ]
+    },
+    "storage-s3": {
+      "component": "storage-s3",
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
+      "exclude-paths": [
+        "storage-s3/test",
+        "storage-s3/ui/dist",
+        "storage-s3/ui/node_modules"
+      ]
     }
   }
 }

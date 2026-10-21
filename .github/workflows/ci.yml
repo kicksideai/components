@@ -208,6 +208,43 @@ jobs:
             cd "$source_root"
             version=$(jq -er --arg path sso '.[$path]' .release-please-manifest.json)
             wippy publish --config sso --version "$version" --dry-run --create --module-visibility public --module-type plugin --embed kickside.sso:ui_fs
+        - module: storage-s3
+          engine: sqlite
+          commands: |
+            set -euo pipefail
+            source_root="$PWD"
+            export TMPDIR="$source_root/.scratch"
+            mkdir -p "$TMPDIR"
+            make -C storage-s3 setup build typecheck
+            make -C storage-s3 lint test
+            version=$(jq -r '."storage-s3" // "0.1.0"' .release-please-manifest.json)
+            wippy publish --config storage-s3 --version "$version" --dry-run --create --module-visibility public --module-type plugin
+        - module: storage-s3
+          engine: postgres
+          commands: |
+            set -euo pipefail
+            source_root="$PWD"
+            export TMPDIR="$source_root/.scratch"
+            mkdir -p "$TMPDIR"
+            make -C storage-s3 setup build typecheck
+            database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_storage_s3"
+            createdb "$database"
+            trap 'dropdb "$database"' EXIT
+            make -C storage-s3 lint WIPPY_ARGS="--profile postgres --set vars.pg_database=$database"
+            make -C storage-s3 test-pg WIPPY_ARGS="--set vars.pg_database=$database"
+            version=$(jq -r '."storage-s3" // "0.1.0"' .release-please-manifest.json)
+            wippy publish --config storage-s3 --version "$version" --dry-run --create --module-visibility public --module-type plugin
+        - module: storage-s3
+          engine: s3
+          commands: |
+            set -euo pipefail
+            source_root="$PWD"
+            export TMPDIR="$source_root/.scratch"
+            mkdir -p "$TMPDIR"
+            make -C storage-s3 setup build typecheck
+            make -C storage-s3 test-s3
+            version=$(jq -r '."storage-s3" // "0.1.0"' .release-please-manifest.json)
+            wippy publish --config storage-s3 --version "$version" --dry-run --create --module-visibility public --module-type plugin
     services:
       postgres:
         image: pgvector/pgvector:pg17

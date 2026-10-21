@@ -1,0 +1,172 @@
+version: '1.0'
+namespace: kickside.storage_s3
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: S3 storage
+    description: Optional S3 placement for processed file content. Owns its policy, settings component, jobs, resource
+      overlay, and placement records.
+- name: dep.kickside.uploads
+  kind: ns.dependency
+  component: kickside/uploads
+  version: '>=0.2.0'
+  parameters:
+  - name: kickside.uploads:storage_adapter
+    value: kickside.storage_s3.storage:backend
+  - name: kickside.uploads:processing_hooks
+    value: kickside.storage_s3.uploads:hooks
+  - name: kickside.uploads:storage_runtime_policy
+    value: kickside.storage_s3.security:runtime
+- name: dep.kickside.settings
+  kind: ns.dependency
+  component: kickside/settings
+  version: '>=0.2.0'
+- name: dep.wippy.bootloader
+  kind: ns.dependency
+  component: wippy/bootloader
+  version: '*'
+- name: dep.wippy.migration
+  kind: ns.dependency
+  component: wippy/migration
+  version: '*'
+- name: ui_fs
+  kind: fs.directory
+  directory: ./static
+  auto_init: true
+- name: ui_static
+  kind: http.static
+  path: /kickside-storage-s3
+  fs: kickside.storage_s3:ui_fs
+  options:
+    cache: no-cache
+    mime_types:
+      .js: application/javascript
+      .css: text/css
+- name: settings_view
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: S3 storage
+    description: 'Administers optional post-processing S3 storage: choose a configured native destination, test
+      upload/download/delete, save the policy, or disable future placement.'
+    announced: true
+    auto_register: true
+    tag_name: kickside-storage-s3
+    base_path: kickside-storage-s3
+    entry_point: index.js
+- name: settings_block
+  kind: registry.entry
+  meta:
+    type: kickside.settings:block
+  key: storage-s3
+  title: S3 storage
+  icon: tabler:cloud-upload
+  group: Content
+  order: 65
+  namespace: kickside.storage_s3
+  component_tag: kickside-storage-s3
+- name: config
+  kind: registry.entry
+  meta: {}
+- name: setting.policy
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.storage_s3
+  key: policy
+  value_type: json
+  default:
+    mode: local
+    resource_id: ''
+    prefix: uploads
+  title: Processed file storage
+  description: Keep processed files locally or move their original and derived content to a configured private S3
+    resource. Applies to newly processed uploads.
+  scope: global
+  editable: true
+  visible: true
+  validate_func: kickside.storage_s3.policy:validate_policy
+  schema:
+    type: object
+    additionalProperties: false
+    required:
+    - mode
+    - resource_id
+    - prefix
+    properties:
+      mode:
+        type: string
+        enum:
+        - local
+        - s3
+      resource_id:
+        type: string
+      prefix:
+        type: string
+        maxLength: 256
+- name: target_db
+  kind: ns.requirement
+  meta:
+    value_kind: db.sql
+    description: Host-supplied target db for the optional S3 extension.
+  targets:
+  - entry: kickside.storage_s3:config
+    path: .meta.db_id
+  - entry: kickside.storage_s3.migrations:01_locations
+    path: .meta.target_db
+  - entry: kickside.storage_s3.migrations:02_import_legacy_placements
+    path: .meta.target_db
+- name: staging_storage
+  kind: ns.requirement
+  meta:
+    value_kind: fs.directory
+    description: Host-supplied staging storage for the optional S3 extension.
+  targets:
+  - entry: kickside.storage_s3:config
+    path: .meta.staging_id
+  - entry: kickside.storage_s3.security:filesystem
+    path: .policy.resources
+  - entry: kickside.storage_s3.security:runtime
+    path: .policy.resources +=
+- name: s3_resource
+  kind: ns.requirement
+  meta:
+    value_kind: cloudstorage.s3
+    description: Host-supplied s3 resource for the optional S3 extension.
+  targets:
+  - entry: kickside.storage_s3:config
+    path: .meta.s3_id
+  - entry: kickside.storage_s3.security:cloud
+    path: .policy.resources +=
+  - entry: kickside.storage_s3.security:runtime
+    path: .policy.resources +=
+- name: api_router
+  kind: ns.requirement
+  meta:
+    value_kind: http.router
+    description: Host-supplied api router for the optional S3 extension.
+  targets:
+  - entry: kickside.storage_s3.api:inspect.endpoint
+    path: .meta.router
+  - entry: kickside.storage_s3.api:test.endpoint
+    path: .meta.router
+  - entry: kickside.storage_s3.api:configure.endpoint
+    path: .meta.router
+  - entry: kickside.storage_s3.api:reset.endpoint
+    path: .meta.router
+- name: ui_server
+  kind: ns.requirement
+  meta:
+    value_kind: http.service
+    description: Host-supplied ui server for the optional S3 extension.
+  targets:
+  - entry: kickside.storage_s3:ui_static
+    path: .meta.server
+- name: resources
+  kind: library.lua
+  source: file://config.lua
+  modules:
+  - registry
+  imports:
+    uploads_resources: kickside.uploads.binding:uploads_resources

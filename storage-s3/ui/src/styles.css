@@ -1,0 +1,8 @@
+:host { display: block; height: 100%; min-height: 0; color: var(--p-text-color); }
+.storage-s3 { box-sizing: border-box; height: 100%; overflow: auto; padding: 1.5rem; background: var(--p-content-background); }
+.storage-s3 header, .storage-s3 form { max-width: 48rem; }
+.storage-s3 h2 { margin: 0 0 .75rem; font-size: 1.25rem; }
+.storage-s3 p, .storage-s3 small { color: var(--p-text-muted-color); line-height: 1.5; }
+.storage-s3 form { display: grid; gap: .75rem; margin-top: 1.25rem; }
+.storage-s3 label { font-weight: 600; }
+.storage-s3-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .5rem; }
