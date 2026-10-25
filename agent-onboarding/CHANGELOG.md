@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.6...agent-onboarding-v0.1.7) (2026-10-25)
+
+
+### Bug Fixes
+
+* **agent-onboarding:** honor injected postgres connection vars ([#15](https://github.com/kicksideai/components/issues/15)) ([8a3b20e](https://github.com/kicksideai/components/commit/8a3b20e5708fab89b3fd5dc0e77f88c35ed130d1))
+
 ## 0.1.6 (2026-10-17)
 
 - Declare registry entry requirements with value_kind and default bindings.
