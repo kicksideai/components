@@ -21,7 +21,11 @@ workspace:
     kickside/widgets: ../../../kickside/platform/widgets
 vars:
   http_port: 19247
+  pg_host: 127.0.0.1
+  pg_port: 5433
   pg_database: agent_onboarding_test
+  pg_username: kickside
+  pg_password: kickside
 security:
   strict_mode: true
 override:
@@ -31,11 +35,11 @@ profiles:
   postgres:
     override:
       app:db:kind: db.sql.postgres
-      app:db:host: 127.0.0.1
-      app:db:port: 5433
+      app:db:host: ${pg_host}
+      app:db:port: ${pg_port}
       app:db:database: ${pg_database}
-      app:db:username: kickside
-      app:db:password: kickside
+      app:db:username: ${pg_username}
+      app:db:password: ${pg_password}
       app:db:options.sslmode: disable
 directories:
   modules: .wippy
