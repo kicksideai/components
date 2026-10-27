@@ -14,7 +14,7 @@ describe('Workspace component context',()=>{
   const wrapper=mount(ManageRoot,{global:{plugins:[PrimeVuePlugin]}})
   await flushPromises()
   expect(get).toHaveBeenCalledWith('selected-extractor')
-  expect(wrapper.text()).toContain('Invoice reader')
+  expect(wrapper.get('.stats').text()).toBe('1 field · Read access')
   expect(wrapper.findAll('[role=tab]').map(t=>t.text())).toEqual(['Test','Runs'])
   wrapper.unmount()
  })

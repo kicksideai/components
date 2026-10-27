@@ -2,14 +2,15 @@
 <script setup lang="ts">
 import {computed,ref,watch,toRaw} from 'vue'
 import Button from 'primevue/button'
+import {Icon} from '@iconify/vue'
 import Builder from './Builder.vue'
 import TestPanel from './TestPanel.vue'
 import EvalsPanel from './EvalsPanel.vue'
 import RunsPanel from './RunsPanel.vue'
 import {configError,newConfig,sameConfig} from '../config'
 import {emptyEngine,type Snapshot,type EngineState} from '../models'
-const props=defineProps<{snapshot:Snapshot;engine?:EngineState;saving?:boolean;error?:string}>()
-const emit=defineEmits<{save:[input:{title:string;description:string;config:ReturnType<typeof newConfig>;expected_revision:number}];'add-case':[input:{upload_id:string;upload_name:string;expected:Record<string,unknown>}];'delete-case':[id:string]}>()
+const props=defineProps<{snapshot:Snapshot;engine?:EngineState;saving?:boolean;error?:string;back?:boolean}>()
+const emit=defineEmits<{save:[input:{title:string;description:string;config:ReturnType<typeof newConfig>;expected_revision:number}];'add-case':[input:{upload_id:string;upload_name:string;expected:Record<string,unknown>}];'delete-case':[id:string];back:[]}>()
 const body=ref<HTMLElement>()
 const tab=ref('Builder'),draft=ref(newConfig()),title=ref(''),description=ref('')
 const tabs=computed(()=>props.snapshot.can_edit?['Builder','Test','Evals','Runs']:['Test','Runs'])
@@ -29,15 +30,14 @@ function save(){emit('save',{title:title.value,description:description.value,con
 </script>
 <template>
  <main class="docscout">
-  <header class="page-header">
-   <div class="heading">
-    <div class="title-row"><h1>{{snapshot.title}}</h1><span class="badge">Docscout</span></div>
-    <p v-if="snapshot.description" class="description">{{snapshot.description}}</p>
-    <div class="stats"><span>{{snapshot.field_count}} {{snapshot.field_count===1?'field':'fields'}}</span><template v-if="snapshot.can_edit"><span class="sep">·</span><span>{{enabledSteps}} steps</span><span class="sep">·</span><span>revision {{snapshot.expected_revision}}</span></template><template v-else><span class="sep">·</span><span>Read access</span></template></div>
+  <div class="toolbar">
+   <div class="toolbar-lead"><template v-if="back"><button type="button" class="icon-btn" aria-label="All extractors" title="All extractors" @click="emit('back')"><Icon icon="tabler:arrow-left"/></button><span class="crumb">{{snapshot.title}}</span></template>
+   <nav class="tabs" role="tablist" aria-label="Docscout"><button v-for="name in tabs" :id="`tab-${name}`" :key="name" role="tab" :aria-selected="tab===name" :aria-controls="`panel-${name}`" @click="tab=name">{{name}}</button></nav></div>
+   <div class="toolbar-side">
+    <span class="stats">{{snapshot.field_count}} {{snapshot.field_count===1?'field':'fields'}}<template v-if="snapshot.can_edit"> · {{enabledSteps}} steps · revision {{snapshot.expected_revision}}</template><template v-else> · Read access</template></span>
+    <template v-if="snapshot.can_edit"><span v-if="changed" class="unsaved">Unsaved</span><Button label="Save" size="small" :loading="saving" :disabled="!changed||!!validation||!title.trim()" @click="save"/></template>
    </div>
-   <div v-if="snapshot.can_edit" class="save-area"><span v-if="changed" class="unsaved">Unsaved changes</span><Button label="Save" :loading="saving" :disabled="!changed||!!validation||!title.trim()" @click="save"/></div>
-  </header>
-  <nav class="tabs" role="tablist" aria-label="Docscout"><button v-for="name in tabs" :id="`tab-${name}`" :key="name" role="tab" :aria-selected="tab===name" :aria-controls="`panel-${name}`" @click="tab=name">{{name}}</button></nav>
+  </div>
   <p v-if="error" role="alert" class="error banner">{{error}}</p><p v-if="validation&&snapshot.can_edit" role="alert" class="error banner">{{validation}}</p>
   <div v-if="tab==='Builder'&&snapshot.can_edit" id="panel-Builder" role="tabpanel" aria-labelledby="tab-Builder" class="builder-body">
    <Builder v-model:title="title" v-model:description="description" :config="draft" :retention="snapshot.retention" :result="state.result"/>

@@ -14,7 +14,7 @@ const description=defineModel<string>('description',{required:true})
 type Selection={kind:'details'}|{kind:'document'}|{kind:'output'}|{kind:'step';step:Step}|{kind:'field';index:number}
 const selected=ref<Selection>({kind:'document'})
 const inspector=ref<HTMLElement>()
-watch(selected,async()=>{await nextTick();if(inspector.value&&matchMedia('(max-width: 860px)').matches)inspector.value.scrollIntoView({block:'start',behavior:'smooth'})})
+watch(selected,async()=>{await nextTick();if(inspector.value&&(inspector.value.parentElement?.clientWidth??0)<=680)inspector.value.scrollIntoView({block:'start',behavior:'smooth'})})
 const is=(s:Selection)=>JSON.stringify(s)===JSON.stringify(selected.value)||(s.kind==='step'&&selected.value.kind==='step'&&s.step===selected.value.step)
 const selectedField=computed(()=>selected.value.kind==='field'?props.config.fields[selected.value.index]:undefined)
 const inspectorTitle=computed(()=>{const s=selected.value;return s.kind==='step'?stepLabels[s.step.kind]:s.kind==='field'?(selectedField.value?.name||'New field'):s.kind==='document'?'Read document':s.kind==='output'?'Output':'Details'})
@@ -35,7 +35,7 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
    <ul class="field-list">
     <li v-for="(f,i) in config.fields" :key="i"><button type="button" class="field-item" :class="{active:is({kind:'field',index:i})}" @click="selected={kind:'field',index:i}">
      <span class="field-name">{{f.name||'New field'}}<span v-if="f.required" class="req" title="Required">*</span></span>
-     <span class="chips"><span class="chip">{{f.type}}</span><span v-if="f.strategy==='deep'" class="chip primary">deep</span></span>
+     <span class="chips"><span v-if="f.strategy==='deep'" class="chip primary">deep</span><span class="chip">{{f.type}}</span></span>
     </button>
     <span v-if="!readonly&&is({kind:'field',index:i})" class="reorder"><button type="button" class="icon-btn" aria-label="Move field up" :disabled="i===0" @click="moveField(i,-1)"><Icon icon="tabler:chevron-up"/></button><button type="button" class="icon-btn" aria-label="Move field down" :disabled="i===config.fields.length-1" @click="moveField(i,1)"><Icon icon="tabler:chevron-down"/></button></span></li>
    </ul>

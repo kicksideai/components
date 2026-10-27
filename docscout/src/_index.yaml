@@ -187,6 +187,37 @@ entries:
     base_path: kickside-docscout
     entry_point: create.js
     icon: tabler:file-search
+- name: page_view
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Docscout
+    comment: Docscout product page. Lists extractors and opens one in place.
+    announced: true
+    auto_register: false
+    tag_name: kickside-docscout-page
+    base_path: kickside-docscout
+    entry_point: page.js
+    icon: tabler:file-search
+  props:
+    type: object
+    properties:
+      route:
+        type: string
+        description: Sub-path under /docscout; empty for the list, an extractor id to open it.
+- name: nav_item
+  kind: registry.entry
+  meta:
+    type: ui.nav_item
+    section: ""
+    path: /docscout
+    route_name: docscout
+    title: Docscout
+    comment: Extractors that pull typed fields from documents.
+    icon: tabler:file-search
+    order: 45
+    render: component
+    component_tag: kickside-docscout-page
 - name: manage_view
   kind: registry.entry
   meta:
