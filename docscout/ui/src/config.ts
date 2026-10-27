@@ -53,14 +53,20 @@ export function toolLabel(id:string):string{
  return name.replace(/_/g,' ').replace(/^\w/,c=>c.toUpperCase())
 }
 
+export const takesChoices=(f:Field)=>f.type==='enum'||f.type==='list'
+export function fieldError(f:Field,otherNames:string[]):string{
+ if(!f.name)return 'Name the field.'
+ if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(f.name))return 'Start with a letter; use letters, numbers and underscores.'
+ if(otherNames.includes(f.name))return 'Another field already uses this name.'
+ if(f.type==='enum'&&!f.enum_values.length)return 'Add at least one allowed value.'
+ return ''
+}
+export function formatPlaceholder(f:Field):string{
+ const item=f.type==='list'?f.item_type:f.type
+ return ({text:'For example, full legal name',number:'For example, decimal with 2 places',date:'For example, YYYY-MM-DD',object:'For example, {"name": "", "amount": 0}',boolean:'',enum:''} as Record<string,string>)[item]??''
+}
 export function configError(config:Config):string {
- const names=new Set<string>()
- for(const f of config.fields){
-  if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(f.name))return 'Field names start with a letter and contain letters, numbers, and underscores.'
-  if(names.has(f.name))return 'Field names must be unique.'
-  names.add(f.name)
-  if(f.type==='enum'&&!f.enum_values.length)return 'Enum fields need at least one value.'
- }
+ for(const [i,f] of config.fields.entries()){const error=fieldError(f,config.fields.filter((_,j)=>j!==i).map(o=>o.name));if(error)return `${f.name||'New field'}: ${error}`}
  const prefetch=config.workflow.find(s=>s.kind==='prefetch')
  if(prefetch?.options.queries.some((q:PrefetchQuery)=>!q.name.trim()||!q.query.trim()))return 'Prefetch queries need a name and a query.'
  if(config.retrieval.overlap>=config.retrieval.chunk_size)return 'Overlap must be smaller than chunk size.'

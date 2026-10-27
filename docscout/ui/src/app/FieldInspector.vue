@@ -1,26 +1,40 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import {computed,watch} from 'vue'
+import {Icon} from '@iconify/vue'
 import Toggle from './Toggle.vue'
-import type {Field} from '../config'
-defineProps<{field:Field;readonly?:boolean}>()
+import {fieldError,formatPlaceholder,takesChoices,type Field} from '../config'
+const props=defineProps<{field:Field;otherNames:string[];deepEnabled:boolean;readonly?:boolean}>()
 const emit=defineEmits<{remove:[]}>()
-const types=['text','number','boolean','date','enum','list','object']
-const lines=(event:Event)=>(event.target as HTMLTextAreaElement).value.split('\n').map(v=>v.trim()).filter(Boolean)
+const types=[{value:'text',label:'Text'},{value:'number',label:'Number'},{value:'boolean',label:'Yes / no'},{value:'date',label:'Date'},{value:'enum',label:'One of a set'},{value:'list',label:'List'},{value:'object',label:'Object'}]
+const itemTypes=types.filter(t=>['text','number','boolean','date','object'].includes(t.value))
+const error=computed(()=>fieldError(props.field,props.otherNames))
+const showsFormat=computed(()=>props.field.type!=='boolean'&&props.field.type!=='enum'&&!(props.field.type==='list'&&props.field.item_type==='boolean'))
+watch(()=>props.field.type,()=>{if(!takesChoices(props.field)&&props.field.enum_values.length)props.field.enum_values=[]})
+function choices(event:Event){props.field.enum_values=[...new Set((event.target as HTMLTextAreaElement).value.split('\n').map(v=>v.trim()).filter(Boolean))]}
 </script>
 <template>
  <fieldset class="inspector-form" :disabled="readonly">
-  <div class="grid"><label>Name<input v-model="field.name" placeholder="invoice_total" aria-label="Field name"/></label><label>Type<select v-model="field.type" aria-label="Field type"><option v-for="t in types" :key="t" :value="t">{{t[0].toUpperCase()+t.slice(1)}}</option></select></label></div>
-  <label>Description<textarea v-model="field.description" rows="2" placeholder="What this value means"/></label>
-  <label v-if="field.type==='enum'">Allowed values<textarea :value="field.enum_values.join('\n')" rows="3" placeholder="One value per line" @input="field.enum_values=lines($event)"/></label>
-  <label v-if="field.type==='list'">Item type<select v-model="field.item_type"><option v-for="t in types.filter(t=>t!=='list')" :key="t" :value="t">{{t}}</option></select></label>
+  <div class="grid">
+   <label>Name<input v-model.trim="field.name" placeholder="invoice_total" aria-label="Field name" :aria-invalid="!!error" spellcheck="false" class="mono-input"/></label>
+   <label>Type<select v-model="field.type" aria-label="Field type"><option v-for="t in types" :key="t.value" :value="t.value">{{t.label}}</option></select></label>
+  </div>
+  <p v-if="error" class="field-error" role="alert"><Icon icon="tabler:alert-circle"/>{{error}}</p>
+  <label v-if="field.type==='list'">Each item is<select v-model="field.item_type"><option v-for="t in itemTypes" :key="t.value" :value="t.value">{{t.label}}</option></select></label>
+  <label v-if="takesChoices(field)">{{field.type==='enum'?'Allowed values':'Allowed items (optional)'}}<textarea :value="field.enum_values.join('\n')" rows="3" placeholder="One per line" @change="choices"/><small>{{field.type==='enum'?'The value must be exactly one of these.':'When set, every item must be one of these.'}}</small></label>
+  <label>Description<textarea v-model="field.description" rows="2" placeholder="What this value means in the document"/><small>The model reads this to know what to look for.</small></label>
   <h4>Finding it</h4>
-  <label>Search hints<textarea v-model="field.search_hints" rows="2" placeholder="Terms and phrases to look for"/><small>Added to Prefetch and Scout as this field's queries.</small></label>
-  <div class="grid"><label>Strategy<select v-model="field.strategy"><option value="standard">Standard</option><option value="deep">Deep analysis</option></select></label><label>Chunks to read<input v-model.number="field.chunks" type="number" min="1" max="1000"/></label></div>
+  <label>Search hints<textarea v-model="field.search_hints" rows="2" placeholder="One query per line"/><small>Each line becomes a query in Prefetch and Scout.</small></label>
+  <div class="grid">
+   <label>Strategy<select v-model="field.strategy"><option value="standard">Standard</option><option value="deep">Deep analysis</option></select></label>
+   <label>Chunks to read<input v-model.number="field.chunks" type="number" min="1" max="1000"/><small>Per search hint</small></label>
+  </div>
+  <p v-if="field.strategy==='deep'&&!deepEnabled" class="field-note"><Icon icon="tabler:info-circle"/>Deep analysis is off in the flow, so this field runs as standard.</p>
   <h4>Checking it</h4>
-  <label>Validation hints<textarea v-model="field.validation_hints" rows="2" placeholder="Rules the value should satisfy"/></label>
-  <label>Expected format<input v-model="field.expected_format" placeholder="For example, YYYY-MM-DD"/></label>
-  <div class="toggle-row"><span>Required</span><Toggle v-model="field.required" label="Required" :disabled="readonly"/></div>
-  <div class="toggle-row"><span>Evidence required</span><Toggle v-model="field.evidence_required" label="Evidence required" :disabled="readonly"/></div>
+  <label>Validation hints<textarea v-model="field.validation_hints" rows="2" placeholder="Rules the value must satisfy"/></label>
+  <label v-if="showsFormat">Expected format<input v-model="field.expected_format" :placeholder="formatPlaceholder(field)"/></label>
+  <div class="toggle-row"><span>Required<small>A run reports this field as missing when no value is found.</small></span><Toggle v-model="field.required" label="Required" :disabled="readonly"/></div>
+  <div class="toggle-row"><span>Evidence required<small>The value must cite a quote from the document.</small></span><Toggle v-model="field.evidence_required" label="Evidence required" :disabled="readonly"/></div>
   <button v-if="!readonly" type="button" class="btn danger-text" @click="emit('remove')">Remove field</button>
  </fieldset>
 </template>

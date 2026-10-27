@@ -90,11 +90,18 @@ describe('Docscout manage surface',()=>{
  it('edits conditional enum and list field controls',async()=>{
   const value=snapshot();value.config!.fields=[{...newField(),name:'status'}]
   const wrapper=mount(DocscoutPage,{props:{snapshot:value}})
-  await wrapper.get('.field-item').trigger('click')
+  await wrapper.get('.row-main').trigger('click')
   await wrapper.get('select[aria-label="Field type"]').setValue('enum')
-  expect(wrapper.text()).toContain('Allowed values')
+  expect(wrapper.text()).toContain('Allowed values');expect(wrapper.text()).toContain('Add at least one allowed value.')
+  const values=wrapper.get('textarea[placeholder="One per line"]')
+  await values.setValue('Paid\nPaid\n Unpaid ');await values.trigger('change')
+  expect((wrapper.get('textarea[placeholder="One per line"]').element as HTMLTextAreaElement).value).toBe('Paid\nUnpaid')
   await wrapper.get('select[aria-label="Field type"]').setValue('list')
-  expect(wrapper.text()).toContain('Item type');expect(wrapper.text()).not.toContain('Allowed values')
+  expect(wrapper.text()).toContain('Each item is');expect(wrapper.text()).toContain('Allowed items (optional)')
+  await wrapper.get('select[aria-label="Field type"]').setValue('text')
+  expect(wrapper.text()).not.toContain('Allowed')
+  await wrapper.get('select[aria-label="Field type"]').setValue('enum')
+  expect((wrapper.get('textarea[placeholder="One per line"]').element as HTMLTextAreaElement).value).toBe('')
  })
  it('shows deep fields under Deep analysis and field hints under Prefetch',async()=>{
   const value=snapshot();value.config!.fields=[{...newField(),name:'terms',strategy:'deep',search_hints:'payment terms'}]

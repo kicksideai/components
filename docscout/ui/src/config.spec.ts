@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import {describe,it,expect} from 'vitest'
-import {newConfig,newField,configError,moveStep} from './config'
+import {newConfig,newField,configError,moveStep,formatPlaceholder,takesChoices} from './config'
 describe('Extractor configuration',()=>{
  it('uses independent drafts, the premium extraction class and six steps',()=>{
   const one=newConfig(),two=newConfig();one.fields.push(newField())
@@ -9,12 +9,18 @@ describe('Extractor configuration',()=>{
  it('keeps mapping first when steps move',()=>{
   const config=newConfig();moveStep(config,1,-1);expect(config.workflow[0].kind).toBe('map');moveStep(config,3,-1);expect(config.workflow[2].kind).toBe('deep')
  })
- it('explains invalid names, duplicate names, missing enums, and overlapping chunks',()=>{
-  const config=newConfig();config.fields=[newField()];expect(configError(config)).toContain('Field names start')
-  config.fields[0].name='status';config.fields[0].type='enum';expect(configError(config)).toContain('Enum fields')
+ it('explains missing, invalid and duplicate names, empty enums, and overlapping chunks',()=>{
+  const config=newConfig();config.fields=[newField()];expect(configError(config)).toBe('New field: Name the field.')
+  config.fields[0].name='1st';expect(configError(config)).toContain('Start with a letter')
+  config.fields[0].name='status';config.fields[0].type='enum';expect(configError(config)).toBe('status: Add at least one allowed value.')
   config.fields[0].enum_values=['Paid'];expect(configError(config)).toBe('')
-  config.fields.push({...config.fields[0]});expect(configError(config)).toContain('unique')
+  config.fields.push({...config.fields[0]});expect(configError(config)).toContain('Another field already uses this name')
   config.fields=[];config.retrieval.overlap=config.retrieval.chunk_size;expect(configError(config)).toContain('Overlap')
+ })
+ it('suggests an expected format that matches the value type',()=>{
+  expect(formatPlaceholder({...newField(),type:'date'})).toContain('YYYY-MM-DD')
+  expect(formatPlaceholder({...newField(),type:'list',item_type:'number'})).toContain('decimal')
+  expect(takesChoices({...newField(),type:'list'})).toBe(true);expect(takesChoices({...newField(),type:'text'})).toBe(false)
  })
 })
 
