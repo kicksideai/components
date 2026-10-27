@@ -26,6 +26,7 @@ entries:
   - security
   imports:
     http: app:upload_http_probe
+    upload_response: kickside.uploads.api:upload_response
     upload_query_repo: kickside.uploads.persist:upload_query_repo
     artifact_content_repo: kickside.uploads.persist:artifact_content_repo
     artifact_parts_repo: kickside.uploads.persist:artifact_parts_repo
