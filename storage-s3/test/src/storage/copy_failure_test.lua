@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local test = require("test")
 local cloud_factory = require("cloud_factory")
 local copier = require("copier")

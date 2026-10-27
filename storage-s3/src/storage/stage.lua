@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local cloudstorage = require("cloudstorage")
 local uploads_resources = require("uploads_resources")
 local artifacts = require("artifacts")
