@@ -102,6 +102,15 @@ Node.js 22, npm, and Make.
 
 ## Development
 
+The default harness resolves the declared Users package rather than replacing it
+with an unversioned local checkout. Run `make lockrefresh` before the test commands
+when dependency declarations change. Users must satisfy the minimum above.
+
+To qualify an unreleased Users/SSO source pair, use a separate test configuration
+with explicit source replacements and a lock derived from the exact candidate
+versions. Record those revisions and SDK pins separately from published-package
+or installed-upgrade results.
+
 Run `wippy install` in `test/`, then `make lint` and `make test` in this
 directory. For PostgreSQL, run `wippy test --profile postgres` in `test/`
 against a dedicated scratch database and drop it after the run.
