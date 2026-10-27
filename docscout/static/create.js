@@ -1,7 +1,7 @@
 import { defineComponent as N, ref as u, openBlock as p, createElementBlock as f, withModifiers as C, createElementVNode as m, createTextVNode as y, createVNode as g, unref as b, createStaticVNode as E, toDisplayString as k, createCommentVNode as V, computed as S, watch as x, createBlock as h } from "vue";
 import "@iconify/vue";
 import { define as B } from "@wippy-fe/proxy";
-import { s as D, a as P, b as I, u as $, c as F, d as M, n as R, e as U } from "./index-CzyJHWsI.js";
+import { s as D, a as P, b as I, u as $, c as F, d as M, n as R, e as U } from "./index-CctQU-aN.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const j = {
   key: 0,

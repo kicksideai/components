@@ -21,7 +21,7 @@ entries:
         overrides:
           type: object
           additionalProperties: false
-          properties: &id002
+          properties:
             fields:
               type: array
               items:
@@ -84,6 +84,11 @@ entries:
                   evidence_required:
                     type: boolean
                     default: true
+                  chunks:
+                    type: integer
+                    default: 5
+                    minimum: 1
+                    maximum: 1000
                 required:
                 - name
                 - type
@@ -96,6 +101,20 @@ entries:
                 - expected_format
                 - strategy
                 - evidence_required
+                - chunks
+                default:
+                  name: ''
+                  type: text
+                  description: ''
+                  enum_values: []
+                  item_type: text
+                  required: false
+                  search_hints: ''
+                  validation_hints: ''
+                  expected_format: ''
+                  strategy: standard
+                  evidence_required: true
+                  chunks: 5
               maxItems: 100
             workflow:
               type: array
@@ -164,8 +183,26 @@ entries:
                         queries:
                           type: array
                           items:
-                            type: string
-                            minLength: 1
+                            type: object
+                            additionalProperties: false
+                            properties:
+                              name:
+                                type: string
+                                minLength: 1
+                                maxLength: 200
+                              query:
+                                type: string
+                                minLength: 1
+                                maxLength: 4000
+                              chunks:
+                                type: integer
+                                default: 5
+                                minimum: 1
+                                maximum: 1000
+                            required:
+                            - name
+                            - query
+                            - chunks
                           maxItems: 100
                       required:
                       - queries
@@ -201,12 +238,12 @@ entries:
                       properties:
                         max_iterations:
                           type: integer
-                          default: 4
-                          minimum: 1
+                          default: 0
+                          minimum: 0
                           maximum: 30
                         target_confidence:
                           type: number
-                          default: 0.9
+                          default: 0.7
                           minimum: 0
                           maximum: 1
                         max_extra_queries:
@@ -217,11 +254,17 @@ entries:
                         drop_noise:
                           type: boolean
                           default: true
+                        max_tokens:
+                          type: integer
+                          default: 4096
+                          minimum: 256
+                          maximum: 64000
                       required:
                       - max_iterations
                       - target_confidence
                       - max_extra_queries
                       - drop_noise
+                      - max_tokens
                   required:
                   - kind
                   - enabled
@@ -258,8 +301,49 @@ entries:
                           default: 4
                           minimum: 1
                           maximum: 20
+                        query_model:
+                          type: string
+                          minLength: 1
+                          default: class:fast
+                        max_queries:
+                          type: integer
+                          default: 5
+                          minimum: 1
+                          maximum: 100
+                        chunks_per_query:
+                          type: integer
+                          default: 50
+                          minimum: 1
+                          maximum: 1000
+                        chunk_cap:
+                          type: integer
+                          default: 100
+                          minimum: 1
+                          maximum: 10000
+                        min_similarity:
+                          type: number
+                          default: 0.2
+                          minimum: 0
+                          maximum: 1
+                        query_temperature:
+                          type: number
+                          default: 0.2
+                          minimum: 0
+                          maximum: 2
+                        analysis_temperature:
+                          type: number
+                          default: 0.2
+                          minimum: 0
+                          maximum: 2
                       required:
                       - parallel_fields
+                      - query_model
+                      - max_queries
+                      - chunks_per_query
+                      - chunk_cap
+                      - min_similarity
+                      - query_temperature
+                      - analysis_temperature
                   required:
                   - kind
                   - enabled
@@ -276,6 +360,7 @@ entries:
                     enabled:
                       type: boolean
                       default: true
+                      const: true
                     scope:
                       type: string
                       default: chunk
@@ -296,8 +381,12 @@ entries:
                           minimum: 256
                           maximum: 64000
                           default: 4096
+                        structured_output:
+                          type: boolean
+                          default: true
                       required:
                       - max_output_tokens
+                      - structured_output
                   required:
                   - kind
                   - enabled
@@ -396,26 +485,23 @@ entries:
               - highlighter_model
               - embedding_model
             tools:
-              type: object
-              additionalProperties: false
-              properties:
-                keyword_search:
-                  type: boolean
-                  default: true
-                semantic_search:
-                  type: boolean
-                  default: true
-                read_section:
-                  type: boolean
-                  default: true
-                read_outline:
-                  type: boolean
-                  default: true
-              required:
-              - keyword_search
-              - semantic_search
-              - read_section
-              - read_outline
+              type: array
+              items:
+                type: string
+                minLength: 1
+              uniqueItems: true
+              maxItems: 100
+            tags:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 80
+              uniqueItems: true
+              maxItems: 50
+            shared_context:
+              type: boolean
+              default: true
           required: []
       required:
       - extractor_id
@@ -627,15 +713,497 @@ entries:
         description:
           type: string
           maxLength: 4000
-        config: &id003
+        config: &id002
           type: object
           additionalProperties: false
-          properties: *id002
+          properties:
+            fields:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                properties:
+                  name:
+                    type: string
+                    pattern: ^[A-Za-z][A-Za-z0-9_]*$
+                    maxLength: 80
+                  type:
+                    type: string
+                    default: text
+                    enum:
+                    - text
+                    - number
+                    - boolean
+                    - date
+                    - enum
+                    - list
+                    - object
+                  description:
+                    type: string
+                    default: ''
+                    maxLength: 4000
+                  enum_values:
+                    type: array
+                    items:
+                      type: string
+                      minLength: 1
+                    uniqueItems: true
+                    maxItems: 100
+                  item_type:
+                    type: string
+                    default: text
+                    enum:
+                    - text
+                    - number
+                    - boolean
+                    - date
+                    - object
+                  required:
+                    type: boolean
+                    default: false
+                  search_hints:
+                    type: string
+                    default: ''
+                  validation_hints:
+                    type: string
+                    default: ''
+                  expected_format:
+                    type: string
+                    default: ''
+                  strategy:
+                    type: string
+                    default: standard
+                    enum:
+                    - standard
+                    - deep
+                  evidence_required:
+                    type: boolean
+                    default: true
+                  chunks:
+                    type: integer
+                    default: 5
+                    minimum: 1
+                    maximum: 1000
+                required:
+                - name
+                - type
+                - description
+                - enum_values
+                - item_type
+                - required
+                - search_hints
+                - validation_hints
+                - expected_format
+                - strategy
+                - evidence_required
+                - chunks
+                default:
+                  name: ''
+                  type: text
+                  description: ''
+                  enum_values: []
+                  item_type: text
+                  required: false
+                  search_hints: ''
+                  validation_hints: ''
+                  expected_format: ''
+                  strategy: standard
+                  evidence_required: true
+                  chunks: 5
+              maxItems: 100
+            workflow:
+              type: array
+              items:
+                oneOf:
+                - type: object
+                  additionalProperties: false
+                  properties:
+                    kind:
+                      type: string
+                      default: map
+                      const: map
+                    enabled:
+                      type: boolean
+                      default: true
+                    scope:
+                      type: string
+                      default: section
+                      enum:
+                      - outline
+                      - section
+                      - chunk
+                    model:
+                      type: string
+                      default: class:fast
+                      minLength: 1
+                    options:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        outline_mode:
+                          type: string
+                          default: find_or_build
+                          enum:
+                          - find_or_build
+                          - build
+                      required:
+                      - outline_mode
+                  required:
+                  - kind
+                  - enabled
+                  - scope
+                  - model
+                  - options
+                - type: object
+                  additionalProperties: false
+                  properties:
+                    kind:
+                      type: string
+                      default: prefetch
+                      const: prefetch
+                    enabled:
+                      type: boolean
+                      default: true
+                    scope:
+                      type: string
+                      default: section
+                      enum:
+                      - outline
+                      - section
+                      - chunk
+                    options:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        queries:
+                          type: array
+                          items:
+                            type: object
+                            additionalProperties: false
+                            properties:
+                              name:
+                                type: string
+                                minLength: 1
+                                maxLength: 200
+                              query:
+                                type: string
+                                minLength: 1
+                                maxLength: 4000
+                              chunks:
+                                type: integer
+                                default: 5
+                                minimum: 1
+                                maximum: 1000
+                            required:
+                            - name
+                            - query
+                            - chunks
+                          maxItems: 100
+                      required:
+                      - queries
+                  required:
+                  - kind
+                  - enabled
+                  - scope
+                  - options
+                - type: object
+                  additionalProperties: false
+                  properties:
+                    kind:
+                      type: string
+                      default: scout
+                      const: scout
+                    enabled:
+                      type: boolean
+                      default: true
+                    scope:
+                      type: string
+                      default: chunk
+                      enum:
+                      - outline
+                      - section
+                      - chunk
+                    model:
+                      type: string
+                      default: class:fast
+                      minLength: 1
+                    options:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        max_iterations:
+                          type: integer
+                          default: 0
+                          minimum: 0
+                          maximum: 30
+                        target_confidence:
+                          type: number
+                          default: 0.7
+                          minimum: 0
+                          maximum: 1
+                        max_extra_queries:
+                          type: integer
+                          default: 3
+                          minimum: 0
+                          maximum: 20
+                        drop_noise:
+                          type: boolean
+                          default: true
+                        max_tokens:
+                          type: integer
+                          default: 4096
+                          minimum: 256
+                          maximum: 64000
+                      required:
+                      - max_iterations
+                      - target_confidence
+                      - max_extra_queries
+                      - drop_noise
+                      - max_tokens
+                  required:
+                  - kind
+                  - enabled
+                  - scope
+                  - model
+                  - options
+                - type: object
+                  additionalProperties: false
+                  properties:
+                    kind:
+                      type: string
+                      default: deep
+                      const: deep
+                    enabled:
+                      type: boolean
+                      default: true
+                    scope:
+                      type: string
+                      default: section
+                      enum:
+                      - outline
+                      - section
+                      - chunk
+                    model:
+                      type: string
+                      default: class:fast
+                      minLength: 1
+                    options:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        parallel_fields:
+                          type: integer
+                          default: 4
+                          minimum: 1
+                          maximum: 20
+                        query_model:
+                          type: string
+                          minLength: 1
+                          default: class:fast
+                        max_queries:
+                          type: integer
+                          default: 5
+                          minimum: 1
+                          maximum: 100
+                        chunks_per_query:
+                          type: integer
+                          default: 50
+                          minimum: 1
+                          maximum: 1000
+                        chunk_cap:
+                          type: integer
+                          default: 100
+                          minimum: 1
+                          maximum: 10000
+                        min_similarity:
+                          type: number
+                          default: 0.2
+                          minimum: 0
+                          maximum: 1
+                        query_temperature:
+                          type: number
+                          default: 0.2
+                          minimum: 0
+                          maximum: 2
+                        analysis_temperature:
+                          type: number
+                          default: 0.2
+                          minimum: 0
+                          maximum: 2
+                      required:
+                      - parallel_fields
+                      - query_model
+                      - max_queries
+                      - chunks_per_query
+                      - chunk_cap
+                      - min_similarity
+                      - query_temperature
+                      - analysis_temperature
+                  required:
+                  - kind
+                  - enabled
+                  - scope
+                  - model
+                  - options
+                - type: object
+                  additionalProperties: false
+                  properties:
+                    kind:
+                      type: string
+                      default: extract
+                      const: extract
+                    enabled:
+                      type: boolean
+                      default: true
+                      const: true
+                    scope:
+                      type: string
+                      default: chunk
+                      enum:
+                      - outline
+                      - section
+                      - chunk
+                    model:
+                      type: string
+                      default: class:premium
+                      minLength: 1
+                    options:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        max_output_tokens:
+                          type: integer
+                          minimum: 256
+                          maximum: 64000
+                          default: 4096
+                        structured_output:
+                          type: boolean
+                          default: true
+                      required:
+                      - max_output_tokens
+                      - structured_output
+                  required:
+                  - kind
+                  - enabled
+                  - scope
+                  - model
+                  - options
+                - type: object
+                  additionalProperties: false
+                  properties:
+                    kind:
+                      type: string
+                      default: verify
+                      const: verify
+                    enabled:
+                      type: boolean
+                      default: true
+                    scope:
+                      type: string
+                      default: chunk
+                      enum:
+                      - outline
+                      - section
+                      - chunk
+                    model:
+                      type: string
+                      default: class:fast
+                      minLength: 1
+                    options:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        require_all_values:
+                          type: boolean
+                          default: true
+                      required:
+                      - require_all_values
+                  required:
+                  - kind
+                  - enabled
+                  - scope
+                  - model
+                  - options
+              minItems: 6
+              maxItems: 6
+            retrieval:
+              type: object
+              additionalProperties: false
+              properties:
+                chunk_size:
+                  type: integer
+                  default: 1200
+                  minimum: 100
+                  maximum: 16000
+                overlap:
+                  type: integer
+                  default: 150
+                  minimum: 0
+                  maximum: 4000
+                split_headings:
+                  type: boolean
+                  default: true
+                search_mode:
+                  type: string
+                  default: hybrid
+                  enum:
+                  - keyword
+                  - semantic
+                  - hybrid
+                top_results:
+                  type: integer
+                  default: 6
+                  minimum: 1
+                  maximum: 100
+                contextual_embeddings:
+                  type: boolean
+                  default: true
+                highlighter:
+                  type: boolean
+                  default: false
+                highlighter_model:
+                  type: string
+                  default: class:fast
+                  minLength: 1
+                embedding_model:
+                  type: string
+                  default: class:embed
+                  minLength: 1
+              required:
+              - chunk_size
+              - overlap
+              - split_headings
+              - search_mode
+              - top_results
+              - contextual_embeddings
+              - highlighter
+              - highlighter_model
+              - embedding_model
+            tools:
+              type: array
+              items:
+                type: string
+                minLength: 1
+              uniqueItems: true
+              maxItems: 100
+            tags:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 80
+              uniqueItems: true
+              maxItems: 50
+            shared_context:
+              type: boolean
+              default: true
           required:
           - fields
           - workflow
           - retrieval
           - tools
+          - tags
+          - shared_context
       required:
       - extractor_id
       - expected_revision
@@ -768,7 +1336,7 @@ entries:
               base_revision:
                 type: integer
                 minimum: 0
-              config: *id003
+              config: *id002
               accuracy_delta:
                 type: number
               cost_delta:

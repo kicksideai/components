@@ -22,6 +22,7 @@ function M.validate(value)
         if kinds[step.kind] then return invalid("Workflow steps must be unique") end
         kinds[step.kind] = true
         if step.kind == "map" and i ~= 1 then return invalid("Map the document must stay first") end
+        if step.kind == "extract" and i ~= #value.workflow - 1 then return invalid("Extract stays before Verify at the end of the flow") end
     end
     if value.retrieval.overlap >= value.retrieval.chunk_size then return invalid("Overlap must be smaller than chunk size") end
     return nil

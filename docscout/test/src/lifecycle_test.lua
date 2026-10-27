@@ -40,6 +40,39 @@ return {run=test.run_cases(function()
             test.eq(assert(call(who,{op="get",id=id})).expected_revision,1)
             test.not_nil(call(who,{op="delete",id=id}))
         end)
+        test.it("persists all builder options and validates their ranges",function()
+            local who=uuid.v4();local dto=input()
+            dto.config.tags={"invoice","finance"};dto.config.shared_context=false
+            dto.config.workflow[2].options.queries={{name="Totals",query="Amount due",chunks=7},{name="Terms",query="Payment terms",chunks=5}}
+            dto.config.workflow[3].options.max_iterations=2
+            dto.config.workflow[3].options.max_tokens=8192
+            dto.config.workflow[4].options.query_model="class:premium"
+            dto.config.workflow[4].options.chunk_cap=120
+            dto.config.workflow[5].options.structured_output=false
+            local created,err=call(who,{op="create",input=dto})
+            test.is_nil(err,tostring(err));test.not_nil(created)
+            local saved=assert(call(who,{op="get",id=created.component_id})).config
+            test.eq(saved.tags[2],"finance");test.eq(saved.shared_context,false)
+            test.eq(saved.workflow[2].options.queries[1].chunks,7)
+            test.eq(saved.workflow[3].options.max_tokens,8192)
+            test.eq(saved.workflow[4].options.query_model,"class:premium")
+            test.eq(saved.workflow[4].options.chunk_cap,120)
+            test.eq(saved.workflow[5].options.structured_output,false)
+            test.eq(#saved.tools,4)
+            for _,mutate in ipairs({
+                function(c) c.workflow[3].options.max_iterations=-1 end,
+                function(c) c.workflow[4].options.min_similarity=1.1 end,
+                function(c) c.workflow[4].options.query_temperature=-.1 end,
+                function(c) c.workflow[2].options.queries={{name="Q",query="",chunks=5}} end,
+                function(c) c.workflow[5].enabled=false end,
+                function(c) c.workflow[5],c.workflow[6]=c.workflow[6],c.workflow[5] end
+            }) do
+                local invalid=input();mutate(invalid.config)
+                local result,validation_err=call(who,{op="create",input=invalid})
+                test.is_nil(result);test.not_nil(validation_err)
+            end
+            test.not_nil(call(who,{op="delete",id=created.component_id}))
+        end)
         test.it("enforces READ, WRITE, owner and stranger boundaries",function()
             local owner,reader,writer,stranger=uuid.v4(),uuid.v4(),uuid.v4(),uuid.v4()
             local id=assert(call(owner,{op="create",input=input()})).component_id
@@ -68,10 +101,10 @@ return {run=test.run_cases(function()
                 function(v) v.config.retrieval.top_results=0 end,
                 function(v) v.config.workflow[1].enabled=false;v.config.workflow[1],v.config.workflow[2]=v.config.workflow[2],v.config.workflow[1] end,
                 function(v) v.config.workflow[2]=v.config.workflow[1] end,
-                function(v) v.config.tools.unknown=true end,
+                function(v) v.config.tools={"unknown:tool"} end,
                 function(v) v.unrecognized=true end,
                 function(v) v.title=" " end,
-                function(v) v.config.fields={{name="status",type="enum",description="",enum_values={},item_type="text",required=false,search_hints="",validation_hints="",expected_format="",strategy="standard",evidence_required=true}} end
+                function(v) v.config.fields={{name="status",type="enum",description="",enum_values={},item_type="text",required=false,search_hints="",validation_hints="",expected_format="",strategy="standard",evidence_required=true,chunks=5}} end
             }) do
                 local value=input();mutate(value)
                 local result,err=call(who,{op="create",input=value})
@@ -81,16 +114,16 @@ return {run=test.run_cases(function()
         end)
         test.it("persists enabled choices for every reading step",function()
             local who=uuid.v4();local dto=input()
-            for _,step in ipairs(dto.config.workflow) do step.enabled=false end
+            for _,step in ipairs(dto.config.workflow) do if step.kind~="extract" then step.enabled=false end end
             local created,err=call(who,{op="create",input=dto})
             test.is_nil(err,tostring(err));test.not_nil(created)
             local view=assert(call(who,{op="get",id=created.component_id}))
-            for _,step in ipairs(view.config.workflow) do test.eq(step.enabled,false) end
+            for _,step in ipairs(view.config.workflow) do test.eq(step.enabled,step.kind=="extract") end
             test.not_nil(call(who,{op="delete",id=created.component_id}))
         end)
         test.it("stores expected field values in extractor-owned evaluation cases",function()
             local who=uuid.v4();local dto=input()
-            dto.config.fields={{name="total",type="number",description="Total due",enum_values=assert(json.decode("[]")),item_type="text",required=true,search_hints="",validation_hints="",expected_format="",strategy="standard",evidence_required=true}}
+            dto.config.fields={{name="total",type="number",description="Total due",enum_values=assert(json.decode("[]")),item_type="text",required=true,search_hints="",validation_hints="",expected_format="",strategy="standard",evidence_required=true,chunks=5}}
             local id=assert(call(who,{op="create",input=dto})).component_id
             local added,err=call(who,{op="add_case",id=id,input={upload_id="example-upload",upload_name="Example invoice.pdf",expected={total=1250}}})
             test.is_nil(err,tostring(err));test.not_nil(added)

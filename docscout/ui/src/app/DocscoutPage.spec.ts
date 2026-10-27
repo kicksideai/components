@@ -7,64 +7,72 @@ import DocscoutPage from './DocscoutPage.vue'
 import {newConfig,newField} from '../config'
 import {emptyEngine,type Snapshot} from '../models'
 vi.mock('@wippy-fe/proxy',()=>({loadByTagName:async()=>{}}))
+const nameInput=(w:ReturnType<typeof mount>)=>w.get('input[aria-label="Extractor name"]')
+async function details(w:ReturnType<typeof mount>){await w.findAll('button').find(b=>b.text()==='Details')!.trigger('click')}
+const saveButton=(w:ReturnType<typeof mount>)=>w.findAll('button').find(b=>b.text()==='Save')!
 function snapshot():Snapshot{return {id:'extractor',title:'Invoice reader',description:'Invoice fields',field_count:0,status:'configured',can_edit:true,expected_revision:7,config:newConfig(),retention:'2h',runs:[],cases:[]}}
 describe('Docscout manage surface',()=>{
  it('saves all edited configuration with its loaded revision',async()=>{
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()}})
-  await wrapper.get('button[aria-selected=true]').trigger('click')
-  await wrapper.findAll('input')[0].setValue('Invoice totals')
-  const save=wrapper.findAll('button').find(b=>b.text()==='Save changes')!
-  await save.trigger('click')
+  await details(wrapper)
+  await nameInput(wrapper).setValue('Invoice totals')
+  await saveButton(wrapper).trigger('click')
   expect(wrapper.emitted('save')?.[0][0]).toMatchObject({title:'Invoice totals',expected_revision:7,config:{workflow:expect.any(Array),retrieval:{search_mode:'hybrid'}}})
  })
  it('lets READ grantees see Test and Runs without configuration controls',()=>{
   const value:Snapshot={id:'extractor',title:'Invoice reader',field_count:1,status:'configured',can_edit:false,retention:'2h',runs:[]}
   const wrapper=mount(DocscoutPage,{props:{snapshot:value}})
-  expect(wrapper.findAll('[role=tab]').map(x=>x.text())).toEqual(['Test','Runs']);expect(wrapper.text()).not.toContain('Save changes');expect(wrapper.text()).toContain('Extraction is not available yet.')
+  expect(wrapper.findAll('[role=tab]').map(x=>x.text())).toEqual(['Test','Runs']);expect(wrapper.text()).not.toContain('Unsaved changes');expect(wrapper.find('[aria-label="Extraction flow"]').exists()).toBe(false);expect(wrapper.text()).toContain('Extraction is not available yet.')
  })
  it('starts each tab at the top of its content',async()=>{
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()}})
+  await wrapper.findAll('[role=tab]').find(t=>t.text()==='Test')!.trigger('click')
   wrapper.get('.page-body').element.scrollTop=400
   await wrapper.findAll('[role=tab]').find(t=>t.text()==='Runs')!.trigger('click')
   expect(wrapper.get('.page-body').element.scrollTop).toBe(0)
  })
- it('offers an enabled choice for every reading step',async()=>{
+ it('offers an enabled choice for every optional reading step',async()=>{
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()}})
-  await wrapper.findAll('[role=tab]').find(t=>t.text()==='Workflow')!.trigger('click')
-  const toggles=wrapper.findAll('input[aria-label^="Enable "]')
-  expect(toggles).toHaveLength(6)
+  const toggles=wrapper.findAll('[role=switch][aria-label^="Enable "]')
+  expect(toggles.map(t=>t.attributes('aria-label'))).toEqual(['Enable Map the document','Enable Prefetch','Enable Scout loop','Enable Deep analysis','Enable Verify'])
   for(const toggle of toggles)expect(toggle.attributes('disabled')).toBeUndefined()
+  await toggles[0].trigger('click')
+  await saveButton(wrapper).trigger('click')
+  expect((wrapper.emitted('save')?.[0][0] as {config:{workflow:{kind:string;enabled:boolean}[]}}).config.workflow[0]).toMatchObject({kind:'map',enabled:true})
  })
  it('preserves edits and their original revision when another editor saves',async()=>{
   const initial=snapshot()
   const wrapper=mount(DocscoutPage,{props:{snapshot:initial}})
-  await wrapper.findAll('input')[0].setValue('Local draft')
+  await details(wrapper)
+  await nameInput(wrapper).setValue('Local draft')
   const remote=snapshot();remote.title='Remote title';remote.expected_revision=8
   await wrapper.setProps({snapshot:remote})
-  expect((wrapper.findAll('input')[0].element as HTMLInputElement).value).toBe('Local draft')
-  await wrapper.findAll('button').find(b=>b.text()==='Save changes')!.trigger('click')
+  expect((nameInput(wrapper).element as HTMLInputElement).value).toBe('Local draft')
+  await saveButton(wrapper).trigger('click')
   expect(wrapper.emitted('save')?.[0][0]).toMatchObject({title:'Local draft',expected_revision:7})
  })
  it('refreshes a pristine form to the committed revision',async()=>{
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()}})
+  await details(wrapper)
   const remote=snapshot();remote.title='Remote title';remote.expected_revision=8
   await wrapper.setProps({snapshot:remote})
-  expect((wrapper.findAll('input')[0].element as HTMLInputElement).value).toBe('Remote title')
-  await wrapper.findAll('input')[0].setValue('Next draft')
-  await wrapper.findAll('button').find(b=>b.text()==='Save changes')!.trigger('click')
+  expect((nameInput(wrapper).element as HTMLInputElement).value).toBe('Remote title')
+  await nameInput(wrapper).setValue('Next draft')
+  await saveButton(wrapper).trigger('click')
   expect(wrapper.emitted('save')?.[0][0]).toMatchObject({title:'Next draft',expected_revision:8})
  })
  it('accepts its committed revision when transport reorders configuration keys',async()=>{
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()}})
-  await wrapper.findAll('input')[0].setValue('Saved title')
-  await wrapper.findAll('button').find(b=>b.text()==='Save changes')!.trigger('click')
+  await details(wrapper)
+  await nameInput(wrapper).setValue('Saved title')
+  await saveButton(wrapper).trigger('click')
   const committed=snapshot();committed.title='Saved title';committed.expected_revision=8
   const config=committed.config!
-  committed.config={tools:config.tools,retrieval:config.retrieval,workflow:config.workflow,fields:config.fields}
+  committed.config={shared_context:config.shared_context,tags:config.tags,tools:config.tools,retrieval:config.retrieval,workflow:config.workflow,fields:config.fields}
   await wrapper.setProps({snapshot:committed})
-  const save=wrapper.findAll('button').find(b=>b.text()==='Save changes')!
+  const save=saveButton(wrapper)
   expect(save.attributes('disabled')).toBeDefined()
-  await wrapper.findAll('input')[0].setValue('Next title')
+  await nameInput(wrapper).setValue('Next title')
   await save.trigger('click')
   expect(wrapper.emitted('save')?.at(-1)?.[0]).toMatchObject({title:'Next title',expected_revision:8})
  })
@@ -82,9 +90,22 @@ describe('Docscout manage surface',()=>{
  it('edits conditional enum and list field controls',async()=>{
   const value=snapshot();value.config!.fields=[{...newField(),name:'status'}]
   const wrapper=mount(DocscoutPage,{props:{snapshot:value}})
-  await wrapper.get('select[aria-label="Field 1 type"]').setValue('enum')
-  expect(wrapper.text()).toContain('Enum values')
-  await wrapper.get('select[aria-label="Field 1 type"]').setValue('list')
-  expect(wrapper.text()).toContain('List item type');expect(wrapper.text()).not.toContain('Enum values')
+  await wrapper.get('.field-item').trigger('click')
+  await wrapper.get('select[aria-label="Field type"]').setValue('enum')
+  expect(wrapper.text()).toContain('Allowed values')
+  await wrapper.get('select[aria-label="Field type"]').setValue('list')
+  expect(wrapper.text()).toContain('Item type');expect(wrapper.text()).not.toContain('Allowed values')
+ })
+ it('shows deep fields under Deep analysis and field hints under Prefetch',async()=>{
+  const value=snapshot();value.config!.fields=[{...newField(),name:'terms',strategy:'deep',search_hints:'payment terms'}]
+  const wrapper=mount(DocscoutPage,{props:{snapshot:value}})
+  const nodes=wrapper.findAll('.node')
+  expect(nodes.find(n=>n.text().includes('Deep analysis'))!.text()).toContain('terms')
+  expect(nodes.find(n=>n.text().includes('Prefetch'))!.text()).toContain('1 field hint')
+ })
+ it('records the per-step run trace on the flow',()=>{
+  const state=emptyEngine();state.result={run_id:'run',upload_id:'upload',config_revision:7,duration_ms:2000,tokens:300,fields:[],trace:[{kind:'scout',status:'completed',scope:'chunk',duration_ms:2000,input_tokens:250,output_tokens:50,queries:['a','b']}]}
+  const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot(),engine:state}})
+  expect(wrapper.findAll('.node').find(n=>n.text().includes('Scout loop'))!.get('.trace-line').text()).toContain('2.0s · 300 tokens · 2 queries')
  })
 })

@@ -78,6 +78,12 @@
           "evidence_required": {
             "type": "boolean",
             "default": true
+          },
+          "chunks": {
+            "type": "integer",
+            "default": 5,
+            "minimum": 1,
+            "maximum": 1000
           }
         },
         "required": [
@@ -91,7 +97,8 @@
           "validation_hints",
           "expected_format",
           "strategy",
-          "evidence_required"
+          "evidence_required",
+          "chunks"
         ],
         "default": {
           "name": "",
@@ -104,7 +111,8 @@
           "validation_hints": "",
           "expected_format": "",
           "strategy": "standard",
-          "evidence_required": true
+          "evidence_required": true,
+          "chunks": 5
         }
       },
       "maxItems": 100
@@ -195,8 +203,31 @@
                   "queries": {
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "minLength": 1
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "query": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 4000
+                        },
+                        "chunks": {
+                          "type": "integer",
+                          "default": 5,
+                          "minimum": 1,
+                          "maximum": 1000
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "query",
+                        "chunks"
+                      ]
                     },
                     "maxItems": 100
                   }
@@ -246,13 +277,13 @@
                 "properties": {
                   "max_iterations": {
                     "type": "integer",
-                    "default": 4,
-                    "minimum": 1,
+                    "default": 0,
+                    "minimum": 0,
                     "maximum": 30
                   },
                   "target_confidence": {
                     "type": "number",
-                    "default": 0.9,
+                    "default": 0.7,
                     "minimum": 0,
                     "maximum": 1
                   },
@@ -265,13 +296,20 @@
                   "drop_noise": {
                     "type": "boolean",
                     "default": true
+                  },
+                  "max_tokens": {
+                    "type": "integer",
+                    "default": 4096,
+                    "minimum": 256,
+                    "maximum": 64000
                   }
                 },
                 "required": [
                   "max_iterations",
                   "target_confidence",
                   "max_extra_queries",
-                  "drop_noise"
+                  "drop_noise",
+                  "max_tokens"
                 ]
               }
             },
@@ -319,10 +357,58 @@
                     "default": 4,
                     "minimum": 1,
                     "maximum": 20
+                  },
+                  "query_model": {
+                    "type": "string",
+                    "minLength": 1,
+                    "default": "class:fast"
+                  },
+                  "max_queries": {
+                    "type": "integer",
+                    "default": 5,
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "chunks_per_query": {
+                    "type": "integer",
+                    "default": 50,
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "chunk_cap": {
+                    "type": "integer",
+                    "default": 100,
+                    "minimum": 1,
+                    "maximum": 10000
+                  },
+                  "min_similarity": {
+                    "type": "number",
+                    "default": 0.2,
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "query_temperature": {
+                    "type": "number",
+                    "default": 0.2,
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "analysis_temperature": {
+                    "type": "number",
+                    "default": 0.2,
+                    "minimum": 0,
+                    "maximum": 2
                   }
                 },
                 "required": [
-                  "parallel_fields"
+                  "parallel_fields",
+                  "query_model",
+                  "max_queries",
+                  "chunks_per_query",
+                  "chunk_cap",
+                  "min_similarity",
+                  "query_temperature",
+                  "analysis_temperature"
                 ]
               }
             },
@@ -345,6 +431,7 @@
               },
               "enabled": {
                 "type": "boolean",
+                "const": true,
                 "default": true
               },
               "scope": {
@@ -370,10 +457,15 @@
                     "minimum": 256,
                     "maximum": 64000,
                     "default": 4096
+                  },
+                  "structured_output": {
+                    "type": "boolean",
+                    "default": true
                   }
                 },
                 "required": [
-                  "max_output_tokens"
+                  "max_output_tokens",
+                  "structured_output"
                 ]
               }
             },
@@ -506,39 +598,42 @@
       ]
     },
     "tools": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "keyword_search": {
-          "type": "boolean",
-          "default": true
-        },
-        "semantic_search": {
-          "type": "boolean",
-          "default": true
-        },
-        "read_section": {
-          "type": "boolean",
-          "default": true
-        },
-        "read_outline": {
-          "type": "boolean",
-          "default": true
-        }
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "enum": [
+          "kickside.docscout.tools:keyword_search",
+          "kickside.docscout.tools:semantic_search",
+          "kickside.docscout.tools:read_section",
+          "kickside.docscout.tools:read_outline"
+        ]
       },
-      "required": [
-        "keyword_search",
-        "semantic_search",
-        "read_section",
-        "read_outline"
-      ]
+      "uniqueItems": true,
+      "maxItems": 100
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      },
+      "uniqueItems": true,
+      "maxItems": 50
+    },
+    "shared_context": {
+      "type": "boolean",
+      "default": true
     }
   },
   "required": [
     "fields",
     "workflow",
     "retrieval",
-    "tools"
+    "tools",
+    "tags",
+    "shared_context"
   ],
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0",
@@ -547,7 +642,7 @@
     "workflow": [
       {
         "kind": "map",
-        "enabled": true,
+        "enabled": false,
         "scope": "section",
         "model": "class:fast",
         "options": {
@@ -568,10 +663,11 @@
         "scope": "chunk",
         "model": "class:fast",
         "options": {
-          "max_iterations": 4,
-          "target_confidence": 0.9,
+          "max_iterations": 0,
+          "target_confidence": 0.7,
           "max_extra_queries": 3,
-          "drop_noise": true
+          "drop_noise": true,
+          "max_tokens": 4096
         }
       },
       {
@@ -580,7 +676,14 @@
         "scope": "section",
         "model": "class:fast",
         "options": {
-          "parallel_fields": 4
+          "parallel_fields": 4,
+          "query_model": "class:fast",
+          "max_queries": 5,
+          "chunks_per_query": 50,
+          "chunk_cap": 100,
+          "min_similarity": 0.2,
+          "query_temperature": 0.2,
+          "analysis_temperature": 0.2
         }
       },
       {
@@ -589,12 +692,13 @@
         "scope": "chunk",
         "model": "class:premium",
         "options": {
-          "max_output_tokens": 4096
+          "max_output_tokens": 4096,
+          "structured_output": true
         }
       },
       {
         "kind": "verify",
-        "enabled": true,
+        "enabled": false,
         "scope": "chunk",
         "model": "class:fast",
         "options": {
@@ -613,11 +717,13 @@
       "highlighter_model": "class:fast",
       "embedding_model": "class:embed"
     },
-    "tools": {
-      "keyword_search": true,
-      "semantic_search": true,
-      "read_section": true,
-      "read_outline": true
-    }
+    "tools": [
+      "kickside.docscout.tools:keyword_search",
+      "kickside.docscout.tools:semantic_search",
+      "kickside.docscout.tools:read_section",
+      "kickside.docscout.tools:read_outline"
+    ],
+    "tags": [],
+    "shared_context": true
   }
 }

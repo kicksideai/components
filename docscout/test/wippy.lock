@@ -20,15 +20,15 @@ modules:
     - name: kickside/docscout
       version: 0.0.0
     - name: kickside/execution
-      version: 0.0.0
+      version: 0.2.7
     - name: kickside/jobs
-      version: 0.0.0
+      version: 0.1.61
     - name: kickside/realtime
       version: 0.0.0
     - name: kickside/realtime-dispatch
       version: 0.0.0
     - name: kickside/security
-      version: 0.0.0
+      version: 0.2.13
     - name: kickside/settings
       version: 0.0.0
     - name: kickside/uploads

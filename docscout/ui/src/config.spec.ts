@@ -17,3 +17,20 @@ describe('Extractor configuration',()=>{
   config.fields=[];config.retrieval.overlap=config.retrieval.chunk_size;expect(configError(config)).toContain('Overlap')
  })
 })
+
+describe('Complete flow configuration',()=>{
+ it('stores the v1 defaults and query records',()=>{
+  const c=newConfig()
+  expect(c.tags).toEqual([])
+  expect(c.shared_context).toBe(true)
+  expect(newField().chunks).toBe(5)
+  expect(c.workflow.find(s=>s.kind==='scout')?.options).toMatchObject({max_iterations:0,target_confidence:.7,max_extra_queries:3,max_tokens:4096})
+  expect(c.workflow.find(s=>s.kind==='extract')?.options.structured_output).toBe(true)
+  expect(c.workflow.find(s=>s.kind==='deep')?.options).toMatchObject({query_model:'class:fast',max_queries:5,chunks_per_query:50,chunk_cap:100,min_similarity:.2,query_temperature:.2,analysis_temperature:.2})
+  expect(c.tools.every(id=>id.startsWith('kickside.docscout.tools:'))).toBe(true)
+ })
+ it('keeps extraction fixed and verification after extraction',()=>{
+  const c=newConfig();moveStep(c,4,-1);expect(c.workflow[4].kind).toBe('extract')
+  moveStep(c,5,-1);expect(c.workflow[5].kind).toBe('verify')
+ })
+})
