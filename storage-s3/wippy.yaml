@@ -41,6 +41,7 @@ exclude:
 - src/**/*.spec.tsx
 - ui/src/**/*.spec.ts
 - ui/src/**/*.spec.tsx
+- ui/test/**
 - tests/**
 - test-support/**
 - app.**:**

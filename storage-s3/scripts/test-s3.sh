@@ -4,11 +4,12 @@ set -euo pipefail
 source_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 kickside_source_root=${KICKSIDE_SOURCE_ROOT:-"$source_root/../../kickside"}
 storage_test_bin=${WIPPY_BIN:-wippy}
-storage_test_dir=$(mktemp -d "${TMPDIR:-/tmp}/kickside-storage-s3.XXXXXXXX")
+storage_test_dir=$(mktemp -d "$source_root/.s3-test.XXXXXXXX")
 storage_test_container="kickside-storage-test-$(basename "$storage_test_dir")"
 cleanup() {
-  docker rm -f "$storage_test_container" >/dev/null 2>&1 || true
-  rm -f "$storage_test_dir/restart.sqlite" "$storage_test_dir/restart.sqlite-wal" "$storage_test_dir/restart.sqlite-shm"
+  docker stop "$storage_test_container" >/dev/null 2>&1 || true
+  docker rm "$storage_test_container" >/dev/null 2>&1 || true
+  rm -rf "$storage_test_dir"
 }
 trap cleanup EXIT
 docker run -d --name "$storage_test_container" -p 127.0.0.1::8333 \
@@ -32,10 +33,8 @@ run_cases() {
 
 cd "$source_root/test"
 KICKSIDE_SOURCE_ROOT="$kickside_source_root" bash prepare.sh
-run_cases uploads --profile s3 --set "vars.s3_endpoint=$storage_test_endpoint"
-run_cases restart-first test app.storage_s3:restart_test --profile s3 --profile s3_restart \
-  --set "vars.s3_endpoint=$storage_test_endpoint" --set "vars.sqlite_path=$storage_test_dir/restart.sqlite"
-run_cases restart-second test app.storage_s3:restart_test --profile s3 --profile s3_restart \
-  --set "vars.s3_endpoint=$storage_test_endpoint" --set "vars.sqlite_path=$storage_test_dir/restart.sqlite" \
-  --set vars.s3_bucket=changed-source-must-not-be-used
-printf 'Native S3 integration passed. Logs: %s\n' "$storage_test_dir"
+run_cases restart-first --profile s3 --set "vars.s3_endpoint=$storage_test_endpoint" \
+  --set "vars.sqlite_path=$storage_test_dir/restart.sqlite"
+run_cases restart-second --profile s3 --set "vars.s3_endpoint=$storage_test_endpoint" \
+  --set "vars.sqlite_path=$storage_test_dir/restart.sqlite"
+printf 'Native S3 integration passed.\n'

@@ -1,23 +1,6 @@
 version: '1.0'
 namespace: kickside.storage_s3.security
 entries:
-- name: cloud
-  kind: security.policy
-  groups: []
-  policy:
-    resources:
-    - kickside.storage_s3.runtime:*
-    actions:
-    - cloudstorage.get
-    effect: allow
-- name: filesystem
-  kind: security.policy
-  groups: []
-  policy:
-    resources: ''
-    actions:
-    - fs.get
-    effect: allow
 - name: runtime
   kind: security.policy
   meta:
@@ -25,9 +8,14 @@ entries:
   groups: []
   policy:
     resources:
-    - kickside.storage_s3:*
-    - kickside.storage_s3.*:*
-    - kickside.uploads.env:database_resource
+    - kickside.storage_s3:resources
+    - kickside.storage_s3:setting.policy
+    - kickside.storage_s3:stage
+    - kickside.storage_s3.policy:policy
+    - kickside.storage_s3.policy:validate_policy
+    - kickside.storage_s3.security:runtime
+    - kickside.storage_s3.storage:copy
+    - kickside.storage_s3.storage:stage
     actions:
     - registry.get
     - registry.find
@@ -36,9 +24,7 @@ entries:
     - contract.call
     - funcs.call
     - funcs.security
-    - fs.get
     - cloudstorage.get
-    - env.get
     effect: allow
 - name: module_access
   kind: security.policy
@@ -46,10 +32,6 @@ entries:
     title: S3 storage
     surface: kickside.storage_s3
     intent: module_access
-    includes:
-    - kickside.storage_s3.security:runtime
-    - kickside.storage_s3.security:cloud
-    - kickside.storage_s3.security:filesystem
   groups: []
   policy:
     resources:
@@ -67,8 +49,7 @@ entries:
   default: kickside.security.groups:members
   meta:
     value_kind: security.scope
-    description: Members allowed to discover and use the installed S3 extension; configuration handlers independently
-      require Settings administration.
+    description: Members allowed to use the installed S3 extension; configuration handlers independently require Settings administration.
   targets:
   - entry: kickside.storage_s3.security:module_access
     path: .groups +=

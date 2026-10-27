@@ -45,6 +45,8 @@
   },
   "scripts": {
     "build": "vite build",
-    "dev": "vite build --watch"
+    "dev": "vite build --watch",
+    "test": "node --test test/*.test.mjs",
+    "typecheck": "vue-tsc --noEmit"
   }
 }
