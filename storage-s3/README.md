@@ -4,6 +4,19 @@
 blobs to private native S3 storage. Install it through **System → Modules**.
 Its Settings component, policy and authenticated endpoints belong to this module.
 
+## Compatibility and release status
+
+This branch's packed-path implementation is unreleased and requires
+`kickside/uploads >=0.3.2`, which provides packed paths, relocation cleanup and
+storage-aware delivery. The dependency minimum prevents an update from retaining
+an older incompatible Uploads package. Qualify the exact module combination
+before use.
+
+Do not upgrade an installation containing storage-s3 0.1.0 placements with this
+implementation: it neither reads nor migrates them. Keeping their tables does
+not keep their content readable. An existing-install migration or read-compatible
+upgrade path remains required before releasing this replacement.
+
 ## Configuration
 
 The installation plan binds these host requirements:
@@ -17,8 +30,8 @@ The installation plan binds these host requirements:
 
 The S3 entry uses a host-owned `config.aws` credential provider. Native endpoints
 support S3-compatible services. Credentials stay outside settings and content
-references. The module depends on Uploads and Settings with `'*'` declarations;
-install an Uploads release supporting packed paths and stage relocation first.
+references. Uploads must satisfy the minimum above; Settings remains a wildcard
+dependency. Resolve the complete module combination before applying an update.
 
 Open **Settings → Content → S3 storage**, choose a destination and relative prefix,
 run **Test storage**, then save. The probe uploads an object, checks its size and

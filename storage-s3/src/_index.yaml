@@ -9,7 +9,7 @@ entries:
 - name: dep.kickside.uploads
   kind: ns.dependency
   component: kickside/uploads
-  version: '*'
+  version: '>=0.3.2'
   parameters:
   - name: kickside.uploads:storage_runtime_policy
     value: kickside.storage_s3.security:runtime
