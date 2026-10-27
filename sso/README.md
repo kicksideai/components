@@ -6,6 +6,8 @@ of the existing `app_users` / token-store auth, without replacing password login
 
 ## Compatibility
 
+This branch contains the unreleased resolver-permission update described below.
+
 Requires `kickside/users >=0.2.9`, which provides the
 `kickside.users.security:resolve_scope_groups` policy used by the login callback.
 Older Users packages are rejected during dependency resolution instead of
