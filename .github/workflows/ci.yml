@@ -256,6 +256,26 @@ jobs:
             make -C storage-s3 test-s3
             version=$(jq -r '."storage-s3" // "0.1.0"' .release-please-manifest.json)
             wippy publish --config storage-s3 --version "$version" --dry-run --create --module-visibility public --module-type plugin
+        - module: docscout
+          engine: sqlite
+          runtime: 0.3.54a
+          commands: |
+            set -euo pipefail
+            export TMPDIR="$PWD/.scratch"
+            mkdir -p "$TMPDIR"
+            make -C docscout lockrefresh ui-install build typecheck test-ui lint test
+        - module: docscout
+          engine: postgres
+          runtime: 0.3.54a
+          commands: |
+            set -euo pipefail
+            export TMPDIR="$PWD/.scratch"
+            mkdir -p "$TMPDIR"
+            make -C docscout lockrefresh ui-install build typecheck test-ui lint
+            database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_docscout"
+            createdb "$database"
+            trap 'dropdb "$database"' EXIT
+            make -C docscout test-pg WIPPY_ARGS="--set vars.pg_database=$database"
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -278,7 +298,7 @@ jobs:
         node-version: '22'
     - uses: kicksideai/.github/actions/setup-wippy@5401fa65bed7d8648125957520e94206ed1ffd0b
       with:
-        version: 0.3.47a
+        version: ${{ matrix.runtime || '0.3.47a' }}
         hub-url: https://hub.wippy.ai
     - name: Check out converters module sources
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

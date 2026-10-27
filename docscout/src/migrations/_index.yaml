@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.migrations
+entries:
+- name: 01_extractor_data
+  kind: function.lua
+  meta:
+    type: migration
+    timestamp: '2026-10-27T12:00:00Z'
+  source: file://01_extractor_data.lua
+  imports:
+    migration: wippy.migration:migration
+  method: migrate

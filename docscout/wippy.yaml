@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: docscout
+description: Component-owned document extractor configuration and evidence surfaces.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+embed:
+- kickside.docscout:ui_fs
+exclude:
+- test/**
+- test:**
+- ui/**
+- ui:**
+- wippy.lock
+- .wippy/**
+- build-inputs/**
+- build-inputs:**
+exclude_meta:
+  type:
+  - test

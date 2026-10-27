@@ -1,0 +1,200 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: Docscout
+    description: Configure document extractors and inspect evidence, evaluations,
+      and runs.
+  readme: file://README.md
+- name: config_schema
+  kind: registry.entry
+  schema_json: file://config.schema.json
+- name: db_config
+  kind: registry.entry
+  meta: {}
+- name: dep.kickside.component
+  kind: ns.dependency
+  component: kickside/component
+  version: '*'
+- name: dep.kickside.contract
+  kind: ns.dependency
+  component: kickside/contract
+  version: '*'
+- name: dep.kickside.settings
+  kind: ns.dependency
+  component: kickside/settings
+  version: '*'
+- name: dep.kickside.blocks
+  kind: ns.dependency
+  component: kickside/blocks
+  version: '*'
+- name: dep.kickside.agents
+  kind: ns.dependency
+  component: kickside/agents
+  version: '*'
+- name: dep.kickside.widgets
+  kind: ns.dependency
+  component: kickside/widgets
+  version: '*'
+- name: dep.kickside.uploads
+  kind: ns.dependency
+  component: kickside/uploads
+  version: '*'
+- name: dep.wippy.migration
+  kind: ns.dependency
+  component: wippy/migration
+  version: '*'
+- name: target_db
+  kind: ns.requirement
+  meta:
+    value_kind: db.sql
+  targets:
+  - entry: kickside.docscout:db_config
+    path: .meta.db_id
+  - entry: kickside.docscout.migrations:01_extractor_data
+    path: .meta.target_db
+- name: api_router
+  kind: ns.requirement
+  meta:
+    value_kind: http.router
+  targets:
+  - entry: kickside.docscout.api:create.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:get.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:update.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:delete.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:list.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:add_case.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:delete_case.endpoint
+    path: .meta.router
+- name: ui_server
+  kind: ns.requirement
+  meta:
+    value_kind: http.service
+  targets:
+  - entry: kickside.docscout:ui_static
+    path: .meta.server
+- name: config
+  kind: library.lua
+  source: file://config.lua
+  modules:
+  - json
+  - registry
+- name: repository
+  kind: library.lua
+  source: file://repository.lua
+  modules:
+  - sql
+  - registry
+  - json
+  - uuid
+  - time
+  imports:
+    component: kickside.component:component
+- name: extractors
+  kind: library.lua
+  source: file://extractors.lua
+  modules:
+  - contract
+  imports:
+    component: kickside.component:component
+    config: kickside.docscout:config
+    repository: kickside.docscout:repository
+- name: status
+  kind: function.lua
+  source: file://binding.lua
+  method: status
+  modules:
+  - ctx
+  imports:
+    repository: kickside.docscout:repository
+- name: teardown
+  kind: function.lua
+  source: file://binding.lua
+  method: delete
+  modules:
+  - ctx
+  imports:
+    repository: kickside.docscout:repository
+- name: extractor
+  kind: contract.binding
+  meta:
+    title: Docscout
+    icon: tabler:file-search
+    class:
+    - kickside.docscout
+    component:
+      create:
+        view: kickside.docscout:create_view
+      manage:
+        view: kickside.docscout:manage_view
+  contracts:
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.docscout:status
+  - contract: kickside.contract:deletable
+    context_required:
+    - component_id
+    methods:
+      delete: kickside.docscout:teardown
+- name: setting.retention
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.docscout
+  key: retention
+  value_type: duration
+  default: 2h
+  title: Document and run retention
+  description: How long processed documents and run history remain available.
+  scope: global
+  editable: true
+  visible: true
+- name: settings_block
+  kind: registry.entry
+  meta:
+    type: kickside.settings:block
+  key: docscout
+  title: Docscout
+  namespace: kickside.docscout
+  group: Content
+  icon: tabler:file-search
+- name: ui_fs
+  kind: fs.directory
+  directory: ./static
+- name: ui_static
+  kind: http.static
+  path: /kickside-docscout
+  fs: kickside.docscout:ui_fs
+  options:
+    cache: no-cache
+- name: create_view
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Docscout
+    announced: true
+    auto_register: false
+    tag_name: kickside-docscout-create
+    base_path: kickside-docscout
+    entry_point: create.js
+    icon: tabler:file-search
+- name: manage_view
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Docscout
+    announced: true
+    auto_register: false
+    tag_name: kickside-docscout
+    base_path: kickside-docscout
+    entry_point: index.js
+    icon: tabler:file-search

@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.security
+entries:
+- name: module_access
+  kind: security.policy
+  meta:
+    title: Docscout
+    surface: kickside.docscout
+    intent: module_access
+    includes:
+    - kickside.docscout.security:module_runtime
+    - kickside.docscout.security:member_endpoints
+  groups: []
+  policy:
+    resources:
+    - kickside.docscout:*
+    - kickside.docscout.api:*
+    - kickside.docscout.traits:*
+    actions:
+    - registry.get
+    - registry.find
+    effect: allow
+- name: module_runtime
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.docscout:*
+    - kickside.docscout.api:*
+    - kickside.docscout.traits:*
+    actions:
+    - contract.get
+    - contract.open
+    - contract.call
+    - contract.implementations
+    - contract.security
+    - funcs.call
+    - funcs.security
+    effect: allow
+- name: member_endpoints
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.docscout.api:create.endpoint
+    - kickside.docscout.api:get.endpoint
+    - kickside.docscout.api:update.endpoint
+    - kickside.docscout.api:delete.endpoint
+    - kickside.docscout.api:list.endpoint
+    - kickside.docscout:create_view
+    - kickside.docscout:manage_view
+    - kickside.docscout:ui_static
+    - kickside.docscout.api:add_case.endpoint
+    - kickside.docscout.api:delete_case.endpoint
+    actions:
+    - access
+    effect: allow
+- name: user_security_scope
+  kind: ns.requirement
+  meta:
+    value_kind: security.scope
+  default: kickside.security.groups:members
+  targets:
+  - entry: kickside.docscout.security:module_access
+    path: .groups +=
+  - entry: kickside.docscout.security:module_runtime
+    path: .groups +=
+  - entry: kickside.docscout.security:member_endpoints
+    path: .groups +=

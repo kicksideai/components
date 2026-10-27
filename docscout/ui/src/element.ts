@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+import { WippyVueElement } from '@wippy-fe/webcomponent-vue'
+import type { WippyElementConfig, WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
+import { PrimeVuePlugin } from '@wippy-fe/theme/primevue-plugin'
+import type { Component } from 'vue'
+import stylesText from './styles.css?inline'
+
+export function docscoutElement(root: Component, propsSchema: WippyPropsSchema) {
+  return class extends WippyVueElement {
+    static get wippyConfig(): WippyElementConfig {
+      return { propsSchema, inlineCss: stylesText }
+    }
+
+    static get vueConfig() {
+      return { rootComponent: root, plugins: [PrimeVuePlugin] }
+    }
+  }
+}

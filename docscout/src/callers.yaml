@@ -1,0 +1,687 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout
+entries:
+- name: extraction
+  kind: contract.definition
+  meta:
+    title: Docscout extraction
+    comment: The single extraction entry point for people, agents, evaluations, and Workflows.
+  methods:
+  - name: run
+    description: Read an accessible upload through the content-provider markdown artifact and extract configured
+      fields with evidence under the caller identity.
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type": "object", "additionalProperties": false, "properties": {"extractor_id": {"type": "string",
+        "minLength": 1}, "upload_id": {"type": "string", "minLength": 1}, "overrides": {"type": "object", "additionalProperties":
+        false, "properties": {"fields": {"type": "array", "items": {"type": "object", "additionalProperties": false,
+        "properties": {"name": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$", "maxLength": 80}, "type":
+        {"type": "string", "default": "text", "enum": ["text", "number", "boolean", "date", "enum", "list", "object"]},
+        "description": {"type": "string", "default": "", "maxLength": 4000}, "enum_values": {"type": "array", "items":
+        {"type": "string", "minLength": 1}, "uniqueItems": true, "maxItems": 100}, "item_type": {"type": "string",
+        "default": "text", "enum": ["text", "number", "boolean", "date", "object"]}, "required": {"type": "boolean",
+        "default": false}, "search_hints": {"type": "string", "default": ""}, "validation_hints": {"type": "string",
+        "default": ""}, "expected_format": {"type": "string", "default": ""}, "strategy": {"type": "string", "default":
+        "standard", "enum": ["standard", "deep"]}, "evidence_required": {"type": "boolean", "default": true}}, "required":
+        ["name", "type", "description", "enum_values", "item_type", "required", "search_hints", "validation_hints",
+        "expected_format", "strategy", "evidence_required"]}, "maxItems": 100}, "workflow": {"type": "array", "items":
+        {"oneOf": [{"type": "object", "additionalProperties": false, "properties": {"kind": {"type": "string", "default":
+        "map", "const": "map"}, "enabled": {"type": "boolean", "default": true}, "scope": {"type": "string", "default":
+        "section", "enum": ["outline", "section", "chunk"]}, "model": {"type": "string", "default": "class:fast",
+        "minLength": 1}, "options": {"type": "object", "additionalProperties": false, "properties": {"outline_mode":
+        {"type": "string", "default": "find_or_build", "enum": ["find_or_build", "build"]}}, "required": ["outline_mode"]}},
+        "required": ["kind", "enabled", "scope", "model", "options"]}, {"type": "object", "additionalProperties":
+        false, "properties": {"kind": {"type": "string", "default": "prefetch", "const": "prefetch"}, "enabled":
+        {"type": "boolean", "default": true}, "scope": {"type": "string", "default": "section", "enum": ["outline",
+        "section", "chunk"]}, "options": {"type": "object", "additionalProperties": false, "properties": {"queries":
+        {"type": "array", "items": {"type": "string", "minLength": 1}, "maxItems": 100}}, "required": ["queries"]}},
+        "required": ["kind", "enabled", "scope", "options"]}, {"type": "object", "additionalProperties": false,
+        "properties": {"kind": {"type": "string", "default": "scout", "const": "scout"}, "enabled": {"type": "boolean",
+        "default": true}, "scope": {"type": "string", "default": "chunk", "enum": ["outline", "section", "chunk"]},
+        "model": {"type": "string", "default": "class:fast", "minLength": 1}, "options": {"type": "object", "additionalProperties":
+        false, "properties": {"max_iterations": {"type": "integer", "default": 4, "minimum": 1, "maximum": 30},
+        "target_confidence": {"type": "number", "default": 0.9, "minimum": 0, "maximum": 1}, "max_extra_queries":
+        {"type": "integer", "default": 3, "minimum": 0, "maximum": 20}, "drop_noise": {"type": "boolean", "default":
+        true}}, "required": ["max_iterations", "target_confidence", "max_extra_queries", "drop_noise"]}}, "required":
+        ["kind", "enabled", "scope", "model", "options"]}, {"type": "object", "additionalProperties": false, "properties":
+        {"kind": {"type": "string", "default": "deep", "const": "deep"}, "enabled": {"type": "boolean", "default":
+        true}, "scope": {"type": "string", "default": "section", "enum": ["outline", "section", "chunk"]}, "model":
+        {"type": "string", "default": "class:fast", "minLength": 1}, "options": {"type": "object", "additionalProperties":
+        false, "properties": {"parallel_fields": {"type": "integer", "default": 4, "minimum": 1, "maximum": 20}},
+        "required": ["parallel_fields"]}}, "required": ["kind", "enabled", "scope", "model", "options"]}, {"type":
+        "object", "additionalProperties": false, "properties": {"kind": {"type": "string", "default": "extract",
+        "const": "extract"}, "enabled": {"type": "boolean", "default": true}, "scope": {"type": "string", "default":
+        "chunk", "enum": ["outline", "section", "chunk"]}, "model": {"type": "string", "default": "class:premium",
+        "minLength": 1}, "options": {"type": "object", "additionalProperties": false, "properties": {"max_output_tokens":
+        {"type": "integer", "minimum": 256, "maximum": 64000, "default": 4096}}, "required": ["max_output_tokens"]}},
+        "required": ["kind", "enabled", "scope", "model", "options"]}, {"type": "object", "additionalProperties":
+        false, "properties": {"kind": {"type": "string", "default": "verify", "const": "verify"}, "enabled": {"type":
+        "boolean", "default": true}, "scope": {"type": "string", "default": "chunk", "enum": ["outline", "section",
+        "chunk"]}, "model": {"type": "string", "default": "class:fast", "minLength": 1}, "options": {"type": "object",
+        "additionalProperties": false, "properties": {"require_all_values": {"type": "boolean", "default": true}},
+        "required": ["require_all_values"]}}, "required": ["kind", "enabled", "scope", "model", "options"]}]}, "minItems":
+        6, "maxItems": 6}, "retrieval": {"type": "object", "additionalProperties": false, "properties": {"chunk_size":
+        {"type": "integer", "default": 1200, "minimum": 100, "maximum": 16000}, "overlap": {"type": "integer", "default":
+        150, "minimum": 0, "maximum": 4000}, "split_headings": {"type": "boolean", "default": true}, "search_mode":
+        {"type": "string", "default": "hybrid", "enum": ["keyword", "semantic", "hybrid"]}, "top_results": {"type":
+        "integer", "default": 6, "minimum": 1, "maximum": 100}, "contextual_embeddings": {"type": "boolean", "default":
+        true}, "highlighter": {"type": "boolean", "default": false}, "highlighter_model": {"type": "string", "default":
+        "class:fast", "minLength": 1}, "embedding_model": {"type": "string", "default": "class:embed", "minLength":
+        1}}, "required": ["chunk_size", "overlap", "split_headings", "search_mode", "top_results", "contextual_embeddings",
+        "highlighter", "highlighter_model", "embedding_model"]}, "tools": {"type": "object", "additionalProperties":
+        false, "properties": {"keyword_search": {"type": "boolean", "default": true}, "semantic_search": {"type":
+        "boolean", "default": true}, "read_section": {"type": "boolean", "default": true}, "read_outline": {"type":
+        "boolean", "default": true}}, "required": ["keyword_search", "semantic_search", "read_section", "read_outline"]}},
+        "required": []}}, "required": ["extractor_id", "upload_id"]}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type": "object", "additionalProperties": false, "properties": {"run_id": {"type": "string",
+        "minLength": 1}, "upload_id": {"type": "string", "minLength": 1}, "config_revision": {"type": "integer",
+        "minimum": 0}, "fields": {"type": "array", "items": {"type": "object", "additionalProperties": false, "properties":
+        {"name": {"type": "string", "minLength": 1}, "value": {"type": ["string", "number", "boolean", "array",
+        "object", "null"]}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "evidence": {"type": "array",
+        "items": {"type": "object", "additionalProperties": false, "properties": {"quote": {"type": "string", "minLength":
+        1}, "section": {"type": "string"}, "page": {"type": "integer", "minimum": 1}, "chunk_id": {"type": "string",
+        "minLength": 1}, "start_offset": {"type": "integer", "minimum": 0}, "end_offset": {"type": "integer", "minimum":
+        0}}, "required": ["quote", "section", "chunk_id"]}}, "verified": {"type": "boolean"}}, "required": ["name",
+        "value", "confidence", "evidence", "verified"]}}, "trace": {"type": "array", "items": {"type": "object",
+        "additionalProperties": false, "properties": {"kind": {"type": "string", "enum": ["map", "prefetch", "scout",
+        "deep", "extract", "verify"]}, "status": {"type": "string", "enum": ["running", "completed", "failed"]},
+        "scope": {"type": "string", "enum": ["outline", "section", "chunk"]}, "model": {"type": "string"}, "duration_ms":
+        {"type": "number", "minimum": 0}, "input_tokens": {"type": "integer", "minimum": 0}, "output_tokens": {"type":
+        "integer", "minimum": 0}, "cost": {"type": "number", "minimum": 0}, "queries": {"type": "array", "items":
+        {"type": "string"}}, "message": {"type": "string"}}, "required": ["kind", "status", "scope", "duration_ms",
+        "input_tokens", "output_tokens"]}}, "duration_ms": {"type": "number", "minimum": 0}, "tokens": {"type":
+        "integer", "minimum": 0}, "cost": {"type": "number", "minimum": 0}}, "required": ["run_id", "upload_id",
+        "config_revision", "fields", "trace", "duration_ms", "tokens"]}'
+- name: block.extract
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: false
+    title: Extract document fields
+    description: Extract fields using a Docscout component.
+  data:
+    block:
+      api_version: kickside.block/v1
+      input:
+        type: object
+        additionalProperties: false
+        properties:
+          upload_id: &id001
+            type: string
+            minLength: 1
+          overrides:
+            type: object
+            additionalProperties: false
+            properties:
+              fields:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    name:
+                      type: string
+                      pattern: ^[A-Za-z][A-Za-z0-9_]*$
+                      maxLength: 80
+                    type:
+                      type: string
+                      default: text
+                      enum:
+                      - text
+                      - number
+                      - boolean
+                      - date
+                      - enum
+                      - list
+                      - object
+                    description:
+                      type: string
+                      default: ''
+                      maxLength: 4000
+                    enum_values:
+                      type: array
+                      items:
+                        type: string
+                        minLength: 1
+                      uniqueItems: true
+                      maxItems: 100
+                    item_type:
+                      type: string
+                      default: text
+                      enum:
+                      - text
+                      - number
+                      - boolean
+                      - date
+                      - object
+                    required:
+                      type: boolean
+                      default: false
+                    search_hints:
+                      type: string
+                      default: ''
+                    validation_hints:
+                      type: string
+                      default: ''
+                    expected_format:
+                      type: string
+                      default: ''
+                    strategy:
+                      type: string
+                      default: standard
+                      enum:
+                      - standard
+                      - deep
+                    evidence_required:
+                      type: boolean
+                      default: true
+                  required:
+                  - name
+                  - type
+                  - description
+                  - enum_values
+                  - item_type
+                  - required
+                  - search_hints
+                  - validation_hints
+                  - expected_format
+                  - strategy
+                  - evidence_required
+                maxItems: 100
+              workflow:
+                type: array
+                items:
+                  oneOf:
+                  - type: object
+                    additionalProperties: false
+                    properties:
+                      kind:
+                        type: string
+                        default: map
+                        const: map
+                      enabled:
+                        type: boolean
+                        default: true
+                      scope:
+                        type: string
+                        default: section
+                        enum:
+                        - outline
+                        - section
+                        - chunk
+                      model:
+                        type: string
+                        default: class:fast
+                        minLength: 1
+                      options:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          outline_mode:
+                            type: string
+                            default: find_or_build
+                            enum:
+                            - find_or_build
+                            - build
+                        required:
+                        - outline_mode
+                    required:
+                    - kind
+                    - enabled
+                    - scope
+                    - model
+                    - options
+                  - type: object
+                    additionalProperties: false
+                    properties:
+                      kind:
+                        type: string
+                        default: prefetch
+                        const: prefetch
+                      enabled:
+                        type: boolean
+                        default: true
+                      scope:
+                        type: string
+                        default: section
+                        enum:
+                        - outline
+                        - section
+                        - chunk
+                      options:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          queries:
+                            type: array
+                            items:
+                              type: string
+                              minLength: 1
+                            maxItems: 100
+                        required:
+                        - queries
+                    required:
+                    - kind
+                    - enabled
+                    - scope
+                    - options
+                  - type: object
+                    additionalProperties: false
+                    properties:
+                      kind:
+                        type: string
+                        default: scout
+                        const: scout
+                      enabled:
+                        type: boolean
+                        default: true
+                      scope:
+                        type: string
+                        default: chunk
+                        enum:
+                        - outline
+                        - section
+                        - chunk
+                      model:
+                        type: string
+                        default: class:fast
+                        minLength: 1
+                      options:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          max_iterations:
+                            type: integer
+                            default: 4
+                            minimum: 1
+                            maximum: 30
+                          target_confidence:
+                            type: number
+                            default: 0.9
+                            minimum: 0
+                            maximum: 1
+                          max_extra_queries:
+                            type: integer
+                            default: 3
+                            minimum: 0
+                            maximum: 20
+                          drop_noise:
+                            type: boolean
+                            default: true
+                        required:
+                        - max_iterations
+                        - target_confidence
+                        - max_extra_queries
+                        - drop_noise
+                    required:
+                    - kind
+                    - enabled
+                    - scope
+                    - model
+                    - options
+                  - type: object
+                    additionalProperties: false
+                    properties:
+                      kind:
+                        type: string
+                        default: deep
+                        const: deep
+                      enabled:
+                        type: boolean
+                        default: true
+                      scope:
+                        type: string
+                        default: section
+                        enum:
+                        - outline
+                        - section
+                        - chunk
+                      model:
+                        type: string
+                        default: class:fast
+                        minLength: 1
+                      options:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          parallel_fields:
+                            type: integer
+                            default: 4
+                            minimum: 1
+                            maximum: 20
+                        required:
+                        - parallel_fields
+                    required:
+                    - kind
+                    - enabled
+                    - scope
+                    - model
+                    - options
+                  - type: object
+                    additionalProperties: false
+                    properties:
+                      kind:
+                        type: string
+                        default: extract
+                        const: extract
+                      enabled:
+                        type: boolean
+                        default: true
+                      scope:
+                        type: string
+                        default: chunk
+                        enum:
+                        - outline
+                        - section
+                        - chunk
+                      model:
+                        type: string
+                        default: class:premium
+                        minLength: 1
+                      options:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          max_output_tokens:
+                            type: integer
+                            minimum: 256
+                            maximum: 64000
+                            default: 4096
+                        required:
+                        - max_output_tokens
+                    required:
+                    - kind
+                    - enabled
+                    - scope
+                    - model
+                    - options
+                  - type: object
+                    additionalProperties: false
+                    properties:
+                      kind:
+                        type: string
+                        default: verify
+                        const: verify
+                      enabled:
+                        type: boolean
+                        default: true
+                      scope:
+                        type: string
+                        default: chunk
+                        enum:
+                        - outline
+                        - section
+                        - chunk
+                      model:
+                        type: string
+                        default: class:fast
+                        minLength: 1
+                      options:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          require_all_values:
+                            type: boolean
+                            default: true
+                        required:
+                        - require_all_values
+                    required:
+                    - kind
+                    - enabled
+                    - scope
+                    - model
+                    - options
+                minItems: 6
+                maxItems: 6
+              retrieval:
+                type: object
+                additionalProperties: false
+                properties:
+                  chunk_size:
+                    type: integer
+                    default: 1200
+                    minimum: 100
+                    maximum: 16000
+                  overlap:
+                    type: integer
+                    default: 150
+                    minimum: 0
+                    maximum: 4000
+                  split_headings:
+                    type: boolean
+                    default: true
+                  search_mode:
+                    type: string
+                    default: hybrid
+                    enum:
+                    - keyword
+                    - semantic
+                    - hybrid
+                  top_results:
+                    type: integer
+                    default: 6
+                    minimum: 1
+                    maximum: 100
+                  contextual_embeddings:
+                    type: boolean
+                    default: true
+                  highlighter:
+                    type: boolean
+                    default: false
+                  highlighter_model:
+                    type: string
+                    default: class:fast
+                    minLength: 1
+                  embedding_model:
+                    type: string
+                    default: class:embed
+                    minLength: 1
+                required:
+                - chunk_size
+                - overlap
+                - split_headings
+                - search_mode
+                - top_results
+                - contextual_embeddings
+                - highlighter
+                - highlighter_model
+                - embedding_model
+              tools:
+                type: object
+                additionalProperties: false
+                properties:
+                  keyword_search:
+                    type: boolean
+                    default: true
+                  semantic_search:
+                    type: boolean
+                    default: true
+                  read_section:
+                    type: boolean
+                    default: true
+                  read_outline:
+                    type: boolean
+                    default: true
+                required:
+                - keyword_search
+                - semantic_search
+                - read_section
+                - read_outline
+            required: []
+        required:
+        - upload_id
+      config:
+        type: object
+        additionalProperties: false
+        properties:
+          extractor_id:
+            type: string
+            minLength: 1
+            title: Docscout
+            picker: wc-component-picker
+            thread_class: kickside.docscout
+        required:
+        - extractor_id
+      output:
+        type: object
+        additionalProperties: false
+        properties:
+          run_id: *id001
+          upload_id: *id001
+          config_revision:
+            type: integer
+            minimum: 0
+          fields:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              properties:
+                name: *id001
+                value:
+                  type:
+                  - string
+                  - number
+                  - boolean
+                  - array
+                  - object
+                  - 'null'
+                confidence:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                evidence:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      quote:
+                        type: string
+                        minLength: 1
+                      section:
+                        type: string
+                      page:
+                        type: integer
+                        minimum: 1
+                      chunk_id: *id001
+                      start_offset:
+                        type: integer
+                        minimum: 0
+                      end_offset:
+                        type: integer
+                        minimum: 0
+                    required:
+                    - quote
+                    - section
+                    - chunk_id
+                verified:
+                  type: boolean
+              required:
+              - name
+              - value
+              - confidence
+              - evidence
+              - verified
+          trace:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              properties:
+                kind:
+                  type: string
+                  enum:
+                  - map
+                  - prefetch
+                  - scout
+                  - deep
+                  - extract
+                  - verify
+                status:
+                  type: string
+                  enum:
+                  - running
+                  - completed
+                  - failed
+                scope:
+                  type: string
+                  enum:
+                  - outline
+                  - section
+                  - chunk
+                model:
+                  type: string
+                duration_ms:
+                  type: number
+                  minimum: 0
+                input_tokens:
+                  type: integer
+                  minimum: 0
+                output_tokens:
+                  type: integer
+                  minimum: 0
+                cost:
+                  type: number
+                  minimum: 0
+                queries:
+                  type: array
+                  items:
+                    type: string
+                message:
+                  type: string
+              required:
+              - kind
+              - status
+              - scope
+              - duration_ms
+              - input_tokens
+              - output_tokens
+          duration_ms:
+            type: number
+            minimum: 0
+          tokens:
+            type: integer
+            minimum: 0
+          cost:
+            type: number
+            minimum: 0
+        required:
+        - run_id
+        - upload_id
+        - config_revision
+        - fields
+        - trace
+        - duration_ms
+        - tokens
+      error:
+        type: object
+        additionalProperties: false
+        properties:
+          code:
+            type: string
+          message:
+            type: string
+          details:
+            type: object
+            additionalProperties: true
+        required:
+        - code
+        - message
+      ports:
+      - id: result
+        label: Fields
+        direction: out
+      - id: failed
+        label: Failed
+        direction: out
+      presentation:
+        category: Documents
+        icon: tabler:file-search
+        hue: blue
+      execution:
+        kind: function
+        function_id: kickside.docscout:run_block
