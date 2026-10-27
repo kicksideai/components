@@ -9,12 +9,12 @@ beforeEach(()=>localStorage.clear())
 describe('Builder panel',()=>{
  it('collapses to a rail and reopens on selection',async()=>{
   const w=build()
-  expect(w.find('.panel').exists()).toBe(true)
+  expect(w.find('.side-panel').exists()).toBe(true)
   await w.get('button[aria-label="Collapse panel"]').trigger('click')
-  expect(w.find('.panel').exists()).toBe(false);expect(w.find('.rail').exists()).toBe(true)
+  expect(w.find('.side-panel').exists()).toBe(false);expect(w.find('.rail').exists()).toBe(true)
   expect(localStorage.getItem('docscout.panel')).toBe('0')
   await w.get('.row-main').trigger('click')
-  expect(w.get('.panel h2').text()).toBe('total')
+  expect(w.get('.side-panel h2').text()).toBe('total')
   w.unmount()
  })
  it('folds a section and shows what it holds',async()=>{

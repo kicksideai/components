@@ -9,6 +9,12 @@ export interface Step {kind:StepKind;enabled:boolean;scope:Scope;model?:string;o
 export interface Retrieval {chunk_size:number;overlap:number;split_headings:boolean;search_mode:'keyword'|'semantic'|'hybrid';top_results:number;contextual_embeddings:boolean;highlighter:boolean;highlighter_model:string;embedding_model:string}
 export interface Config {fields:Field[];workflow:Step[];retrieval:Retrieval;tools:string[];tags:string[];shared_context:boolean}
 
+type Bounds={min:number;max:number}
+type NumberSchema={minimum?:number;maximum?:number}
+const ranges=schema as unknown as {properties:{workflow:{items:{oneOf:{properties:{kind:{const:string};options:{properties:Record<string,NumberSchema>}}}[]}};retrieval:{properties:Record<string,NumberSchema>}}}
+const bounds=(p:NumberSchema|undefined):Bounds=>({min:p?.minimum??0,max:p?.maximum??100})
+export const optionBounds=(kind:StepKind,key:string):Bounds=>bounds(ranges.properties.workflow.items.oneOf.find(v=>v.properties.kind.const===kind)?.properties.options.properties[key])
+export const retrievalBounds=(key:keyof Retrieval):Bounds=>bounds(ranges.properties.retrieval.properties[key])
 export const newConfig=():Config=>structuredClone(schema.default) as Config
 export const newField=():Field=>structuredClone(schema.properties.fields.items.default) as Field
 export const newQuery=():PrefetchQuery=>({name:'',query:'',chunks:5})

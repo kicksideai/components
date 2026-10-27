@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import {computed,onBeforeUnmount,onMounted,ref} from 'vue'
+import {computed,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {Icon} from '@iconify/vue'
 import Toggle from './Toggle.vue'
 import FieldInspector from './FieldInspector.vue'
@@ -42,6 +42,8 @@ let observer:ResizeObserver|undefined
 onMounted(()=>{observer=new ResizeObserver(([e])=>{const was=narrow.value;narrow.value=e.contentRect.width<1000;if(narrow.value&&!was)panelOpen.value=false;if(!narrow.value&&was)panelOpen.value=stored('panel',true)});if(root.value)observer.observe(root.value)})
 onBeforeUnmount(()=>observer?.disconnect())
 
+const panelBody=ref<HTMLElement>()
+watch(selected,async()=>{await nextTick();if(panelBody.value)panelBody.value.scrollTop=0})
 function select(s:Selection){selected.value=s;panelOpen.value=true}
 const is=(s:Selection)=>s.kind==='step'?selected.value.kind==='step'&&selected.value.step===s.step:JSON.stringify(s)===JSON.stringify(selected.value)
 const selectedField=computed(()=>selected.value.kind==='field'?props.config.fields[selected.value.index]:undefined)
@@ -133,14 +135,14 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
   </div>
 
   <div v-if="narrow&&panelOpen" class="scrim" @click="setPanel(false)"/>
-  <aside v-if="panelOpen" class="panel" aria-label="Settings panel" :style="narrow?undefined:{width:`${panelWidth}px`}">
+  <aside v-if="panelOpen" class="side-panel" aria-label="Settings panel" :style="narrow?undefined:{width:`${panelWidth}px`}">
    <div v-if="!narrow" class="resizer" :class="{active:resizing}" role="separator" aria-orientation="vertical" aria-label="Resize panel" tabindex="0" :aria-valuenow="panelWidth" :aria-valuemin="PANEL_MIN" @pointerdown.prevent="startResize" @keydown="resizeKey" @dblclick="setWidth(PANEL_DEFAULT)"/>
-   <header class="panel-head">
-    <span class="panel-icon"><Icon :icon="panelIcon"/></span>
+   <header class="side-panel-head">
+    <span class="side-panel-icon"><Icon :icon="panelIcon"/></span>
     <h2>{{panelTitle}}</h2>
     <button type="button" class="icon-btn push" aria-label="Collapse panel" title="Collapse panel" @click="setPanel(false)"><Icon :icon="narrow?'tabler:x':'tabler:layout-sidebar-right-collapse'"/></button>
    </header>
-   <div class="panel-body">
+   <div ref="panelBody" class="side-panel-body">
     <DocumentInspector v-if="selected.kind==='document'" :config="config" :retention="retention" :readonly="readonly"/>
     <StepInspector v-else-if="selected.kind==='step'" :step="selected.step" :config="config" :readonly="readonly"/>
     <FieldInspector v-else-if="selected.kind==='field'&&selectedField" :field="selectedField" :other-names="otherNames" :deep-enabled="deepEnabled" :readonly="readonly" @remove="removeField((selected as {index:number}).index)"/>
