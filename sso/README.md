@@ -4,6 +4,17 @@ User single sign-on for kickside apps. Lets people log in with external identity
 providers (Google, Microsoft/Entra, GitHub, and any generic OIDC issuer) on top
 of the existing `app_users` / token-store auth, without replacing password login.
 
+## Compatibility
+
+Requires `kickside/users >=0.2.9`, which provides the
+`kickside.users.security:resolve_scope_groups` policy used by the login callback.
+Older Users packages are rejected during dependency resolution instead of
+failing when a callback resolves its runtime policies.
+
+Hold release until the compatible Users package is available. For existing
+installations, qualify a coordinated Users and SSO upgrade: updating Users alone
+can leave an older SSO callback without the resolver permission.
+
 ## What it does
 
 - **Pluggable connectors.** Providers are connector libraries dispatched by
