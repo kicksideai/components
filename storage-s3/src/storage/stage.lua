@@ -26,7 +26,7 @@ local function settings_policy(): (any?, any?)
     if not settings then return nil, unavailable("Settings unavailable") end
     local result, get_err = settings:get({ namespace = "kickside.storage_s3", key = "policy" })
     if get_err then return nil, get_err end
-    if not result or result.success ~= true then return nil, unavailable("Storage policy unavailable") end
+    if not result or result.success ~= true then return nil, result and result.error or unavailable("Storage policy unavailable") end
     return result.value, nil
 end
 
@@ -47,7 +47,6 @@ local function copy(storage_id: string, source_path: string, cloud: any, resourc
 end
 
 function M.process(args: any): (any?, any?)
-    if packed(args.storage_path) then return { success = true }, nil end
     local configured, policy_err = settings_policy()
     if policy_err then return nil, policy_err end
     if type(configured) ~= "table" or configured.mode == "local" then return { success = true }, nil end
@@ -58,10 +57,13 @@ function M.process(args: any): (any?, any?)
     local cloud, cloud_err = cloudstorage.get(configured.resource_id)
     if cloud_err then return nil, cloud_err end
     local relocation: any = { blobs = {} }
-    local path, copy_err = copy(args.storage_id, args.storage_path, cloud, configured.resource_id,
-        object_key(configured.prefix, args.upload_id, "original"), args.mime_type)
-    if copy_err then cloud:release(); return nil, copy_err end
-    relocation.storage_path = path
+    relocation.storage_path = args.storage_path
+    if not packed(args.storage_path) then
+        local path, copy_err = copy(args.storage_id, args.storage_path, cloud, configured.resource_id,
+            object_key(configured.prefix, args.upload_id, "original"), args.mime_type)
+        if copy_err then cloud:release(); return nil, copy_err end
+        relocation.storage_path = path
+    end
     local rows, list_err = artifacts.list_artifacts(args.upload_id)
     if list_err then cloud:release(); return nil, list_err end
     local copied = {}

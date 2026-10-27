@@ -9,6 +9,7 @@ local uuid = require("uuid")
 local records = require("records")
 local artifacts = require("artifacts")
 local pipeline = require("pipeline")
+local cleanup = require("cleanup")
 local execution_identity = require("execution_identity")
 local sql = require("sql")
 
@@ -102,6 +103,46 @@ return { run = test.run_cases(function()
             cloud:release()
             test.is_true(storage:exists(original_path))
             test.is_true(storage:exists(blob_path))
+        end)
+
+        test.it("retains an S3 original while relocating local derived blobs", function()
+            local id = uuid.v4()
+            local prefix = assert(env.get("app.storage_s3:prefix"))
+            configure(prefix)
+            original_key = prefix .. "/" .. id .. "/presigned-original"
+            original_path = "s3://" .. RESOURCE .. "/" .. original_key
+            local cloud = assert(cloudstorage.get(RESOURCE))
+            assert(cloud:upload_object(original_key, "presigned bytes", {}))
+            local upload = assert(records.create(id, "storage-s3-owner", 15, "text/plain", STORAGE,
+                original_path, "text", {}, "completed"))
+            local derived_bytes = "local derived bytes " .. id
+            local artifact = assert(artifacts.create_artifact({ upload_id = id, kind = "text", role = "primary",
+                mime_type = "text/plain", content = derived_bytes, storage_id = STORAGE, metadata = {} }))
+            blob_path = assert(artifacts.get_blob(artifact.blob_id)).storage_path
+            blob_key = prefix .. "/" .. id .. "/blobs/" .. artifact.blob_id
+            local result, stage_err = funcs.call("kickside.storage_s3.storage:stage", {
+                upload_id = id, storage_id = STORAGE, storage_path = original_path, mime_type = "text/plain",
+            })
+            test.is_nil(stage_err, tostring(stage_err))
+            test.not_nil(result.relocation)
+            test.eq(original_path, result.relocation.storage_path)
+            test.eq(1, #result.relocation.blobs)
+            test.eq(artifact.blob_id, result.relocation.blobs[1].blob_id)
+            test.eq("s3://" .. RESOURCE .. "/" .. blob_key, result.relocation.blobs[1].storage_path)
+            test.is_true(assert(fs.get(STORAGE)):exists(blob_path))
+            local relocated, err = pipeline.apply_relocation(upload, result.relocation)
+            test.is_nil(err, tostring(err))
+            test.eq(original_path, relocated.storage_path)
+            test.eq(derived_bytes, assert(artifacts.read_artifact_content(id, artifact.artifact_id)))
+            test.is_false(assert(fs.get(STORAGE)):exists(blob_path))
+            test.eq(15, assert(cloud:head_object(original_key)).size)
+            local missing, missing_err = cloud:head_object(prefix .. "/" .. id .. "/original")
+            cloud:release()
+            test.is_nil(missing)
+            test.not_nil(missing_err)
+            test.is_nil(select(2, cleanup.delete_for_upload(id)))
+            assert(records.delete(id))
+            original_path = nil
         end)
 
         test.it("does not copy an upload already stored at an S3 packed path", function()

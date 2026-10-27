@@ -19,6 +19,7 @@ exclude_meta:
 embed:
 - kickside.storage_s3:ui_fs
 exclude:
+- "wippy.lock"
 - app:**
 - app.env:**
 - ui/node_modules/**

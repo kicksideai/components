@@ -2,7 +2,7 @@ WIPPY ?= wippy
 KICKSIDE_SOURCE_ROOT ?= $(abspath ../../kickside)
 WIPPY_ARGS ?=
 
-.PHONY: setup build typecheck lint test test-pg test-s3 lockrefresh release-check publish
+.PHONY: setup build typecheck lint test test-pg test-s3 test-ui lockrefresh verify release-check publish
 setup: lockrefresh
 
 build:
@@ -10,6 +10,9 @@ build:
 
 typecheck:
 	cd ui && ./node_modules/.bin/vue-tsc --noEmit -p tsconfig.json
+
+test-ui:
+	npm --prefix ui test
 
 lockrefresh:
 	KICKSIDE_SOURCE_ROOT="$(KICKSIDE_SOURCE_ROOT)" bash test/prepare.sh
@@ -33,7 +36,12 @@ test-pg:
 test-s3:
 	KICKSIDE_SOURCE_ROOT="$(KICKSIDE_SOURCE_ROOT)" WIPPY_BIN="$(WIPPY)" bash scripts/test-s3.sh
 
-release-check: build typecheck lint test
+verify:
+	$(MAKE) setup
+	$(MAKE) build typecheck lint
+	$(MAKE) test-ui test
+
+release-check: verify
 	$(WIPPY) publish --config . --version 0.1.0 --dry-run --create --module-visibility public --module-type plugin
 
 publish:

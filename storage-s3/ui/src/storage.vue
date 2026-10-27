@@ -5,11 +5,11 @@ import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import { api } from '@wippy-fe/proxy'
-import { failedStorageRequest, failedStorageResponse } from './response.js'
+import { failedStorageRequest } from './response.js'
 
 interface Policy { mode: 'local' | 's3'; resource_id: string; prefix: string }
 interface Destination { id: string; title: string }
-interface Response { success: boolean; error?: string; saved?: boolean }
+interface Response { success: boolean; error?: string }
 interface DestinationsResponse extends Response { resources?: Destination[] }
 interface SettingsResponse extends Response { settings?: { key: string; value: Policy }[] }
 const policy = ref<Policy>({ mode: 'local', resource_id: '', prefix: 'uploads' })
@@ -46,7 +46,7 @@ async function load() {
     loaded.value = true
     return true
   } catch (cause) {
-    error.value = failedStorageRequest(cause).error
+    error.value = failedStorageRequest(cause)
     return false
   }
   finally { loading.value = false }
@@ -60,26 +60,13 @@ async function perform(operation: 'test' | 'save' | 'reset') {
     const response = operation === 'reset'
       ? await api.delete<Response>('/api/v1/storage-s3')
       : await api.post<Response>(operation === 'test' ? '/api/v1/storage-s3/test' : '/api/v1/storage-s3', { ...policy.value })
-    if (!response.data?.success) {
-      const failed = failedStorageResponse(response.data)
-      if (failed.savedNotice) {
-        await load()
-        notice.value = failed.savedNotice
-      }
-      error.value = failed.error
-      return
-    }
+    if (!response.data?.success) throw new Error(response.data?.error || 'Storage request failed')
     if (operation !== 'test' && !(await load())) return
     notice.value = operation === 'test' ? 'Upload, size verification, and deletion succeeded.'
       : operation === 'reset' ? 'Future file placement is disabled. Existing S3 files remain readable.'
       : 'Storage policy saved.'
   } catch (cause) {
-    const failed = failedStorageRequest(cause)
-    if (failed.savedNotice) {
-      await load()
-      notice.value = failed.savedNotice
-    }
-    error.value = failed.error
+    error.value = failedStorageRequest(cause)
   }
   finally { busy.value = false }
 }

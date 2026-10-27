@@ -32,7 +32,7 @@
     "vue": "^3.5.0"
   },
   "wippy": {
-    "description": "Admin settings component for the optional kickside/storage-s3 module, mounted declaratively by its Settings block. It reads only its own policy and destination endpoints through the authenticated host API. Administrators can keep processed files local or select a configured S3 destination and folder prefix, verify upload/download/delete, save and apply the policy, or reset future placement. Existing attachments and Knowledge references remain stable. No caller-supplied properties or custom events are required.",
+    "description": "Admin settings component for the optional kickside/storage-s3 module, mounted declaratively by its Settings block. It reads only its own policy and destination endpoints through the authenticated host API. Administrators can keep processed files local or select a configured S3 destination and folder prefix, verify upload/download/delete, save the policy, or reset future placement. Existing attachments and Knowledge references remain stable. No caller-supplied properties or custom events are required.",
     "tagName": "kickside-storage-s3",
     "type": "component",
     "props": {

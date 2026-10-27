@@ -49,13 +49,19 @@ entries:
   method: run
   modules: [registry]
   imports: {test: wippy.test:test}
-- name: stage_order_test
+- name: ingest_test
   kind: function.lua
-  meta: {type: test, suite: storage_s3_stage_order}
+  meta: {type: test_support, suite: storage_s3_ingest}
   source: file://ingest_test.lua
   method: run
-  modules: [registry]
-  imports: {test: wippy.test:test}
+  modules: [sql, uuid, fs, funcs, security, contract, json, env]
+  imports:
+    test: wippy.test:test
+    records: kickside.uploads.persist:upload_record_repo
+    artifacts: kickside.uploads.persist:artifact_content_repo
+    cleanup: kickside.uploads.persist:artifact_cleanup_repo
+    pipeline: kickside.uploads:pipeline
+    fixture_cleanup: app:fixture_cleanup
 - name: restart_test
   kind: function.lua
   meta: {type: test_support, suite: storage_s3_restart}
@@ -130,3 +136,26 @@ entries:
   modules: [security, funcs]
   imports:
     test: wippy.test:test
+
+- name: settings_failure
+  kind: library.lua
+  source: file://settings_failure.lua
+- name: stage_fixture
+  kind: library.lua
+  source: file://../fixtures/storage_stage.lua
+  modules: [cloudstorage]
+  imports:
+    contract: app.storage_s3:settings_failure
+    uploads_resources: kickside.uploads.binding:uploads_resources
+    artifacts: kickside.uploads.persist:artifact_parts_repo
+    policy: kickside.storage_s3.policy:policy
+    copier: kickside.storage_s3.storage:copy
+- name: stage_failure_test
+  kind: function.lua
+  meta: {type: test, suite: storage_s3_stage}
+  source: file://stage_failure_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    stage: app.storage_s3:stage_fixture
+    settings: app.storage_s3:settings_failure

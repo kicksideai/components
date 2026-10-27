@@ -93,4 +93,5 @@ entries:
     records: kickside.uploads.persist:upload_record_repo
     artifacts: kickside.uploads.persist:artifact_content_repo
     pipeline: kickside.uploads:pipeline
+    cleanup: kickside.uploads.persist:artifact_cleanup_repo
     execution_identity: kickside.execution:execution_identity
