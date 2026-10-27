@@ -1,67 +1,6 @@
 version: '1.0'
 namespace: app
 entries:
-- name: upload_http_probe
-  kind: library.lua
-  source: file://upload_http_probe.lua
-  modules:
-  - ctx
-- name: upload_get_fixture
-  kind: library.lua
-  source: file://fixtures/get_upload.lua
-  modules:
-  - security
-  imports:
-    http: app:upload_http_probe
-    upload_response: kickside.uploads.api:upload_response
-    types: kickside.uploads:types
-    upload_read_model: kickside.uploads.persist:upload_read_model
-    upload_query_repo: kickside.uploads.persist:upload_query_repo
-    component: kickside.component:component
-    http_errors: kickside.contract:http_errors
-- name: upload_artifacts_fixture
-  kind: library.lua
-  source: file://fixtures/artifacts.lua
-  modules:
-  - security
-  imports:
-    http: app:upload_http_probe
-    upload_query_repo: kickside.uploads.persist:upload_query_repo
-    artifact_content_repo: kickside.uploads.persist:artifact_content_repo
-    artifact_parts_repo: kickside.uploads.persist:artifact_parts_repo
-    metadata_sanitizer: kickside.uploads:metadata_sanitizer
-    upload_tokens: kickside.uploads.persist:upload_tokens
-    component: kickside.component:component
-    types: kickside.uploads:types
-    http_errors: kickside.contract:http_errors
-- name: upload_delete_fixture
-  kind: library.lua
-  source: file://fixtures/delete_upload.lua
-  modules:
-  - security
-  - json
-  imports:
-    pipeline: kickside.uploads:pipeline
-    http: app:upload_http_probe
-    upload_lib: kickside.uploads:uploads
-    upload_query_repo: kickside.uploads.persist:upload_query_repo
-    component: kickside.component:component
-    types: kickside.uploads:types
-    http_errors: kickside.contract:http_errors
-- name: upload_raw_fixture
-  kind: library.lua
-  source: file://fixtures/get_raw.lua
-  modules:
-  - security
-  - fs
-  imports:
-    uploads_resources: kickside.uploads.binding:uploads_resources
-    http: app:upload_http_probe
-    upload_query_repo: kickside.uploads.persist:upload_query_repo
-    component: kickside.component:component
-    upload_tokens: kickside.uploads.persist:upload_tokens
-    types: kickside.uploads:types
-    http_errors: kickside.contract:http_errors
 - name: dedup_migration_db
   kind: db.sql.sqlite
   file: ':memory:'
@@ -371,10 +310,6 @@ entries:
   component: kickside/storage-s3
   version: '*'
   parameters:
-  - name: kickside.storage_s3:target_db
-    value: app:db
-  - name: kickside.storage_s3:staging_storage
-    value: app:uploads
   - name: kickside.storage_s3:s3_resource
     value: app.storage_s3:s3
   - name: kickside.storage_s3:api_router

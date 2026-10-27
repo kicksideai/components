@@ -1,62 +1,57 @@
--- Run this entry twice against the same dedicated SQLite file or PostgreSQL
--- database. The first process leaves a placed original; the second process must
--- reconstruct its overlay from SQL and read it with placement disabled.
 local test = require("test")
 local sql = require("sql")
-local uuid = require("uuid")
 local fs = require("fs")
-local registry = require("registry")
-local funcs = require("funcs")
 local contract = require("contract")
+local funcs = require("funcs")
 local env = require("env")
 local records = require("records")
-local locations = require("locations")
-local policy = require("policy")
-local offload = require("offload")
+local pipeline = require("pipeline")
 local resources = require("resources")
-local OWNER, STORAGE = "storage-restart-test", "app:uploads"
-local BYTES = "Durable placement survives a cold runtime and source resource edits."
+
+local OWNER = "storage-s3-restart-owner"
+local STORAGE = "app:uploads"
+local BYTES = "Packed remote bytes remain readable after a new runtime starts."
+
+local function settings(): any return assert(assert(contract.get("kickside.settings:settings")):open()) end
+
+local function persisted(): {any}
+    local db = assert(sql.get("app:db"))
+    local rows = assert(db:query("SELECT * FROM kickside_uploads WHERE actor_id=$1", { OWNER }))
+    db:release()
+    return rows
+end
 
 return { run = test.run_cases(function()
-    test.describe("storage cold restart", function()
-        test.it("prepares a durable placement or verifies its reconstruction in a fresh runtime", function()
-            local db = assert(sql.get("app:db"))
-            local rows = assert(db:query("SELECT * FROM kickside_uploads WHERE actor_id=$1", { OWNER }))
-            db:release()
+    test.describe("storage-s3 restart", function()
+        test.it("reads a relocated packed path after a separate runtime starts", function()
+            local rows = persisted()
             if #rows == 0 then
-                local settings = assert(assert(contract.get("kickside.settings:settings")):open())
-                local saved = settings:set({ namespace = "kickside.storage_s3", key = "policy", value = {
-                    mode = "s3", resource_id = "app.storage_s3:s3", prefix = env.get("app.storage_s3:prefix"),
+                local prefix = assert(env.get("app.storage_s3:prefix"))
+                local saved = settings():set({ namespace = "kickside.storage_s3", key = "policy", value = {
+                    mode = "s3", resource_id = "app.storage_s3:s3", prefix = prefix,
                 } })
                 test.is_true(saved.success, tostring(saved.error))
-                test.is_true(assert(funcs.call("kickside.storage_s3.service:request", {})).success)
-                local id = uuid.v4()
-                test.not_nil(assert(fs.get(STORAGE)):writefile(id, BYTES))
-                test.not_nil(assert(records.create(id, OWNER, #BYTES, "text/plain", STORAGE, id, "text", {}, "completed")))
-                local placed, place_err = offload.place({ storage_id = STORAGE, storage_path = id, mime_type = "text/plain" },
-                    assert(policy.current()), nil)
-                test.is_nil(place_err, tostring(place_err))
-                test.is_true(placed.placed)
-                test.is_true(settings:unset({ namespace = "kickside.storage_s3", key = "policy" }).success)
-                test.is_true(assert(funcs.call("kickside.storage_s3.service:request", {})).success)
-            else
-                test.eq(#rows, 1)
-                local file = rows[1]
-                test.eq(assert(policy.current()).mode, "local")
-                local location = assert(locations.get("app:db", STORAGE, file.storage_path, nil))
-                test.not_nil(registry.get(location.resource_id))
-                test.is_false(assert(fs.get(STORAGE)):exists(file.storage_path))
-                local storage = assert(resources.get_storage(STORAGE))
-                local bytes, read_err = storage:readfile(file.storage_path)
-                test.is_nil(read_err, tostring(read_err))
-                test.eq(bytes, BYTES)
-                test.not_nil(storage:remove(file.storage_path))
-                db = assert(sql.get("app:db"))
-                local _, delete_err = db:execute("DELETE FROM kickside_uploads WHERE uuid=$1", { file.uuid })
-                db:release()
-                test.is_nil(delete_err, tostring(delete_err))
-                test.eq(assert(offload.prune("2999-01-01T00:00:00Z", 100)), 1)
+                local upload_id = "storage-s3-restart"
+                assert(assert(fs.get(STORAGE)):writefile(upload_id, BYTES))
+                local upload = assert(records.create(upload_id, OWNER, #BYTES, "text/plain", STORAGE,
+                    upload_id, "generic", {}, "completed"))
+                local result = assert(funcs.call("kickside.storage_s3.storage:stage", {
+                    upload_id = upload_id, storage_id = STORAGE, storage_path = upload_id, mime_type = "text/plain",
+                }))
+                local relocated, relocate_err = pipeline.apply_relocation(upload, result.relocation)
+                test.is_nil(relocate_err, tostring(relocate_err))
+                test.is_true(relocated.storage_path:sub(1, 5) == "s3://")
+                test.is_false(assert(fs.get(STORAGE)):exists(upload_id))
+                return
             end
+            test.eq(#rows, 1)
+            local upload = rows[1]
+            local storage = assert(resources.get_storage(upload.storage_id))
+            local bytes, read_err = storage:readfile(upload.storage_path)
+            test.is_nil(read_err, tostring(read_err))
+            test.eq(BYTES, bytes)
+            test.not_nil(storage:remove(upload.storage_path))
+            test.is_nil(select(2, records.delete(upload.uuid)))
         end)
     end)
 end) }

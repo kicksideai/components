@@ -1,217 +1,219 @@
 local test = require("test")
-local sql = require("sql")
+local cloudstorage = require("cloudstorage")
+local contract = require("contract")
+local env = require("env")
 local fs = require("fs")
-local registry = require("registry")
 local funcs = require("funcs")
 local security = require("security")
 local uuid = require("uuid")
-local contract = require("contract")
-local json = require("json")
-local cloudstorage = require("cloudstorage")
-local env = require("env")
-local policy = require("policy")
-local locations = require("locations")
-local offload = require("offload")
 local records = require("records")
 local artifacts = require("artifacts")
-local content = require("content")
-local jobs = require("jobs")
-local lifecycle = require("lifecycle")
-local dispatch = require("dispatch")
-local DB = "app:db"
+local pipeline = require("pipeline")
+local cleanup = require("cleanup")
+local execution_identity = require("execution_identity")
+local sql = require("sql")
+
 local STORAGE = "app:uploads"
-local pending_files = {}
+local RESOURCE = "app.storage_s3:s3"
 
-local function query(statement: string, args: any): any
-    local db = assert(sql.get(DB))
-    local rows, err = db:query(statement, args)
-    db:release()
-    test.is_nil(err, tostring(err))
-    return rows
+local function settings(): any
+    local definition = assert(contract.get("kickside.settings:settings"))
+    return assert(definition:open())
 end
 
-local function exec(statement: string, args: any): any
-    local db = assert(sql.get(DB))
-    local result, err = db:execute(statement, args)
-    db:release()
-    test.is_nil(err, tostring(err))
-    return result
-end
-
-local function settings(): any return assert(assert(contract.get("kickside.settings:settings")):open()) end
-
-local function configure(mode: string): any
-    local prefix = env.get("app.storage_s3:prefix")
-    test.is_true(type(prefix) == "string" and #prefix > 0, "Test prefix is required")
-    local checked = policy.validate({ value = { mode = mode, resource_id = "app.storage_s3:s3", prefix = prefix } })
-    test.is_true(checked.valid, "Test policy invalid for prefix " .. tostring(prefix) .. ": " .. tostring(checked.error))
-    local saved, save_err = settings():set({ namespace = "kickside.storage_s3", key = "policy",
-        value = { mode = mode, resource_id = "app.storage_s3:s3", prefix = prefix } })
+local function configure(prefix: string): ()
+    local result, save_err = settings():set({ namespace = "kickside.storage_s3", key = "policy", value = {
+        mode = "s3", resource_id = RESOURCE, prefix = prefix,
+    } })
     test.is_nil(save_err, tostring(save_err))
-    test.is_true(saved.success, "Storage policy save: " .. tostring(saved.error))
-    local result, apply_err = funcs.call("kickside.storage_s3.service:request", {})
-    test.is_nil(apply_err, tostring(apply_err))
     test.is_true(result.success, tostring(result.error))
-    return assert(policy.current())
 end
 
-local function owner(): (string, any)
-    local id = "storage-live-" .. uuid.v4()
-    exec([[INSERT INTO app_users(user_id,email,full_name,password_hash,status)
-        VALUES ($1,$2,$1,'test-only','active')]], { id, id .. "@uploads.test" })
+local function pipeline_metadata(owner: string): any
+    local db = assert(sql.get("app:db"))
+    assert(db:execute([[INSERT INTO app_users (user_id,email,full_name,password_hash,status)
+        VALUES ($1,$2,$3,$4,'active') ON CONFLICT (user_id) DO NOTHING]], {
+        owner, owner .. "@test.invalid", owner, "test",
+    }))
     for _, group in ipairs({ "app:uploads_test", "wippy.security:process" }) do
-        exec("INSERT INTO app_user_groups(user_id,group_id) VALUES ($1,$2)", { id, group })
+        assert(db:execute([[INSERT INTO app_user_groups (user_id,group_id) VALUES ($1,$2)
+            ON CONFLICT (user_id,group_id) DO NOTHING]], { owner, group }))
     end
-    local actor = assert(security.new_actor(id, { security_groups = { "app:uploads_test" } }))
-    return id, assert(funcs.new():with_actor(actor):with_scope(assert(security.named_scope("wippy.security:process"))))
-end
-
--- Claim one known job under a real lease, then use Jobs' live monitored-process
--- dispatcher. This avoids unrelated suite jobs while exercising native process
--- supervision, the owning worker, SQL publication, and S3 IO end to end.
-local function run_job(id: string): any
-    local db = assert(sql.get(DB))
-    local dbtype = tostring(db:type())
-    local token = uuid.v4()
-    local _, claim_err = db:execute([[UPDATE kickside_job SET status='running',lease_token=$1,
-        execution_seq=execution_seq+1,attempts=attempts+1,lease_until=$2 WHERE id=$3]],
-        { token, lifecycle.future_string(dbtype, 120), id })
-    test.is_nil(claim_err, tostring(claim_err))
-    local rows = assert(db:query("SELECT * FROM kickside_job WHERE id=$1", { id }))
-    local row = rows[1]
-    local binding = assert(dispatch.parse_worker_ref(row.worker_ref))
-    test.eq(binding.worker_runtime, "proc")
-    local output, err = dispatch.run_supervised_proc(db, dbtype, row, binding, nil, nil)
     db:release()
-    test.is_nil(err, tostring(err))
-    test.not_nil(output)
-    local current = assert(jobs.get_job(id))
-    if current.status == "running" then
-        local _, complete_err = jobs.complete(id, { token = token, execution_seq = row.execution_seq }, {})
-        test.is_nil(complete_err, tostring(complete_err))
-    end
-    test.eq(assert(jobs.get_job(id)).status, "done")
-    return output
-end
-
-local function upload(bytes: string, filename: string, mime: string): (any, string, any)
-    local id, executor = owner()
-    local uploaded, upload_err = executor:call("app:admit_upload", {
-        action = "upload", actor_id = id, bytes = bytes, filename = filename,
-        size = #bytes, mime_type = mime, metadata = {},
-    })
-    test.is_nil(upload_err, tostring(upload_err))
-    test.not_nil(uploaded)
-    pending_files[#pending_files + 1] = { id = uploaded.uuid, owner = id, executor = executor }
-    local queued = assert(records.get(uploaded.uuid))
-    run_job(queued.processing_job_id)
-    return assert(records.get(uploaded.uuid)), id, executor
-end
-
-local function placement_job(upload_id: string): any
-    for _, row in ipairs(query("SELECT * FROM kickside_job WHERE job_type=$1", { "kickside.storage_s3.service:offload_job" })) do
-        local payload = type(row.payload) == "table" and row.payload or assert(json.decode(tostring(row.payload)))
-        if payload.upload_id == upload_id then return row end
-    end
-    error("Upload completion did not enqueue storage placement")
-end
-
-local function restricted_reader(id: string): any
-    local policies = {}
-    for _, entry in ipairs({ "app:upload_runtime_resources", "kickside.uploads.security:uploads_resource_access",
-        "kickside.storage_s3.security:cloud", "kickside.uploads.security:module_runtime",
-        "app.storage_s3:content_contracts" }) do
-        policies[#policies + 1] = assert(security.policy(entry))
-    end
-    return assert(funcs.new():with_actor(assert(security.new_actor(id, {}))):with_scope(assert(security.new_scope(policies))))
+    local identity = assert(execution_identity.to_row({
+        version = execution_identity.VERSION,
+        principal = { kind = execution_identity.KIND.USER, id = owner },
+        authorized_by = { kind = execution_identity.KIND.USER, id = owner },
+        captured_at = execution_identity.utc_now(),
+    }))
+    return {
+        filename = "pipeline.txt",
+        [execution_identity.CONTEXT_KEY] = { actor_id = identity.actor_id, actor_context = identity.actor_context },
+    }
 end
 
 return { run = test.run_cases(function()
-    test.describe("native S3 upload storage", function()
-        test.before_all(function() configure("s3") end)
-        test.after_all(function()
-            for _, item in ipairs(pending_files) do
-                local _, delete_err = item.executor:call("app:admit_upload", { action = "delete", upload_id = item.id })
-                test.is_nil(delete_err, tostring(delete_err))
+    test.describe("storage-s3 relocation stage", function()
+        local original_path, blob_path, original_key, blob_key
+
+        test.after_each(function()
+            local storage = assert(fs.get(STORAGE))
+            if original_path then storage:remove(original_path) end
+            if blob_path then storage:remove(blob_path) end
+            if original_key or blob_key then
+                local cloud = assert(cloudstorage.get(RESOURCE))
+                local keys = {}
+                if original_key then keys[#keys + 1] = original_key end
+                if blob_key then keys[#keys + 1] = blob_key end
+                cloud:delete_objects(keys)
+                cloud:release()
             end
-            local _, prune_err = offload.prune("2999-01-01T00:00:00Z", 500)
-            test.is_nil(prune_err, tostring(prune_err))
-            configure("local")
+            original_path, blob_path, original_key, blob_key = nil, nil, nil, nil
+            settings():unset({ namespace = "kickside.storage_s3", key = "policy" })
         end)
 
-        test.it("processes locally, offloads under supervision, and preserves session and content-provider reads", function()
-            configure("s3")
-            local bytes = "Storage ownership handbook: returns take seventeen days. " .. uuid.v4()
-            local file, id = upload(bytes, "handbook.txt", "text/plain")
-            test.eq(file.storage_state, "completed")
-            test.is_true(assert(fs.get(STORAGE)):exists(file.storage_path))
-            local primary = assert(artifacts.get_primary_content_artifact(file.uuid))
-            local before = assert(content.read_artifact_content(file.uuid, primary.artifact_id))
-            local version = assert(registry.current_version()):id()
-            local placed = run_job(placement_job(file.uuid).id)
-            test.is_true(placed.success)
-            test.is_true(placed.placed >= 2)
-            test.eq(assert(registry.current_version()):id(), version)
-            test.is_false(assert(fs.get(STORAGE)):exists(file.storage_path))
-            local location = assert(locations.get(DB, STORAGE, file.storage_path, nil))
-            test.eq(location.state, "ready")
-            test.is_true(location.resource_id:find("kickside.storage_s3.runtime:", 1, true) == 1)
-            test.eq(assert(content.read_artifact_content(file.uuid, primary.artifact_id)), before)
+        test.it("copies the original and each blob, verifies their sizes, and returns relocation without deleting bytes", function()
+            local id = uuid.v4()
+            local prefix = assert(env.get("app.storage_s3:prefix"))
+            configure(prefix)
+            local storage = assert(fs.get(STORAGE))
+            original_path = "storage-s3-original-" .. id
+            local original = "original bytes " .. id
+            assert(storage:writefile(original_path, original))
+            assert(records.create(id, "storage-s3-owner", #original, "text/plain", STORAGE, original_path,
+                "text", {}, "completed"))
+            local artifact = assert(artifacts.create_artifact({ upload_id = id, kind = "text", role = "primary",
+                mime_type = "text/plain", content = "derived bytes " .. id, storage_id = STORAGE, metadata = {} }))
+            blob_path = assert(artifacts.get_blob(artifact.blob_id)).storage_path
 
-            local result, read_err = restricted_reader(id):call("app.storage_s3:read_probe", { upload_id = file.uuid })
-            test.is_nil(read_err, tostring(read_err))
-            test.eq(result.content.content, before)
-            test.eq(result.content.source_ref.upload_id, file.uuid)
-            test.eq(result.content.source_ref.artifact_id, primary.artifact_id)
-            test.eq(result.attachment.uuid, file.uuid)
-            test.is_true(#result.messages > 0)
-            test.is_nil(result.content.storage_path)
-            test.is_nil(result.content.metadata.storage_id)
-            local _, stranger_err = restricted_reader("storage-stranger"):call("app.storage_s3:read_probe", { upload_id = file.uuid })
-            test.not_nil(stranger_err)
+            local result, stage_err = funcs.call("kickside.storage_s3.storage:stage", {
+                upload_id = id, storage_id = STORAGE, storage_path = original_path, mime_type = "text/plain",
+            })
+            test.is_nil(stage_err, tostring(stage_err))
+            test.is_true(result.success)
+            test.eq(result.relocation.storage_path, "s3://" .. RESOURCE .. "/" .. prefix .. "/" .. id .. "/original")
+            test.eq(#result.relocation.blobs, 1)
+            test.eq(result.relocation.blobs[1].blob_id, artifact.blob_id)
+
+            original_key = prefix .. "/" .. id .. "/original"
+            blob_key = prefix .. "/" .. id .. "/blobs/" .. artifact.blob_id
+            local cloud = assert(cloudstorage.get(RESOURCE))
+            test.eq(assert(cloud:head_object(original_key)).size, #original)
+            test.eq(assert(cloud:head_object(blob_key)).size, #("derived bytes " .. id))
+            cloud:release()
+            test.is_true(storage:exists(original_path))
+            test.is_true(storage:exists(blob_path))
         end)
 
-        test.it("keeps previously placed bytes readable after placement is disabled and the overlay is reconciled", function()
-            configure("s3")
-            local file, _, executor = upload("old storage survives settings changes " .. uuid.v4(), "old.txt", "text/plain")
-            run_job(placement_job(file.uuid).id)
-            local primary = assert(artifacts.get_primary_content_artifact(file.uuid))
-            local expected = assert(content.read_artifact_content(file.uuid, primary.artifact_id))
-            local loc = assert(locations.get(DB, STORAGE, file.storage_path, nil))
-            configure("local")
-            test.not_nil(registry.get(loc.resource_id))
-            local result, read_err = executor:call("app.storage_s3:read_probe", { upload_id = file.uuid })
-            test.is_nil(read_err, tostring(read_err))
-            test.eq(result.content.content, expected)
+        test.it("retains an S3 original while relocating local derived blobs", function()
+            local id = uuid.v4()
+            local prefix = assert(env.get("app.storage_s3:prefix"))
+            configure(prefix)
+            original_key = prefix .. "/" .. id .. "/presigned-original"
+            original_path = "s3://" .. RESOURCE .. "/" .. original_key
+            local cloud = assert(cloudstorage.get(RESOURCE))
+            assert(cloud:upload_object(original_key, "presigned bytes", {}))
+            local upload = assert(records.create(id, "storage-s3-owner", 15, "text/plain", STORAGE,
+                original_path, "text", {}, "completed"))
+            local derived_bytes = "local derived bytes " .. id
+            local artifact = assert(artifacts.create_artifact({ upload_id = id, kind = "text", role = "primary",
+                mime_type = "text/plain", content = derived_bytes, storage_id = STORAGE, metadata = {} }))
+            blob_path = assert(artifacts.get_blob(artifact.blob_id)).storage_path
+            blob_key = prefix .. "/" .. id .. "/blobs/" .. artifact.blob_id
+            local result, stage_err = funcs.call("kickside.storage_s3.storage:stage", {
+                upload_id = id, storage_id = STORAGE, storage_path = original_path, mime_type = "text/plain",
+            })
+            test.is_nil(stage_err, tostring(stage_err))
+            test.not_nil(result.relocation)
+            test.eq(original_path, result.relocation.storage_path)
+            test.eq(1, #result.relocation.blobs)
+            test.eq(artifact.blob_id, result.relocation.blobs[1].blob_id)
+            test.eq("s3://" .. RESOURCE .. "/" .. blob_key, result.relocation.blobs[1].storage_path)
+            test.is_true(assert(fs.get(STORAGE)):exists(blob_path))
+            local relocated, err = pipeline.apply_relocation(upload, result.relocation)
+            test.is_nil(err, tostring(err))
+            test.eq(original_path, relocated.storage_path)
+            test.eq(derived_bytes, assert(artifacts.read_artifact_content(id, artifact.artifact_id)))
+            test.is_false(assert(fs.get(STORAGE)):exists(blob_path))
+            test.eq(15, assert(cloud:head_object(original_key)).size)
+            local missing, missing_err = cloud:head_object(prefix .. "/" .. id .. "/original")
+            cloud:release()
+            test.is_nil(missing)
+            test.not_nil(missing_err)
+            test.is_nil(select(2, cleanup.delete_for_upload(id)))
+            assert(records.delete(id))
+            original_path = nil
         end)
 
-        test.it("streams a multipart original and retrieves its exact bytes through the authorized raw endpoint", function()
-            configure("s3")
-            local bytes = string.rep("Native multipart S3 transfer.\n", 220000) .. uuid.v4()
-            local file, _, executor = upload(bytes, "video.bin", "application/octet-stream")
-            run_job(placement_job(file.uuid).id)
-            local raw, raw_err = executor:with_context({ upload_id = file.uuid }):call("app.storage_s3:api_probe", {})
-            test.is_nil(raw_err, tostring(raw_err))
-            test.eq(raw.status, 200)
-            test.eq(raw.body, bytes)
+        test.it("does not copy an upload already stored at an S3 packed path", function()
+            local result, stage_err = funcs.call("kickside.storage_s3.storage:stage", {
+                upload_id = uuid.v4(), storage_id = STORAGE, storage_path = "s3://" .. RESOURCE .. "/existing",
+                mime_type = "text/plain",
+            })
+            test.is_nil(stage_err, tostring(stage_err))
+            test.is_true(result.success)
+            test.is_nil(result.relocation)
         end)
 
-        test.it("discovers sanitized destinations and runs the administrator's real connection probe", function()
-            local executor = assert(funcs.new():with_actor(assert(security.new_actor("storage-settings-admin", {})))
-                :with_scope(assert(security.named_scope("wippy.security:process"))))
-            local found, discover_err = executor:with_context({ storage_method = "GET" }):call("app.storage_s3:settings_probe", {})
-            test.is_nil(discover_err, tostring(discover_err))
-            test.eq(found.status, 200)
-            test.eq(#found.body.resources, 1)
-            test.eq(found.body.resources[1].id, "app.storage_s3:s3")
-            test.is_nil(found.body.resources[1].config)
-            test.is_nil(found.body.resources[1].endpoint)
-            local checked, check_err = executor:with_context({ storage_method = "POST", storage_body = {
-                mode = "s3", resource_id = "app.storage_s3:s3", prefix = env.get("app.storage_s3:prefix"),
-            } }):call("app.storage_s3:settings_probe", {})
-            test.is_nil(check_err, tostring(check_err))
-            test.eq(checked.status, 200, tostring(checked.body.error))
-            test.is_true(checked.body.success)
+        test.it("relocates with an exact cloud grant without registry discovery", function()
+            local id = uuid.v4()
+            local prefix = assert(env.get("app.storage_s3:prefix"))
+            configure(prefix)
+            local storage = assert(fs.get(STORAGE))
+            original_path = "storage-s3-scoped-" .. id
+            local original = "scoped stage bytes " .. id
+            assert(storage:writefile(original_path, original))
+            local scope = assert(security.new_scope({
+                assert(security.policy("app.storage_s3:stage_runtime_without_discovery")),
+                assert(security.policy("kickside.storage_s3.security:runtime")),
+            }))
+            local actor = assert(security.new_actor("storage-s3-member", {}))
+            local result, stage_err = funcs.new():with_actor(actor):with_scope(scope):call("kickside.storage_s3.storage:stage", {
+                upload_id = id, storage_id = STORAGE, storage_path = original_path, mime_type = "text/plain",
+            })
+            test.is_nil(stage_err, tostring(stage_err))
+            test.is_true(result.success)
+            original_key = prefix .. "/" .. id .. "/original"
+            test.eq(result.relocation.storage_path, "s3://" .. RESOURCE .. "/" .. original_key)
+        end)
+
+        test.it("relocates original and derived output through the Uploads pipeline", function()
+            local id = uuid.v4()
+            local prefix = assert(env.get("app.storage_s3:prefix"))
+            local owner = "storage-s3-pipeline-" .. id
+            configure(prefix)
+            local storage = assert(fs.get(STORAGE))
+            original_path = "storage-s3-pipeline-" .. id .. ".txt"
+            local original = "pipeline original bytes " .. id
+            assert(storage:writefile(original_path, original))
+            local upload = assert(records.create(id, owner, #original, "application/x-storage-s3-pipeline-test",
+                STORAGE, original_path, "app.storage_s3:types.pipeline_artifact", pipeline_metadata(owner), "completed"))
+
+            local success, pipeline_err, processed = pipeline.process_upload(upload)
+            test.is_nil(pipeline_err, tostring(pipeline_err))
+            test.is_true(success)
+            original_key = prefix .. "/" .. id .. "/original"
+            test.eq(processed.storage_path, "s3://" .. RESOURCE .. "/" .. original_key)
+            test.is_false(storage:exists(original_path))
+
+            local derived = assert(artifacts.get_artifact(id, processed.metadata.derived_artifact_id))
+            local blob = assert(artifacts.get_blob(derived.blob_id))
+            blob_key = prefix .. "/" .. id .. "/blobs/" .. blob.blob_id
+            test.eq(blob.storage_path, "s3://" .. RESOURCE .. "/" .. blob_key)
+            local cloud = assert(cloudstorage.get(RESOURCE))
+            test.eq(assert(cloud:head_object(original_key)).size, #original)
+            test.eq(assert(cloud:head_object(blob_key)).size, #("derived content for " .. id))
+            cloud:release()
+            local actor = assert(security.new_actor(owner, { security_groups = { "app:uploads_test" } }))
+            local scope = assert(security.named_scope("wippy.security:process"))
+            local provided, provide_err = funcs.new():with_actor(actor):with_scope(scope)
+                :with_context({ upload_id = id }):call("kickside.uploads.binding:get_content_func", {})
+            test.is_nil(provide_err, tostring(provide_err))
+            test.is_true(provided.success, tostring(provided.error))
+            test.eq(provided.content, "derived content for " .. id)
+            test.eq(provided.size, #("derived content for " .. id))
+            assert(records.delete(id))
+            original_path, blob_path, original_key, blob_key = nil, nil, nil, nil
         end)
     end)
 end) }

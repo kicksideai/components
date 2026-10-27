@@ -10,9 +10,7 @@ local env = require("env")
 local records = require("records")
 local artifacts = require("artifacts")
 local cleanup = require("cleanup")
-local locations = require("locations")
-local offload = require("offload")
-local policy = require("policy")
+local pipeline = require("pipeline")
 local fixture_cleanup = require("fixture_cleanup")
 local DB, STORAGE = "app:db", "app:uploads"
 
@@ -32,12 +30,9 @@ return { run = test.run_cases(function()
                 local _, err = cleanup.delete_for_upload(upload_id)
                 test.is_nil(err, tostring(err))
                 execute("DELETE FROM kickside_uploads WHERE uuid=$1", { upload_id })
-                local _, prune_err = offload.prune("2999-01-01T00:00:00Z", 100)
-                test.is_nil(prune_err, tostring(prune_err))
             end
             local settings = assert(assert(contract.get("kickside.settings:settings")):open())
             test.is_true(settings:unset({ namespace = "kickside.storage_s3", key = "policy" }).success)
-            test.is_true(assert(funcs.call("kickside.storage_s3.service:request", {})).success)
         end)
 
         test.it("queues verified remote text and stable image references through the real KB ingest API", function()
@@ -46,25 +41,29 @@ return { run = test.run_cases(function()
                 mode = "s3", resource_id = "app.storage_s3:s3", prefix = env.get("app.storage_s3:prefix"),
             } })
             test.is_true(saved.success, tostring(saved.error))
-            test.is_true(assert(funcs.call("kickside.storage_s3.service:request", {})).success)
-            local destination = assert(policy.current())
             local owner = "kb-storage-" .. uuid.v4()
             upload_id, kb_id = uuid.v4(), uuid.v7()
             local path = "kb-storage-" .. upload_id
             local bytes = "Verified knowledge from remote storage. " .. uuid.v4()
             local storage = assert(fs.get(STORAGE))
             test.not_nil(storage:writefile(path, bytes))
-            test.not_nil(assert(records.create(upload_id, owner, #bytes, "text/plain", STORAGE,
-                path, "text", { filename = "remote.txt" }, "completed")))
+            local upload = assert(records.create(upload_id, owner, #bytes, "text/plain", STORAGE,
+                path, "text", { filename = "remote.txt" }, "completed"))
             local primary = assert(artifacts.create_artifact({ upload_id = upload_id, kind = "markdown",
                 role = "primary", mime_type = "text/markdown", content = bytes, storage_id = STORAGE, metadata = {} }))
             local image = assert(artifacts.create_artifact({ upload_id = upload_id, kind = "image",
                 role = "extracted-image", mime_type = "image/png", content = "test image bytes", storage_id = STORAGE, metadata = {} }))
-            for _, object in ipairs(assert(locations.objects(DB, upload_id))) do
-                local result, err = offload.place(object, destination, nil)
-                test.is_nil(err, tostring(err))
-                test.is_true(result.placed)
-                test.is_false(storage:exists(object.storage_path))
+            local staged = assert(funcs.call("kickside.storage_s3.storage:stage", {
+                upload_id = upload_id, storage_id = STORAGE, storage_path = path, mime_type = "text/plain",
+            }))
+            test.not_nil(staged.relocation)
+            local relocated, relocation_err = pipeline.apply_relocation(upload, staged.relocation)
+            test.is_nil(relocation_err, tostring(relocation_err))
+            test.is_true(relocated.storage_path:sub(1, 5) == "s3://")
+            test.is_false(storage:exists(path))
+            for _, artifact in ipairs({ primary, image }) do
+                local blob = assert(artifacts.get_blob(artifact.blob_id))
+                test.is_true(blob.storage_path:sub(1, 5) == "s3://")
             end
 
             execute([[INSERT INTO kickside_components(component_id,impl_id,private_context,created_at,updated_at)

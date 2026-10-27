@@ -1,26 +1,23 @@
-local contract = require("contract")
-local file_provider = require("file_provider")
-local prompt_builder = require("prompt_builder")
-local M = {}
+local test = require("test")
+local cloudstorage = require("cloudstorage")
+local uuid = require("uuid")
+local resources = require("resources")
 
-function M.run(args: any): (any?, any?)
-    local definition = assert(contract.get("kickside.contract:content_provider"))
-    local scoped, context_err = definition:with_context({ upload_id = args.upload_id })
-    if context_err then return nil, context_err end
-    local provider, open_err = scoped:open("kickside.uploads:content_provider")
-    if open_err then return nil, open_err end
-    local content, content_err = provider:get_content({})
-    if content_err then return nil, content_err end
-    local builder, prompt_err = prompt_builder.build({{
-        message_id = "storage-message", type = "user", data = "Read my attachment",
-        metadata = { file_uuids = { args.upload_id } },
-    }}, {}, {}, { include_files = true })
-    if prompt_err then return nil, prompt_err end
-    return {
-        content = content,
-        attachment = file_provider.get_info({ file_uuid = args.upload_id }),
-        messages = builder:get_messages(),
-    }, nil
-end
-
-return M
+return { run = test.run_cases(function()
+    test.describe("storage-s3 packed reader", function()
+        test.it("reads a native S3 packed path through the Uploads adapter", function()
+            local key = "reader-" .. uuid.v4()
+            local bytes = "packed reader bytes " .. key
+            local cloud = assert(cloudstorage.get("app.storage_s3:s3"))
+            assert(cloud:upload_object(key, bytes, { content_type = "text/plain" }))
+            cloud:release()
+            local storage = assert(resources.get_storage("app:uploads"))
+            local actual, read_err = storage:readfile("s3://app.storage_s3:s3/" .. key)
+            test.is_nil(read_err, tostring(read_err))
+            test.eq(bytes, actual)
+            cloud = assert(cloudstorage.get("app.storage_s3:s3"))
+            assert(cloud:delete_objects({ key }))
+            cloud:release()
+        end)
+    end)
+end) }
