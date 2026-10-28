@@ -12,6 +12,7 @@ local user_repo = require("user_repo")
 local user_groups_repo = require("user_groups_repo")
 local upload_records = require("upload_records")
 local data = require("data")
+local security = require("security")
 
 local function call(who: string, dto: any): (any?, error?)
     return data.caller(who):call("app:probe", dto)
@@ -169,7 +170,7 @@ return { run = test.run_cases(function()
             test.not_nil(saved.finished_at); test.not_nil(saved.results[1].finished_at)
         end)
 
-        test.it("leaves a returned nonfinal snapshot-read failure queued for Jobs", function()
+        test.it("settles a returned nonretryable snapshot-read failure on the first attempt", function()
             local who = member(); local id = extractor(who)
             local eval_id = assert(call(who, { op = "queue_eval", id = id,
                 cases = { { id = "case", upload_id = "upload", upload_name = "invoice.pdf", expected = {} } } }))
@@ -178,8 +179,29 @@ return { run = test.run_cases(function()
                 payload = { component_id = id, eval_id = eval_id, case_id = "case" },
                 job = { attempt_no = 1, max_attempts = 3, is_final_attempt = false } })
             test.is_nil(value); test.eq(err:details().field, "admitted configuration")
+            test.is_false(err:retryable())
             local saved = assert(call(who, { op = "get_eval", id = id, eval_id = eval_id })).evaluation
-            test.eq(saved.status, "queued"); test.eq(saved.results[1].status, "queued")
+            test.eq(saved.status, "failed"); test.eq(saved.results[1].status, "failed")
+            test.eq(saved.error, "Every case failed"); test.not_nil(saved.finished_at)
+            test.eq(saved.results[1].error.kind, errors.INTERNAL); test.is_false(saved.results[1].error.retryable)
+            test.eq(saved.results[1].error.details.field, "admitted configuration")
+        end)
+
+        test.it("settles a deterministic notification failure on the first attempt", function()
+            local who = member(); local id = extractor(who)
+            local eval_id = assert(call(who, { op = "queue_eval", id = id,
+                cases = { { id = "case", upload_id = "upload", upload_name = "invoice.pdf", expected = {} } } }))
+            local scope = security.new_scope({ assert(security.policy("app:user")),
+                assert(security.policy("app:deny_eval_notifications")) })
+            local value, err = data.caller(who):with_scope(scope):call("kickside.docscout.evals:case_worker", {
+                payload = { component_id = id, eval_id = eval_id, case_id = "case" },
+                job = { attempt_no = 1, max_attempts = 3, is_final_attempt = false } })
+            test.is_nil(value); test.not_nil(err); test.is_true(errors.is(err, errors.PERMISSION_DENIED), tostring(err))
+            test.eq(err:details().operation_error.kind, errors.PERMISSION_DENIED)
+            local saved = assert(call(who, { op = "get_eval", id = id, eval_id = eval_id })).evaluation
+            test.eq(saved.status, "failed"); test.eq(saved.error, "Every case failed")
+            test.eq(saved.results[1].status, "failed"); test.not_nil(saved.finished_at)
+            test.eq(saved.results[1].error.kind, errors.PERMISSION_DENIED)
         end)
 
         test.it("preserves the worker failure when final settlement also fails", function()

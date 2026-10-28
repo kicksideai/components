@@ -6,6 +6,7 @@
 local json = require("json")
 local funcs = require("funcs")
 local jobs = require("jobs")
+local job_types = require("job_types")
 local execution_identity = require("execution_identity")
 local repository = require("repository")
 local extractors = require("extractors")
@@ -113,7 +114,8 @@ local function finish(eval: any, case_id: string, outcome: any): (any?, error?)
 end
 
 local function returned_failure(input: any, primary: error): (nil, error)
-    if input.job and input.job.is_final_attempt then
+    if (input.job and input.job.is_final_attempt) or not primary:retryable()
+        or job_types.is_deterministic_kind(primary:kind()) then
         local payload = input.payload
         local _, settle_err = finish({ component_id = payload.component_id, id = payload.eval_id }, payload.case_id,
             { status = "failed", error = error_envelope.encode(primary) })

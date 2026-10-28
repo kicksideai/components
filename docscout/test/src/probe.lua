@@ -8,8 +8,10 @@ local json = require("json")
 local execution_identity = require("execution_identity")
 local jobs = require("jobs")
 local processing = require("processing")
+local retention = require("retention")
 
 local OPS = {
+    retention = function(_dto: any): (any?, error?) return retention.window() end,
     content = function(dto: any): (any?, error?) return processing.content(dto.upload_id) end,
     contract_run = function(dto: any): (any?, error?)
         local definition, err = contract.get("kickside.docscout:extraction")

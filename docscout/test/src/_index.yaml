@@ -286,11 +286,29 @@ entries:
   modules: [contract, security, json]
   imports:
     processing: kickside.docscout.engine:process
+    retention: kickside.docscout:retention
     execution_identity: kickside.execution:execution_identity
     jobs: kickside.core.jobs:jobs
     extractors: kickside.docscout:extractors
     evals: kickside.docscout.evals:evals
     repository: kickside.docscout.persist:repository
+- name: fixture_settings_get
+  kind: function.lua
+  source: file://fixture_settings.lua
+  method: get
+  modules: [security]
+- name: retention_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: docscout_retention
+    group: Docscout
+  source: file://retention_test.lua
+  method: run
+  modules: [registry, security]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
 - name: lifecycle_test
   kind: function.lua
   meta:
@@ -389,6 +407,7 @@ entries:
   source: file://evals_test.lua
   method: run
   modules:
+  - security
   - process
   - channel
   - funcs
@@ -691,4 +710,11 @@ entries:
   policy:
     resources: [context]
     actions: [contract.context]
+    effect: deny
+- name: deny_eval_notifications
+  kind: security.policy
+  meta: {private: true}
+  policy:
+    resources: [kickside.component:notify_access]
+    actions: [funcs.call]
     effect: deny
