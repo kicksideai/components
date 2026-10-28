@@ -26,25 +26,36 @@ local function messages(system: string, user: string): { any }
     }
 end
 
-local function count(meter: any, response: any)
+-- Token usage of one step, and the instant its model calls must end by.
+type Meter = { input_tokens: number, output_tokens: number, deadline: any? }
+
+-- Per-call settings a stage may pass.
+type CallOpts = { max_tokens: integer?, temperature: number? }
+
+-- Options handed to the llm module for one call.
+type ModelOptions = { model: string, deadline_ms: integer?, max_tokens: integer?, temperature: number?,
+    tools: { any }?, tool_choice: string?, dimensions: integer? }
+
+local function count(meter: Meter, response: any)
     local tokens = response and response.tokens
     if type(tokens) ~= "table" then return end
     meter.input_tokens = meter.input_tokens + (tonumber(tokens.prompt_tokens) or 0)
     meter.output_tokens = meter.output_tokens + (tonumber(tokens.completion_tokens) or 0) + (tonumber(tokens.thinking_tokens) or 0)
 end
 
-function M.meter(deadline: any?): any
+function M.meter(deadline: any?): Meter
     return { input_tokens = 0, output_tokens = 0, deadline = deadline }
 end
 
 -- Milliseconds left before the meter's deadline, or nil without one.
-function M.time_left(meter: any): integer?
+function M.time_left(meter: Meter): integer?
     if not meter.deadline then return nil end
-    return math.max(0, math.floor((tonumber(meter.deadline:sub(time.now()):nanoseconds()) or 0) / 1000000))
+    local deadline: any = meter.deadline
+    return math.max(0, math.floor((tonumber(deadline:sub(time.now()):nanoseconds()) or 0) / 1000000))
 end
 
 -- A TIMEOUT error once the meter's deadline has passed.
-function M.check_deadline(meter: any, what: string): error?
+function M.check_deadline(meter: Meter, what: string): error?
     if M.time_left(meter) == 0 then
         return errors.new({ kind = errors.TIMEOUT, message = "the run reached its deadline before " .. what })
     end
@@ -52,10 +63,10 @@ function M.check_deadline(meter: any, what: string): error?
 end
 
 -- Options for one model call, bounded by the time left before the deadline.
-local function options_for(meter: any, what: string, model: string, opts: any?): (any?, error?)
+local function options_for(meter: Meter, what: string, model: string, opts: CallOpts?): (ModelOptions?, error?)
     local late = M.check_deadline(meter, what)
     if late then return nil, late end
-    local options: any = { model = model, deadline_ms = M.time_left(meter) }
+    local options: ModelOptions = { model = model, deadline_ms = M.time_left(meter) }
     if opts and opts.max_tokens then options.max_tokens = opts.max_tokens end
     if opts and opts.temperature then options.temperature = opts.temperature end
     return options, nil
@@ -72,7 +83,7 @@ function M.resolve(model: string): (any?, error?)
 end
 
 -- Structured output as a Lua table that matches schema.
-function M.structured(meter: any, model: string, schema: any, system: string, user: string, opts: any?): (any?, error?)
+function M.structured(meter: Meter, model: string, schema: any, system: string, user: string, opts: CallOpts?): (any?, error?)
     local options, late = options_for(meter, "a structured model call", model, opts)
     if late then return nil, late end
     local response, err = llm.structured_output(schema, messages(system, user), options)
@@ -84,7 +95,7 @@ function M.structured(meter: any, model: string, schema: any, system: string, us
     return response.result, nil
 end
 
-function M.generate(meter: any, model: string, system: string, user: string, opts: any?): (string?, error?)
+function M.generate(meter: Meter, model: string, system: string, user: string, opts: CallOpts?): (string?, error?)
     local options, late = options_for(meter, "a model call", model, opts)
     if late then return nil, late end
     local response, err = llm.generate(messages(system, user), options)
@@ -96,8 +107,8 @@ end
 -- A tool-using conversation: call(name, args) runs a tool and returns its text.
 -- Stops when the model answers without tools, after max_calls tool calls, or
 -- when a tool fails.
-function M.agent(meter: any, model: string, system: string, user: string, tools: { any }, max_calls: integer,
-        call: (string, any) -> (string?, error?), opts: any?): (string?, integer, error?)
+function M.agent(meter: Meter, model: string, system: string, user: string, tools: { any }, max_calls: integer,
+        call: (string, any) -> (string?, error?), opts: CallOpts?): (string?, integer, error?)
     local conversation = prompt.new()
     conversation:add_system(system)
     conversation:add_user(user)
@@ -129,7 +140,7 @@ function M.agent(meter: any, model: string, system: string, user: string, tools:
 end
 
 -- Embeds texts in batches; one 512-dimensional vector per text, in order.
-function M.embed(meter: any, model: string, texts: { string }): (any?, error?)
+function M.embed(meter: Meter, model: string, texts: { string }): (any?, error?)
     local vectors: { any } = {}
     for start = 1, #texts, EMBED_BATCH do
         local batch = {}

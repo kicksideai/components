@@ -16,6 +16,10 @@ local M = {}
 
 local CALLERS = { ui = true, agent = true, eval = true, workflow = true }
 
+-- One stage of a run as the trace records it.
+type TraceStep = { kind: string, status: string, scope: string, model: string?, duration_ms: integer,
+    input_tokens: number, output_tokens: number, queries: { string }?, message: string? }
+
 local function invalid(message: string): error return errors.new({ kind = errors.INVALID, message = message }) end
 local function millis(): integer return math.floor(time.now():unix_nano() / 1000000) end
 
@@ -43,7 +47,7 @@ function M.run(input: any): (any?, error?)
         config = config, regions = {}, notes = {}, analyses = {}, values = {}, confidence = 0,
         pool = shapes.pool(),
     }
-    local trace: { any } = {}
+    local trace: { TraceStep } = {}
     local started = millis()
     local failure: error? = nil
 

@@ -413,6 +413,13 @@ function M.highlight(run: any, step: any): error?
     return nil
 end
 
+-- A quote cited for a value, located in the document.
+type Citation = { quote: string, chunk: integer?, section: string, page: integer?, chunk_id: string, found: boolean? }
+
+-- One field's extracted value; missing when the document does not state it.
+type Value = { name: string, value: any?, confidence: number, evidence: { Citation }, verified: boolean, missing: boolean,
+    reason: string?, quotes_found: boolean? }
+
 -- Extraction: structured calls over the evidence pool, each for fields that share a group and a region.
 local EXTRACT_SYSTEM = system([[You extract field values from passages of one document. Use only what the passages state.
 For each field say whether the passages state it (found), give the value (any placeholder of the right type when not found), your confidence from 0 to 1, and evidence:
@@ -512,7 +519,7 @@ function M.extract(run: any, step: any): error?
                         section = chunk and chunk.heading_path or "", page = chunk and chunk.page_start or nil, chunk_id = chunk and chunk.id or "" }
                 end
             end
-            local entry: any = { name = f.name, confidence = 0, evidence = {}, verified = false, missing = true }
+            local entry: Value = { name = f.name, confidence = 0, evidence = {}, verified = false, missing = true }
             if item.found then
                 entry.value = item.value
                 entry.confidence = item.confidence
