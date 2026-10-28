@@ -22,7 +22,7 @@ describe('Docscout manage surface',()=>{
  it('lets READ grantees see Test and Runs without configuration controls',()=>{
   const value:Snapshot={id:'extractor',title:'Invoice reader',field_count:1,status:'configured',can_edit:false,retention:'2h',runs:[]}
   const wrapper=mount(DocscoutPage,{props:{snapshot:value}})
-  expect(wrapper.findAll('[role=tab]').map(x=>x.text())).toEqual(['Test','Runs']);expect(wrapper.text()).not.toContain('Unsaved changes');expect(wrapper.find('[aria-label="Extraction flow"]').exists()).toBe(false);expect(wrapper.text()).toContain('Extraction is not available yet.')
+  expect(wrapper.findAll('[role=tab]').map(x=>x.text())).toEqual(['Test','Runs']);expect(wrapper.text()).not.toContain('Unsaved changes');expect(wrapper.find('[aria-label="Extraction flow"]').exists()).toBe(false);expect(wrapper.text()).toContain('Run extraction')
  })
  it('starts each tab at the top of its content',async()=>{
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()}})
@@ -114,5 +114,14 @@ describe('Docscout manage surface',()=>{
   const state=emptyEngine();state.result={run_id:'run',upload_id:'upload',config_revision:7,duration_ms:2000,tokens:300,fields:[],trace:[{kind:'scout',status:'completed',scope:'chunk',duration_ms:2000,input_tokens:250,output_tokens:50,queries:['a','b']}]}
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot(),engine:state}})
   expect(wrapper.findAll('.node').find(n=>n.text().includes('Scout loop'))!.get('.trace-line').text()).toContain('2.0s · 300 tokens · 2 queries')
+ })
+ it('shows where a failed run stopped and marks values the document does not state',async()=>{
+  const state=emptyEngine();state.result={run_id:'r',upload_id:'u',config_revision:1,duration_ms:900,tokens:40,status:'failed',error:'model unavailable',
+   fields:[{name:'total',value:null,confidence:0,verified:true,missing:true,evidence:[]}],
+   trace:[{kind:'read',status:'completed',duration_ms:100,input_tokens:40,output_tokens:0,message:'Processed 4 chunks'},{kind:'extract',status:'failed',duration_ms:800,input_tokens:0,output_tokens:0,message:'model unavailable'}]}
+  const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot(),engine:state}})
+  await wrapper.findAll('[role=tab]').find(t=>t.text()==='Test')!.trigger('click')
+  expect(wrapper.get('.run-failed').text()).toContain('model unavailable')
+  expect(wrapper.text()).toContain('Not in the document');expect(wrapper.text()).toContain('Read document')
  })
 })

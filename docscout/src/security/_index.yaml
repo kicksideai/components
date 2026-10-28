@@ -16,6 +16,7 @@ entries:
     resources:
     - kickside.docscout:*
     - kickside.docscout.api:*
+    - kickside.docscout.engine:*
     - kickside.docscout.traits:*
     actions:
     - registry.get
@@ -30,6 +31,7 @@ entries:
     resources:
     - kickside.docscout:*
     - kickside.docscout.api:*
+    - kickside.docscout.engine:*
     - kickside.docscout.traits:*
     actions:
     - contract.get
@@ -57,6 +59,8 @@ entries:
     - kickside.docscout:ui_static
     - kickside.docscout.api:add_case.endpoint
     - kickside.docscout.api:delete_case.endpoint
+    - kickside.docscout.api:run.endpoint
+    - kickside.docscout:page_view
     actions:
     - access
     effect: allow

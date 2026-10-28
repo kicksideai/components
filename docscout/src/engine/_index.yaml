@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.engine
+entries:
+- name: ai
+  kind: library.lua
+  meta:
+    comment: Model calls with per-step token accounting.
+  source: file://ai.lua
+  modules:
+  - json
+  imports:
+    llm: wippy.llm:llm
+    prompt: wippy.llm:prompt
+- name: store
+  kind: library.lua
+  meta:
+    comment: Processed documents, their chunks and keyword and vector search.
+  source: file://store.lua
+  modules:
+  - sql
+  - registry
+  - json
+  - time
+  - uuid
+  imports:
+    index: kickside.search_index:index
+- name: process
+  kind: library.lua
+  meta:
+    comment: Builds or reuses the processed copy of an upload.
+  source: file://process.lua
+  modules:
+  - json
+  - hash
+  - text
+  - security
+  - contract
+  imports:
+    doc2md: kickside.convert.doc2md:doc2md
+    store: kickside.docscout.engine:store
+    ai: kickside.docscout.engine:ai
+    retention: kickside.docscout:retention
+- name: doctools
+  kind: library.lua
+  meta:
+    comment: Search, section and outline reads over one processed document.
+  source: file://doctools.lua
+  imports:
+    store: kickside.docscout.engine:store
+    ai: kickside.docscout.engine:ai
+- name: stages
+  kind: library.lua
+  meta:
+    comment: Map, prefetch, scout, deep analysis, extraction and verification.
+  source: file://stages.lua
+  modules:
+  - json
+  imports:
+    ai: kickside.docscout.engine:ai
+    store: kickside.docscout.engine:store
+    doctools: kickside.docscout.engine:doctools
+    process: kickside.docscout.engine:process
+- name: run
+  kind: library.lua
+  meta:
+    comment: Runs one extraction and records it.
+  source: file://run.lua
+  modules:
+  - time
+  - security
+  imports:
+    extractors: kickside.docscout:extractors
+    repository: kickside.docscout:repository
+    retention: kickside.docscout:retention
+    process: kickside.docscout.engine:process
+    stages: kickside.docscout.engine:stages
+    ai: kickside.docscout.engine:ai

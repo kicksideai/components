@@ -147,22 +147,18 @@ return {run=test.run_cases(function()
             test.eq(#assert(call(who,{op="get",id=id})).cases,0)
             test.not_nil(call(who,{op="delete",id=id}))
         end)
-        test.it("tears down every owned row and declares one retention duration",function()
+        test.it("tears down the extractor's runs and cases and declares one retention duration",function()
             local who=uuid.v4();local id=assert(call(who,{op="create",input=input()})).component_id
             local db=assert(sql.get("app:db"))
             local _,err=db:execute([[INSERT INTO kickside_docscout_cases(id,component_id,upload_id,expected_values,created_at) VALUES($1,$2,'upload','{}','2026-01-01')]],{uuid.v4(),id})
             test.is_nil(err,tostring(err))
-            local _,document_err=db:execute([[INSERT INTO kickside_docscout_documents
-                (id,component_id,user_id,upload_id,markdown,chunks,outline,vectors,created_at,expires_at)
-                VALUES($1,$2,$3,'upload','text','[]','[]','[]','2026-01-01','2026-01-02')]],{uuid.v4(),id,who})
-            test.is_nil(document_err,tostring(document_err))
             local _,run_err=db:execute([[INSERT INTO kickside_docscout_runs
                 (id,component_id,user_id,upload_id,caller,status,config_revision,duration_ms,tokens,created_at,expires_at)
                 VALUES($1,$2,$3,'upload','agent','completed',0,20,100,'2026-01-01','2026-01-02')]],{uuid.v4(),id,who})
             test.is_nil(run_err,tostring(run_err));db:release()
             test.not_nil(call(who,{op="delete",id=id}))
             db=assert(sql.get("app:db"))
-            for _,name in ipairs({"cases","runs","documents"}) do
+            for _,name in ipairs({"cases","runs"}) do
                 local rows=assert(db:query("SELECT count(*) AS n FROM kickside_docscout_"..name.." WHERE component_id=$1",{id}))
                 test.eq(tonumber(rows[1].n),0)
             end

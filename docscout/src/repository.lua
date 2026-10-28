@@ -31,7 +31,7 @@ function M.delete(component_id)
     if err then return nil,err end
     local tx,tx_err = db:begin()
     if tx_err then db:release();return nil,tx_err end
-    for _,name in ipairs({"documents","runs","cases"}) do
+    for _,name in ipairs({"runs","cases"}) do
         local _,delete_err = tx:execute("DELETE FROM kickside_docscout_" .. name .. " WHERE component_id=$1",{component_id})
         if delete_err then tx:rollback();db:release();return nil,delete_err end
     end
@@ -66,5 +66,33 @@ function M.delete_case(component_id,case_id)
     db:release()
     if delete_err then return nil,delete_err end
     return {success=true},nil
+end
+function M.add_run(component_id,row)
+    local db,err=open()
+    if err then return nil,err end
+    local result,encode_err=json.encode(row.result or {})
+    if encode_err then db:release();return nil,encode_err end
+    local trace,trace_err=json.encode(row.trace or {})
+    if trace_err then db:release();return nil,trace_err end
+    local id=uuid.v7()
+    local _,write_err=db:execute([[INSERT INTO kickside_docscout_runs(id,component_id,user_id,upload_id,caller,status,config_revision,result,trace,duration_ms,tokens,cost,created_at,expires_at)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)]],
+        {id,component_id,row.user_id,row.upload_id,row.caller,row.status,row.config_revision,result,trace,row.duration_ms,row.tokens,sql.as.null(),time.now():utc():format(time.RFC3339),row.expires_at})
+    db:release()
+    if write_err then return nil,write_err end
+    return id,nil
+end
+function M.expire_runs(limit)
+    local db,err=open()
+    if err then return nil,err end
+    local now=time.now():utc():format(time.RFC3339)
+    local rows,query_err=db:query("SELECT id FROM kickside_docscout_runs WHERE expires_at <= $1 LIMIT $2",{now,limit})
+    if query_err then db:release();return nil,query_err end
+    for _,row in ipairs(rows or {}) do
+        local _,delete_err=db:execute("DELETE FROM kickside_docscout_runs WHERE id=$1",{row.id})
+        if delete_err then db:release();return nil,delete_err end
+    end
+    db:release()
+    return #(rows or {}),nil
 end
 return M

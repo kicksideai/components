@@ -43,6 +43,24 @@ entries:
   kind: ns.dependency
   component: kickside/uploads
   version: '*'
+- name: dep.kickside.search_index
+  kind: ns.dependency
+  component: kickside/search-index
+  version: '*'
+  meta:
+    comment: Keyword, vector and hybrid search over processed document chunks.
+- name: dep.kickside.doc2md
+  kind: ns.dependency
+  component: kickside/doc2md
+  version: '>=0.8.15'
+  meta:
+    comment: Reads the page and slide markers in converted Markdown.
+- name: dep.wippy.llm
+  kind: ns.dependency
+  component: wippy/llm
+  version: '*'
+  meta:
+    comment: Generation, structured output and embeddings.
 - name: dep.wippy.migration
   kind: ns.dependency
   component: wippy/migration
@@ -55,6 +73,8 @@ entries:
   - entry: kickside.docscout:db_config
     path: .meta.db_id
   - entry: kickside.docscout.migrations:01_extractor_data
+    path: .meta.target_db
+  - entry: kickside.docscout.migrations:02_document_index
     path: .meta.target_db
 - name: api_router
   kind: ns.requirement
@@ -74,6 +94,8 @@ entries:
   - entry: kickside.docscout.api:add_case.endpoint
     path: .meta.router
   - entry: kickside.docscout.api:delete_case.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:run.endpoint
     path: .meta.router
 - name: ui_server
   kind: ns.requirement
@@ -108,6 +130,15 @@ entries:
     component: kickside.component:component
     config: kickside.docscout:config
     repository: kickside.docscout:repository
+    retention: kickside.docscout:retention
+- name: retention
+  kind: library.lua
+  meta:
+    comment: The one retention window for processed documents and run history.
+  source: file://retention.lua
+  modules:
+  - contract
+  - time
 - name: status
   kind: function.lua
   source: file://binding.lua

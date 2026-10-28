@@ -2,6 +2,7 @@
 local component = require("component")
 local config = require("config")
 local repository = require("repository")
+local retention = require("retention")
 local contract = require("contract")
 local M = {}
 local KIND = "kickside.docscout:extractor"
@@ -57,15 +58,17 @@ function M.get(id)
     local can_edit = math.floor(context.access_level / component.ACCESS.WRITE) % 2 == 1
     local records, records_err = repository.snapshot(id)
     if records_err then return nil, records_err end
-    local definition,definition_err = contract.get("kickside.settings:settings")
-    if definition_err or not definition then return nil,definition_err end
-    local settings,settings_err = definition:open()
-    if settings_err or not settings then return nil,settings_err end
-    local retention,retention_err = checked(settings:get({namespace="kickside.docscout",key="retention"}))
+    local window,retention_err = retention.window()
     if retention_err then return nil,retention_err end
-    return {retention=retention.value,success=true,id=id,title=row.meta.title,description=row.meta.description,field_count=tonumber(row.meta.field_count),status=row.meta.status,
+    return {retention=window,success=true,id=id,title=row.meta.title,description=row.meta.description,field_count=tonumber(row.meta.field_count),status=row.meta.status,
         config=can_edit and context.context.config or nil,expected_revision=can_edit and context.context_revision or nil,
         can_edit=can_edit,runs=records.runs,cases=can_edit and records.cases or nil},nil
+end
+-- The configuration a run uses; READ access is enough to run an extractor.
+function M.for_run(id)
+    local context, err = access(id,component.ACCESS.READ)
+    if err then return nil, err end
+    return {config=context.context.config, revision=context.context_revision or 0}, nil
 end
 function M.update(id,dto)
     local _, err = access(id,component.ACCESS.WRITE)

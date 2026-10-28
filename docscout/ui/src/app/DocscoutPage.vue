@@ -9,8 +9,8 @@ import EvalsPanel from './EvalsPanel.vue'
 import RunsPanel from './RunsPanel.vue'
 import {configError,isOn,newConfig,sameConfig,stageLabels,type StageKey} from '../config'
 import {emptyEngine,type Snapshot,type EngineState} from '../models'
-const props=defineProps<{snapshot:Snapshot;engine?:EngineState;saving?:boolean;error?:string;back?:boolean}>()
-const emit=defineEmits<{save:[input:{title:string;description:string;config:ReturnType<typeof newConfig>;expected_revision:number}];'add-case':[input:{upload_id:string;upload_name:string;expected:Record<string,unknown>}];'delete-case':[id:string];back:[]}>()
+const props=defineProps<{snapshot:Snapshot;engine?:EngineState;saving?:boolean;running?:boolean;error?:string;back?:boolean}>()
+const emit=defineEmits<{save:[input:{title:string;description:string;config:ReturnType<typeof newConfig>;expected_revision:number}];'add-case':[input:{upload_id:string;upload_name:string;expected:Record<string,unknown>}];'delete-case':[id:string];back:[];run:[upload_id:string]}>()
 const body=ref<HTMLElement>()
 const tab=ref('Builder'),draft=ref(newConfig()),title=ref(''),description=ref('')
 const tabs=computed(()=>props.snapshot.can_edit?['Builder','Test','Evals','Runs']:['Test','Runs'])
@@ -43,7 +43,7 @@ function save(){emit('save',{title:title.value,description:description.value,con
    <Builder v-model:title="title" v-model:description="description" :config="draft" :retention="snapshot.retention" :result="state.result"/>
   </div>
   <div v-else ref="body" class="page-body"><div :id="`panel-${tab}`" role="tabpanel" :aria-labelledby="`tab-${tab}`" class="panel">
-   <TestPanel v-if="tab==='Test'" :result="state.result" :retention="snapshot.retention"/>
+   <TestPanel v-if="tab==='Test'" :result="state.result" :retention="snapshot.retention" :running="running" :can-run="snapshot.field_count>0" @run="emit('run',$event)"/>
    <EvalsPanel v-if="tab==='Evals'&&snapshot.can_edit" :cases="snapshot.cases" :results="state.evals" :proposals="state.proposals" :fields="snapshot.config?.fields??[]" :saving="saving" @add-case="emit('add-case',$event)" @delete-case="emit('delete-case',$event)"/>
    <RunsPanel v-if="tab==='Runs'" :runs="snapshot.runs" :retention="snapshot.retention"/>
   </div></div>

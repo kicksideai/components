@@ -100,3 +100,17 @@ entries:
   method: DELETE
   path: /docscout/{id}/cases/{case_id}
   func: delete_case
+- name: run
+  kind: function.lua
+  source: file://run_handler.lua
+  method: run
+  modules:
+  - http
+  imports:
+    engine: kickside.docscout.engine:run
+    http_errors: kickside.contract:http_errors
+- name: run.endpoint
+  kind: http.endpoint
+  method: POST
+  path: /docscout/{id}/run
+  func: run

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import type {Config} from './config'
-export interface Evidence {quote:string;section:string;page?:number;chunk_id:string}
-export interface Value {name:string;value:unknown;confidence:number;evidence:Evidence[];verified:boolean}
-export interface TraceStep {kind:string;status:'completed'|'failed'|'running';scope:string;model?:string;duration_ms:number;input_tokens:number;output_tokens:number;cost?:number;queries?:string[];message?:string}
-export interface Extraction {run_id:string;upload_id:string;config_revision:number;fields:Value[];trace:TraceStep[];duration_ms:number;tokens:number;cost?:number}
+export interface Evidence {quote:string;section:string;page?:number;chunk_id:string;found?:boolean}
+export interface Value {name:string;value:unknown;confidence:number;evidence:Evidence[];verified:boolean;missing?:boolean;reason?:string}
+export interface TraceStep {kind:string;status:'completed'|'failed'|'running';scope?:string;model?:string;duration_ms:number;input_tokens:number;output_tokens:number;cost?:number;queries?:string[];message?:string}
+export interface Extraction {run_id:string;upload_id:string;config_revision:number;fields:Value[];trace:TraceStep[];duration_ms:number;tokens:number;cost?:number;status?:'completed'|'failed';error?:string;pages?:number}
 export interface Run {id:string;caller:'ui'|'agent'|'eval'|'workflow';status:'completed'|'running'|'failed';duration_ms:number;expires_at:string}
 export interface EvalCase {id:string;upload_id:string;upload_name:string;expected:Record<string,unknown>}
 export interface EvalMetric {field:string;accuracy:number;cost:number;duration_ms:number}
