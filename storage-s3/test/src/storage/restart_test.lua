@@ -42,6 +42,11 @@ return { run = test.run_cases(function()
             else
                 test.eq(#rows, 1)
                 local file = rows[1]
+                -- The new runtime must reconstruct its owned projection before
+                -- this consumer reads policy or durable resource declarations.
+                local applied, apply_err = funcs.call("kickside.storage_s3.service:request", {})
+                test.is_nil(apply_err, tostring(apply_err))
+                test.is_true(applied and applied.success == true, applied and tostring(applied.error))
                 test.eq(assert(policy.current()).mode, "local")
                 local location = assert(locations.get("app:db", STORAGE, file.storage_path, nil))
                 test.not_nil(registry.get(location.resource_id))
