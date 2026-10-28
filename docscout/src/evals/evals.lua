@@ -113,8 +113,17 @@ function M.run_case(input: any): any
     local result, run_err = executor:call("kickside.docscout.callers:contract_run",
         { extractor_id = eval.component_id, upload_id = expected.upload_id, caller = "eval" })
     if run_err then
+        -- A run that stopped partway still spent time and tokens; its trace says how much.
         local details = (run_err :: any):details() or {}
-        return finish(eval, payload.case_id, { status = "failed", error = (run_err :: any):message(), run_id = details.run_id })
+        local tokens, duration = 0, 0
+        for _, step in ipairs(details.trace or {}) do
+            tokens = tokens + step.input_tokens + step.output_tokens
+            duration = duration + step.duration_ms
+        end
+        local failed_step = details.trace and details.trace[#details.trace]
+        local where = failed_step and (failed_step.kind .. ": ") or ""
+        return finish(eval, payload.case_id, { status = "failed", error = where .. tostring(run_err), run_id = details.run_id,
+            tokens = tokens, duration_ms = duration })
     end
     if result.config_revision ~= eval.config_revision then
         return finish(eval, payload.case_id, { status = "failed", run_id = result.run_id,
