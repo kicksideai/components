@@ -45,7 +45,7 @@ describe('Complete flow configuration',()=>{
   expect(c.tags).toEqual([])
   expect(newField()).toMatchObject({chunks:5,search_within:'document',group:''})
   expect(c.stages.scout).toMatchObject({mode:'loop',max_rounds:0,target_confidence:.7,max_extra_queries:3,max_tokens:4096,share_notes:true})
-  expect(c.stages.extract.structured_output).toBe(true)
+  expect(c.stages.extract).toEqual({model:'class:premium',max_output_tokens:4096,max_fields_per_call:20})
   expect(c.stages.deep).toMatchObject({query_model:'class:fast',max_queries:5,chunks_per_query:50,chunk_cap:100,min_similarity:.2,query_temperature:.2,analysis_temperature:.2})
   expect(c.stages.scout.tools).toEqual(['keyword_search','semantic_search','read_section','read_outline'])
   expect(c.retrieval).toMatchObject({context:'headings',keep_tables:true})

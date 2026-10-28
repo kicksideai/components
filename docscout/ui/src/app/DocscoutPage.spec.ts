@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import {describe,it,expect,vi} from 'vitest'
-import {mount,config} from '@vue/test-utils'
+import {mount,config,flushPromises} from '@vue/test-utils'
 import {PrimeVuePlugin} from '@wippy-fe/theme/primevue-plugin'
 config.global.plugins=[PrimeVuePlugin]
 import DocscoutPage from './DocscoutPage.vue'
@@ -12,6 +12,23 @@ async function details(w:ReturnType<typeof mount>){await w.findAll('button').fin
 const saveButton=(w:ReturnType<typeof mount>)=>w.findAll('button').find(b=>b.text()==='Save')!
 function snapshot():Snapshot{return {id:'extractor',title:'Invoice reader',description:'Invoice fields',field_count:0,status:'configured',can_edit:true,can_share:true,expected_revision:7,config:newConfig(),retention:'2h',runs:[],cases:[]}}
 describe('Docscout manage surface',()=>{
+ it('offers reload or continued editing when saved configuration changes',async()=>{
+  const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()}})
+  await details(wrapper);await nameInput(wrapper).setValue('Local draft')
+  const remote=snapshot();remote.title='Chat configured';remote.expected_revision=8
+  await wrapper.setProps({snapshot:remote})
+  expect(wrapper.get('[role=status]').text()).toContain('Saved configuration changed')
+  await wrapper.findAll('button').find(b=>b.text()==='Keep editing')!.trigger('click')
+  expect((nameInput(wrapper).element as HTMLInputElement).value).toBe('Local draft')
+  await saveButton(wrapper).trigger('click')
+  expect(wrapper.emitted('save')?.at(-1)?.[0]).toMatchObject({title:'Local draft',expected_revision:7})
+  await wrapper.findAll('button').find(b=>b.text()==='Reload saved')!.trigger('click')
+  expect((nameInput(wrapper).element as HTMLInputElement).value).toBe('Chat configured')
+  expect(saveButton(wrapper).attributes('disabled')).toBeDefined()
+  await nameInput(wrapper).setValue('Next draft');await saveButton(wrapper).trigger('click')
+  expect(wrapper.emitted('save')?.at(-1)?.[0]).toMatchObject({title:'Next draft',expected_revision:8})
+  wrapper.unmount()
+ })
  it('saves all edited configuration with its loaded revision',async()=>{
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()}})
   await details(wrapper)
@@ -29,7 +46,7 @@ describe('Docscout manage surface',()=>{
   expect(mount(DocscoutPage,{props:{snapshot:reader}}).findAll('button').some(b=>b.text()==='Share')).toBe(false)
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()},attachTo:document.body})
   await wrapper.findAll('button').find(b=>b.text()==='Share')!.trigger('click')
-  await new Promise(r=>setTimeout(r))
+  await flushPromises()
   const popup=document.querySelector('kickside-share')!
   expect(JSON.parse(popup.getAttribute('config')!)).toEqual({resource_id:'extractor',title:'Invoice reader',
    access_url:'/api/v1/component-access/grants/extractor',share_url:'/api/v1/component-access/share/extractor'})

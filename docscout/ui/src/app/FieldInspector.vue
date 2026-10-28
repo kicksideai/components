@@ -39,6 +39,6 @@ function choices(event:Event){props.field.enum_values=[...new Set((event.target 
   <label v-if="showsFormat">Expected format<input v-model="field.expected_format" :placeholder="formatPlaceholder(field)"/></label>
   <div class="toggle-row"><span>Required<small>A run reports this field as missing when no value is found.</small></span><Toggle v-model="field.required" label="Required" :disabled="readonly"/></div>
   <div class="toggle-row"><span>Evidence required<small>The value must cite a quote from the document.</small></span><Toggle v-model="field.evidence_required" label="Evidence required" :disabled="readonly"/></div>
-  <button v-if="!readonly" type="button" class="btn danger-text" @click="emit('remove')">Remove field</button>
+  <button v-if="!readonly" type="button" class="kx-btn kx-btn-danger kx-focus-halo" @click="emit('remove')">Remove field</button>
  </fieldset>
 </template>

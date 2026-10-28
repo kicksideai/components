@@ -8,7 +8,8 @@ export interface Run {id:string;caller:'ui'|'agent'|'eval'|'workflow';status:'co
 export interface EvalCase {id:string;upload_id:string;upload_name:string;expected:Record<string,unknown>}
 export interface FieldMetric {field:string;accuracy:number;verified:number}
 export interface FieldScore {field:string;expected?:unknown;value?:unknown;score:number;verified:boolean}
-export interface CaseResult {case_id:string;upload_name:string;status:'queued'|'completed'|'failed';run_id?:string;scores:FieldScore[];tokens:number;duration_ms:number;error?:string}
+export interface CaseError {kind:string;message:string;retryable:boolean;details:unknown}
+export interface CaseResult {case_id:string;upload_name:string;status:'queued'|'completed'|'failed';run_id?:string;scores:FieldScore[];tokens:number;duration_ms:number;error?:CaseError|null}
 export type EvalStatus='queued'|'running'|'completed'|'failed'
 export interface Evaluation {id:string;config_revision:number;fields:Field[];status:EvalStatus;case_count:number;metrics:FieldMetric[];tokens:number;duration_ms:number;error?:string;created_at:string;finished_at?:string;results?:CaseResult[]}
 interface SnapshotBase {id:string;title:string;description?:string;field_count:number;status:string;retention:string;runs:Run[];can_share:boolean}

@@ -15,12 +15,41 @@ function evaluation(over:Partial<Evaluation>={}):Evaluation{
   metrics:[{field:'total',accuracy:1,verified:1},{field:'paid',accuracy:.5,verified:.5},{field:'vendor',accuracy:.9,verified:1}],
   results:[
    {case_id:'c1',upload_name:'invoice.pdf',status:'completed',tokens:2600,duration_ms:15000,scores:[{field:'total',expected:1250,value:1250,score:1,verified:true},{field:'paid',expected:false,value:true,score:0,verified:false},{field:'vendor',expected:'Northwind GmbH',value:'Northwind GmbH, Hamburg',score:.8,verified:true}]},
-   {case_id:'c2',upload_name:'scan.pdf',status:'failed',tokens:0,duration_ms:400,scores:[],error:'the upload has no extracted text yet'},
+   {case_id:'c2',upload_name:'scan.pdf',status:'failed',tokens:0,duration_ms:400,scores:[],error:{kind:'UNAVAILABLE',message:'the upload has no extracted text yet',retryable:true,details:{upload_id:'u2'}}},
   ],...over}
 }
 const before:Evaluation={...evaluation({id:'e1',config_revision:3,created_at:'2026-10-27T10:00:00Z',metrics:[{field:'total',accuracy:.5,verified:.5},{field:'paid',accuracy:.5,verified:.5}]}),results:undefined}
 const mountPanel=(props:Record<string,unknown>={})=>mount(EvalsPanel,{props:{cases,fields,evaluations:[],revision:4,...props}})
 describe('Docscout evaluations',()=>{
+ it('preserves case inputs across wakeups and clears them only after its addition succeeds',async()=>{
+  const w=mountPanel()
+  await w.findAll('button').find(b=>b.text()==='Add case')!.trigger('click')
+  w.getComponent(UploadPicker).vm.$emit('select','u2','receipt.pdf')
+  await w.get('input[type=number]').setValue('99.5')
+  await w.setProps({cases:cases.map(item=>({...item}))})
+  expect((w.get('input[type=number]').element as HTMLInputElement).value).toBe('99.5')
+  const remote={id:'remote',upload_id:'u3',upload_name:'other.pdf',expected:{total:10}}
+  await w.setProps({cases:[...cases,remote]})
+  expect(w.getComponent(UploadPicker).props('value')).toBe('u2')
+  expect((w.get('input[type=number]').element as HTMLInputElement).value).toBe('99.5')
+  await w.get('form').trigger('submit')
+  expect(w.emitted('add-case')?.[0][0]).toEqual({upload_id:'u2',expected:{total:99.5}})
+  await w.setProps({addedCaseId:'saved-case',cases:[...cases,remote,{id:'saved-case',upload_id:'u2',upload_name:'receipt.pdf',expected:{total:99.5}}]})
+  expect(w.find('form').exists()).toBe(false)
+  await w.findAll('button').find(b=>b.text()==='Add case')!.trigger('click')
+  expect(w.getComponent(UploadPicker).props('value')).toBe('')
+  expect((w.get('input[type=number]').element as HTMLInputElement).value).toBe('')
+  w.unmount()
+ })
+ it('renders structured case error messages and retains their kind in summary and detail',async()=>{
+  const current=evaluation()
+  const w=mountPanel({evaluations:[current],evaluation:current})
+  const failed=w.findAll('.result-row')[1]
+  expect(failed.get('[data-error-kind="UNAVAILABLE"]').text()).toBe('the upload has no extracted text yet')
+  expect(failed.text()).not.toContain('[object Object]')
+  await failed.get('.case-toggle').trigger('click')
+  expect(w.get('.result-detail [data-error-kind="UNAVAILABLE"]').text()).toBe('the upload has no extracted text yet')
+ })
  it('saves blank expected values as not stated',async()=>{
   const w=mountPanel()
   await w.findAll('button').find(b=>b.text()==='Add case')!.trigger('click')
