@@ -8,14 +8,18 @@ export interface Stages {
  prefetch:{enabled:boolean;queries:PrefetchQuery[]}
  scout:{enabled:boolean;mode:'loop'|'agent';model:string;max_rounds:number;target_confidence:number;max_extra_queries:number;max_tokens:number;drop_noise:boolean;share_notes:boolean;tools:string[]}
  deep:{enabled:boolean;model:string;query_model:string;read:'chunks'|'sections';parallel_fields:number;max_queries:number;chunks_per_query:number;chunk_cap:number;min_similarity:number;query_temperature:number;analysis_temperature:number}
- extract:{model:string;structured_output:boolean;max_output_tokens:number;max_fields_per_call:number}
+ extract:{model:string;max_output_tokens:number;max_fields_per_call:number}
  verify:{enabled:boolean;model:string;check_quotes:boolean;check_support:boolean}
 }
 export type StageKey = keyof Stages
 export interface Retrieval {chunk_size:number;overlap:number;split_headings:boolean;keep_tables:boolean;search_mode:'keyword'|'semantic'|'hybrid';embedding_model:string;context:'none'|'headings'|'generated';context_model:string;highlighter:boolean;highlighter_model:string;section_budget:number}
 export interface Config {fields:Field[];stages:Stages;retrieval:Retrieval;tags:string[]}
 
-export const newConfig=():Config=>structuredClone(schema.default) as Config
+export function newConfig():Config{
+ const config=structuredClone(schema.default)
+ const {model,max_output_tokens,max_fields_per_call}=config.stages.extract
+ return {...config,stages:{...config.stages,extract:{model,max_output_tokens,max_fields_per_call}}} as Config
+}
 export const newField=():Field=>structuredClone(schema.properties.fields.items.default) as Field
 export const newQuery=():PrefetchQuery=>({name:'',query:'',chunks:5})
 export const documentTools=():string[]=>[...schema.properties.stages.properties.scout.properties.tools.default]
@@ -56,7 +60,7 @@ export function stageSummary(key:StageKey,config:Config):string{
   case 'prefetch':{const searched=config.fields.filter(f=>f.strategy!=='deep'||!s.deep.enabled).length,hints=config.fields.filter(f=>f.search_hints.trim()).length;return [plural(searched,'field'),hints?plural(hints,'field hint'):'',s.prefetch.queries.length?plural(s.prefetch.queries.length,'query'):''].filter(Boolean).join(' · ')}
   case 'scout':return s.scout.mode==='agent'?`Agent with tools · up to ${plural(s.scout.max_rounds*s.scout.max_extra_queries,'tool call')}`:`Structured loop · ${s.scout.max_rounds?`up to ${plural(s.scout.max_rounds,'round')}, stop at ${Math.round(s.scout.target_confidence*100)}%`:'single pass'}`
   case 'deep':{const deep=config.fields.filter(f=>f.strategy==='deep').length;return deep?`${plural(deep,'field')} · reads ${s.deep.read} · ${s.deep.parallel_fields} at a time`:'No deep fields'}
-  case 'extract':{const calls=extractCalls(config);return `${s.extract.structured_output?'Structured output':'Free text'} · ${plural(fieldGroups(config).length,'group')}, ${plural(calls,'call')}`}
+  case 'extract':{const calls=extractCalls(config);return `Structured output · ${plural(fieldGroups(config).length,'group')}, ${plural(calls,'call')}`}
   case 'verify':return [s.verify.check_quotes?'quotes exist':'',s.verify.check_support?'quotes support values':''].filter(Boolean).join(' · ')||'No checks'
  }
 }

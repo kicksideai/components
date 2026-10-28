@@ -41,10 +41,10 @@ function setTool(id:string,on:boolean){
    <div v-for="(q,i) in s.prefetch.queries" :key="i" class="query-row">
     <div class="grid"><label>Name<input v-model="q.name" placeholder="Parties"/></label><label>Chunks<input v-model.number="q.chunks" type="number" min="1" max="1000"/></label></div>
     <label>Query<textarea v-model="q.query" rows="2" placeholder="Who signed the agreement and on whose behalf"/></label>
-    <button v-if="!readonly" type="button" class="btn subtle" @click="s.prefetch.queries.splice(i,1)">Remove query</button>
+    <button v-if="!readonly" type="button" class="kx-btn kx-btn-ghost kx-focus-halo sm" @click="s.prefetch.queries.splice(i,1)">Remove query</button>
    </div>
    <p v-if="!s.prefetch.queries.length" class="muted">No fixed queries. Field search hints still run.</p>
-   <button v-if="!readonly" type="button" class="btn" @click="s.prefetch.queries.push(newQuery())">Add query</button>
+   <button v-if="!readonly" type="button" class="kx-btn kx-btn-ghost kx-focus-halo" @click="s.prefetch.queries.push(newQuery())">Add query</button>
   </template>
 
   <template v-if="stage==='scout'">
@@ -93,7 +93,6 @@ function setTool(id:string,on:boolean){
    <p v-if="!groups.length" class="muted">No fields yet.</p>
    <Slider v-model="s.extract.max_fields_per_call" label="Fields per call" :min="b('max_fields_per_call').min" :max="b('max_fields_per_call').max" :disabled="readonly" :note="`${extractCalls(config)} extraction call${extractCalls(config)===1?'':'s'} per document. Groups larger than this are split.`"/>
    <Slider v-model="s.extract.max_output_tokens" label="Output limit" :min="b('max_output_tokens').min" :max="b('max_output_tokens').max" log :step="64" unit="tokens" :disabled="readonly"/>
-   <div class="toggle-row"><span>Structured output<small>The model returns JSON matching the field schema.</small></span><Toggle v-model="s.extract.structured_output" label="Structured output" :disabled="readonly"/></div>
   </template>
 
   <template v-if="stage==='verify'">

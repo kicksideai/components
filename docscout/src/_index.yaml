@@ -283,7 +283,7 @@ entries:
     title: Docscout
     comment: Docscout product page. Lists extractors and opens one in place.
     announced: true
-    auto_register: false
+    auto_register: true
     tag_name: kickside-docscout-page
     base_path: kickside-docscout
     entry_point: page.js

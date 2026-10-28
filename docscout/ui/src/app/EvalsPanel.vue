@@ -7,12 +7,12 @@ import UploadPicker from './UploadPicker.vue'
 import type {Field} from '../config'
 import {finished,meanAccuracy,type EvalCase,type Evaluation,type CaseResult,type FieldScore} from '../models'
 import {when} from '../format'
-const props=defineProps<{cases:EvalCase[];fields:Field[];evaluations:Evaluation[];evaluation?:Evaluation;revision:number;changed?:boolean;saving?:boolean;starting?:boolean}>()
+const props=defineProps<{cases:EvalCase[];addedCaseId?:string;fields:Field[];evaluations:Evaluation[];evaluation?:Evaluation;revision:number;changed?:boolean;saving?:boolean;starting?:boolean}>()
 const emit=defineEmits<{'add-case':[input:{upload_id:string;expected:Record<string,unknown>}];'delete-case':[id:string];evaluate:[];open:[eval_id:string]}>()
 
-// Case editor. A blank input means the document does not state the field, so it is left out.
+// The case editor omits fields with blank expected values.
 const adding=ref(false),upload=ref(''),expected=ref<Record<string,string|number>>({}),error=ref('')
-watch(()=>props.cases,()=>{adding.value=false;upload.value='';expected.value={}})
+watch(()=>props.addedCaseId,()=>{adding.value=false;upload.value='';expected.value={}})
 function parse(field:Field,raw:string):unknown{
  if(field.type==='number')return Number(raw)
  if(field.type==='boolean')return raw==='true'
@@ -32,7 +32,7 @@ const done=computed(()=>props.evaluations.filter(finished))
 const shown=computed(()=>props.evaluation)
 const progress=computed(()=>{const r=shown.value?.results??[];return {done:r.filter(c=>c.status!=='queued').length,total:shown.value?.case_count??0}})
 
-// Comparison: the open evaluation against an earlier finished one, by default the one before it.
+// Compares the open evaluation with the previous completed evaluation by default.
 const baselineId=ref<string>()
 watch(()=>shown.value?.id,()=>{baselineId.value=undefined})
 const baseline=computed(()=>{
@@ -112,11 +112,11 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
       <template v-for="r in shown.results" :key="r.case_id">
        <tr class="result-row" :class="{active:open===r.case_id}">
         <td><button type="button" class="case-toggle" :aria-expanded="open===r.case_id" @click="open=open===r.case_id?undefined:r.case_id"><Icon :icon="open===r.case_id?'tabler:chevron-down':'tabler:chevron-right'"/>{{r.upload_name}}</button></td>
-        <td v-if="r.status!=='completed'" :colspan="columns.length" class="muted"><span v-if="r.status==='queued'" class="cell-state"><Icon icon="tabler:loader-2" class="spin"/>Waiting</span><span v-else class="cell-state fail"><Icon icon="tabler:alert-triangle"/>{{r.error}}</span></td>
+        <td v-if="r.status!=='completed'" :colspan="columns.length" class="muted"><span v-if="r.status==='queued'" class="cell-state"><Icon icon="tabler:loader-2" class="spin"/>Waiting</span><span v-else class="cell-state fail" :data-error-kind="r.error?.kind" :title="r.error?.kind"><Icon icon="tabler:alert-triangle"/>{{r.error?.message}}</span></td>
         <template v-else><td v-for="name in columns" :key="name" :data-label="name"><span class="cell" :class="grade(score(r,name))" :title="value(score(r,name)?.value)">{{score(r,name)?pct(score(r,name)!.score):'—'}}</span></td></template>
        </tr>
        <tr v-if="open===r.case_id" class="result-detail"><td :colspan="columns.length+1">
-        <p v-if="r.error" class="muted">{{r.error}}</p>
+        <p v-if="r.error" class="muted" :data-error-kind="r.error.kind" :title="r.error.kind">{{r.error.message}}</p>
         <dl v-else class="compare">
          <template v-for="s in r.scores" :key="s.field">
           <dt class="mono">{{s.field}}</dt>
@@ -150,7 +150,7 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
    <div v-else-if="cases.length" class="table-scroll">
     <table class="metric-table case-table">
      <thead><tr><th>Document</th><th v-for="f in fields" :key="f.name" class="mono">{{f.name}}</th><th/></tr></thead>
-     <tbody><tr v-for="item in cases" :key="item.id"><td><Icon icon="tabler:file-text" class="muted"/> {{item.upload_name}}</td><td v-for="f in fields" :key="f.name" :data-label="f.name" :class="{muted:!(f.name in item.expected)}">{{f.name in item.expected?value(item.expected[f.name]):'Not stated'}}</td><td class="num"><button type="button" class="icon-btn" :aria-label="`Remove case ${item.upload_name}`" :disabled="saving" @click="emit('delete-case',item.id)"><Icon icon="tabler:trash"/></button></td></tr></tbody>
+     <tbody><tr v-for="item in cases" :key="item.id"><td><Icon icon="tabler:file-text" class="muted"/> {{item.upload_name}}</td><td v-for="f in fields" :key="f.name" :data-label="f.name" :class="{muted:!(f.name in item.expected)}">{{f.name in item.expected?value(item.expected[f.name]):'Not stated'}}</td><td class="num"><button type="button" class="kx-iconbtn kx-focus-outline" :aria-label="`Remove case ${item.upload_name}`" :disabled="saving" @click="emit('delete-case',item.id)"><Icon icon="tabler:trash"/></button></td></tr></tbody>
     </table>
    </div>
   </section>

@@ -25,5 +25,5 @@ export const evaluation:Evaluation={id:'preview-eval-2',config_revision:4,fields
   {case_id:'case-1',upload_name:'northwind-0417.pdf',status:'completed',tokens:5200,duration_ms:12800,scores:scores(1,1,1)},
   {case_id:'case-2',upload_name:'contoso-march.pdf',status:'completed',tokens:4900,duration_ms:11900,scores:scores(1,.7,1)},
   {case_id:'case-3',upload_name:'fabrikam-q1.docx',status:'completed',tokens:6100,duration_ms:14700,scores:scores(1,1,0)},
-  {case_id:'case-4',upload_name:'scan-without-text.pdf',status:'failed',tokens:0,duration_ms:300,scores:[],error:'the upload has no extracted text yet (application/pdf)'}]}
+  {case_id:'case-4',upload_name:'scan-without-text.pdf',status:'failed',tokens:0,duration_ms:300,scores:[],error:{kind:'UNAVAILABLE',message:'the upload has no extracted text yet (application/pdf)',retryable:true,details:{upload_id:'preview-upload-4'}}}]}
 export const evaluations:Evaluation[]=[evaluation,{...evaluation,id:'preview-eval-1',config_revision:3,created_at:'2026-10-27T16:05:00Z',error:undefined,tokens:23900,duration_ms:63400,metrics:metrics(.75,.6,.67),results:undefined}]

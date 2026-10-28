@@ -7,6 +7,33 @@ import {newConfig,newField} from '../config'
 function build(){const config=newConfig();config.fields=[{...newField(),name:'total',type:'number'}];return mount(Builder,{props:{config,retention:'2h',result:null,title:'Invoice reader',description:''},attachTo:document.body})}
 beforeEach(()=>localStorage.clear())
 describe('Builder panel',()=>{
+ it('offers extraction limits with structured output as the only mode',async()=>{
+  const w=build()
+  await w.get('[aria-label="Extract"]').trigger('click')
+  expect(w.find('[role=switch][aria-label="Structured output"]').exists()).toBe(false)
+  expect(w.get('.side-panel').text()).toContain('Fields per call')
+  expect(w.get('[aria-label="Extract"]').text()).toContain('Structured output')
+  expect(w.findAll('.node').every(node=>node.classes().includes('kx-focus-halo'))).toBe(true)
+  expect(w.get('[aria-label="Collapse panel"]').classes()).toContain('kx-focus-outline')
+  w.unmount()
+ })
+ it('keeps keyboard focus inside the narrow modal panel',async()=>{
+  let report:(entries:{contentRect:{width:number}}[])=>void=()=>{}
+  vi.stubGlobal('ResizeObserver',class{constructor(cb:typeof report){report=cb}observe(){}disconnect(){}})
+  const w=build()
+  report([{contentRect:{width:600}}]);await w.vm.$nextTick()
+  await w.get('.row-main').trigger('click');await w.vm.$nextTick()
+  const panel=w.get('.side-panel')
+  expect(w.get('.canvas').attributes('inert')).toBeDefined()
+  const first=panel.get('button[aria-label="Close panel"]')
+  const last=panel.findAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])').at(-1)!
+  ;(last.element as HTMLElement).focus()
+  ;(panel.get('[data-pc-section="lastfocusableelement"]').element as HTMLElement).focus()
+  expect(document.activeElement).toBe(first.element)
+  ;(panel.get('[data-pc-section="firstfocusableelement"]').element as HTMLElement).focus()
+  expect(document.activeElement).toBe(last.element)
+  w.unmount();vi.unstubAllGlobals()
+ })
  it('collapses to a rail and reopens on selection',async()=>{
   const w=build()
   expect(w.find('.side-panel').exists()).toBe(true)

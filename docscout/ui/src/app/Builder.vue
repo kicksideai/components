@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import {computed,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue'
+import {computed,nextTick,onBeforeUnmount,onMounted,ref,useId,watch} from 'vue'
 import {Icon} from '@iconify/vue'
+import vFocusTrap from 'primevue/focustrap'
 import StageNode from './StageNode.vue'
 import FieldInspector from './FieldInspector.vue'
 import StepInspector from './StepInspector.vue'
@@ -37,10 +38,11 @@ function resizeKey(e:KeyboardEvent){if(e.key==='ArrowLeft'){setWidth(panelWidth.
 // At narrow widths the panel is a modal drawer: it takes focus and gives it back to its opener on close.
 let opener:HTMLElement|null=null
 const closeButton=ref<HTMLButtonElement>()
-function setPanel(open:boolean){
+const panelLabel=useId()
+async function setPanel(open:boolean){
  panelOpen.value=open
  if(!narrow.value){store('panel',open);return}
- if(!open&&opener){opener.focus();opener=null}
+ if(!open&&opener){const target=opener;opener=null;await nextTick();target.focus()}
 }
 function toggleSection(which:'fields'|'flow'){const r=which==='fields'?fieldsOpen:flowOpen;r.value=!r.value;store(which,r.value)}
 
@@ -78,13 +80,13 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
 </script>
 <template>
  <div ref="root" class="builder" :class="{narrow,'panel-open':panelOpen,resizing}">
-  <div class="canvas">
+  <div class="canvas" :inert="narrow&&panelOpen">
    <div class="canvas-inner">
     <section class="block" aria-labelledby="fields-head">
      <header class="block-head">
       <button type="button" class="collapse" :aria-expanded="fieldsOpen" aria-controls="fields-body" @click="toggleSection('fields')"><Icon :icon="fieldsOpen?'tabler:chevron-down':'tabler:chevron-right'"/><h2 id="fields-head">Fields</h2><span class="count">{{config.fields.length}}</span></button>
       <span v-if="!fieldsOpen&&config.fields.length" class="block-peek">{{fieldsPeek}}</span>
-      <button v-if="!readonly" type="button" class="btn small push" @click="addField"><Icon icon="tabler:plus"/>Add field</button>
+      <button v-if="!readonly" type="button" class="kx-btn kx-btn-ghost kx-focus-halo sm push" @click="addField"><Icon icon="tabler:plus"/>Add field</button>
      </header>
      <div v-show="fieldsOpen" id="fields-body" class="block-body">
       <p v-if="!config.fields.length" class="block-empty">Add the values to pull from each document.</p>
@@ -95,7 +97,7 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
          <span class="row-desc" :class="{missing:!f.description}">{{f.description||'No description'}}</span>
          <span class="chips"><span v-if="f.search_within==='sections'" class="chip" :class="mapEnabled?'':'muted-chip'" title="Reads the sections Map picks">sections</span><span v-if="f.group.trim()" class="chip">{{f.group}}</span><span v-if="f.strategy==='deep'" class="chip" :class="deepEnabled?'primary':'muted-chip'" :title="deepEnabled?'Deep analysis':'Deep analysis is off in the flow'">deep</span><span class="chip">{{typeLabel(f)}}</span><span v-if="f.evidence_required" class="chip" title="Evidence required"><Icon icon="tabler:quote"/></span></span>
         </button>
-        <span v-if="!readonly" class="row-actions"><button type="button" class="icon-btn" aria-label="Move field up" :disabled="i===0" @click="moveField(i,-1)"><Icon icon="tabler:chevron-up"/></button><button type="button" class="icon-btn" aria-label="Move field down" :disabled="i===config.fields.length-1" @click="moveField(i,1)"><Icon icon="tabler:chevron-down"/></button></span>
+        <span v-if="!readonly" class="row-actions"><button type="button" class="kx-iconbtn kx-focus-outline" aria-label="Move field up" :disabled="i===0" @click="moveField(i,-1)"><Icon icon="tabler:chevron-up"/></button><button type="button" class="kx-iconbtn kx-focus-outline" aria-label="Move field down" :disabled="i===config.fields.length-1" @click="moveField(i,1)"><Icon icon="tabler:chevron-down"/></button></span>
        </li>
       </ul>
      </div>
@@ -105,10 +107,10 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
      <header class="block-head">
       <button type="button" class="collapse" :aria-expanded="flowOpen" aria-controls="flow-body" @click="toggleSection('flow')"><Icon :icon="flowOpen?'tabler:chevron-down':'tabler:chevron-right'"/><h2 id="flow-head">Flow</h2><span class="count">{{enabledSteps}} of 6</span></button>
       <span v-if="!flowOpen" class="block-peek">{{flowPeek}}</span>
-      <button type="button" class="btn small subtle push" :class="{on:is({kind:'details'})}" @click="select({kind:'details'})"><Icon icon="tabler:info-circle"/>Details</button>
+      <button type="button" class="kx-btn kx-btn-ghost kx-focus-halo sm push" :class="{on:is({kind:'details'})}" @click="select({kind:'details'})"><Icon icon="tabler:info-circle"/>Details</button>
      </header>
      <div v-show="flowOpen" id="flow-body" class="flow" aria-label="Extraction flow">
-      <button type="button" class="node fixed" :class="{active:is({kind:'document'})}" @click="select({kind:'document'})">
+      <button type="button" class="node kx-focus-halo fixed" :class="{active:is({kind:'document'})}" @click="select({kind:'document'})">
        <span class="node-icon"><Icon icon="tabler:file-text"/></span>
        <span class="node-main"><span class="node-title">Read document</span><span class="node-summary">{{documentSummary(config.retrieval)}}</span></span>
        <span class="node-side"><span class="chip model">{{modelLabel(config.retrieval.embedding_model)}}</span></span>
@@ -133,7 +135,7 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
       <div class="connector"/>
       <StageNode stage="verify" :config="config" :active="is({kind:'stage',stage:'verify'})" :trace="trace('verify')" :readonly="readonly" @select="select({kind:'stage',stage:'verify'})"/>
       <div class="connector"/>
-      <button type="button" class="node fixed" :class="{active:is({kind:'output'})}" @click="select({kind:'output'})">
+      <button type="button" class="node kx-focus-halo fixed" :class="{active:is({kind:'output'})}" @click="select({kind:'output'})">
        <span class="node-icon"><Icon icon="tabler:braces"/></span>
        <span class="node-main"><span class="node-title">Output</span><span class="node-summary">{{config.fields.length?`${config.fields.length} values with evidence`:'No fields yet'}}</span></span>
       </button>
@@ -143,12 +145,12 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
   </div>
 
   <div v-if="narrow&&panelOpen" class="scrim" @click="setPanel(false)"/>
-  <aside v-if="panelOpen" class="side-panel" aria-label="Settings panel" :role="narrow?'dialog':undefined" :aria-modal="narrow?'true':undefined" :style="narrow?undefined:{width:`${panelWidth}px`}" @keydown.esc="narrow&&setPanel(false)">
-   <div v-if="!narrow" class="resizer" :class="{active:resizing}" role="separator" aria-orientation="vertical" aria-label="Resize panel" tabindex="0" :aria-valuenow="panelWidth" :aria-valuemin="PANEL_MIN" @pointerdown.prevent="startResize" @keydown="resizeKey" @dblclick="setWidth(PANEL_DEFAULT)"/>
+  <aside v-if="panelOpen" :key="String(narrow)" v-focus-trap="{disabled:!narrow}" class="side-panel" :aria-labelledby="panelLabel" :role="narrow?'dialog':undefined" :aria-modal="narrow?'true':undefined" :style="narrow?undefined:{width:`${panelWidth}px`}" @keydown.esc="narrow&&setPanel(false)">
+   <div v-if="!narrow" class="resizer kx-focus-outline" :class="{active:resizing}" role="separator" aria-orientation="vertical" aria-label="Resize panel" tabindex="0" :aria-valuenow="panelWidth" :aria-valuemin="PANEL_MIN" @pointerdown.prevent="startResize" @keydown="resizeKey" @dblclick="setWidth(PANEL_DEFAULT)"/>
    <header class="side-panel-head">
     <span class="side-panel-icon"><Icon :icon="panelIcon"/></span>
-    <h2>{{panelTitle}}</h2>
-    <button ref="closeButton" type="button" class="icon-btn push" :aria-label="narrow?'Close panel':'Collapse panel'" :title="narrow?'Close panel':'Collapse panel'" @click="setPanel(false)"><Icon :icon="narrow?'tabler:x':'tabler:layout-sidebar-right-collapse'"/></button>
+    <h2 :id="panelLabel">{{panelTitle}}</h2>
+    <button ref="closeButton" type="button" class="kx-iconbtn kx-focus-outline push" :aria-label="narrow?'Close panel':'Collapse panel'" :title="narrow?'Close panel':'Collapse panel'" @click="setPanel(false)"><Icon :icon="narrow?'tabler:x':'tabler:layout-sidebar-right-collapse'"/></button>
    </header>
    <div ref="panelBody" class="side-panel-body">
     <DocumentInspector v-if="selected.kind==='document'" :config="config" :retention="retention" :readonly="readonly"/>

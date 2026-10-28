@@ -10,18 +10,24 @@ import RunsPanel from './RunsPanel.vue'
 import SharePopup from './SharePopup.vue'
 import {configError,isOn,newConfig,sameConfig,stageLabels,type StageKey} from '../config'
 import type {Snapshot,Extraction,Evaluation} from '../models'
-const props=withDefaults(defineProps<{snapshot:Snapshot;result?:Extraction|null;evaluations?:Evaluation[];evaluation?:Evaluation;saving?:boolean;running?:boolean;starting?:boolean;error?:string;back?:boolean}>(),{result:null,evaluations:()=>[]})
+const props=withDefaults(defineProps<{snapshot:Snapshot;addedCaseId?:string;result?:Extraction|null;evaluations?:Evaluation[];evaluation?:Evaluation;saving?:boolean;running?:boolean;starting?:boolean;error?:string;back?:boolean}>(),{result:null,evaluations:()=>[]})
 const emit=defineEmits<{save:[input:{title:string;description:string;config:ReturnType<typeof newConfig>;expected_revision:number}];'add-case':[input:{upload_id:string;expected:Record<string,unknown>}];'delete-case':[id:string];back:[];run:[upload_id:string];evaluate:[];'open-evaluation':[eval_id:string]}>()
 const body=ref<HTMLElement>()
 const sharing=ref(false),tab=ref('Builder'),draft=ref(newConfig()),title=ref(''),description=ref('')
 const tabs=computed(()=>props.snapshot.can_edit?['Builder','Test','Evals','Runs']:['Test','Runs'])
 watch(tab,()=>{if(body.value)body.value.scrollTop=0},{flush:'post'})
-const draftRevision=ref<number>()
+const draftRevision=ref<number>(),acknowledgedRevision=ref<number>()
+const savedChanged=computed(()=>props.snapshot.can_edit&&draftRevision.value!==props.snapshot.expected_revision)
+const showConflict=computed(()=>savedChanged.value&&acknowledgedRevision.value!==props.snapshot.expected_revision)
 function matchesDraft(snapshot:Snapshot){return title.value===snapshot.title&&description.value===(snapshot.description??'')&&sameConfig(draft.value,snapshot.config)}
+function reloadSaved(){
+ const snapshot=props.snapshot
+ draft.value=structuredClone(toRaw(snapshot.config??newConfig()));title.value=snapshot.title;description.value=snapshot.description??'';draftRevision.value=snapshot.expected_revision;acknowledgedRevision.value=undefined
+}
 watch(()=>props.snapshot,(snapshot,previous)=>{
  if(!tabs.value.includes(tab.value))tab.value=tabs.value[0]
  if(previous&&snapshot.id===previous.id&&snapshot.can_edit&&previous.can_edit&&!matchesDraft(previous)&&!matchesDraft(snapshot))return
- draft.value=structuredClone(toRaw(snapshot.config??newConfig()));title.value=snapshot.title;description.value=snapshot.description??'';draftRevision.value=snapshot.expected_revision
+ reloadSaved()
 },{immediate:true})
 const changed=computed(()=>props.snapshot.can_edit&&!matchesDraft(props.snapshot))
 const validation=computed(()=>configError(draft.value))
@@ -31,14 +37,15 @@ function save(){emit('save',{title:title.value,description:description.value,con
 <template>
  <main class="docscout">
   <div class="toolbar">
-   <div class="toolbar-lead"><span v-if="back" class="crumb-row"><button type="button" class="icon-btn" aria-label="All extractors" title="All extractors" @click="emit('back')"><Icon icon="tabler:arrow-left"/></button><span class="crumb">{{snapshot.title}}</span></span>
+   <div class="toolbar-lead"><span class="crumb-row"><button v-if="back" type="button" class="kx-iconbtn kx-focus-outline" aria-label="All extractors" title="All extractors" @click="emit('back')"><Icon icon="tabler:arrow-left"/></button><span class="crumb">{{snapshot.title}}</span></span>
    <nav class="tabs" role="tablist" aria-label="Docscout"><button v-for="name in tabs" :id="`tab-${name}`" :key="name" role="tab" :aria-selected="tab===name" :aria-controls="`panel-${name}`" @click="tab=name">{{name}}</button></nav></div>
    <div class="toolbar-side">
     <Button v-if="snapshot.can_share" severity="secondary" outlined size="small" aria-label="Share" @click="sharing=true"><Icon icon="tabler:share"/><span class="btn-label">Share</span></Button>
     <span class="stats">{{snapshot.field_count}} {{snapshot.field_count===1?'field':'fields'}}<template v-if="snapshot.can_edit"> · {{enabledSteps}} steps · revision {{snapshot.expected_revision}}</template><template v-else> · Read access</template></span>
-    <template v-if="snapshot.can_edit"><span v-if="validation" class="invalid" role="alert" :title="validation"><Icon icon="tabler:alert-circle"/>{{validation}}</span><span v-else-if="changed" class="unsaved">Unsaved</span><Button label="Save" size="small" :loading="saving" :disabled="!changed||!!validation||!title.trim()" @click="save"/></template>
+    <template v-if="snapshot.can_edit"><Button v-if="savedChanged&&!showConflict" label="Reload saved" severity="secondary" size="small" @click="reloadSaved"/><span v-if="validation" class="invalid" role="alert" :title="validation"><Icon icon="tabler:alert-circle"/>{{validation}}</span><span v-else-if="changed" class="unsaved">Unsaved</span><Button label="Save" size="small" :loading="saving" :disabled="!changed||!!validation||!title.trim()" @click="save"/></template>
    </div>
   </div>
+  <div v-if="showConflict" class="banner row wrap" role="status"><span>Saved configuration changed to revision {{snapshot.expected_revision}}. Your edits are kept.</span><Button label="Reload saved" severity="secondary" size="small" @click="reloadSaved"/><Button label="Keep editing" severity="secondary" text size="small" @click="acknowledgedRevision=snapshot.expected_revision"/></div>
   <p v-if="error" role="alert" class="error banner">{{error}}</p>
   <SharePopup v-if="sharing" :id="snapshot.id" :title="snapshot.title" @close="sharing=false"/>
   <div v-if="tab==='Builder'&&snapshot.can_edit" id="panel-Builder" role="tabpanel" aria-labelledby="tab-Builder" class="builder-body">
@@ -46,7 +53,7 @@ function save(){emit('save',{title:title.value,description:description.value,con
   </div>
   <div v-else ref="body" class="page-body"><div :id="`panel-${tab}`" role="tabpanel" :aria-labelledby="`tab-${tab}`" class="panel">
    <TestPanel v-if="tab==='Test'" :result="result" :retention="snapshot.retention" :running="running" :can-run="snapshot.field_count>0" @run="emit('run',$event)"/>
-   <EvalsPanel v-if="tab==='Evals'&&snapshot.can_edit" :cases="snapshot.cases" :fields="snapshot.config.fields" :evaluations="evaluations" :evaluation="evaluation" :revision="snapshot.expected_revision" :changed="changed" :saving="saving" :starting="starting" @add-case="emit('add-case',$event)" @delete-case="emit('delete-case',$event)" @evaluate="emit('evaluate')" @open="emit('open-evaluation',$event)"/>
+   <EvalsPanel v-if="tab==='Evals'&&snapshot.can_edit" :cases="snapshot.cases" :added-case-id="addedCaseId" :fields="snapshot.config.fields" :evaluations="evaluations" :evaluation="evaluation" :revision="snapshot.expected_revision" :changed="changed" :saving="saving" :starting="starting" @add-case="emit('add-case',$event)" @delete-case="emit('delete-case',$event)" @evaluate="emit('evaluate')" @open="emit('open-evaluation',$event)"/>
    <RunsPanel v-if="tab==='Runs'" :runs="snapshot.runs" :retention="snapshot.retention"/>
   </div></div>
  </main>
