@@ -1,177 +1,184 @@
-import { defineComponent as $, ref as u, onMounted as F, computed as L, openBlock as s, createElementBlock as o, createElementVNode as l, toDisplayString as c, createCommentVNode as i, withDirectives as z, vModelText as M, createVNode as v, unref as _, Fragment as x, renderList as P, createTextVNode as C, watch as T, createBlock as E } from "vue";
-import { Icon as b } from "@iconify/vue";
+import { defineComponent as B, ref as c, watch as L, onBeforeUnmount as F, openBlock as a, createElementBlock as l, createElementVNode as s, toDisplayString as n, createCommentVNode as v, withDirectives as P, vModelText as R, createVNode as y, unref as p, createBlock as b, Fragment as N, renderList as T, createTextVNode as S, computed as U } from "vue";
+import { Icon as E } from "@iconify/vue";
 import { define as j } from "@wippy-fe/proxy";
-import { s as N, c as S, n as q, u as I, a as O, d as R } from "./index-DnSDhJct.js";
-import { _ as U } from "./CreateForm.vue_vue_type_script_setup_true_lang-BAnkYylA.js";
-import { w as A, _ as G } from "./Extractor.vue_vue_type_script_setup_true_lang-Cg2jtC-F.js";
+import { b as q, s as $, c as V, n as H, u as I, a as M, d as O } from "./index-SBSeBTrh.js";
+import { _ as A } from "./CreateForm.vue_vue_type_script_setup_true_lang-WJ4hpZfy.js";
+import { w as G, _ as J } from "./Extractor.vue_vue_type_script_setup_true_lang-BwCs-RfE.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
-const H = { class: "docscout list-page" }, J = { class: "toolbar" }, K = { class: "toolbar-title" }, Q = {
+const K = { class: "docscout list-page" }, Q = { class: "toolbar" }, W = { class: "toolbar-title" }, X = {
   key: 0,
   class: "count"
-}, W = { class: "toolbar-side" }, X = { class: "page-body" }, Y = {
+}, Y = { class: "toolbar-side" }, Z = { class: "page-body" }, ee = {
   key: 0,
   class: "create-card",
   "aria-label": "New extractor"
-}, Z = {
+}, te = {
   key: 1,
   class: "error",
   role: "alert"
-}, ee = {
+}, ae = {
   key: 2,
   class: "empty",
   role: "status"
-}, te = {
+}, se = {
   key: 3,
   class: "empty-state"
-}, se = {
+}, oe = {
   key: 4,
   class: "cards"
-}, ae = ["onClick"], oe = { class: "card-icon" }, ne = { class: "card-main" }, re = { class: "card-title-row" }, le = { class: "card-title" }, ce = {
+}, le = ["onClick"], ne = { class: "card-icon" }, re = { class: "card-main" }, ie = { class: "card-title-row" }, ce = { class: "card-title" }, ue = {
   key: 0,
   class: "access"
-}, ie = {
+}, de = {
   key: 0,
   class: "card-desc"
-}, ue = { class: "card-meta" }, de = {
-  key: 0,
-  class: "empty"
-}, me = {
-  key: 1,
-  class: "muted"
-}, pe = /* @__PURE__ */ $({
+}, me = { class: "card-meta" }, ve = /* @__PURE__ */ B({
   __name: "ExtractorList",
   emits: ["open"],
-  setup(V, { emit: y }) {
-    const f = y, n = u(), m = u(!1), d = u(""), r = u(!1), p = u(!1), h = u(""), g = u("");
-    async function B() {
+  setup(z, { emit: g }) {
+    const k = g, o = c(), u = c(), m = c(!1), r = c(""), i = c(!1), h = c(!1), x = c(""), _ = c("");
+    let f = 0;
+    async function w(d) {
+      const t = ++f;
+      m.value = !0;
       try {
-        const a = await S.list();
-        n.value = a.items, m.value = a.truncated, d.value = "";
-      } catch (a) {
-        d.value = a instanceof Error ? a.message : String(a);
-      }
-    }
-    F(B);
-    const w = L(() => {
-      const a = g.value.trim().toLowerCase();
-      return (n.value ?? []).filter((e) => !a || e.meta.title.toLowerCase().includes(a) || (e.meta.description ?? "").toLowerCase().includes(a));
-    });
-    async function D(a) {
-      p.value = !0, h.value = "";
-      try {
-        const e = await S.create({ ...a, config: q() });
-        r.value = !1, f("open", e.component_id);
+        const e = await V.list({ filter: _.value.trim(), ...d ? { cursor: d } : {} });
+        if (t !== f) return;
+        o.value = d ? [...o.value ?? [], ...e.items] : e.items, u.value = e.next_cursor, r.value = "";
       } catch (e) {
-        h.value = e instanceof Error ? e.message : String(e);
+        t === f && (r.value = e instanceof Error ? e.message : String(e));
       } finally {
-        p.value = !1;
+        t === f && (m.value = !1);
       }
     }
-    function k(a) {
-      const e = a.access_level ?? 15;
-      return e & 8 ? "" : e & 2 ? "Shared · can edit" : "Shared · can run";
+    L(_, () => {
+      o.value = void 0, u.value = void 0, w();
+    }), q(() => w()), F(() => {
+      f++;
+    });
+    async function D(d) {
+      h.value = !0, x.value = "";
+      try {
+        const t = await V.create({ ...d, config: H() });
+        i.value = !1, k("open", t.component_id);
+      } catch (t) {
+        x.value = t instanceof Error ? t.message : String(t);
+      } finally {
+        h.value = !1;
+      }
     }
-    return (a, e) => (s(), o("main", H, [
-      l("div", J, [
-        l("div", K, [
-          e[4] || (e[4] = l("h1", null, "Docscout", -1)),
-          n.value ? (s(), o("span", Q, c(n.value.length) + c(m.value ? "+" : ""), 1)) : i("", !0)
+    function C(d) {
+      const t = d.access_level ?? 15;
+      return t & 8 ? "" : t & 2 ? "Shared · can edit" : "Shared · can run";
+    }
+    return (d, t) => (a(), l("main", K, [
+      s("div", Q, [
+        s("div", W, [
+          t[5] || (t[5] = s("h1", null, "Docscout", -1)),
+          o.value ? (a(), l("span", X, n(o.value.length) + n(u.value ? "+" : ""), 1)) : v("", !0)
         ]),
-        l("div", W, [
-          n.value?.length ? z((s(), o("input", {
-            key: 0,
-            "onUpdate:modelValue": e[0] || (e[0] = (t) => g.value = t),
+        s("div", Y, [
+          P(s("input", {
+            "onUpdate:modelValue": t[0] || (t[0] = (e) => _.value = e),
             class: "filter",
             type: "search",
             placeholder: "Filter extractors",
             "aria-label": "Filter extractors"
-          }, null, 512)), [
-            [M, g.value]
-          ]) : i("", !0),
-          v(_(N), {
+          }, null, 512), [
+            [R, _.value]
+          ]),
+          y(p($), {
             label: "New extractor",
             size: "small",
-            onClick: e[1] || (e[1] = (t) => r.value = !0)
+            onClick: t[1] || (t[1] = (e) => i.value = !0)
           })
         ])
       ]),
-      l("div", X, [
-        r.value ? (s(), o("section", Y, [
-          v(U, {
-            saving: p.value,
-            error: h.value,
+      s("div", Z, [
+        i.value ? (a(), l("section", ee, [
+          y(A, {
+            saving: h.value,
+            error: x.value,
             onSubmit: D
           }, null, 8, ["saving", "error"]),
-          l("button", {
+          s("button", {
             type: "button",
-            class: "icon-btn create-close",
+            class: "kx-iconbtn kx-focus-outline create-close",
             "aria-label": "Cancel",
-            onClick: e[2] || (e[2] = (t) => r.value = !1)
+            onClick: t[2] || (t[2] = (e) => i.value = !1)
           }, [
-            v(_(b), { icon: "tabler:x" })
+            y(p(E), { icon: "tabler:x" })
           ])
-        ])) : i("", !0),
-        d.value ? (s(), o("p", Z, c(d.value), 1)) : n.value ? !n.value.length && !r.value ? (s(), o("div", te, [
-          v(_(b), {
+        ])) : v("", !0),
+        r.value ? (a(), l("p", te, n(r.value), 1)) : o.value ? !o.value.length && !i.value ? (a(), l("div", se, [
+          y(p(E), {
             icon: "tabler:file-search",
             class: "empty-icon"
           }),
-          e[5] || (e[5] = l("p", null, "Create an extractor to pull typed fields from documents.", -1)),
-          v(_(N), {
+          s("p", null, n(_.value.trim() ? "No extractors match." : "Create an extractor to pull typed fields from documents."), 1),
+          _.value.trim() ? v("", !0) : (a(), b(p($), {
+            key: 0,
             label: "New extractor",
             size: "small",
-            onClick: e[3] || (e[3] = (t) => r.value = !0)
-          })
-        ])) : (s(), o("div", se, [
-          (s(!0), o(x, null, P(w.value, (t) => (s(), o("button", {
-            key: t.component_id,
+            onClick: t[3] || (t[3] = (e) => i.value = !0)
+          }))
+        ])) : (a(), l("div", oe, [
+          (a(!0), l(N, null, T(o.value, (e) => (a(), l("button", {
+            key: e.component_id,
             type: "button",
-            class: "card",
-            onClick: (fe) => f("open", t.component_id)
+            class: "card kx-focus-halo",
+            onClick: (fe) => k("open", e.component_id)
           }, [
-            l("span", oe, [
-              v(_(b), { icon: "tabler:file-search" })
+            s("span", ne, [
+              y(p(E), { icon: "tabler:file-search" })
             ]),
-            l("span", ne, [
-              l("span", re, [
-                l("span", le, c(t.meta.title), 1),
-                k(t) ? (s(), o("span", ce, c(k(t)), 1)) : i("", !0)
+            s("span", re, [
+              s("span", ie, [
+                s("span", ce, n(e.meta.title), 1),
+                C(e) ? (a(), l("span", ue, n(C(e)), 1)) : v("", !0)
               ]),
-              t.meta.description ? (s(), o("span", ie, c(t.meta.description), 1)) : i("", !0),
-              l("span", ue, [
-                C(c(t.meta.field_count ?? 0) + " " + c(t.meta.field_count === "1" ? "field" : "fields") + " · updated " + c(_(A)(t.updated_at)), 1),
-                k(t) && t.meta.owner ? (s(), o(x, { key: 0 }, [
-                  C(" · from " + c(t.meta.owner), 1)
-                ], 64)) : i("", !0)
+              e.meta.description ? (a(), l("span", de, n(e.meta.description), 1)) : v("", !0),
+              s("span", me, [
+                S(n(e.meta.field_count ?? 0) + " " + n(e.meta.field_count === "1" ? "field" : "fields") + " · updated " + n(p(G)(e.updated_at)), 1),
+                C(e) && e.meta.owner ? (a(), l(N, { key: 0 }, [
+                  S(" · from " + n(e.meta.owner), 1)
+                ], 64)) : v("", !0)
               ])
             ])
-          ], 8, ae))), 128)),
-          n.value.length && !w.value.length ? (s(), o("p", de, "No extractors match.")) : i("", !0),
-          m.value ? (s(), o("p", me, "Showing the first " + c(n.value.length) + " extractors.", 1)) : i("", !0)
-        ])) : (s(), o("p", ee, "Loading…"))
+          ], 8, le))), 128)),
+          u.value ? (a(), b(p($), {
+            key: 0,
+            label: "Load more",
+            size: "small",
+            severity: "secondary",
+            loading: m.value,
+            disabled: m.value,
+            onClick: t[4] || (t[4] = (e) => w(u.value))
+          }, null, 8, ["loading", "disabled"])) : v("", !0)
+        ])) : (a(), l("p", ae, "Loading…"))
       ])
     ]));
   }
-}), ve = /* @__PURE__ */ $({
+}), pe = /* @__PURE__ */ B({
   __name: "PageRoot",
-  setup(V) {
-    const y = I(), f = O(), n = u("");
-    T(() => y.value.route, (r) => {
-      n.value = (r ?? "").split("/")[0];
+  setup(z) {
+    const g = I(), k = M(), o = c("");
+    L(() => g.value.route, (r) => {
+      o.value = (r ?? "").split("/")[0];
     }, { immediate: !0 });
-    function m(r) {
-      n.value = r, f("navigate", r);
+    function u(r) {
+      o.value = r, k("navigate", r);
     }
-    const d = L(() => n.value);
-    return (r, p) => d.value ? (s(), E(G, {
+    const m = U(() => o.value);
+    return (r, i) => m.value ? (a(), b(J, {
       key: 0,
-      id: d.value,
+      id: m.value,
       back: "",
-      onBack: p[0] || (p[0] = (h) => m(""))
-    }, null, 8, ["id"])) : (s(), E(pe, {
+      onBack: i[0] || (i[0] = (h) => u(""))
+    }, null, 8, ["id"])) : (a(), b(ve, {
       key: 1,
-      onOpen: m
+      onOpen: u
     }));
   }
-}), _e = R(ve, { type: "object", properties: { route: { type: "string", default: "", description: "Sub-path under /docscout: empty for the list, an extractor id to open it." } } });
+}), _e = O(pe, { type: "object", properties: { route: { type: "string", default: "", description: "Sub-path under /docscout: empty for the list, an extractor id to open it." } } });
 j(import.meta.url, _e);
