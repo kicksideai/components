@@ -384,86 +384,107 @@ function M.highlight(run: any, step: any): error?
     return nil
 end
 
--- Extraction: one structured call per group of fields over the evidence pool.
+-- Extraction: structured calls over the evidence pool, each for fields that share a group and a region.
 local EXTRACT_SYSTEM = system([[You extract field values from passages of one document. Use only what the passages state.
 For each field say whether the passages state it (found), give the value (any placeholder of the right type when not found), your confidence from 0 to 1, and evidence:
 the chunk number and an exact quote copied character for character from that chunk.]])
 
-function M.extract(run: any, step: any): error?
-    local cfg = run.config.stages.extract
-    local groups, order = {}, {}
+-- Extraction calls: fields grouped by their group, then by the region they read,
+-- in at most "fields per call" per call. Every passage in a call is one each of
+-- its fields may read.
+function M.extraction_calls(run: any): { any }
+    local limit = run.config.stages.extract.max_fields_per_call
+    local sets, order = {}, {}
     for _, f in ipairs(run.config.fields) do
-        local g = trim(f.group) ~= "" and trim(f.group) or "Default"
-        if not groups[g] then groups[g] = {}; order[#order + 1] = g end
-        local list = groups[g]
-        list[#list + 1] = f
+        local region = M.region(run, f)
+        local reads = "*"
+        if region then
+            local sorted = {}
+            for i, n in ipairs(region) do sorted[i] = n end
+            table.sort(sorted)
+            reads = table.concat(sorted, ",")
+        end
+        local key = (trim(f.group) ~= "" and trim(f.group) or "Default") .. "\0" .. reads
+        if not sets[key] then sets[key] = { fields = {} }; order[#order + 1] = key end
+        local set = sets[key]
+        set.fields[#set.fields + 1] = f
     end
-    local pool = ordered(run.pool)
-    local calls = 0
-    for _, g in ipairs(order) do
-        local list = groups[g]
-        for start = 1, #list, cfg.max_fields_per_call do
+    local pool, calls = ordered(run.pool), {}
+    for _, key in ipairs(order) do
+        local set = sets[key]
+        local passages = {}
+        for _, c in ipairs(pool) do if visible(run, set.fields[1], c.ordinal) then passages[#passages + 1] = c end end
+        for start = 1, #set.fields, limit do
             local batch = {}
-            for i = start, math.min(#list, start + cfg.max_fields_per_call - 1) do batch[#batch + 1] = list[i] end
-            local context = {}
-            for _, f in ipairs(batch) do if run.analyses[f.name] then context[#context + 1] = "Analysis of " .. f.name .. ":\n" .. run.analyses[f.name] end end
-            local passages = {}
-            for _, c in ipairs(pool) do
-                for _, f in ipairs(batch) do if visible(run, f, c.ordinal) then passages[#passages + 1] = c; break end end
-            end
-            local evidence = render(passages)
-            local user = "Fields:\n" .. field_lines(batch) ..
-                (#run.notes > 0 and ("\n\nScout notes:\n" .. table.concat(run.notes, "\n")) or "") ..
-                (#context > 0 and ("\n\n" .. table.concat(context, "\n\n")) or "") ..
-                "\n\nPassages:\n" .. evidence
-            local budget_err = ai.check_budget(cfg.model, EXTRACT_SYSTEM .. user, cfg.max_output_tokens)
-            if budget_err then return budget_err end
-            local result, err
-            if cfg.structured_output then
-                result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
-            else
-                local schema_text = json.encode(shapes.group_schema(batch, true))
-                local textual, gen_err = ai.generate(step.meter, cfg.model, EXTRACT_SYSTEM ..
-                    "\nReply with only a JSON object that satisfies this JSON Schema; chunk is the integer after C. Use null for value when found is false.\n" .. schema_text,
-                    user, { max_tokens = cfg.max_output_tokens })
-                if gen_err then err = gen_err else result, err = shapes.json_object(textual) end
-                if not err then
-                    local valid, invalid_err = json.validate(shapes.group_schema(batch, true), result)
-                    if not valid then
-                        err = errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply does not match the field schema: " .. tostring(invalid_err) })
-                    end
-                end
-            end
-            if err then return err end
-            calls = calls + 1
-            for _, f in ipairs(batch) do
-                local item = result[f.name]
-                local cited = {}
-                -- A found value must have its type; null only stands for not found.
-                if item.found and item.value == nil then
-                    return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply marks " .. f.name .. " found without a value" })
-                end
-                for _, e in ipairs(item.evidence) do
-                    local ordinal = math.tointeger(e.chunk)
-                    -- A citation outside the field's region is not evidence for it.
-                    if not ordinal or visible(run, f, ordinal) then
-                        local chunk = ordinal and run.pool.by_ordinal[ordinal]
-                        cited[#cited + 1] = { quote = e.quote, chunk = ordinal,
-                            section = chunk and chunk.heading_path or "", page = chunk and chunk.page_start or nil, chunk_id = chunk and chunk.id or "" }
-                    end
-                end
-                local entry: any = { name = f.name, confidence = 0, evidence = {}, verified = false, missing = true }
-                if item.found then
-                    entry.value = item.value
-                    entry.confidence = item.confidence
-                    entry.evidence = cited
-                    entry.missing = false
-                    if f.evidence_required and #cited == 0 then entry.reason = "No quote supports this value" end
-                end
-                run.values[#run.values + 1] = entry
-            end
+            for i = start, math.min(#set.fields, start + limit - 1) do batch[#batch + 1] = set.fields[i] end
+            calls[#calls + 1] = { fields = batch, passages = passages }
         end
     end
+    return calls
+end
+
+function M.extract(run: any, step: any): error?
+    local cfg = run.config.stages.extract
+    local calls = 0
+    for _, call in ipairs(M.extraction_calls(run)) do
+        local batch, passages = call.fields, call.passages
+        local context = {}
+        for _, f in ipairs(batch) do if run.analyses[f.name] then context[#context + 1] = "Analysis of " .. f.name .. ":\n" .. run.analyses[f.name] end end
+        local evidence = render(passages)
+        local user = "Fields:\n" .. field_lines(batch) ..
+            (#run.notes > 0 and ("\n\nScout notes:\n" .. table.concat(run.notes, "\n")) or "") ..
+            (#context > 0 and ("\n\n" .. table.concat(context, "\n\n")) or "") ..
+            "\n\nPassages:\n" .. evidence
+        local budget_err = ai.check_budget(cfg.model, EXTRACT_SYSTEM .. user, cfg.max_output_tokens)
+        if budget_err then return budget_err end
+        local result, err
+        if cfg.structured_output then
+            result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
+        else
+            local schema_text = json.encode(shapes.group_schema(batch, true))
+            local textual, gen_err = ai.generate(step.meter, cfg.model, EXTRACT_SYSTEM ..
+                "\nReply with only a JSON object that satisfies this JSON Schema; chunk is the integer after C. Use null for value when found is false.\n" .. schema_text,
+                user, { max_tokens = cfg.max_output_tokens })
+            if gen_err then err = gen_err else result, err = shapes.json_object(textual) end
+            if not err then
+                local valid, invalid_err = json.validate(shapes.group_schema(batch, true), result)
+                if not valid then
+                    err = errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply does not match the field schema: " .. tostring(invalid_err) })
+                end
+            end
+        end
+        if err then return err end
+        calls = calls + 1
+        for _, f in ipairs(batch) do
+            local item = result[f.name]
+            local cited = {}
+            -- A found value must have its type; null only stands for not found.
+            if item.found and item.value == nil then
+                return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply marks " .. f.name .. " found without a value" })
+            end
+            for _, e in ipairs(item.evidence) do
+                local ordinal = math.tointeger(e.chunk)
+                -- A citation outside the field's region is not evidence for it.
+                if not ordinal or visible(run, f, ordinal) then
+                    local chunk = ordinal and run.pool.by_ordinal[ordinal]
+                    cited[#cited + 1] = { quote = e.quote, chunk = ordinal,
+                        section = chunk and chunk.heading_path or "", page = chunk and chunk.page_start or nil, chunk_id = chunk and chunk.id or "" }
+                end
+            end
+            local entry: any = { name = f.name, confidence = 0, evidence = {}, verified = false, missing = true }
+            if item.found then
+                entry.value = item.value
+                entry.confidence = item.confidence
+                entry.evidence = cited
+                entry.missing = false
+                if f.evidence_required and #cited == 0 then entry.reason = "No quote supports this value" end
+            end
+            run.values[#run.values + 1] = entry
+        end
+    end
+    local position = {}
+    for i, f in ipairs(run.config.fields) do position[f.name] = i end
+    table.sort(run.values, function(a: any, b: any): boolean return position[a.name] < position[b.name] end)
     step.message = calls .. (calls == 1 and " call" or " calls") .. " · " .. #run.values .. " values"
     return nil
 end

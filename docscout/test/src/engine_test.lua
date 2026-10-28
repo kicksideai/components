@@ -152,6 +152,32 @@ return { run = test.run_cases(function()
             for _, c in ipairs(shapes.ordered(run.pool)) do ordinals[#ordinals + 1] = c.ordinal end
             test.eq(json.encode(ordinals), json.encode({ 2 }))
         end)
+        test.it("gives each extraction call only passages every one of its fields may read", function()
+            local pool = shapes.pool()
+            shapes.add(pool, { { ordinal = 1, content = "fee" }, { ordinal = 2, content = "notice" }, { ordinal = 3, content = "law" } })
+            local function f(name: string, within: string, group: string?): any return { name = name, search_within = within, group = group or "" } end
+            local run = { pool = pool, regions = { notice = { 2 }, law = { 3 }, term = { 2 } },
+                config = { stages = { extract = { max_fields_per_call = 5 } },
+                    fields = { f("fee", "document"), f("notice", "sections"), f("law", "sections"), f("term", "sections"), f("total", "document"), f("party", "document", "Parties") } } }
+            local shape = {}
+            for _, call in ipairs(stages.extraction_calls(run)) do
+                local names, ordinals = {}, {}
+                for _, field in ipairs(call.fields) do names[#names + 1] = field.name end
+                for _, c in ipairs(call.passages) do ordinals[#ordinals + 1] = c.ordinal end
+                shape[#shape + 1] = table.concat(names, ",") .. ":" .. table.concat(ordinals, ",")
+            end
+            test.eq(table.concat(shape, " | "), "fee,total:1,2,3 | notice,term:2 | law:3 | party:1,2,3")
+        end)
+        test.it("splits a group with one region by the fields-per-call limit", function()
+            local pool = shapes.pool()
+            shapes.add(pool, { { ordinal = 1, content = "a" } })
+            local run = { pool = pool, regions = {}, config = { stages = { extract = { max_fields_per_call = 2 } },
+                fields = { { name = "a", search_within = "document", group = "" }, { name = "b", search_within = "document", group = "" }, { name = "c", search_within = "document", group = "" } } } }
+            local calls = stages.extraction_calls(run)
+            test.eq(#calls, 2)
+            test.eq(#calls[1].fields, 2)
+            test.eq(calls[2].fields[1].name, "c")
+        end)
     end)
 
     test.describe("Verification", function()
