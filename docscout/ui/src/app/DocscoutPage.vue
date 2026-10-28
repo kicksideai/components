@@ -31,10 +31,10 @@ function save(){emit('save',{title:title.value,description:description.value,con
 <template>
  <main class="docscout">
   <div class="toolbar">
-   <div class="toolbar-lead"><template v-if="back"><button type="button" class="icon-btn" aria-label="All extractors" title="All extractors" @click="emit('back')"><Icon icon="tabler:arrow-left"/></button><span class="crumb">{{snapshot.title}}</span></template>
+   <div class="toolbar-lead"><span v-if="back" class="crumb-row"><button type="button" class="icon-btn" aria-label="All extractors" title="All extractors" @click="emit('back')"><Icon icon="tabler:arrow-left"/></button><span class="crumb">{{snapshot.title}}</span></span>
    <nav class="tabs" role="tablist" aria-label="Docscout"><button v-for="name in tabs" :id="`tab-${name}`" :key="name" role="tab" :aria-selected="tab===name" :aria-controls="`panel-${name}`" @click="tab=name">{{name}}</button></nav></div>
    <div class="toolbar-side">
-    <Button v-if="snapshot.can_share" severity="secondary" outlined size="small" @click="sharing=true"><Icon icon="tabler:share"/>Share</Button>
+    <Button v-if="snapshot.can_share" severity="secondary" outlined size="small" aria-label="Share" @click="sharing=true"><Icon icon="tabler:share"/><span class="btn-label">Share</span></Button>
     <span class="stats">{{snapshot.field_count}} {{snapshot.field_count===1?'field':'fields'}}<template v-if="snapshot.can_edit"> · {{enabledSteps}} steps · revision {{snapshot.expected_revision}}</template><template v-else> · Read access</template></span>
     <template v-if="snapshot.can_edit"><span v-if="validation" class="invalid" role="alert" :title="validation"><Icon icon="tabler:alert-circle"/>{{validation}}</span><span v-else-if="changed" class="unsaved">Unsaved</span><Button label="Save" size="small" :loading="saving" :disabled="!changed||!!validation||!title.trim()" @click="save"/></template>
    </div>

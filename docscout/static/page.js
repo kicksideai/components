@@ -1,163 +1,181 @@
-import { defineComponent as E, ref as i, onMounted as B, computed as $, openBlock as o, createElementBlock as n, createElementVNode as r, toDisplayString as c, createCommentVNode as m, withDirectives as V, vModelText as F, createVNode as p, unref as _, Fragment as z, renderList as M, watch as P, createBlock as w } from "vue";
-import { Icon as k } from "@iconify/vue";
-import { define as j } from "@wippy-fe/proxy";
-import { s as x, c as C, n as q, u as I, a as O, d as R } from "./index-BBnkhKOj.js";
-import { _ as T } from "./CreateForm.vue_vue_type_script_setup_true_lang-CBNufO4T.js";
-import { _ as U } from "./Extractor.vue_vue_type_script_setup_true_lang-DiZml_TM.js";
+import { defineComponent as L, ref as u, onMounted as T, computed as N, openBlock as o, createElementBlock as s, createElementVNode as l, toDisplayString as c, createCommentVNode as i, withDirectives as z, vModelText as M, createVNode as v, unref as _, Fragment as x, renderList as P, createTextVNode as C, watch as j, createBlock as S } from "vue";
+import { Icon as b } from "@iconify/vue";
+import { define as q } from "@wippy-fe/proxy";
+import { s as E, c as D, n as I, u as O, a as R, d as U } from "./index-BH2a6VVq.js";
+import { _ as A } from "./CreateForm.vue_vue_type_script_setup_true_lang-9gfvHny3.js";
+import { _ as G } from "./Extractor.vue_vue_type_script_setup_true_lang-b-ZqLL1n.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
-const A = { class: "docscout list-page" }, G = { class: "toolbar" }, H = { class: "toolbar-title" }, J = {
+const H = { class: "docscout list-page" }, J = { class: "toolbar" }, K = { class: "toolbar-title" }, Q = {
   key: 0,
   class: "count"
-}, K = { class: "toolbar-side" }, Q = { class: "page-body" }, W = {
+}, W = { class: "toolbar-side" }, X = { class: "page-body" }, Y = {
   key: 0,
   class: "create-card",
   "aria-label": "New extractor"
-}, X = {
+}, Z = {
   key: 1,
   class: "error",
   role: "alert"
-}, Y = {
+}, ee = {
   key: 2,
   class: "empty",
   role: "status"
-}, Z = {
+}, te = {
   key: 3,
   class: "empty-state"
-}, ee = {
+}, ae = {
   key: 4,
   class: "cards"
-}, te = ["onClick"], oe = { class: "card-icon" }, se = { class: "card-main" }, ae = { class: "card-title" }, ne = {
+}, oe = ["onClick"], se = { class: "card-icon" }, ne = { class: "card-main" }, re = { class: "card-title-row" }, le = { class: "card-title" }, ce = {
+  key: 0,
+  class: "access"
+}, ie = {
   key: 0,
   class: "card-desc"
-}, le = { class: "card-meta" }, re = {
+}, ue = { class: "card-meta" }, de = {
   key: 0,
   class: "empty"
-}, ce = {
+}, me = {
   key: 1,
   class: "muted"
-}, ie = /* @__PURE__ */ E({
+}, pe = /* @__PURE__ */ L({
   __name: "ExtractorList",
   emits: ["open"],
-  setup(L, { emit: h }) {
-    const f = h, s = i(), v = i(!1), u = i(""), l = i(!1), d = i(!1), y = i(""), g = i("");
-    async function N() {
+  setup($, { emit: y }) {
+    const f = y, n = u(), m = u(!1), d = u(""), r = u(!1), p = u(!1), h = u(""), g = u("");
+    async function V() {
       try {
-        const t = await C.list();
-        s.value = t.items, v.value = t.truncated, u.value = "";
-      } catch (t) {
-        u.value = t instanceof Error ? t.message : String(t);
+        const a = await D.list();
+        n.value = a.items, m.value = a.truncated, d.value = "";
+      } catch (a) {
+        d.value = a instanceof Error ? a.message : String(a);
       }
     }
-    B(N);
-    const b = $(() => {
-      const t = g.value.trim().toLowerCase();
-      return (s.value ?? []).filter((e) => !t || e.meta.title.toLowerCase().includes(t) || (e.meta.description ?? "").toLowerCase().includes(t));
+    T(V);
+    const w = N(() => {
+      const a = g.value.trim().toLowerCase();
+      return (n.value ?? []).filter((e) => !a || e.meta.title.toLowerCase().includes(a) || (e.meta.description ?? "").toLowerCase().includes(a));
     });
-    async function S(t) {
-      d.value = !0, y.value = "";
+    async function B(a) {
+      p.value = !0, h.value = "";
       try {
-        const e = await C.create({ ...t, config: q() });
-        l.value = !1, f("open", e.component_id);
+        const e = await D.create({ ...a, config: I() });
+        r.value = !1, f("open", e.component_id);
       } catch (e) {
-        y.value = e instanceof Error ? e.message : String(e);
+        h.value = e instanceof Error ? e.message : String(e);
       } finally {
-        d.value = !1;
+        p.value = !1;
       }
     }
-    const D = (t) => new Date(t).toLocaleDateString(void 0, { month: "short", day: "numeric" });
-    return (t, e) => (o(), n("main", A, [
-      r("div", G, [
-        r("div", H, [
-          e[4] || (e[4] = r("h1", null, "Docscout", -1)),
-          s.value ? (o(), n("span", J, c(s.value.length), 1)) : m("", !0)
+    function F(a) {
+      const e = new Date(a);
+      return e.toDateString() === (/* @__PURE__ */ new Date()).toDateString() ? e.toLocaleTimeString(void 0, { hour: "numeric", minute: "2-digit" }) : e.toLocaleDateString(void 0, { month: "short", day: "numeric" });
+    }
+    function k(a) {
+      const e = a.access_level ?? 15;
+      return e & 8 ? "" : e & 2 ? "Shared · can edit" : "Shared · can run";
+    }
+    return (a, e) => (o(), s("main", H, [
+      l("div", J, [
+        l("div", K, [
+          e[4] || (e[4] = l("h1", null, "Docscout", -1)),
+          n.value ? (o(), s("span", Q, c(n.value.length) + c(m.value ? "+" : ""), 1)) : i("", !0)
         ]),
-        r("div", K, [
-          s.value?.length ? V((o(), n("input", {
+        l("div", W, [
+          n.value?.length ? z((o(), s("input", {
             key: 0,
-            "onUpdate:modelValue": e[0] || (e[0] = (a) => g.value = a),
+            "onUpdate:modelValue": e[0] || (e[0] = (t) => g.value = t),
             class: "filter",
             type: "search",
             placeholder: "Filter extractors",
             "aria-label": "Filter extractors"
           }, null, 512)), [
-            [F, g.value]
-          ]) : m("", !0),
-          p(_(x), {
+            [M, g.value]
+          ]) : i("", !0),
+          v(_(E), {
             label: "New extractor",
             size: "small",
-            onClick: e[1] || (e[1] = (a) => l.value = !0)
+            onClick: e[1] || (e[1] = (t) => r.value = !0)
           })
         ])
       ]),
-      r("div", Q, [
-        l.value ? (o(), n("section", W, [
-          p(T, {
-            saving: d.value,
-            error: y.value,
-            onSubmit: S
+      l("div", X, [
+        r.value ? (o(), s("section", Y, [
+          v(A, {
+            saving: p.value,
+            error: h.value,
+            onSubmit: B
           }, null, 8, ["saving", "error"]),
-          r("button", {
+          l("button", {
             type: "button",
             class: "icon-btn create-close",
             "aria-label": "Cancel",
-            onClick: e[2] || (e[2] = (a) => l.value = !1)
+            onClick: e[2] || (e[2] = (t) => r.value = !1)
           }, [
-            p(_(k), { icon: "tabler:x" })
+            v(_(b), { icon: "tabler:x" })
           ])
-        ])) : m("", !0),
-        u.value ? (o(), n("p", X, c(u.value), 1)) : s.value ? !s.value.length && !l.value ? (o(), n("div", Z, [
-          p(_(k), {
+        ])) : i("", !0),
+        d.value ? (o(), s("p", Z, c(d.value), 1)) : n.value ? !n.value.length && !r.value ? (o(), s("div", te, [
+          v(_(b), {
             icon: "tabler:file-search",
             class: "empty-icon"
           }),
-          e[5] || (e[5] = r("p", null, "Create an extractor to pull typed fields from documents.", -1)),
-          p(_(x), {
+          e[5] || (e[5] = l("p", null, "Create an extractor to pull typed fields from documents.", -1)),
+          v(_(E), {
             label: "New extractor",
             size: "small",
-            onClick: e[3] || (e[3] = (a) => l.value = !0)
+            onClick: e[3] || (e[3] = (t) => r.value = !0)
           })
-        ])) : (o(), n("div", ee, [
-          (o(!0), n(z, null, M(b.value, (a) => (o(), n("button", {
-            key: a.component_id,
+        ])) : (o(), s("div", ae, [
+          (o(!0), s(x, null, P(w.value, (t) => (o(), s("button", {
+            key: t.component_id,
             type: "button",
             class: "card",
-            onClick: (me) => f("open", a.component_id)
+            onClick: (fe) => f("open", t.component_id)
           }, [
-            r("span", oe, [
-              p(_(k), { icon: "tabler:file-search" })
+            l("span", se, [
+              v(_(b), { icon: "tabler:file-search" })
             ]),
-            r("span", se, [
-              r("span", ae, c(a.meta.title), 1),
-              a.meta.description ? (o(), n("span", ne, c(a.meta.description), 1)) : m("", !0),
-              r("span", le, c(a.meta.field_count ?? 0) + " " + c(a.meta.field_count === "1" ? "field" : "fields") + " · updated " + c(D(a.updated_at)), 1)
+            l("span", ne, [
+              l("span", re, [
+                l("span", le, c(t.meta.title), 1),
+                k(t) ? (o(), s("span", ce, c(k(t)), 1)) : i("", !0)
+              ]),
+              t.meta.description ? (o(), s("span", ie, c(t.meta.description), 1)) : i("", !0),
+              l("span", ue, [
+                C(c(t.meta.field_count ?? 0) + " " + c(t.meta.field_count === "1" ? "field" : "fields") + " · updated " + c(F(t.updated_at)), 1),
+                k(t) && t.meta.owner ? (o(), s(x, { key: 0 }, [
+                  C(" · from " + c(t.meta.owner), 1)
+                ], 64)) : i("", !0)
+              ])
             ])
-          ], 8, te))), 128)),
-          s.value.length && !b.value.length ? (o(), n("p", re, "No extractors match.")) : m("", !0),
-          v.value ? (o(), n("p", ce, "Showing the first " + c(s.value.length) + " extractors.", 1)) : m("", !0)
-        ])) : (o(), n("p", Y, "Loading…"))
+          ], 8, oe))), 128)),
+          n.value.length && !w.value.length ? (o(), s("p", de, "No extractors match.")) : i("", !0),
+          m.value ? (o(), s("p", me, "Showing the first " + c(n.value.length) + " extractors.", 1)) : i("", !0)
+        ])) : (o(), s("p", ee, "Loading…"))
       ])
     ]));
   }
-}), ue = /* @__PURE__ */ E({
+}), ve = /* @__PURE__ */ L({
   __name: "PageRoot",
-  setup(L) {
-    const h = I(), f = O(), s = i("");
-    P(() => h.value.route, (l) => {
-      s.value = (l ?? "").split("/")[0];
+  setup($) {
+    const y = O(), f = R(), n = u("");
+    j(() => y.value.route, (r) => {
+      n.value = (r ?? "").split("/")[0];
     }, { immediate: !0 });
-    function v(l) {
-      s.value = l, f("navigate", l);
+    function m(r) {
+      n.value = r, f("navigate", r);
     }
-    const u = $(() => s.value);
-    return (l, d) => u.value ? (o(), w(U, {
+    const d = N(() => n.value);
+    return (r, p) => d.value ? (o(), S(G, {
       key: 0,
-      id: u.value,
+      id: d.value,
       back: "",
-      onBack: d[0] || (d[0] = (y) => v(""))
-    }, null, 8, ["id"])) : (o(), w(ie, {
+      onBack: p[0] || (p[0] = (h) => m(""))
+    }, null, 8, ["id"])) : (o(), S(pe, {
       key: 1,
-      onOpen: v
+      onOpen: m
     }));
   }
-}), de = R(ue, { type: "object", properties: { route: { type: "string", default: "", description: "Sub-path under /docscout: empty for the list, an extractor id to open it." } } });
-j(import.meta.url, de);
+}), _e = U(ve, { type: "object", properties: { route: { type: "string", default: "", description: "Sub-path under /docscout: empty for the list, an extractor id to open it." } } });
+q(import.meta.url, _e);

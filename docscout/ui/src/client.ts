@@ -3,7 +3,7 @@ import {api} from '@wippy-fe/proxy'
 import type {Config} from './config'
 export type {Snapshot,Extraction,EvalCase,Run,Evaluation,CaseResult,FieldMetric,FieldScore,EvalStatus} from './models'
 import type {Snapshot,Extraction,Evaluation,TraceStep} from './models'
-export interface ExtractorItem {component_id:string;updated_at:string;meta:{title:string;description?:string;field_count?:string;status?:string;owner?:string}}
+export interface ExtractorItem {component_id:string;updated_at:string;access_level?:number;meta:{title:string;description?:string;field_count?:string;status?:string;owner?:string}}
 interface Failure {success:false;error?:string;kind?:string;details?:{run_id?:string;trace?:TraceStep[]}}
 const path=(id:string)=>`/api/v1/docscout/${encodeURIComponent(id)}`
 function checked<T>(data:T&{success?:boolean;error?:string}):T{if(data.success===false)throw new Error(data.error||'Request failed');return data}

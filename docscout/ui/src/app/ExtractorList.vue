@@ -17,12 +17,22 @@ async function create(input:{title:string;description:string}){
  catch(e){createError.value=e instanceof Error?e.message:String(e)}
  finally{saving.value=false}
 }
-const updated=(at:string)=>new Date(at).toLocaleDateString(undefined,{month:'short',day:'numeric'})
+// Today's changes show their time; older ones their date.
+function updated(at:string){
+ const d=new Date(at)
+ return d.toDateString()===new Date().toDateString()?d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}):d.toLocaleDateString(undefined,{month:'short',day:'numeric'})
+}
+// Access bits: READ 1, WRITE 2, DELETE 4, ADMIN 8. Admins own or manage the extractor.
+function shared(i:ExtractorItem):string{
+ const level=i.access_level??15
+ if(level&8)return ''
+ return level&2?'Shared · can edit':'Shared · can run'
+}
 </script>
 <template>
  <main class="docscout list-page">
   <div class="toolbar">
-   <div class="toolbar-title"><h1>Docscout</h1><span v-if="items" class="count">{{items.length}}</span></div>
+   <div class="toolbar-title"><h1>Docscout</h1><span v-if="items" class="count">{{items.length}}{{truncated?'+':''}}</span></div>
    <div class="toolbar-side"><input v-if="items?.length" v-model="filter" class="filter" type="search" placeholder="Filter extractors" aria-label="Filter extractors"/><Button label="New extractor" size="small" @click="creating=true"/></div>
   </div>
   <div class="page-body">
@@ -36,7 +46,7 @@ const updated=(at:string)=>new Date(at).toLocaleDateString(undefined,{month:'sho
    <div v-else class="cards">
     <button v-for="i in shown" :key="i.component_id" type="button" class="card" @click="emit('open',i.component_id)">
      <span class="card-icon"><Icon icon="tabler:file-search"/></span>
-     <span class="card-main"><span class="card-title">{{i.meta.title}}</span><span v-if="i.meta.description" class="card-desc">{{i.meta.description}}</span><span class="card-meta">{{i.meta.field_count??0}} {{i.meta.field_count==='1'?'field':'fields'}} · updated {{updated(i.updated_at)}}</span></span>
+     <span class="card-main"><span class="card-title-row"><span class="card-title">{{i.meta.title}}</span><span v-if="shared(i)" class="access">{{shared(i)}}</span></span><span v-if="i.meta.description" class="card-desc">{{i.meta.description}}</span><span class="card-meta">{{i.meta.field_count??0}} {{i.meta.field_count==='1'?'field':'fields'}} · updated {{updated(i.updated_at)}}<template v-if="shared(i)&&i.meta.owner"> · from {{i.meta.owner}}</template></span></span>
     </button>
     <p v-if="items.length&&!shown.length" class="empty">No extractors match.</p>
     <p v-if="truncated" class="muted">Showing the first {{items.length}} extractors.</p>

@@ -90,7 +90,7 @@ function M.delete(id)
 end
 local LIST_LIMIT = 100
 function M.list()
-    local rows,err = component.query({impl_ids={KIND},include={meta=true},limit=LIST_LIMIT + 1})
+    local rows,err = component.query({impl_ids={KIND},include={meta=true,access=true},limit=LIST_LIMIT + 1})
     if err then return nil,err end
     local truncated = #rows > LIST_LIMIT
     if truncated then rows[#rows] = nil end

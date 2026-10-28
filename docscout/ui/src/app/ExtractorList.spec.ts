@@ -14,6 +14,20 @@ describe('Docscout page list',()=>{
   await wrapper.get('.card').trigger('click')
   expect(wrapper.emitted('open')?.[0]).toEqual(['a'])
  })
+ it('marks extractors shared with the viewer by what they may do and counts a truncated list',async()=>{
+  list.mockResolvedValue({items:[
+   {component_id:'own',updated_at:'2026-10-27T10:00:00Z',access_level:15,meta:{title:'Mine',field_count:'1'}},
+   {component_id:'run',updated_at:'2026-10-27T10:00:00Z',access_level:1,meta:{title:'Run only',field_count:'1',owner:'ana@example.com'}},
+   {component_id:'edit',updated_at:'2026-10-27T10:00:00Z',access_level:3,meta:{title:'Editable',field_count:'1',owner:'ana@example.com'}},
+  ],truncated:true})
+  const wrapper=mount(ExtractorList,{global:{plugins:[PrimeVuePlugin]}})
+  await flushPromises()
+  const cards=wrapper.findAll('.card')
+  expect(cards[0].find('.access').exists()).toBe(false)
+  expect(cards[1].get('.access').text()).toBe('Shared · can run');expect(cards[1].text()).toContain('ana@example.com')
+  expect(cards[2].get('.access').text()).toBe('Shared · can edit')
+  expect(wrapper.get('.count').text()).toBe('3+')
+ })
  it('creates an extractor with the default configuration and opens it',async()=>{
   list.mockResolvedValue({items:[],truncated:false});create.mockResolvedValue({component_id:'new-id'})
   const wrapper=mount(ExtractorList,{global:{plugins:[PrimeVuePlugin]}})

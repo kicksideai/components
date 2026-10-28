@@ -106,6 +106,10 @@ return {run=test.run_cases(function()
             test.is_nil(read_err,tostring(read_err));test.eq(view.can_edit,false);test.is_nil(view.config);test.eq(view.can_share,false)
             test.eq(assert(call(writer,{op="get",id=id})).can_share,false)
             test.eq(assert(call(owner,{op="get",id=id})).can_share,true)
+            local function listed(who)
+                for _,row in ipairs(assert(call(who,{op="list"})).items) do if row.component_id==id then return row end end
+            end
+            test.eq(listed(reader).access_level,1);test.eq(listed(writer).access_level,3);test.eq(listed(owner).access_level,15)
             local change=input();change.expected_revision=0
             local denied,denied_err=call(reader,{op="update",id=id,input=change})
             test.is_nil(denied);test.not_nil(denied_err)

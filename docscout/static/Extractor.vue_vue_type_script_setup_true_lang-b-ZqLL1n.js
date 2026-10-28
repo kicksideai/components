@@ -1,6 +1,6 @@
 import { defineComponent as Q, useModel as fe, openBlock as n, createElementBlock as o, withModifiers as ke, createElementVNode as e, mergeModels as $e, computed as T, withKeys as Re, unref as h, normalizeClass as W, createVNode as r, toDisplayString as i, Fragment as S, renderList as F, createCommentVNode as p, createTextVNode as $, createBlock as Z, ref as D, watch as de, withDirectives as j, vModelText as Y, vModelSelect as ye, onMounted as xe, normalizeStyle as be, onBeforeUnmount as Fe, nextTick as Xe, vShow as Se, vModelDynamic as Ye, toRaw as Ae, withCtx as Ze } from "vue";
 import { loadByTagName as qe, on as _e } from "@wippy-fe/proxy";
-import { i as he, h as ze, t as Ce, g as ie, j as Ue, k as el, m as Pe, l as Ie, o as De, p as ll, q as tl, r as al, v as nl, w as Le, x as sl, y as we, z as ol, A as il, s as oe, n as Oe, C as dl, D as ul, c as ae } from "./index-BBnkhKOj.js";
+import { i as he, h as ze, t as Ce, g as ie, j as Ue, k as el, m as Pe, l as Ie, o as De, p as ll, q as tl, r as al, v as nl, w as Le, x as sl, y as we, z as ol, A as il, s as oe, n as Oe, C as dl, D as ul, c as ae } from "./index-BH2a6VVq.js";
 import { Icon as O } from "@iconify/vue";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) => t.metrics.length ? t.metrics.reduce((c, s) => c + s.accuracy, 0) / t.metrics.length : 0, rl = ["aria-checked", "aria-label", "disabled"], K = /* @__PURE__ */ Q({
@@ -2566,24 +2566,27 @@ const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
       f.value ? (n(), o("p", ko, i(f.value), 1)) : p("", !0)
     ], 512));
   }
-}), xo = { class: "docscout" }, wo = { class: "toolbar" }, Vo = { class: "toolbar-lead" }, So = { class: "crumb" }, Co = {
+}), xo = { class: "docscout" }, wo = { class: "toolbar" }, Vo = { class: "toolbar-lead" }, So = {
+  key: 0,
+  class: "crumb-row"
+}, Co = { class: "crumb" }, qo = {
   class: "tabs",
   role: "tablist",
   "aria-label": "Docscout"
-}, qo = ["id", "aria-selected", "aria-controls", "onClick"], Uo = { class: "toolbar-side" }, Eo = { class: "stats" }, Mo = ["title"], No = {
+}, Uo = ["id", "aria-selected", "aria-controls", "onClick"], Eo = { class: "toolbar-side" }, Mo = { class: "stats" }, No = ["title"], Bo = {
   key: 1,
   class: "unsaved"
-}, Bo = {
+}, To = {
   key: 0,
   role: "alert",
   class: "error banner"
-}, To = {
+}, Ro = {
   key: 2,
   id: "panel-Builder",
   role: "tabpanel",
   "aria-labelledby": "tab-Builder",
   class: "builder-body"
-}, Ro = ["id", "aria-labelledby"], Ao = /* @__PURE__ */ Q({
+}, Ao = ["id", "aria-labelledby"], Do = /* @__PURE__ */ Q({
   __name: "DocscoutPage",
   props: {
     snapshot: {},
@@ -2616,7 +2619,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
     return (E, M) => (n(), o("main", xo, [
       e("div", wo, [
         e("div", Vo, [
-          t.back ? (n(), o(S, { key: 0 }, [
+          t.back ? (n(), o("span", So, [
             e("button", {
               type: "button",
               class: "icon-btn",
@@ -2626,9 +2629,9 @@ const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             }, [
               r(h(O), { icon: "tabler:arrow-left" })
             ]),
-            e("span", So, i(t.snapshot.title), 1)
-          ], 64)) : p("", !0),
-          e("nav", Co, [
+            e("span", Co, i(t.snapshot.title), 1)
+          ])) : p("", !0),
+          e("nav", qo, [
             (n(!0), o(S, null, F(l.value, (R) => (n(), o("button", {
               id: `tab-${R}`,
               key: R,
@@ -2636,24 +2639,25 @@ const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
               "aria-selected": y.value === R,
               "aria-controls": `panel-${R}`,
               onClick: (I) => y.value = R
-            }, i(R), 9, qo))), 128))
+            }, i(R), 9, Uo))), 128))
           ])
         ]),
-        e("div", Uo, [
+        e("div", Eo, [
           t.snapshot.can_share ? (n(), Z(h(oe), {
             key: 0,
             severity: "secondary",
             outlined: "",
             size: "small",
+            "aria-label": "Share",
             onClick: M[1] || (M[1] = (R) => f.value = !0)
           }, {
             default: Ze(() => [
               r(h(O), { icon: "tabler:share" }),
-              M[10] || (M[10] = $("Share", -1))
+              M[10] || (M[10] = e("span", { class: "btn-label" }, "Share", -1))
             ]),
             _: 1
           })) : p("", !0),
-          e("span", Eo, [
+          e("span", Mo, [
             $(i(t.snapshot.field_count) + " " + i(t.snapshot.field_count === 1 ? "field" : "fields"), 1),
             t.snapshot.can_edit ? (n(), o(S, { key: 0 }, [
               $(" · " + i(L.value) + " steps · revision " + i(t.snapshot.expected_revision), 1)
@@ -2670,7 +2674,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             }, [
               r(h(O), { icon: "tabler:alert-circle" }),
               $(i(C.value), 1)
-            ], 8, Mo)) : z.value ? (n(), o("span", No, "Unsaved")) : p("", !0),
+            ], 8, No)) : z.value ? (n(), o("span", Bo, "Unsaved")) : p("", !0),
             r(h(oe), {
               label: "Save",
               size: "small",
@@ -2681,14 +2685,14 @@ const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           ], 64)) : p("", !0)
         ])
       ]),
-      t.error ? (n(), o("p", Bo, i(t.error), 1)) : p("", !0),
+      t.error ? (n(), o("p", To, i(t.error), 1)) : p("", !0),
       f.value ? (n(), Z($o, {
         key: 1,
         id: t.snapshot.id,
         title: t.snapshot.title,
         onClose: M[2] || (M[2] = (R) => f.value = !1)
       }, null, 8, ["id", "title"])) : p("", !0),
-      y.value === "Builder" && t.snapshot.can_edit ? (n(), o("div", To, [
+      y.value === "Builder" && t.snapshot.can_edit ? (n(), o("div", Ro, [
         r(ln, {
           title: N.value,
           "onUpdate:title": M[3] || (M[3] = (R) => N.value = R),
@@ -2738,19 +2742,19 @@ const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             runs: t.snapshot.runs,
             retention: t.snapshot.retention
           }, null, 8, ["runs", "retention"])) : p("", !0)
-        ], 8, Ro)
+        ], 8, Ao)
       ], 512))
     ]));
   }
-}), Do = {
+}), Lo = {
   key: 1,
   class: "error pad-page",
   role: "alert"
-}, Lo = {
+}, Oo = {
   key: 2,
   class: "empty pad-page",
   role: "status"
-}, Oo = 2e3, Wo = /* @__PURE__ */ Q({
+}, Fo = 2e3, jo = /* @__PURE__ */ Q({
   __name: "Extractor",
   props: {
     id: {},
@@ -2772,7 +2776,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           if (!E(A) || B.id !== (L ?? u)) return;
           a.value = B;
         }
-        clearTimeout(z), b.some((B) => !pe(B)) && (z = setTimeout(() => M(A), Oo));
+        clearTimeout(z), b.some((B) => !pe(B)) && (z = setTimeout(() => M(A), Fo));
       } catch (x) {
         E(A) && (f.value = V(x));
       }
@@ -2836,7 +2840,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
     function ne(A) {
       M(C, A);
     }
-    return (A, P) => v.value ? (n(), Z(Ao, {
+    return (A, P) => v.value ? (n(), Z(Do, {
       key: 0,
       snapshot: v.value,
       saving: y.value,
@@ -2854,9 +2858,9 @@ const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
       onDeleteCase: H,
       onEvaluate: ee,
       onOpenEvaluation: ne
-    }, null, 8, ["snapshot", "saving", "running", "starting", "result", "evaluations", "evaluation", "error", "back"])) : f.value ? (n(), o("p", Do, i(f.value), 1)) : (n(), o("p", Lo, "Loading Docscout…"));
+    }, null, 8, ["snapshot", "saving", "running", "starting", "result", "evaluations", "evaluation", "error", "back"])) : f.value ? (n(), o("p", Lo, i(f.value), 1)) : (n(), o("p", Oo, "Loading Docscout…"));
   }
 });
 export {
-  Wo as _
+  jo as _
 };
