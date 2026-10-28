@@ -36,7 +36,7 @@ const tone=(c:number)=>c>=.9?'high':c>=.7?'mid':'low'
       <button type="button" class="value-main" :aria-expanded="open===field.name" @click="open=open===field.name?undefined:field.name">
        <span class="value-name">{{field.name}}</span>
        <span class="value-text" :class="{missing:field.missing}" :title="field.missing?undefined:value(field.value)">{{field.missing?'Not in the document':value(field.value)}}</span>
-       <span class="confidence" :class="tone(field.confidence)"><span class="bar"><span :style="{width:percent(field.confidence)}"/></span>{{percent(field.confidence)}} confidence</span>
+       <span class="confidence" :class="tone(field.confidence)"><span class="bar"><span :style="{width:percent(field.confidence)}"/></span>{{percent(field.confidence)}}<span class="conf-word"> confidence</span></span>
        <span class="chip" :class="field.verified?'primary':'warn'" :title="field.reason"><Icon :icon="field.verified?'tabler:shield-check':'tabler:shield-question'"/>{{field.verified?'Verified':'Check'}}</span>
        <Icon :icon="open===field.name?'tabler:chevron-up':'tabler:chevron-down'" class="value-caret"/>
       </button>

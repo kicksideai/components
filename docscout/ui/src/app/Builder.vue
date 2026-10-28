@@ -34,7 +34,14 @@ function startResize(e:PointerEvent){
  handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',up)
 }
 function resizeKey(e:KeyboardEvent){if(e.key==='ArrowLeft'){setWidth(panelWidth.value+24);e.preventDefault()}else if(e.key==='ArrowRight'){setWidth(panelWidth.value-24);e.preventDefault()}}
-function setPanel(open:boolean){panelOpen.value=open;if(!narrow.value)store('panel',open)}
+// At narrow widths the panel is a modal drawer: it takes focus and gives it back to its opener on close.
+let opener:HTMLElement|null=null
+const closeButton=ref<HTMLButtonElement>()
+function setPanel(open:boolean){
+ panelOpen.value=open
+ if(!narrow.value){store('panel',open);return}
+ if(!open&&opener){opener.focus();opener=null}
+}
 function toggleSection(which:'fields'|'flow'){const r=which==='fields'?fieldsOpen:flowOpen;r.value=!r.value;store(which,r.value)}
 
 const root=ref<HTMLElement>(),narrow=ref(false)
@@ -44,7 +51,11 @@ onBeforeUnmount(()=>observer?.disconnect())
 
 const panelBody=ref<HTMLElement>()
 watch(selected,async()=>{await nextTick();if(panelBody.value)panelBody.value.scrollTop=0})
-function select(s:Selection){selected.value=s;panelOpen.value=true}
+async function select(s:Selection){
+ if(narrow.value&&!panelOpen.value)opener=(root.value?.getRootNode() as Document|ShadowRoot|undefined)?.activeElement as HTMLElement|null
+ selected.value=s;panelOpen.value=true
+ if(narrow.value){await nextTick();closeButton.value?.focus()}
+}
 const is=(s:Selection)=>JSON.stringify(s)===JSON.stringify(selected.value)
 const selectedField=computed(()=>selected.value.kind==='field'?props.config.fields[selected.value.index]:undefined)
 const panelTitle=computed(()=>{const s=selected.value;return s.kind==='stage'?stageLabels[s.stage]:s.kind==='field'?(selectedField.value?.name||'New field'):s.kind==='document'?'Read document':s.kind==='output'?'Output':'Details'})
@@ -132,12 +143,12 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
   </div>
 
   <div v-if="narrow&&panelOpen" class="scrim" @click="setPanel(false)"/>
-  <aside v-if="panelOpen" class="side-panel" aria-label="Settings panel" :style="narrow?undefined:{width:`${panelWidth}px`}">
+  <aside v-if="panelOpen" class="side-panel" aria-label="Settings panel" :role="narrow?'dialog':undefined" :aria-modal="narrow?'true':undefined" :style="narrow?undefined:{width:`${panelWidth}px`}" @keydown.esc="narrow&&setPanel(false)">
    <div v-if="!narrow" class="resizer" :class="{active:resizing}" role="separator" aria-orientation="vertical" aria-label="Resize panel" tabindex="0" :aria-valuenow="panelWidth" :aria-valuemin="PANEL_MIN" @pointerdown.prevent="startResize" @keydown="resizeKey" @dblclick="setWidth(PANEL_DEFAULT)"/>
    <header class="side-panel-head">
     <span class="side-panel-icon"><Icon :icon="panelIcon"/></span>
     <h2>{{panelTitle}}</h2>
-    <button type="button" class="icon-btn push" aria-label="Collapse panel" title="Collapse panel" @click="setPanel(false)"><Icon :icon="narrow?'tabler:x':'tabler:layout-sidebar-right-collapse'"/></button>
+    <button ref="closeButton" type="button" class="icon-btn push" :aria-label="narrow?'Close panel':'Collapse panel'" :title="narrow?'Close panel':'Collapse panel'" @click="setPanel(false)"><Icon :icon="narrow?'tabler:x':'tabler:layout-sidebar-right-collapse'"/></button>
    </header>
    <div ref="panelBody" class="side-panel-body">
     <DocumentInspector v-if="selected.kind==='document'" :config="config" :retention="retention" :readonly="readonly"/>

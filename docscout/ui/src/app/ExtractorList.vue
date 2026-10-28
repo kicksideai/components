@@ -6,6 +6,7 @@ import Button from 'primevue/button'
 import {client,type ExtractorItem} from '../client'
 import {newConfig} from '../config'
 import CreateForm from './CreateForm.vue'
+import {when} from '../format'
 const emit=defineEmits<{open:[id:string]}>()
 const items=ref<ExtractorItem[]>(),truncated=ref(false),error=ref(''),creating=ref(false),saving=ref(false),createError=ref(''),filter=ref('')
 async function load(){try{const listed=await client.list();items.value=listed.items;truncated.value=listed.truncated;error.value=''}catch(e){error.value=e instanceof Error?e.message:String(e)}}
@@ -16,11 +17,6 @@ async function create(input:{title:string;description:string}){
  try{const result=await client.create({...input,config:newConfig()});creating.value=false;emit('open',result.component_id)}
  catch(e){createError.value=e instanceof Error?e.message:String(e)}
  finally{saving.value=false}
-}
-// Today's changes show their time; older ones their date.
-function updated(at:string){
- const d=new Date(at)
- return d.toDateString()===new Date().toDateString()?d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}):d.toLocaleDateString(undefined,{month:'short',day:'numeric'})
 }
 // Access bits: READ 1, WRITE 2, DELETE 4, ADMIN 8. Admins own or manage the extractor.
 function shared(i:ExtractorItem):string{
@@ -46,7 +42,7 @@ function shared(i:ExtractorItem):string{
    <div v-else class="cards">
     <button v-for="i in shown" :key="i.component_id" type="button" class="card" @click="emit('open',i.component_id)">
      <span class="card-icon"><Icon icon="tabler:file-search"/></span>
-     <span class="card-main"><span class="card-title-row"><span class="card-title">{{i.meta.title}}</span><span v-if="shared(i)" class="access">{{shared(i)}}</span></span><span v-if="i.meta.description" class="card-desc">{{i.meta.description}}</span><span class="card-meta">{{i.meta.field_count??0}} {{i.meta.field_count==='1'?'field':'fields'}} · updated {{updated(i.updated_at)}}<template v-if="shared(i)&&i.meta.owner"> · from {{i.meta.owner}}</template></span></span>
+     <span class="card-main"><span class="card-title-row"><span class="card-title">{{i.meta.title}}</span><span v-if="shared(i)" class="access">{{shared(i)}}</span></span><span v-if="i.meta.description" class="card-desc">{{i.meta.description}}</span><span class="card-meta">{{i.meta.field_count??0}} {{i.meta.field_count==='1'?'field':'fields'}} · updated {{when(i.updated_at)}}<template v-if="shared(i)&&i.meta.owner"> · from {{i.meta.owner}}</template></span></span>
     </button>
     <p v-if="items.length&&!shown.length" class="empty">No extractors match.</p>
     <p v-if="truncated" class="muted">Showing the first {{items.length}} extractors.</p>

@@ -6,6 +6,7 @@ import Button from 'primevue/button'
 import UploadPicker from './UploadPicker.vue'
 import type {Field} from '../config'
 import {finished,meanAccuracy,type EvalCase,type Evaluation,type CaseResult,type FieldScore} from '../models'
+import {when} from '../format'
 const props=defineProps<{cases:EvalCase[];fields:Field[];evaluations:Evaluation[];evaluation?:Evaluation;revision:number;changed?:boolean;saving?:boolean;starting?:boolean}>()
 const emit=defineEmits<{'add-case':[input:{upload_id:string;expected:Record<string,unknown>}];'delete-case':[id:string];evaluate:[];open:[eval_id:string]}>()
 
@@ -49,7 +50,6 @@ const pct=(n:number)=>`${Math.round(n*100)}%`
 const delta=(n:number)=>{const p=Math.round(n*100);return `${p>0?'+':p<0?'−':'±'}${Math.abs(p)} pts`}
 const trend=(n:number)=>Math.round(n*100)>0?'up':Math.round(n*100)<0?'down':'flat'
 const secs=(ms:number)=>ms>=60000?`${Math.floor(ms/60000)}m ${Math.round(ms%60000/1000)}s`:`${(ms/1000).toFixed(1)}s`
-const when=(s:string)=>new Date(s).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})
 const value=(v:unknown)=>v===null||v===undefined||v===''?'—':typeof v==='string'?v:Array.isArray(v)&&v.every(x=>typeof x!=='object')?v.join(', '):JSON.stringify(v)
 const grade=(s?:FieldScore)=>!s?'none':s.score>=.999?'pass':s.score>0?'partial':'fail'
 const completed=(e:Evaluation)=>(e.results??[]).filter(r=>r.status==='completed').length
@@ -88,7 +88,7 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
      </label>
     </header>
     <p v-if="!rows.length" class="block-empty">No case completed, so there is no accuracy to show.</p>
-    <div v-else class="table-scroll"><table class="metric-table">
+    <div v-else class="table-scroll"><table class="metric-table accuracy-table" :class="{comparing:!!baseline}">
      <thead><tr><th>Field</th><th>Accuracy</th><th>Verified</th><th v-if="baseline">Revision {{baseline.config_revision}}</th><th v-if="baseline">Change</th></tr></thead>
      <tbody>
       <tr v-for="row in rows" :key="row.field">
@@ -113,7 +113,7 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
        <tr class="result-row" :class="{active:open===r.case_id}">
         <td><button type="button" class="case-toggle" :aria-expanded="open===r.case_id" @click="open=open===r.case_id?undefined:r.case_id"><Icon :icon="open===r.case_id?'tabler:chevron-down':'tabler:chevron-right'"/>{{r.upload_name}}</button></td>
         <td v-if="r.status!=='completed'" :colspan="columns.length" class="muted"><span v-if="r.status==='queued'" class="cell-state"><Icon icon="tabler:loader-2" class="spin"/>Waiting</span><span v-else class="cell-state fail"><Icon icon="tabler:alert-triangle"/>{{r.error}}</span></td>
-        <template v-else><td v-for="name in columns" :key="name"><span class="cell" :class="grade(score(r,name))" :title="value(score(r,name)?.value)">{{score(r,name)?pct(score(r,name)!.score):'—'}}</span></td></template>
+        <template v-else><td v-for="name in columns" :key="name" :data-label="name"><span class="cell" :class="grade(score(r,name))" :title="value(score(r,name)?.value)">{{score(r,name)?pct(score(r,name)!.score):'—'}}</span></td></template>
        </tr>
        <tr v-if="open===r.case_id" class="result-detail"><td :colspan="columns.length+1">
         <p v-if="r.error" class="muted">{{r.error}}</p>
@@ -145,11 +145,12 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
     <p v-if="error" class="error" role="alert">{{error}}</p>
     <div class="row"><Button label="Save case" size="small" type="submit" :disabled="!upload" :loading="saving"/><Button label="Cancel" size="small" severity="secondary" text @click="adding=false"/></div>
    </form>
-   <p v-if="!cases.length&&!adding" class="block-empty">No cases yet. Add a document with the values you expect, then run all cases to measure this configuration.</p>
+   <p v-if="!fields.length" class="block-empty">Add a field in the Builder, then add documents with the values you expect.</p>
+   <p v-else-if="!cases.length&&!adding" class="block-empty">No cases yet. Add a document with the values you expect, then run all cases to measure this configuration.</p>
    <div v-else-if="cases.length" class="table-scroll">
-    <table class="metric-table">
+    <table class="metric-table case-table">
      <thead><tr><th>Document</th><th v-for="f in fields" :key="f.name" class="mono">{{f.name}}</th><th/></tr></thead>
-     <tbody><tr v-for="item in cases" :key="item.id"><td><Icon icon="tabler:file-text" class="muted"/> {{item.upload_name}}</td><td v-for="f in fields" :key="f.name" :class="{muted:!(f.name in item.expected)}">{{f.name in item.expected?value(item.expected[f.name]):'Not stated'}}</td><td class="num"><button type="button" class="icon-btn" :aria-label="`Remove case ${item.upload_name}`" :disabled="saving" @click="emit('delete-case',item.id)"><Icon icon="tabler:trash"/></button></td></tr></tbody>
+     <tbody><tr v-for="item in cases" :key="item.id"><td><Icon icon="tabler:file-text" class="muted"/> {{item.upload_name}}</td><td v-for="f in fields" :key="f.name" :data-label="f.name" :class="{muted:!(f.name in item.expected)}">{{f.name in item.expected?value(item.expected[f.name]):'Not stated'}}</td><td class="num"><button type="button" class="icon-btn" :aria-label="`Remove case ${item.upload_name}`" :disabled="saving" @click="emit('delete-case',item.id)"><Icon icon="tabler:trash"/></button></td></tr></tbody>
     </table>
    </div>
   </section>

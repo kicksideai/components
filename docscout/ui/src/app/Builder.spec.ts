@@ -17,6 +17,22 @@ describe('Builder panel',()=>{
   expect(w.get('.side-panel h2').text()).toBe('total')
   w.unmount()
  })
+ it('opens the narrow panel as a dialog that Escape closes, returning focus to its opener',async()=>{
+  let report:(entries:{contentRect:{width:number}}[])=>void=()=>{}
+  vi.stubGlobal('ResizeObserver',class{constructor(cb:typeof report){report=cb}observe(){}disconnect(){}})
+  const w=build()
+  report([{contentRect:{width:600}}]);await w.vm.$nextTick()
+  expect(w.find('.side-panel').exists()).toBe(false)
+  const row=w.get('.row-main');(row.element as HTMLElement).focus()
+  await row.trigger('click');await w.vm.$nextTick()
+  const panel=w.get('.side-panel')
+  expect(panel.attributes('role')).toBe('dialog');expect(panel.attributes('aria-modal')).toBe('true')
+  expect(panel.element.contains(document.activeElement)).toBe(true)
+  await panel.trigger('keydown',{key:'Escape'})
+  expect(w.find('.side-panel').exists()).toBe(false)
+  expect(document.activeElement).toBe(row.element)
+  vi.unstubAllGlobals();w.unmount()
+ })
  it('folds a section and shows what it holds',async()=>{
   const w=build()
   await w.findAll('.collapse')[0].trigger('click')
