@@ -34,10 +34,29 @@ local function system(text: string): string return text .. "\n" .. shapes.DATA_R
 
 -- Map: outline from headings, or built by the model; then the sections each
 -- "search within sections" field should read.
-local function outline_schema(chunks: integer): any
+local function outline_schema(first: integer, last: integer): any
     return { type = "object", additionalProperties = false, required = { "sections" }, properties = {
-        sections = { type = "array", minItems = 1, maxItems = chunks, items = { type = "object", additionalProperties = false, required = { "title", "first_chunk" },
-            properties = { title = { type = "string" }, first_chunk = { type = "integer", minimum = 1, maximum = chunks } } } } } }
+        sections = { type = "array", minItems = 1, maxItems = last - first + 1, items = { type = "object", additionalProperties = false, required = { "title", "first_chunk" },
+            properties = { title = { type = "string" }, first_chunk = { type = "integer", minimum = first, maximum = last } } } } } }
+end
+
+-- Chunks per outlining call, so a long document is outlined in several prompts.
+local OUTLINE_WINDOW = 150
+local PREVIEW_CHARS = 160
+
+-- Consecutive windows of chunk previews, each with its first and last ordinal.
+function M.outline_windows(chunks: { any }, size: integer): { any }
+    local windows = {}
+    for start = 1, #chunks, size do
+        local lines = {}
+        local last = math.min(#chunks, start + size - 1)
+        for i = start, last do
+            local c = chunks[i]
+            lines[#lines + 1] = "[C" .. c.ordinal .. "] " .. c.content:sub(1, PREVIEW_CHARS):gsub("\n", " ")
+        end
+        windows[#windows + 1] = { first = chunks[start].ordinal, last = chunks[last].ordinal, preview = table.concat(lines, "\n") }
+    end
+    return windows
 end
 
 local function section_ids(outline: { any }): { string }
@@ -70,17 +89,19 @@ function M.map(run: any, step: any): error?
     if cfg.outline == "build" or not headed then
         local chunks, err = store.all_chunks(run.document.id)
         if err then return err end
-        local preview = {}
-        for _, c in ipairs(chunks) do preview[#preview + 1] = "[C" .. c.ordinal .. "] " .. c.content:sub(1, 160):gsub("\n", " ") end
-        local built, build_err = ai.structured(step.meter, cfg.model, outline_schema(#chunks),
-            system("You divide a document into its logical sections. Give each section a short title and the chunk number where it starts, in order; the first section starts at chunk 1."),
-            table.concat(preview, "\n"))
-        if build_err then return build_err end
         -- One section per start chunk, in order; chunks before the first start form their own section.
-        local by_start = {}
-        for _, s in ipairs(built.sections) do
-            local start = math.tointeger(s.first_chunk) :: integer
-            if not by_start[start] then by_start[start] = trim(s.title) end
+        local by_start, previous = {}, nil
+        for _, w in ipairs(M.outline_windows(chunks, OUTLINE_WINDOW)) do
+            local carried = previous and ("The passages continue the section \"" .. previous .. "\" unless a new section starts at chunk " .. w.first .. ".\n\n") or ""
+            local built, build_err = ai.structured(step.meter, cfg.model, outline_schema(w.first, w.last),
+                system("You divide a document into its logical sections. Give each section a short title and the chunk number where it starts, in order."),
+                carried .. w.preview)
+            if build_err then return build_err end
+            for _, s in ipairs(built.sections) do
+                local start = math.tointeger(s.first_chunk) :: integer
+                if not by_start[start] then by_start[start] = trim(s.title) end
+            end
+            for n = w.last, w.first, -1 do if by_start[n] then previous = by_start[n]; break end end
         end
         if not by_start[1] then by_start[1] = "Start of document" end
         local sections = {}
@@ -450,8 +471,6 @@ function M.extract(run: any, step: any): error?
             (#notes > 0 and ("\n\nScout notes:\n" .. table.concat(notes, "\n")) or "") ..
             (#context > 0 and ("\n\n" .. table.concat(context, "\n\n")) or "") ..
             "\n\nPassages:\n" .. evidence
-        local budget_err = ai.check_budget(cfg.model, EXTRACT_SYSTEM .. user, cfg.max_output_tokens)
-        if budget_err then return budget_err end
         local result, err
         if cfg.structured_output then
             result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
@@ -468,7 +487,14 @@ function M.extract(run: any, step: any): error?
                 end
             end
         end
-        if err then return err end
+        if err then
+            -- The llm module refuses a prompt larger than the model's window before calling it.
+            if errors.is(err, errors.INVALID) and ((err :: any):details() or {}).error_type == "context_window" then
+                return errors.new({ kind = errors.INVALID, details = (err :: any):details(),
+                    message = tostring(err) .. "; lower passages per field, Deep chunk cap or fields per call" })
+            end
+            return err
+        end
         calls = calls + 1
         for _, f in ipairs(batch) do
             local item = result[f.name]

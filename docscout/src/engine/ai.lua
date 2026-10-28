@@ -19,9 +19,6 @@ local function model_error(what: string, err: any): error
     return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = what .. " failed: " .. tostring(err) })
 end
 
--- Characters per token for prompt size estimates; matches the chunker.
-local CHARS_PER_TOKEN = 4
-
 local function messages(system: string, user: string): { any }
     return {
         { role = "system", content = { { type = "text", text = system } } },
@@ -72,20 +69,6 @@ function M.resolve(model: string): (any?, error?)
         return nil, errors.new({ kind = errors.NOT_FOUND, message = "no model answers to " .. model })
     end
     return card, nil
-end
-
--- Refuses a prompt that, with its output allowance, exceeds the model's context window.
-function M.check_budget(model: string, prompt_text: string, output_tokens: integer): error?
-    local card, err = M.resolve(model)
-    if err then return err end
-    local window = tonumber(card.max_tokens)
-    if not window or window <= 0 then return nil end
-    local needed = math.ceil(#prompt_text / CHARS_PER_TOKEN) + output_tokens
-    if needed > window then
-        return errors.new({ kind = errors.INVALID, message = "the extraction prompt needs about " .. needed .. " tokens but " .. tostring(card.name or model) ..
-            " takes " .. math.floor(window) .. "; lower passages per field, Deep chunk cap or fields per call" })
-    end
-    return nil
 end
 
 -- Structured output as a Lua table that matches schema.

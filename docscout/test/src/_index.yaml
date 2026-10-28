@@ -23,7 +23,7 @@ entries:
   kind: db.sql.sqlite
   foreign_keys: true
   meta:
-    comment: Database for Drop zone lifecycle tests.
+    comment: Database for the Docscout tests.
   file: ':memory:'
 - name: uploads
   kind: fs.directory
@@ -317,6 +317,7 @@ entries:
   - sql
   - funcs
   - time
+  - registry
   imports:
     test: wippy.test:test
     ai: kickside.docscout.engine:ai
@@ -386,3 +387,49 @@ entries:
     test: wippy.test:test
     user_repo: kickside.users.persist:user_repo
     user_groups_repo: kickside.users.persist:user_groups_repo
+- name: fixture_llm_refuse
+  kind: function.lua
+  meta:
+    comment: Fixture model driver method that refuses every call.
+  source: file://fixture_llm.lua
+  method: refuse
+- name: fixture_llm_driver
+  kind: contract.binding
+  meta:
+    comment: Fixture model driver for tests of the checks the llm module makes before a call.
+  contracts:
+  - contract: wippy.llm:generator
+    methods:
+      generate: app:fixture_llm_refuse
+  - contract: wippy.llm:structured_output
+    methods:
+      structured_output: app:fixture_llm_refuse
+  - contract: wippy.llm:embedder
+    methods:
+      embed: app:fixture_llm_refuse
+  - contract: wippy.llm:provider
+    methods:
+      status: app:fixture_llm_refuse
+- name: fixture_llm_provider
+  kind: registry.entry
+  meta:
+    type: llm.provider
+    name: docscout-fixture
+    title: Docscout fixture provider
+  driver:
+    id: app:fixture_llm_driver
+    options: {}
+- name: fixture_small_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-small
+    title: Docscout small-window fixture model
+    capabilities: [generate, structured_output]
+    class: [docscout-small]
+    priority: 100
+  max_tokens: 400
+  output_tokens: 100
+  providers:
+  - id: app:fixture_llm_provider
+    provider_model: docscout-small

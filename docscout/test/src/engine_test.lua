@@ -10,6 +10,7 @@ local funcs = require("funcs")
 local shapes = require("shapes")
 local ai = require("ai")
 local time = require("time")
+local registry = require("registry")
 
 local MARKDOWN = table.concat({
     "<!-- page 1 -->", "", "Preamble before any heading.", "",
@@ -143,6 +144,39 @@ return { run = test.run_cases(function()
             local left = ai.time_left(ai.meter(time.now():add(30 * time.SECOND)))
             test.is_true(left > 25000 and left <= 30000, tostring(left))
             test.is_nil(ai.time_left(ai.meter()))
+        end)
+    end)
+
+    test.describe("Outlines", function()
+        test.it("previews chunks for outlining in windows that cover the document once, in order", function()
+            local chunks = {}
+            for i = 1, 7 do chunks[i] = { ordinal = i, content = "Line " .. i .. "\nmore" } end
+            local windows = stages.outline_windows(chunks, 3)
+            test.eq(#windows, 3)
+            test.eq(windows[1].first, 1); test.eq(windows[1].last, 3)
+            test.eq(windows[3].first, 7); test.eq(windows[3].last, 7)
+            test.eq(windows[2].preview, "[C4] Line 4 more\n[C5] Line 5 more\n[C6] Line 6 more")
+        end)
+    end)
+
+    test.describe("Context windows", function()
+        local big = string.rep("The total amount due is USD 1,250.00. ", 200)
+        test.it("refuses a prompt larger than the model's window before calling it", function()
+            local _, err = ai.generate(ai.meter(), "class:docscout-small", "system", big)
+            test.not_nil(err); test.is_true(errors.is(err, errors.INVALID), tostring(err))
+            test.is_true(tostring(err):find("context window", 1, true) ~= nil, tostring(err))
+        end)
+        test.it("says which extraction settings shrink a prompt the model cannot take", function()
+            local pool = shapes.pool()
+            shapes.add(pool, { { ordinal = 1, content = big, heading_path = "Payment" } })
+            local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+            field.name, field.type, field.description = "total", "number", "Total due"
+            local run = { pool = pool, regions = {}, notes = {}, analyses = {}, values = {},
+                config = { fields = { field },
+                    stages = { extract = { model = "class:docscout-small", max_fields_per_call = 5, max_output_tokens = 50, structured_output = true } } } }
+            local err = stages.extract(run, { meter = ai.meter() })
+            test.not_nil(err); test.is_true(errors.is(err, errors.INVALID), tostring(err))
+            test.is_true(tostring(err):find("fields per call", 1, true) ~= nil, tostring(err))
         end)
     end)
 
