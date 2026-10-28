@@ -4,7 +4,7 @@ import {computed,watch} from 'vue'
 import {Icon} from '@iconify/vue'
 import Toggle from './Toggle.vue'
 import {fieldError,formatPlaceholder,takesChoices,type Field} from '../config'
-const props=defineProps<{field:Field;otherNames:string[];deepEnabled:boolean;readonly?:boolean}>()
+const props=defineProps<{field:Field;otherNames:string[];groups:string[];deepEnabled:boolean;mapEnabled:boolean;readonly?:boolean}>()
 const emit=defineEmits<{remove:[]}>()
 const types=[{value:'text',label:'Text'},{value:'number',label:'Number'},{value:'boolean',label:'Yes / no'},{value:'date',label:'Date'},{value:'enum',label:'One of a set'},{value:'list',label:'List'},{value:'object',label:'Object'}]
 const itemTypes=types.filter(t=>['text','number','boolean','date','object'].includes(t.value))
@@ -30,6 +30,9 @@ function choices(event:Event){props.field.enum_values=[...new Set((event.target 
    <label>Chunks to read<input v-model.number="field.chunks" type="number" min="1" max="1000"/><small>Per search hint</small></label>
   </div>
   <p v-if="field.strategy==='deep'&&!deepEnabled" class="field-note"><Icon icon="tabler:info-circle"/>Deep analysis is off in the flow, so this field runs as standard.</p>
+  <div class="label-block"><span id="within-label">Search within</span><div class="segmented" role="radiogroup" aria-labelledby="within-label"><button type="button" role="radio" :aria-checked="field.search_within==='document'" @click="field.search_within='document'">Whole document</button><button type="button" role="radio" :aria-checked="field.search_within==='sections'" @click="field.search_within='sections'">Map's sections</button></div><small>{{field.search_within==='sections'?'Map picks the sections that should hold this value; search and reading stay inside them.':'Search covers the whole document.'}}</small></div>
+  <p v-if="field.search_within==='sections'&&!mapEnabled" class="field-error"><Icon icon="tabler:alert-circle"/>Turn on Map the document to read sections.</p>
+  <label>Group<input v-model.trim="field.group" list="docscout-groups" placeholder="Default"/><datalist id="docscout-groups"><option v-for="g in groups" :key="g" :value="g"/></datalist><small>Fields in a group are extracted together in one call.</small></label>
   <h4>Checking it</h4>
   <label>Validation hints<textarea v-model="field.validation_hints" rows="2" placeholder="Rules the value must satisfy"/></label>
   <label v-if="showsFormat">Expected format<input v-model="field.expected_format" :placeholder="formatPlaceholder(field)"/></label>

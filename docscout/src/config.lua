@@ -12,18 +12,17 @@ function M.validate(value)
     if schema_err then return schema_err end
     local valid, validation_err = json.validate(schema, value)
     if not valid then return invalid("Invalid configuration: " .. tostring(validation_err)) end
-    local names, kinds = {}, {}
+    local names, sections = {}, false
     for _, field in ipairs(value.fields) do
         if names[field.name] then return invalid("Field names must be unique") end
         names[field.name] = true
         if field.type == "enum" and #field.enum_values == 0 then return invalid("Enum fields need at least one value") end
+        if field.search_within == "sections" then sections = true end
     end
-    for i, step in ipairs(value.workflow) do
-        if kinds[step.kind] then return invalid("Workflow steps must be unique") end
-        kinds[step.kind] = true
-        if step.kind == "map" and i ~= 1 then return invalid("Map the document must stay first") end
-        if step.kind == "extract" and i ~= #value.workflow - 1 then return invalid("Extract stays before Verify at the end of the flow") end
-    end
+    local stages = value.stages
+    if sections and not stages.map.enabled then return invalid("Fields that search within sections need Map the document") end
+    if stages.scout.enabled and stages.scout.mode == "agent" and #stages.scout.tools == 0 then return invalid("Agent scouting needs at least one tool") end
+    if stages.verify.enabled and not (stages.verify.check_quotes or stages.verify.check_support) then return invalid("Verify needs at least one check") end
     if value.retrieval.overlap >= value.retrieval.chunk_size then return invalid("Overlap must be smaller than chunk size") end
     return nil
 end

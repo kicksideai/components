@@ -1,9 +1,9 @@
 import { mergeProps as x, openBlock as p, createElementBlock as f, defineComponent as T, ref as g, withModifiers as _, createElementVNode as o, createTextVNode as w, createVNode as y, unref as u, toDisplayString as h, createCommentVNode as V } from "vue";
-import { b as j, e as k, B as z, f as S, n as O, g as R, m as H, s as D } from "./index-Du_Twtvt.js";
+import { b as O, e as z, B as S, f as P, n as R, g as k, i as H, m as D, s as U } from "./index-D4Z7Rr2F.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
-var U = {
+var A = {
   name: "BaseEditableHolder",
-  extends: j,
+  extends: O,
   emits: ["update:modelValue", "value-change"],
   props: {
     modelValue: {
@@ -98,12 +98,12 @@ var U = {
     findNonEmpty: function() {
       for (var t = arguments.length, n = new Array(t), i = 0; i < t; i++)
         n[i] = arguments[i];
-      return n.find(k);
+      return n.find(z);
     }
   },
   computed: {
     $filled: function() {
-      return k(this.d_value);
+      return z(this.d_value);
     },
     $invalid: function() {
       var t, n;
@@ -137,9 +137,9 @@ var U = {
       return this.$filled;
     }
   }
-}, P = {
+}, N = {
   name: "BaseInput",
-  extends: U,
+  extends: A,
   props: {
     size: {
       type: String,
@@ -176,7 +176,7 @@ var U = {
       return this.$fluid;
     }
   }
-}, A = `
+}, q = `
     .p-inputtext {
         font-family: inherit;
         font-feature-settings: inherit;
@@ -254,7 +254,7 @@ var U = {
     .p-inputtext-fluid {
         width: 100%;
     }
-`, q = {
+`, K = {
   root: function(t) {
     var n = t.instance, i = t.props;
     return ["p-inputtext p-component", {
@@ -266,14 +266,14 @@ var U = {
       "p-inputtext-fluid": n.$fluid
     }];
   }
-}, K = z.extend({
+}, L = S.extend({
   name: "inputtext",
-  style: A,
-  classes: q
-}), L = {
+  style: q,
+  classes: K
+}), M = {
   name: "BaseInputText",
-  extends: P,
-  style: K,
+  extends: N,
+  style: L,
   provide: function() {
     return {
       $pcInputText: this,
@@ -289,14 +289,14 @@ function c(e) {
     return t && typeof Symbol == "function" && t.constructor === Symbol && t !== Symbol.prototype ? "symbol" : typeof t;
   }, c(e);
 }
-function M(e, t, n) {
-  return (t = G(t)) in e ? Object.defineProperty(e, t, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : e[t] = n, e;
+function G(e, t, n) {
+  return (t = J(t)) in e ? Object.defineProperty(e, t, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : e[t] = n, e;
 }
-function G(e) {
-  var t = J(e, "string");
+function J(e) {
+  var t = Q(e, "string");
   return c(t) == "symbol" ? t : t + "";
 }
-function J(e, t) {
+function Q(e, t) {
   if (c(e) != "object" || !e) return e;
   var n = e[Symbol.toPrimitive];
   if (n !== void 0) {
@@ -306,9 +306,9 @@ function J(e, t) {
   }
   return (t === "string" ? String : Number)(e);
 }
-var N = {
+var I = {
   name: "InputText",
-  extends: L,
+  extends: M,
   inheritAttrs: !1,
   methods: {
     onInput: function(t) {
@@ -325,15 +325,15 @@ var N = {
       }), this.formField);
     },
     dataP: function() {
-      return S(M({
+      return P(G({
         invalid: this.$invalid,
         fluid: this.$fluid,
         filled: this.$variant === "filled"
       }, this.size, this.size));
     }
   }
-}, Q = ["value", "name", "disabled", "aria-invalid", "data-p"];
-function W(e, t, n, i, l, a) {
+}, W = ["value", "name", "disabled", "aria-invalid", "data-p"];
+function X(e, t, n, i, l, a) {
   return p(), f("input", x({
     type: "text",
     class: e.cx("root"),
@@ -345,10 +345,10 @@ function W(e, t, n, i, l, a) {
     onInput: t[0] || (t[0] = function() {
       return a.onInput && a.onInput.apply(a, arguments);
     })
-  }, a.attrs), null, 16, Q);
+  }, a.attrs), null, 16, W);
 }
-N.render = W;
-var X = `
+I.render = X;
+var Y = `
     .p-textarea {
         font-family: inherit;
         font-feature-settings: inherit;
@@ -431,7 +431,7 @@ var X = `
         padding-block: dt('textarea.lg.padding.y');
         padding-inline: dt('textarea.lg.padding.x');
     }
-`, Y = {
+`, Z = {
   root: function(t) {
     var n = t.instance, i = t.props;
     return ["p-textarea p-component", {
@@ -444,17 +444,17 @@ var X = `
       "p-textarea-fluid": n.$fluid
     }];
   }
-}, Z = z.extend({
+}, tt = S.extend({
   name: "textarea",
-  style: X,
-  classes: Y
-}), tt = {
+  style: Y,
+  classes: Z
+}), et = {
   name: "BaseTextarea",
-  extends: P,
+  extends: N,
   props: {
     autoResize: Boolean
   },
-  style: Z,
+  style: tt,
   provide: function() {
     return {
       $pcTextarea: this,
@@ -470,14 +470,14 @@ function m(e) {
     return t && typeof Symbol == "function" && t.constructor === Symbol && t !== Symbol.prototype ? "symbol" : typeof t;
   }, m(e);
 }
-function et(e, t, n) {
-  return (t = nt(t)) in e ? Object.defineProperty(e, t, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : e[t] = n, e;
+function nt(e, t, n) {
+  return (t = it(t)) in e ? Object.defineProperty(e, t, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : e[t] = n, e;
 }
-function nt(e) {
-  var t = it(e, "string");
+function it(e) {
+  var t = rt(e, "string");
   return m(t) == "symbol" ? t : t + "";
 }
-function it(e, t) {
+function rt(e, t) {
   if (m(e) != "object" || !e) return e;
   var n = e[Symbol.toPrimitive];
   if (n !== void 0) {
@@ -487,9 +487,9 @@ function it(e, t) {
   }
   return (t === "string" ? String : Number)(e);
 }
-var I = {
+var C = {
   name: "Textarea",
-  extends: tt,
+  extends: et,
   inheritAttrs: !1,
   observer: null,
   mounted: function() {
@@ -527,15 +527,15 @@ var I = {
       }), this.formField);
     },
     dataP: function() {
-      return S(et({
+      return P(nt({
         invalid: this.$invalid,
         fluid: this.$fluid,
         filled: this.$variant === "filled"
       }, this.size, this.size));
     }
   }
-}, rt = ["value", "name", "disabled", "aria-invalid", "data-p"];
-function at(e, t, n, i, l, a) {
+}, at = ["value", "name", "disabled", "aria-invalid", "data-p"];
+function ot(e, t, n, i, l, a) {
   return p(), f("textarea", x({
     class: e.cx("root"),
     value: e.d_value,
@@ -546,17 +546,17 @@ function at(e, t, n, i, l, a) {
     onInput: t[0] || (t[0] = function() {
       return a.onInput && a.onInput.apply(a, arguments);
     })
-  }, a.attrs), null, 16, rt);
+  }, a.attrs), null, 16, at);
 }
-I.render = at;
-const ot = { class: "create-summary" }, lt = {
+C.render = ot;
+const lt = { class: "create-summary" }, dt = {
   key: 0,
   role: "alert",
   class: "error"
-}, dt = {
+}, ut = {
   key: 1,
   class: "row"
-}, pt = /* @__PURE__ */ T({
+}, ft = /* @__PURE__ */ T({
   __name: "CreateForm",
   props: {
     saving: { type: Boolean },
@@ -565,14 +565,14 @@ const ot = { class: "create-summary" }, lt = {
   },
   emits: ["submit"],
   setup(e, { expose: t, emit: n }) {
-    const i = O(), l = i.workflow.filter((d) => d.enabled).map((d) => R[d.kind]).join(", "), a = H(i.workflow.find((d) => d.kind === "extract")?.model), C = i.retrieval.search_mode.replace(/^\w/, (d) => d.toUpperCase()), B = e, E = n, s = g(""), b = g(""), v = g("");
+    const i = R(), l = Object.keys(k).filter((d) => H(i, d)).map((d) => k[d]).join(", "), a = D(i.stages.extract.model), B = i.retrieval.search_mode.replace(/^\w/, (d) => d.toUpperCase()), E = e, j = n, s = g(""), b = g(""), v = g("");
     function F() {
-      if (!B.saving) {
+      if (!E.saving) {
         if (!s.value.trim()) {
           v.value = "Name is required.";
           return;
         }
-        v.value = "", E("submit", { title: s.value.trim(), description: b.value.trim() });
+        v.value = "", j("submit", { title: s.value.trim(), description: b.value.trim() });
       }
     }
     return t({ submit: F }), (d, r) => (p(), f("form", {
@@ -584,7 +584,7 @@ const ot = { class: "create-summary" }, lt = {
       ], -1)),
       o("label", null, [
         r[2] || (r[2] = w("Name", -1)),
-        y(u(N), {
+        y(u(I), {
           modelValue: s.value,
           "onUpdate:modelValue": r[0] || (r[0] = ($) => s.value = $),
           autofocus: "",
@@ -594,7 +594,7 @@ const ot = { class: "create-summary" }, lt = {
       ]),
       o("label", null, [
         r[3] || (r[3] = w("Description", -1)),
-        y(u(I), {
+        y(u(C), {
           modelValue: b.value,
           "onUpdate:modelValue": r[1] || (r[1] = ($) => b.value = $),
           rows: "3",
@@ -602,7 +602,7 @@ const ot = { class: "create-summary" }, lt = {
           maxlength: "4000"
         }, null, 8, ["modelValue"])
       ]),
-      o("div", ot, [
+      o("div", lt, [
         r[9] || (r[9] = o("h2", null, "Configuration", -1)),
         o("dl", null, [
           r[4] || (r[4] = o("dt", null, "Fields", -1)),
@@ -612,12 +612,12 @@ const ot = { class: "create-summary" }, lt = {
           r[7] || (r[7] = o("dt", null, "Extraction model", -1)),
           o("dd", null, h(u(a)), 1),
           r[8] || (r[8] = o("dt", null, "Search", -1)),
-          o("dd", null, h(u(C)), 1)
+          o("dd", null, h(u(B)), 1)
         ])
       ]),
-      e.error || v.value ? (p(), f("p", lt, h(e.error || v.value), 1)) : V("", !0),
-      e.inPopup ? V("", !0) : (p(), f("footer", dt, [
-        y(u(D), {
+      e.error || v.value ? (p(), f("p", dt, h(e.error || v.value), 1)) : V("", !0),
+      e.inPopup ? V("", !0) : (p(), f("footer", ut, [
+        y(u(U), {
           label: "Create extractor",
           type: "submit",
           loading: e.saving,
@@ -628,5 +628,5 @@ const ot = { class: "create-summary" }, lt = {
   }
 });
 export {
-  pt as _
+  ft as _
 };

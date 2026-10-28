@@ -1,17 +1,21 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Docscout extractor configuration",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "fields": {
       "type": "array",
+      "default": [],
       "items": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "name": {
             "type": "string",
-            "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
-            "maxLength": 80
+            "default": "",
+            "maxLength": 80,
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
           },
           "type": {
             "type": "string",
@@ -33,9 +37,11 @@
           },
           "enum_values": {
             "type": "array",
+            "default": [],
             "items": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "maxLength": 200
             },
             "uniqueItems": true,
             "maxItems": 100
@@ -57,15 +63,18 @@
           },
           "search_hints": {
             "type": "string",
-            "default": ""
+            "default": "",
+            "maxLength": 4000
           },
           "validation_hints": {
             "type": "string",
-            "default": ""
+            "default": "",
+            "maxLength": 4000
           },
           "expected_format": {
             "type": "string",
-            "default": ""
+            "default": "",
+            "maxLength": 400
           },
           "strategy": {
             "type": "string",
@@ -74,6 +83,19 @@
               "standard",
               "deep"
             ]
+          },
+          "search_within": {
+            "type": "string",
+            "default": "document",
+            "enum": [
+              "document",
+              "sections"
+            ]
+          },
+          "group": {
+            "type": "string",
+            "default": "",
+            "maxLength": 80
           },
           "evidence_required": {
             "type": "boolean",
@@ -97,6 +119,8 @@
           "validation_hints",
           "expected_format",
           "strategy",
+          "search_within",
+          "group",
           "evidence_required",
           "chunks"
         ],
@@ -111,425 +135,456 @@
           "validation_hints": "",
           "expected_format": "",
           "strategy": "standard",
+          "search_within": "document",
+          "group": "",
           "evidence_required": true,
           "chunks": 5
         }
       },
       "maxItems": 100
     },
-    "workflow": {
-      "type": "array",
-      "items": {
-        "oneOf": [
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string",
-                "default": "map",
-                "const": "map"
-              },
-              "enabled": {
-                "type": "boolean",
-                "default": true
-              },
-              "scope": {
-                "type": "string",
-                "default": "section",
-                "enum": [
-                  "outline",
-                  "section",
-                  "chunk"
-                ]
-              },
-              "model": {
-                "type": "string",
-                "default": "class:fast",
-                "minLength": 1
-              },
-              "options": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "outline_mode": {
-                    "type": "string",
-                    "default": "find_or_build",
-                    "enum": [
-                      "find_or_build",
-                      "build"
-                    ]
-                  }
-                },
-                "required": [
-                  "outline_mode"
-                ]
-              }
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "map": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
             },
-            "required": [
-              "kind",
-              "enabled",
-              "scope",
-              "model",
-              "options"
-            ]
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string",
-                "default": "prefetch",
-                "const": "prefetch"
-              },
-              "enabled": {
-                "type": "boolean",
-                "default": true
-              },
-              "scope": {
-                "type": "string",
-                "default": "section",
-                "enum": [
-                  "outline",
-                  "section",
-                  "chunk"
-                ]
-              },
-              "options": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "queries": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "additionalProperties": false,
-                      "properties": {
-                        "name": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200
-                        },
-                        "query": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 4000
-                        },
-                        "chunks": {
-                          "type": "integer",
-                          "default": 5,
-                          "minimum": 1,
-                          "maximum": 1000
-                        }
-                      },
-                      "required": [
-                        "name",
-                        "query",
-                        "chunks"
-                      ]
-                    },
-                    "maxItems": 100
-                  }
-                },
-                "required": [
-                  "queries"
-                ]
-              }
+            "model": {
+              "type": "string",
+              "default": "class:fast",
+              "minLength": 1,
+              "maxLength": 200
             },
-            "required": [
-              "kind",
-              "enabled",
-              "scope",
-              "options"
-            ]
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string",
-                "default": "scout",
-                "const": "scout"
-              },
-              "enabled": {
-                "type": "boolean",
-                "default": true
-              },
-              "scope": {
-                "type": "string",
-                "default": "chunk",
-                "enum": [
-                  "outline",
-                  "section",
-                  "chunk"
-                ]
-              },
-              "model": {
-                "type": "string",
-                "default": "class:fast",
-                "minLength": 1
-              },
-              "options": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "max_iterations": {
-                    "type": "integer",
-                    "default": 0,
-                    "minimum": 0,
-                    "maximum": 30
-                  },
-                  "target_confidence": {
-                    "type": "number",
-                    "default": 0.7,
-                    "minimum": 0,
-                    "maximum": 1
-                  },
-                  "max_extra_queries": {
-                    "type": "integer",
-                    "default": 3,
-                    "minimum": 0,
-                    "maximum": 20
-                  },
-                  "drop_noise": {
-                    "type": "boolean",
-                    "default": true
-                  },
-                  "max_tokens": {
-                    "type": "integer",
-                    "default": 4096,
-                    "minimum": 256,
-                    "maximum": 64000
-                  }
-                },
-                "required": [
-                  "max_iterations",
-                  "target_confidence",
-                  "max_extra_queries",
-                  "drop_noise",
-                  "max_tokens"
-                ]
-              }
+            "outline": {
+              "type": "string",
+              "default": "find_or_build",
+              "enum": [
+                "find_or_build",
+                "build"
+              ]
             },
-            "required": [
-              "kind",
-              "enabled",
-              "scope",
-              "model",
-              "options"
-            ]
+            "section_summaries": {
+              "type": "boolean",
+              "default": false
+            }
           },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string",
-                "default": "deep",
-                "const": "deep"
-              },
-              "enabled": {
-                "type": "boolean",
-                "default": true
-              },
-              "scope": {
-                "type": "string",
-                "default": "section",
-                "enum": [
-                  "outline",
-                  "section",
-                  "chunk"
-                ]
-              },
-              "model": {
-                "type": "string",
-                "default": "class:fast",
-                "minLength": 1
-              },
-              "options": {
+          "required": [
+            "enabled",
+            "model",
+            "outline",
+            "section_summaries"
+          ],
+          "default": {
+            "enabled": true,
+            "model": "class:fast",
+            "outline": "find_or_build",
+            "section_summaries": false
+          }
+        },
+        "prefetch": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "queries": {
+              "type": "array",
+              "default": [],
+              "items": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                  "parallel_fields": {
-                    "type": "integer",
-                    "default": 4,
-                    "minimum": 1,
-                    "maximum": 20
-                  },
-                  "query_model": {
+                  "name": {
                     "type": "string",
                     "minLength": 1,
-                    "default": "class:fast"
+                    "maxLength": 200,
+                    "default": ""
                   },
-                  "max_queries": {
+                  "query": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000,
+                    "default": ""
+                  },
+                  "chunks": {
                     "type": "integer",
                     "default": 5,
                     "minimum": 1,
-                    "maximum": 100
-                  },
-                  "chunks_per_query": {
-                    "type": "integer",
-                    "default": 50,
-                    "minimum": 1,
                     "maximum": 1000
-                  },
-                  "chunk_cap": {
-                    "type": "integer",
-                    "default": 100,
-                    "minimum": 1,
-                    "maximum": 10000
-                  },
-                  "min_similarity": {
-                    "type": "number",
-                    "default": 0.2,
-                    "minimum": 0,
-                    "maximum": 1
-                  },
-                  "query_temperature": {
-                    "type": "number",
-                    "default": 0.2,
-                    "minimum": 0,
-                    "maximum": 2
-                  },
-                  "analysis_temperature": {
-                    "type": "number",
-                    "default": 0.2,
-                    "minimum": 0,
-                    "maximum": 2
                   }
                 },
                 "required": [
-                  "parallel_fields",
-                  "query_model",
-                  "max_queries",
-                  "chunks_per_query",
-                  "chunk_cap",
-                  "min_similarity",
-                  "query_temperature",
-                  "analysis_temperature"
-                ]
-              }
-            },
-            "required": [
-              "kind",
-              "enabled",
-              "scope",
-              "model",
-              "options"
-            ]
+                  "name",
+                  "query",
+                  "chunks"
+                ],
+                "default": {
+                  "name": "",
+                  "query": "",
+                  "chunks": 5
+                }
+              },
+              "maxItems": 100
+            }
           },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string",
-                "default": "extract",
-                "const": "extract"
-              },
-              "enabled": {
-                "type": "boolean",
-                "const": true,
-                "default": true
-              },
-              "scope": {
-                "type": "string",
-                "default": "chunk",
-                "enum": [
-                  "outline",
-                  "section",
-                  "chunk"
-                ]
-              },
-              "model": {
-                "type": "string",
-                "default": "class:premium",
-                "minLength": 1
-              },
-              "options": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "max_output_tokens": {
-                    "type": "integer",
-                    "minimum": 256,
-                    "maximum": 64000,
-                    "default": 4096
-                  },
-                  "structured_output": {
-                    "type": "boolean",
-                    "default": true
-                  }
-                },
-                "required": [
-                  "max_output_tokens",
-                  "structured_output"
-                ]
-              }
+          "required": [
+            "enabled",
+            "queries"
+          ],
+          "default": {
+            "enabled": true,
+            "queries": []
+          }
+        },
+        "scout": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
             },
-            "required": [
-              "kind",
-              "enabled",
-              "scope",
-              "model",
-              "options"
-            ]
+            "mode": {
+              "type": "string",
+              "default": "loop",
+              "enum": [
+                "loop",
+                "agent"
+              ]
+            },
+            "model": {
+              "type": "string",
+              "default": "class:fast",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "max_rounds": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0,
+              "maximum": 30
+            },
+            "target_confidence": {
+              "type": "number",
+              "default": 0.7,
+              "minimum": 0,
+              "maximum": 1
+            },
+            "max_extra_queries": {
+              "type": "integer",
+              "default": 3,
+              "minimum": 0,
+              "maximum": 20
+            },
+            "max_tokens": {
+              "type": "integer",
+              "default": 4096,
+              "minimum": 256,
+              "maximum": 64000
+            },
+            "drop_noise": {
+              "type": "boolean",
+              "default": true
+            },
+            "share_notes": {
+              "type": "boolean",
+              "default": true
+            },
+            "tools": {
+              "type": "array",
+              "default": [
+                "kickside.docscout.tools:keyword_search",
+                "kickside.docscout.tools:semantic_search",
+                "kickside.docscout.tools:read_section",
+                "kickside.docscout.tools:read_outline"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "kickside.docscout.tools:keyword_search",
+                  "kickside.docscout.tools:semantic_search",
+                  "kickside.docscout.tools:read_section",
+                  "kickside.docscout.tools:read_outline"
+                ]
+              },
+              "uniqueItems": true
+            }
           },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string",
-                "default": "verify",
-                "const": "verify"
-              },
-              "enabled": {
-                "type": "boolean",
-                "default": true
-              },
-              "scope": {
-                "type": "string",
-                "default": "chunk",
-                "enum": [
-                  "outline",
-                  "section",
-                  "chunk"
-                ]
-              },
-              "model": {
-                "type": "string",
-                "default": "class:fast",
-                "minLength": 1
-              },
-              "options": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "require_all_values": {
-                    "type": "boolean",
-                    "default": true
-                  }
-                },
-                "required": [
-                  "require_all_values"
-                ]
-              }
-            },
-            "required": [
-              "kind",
-              "enabled",
-              "scope",
-              "model",
-              "options"
+          "required": [
+            "enabled",
+            "mode",
+            "model",
+            "max_rounds",
+            "target_confidence",
+            "max_extra_queries",
+            "max_tokens",
+            "drop_noise",
+            "share_notes",
+            "tools"
+          ],
+          "default": {
+            "enabled": true,
+            "mode": "loop",
+            "model": "class:fast",
+            "max_rounds": 0,
+            "target_confidence": 0.7,
+            "max_extra_queries": 3,
+            "max_tokens": 4096,
+            "drop_noise": true,
+            "share_notes": true,
+            "tools": [
+              "kickside.docscout.tools:keyword_search",
+              "kickside.docscout.tools:semantic_search",
+              "kickside.docscout.tools:read_section",
+              "kickside.docscout.tools:read_outline"
             ]
           }
-        ]
+        },
+        "deep": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "model": {
+              "type": "string",
+              "default": "class:fast",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "query_model": {
+              "type": "string",
+              "default": "class:fast",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "read": {
+              "type": "string",
+              "default": "chunks",
+              "enum": [
+                "chunks",
+                "sections"
+              ]
+            },
+            "parallel_fields": {
+              "type": "integer",
+              "default": 4,
+              "minimum": 1,
+              "maximum": 20
+            },
+            "max_queries": {
+              "type": "integer",
+              "default": 5,
+              "minimum": 1,
+              "maximum": 100
+            },
+            "chunks_per_query": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "chunk_cap": {
+              "type": "integer",
+              "default": 100,
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "min_similarity": {
+              "type": "number",
+              "default": 0.2,
+              "minimum": 0,
+              "maximum": 1
+            },
+            "query_temperature": {
+              "type": "number",
+              "default": 0.2,
+              "minimum": 0,
+              "maximum": 2
+            },
+            "analysis_temperature": {
+              "type": "number",
+              "default": 0.2,
+              "minimum": 0,
+              "maximum": 2
+            }
+          },
+          "required": [
+            "enabled",
+            "model",
+            "query_model",
+            "read",
+            "parallel_fields",
+            "max_queries",
+            "chunks_per_query",
+            "chunk_cap",
+            "min_similarity",
+            "query_temperature",
+            "analysis_temperature"
+          ],
+          "default": {
+            "enabled": true,
+            "model": "class:fast",
+            "query_model": "class:fast",
+            "read": "chunks",
+            "parallel_fields": 4,
+            "max_queries": 5,
+            "chunks_per_query": 50,
+            "chunk_cap": 100,
+            "min_similarity": 0.2,
+            "query_temperature": 0.2,
+            "analysis_temperature": 0.2
+          }
+        },
+        "extract": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "model": {
+              "type": "string",
+              "default": "class:premium",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "structured_output": {
+              "type": "boolean",
+              "default": true
+            },
+            "max_output_tokens": {
+              "type": "integer",
+              "default": 4096,
+              "minimum": 256,
+              "maximum": 64000
+            },
+            "max_fields_per_call": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "model",
+            "structured_output",
+            "max_output_tokens",
+            "max_fields_per_call"
+          ],
+          "default": {
+            "model": "class:premium",
+            "structured_output": true,
+            "max_output_tokens": 4096,
+            "max_fields_per_call": 20
+          }
+        },
+        "verify": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "model": {
+              "type": "string",
+              "default": "class:fast",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "check_quotes": {
+              "type": "boolean",
+              "default": true
+            },
+            "check_support": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "required": [
+            "enabled",
+            "model",
+            "check_quotes",
+            "check_support"
+          ],
+          "default": {
+            "enabled": false,
+            "model": "class:fast",
+            "check_quotes": true,
+            "check_support": true
+          }
+        }
       },
-      "minItems": 6,
-      "maxItems": 6
+      "required": [
+        "map",
+        "prefetch",
+        "scout",
+        "deep",
+        "extract",
+        "verify"
+      ],
+      "default": {
+        "map": {
+          "enabled": true,
+          "model": "class:fast",
+          "outline": "find_or_build",
+          "section_summaries": false
+        },
+        "prefetch": {
+          "enabled": true,
+          "queries": []
+        },
+        "scout": {
+          "enabled": true,
+          "mode": "loop",
+          "model": "class:fast",
+          "max_rounds": 0,
+          "target_confidence": 0.7,
+          "max_extra_queries": 3,
+          "max_tokens": 4096,
+          "drop_noise": true,
+          "share_notes": true,
+          "tools": [
+            "kickside.docscout.tools:keyword_search",
+            "kickside.docscout.tools:semantic_search",
+            "kickside.docscout.tools:read_section",
+            "kickside.docscout.tools:read_outline"
+          ]
+        },
+        "deep": {
+          "enabled": true,
+          "model": "class:fast",
+          "query_model": "class:fast",
+          "read": "chunks",
+          "parallel_fields": 4,
+          "max_queries": 5,
+          "chunks_per_query": 50,
+          "chunk_cap": 100,
+          "min_similarity": 0.2,
+          "query_temperature": 0.2,
+          "analysis_temperature": 0.2
+        },
+        "extract": {
+          "model": "class:premium",
+          "structured_output": true,
+          "max_output_tokens": 4096,
+          "max_fields_per_call": 20
+        },
+        "verify": {
+          "enabled": false,
+          "model": "class:fast",
+          "check_quotes": true,
+          "check_support": true
+        }
+      }
     },
     "retrieval": {
       "type": "object",
@@ -551,6 +606,10 @@
           "type": "boolean",
           "default": true
         },
+        "keep_tables": {
+          "type": "boolean",
+          "default": true
+        },
         "search_mode": {
           "type": "string",
           "default": "hybrid",
@@ -566,9 +625,26 @@
           "minimum": 1,
           "maximum": 100
         },
-        "contextual_embeddings": {
-          "type": "boolean",
-          "default": true
+        "embedding_model": {
+          "type": "string",
+          "default": "class:embed",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "context": {
+          "type": "string",
+          "default": "headings",
+          "enum": [
+            "none",
+            "headings",
+            "generated"
+          ]
+        },
+        "context_model": {
+          "type": "string",
+          "default": "class:fast",
+          "minLength": 1,
+          "maxLength": 200
         },
         "highlighter": {
           "type": "boolean",
@@ -577,43 +653,48 @@
         "highlighter_model": {
           "type": "string",
           "default": "class:fast",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 200
         },
-        "embedding_model": {
-          "type": "string",
-          "default": "class:embed",
-          "minLength": 1
+        "section_budget": {
+          "type": "integer",
+          "default": 6000,
+          "minimum": 500,
+          "maximum": 64000
         }
       },
       "required": [
         "chunk_size",
         "overlap",
         "split_headings",
+        "keep_tables",
         "search_mode",
         "top_results",
-        "contextual_embeddings",
+        "embedding_model",
+        "context",
+        "context_model",
         "highlighter",
         "highlighter_model",
-        "embedding_model"
-      ]
-    },
-    "tools": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1,
-        "enum": [
-          "kickside.docscout.tools:keyword_search",
-          "kickside.docscout.tools:semantic_search",
-          "kickside.docscout.tools:read_section",
-          "kickside.docscout.tools:read_outline"
-        ]
-      },
-      "uniqueItems": true,
-      "maxItems": 100
+        "section_budget"
+      ],
+      "default": {
+        "chunk_size": 1200,
+        "overlap": 150,
+        "split_headings": true,
+        "keep_tables": true,
+        "search_mode": "hybrid",
+        "top_results": 6,
+        "embedding_model": "class:embed",
+        "context": "headings",
+        "context_model": "class:fast",
+        "highlighter": false,
+        "highlighter_model": "class:fast",
+        "section_budget": 6000
+      }
     },
     "tags": {
       "type": "array",
+      "default": [],
       "items": {
         "type": "string",
         "minLength": 1,
@@ -621,109 +702,84 @@
       },
       "uniqueItems": true,
       "maxItems": 50
-    },
-    "shared_context": {
-      "type": "boolean",
-      "default": true
     }
   },
   "required": [
     "fields",
-    "workflow",
+    "stages",
     "retrieval",
-    "tools",
-    "tags",
-    "shared_context"
+    "tags"
   ],
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0",
   "default": {
     "fields": [],
-    "workflow": [
-      {
-        "kind": "map",
-        "enabled": false,
-        "scope": "section",
+    "stages": {
+      "map": {
+        "enabled": true,
         "model": "class:fast",
-        "options": {
-          "outline_mode": "find_or_build"
-        }
+        "outline": "find_or_build",
+        "section_summaries": false
       },
-      {
-        "kind": "prefetch",
+      "prefetch": {
         "enabled": true,
-        "scope": "section",
-        "options": {
-          "queries": []
-        }
+        "queries": []
       },
-      {
-        "kind": "scout",
+      "scout": {
         "enabled": true,
-        "scope": "chunk",
+        "mode": "loop",
         "model": "class:fast",
-        "options": {
-          "max_iterations": 0,
-          "target_confidence": 0.7,
-          "max_extra_queries": 3,
-          "drop_noise": true,
-          "max_tokens": 4096
-        }
+        "max_rounds": 0,
+        "target_confidence": 0.7,
+        "max_extra_queries": 3,
+        "max_tokens": 4096,
+        "drop_noise": true,
+        "share_notes": true,
+        "tools": [
+          "kickside.docscout.tools:keyword_search",
+          "kickside.docscout.tools:semantic_search",
+          "kickside.docscout.tools:read_section",
+          "kickside.docscout.tools:read_outline"
+        ]
       },
-      {
-        "kind": "deep",
+      "deep": {
         "enabled": true,
-        "scope": "section",
         "model": "class:fast",
-        "options": {
-          "parallel_fields": 4,
-          "query_model": "class:fast",
-          "max_queries": 5,
-          "chunks_per_query": 50,
-          "chunk_cap": 100,
-          "min_similarity": 0.2,
-          "query_temperature": 0.2,
-          "analysis_temperature": 0.2
-        }
+        "query_model": "class:fast",
+        "read": "chunks",
+        "parallel_fields": 4,
+        "max_queries": 5,
+        "chunks_per_query": 50,
+        "chunk_cap": 100,
+        "min_similarity": 0.2,
+        "query_temperature": 0.2,
+        "analysis_temperature": 0.2
       },
-      {
-        "kind": "extract",
-        "enabled": true,
-        "scope": "chunk",
+      "extract": {
         "model": "class:premium",
-        "options": {
-          "max_output_tokens": 4096,
-          "structured_output": true
-        }
+        "structured_output": true,
+        "max_output_tokens": 4096,
+        "max_fields_per_call": 20
       },
-      {
-        "kind": "verify",
+      "verify": {
         "enabled": false,
-        "scope": "chunk",
         "model": "class:fast",
-        "options": {
-          "require_all_values": true
-        }
+        "check_quotes": true,
+        "check_support": true
       }
-    ],
+    },
     "retrieval": {
       "chunk_size": 1200,
       "overlap": 150,
       "split_headings": true,
+      "keep_tables": true,
       "search_mode": "hybrid",
       "top_results": 6,
-      "contextual_embeddings": true,
+      "embedding_model": "class:embed",
+      "context": "headings",
+      "context_model": "class:fast",
       "highlighter": false,
       "highlighter_model": "class:fast",
-      "embedding_model": "class:embed"
+      "section_budget": 6000
     },
-    "tools": [
-      "kickside.docscout.tools:keyword_search",
-      "kickside.docscout.tools:semantic_search",
-      "kickside.docscout.tools:read_section",
-      "kickside.docscout.tools:read_outline"
-    ],
-    "tags": [],
-    "shared_context": true
+    "tags": []
   }
 }

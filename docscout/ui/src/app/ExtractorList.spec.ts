@@ -23,7 +23,7 @@ describe('Docscout page list',()=>{
   expect(wrapper.findAll('button').some(b=>b.text()==='Create extractor')).toBe(true)
   await wrapper.get('form.create-pane').trigger('submit')
   await flushPromises()
-  expect(create).toHaveBeenCalledWith(expect.objectContaining({title:'Contract reader',config:expect.objectContaining({workflow:expect.any(Array)})}))
+  expect(create).toHaveBeenCalledWith(expect.objectContaining({title:'Contract reader',config:expect.objectContaining({stages:expect.any(Object)})}))
   expect(wrapper.emitted('open')?.[0]).toEqual(['new-id'])
  })
 })

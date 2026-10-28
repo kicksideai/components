@@ -4,7 +4,7 @@ import {computed,ref} from 'vue'
 import {Icon} from '@iconify/vue'
 import Button from 'primevue/button'
 import UploadPicker from './UploadPicker.vue'
-import {stepIcons,stepLabels,type StepKind} from '../config'
+import {stageIcons,stageLabels,type StageKey} from '../config'
 import type {Extraction} from '../models'
 const props=defineProps<{result:Extraction|null;retention:string}>()
 const upload=ref('')
@@ -13,8 +13,8 @@ const percent=(n:number)=>`${Math.round(n*100)}%`
 const value=(v:unknown)=>v===null||v===undefined?'—':typeof v==='string'?v:JSON.stringify(v)
 const seconds=(ms:number)=>`${(ms/1000).toFixed(1)}s`
 const longest=computed(()=>Math.max(1,...(props.result?.trace.map(t=>t.duration_ms)??[1])))
-const label=(kind:string)=>stepLabels[kind as StepKind]??kind
-const icon=(kind:string)=>stepIcons[kind as StepKind]??'tabler:point'
+const label=(kind:string)=>stageLabels[kind as StageKey]??kind
+const icon=(kind:string)=>stageIcons[kind as StageKey]??'tabler:point'
 const tone=(c:number)=>c>=.9?'high':c>=.7?'mid':'low'
 </script>
 <template>

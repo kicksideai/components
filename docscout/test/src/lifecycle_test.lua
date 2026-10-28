@@ -40,32 +40,35 @@ return {run=test.run_cases(function()
             test.eq(assert(call(who,{op="get",id=id})).expected_revision,1)
             test.not_nil(call(who,{op="delete",id=id}))
         end)
-        test.it("persists all builder options and validates their ranges",function()
-            local who=uuid.v4();local dto=input()
-            dto.config.tags={"invoice","finance"};dto.config.shared_context=false
-            dto.config.workflow[2].options.queries={{name="Totals",query="Amount due",chunks=7},{name="Terms",query="Payment terms",chunks=5}}
-            dto.config.workflow[3].options.max_iterations=2
-            dto.config.workflow[3].options.max_tokens=8192
-            dto.config.workflow[4].options.query_model="class:premium"
-            dto.config.workflow[4].options.chunk_cap=120
-            dto.config.workflow[5].options.structured_output=false
+        test.it("persists every stage option and validates its ranges",function()
+            local who=uuid.v4();local dto=input();local st=dto.config.stages
+            dto.config.tags={"invoice","finance"}
+            st.prefetch.queries={{name="Totals",query="Amount due",chunks=7},{name="Terms",query="Payment terms",chunks=5}}
+            st.scout.max_rounds=2;st.scout.max_tokens=8192;st.scout.mode="agent";st.scout.share_notes=false
+            st.deep.query_model="class:premium";st.deep.chunk_cap=120;st.deep.read="sections"
+            st.extract.structured_output=false;st.extract.max_fields_per_call=8
+            st.verify.enabled=true;st.verify.check_support=false
+            dto.config.retrieval.context="generated";dto.config.retrieval.context_model="class:nano";dto.config.retrieval.keep_tables=false
+            dto.config.fields={{name="terms",type="text",description="",enum_values=assert(json.decode("[]")),item_type="text",required=false,search_hints="",validation_hints="",expected_format="",strategy="deep",search_within="sections",group="payment",evidence_required=true,chunks=5}}
             local created,err=call(who,{op="create",input=dto})
             test.is_nil(err,tostring(err));test.not_nil(created)
             local saved=assert(call(who,{op="get",id=created.component_id})).config
-            test.eq(saved.tags[2],"finance");test.eq(saved.shared_context,false)
-            test.eq(saved.workflow[2].options.queries[1].chunks,7)
-            test.eq(saved.workflow[3].options.max_tokens,8192)
-            test.eq(saved.workflow[4].options.query_model,"class:premium")
-            test.eq(saved.workflow[4].options.chunk_cap,120)
-            test.eq(saved.workflow[5].options.structured_output,false)
-            test.eq(#saved.tools,4)
+            test.eq(saved.tags[2],"finance")
+            test.eq(saved.stages.prefetch.queries[1].chunks,7)
+            test.eq(saved.stages.scout.mode,"agent");test.eq(saved.stages.scout.max_tokens,8192);test.eq(saved.stages.scout.share_notes,false)
+            test.eq(saved.stages.deep.query_model,"class:premium");test.eq(saved.stages.deep.chunk_cap,120);test.eq(saved.stages.deep.read,"sections")
+            test.eq(saved.stages.extract.max_fields_per_call,8);test.eq(saved.stages.verify.check_support,false)
+            test.eq(saved.retrieval.context,"generated");test.eq(saved.retrieval.context_model,"class:nano");test.eq(saved.retrieval.keep_tables,false)
+            test.eq(saved.fields[1].search_within,"sections");test.eq(saved.fields[1].group,"payment")
+            test.eq(#saved.stages.scout.tools,4)
             for _,mutate in ipairs({
-                function(c) c.workflow[3].options.max_iterations=-1 end,
-                function(c) c.workflow[4].options.min_similarity=1.1 end,
-                function(c) c.workflow[4].options.query_temperature=-.1 end,
-                function(c) c.workflow[2].options.queries={{name="Q",query="",chunks=5}} end,
-                function(c) c.workflow[5].enabled=false end,
-                function(c) c.workflow[5],c.workflow[6]=c.workflow[6],c.workflow[5] end
+                function(c) c.stages.scout.max_rounds=-1 end,
+                function(c) c.stages.deep.min_similarity=1.1 end,
+                function(c) c.stages.deep.query_temperature=-.1 end,
+                function(c) c.stages.prefetch.queries={{name="Q",query="",chunks=5}} end,
+                function(c) c.stages.scout.mode="swarm" end,
+                function(c) c.retrieval.context="summaries" end,
+                function(c) c.stages.extract.enabled=false end
             }) do
                 local invalid=input();mutate(invalid.config)
                 local result,validation_err=call(who,{op="create",input=invalid})
@@ -96,15 +99,22 @@ return {run=test.run_cases(function()
         end)
         test.it("rejects invalid configuration before creation",function()
             local who=uuid.v4()
+            local function field(over)
+                local f={name="status",type="text",description="",enum_values=assert(json.decode("[]")),item_type="text",required=false,search_hints="",validation_hints="",expected_format="",strategy="standard",search_within="document",group="",evidence_required=true,chunks=5}
+                for k,v in pairs(over) do f[k]=v end
+                return f
+            end
             for _,mutate in ipairs({
                 function(v) v.config.retrieval.overlap=v.config.retrieval.chunk_size end,
                 function(v) v.config.retrieval.top_results=0 end,
-                function(v) v.config.workflow[1].enabled=false;v.config.workflow[1],v.config.workflow[2]=v.config.workflow[2],v.config.workflow[1] end,
-                function(v) v.config.workflow[2]=v.config.workflow[1] end,
-                function(v) v.config.tools={"unknown:tool"} end,
+                function(v) v.config.stages.scout.tools={"unknown:tool"} end,
+                function(v) v.config.stages.scout.mode="agent";v.config.stages.scout.tools=assert(json.decode("[]")) end,
+                function(v) v.config.stages.verify.enabled=true;v.config.stages.verify.check_quotes=false;v.config.stages.verify.check_support=false end,
+                function(v) v.config.stages.map.enabled=false;v.config.fields={field({search_within="sections"})} end,
+                function(v) v.config.fields={field({type="enum"})} end,
+                function(v) v.config.fields={field({}),field({})} end,
                 function(v) v.unrecognized=true end,
-                function(v) v.title=" " end,
-                function(v) v.config.fields={{name="status",type="enum",description="",enum_values={},item_type="text",required=false,search_hints="",validation_hints="",expected_format="",strategy="standard",evidence_required=true,chunks=5}} end
+                function(v) v.title=" " end
             }) do
                 local value=input();mutate(value)
                 local result,err=call(who,{op="create",input=value})
@@ -112,18 +122,18 @@ return {run=test.run_cases(function()
             end
             test.eq(#assert(call(who,{op="list"})).items,0)
         end)
-        test.it("persists enabled choices for every reading step",function()
+        test.it("persists enabled choices for every optional stage",function()
             local who=uuid.v4();local dto=input()
-            for _,step in ipairs(dto.config.workflow) do if step.kind~="extract" then step.enabled=false end end
+            for _,name in ipairs({"map","prefetch","scout","deep","verify"}) do dto.config.stages[name].enabled=(name=="verify") end
             local created,err=call(who,{op="create",input=dto})
             test.is_nil(err,tostring(err));test.not_nil(created)
             local view=assert(call(who,{op="get",id=created.component_id}))
-            for _,step in ipairs(view.config.workflow) do test.eq(step.enabled,step.kind=="extract") end
+            for _,name in ipairs({"map","prefetch","scout","deep","verify"}) do test.eq(view.config.stages[name].enabled,name=="verify") end
             test.not_nil(call(who,{op="delete",id=created.component_id}))
         end)
         test.it("stores expected field values in extractor-owned evaluation cases",function()
             local who=uuid.v4();local dto=input()
-            dto.config.fields={{name="total",type="number",description="Total due",enum_values=assert(json.decode("[]")),item_type="text",required=true,search_hints="",validation_hints="",expected_format="",strategy="standard",evidence_required=true,chunks=5}}
+            dto.config.fields={{name="total",type="number",description="Total due",enum_values=assert(json.decode("[]")),item_type="text",required=true,search_hints="",validation_hints="",expected_format="",strategy="standard",evidence_required=true,chunks=5,search_within="document",group=""}}
             local id=assert(call(who,{op="create",input=dto})).component_id
             local added,err=call(who,{op="add_case",id=id,input={upload_id="example-upload",upload_name="Example invoice.pdf",expected={total=1250}}})
             test.is_nil(err,tostring(err));test.not_nil(added)

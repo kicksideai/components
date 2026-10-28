@@ -2,17 +2,17 @@
 <script setup lang="ts">
 import {computed,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {Icon} from '@iconify/vue'
-import Toggle from './Toggle.vue'
+import StageNode from './StageNode.vue'
 import FieldInspector from './FieldInspector.vue'
 import StepInspector from './StepInspector.vue'
 import DocumentInspector from './DocumentInspector.vue'
-import {fieldError,canMove,documentSummary,modelLabel,moveStep,newField,stepIcons,stepLabels,stepSummary,type Config,type Step} from '../config'
+import {documentSummary,fieldError,isOn,modelLabel,newField,stageIcons,stageLabels,type Config,type StageKey} from '../config'
 import type {Extraction,TraceStep} from '../models'
 const props=defineProps<{config:Config;retention:string;result:Extraction|null;readonly?:boolean}>()
 const title=defineModel<string>('title',{required:true})
 const description=defineModel<string>('description',{required:true})
 
-type Selection={kind:'details'}|{kind:'document'}|{kind:'output'}|{kind:'step';step:Step}|{kind:'field';index:number}
+type Selection={kind:'details'}|{kind:'document'}|{kind:'output'}|{kind:'stage';stage:StageKey}|{kind:'field';index:number}
 const selected=ref<Selection>({kind:'document'})
 
 function stored(key:string,fallback:boolean):boolean{try{const v=localStorage.getItem(`docscout.${key}`);return v===null?fallback:v==='1'}catch{return fallback}}
@@ -45,20 +45,20 @@ onBeforeUnmount(()=>observer?.disconnect())
 const panelBody=ref<HTMLElement>()
 watch(selected,async()=>{await nextTick();if(panelBody.value)panelBody.value.scrollTop=0})
 function select(s:Selection){selected.value=s;panelOpen.value=true}
-const is=(s:Selection)=>s.kind==='step'?selected.value.kind==='step'&&selected.value.step===s.step:JSON.stringify(s)===JSON.stringify(selected.value)
+const is=(s:Selection)=>JSON.stringify(s)===JSON.stringify(selected.value)
 const selectedField=computed(()=>selected.value.kind==='field'?props.config.fields[selected.value.index]:undefined)
-const panelTitle=computed(()=>{const s=selected.value;return s.kind==='step'?stepLabels[s.step.kind]:s.kind==='field'?(selectedField.value?.name||'New field'):s.kind==='document'?'Read document':s.kind==='output'?'Output':'Details'})
-const panelIcon=computed(()=>{const s=selected.value;return s.kind==='step'?stepIcons[s.step.kind]:s.kind==='field'?'tabler:forms':s.kind==='document'?'tabler:file-text':s.kind==='output'?'tabler:braces':'tabler:info-circle'})
+const panelTitle=computed(()=>{const s=selected.value;return s.kind==='stage'?stageLabels[s.stage]:s.kind==='field'?(selectedField.value?.name||'New field'):s.kind==='document'?'Read document':s.kind==='output'?'Output':'Details'})
+const panelIcon=computed(()=>{const s=selected.value;return s.kind==='stage'?stageIcons[s.stage]:s.kind==='field'?'tabler:forms':s.kind==='document'?'tabler:file-text':s.kind==='output'?'tabler:braces':'tabler:info-circle'})
 const otherNames=computed(()=>props.config.fields.filter((_,i)=>!(selected.value.kind==='field'&&selected.value.index===i)).map(f=>f.name))
-const deepEnabled=computed(()=>!!props.config.workflow.find(st=>st.kind==='deep')?.enabled)
+const deepEnabled=computed(()=>props.config.stages.deep.enabled)
+const mapEnabled=computed(()=>props.config.stages.map.enabled)
+const groupNames=computed(()=>[...new Set(props.config.fields.map(f=>f.group.trim()).filter(Boolean))])
 const rowError=(i:number)=>fieldError(props.config.fields[i],props.config.fields.filter((_,j)=>j!==i).map(f=>f.name))
-const deepFields=computed(()=>props.config.fields.filter(f=>f.strategy==='deep'))
-const hintFields=computed(()=>props.config.fields.filter(f=>f.search_hints.trim()))
-const flowPeek=computed(()=>props.config.workflow.filter(st=>st.enabled).map(st=>stepLabels[st.kind]).join(' → '))
+const order:StageKey[]=['map','prefetch','scout','deep','extract','verify']
+const flowPeek=computed(()=>order.filter(k=>isOn(props.config,k)).map(k=>stageLabels[k]).join(' · '))
 const fieldsPeek=computed(()=>props.config.fields.map(f=>f.name||'New field').join(', '))
-const enabledSteps=computed(()=>props.config.workflow.filter(s=>s.enabled).length)
+const enabledSteps=computed(()=>order.filter(k=>isOn(props.config,k)).length)
 const trace=(kind:string):TraceStep|undefined=>props.result?.trace.find(t=>t.kind===kind)
-const traceLine=(t:TraceStep)=>[`${(t.duration_ms/1000).toFixed(1)}s`,`${(t.input_tokens+t.output_tokens).toLocaleString()} tokens`,t.queries?.length?`${t.queries.length} queries`:'',t.message??''].filter(Boolean).join(' · ')
 function addField(){props.config.fields.push(newField());fieldsOpen.value=true;select({kind:'field',index:props.config.fields.length-1})}
 function removeField(index:number){props.config.fields.splice(index,1);selected.value={kind:'document'}}
 function moveField(index:number,delta:number){const f=props.config.fields;const next=index+delta;if(next<0||next>=f.length)return;const [x]=f.splice(index,1);f.splice(next,0,x);selected.value={kind:'field',index:next}}
@@ -82,7 +82,7 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
         <button type="button" class="row-main" @click="select({kind:'field',index:i})">
          <span class="row-name">{{f.name||'New field'}}<span v-if="f.required" class="req" title="Required">*</span><Icon v-if="rowError(i)" icon="tabler:alert-circle" class="row-warn" :title="rowError(i)"/></span>
          <span class="row-desc" :class="{missing:!f.description}">{{f.description||'No description'}}</span>
-         <span class="chips"><span v-if="f.strategy==='deep'" class="chip" :class="deepEnabled?'primary':'muted-chip'" :title="deepEnabled?'Deep analysis':'Deep analysis is off in the flow'">deep</span><span class="chip">{{typeLabel(f)}}</span><span v-if="f.evidence_required" class="chip" title="Evidence required"><Icon icon="tabler:quote"/></span></span>
+         <span class="chips"><span v-if="f.search_within==='sections'" class="chip" :class="mapEnabled?'':'muted-chip'" title="Reads the sections Map picks">sections</span><span v-if="f.group.trim()" class="chip">{{f.group}}</span><span v-if="f.strategy==='deep'" class="chip" :class="deepEnabled?'primary':'muted-chip'" :title="deepEnabled?'Deep analysis':'Deep analysis is off in the flow'">deep</span><span class="chip">{{typeLabel(f)}}</span><span v-if="f.evidence_required" class="chip" title="Evidence required"><Icon icon="tabler:quote"/></span></span>
         </button>
         <span v-if="!readonly" class="row-actions"><button type="button" class="icon-btn" aria-label="Move field up" :disabled="i===0" @click="moveField(i,-1)"><Icon icon="tabler:chevron-up"/></button><button type="button" class="icon-btn" aria-label="Move field down" :disabled="i===config.fields.length-1" @click="moveField(i,1)"><Icon icon="tabler:chevron-down"/></button></span>
        </li>
@@ -92,38 +92,35 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
 
     <section class="block" aria-labelledby="flow-head">
      <header class="block-head">
-      <button type="button" class="collapse" :aria-expanded="flowOpen" aria-controls="flow-body" @click="toggleSection('flow')"><Icon :icon="flowOpen?'tabler:chevron-down':'tabler:chevron-right'"/><h2 id="flow-head">Flow</h2><span class="count">{{enabledSteps}} of {{config.workflow.length}}</span></button>
+      <button type="button" class="collapse" :aria-expanded="flowOpen" aria-controls="flow-body" @click="toggleSection('flow')"><Icon :icon="flowOpen?'tabler:chevron-down':'tabler:chevron-right'"/><h2 id="flow-head">Flow</h2><span class="count">{{enabledSteps}} of 6</span></button>
       <span v-if="!flowOpen" class="block-peek">{{flowPeek}}</span>
       <button type="button" class="btn small subtle push" :class="{on:is({kind:'details'})}" @click="select({kind:'details'})"><Icon icon="tabler:info-circle"/>Details</button>
      </header>
      <div v-show="flowOpen" id="flow-body" class="flow" aria-label="Extraction flow">
       <button type="button" class="node fixed" :class="{active:is({kind:'document'})}" @click="select({kind:'document'})">
        <span class="node-icon"><Icon icon="tabler:file-text"/></span>
-       <span class="node-main"><span class="node-title">Read document</span><span class="node-summary">{{documentSummary(config.retrieval)}}</span><span v-if="config.retrieval.highlighter" class="chips"><span class="chip">Highlighter · {{modelLabel(config.retrieval.highlighter_model)}}</span></span></span>
+       <span class="node-main"><span class="node-title">Read document</span><span class="node-summary">{{documentSummary(config.retrieval)}}</span></span>
        <span class="node-side"><span class="chip model">{{modelLabel(config.retrieval.embedding_model)}}</span></span>
       </button>
-      <template v-for="(step,i) in config.workflow" :key="step.kind">
-       <div class="connector" :class="{off:!step.enabled}"/>
-       <div class="node" :class="{active:is({kind:'step',step}),off:!step.enabled}" role="button" tabindex="0" @click="select({kind:'step',step})" @keydown.enter="select({kind:'step',step})">
-        <span class="node-icon"><Icon :icon="stepIcons[step.kind]"/></span>
-        <span class="node-main">
-         <span class="node-title">{{stepLabels[step.kind]}}<span class="scope">{{step.scope}}</span></span>
-         <span class="node-summary">{{step.enabled?stepSummary(step,config):'Off'}}</span>
-         <span v-if="step.enabled&&step.kind==='deep'&&deepFields.length" class="chips"><span v-for="f in deepFields" :key="f.name" class="chip primary">{{f.name||'New field'}}</span></span>
-         <span v-if="step.enabled&&step.kind==='prefetch'&&(step.options.queries.length||hintFields.length)" class="chips"><span v-for="q in step.options.queries" :key="'q'+q.name" class="chip">{{q.name||'Untitled query'}}</span><span v-for="f in hintFields" :key="'f'+f.name" class="chip muted-chip">{{f.name}}</span></span>
-         <span v-if="step.enabled&&step.kind==='scout'&&config.tools.length" class="chips"><span v-for="id in config.tools" :key="id" class="chip">{{id.split(':').pop()?.replace(/_/g,' ')}}</span></span>
-         <span v-if="trace(step.kind)" class="trace-line"><Icon :icon="trace(step.kind)!.status==='failed'?'tabler:alert-circle':'tabler:circle-check'"/>{{traceLine(trace(step.kind)!)}}</span>
-        </span>
-        <span class="node-side">
-         <span v-if="step.enabled&&step.model" class="chip model">{{modelLabel(step.model)}}</span>
-         <span v-if="!readonly" class="node-actions">
-          <button v-if="canMove(config,i,-1)" type="button" class="icon-btn" :aria-label="`Move ${stepLabels[step.kind]} up`" @click.stop="moveStep(config,i,-1)"><Icon icon="tabler:arrow-up"/></button>
-          <button v-if="canMove(config,i,1)" type="button" class="icon-btn" :aria-label="`Move ${stepLabels[step.kind]} down`" @click.stop="moveStep(config,i,1)"><Icon icon="tabler:arrow-down"/></button>
-          <Toggle v-if="step.kind!=='extract'" v-model="step.enabled" :label="`Enable ${stepLabels[step.kind]}`"/>
-         </span>
-        </span>
+      <div class="connector"/>
+      <StageNode stage="map" :config="config" :active="is({kind:'stage',stage:'map'})" :trace="trace('map')" :readonly="readonly" @select="select({kind:'stage',stage:'map'})"/>
+      <div class="fork" aria-hidden="true"><span/></div>
+      <div class="branches">
+       <div class="branch">
+        <span class="branch-label">Evidence</span>
+        <StageNode stage="prefetch" :config="config" :active="is({kind:'stage',stage:'prefetch'})" :trace="trace('prefetch')" :readonly="readonly" @select="select({kind:'stage',stage:'prefetch'})"/>
+        <div class="connector"/>
+        <StageNode stage="scout" :config="config" :active="is({kind:'stage',stage:'scout'})" :trace="trace('scout')" :readonly="readonly" @select="select({kind:'stage',stage:'scout'})"/>
        </div>
-      </template>
+       <div class="branch">
+        <span class="branch-label">Deep fields</span>
+        <StageNode stage="deep" :config="config" :active="is({kind:'stage',stage:'deep'})" :trace="trace('deep')" :readonly="readonly" @select="select({kind:'stage',stage:'deep'})"/>
+       </div>
+      </div>
+      <div class="join" aria-hidden="true"><span/></div>
+      <StageNode stage="extract" :config="config" :active="is({kind:'stage',stage:'extract'})" :trace="trace('extract')" :readonly="readonly" @select="select({kind:'stage',stage:'extract'})"/>
+      <div class="connector"/>
+      <StageNode stage="verify" :config="config" :active="is({kind:'stage',stage:'verify'})" :trace="trace('verify')" :readonly="readonly" @select="select({kind:'stage',stage:'verify'})"/>
       <div class="connector"/>
       <button type="button" class="node fixed" :class="{active:is({kind:'output'})}" @click="select({kind:'output'})">
        <span class="node-icon"><Icon icon="tabler:braces"/></span>
@@ -144,8 +141,8 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
    </header>
    <div ref="panelBody" class="side-panel-body">
     <DocumentInspector v-if="selected.kind==='document'" :config="config" :retention="retention" :readonly="readonly"/>
-    <StepInspector v-else-if="selected.kind==='step'" :step="selected.step" :config="config" :readonly="readonly"/>
-    <FieldInspector v-else-if="selected.kind==='field'&&selectedField" :field="selectedField" :other-names="otherNames" :deep-enabled="deepEnabled" :readonly="readonly" @remove="removeField((selected as {index:number}).index)"/>
+    <StepInspector v-else-if="selected.kind==='stage'" :stage="selected.stage" :config="config" :readonly="readonly"/>
+    <FieldInspector v-else-if="selected.kind==='field'&&selectedField" :field="selectedField" :other-names="otherNames" :groups="groupNames" :deep-enabled="deepEnabled" :map-enabled="mapEnabled" :readonly="readonly" @remove="removeField((selected as {index:number}).index)"/>
     <fieldset v-else-if="selected.kind==='details'" class="inspector-form" :disabled="readonly">
      <label>Name<input v-model="title" aria-label="Extractor name"/></label>
      <label>Description<textarea v-model="description" rows="3" placeholder="What this extractor reads"/></label>

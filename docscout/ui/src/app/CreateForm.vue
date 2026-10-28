@@ -4,10 +4,10 @@ import {ref} from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
-import {modelLabel,newConfig,stepLabels} from '../config'
+import {isOn,modelLabel,newConfig,stageLabels,type StageKey} from '../config'
 const defaults=newConfig()
-const steps=defaults.workflow.filter(st=>st.enabled).map(st=>stepLabels[st.kind]).join(', ')
-const extraction=modelLabel(defaults.workflow.find(st=>st.kind==='extract')?.model)
+const steps=(Object.keys(stageLabels) as StageKey[]).filter(k=>isOn(defaults,k)).map(k=>stageLabels[k]).join(', ')
+const extraction=modelLabel(defaults.stages.extract.model)
 const search=defaults.retrieval.search_mode.replace(/^\w/,c=>c.toUpperCase())
 const props=defineProps<{saving?:boolean;error?:string;inPopup?:boolean}>()
 const emit=defineEmits<{submit:[input:{title:string;description:string}]}>()

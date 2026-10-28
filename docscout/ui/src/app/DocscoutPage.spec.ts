@@ -17,7 +17,7 @@ describe('Docscout manage surface',()=>{
   await details(wrapper)
   await nameInput(wrapper).setValue('Invoice totals')
   await saveButton(wrapper).trigger('click')
-  expect(wrapper.emitted('save')?.[0][0]).toMatchObject({title:'Invoice totals',expected_revision:7,config:{workflow:expect.any(Array),retrieval:{search_mode:'hybrid'}}})
+  expect(wrapper.emitted('save')?.[0][0]).toMatchObject({title:'Invoice totals',expected_revision:7,config:{stages:expect.any(Object),retrieval:{search_mode:'hybrid'}}})
  })
  it('lets READ grantees see Test and Runs without configuration controls',()=>{
   const value:Snapshot={id:'extractor',title:'Invoice reader',field_count:1,status:'configured',can_edit:false,retention:'2h',runs:[]}
@@ -38,7 +38,7 @@ describe('Docscout manage surface',()=>{
   for(const toggle of toggles)expect(toggle.attributes('disabled')).toBeUndefined()
   await toggles[0].trigger('click')
   await saveButton(wrapper).trigger('click')
-  expect((wrapper.emitted('save')?.[0][0] as {config:{workflow:{kind:string;enabled:boolean}[]}}).config.workflow[0]).toMatchObject({kind:'map',enabled:true})
+  expect((wrapper.emitted('save')?.[0][0] as {config:{stages:{map:{enabled:boolean}}}}).config.stages.map.enabled).toBe(false)
  })
  it('preserves edits and their original revision when another editor saves',async()=>{
   const initial=snapshot()
@@ -68,7 +68,7 @@ describe('Docscout manage surface',()=>{
   await saveButton(wrapper).trigger('click')
   const committed=snapshot();committed.title='Saved title';committed.expected_revision=8
   const config=committed.config!
-  committed.config={shared_context:config.shared_context,tags:config.tags,tools:config.tools,retrieval:config.retrieval,workflow:config.workflow,fields:config.fields}
+  committed.config={tags:config.tags,retrieval:config.retrieval,stages:config.stages,fields:config.fields}
   await wrapper.setProps({snapshot:committed})
   const save=saveButton(wrapper)
   expect(save.attributes('disabled')).toBeDefined()

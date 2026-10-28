@@ -7,7 +7,7 @@ import Builder from './Builder.vue'
 import TestPanel from './TestPanel.vue'
 import EvalsPanel from './EvalsPanel.vue'
 import RunsPanel from './RunsPanel.vue'
-import {configError,newConfig,sameConfig} from '../config'
+import {configError,isOn,newConfig,sameConfig,stageLabels,type StageKey} from '../config'
 import {emptyEngine,type Snapshot,type EngineState} from '../models'
 const props=defineProps<{snapshot:Snapshot;engine?:EngineState;saving?:boolean;error?:string;back?:boolean}>()
 const emit=defineEmits<{save:[input:{title:string;description:string;config:ReturnType<typeof newConfig>;expected_revision:number}];'add-case':[input:{upload_id:string;upload_name:string;expected:Record<string,unknown>}];'delete-case':[id:string];back:[]}>()
@@ -25,7 +25,7 @@ watch(()=>props.snapshot,(snapshot,previous)=>{
 },{immediate:true})
 const changed=computed(()=>props.snapshot.can_edit&&!matchesDraft(props.snapshot))
 const validation=computed(()=>configError(draft.value))
-const enabledSteps=computed(()=>draft.value.workflow.filter(s=>s.enabled).length)
+const enabledSteps=computed(()=>(Object.keys(stageLabels) as StageKey[]).filter(k=>isOn(draft.value,k)).length)
 function save(){emit('save',{title:title.value,description:description.value,config:structuredClone(toRaw(draft.value)),expected_revision:draftRevision.value!})}
 </script>
 <template>

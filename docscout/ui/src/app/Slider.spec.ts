@@ -2,7 +2,7 @@
 import {describe,it,expect} from 'vitest'
 import {mount} from '@vue/test-utils'
 import Slider from './Slider.vue'
-import {optionBounds,retrievalBounds} from '../config'
+import {stageBounds,retrievalBounds} from '../config'
 describe('Slider',()=>{
  it('maps a log scale across schema bounds and snaps to its step',async()=>{
   const w=mount(Slider,{props:{label:'Output limit',min:256,max:64000,step:64,log:true,unit:'tokens',modelValue:4096,'onUpdate:modelValue':(v:number)=>w.setProps({modelValue:v})}})
@@ -17,8 +17,8 @@ describe('Slider',()=>{
   expect(w.get('output').text()).toBe('70%')
  })
  it('reads bounds from the configuration schema',()=>{
-  expect(optionBounds('deep','chunk_cap')).toEqual({min:1,max:10000})
-  expect(optionBounds('scout','max_iterations')).toEqual({min:0,max:30})
+  expect(stageBounds('deep','chunk_cap')).toEqual({min:1,max:10000})
+  expect(stageBounds('scout','max_rounds')).toEqual({min:0,max:30})
   expect(retrievalBounds('chunk_size')).toEqual({min:100,max:16000})
  })
 })

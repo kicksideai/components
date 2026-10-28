@@ -34,4 +34,13 @@ describe('Builder panel',()=>{
   expect(handle.attributes('aria-valuenow')).toBe('400')
   w.unmount()
  })
+ it('draws the evidence and deep branches between Map and Extract',()=>{
+  const w=build()
+  const labels=w.findAll('.flow .node').map(n=>n.attributes('aria-label')??n.find('.node-title').text())
+  expect(labels).toEqual(['Read document','Map the document','Prefetch','Scout loop','Deep analysis','Extract','Verify','Output'])
+  const branches=w.findAll('.branches .branch')
+  expect(branches.map(b=>b.get('.branch-label').text())).toEqual(['Evidence','Deep fields'])
+  expect(branches[0].text()).toContain('Scout loop');expect(branches[1].text()).toContain('Deep analysis')
+  w.unmount()
+ })
 })
