@@ -31,7 +31,6 @@ function M.access(id, mask, include_context)
     local context, context_err = checked(result,read_err)
     if context_err then return nil, context_err end
     if context.impl_id ~= KIND then return nil, invalid("Component is not a Docscout") end
-    if include_context then context.context.config = config.migrate(context.context.config) end
     return context, nil
 end
 local function validate(dto, update)

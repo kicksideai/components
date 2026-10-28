@@ -226,13 +226,13 @@ return { run = test.run_cases(function()
     end)
 
     test.describe("Structured extraction", function()
-        test.it("uses structured output for a stored config carrying the retired text setting", function()
+        test.it("extracts typed values through structured output", function()
             local pool = shapes.pool()
             shapes.add(pool, { { ordinal = 1, content = "The total amount is 1250.", heading_path = "Payment" } })
             local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
             field.name, field.type = "total", "number"
             local run: any = { pool = pool, regions = {}, notes = {}, analyses = {}, values = {}, config = { fields = { field },
-                stages = { extract = { model = "class:docscout-success", max_fields_per_call = 5, max_output_tokens = 256, structured_output = false } } } }
+                stages = { extract = { model = "class:docscout-success", max_fields_per_call = 5, max_output_tokens = 256 } } } }
             test.is_nil(stages.extract(run, { meter = ai.meter() }))
             test.eq(run.values[1].value, 1250)
         end)

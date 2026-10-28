@@ -17,6 +17,7 @@ entries:
   modules: [json, funcs]
   imports:
     jobs: kickside.core.jobs:jobs
+    job_types: kickside.core.jobs:types
     execution_identity: kickside.execution:execution_identity
     repository: kickside.docscout.persist:repository
     extractors: kickside.docscout:extractors

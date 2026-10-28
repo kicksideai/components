@@ -17,12 +17,6 @@ function M.schema(): (any?, error?)
     return json.decode((entry :: any).data.schema_json)
 end
 
--- Retires the former extraction selector in stored component contexts.
-function M.migrate(value: any): any
-    value.stages.extract.structured_output = nil
-    return value
-end
-
 function M.validate(value: any): error?
     local schema, schema_err = M.schema()
     if schema_err then return schema_err end

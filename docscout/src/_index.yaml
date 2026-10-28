@@ -183,7 +183,10 @@ entries:
   source: file://retention.lua
   modules:
   - contract
+  - security
   - time
+  imports:
+    error_envelope: kickside.contract:error_envelope
 - name: status
   kind: function.lua
   source: file://binding.lua
