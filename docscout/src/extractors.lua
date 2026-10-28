@@ -3,9 +3,12 @@ local component = require("component")
 local config = require("config")
 local repository = require("repository")
 local retention = require("retention")
-local contract = require("contract")
+local notify = require("notify")
+local committed_error = require("committed_error")
 local security = require("security")
 local process = require("process")
+local keyset = require("keyset")
+local access_policy = require("access_policy")
 local M = {}
 local KIND = "kickside.docscout:extractor"
 local function invalid(message)
@@ -17,17 +20,18 @@ end
 local function checked(result: any, err: any)
     if err then return nil, err end
     if not result or result.success == false then
-        return nil, errors.new({kind=result and result.kind or errors.INTERNAL, message=tostring(result and result.error or "Component operation failed"),details=result and result.details})
+        return nil, errors.new({kind=result and result.kind or errors.INTERNAL, message=tostring(result and result.error or "Component operation failed"),retryable=result and result.retryable,details=result and result.details})
     end
     return result, nil
 end
-local function access(id, mask)
+function M.access(id, mask, include_context)
     local svc, err = service()
     if err or not svc then return nil, err end
-    local result, read_err = svc:get_access_context({component_id=id,access_mask=mask,include_context=true})
+    local result, read_err = svc:get_access_context({component_id=id,access_mask=mask,include_context=include_context == true})
     local context, context_err = checked(result,read_err)
     if context_err then return nil, context_err end
     if context.impl_id ~= KIND then return nil, invalid("Component is not a Docscout") end
+    if include_context then context.context.config = config.migrate(context.context.config) end
     return context, nil
 end
 local function validate(dto, update)
@@ -48,17 +52,21 @@ function M.create(dto)
     if err then return nil, err end
     local svc, svc_err = service()
     if svc_err or not svc then return nil,svc_err end
-    return checked(svc:register({impl_id=KIND,private_context={config=dto.config},meta=meta(dto),parent_id=dto.parent_id}))
+    local result, err = checked(svc:register({impl_id=KIND,private_context={config=dto.config},meta=meta(dto),parent_id=dto.parent_id}))
+    if err then return nil, err end
+    local _, notify_err = notify.shared(result.component_id)
+    if notify_err then return nil, committed_error.new(notify_err) end
+    return result, nil
 end
 function M.get(id)
-    local context, err = access(id,component.ACCESS.READ)
+    local context, err = M.access(id,component.ACCESS.READ,true)
     if err then return nil,err end
     local svc, svc_err = service()
     if svc_err or not svc then return nil,svc_err end
     local row, row_err = checked(svc:get({component_id=id}))
     if row_err then return nil,row_err end
-    local can_edit = math.floor(context.access_level / component.ACCESS.WRITE) % 2 == 1
-    local can_share = math.floor(context.access_level / component.ACCESS.ADMIN) % 2 == 1
+    local can_edit = access_policy.has_all(context.access_level, component.ACCESS.WRITE)
+    local can_share = access_policy.has_all(context.access_level, component.ACCESS.ADMIN)
     -- Each person sees the runs they made; others' runs name their uploads.
     local records, records_err = repository.snapshot(id, security.actor():id())
     if records_err then return nil, records_err end
@@ -70,34 +78,51 @@ function M.get(id)
 end
 -- The configuration a run uses; READ access is enough to run an extractor.
 function M.for_run(id)
-    local context, err = access(id,component.ACCESS.READ)
+    local context, err = M.access(id,component.ACCESS.READ,true)
     if err then return nil, err end
     return {config=context.context.config, revision=context.context_revision or 0}, nil
 end
 function M.update(id,dto)
-    local _, err = access(id,component.ACCESS.WRITE)
+    local _, err = M.access(id,component.ACCESS.WRITE,false)
     if err then return nil,err end
     local validation_err = validate(dto,true)
     if validation_err then return nil,validation_err end
-    return component.update(id,{{type="PATCH_CONTEXT",payload={patch={config=dto.config}}},{type="SET_META",payload={fields=meta(dto)}}},{expected_revision=dto.expected_revision})
+    local result, err = component.update(id,{{type="PATCH_CONTEXT",payload={patch={config=dto.config}}},{type="SET_META",payload={fields=meta(dto)}}},{expected_revision=dto.expected_revision})
+    if err then return nil, err end
+    local _, notify_err = notify.shared(id)
+    if notify_err then return nil, committed_error.new(notify_err) end
+    return result, nil
 end
 function M.delete(id)
-    local _, err = access(id,component.ACCESS.DELETE)
+    local _, err = M.access(id,component.ACCESS.DELETE,false)
     if err then return nil,err end
     local svc,svc_err = service()
     if svc_err or not svc then return nil,svc_err end
     return checked(svc:delete({component_id=id}))
 end
 local LIST_LIMIT = 100
-function M.list()
-    local rows,err = component.query({impl_ids={KIND},include={meta=true,access=true},limit=LIST_LIMIT + 1})
-    if err then return nil,err end
-    local truncated = #rows > LIST_LIMIT
-    if truncated then rows[#rows] = nil end
-    return {success=true,items=rows,truncated=truncated},nil
+function M.list(input)
+    input = input or {}
+    local limit, cursor, page_err = keyset.args({ limit = input.limit == nil and LIST_LIMIT or input.limit, cursor = input.cursor })
+    if page_err then return nil, page_err end
+    if input.filter ~= nil and type(input.filter) ~= "string" then return nil, invalid("filter must be text") end
+    local rows, offset = {}, 0
+    while true do
+        local batch, err = component.query({ impl_ids = { KIND }, include = { meta = true, access = true },
+            text = input.filter, order_by = { field = "component_id", direction = "ASC" }, limit = LIST_LIMIT, offset = offset })
+        if err then return nil, err end
+        for _, row in ipairs(batch) do
+            if cursor == nil or row.component_id > cursor then rows[#rows + 1] = row end
+            if #rows > limit then break end
+        end
+        if #batch < LIST_LIMIT or #rows > limit then break end
+        offset = offset + #batch
+    end
+    local items, next_cursor = keyset.page(rows, keyset.field("component_id"), limit, cursor)
+    return { success = true, items = items, next_cursor = next_cursor }, nil
 end
 function M.add_case(id,dto)
-    local context,err=access(id,component.ACCESS.WRITE)
+    local context,err=M.access(id,component.ACCESS.WRITE,true)
     if err then return nil,err end
     if type(dto)~="table" or type(dto.upload_id)~="string" or dto.upload_id=="" then return nil,invalid("Choose an upload") end
     for key in pairs(dto) do if key~="upload_id" and key~="expected" then return nil,invalid("Unknown case field: "..tostring(key)) end end
@@ -109,7 +134,7 @@ function M.add_case(id,dto)
     return repository.add_case(id,{upload_id=dto.upload_id,upload_name=upload.filename,expected=dto.expected})
 end
 function M.delete_case(id,case_id)
-    local _,err=access(id,component.ACCESS.WRITE)
+    local _,err=M.access(id,component.ACCESS.WRITE,false)
     if err then return nil,err end
     if type(case_id)~="string" or case_id=="" then return nil,invalid("Case id is required") end
     return repository.delete_case(id,case_id)

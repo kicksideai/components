@@ -7,12 +7,14 @@ entries:
   source: file://repository.lua
   modules:
   - sql
-  - registry
-  - json
   - uuid
-  - time
   imports:
-    component: kickside.component:component
+    persisted_json: kickside.contract:persisted_json
+    canonical_json: kickside.contract:canonical_json
+    database: kickside.docscout.persist:database
+    store: kickside.docscout.persist:store
+    notify: kickside.docscout:notify
+    committed_error: kickside.contract:committed_error
 - name: store
   kind: library.lua
   meta:
@@ -20,9 +22,17 @@ entries:
   source: file://store.lua
   modules:
   - sql
-  - registry
-  - json
-  - time
   - uuid
   imports:
+    canonical_json: kickside.contract:canonical_json
     index: kickside.search_index:index
+    persisted_json: kickside.contract:persisted_json
+    database: kickside.docscout.persist:database
+
+- name: database
+  kind: library.lua
+  source: file://database.lua
+  modules: [sql, registry, time]
+  imports:
+    component: kickside.component:component
+    error_envelope: kickside.contract:error_envelope

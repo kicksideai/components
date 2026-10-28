@@ -40,12 +40,16 @@ workspace:
     kickside/models: ${kickside_root}/platform/models
     kickside/workflows: ${kickside_root}/platform/workflows
 vars:
+  http_address: :0
   kickside_root: ../../../kickside
   pg_database: docscout_test
   pg_host: 127.0.0.1
   pg_port: 5433
   pg_username: kickside
   pg_password: kickside
+override:
+  app:gateway:addr: ${http_address}
+  kickside.docscout.security:tool_access:groups: [app:docscout_tools]
 profiles:
   postgres:
     override:
@@ -58,6 +62,14 @@ profiles:
       app:db:options.sslmode: disable
       app:db:pool.max_open: 16
       app:db:pool.max_idle: 8
+      app:migration_db:kind: db.sql.postgres
+      app:migration_db:host: ${pg_host}
+      app:migration_db:port: ${pg_port}
+      app:migration_db:database: ${pg_database}
+      app:migration_db:username: ${pg_username}
+      app:migration_db:password: ${pg_password}
+      app:migration_db:options.sslmode: disable
+      app:migration_db:options.search_path: docscout_migration_fixture,public
 registry:
   dispatch_internal_kinds:
   - registry.entry

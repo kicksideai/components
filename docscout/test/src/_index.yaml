@@ -56,6 +56,8 @@ entries:
   prefix: /api
   middleware:
   - token_auth
+  post_middleware:
+  - endpoint_firewall
   options:
     token_store: kickside.users.security:tokens
 - name: api_public
@@ -121,7 +123,7 @@ entries:
   - name: kickside.docscout:ui_server
     value: app:gateway
   - name: kickside.docscout.security:user_security_scope
-    value: app:user
+    value: app:docscout_members
   - name: kickside.component:target_db
     value: app:db
   - name: kickside.component:api_router
@@ -281,7 +283,11 @@ entries:
   kind: function.lua
   source: file://probe.lua
   method: run
+  modules: [contract, security, json]
   imports:
+    processing: kickside.docscout.engine:process
+    execution_identity: kickside.execution:execution_identity
+    jobs: kickside.core.jobs:jobs
     extractors: kickside.docscout:extractors
     evals: kickside.docscout.evals:evals
     repository: kickside.docscout.persist:repository
@@ -319,7 +325,9 @@ entries:
   - funcs
   - time
   - registry
+  - security
   imports:
+    data: app:fixture_data
     test: wippy.test:test
     ai: kickside.docscout.engine:ai
     process: kickside.docscout.engine:process
@@ -348,12 +356,15 @@ entries:
   source: file://callers_test.lua
   method: run
   modules:
-  - funcs
-  - security
+  - process
+  - channel
+  - time
+  - sql
   - registry
   - json
   - uuid
   imports:
+    data: app:fixture_data
     test: wippy.test:test
 - name: scoring_test
   kind: function.lua
@@ -378,13 +389,16 @@ entries:
   source: file://evals_test.lua
   method: run
   modules:
+  - process
+  - channel
   - funcs
-  - security
   - registry
   - json
   - uuid
   - time
+  - sql
   imports:
+    data: app:fixture_data
     test: wippy.test:test
     user_repo: kickside.users.persist:user_repo
     user_groups_repo: kickside.users.persist:user_groups_repo
@@ -435,6 +449,20 @@ entries:
   providers:
   - id: app:fixture_llm_provider
     provider_model: docscout-small
+- name: fixture_refusal_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-refusal
+    title: Refusing fixture model
+    capabilities: [structured_output]
+    class: [docscout-refusal]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_llm_provider
+    provider_model: docscout-refusal
 - name: security_test
   kind: function.lua
   meta:
@@ -444,7 +472,223 @@ entries:
   source: file://security_test.lua
   method: run
   modules:
+  - contract
+  - funcs
+  - uuid
+  - json
   - registry
   - security
   imports:
     test: wippy.test:test
+
+- name: error_boundaries_test
+  kind: function.lua
+  modules: [sql, uuid]
+  meta:
+    type: test
+    suite: docscout_errors
+  source: file://error_boundaries_test.lua
+  method: run
+  imports:
+    data: app:fixture_data
+    test: wippy.test:test
+    store: kickside.docscout.persist:store
+    repository: kickside.docscout.persist:repository
+
+- name: migration_test
+  kind: function.lua
+  modules: [sql, funcs]
+  meta: {type: test, suite: docscout_migration}
+  source: file://migration_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+
+- name: docscout_members
+  kind: security.scope
+  meta:
+    title: Docscout test members
+- name: docscout_members_composition
+  kind: registry.entry
+  meta:
+    type: kickside.security.group_composition
+  group_id: app:docscout_members
+  select:
+    meta.surface: kickside.docscout
+    meta.intent: module_access
+- name: fixture_success_structured
+  kind: function.lua
+  source: file://fixture_success.lua
+  method: structured
+- name: fixture_success_embed
+  kind: function.lua
+  source: file://fixture_success.lua
+  method: embed
+- name: fixture_success_status
+  kind: function.lua
+  source: file://fixture_success.lua
+  method: status
+- name: fixture_success_driver
+  kind: contract.binding
+  contracts:
+  - contract: wippy.llm:structured_output
+    methods:
+      structured_output: app:fixture_success_structured
+  - contract: wippy.llm:embedder
+    methods:
+      embed: app:fixture_success_embed
+  - contract: wippy.llm:provider
+    methods:
+      status: app:fixture_success_status
+- name: fixture_success_provider
+  kind: registry.entry
+  meta:
+    type: llm.provider
+    name: docscout-success
+    title: Successful fixture provider
+  driver:
+    id: app:fixture_success_driver
+    options: {}
+- name: fixture_success_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-success
+    title: Successful fixture model
+    capabilities: [structured_output, embed]
+    class: [docscout-success]
+    priority: 100
+  dimensions: 512
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+- name: success_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: docscout_success
+  source: file://success_test.lua
+  method: run
+  modules: [funcs, security, contract, registry, json, uuid, time, sql, http_client]
+  imports:
+    reconcile: kickside.security:trigger_reconcile
+    test: wippy.test:test
+    users: kickside.users.persist:user_repo
+    groups: kickside.users.persist:user_groups_repo
+    sessions: kickside.users:session
+    uploads: kickside.uploads.persist:upload_record_repo
+    artifacts: kickside.uploads.persist:artifact_content_repo
+
+- name: docscout_tools
+  kind: security.scope
+  meta:
+    title: Docscout test tool users
+- name: docscout_tools_composition
+  kind: registry.entry
+  meta:
+    type: kickside.security.group_composition
+  group_id: app:docscout_tools
+  select:
+    meta.surface: kickside.docscout
+    meta.intent: tool_access
+- name: runtime_data
+  kind: security.policy
+  meta:
+    private: true
+    comment: Host runtime primitives for tests under composed member scopes.
+  groups: [app:runtime_members]
+  policy:
+    resources: [app:db, app:uploads]
+    actions: [db.get, fs.get, store.get, store.info, store.key.get, store.key.list, store.key.set, store.key.delete, store.key.has]
+    effect: allow
+
+- name: migration_db
+  kind: db.sql.sqlite
+  file: ':memory:'
+- name: runtime_contracts
+  kind: security.policy
+  meta:
+    private: true
+    comment: Host capabilities for binding the caller frame through native contracts and functions.
+  groups: [app:runtime_members]
+  policy:
+    resources: [security, 'wippy.llm:*', 'wippy.llm.*']
+    actions: [contract.get, contract.open, contract.call, contract.implementations, contract.security, funcs.call, funcs.security]
+    effect: allow
+
+- name: runtime_content_context
+  kind: security.policy
+  meta:
+    private: true
+    comment: Binds upload identifiers to the content-provider contract context.
+  groups: [app:runtime_members]
+  policy:
+    resources: [context]
+    actions: [contract.context]
+    effect: allow
+
+- name: fixture_data
+  kind: library.lua
+  source: file://fixture_data.lua
+  modules: [funcs, security, registry, json, uuid, sql, fs]
+  imports:
+    uploads: kickside.uploads.persist:upload_record_repo
+    artifacts: kickside.uploads.persist:artifact_content_repo
+
+- name: runtime_members
+  kind: security.scope
+  meta:
+    title: Test dependency access
+- name: runtime_members_composition
+  kind: registry.entry
+  meta:
+    type: kickside.security.group_composition
+  group_id: app:runtime_members
+  policies:
+  - kickside.component.security:module_access
+  - kickside.contract.security:module_access
+  - kickside.core.security:module_access
+  - kickside.core.jobs.security:module_access
+  - kickside.execution.security:module_access
+  - kickside.settings.security:module_access
+  - kickside.uploads.security:module_access
+  - kickside.realtime.security:module_access
+  - kickside.convert.doc2md.security:module_access
+
+- name: fixture_model_access
+  kind: security.policy
+  meta:
+    private: true
+    comment: Host access to the fixture model catalog and provider binding.
+  groups: [app:runtime_members]
+  policy:
+    resources: ['app:fixture_success_*', 'app:fixture_llm_*', app:fixture_small_model, app:fixture_refusal_model]
+    actions: [registry.get, registry.find, contract.open, funcs.call]
+    effect: allow
+- name: runtime_methods
+  kind: security.policy
+  meta:
+    private: true
+    comment: Native contract method resources used by the host's dependency ports.
+  groups: [app:runtime_members]
+  policy:
+    resources: [register, query, get, get_access_context, grant_subtree, delete, get_info, get_content, run, resolve, authorize, emit, notify, created, updated, deleted, get_status, structured_output, embed, status]
+    actions: [contract.call]
+    effect: allow
+
+- name: deny_provider_security
+  kind: security.policy
+  meta: {private: true}
+  policy:
+    resources: [security]
+    actions: [contract.security]
+    effect: deny
+- name: deny_provider_context
+  kind: security.policy
+  meta: {private: true}
+  policy:
+    resources: [context]
+    actions: [contract.context]
+    effect: deny

@@ -11,6 +11,7 @@ entries:
     includes:
     - kickside.docscout.security:module_runtime
     - kickside.docscout.security:member_endpoints
+    - kickside.docscout.security:notify_access
   groups: []
   policy:
     resources:
@@ -18,7 +19,6 @@ entries:
     - kickside.docscout.api:*
     - kickside.docscout.engine:*
     - kickside.docscout.blocks:*
-    - kickside.docscout.traits:*
     actions:
     - registry.get
     - registry.find
@@ -34,7 +34,6 @@ entries:
     - kickside.docscout.api:*
     - kickside.docscout.engine:*
     - kickside.docscout.blocks:*
-    - kickside.docscout.traits:*
     actions:
     - contract.get
     - contract.open
@@ -107,6 +106,7 @@ entries:
   kind: ns.requirement
   meta:
     value_kind: security.scope
+    description: Application group with member access to Docscout.
   default: kickside.security.groups:members
   targets:
   - entry: kickside.docscout.security:module_access
@@ -115,3 +115,35 @@ entries:
     path: .groups +=
   - entry: kickside.docscout.security:member_endpoints
     path: .groups +=
+  - entry: kickside.docscout.security:notify_access
+    path: .groups +=
+
+- name: notify_access
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources: [kickside.component:notify_access]
+    actions: [funcs.call]
+    effect: allow
+
+- name: tool_access
+  kind: security.policy
+  meta:
+    title: Docscout tools
+    surface: kickside.docscout
+    intent: tool_access
+  groups: []
+  policy:
+    resources:
+    - kickside.docscout.traits:reader
+    - kickside.docscout.traits:configurator
+    - kickside.docscout.traits:list_tool
+    - kickside.docscout.traits:run_tool
+    - kickside.docscout.traits:get_tool
+    - kickside.docscout.traits:configure_tool
+    - kickside.docscout.traits:evaluate_tool
+    - kickside.docscout.traits:evaluation_tool
+    actions: [registry.get, registry.find, funcs.call, funcs.security]
+    effect: allow

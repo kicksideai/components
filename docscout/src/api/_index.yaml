@@ -114,7 +114,7 @@ entries:
   modules:
   - http
   imports:
-    engine: kickside.docscout.engine:run
+    client: kickside.docscout:client
     http_errors: kickside.contract:http_errors
 - name: run.endpoint
   kind: http.endpoint

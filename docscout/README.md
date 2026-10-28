@@ -1,40 +1,54 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Docscout
 
-Docscout extracts typed fields from uploaded documents, with a quote, section and page for every value. Each extractor is a shareable component of kind `kickside.docscout:extractor`: WRITE edits its configuration, cases and evaluations; READ runs it.
+Docscout extracts typed fields from uploaded documents, with grounded quotes, sections and page locations. Extractors are shareable components of kind `kickside.docscout:extractor`. READ permits running an extractor; WRITE permits configuration, cases and evaluations. Each person sees their own runs.
 
-## Extraction
+## Installation
 
-The engine reads an upload's extracted Markdown through `kickside.contract:content_provider`, splits it into chunks that keep sections and tables, and indexes them for keyword and vector search through `kickside/search-index` in Docscout's own tables. A processed copy belongs to the user and upload and is reused while fresh for the same content, chunking settings and resolved models. Then the configured stages run in order: Map, Prefetch, Scout (structured loop or agent with document tools), Deep analysis, the optional highlighter, Extract per field group, and Verify. Document text is treated as untrusted data in every prompt, structured model replies are bounded by their schemas, every prompt is checked against the model's context window before it is sent, and Verify checks each quote against the stored chunks.
+Provide these host bindings:
 
-Every run is recorded with a per-step trace of time, tokens, queries and messages. Processed documents and runs expire after the global `kickside.docscout.retention` duration (default `2h`); the `kickside.retention.owner` callback removes them.
+| Requirement | Host resource |
+| --- | --- |
+| `kickside.docscout:target_db` | The SQL database shared with component service and Jobs |
+| `kickside.docscout:api_router` | An authenticated router with `token_auth` and `endpoint_firewall` |
+| `kickside.docscout:ui_server` | The HTTP service serving the module assets |
+| `kickside.docscout.security:user_security_scope` | The group allowed to use Docscout; defaults to platform Members |
 
-## Callers
+The host also supplies the declared requirements of the component, settings, uploads, models, execution, Jobs and realtime dependencies. Uploads must expose full primary Markdown artifacts through `kickside.contract:content_provider`. Extraction models must support structured output; embedding models must produce 512 dimensions. Assign the separate `kickside.docscout.security:tool_access` policy to enable the optional agent tools.
 
-- Test tab: `POST /docscout/{id}/run` with an upload.
-- Contract `kickside.docscout:extraction`, method `run`. An optional RFC3339 `deadline` bounds every model call; a run that reaches it fails with a timeout. Evaluations pass their job's deadline.
-- Workflow Block `kickside.docscout.blocks:extract`: config picks the extractor, input carries `upload_id`; output has `values`, `fields`, `verified`, `run_id`, `pages`, and failures route to the `failed` port.
-- Agent tools DocscoutList, DocscoutExtract, DocscoutGet, DocscoutConfigure, DocscoutEvaluate and DocscoutEvaluation, exposed by the traits `reader` and `configurator`.
+Caller scopes need the native contract capabilities `contract.security` on `security` and `contract.context` on `context` to bind the caller frame and upload identifier.
 
-All callers run under their own identity and need READ on the extractor and access to the upload.
+## Extraction and callers
 
-## Evaluations
+Every caller opens `kickside.docscout:extraction`, binding `kickside.docscout:engine`, under its execution identity. The `run` input has `extractor_id`, `upload_id`, `caller` (`ui`, `agent`, `workflow`, `eval`) and an optional RFC3339 deadline. Evaluation calls additionally identify the admitted evaluation and case. The contract accepts saved configuration; chat tuning edits that configuration through the configurator trait.
 
-Cases pair an upload with the values it states; a field left out is one the document does not state. An evaluation runs every case as its own `kickside/jobs` job through the extraction contract, under the identity of the person who started it, resolved again when each job runs. Values are scored by field type: numbers as printed, dates by their digits, text by word overlap, lists as order-free F1 and objects by their expected keys. The last case writes per-field accuracy. Cases, evaluations and their results go with the extractor.
+The ordered stages read and process the document, map sections, prefetch evidence, scout, analyze deep fields, highlight, extract with structured output, and verify. Processed copies belong to extractor plus user, upload, checksum and processing settings. Chunks use `kickside/search-index` for keyword and vector retrieval. Exact page locations come from saved page spans; uncertain locations retain their range.
+
+- UI: `POST /docscout/{id}/run`.
+- Block: `kickside.docscout.blocks:extract`, with `extractor_id` in config and `upload_id` in input. Its result contains values, fields with evidence, verification, run ID, pages, trace, revision, duration and tokens.
+- Traits: `kickside.docscout.traits:reader` and `:configurator`, exposing DocscoutList, DocscoutExtract, DocscoutGet, DocscoutConfigure, DocscoutEvaluate and DocscoutEvaluation. Typed tool failures use `nil, err`.
+
+Listings accept `filter`, `limit` and `cursor`; `next_cursor` continues a stable component-ID order. The component service filters access and search text before paging.
+
+Every run records its outcome and trace, including failed steps. Documents and runs expire after `kickside.docscout.retention` (default `2h`). Component teardown removes its documents, search-index rows, cases, runs and evaluations.
+
+## Evaluations and realtime
+
+Admission snapshots the config revision, configuration, case upload references and expected values. It commits evaluation rows and all Jobs admissions together, then wakes the pool. Workers restore the starter's identity and run the admitted snapshot through the extraction contract. The last case writes aggregate scores. Native case failures retain kind, message, retryability and details.
+
+Committed config, case and evaluation writes wake the effective READ audience on `component.<id>`. Runs wake their maker on `docscout.runs.<id>`. Docscout wakeup payloads contain identifiers. Readers subscribe before loading and refetch committed state after wakeups and host visibility changes.
+
+On the final Jobs attempt, returned evaluation-read and status-write failures settle the case and evaluation totals together while preserving the native worker failure. Crashes, timeouts and failures that prevent settlement from committing still need an owner lifecycle hook in the platform Jobs API; that integration remains blocked in the supplied platform source.
 
 ## Development
 
-Use the production Wippy runtime selected for the application and a supported Node/npm toolchain. The standalone harness resolves sibling KickSide sources through `KICKSIDE_SOURCE_ROOT` and other dependencies from the Hub.
-
 ```sh
-make lockrefresh KICKSIDE_SOURCE_ROOT=/path/to/kickside
-make ui-install build typecheck test-ui
-make lint test KICKSIDE_SOURCE_ROOT=/path/to/kickside
-make test-pg KICKSIDE_SOURCE_ROOT=/path/to/kickside WIPPY_ARGS='--set vars.pg_database=<scratch-database>'
+make setup KICKSIDE_SOURCE_ROOT=/path/to/platform
+make lint test KICKSIDE_SOURCE_ROOT=/path/to/platform
+make verify KICKSIDE_SOURCE_ROOT=/path/to/platform
+make postgres-up
+make test-pg KICKSIDE_SOURCE_ROOT=/path/to/platform
+make postgres-down
 ```
 
-Create and drop the Postgres scratch database around that gate. The harness defaults to SQLite. `make preview` serves development fixtures; the production build emits the module's served `static/` assets.
-
-## Compatibility
-
-This is a new package. No published component kind, endpoint, contract, requirement, event, or stored shape changes. Its forward migration creates only Docscout-owned tables and indexes. It does not change upload tables or migrate legacy registry-based Docscout groups. Release metadata and publication remain separate work.
+`test` uses SQLite and allocates a temporary HTTP port for endpoint tests. It requires local socket access. `verify` also typechecks, tests and builds the UI. The PostgreSQL target uses the harness profile; the compose targets manage its disposable database. Dependency refresh requires registry access. Release Please owns release metadata.

@@ -14,7 +14,7 @@ entries:
   meta:
     comment: Starts evaluations, lists them and runs one case as a job.
   source: file://evals.lua
-  modules: [json]
+  modules: [json, funcs]
   imports:
     jobs: kickside.core.jobs:jobs
     execution_identity: kickside.execution:execution_identity
@@ -22,6 +22,8 @@ entries:
     extractors: kickside.docscout:extractors
     scoring: kickside.docscout.evals:scoring
     config: kickside.docscout:config
+    component: kickside.component:component
+    error_envelope: kickside.contract:error_envelope
 - name: case_worker
   kind: function.lua
   meta:
@@ -33,6 +35,7 @@ entries:
       id: system:kickside.docscout.evals
     policies:
     - kickside.docscout.security:system_db_access
+    - kickside.docscout.security:notify_access
     - kickside.docscout.security:eval_defer
     - kickside.docscout.security:eval_actor
   imports:

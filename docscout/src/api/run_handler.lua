@@ -3,7 +3,7 @@
 -- the canonical error envelope; its details carry the run id and step trace so
 -- the page can show where it stopped.
 local http = require("http")
-local engine = require("engine")
+local client = require("client")
 local http_errors = require("http_errors")
 
 local function run()
@@ -15,7 +15,7 @@ local function run()
         res:set_status(http_errors.for_error(invalid))
         return res:write_json(http_errors.response(invalid))
     end
-    local result, run_err = engine.run({ id = http.request():param("id"), upload_id = dto.upload_id, caller = "ui" })
+    local result, run_err = client.run({ extractor_id = http.request():param("id"), upload_id = dto.upload_id, caller = "ui" })
     if run_err then
         res:set_status(http_errors.for_error(run_err))
         return res:write_json(http_errors.response(run_err))
