@@ -217,6 +217,28 @@ local function note_lines(notes: { any }): { string }
     return out
 end
 
+-- The fields a scout serves, with the chunks each sections field may read, so
+-- the scout cites a field's evidence where extraction lets it read.
+local function scout_fields(run: any, fields: { any }): string
+    local limits = {}
+    for _, f in ipairs(fields) do
+        local region = M.region(run, f)
+        if region then
+            local labels = {}
+            for i, n in ipairs(region) do labels[i] = "C" .. n end
+            limits[#limits + 1] = "- " .. f.name .. " reads only " .. table.concat(labels, ", ")
+        end
+    end
+    return "Fields:\n" .. field_lines(fields) ..
+        (#limits > 0 and ("\n\nSome fields read only their own chunks; cite their evidence there:\n" .. table.concat(limits, "\n")) or "")
+end
+
+-- The structured scout's prompt: fields, earlier notes and the evidence pool.
+function M.scout_input(run: any, fields: { any }): string
+    return scout_fields(run, fields) .. (#run.notes > 0 and ("\n\nEarlier notes:\n" .. table.concat(note_lines(run.notes), "\n")) or "") ..
+        "\n\nEvidence:\n" .. render(ordered(run.pool))
+end
+
 local SCOUT_SYSTEM = system([[You review evidence gathered from one document before values are extracted.
 Rate from 0 to 1 how confident you are that the passages contain every field's value. For each field, list the chunk numbers
 whose passages state or help determine its value. List chunk numbers that serve no field as noise. Propose focused search
@@ -240,7 +262,7 @@ function M.scout(run: any, step: any): error?
         local found = 0
         local answer, calls, err = ai.agent(step.meter, cfg.model,
             system("You read one document with the tools to find evidence for the fields below. Follow references to definitions and schedules. When you have enough, reply with short notes per field saying where each value is."),
-            "Fields:\n" .. field_lines(fields) .. "\n\nEvidence so far:\n" .. render(ordered(run.pool)),
+            scout_fields(run, fields) .. "\n\nEvidence so far:\n" .. render(ordered(run.pool)),
             tools, M.agent_budget(cfg),
             function(name: string, args: any): (string?, error?)
                 local hits, text, call_err = doctools.call(ctx, name, args)
@@ -260,8 +282,7 @@ function M.scout(run: any, step: any): error?
     while true do
         rounds = rounds + 1
         local result, err = ai.structured(step.meter, cfg.model, scout_schema(cfg, fields, ordered(run.pool)), SCOUT_SYSTEM,
-            "Fields:\n" .. field_lines(fields) .. (#run.notes > 0 and ("\n\nEarlier notes:\n" .. table.concat(note_lines(run.notes), "\n")) or "") ..
-            "\n\nEvidence:\n" .. render(ordered(run.pool)), { max_tokens = cfg.max_tokens })
+            M.scout_input(run, fields), { max_tokens = cfg.max_tokens })
         if err then return err end
         run.confidence = tonumber(result.confidence) or 0
         if cfg.drop_noise then shapes.prune(run.pool, result.drop, result.evidence) end

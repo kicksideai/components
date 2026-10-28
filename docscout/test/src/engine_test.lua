@@ -222,6 +222,20 @@ return { run = test.run_cases(function()
             test.eq(table.concat(shape, " | "),
                 "fee,total:1,2,3:fee: fee in C1;agent: Delaware law in C3 | notice,term:2: | law:3:law: law in C3 | party:1,2,3:agent: Delaware law in C3")
         end)
+        test.it("tells the scout which chunks each sections field may read", function()
+            local pool = shapes.pool()
+            shapes.add(pool, { { ordinal = 1, content = "fee", heading_path = "Fees" }, { ordinal = 3, content = "law", heading_path = "Law" } })
+            local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+            local law, fee = {}, {}
+            for k, v in pairs(field) do law[k] = v; fee[k] = v end
+            law.name, law.search_within = "governing_law", "sections"
+            fee.name = "fee"
+            local run = { pool = pool, regions = { governing_law = { 3, 4 } }, notes = {}, config = { fields = { fee, law } } }
+            local text = stages.scout_input(run, { fee, law })
+            test.is_true(text:find("governing_law reads only C3, C4", 1, true) ~= nil, text)
+            test.is_nil(text:find("fee reads only", 1, true))
+            test.is_true(text:find("[C3] Law", 1, true) ~= nil, text)
+        end)
         test.it("splits a group with one region by the fields-per-call limit", function()
             local pool = shapes.pool()
             shapes.add(pool, { { ordinal = 1, content = "a" } })
