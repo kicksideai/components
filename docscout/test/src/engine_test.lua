@@ -147,6 +147,23 @@ return { run = test.run_cases(function()
         end)
     end)
 
+    test.describe("Extraction without passages", function()
+        test.it("reports fields missing without a model call when their call has no passages", function()
+            local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+            field.name, field.search_within = "governing_law", "sections"
+            local pool = shapes.pool()
+            shapes.add(pool, { { ordinal = 1, content = "The fee is USD 100.", heading_path = "Fees" } })
+            local run = { pool = pool, regions = { governing_law = { 7 } }, notes = { { field = "governing_law", text = "Delaware" } }, analyses = {}, values = {},
+                config = { fields = { field }, stages = { extract = { model = "class:docscout-small", max_fields_per_call = 5, max_output_tokens = 50, structured_output = true } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.extract(run, step))
+            test.eq(#run.values, 1)
+            test.is_true(run.values[1].missing)
+            test.eq(run.values[1].reason, "No passage from its sections reached extraction")
+            test.eq(step.meter.input_tokens, 0)
+        end)
+    end)
+
     test.describe("Outlines", function()
         test.it("previews chunks for outlining in windows that cover the document once, in order", function()
             local chunks = {}

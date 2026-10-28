@@ -487,63 +487,78 @@ function M.extraction_calls(run: any): { any }
     return calls
 end
 
+-- One extraction call: prompt, model reply and a value per field.
+local function extract_call(run: any, step: any, cfg: any, call: any): error?
+    local batch, passages, notes = call.fields, call.passages, call.notes
+    local context = {}
+    for _, f in ipairs(batch) do if run.analyses[f.name] then context[#context + 1] = "Analysis of " .. f.name .. ":\n" .. run.analyses[f.name] end end
+    local evidence = render(passages)
+    local user = "Fields:\n" .. field_lines(batch) ..
+        (#notes > 0 and ("\n\nScout notes:\n" .. table.concat(notes, "\n")) or "") ..
+        (#context > 0 and ("\n\n" .. table.concat(context, "\n\n")) or "") ..
+        "\n\nPassages:\n" .. evidence
+    local result, err
+    if cfg.structured_output then
+        result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
+    else
+        local example = json.encode(shapes.reply_example(batch))
+        local textual, gen_err = ai.generate(step.meter, cfg.model, EXTRACT_SYSTEM ..
+            "\nReply with only a JSON object shaped like this example, with one entry per field and the value typed as the field says;" ..
+            " chunk is the integer after C. When the passages do not state a field, set found to false, value to null and evidence to [].\n" .. example,
+            user, { max_tokens = cfg.max_output_tokens })
+        if gen_err then err = gen_err else result, err = shapes.reply_object(textual :: string, shapes.group_schema(batch, true)) end
+    end
+    if err then
+        -- The llm module refuses a prompt larger than the model's window before calling it.
+        if errors.is(err, errors.INVALID) and ((err :: any):details() or {}).error_type == "context_window" then
+            return errors.new({ kind = errors.INVALID, details = (err :: any):details(),
+                message = tostring(err) .. "; lower passages per field, Deep chunk cap or fields per call" })
+        end
+        return err
+    end
+    for _, f in ipairs(batch) do
+        local item = result[f.name]
+        local cited = {}
+        -- A found value must have its type; null only stands for not found.
+        if item.found and item.value == nil then
+            return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply marks " .. f.name .. " found without a value" })
+        end
+        for _, e in ipairs(item.evidence) do
+            local ordinal = math.tointeger(e.chunk)
+            -- A citation outside the field's region is not evidence for it.
+            if not ordinal or visible(run, f, ordinal) then
+                local chunk = ordinal and run.pool.by_ordinal[ordinal]
+                cited[#cited + 1] = { quote = e.quote, chunk = ordinal,
+                    section = chunk and chunk.heading_path or "", page = chunk and chunk.page_start or nil, chunk_id = chunk and chunk.id or "" }
+            end
+        end
+        local entry: Value = { name = f.name, confidence = 0, evidence = {}, verified = false, missing = true }
+        if item.found then
+            entry.value = item.value
+            entry.confidence = item.confidence
+            entry.evidence = cited
+            entry.missing = false
+            if f.evidence_required and #cited == 0 then entry.reason = "No quote supports this value" end
+        end
+        run.values[#run.values + 1] = entry
+    end
+    return nil
+end
+
 function M.extract(run: any, step: any): error?
     local cfg = run.config.stages.extract
     local calls = 0
     for _, call in ipairs(M.extraction_calls(run)) do
-        local batch, passages, notes = call.fields, call.passages, call.notes
-        local context = {}
-        for _, f in ipairs(batch) do if run.analyses[f.name] then context[#context + 1] = "Analysis of " .. f.name .. ":\n" .. run.analyses[f.name] end end
-        local evidence = render(passages)
-        local user = "Fields:\n" .. field_lines(batch) ..
-            (#notes > 0 and ("\n\nScout notes:\n" .. table.concat(notes, "\n")) or "") ..
-            (#context > 0 and ("\n\n" .. table.concat(context, "\n\n")) or "") ..
-            "\n\nPassages:\n" .. evidence
-        local result, err
-        if cfg.structured_output then
-            result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
+        if #call.passages == 0 then
+            -- Notes alone are no evidence: with nothing to quote, the fields are not found.
+            for _, f in ipairs(call.fields) do
+                run.values[#run.values + 1] = { name = f.name, confidence = 0, evidence = {}, verified = false, missing = true,
+                    reason = M.region(run, f) and "No passage from its sections reached extraction" or "No passage reached extraction" }
+            end
         else
-            local example = json.encode(shapes.reply_example(batch))
-            local textual, gen_err = ai.generate(step.meter, cfg.model, EXTRACT_SYSTEM ..
-                "\nReply with only a JSON object shaped like this example, with one entry per field and the value typed as the field says;" ..
-                " chunk is the integer after C. When the passages do not state a field, set found to false, value to null and evidence to [].\n" .. example,
-                user, { max_tokens = cfg.max_output_tokens })
-            if gen_err then err = gen_err else result, err = shapes.reply_object(textual :: string, shapes.group_schema(batch, true)) end
-        end
-        if err then
-            -- The llm module refuses a prompt larger than the model's window before calling it.
-            if errors.is(err, errors.INVALID) and ((err :: any):details() or {}).error_type == "context_window" then
-                return errors.new({ kind = errors.INVALID, details = (err :: any):details(),
-                    message = tostring(err) .. "; lower passages per field, Deep chunk cap or fields per call" })
-            end
-            return err
-        end
-        calls = calls + 1
-        for _, f in ipairs(batch) do
-            local item = result[f.name]
-            local cited = {}
-            -- A found value must have its type; null only stands for not found.
-            if item.found and item.value == nil then
-                return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply marks " .. f.name .. " found without a value" })
-            end
-            for _, e in ipairs(item.evidence) do
-                local ordinal = math.tointeger(e.chunk)
-                -- A citation outside the field's region is not evidence for it.
-                if not ordinal or visible(run, f, ordinal) then
-                    local chunk = ordinal and run.pool.by_ordinal[ordinal]
-                    cited[#cited + 1] = { quote = e.quote, chunk = ordinal,
-                        section = chunk and chunk.heading_path or "", page = chunk and chunk.page_start or nil, chunk_id = chunk and chunk.id or "" }
-                end
-            end
-            local entry: Value = { name = f.name, confidence = 0, evidence = {}, verified = false, missing = true }
-            if item.found then
-                entry.value = item.value
-                entry.confidence = item.confidence
-                entry.evidence = cited
-                entry.missing = false
-                if f.evidence_required and #cited == 0 then entry.reason = "No quote supports this value" end
-            end
-            run.values[#run.values + 1] = entry
+            local err = extract_call(run, step, cfg, call)
+            if err then return err end
+            calls = calls + 1
         end
     end
     local position = {}
