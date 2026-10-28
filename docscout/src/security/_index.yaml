@@ -17,7 +17,7 @@ entries:
     - kickside.docscout:*
     - kickside.docscout.api:*
     - kickside.docscout.engine:*
-    - kickside.docscout.traits:*
+    - kickside.docscout.callers:*
     actions:
     - registry.get
     - registry.find
@@ -32,7 +32,7 @@ entries:
     - kickside.docscout:*
     - kickside.docscout.api:*
     - kickside.docscout.engine:*
-    - kickside.docscout.traits:*
+    - kickside.docscout.callers:*
     actions:
     - contract.get
     - contract.open
