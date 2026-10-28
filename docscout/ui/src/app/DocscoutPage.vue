@@ -7,12 +7,13 @@ import Builder from './Builder.vue'
 import TestPanel from './TestPanel.vue'
 import EvalsPanel from './EvalsPanel.vue'
 import RunsPanel from './RunsPanel.vue'
+import SharePopup from './SharePopup.vue'
 import {configError,isOn,newConfig,sameConfig,stageLabels,type StageKey} from '../config'
 import type {Snapshot,Extraction,Evaluation} from '../models'
 const props=withDefaults(defineProps<{snapshot:Snapshot;result?:Extraction|null;evaluations?:Evaluation[];evaluation?:Evaluation;saving?:boolean;running?:boolean;starting?:boolean;error?:string;back?:boolean}>(),{result:null,evaluations:()=>[]})
 const emit=defineEmits<{save:[input:{title:string;description:string;config:ReturnType<typeof newConfig>;expected_revision:number}];'add-case':[input:{upload_id:string;expected:Record<string,unknown>}];'delete-case':[id:string];back:[];run:[upload_id:string];evaluate:[];'open-evaluation':[eval_id:string]}>()
 const body=ref<HTMLElement>()
-const tab=ref('Builder'),draft=ref(newConfig()),title=ref(''),description=ref('')
+const sharing=ref(false),tab=ref('Builder'),draft=ref(newConfig()),title=ref(''),description=ref('')
 const tabs=computed(()=>props.snapshot.can_edit?['Builder','Test','Evals','Runs']:['Test','Runs'])
 watch(tab,()=>{if(body.value)body.value.scrollTop=0},{flush:'post'})
 const draftRevision=ref<number>()
@@ -33,11 +34,13 @@ function save(){emit('save',{title:title.value,description:description.value,con
    <div class="toolbar-lead"><template v-if="back"><button type="button" class="icon-btn" aria-label="All extractors" title="All extractors" @click="emit('back')"><Icon icon="tabler:arrow-left"/></button><span class="crumb">{{snapshot.title}}</span></template>
    <nav class="tabs" role="tablist" aria-label="Docscout"><button v-for="name in tabs" :id="`tab-${name}`" :key="name" role="tab" :aria-selected="tab===name" :aria-controls="`panel-${name}`" @click="tab=name">{{name}}</button></nav></div>
    <div class="toolbar-side">
+    <Button v-if="snapshot.can_share" severity="secondary" outlined size="small" @click="sharing=true"><Icon icon="tabler:share"/>Share</Button>
     <span class="stats">{{snapshot.field_count}} {{snapshot.field_count===1?'field':'fields'}}<template v-if="snapshot.can_edit"> · {{enabledSteps}} steps · revision {{snapshot.expected_revision}}</template><template v-else> · Read access</template></span>
     <template v-if="snapshot.can_edit"><span v-if="validation" class="invalid" role="alert" :title="validation"><Icon icon="tabler:alert-circle"/>{{validation}}</span><span v-else-if="changed" class="unsaved">Unsaved</span><Button label="Save" size="small" :loading="saving" :disabled="!changed||!!validation||!title.trim()" @click="save"/></template>
    </div>
   </div>
   <p v-if="error" role="alert" class="error banner">{{error}}</p>
+  <SharePopup v-if="sharing" :id="snapshot.id" :title="snapshot.title" @close="sharing=false"/>
   <div v-if="tab==='Builder'&&snapshot.can_edit" id="panel-Builder" role="tabpanel" aria-labelledby="tab-Builder" class="builder-body">
    <Builder v-model:title="title" v-model:description="description" :config="draft" :retention="snapshot.retention" :result="result"/>
   </div>

@@ -12,7 +12,7 @@ vi.mock('../client',()=>({client:{
 }}))
 import Extractor from './Extractor.vue'
 import {newConfig} from '../config'
-const snapshot=(id:string,title:string,can_edit=false)=>({id,title,field_count:1,status:'configured',can_edit,retention:'2h',runs:[],...(can_edit?{expected_revision:1,config:newConfig(),cases:[]}:{})})
+const snapshot=(id:string,title:string,can_edit=false)=>({id,title,field_count:1,status:'configured',can_edit,can_share:can_edit,retention:'2h',runs:[],...(can_edit?{expected_revision:1,config:newConfig(),cases:[]}:{})})
 const evaluation=(id:string,status:string)=>({id,status,config_revision:1,fields:[],case_count:1,metrics:[],tokens:0,duration_ms:0,created_at:'2026-10-28T00:00:00Z',results:[]})
 afterEach(()=>{vi.useRealTimers();state.get=null;state.listCalls=0;state.evaluations=[];state.pending.clear()})
 describe('Extractor page',()=>{

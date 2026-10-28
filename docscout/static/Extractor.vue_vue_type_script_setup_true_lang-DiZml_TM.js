@@ -1,9 +1,9 @@
-import { defineComponent as Q, useModel as fe, openBlock as n, createElementBlock as o, withModifiers as ke, createElementVNode as e, mergeModels as $e, computed as N, withKeys as Te, unref as h, normalizeClass as W, createVNode as r, toDisplayString as i, Fragment as S, renderList as O, createCommentVNode as p, createTextVNode as $, createBlock as Z, ref as A, watch as ie, withDirectives as j, vModelText as Y, vModelSelect as ye, onMounted as Ce, normalizeStyle as be, onBeforeUnmount as Oe, nextTick as Xe, vShow as Ve, vModelDynamic as Ye, toRaw as Re } from "vue";
-import { loadByTagName as Fe, on as Ze } from "@wippy-fe/proxy";
-import { i as he, h as ze, t as Se, g as oe, j as qe, k as _e, m as Pe, l as We, o as Ae, p as el, q as ll, r as tl, v as al, w as De, x as nl, y as xe, z as sl, A as ol, s as me, n as Le, C as il, D as dl, c as ae } from "./index-BBnkhKOj.js";
-import { Icon as L } from "@iconify/vue";
+import { defineComponent as Q, useModel as fe, openBlock as n, createElementBlock as o, withModifiers as ke, createElementVNode as e, mergeModels as $e, computed as T, withKeys as Re, unref as h, normalizeClass as W, createVNode as r, toDisplayString as i, Fragment as S, renderList as F, createCommentVNode as p, createTextVNode as $, createBlock as Z, ref as D, watch as de, withDirectives as j, vModelText as Y, vModelSelect as ye, onMounted as xe, normalizeStyle as be, onBeforeUnmount as Fe, nextTick as Xe, vShow as Se, vModelDynamic as Ye, toRaw as Ae, withCtx as Ze } from "vue";
+import { loadByTagName as qe, on as _e } from "@wippy-fe/proxy";
+import { i as he, h as ze, t as Ce, g as ie, j as Ue, k as el, m as Pe, l as Ie, o as De, p as ll, q as tl, r as al, v as nl, w as Le, x as sl, y as we, z as ol, A as il, s as oe, n as Oe, C as dl, D as ul, c as ae } from "./index-BBnkhKOj.js";
+import { Icon as O } from "@iconify/vue";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
-const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) => t.metrics.length ? t.metrics.reduce((c, s) => c + s.accuracy, 0) / t.metrics.length : 0, ul = ["aria-checked", "aria-label", "disabled"], I = /* @__PURE__ */ Q({
+const pe = (t) => t.status === "completed" || t.status === "failed", re = (t) => t.metrics.length ? t.metrics.reduce((c, s) => c + s.accuracy, 0) / t.metrics.length : 0, rl = ["aria-checked", "aria-label", "disabled"], K = /* @__PURE__ */ Q({
   __name: "Toggle",
   props: /* @__PURE__ */ $e({
     label: {},
@@ -22,21 +22,21 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
       "aria-checked": c.value,
       "aria-label": t.label,
       disabled: t.disabled,
-      onClick: m[0] || (m[0] = ke((b) => c.value = !c.value, ["stop"]))
+      onClick: m[0] || (m[0] = ke((v) => c.value = !c.value, ["stop"]))
     }, [...m[1] || (m[1] = [
       e("span", null, null, -1)
-    ])], 8, ul));
+    ])], 8, rl));
   }
-}), rl = ["aria-label"], cl = { class: "node-icon" }, ml = { class: "node-main" }, vl = { class: "node-title" }, bl = { class: "node-summary" }, pl = {
+}), cl = ["aria-label"], ml = { class: "node-icon" }, vl = { class: "node-main" }, bl = { class: "node-title" }, pl = { class: "node-summary" }, yl = {
   key: 0,
   class: "chips"
-}, yl = {
+}, fl = {
   key: 1,
   class: "trace-line"
-}, fl = { class: "node-side" }, gl = {
+}, gl = { class: "node-side" }, hl = {
   key: 0,
   class: "chip model"
-}, re = /* @__PURE__ */ Q({
+}, ce = /* @__PURE__ */ Q({
   __name: "StageNode",
   props: {
     stage: {},
@@ -47,69 +47,69 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   },
   emits: ["select"],
   setup(t, { emit: c }) {
-    const s = t, m = c, b = N(() => he(s.config, s.stage)), y = N(() => s.config.stages[s.stage].model), g = N({ get: () => b.value, set: (V) => {
-      s.config.stages[s.stage].enabled = V;
-    } }), w = N(() => {
-      const V = s.config, l = V.stages;
+    const s = t, m = c, v = T(() => he(s.config, s.stage)), f = T(() => s.config.stages[s.stage].model), y = T({ get: () => v.value, set: (w) => {
+      s.config.stages[s.stage].enabled = w;
+    } }), k = T(() => {
+      const w = s.config, l = w.stages;
       switch (s.stage) {
         case "map":
-          return V.fields.filter((a) => a.search_within === "sections").map((a) => ({ text: a.name || "New field", tone: "primary" }));
+          return w.fields.filter((a) => a.search_within === "sections").map((a) => ({ text: a.name || "New field", tone: "primary" }));
         case "prefetch":
-          return [...l.prefetch.queries.map((a) => ({ text: a.name || "Untitled query", tone: "" })), ...V.fields.filter((a) => a.search_hints.trim()).map((a) => ({ text: a.name, tone: "hint" }))];
+          return [...l.prefetch.queries.map((a) => ({ text: a.name || "Untitled query", tone: "" })), ...w.fields.filter((a) => a.search_hints.trim()).map((a) => ({ text: a.name, tone: "hint" }))];
         case "scout":
-          return l.scout.mode === "agent" ? l.scout.tools.map((a) => ({ text: Se(a).toLowerCase(), tone: "" })) : [];
+          return l.scout.mode === "agent" ? l.scout.tools.map((a) => ({ text: Ce(a).toLowerCase(), tone: "" })) : [];
         case "deep":
-          return V.fields.filter((a) => a.strategy === "deep").map((a) => ({ text: a.name || "New field", tone: "primary" }));
+          return w.fields.filter((a) => a.strategy === "deep").map((a) => ({ text: a.name || "New field", tone: "primary" }));
         case "extract":
-          return ze(V).map((a) => ({ text: `${a.name} · ${a.fields.length}`, tone: "" }));
+          return ze(w).map((a) => ({ text: `${a.name} · ${a.fields.length}`, tone: "" }));
         default:
           return [];
       }
-    }), B = (V) => [`${(V.duration_ms / 1e3).toFixed(1)}s`, `${(V.input_tokens + V.output_tokens).toLocaleString()} tokens`, V.queries?.length ? `${V.queries.length} queries` : "", V.message ?? ""].filter(Boolean).join(" · ");
-    return (V, l) => (n(), o("div", {
-      class: W(["node", { active: t.active, off: !b.value, fixed: t.stage === "extract" }]),
+    }), N = (w) => [`${(w.duration_ms / 1e3).toFixed(1)}s`, `${(w.input_tokens + w.output_tokens).toLocaleString()} tokens`, w.queries?.length ? `${w.queries.length} queries` : "", w.message ?? ""].filter(Boolean).join(" · ");
+    return (w, l) => (n(), o("div", {
+      class: W(["node", { active: t.active, off: !v.value, fixed: t.stage === "extract" }]),
       role: "button",
       tabindex: "0",
-      "aria-label": h(oe)[t.stage],
+      "aria-label": h(ie)[t.stage],
       onClick: l[1] || (l[1] = (a) => m("select")),
       onKeydown: [
-        l[2] || (l[2] = Te((a) => m("select"), ["enter"])),
-        l[3] || (l[3] = Te(ke((a) => m("select"), ["prevent"]), ["space"]))
+        l[2] || (l[2] = Re((a) => m("select"), ["enter"])),
+        l[3] || (l[3] = Re(ke((a) => m("select"), ["prevent"]), ["space"]))
       ]
     }, [
-      e("span", cl, [
-        r(h(L), {
-          icon: h(qe)[t.stage]
+      e("span", ml, [
+        r(h(O), {
+          icon: h(Ue)[t.stage]
         }, null, 8, ["icon"])
       ]),
-      e("span", ml, [
-        e("span", vl, i(h(oe)[t.stage]), 1),
-        e("span", bl, i(b.value ? h(_e)(t.stage, t.config) : "Off"), 1),
-        b.value && w.value.length ? (n(), o("span", pl, [
-          (n(!0), o(S, null, O(w.value, (a) => (n(), o("span", {
+      e("span", vl, [
+        e("span", bl, i(h(ie)[t.stage]), 1),
+        e("span", pl, i(v.value ? h(el)(t.stage, t.config) : "Off"), 1),
+        v.value && k.value.length ? (n(), o("span", yl, [
+          (n(!0), o(S, null, F(k.value, (a) => (n(), o("span", {
             key: a.text,
             class: W(["chip", { primary: a.tone === "primary", "muted-chip": a.tone === "hint" }])
           }, i(a.text), 3))), 128))
         ])) : p("", !0),
-        t.trace ? (n(), o("span", yl, [
-          r(h(L), {
+        t.trace ? (n(), o("span", fl, [
+          r(h(O), {
             icon: t.trace.status === "failed" ? "tabler:alert-circle" : "tabler:circle-check"
           }, null, 8, ["icon"]),
-          $(i(B(t.trace)), 1)
+          $(i(N(t.trace)), 1)
         ])) : p("", !0)
       ]),
-      e("span", fl, [
-        b.value && y.value ? (n(), o("span", gl, i(h(Pe)(y.value)), 1)) : p("", !0),
-        t.stage !== "extract" && !t.readonly ? (n(), Z(I, {
+      e("span", gl, [
+        v.value && f.value ? (n(), o("span", hl, i(h(Pe)(f.value)), 1)) : p("", !0),
+        t.stage !== "extract" && !t.readonly ? (n(), Z(K, {
           key: 1,
-          modelValue: g.value,
-          "onUpdate:modelValue": l[0] || (l[0] = (a) => g.value = a),
-          label: `Enable ${h(oe)[t.stage]}`
+          modelValue: y.value,
+          "onUpdate:modelValue": l[0] || (l[0] = (a) => y.value = a),
+          label: `Enable ${h(ie)[t.stage]}`
         }, null, 8, ["modelValue", "label"])) : p("", !0)
       ])
-    ], 42, rl));
+    ], 42, cl));
   }
-}), hl = ["aria-labelledby"], kl = ["aria-checked", "tabindex", "disabled", "onClick", "onKeydown"], ve = /* @__PURE__ */ Q({
+}), kl = ["aria-labelledby"], $l = ["aria-checked", "tabindex", "disabled", "onClick", "onKeydown"], ve = /* @__PURE__ */ Q({
   __name: "Segmented",
   props: /* @__PURE__ */ $e({
     options: {},
@@ -121,45 +121,45 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   }),
   emits: ["update:modelValue"],
   setup(t) {
-    const c = t, s = fe(t, "modelValue"), m = A([]);
-    function b(y, g) {
-      const w = c.options.length - 1, B = { ArrowRight: g + 1, ArrowDown: g + 1, ArrowLeft: g - 1, ArrowUp: g - 1, Home: 0, End: w }[y.key];
-      if (B === void 0) return;
-      y.preventDefault();
-      const V = (B + c.options.length) % c.options.length;
-      s.value = c.options[V].value, m.value[V]?.focus();
+    const c = t, s = fe(t, "modelValue"), m = D([]);
+    function v(f, y) {
+      const k = c.options.length - 1, N = { ArrowRight: y + 1, ArrowDown: y + 1, ArrowLeft: y - 1, ArrowUp: y - 1, Home: 0, End: k }[f.key];
+      if (N === void 0) return;
+      f.preventDefault();
+      const w = (N + c.options.length) % c.options.length;
+      s.value = c.options[w].value, m.value[w]?.focus();
     }
-    return (y, g) => (n(), o("div", {
+    return (f, y) => (n(), o("div", {
       class: "segmented",
       role: "radiogroup",
       "aria-labelledby": t.labelledBy
     }, [
-      (n(!0), o(S, null, O(t.options, (w, B) => (n(), o("button", {
-        key: w.value,
+      (n(!0), o(S, null, F(t.options, (k, N) => (n(), o("button", {
+        key: k.value,
         ref_for: !0,
         ref_key: "buttons",
         ref: m,
         type: "button",
         role: "radio",
-        "aria-checked": s.value === w.value,
-        tabindex: s.value === w.value ? 0 : -1,
+        "aria-checked": s.value === k.value,
+        tabindex: s.value === k.value ? 0 : -1,
         disabled: t.disabled,
-        onClick: (V) => s.value = w.value,
-        onKeydown: (V) => b(V, B)
-      }, i(w.label), 41, kl))), 128))
-    ], 8, hl));
+        onClick: (w) => s.value = k.value,
+        onKeydown: (w) => v(w, N)
+      }, i(k.label), 41, $l))), 128))
+    ], 8, kl));
   }
-}), $l = ["disabled"], xl = { class: "grid" }, wl = ["aria-invalid"], Vl = ["value"], Sl = {
+}), xl = ["disabled"], wl = { class: "grid" }, Vl = ["aria-invalid"], Sl = ["value"], Cl = {
   key: 0,
   class: "field-error",
   role: "alert"
-}, Cl = { key: 1 }, ql = ["value"], Ul = { key: 2 }, Ml = ["value"], El = { class: "grid" }, Nl = {
+}, ql = { key: 1 }, Ul = ["value"], El = { key: 2 }, Ml = ["value"], Nl = { class: "grid" }, Bl = {
   key: 3,
   class: "field-note"
-}, Bl = { class: "label-block" }, Tl = {
+}, Tl = { class: "label-block" }, Rl = {
   key: 4,
   class: "field-error"
-}, Rl = { id: "docscout-groups" }, Al = ["value"], Dl = { key: 5 }, Ll = ["placeholder"], Ol = { class: "toggle-row" }, Fl = { class: "toggle-row" }, zl = /* @__PURE__ */ Q({
+}, Al = { id: "docscout-groups" }, Dl = ["value"], Ll = { key: 5 }, Ol = ["placeholder"], Fl = { class: "toggle-row" }, zl = { class: "toggle-row" }, Pl = /* @__PURE__ */ Q({
   __name: "FieldInspector",
   props: {
     field: {},
@@ -171,29 +171,29 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   },
   emits: ["remove"],
   setup(t, { emit: c }) {
-    const s = t, m = c, b = [{ value: "text", label: "Text" }, { value: "number", label: "Number" }, { value: "boolean", label: "Yes / no" }, { value: "date", label: "Date" }, { value: "enum", label: "One of a set" }, { value: "list", label: "List" }, { value: "object", label: "Object" }], y = b.filter((V) => ["text", "number", "boolean", "date", "object"].includes(V.value)), g = N(() => We(s.field, s.otherNames)), w = N(() => s.field.type !== "boolean" && s.field.type !== "enum" && !(s.field.type === "list" && s.field.item_type === "boolean"));
-    ie(() => [s.field.type, s.field.item_type], () => {
-      !Ae(s.field) && s.field.enum_values.length && (s.field.enum_values = []);
+    const s = t, m = c, v = [{ value: "text", label: "Text" }, { value: "number", label: "Number" }, { value: "boolean", label: "Yes / no" }, { value: "date", label: "Date" }, { value: "enum", label: "One of a set" }, { value: "list", label: "List" }, { value: "object", label: "Object" }], f = v.filter((w) => ["text", "number", "boolean", "date", "object"].includes(w.value)), y = T(() => Ie(s.field, s.otherNames)), k = T(() => s.field.type !== "boolean" && s.field.type !== "enum" && !(s.field.type === "list" && s.field.item_type === "boolean"));
+    de(() => [s.field.type, s.field.item_type], () => {
+      !De(s.field) && s.field.enum_values.length && (s.field.enum_values = []);
     });
-    function B(V) {
-      s.field.enum_values = [...new Set(V.target.value.split(`
+    function N(w) {
+      s.field.enum_values = [...new Set(w.target.value.split(`
 `).map((l) => l.trim()).filter(Boolean))];
     }
-    return (V, l) => (n(), o("fieldset", {
+    return (w, l) => (n(), o("fieldset", {
       class: "inspector-form",
       disabled: t.readonly
     }, [
-      e("div", xl, [
+      e("div", wl, [
         e("label", null, [
           l[14] || (l[14] = $("Name", -1)),
           j(e("input", {
             "onUpdate:modelValue": l[0] || (l[0] = (a) => t.field.name = a),
             placeholder: "invoice_total",
             "aria-label": "Field name",
-            "aria-invalid": !!g.value,
+            "aria-invalid": !!y.value,
             spellcheck: "false",
             class: "mono-input"
-          }, null, 8, wl), [
+          }, null, 8, Vl), [
             [
               Y,
               t.field.name,
@@ -208,40 +208,40 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
             "onUpdate:modelValue": l[1] || (l[1] = (a) => t.field.type = a),
             "aria-label": "Field type"
           }, [
-            (n(), o(S, null, O(b, (a) => e("option", {
+            (n(), o(S, null, F(v, (a) => e("option", {
               key: a.value,
               value: a.value
-            }, i(a.label), 9, Vl)), 64))
+            }, i(a.label), 9, Sl)), 64))
           ], 512), [
             [ye, t.field.type]
           ])
         ])
       ]),
-      g.value ? (n(), o("p", Sl, [
-        r(h(L), { icon: "tabler:alert-circle" }),
-        $(i(g.value), 1)
+      y.value ? (n(), o("p", Cl, [
+        r(h(O), { icon: "tabler:alert-circle" }),
+        $(i(y.value), 1)
       ])) : p("", !0),
-      t.field.type === "list" ? (n(), o("label", Cl, [
+      t.field.type === "list" ? (n(), o("label", ql, [
         l[16] || (l[16] = $("Each item is", -1)),
         j(e("select", {
           "onUpdate:modelValue": l[2] || (l[2] = (a) => t.field.item_type = a)
         }, [
-          (n(!0), o(S, null, O(h(y), (a) => (n(), o("option", {
+          (n(!0), o(S, null, F(h(f), (a) => (n(), o("option", {
             key: a.value,
             value: a.value
-          }, i(a.label), 9, ql))), 128))
+          }, i(a.label), 9, Ul))), 128))
         ], 512), [
           [ye, t.field.item_type]
         ])
       ])) : p("", !0),
-      h(Ae)(t.field) ? (n(), o("label", Ul, [
+      h(De)(t.field) ? (n(), o("label", El, [
         $(i(t.field.type === "enum" ? "Allowed values" : "Allowed items (optional)"), 1),
         e("textarea", {
           value: t.field.enum_values.join(`
 `),
           rows: "3",
           placeholder: "One per line",
-          onChange: B
+          onChange: N
         }, null, 40, Ml),
         e("small", null, i(t.field.type === "enum" ? "The value must be exactly one of these." : "When set, every item must be one of these."), 1)
       ])) : p("", !0),
@@ -268,7 +268,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
         ]),
         l[20] || (l[20] = e("small", null, "Each line is an extra search for this field in Prefetch and Deep analysis.", -1))
       ]),
-      e("div", El, [
+      e("div", Nl, [
         e("label", null, [
           l[22] || (l[22] = $("Strategy", -1)),
           j(e("select", {
@@ -298,11 +298,11 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           l[24] || (l[24] = e("small", null, "Per search hint", -1))
         ])
       ]),
-      t.field.strategy === "deep" && !t.deepEnabled ? (n(), o("p", Nl, [
-        r(h(L), { icon: "tabler:info-circle" }),
+      t.field.strategy === "deep" && !t.deepEnabled ? (n(), o("p", Bl, [
+        r(h(O), { icon: "tabler:info-circle" }),
         l[25] || (l[25] = $("Deep analysis is off in the flow, so this field runs as standard.", -1))
       ])) : p("", !0),
-      e("div", Bl, [
+      e("div", Tl, [
         l[26] || (l[26] = e("span", { id: "within-label" }, "Search within", -1)),
         r(ve, {
           modelValue: t.field.search_within,
@@ -312,8 +312,8 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
         }, null, 8, ["modelValue"]),
         e("small", null, i(t.field.search_within === "sections" ? "Map picks the sections that should hold this value; search and reading stay inside them." : "Search covers the whole document."), 1)
       ]),
-      t.field.search_within === "sections" && !t.mapEnabled ? (n(), o("p", Tl, [
-        r(h(L), { icon: "tabler:alert-circle" }),
+      t.field.search_within === "sections" && !t.mapEnabled ? (n(), o("p", Rl, [
+        r(h(O), { icon: "tabler:alert-circle" }),
         l[27] || (l[27] = $("Turn on Map the document to read sections.", -1))
       ])) : p("", !0),
       e("label", null, [
@@ -330,11 +330,11 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
             { trim: !0 }
           ]
         ]),
-        e("datalist", Rl, [
-          (n(!0), o(S, null, O(t.groups, (a) => (n(), o("option", {
+        e("datalist", Al, [
+          (n(!0), o(S, null, F(t.groups, (a) => (n(), o("option", {
             key: a,
             value: a
-          }, null, 8, Al))), 128))
+          }, null, 8, Dl))), 128))
         ]),
         l[29] || (l[29] = e("small", null, "Fields in a group are extracted together in one call.", -1))
       ]),
@@ -349,33 +349,33 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           [Y, t.field.validation_hints]
         ])
       ]),
-      w.value ? (n(), o("label", Dl, [
+      k.value ? (n(), o("label", Ll, [
         l[31] || (l[31] = $("Expected format", -1)),
         j(e("input", {
           "onUpdate:modelValue": l[10] || (l[10] = (a) => t.field.expected_format = a),
-          placeholder: h(el)(t.field)
-        }, null, 8, Ll), [
+          placeholder: h(ll)(t.field)
+        }, null, 8, Ol), [
           [Y, t.field.expected_format]
         ])
       ])) : p("", !0),
-      e("div", Ol, [
+      e("div", Fl, [
         l[32] || (l[32] = e("span", null, [
           $("Required"),
           e("small", null, "A run reports this field as missing when no value is found.")
         ], -1)),
-        r(I, {
+        r(K, {
           modelValue: t.field.required,
           "onUpdate:modelValue": l[11] || (l[11] = (a) => t.field.required = a),
           label: "Required",
           disabled: t.readonly
         }, null, 8, ["modelValue", "disabled"])
       ]),
-      e("div", Fl, [
+      e("div", zl, [
         l[33] || (l[33] = e("span", null, [
           $("Evidence required"),
           e("small", null, "The value must cite a quote from the document.")
         ], -1)),
-        r(I, {
+        r(K, {
           modelValue: t.field.evidence_required,
           "onUpdate:modelValue": l[12] || (l[12] = (a) => t.field.evidence_required = a),
           label: "Evidence required",
@@ -388,9 +388,9 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
         class: "btn danger-text",
         onClick: l[13] || (l[13] = (a) => m("remove"))
       }, "Remove field"))
-    ], 8, $l));
+    ], 8, xl));
   }
-}), Pl = ["value", "capability", "aria-labelledby"], Wl = {
+}), Il = ["value", "capability", "aria-labelledby"], Wl = {
   key: 1,
   class: "dz-error",
   role: "alert"
@@ -407,31 +407,31 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   },
   emits: ["select"],
   setup(t, { emit: c }) {
-    const s = c, m = A(!!customElements.get("wc-model-picker")), b = A("");
-    Ce(async () => {
+    const s = c, m = D(!!customElements.get("wc-model-picker")), v = D("");
+    xe(async () => {
       if (!m.value)
         try {
-          await Fe("wc-model-picker", { timeoutMs: 8e3 }), m.value = !0;
-        } catch (g) {
-          b.value = g instanceof Error ? g.message : String(g);
+          await qe("wc-model-picker", { timeoutMs: 8e3 }), m.value = !0;
+        } catch (y) {
+          v.value = y instanceof Error ? y.message : String(y);
         }
     });
-    function y(g) {
-      const w = g.detail;
-      typeof w == "string" && s("select", w);
+    function f(y) {
+      const k = y.detail;
+      typeof k == "string" && s("select", k);
     }
-    return (g, w) => m.value ? (n(), o("wc-model-picker", {
+    return (y, k) => m.value ? (n(), o("wc-model-picker", {
       key: 0,
       value: t.value,
       capability: t.capability,
       "aria-labelledby": t.labelledBy,
-      onSelect: y
-    }, null, 40, Pl)) : b.value ? (n(), o("p", Wl, "Could not load model picker: " + i(b.value), 1)) : (n(), o("span", jl, "Loading models…"));
+      onSelect: f
+    }, null, 40, Il)) : v.value ? (n(), o("p", Wl, "Could not load model picker: " + i(v.value), 1)) : (n(), o("span", jl, "Loading models…"));
   }
-}), Il = { class: "slider" }, Ql = { class: "slider-head" }, Kl = { class: "slider-value" }, Hl = ["aria-label", "aria-valuetext", "disabled"], Jl = {
+}), Ql = { class: "slider" }, Kl = { class: "slider-head" }, Hl = { class: "slider-value" }, Jl = ["aria-label", "aria-valuetext", "disabled"], Gl = {
   key: 0,
   class: "slider-hints"
-}, Gl = { key: 1 }, ce = 1e3, G = /* @__PURE__ */ Q({
+}, Xl = { key: 1 }, me = 1e3, G = /* @__PURE__ */ Q({
   __name: "Slider",
   props: /* @__PURE__ */ $e({
     label: {},
@@ -450,48 +450,48 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   }),
   emits: ["update:modelValue"],
   setup(t) {
-    const c = t, s = fe(t, "modelValue"), m = N(() => c.percent ? `${Math.round(s.value * 100)}%` : `${s.value.toLocaleString()}${c.unit ? ` ${c.unit}` : ""}`), b = (w) => c.log ? Math.log(w / c.min) / Math.log(c.max / c.min) * ce : (w - c.min) / (c.max - c.min) * ce;
-    function y(w) {
-      const B = c.log ? c.min * Math.pow(c.max / c.min, w / ce) : c.min + (c.max - c.min) * w / ce, V = Math.round(B / c.step) * c.step;
-      return Math.min(c.max, Math.max(c.min, Number(V.toFixed(4))));
+    const c = t, s = fe(t, "modelValue"), m = T(() => c.percent ? `${Math.round(s.value * 100)}%` : `${s.value.toLocaleString()}${c.unit ? ` ${c.unit}` : ""}`), v = (k) => c.log ? Math.log(k / c.min) / Math.log(c.max / c.min) * me : (k - c.min) / (c.max - c.min) * me;
+    function f(k) {
+      const N = c.log ? c.min * Math.pow(c.max / c.min, k / me) : c.min + (c.max - c.min) * k / me, w = Math.round(N / c.step) * c.step;
+      return Math.min(c.max, Math.max(c.min, Number(w.toFixed(4))));
     }
-    const g = N({ get: () => Math.round(b(s.value)), set: (w) => {
-      s.value = y(w);
+    const y = T({ get: () => Math.round(v(s.value)), set: (k) => {
+      s.value = f(k);
     } });
-    return (w, B) => (n(), o("div", Il, [
-      e("div", Ql, [
+    return (k, N) => (n(), o("div", Ql, [
+      e("div", Kl, [
         e("span", null, i(t.label), 1),
-        e("output", Kl, i(m.value), 1)
+        e("output", Hl, i(m.value), 1)
       ]),
       j(e("input", {
-        "onUpdate:modelValue": B[0] || (B[0] = (V) => g.value = V),
+        "onUpdate:modelValue": N[0] || (N[0] = (w) => y.value = w),
         type: "range",
         min: "0",
-        max: ce,
+        max: me,
         step: "1",
         "aria-label": t.label,
         "aria-valuetext": m.value,
         disabled: t.disabled,
-        style: be({ "--fill": `${g.value / ce * 100}%` })
-      }, null, 12, Hl), [
+        style: be({ "--fill": `${y.value / me * 100}%` })
+      }, null, 12, Jl), [
         [
           Y,
-          g.value,
+          y.value,
           void 0,
           { number: !0 }
         ]
       ]),
-      t.hints ? (n(), o("div", Jl, [
+      t.hints ? (n(), o("div", Gl, [
         e("span", null, i(t.hints[0]), 1),
         e("span", null, i(t.hints[1]), 1)
       ])) : p("", !0),
-      t.note ? (n(), o("small", Gl, i(t.note), 1)) : p("", !0)
+      t.note ? (n(), o("small", Xl, i(t.note), 1)) : p("", !0)
     ]));
   }
-}), Xl = {
+}), Yl = {
   class: "diagram flow-diagram",
   "aria-hidden": "true"
-}, Yl = { class: "fd-track" }, Zl = { class: "fd-node" }, _l = { class: "fd-dots" }, et = { class: "fd-more" }, lt = { class: "fd-node goal" }, tt = /* @__PURE__ */ Q({
+}, Zl = { class: "fd-track" }, _l = { class: "fd-node" }, et = { class: "fd-dots" }, lt = { class: "fd-more" }, tt = { class: "fd-node goal" }, at = /* @__PURE__ */ Q({
   __name: "ScoutDiagram",
   props: {
     rounds: {},
@@ -500,32 +500,32 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   },
   setup(t) {
     const c = t;
-    return (s, m) => (n(), o("figure", Xl, [
-      e("div", Yl, [
+    return (s, m) => (n(), o("figure", Yl, [
+      e("div", Zl, [
         m[2] || (m[2] = e("span", { class: "fd-node solid" }, "Pass", -1)),
-        (n(!0), o(S, null, O(Math.min(c.rounds, 8), (b) => (n(), o(S, { key: b }, [
+        (n(!0), o(S, null, F(Math.min(c.rounds, 8), (v) => (n(), o(S, { key: v }, [
           m[0] || (m[0] = e("span", { class: "fd-link" }, null, -1)),
-          e("span", Zl, [
-            e("span", null, "R" + i(b), 1),
-            e("span", _l, [
-              (n(!0), o(S, null, O(Math.min(c.extra, 6), (y) => (n(), o("i", { key: y }))), 128))
+          e("span", _l, [
+            e("span", null, "R" + i(v), 1),
+            e("span", et, [
+              (n(!0), o(S, null, F(Math.min(c.extra, 6), (f) => (n(), o("i", { key: f }))), 128))
             ])
           ])
         ], 64))), 128)),
         c.rounds > 8 ? (n(), o(S, { key: 0 }, [
           m[1] || (m[1] = e("span", { class: "fd-link" }, null, -1)),
-          e("span", et, "+" + i(c.rounds - 8), 1)
+          e("span", lt, "+" + i(c.rounds - 8), 1)
         ], 64)) : p("", !0),
         m[3] || (m[3] = e("span", { class: "fd-link" }, null, -1)),
-        e("span", lt, "≥ " + i(Math.round(c.confidence * 100)) + "%", 1)
+        e("span", tt, "≥ " + i(Math.round(c.confidence * 100)) + "%", 1)
       ]),
       e("figcaption", null, i(c.rounds ? `One pass, then up to ${c.rounds} rounds with up to ${c.extra} new queries each, stopping as soon as confidence reaches ${Math.round(c.confidence * 100)}%.` : "One pass only; no follow-up rounds."), 1)
     ]));
   }
-}), at = {
+}), nt = {
   class: "diagram flow-diagram",
   "aria-hidden": "true"
-}, nt = { class: "fd-grid" }, st = { class: "fd-node solid" }, ot = { class: "fd-node" }, it = { class: "fd-node" }, dt = { class: "fd-node goal" }, ut = /* @__PURE__ */ Q({
+}, st = { class: "fd-grid" }, ot = { class: "fd-node solid" }, it = { class: "fd-node" }, dt = { class: "fd-node" }, ut = { class: "fd-node goal" }, rt = /* @__PURE__ */ Q({
   __name: "DeepDiagram",
   props: {
     fields: {},
@@ -535,70 +535,70 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
     cap: {}
   },
   setup(t) {
-    const c = t, s = N(() => Math.min(c.queries * c.perQuery, c.cap));
-    return (m, b) => (n(), o("figure", at, [
-      e("div", nt, [
-        e("span", st, [
+    const c = t, s = T(() => Math.min(c.queries * c.perQuery, c.cap));
+    return (m, v) => (n(), o("figure", nt, [
+      e("div", st, [
+        e("span", ot, [
           e("b", null, i(t.fields), 1),
           $(" field" + i(t.fields === 1 ? "" : "s"), 1),
           e("small", null, i(t.parallel) + " at a time", 1)
         ]),
-        e("span", ot, [
-          e("b", null, i(t.queries), 1),
-          b[0] || (b[0] = $(" queries", -1)),
-          b[1] || (b[1] = e("small", null, "per field", -1))
-        ]),
         e("span", it, [
-          e("b", null, i(t.perQuery), 1),
-          b[2] || (b[2] = $(" chunks", -1)),
-          b[3] || (b[3] = e("small", null, "per query", -1))
+          e("b", null, i(t.queries), 1),
+          v[0] || (v[0] = $(" queries", -1)),
+          v[1] || (v[1] = e("small", null, "per field", -1))
         ]),
         e("span", dt, [
+          e("b", null, i(t.perQuery), 1),
+          v[2] || (v[2] = $(" chunks", -1)),
+          v[3] || (v[3] = e("small", null, "per query", -1))
+        ]),
+        e("span", ut, [
           e("b", null, i(s.value), 1),
-          b[4] || (b[4] = $(" chunks", -1)),
+          v[4] || (v[4] = $(" chunks", -1)),
           e("small", null, i(t.queries * t.perQuery > t.cap ? `capped at ${t.cap}` : "read per field"), 1)
         ])
       ]),
       e("figcaption", null, "Each deep field gets its own queries; up to " + i(s.value) + " chunks are read for it before analysis.", 1)
     ]));
   }
-}), rt = ["disabled"], ct = { class: "muted" }, mt = { class: "toggle-row" }, vt = { class: "label-block" }, bt = { class: "toggle-row" }, pt = {
+}), ct = ["disabled"], mt = { class: "muted" }, vt = { class: "toggle-row" }, bt = { class: "label-block" }, pt = { class: "toggle-row" }, yt = {
   id: "model-map",
   class: "model-role"
-}, yt = {
+}, ft = {
   key: 0,
   class: "chips"
-}, ft = {
+}, gt = {
   key: 1,
   class: "muted"
-}, gt = { class: "toggle-row" }, ht = { class: "grid" }, kt = ["onUpdate:modelValue"], $t = ["onUpdate:modelValue"], xt = ["onUpdate:modelValue"], wt = ["onClick"], Vt = {
+}, ht = { class: "toggle-row" }, kt = { class: "grid" }, $t = ["onUpdate:modelValue"], xt = ["onUpdate:modelValue"], wt = ["onUpdate:modelValue"], Vt = ["onClick"], St = {
   key: 0,
   class: "muted"
-}, St = { class: "toggle-row" }, Ct = { class: "label-block" }, qt = {
+}, Ct = { class: "toggle-row" }, qt = { class: "label-block" }, Ut = {
   id: "model-scout",
   class: "model-role"
-}, Ut = {
+}, Et = {
   key: 2,
   class: "muted"
 }, Mt = {
   key: 3,
   class: "toggle-row"
-}, Et = { class: "toggle-row" }, Nt = { class: "toggle-row" }, Bt = { class: "label-block" }, Tt = {
+}, Nt = { class: "toggle-row" }, Bt = { class: "toggle-row" }, Tt = { class: "label-block" }, Rt = {
   id: "model-deep",
   class: "model-role"
-}, Rt = {
+}, At = {
   id: "model-deep-query",
   class: "model-role"
-}, At = {
+}, Dt = {
   id: "model-extract",
   class: "model-role"
-}, Dt = { class: "output-list" }, Lt = { class: "chip" }, Ot = {
+}, Lt = { class: "output-list" }, Ot = { class: "chip" }, Ft = {
   key: 0,
   class: "muted"
-}, Ft = { class: "toggle-row" }, zt = { class: "toggle-row" }, Pt = { class: "toggle-row" }, Wt = { class: "toggle-row" }, jt = {
+}, zt = { class: "toggle-row" }, Pt = { class: "toggle-row" }, It = { class: "toggle-row" }, Wt = { class: "toggle-row" }, jt = {
   id: "model-verify",
   class: "model-role"
-}, It = /* @__PURE__ */ Q({
+}, Qt = /* @__PURE__ */ Q({
   __name: "StepInspector",
   props: {
     stage: {},
@@ -606,27 +606,27 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
     readonly: { type: Boolean }
   },
   setup(t) {
-    const c = t, s = N(() => c.config.stages), m = (V) => nl(c.stage, V), b = ll(), y = N(() => c.config.fields.filter((V) => V.strategy === "deep").length), g = N(() => c.config.fields.filter((V) => V.search_within === "sections").map((V) => V.name || "New field")), w = N(() => ze(c.config));
-    function B(V, l) {
-      const a = s.value.scout.tools.filter((q) => q !== V);
-      s.value.scout.tools = l ? [...a, V] : a;
+    const c = t, s = T(() => c.config.stages), m = (w) => sl(c.stage, w), v = tl(), f = T(() => c.config.fields.filter((w) => w.strategy === "deep").length), y = T(() => c.config.fields.filter((w) => w.search_within === "sections").map((w) => w.name || "New field")), k = T(() => ze(c.config));
+    function N(w, l) {
+      const a = s.value.scout.tools.filter((q) => q !== w);
+      s.value.scout.tools = l ? [...a, w] : a;
     }
-    return (V, l) => (n(), o("fieldset", {
+    return (w, l) => (n(), o("fieldset", {
       class: "inspector-form",
       disabled: t.readonly
     }, [
-      e("p", ct, i(h(tl)[t.stage]), 1),
+      e("p", mt, i(h(al)[t.stage]), 1),
       t.stage === "map" ? (n(), o(S, { key: 0 }, [
-        e("div", mt, [
+        e("div", vt, [
           l[34] || (l[34] = e("span", null, "Stage enabled", -1)),
-          r(I, {
+          r(K, {
             modelValue: s.value.map.enabled,
             "onUpdate:modelValue": l[0] || (l[0] = (a) => s.value.map.enabled = a),
             label: "Enable step",
             disabled: t.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        e("div", vt, [
+        e("div", bt, [
           l[35] || (l[35] = e("span", { id: "outline-label" }, "Outline", -1)),
           r(ve, {
             modelValue: s.value.map.outline,
@@ -636,12 +636,12 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           }, null, 8, ["modelValue"]),
           l[36] || (l[36] = e("small", null, "The document's own headings are used when it has them; otherwise the model builds an outline.", -1))
         ]),
-        e("div", bt, [
+        e("div", pt, [
           l[37] || (l[37] = e("span", null, [
             $("Section summaries"),
             e("small", null, "A short summary per section helps pick the right sections in long documents.")
           ], -1)),
-          r(I, {
+          r(K, {
             modelValue: s.value.map.section_summaries,
             "onUpdate:modelValue": l[2] || (l[2] = (a) => s.value.map.section_summaries = a),
             label: "Section summaries",
@@ -649,7 +649,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           }, null, 8, ["modelValue", "disabled"])
         ]),
         l[39] || (l[39] = e("h4", null, "Models", -1)),
-        e("div", pt, [
+        e("div", yt, [
           l[38] || (l[38] = e("span", null, "Outliner", -1)),
           r(le, {
             value: s.value.map.model,
@@ -659,17 +659,17 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           }, null, 8, ["value"])
         ]),
         l[40] || (l[40] = e("h4", null, "Fields that read sections", -1)),
-        g.value.length ? (n(), o("p", yt, [
-          (n(!0), o(S, null, O(g.value, (a) => (n(), o("span", {
+        y.value.length ? (n(), o("p", ft, [
+          (n(!0), o(S, null, F(y.value, (a) => (n(), o("span", {
             key: a,
             class: "chip primary"
           }, i(a), 1))), 128))
-        ])) : (n(), o("p", ft, 'None. Set "Search within" on a field to read only the sections Map picks for it.'))
+        ])) : (n(), o("p", gt, 'None. Set "Search within" on a field to read only the sections Map picks for it.'))
       ], 64)) : p("", !0),
       t.stage === "prefetch" ? (n(), o(S, { key: 1 }, [
-        e("div", gt, [
+        e("div", ht, [
           l[41] || (l[41] = e("span", null, "Stage enabled", -1)),
-          r(I, {
+          r(K, {
             modelValue: s.value.prefetch.enabled,
             "onUpdate:modelValue": l[4] || (l[4] = (a) => s.value.prefetch.enabled = a),
             label: "Enable step",
@@ -677,28 +677,28 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           }, null, 8, ["modelValue", "disabled"])
         ]),
         l[45] || (l[45] = e("h4", null, "Queries", -1)),
-        (n(!0), o(S, null, O(s.value.prefetch.queries, (a, q) => (n(), o("div", {
+        (n(!0), o(S, null, F(s.value.prefetch.queries, (a, q) => (n(), o("div", {
           key: q,
           class: "query-row"
         }, [
-          e("div", ht, [
+          e("div", kt, [
             e("label", null, [
               l[42] || (l[42] = $("Name", -1)),
               j(e("input", {
-                "onUpdate:modelValue": (F) => a.name = F,
+                "onUpdate:modelValue": (z) => a.name = z,
                 placeholder: "Parties"
-              }, null, 8, kt), [
+              }, null, 8, $t), [
                 [Y, a.name]
               ])
             ]),
             e("label", null, [
               l[43] || (l[43] = $("Chunks", -1)),
               j(e("input", {
-                "onUpdate:modelValue": (F) => a.chunks = F,
+                "onUpdate:modelValue": (z) => a.chunks = z,
                 type: "number",
                 min: "1",
                 max: "1000"
-              }, null, 8, $t), [
+              }, null, 8, xt), [
                 [
                   Y,
                   a.chunks,
@@ -711,10 +711,10 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           e("label", null, [
             l[44] || (l[44] = $("Query", -1)),
             j(e("textarea", {
-              "onUpdate:modelValue": (F) => a.query = F,
+              "onUpdate:modelValue": (z) => a.query = z,
               rows: "2",
               placeholder: "Who signed the agreement and on whose behalf"
-            }, null, 8, xt), [
+            }, null, 8, wt), [
               [Y, a.query]
             ])
           ]),
@@ -722,28 +722,28 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
             key: 0,
             type: "button",
             class: "btn subtle",
-            onClick: (F) => s.value.prefetch.queries.splice(q, 1)
-          }, "Remove query", 8, wt))
+            onClick: (z) => s.value.prefetch.queries.splice(q, 1)
+          }, "Remove query", 8, Vt))
         ]))), 128)),
-        s.value.prefetch.queries.length ? p("", !0) : (n(), o("p", Vt, "No fixed queries. Field search hints still run.")),
+        s.value.prefetch.queries.length ? p("", !0) : (n(), o("p", St, "No fixed queries. Field search hints still run.")),
         t.readonly ? p("", !0) : (n(), o("button", {
           key: 1,
           type: "button",
           class: "btn",
-          onClick: l[5] || (l[5] = (a) => s.value.prefetch.queries.push(h(al)()))
+          onClick: l[5] || (l[5] = (a) => s.value.prefetch.queries.push(h(nl)()))
         }, "Add query"))
       ], 64)) : p("", !0),
       t.stage === "scout" ? (n(), o(S, { key: 2 }, [
-        e("div", St, [
+        e("div", Ct, [
           l[46] || (l[46] = e("span", null, "Stage enabled", -1)),
-          r(I, {
+          r(K, {
             modelValue: s.value.scout.enabled,
             "onUpdate:modelValue": l[6] || (l[6] = (a) => s.value.scout.enabled = a),
             label: "Enable step",
             disabled: t.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        e("div", Ct, [
+        e("div", qt, [
           l[47] || (l[47] = e("span", { id: "mode-label" }, "Mode", -1)),
           r(ve, {
             modelValue: s.value.scout.mode,
@@ -753,14 +753,14 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           }, null, 8, ["modelValue"]),
           e("small", null, i(s.value.scout.mode === "loop" ? "Each round the model rates the evidence, drops noise and proposes queries; the engine runs them." : "The model reads the document itself with the tools below, following references until confident."), 1)
         ]),
-        s.value.scout.mode === "loop" ? (n(), Z(tt, {
+        s.value.scout.mode === "loop" ? (n(), Z(at, {
           key: 0,
           rounds: s.value.scout.max_rounds,
           confidence: s.value.scout.target_confidence,
           extra: s.value.scout.max_extra_queries
         }, null, 8, ["rounds", "confidence", "extra"])) : p("", !0),
         l[52] || (l[52] = e("h4", null, "Models", -1)),
-        e("div", qt, [
+        e("div", Ut, [
           l[48] || (l[48] = e("span", null, "Scout", -1)),
           r(le, {
             value: s.value.scout.model,
@@ -810,25 +810,25 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           unit: "tokens",
           disabled: t.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"]),
-        s.value.scout.mode === "agent" ? (n(), o("p", Ut, "Tool budget: " + i(s.value.scout.max_rounds * s.value.scout.max_extra_queries) + " calls.", 1)) : p("", !0),
+        s.value.scout.mode === "agent" ? (n(), o("p", Et, "Tool budget: " + i(s.value.scout.max_rounds * s.value.scout.max_extra_queries) + " calls.", 1)) : p("", !0),
         s.value.scout.mode === "loop" ? (n(), o("div", Mt, [
           l[49] || (l[49] = e("span", null, [
             $("Drop noisy chunks"),
             e("small", null, "Chunks no field needs leave the evidence pool; chunks cited for a field always stay.")
           ], -1)),
-          r(I, {
+          r(K, {
             modelValue: s.value.scout.drop_noise,
             "onUpdate:modelValue": l[13] || (l[13] = (a) => s.value.scout.drop_noise = a),
             label: "Drop noisy chunks",
             disabled: t.readonly
           }, null, 8, ["modelValue", "disabled"])
         ])) : p("", !0),
-        e("div", Et, [
+        e("div", Nt, [
           l[50] || (l[50] = e("span", null, [
             $("Share scout notes with extraction"),
             e("small", null, "Extraction sees what the scout learned.")
           ], -1)),
-          r(I, {
+          r(K, {
             modelValue: s.value.scout.share_notes,
             "onUpdate:modelValue": l[14] || (l[14] = (a) => s.value.scout.share_notes = a),
             label: "Share scout notes with extraction",
@@ -837,38 +837,38 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
         ]),
         s.value.scout.mode === "agent" ? (n(), o(S, { key: 4 }, [
           l[51] || (l[51] = e("h4", null, "Agent tools", -1)),
-          (n(!0), o(S, null, O(h(b), (a) => (n(), o("div", {
+          (n(!0), o(S, null, F(h(v), (a) => (n(), o("div", {
             key: a,
             class: "toggle-row"
           }, [
-            e("span", null, i(h(Se)(a)), 1),
-            r(I, {
+            e("span", null, i(h(Ce)(a)), 1),
+            r(K, {
               "model-value": s.value.scout.tools.includes(a),
-              label: h(Se)(a),
+              label: h(Ce)(a),
               disabled: t.readonly,
-              "onUpdate:modelValue": (q) => B(a, q)
+              "onUpdate:modelValue": (q) => N(a, q)
             }, null, 8, ["model-value", "label", "disabled", "onUpdate:modelValue"])
           ]))), 128))
         ], 64)) : p("", !0)
       ], 64)) : p("", !0),
       t.stage === "deep" ? (n(), o(S, { key: 3 }, [
-        e("div", Nt, [
+        e("div", Bt, [
           l[54] || (l[54] = e("span", null, "Stage enabled", -1)),
-          r(I, {
+          r(K, {
             modelValue: s.value.deep.enabled,
             "onUpdate:modelValue": l[15] || (l[15] = (a) => s.value.deep.enabled = a),
             label: "Enable step",
             disabled: t.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        r(ut, {
-          fields: y.value,
+        r(rt, {
+          fields: f.value,
           parallel: s.value.deep.parallel_fields,
           queries: s.value.deep.max_queries,
           "per-query": s.value.deep.chunks_per_query,
           cap: s.value.deep.chunk_cap
         }, null, 8, ["fields", "parallel", "queries", "per-query", "cap"]),
-        e("div", Bt, [
+        e("div", Tt, [
           l[55] || (l[55] = e("span", { id: "read-label" }, "Reads", -1)),
           r(ve, {
             modelValue: s.value.deep.read,
@@ -879,7 +879,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           l[56] || (l[56] = e("small", null, "Whole sections suit clauses that span many passages; long sections fall back to chunks.", -1))
         ]),
         l[59] || (l[59] = e("h4", null, "Models", -1)),
-        e("div", Tt, [
+        e("div", Rt, [
           l[57] || (l[57] = e("span", null, "Analysis", -1)),
           r(le, {
             value: s.value.deep.model,
@@ -888,7 +888,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
             onSelect: l[17] || (l[17] = (a) => s.value.deep.model = a)
           }, null, 8, ["value"])
         ]),
-        e("div", Rt, [
+        e("div", At, [
           l[58] || (l[58] = e("span", null, "Query writer", -1)),
           r(le, {
             value: s.value.deep.query_model,
@@ -969,7 +969,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
       ], 64)) : p("", !0),
       t.stage === "extract" ? (n(), o(S, { key: 4 }, [
         l[64] || (l[64] = e("h4", null, "Models", -1)),
-        e("div", At, [
+        e("div", Dt, [
           l[62] || (l[62] = e("span", null, "Extraction", -1)),
           r(le, {
             value: s.value.extract.model,
@@ -979,15 +979,15 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           }, null, 8, ["value"])
         ]),
         l[65] || (l[65] = e("h4", null, "Field groups", -1)),
-        e("ul", Dt, [
-          (n(!0), o(S, null, O(w.value, (a) => (n(), o("li", {
+        e("ul", Lt, [
+          (n(!0), o(S, null, F(k.value, (a) => (n(), o("li", {
             key: a.name
           }, [
             e("span", null, i(a.name), 1),
-            e("span", Lt, i(a.fields.length) + " field" + i(a.fields.length === 1 ? "" : "s"), 1)
+            e("span", Ot, i(a.fields.length) + " field" + i(a.fields.length === 1 ? "" : "s"), 1)
           ]))), 128))
         ]),
-        w.value.length ? p("", !0) : (n(), o("p", Ot, "No fields yet.")),
+        k.value.length ? p("", !0) : (n(), o("p", Ft, "No fields yet.")),
         r(G, {
           modelValue: s.value.extract.max_fields_per_call,
           "onUpdate:modelValue": l[27] || (l[27] = (a) => s.value.extract.max_fields_per_call = a),
@@ -995,7 +995,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           min: m("max_fields_per_call").min,
           max: m("max_fields_per_call").max,
           disabled: t.readonly,
-          note: `${h(De)(t.config)} extraction call${h(De)(t.config) === 1 ? "" : "s"} per document. Groups larger than this are split.`
+          note: `${h(Le)(t.config)} extraction call${h(Le)(t.config) === 1 ? "" : "s"} per document. Groups larger than this are split.`
         }, null, 8, ["modelValue", "min", "max", "disabled", "note"]),
         r(G, {
           modelValue: s.value.extract.max_output_tokens,
@@ -1008,12 +1008,12 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           unit: "tokens",
           disabled: t.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"]),
-        e("div", Ft, [
+        e("div", zt, [
           l[63] || (l[63] = e("span", null, [
             $("Structured output"),
             e("small", null, "The model returns JSON matching the field schema.")
           ], -1)),
-          r(I, {
+          r(K, {
             modelValue: s.value.extract.structured_output,
             "onUpdate:modelValue": l[29] || (l[29] = (a) => s.value.extract.structured_output = a),
             label: "Structured output",
@@ -1022,21 +1022,21 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
         ])
       ], 64)) : p("", !0),
       t.stage === "verify" ? (n(), o(S, { key: 5 }, [
-        e("div", zt, [
+        e("div", Pt, [
           l[66] || (l[66] = e("span", null, "Stage enabled", -1)),
-          r(I, {
+          r(K, {
             modelValue: s.value.verify.enabled,
             "onUpdate:modelValue": l[30] || (l[30] = (a) => s.value.verify.enabled = a),
             label: "Enable step",
             disabled: t.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        e("div", Pt, [
+        e("div", It, [
           l[67] || (l[67] = e("span", null, [
             $("Quotes exist"),
             e("small", null, "Each quote is matched against the document text. No model call.")
           ], -1)),
-          r(I, {
+          r(K, {
             modelValue: s.value.verify.check_quotes,
             "onUpdate:modelValue": l[31] || (l[31] = (a) => s.value.verify.check_quotes = a),
             label: "Quotes exist",
@@ -1048,7 +1048,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
             $("Quotes support values"),
             e("small", null, "A model confirms each quote supports its value.")
           ], -1)),
-          r(I, {
+          r(K, {
             modelValue: s.value.verify.check_support,
             "onUpdate:modelValue": l[32] || (l[32] = (a) => s.value.verify.check_support = a),
             label: "Quotes support values",
@@ -1068,60 +1068,60 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           ])
         ], 64)) : p("", !0)
       ], 64)) : p("", !0)
-    ], 8, rt));
+    ], 8, ct));
   }
-}), Qt = {
+}), Kt = {
   class: "diagram chunk-diagram",
   "aria-hidden": "true"
-}, Kt = {
+}, Ht = {
   viewBox: "0 0 100 34",
   preserveAspectRatio: "none"
-}, Ht = ["x", "y", "width"], Jt = ["x", "width"], Gt = /* @__PURE__ */ Q({
+}, Jt = ["x", "y", "width"], Gt = ["x", "width"], Xt = /* @__PURE__ */ Q({
   __name: "ChunkDiagram",
   props: {
     size: {},
     overlap: {}
   },
   setup(t) {
-    const c = t, s = N(() => Math.min(0.9, Math.max(0, c.overlap / c.size))), m = N(() => {
-      const b = 100 / (3 - 2 * s.value);
-      return [0, 1, 2].map((y) => ({ x: y * b * (1 - s.value), w: b }));
+    const c = t, s = T(() => Math.min(0.9, Math.max(0, c.overlap / c.size))), m = T(() => {
+      const v = 100 / (3 - 2 * s.value);
+      return [0, 1, 2].map((f) => ({ x: f * v * (1 - s.value), w: v }));
     });
-    return (b, y) => (n(), o("figure", Qt, [
-      (n(), o("svg", Kt, [
-        (n(!0), o(S, null, O(m.value, (g, w) => (n(), o("rect", {
-          key: w,
-          x: g.x,
-          y: w % 2 ? 14 : 4,
-          width: g.w,
+    return (v, f) => (n(), o("figure", Kt, [
+      (n(), o("svg", Ht, [
+        (n(!0), o(S, null, F(m.value, (y, k) => (n(), o("rect", {
+          key: k,
+          x: y.x,
+          y: k % 2 ? 14 : 4,
+          width: y.w,
           height: "14",
           rx: "2",
           class: "chunk"
-        }, null, 8, Ht))), 128)),
-        (n(), o(S, null, O([1, 2], (g) => e("rect", {
-          key: "o" + g,
-          x: m.value[g].x,
+        }, null, 8, Jt))), 128)),
+        (n(), o(S, null, F([1, 2], (y) => e("rect", {
+          key: "o" + y,
+          x: m.value[y].x,
           y: 4,
-          width: m.value[g - 1].x + m.value[g - 1].w - m.value[g].x,
+          width: m.value[y - 1].x + m.value[y - 1].w - m.value[y].x,
           height: "24",
           class: "shared"
-        }, null, 8, Jt)), 64))
+        }, null, 8, Gt)), 64))
       ])),
       e("figcaption", null, i(t.size.toLocaleString()) + " tokens per chunk · " + i(t.overlap.toLocaleString()) + " shared with the next (" + i(Math.round(s.value * 100)) + "%)", 1)
     ]));
   }
-}), Xt = ["disabled"], Yt = { class: "muted" }, Zt = { class: "toggle-row" }, _t = { class: "toggle-row" }, ea = { class: "label-block" }, la = {
+}), Yt = ["disabled"], Zt = { class: "muted" }, _t = { class: "toggle-row" }, ea = { class: "toggle-row" }, la = { class: "label-block" }, ta = {
   key: 0,
   id: "context-model",
   class: "model-role"
-}, ta = { class: "label-block" }, aa = {
+}, aa = { class: "label-block" }, na = {
   id: "embedding-model",
   class: "model-role"
-}, na = { class: "toggle-row" }, sa = {
+}, sa = { class: "toggle-row" }, oa = {
   key: 1,
   id: "highlighter-model",
   class: "model-role"
-}, oa = /* @__PURE__ */ Q({
+}, ia = /* @__PURE__ */ Q({
   __name: "DocumentInspector",
   props: {
     config: {},
@@ -1129,14 +1129,14 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
     readonly: { type: Boolean }
   },
   setup(t) {
-    const c = t, s = N(() => c.config.retrieval), m = [{ value: "keyword", label: "Keyword", note: "Exact words and numbers" }, { value: "semantic", label: "Semantic", note: "Meaning, even with other wording" }, { value: "hybrid", label: "Hybrid", note: "Both, merged by rank" }], b = [{ value: "none", label: "None", note: "Chunks are embedded as they are." }, { value: "headings", label: "Headings", note: 'Each chunk is embedded with its heading path, for example "Article 2 › Purchase price". No model call.' }, { value: "generated", label: "Generated", note: "A model writes one or two sentences placing each chunk in the document before it is embedded. One call per eight chunks, kept with the processed document." }], y = xe("chunk_size"), g = xe("overlap"), w = xe("section_budget"), B = N(() => Math.min(g.max, s.value.chunk_size - 50));
-    return (V, l) => (n(), o("fieldset", {
+    const c = t, s = T(() => c.config.retrieval), m = [{ value: "keyword", label: "Keyword", note: "Exact words and numbers" }, { value: "semantic", label: "Semantic", note: "Meaning, even with other wording" }, { value: "hybrid", label: "Hybrid", note: "Both, merged by rank" }], v = [{ value: "none", label: "None", note: "Chunks are embedded as they are." }, { value: "headings", label: "Headings", note: 'Each chunk is embedded with its heading path, for example "Article 2 › Purchase price". No model call.' }, { value: "generated", label: "Generated", note: "A model writes one or two sentences placing each chunk in the document before it is embedded. One call per eight chunks, kept with the processed document." }], f = we("chunk_size"), y = we("overlap"), k = we("section_budget"), N = T(() => Math.min(y.max, s.value.chunk_size - 50));
+    return (w, l) => (n(), o("fieldset", {
       class: "inspector-form",
       disabled: t.readonly
     }, [
-      e("p", Yt, "The upload's text is split into chunks and indexed once per document and settings; processed copies expire after " + i(t.retention) + ".", 1),
+      e("p", Zt, "The upload's text is split into chunks and indexed once per document and settings; processed copies expire after " + i(t.retention) + ".", 1),
       l[19] || (l[19] = e("h4", null, "Chunks", -1)),
-      r(Gt, {
+      r(Xt, {
         size: s.value.chunk_size,
         overlap: s.value.overlap
       }, null, 8, ["size", "overlap"]),
@@ -1144,8 +1144,8 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
         modelValue: s.value.chunk_size,
         "onUpdate:modelValue": l[0] || (l[0] = (a) => s.value.chunk_size = a),
         label: "Chunk size",
-        min: h(y).min,
-        max: h(y).max,
+        min: h(f).min,
+        max: h(f).max,
         step: 50,
         log: "",
         unit: "tokens",
@@ -1156,30 +1156,30 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
         modelValue: s.value.overlap,
         "onUpdate:modelValue": l[1] || (l[1] = (a) => s.value.overlap = a),
         label: "Overlap",
-        min: h(g).min,
-        max: B.value,
+        min: h(y).min,
+        max: N.value,
         step: 10,
         unit: "tokens",
         disabled: t.readonly
       }, null, 8, ["modelValue", "min", "max", "disabled"]),
-      e("div", Zt, [
+      e("div", _t, [
         l[11] || (l[11] = e("span", null, [
           $("Split by headings"),
           e("small", null, "A chunk never crosses a heading.")
         ], -1)),
-        r(I, {
+        r(K, {
           modelValue: s.value.split_headings,
           "onUpdate:modelValue": l[2] || (l[2] = (a) => s.value.split_headings = a),
           label: "Split by headings",
           disabled: t.readonly
         }, null, 8, ["modelValue", "disabled"])
       ]),
-      e("div", _t, [
+      e("div", ea, [
         l[12] || (l[12] = e("span", null, [
           $("Keep tables whole"),
           e("small", null, "Table rows stay together in one chunk up to the chunk size.")
         ], -1)),
-        r(I, {
+        r(K, {
           modelValue: s.value.keep_tables,
           "onUpdate:modelValue": l[3] || (l[3] = (a) => s.value.keep_tables = a),
           label: "Keep tables whole",
@@ -1190,8 +1190,8 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
         modelValue: s.value.section_budget,
         "onUpdate:modelValue": l[4] || (l[4] = (a) => s.value.section_budget = a),
         label: "Section budget",
-        min: h(w).min,
-        max: h(w).max,
+        min: h(k).min,
+        max: h(k).max,
         step: 100,
         log: "",
         unit: "tokens",
@@ -1199,17 +1199,17 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
         disabled: t.readonly
       }, null, 8, ["modelValue", "min", "max", "disabled"]),
       l[20] || (l[20] = e("h4", null, "Context", -1)),
-      e("div", ea, [
+      e("div", la, [
         l[13] || (l[13] = e("span", { id: "context-label" }, "Chunk context", -1)),
         r(ve, {
           modelValue: s.value.context,
           "onUpdate:modelValue": l[5] || (l[5] = (a) => s.value.context = a),
           "labelled-by": "context-label",
-          options: b
+          options: v
         }, null, 8, ["modelValue"]),
-        e("small", null, i(b.find((a) => a.value === s.value.context)?.note), 1)
+        e("small", null, i(v.find((a) => a.value === s.value.context)?.note), 1)
       ]),
-      s.value.context === "generated" ? (n(), o("div", la, [
+      s.value.context === "generated" ? (n(), o("div", ta, [
         l[14] || (l[14] = e("span", null, "Context writer", -1)),
         r(le, {
           value: s.value.context_model,
@@ -1219,7 +1219,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
         }, null, 8, ["value"])
       ])) : p("", !0),
       l[21] || (l[21] = e("h4", null, "Search", -1)),
-      e("div", ta, [
+      e("div", aa, [
         l[15] || (l[15] = e("span", { id: "mode-label" }, "Search mode", -1)),
         r(ve, {
           modelValue: s.value.search_mode,
@@ -1230,7 +1230,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
         e("small", null, i(m.find((a) => a.value === s.value.search_mode)?.note), 1)
       ]),
       l[22] || (l[22] = e("h4", null, "Models", -1)),
-      e("div", aa, [
+      e("div", na, [
         l[16] || (l[16] = e("span", null, "Embedding", -1)),
         r(le, {
           value: s.value.embedding_model,
@@ -1239,19 +1239,19 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           onSelect: l[8] || (l[8] = (a) => s.value.embedding_model = a)
         }, null, 8, ["value"])
       ]),
-      e("div", na, [
+      e("div", sa, [
         l[17] || (l[17] = e("span", null, [
           $("Highlighter"),
           e("small", null, "A small model marks what each field needs before extraction.")
         ], -1)),
-        r(I, {
+        r(K, {
           modelValue: s.value.highlighter,
           "onUpdate:modelValue": l[9] || (l[9] = (a) => s.value.highlighter = a),
           label: "Highlighter",
           disabled: t.readonly
         }, null, 8, ["modelValue", "disabled"])
       ]),
-      s.value.highlighter ? (n(), o("div", sa, [
+      s.value.highlighter ? (n(), o("div", oa, [
         l[18] || (l[18] = e("span", null, "Highlighter", -1)),
         r(le, {
           value: s.value.highlighter_model,
@@ -1260,51 +1260,51 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           onSelect: l[10] || (l[10] = (a) => s.value.highlighter_model = a)
         }, null, 8, ["value"])
       ])) : p("", !0)
-    ], 8, Xt));
+    ], 8, Yt));
   }
-}), ia = { class: "canvas" }, da = { class: "canvas-inner" }, ua = {
+}), da = { class: "canvas" }, ua = { class: "canvas-inner" }, ra = {
   class: "block",
   "aria-labelledby": "fields-head"
-}, ra = { class: "block-head" }, ca = ["aria-expanded"], ma = { class: "count" }, va = {
+}, ca = { class: "block-head" }, ma = ["aria-expanded"], va = { class: "count" }, ba = {
   key: 0,
   class: "block-peek"
-}, ba = {
+}, pa = {
   id: "fields-body",
   class: "block-body"
-}, pa = {
+}, ya = {
   key: 0,
   class: "block-empty"
-}, ya = {
+}, fa = {
   key: 1,
   class: "rows"
-}, fa = ["onClick"], ga = { class: "row-name" }, ha = {
+}, ga = ["onClick"], ha = { class: "row-name" }, ka = {
   key: 0,
   class: "req",
   title: "Required"
-}, ka = { class: "chips" }, $a = {
+}, $a = { class: "chips" }, xa = {
   key: 1,
   class: "chip"
-}, xa = ["title"], wa = { class: "chip" }, Va = {
+}, wa = ["title"], Va = { class: "chip" }, Sa = {
   key: 3,
   class: "chip",
   title: "Evidence required"
-}, Sa = {
+}, Ca = {
   key: 0,
   class: "row-actions"
-}, Ca = ["disabled", "onClick"], qa = ["disabled", "onClick"], Ua = {
+}, qa = ["disabled", "onClick"], Ua = ["disabled", "onClick"], Ea = {
   class: "block",
   "aria-labelledby": "flow-head"
-}, Ma = { class: "block-head" }, Ea = ["aria-expanded"], Na = { class: "count" }, Ba = {
+}, Ma = { class: "block-head" }, Na = ["aria-expanded"], Ba = { class: "count" }, Ta = {
   key: 0,
   class: "block-peek"
-}, Ta = {
+}, Ra = {
   id: "flow-body",
   class: "flow",
   "aria-label": "Extraction flow"
-}, Ra = { class: "node-icon" }, Aa = { class: "node-main" }, Da = { class: "node-summary" }, La = { class: "node-side" }, Oa = { class: "chip model" }, Fa = { class: "branches" }, za = { class: "branch" }, Pa = { class: "branch" }, Wa = { class: "node-icon" }, ja = { class: "node-main" }, Ia = { class: "node-summary" }, Qa = ["aria-valuenow"], Ka = { class: "side-panel-head" }, Ha = { class: "side-panel-icon" }, Ja = ["disabled"], Ga = {
+}, Aa = { class: "node-icon" }, Da = { class: "node-main" }, La = { class: "node-summary" }, Oa = { class: "node-side" }, Fa = { class: "chip model" }, za = { class: "branches" }, Pa = { class: "branch" }, Ia = { class: "branch" }, Wa = { class: "node-icon" }, ja = { class: "node-main" }, Qa = { class: "node-summary" }, Ka = ["aria-valuenow"], Ha = { class: "side-panel-head" }, Ja = { class: "side-panel-icon" }, Ga = ["disabled"], Xa = {
   key: 4,
   class: "inspector-form"
-}, Xa = { class: "output-list" }, Ya = { class: "mono" }, Za = { class: "chip" }, _a = { class: "rail-label" }, we = 400, ge = 320, en = /* @__PURE__ */ Q({
+}, Ya = { class: "output-list" }, Za = { class: "mono" }, _a = { class: "chip" }, en = { class: "rail-label" }, Ve = 400, ge = 320, ln = /* @__PURE__ */ Q({
   __name: "Builder",
   props: /* @__PURE__ */ $e({
     config: {},
@@ -1319,133 +1319,133 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   }),
   emits: ["update:title", "update:description"],
   setup(t) {
-    const c = t, s = fe(t, "title"), m = fe(t, "description"), b = A({ kind: "document" });
-    function y(f, d) {
+    const c = t, s = fe(t, "title"), m = fe(t, "description"), v = D({ kind: "document" });
+    function f(g, d) {
       try {
-        const M = localStorage.getItem(`docscout.${f}`);
-        return M === null ? d : M === "1";
+        const U = localStorage.getItem(`docscout.${g}`);
+        return U === null ? d : U === "1";
       } catch {
         return d;
       }
     }
-    function g(f, d) {
+    function y(g, d) {
       try {
-        localStorage.setItem(`docscout.${f}`, d ? "1" : "0");
+        localStorage.setItem(`docscout.${g}`, d ? "1" : "0");
       } catch {
       }
     }
-    const w = A(y("panel", !0)), B = A(y("fields", !0)), V = A(y("flow", !0));
+    const k = D(f("panel", !0)), N = D(f("fields", !0)), w = D(f("flow", !0));
     function l() {
       try {
-        const f = Number(localStorage.getItem("docscout.panelWidth"));
-        return f >= ge ? f : we;
+        const g = Number(localStorage.getItem("docscout.panelWidth"));
+        return g >= ge ? g : Ve;
       } catch {
-        return we;
+        return Ve;
       }
     }
-    const a = A(l()), q = () => {
-      const f = K.value?.clientWidth;
-      return f ? Math.max(ge, f - 420) : Number.POSITIVE_INFINITY;
+    const a = D(l()), q = () => {
+      const g = R.value?.clientWidth;
+      return g ? Math.max(ge, g - 420) : Number.POSITIVE_INFINITY;
     };
-    function F(f, d = !0) {
-      if (a.value = Math.round(Math.min(q(), Math.max(ge, f))), d)
+    function z(g, d = !0) {
+      if (a.value = Math.round(Math.min(q(), Math.max(ge, g))), d)
         try {
           localStorage.setItem("docscout.panelWidth", String(a.value));
         } catch {
         }
     }
-    const U = A(!1);
-    function D(f) {
-      const d = f.currentTarget, M = f.clientX, J = a.value;
-      d.setPointerCapture(f.pointerId), U.value = !0;
-      const se = (Ge) => F(J + (M - Ge.clientX), !1), Be = () => {
-        U.value = !1, F(a.value), d.removeEventListener("pointermove", se), d.removeEventListener("pointerup", Be);
+    const C = D(!1);
+    function L(g) {
+      const d = g.currentTarget, U = g.clientX, J = a.value;
+      d.setPointerCapture(g.pointerId), C.value = !0;
+      const se = (Ge) => z(J + (U - Ge.clientX), !1), Te = () => {
+        C.value = !1, z(a.value), d.removeEventListener("pointermove", se), d.removeEventListener("pointerup", Te);
       };
-      d.addEventListener("pointermove", se), d.addEventListener("pointerup", Be);
+      d.addEventListener("pointermove", se), d.addEventListener("pointerup", Te);
     }
-    function k(f) {
-      f.key === "ArrowLeft" ? (F(a.value + 24), f.preventDefault()) : f.key === "ArrowRight" && (F(a.value - 24), f.preventDefault());
+    function V(g) {
+      g.key === "ArrowLeft" ? (z(a.value + 24), g.preventDefault()) : g.key === "ArrowRight" && (z(a.value - 24), g.preventDefault());
     }
-    function C(f) {
-      w.value = f, P.value || g("panel", f);
+    function E(g) {
+      k.value = g, I.value || y("panel", g);
     }
-    function R(f) {
-      const d = f === "fields" ? B : V;
-      d.value = !d.value, g(f, d.value);
+    function M(g) {
+      const d = g === "fields" ? N : w;
+      d.value = !d.value, y(g, d.value);
     }
-    const K = A(), P = A(!1);
+    const R = D(), I = D(!1);
     let te;
-    Ce(() => {
-      te = new ResizeObserver(([f]) => {
-        const d = P.value;
-        P.value = f.contentRect.width < 1e3, P.value && !d && (w.value = !1), !P.value && d && (w.value = y("panel", !0));
-      }), K.value && te.observe(K.value);
-    }), Oe(() => te?.disconnect());
-    const _ = A();
-    ie(b, async () => {
+    xe(() => {
+      te = new ResizeObserver(([g]) => {
+        const d = I.value;
+        I.value = g.contentRect.width < 1e3, I.value && !d && (k.value = !1), !I.value && d && (k.value = f("panel", !0));
+      }), R.value && te.observe(R.value);
+    }), Fe(() => te?.disconnect());
+    const _ = D();
+    de(v, async () => {
       await Xe(), _.value && (_.value.scrollTop = 0);
     });
-    function H(f) {
-      b.value = f, w.value = !0;
+    function H(g) {
+      v.value = g, k.value = !0;
     }
-    const X = (f) => JSON.stringify(f) === JSON.stringify(b.value), ee = N(() => b.value.kind === "field" ? c.config.fields[b.value.index] : void 0), ne = N(() => {
-      const f = b.value;
-      return f.kind === "stage" ? oe[f.stage] : f.kind === "field" ? ee.value?.name || "New field" : f.kind === "document" ? "Read document" : f.kind === "output" ? "Output" : "Details";
-    }), T = N(() => {
-      const f = b.value;
-      return f.kind === "stage" ? qe[f.stage] : f.kind === "field" ? "tabler:forms" : f.kind === "document" ? "tabler:file-text" : f.kind === "output" ? "tabler:braces" : "tabler:info-circle";
-    }), z = N(() => c.config.fields.filter((f, d) => !(b.value.kind === "field" && b.value.index === d)).map((f) => f.name)), x = N(() => c.config.stages.deep.enabled), v = N(() => c.config.stages.map.enabled), u = N(() => [...new Set(c.config.fields.map((f) => f.group.trim()).filter(Boolean))]), E = (f) => We(c.config.fields[f], c.config.fields.filter((d, M) => M !== f).map((d) => d.name)), Ue = ["map", "prefetch", "scout", "deep", "extract", "verify"], Ie = N(() => Ue.filter((f) => he(c.config, f)).map((f) => oe[f]).join(" · ")), Qe = N(() => c.config.fields.map((f) => f.name || "New field").join(", ")), Ke = N(() => Ue.filter((f) => he(c.config, f)).length), de = (f) => c.result?.trace.find((d) => d.kind === f);
+    const X = (g) => JSON.stringify(g) === JSON.stringify(v.value), ee = T(() => v.value.kind === "field" ? c.config.fields[v.value.index] : void 0), ne = T(() => {
+      const g = v.value;
+      return g.kind === "stage" ? ie[g.stage] : g.kind === "field" ? ee.value?.name || "New field" : g.kind === "document" ? "Read document" : g.kind === "output" ? "Output" : "Details";
+    }), A = T(() => {
+      const g = v.value;
+      return g.kind === "stage" ? Ue[g.stage] : g.kind === "field" ? "tabler:forms" : g.kind === "document" ? "tabler:file-text" : g.kind === "output" ? "tabler:braces" : "tabler:info-circle";
+    }), P = T(() => c.config.fields.filter((g, d) => !(v.value.kind === "field" && v.value.index === d)).map((g) => g.name)), x = T(() => c.config.stages.deep.enabled), b = T(() => c.config.stages.map.enabled), u = T(() => [...new Set(c.config.fields.map((g) => g.group.trim()).filter(Boolean))]), B = (g) => Ie(c.config.fields[g], c.config.fields.filter((d, U) => U !== g).map((d) => d.name)), Ee = ["map", "prefetch", "scout", "deep", "extract", "verify"], je = T(() => Ee.filter((g) => he(c.config, g)).map((g) => ie[g]).join(" · ")), Qe = T(() => c.config.fields.map((g) => g.name || "New field").join(", ")), Ke = T(() => Ee.filter((g) => he(c.config, g)).length), ue = (g) => c.result?.trace.find((d) => d.kind === g);
     function He() {
-      c.config.fields.push(ol()), B.value = !0, H({ kind: "field", index: c.config.fields.length - 1 });
+      c.config.fields.push(il()), N.value = !0, H({ kind: "field", index: c.config.fields.length - 1 });
     }
-    function Je(f) {
-      c.config.fields.splice(f, 1), b.value = { kind: "document" };
+    function Je(g) {
+      c.config.fields.splice(g, 1), v.value = { kind: "document" };
     }
-    function Me(f, d) {
-      const M = c.config.fields, J = f + d;
-      if (J < 0 || J >= M.length) return;
-      const [se] = M.splice(f, 1);
-      M.splice(J, 0, se), b.value = { kind: "field", index: J };
+    function Me(g, d) {
+      const U = c.config.fields, J = g + d;
+      if (J < 0 || J >= U.length) return;
+      const [se] = U.splice(g, 1);
+      U.splice(J, 0, se), v.value = { kind: "field", index: J };
     }
-    const Ee = (f) => f.type === "list" ? `list of ${f.item_type}` : f.type, Ne = N({ get: () => c.config.tags.join(", "), set: (f) => {
-      c.config.tags = [...new Set(f.split(",").map((d) => d.trim()).filter(Boolean))];
+    const Ne = (g) => g.type === "list" ? `list of ${g.item_type}` : g.type, Be = T({ get: () => c.config.tags.join(", "), set: (g) => {
+      c.config.tags = [...new Set(g.split(",").map((d) => d.trim()).filter(Boolean))];
     } });
-    return (f, d) => (n(), o("div", {
+    return (g, d) => (n(), o("div", {
       ref_key: "root",
-      ref: K,
-      class: W(["builder", { narrow: P.value, "panel-open": w.value, resizing: U.value }])
+      ref: R,
+      class: W(["builder", { narrow: I.value, "panel-open": k.value, resizing: C.value }])
     }, [
-      e("div", ia, [
-        e("div", da, [
-          e("section", ua, [
-            e("header", ra, [
+      e("div", da, [
+        e("div", ua, [
+          e("section", ra, [
+            e("header", ca, [
               e("button", {
                 type: "button",
                 class: "collapse",
-                "aria-expanded": B.value,
+                "aria-expanded": N.value,
                 "aria-controls": "fields-body",
-                onClick: d[0] || (d[0] = (M) => R("fields"))
+                onClick: d[0] || (d[0] = (U) => M("fields"))
               }, [
-                r(h(L), {
-                  icon: B.value ? "tabler:chevron-down" : "tabler:chevron-right"
+                r(h(O), {
+                  icon: N.value ? "tabler:chevron-down" : "tabler:chevron-right"
                 }, null, 8, ["icon"]),
                 d[19] || (d[19] = e("h2", { id: "fields-head" }, "Fields", -1)),
-                e("span", ma, i(t.config.fields.length), 1)
-              ], 8, ca),
-              !B.value && t.config.fields.length ? (n(), o("span", va, i(Qe.value), 1)) : p("", !0),
+                e("span", va, i(t.config.fields.length), 1)
+              ], 8, ma),
+              !N.value && t.config.fields.length ? (n(), o("span", ba, i(Qe.value), 1)) : p("", !0),
               t.readonly ? p("", !0) : (n(), o("button", {
                 key: 1,
                 type: "button",
                 class: "btn small push",
                 onClick: He
               }, [
-                r(h(L), { icon: "tabler:plus" }),
+                r(h(O), { icon: "tabler:plus" }),
                 d[20] || (d[20] = $("Add field", -1))
               ]))
             ]),
-            j(e("div", ba, [
-              t.config.fields.length ? (n(), o("ul", ya, [
-                (n(!0), o(S, null, O(t.config.fields, (M, J) => (n(), o("li", {
+            j(e("div", pa, [
+              t.config.fields.length ? (n(), o("ul", fa, [
+                (n(!0), o(S, null, F(t.config.fields, (U, J) => (n(), o("li", {
                   key: J,
                   class: W(["row-item", { active: X({ kind: "field", index: J }) }])
                 }, [
@@ -1454,38 +1454,38 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
                     class: "row-main",
                     onClick: (se) => H({ kind: "field", index: J })
                   }, [
-                    e("span", ga, [
-                      $(i(M.name || "New field"), 1),
-                      M.required ? (n(), o("span", ha, "*")) : p("", !0),
-                      E(J) ? (n(), Z(h(L), {
+                    e("span", ha, [
+                      $(i(U.name || "New field"), 1),
+                      U.required ? (n(), o("span", ka, "*")) : p("", !0),
+                      B(J) ? (n(), Z(h(O), {
                         key: 1,
                         icon: "tabler:alert-circle",
                         class: "row-warn",
-                        title: E(J)
+                        title: B(J)
                       }, null, 8, ["title"])) : p("", !0)
                     ]),
                     e("span", {
-                      class: W(["row-desc", { missing: !M.description }])
-                    }, i(M.description || "No description"), 3),
-                    e("span", ka, [
-                      M.search_within === "sections" ? (n(), o("span", {
+                      class: W(["row-desc", { missing: !U.description }])
+                    }, i(U.description || "No description"), 3),
+                    e("span", $a, [
+                      U.search_within === "sections" ? (n(), o("span", {
                         key: 0,
-                        class: W(["chip", v.value ? "" : "muted-chip"]),
+                        class: W(["chip", b.value ? "" : "muted-chip"]),
                         title: "Reads the sections Map picks"
                       }, "sections", 2)) : p("", !0),
-                      M.group.trim() ? (n(), o("span", $a, i(M.group), 1)) : p("", !0),
-                      M.strategy === "deep" ? (n(), o("span", {
+                      U.group.trim() ? (n(), o("span", xa, i(U.group), 1)) : p("", !0),
+                      U.strategy === "deep" ? (n(), o("span", {
                         key: 2,
                         class: W(["chip", x.value ? "primary" : "muted-chip"]),
                         title: x.value ? "Deep analysis" : "Deep analysis is off in the flow"
-                      }, "deep", 10, xa)) : p("", !0),
-                      e("span", wa, i(Ee(M)), 1),
-                      M.evidence_required ? (n(), o("span", Va, [
-                        r(h(L), { icon: "tabler:quote" })
+                      }, "deep", 10, wa)) : p("", !0),
+                      e("span", Va, i(Ne(U)), 1),
+                      U.evidence_required ? (n(), o("span", Sa, [
+                        r(h(O), { icon: "tabler:quote" })
                       ])) : p("", !0)
                     ])
-                  ], 8, fa),
-                  t.readonly ? p("", !0) : (n(), o("span", Sa, [
+                  ], 8, ga),
+                  t.readonly ? p("", !0) : (n(), o("span", Ca, [
                     e("button", {
                       type: "button",
                       class: "icon-btn",
@@ -1493,8 +1493,8 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
                       disabled: J === 0,
                       onClick: (se) => Me(J, -1)
                     }, [
-                      r(h(L), { icon: "tabler:chevron-up" })
-                    ], 8, Ca),
+                      r(h(O), { icon: "tabler:chevron-up" })
+                    ], 8, qa),
                     e("button", {
                       type: "button",
                       class: "icon-btn",
@@ -1502,65 +1502,65 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
                       disabled: J === t.config.fields.length - 1,
                       onClick: (se) => Me(J, 1)
                     }, [
-                      r(h(L), { icon: "tabler:chevron-down" })
-                    ], 8, qa)
+                      r(h(O), { icon: "tabler:chevron-down" })
+                    ], 8, Ua)
                   ]))
                 ], 2))), 128))
-              ])) : (n(), o("p", pa, "Add the values to pull from each document."))
+              ])) : (n(), o("p", ya, "Add the values to pull from each document."))
             ], 512), [
-              [Ve, B.value]
+              [Se, N.value]
             ])
           ]),
-          e("section", Ua, [
+          e("section", Ea, [
             e("header", Ma, [
               e("button", {
                 type: "button",
                 class: "collapse",
-                "aria-expanded": V.value,
+                "aria-expanded": w.value,
                 "aria-controls": "flow-body",
-                onClick: d[1] || (d[1] = (M) => R("flow"))
+                onClick: d[1] || (d[1] = (U) => M("flow"))
               }, [
-                r(h(L), {
-                  icon: V.value ? "tabler:chevron-down" : "tabler:chevron-right"
+                r(h(O), {
+                  icon: w.value ? "tabler:chevron-down" : "tabler:chevron-right"
                 }, null, 8, ["icon"]),
                 d[21] || (d[21] = e("h2", { id: "flow-head" }, "Flow", -1)),
-                e("span", Na, i(Ke.value) + " of 6", 1)
-              ], 8, Ea),
-              V.value ? p("", !0) : (n(), o("span", Ba, i(Ie.value), 1)),
+                e("span", Ba, i(Ke.value) + " of 6", 1)
+              ], 8, Na),
+              w.value ? p("", !0) : (n(), o("span", Ta, i(je.value), 1)),
               e("button", {
                 type: "button",
                 class: W(["btn small subtle push", { on: X({ kind: "details" }) }]),
-                onClick: d[2] || (d[2] = (M) => H({ kind: "details" }))
+                onClick: d[2] || (d[2] = (U) => H({ kind: "details" }))
               }, [
-                r(h(L), { icon: "tabler:info-circle" }),
+                r(h(O), { icon: "tabler:info-circle" }),
                 d[22] || (d[22] = $("Details", -1))
               ], 2)
             ]),
-            j(e("div", Ta, [
+            j(e("div", Ra, [
               e("button", {
                 type: "button",
                 class: W(["node fixed", { active: X({ kind: "document" }) }]),
-                onClick: d[3] || (d[3] = (M) => H({ kind: "document" }))
+                onClick: d[3] || (d[3] = (U) => H({ kind: "document" }))
               }, [
-                e("span", Ra, [
-                  r(h(L), { icon: "tabler:file-text" })
-                ]),
                 e("span", Aa, [
-                  d[23] || (d[23] = e("span", { class: "node-title" }, "Read document", -1)),
-                  e("span", Da, i(h(sl)(t.config.retrieval)), 1)
+                  r(h(O), { icon: "tabler:file-text" })
                 ]),
-                e("span", La, [
-                  e("span", Oa, i(h(Pe)(t.config.retrieval.embedding_model)), 1)
+                e("span", Da, [
+                  d[23] || (d[23] = e("span", { class: "node-title" }, "Read document", -1)),
+                  e("span", La, i(h(ol)(t.config.retrieval)), 1)
+                ]),
+                e("span", Oa, [
+                  e("span", Fa, i(h(Pe)(t.config.retrieval.embedding_model)), 1)
                 ])
               ], 2),
               d[28] || (d[28] = e("div", { class: "connector" }, null, -1)),
-              r(re, {
+              r(ce, {
                 stage: "map",
                 config: t.config,
                 active: X({ kind: "stage", stage: "map" }),
-                trace: de("map"),
+                trace: ue("map"),
                 readonly: t.readonly,
-                onSelect: d[4] || (d[4] = (M) => H({ kind: "stage", stage: "map" }))
+                onSelect: d[4] || (d[4] = (U) => H({ kind: "stage", stage: "map" }))
               }, null, 8, ["config", "active", "trace", "readonly"]),
               d[29] || (d[29] = e("div", {
                 class: "fork",
@@ -1568,36 +1568,36 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
               }, [
                 e("span")
               ], -1)),
-              e("div", Fa, [
-                e("div", za, [
+              e("div", za, [
+                e("div", Pa, [
                   d[24] || (d[24] = e("span", { class: "branch-label" }, "Evidence", -1)),
-                  r(re, {
+                  r(ce, {
                     stage: "prefetch",
                     config: t.config,
                     active: X({ kind: "stage", stage: "prefetch" }),
-                    trace: de("prefetch"),
+                    trace: ue("prefetch"),
                     readonly: t.readonly,
-                    onSelect: d[5] || (d[5] = (M) => H({ kind: "stage", stage: "prefetch" }))
+                    onSelect: d[5] || (d[5] = (U) => H({ kind: "stage", stage: "prefetch" }))
                   }, null, 8, ["config", "active", "trace", "readonly"]),
                   d[25] || (d[25] = e("div", { class: "connector" }, null, -1)),
-                  r(re, {
+                  r(ce, {
                     stage: "scout",
                     config: t.config,
                     active: X({ kind: "stage", stage: "scout" }),
-                    trace: de("scout"),
+                    trace: ue("scout"),
                     readonly: t.readonly,
-                    onSelect: d[6] || (d[6] = (M) => H({ kind: "stage", stage: "scout" }))
+                    onSelect: d[6] || (d[6] = (U) => H({ kind: "stage", stage: "scout" }))
                   }, null, 8, ["config", "active", "trace", "readonly"])
                 ]),
-                e("div", Pa, [
+                e("div", Ia, [
                   d[26] || (d[26] = e("span", { class: "branch-label" }, "Deep fields", -1)),
-                  r(re, {
+                  r(ce, {
                     stage: "deep",
                     config: t.config,
                     active: X({ kind: "stage", stage: "deep" }),
-                    trace: de("deep"),
+                    trace: ue("deep"),
                     readonly: t.readonly,
-                    onSelect: d[7] || (d[7] = (M) => H({ kind: "stage", stage: "deep" }))
+                    onSelect: d[7] || (d[7] = (U) => H({ kind: "stage", stage: "deep" }))
                   }, null, 8, ["config", "active", "trace", "readonly"])
                 ])
               ]),
@@ -1607,70 +1607,70 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
               }, [
                 e("span")
               ], -1)),
-              r(re, {
+              r(ce, {
                 stage: "extract",
                 config: t.config,
                 active: X({ kind: "stage", stage: "extract" }),
-                trace: de("extract"),
+                trace: ue("extract"),
                 readonly: t.readonly,
-                onSelect: d[8] || (d[8] = (M) => H({ kind: "stage", stage: "extract" }))
+                onSelect: d[8] || (d[8] = (U) => H({ kind: "stage", stage: "extract" }))
               }, null, 8, ["config", "active", "trace", "readonly"]),
               d[31] || (d[31] = e("div", { class: "connector" }, null, -1)),
-              r(re, {
+              r(ce, {
                 stage: "verify",
                 config: t.config,
                 active: X({ kind: "stage", stage: "verify" }),
-                trace: de("verify"),
+                trace: ue("verify"),
                 readonly: t.readonly,
-                onSelect: d[9] || (d[9] = (M) => H({ kind: "stage", stage: "verify" }))
+                onSelect: d[9] || (d[9] = (U) => H({ kind: "stage", stage: "verify" }))
               }, null, 8, ["config", "active", "trace", "readonly"]),
               d[32] || (d[32] = e("div", { class: "connector" }, null, -1)),
               e("button", {
                 type: "button",
                 class: W(["node fixed", { active: X({ kind: "output" }) }]),
-                onClick: d[10] || (d[10] = (M) => H({ kind: "output" }))
+                onClick: d[10] || (d[10] = (U) => H({ kind: "output" }))
               }, [
                 e("span", Wa, [
-                  r(h(L), { icon: "tabler:braces" })
+                  r(h(O), { icon: "tabler:braces" })
                 ]),
                 e("span", ja, [
                   d[27] || (d[27] = e("span", { class: "node-title" }, "Output", -1)),
-                  e("span", Ia, i(t.config.fields.length ? `${t.config.fields.length} values with evidence` : "No fields yet"), 1)
+                  e("span", Qa, i(t.config.fields.length ? `${t.config.fields.length} values with evidence` : "No fields yet"), 1)
                 ])
               ], 2)
             ], 512), [
-              [Ve, V.value]
+              [Se, w.value]
             ])
           ])
         ])
       ]),
-      P.value && w.value ? (n(), o("div", {
+      I.value && k.value ? (n(), o("div", {
         key: 0,
         class: "scrim",
-        onClick: d[11] || (d[11] = (M) => C(!1))
+        onClick: d[11] || (d[11] = (U) => E(!1))
       })) : p("", !0),
-      w.value ? (n(), o("aside", {
+      k.value ? (n(), o("aside", {
         key: 1,
         class: "side-panel",
         "aria-label": "Settings panel",
-        style: be(P.value ? void 0 : { width: `${a.value}px` })
+        style: be(I.value ? void 0 : { width: `${a.value}px` })
       }, [
-        P.value ? p("", !0) : (n(), o("div", {
+        I.value ? p("", !0) : (n(), o("div", {
           key: 0,
-          class: W(["resizer", { active: U.value }]),
+          class: W(["resizer", { active: C.value }]),
           role: "separator",
           "aria-orientation": "vertical",
           "aria-label": "Resize panel",
           tabindex: "0",
           "aria-valuenow": a.value,
           "aria-valuemin": ge,
-          onPointerdown: ke(D, ["prevent"]),
-          onKeydown: k,
-          onDblclick: d[12] || (d[12] = (M) => F(we))
-        }, null, 42, Qa)),
-        e("header", Ka, [
-          e("span", Ha, [
-            r(h(L), { icon: T.value }, null, 8, ["icon"])
+          onPointerdown: ke(L, ["prevent"]),
+          onKeydown: V,
+          onDblclick: d[12] || (d[12] = (U) => z(Ve))
+        }, null, 42, Ka)),
+        e("header", Ha, [
+          e("span", Ja, [
+            r(h(O), { icon: A.value }, null, 8, ["icon"])
           ]),
           e("h2", null, i(ne.value), 1),
           e("button", {
@@ -1678,10 +1678,10 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
             class: "icon-btn push",
             "aria-label": "Collapse panel",
             title: "Collapse panel",
-            onClick: d[13] || (d[13] = (M) => C(!1))
+            onClick: d[13] || (d[13] = (U) => E(!1))
           }, [
-            r(h(L), {
-              icon: P.value ? "tabler:x" : "tabler:layout-sidebar-right-collapse"
+            r(h(O), {
+              icon: I.value ? "tabler:x" : "tabler:layout-sidebar-right-collapse"
             }, null, 8, ["icon"])
           ])
         ]),
@@ -1690,26 +1690,26 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           ref: _,
           class: "side-panel-body"
         }, [
-          b.value.kind === "document" ? (n(), Z(oa, {
+          v.value.kind === "document" ? (n(), Z(ia, {
             key: 0,
             config: t.config,
             retention: t.retention,
             readonly: t.readonly
-          }, null, 8, ["config", "retention", "readonly"])) : b.value.kind === "stage" ? (n(), Z(It, {
+          }, null, 8, ["config", "retention", "readonly"])) : v.value.kind === "stage" ? (n(), Z(Qt, {
             key: 1,
-            stage: b.value.stage,
+            stage: v.value.stage,
             config: t.config,
             readonly: t.readonly
-          }, null, 8, ["stage", "config", "readonly"])) : b.value.kind === "field" && ee.value ? (n(), Z(zl, {
+          }, null, 8, ["stage", "config", "readonly"])) : v.value.kind === "field" && ee.value ? (n(), Z(Pl, {
             key: 2,
             field: ee.value,
-            "other-names": z.value,
+            "other-names": P.value,
             groups: u.value,
             "deep-enabled": x.value,
-            "map-enabled": v.value,
+            "map-enabled": b.value,
             readonly: t.readonly,
-            onRemove: d[14] || (d[14] = (M) => Je(b.value.index))
-          }, null, 8, ["field", "other-names", "groups", "deep-enabled", "map-enabled", "readonly"])) : b.value.kind === "details" ? (n(), o("fieldset", {
+            onRemove: d[14] || (d[14] = (U) => Je(v.value.index))
+          }, null, 8, ["field", "other-names", "groups", "deep-enabled", "map-enabled", "readonly"])) : v.value.kind === "details" ? (n(), o("fieldset", {
             key: 3,
             class: "inspector-form",
             disabled: t.readonly
@@ -1717,7 +1717,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
             e("label", null, [
               d[33] || (d[33] = $("Name", -1)),
               j(e("input", {
-                "onUpdate:modelValue": d[15] || (d[15] = (M) => s.value = M),
+                "onUpdate:modelValue": d[15] || (d[15] = (U) => s.value = U),
                 "aria-label": "Extractor name"
               }, null, 512), [
                 [Y, s.value]
@@ -1726,7 +1726,7 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
             e("label", null, [
               d[34] || (d[34] = $("Description", -1)),
               j(e("textarea", {
-                "onUpdate:modelValue": d[16] || (d[16] = (M) => m.value = M),
+                "onUpdate:modelValue": d[16] || (d[16] = (U) => m.value = U),
                 rows: "3",
                 placeholder: "What this extractor reads"
               }, null, 512), [
@@ -1736,70 +1736,70 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
             e("label", null, [
               d[35] || (d[35] = $("Tags", -1)),
               j(e("input", {
-                "onUpdate:modelValue": d[17] || (d[17] = (M) => Ne.value = M),
+                "onUpdate:modelValue": d[17] || (d[17] = (U) => Be.value = U),
                 placeholder: "invoices, finance"
               }, null, 512), [
                 [
                   Y,
-                  Ne.value,
+                  Be.value,
                   void 0,
                   { lazy: !0 }
                 ]
               ]),
               d[36] || (d[36] = e("small", null, "Comma separated", -1))
             ])
-          ], 8, Ja)) : b.value.kind === "output" ? (n(), o("div", Ga, [
+          ], 8, Ga)) : v.value.kind === "output" ? (n(), o("div", Xa, [
             d[37] || (d[37] = e("p", { class: "muted" }, "The Test tab, agents, evaluations and Workflows all run this configuration. Each value comes with its confidence, verification and quotes with section and page; every run is recorded with its step trace.", -1)),
-            e("ul", Xa, [
-              (n(!0), o(S, null, O(t.config.fields, (M) => (n(), o("li", {
-                key: M.name
+            e("ul", Ya, [
+              (n(!0), o(S, null, F(t.config.fields, (U) => (n(), o("li", {
+                key: U.name
               }, [
-                e("span", Ya, i(M.name || "New field"), 1),
-                e("span", Za, i(Ee(M)), 1)
+                e("span", Za, i(U.name || "New field"), 1),
+                e("span", _a, i(Ne(U)), 1)
               ]))), 128))
             ]),
             d[38] || (d[38] = e("p", { class: "muted" }, "Used by people in Test, by agents through the Docscout tools, by evals, and in Workflows as the Extract document fields block.", -1))
           ])) : p("", !0)
         ], 512)
-      ], 4)) : P.value ? p("", !0) : (n(), o("button", {
+      ], 4)) : I.value ? p("", !0) : (n(), o("button", {
         key: 2,
         type: "button",
         class: "rail",
         "aria-label": "Open panel",
         title: "Open panel",
-        onClick: d[18] || (d[18] = (M) => C(!0))
+        onClick: d[18] || (d[18] = (U) => E(!0))
       }, [
-        r(h(L), { icon: "tabler:layout-sidebar-right-expand" }),
-        e("span", _a, i(ne.value), 1)
+        r(h(O), { icon: "tabler:layout-sidebar-right-expand" }),
+        e("span", en, i(ne.value), 1)
       ]))
     ], 2));
   }
-}), ln = ["selected"], tn = {
+}), tn = ["selected"], an = {
   key: 1,
   role: "alert"
-}, an = {
+}, nn = {
   key: 2,
   class: "muted"
-}, je = /* @__PURE__ */ Q({
+}, We = /* @__PURE__ */ Q({
   __name: "UploadPicker",
   props: {
     value: {}
   },
   emits: ["select"],
   setup(t, { emit: c }) {
-    const s = c, m = A(!1), b = A("");
-    Ce(async () => {
+    const s = c, m = D(!1), v = D("");
+    xe(async () => {
       try {
-        await Fe("wc-multiselect", { timeoutMs: 8e3 }), m.value = !0;
-      } catch (g) {
-        b.value = String(g);
+        await qe("wc-multiselect", { timeoutMs: 8e3 }), m.value = !0;
+      } catch (y) {
+        v.value = String(y);
       }
     });
-    function y(g) {
-      const w = g.detail;
-      s("select", w.selected[0] || "", w.labels?.[0] || "");
+    function f(y) {
+      const k = y.detail;
+      s("select", k.selected[0] || "", k.labels?.[0] || "");
     }
-    return (g, w) => m.value ? (n(), o("wc-multiselect", {
+    return (y, k) => m.value ? (n(), o("wc-multiselect", {
       key: 0,
       source: "/api/v1/uploads/list",
       "response-key": "uploads",
@@ -1808,35 +1808,35 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
       multi: !1,
       selected: JSON.stringify(t.value ? [t.value] : []),
       placeholder: "Choose an upload",
-      onChange: y
-    }, null, 40, ln)) : b.value ? (n(), o("p", tn, i(b.value), 1)) : (n(), o("span", an, "Loading uploads…"));
+      onChange: f
+    }, null, 40, tn)) : v.value ? (n(), o("p", an, i(v.value), 1)) : (n(), o("span", nn, "Loading uploads…"));
   }
-}), nn = { class: "test" }, sn = { class: "run-bar" }, on = { class: "run-input" }, dn = { class: "muted run-note" }, un = {
+}), sn = { class: "test" }, on = { class: "run-bar" }, dn = { class: "run-input" }, un = { class: "muted run-note" }, rn = {
   key: 0,
   class: "empty"
-}, rn = {
+}, cn = {
   key: 1,
   class: "run-failed",
   role: "alert"
-}, cn = {
+}, mn = {
   key: 2,
   class: "test-grid"
-}, mn = { class: "block" }, vn = { class: "block-head" }, bn = { class: "muted push" }, pn = { class: "value-list" }, yn = ["aria-expanded", "onClick"], fn = { class: "value-name" }, gn = ["title"], hn = { class: "bar" }, kn = ["title"], $n = { class: "evidence" }, xn = {
+}, vn = { class: "block" }, bn = { class: "block-head" }, pn = { class: "muted push" }, yn = { class: "value-list" }, fn = ["aria-expanded", "onClick"], gn = { class: "value-name" }, hn = ["title"], kn = { class: "bar" }, $n = ["title"], xn = { class: "evidence" }, wn = {
   key: 0,
   class: "full-value"
-}, wn = {
+}, Vn = {
   key: 1,
   class: "muted"
-}, Vn = {
+}, Sn = {
   key: 2,
   class: "muted"
-}, Sn = { class: "block" }, Cn = { class: "timeline" }, qn = { class: "tl-icon" }, Un = { class: "tl-main" }, Mn = { class: "tl-head" }, En = { class: "muted push" }, Nn = { class: "tl-bar" }, Bn = { class: "muted" }, Tn = {
+}, Cn = { class: "block" }, qn = { class: "timeline" }, Un = { class: "tl-icon" }, En = { class: "tl-main" }, Mn = { class: "tl-head" }, Nn = { class: "muted push" }, Bn = { class: "tl-bar" }, Tn = { class: "muted" }, Rn = {
   key: 0,
   class: "tl-msg"
-}, Rn = {
+}, An = {
   key: 1,
   class: "chips"
-}, An = /* @__PURE__ */ Q({
+}, Dn = /* @__PURE__ */ Q({
   __name: "TestPanel",
   props: {
     result: {},
@@ -1846,141 +1846,141 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   },
   emits: ["run"],
   setup(t, { emit: c }) {
-    const s = t, m = c, b = A(""), y = A(), g = (U) => `${Math.round(U * 100)}%`, w = (U) => U == null ? "—" : typeof U == "string" ? U : Array.isArray(U) && U.every((D) => typeof D != "object") ? U.join(", ") : typeof U == "object" ? JSON.stringify(U) : String(U), B = (U) => `${(U / 1e3).toFixed(1)}s`, V = N(() => Math.max(1, ...s.result?.trace.map((U) => U.duration_ms) ?? [1])), l = { read: { label: "Read document", icon: "tabler:file-text" }, highlight: { label: "Highlighter", icon: "tabler:highlight" } }, a = (U) => l[U]?.label ?? oe[U] ?? U, q = (U) => l[U]?.icon ?? qe[U] ?? "tabler:point", F = (U) => U >= 0.9 ? "high" : U >= 0.7 ? "mid" : "low";
-    return (U, D) => (n(), o("div", nn, [
-      e("section", sn, [
-        e("div", on, [
-          r(je, {
-            value: b.value,
-            onSelect: D[0] || (D[0] = (k) => b.value = k)
+    const s = t, m = c, v = D(""), f = D(), y = (C) => `${Math.round(C * 100)}%`, k = (C) => C == null ? "—" : typeof C == "string" ? C : Array.isArray(C) && C.every((L) => typeof L != "object") ? C.join(", ") : typeof C == "object" ? JSON.stringify(C) : String(C), N = (C) => `${(C / 1e3).toFixed(1)}s`, w = T(() => Math.max(1, ...s.result?.trace.map((C) => C.duration_ms) ?? [1])), l = { read: { label: "Read document", icon: "tabler:file-text" }, highlight: { label: "Highlighter", icon: "tabler:highlight" } }, a = (C) => l[C]?.label ?? ie[C] ?? C, q = (C) => l[C]?.icon ?? Ue[C] ?? "tabler:point", z = (C) => C >= 0.9 ? "high" : C >= 0.7 ? "mid" : "low";
+    return (C, L) => (n(), o("div", sn, [
+      e("section", on, [
+        e("div", dn, [
+          r(We, {
+            value: v.value,
+            onSelect: L[0] || (L[0] = (V) => v.value = V)
           }, null, 8, ["value"])
         ]),
-        r(h(me), {
+        r(h(oe), {
           label: t.running ? "Extracting…" : "Run extraction",
           loading: t.running,
-          disabled: !b.value || t.running || !t.canRun,
-          onClick: D[1] || (D[1] = (k) => m("run", b.value))
+          disabled: !v.value || t.running || !t.canRun,
+          onClick: L[1] || (L[1] = (V) => m("run", v.value))
         }, null, 8, ["label", "loading", "disabled"]),
-        e("p", dn, i(t.canRun ? "" : "Add fields in the Builder first. ") + "Processed documents and runs expire after " + i(t.retention) + ".", 1)
+        e("p", un, i(t.canRun ? "" : "Add fields in the Builder first. ") + "Processed documents and runs expire after " + i(t.retention) + ".", 1)
       ]),
-      t.result ? p("", !0) : (n(), o("p", un, "No extraction results yet.")),
-      t.result?.status === "failed" ? (n(), o("p", rn, [
-        r(h(L), { icon: "tabler:alert-triangle" }),
+      t.result ? p("", !0) : (n(), o("p", rn, "No extraction results yet.")),
+      t.result?.status === "failed" ? (n(), o("p", cn, [
+        r(h(O), { icon: "tabler:alert-triangle" }),
         $("The run stopped: " + i(t.result.error), 1)
       ])) : p("", !0),
-      t.result ? (n(), o("div", cn, [
-        e("section", mn, [
-          e("header", vn, [
-            D[2] || (D[2] = e("h2", { class: "block-title" }, "Values", -1)),
-            e("span", bn, [
-              $(i(t.result.tokens.toLocaleString()) + " tokens · " + i(B(t.result.duration_ms)), 1),
+      t.result ? (n(), o("div", mn, [
+        e("section", vn, [
+          e("header", bn, [
+            L[2] || (L[2] = e("h2", { class: "block-title" }, "Values", -1)),
+            e("span", pn, [
+              $(i(t.result.tokens.toLocaleString()) + " tokens · " + i(N(t.result.duration_ms)), 1),
               t.result.pages ? (n(), o(S, { key: 0 }, [
                 $(" · " + i(t.result.pages) + " pages", 1)
               ], 64)) : p("", !0)
             ])
           ]),
-          e("ul", pn, [
-            (n(!0), o(S, null, O(t.result.fields, (k) => (n(), o("li", {
-              key: k.name,
+          e("ul", yn, [
+            (n(!0), o(S, null, F(t.result.fields, (V) => (n(), o("li", {
+              key: V.name,
               class: "value-row"
             }, [
               e("button", {
                 type: "button",
                 class: "value-main",
-                "aria-expanded": y.value === k.name,
-                onClick: (C) => y.value = y.value === k.name ? void 0 : k.name
+                "aria-expanded": f.value === V.name,
+                onClick: (E) => f.value = f.value === V.name ? void 0 : V.name
               }, [
-                e("span", fn, i(k.name), 1),
+                e("span", gn, i(V.name), 1),
                 e("span", {
-                  class: W(["value-text", { missing: k.missing }]),
-                  title: k.missing ? void 0 : w(k.value)
-                }, i(k.missing ? "Not in the document" : w(k.value)), 11, gn),
+                  class: W(["value-text", { missing: V.missing }]),
+                  title: V.missing ? void 0 : k(V.value)
+                }, i(V.missing ? "Not in the document" : k(V.value)), 11, hn),
                 e("span", {
-                  class: W(["confidence", F(k.confidence)])
+                  class: W(["confidence", z(V.confidence)])
                 }, [
-                  e("span", hn, [
+                  e("span", kn, [
                     e("span", {
-                      style: be({ width: g(k.confidence) })
+                      style: be({ width: y(V.confidence) })
                     }, null, 4)
                   ]),
-                  $(i(g(k.confidence)) + " confidence", 1)
+                  $(i(y(V.confidence)) + " confidence", 1)
                 ], 2),
                 e("span", {
-                  class: W(["chip", k.verified ? "primary" : "warn"]),
-                  title: k.reason
+                  class: W(["chip", V.verified ? "primary" : "warn"]),
+                  title: V.reason
                 }, [
-                  r(h(L), {
-                    icon: k.verified ? "tabler:shield-check" : "tabler:shield-question"
+                  r(h(O), {
+                    icon: V.verified ? "tabler:shield-check" : "tabler:shield-question"
                   }, null, 8, ["icon"]),
-                  $(i(k.verified ? "Verified" : "Check"), 1)
-                ], 10, kn),
-                r(h(L), {
-                  icon: y.value === k.name ? "tabler:chevron-up" : "tabler:chevron-down",
+                  $(i(V.verified ? "Verified" : "Check"), 1)
+                ], 10, $n),
+                r(h(O), {
+                  icon: f.value === V.name ? "tabler:chevron-up" : "tabler:chevron-down",
                   class: "value-caret"
                 }, null, 8, ["icon"])
-              ], 8, yn),
-              j(e("div", $n, [
-                k.missing ? p("", !0) : (n(), o("p", xn, i(w(k.value)), 1)),
-                (n(!0), o(S, null, O(k.evidence, (C, R) => (n(), o("blockquote", {
-                  key: R,
-                  class: W({ unfound: C.found === !1 })
+              ], 8, fn),
+              j(e("div", xn, [
+                V.missing ? p("", !0) : (n(), o("p", wn, i(k(V.value)), 1)),
+                (n(!0), o(S, null, F(V.evidence, (E, M) => (n(), o("blockquote", {
+                  key: M,
+                  class: W({ unfound: E.found === !1 })
                 }, [
-                  e("p", null, "“" + i(C.quote) + "”", 1),
+                  e("p", null, "“" + i(E.quote) + "”", 1),
                   e("cite", null, [
-                    $(i(C.section), 1),
-                    C.page !== void 0 && C.page !== null ? (n(), o(S, { key: 0 }, [
-                      $(" · Page " + i(C.page), 1)
+                    $(i(E.section), 1),
+                    E.page !== void 0 && E.page !== null ? (n(), o(S, { key: 0 }, [
+                      $(" · Page " + i(E.page), 1)
                     ], 64)) : p("", !0),
-                    C.found === !1 ? (n(), o(S, { key: 1 }, [
+                    E.found === !1 ? (n(), o(S, { key: 1 }, [
                       $(" · not found word for word in the document")
                     ], 64)) : p("", !0)
                   ])
                 ], 2))), 128)),
-                k.evidence.length ? p("", !0) : (n(), o("p", wn, "No evidence.")),
-                k.reason ? (n(), o("p", Vn, i(k.reason), 1)) : p("", !0)
+                V.evidence.length ? p("", !0) : (n(), o("p", Vn, "No evidence.")),
+                V.reason ? (n(), o("p", Sn, i(V.reason), 1)) : p("", !0)
               ], 512), [
-                [Ve, y.value === k.name]
+                [Se, f.value === V.name]
               ])
             ]))), 128))
           ])
         ]),
-        e("section", Sn, [
-          D[3] || (D[3] = e("header", { class: "block-head" }, [
+        e("section", Cn, [
+          L[3] || (L[3] = e("header", { class: "block-head" }, [
             e("h2", { class: "block-title" }, "Steps")
           ], -1)),
-          e("ol", Cn, [
-            (n(!0), o(S, null, O(t.result.trace, (k, C) => (n(), o("li", {
-              key: C,
-              class: W(k.status)
+          e("ol", qn, [
+            (n(!0), o(S, null, F(t.result.trace, (V, E) => (n(), o("li", {
+              key: E,
+              class: W(V.status)
             }, [
-              e("span", qn, [
-                r(h(L), {
-                  icon: q(k.kind)
+              e("span", Un, [
+                r(h(O), {
+                  icon: q(V.kind)
                 }, null, 8, ["icon"])
               ]),
-              e("div", Un, [
+              e("div", En, [
                 e("div", Mn, [
-                  e("strong", null, i(a(k.kind)), 1),
-                  e("span", En, i(B(k.duration_ms)), 1)
+                  e("strong", null, i(a(V.kind)), 1),
+                  e("span", Nn, i(N(V.duration_ms)), 1)
                 ]),
-                e("span", Nn, [
+                e("span", Bn, [
                   e("span", {
-                    style: be({ width: `${Math.max(4, k.duration_ms / V.value * 100)}%` })
+                    style: be({ width: `${Math.max(4, V.duration_ms / w.value * 100)}%` })
                   }, null, 4)
                 ]),
-                e("p", Bn, [
-                  $(i(k.scope), 1),
-                  k.model ? (n(), o(S, { key: 0 }, [
-                    $(" · " + i(k.model), 1)
+                e("p", Tn, [
+                  $(i(V.scope), 1),
+                  V.model ? (n(), o(S, { key: 0 }, [
+                    $(" · " + i(V.model), 1)
                   ], 64)) : p("", !0),
-                  $(" · " + i((k.input_tokens + k.output_tokens).toLocaleString()) + " tokens", 1)
+                  $(" · " + i((V.input_tokens + V.output_tokens).toLocaleString()) + " tokens", 1)
                 ]),
-                k.message ? (n(), o("p", Tn, i(k.message), 1)) : p("", !0),
-                k.queries?.length ? (n(), o("div", Rn, [
-                  (n(!0), o(S, null, O(k.queries, (R) => (n(), o("span", {
-                    key: R,
+                V.message ? (n(), o("p", Rn, i(V.message), 1)) : p("", !0),
+                V.queries?.length ? (n(), o("div", An, [
+                  (n(!0), o(S, null, F(V.queries, (M) => (n(), o("span", {
+                    key: M,
                     class: "chip"
-                  }, i(R), 1))), 128))
+                  }, i(M), 1))), 128))
                 ])) : p("", !0)
               ])
             ], 2))), 128))
@@ -1989,66 +1989,66 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
       ])) : p("", !0)
     ]));
   }
-}), Dn = { class: "evals" }, Ln = { class: "block eval-run" }, On = { class: "eval-run-main" }, Fn = { class: "block-title" }, zn = {
+}), Ln = { class: "evals" }, On = { class: "block eval-run" }, Fn = { class: "eval-run-main" }, zn = { class: "block-title" }, Pn = {
   key: 0,
   class: "eval-note"
-}, Pn = {
+}, In = {
   key: 0,
   class: "eval-progress",
   role: "status"
-}, Wn = { class: "bar" }, jn = { class: "muted" }, In = { class: "stat-row" }, Qn = { class: "stat" }, Kn = { class: "stat-label" }, Hn = { class: "stat-value" }, Jn = { class: "stat" }, Gn = { class: "stat-value" }, Xn = { class: "stat-delta flat" }, Yn = { class: "stat" }, Zn = { class: "stat-value" }, _n = {
+}, Wn = { class: "bar" }, jn = { class: "muted" }, Qn = { class: "stat-row" }, Kn = { class: "stat" }, Hn = { class: "stat-label" }, Jn = { class: "stat-value" }, Gn = { class: "stat" }, Xn = { class: "stat-value" }, Yn = { class: "stat-delta flat" }, Zn = { class: "stat" }, _n = { class: "stat-value" }, es = {
   key: 0,
   class: "stat-delta flat"
-}, es = { class: "stat" }, ls = { class: "stat-value" }, ts = {
+}, ls = { class: "stat" }, ts = { class: "stat-value" }, as = {
   key: 0,
   class: "stat-delta flat"
-}, as = { class: "block" }, ns = { class: "block-head" }, ss = {
+}, ns = { class: "block" }, ss = { class: "block-head" }, os = {
   key: 0,
   class: "compare-pick push"
-}, os = ["value"], is = ["value"], ds = {
+}, is = ["value"], ds = ["value"], us = {
   key: 0,
   class: "block-empty"
-}, us = {
+}, rs = {
   key: 1,
   class: "table-scroll"
-}, rs = { class: "metric-table" }, cs = { key: 0 }, ms = { key: 1 }, vs = { class: "mono" }, bs = { class: "acc strong" }, ps = { class: "bar" }, ys = { class: "muted" }, fs = {
+}, cs = { class: "metric-table" }, ms = { key: 0 }, vs = { key: 1 }, bs = { class: "mono" }, ps = { class: "acc strong" }, ys = { class: "bar" }, fs = { class: "muted" }, gs = {
   key: 0,
   class: "muted"
-}, gs = { key: 1 }, hs = {
+}, hs = { key: 1 }, ks = {
   key: 1,
   class: "muted"
-}, ks = {
+}, $s = {
   key: 1,
   class: "block"
-}, $s = { class: "table-scroll" }, xs = { class: "metric-table result-matrix" }, ws = ["aria-expanded", "onClick"], Vs = ["colspan"], Ss = {
+}, xs = { class: "table-scroll" }, ws = { class: "metric-table result-matrix" }, Vs = ["aria-expanded", "onClick"], Ss = ["colspan"], Cs = {
   key: 0,
   class: "cell-state"
-}, Cs = {
+}, qs = {
   key: 1,
   class: "cell-state fail"
-}, qs = ["title"], Us = {
+}, Us = ["title"], Es = {
   key: 0,
   class: "result-detail"
-}, Ms = ["colspan"], Es = {
+}, Ms = ["colspan"], Ns = {
   key: 0,
   class: "muted"
-}, Ns = {
+}, Bs = {
   key: 1,
   class: "compare"
-}, Bs = { class: "mono" }, Ts = { class: "cmp" }, Rs = { class: "cmp" }, As = { class: "muted case-meta" }, Ds = { class: "block" }, Ls = { class: "block-head" }, Os = { class: "count" }, Fs = { class: "grid" }, zs = { class: "mono" }, Ps = ["onUpdate:modelValue"], Ws = ["onUpdate:modelValue"], js = ["onUpdate:modelValue", "placeholder"], Is = ["onUpdate:modelValue", "type"], Qs = {
+}, Ts = { class: "mono" }, Rs = { class: "cmp" }, As = { class: "cmp" }, Ds = { class: "muted case-meta" }, Ls = { class: "block" }, Os = { class: "block-head" }, Fs = { class: "count" }, zs = { class: "grid" }, Ps = { class: "mono" }, Is = ["onUpdate:modelValue"], Ws = ["onUpdate:modelValue"], js = ["onUpdate:modelValue", "placeholder"], Qs = ["onUpdate:modelValue", "type"], Ks = {
   key: 0,
   class: "error",
   role: "alert"
-}, Ks = { class: "row" }, Hs = {
+}, Hs = { class: "row" }, Js = {
   key: 1,
   class: "block-empty"
-}, Js = {
+}, Gs = {
   key: 2,
   class: "table-scroll"
-}, Gs = { class: "metric-table" }, Xs = { class: "num" }, Ys = ["aria-label", "disabled", "onClick"], Zs = {
+}, Xs = { class: "metric-table" }, Ys = { class: "num" }, Zs = ["aria-label", "disabled", "onClick"], _s = {
   key: 2,
   class: "block"
-}, _s = { class: "block-head" }, eo = { class: "count" }, lo = { class: "eval-history" }, to = ["aria-current", "onClick"], ao = ["data-status"], no = { class: "muted" }, so = { class: "push" }, oo = /* @__PURE__ */ Q({
+}, eo = { class: "block-head" }, lo = { class: "count" }, to = { class: "eval-history" }, ao = ["aria-current", "onClick"], no = ["data-status"], so = { class: "muted" }, oo = { class: "push" }, io = /* @__PURE__ */ Q({
   __name: "EvalsPanel",
   props: {
     cases: {},
@@ -2062,65 +2062,65 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   },
   emits: ["add-case", "delete-case", "evaluate", "open"],
   setup(t, { emit: c }) {
-    const s = t, m = c, b = A(!1), y = A(""), g = A({}), w = A("");
-    ie(() => s.cases, () => {
-      b.value = !1, y.value = "", g.value = {};
+    const s = t, m = c, v = D(!1), f = D(""), y = D({}), k = D("");
+    de(() => s.cases, () => {
+      v.value = !1, f.value = "", y.value = {};
     });
-    function B(x, v) {
-      return x.type === "number" ? Number(v) : x.type === "boolean" ? v === "true" : x.type === "list" || x.type === "object" ? JSON.parse(v) : v;
+    function N(x, b) {
+      return x.type === "number" ? Number(b) : x.type === "boolean" ? b === "true" : x.type === "list" || x.type === "object" ? JSON.parse(b) : b;
     }
-    function V() {
-      w.value = "";
+    function w() {
+      k.value = "";
       const x = {};
       try {
-        for (const v of s.fields) {
-          const u = String(g.value[v.name] ?? "").trim();
-          u && (x[v.name] = B(v, u));
+        for (const b of s.fields) {
+          const u = String(y.value[b.name] ?? "").trim();
+          u && (x[b.name] = N(b, u));
         }
       } catch {
-        w.value = 'Lists and objects need valid JSON, for example ["a","b"] or {"city":"Hamburg"}.';
+        k.value = 'Lists and objects need valid JSON, for example ["a","b"] or {"city":"Hamburg"}.';
         return;
       }
-      m("add-case", { upload_id: y.value, expected: x });
+      m("add-case", { upload_id: f.value, expected: x });
     }
-    const l = N(() => s.evaluations.find((x) => !pe(x))), a = N(() => s.evaluations.filter(pe)), q = N(() => s.evaluation), F = N(() => ({ done: (q.value?.results ?? []).filter((v) => v.status !== "queued").length, total: q.value?.case_count ?? 0 })), U = A();
-    ie(() => q.value?.id, () => {
-      U.value = void 0;
+    const l = T(() => s.evaluations.find((x) => !pe(x))), a = T(() => s.evaluations.filter(pe)), q = T(() => s.evaluation), z = T(() => ({ done: (q.value?.results ?? []).filter((b) => b.status !== "queued").length, total: q.value?.case_count ?? 0 })), C = D();
+    de(() => q.value?.id, () => {
+      C.value = void 0;
     });
-    const D = N(() => {
+    const L = T(() => {
       if (!q.value) return;
-      if (U.value) return a.value.find((v) => v.id === U.value);
-      const x = a.value.findIndex((v) => v.id === q.value.id);
+      if (C.value) return a.value.find((b) => b.id === C.value);
+      const x = a.value.findIndex((b) => b.id === q.value.id);
       return x >= 0 ? a.value[x + 1] : a.value[0];
-    }), k = N(() => (q.value?.metrics ?? []).map((x) => ({ ...x, before: D.value?.metrics.find((v) => v.field === x.field) }))), C = N(() => (q.value?.fields ?? []).map((x) => x.name)), R = (x, v) => x.scores.find((u) => u.field === v), K = A(), P = (x) => `${Math.round(x * 100)}%`, te = (x) => {
-      const v = Math.round(x * 100);
-      return `${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v)} pts`;
-    }, _ = (x) => Math.round(x * 100) > 0 ? "up" : Math.round(x * 100) < 0 ? "down" : "flat", H = (x) => x >= 6e4 ? `${Math.floor(x / 6e4)}m ${Math.round(x % 6e4 / 1e3)}s` : `${(x / 1e3).toFixed(1)}s`, X = (x) => new Date(x).toLocaleString(void 0, { dateStyle: "medium", timeStyle: "short" }), ee = (x) => x == null || x === "" ? "—" : typeof x == "string" ? x : Array.isArray(x) && x.every((v) => typeof v != "object") ? x.join(", ") : JSON.stringify(x), ne = (x) => x ? x.score >= 0.999 ? "pass" : x.score > 0 ? "partial" : "fail" : "none", T = (x) => (x.results ?? []).filter((v) => v.status === "completed").length, z = { queued: "Queued", running: "Running", completed: "Completed", failed: "Failed" };
-    return (x, v) => (n(), o("div", Dn, [
-      e("section", Ln, [
-        e("div", On, [
+    }), V = T(() => (q.value?.metrics ?? []).map((x) => ({ ...x, before: L.value?.metrics.find((b) => b.field === x.field) }))), E = T(() => (q.value?.fields ?? []).map((x) => x.name)), M = (x, b) => x.scores.find((u) => u.field === b), R = D(), I = (x) => `${Math.round(x * 100)}%`, te = (x) => {
+      const b = Math.round(x * 100);
+      return `${b > 0 ? "+" : b < 0 ? "−" : "±"}${Math.abs(b)} pts`;
+    }, _ = (x) => Math.round(x * 100) > 0 ? "up" : Math.round(x * 100) < 0 ? "down" : "flat", H = (x) => x >= 6e4 ? `${Math.floor(x / 6e4)}m ${Math.round(x % 6e4 / 1e3)}s` : `${(x / 1e3).toFixed(1)}s`, X = (x) => new Date(x).toLocaleString(void 0, { dateStyle: "medium", timeStyle: "short" }), ee = (x) => x == null || x === "" ? "—" : typeof x == "string" ? x : Array.isArray(x) && x.every((b) => typeof b != "object") ? x.join(", ") : JSON.stringify(x), ne = (x) => x ? x.score >= 0.999 ? "pass" : x.score > 0 ? "partial" : "fail" : "none", A = (x) => (x.results ?? []).filter((b) => b.status === "completed").length, P = { queued: "Queued", running: "Running", completed: "Completed", failed: "Failed" };
+    return (x, b) => (n(), o("div", Ln, [
+      e("section", On, [
+        e("div", Fn, [
           e("div", null, [
-            e("h2", Fn, "Evaluate revision " + i(t.revision), 1),
-            v[6] || (v[6] = e("p", { class: "muted" }, "Runs every case below with the saved configuration and scores each field against the expected value.", -1)),
-            t.changed ? (n(), o("p", zn, [
-              r(h(L), { icon: "tabler:info-circle" }),
-              v[5] || (v[5] = $("Unsaved changes are not evaluated. Save first to measure them.", -1))
+            e("h2", zn, "Evaluate revision " + i(t.revision), 1),
+            b[6] || (b[6] = e("p", { class: "muted" }, "Runs every case below with the saved configuration and scores each field against the expected value.", -1)),
+            t.changed ? (n(), o("p", Pn, [
+              r(h(O), { icon: "tabler:info-circle" }),
+              b[5] || (b[5] = $("Unsaved changes are not evaluated. Save first to measure them.", -1))
             ])) : p("", !0)
           ]),
-          r(h(me), {
+          r(h(oe), {
             label: l.value ? "Evaluating…" : "Run all cases",
             loading: t.starting || !!l.value,
             disabled: !t.cases.length || !t.fields.length || !!l.value || t.starting,
-            onClick: v[0] || (v[0] = (u) => m("evaluate"))
+            onClick: b[0] || (b[0] = (u) => m("evaluate"))
           }, null, 8, ["label", "loading", "disabled"])
         ]),
-        q.value && !h(pe)(q.value) ? (n(), o("div", Pn, [
+        q.value && !h(pe)(q.value) ? (n(), o("div", In, [
           e("span", Wn, [
             e("span", {
-              style: be({ width: P(F.value.total ? F.value.done / F.value.total : 0) })
+              style: be({ width: I(z.value.total ? z.value.done / z.value.total : 0) })
             }, null, 4)
           ]),
-          e("span", jn, i(z[q.value.status]) + " · " + i(F.value.done) + " of " + i(F.value.total) + " cases", 1)
+          e("span", jn, i(P[q.value.status]) + " · " + i(z.value.done) + " of " + i(z.value.total) + " cases", 1)
         ])) : p("", !0)
       ]),
       q.value && h(pe)(q.value) ? (n(), o(S, { key: 0 }, [
@@ -2129,192 +2129,192 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           class: W(q.value.status === "failed" ? "run-failed" : "eval-warning"),
           role: "alert"
         }, [
-          r(h(L), { icon: "tabler:alert-triangle" }),
+          r(h(O), { icon: "tabler:alert-triangle" }),
           $(i(q.value.error), 1)
         ], 2)) : p("", !0),
-        e("div", In, [
-          e("div", Qn, [
-            e("span", Kn, "Accuracy · revision " + i(q.value.config_revision), 1),
-            e("span", Hn, i(P(h(ue)(q.value))), 1),
-            D.value ? (n(), o("span", {
+        e("div", Qn, [
+          e("div", Kn, [
+            e("span", Hn, "Accuracy · revision " + i(q.value.config_revision), 1),
+            e("span", Jn, i(I(h(re)(q.value))), 1),
+            L.value ? (n(), o("span", {
               key: 0,
-              class: W(["stat-delta", _(h(ue)(q.value) - h(ue)(D.value))])
-            }, i(te(h(ue)(q.value) - h(ue)(D.value))) + " vs revision " + i(D.value.config_revision), 3)) : p("", !0)
+              class: W(["stat-delta", _(h(re)(q.value) - h(re)(L.value))])
+            }, i(te(h(re)(q.value) - h(re)(L.value))) + " vs revision " + i(L.value.config_revision), 3)) : p("", !0)
           ]),
-          e("div", Jn, [
-            v[7] || (v[7] = e("span", { class: "stat-label" }, "Cases", -1)),
-            e("span", Gn, [
-              $(i(T(q.value)), 1),
+          e("div", Gn, [
+            b[7] || (b[7] = e("span", { class: "stat-label" }, "Cases", -1)),
+            e("span", Xn, [
+              $(i(A(q.value)), 1),
               e("small", null, " / " + i(q.value.case_count), 1)
             ]),
-            e("span", Xn, i(q.value.case_count - T(q.value)) + " failed", 1)
+            e("span", Yn, i(q.value.case_count - A(q.value)) + " failed", 1)
           ]),
-          e("div", Yn, [
-            v[8] || (v[8] = e("span", { class: "stat-label" }, "Tokens", -1)),
-            e("span", Zn, i(q.value.tokens.toLocaleString()), 1),
-            D.value ? (n(), o("span", _n, i(D.value.tokens.toLocaleString()) + " before", 1)) : p("", !0)
+          e("div", Zn, [
+            b[8] || (b[8] = e("span", { class: "stat-label" }, "Tokens", -1)),
+            e("span", _n, i(q.value.tokens.toLocaleString()), 1),
+            L.value ? (n(), o("span", es, i(L.value.tokens.toLocaleString()) + " before", 1)) : p("", !0)
           ]),
-          e("div", es, [
-            v[9] || (v[9] = e("span", { class: "stat-label" }, "Model time", -1)),
-            e("span", ls, i(H(q.value.duration_ms)), 1),
-            D.value ? (n(), o("span", ts, i(H(D.value.duration_ms)) + " before", 1)) : p("", !0)
+          e("div", ls, [
+            b[9] || (b[9] = e("span", { class: "stat-label" }, "Model time", -1)),
+            e("span", ts, i(H(q.value.duration_ms)), 1),
+            L.value ? (n(), o("span", as, i(H(L.value.duration_ms)) + " before", 1)) : p("", !0)
           ])
         ]),
-        e("section", as, [
-          e("header", ns, [
-            v[11] || (v[11] = e("h2", { class: "block-title" }, "Field accuracy", -1)),
-            a.value.length > 1 ? (n(), o("label", ss, [
-              v[10] || (v[10] = e("span", { class: "muted" }, "Compare with", -1)),
+        e("section", ns, [
+          e("header", ss, [
+            b[11] || (b[11] = e("h2", { class: "block-title" }, "Field accuracy", -1)),
+            a.value.length > 1 ? (n(), o("label", os, [
+              b[10] || (b[10] = e("span", { class: "muted" }, "Compare with", -1)),
               e("select", {
-                value: D.value?.id,
+                value: L.value?.id,
                 "aria-label": "Baseline evaluation",
-                onChange: v[1] || (v[1] = (u) => U.value = u.target.value)
+                onChange: b[1] || (b[1] = (u) => C.value = u.target.value)
               }, [
-                (n(!0), o(S, null, O(a.value.filter((u) => u.id !== q.value.id), (u) => (n(), o("option", {
+                (n(!0), o(S, null, F(a.value.filter((u) => u.id !== q.value.id), (u) => (n(), o("option", {
                   key: u.id,
                   value: u.id
-                }, "Revision " + i(u.config_revision) + " · " + i(X(u.created_at)), 9, is))), 128))
-              ], 40, os)
+                }, "Revision " + i(u.config_revision) + " · " + i(X(u.created_at)), 9, ds))), 128))
+              ], 40, is)
             ])) : p("", !0)
           ]),
-          k.value.length ? (n(), o("div", us, [
-            e("table", rs, [
+          V.value.length ? (n(), o("div", rs, [
+            e("table", cs, [
               e("thead", null, [
                 e("tr", null, [
-                  v[12] || (v[12] = e("th", null, "Field", -1)),
-                  v[13] || (v[13] = e("th", null, "Accuracy", -1)),
-                  v[14] || (v[14] = e("th", null, "Verified", -1)),
-                  D.value ? (n(), o("th", cs, "Revision " + i(D.value.config_revision), 1)) : p("", !0),
-                  D.value ? (n(), o("th", ms, "Change")) : p("", !0)
+                  b[12] || (b[12] = e("th", null, "Field", -1)),
+                  b[13] || (b[13] = e("th", null, "Accuracy", -1)),
+                  b[14] || (b[14] = e("th", null, "Verified", -1)),
+                  L.value ? (n(), o("th", ms, "Revision " + i(L.value.config_revision), 1)) : p("", !0),
+                  L.value ? (n(), o("th", vs, "Change")) : p("", !0)
                 ])
               ]),
               e("tbody", null, [
-                (n(!0), o(S, null, O(k.value, (u) => (n(), o("tr", {
+                (n(!0), o(S, null, F(V.value, (u) => (n(), o("tr", {
                   key: u.field
                 }, [
-                  e("td", vs, i(u.field), 1),
+                  e("td", bs, i(u.field), 1),
                   e("td", null, [
-                    e("span", bs, [
-                      e("span", ps, [
+                    e("span", ps, [
+                      e("span", ys, [
                         e("span", {
-                          style: be({ width: P(u.accuracy) })
+                          style: be({ width: I(u.accuracy) })
                         }, null, 4)
                       ]),
-                      $(i(P(u.accuracy)), 1)
+                      $(i(I(u.accuracy)), 1)
                     ])
                   ]),
-                  e("td", ys, i(P(u.verified)), 1),
-                  D.value ? (n(), o("td", fs, i(u.before ? P(u.before.accuracy) : "—"), 1)) : p("", !0),
-                  D.value ? (n(), o("td", gs, [
+                  e("td", fs, i(I(u.verified)), 1),
+                  L.value ? (n(), o("td", gs, i(u.before ? I(u.before.accuracy) : "—"), 1)) : p("", !0),
+                  L.value ? (n(), o("td", hs, [
                     u.before ? (n(), o("span", {
                       key: 0,
                       class: W(["trend", _(u.accuracy - u.before.accuracy)])
                     }, [
-                      r(h(L), {
+                      r(h(O), {
                         icon: _(u.accuracy - u.before.accuracy) === "up" ? "tabler:trending-up" : _(u.accuracy - u.before.accuracy) === "down" ? "tabler:trending-down" : "tabler:minus"
                       }, null, 8, ["icon"]),
                       $(i(te(u.accuracy - u.before.accuracy)), 1)
-                    ], 2)) : (n(), o("span", hs, "New field"))
+                    ], 2)) : (n(), o("span", ks, "New field"))
                   ])) : p("", !0)
                 ]))), 128))
               ])
             ])
-          ])) : (n(), o("p", ds, "No case completed, so there is no accuracy to show."))
+          ])) : (n(), o("p", us, "No case completed, so there is no accuracy to show."))
         ])
       ], 64)) : p("", !0),
-      q.value?.results?.length ? (n(), o("section", ks, [
-        v[19] || (v[19] = e("header", { class: "block-head" }, [
+      q.value?.results?.length ? (n(), o("section", $s, [
+        b[19] || (b[19] = e("header", { class: "block-head" }, [
           e("h2", { class: "block-title" }, "Results by case"),
           e("span", { class: "muted push matrix-hint" }, "Select a case to compare values")
         ], -1)),
-        e("div", $s, [
-          e("table", xs, [
+        e("div", xs, [
+          e("table", ws, [
             e("thead", null, [
               e("tr", null, [
-                v[15] || (v[15] = e("th", null, "Document", -1)),
-                (n(!0), o(S, null, O(C.value, (u) => (n(), o("th", {
+                b[15] || (b[15] = e("th", null, "Document", -1)),
+                (n(!0), o(S, null, F(E.value, (u) => (n(), o("th", {
                   key: u,
                   class: "mono"
                 }, i(u), 1))), 128))
               ])
             ]),
             e("tbody", null, [
-              (n(!0), o(S, null, O(q.value.results, (u) => (n(), o(S, {
+              (n(!0), o(S, null, F(q.value.results, (u) => (n(), o(S, {
                 key: u.case_id
               }, [
                 e("tr", {
-                  class: W(["result-row", { active: K.value === u.case_id }])
+                  class: W(["result-row", { active: R.value === u.case_id }])
                 }, [
                   e("td", null, [
                     e("button", {
                       type: "button",
                       class: "case-toggle",
-                      "aria-expanded": K.value === u.case_id,
-                      onClick: (E) => K.value = K.value === u.case_id ? void 0 : u.case_id
+                      "aria-expanded": R.value === u.case_id,
+                      onClick: (B) => R.value = R.value === u.case_id ? void 0 : u.case_id
                     }, [
-                      r(h(L), {
-                        icon: K.value === u.case_id ? "tabler:chevron-down" : "tabler:chevron-right"
+                      r(h(O), {
+                        icon: R.value === u.case_id ? "tabler:chevron-down" : "tabler:chevron-right"
                       }, null, 8, ["icon"]),
                       $(i(u.upload_name), 1)
-                    ], 8, ws)
+                    ], 8, Vs)
                   ]),
                   u.status !== "completed" ? (n(), o("td", {
                     key: 0,
-                    colspan: C.value.length,
+                    colspan: E.value.length,
                     class: "muted"
                   }, [
-                    u.status === "queued" ? (n(), o("span", Ss, [
-                      r(h(L), {
+                    u.status === "queued" ? (n(), o("span", Cs, [
+                      r(h(O), {
                         icon: "tabler:loader-2",
                         class: "spin"
                       }),
-                      v[16] || (v[16] = $("Waiting", -1))
-                    ])) : (n(), o("span", Cs, [
-                      r(h(L), { icon: "tabler:alert-triangle" }),
+                      b[16] || (b[16] = $("Waiting", -1))
+                    ])) : (n(), o("span", qs, [
+                      r(h(O), { icon: "tabler:alert-triangle" }),
                       $(i(u.error), 1)
                     ]))
-                  ], 8, Vs)) : (n(!0), o(S, { key: 1 }, O(C.value, (E) => (n(), o("td", { key: E }, [
+                  ], 8, Ss)) : (n(!0), o(S, { key: 1 }, F(E.value, (B) => (n(), o("td", { key: B }, [
                     e("span", {
-                      class: W(["cell", ne(R(u, E))]),
-                      title: ee(R(u, E)?.value)
-                    }, i(R(u, E) ? P(R(u, E).score) : "—"), 11, qs)
+                      class: W(["cell", ne(M(u, B))]),
+                      title: ee(M(u, B)?.value)
+                    }, i(M(u, B) ? I(M(u, B).score) : "—"), 11, Us)
                   ]))), 128))
                 ], 2),
-                K.value === u.case_id ? (n(), o("tr", Us, [
+                R.value === u.case_id ? (n(), o("tr", Es, [
                   e("td", {
-                    colspan: C.value.length + 1
+                    colspan: E.value.length + 1
                   }, [
-                    u.error ? (n(), o("p", Es, i(u.error), 1)) : (n(), o("dl", Ns, [
-                      (n(!0), o(S, null, O(u.scores, (E) => (n(), o(S, {
-                        key: E.field
+                    u.error ? (n(), o("p", Ns, i(u.error), 1)) : (n(), o("dl", Bs, [
+                      (n(!0), o(S, null, F(u.scores, (B) => (n(), o(S, {
+                        key: B.field
                       }, [
-                        e("dt", Bs, i(E.field), 1),
+                        e("dt", Ts, i(B.field), 1),
                         e("dd", null, [
                           e("span", {
-                            class: W(["cell", ne(E)])
-                          }, i(P(E.score)), 3),
-                          e("span", Ts, [
-                            v[17] || (v[17] = e("span", { class: "cmp-label" }, "Expected", -1)),
-                            $(i(ee(E.expected)), 1)
-                          ]),
+                            class: W(["cell", ne(B)])
+                          }, i(I(B.score)), 3),
                           e("span", Rs, [
-                            v[18] || (v[18] = e("span", { class: "cmp-label" }, "Extracted", -1)),
-                            $(i(ee(E.value)), 1)
+                            b[17] || (b[17] = e("span", { class: "cmp-label" }, "Expected", -1)),
+                            $(i(ee(B.expected)), 1)
+                          ]),
+                          e("span", As, [
+                            b[18] || (b[18] = e("span", { class: "cmp-label" }, "Extracted", -1)),
+                            $(i(ee(B.value)), 1)
                           ]),
                           e("span", null, [
                             e("span", {
-                              class: W(["chip", E.verified ? "primary" : "warn"])
+                              class: W(["chip", B.verified ? "primary" : "warn"])
                             }, [
-                              r(h(L), {
-                                icon: E.verified ? "tabler:shield-check" : "tabler:shield-question"
+                              r(h(O), {
+                                icon: B.verified ? "tabler:shield-check" : "tabler:shield-question"
                               }, null, 8, ["icon"]),
-                              $(i(E.verified ? "Verified" : "Unverified"), 1)
+                              $(i(B.verified ? "Verified" : "Unverified"), 1)
                             ], 2)
                           ])
                         ])
                       ], 64))), 128))
                     ])),
-                    e("p", As, i(u.tokens.toLocaleString()) + " tokens · " + i(H(u.duration_ms)), 1)
+                    e("p", Ds, i(u.tokens.toLocaleString()) + " tokens · " + i(H(u.duration_ms)), 1)
                   ], 8, Ms)
                 ])) : p("", !0)
               ], 64))), 128))
@@ -2322,169 +2322,169 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           ])
         ])
       ])) : p("", !0),
-      e("section", Ds, [
-        e("header", Ls, [
-          v[20] || (v[20] = e("h2", { class: "block-title" }, "Cases", -1)),
-          e("span", Os, i(t.cases.length), 1),
-          r(h(me), {
+      e("section", Ls, [
+        e("header", Os, [
+          b[20] || (b[20] = e("h2", { class: "block-title" }, "Cases", -1)),
+          e("span", Fs, i(t.cases.length), 1),
+          r(h(oe), {
             label: "Add case",
             size: "small",
             severity: "secondary",
             class: "push",
             disabled: !t.fields.length,
-            onClick: v[2] || (v[2] = (u) => b.value = !b.value)
+            onClick: b[2] || (b[2] = (u) => v.value = !v.value)
           }, null, 8, ["disabled"])
         ]),
-        b.value ? (n(), o("form", {
+        v.value ? (n(), o("form", {
           key: 0,
           class: "case-form",
-          onSubmit: ke(V, ["prevent"])
+          onSubmit: ke(w, ["prevent"])
         }, [
           e("label", null, [
-            v[21] || (v[21] = $("Document", -1)),
-            r(je, {
-              value: y.value,
-              onSelect: v[3] || (v[3] = (u) => {
-                y.value = u;
+            b[21] || (b[21] = $("Document", -1)),
+            r(We, {
+              value: f.value,
+              onSelect: b[3] || (b[3] = (u) => {
+                f.value = u;
               })
             }, null, 8, ["value"])
           ]),
-          v[24] || (v[24] = e("p", { class: "muted" }, "Enter what the document states. Leave a field blank when the document does not state it; the case then expects Docscout to report it missing.", -1)),
-          e("div", Fs, [
-            (n(!0), o(S, null, O(t.fields, (u) => (n(), o("label", {
+          b[24] || (b[24] = e("p", { class: "muted" }, "Enter what the document states. Leave a field blank when the document does not state it; the case then expects Docscout to report it missing.", -1)),
+          e("div", zs, [
+            (n(!0), o(S, null, F(t.fields, (u) => (n(), o("label", {
               key: u.name
             }, [
-              e("span", zs, i(u.name), 1),
+              e("span", Ps, i(u.name), 1),
               u.type === "boolean" ? j((n(), o("select", {
                 key: 0,
-                "onUpdate:modelValue": (E) => g.value[u.name] = E
-              }, [...v[22] || (v[22] = [
+                "onUpdate:modelValue": (B) => y.value[u.name] = B
+              }, [...b[22] || (b[22] = [
                 e("option", { value: "" }, "Not stated", -1),
                 e("option", { value: "true" }, "Yes", -1),
                 e("option", { value: "false" }, "No", -1)
-              ])], 8, Ps)), [
-                [ye, g.value[u.name]]
+              ])], 8, Is)), [
+                [ye, y.value[u.name]]
               ]) : u.type === "enum" ? j((n(), o("select", {
                 key: 1,
-                "onUpdate:modelValue": (E) => g.value[u.name] = E
+                "onUpdate:modelValue": (B) => y.value[u.name] = B
               }, [
-                v[23] || (v[23] = e("option", { value: "" }, "Not stated", -1)),
-                (n(!0), o(S, null, O(u.enum_values, (E) => (n(), o("option", { key: E }, i(E), 1))), 128))
+                b[23] || (b[23] = e("option", { value: "" }, "Not stated", -1)),
+                (n(!0), o(S, null, F(u.enum_values, (B) => (n(), o("option", { key: B }, i(B), 1))), 128))
               ], 8, Ws)), [
-                [ye, g.value[u.name]]
+                [ye, y.value[u.name]]
               ]) : u.type === "object" || u.type === "list" ? j((n(), o("textarea", {
                 key: 2,
-                "onUpdate:modelValue": (E) => g.value[u.name] = E,
+                "onUpdate:modelValue": (B) => y.value[u.name] = B,
                 rows: "2",
                 placeholder: u.type === "list" ? '["first", "second"]' : '{"key": "value"}'
               }, null, 8, js)), [
-                [Y, g.value[u.name]]
+                [Y, y.value[u.name]]
               ]) : j((n(), o("input", {
                 key: 3,
-                "onUpdate:modelValue": (E) => g.value[u.name] = E,
+                "onUpdate:modelValue": (B) => y.value[u.name] = B,
                 type: u.type === "number" ? "number" : u.type === "date" ? "date" : "text",
                 placeholder: "Not stated"
-              }, null, 8, Is)), [
-                [Ye, g.value[u.name]]
+              }, null, 8, Qs)), [
+                [Ye, y.value[u.name]]
               ])
             ]))), 128))
           ]),
-          w.value ? (n(), o("p", Qs, i(w.value), 1)) : p("", !0),
-          e("div", Ks, [
-            r(h(me), {
+          k.value ? (n(), o("p", Ks, i(k.value), 1)) : p("", !0),
+          e("div", Hs, [
+            r(h(oe), {
               label: "Save case",
               size: "small",
               type: "submit",
-              disabled: !y.value,
+              disabled: !f.value,
               loading: t.saving
             }, null, 8, ["disabled", "loading"]),
-            r(h(me), {
+            r(h(oe), {
               label: "Cancel",
               size: "small",
               severity: "secondary",
               text: "",
-              onClick: v[4] || (v[4] = (u) => b.value = !1)
+              onClick: b[4] || (b[4] = (u) => v.value = !1)
             })
           ])
         ], 32)) : p("", !0),
-        !t.cases.length && !b.value ? (n(), o("p", Hs, "No cases yet. Add a document with the values you expect, then run all cases to measure this configuration.")) : t.cases.length ? (n(), o("div", Js, [
-          e("table", Gs, [
+        !t.cases.length && !v.value ? (n(), o("p", Js, "No cases yet. Add a document with the values you expect, then run all cases to measure this configuration.")) : t.cases.length ? (n(), o("div", Gs, [
+          e("table", Xs, [
             e("thead", null, [
               e("tr", null, [
-                v[25] || (v[25] = e("th", null, "Document", -1)),
-                (n(!0), o(S, null, O(t.fields, (u) => (n(), o("th", {
+                b[25] || (b[25] = e("th", null, "Document", -1)),
+                (n(!0), o(S, null, F(t.fields, (u) => (n(), o("th", {
                   key: u.name,
                   class: "mono"
                 }, i(u.name), 1))), 128)),
-                v[26] || (v[26] = e("th", null, null, -1))
+                b[26] || (b[26] = e("th", null, null, -1))
               ])
             ]),
             e("tbody", null, [
-              (n(!0), o(S, null, O(t.cases, (u) => (n(), o("tr", {
+              (n(!0), o(S, null, F(t.cases, (u) => (n(), o("tr", {
                 key: u.id
               }, [
                 e("td", null, [
-                  r(h(L), {
+                  r(h(O), {
                     icon: "tabler:file-text",
                     class: "muted"
                   }),
                   $(" " + i(u.upload_name), 1)
                 ]),
-                (n(!0), o(S, null, O(t.fields, (E) => (n(), o("td", {
-                  key: E.name,
-                  class: W({ muted: !(E.name in u.expected) })
-                }, i(E.name in u.expected ? ee(u.expected[E.name]) : "Not stated"), 3))), 128)),
-                e("td", Xs, [
+                (n(!0), o(S, null, F(t.fields, (B) => (n(), o("td", {
+                  key: B.name,
+                  class: W({ muted: !(B.name in u.expected) })
+                }, i(B.name in u.expected ? ee(u.expected[B.name]) : "Not stated"), 3))), 128)),
+                e("td", Ys, [
                   e("button", {
                     type: "button",
                     class: "icon-btn",
                     "aria-label": `Remove case ${u.upload_name}`,
                     disabled: t.saving,
-                    onClick: (E) => m("delete-case", u.id)
+                    onClick: (B) => m("delete-case", u.id)
                   }, [
-                    r(h(L), { icon: "tabler:trash" })
-                  ], 8, Ys)
+                    r(h(O), { icon: "tabler:trash" })
+                  ], 8, Zs)
                 ])
               ]))), 128))
             ])
           ])
         ])) : p("", !0)
       ]),
-      t.evaluations.length ? (n(), o("section", Zs, [
-        e("header", _s, [
-          v[27] || (v[27] = e("h2", { class: "block-title" }, "History", -1)),
-          e("span", eo, i(t.evaluations.length), 1)
+      t.evaluations.length ? (n(), o("section", _s, [
+        e("header", eo, [
+          b[27] || (b[27] = e("h2", { class: "block-title" }, "History", -1)),
+          e("span", lo, i(t.evaluations.length), 1)
         ]),
-        e("ul", lo, [
-          (n(!0), o(S, null, O(t.evaluations, (u) => (n(), o("li", {
+        e("ul", to, [
+          (n(!0), o(S, null, F(t.evaluations, (u) => (n(), o("li", {
             key: u.id
           }, [
             e("button", {
               type: "button",
               class: W({ active: q.value?.id === u.id }),
               "aria-current": q.value?.id === u.id,
-              onClick: (E) => m("open", u.id)
+              onClick: (B) => m("open", u.id)
             }, [
               e("span", {
                 class: "badge",
                 "data-status": u.status
-              }, i(z[u.status]), 9, ao),
+              }, i(P[u.status]), 9, no),
               e("span", null, "Revision " + i(u.config_revision), 1),
-              e("span", no, i(X(u.created_at)), 1),
-              e("strong", so, i(u.status === "completed" ? P(h(ue)(u)) : "—"), 1)
-            ], 10, to)
+              e("span", so, i(X(u.created_at)), 1),
+              e("strong", oo, i(u.status === "completed" ? I(h(re)(u)) : "—"), 1)
+            ], 10, ao)
           ]))), 128))
         ])
       ])) : p("", !0)
     ]));
   }
-}), io = { class: "section-head" }, uo = { class: "muted" }, ro = {
+}), uo = { class: "section-head" }, ro = { class: "muted" }, co = {
   key: 0,
   class: "empty"
-}, co = {
+}, mo = {
   key: 1,
   class: "table-scroll"
-}, mo = { class: "metric-table" }, vo = { class: "caller" }, bo = ["data-status"], po = { class: "num" }, yo = { class: "num" }, fo = { class: "muted" }, go = /* @__PURE__ */ Q({
+}, vo = { class: "metric-table" }, bo = { class: "caller" }, po = ["data-status"], yo = { class: "num" }, fo = { class: "num" }, go = { class: "muted" }, ho = /* @__PURE__ */ Q({
   __name: "RunsPanel",
   props: {
     runs: {},
@@ -2492,14 +2492,14 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   },
   setup(t) {
     const c = (m) => new Date(m).toLocaleString(void 0, { dateStyle: "medium", timeStyle: "short" }), s = { ui: { label: "Test tab", icon: "tabler:player-play" }, agent: { label: "Agent", icon: "tabler:robot" }, eval: { label: "Evaluation", icon: "tabler:chart-bar" }, workflow: { label: "Workflow", icon: "tabler:route" } };
-    return (m, b) => (n(), o(S, null, [
-      e("div", io, [
-        b[0] || (b[0] = e("h2", null, "Recent runs", -1)),
-        e("span", uo, "Runs expire after " + i(t.retention), 1)
+    return (m, v) => (n(), o(S, null, [
+      e("div", uo, [
+        v[0] || (v[0] = e("h2", null, "Recent runs", -1)),
+        e("span", ro, "Runs expire after " + i(t.retention), 1)
       ]),
-      t.runs.length ? (n(), o("div", co, [
-        e("table", mo, [
-          b[1] || (b[1] = e("thead", null, [
+      t.runs.length ? (n(), o("div", mo, [
+        e("table", vo, [
+          v[1] || (v[1] = e("thead", null, [
             e("tr", null, [
               e("th", null, "Started"),
               e("th", null, "From"),
@@ -2510,51 +2510,80 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
             ])
           ], -1)),
           e("tbody", null, [
-            (n(!0), o(S, null, O(t.runs, (y) => (n(), o("tr", {
-              key: y.id
+            (n(!0), o(S, null, F(t.runs, (f) => (n(), o("tr", {
+              key: f.id
             }, [
-              e("td", null, i(c(y.created_at)), 1),
+              e("td", null, i(c(f.created_at)), 1),
               e("td", null, [
-                e("span", vo, [
-                  r(h(L), {
-                    icon: s[y.caller].icon
+                e("span", bo, [
+                  r(h(O), {
+                    icon: s[f.caller].icon
                   }, null, 8, ["icon"]),
-                  $(i(s[y.caller].label), 1)
+                  $(i(s[f.caller].label), 1)
                 ])
               ]),
               e("td", null, [
                 e("span", {
                   class: "badge",
-                  "data-status": y.status
-                }, i(y.status === "completed" ? "Completed" : "Failed"), 9, bo)
+                  "data-status": f.status
+                }, i(f.status === "completed" ? "Completed" : "Failed"), 9, po)
               ]),
-              e("td", po, i((y.duration_ms / 1e3).toFixed(1)) + "s", 1),
-              e("td", yo, i(Number(y.tokens).toLocaleString()), 1),
-              e("td", fo, i(c(y.expires_at)), 1)
+              e("td", yo, i((f.duration_ms / 1e3).toFixed(1)) + "s", 1),
+              e("td", fo, i(Number(f.tokens).toLocaleString()), 1),
+              e("td", go, i(c(f.expires_at)), 1)
             ]))), 128))
           ])
         ])
-      ])) : (n(), o("p", ro, "No runs yet. Runs from the Test tab, agents, evaluations and Workflows appear here."))
+      ])) : (n(), o("p", co, "No runs yet. Runs from the Test tab, agents, evaluations and Workflows appear here."))
     ], 64));
   }
-}), ho = { class: "docscout" }, ko = { class: "toolbar" }, $o = { class: "toolbar-lead" }, xo = { class: "crumb" }, wo = {
-  class: "tabs",
-  role: "tablist",
-  "aria-label": "Docscout"
-}, Vo = ["id", "aria-selected", "aria-controls", "onClick"], So = { class: "toolbar-side" }, Co = { class: "stats" }, qo = ["title"], Uo = {
-  key: 1,
-  class: "unsaved"
-}, Mo = {
+}), ko = {
   key: 0,
   role: "alert",
   class: "error banner"
-}, Eo = {
+}, $o = /* @__PURE__ */ Q({
+  __name: "SharePopup",
+  props: {
+    id: {},
+    title: {}
+  },
+  emits: ["close"],
+  setup(t, { emit: c }) {
+    const s = t, m = c, v = D(), f = D("");
+    return xe(async () => {
+      try {
+        await qe("kickside-share", { timeoutMs: 8e3 });
+      } catch (N) {
+        f.value = `Sharing is unavailable: ${N instanceof Error ? N.message : String(N)}`;
+        return;
+      }
+      const y = document.createElement("kickside-share"), k = encodeURIComponent(s.id);
+      y.setAttribute("config", JSON.stringify({ resource_id: s.id, title: s.title, access_url: `/api/v1/component-access/grants/${k}`, share_url: `/api/v1/component-access/share/${k}` })), y.style.display = "block", y.addEventListener("close", () => m("close")), v.value?.appendChild(y);
+    }), (y, k) => (n(), o("div", {
+      ref_key: "host",
+      ref: v
+    }, [
+      f.value ? (n(), o("p", ko, i(f.value), 1)) : p("", !0)
+    ], 512));
+  }
+}), xo = { class: "docscout" }, wo = { class: "toolbar" }, Vo = { class: "toolbar-lead" }, So = { class: "crumb" }, Co = {
+  class: "tabs",
+  role: "tablist",
+  "aria-label": "Docscout"
+}, qo = ["id", "aria-selected", "aria-controls", "onClick"], Uo = { class: "toolbar-side" }, Eo = { class: "stats" }, Mo = ["title"], No = {
   key: 1,
+  class: "unsaved"
+}, Bo = {
+  key: 0,
+  role: "alert",
+  class: "error banner"
+}, To = {
+  key: 2,
   id: "panel-Builder",
   role: "tabpanel",
   "aria-labelledby": "tab-Builder",
   class: "builder-body"
-}, No = ["id", "aria-labelledby"], Bo = /* @__PURE__ */ Q({
+}, Ro = ["id", "aria-labelledby"], Ao = /* @__PURE__ */ Q({
   __name: "DocscoutPage",
   props: {
     snapshot: {},
@@ -2569,91 +2598,110 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   },
   emits: ["save", "add-case", "delete-case", "back", "run", "evaluate", "open-evaluation"],
   setup(t, { emit: c }) {
-    const s = t, m = c, b = A(), y = A("Builder"), g = A(Le()), w = A(""), B = A(""), V = N(() => s.snapshot.can_edit ? ["Builder", "Test", "Evals", "Runs"] : ["Test", "Runs"]);
-    ie(y, () => {
-      b.value && (b.value.scrollTop = 0);
+    const s = t, m = c, v = D(), f = D(!1), y = D("Builder"), k = D(Oe()), N = D(""), w = D(""), l = T(() => s.snapshot.can_edit ? ["Builder", "Test", "Evals", "Runs"] : ["Test", "Runs"]);
+    de(y, () => {
+      v.value && (v.value.scrollTop = 0);
     }, { flush: "post" });
-    const l = A();
-    function a(k) {
-      return w.value === k.title && B.value === (k.description ?? "") && dl(g.value, k.config);
+    const a = D();
+    function q(E) {
+      return N.value === E.title && w.value === (E.description ?? "") && ul(k.value, E.config);
     }
-    ie(() => s.snapshot, (k, C) => {
-      V.value.includes(y.value) || (y.value = V.value[0]), !(C && k.id === C.id && k.can_edit && C.can_edit && !a(C) && !a(k)) && (g.value = structuredClone(Re(k.config ?? Le())), w.value = k.title, B.value = k.description ?? "", l.value = k.expected_revision);
+    de(() => s.snapshot, (E, M) => {
+      l.value.includes(y.value) || (y.value = l.value[0]), !(M && E.id === M.id && E.can_edit && M.can_edit && !q(M) && !q(E)) && (k.value = structuredClone(Ae(E.config ?? Oe())), N.value = E.title, w.value = E.description ?? "", a.value = E.expected_revision);
     }, { immediate: !0 });
-    const q = N(() => s.snapshot.can_edit && !a(s.snapshot)), F = N(() => il(g.value)), U = N(() => Object.keys(oe).filter((k) => he(g.value, k)).length);
-    function D() {
-      m("save", { title: w.value, description: B.value, config: structuredClone(Re(g.value)), expected_revision: l.value });
+    const z = T(() => s.snapshot.can_edit && !q(s.snapshot)), C = T(() => dl(k.value)), L = T(() => Object.keys(ie).filter((E) => he(k.value, E)).length);
+    function V() {
+      m("save", { title: N.value, description: w.value, config: structuredClone(Ae(k.value)), expected_revision: a.value });
     }
-    return (k, C) => (n(), o("main", ho, [
-      e("div", ko, [
-        e("div", $o, [
+    return (E, M) => (n(), o("main", xo, [
+      e("div", wo, [
+        e("div", Vo, [
           t.back ? (n(), o(S, { key: 0 }, [
             e("button", {
               type: "button",
               class: "icon-btn",
               "aria-label": "All extractors",
               title: "All extractors",
-              onClick: C[0] || (C[0] = (R) => m("back"))
+              onClick: M[0] || (M[0] = (R) => m("back"))
             }, [
-              r(h(L), { icon: "tabler:arrow-left" })
+              r(h(O), { icon: "tabler:arrow-left" })
             ]),
-            e("span", xo, i(t.snapshot.title), 1)
+            e("span", So, i(t.snapshot.title), 1)
           ], 64)) : p("", !0),
-          e("nav", wo, [
-            (n(!0), o(S, null, O(V.value, (R) => (n(), o("button", {
+          e("nav", Co, [
+            (n(!0), o(S, null, F(l.value, (R) => (n(), o("button", {
               id: `tab-${R}`,
               key: R,
               role: "tab",
               "aria-selected": y.value === R,
               "aria-controls": `panel-${R}`,
-              onClick: (K) => y.value = R
-            }, i(R), 9, Vo))), 128))
+              onClick: (I) => y.value = R
+            }, i(R), 9, qo))), 128))
           ])
         ]),
-        e("div", So, [
-          e("span", Co, [
+        e("div", Uo, [
+          t.snapshot.can_share ? (n(), Z(h(oe), {
+            key: 0,
+            severity: "secondary",
+            outlined: "",
+            size: "small",
+            onClick: M[1] || (M[1] = (R) => f.value = !0)
+          }, {
+            default: Ze(() => [
+              r(h(O), { icon: "tabler:share" }),
+              M[10] || (M[10] = $("Share", -1))
+            ]),
+            _: 1
+          })) : p("", !0),
+          e("span", Eo, [
             $(i(t.snapshot.field_count) + " " + i(t.snapshot.field_count === 1 ? "field" : "fields"), 1),
             t.snapshot.can_edit ? (n(), o(S, { key: 0 }, [
-              $(" · " + i(U.value) + " steps · revision " + i(t.snapshot.expected_revision), 1)
+              $(" · " + i(L.value) + " steps · revision " + i(t.snapshot.expected_revision), 1)
             ], 64)) : (n(), o(S, { key: 1 }, [
               $(" · Read access")
             ], 64))
           ]),
-          t.snapshot.can_edit ? (n(), o(S, { key: 0 }, [
-            F.value ? (n(), o("span", {
+          t.snapshot.can_edit ? (n(), o(S, { key: 1 }, [
+            C.value ? (n(), o("span", {
               key: 0,
               class: "invalid",
               role: "alert",
-              title: F.value
+              title: C.value
             }, [
-              r(h(L), { icon: "tabler:alert-circle" }),
-              $(i(F.value), 1)
-            ], 8, qo)) : q.value ? (n(), o("span", Uo, "Unsaved")) : p("", !0),
-            r(h(me), {
+              r(h(O), { icon: "tabler:alert-circle" }),
+              $(i(C.value), 1)
+            ], 8, Mo)) : z.value ? (n(), o("span", No, "Unsaved")) : p("", !0),
+            r(h(oe), {
               label: "Save",
               size: "small",
               loading: t.saving,
-              disabled: !q.value || !!F.value || !w.value.trim(),
-              onClick: D
+              disabled: !z.value || !!C.value || !N.value.trim(),
+              onClick: V
             }, null, 8, ["loading", "disabled"])
           ], 64)) : p("", !0)
         ])
       ]),
-      t.error ? (n(), o("p", Mo, i(t.error), 1)) : p("", !0),
-      y.value === "Builder" && t.snapshot.can_edit ? (n(), o("div", Eo, [
-        r(en, {
-          title: w.value,
-          "onUpdate:title": C[1] || (C[1] = (R) => w.value = R),
-          description: B.value,
-          "onUpdate:description": C[2] || (C[2] = (R) => B.value = R),
-          config: g.value,
+      t.error ? (n(), o("p", Bo, i(t.error), 1)) : p("", !0),
+      f.value ? (n(), Z($o, {
+        key: 1,
+        id: t.snapshot.id,
+        title: t.snapshot.title,
+        onClose: M[2] || (M[2] = (R) => f.value = !1)
+      }, null, 8, ["id", "title"])) : p("", !0),
+      y.value === "Builder" && t.snapshot.can_edit ? (n(), o("div", To, [
+        r(ln, {
+          title: N.value,
+          "onUpdate:title": M[3] || (M[3] = (R) => N.value = R),
+          description: w.value,
+          "onUpdate:description": M[4] || (M[4] = (R) => w.value = R),
+          config: k.value,
           retention: t.snapshot.retention,
           result: t.result
         }, null, 8, ["title", "description", "config", "retention", "result"])
       ])) : (n(), o("div", {
-        key: 2,
+        key: 3,
         ref_key: "body",
-        ref: b,
+        ref: v,
         class: "page-body"
       }, [
         e("div", {
@@ -2662,47 +2710,47 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
           "aria-labelledby": `tab-${y.value}`,
           class: "panel"
         }, [
-          y.value === "Test" ? (n(), Z(An, {
+          y.value === "Test" ? (n(), Z(Dn, {
             key: 0,
             result: t.result,
             retention: t.snapshot.retention,
             running: t.running,
             "can-run": t.snapshot.field_count > 0,
-            onRun: C[3] || (C[3] = (R) => m("run", R))
+            onRun: M[5] || (M[5] = (R) => m("run", R))
           }, null, 8, ["result", "retention", "running", "can-run"])) : p("", !0),
-          y.value === "Evals" && t.snapshot.can_edit ? (n(), Z(oo, {
+          y.value === "Evals" && t.snapshot.can_edit ? (n(), Z(io, {
             key: 1,
             cases: t.snapshot.cases,
             fields: t.snapshot.config.fields,
             evaluations: t.evaluations,
             evaluation: t.evaluation,
             revision: t.snapshot.expected_revision,
-            changed: q.value,
+            changed: z.value,
             saving: t.saving,
             starting: t.starting,
-            onAddCase: C[4] || (C[4] = (R) => m("add-case", R)),
-            onDeleteCase: C[5] || (C[5] = (R) => m("delete-case", R)),
-            onEvaluate: C[6] || (C[6] = (R) => m("evaluate")),
-            onOpen: C[7] || (C[7] = (R) => m("open-evaluation", R))
+            onAddCase: M[6] || (M[6] = (R) => m("add-case", R)),
+            onDeleteCase: M[7] || (M[7] = (R) => m("delete-case", R)),
+            onEvaluate: M[8] || (M[8] = (R) => m("evaluate")),
+            onOpen: M[9] || (M[9] = (R) => m("open-evaluation", R))
           }, null, 8, ["cases", "fields", "evaluations", "evaluation", "revision", "changed", "saving", "starting"])) : p("", !0),
-          y.value === "Runs" ? (n(), Z(go, {
+          y.value === "Runs" ? (n(), Z(ho, {
             key: 2,
             runs: t.snapshot.runs,
             retention: t.snapshot.retention
           }, null, 8, ["runs", "retention"])) : p("", !0)
-        ], 8, No)
+        ], 8, Ro)
       ], 512))
     ]));
   }
-}), To = {
+}), Do = {
   key: 1,
   class: "error pad-page",
   role: "alert"
-}, Ro = {
+}, Lo = {
   key: 2,
   class: "empty pad-page",
   role: "status"
-}, Ao = 2e3, zo = /* @__PURE__ */ Q({
+}, Oo = 2e3, Wo = /* @__PURE__ */ Q({
   __name: "Extractor",
   props: {
     id: {},
@@ -2710,105 +2758,105 @@ const pe = (t) => t.status === "completed" || t.status === "failed", ue = (t) =>
   },
   emits: ["back"],
   setup(t, { emit: c }) {
-    const s = t, m = c, b = A(), y = A(""), g = A(!1), w = A(!1), B = A(!1), V = A(null), l = A([]), a = A();
-    let q, F, U = 0, D;
-    const k = (T) => T instanceof Error ? T.message : String(T), C = (T) => T === U;
-    async function R(T, z) {
+    const s = t, m = c, v = D(), f = D(""), y = D(!1), k = D(!1), N = D(!1), w = D(null), l = D([]), a = D();
+    let q, z, C = 0, L;
+    const V = (A) => A instanceof Error ? A.message : String(A), E = (A) => A === C;
+    async function M(A, P) {
       try {
-        const x = s.id, v = await ae.evaluations(x);
-        if (!C(T)) return;
-        l.value = v, z && (D = z);
-        const u = D ?? v[0]?.id;
+        const x = s.id, b = await ae.evaluations(x);
+        if (!E(A)) return;
+        l.value = b, P && (L = P);
+        const u = L ?? b[0]?.id;
         if (u) {
-          const E = await ae.evaluation(x, u);
-          if (!C(T) || E.id !== (D ?? u)) return;
-          a.value = E;
+          const B = await ae.evaluation(x, u);
+          if (!E(A) || B.id !== (L ?? u)) return;
+          a.value = B;
         }
-        clearTimeout(F), v.some((E) => !pe(E)) && (F = setTimeout(() => R(T), Ao));
+        clearTimeout(z), b.some((B) => !pe(B)) && (z = setTimeout(() => M(A), Oo));
       } catch (x) {
-        C(T) && (y.value = k(x));
+        E(A) && (f.value = V(x));
       }
     }
-    async function K(T) {
+    async function R(A) {
       if (!s.id) {
-        y.value = "No extractor selected.";
+        f.value = "No extractor selected.";
         return;
       }
       try {
-        const z = await ae.get(s.id);
-        if (!C(T)) return;
-        b.value = z, y.value = "", z.can_edit && await R(T);
-      } catch (z) {
-        C(T) && (y.value = k(z));
+        const P = await ae.get(s.id);
+        if (!E(A)) return;
+        v.value = P, f.value = "", P.can_edit && await M(A);
+      } catch (P) {
+        E(A) && (f.value = V(P));
       }
     }
-    ie(() => s.id, () => {
-      U++, D = void 0, clearTimeout(F), q?.(), b.value = void 0, V.value = null, l.value = [], a.value = void 0, y.value = "";
-      const T = U;
-      K(T), s.id && (q = Ze(`component.${s.id}`, () => K(T)));
-    }, { immediate: !0 }), Oe(() => {
-      U++, q?.(), clearTimeout(F);
+    de(() => s.id, () => {
+      C++, L = void 0, clearTimeout(z), q?.(), v.value = void 0, w.value = null, l.value = [], a.value = void 0, f.value = "";
+      const A = C;
+      R(A), s.id && (q = _e(`component.${s.id}`, () => R(A)));
+    }, { immediate: !0 }), Fe(() => {
+      C++, q?.(), clearTimeout(z);
     });
-    async function P(T) {
-      const z = U;
-      g.value = !0, y.value = "";
+    async function I(A) {
+      const P = C;
+      y.value = !0, f.value = "";
       try {
-        await T(), C(z) && await K(z);
+        await A(), E(P) && await R(P);
       } catch (x) {
-        C(z) && (y.value = k(x));
+        E(P) && (f.value = V(x));
       } finally {
-        g.value = !1;
+        y.value = !1;
       }
     }
-    const te = (T) => P(() => ae.update(s.id, T)), _ = (T) => P(() => ae.addCase(s.id, T)), H = (T) => P(() => ae.deleteCase(s.id, T));
-    async function X(T) {
-      const z = U;
-      w.value = !0, y.value = "";
+    const te = (A) => I(() => ae.update(s.id, A)), _ = (A) => I(() => ae.addCase(s.id, A)), H = (A) => I(() => ae.deleteCase(s.id, A));
+    async function X(A) {
+      const P = C;
+      k.value = !0, f.value = "";
       try {
-        const x = await ae.run(s.id, T);
-        C(z) && (V.value = x, await K(z));
+        const x = await ae.run(s.id, A);
+        E(P) && (w.value = x, await R(P));
       } catch (x) {
-        C(z) && (y.value = k(x));
+        E(P) && (f.value = V(x));
       } finally {
-        w.value = !1;
+        k.value = !1;
       }
     }
     async function ee() {
-      const T = U;
-      B.value = !0, y.value = "";
+      const A = C;
+      N.value = !0, f.value = "";
       try {
-        const { eval_id: z } = await ae.evaluate(s.id);
-        C(T) && await R(T, z);
-      } catch (z) {
-        C(T) && (y.value = k(z));
+        const { eval_id: P } = await ae.evaluate(s.id);
+        E(A) && await M(A, P);
+      } catch (P) {
+        E(A) && (f.value = V(P));
       } finally {
-        B.value = !1;
+        N.value = !1;
       }
     }
-    function ne(T) {
-      R(U, T);
+    function ne(A) {
+      M(C, A);
     }
-    return (T, z) => b.value ? (n(), Z(Bo, {
+    return (A, P) => v.value ? (n(), Z(Ao, {
       key: 0,
-      snapshot: b.value,
-      saving: g.value,
-      running: w.value,
-      starting: B.value,
-      result: V.value,
+      snapshot: v.value,
+      saving: y.value,
+      running: k.value,
+      starting: N.value,
+      result: w.value,
       evaluations: l.value,
       evaluation: a.value,
-      error: y.value,
+      error: f.value,
       back: t.back,
-      onBack: z[0] || (z[0] = (x) => m("back")),
+      onBack: P[0] || (P[0] = (x) => m("back")),
       onRun: X,
       onSave: te,
       onAddCase: _,
       onDeleteCase: H,
       onEvaluate: ee,
       onOpenEvaluation: ne
-    }, null, 8, ["snapshot", "saving", "running", "starting", "result", "evaluations", "evaluation", "error", "back"])) : y.value ? (n(), o("p", To, i(y.value), 1)) : (n(), o("p", Ro, "Loading Docscout…"));
+    }, null, 8, ["snapshot", "saving", "running", "starting", "result", "evaluations", "evaluation", "error", "back"])) : f.value ? (n(), o("p", Do, i(f.value), 1)) : (n(), o("p", Lo, "Loading Docscout…"));
   }
 });
 export {
-  zo as _
+  Wo as _
 };

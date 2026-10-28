@@ -10,7 +10,7 @@ vi.mock('@wippy-fe/proxy',()=>({loadByTagName:async()=>{}}))
 const nameInput=(w:ReturnType<typeof mount>)=>w.get('input[aria-label="Extractor name"]')
 async function details(w:ReturnType<typeof mount>){await w.findAll('button').find(b=>b.text()==='Details')!.trigger('click')}
 const saveButton=(w:ReturnType<typeof mount>)=>w.findAll('button').find(b=>b.text()==='Save')!
-function snapshot():Snapshot{return {id:'extractor',title:'Invoice reader',description:'Invoice fields',field_count:0,status:'configured',can_edit:true,expected_revision:7,config:newConfig(),retention:'2h',runs:[],cases:[]}}
+function snapshot():Snapshot{return {id:'extractor',title:'Invoice reader',description:'Invoice fields',field_count:0,status:'configured',can_edit:true,can_share:true,expected_revision:7,config:newConfig(),retention:'2h',runs:[],cases:[]}}
 describe('Docscout manage surface',()=>{
  it('saves all edited configuration with its loaded revision',async()=>{
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()}})
@@ -20,9 +20,23 @@ describe('Docscout manage surface',()=>{
   expect(wrapper.emitted('save')?.[0][0]).toMatchObject({title:'Invoice totals',expected_revision:7,config:{stages:expect.any(Object),retrieval:{search_mode:'hybrid'}}})
  })
  it('lets READ grantees see Test and Runs without configuration controls',()=>{
-  const value:Snapshot={id:'extractor',title:'Invoice reader',field_count:1,status:'configured',can_edit:false,retention:'2h',runs:[]}
+  const value:Snapshot={id:'extractor',title:'Invoice reader',field_count:1,status:'configured',can_edit:false,can_share:false,retention:'2h',runs:[]}
   const wrapper=mount(DocscoutPage,{props:{snapshot:value}})
   expect(wrapper.findAll('[role=tab]').map(x=>x.text())).toEqual(['Test','Runs']);expect(wrapper.text()).not.toContain('Unsaved changes');expect(wrapper.find('[aria-label="Extraction flow"]').exists()).toBe(false);expect(wrapper.text()).toContain('Run extraction')
+ })
+ it('offers sharing only to people who may share, through the platform share popup',async()=>{
+  const reader:Snapshot={id:'extractor',title:'Invoice reader',field_count:1,status:'configured',can_edit:false,can_share:false,retention:'2h',runs:[]}
+  expect(mount(DocscoutPage,{props:{snapshot:reader}}).findAll('button').some(b=>b.text()==='Share')).toBe(false)
+  const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()},attachTo:document.body})
+  await wrapper.findAll('button').find(b=>b.text()==='Share')!.trigger('click')
+  await new Promise(r=>setTimeout(r))
+  const popup=document.querySelector('kickside-share')!
+  expect(JSON.parse(popup.getAttribute('config')!)).toEqual({resource_id:'extractor',title:'Invoice reader',
+   access_url:'/api/v1/component-access/grants/extractor',share_url:'/api/v1/component-access/share/extractor'})
+  popup.dispatchEvent(new CustomEvent('close'))
+  await wrapper.vm.$nextTick()
+  expect(document.querySelector('kickside-share')).toBeNull()
+  wrapper.unmount()
  })
  it('starts each tab at the top of its content',async()=>{
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()}})

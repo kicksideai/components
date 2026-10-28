@@ -10,7 +10,7 @@ vi.mock('@wippy-fe/proxy',()=>({on:()=>()=>{},loadByTagName:async()=>{}}))
 vi.mock('../client',()=>({client:{get}}))
 describe('Workspace component context',()=>{
  it('opens the component identified by the canonical entry-id prop',async()=>{
-  get.mockResolvedValue({id:'selected-extractor',title:'Invoice reader',can_edit:false,field_count:1,status:'configured',retention:'2h',runs:[]})
+  get.mockResolvedValue({id:'selected-extractor',title:'Invoice reader',can_edit:false,can_share:false,field_count:1,status:'configured',retention:'2h',runs:[]})
   const wrapper=mount(ManageRoot,{global:{plugins:[PrimeVuePlugin]}})
   await flushPromises()
   expect(get).toHaveBeenCalledWith('selected-extractor')

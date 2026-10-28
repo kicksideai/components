@@ -11,7 +11,7 @@ export interface FieldScore {field:string;expected?:unknown;value?:unknown;score
 export interface CaseResult {case_id:string;upload_name:string;status:'queued'|'completed'|'failed';run_id?:string;scores:FieldScore[];tokens:number;duration_ms:number;error?:string}
 export type EvalStatus='queued'|'running'|'completed'|'failed'
 export interface Evaluation {id:string;config_revision:number;fields:Field[];status:EvalStatus;case_count:number;metrics:FieldMetric[];tokens:number;duration_ms:number;error?:string;created_at:string;finished_at?:string;results?:CaseResult[]}
-interface SnapshotBase {id:string;title:string;description?:string;field_count:number;status:string;retention:string;runs:Run[]}
+interface SnapshotBase {id:string;title:string;description?:string;field_count:number;status:string;retention:string;runs:Run[];can_share:boolean}
 export type Snapshot = SnapshotBase & (
  {can_edit:true;expected_revision:number;config:Config;cases:EvalCase[]} |
  {can_edit:false;expected_revision?:never;config?:never;cases?:never}

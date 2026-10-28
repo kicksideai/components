@@ -103,7 +103,9 @@ return {run=test.run_cases(function()
                 test.is_nil(grant_err,tostring(grant_err));test.is_true(granted.success,tostring(granted.error))
             end
             local view,read_err=call(reader,{op="get",id=id})
-            test.is_nil(read_err,tostring(read_err));test.eq(view.can_edit,false);test.is_nil(view.config)
+            test.is_nil(read_err,tostring(read_err));test.eq(view.can_edit,false);test.is_nil(view.config);test.eq(view.can_share,false)
+            test.eq(assert(call(writer,{op="get",id=id})).can_share,false)
+            test.eq(assert(call(owner,{op="get",id=id})).can_share,true)
             local change=input();change.expected_revision=0
             local denied,denied_err=call(reader,{op="update",id=id,input=change})
             test.is_nil(denied);test.not_nil(denied_err)

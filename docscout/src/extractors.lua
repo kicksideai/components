@@ -58,6 +58,7 @@ function M.get(id)
     local row, row_err = checked(svc:get({component_id=id}))
     if row_err then return nil,row_err end
     local can_edit = math.floor(context.access_level / component.ACCESS.WRITE) % 2 == 1
+    local can_share = math.floor(context.access_level / component.ACCESS.ADMIN) % 2 == 1
     -- Each person sees the runs they made; others' runs name their uploads.
     local records, records_err = repository.snapshot(id, security.actor():id())
     if records_err then return nil, records_err end
@@ -65,7 +66,7 @@ function M.get(id)
     if retention_err then return nil,retention_err end
     return {retention=window,success=true,id=id,title=row.meta.title,description=row.meta.description,field_count=tonumber(row.meta.field_count),status=row.meta.status,
         config=can_edit and context.context.config or nil,expected_revision=can_edit and context.context_revision or nil,
-        can_edit=can_edit,runs=records.runs,cases=can_edit and records.cases or nil},nil
+        can_edit=can_edit,can_share=can_share,runs=records.runs,cases=can_edit and records.cases or nil},nil
 end
 -- The configuration a run uses; READ access is enough to run an extractor.
 function M.for_run(id)
