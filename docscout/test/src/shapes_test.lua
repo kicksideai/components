@@ -130,6 +130,27 @@ return { run = test.run_cases(function()
         end)
     end)
 
+    test.describe("Text replies", function()
+        test.it("shows a reply example that satisfies the field schema for every field type", function()
+            local fields = {
+                field({ name = "vendor" }), field({ name = "issued", type = "date", expected_format = "YYYY-MM-DD" }),
+                field({ name = "total", type = "number" }), field({ name = "paid", type = "boolean" }),
+                field({ name = "currency", type = "enum", enum_values = { "EUR", "USD" } }), field({ name = "meta", type = "object" }),
+                field({ name = "lines", type = "list", item_type = "object" }), field({ name = "names", type = "list", item_type = "text" }),
+                field({ name = "tags", type = "list", item_type = "text", enum_values = { "a", "b" } }), field({ name = "counts", type = "list", item_type = "number" }),
+            }
+            local example = shapes.reply_example(fields)
+            local strict, strict_err = json.validate(shapes.group_schema(fields), example)
+            test.is_true(strict, tostring(strict_err))
+            local loose, loose_err = json.validate(shapes.group_schema(fields, true), example)
+            test.is_true(loose, tostring(loose_err))
+            test.eq(example.currency.value, "EUR")
+            test.eq(example.issued.value, "YYYY-MM-DD")
+            local encoded = assert(json.encode(example))
+            test.is_nil(encoded:find("additionalProperties", 1, true))
+        end)
+    end)
+
     test.describe("Extraction schemas", function()
         test.it("maps every field type to a strict JSON Schema value", function()
             test.eq(shapes.value_schema(field({ type = "text" })).type, "string")

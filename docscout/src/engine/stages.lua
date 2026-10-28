@@ -482,9 +482,10 @@ function M.extract(run: any, step: any): error?
         if cfg.structured_output then
             result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
         else
-            local schema_text = json.encode(shapes.group_schema(batch, true))
+            local example = json.encode(shapes.reply_example(batch))
             local textual, gen_err = ai.generate(step.meter, cfg.model, EXTRACT_SYSTEM ..
-                "\nReply with only a JSON object that satisfies this JSON Schema; chunk is the integer after C. Use null for value when found is false.\n" .. schema_text,
+                "\nReply with only a JSON object shaped like this example, with one entry per field and the value typed as the field says;" ..
+                " chunk is the integer after C. When the passages do not state a field, set found to false, value to null and evidence to [].\n" .. example,
                 user, { max_tokens = cfg.max_output_tokens })
             if gen_err then err = gen_err else result, err = shapes.reply_object(textual :: string, shapes.group_schema(batch, true)) end
         end

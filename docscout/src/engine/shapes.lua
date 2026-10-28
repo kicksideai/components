@@ -175,6 +175,27 @@ function M.group_schema(fields: { any }, optional_values: boolean?): any
     return { type = "object", additionalProperties = false, required = required, properties = properties }
 end
 
+-- A sample value of one field type, as a text reply would write it.
+local function sample(kind: string, f: any): any
+    if #f.enum_values > 0 and (kind == "enum" or kind == "text") then return f.enum_values[1] end
+    if kind == "number" then return 0 end
+    if kind == "boolean" then return true end
+    if kind == "date" then return f.expected_format ~= "" and f.expected_format or "YYYY-MM-DD" end
+    if kind == "object" then return M.object() end
+    return f.expected_format ~= "" and f.expected_format or "value as the document states it"
+end
+
+-- An example reply for a group of fields. A text reply is shown this instance
+-- rather than the JSON Schema, so the model writes values, not schema keywords.
+function M.reply_example(fields: { any }): any
+    local out = M.object()
+    for _, f in ipairs(fields) do
+        local value = f.type == "list" and { sample(f.item_type, f) } or sample(f.type, f)
+        out[f.name] = { found = true, value = value, confidence = 0.9, evidence = { { chunk = 1, quote = "exact words copied from chunk 1" } } }
+    end
+    return out
+end
+
 -- Typographic characters that PDFs and models swap for plain ones.
 local EQUIVALENT = {
     ["‘"] = "'", ["’"] = "'", ["‚"] = "'", ["′"] = "'",
