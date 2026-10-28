@@ -30,6 +30,23 @@ return { run = test.run_cases(function()
             local stranger = assert(caller("stranger-" .. uuid.v4()):call("kickside.docscout.callers:get_tool", { extractor_id = a.component_id }))
             test.is_false(stranger.success)
         end)
+        test.it("stops a run that reaches its deadline before a stage starts", function()
+            local who = "caller-" .. uuid.v4()
+            local config = defaults()
+            local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+            field.name = "total"
+            config.fields = { field }
+            local a = assert(caller(who):call("app:probe", { op = "create", input = { title = "Late reader", description = "", config = config } }))
+            local _, err = caller(who):call("kickside.docscout.callers:contract_run",
+                { extractor_id = a.component_id, upload_id = "upload-" .. uuid.v4(), caller = "eval", deadline = "2000-01-01T00:00:00Z" })
+            test.not_nil(err)
+            test.is_true(errors.is(err, errors.TIMEOUT), tostring(err))
+            local trace = (err :: any):details().trace
+            test.eq(#trace, 1); test.eq(trace[1].kind, "read"); test.eq(trace[1].status, "failed")
+            local _, malformed = caller(who):call("kickside.docscout.callers:contract_run",
+                { extractor_id = a.component_id, upload_id = "u", caller = "eval", deadline = "tomorrow" })
+            test.not_nil(malformed); test.is_true(errors.is(malformed, errors.INVALID), tostring(malformed))
+        end)
         test.it("refuses a Block run without an extractor or an upload", function()
             local who = "caller-" .. uuid.v4()
             local _, no_extractor = caller(who):call("kickside.docscout.callers:block_run", { config = {}, input = { upload_id = "u" } })

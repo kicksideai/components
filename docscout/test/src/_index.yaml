@@ -316,8 +316,10 @@ entries:
   - uuid
   - sql
   - funcs
+  - time
   imports:
     test: wippy.test:test
+    ai: kickside.docscout.engine:ai
     process: kickside.docscout.engine:process
     store: kickside.docscout.engine:store
     stages: kickside.docscout.engine:stages

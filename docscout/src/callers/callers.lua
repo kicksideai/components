@@ -35,7 +35,7 @@ local function contract_run(input: any): (any?, error?)
     if type(input) ~= "table" then return nil, invalid("Request must be an object") end
     local caller = input.caller or "agent"
     if caller ~= "agent" and caller ~= "workflow" and caller ~= "eval" then return nil, invalid("caller must be agent, workflow or eval") end
-    return engine.run({ id = input.extractor_id, upload_id = input.upload_id, caller = caller })
+    return engine.run({ id = input.extractor_id, upload_id = input.upload_id, caller = caller, deadline = input.deadline })
 end
 
 local function block(request: any): (any?, error?)

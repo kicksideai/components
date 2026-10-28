@@ -5,10 +5,11 @@ entries:
 - name: ai
   kind: library.lua
   meta:
-    comment: Model calls with per-step token accounting.
+    comment: Model calls with per-step token accounting, bounded by the run's deadline.
   source: file://ai.lua
   modules:
   - json
+  - time
   imports:
     llm: wippy.llm:llm
     prompt: wippy.llm:prompt

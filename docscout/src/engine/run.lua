@@ -19,12 +19,19 @@ local CALLERS = { ui = true, agent = true, eval = true, workflow = true }
 local function invalid(message: string): error return errors.new({ kind = errors.INVALID, message = message }) end
 local function millis(): integer return math.floor(time.now():unix_nano() / 1000000) end
 
--- input: { id, upload_id, caller }
+-- input: { id, upload_id, caller, deadline? } where deadline is an RFC3339
+-- instant the run must finish by.
 function M.run(input: any): (any?, error?)
     if type(input) ~= "table" or type(input.id) ~= "string" or input.id == "" then return nil, invalid("Choose an extractor") end
     if type(input.upload_id) ~= "string" or input.upload_id == "" then return nil, invalid("Choose an upload") end
     local caller = input.caller or "ui"
     if not CALLERS[caller] then return nil, invalid("Unknown caller " .. tostring(caller)) end
+    local deadline = nil
+    if input.deadline ~= nil then
+        local parsed, parse_err = time.parse(time.RFC3339, tostring(input.deadline))
+        if parse_err or not parsed then return nil, invalid("deadline must be an RFC3339 instant") end
+        deadline = parsed
+    end
     local actor = security.actor()
     if not actor then return nil, errors.new({ kind = errors.UNAUTHENTICATED, message = "authentication required" }) end
     local extractor, access_err = extractors.for_run(input.id)
@@ -41,9 +48,9 @@ function M.run(input: any): (any?, error?)
     local failure: error? = nil
 
     local function step(kind: string, scope: string, model: string?, fn: (any) -> error?): boolean
-        local record: any = { kind = kind, scope = scope, model = model, meter = ai.meter() }
+        local record: any = { kind = kind, scope = scope, model = model, meter = ai.meter(deadline) }
         local t0 = millis()
-        local err = fn(record)
+        local err = ai.check_deadline(record.meter, "the " .. kind .. " step") or fn(record)
         trace[#trace + 1] = {
             kind = kind, status = err and "failed" or "completed", scope = scope, model = model,
             duration_ms = millis() - t0, input_tokens = record.meter.input_tokens, output_tokens = record.meter.output_tokens,

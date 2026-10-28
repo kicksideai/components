@@ -15,7 +15,8 @@ entries:
       definition: |
         {"type": "object", "additionalProperties": false, "required": ["extractor_id", "upload_id"],
          "properties": {"extractor_id": {"type": "string", "minLength": 1}, "upload_id": {"type": "string", "minLength": 1},
-                        "caller": {"type": "string", "enum": ["agent", "workflow", "eval"]}}}
+                        "caller": {"type": "string", "enum": ["agent", "workflow", "eval"]},
+                        "deadline": {"type": "string", "format": "date-time"}}}
     output_schemas:
     - format: application/schema+json
       definition: |

@@ -1,6 +1,8 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Model calls for the engine. Every call adds its token usage to the step
--- meter it is given, so the run trace reports cost per step.
+-- meter it is given, so the run trace reports cost per step, and ends by the
+-- run's deadline when the meter carries one.
+local time = require("time")
 local llm = require("llm")
 local prompt = require("prompt")
 local json = require("json")
@@ -34,8 +36,32 @@ local function count(meter: any, response: any)
     meter.output_tokens = meter.output_tokens + (tonumber(tokens.completion_tokens) or 0) + (tonumber(tokens.thinking_tokens) or 0)
 end
 
-function M.meter(): any
-    return { input_tokens = 0, output_tokens = 0 }
+function M.meter(deadline: any?): any
+    return { input_tokens = 0, output_tokens = 0, deadline = deadline }
+end
+
+-- Milliseconds left before the meter's deadline, or nil without one.
+function M.time_left(meter: any): integer?
+    if not meter.deadline then return nil end
+    return math.max(0, math.floor((tonumber(meter.deadline:sub(time.now()):nanoseconds()) or 0) / 1000000))
+end
+
+-- A TIMEOUT error once the meter's deadline has passed.
+function M.check_deadline(meter: any, what: string): error?
+    if M.time_left(meter) == 0 then
+        return errors.new({ kind = errors.TIMEOUT, message = "the run reached its deadline before " .. what })
+    end
+    return nil
+end
+
+-- Options for one model call, bounded by the time left before the deadline.
+local function options_for(meter: any, what: string, model: string, opts: any?): (any?, error?)
+    local late = M.check_deadline(meter, what)
+    if late then return nil, late end
+    local options: any = { model = model, deadline_ms = M.time_left(meter) }
+    if opts and opts.max_tokens then options.max_tokens = opts.max_tokens end
+    if opts and opts.temperature then options.temperature = opts.temperature end
+    return options, nil
 end
 
 -- The model behind a reference such as class:fast, as its catalog card.
@@ -64,9 +90,8 @@ end
 
 -- Structured output as a Lua table that matches schema.
 function M.structured(meter: any, model: string, schema: any, system: string, user: string, opts: any?): (any?, error?)
-    local options: any = { model = model }
-    if opts and opts.max_tokens then options.max_tokens = opts.max_tokens end
-    if opts and opts.temperature then options.temperature = opts.temperature end
+    local options, late = options_for(meter, "a structured model call", model, opts)
+    if late then return nil, late end
     local response, err = llm.structured_output(schema, messages(system, user), options)
     if err then return nil, model_error("structured model call (" .. model .. ")", err) end
     count(meter, response)
@@ -77,9 +102,8 @@ function M.structured(meter: any, model: string, schema: any, system: string, us
 end
 
 function M.generate(meter: any, model: string, system: string, user: string, opts: any?): (string?, error?)
-    local options: any = { model = model }
-    if opts and opts.max_tokens then options.max_tokens = opts.max_tokens end
-    if opts and opts.temperature then options.temperature = opts.temperature end
+    local options, late = options_for(meter, "a model call", model, opts)
+    if late then return nil, late end
     local response, err = llm.generate(messages(system, user), options)
     if err then return nil, model_error("model call (" .. model .. ")", err) end
     count(meter, response)
@@ -96,8 +120,9 @@ function M.agent(meter: any, model: string, system: string, user: string, tools:
     conversation:add_user(user)
     local calls = 0
     while true do
-        local options: any = { model = model, tools = tools, tool_choice = calls < max_calls and "auto" or "none" }
-        if opts and opts.max_tokens then options.max_tokens = opts.max_tokens end
+        local options, late = options_for(meter, "an agent model call", model, { max_tokens = opts and opts.max_tokens })
+        if late then return nil, calls, late end
+        options.tools, options.tool_choice = tools, calls < max_calls and "auto" or "none"
         local response, err = llm.generate(conversation, options)
         if err then return nil, calls, model_error("agent model call (" .. model .. ")", err) end
         count(meter, response)
@@ -126,7 +151,10 @@ function M.embed(meter: any, model: string, texts: { string }): (any?, error?)
     for start = 1, #texts, EMBED_BATCH do
         local batch = {}
         for i = start, math.min(#texts, start + EMBED_BATCH - 1) do batch[#batch + 1] = texts[i] end
-        local response, err = llm.embed(batch, { model = model, dimensions = M.DIMENSIONS })
+        local options, late = options_for(meter, "embedding", model)
+        if late then return nil, late end
+        options.dimensions = M.DIMENSIONS
+        local response, err = llm.embed(batch, options)
         if err then return nil, model_error("embedding (" .. model .. ")", err) end
         count(meter, response)
         local result = response and response.result
