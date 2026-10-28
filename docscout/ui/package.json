@@ -62,7 +62,7 @@
     "scripts": {
       "build": "build"
     },
-    "description": "Docscout extractor view for the workspace: Builder for fields and the reading flow, Test to run on an upload, Evals to measure accuracy against expected values, and Runs. The create view emits created with {id}; the page view emits navigate with its sub-path."
+    "description": "Docscout extractor view for the workspace: Builder for fields and the reading flow, Test to run on an upload, Evals to measure accuracy against expected values, and Runs. The create view emits created with {id}, submit-state with {saving}, error with {message} and close; the page view emits navigate with its sub-path."
   },
   "scripts": {
     "build": "vite build",
