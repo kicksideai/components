@@ -1,6 +1,6 @@
 import { defineComponent as H, useModel as ge, openBlock as n, createElementBlock as o, withModifiers as $e, createElementVNode as e, mergeModels as xe, computed as N, withKeys as Te, unref as k, normalizeClass as z, createVNode as r, toDisplayString as i, Fragment as C, renderList as L, createCommentVNode as p, createTextVNode as $, createBlock as ee, ref as A, watch as de, withDirectives as W, vModelText as _, vModelSelect as fe, onMounted as qe, normalizeStyle as pe, onBeforeUnmount as Oe, nextTick as Xe, vShow as Se, vModelDynamic as Ye, toRaw as Re } from "vue";
 import { loadByTagName as Fe, on as Ze } from "@wippy-fe/proxy";
-import { i as ke, h as ze, t as Ce, g as ie, j as Ue, k as _e, m as Pe, l as We, o as Ae, p as el, q as ll, r as tl, v as al, w as De, x as nl, y as we, z as sl, A as ol, s as ve, n as Le, C as il, D as dl, c as se } from "./index-DaK7blmj.js";
+import { i as ke, h as ze, t as Ce, g as ie, j as Ue, k as _e, m as Pe, l as We, o as Ae, p as el, q as ll, r as tl, v as al, w as De, x as nl, y as we, z as sl, A as ol, s as ve, n as Le, C as il, D as dl, c as se } from "./index-CtvPaddD.js";
 import { Icon as D } from "@iconify/vue";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) => t.metrics.length ? t.metrics.reduce((c, s) => c + s.accuracy, 0) / t.metrics.length : 0, ul = ["aria-checked", "aria-label", "disabled"], K = /* @__PURE__ */ H({
@@ -583,22 +583,22 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
 }, Mt = {
   key: 3,
   class: "toggle-row"
-}, Et = { class: "toggle-row" }, Nt = { class: "mono" }, Bt = { class: "toggle-row" }, Tt = { class: "label-block" }, Rt = {
+}, Et = { class: "toggle-row" }, Nt = { class: "toggle-row" }, Bt = { class: "label-block" }, Tt = {
   id: "model-deep",
   class: "model-role"
-}, At = {
+}, Rt = {
   id: "model-deep-query",
   class: "model-role"
-}, Dt = {
+}, At = {
   id: "model-extract",
   class: "model-role"
-}, Lt = { class: "output-list" }, Ot = { class: "chip" }, Ft = {
+}, Dt = { class: "output-list" }, Lt = { class: "chip" }, Ot = {
   key: 0,
   class: "muted"
-}, zt = { class: "toggle-row" }, Pt = { class: "toggle-row" }, Wt = { class: "toggle-row" }, jt = { class: "toggle-row" }, It = {
+}, Ft = { class: "toggle-row" }, zt = { class: "toggle-row" }, Pt = { class: "toggle-row" }, Wt = { class: "toggle-row" }, jt = {
   id: "model-verify",
   class: "model-role"
-}, Qt = /* @__PURE__ */ H({
+}, It = /* @__PURE__ */ H({
   __name: "StepInspector",
   props: {
     stage: {},
@@ -841,10 +841,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             key: a,
             class: "toggle-row"
           }, [
-            e("span", null, [
-              $(i(k(Ce)(a)), 1),
-              e("small", Nt, i(a), 1)
-            ]),
+            e("span", null, i(k(Ce)(a)), 1),
             r(K, {
               "model-value": s.value.scout.tools.includes(a),
               label: k(Ce)(a),
@@ -855,7 +852,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
         ], 64)) : p("", !0)
       ], 64)) : p("", !0),
       t.stage === "deep" ? (n(), o(C, { key: 3 }, [
-        e("div", Bt, [
+        e("div", Nt, [
           l[54] || (l[54] = e("span", null, "Stage enabled", -1)),
           r(K, {
             modelValue: s.value.deep.enabled,
@@ -871,7 +868,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           "per-query": s.value.deep.chunks_per_query,
           cap: s.value.deep.chunk_cap
         }, null, 8, ["fields", "parallel", "queries", "per-query", "cap"]),
-        e("div", Tt, [
+        e("div", Bt, [
           l[55] || (l[55] = e("span", { id: "read-label" }, "Reads", -1)),
           r(be, {
             modelValue: s.value.deep.read,
@@ -882,7 +879,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           l[56] || (l[56] = e("small", null, "Whole sections suit clauses that span many passages; long sections fall back to chunks.", -1))
         ]),
         l[59] || (l[59] = e("h4", null, "Models", -1)),
-        e("div", Rt, [
+        e("div", Tt, [
           l[57] || (l[57] = e("span", null, "Analysis", -1)),
           r(te, {
             value: s.value.deep.model,
@@ -891,7 +888,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             onSelect: l[17] || (l[17] = (a) => s.value.deep.model = a)
           }, null, 8, ["value"])
         ]),
-        e("div", At, [
+        e("div", Rt, [
           l[58] || (l[58] = e("span", null, "Query writer", -1)),
           r(te, {
             value: s.value.deep.query_model,
@@ -972,7 +969,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
       ], 64)) : p("", !0),
       t.stage === "extract" ? (n(), o(C, { key: 4 }, [
         l[64] || (l[64] = e("h4", null, "Models", -1)),
-        e("div", Dt, [
+        e("div", At, [
           l[62] || (l[62] = e("span", null, "Extraction", -1)),
           r(te, {
             value: s.value.extract.model,
@@ -982,15 +979,15 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           }, null, 8, ["value"])
         ]),
         l[65] || (l[65] = e("h4", null, "Field groups", -1)),
-        e("ul", Lt, [
+        e("ul", Dt, [
           (n(!0), o(C, null, L(h.value, (a) => (n(), o("li", {
             key: a.name
           }, [
             e("span", null, i(a.name), 1),
-            e("span", Ot, i(a.fields.length) + " field" + i(a.fields.length === 1 ? "" : "s"), 1)
+            e("span", Lt, i(a.fields.length) + " field" + i(a.fields.length === 1 ? "" : "s"), 1)
           ]))), 128))
         ]),
-        h.value.length ? p("", !0) : (n(), o("p", Ft, "No fields yet.")),
+        h.value.length ? p("", !0) : (n(), o("p", Ot, "No fields yet.")),
         r(X, {
           modelValue: s.value.extract.max_fields_per_call,
           "onUpdate:modelValue": l[27] || (l[27] = (a) => s.value.extract.max_fields_per_call = a),
@@ -1011,7 +1008,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           unit: "tokens",
           disabled: t.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"]),
-        e("div", zt, [
+        e("div", Ft, [
           l[63] || (l[63] = e("span", null, [
             $("Structured output"),
             e("small", null, "The model returns JSON matching the field schema.")
@@ -1025,7 +1022,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
         ])
       ], 64)) : p("", !0),
       t.stage === "verify" ? (n(), o(C, { key: 5 }, [
-        e("div", Pt, [
+        e("div", zt, [
           l[66] || (l[66] = e("span", null, "Stage enabled", -1)),
           r(K, {
             modelValue: s.value.verify.enabled,
@@ -1034,7 +1031,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             disabled: t.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        e("div", Wt, [
+        e("div", Pt, [
           l[67] || (l[67] = e("span", null, [
             $("Quotes exist"),
             e("small", null, "Each quote is matched against the document text. No model call.")
@@ -1046,7 +1043,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             disabled: t.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        e("div", jt, [
+        e("div", Wt, [
           l[68] || (l[68] = e("span", null, [
             $("Quotes support values"),
             e("small", null, "A model confirms each quote supports its value.")
@@ -1060,7 +1057,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
         ]),
         s.value.verify.check_support ? (n(), o(C, { key: 0 }, [
           l[70] || (l[70] = e("h4", null, "Models", -1)),
-          e("div", It, [
+          e("div", jt, [
             l[69] || (l[69] = e("span", null, "Checker", -1)),
             r(te, {
               value: s.value.verify.model,
@@ -1073,13 +1070,13 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
       ], 64)) : p("", !0)
     ], 8, rt));
   }
-}), Kt = {
+}), Qt = {
   class: "diagram chunk-diagram",
   "aria-hidden": "true"
-}, Ht = {
+}, Kt = {
   viewBox: "0 0 100 34",
   preserveAspectRatio: "none"
-}, Jt = ["x", "y", "width"], Gt = ["x", "width"], Xt = /* @__PURE__ */ H({
+}, Ht = ["x", "y", "width"], Jt = ["x", "width"], Gt = /* @__PURE__ */ H({
   __name: "ChunkDiagram",
   props: {
     size: {},
@@ -1090,8 +1087,8 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
       const v = 100 / (3 - 2 * s.value);
       return [0, 1, 2].map((f) => ({ x: f * v * (1 - s.value), w: v }));
     });
-    return (v, f) => (n(), o("figure", Kt, [
-      (n(), o("svg", Ht, [
+    return (v, f) => (n(), o("figure", Qt, [
+      (n(), o("svg", Kt, [
         (n(!0), o(C, null, L(m.value, (x, h) => (n(), o("rect", {
           key: h,
           x: x.x,
@@ -1100,7 +1097,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           height: "14",
           rx: "2",
           class: "chunk"
-        }, null, 8, Jt))), 128)),
+        }, null, 8, Ht))), 128)),
         (n(), o(C, null, L([1, 2], (x) => e("rect", {
           key: "o" + x,
           x: m.value[x].x,
@@ -1108,23 +1105,23 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           width: m.value[x - 1].x + m.value[x - 1].w - m.value[x].x,
           height: "24",
           class: "shared"
-        }, null, 8, Gt)), 64))
+        }, null, 8, Jt)), 64))
       ])),
       e("figcaption", null, i(t.size.toLocaleString()) + " tokens per chunk · " + i(t.overlap.toLocaleString()) + " shared with the next (" + i(Math.round(s.value * 100)) + "%)", 1)
     ]));
   }
-}), Yt = ["disabled"], Zt = { class: "muted" }, _t = { class: "toggle-row" }, ea = { class: "toggle-row" }, la = { class: "label-block" }, ta = {
+}), Xt = ["disabled"], Yt = { class: "muted" }, Zt = { class: "toggle-row" }, _t = { class: "toggle-row" }, ea = { class: "label-block" }, la = {
   key: 0,
   id: "context-model",
   class: "model-role"
-}, aa = { class: "label-block" }, na = {
+}, ta = { class: "label-block" }, aa = {
   id: "embedding-model",
   class: "model-role"
-}, sa = { class: "toggle-row" }, oa = {
+}, na = { class: "toggle-row" }, sa = {
   key: 1,
   id: "highlighter-model",
   class: "model-role"
-}, ia = /* @__PURE__ */ H({
+}, oa = /* @__PURE__ */ H({
   __name: "DocumentInspector",
   props: {
     config: {},
@@ -1137,9 +1134,9 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
       class: "inspector-form",
       disabled: t.readonly
     }, [
-      e("p", Zt, "The upload's text is split into chunks and indexed once per document and settings; processed copies expire after " + i(t.retention) + ".", 1),
+      e("p", Yt, "The upload's text is split into chunks and indexed once per document and settings; processed copies expire after " + i(t.retention) + ".", 1),
       l[19] || (l[19] = e("h4", null, "Chunks", -1)),
-      r(Xt, {
+      r(Gt, {
         size: s.value.chunk_size,
         overlap: s.value.overlap
       }, null, 8, ["size", "overlap"]),
@@ -1165,7 +1162,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
         unit: "tokens",
         disabled: t.readonly
       }, null, 8, ["modelValue", "min", "max", "disabled"]),
-      e("div", _t, [
+      e("div", Zt, [
         l[11] || (l[11] = e("span", null, [
           $("Split by headings"),
           e("small", null, "A chunk never crosses a heading.")
@@ -1177,7 +1174,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           disabled: t.readonly
         }, null, 8, ["modelValue", "disabled"])
       ]),
-      e("div", ea, [
+      e("div", _t, [
         l[12] || (l[12] = e("span", null, [
           $("Keep tables whole"),
           e("small", null, "Table rows stay together in one chunk up to the chunk size.")
@@ -1202,7 +1199,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
         disabled: t.readonly
       }, null, 8, ["modelValue", "min", "max", "disabled"]),
       l[20] || (l[20] = e("h4", null, "Context", -1)),
-      e("div", la, [
+      e("div", ea, [
         l[13] || (l[13] = e("span", { id: "context-label" }, "Chunk context", -1)),
         r(be, {
           modelValue: s.value.context,
@@ -1212,7 +1209,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
         }, null, 8, ["modelValue"]),
         e("small", null, i(v.find((a) => a.value === s.value.context)?.note), 1)
       ]),
-      s.value.context === "generated" ? (n(), o("div", ta, [
+      s.value.context === "generated" ? (n(), o("div", la, [
         l[14] || (l[14] = e("span", null, "Context writer", -1)),
         r(te, {
           value: s.value.context_model,
@@ -1222,7 +1219,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
         }, null, 8, ["value"])
       ])) : p("", !0),
       l[21] || (l[21] = e("h4", null, "Search", -1)),
-      e("div", aa, [
+      e("div", ta, [
         l[15] || (l[15] = e("span", { id: "mode-label" }, "Search mode", -1)),
         r(be, {
           modelValue: s.value.search_mode,
@@ -1233,7 +1230,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
         e("small", null, i(m.find((a) => a.value === s.value.search_mode)?.note), 1)
       ]),
       l[22] || (l[22] = e("h4", null, "Models", -1)),
-      e("div", na, [
+      e("div", aa, [
         l[16] || (l[16] = e("span", null, "Embedding", -1)),
         r(te, {
           value: s.value.embedding_model,
@@ -1242,7 +1239,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           onSelect: l[8] || (l[8] = (a) => s.value.embedding_model = a)
         }, null, 8, ["value"])
       ]),
-      e("div", sa, [
+      e("div", na, [
         l[17] || (l[17] = e("span", null, [
           $("Highlighter"),
           e("small", null, "A small model marks what each field needs before extraction.")
@@ -1254,7 +1251,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           disabled: t.readonly
         }, null, 8, ["modelValue", "disabled"])
       ]),
-      s.value.highlighter ? (n(), o("div", oa, [
+      s.value.highlighter ? (n(), o("div", sa, [
         l[18] || (l[18] = e("span", null, "Highlighter", -1)),
         r(te, {
           value: s.value.highlighter_model,
@@ -1263,51 +1260,51 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           onSelect: l[10] || (l[10] = (a) => s.value.highlighter_model = a)
         }, null, 8, ["value"])
       ])) : p("", !0)
-    ], 8, Yt));
+    ], 8, Xt));
   }
-}), da = { class: "canvas" }, ua = { class: "canvas-inner" }, ra = {
+}), ia = { class: "canvas" }, da = { class: "canvas-inner" }, ua = {
   class: "block",
   "aria-labelledby": "fields-head"
-}, ca = { class: "block-head" }, ma = ["aria-expanded"], va = { class: "count" }, ba = {
+}, ra = { class: "block-head" }, ca = ["aria-expanded"], ma = { class: "count" }, va = {
   key: 0,
   class: "block-peek"
-}, pa = {
+}, ba = {
   id: "fields-body",
   class: "block-body"
-}, ya = {
+}, pa = {
   key: 0,
   class: "block-empty"
-}, fa = {
+}, ya = {
   key: 1,
   class: "rows"
-}, ga = ["onClick"], ha = { class: "row-name" }, ka = {
+}, fa = ["onClick"], ga = { class: "row-name" }, ha = {
   key: 0,
   class: "req",
   title: "Required"
-}, $a = { class: "chips" }, xa = {
+}, ka = { class: "chips" }, $a = {
   key: 1,
   class: "chip"
-}, wa = ["title"], Va = { class: "chip" }, Sa = {
+}, xa = ["title"], wa = { class: "chip" }, Va = {
   key: 3,
   class: "chip",
   title: "Evidence required"
-}, Ca = {
+}, Sa = {
   key: 0,
   class: "row-actions"
-}, qa = ["disabled", "onClick"], Ua = ["disabled", "onClick"], Ma = {
+}, Ca = ["disabled", "onClick"], qa = ["disabled", "onClick"], Ua = {
   class: "block",
   "aria-labelledby": "flow-head"
-}, Ea = { class: "block-head" }, Na = ["aria-expanded"], Ba = { class: "count" }, Ta = {
+}, Ma = { class: "block-head" }, Ea = ["aria-expanded"], Na = { class: "count" }, Ba = {
   key: 0,
   class: "block-peek"
-}, Ra = {
+}, Ta = {
   id: "flow-body",
   class: "flow",
   "aria-label": "Extraction flow"
-}, Aa = { class: "node-icon" }, Da = { class: "node-main" }, La = { class: "node-summary" }, Oa = { class: "node-side" }, Fa = { class: "chip model" }, za = { class: "branches" }, Pa = { class: "branch" }, Wa = { class: "branch" }, ja = { class: "node-icon" }, Ia = { class: "node-main" }, Qa = { class: "node-summary" }, Ka = ["aria-valuenow"], Ha = { class: "side-panel-head" }, Ja = { class: "side-panel-icon" }, Ga = ["disabled"], Xa = {
+}, Ra = { class: "node-icon" }, Aa = { class: "node-main" }, Da = { class: "node-summary" }, La = { class: "node-side" }, Oa = { class: "chip model" }, Fa = { class: "branches" }, za = { class: "branch" }, Pa = { class: "branch" }, Wa = { class: "node-icon" }, ja = { class: "node-main" }, Ia = { class: "node-summary" }, Qa = ["aria-valuenow"], Ka = { class: "side-panel-head" }, Ha = { class: "side-panel-icon" }, Ja = ["disabled"], Ga = {
   key: 4,
   class: "inspector-form"
-}, Ya = { class: "output-list" }, Za = { class: "mono" }, _a = { class: "chip" }, en = { class: "rail-label" }, Ve = 400, he = 320, ln = /* @__PURE__ */ H({
+}, Xa = { class: "output-list" }, Ya = { class: "mono" }, Za = { class: "chip" }, _a = { class: "rail-label" }, Ve = 400, he = 320, en = /* @__PURE__ */ H({
   __name: "Builder",
   props: /* @__PURE__ */ xe({
     config: {},
@@ -1418,10 +1415,10 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
       ref: Y,
       class: z(["builder", { narrow: j.value, "panel-open": h.value, resizing: U.value }])
     }, [
-      e("div", da, [
-        e("div", ua, [
-          e("section", ra, [
-            e("header", ca, [
+      e("div", ia, [
+        e("div", da, [
+          e("section", ua, [
+            e("header", ra, [
               e("button", {
                 type: "button",
                 class: "collapse",
@@ -1433,9 +1430,9 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                   icon: E.value ? "tabler:chevron-down" : "tabler:chevron-right"
                 }, null, 8, ["icon"]),
                 d[19] || (d[19] = e("h2", { id: "fields-head" }, "Fields", -1)),
-                e("span", va, i(t.config.fields.length), 1)
-              ], 8, ma),
-              !E.value && t.config.fields.length ? (n(), o("span", ba, i(Qe.value), 1)) : p("", !0),
+                e("span", ma, i(t.config.fields.length), 1)
+              ], 8, ca),
+              !E.value && t.config.fields.length ? (n(), o("span", va, i(Qe.value), 1)) : p("", !0),
               t.readonly ? p("", !0) : (n(), o("button", {
                 key: 1,
                 type: "button",
@@ -1446,8 +1443,8 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                 d[20] || (d[20] = $("Add field", -1))
               ]))
             ]),
-            W(e("div", pa, [
-              t.config.fields.length ? (n(), o("ul", fa, [
+            W(e("div", ba, [
+              t.config.fields.length ? (n(), o("ul", ya, [
                 (n(!0), o(C, null, L(t.config.fields, (M, G) => (n(), o("li", {
                   key: G,
                   class: z(["row-item", { active: J({ kind: "field", index: G }) }])
@@ -1457,9 +1454,9 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                     class: "row-main",
                     onClick: (oe) => I({ kind: "field", index: G })
                   }, [
-                    e("span", ha, [
+                    e("span", ga, [
                       $(i(M.name || "New field"), 1),
-                      M.required ? (n(), o("span", ka, "*")) : p("", !0),
+                      M.required ? (n(), o("span", ha, "*")) : p("", !0),
                       u(G) ? (n(), ee(k(D), {
                         key: 1,
                         icon: "tabler:alert-circle",
@@ -1470,25 +1467,25 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                     e("span", {
                       class: z(["row-desc", { missing: !M.description }])
                     }, i(M.description || "No description"), 3),
-                    e("span", $a, [
+                    e("span", ka, [
                       M.search_within === "sections" ? (n(), o("span", {
                         key: 0,
                         class: z(["chip", V.value ? "" : "muted-chip"]),
                         title: "Reads the sections Map picks"
                       }, "sections", 2)) : p("", !0),
-                      M.group.trim() ? (n(), o("span", xa, i(M.group), 1)) : p("", !0),
+                      M.group.trim() ? (n(), o("span", $a, i(M.group), 1)) : p("", !0),
                       M.strategy === "deep" ? (n(), o("span", {
                         key: 2,
                         class: z(["chip", Q.value ? "primary" : "muted-chip"]),
                         title: Q.value ? "Deep analysis" : "Deep analysis is off in the flow"
-                      }, "deep", 10, wa)) : p("", !0),
-                      e("span", Va, i(Ee(M)), 1),
-                      M.evidence_required ? (n(), o("span", Sa, [
+                      }, "deep", 10, xa)) : p("", !0),
+                      e("span", wa, i(Ee(M)), 1),
+                      M.evidence_required ? (n(), o("span", Va, [
                         r(k(D), { icon: "tabler:quote" })
                       ])) : p("", !0)
                     ])
-                  ], 8, ga),
-                  t.readonly ? p("", !0) : (n(), o("span", Ca, [
+                  ], 8, fa),
+                  t.readonly ? p("", !0) : (n(), o("span", Sa, [
                     e("button", {
                       type: "button",
                       class: "icon-btn",
@@ -1497,7 +1494,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                       onClick: (oe) => Me(G, -1)
                     }, [
                       r(k(D), { icon: "tabler:chevron-up" })
-                    ], 8, qa),
+                    ], 8, Ca),
                     e("button", {
                       type: "button",
                       class: "icon-btn",
@@ -1506,16 +1503,16 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                       onClick: (oe) => Me(G, 1)
                     }, [
                       r(k(D), { icon: "tabler:chevron-down" })
-                    ], 8, Ua)
+                    ], 8, qa)
                   ]))
                 ], 2))), 128))
-              ])) : (n(), o("p", ya, "Add the values to pull from each document."))
+              ])) : (n(), o("p", pa, "Add the values to pull from each document."))
             ], 512), [
               [Se, E.value]
             ])
           ]),
-          e("section", Ma, [
-            e("header", Ea, [
+          e("section", Ua, [
+            e("header", Ma, [
               e("button", {
                 type: "button",
                 class: "collapse",
@@ -1527,9 +1524,9 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                   icon: w.value ? "tabler:chevron-down" : "tabler:chevron-right"
                 }, null, 8, ["icon"]),
                 d[21] || (d[21] = e("h2", { id: "flow-head" }, "Flow", -1)),
-                e("span", Ba, i(Ke.value) + " of 6", 1)
-              ], 8, Na),
-              w.value ? p("", !0) : (n(), o("span", Ta, i(Ie.value), 1)),
+                e("span", Na, i(Ke.value) + " of 6", 1)
+              ], 8, Ea),
+              w.value ? p("", !0) : (n(), o("span", Ba, i(Ie.value), 1)),
               e("button", {
                 type: "button",
                 class: z(["btn small subtle push", { on: J({ kind: "details" }) }]),
@@ -1539,21 +1536,21 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                 d[22] || (d[22] = $("Details", -1))
               ], 2)
             ]),
-            W(e("div", Ra, [
+            W(e("div", Ta, [
               e("button", {
                 type: "button",
                 class: z(["node fixed", { active: J({ kind: "document" }) }]),
                 onClick: d[3] || (d[3] = (M) => I({ kind: "document" }))
               }, [
-                e("span", Aa, [
+                e("span", Ra, [
                   r(k(D), { icon: "tabler:file-text" })
                 ]),
-                e("span", Da, [
+                e("span", Aa, [
                   d[23] || (d[23] = e("span", { class: "node-title" }, "Read document", -1)),
-                  e("span", La, i(k(sl)(t.config.retrieval)), 1)
+                  e("span", Da, i(k(sl)(t.config.retrieval)), 1)
                 ]),
-                e("span", Oa, [
-                  e("span", Fa, i(k(Pe)(t.config.retrieval.embedding_model)), 1)
+                e("span", La, [
+                  e("span", Oa, i(k(Pe)(t.config.retrieval.embedding_model)), 1)
                 ])
               ], 2),
               d[28] || (d[28] = e("div", { class: "connector" }, null, -1)),
@@ -1571,8 +1568,8 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
               }, [
                 e("span")
               ], -1)),
-              e("div", za, [
-                e("div", Pa, [
+              e("div", Fa, [
+                e("div", za, [
                   d[24] || (d[24] = e("span", { class: "branch-label" }, "Evidence", -1)),
                   r(ce, {
                     stage: "prefetch",
@@ -1592,7 +1589,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                     onSelect: d[6] || (d[6] = (M) => I({ kind: "stage", stage: "scout" }))
                   }, null, 8, ["config", "active", "trace", "readonly"])
                 ]),
-                e("div", Wa, [
+                e("div", Pa, [
                   d[26] || (d[26] = e("span", { class: "branch-label" }, "Deep fields", -1)),
                   r(ce, {
                     stage: "deep",
@@ -1633,12 +1630,12 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                 class: z(["node fixed", { active: J({ kind: "output" }) }]),
                 onClick: d[10] || (d[10] = (M) => I({ kind: "output" }))
               }, [
-                e("span", ja, [
+                e("span", Wa, [
                   r(k(D), { icon: "tabler:braces" })
                 ]),
-                e("span", Ia, [
+                e("span", ja, [
                   d[27] || (d[27] = e("span", { class: "node-title" }, "Output", -1)),
-                  e("span", Qa, i(t.config.fields.length ? `${t.config.fields.length} values with evidence` : "No fields yet"), 1)
+                  e("span", Ia, i(t.config.fields.length ? `${t.config.fields.length} values with evidence` : "No fields yet"), 1)
                 ])
               ], 2)
             ], 512), [
@@ -1670,9 +1667,9 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           onPointerdown: $e(P, ["prevent"]),
           onKeydown: y,
           onDblclick: d[12] || (d[12] = (M) => S(Ve))
-        }, null, 42, Ka)),
-        e("header", Ha, [
-          e("span", Ja, [
+        }, null, 42, Qa)),
+        e("header", Ka, [
+          e("span", Ha, [
             r(k(D), { icon: B.value }, null, 8, ["icon"])
           ]),
           e("h2", null, i(le.value), 1),
@@ -1693,12 +1690,12 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           ref: ae,
           class: "side-panel-body"
         }, [
-          v.value.kind === "document" ? (n(), ee(ia, {
+          v.value.kind === "document" ? (n(), ee(oa, {
             key: 0,
             config: t.config,
             retention: t.retention,
             readonly: t.readonly
-          }, null, 8, ["config", "retention", "readonly"])) : v.value.kind === "stage" ? (n(), ee(Qt, {
+          }, null, 8, ["config", "retention", "readonly"])) : v.value.kind === "stage" ? (n(), ee(It, {
             key: 1,
             stage: v.value.stage,
             config: t.config,
@@ -1751,14 +1748,14 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
               ]),
               d[36] || (d[36] = e("small", null, "Comma separated", -1))
             ])
-          ], 8, Ga)) : v.value.kind === "output" ? (n(), o("div", Xa, [
+          ], 8, Ja)) : v.value.kind === "output" ? (n(), o("div", Ga, [
             d[37] || (d[37] = e("p", { class: "muted" }, "The Test tab, agents, evaluations and Workflows all run this configuration. Each value comes with its confidence, verification and quotes with section and page; every run is recorded with its step trace.", -1)),
-            e("ul", Ya, [
+            e("ul", Xa, [
               (n(!0), o(C, null, L(t.config.fields, (M) => (n(), o("li", {
                 key: M.name
               }, [
-                e("span", Za, i(M.name || "New field"), 1),
-                e("span", _a, i(Ee(M)), 1)
+                e("span", Ya, i(M.name || "New field"), 1),
+                e("span", Za, i(Ee(M)), 1)
               ]))), 128))
             ]),
             d[38] || (d[38] = e("p", { class: "muted" }, "Used by people in Test, by agents through the Docscout tools, by evals, and in Workflows as the Extract document fields block.", -1))
@@ -1773,14 +1770,14 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
         onClick: d[18] || (d[18] = (M) => q(!0))
       }, [
         r(k(D), { icon: "tabler:layout-sidebar-right-expand" }),
-        e("span", en, i(le.value), 1)
+        e("span", _a, i(le.value), 1)
       ]))
     ], 2));
   }
-}), tn = ["selected"], an = {
+}), ln = ["selected"], tn = {
   key: 1,
   role: "alert"
-}, nn = {
+}, an = {
   key: 2,
   class: "muted"
 }, je = /* @__PURE__ */ H({
@@ -1812,34 +1809,34 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
       selected: JSON.stringify(t.value ? [t.value] : []),
       placeholder: "Choose an upload",
       onChange: f
-    }, null, 40, tn)) : v.value ? (n(), o("p", an, i(v.value), 1)) : (n(), o("span", nn, "Loading uploads…"));
+    }, null, 40, ln)) : v.value ? (n(), o("p", tn, i(v.value), 1)) : (n(), o("span", an, "Loading uploads…"));
   }
-}), sn = { class: "test" }, on = { class: "run-bar" }, dn = { class: "run-input" }, un = { class: "muted run-note" }, rn = {
+}), nn = { class: "test" }, sn = { class: "run-bar" }, on = { class: "run-input" }, dn = { class: "muted run-note" }, un = {
   key: 0,
   class: "empty"
-}, cn = {
+}, rn = {
   key: 1,
   class: "run-failed",
   role: "alert"
-}, mn = {
+}, cn = {
   key: 2,
   class: "test-grid"
-}, vn = { class: "block" }, bn = { class: "block-head" }, pn = { class: "muted push" }, yn = { class: "value-list" }, fn = ["aria-expanded", "onClick"], gn = { class: "value-name" }, hn = ["title"], kn = { class: "bar" }, $n = ["title"], xn = { class: "evidence" }, wn = {
+}, mn = { class: "block" }, vn = { class: "block-head" }, bn = { class: "muted push" }, pn = { class: "value-list" }, yn = ["aria-expanded", "onClick"], fn = { class: "value-name" }, gn = ["title"], hn = { class: "bar" }, kn = ["title"], $n = { class: "evidence" }, xn = {
   key: 0,
   class: "full-value"
-}, Vn = {
+}, wn = {
   key: 1,
   class: "muted"
-}, Sn = {
+}, Vn = {
   key: 2,
   class: "muted"
-}, Cn = { class: "block" }, qn = { class: "timeline" }, Un = { class: "tl-icon" }, Mn = { class: "tl-main" }, En = { class: "tl-head" }, Nn = { class: "muted push" }, Bn = { class: "tl-bar" }, Tn = { class: "muted" }, Rn = {
+}, Sn = { class: "block" }, Cn = { class: "timeline" }, qn = { class: "tl-icon" }, Un = { class: "tl-main" }, Mn = { class: "tl-head" }, En = { class: "muted push" }, Nn = { class: "tl-bar" }, Bn = { class: "muted" }, Tn = {
   key: 0,
   class: "tl-msg"
-}, An = {
+}, Rn = {
   key: 1,
   class: "chips"
-}, Dn = /* @__PURE__ */ H({
+}, An = /* @__PURE__ */ H({
   __name: "TestPanel",
   props: {
     result: {},
@@ -1850,9 +1847,9 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
   emits: ["run"],
   setup(t, { emit: c }) {
     const s = t, m = c, v = A(""), f = A(), x = (U) => `${Math.round(U * 100)}%`, h = (U) => U == null ? "—" : typeof U == "string" ? U : Array.isArray(U) && U.every((P) => typeof P != "object") ? U.join(", ") : typeof U == "object" ? JSON.stringify(U) : String(U), E = (U) => `${(U / 1e3).toFixed(1)}s`, w = N(() => Math.max(1, ...s.result?.trace.map((U) => U.duration_ms) ?? [1])), l = { read: { label: "Read document", icon: "tabler:file-text" }, highlight: { label: "Highlighter", icon: "tabler:highlight" } }, a = (U) => l[U]?.label ?? ie[U] ?? U, F = (U) => l[U]?.icon ?? Ue[U] ?? "tabler:point", S = (U) => U >= 0.9 ? "high" : U >= 0.7 ? "mid" : "low";
-    return (U, P) => (n(), o("div", sn, [
-      e("section", on, [
-        e("div", dn, [
+    return (U, P) => (n(), o("div", nn, [
+      e("section", sn, [
+        e("div", on, [
           r(je, {
             value: v.value,
             onSelect: P[0] || (P[0] = (y) => v.value = y)
@@ -1864,25 +1861,25 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           disabled: !v.value || t.running || !t.canRun,
           onClick: P[1] || (P[1] = (y) => m("run", v.value))
         }, null, 8, ["label", "loading", "disabled"]),
-        e("p", un, i(t.canRun ? "" : "Add fields in the Builder first. ") + "Processed documents and runs expire after " + i(t.retention) + ".", 1)
+        e("p", dn, i(t.canRun ? "" : "Add fields in the Builder first. ") + "Processed documents and runs expire after " + i(t.retention) + ".", 1)
       ]),
-      t.result ? p("", !0) : (n(), o("p", rn, "No extraction results yet.")),
-      t.result?.status === "failed" ? (n(), o("p", cn, [
+      t.result ? p("", !0) : (n(), o("p", un, "No extraction results yet.")),
+      t.result?.status === "failed" ? (n(), o("p", rn, [
         r(k(D), { icon: "tabler:alert-triangle" }),
         $("The run stopped: " + i(t.result.error), 1)
       ])) : p("", !0),
-      t.result ? (n(), o("div", mn, [
-        e("section", vn, [
-          e("header", bn, [
+      t.result ? (n(), o("div", cn, [
+        e("section", mn, [
+          e("header", vn, [
             P[2] || (P[2] = e("h2", { class: "block-title" }, "Values", -1)),
-            e("span", pn, [
+            e("span", bn, [
               $(i(t.result.tokens.toLocaleString()) + " tokens · " + i(E(t.result.duration_ms)), 1),
               t.result.pages ? (n(), o(C, { key: 0 }, [
                 $(" · " + i(t.result.pages) + " pages", 1)
               ], 64)) : p("", !0)
             ])
           ]),
-          e("ul", yn, [
+          e("ul", pn, [
             (n(!0), o(C, null, L(t.result.fields, (y) => (n(), o("li", {
               key: y.name,
               class: "value-row"
@@ -1893,15 +1890,15 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                 "aria-expanded": f.value === y.name,
                 onClick: (q) => f.value = f.value === y.name ? void 0 : y.name
               }, [
-                e("span", gn, i(y.name), 1),
+                e("span", fn, i(y.name), 1),
                 e("span", {
                   class: z(["value-text", { missing: y.missing }]),
                   title: y.missing ? void 0 : h(y.value)
-                }, i(y.missing ? "Not in the document" : h(y.value)), 11, hn),
+                }, i(y.missing ? "Not in the document" : h(y.value)), 11, gn),
                 e("span", {
                   class: z(["confidence", S(y.confidence)])
                 }, [
-                  e("span", kn, [
+                  e("span", hn, [
                     e("span", {
                       style: pe({ width: x(y.confidence) })
                     }, null, 4)
@@ -1916,14 +1913,14 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                     icon: y.verified ? "tabler:shield-check" : "tabler:shield-question"
                   }, null, 8, ["icon"]),
                   $(i(y.verified ? "Verified" : "Check"), 1)
-                ], 10, $n),
+                ], 10, kn),
                 r(k(D), {
                   icon: f.value === y.name ? "tabler:chevron-up" : "tabler:chevron-down",
                   class: "value-caret"
                 }, null, 8, ["icon"])
-              ], 8, fn),
-              W(e("div", xn, [
-                y.missing ? p("", !0) : (n(), o("p", wn, i(h(y.value)), 1)),
+              ], 8, yn),
+              W(e("div", $n, [
+                y.missing ? p("", !0) : (n(), o("p", xn, i(h(y.value)), 1)),
                 (n(!0), o(C, null, L(y.evidence, (q, R) => (n(), o("blockquote", {
                   key: R,
                   class: z({ unfound: q.found === !1 })
@@ -1939,47 +1936,47 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                     ], 64)) : p("", !0)
                   ])
                 ], 2))), 128)),
-                y.evidence.length ? p("", !0) : (n(), o("p", Vn, "No evidence.")),
-                y.reason ? (n(), o("p", Sn, i(y.reason), 1)) : p("", !0)
+                y.evidence.length ? p("", !0) : (n(), o("p", wn, "No evidence.")),
+                y.reason ? (n(), o("p", Vn, i(y.reason), 1)) : p("", !0)
               ], 512), [
                 [Se, f.value === y.name]
               ])
             ]))), 128))
           ])
         ]),
-        e("section", Cn, [
+        e("section", Sn, [
           P[3] || (P[3] = e("header", { class: "block-head" }, [
             e("h2", { class: "block-title" }, "Steps")
           ], -1)),
-          e("ol", qn, [
+          e("ol", Cn, [
             (n(!0), o(C, null, L(t.result.trace, (y, q) => (n(), o("li", {
               key: q,
               class: z(y.status)
             }, [
-              e("span", Un, [
+              e("span", qn, [
                 r(k(D), {
                   icon: F(y.kind)
                 }, null, 8, ["icon"])
               ]),
-              e("div", Mn, [
-                e("div", En, [
+              e("div", Un, [
+                e("div", Mn, [
                   e("strong", null, i(a(y.kind)), 1),
-                  e("span", Nn, i(E(y.duration_ms)), 1)
+                  e("span", En, i(E(y.duration_ms)), 1)
                 ]),
-                e("span", Bn, [
+                e("span", Nn, [
                   e("span", {
                     style: pe({ width: `${Math.max(4, y.duration_ms / w.value * 100)}%` })
                   }, null, 4)
                 ]),
-                e("p", Tn, [
+                e("p", Bn, [
                   $(i(y.scope), 1),
                   y.model ? (n(), o(C, { key: 0 }, [
                     $(" · " + i(y.model), 1)
                   ], 64)) : p("", !0),
                   $(" · " + i((y.input_tokens + y.output_tokens).toLocaleString()) + " tokens", 1)
                 ]),
-                y.message ? (n(), o("p", Rn, i(y.message), 1)) : p("", !0),
-                y.queries?.length ? (n(), o("div", An, [
+                y.message ? (n(), o("p", Tn, i(y.message), 1)) : p("", !0),
+                y.queries?.length ? (n(), o("div", Rn, [
                   (n(!0), o(C, null, L(y.queries, (R) => (n(), o("span", {
                     key: R,
                     class: "chip"
@@ -1992,66 +1989,66 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
       ])) : p("", !0)
     ]));
   }
-}), Ln = { class: "evals" }, On = { class: "block eval-run" }, Fn = { class: "eval-run-main" }, zn = { class: "block-title" }, Pn = {
+}), Dn = { class: "evals" }, Ln = { class: "block eval-run" }, On = { class: "eval-run-main" }, Fn = { class: "block-title" }, zn = {
   key: 0,
   class: "eval-note"
-}, Wn = {
+}, Pn = {
   key: 0,
   class: "eval-progress",
   role: "status"
-}, jn = { class: "bar" }, In = { class: "muted" }, Qn = { class: "stat-row" }, Kn = { class: "stat" }, Hn = { class: "stat-label" }, Jn = { class: "stat-value" }, Gn = { class: "stat" }, Xn = { class: "stat-value" }, Yn = { class: "stat-delta flat" }, Zn = { class: "stat" }, _n = { class: "stat-value" }, es = {
+}, Wn = { class: "bar" }, jn = { class: "muted" }, In = { class: "stat-row" }, Qn = { class: "stat" }, Kn = { class: "stat-label" }, Hn = { class: "stat-value" }, Jn = { class: "stat" }, Gn = { class: "stat-value" }, Xn = { class: "stat-delta flat" }, Yn = { class: "stat" }, Zn = { class: "stat-value" }, _n = {
   key: 0,
   class: "stat-delta flat"
-}, ls = { class: "stat" }, ts = { class: "stat-value" }, as = {
+}, es = { class: "stat" }, ls = { class: "stat-value" }, ts = {
   key: 0,
   class: "stat-delta flat"
-}, ns = { class: "block" }, ss = { class: "block-head" }, os = {
+}, as = { class: "block" }, ns = { class: "block-head" }, ss = {
   key: 0,
   class: "compare-pick push"
-}, is = ["value"], ds = ["value"], us = {
+}, os = ["value"], is = ["value"], ds = {
   key: 0,
   class: "block-empty"
-}, rs = {
+}, us = {
   key: 1,
   class: "table-scroll"
-}, cs = { class: "metric-table" }, ms = { key: 0 }, vs = { key: 1 }, bs = { class: "mono" }, ps = { class: "acc strong" }, ys = { class: "bar" }, fs = { class: "muted" }, gs = {
+}, rs = { class: "metric-table" }, cs = { key: 0 }, ms = { key: 1 }, vs = { class: "mono" }, bs = { class: "acc strong" }, ps = { class: "bar" }, ys = { class: "muted" }, fs = {
   key: 0,
   class: "muted"
-}, hs = { key: 1 }, ks = {
+}, gs = { key: 1 }, hs = {
   key: 1,
   class: "muted"
-}, $s = {
+}, ks = {
   key: 1,
   class: "block"
-}, xs = { class: "table-scroll" }, ws = { class: "metric-table result-matrix" }, Vs = ["aria-expanded", "onClick"], Ss = ["colspan"], Cs = {
+}, $s = { class: "table-scroll" }, xs = { class: "metric-table result-matrix" }, ws = ["aria-expanded", "onClick"], Vs = ["colspan"], Ss = {
   key: 0,
   class: "cell-state"
-}, qs = {
+}, Cs = {
   key: 1,
   class: "cell-state fail"
-}, Us = ["title"], Ms = {
+}, qs = ["title"], Us = {
   key: 0,
   class: "result-detail"
-}, Es = ["colspan"], Ns = {
+}, Ms = ["colspan"], Es = {
   key: 0,
   class: "muted"
-}, Bs = {
+}, Ns = {
   key: 1,
   class: "compare"
-}, Ts = { class: "mono" }, Rs = { class: "cmp" }, As = { class: "cmp" }, Ds = { class: "muted case-meta" }, Ls = { class: "block" }, Os = { class: "block-head" }, Fs = { class: "count" }, zs = { class: "grid" }, Ps = { class: "mono" }, Ws = ["onUpdate:modelValue"], js = ["onUpdate:modelValue"], Is = ["onUpdate:modelValue", "placeholder"], Qs = ["onUpdate:modelValue", "type"], Ks = {
+}, Bs = { class: "mono" }, Ts = { class: "cmp" }, Rs = { class: "cmp" }, As = { class: "muted case-meta" }, Ds = { class: "block" }, Ls = { class: "block-head" }, Os = { class: "count" }, Fs = { class: "grid" }, zs = { class: "mono" }, Ps = ["onUpdate:modelValue"], Ws = ["onUpdate:modelValue"], js = ["onUpdate:modelValue", "placeholder"], Is = ["onUpdate:modelValue", "type"], Qs = {
   key: 0,
   class: "error",
   role: "alert"
-}, Hs = { class: "row" }, Js = {
+}, Ks = { class: "row" }, Hs = {
   key: 1,
   class: "block-empty"
-}, Gs = {
+}, Js = {
   key: 2,
   class: "table-scroll"
-}, Xs = { class: "metric-table" }, Ys = { class: "num" }, Zs = ["aria-label", "disabled", "onClick"], _s = {
+}, Gs = { class: "metric-table" }, Xs = { class: "num" }, Ys = ["aria-label", "disabled", "onClick"], Zs = {
   key: 2,
   class: "block"
-}, eo = { class: "block-head" }, lo = { class: "count" }, to = { class: "eval-history" }, ao = ["aria-current", "onClick"], no = ["data-status"], so = { class: "muted" }, oo = { class: "push" }, io = /* @__PURE__ */ H({
+}, _s = { class: "block-head" }, eo = { class: "count" }, lo = { class: "eval-history" }, to = ["aria-current", "onClick"], ao = ["data-status"], no = { class: "muted" }, so = { class: "push" }, oo = /* @__PURE__ */ H({
   __name: "EvalsPanel",
   props: {
     cases: {},
@@ -2099,13 +2096,13 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
       const b = Math.round(V * 100);
       return `${b > 0 ? "+" : b < 0 ? "−" : "±"}${Math.abs(b)} pts`;
     }, I = (V) => Math.round(V * 100) > 0 ? "up" : Math.round(V * 100) < 0 ? "down" : "flat", J = (V) => V >= 6e4 ? `${Math.floor(V / 6e4)}m ${Math.round(V % 6e4 / 1e3)}s` : `${(V / 1e3).toFixed(1)}s`, ne = (V) => new Date(V).toLocaleString(void 0, { dateStyle: "medium", timeStyle: "short" }), le = (V) => V == null || V === "" ? "—" : typeof V == "string" ? V : Array.isArray(V) && V.every((b) => typeof b != "object") ? V.join(", ") : JSON.stringify(V), B = (V) => V ? V.score >= 0.999 ? "pass" : V.score > 0 ? "partial" : "fail" : "none", O = (V) => (V.results ?? []).filter((b) => b.status === "completed").length, Q = { queued: "Queued", running: "Running", completed: "Completed", failed: "Failed" };
-    return (V, b) => (n(), o("div", Ln, [
-      e("section", On, [
-        e("div", Fn, [
+    return (V, b) => (n(), o("div", Dn, [
+      e("section", Ln, [
+        e("div", On, [
           e("div", null, [
-            e("h2", zn, "Evaluate revision " + i(t.revision), 1),
+            e("h2", Fn, "Evaluate revision " + i(t.revision), 1),
             b[6] || (b[6] = e("p", { class: "muted" }, "Runs every case below with the saved configuration and scores each field against the expected value.", -1)),
-            t.changed ? (n(), o("p", Pn, [
+            t.changed ? (n(), o("p", zn, [
               r(k(D), { icon: "tabler:info-circle" }),
               b[5] || (b[5] = $("Unsaved changes are not evaluated. Save first to measure them.", -1))
             ])) : p("", !0)
@@ -2117,13 +2114,13 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             onClick: b[0] || (b[0] = (u) => m("evaluate"))
           }, null, 8, ["label", "loading", "disabled"])
         ]),
-        S.value && !k(ye)(S.value) ? (n(), o("div", Wn, [
-          e("span", jn, [
+        S.value && !k(ye)(S.value) ? (n(), o("div", Pn, [
+          e("span", Wn, [
             e("span", {
               style: pe({ width: Z(U.value.total ? U.value.done / U.value.total : 0) })
             }, null, 4)
           ]),
-          e("span", In, i(Q[S.value.status]) + " · " + i(U.value.done) + " of " + i(U.value.total) + " cases", 1)
+          e("span", jn, i(Q[S.value.status]) + " · " + i(U.value.done) + " of " + i(U.value.total) + " cases", 1)
         ])) : p("", !0)
       ]),
       S.value && k(ye)(S.value) ? (n(), o(C, { key: 0 }, [
@@ -2135,38 +2132,38 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           r(k(D), { icon: "tabler:alert-triangle" }),
           $(i(S.value.error), 1)
         ], 2)) : p("", !0),
-        e("div", Qn, [
-          e("div", Kn, [
-            e("span", Hn, "Accuracy · revision " + i(S.value.config_revision), 1),
-            e("span", Jn, i(Z(k(re)(S.value))), 1),
+        e("div", In, [
+          e("div", Qn, [
+            e("span", Kn, "Accuracy · revision " + i(S.value.config_revision), 1),
+            e("span", Hn, i(Z(k(re)(S.value))), 1),
             y.value ? (n(), o("span", {
               key: 0,
               class: z(["stat-delta", I(k(re)(S.value) - k(re)(y.value))])
             }, i(ae(k(re)(S.value) - k(re)(y.value))) + " vs revision " + i(y.value.config_revision), 3)) : p("", !0)
           ]),
-          e("div", Gn, [
+          e("div", Jn, [
             b[7] || (b[7] = e("span", { class: "stat-label" }, "Cases", -1)),
-            e("span", Xn, [
+            e("span", Gn, [
               $(i(O(S.value)), 1),
               e("small", null, " / " + i(S.value.case_count), 1)
             ]),
-            e("span", Yn, i(S.value.case_count - O(S.value)) + " failed", 1)
+            e("span", Xn, i(S.value.case_count - O(S.value)) + " failed", 1)
           ]),
-          e("div", Zn, [
+          e("div", Yn, [
             b[8] || (b[8] = e("span", { class: "stat-label" }, "Tokens", -1)),
-            e("span", _n, i(S.value.tokens.toLocaleString()), 1),
-            y.value ? (n(), o("span", es, i(y.value.tokens.toLocaleString()) + " before", 1)) : p("", !0)
+            e("span", Zn, i(S.value.tokens.toLocaleString()), 1),
+            y.value ? (n(), o("span", _n, i(y.value.tokens.toLocaleString()) + " before", 1)) : p("", !0)
           ]),
-          e("div", ls, [
+          e("div", es, [
             b[9] || (b[9] = e("span", { class: "stat-label" }, "Model time", -1)),
-            e("span", ts, i(J(S.value.duration_ms)), 1),
-            y.value ? (n(), o("span", as, i(J(y.value.duration_ms)) + " before", 1)) : p("", !0)
+            e("span", ls, i(J(S.value.duration_ms)), 1),
+            y.value ? (n(), o("span", ts, i(J(y.value.duration_ms)) + " before", 1)) : p("", !0)
           ])
         ]),
-        e("section", ns, [
-          e("header", ss, [
+        e("section", as, [
+          e("header", ns, [
             b[11] || (b[11] = e("h2", { class: "block-title" }, "Field accuracy", -1)),
-            F.value.length > 1 ? (n(), o("label", os, [
+            F.value.length > 1 ? (n(), o("label", ss, [
               b[10] || (b[10] = e("span", { class: "muted" }, "Compare with", -1)),
               e("select", {
                 value: y.value?.id,
@@ -2176,29 +2173,29 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                 (n(!0), o(C, null, L(F.value.filter((u) => u.id !== S.value.id), (u) => (n(), o("option", {
                   key: u.id,
                   value: u.id
-                }, "Revision " + i(u.config_revision) + " · " + i(ne(u.created_at)), 9, ds))), 128))
-              ], 40, is)
+                }, "Revision " + i(u.config_revision) + " · " + i(ne(u.created_at)), 9, is))), 128))
+              ], 40, os)
             ])) : p("", !0)
           ]),
-          q.value.length ? (n(), o("div", rs, [
-            e("table", cs, [
+          q.value.length ? (n(), o("div", us, [
+            e("table", rs, [
               e("thead", null, [
                 e("tr", null, [
                   b[12] || (b[12] = e("th", null, "Field", -1)),
                   b[13] || (b[13] = e("th", null, "Accuracy", -1)),
                   b[14] || (b[14] = e("th", null, "Verified", -1)),
-                  y.value ? (n(), o("th", ms, "Revision " + i(y.value.config_revision), 1)) : p("", !0),
-                  y.value ? (n(), o("th", vs, "Change")) : p("", !0)
+                  y.value ? (n(), o("th", cs, "Revision " + i(y.value.config_revision), 1)) : p("", !0),
+                  y.value ? (n(), o("th", ms, "Change")) : p("", !0)
                 ])
               ]),
               e("tbody", null, [
                 (n(!0), o(C, null, L(q.value, (u) => (n(), o("tr", {
                   key: u.field
                 }, [
-                  e("td", bs, i(u.field), 1),
+                  e("td", vs, i(u.field), 1),
                   e("td", null, [
-                    e("span", ps, [
-                      e("span", ys, [
+                    e("span", bs, [
+                      e("span", ps, [
                         e("span", {
                           style: pe({ width: Z(u.accuracy) })
                         }, null, 4)
@@ -2206,9 +2203,9 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                       $(i(Z(u.accuracy)), 1)
                     ])
                   ]),
-                  e("td", fs, i(Z(u.verified)), 1),
-                  y.value ? (n(), o("td", gs, i(u.before ? Z(u.before.accuracy) : "—"), 1)) : p("", !0),
-                  y.value ? (n(), o("td", hs, [
+                  e("td", ys, i(Z(u.verified)), 1),
+                  y.value ? (n(), o("td", fs, i(u.before ? Z(u.before.accuracy) : "—"), 1)) : p("", !0),
+                  y.value ? (n(), o("td", gs, [
                     u.before ? (n(), o("span", {
                       key: 0,
                       class: z(["trend", I(u.accuracy - u.before.accuracy)])
@@ -2217,21 +2214,21 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                         icon: I(u.accuracy - u.before.accuracy) === "up" ? "tabler:trending-up" : I(u.accuracy - u.before.accuracy) === "down" ? "tabler:trending-down" : "tabler:minus"
                       }, null, 8, ["icon"]),
                       $(i(ae(u.accuracy - u.before.accuracy)), 1)
-                    ], 2)) : (n(), o("span", ks, "New field"))
+                    ], 2)) : (n(), o("span", hs, "New field"))
                   ])) : p("", !0)
                 ]))), 128))
               ])
             ])
-          ])) : (n(), o("p", us, "No case completed, so there is no accuracy to show."))
+          ])) : (n(), o("p", ds, "No case completed, so there is no accuracy to show."))
         ])
       ], 64)) : p("", !0),
-      S.value?.results?.length ? (n(), o("section", $s, [
+      S.value?.results?.length ? (n(), o("section", ks, [
         b[19] || (b[19] = e("header", { class: "block-head" }, [
           e("h2", { class: "block-title" }, "Results by case"),
           e("span", { class: "muted push matrix-hint" }, "Select a case to compare values")
         ], -1)),
-        e("div", xs, [
-          e("table", ws, [
+        e("div", $s, [
+          e("table", xs, [
             e("thead", null, [
               e("tr", null, [
                 b[15] || (b[15] = e("th", null, "Document", -1)),
@@ -2259,48 +2256,48 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                         icon: j.value === u.case_id ? "tabler:chevron-down" : "tabler:chevron-right"
                       }, null, 8, ["icon"]),
                       $(i(u.upload_name), 1)
-                    ], 8, Vs)
+                    ], 8, ws)
                   ]),
                   u.status !== "completed" ? (n(), o("td", {
                     key: 0,
                     colspan: R.value.length,
                     class: "muted"
                   }, [
-                    u.status === "queued" ? (n(), o("span", Cs, [
+                    u.status === "queued" ? (n(), o("span", Ss, [
                       r(k(D), {
                         icon: "tabler:loader-2",
                         class: "spin"
                       }),
                       b[16] || (b[16] = $("Waiting", -1))
-                    ])) : (n(), o("span", qs, [
+                    ])) : (n(), o("span", Cs, [
                       r(k(D), { icon: "tabler:alert-triangle" }),
                       $(i(u.error), 1)
                     ]))
-                  ], 8, Ss)) : (n(!0), o(C, { key: 1 }, L(R.value, (T) => (n(), o("td", { key: T }, [
+                  ], 8, Vs)) : (n(!0), o(C, { key: 1 }, L(R.value, (T) => (n(), o("td", { key: T }, [
                     e("span", {
                       class: z(["cell", B(Y(u, T))]),
                       title: le(Y(u, T)?.value)
-                    }, i(Y(u, T) ? Z(Y(u, T).score) : "—"), 11, Us)
+                    }, i(Y(u, T) ? Z(Y(u, T).score) : "—"), 11, qs)
                   ]))), 128))
                 ], 2),
-                j.value === u.case_id ? (n(), o("tr", Ms, [
+                j.value === u.case_id ? (n(), o("tr", Us, [
                   e("td", {
                     colspan: R.value.length + 1
                   }, [
-                    u.error ? (n(), o("p", Ns, i(u.error), 1)) : (n(), o("dl", Bs, [
+                    u.error ? (n(), o("p", Es, i(u.error), 1)) : (n(), o("dl", Ns, [
                       (n(!0), o(C, null, L(u.scores, (T) => (n(), o(C, {
                         key: T.field
                       }, [
-                        e("dt", Ts, i(T.field), 1),
+                        e("dt", Bs, i(T.field), 1),
                         e("dd", null, [
                           e("span", {
                             class: z(["cell", B(T)])
                           }, i(Z(T.score)), 3),
-                          e("span", Rs, [
+                          e("span", Ts, [
                             b[17] || (b[17] = e("span", { class: "cmp-label" }, "Expected", -1)),
                             $(i(le(T.expected)), 1)
                           ]),
-                          e("span", As, [
+                          e("span", Rs, [
                             b[18] || (b[18] = e("span", { class: "cmp-label" }, "Extracted", -1)),
                             $(i(le(T.value)), 1)
                           ]),
@@ -2317,18 +2314,18 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                         ])
                       ], 64))), 128))
                     ])),
-                    e("p", Ds, i(u.tokens.toLocaleString()) + " tokens · " + i(J(u.duration_ms)), 1)
-                  ], 8, Es)
+                    e("p", As, i(u.tokens.toLocaleString()) + " tokens · " + i(J(u.duration_ms)), 1)
+                  ], 8, Ms)
                 ])) : p("", !0)
               ], 64))), 128))
             ])
           ])
         ])
       ])) : p("", !0),
-      e("section", Ls, [
-        e("header", Os, [
+      e("section", Ds, [
+        e("header", Ls, [
           b[20] || (b[20] = e("h2", { class: "block-title" }, "Cases", -1)),
-          e("span", Fs, i(t.cases.length), 1),
+          e("span", Os, i(t.cases.length), 1),
           r(k(ve), {
             label: "Add case",
             size: "small",
@@ -2353,11 +2350,11 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             }, null, 8, ["value"])
           ]),
           b[24] || (b[24] = e("p", { class: "muted" }, "Enter what the document states. Leave a field blank when the document does not state it; the case then expects Docscout to report it missing.", -1)),
-          e("div", zs, [
+          e("div", Fs, [
             (n(!0), o(C, null, L(t.fields, (u) => (n(), o("label", {
               key: u.name
             }, [
-              e("span", Ps, i(u.name), 1),
+              e("span", zs, i(u.name), 1),
               u.type === "boolean" ? W((n(), o("select", {
                 key: 0,
                 "onUpdate:modelValue": (T) => h.value[u.name] = T
@@ -2365,7 +2362,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                 e("option", { value: "" }, "Not stated", -1),
                 e("option", { value: "true" }, "Yes", -1),
                 e("option", { value: "false" }, "No", -1)
-              ])], 8, Ws)), [
+              ])], 8, Ps)), [
                 [fe, h.value[u.name]]
               ]) : u.type === "enum" ? W((n(), o("select", {
                 key: 1,
@@ -2373,27 +2370,27 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
               }, [
                 b[23] || (b[23] = e("option", { value: "" }, "Not stated", -1)),
                 (n(!0), o(C, null, L(u.enum_values, (T) => (n(), o("option", { key: T }, i(T), 1))), 128))
-              ], 8, js)), [
+              ], 8, Ws)), [
                 [fe, h.value[u.name]]
               ]) : u.type === "object" || u.type === "list" ? W((n(), o("textarea", {
                 key: 2,
                 "onUpdate:modelValue": (T) => h.value[u.name] = T,
                 rows: "2",
                 placeholder: u.type === "list" ? '["first", "second"]' : '{"key": "value"}'
-              }, null, 8, Is)), [
+              }, null, 8, js)), [
                 [_, h.value[u.name]]
               ]) : W((n(), o("input", {
                 key: 3,
                 "onUpdate:modelValue": (T) => h.value[u.name] = T,
                 type: u.type === "number" ? "number" : u.type === "date" ? "date" : "text",
                 placeholder: "Not stated"
-              }, null, 8, Qs)), [
+              }, null, 8, Is)), [
                 [Ye, h.value[u.name]]
               ])
             ]))), 128))
           ]),
-          E.value ? (n(), o("p", Ks, i(E.value), 1)) : p("", !0),
-          e("div", Hs, [
+          E.value ? (n(), o("p", Qs, i(E.value), 1)) : p("", !0),
+          e("div", Ks, [
             r(k(ve), {
               label: "Save case",
               size: "small",
@@ -2410,8 +2407,8 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             })
           ])
         ], 32)) : p("", !0),
-        !t.cases.length && !v.value ? (n(), o("p", Js, "No cases yet. Add a document with the values you expect, then run all cases to measure this configuration.")) : t.cases.length ? (n(), o("div", Gs, [
-          e("table", Xs, [
+        !t.cases.length && !v.value ? (n(), o("p", Hs, "No cases yet. Add a document with the values you expect, then run all cases to measure this configuration.")) : t.cases.length ? (n(), o("div", Js, [
+          e("table", Gs, [
             e("thead", null, [
               e("tr", null, [
                 b[25] || (b[25] = e("th", null, "Document", -1)),
@@ -2437,7 +2434,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                   key: T.name,
                   class: z({ muted: !(T.name in u.expected) })
                 }, i(T.name in u.expected ? le(u.expected[T.name]) : "Not stated"), 3))), 128)),
-                e("td", Ys, [
+                e("td", Xs, [
                   e("button", {
                     type: "button",
                     class: "icon-btn",
@@ -2446,19 +2443,19 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                     onClick: (T) => m("delete-case", u.id)
                   }, [
                     r(k(D), { icon: "tabler:trash" })
-                  ], 8, Zs)
+                  ], 8, Ys)
                 ])
               ]))), 128))
             ])
           ])
         ])) : p("", !0)
       ]),
-      t.evaluations.length ? (n(), o("section", _s, [
-        e("header", eo, [
+      t.evaluations.length ? (n(), o("section", Zs, [
+        e("header", _s, [
           b[27] || (b[27] = e("h2", { class: "block-title" }, "History", -1)),
-          e("span", lo, i(t.evaluations.length), 1)
+          e("span", eo, i(t.evaluations.length), 1)
         ]),
-        e("ul", to, [
+        e("ul", lo, [
           (n(!0), o(C, null, L(t.evaluations, (u) => (n(), o("li", {
             key: u.id
           }, [
@@ -2471,23 +2468,23 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
               e("span", {
                 class: "badge",
                 "data-status": u.status
-              }, i(Q[u.status]), 9, no),
+              }, i(Q[u.status]), 9, ao),
               e("span", null, "Revision " + i(u.config_revision), 1),
-              e("span", so, i(ne(u.created_at)), 1),
-              e("strong", oo, i(u.status === "completed" ? Z(k(re)(u)) : "—"), 1)
-            ], 10, ao)
+              e("span", no, i(ne(u.created_at)), 1),
+              e("strong", so, i(u.status === "completed" ? Z(k(re)(u)) : "—"), 1)
+            ], 10, to)
           ]))), 128))
         ])
       ])) : p("", !0)
     ]));
   }
-}), uo = { class: "section-head" }, ro = { class: "muted" }, co = {
+}), io = { class: "section-head" }, uo = { class: "muted" }, ro = {
   key: 0,
   class: "empty"
-}, mo = {
+}, co = {
   key: 1,
   class: "table-scroll"
-}, vo = { class: "metric-table" }, bo = { class: "caller" }, po = ["data-status"], yo = { class: "num" }, fo = { class: "num" }, go = { class: "muted" }, ho = /* @__PURE__ */ H({
+}, mo = { class: "metric-table" }, vo = { class: "caller" }, bo = ["data-status"], po = { class: "num" }, yo = { class: "num" }, fo = { class: "muted" }, go = /* @__PURE__ */ H({
   __name: "RunsPanel",
   props: {
     runs: {},
@@ -2496,12 +2493,12 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
   setup(t) {
     const c = (m) => new Date(m).toLocaleString(void 0, { dateStyle: "medium", timeStyle: "short" }), s = { ui: { label: "Test tab", icon: "tabler:player-play" }, agent: { label: "Agent", icon: "tabler:robot" }, eval: { label: "Evaluation", icon: "tabler:chart-bar" }, workflow: { label: "Workflow", icon: "tabler:route" } };
     return (m, v) => (n(), o(C, null, [
-      e("div", uo, [
+      e("div", io, [
         v[0] || (v[0] = e("h2", null, "Recent runs", -1)),
-        e("span", ro, "Runs expire after " + i(t.retention), 1)
+        e("span", uo, "Runs expire after " + i(t.retention), 1)
       ]),
-      t.runs.length ? (n(), o("div", mo, [
-        e("table", vo, [
+      t.runs.length ? (n(), o("div", co, [
+        e("table", mo, [
           v[1] || (v[1] = e("thead", null, [
             e("tr", null, [
               e("th", null, "Started"),
@@ -2518,7 +2515,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             }, [
               e("td", null, i(c(f.created_at)), 1),
               e("td", null, [
-                e("span", bo, [
+                e("span", vo, [
                   r(k(D), {
                     icon: s[f.caller].icon
                   }, null, 8, ["icon"]),
@@ -2529,35 +2526,35 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
                 e("span", {
                   class: "badge",
                   "data-status": f.status
-                }, i(f.status === "completed" ? "Completed" : "Failed"), 9, po)
+                }, i(f.status === "completed" ? "Completed" : "Failed"), 9, bo)
               ]),
-              e("td", yo, i((f.duration_ms / 1e3).toFixed(1)) + "s", 1),
-              e("td", fo, i(Number(f.tokens).toLocaleString()), 1),
-              e("td", go, i(c(f.expires_at)), 1)
+              e("td", po, i((f.duration_ms / 1e3).toFixed(1)) + "s", 1),
+              e("td", yo, i(Number(f.tokens).toLocaleString()), 1),
+              e("td", fo, i(c(f.expires_at)), 1)
             ]))), 128))
           ])
         ])
-      ])) : (n(), o("p", co, "No runs yet. Runs from the Test tab, agents, evaluations and Workflows appear here."))
+      ])) : (n(), o("p", ro, "No runs yet. Runs from the Test tab, agents, evaluations and Workflows appear here."))
     ], 64));
   }
-}), ko = { class: "docscout" }, $o = { class: "toolbar" }, xo = { class: "toolbar-lead" }, wo = { class: "crumb" }, Vo = {
+}), ho = { class: "docscout" }, ko = { class: "toolbar" }, $o = { class: "toolbar-lead" }, xo = { class: "crumb" }, wo = {
   class: "tabs",
   role: "tablist",
   "aria-label": "Docscout"
-}, So = ["id", "aria-selected", "aria-controls", "onClick"], Co = { class: "toolbar-side" }, qo = { class: "stats" }, Uo = ["title"], Mo = {
+}, Vo = ["id", "aria-selected", "aria-controls", "onClick"], So = { class: "toolbar-side" }, Co = { class: "stats" }, qo = ["title"], Uo = {
   key: 1,
   class: "unsaved"
-}, Eo = {
+}, Mo = {
   key: 0,
   role: "alert",
   class: "error banner"
-}, No = {
+}, Eo = {
   key: 1,
   id: "panel-Builder",
   role: "tabpanel",
   "aria-labelledby": "tab-Builder",
   class: "builder-body"
-}, Bo = ["id", "aria-labelledby"], To = /* @__PURE__ */ H({
+}, No = ["id", "aria-labelledby"], Bo = /* @__PURE__ */ H({
   __name: "DocscoutPage",
   props: {
     snapshot: {},
@@ -2587,9 +2584,9 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
     function P() {
       m("save", { title: h.value, description: E.value, config: structuredClone(Re(x.value)), expected_revision: l.value });
     }
-    return (y, q) => (n(), o("main", ko, [
-      e("div", $o, [
-        e("div", xo, [
+    return (y, q) => (n(), o("main", ho, [
+      e("div", ko, [
+        e("div", $o, [
           t.back ? (n(), o(C, { key: 0 }, [
             e("button", {
               type: "button",
@@ -2600,9 +2597,9 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             }, [
               r(k(D), { icon: "tabler:arrow-left" })
             ]),
-            e("span", wo, i(t.snapshot.title), 1)
+            e("span", xo, i(t.snapshot.title), 1)
           ], 64)) : p("", !0),
-          e("nav", Vo, [
+          e("nav", wo, [
             (n(!0), o(C, null, L(w.value, (R) => (n(), o("button", {
               id: `tab-${R}`,
               key: R,
@@ -2610,11 +2607,11 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
               "aria-selected": f.value === R,
               "aria-controls": `panel-${R}`,
               onClick: (Y) => f.value = R
-            }, i(R), 9, So))), 128))
+            }, i(R), 9, Vo))), 128))
           ])
         ]),
-        e("div", Co, [
-          e("span", qo, [
+        e("div", So, [
+          e("span", Co, [
             $(i(t.snapshot.field_count) + " " + i(t.snapshot.field_count === 1 ? "field" : "fields"), 1),
             t.snapshot.can_edit ? (n(), o(C, { key: 0 }, [
               $(" · " + i(U.value) + " steps · revision " + i(t.snapshot.expected_revision), 1)
@@ -2631,7 +2628,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             }, [
               r(k(D), { icon: "tabler:alert-circle" }),
               $(i(S.value), 1)
-            ], 8, Uo)) : F.value ? (n(), o("span", Mo, "Unsaved")) : p("", !0),
+            ], 8, qo)) : F.value ? (n(), o("span", Uo, "Unsaved")) : p("", !0),
             r(k(ve), {
               label: "Save",
               size: "small",
@@ -2642,9 +2639,9 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           ], 64)) : p("", !0)
         ])
       ]),
-      t.error ? (n(), o("p", Eo, i(t.error), 1)) : p("", !0),
-      f.value === "Builder" && t.snapshot.can_edit ? (n(), o("div", No, [
-        r(ln, {
+      t.error ? (n(), o("p", Mo, i(t.error), 1)) : p("", !0),
+      f.value === "Builder" && t.snapshot.can_edit ? (n(), o("div", Eo, [
+        r(en, {
           title: h.value,
           "onUpdate:title": q[1] || (q[1] = (R) => h.value = R),
           description: E.value,
@@ -2665,7 +2662,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           "aria-labelledby": `tab-${f.value}`,
           class: "panel"
         }, [
-          f.value === "Test" ? (n(), ee(Dn, {
+          f.value === "Test" ? (n(), ee(An, {
             key: 0,
             result: t.result,
             retention: t.snapshot.retention,
@@ -2673,7 +2670,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             "can-run": t.snapshot.field_count > 0,
             onRun: q[3] || (q[3] = (R) => m("run", R))
           }, null, 8, ["result", "retention", "running", "can-run"])) : p("", !0),
-          f.value === "Evals" && t.snapshot.can_edit ? (n(), ee(io, {
+          f.value === "Evals" && t.snapshot.can_edit ? (n(), ee(oo, {
             key: 1,
             cases: t.snapshot.cases,
             fields: t.snapshot.config.fields,
@@ -2688,24 +2685,24 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
             onEvaluate: q[6] || (q[6] = (R) => m("evaluate")),
             onOpen: q[7] || (q[7] = (R) => m("open-evaluation", R))
           }, null, 8, ["cases", "fields", "evaluations", "evaluation", "revision", "changed", "saving", "starting"])) : p("", !0),
-          f.value === "Runs" ? (n(), ee(ho, {
+          f.value === "Runs" ? (n(), ee(go, {
             key: 2,
             runs: t.snapshot.runs,
             retention: t.snapshot.retention
           }, null, 8, ["runs", "retention"])) : p("", !0)
-        ], 8, Bo)
+        ], 8, No)
       ], 512))
     ]));
   }
-}), Ro = {
+}), To = {
   key: 1,
   class: "error pad-page",
   role: "alert"
-}, Ao = {
+}, Ro = {
   key: 2,
   class: "empty pad-page",
   role: "status"
-}, Do = 2e3, Po = /* @__PURE__ */ H({
+}, Ao = 2e3, zo = /* @__PURE__ */ H({
   __name: "Extractor",
   props: {
     id: {},
@@ -2727,7 +2724,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
           if (!q(B) || u.id !== (P ?? b)) return;
           a.value = u;
         }
-        clearTimeout(S), V.some((u) => !ye(u)) && (S = setTimeout(() => R(B), Do));
+        clearTimeout(S), V.some((u) => !ye(u)) && (S = setTimeout(() => R(B), Ao));
       } catch (Q) {
         q(B) && (f.value = y(Q));
       }
@@ -2791,7 +2788,7 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
     function le(B) {
       R(U, B);
     }
-    return (B, O) => v.value ? (n(), ee(To, {
+    return (B, O) => v.value ? (n(), ee(Bo, {
       key: 0,
       snapshot: v.value,
       saving: x.value,
@@ -2809,9 +2806,9 @@ const ye = (t) => t.status === "completed" || t.status === "failed", re = (t) =>
       onDeleteCase: I,
       onEvaluate: ne,
       onOpenEvaluation: le
-    }, null, 8, ["snapshot", "saving", "running", "starting", "result", "evaluations", "evaluation", "error", "back"])) : f.value ? (n(), o("p", Ro, i(f.value), 1)) : (n(), o("p", Ao, "Loading Docscout…"));
+    }, null, 8, ["snapshot", "saving", "running", "starting", "result", "evaluations", "evaluation", "error", "back"])) : f.value ? (n(), o("p", To, i(f.value), 1)) : (n(), o("p", Ro, "Loading Docscout…"));
   }
 });
 export {
-  Po as _
+  zo as _
 };
