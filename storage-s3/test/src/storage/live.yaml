@@ -108,13 +108,18 @@ entries:
   policy:
     resources:
     - kickside.contract:content_provider
+    - kickside.component:component_service
+    - kickside.component.binding:component_service_impl
     - context
     - get_content
+    - get_access_context
+    - security
     actions:
     - contract.get
     - contract.open
     - contract.call
     - contract.context
+    - contract.security
     effect: allow
 - name: ingest_test
   kind: function.lua
@@ -140,4 +145,5 @@ entries:
     locations: kickside.storage_s3.persist:locations
     offload: kickside.storage_s3.storage:offload
     policy: kickside.storage_s3.policy:policy
+    upload_types: kickside.uploads:types
     fixture_cleanup: app:fixture_cleanup
