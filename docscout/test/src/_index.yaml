@@ -433,3 +433,16 @@ entries:
   providers:
   - id: app:fixture_llm_provider
     provider_model: docscout-small
+- name: security_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: docscout_security
+    group: Docscout
+  source: file://security_test.lua
+  method: run
+  modules:
+  - registry
+  - security
+  imports:
+    test: wippy.test:test
