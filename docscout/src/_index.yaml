@@ -72,9 +72,7 @@ entries:
   targets:
   - entry: kickside.docscout:db_config
     path: .meta.db_id
-  - entry: kickside.docscout.migrations:01_extractor_data
-    path: .meta.target_db
-  - entry: kickside.docscout.migrations:02_document_index
+  - entry: kickside.docscout.migrations:01_docscout
     path: .meta.target_db
 - name: api_router
   kind: ns.requirement

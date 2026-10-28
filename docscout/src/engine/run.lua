@@ -10,6 +10,7 @@ local retention = require("retention")
 local process = require("process")
 local stages = require("stages")
 local ai = require("ai")
+local shapes = require("shapes")
 
 local M = {}
 
@@ -33,7 +34,7 @@ function M.run(input: any): (any?, error?)
 
     local run: any = {
         config = config, regions = {}, notes = {}, analyses = {}, values = {}, confidence = 0,
-        pool = { by_ordinal = {}, dropped = {}, count = 0 },
+        pool = shapes.pool(),
     }
     local trace: { any } = {}
     local started = millis()

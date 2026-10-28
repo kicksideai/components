@@ -1,0 +1,155 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local test = require("test")
+local json = require("json")
+local shapes = require("shapes")
+
+local function field(over: any): any
+    local f = { name = "f", type = "text", description = "", enum_values = {}, item_type = "text", required = false,
+        search_hints = "", validation_hints = "", expected_format = "", strategy = "standard", search_within = "document",
+        group = "", evidence_required = true, chunks = 5 }
+    for k, v in pairs(over or {}) do f[k] = v end
+    return f
+end
+
+local function chunk(ordinal: integer, over: any?): any
+    local c = { ordinal = ordinal, heading_path = "Section", content = "text " .. ordinal }
+    for k, v in pairs(over or {}) do c[k] = v end
+    return c
+end
+
+return { run = test.run_cases(function()
+    test.describe("Text helpers", function()
+        test.it("trims and splits non-empty lines", function()
+            test.eq(shapes.trim("  a b \n"), "a b")
+            test.eq(shapes.trim(""), "")
+            test.eq(json.encode(shapes.lines("one\n\n  two  \n   \nthree")), json.encode({ "one", "two", "three" }))
+            test.eq(#shapes.lines(""), 0)
+        end)
+        test.it("matches quotes across typography, emphasis and spacing but never across changed numbers", function()
+            test.eq(shapes.normalize("  **Total due:**  EUR 5,188.40\n"), "total due: eur 5,188.40")
+            test.eq(shapes.normalize("“Net 30” — payable\194\160on receipt…"), shapes.normalize('"Net 30" - payable on receipt...'))
+            test.eq(shapes.normalize("Mid–Term   Memory"), "mid-term memory")
+            test.eq(shapes.normalize("| Fee | 1,000 |"), "fee 1,000")
+            test.is_true(shapes.normalize("-5") ~= shapes.normalize("+5"))
+            test.is_true(shapes.normalize("1.5%") ~= shapes.normalize("15%"))
+            test.eq(shapes.normalize("Gebühr für Prüfung"), "gebühr für prüfung")
+        end)
+        test.it("locates a quote in its cited chunk, else the first chunk that holds it", function()
+            local bodies = { [1] = shapes.normalize("Intro text."), [2] = shapes.normalize("Fee is USD 10."), [3] = shapes.normalize("Again: fee is USD 10.") }
+            local order = { 1, 2, 3 }
+            test.eq(shapes.locate("fee is USD 10", 3, bodies, order), 3)
+            test.eq(shapes.locate("fee is USD 10", 1, bodies, order), 2)
+            test.eq(shapes.locate("fee is USD 10", nil, bodies, order), 2)
+            test.is_nil(shapes.locate("fee is USD 11", 2, bodies, order))
+            test.is_nil(shapes.locate("  ", 2, bodies, order))
+        end)
+        test.it("builds an empty table that encodes as a JSON object", function()
+            test.eq(json.encode(shapes.object()), "{}")
+            local filled = shapes.object(); filled.a = 1
+            test.eq(json.encode(filled), '{"a":1}')
+        end)
+    end)
+
+    test.describe("Evidence pool", function()
+        test.it("adds each chunk once, keeps dropped chunks out and orders by position", function()
+            local pool = shapes.pool()
+            shapes.add(pool, { chunk(5), chunk(2), chunk(5) })
+            test.eq(pool.count, 2)
+            test.is_true(shapes.drop(pool, 5))
+            test.is_false(shapes.drop(pool, 5))
+            test.is_false(shapes.drop(pool, 99))
+            shapes.add(pool, { chunk(5), chunk(1) })
+            test.eq(pool.count, 2)
+            local ordered = shapes.ordered(pool)
+            test.eq(ordered[1].ordinal, 1); test.eq(ordered[2].ordinal, 2)
+            shapes.add(pool, nil)
+            test.eq(pool.count, 2)
+        end)
+        test.it("keeps passages cited as evidence even when marked as noise", function()
+            local pool = shapes.pool()
+            shapes.add(pool, { chunk(1), chunk(2), chunk(3), chunk(4) })
+            local dropped = shapes.prune(pool, { 1, 2, 3, 99 }, { { field = "law", chunks = { 2 } }, { field = "fee", chunks = { 3, 4 } } })
+            test.eq(dropped, 1)
+            test.eq(json.encode((function() local o = {} for _, c in ipairs(shapes.ordered(pool)) do o[#o + 1] = c.ordinal end return o end)()), json.encode({ 2, 3, 4 }))
+            test.eq(shapes.prune(pool, {}, {}), 0)
+        end)
+        test.it("renders passages with their label, section and page or page range", function()
+            local text = shapes.render({ chunk(3, { page_start = 2, page_end = 2 }), chunk(4, { page_start = 2, page_end = 4 }), chunk(9) })
+            test.is_true(text:find("[C3] Section p.2\ntext 3", 1, true) ~= nil)
+            test.is_true(text:find("[C4] Section pp.2-4\ntext 4", 1, true) ~= nil)
+            test.is_true(text:find("[C9] Section\ntext 9", 1, true) ~= nil)
+            test.eq(shapes.render({}), "")
+        end)
+        test.it("expands outline sections to their chunk ordinals and ignores unknown ids", function()
+            local outline = { { id = "a", chunk_start = 1, chunk_end = 3 }, { id = "b", chunk_start = 4, chunk_end = 4 }, { id = "c", chunk_start = 5, chunk_end = 6 } }
+            test.eq(json.encode(shapes.ordinals_of(outline, { "c", "a", "zzz" })), json.encode({ 1, 2, 3, 5, 6 }))
+            test.eq(#shapes.ordinals_of(outline, {}), 0)
+        end)
+    end)
+
+    test.describe("Field descriptions for models", function()
+        test.it("states type, requirement, allowed values, format and rules", function()
+            local text = shapes.field_lines({
+                field({ name = "status", type = "enum", enum_values = { "Paid", "Unpaid" }, required = true, description = "Payment status" }),
+                field({ name = "items", type = "list", item_type = "number", expected_format = "decimal", validation_hints = "positive" }),
+            })
+            test.is_true(text:find("- status (enum, required): Payment status", 1, true) ~= nil)
+            test.is_true(text:find("allowed: Paid, Unpaid", 1, true) ~= nil)
+            test.is_true(text:find("- items (list of number): no description", 1, true) ~= nil)
+            test.is_true(text:find("format: decimal", 1, true) ~= nil)
+            test.is_true(text:find("rules: positive", 1, true) ~= nil)
+        end)
+    end)
+
+    test.describe("Model replies", function()
+        test.it("decodes the JSON object around prose, fences and braces inside strings", function()
+            local fenced = assert(shapes.json_object("Here you go:\n```json\n{\"a\": {\"quote\": \"see clause {3}\"}}\n```\nDone."))
+            test.eq(fenced.a.quote, "see clause {3}")
+            local bare = assert(shapes.json_object("{\"n\": 1}"))
+            test.eq(bare.n, 1)
+            local _, none = shapes.json_object("no json here")
+            test.not_nil(none); test.eq(none:kind(), errors.UNAVAILABLE)
+            local _, broken = shapes.json_object("{\"a\": }")
+            test.not_nil(broken)
+        end)
+    end)
+
+    test.describe("Extraction schemas", function()
+        test.it("maps every field type to a strict JSON Schema value", function()
+            test.eq(shapes.value_schema(field({ type = "text" })).type, "string")
+            test.eq(shapes.value_schema(field({ type = "date" })).type, "string")
+            test.eq(shapes.value_schema(field({ type = "number" })).type, "number")
+            test.eq(shapes.value_schema(field({ type = "boolean" })).type, "boolean")
+            local enum = shapes.value_schema(field({ type = "enum", enum_values = { "A", "B" } }))
+            test.eq(enum.type, "string"); test.eq(json.encode(enum.enum), json.encode({ "A", "B" }))
+            local object = shapes.value_schema(field({ type = "object" }))
+            test.eq(object.type, "object"); test.is_true(object.additionalProperties)
+            local numbers = shapes.value_schema(field({ type = "list", item_type = "number" }))
+            test.eq(numbers.type, "array"); test.eq(numbers.items.type, "number")
+            local choices = shapes.value_schema(field({ type = "list", item_type = "text", enum_values = { "x", "y" } }))
+            test.eq(json.encode(choices.items.enum), json.encode({ "x", "y" }))
+            local objects = shapes.value_schema(field({ type = "list", item_type = "object" }))
+            test.eq(objects.items.type, "object"); test.is_true(objects.items.additionalProperties)
+        end)
+        test.it("searches each field by its name and description, then by each hint", function()
+            local q = shapes.field_queries(field({ name = "renewal_notice_days", description = "Notice to stop renewal", search_hints = "non-renewal\n\nwritten notice" }))
+            test.eq(json.encode(q), json.encode({ "renewal notice days: Notice to stop renewal", "non-renewal", "written notice" }))
+            test.eq(json.encode(shapes.field_queries(field({ name = "total" }))), json.encode({ "total" }))
+        end)
+        test.it("bounds evidence and confidence", function()
+            local f = shapes.group_schema({ field({ name = "a" }) }).properties.a.properties
+            test.eq(f.evidence.maxItems, shapes.EVIDENCE_LIMIT)
+            test.eq(f.confidence.minimum, 0); test.eq(f.confidence.maximum, 1)
+        end)
+        test.it("requires found, value, confidence and evidence for every field of a group", function()
+            local schema = shapes.group_schema({ field({ name = "a" }), field({ name = "b", type = "number" }) })
+            test.eq(json.encode(schema.required), json.encode({ "a", "b" }))
+            test.is_false(schema.additionalProperties)
+            local a = schema.properties.a
+            test.eq(json.encode(a.required), json.encode({ "found", "value", "confidence", "evidence" }))
+            test.eq(a.properties.found.type, "boolean")
+            test.eq(json.encode(a.properties.evidence.items.required), json.encode({ "chunk", "quote" }))
+            test.eq(schema.properties.b.properties.value.type, "number")
+        end)
+    end)
+end) }

@@ -319,6 +319,19 @@ entries:
     process: kickside.docscout.engine:process
     store: kickside.docscout.engine:store
     stages: kickside.docscout.engine:stages
+- name: shapes_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: docscout_shapes
+    group: Docscout
+  source: file://shapes_test.lua
+  method: run
+  modules:
+  - json
+  imports:
+    test: wippy.test:test
+    shapes: kickside.docscout.engine:shapes
 - name: callers_test
   kind: function.lua
   meta:

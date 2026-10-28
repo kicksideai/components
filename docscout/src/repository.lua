@@ -75,9 +75,9 @@ function M.add_run(component_id,row)
     local trace,trace_err=json.encode(row.trace or {})
     if trace_err then db:release();return nil,trace_err end
     local id=uuid.v7()
-    local _,write_err=db:execute([[INSERT INTO kickside_docscout_runs(id,component_id,user_id,upload_id,caller,status,config_revision,result,trace,duration_ms,tokens,cost,created_at,expires_at)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)]],
-        {id,component_id,row.user_id,row.upload_id,row.caller,row.status,row.config_revision,result,trace,row.duration_ms,row.tokens,sql.as.null(),time.now():utc():format(time.RFC3339),row.expires_at})
+    local _,write_err=db:execute([[INSERT INTO kickside_docscout_runs(id,component_id,user_id,upload_id,caller,status,config_revision,result,trace,duration_ms,tokens,created_at,expires_at)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)]],
+        {id,component_id,row.user_id,row.upload_id,row.caller,row.status,row.config_revision,result,trace,row.duration_ms,row.tokens,time.now():utc():format(time.RFC3339),row.expires_at})
     db:release()
     if write_err then return nil,write_err end
     return id,nil

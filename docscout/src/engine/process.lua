@@ -13,6 +13,9 @@ local doc2md = require("doc2md")
 local store = require("store")
 local ai = require("ai")
 local retention = require("retention")
+local shapes = require("shapes")
+
+local trim = shapes.trim
 
 local M = {}
 
@@ -24,7 +27,6 @@ local function invalid(message: string): error
     return errors.new({ kind = errors.INVALID, message = message })
 end
 
-local function trim(s: string): string return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
 
 -- The upload's primary Markdown through the uploads content provider, read as the caller.
 function M.content(upload_id: string): (any?, error?)
@@ -65,6 +67,12 @@ function M.processing_key(retrieval: any): string
     return hash.sha256(table.concat(line, ";"))
 end
 
+-- A heading section is always kept; the text before the first heading only
+-- when it has content.
+local function keep(section: any): boolean
+    return section.level > 0 or trim(table.concat(section.lines, "\n")) ~= ""
+end
+
 -- Sections in document order from ATX headings outside fenced code. Text
 -- before the first heading is its own section.
 function M.sections(markdown: string): { any }
@@ -77,7 +85,7 @@ function M.sections(markdown: string): { any }
         local hashes, title = nil, nil
         if not fenced then hashes, title = line:match("^(#+)%s+(.-)%s*#*%s*$") end
         if hashes and #hashes <= 6 and title ~= "" then
-            if #current.lines > 0 and trim(table.concat(current.lines, "\n")) ~= "" or current.level > 0 then sections[#sections + 1] = current end
+            if keep(current) then sections[#sections + 1] = current end
             local level = #hashes
             while #stack > 0 and stack[#stack].level >= level do table.remove(stack) end
             local names = {}
@@ -89,7 +97,7 @@ function M.sections(markdown: string): { any }
             current.lines[#current.lines + 1] = line
         end
     end
-    if #current.lines > 0 and trim(table.concat(current.lines, "\n")) ~= "" then sections[#sections + 1] = current end
+    if keep(current) then sections[#sections + 1] = current end
     for _, s in ipairs(sections) do s.text = table.concat(s.lines, "\n"); s.lines = nil end
     return sections
 end
@@ -167,10 +175,12 @@ function M.chunk(markdown: string, retrieval: any): ({ any }, { any }, integer)
     return chunks, kept, pages
 end
 
-local CONTEXT_SCHEMA = {
-    type = "object", additionalProperties = false, required = { "contexts" },
-    properties = { contexts = { type = "array", items = { type = "string" } } },
-}
+local function context_schema(count: integer): any
+    return {
+        type = "object", additionalProperties = false, required = { "contexts" },
+        properties = { contexts = { type = "array", minItems = count, maxItems = count, items = { type = "string" } } },
+    }
+end
 local CONTEXT_SYSTEM = [[You place passages of one document in context for search.
 For each passage write one or two sentences that say where it sits in the document and what it is about,
 naming the parties, figures or terms it concerns. Do not repeat the passage. Return exactly one context per passage, in order.]]
@@ -187,7 +197,7 @@ local function contexts(meter: any, retrieval: any, chunks: { any }, filename: s
             batch[#batch + 1] = chunks[i]
             lines[#lines + 1] = "\n## Passage " .. tostring(#batch) .. " (section: " .. chunks[i].heading_path .. ")\n" .. chunks[i].content
         end
-        local result, err = ai.structured(meter, retrieval.context_model, CONTEXT_SCHEMA, CONTEXT_SYSTEM, table.concat(lines, "\n"))
+        local result, err = ai.structured(meter, retrieval.context_model, context_schema(#batch), CONTEXT_SYSTEM, table.concat(lines, "\n"))
         if err then return err end
         if #result.contexts ~= #batch then
             return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "context model returned " .. #result.contexts .. " contexts for " .. #batch .. " passages" })

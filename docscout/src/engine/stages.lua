@@ -7,53 +7,11 @@ local ai = require("ai")
 local store = require("store")
 local doctools = require("doctools")
 local process = require("process")
+local shapes = require("shapes")
+
+local trim, lines, add, ordered, render, field_lines = shapes.trim, shapes.lines, shapes.add, shapes.ordered, shapes.render, shapes.field_lines
 
 local M = {}
-
-local function trim(s: string): string return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
-local function lines(s: string): { string }
-    local out = {}
-    for line in (s .. "\n"):gmatch("(.-)\n") do if trim(line) ~= "" then out[#out + 1] = trim(line) end end
-    return out
-end
-
-local function add(pool: any, chunks: { any })
-    for _, c in ipairs(chunks or {}) do
-        if not pool.dropped[c.ordinal] and not pool.by_ordinal[c.ordinal] then
-            pool.by_ordinal[c.ordinal] = c
-            pool.count = pool.count + 1
-        end
-    end
-end
-
-local function ordered(pool: any): { any }
-    local out = {}
-    for _, c in pairs(pool.by_ordinal) do out[#out + 1] = c end
-    table.sort(out, function(a: any, b: any): boolean return a.ordinal < b.ordinal end)
-    return out
-end
-
-local function render(chunks: { any }): string
-    local out = {}
-    for _, c in ipairs(chunks) do
-        local pages = c.page_start and (c.page_end and c.page_end ~= c.page_start and (" pp." .. c.page_start .. "-" .. c.page_end) or (" p." .. c.page_start)) or ""
-        out[#out + 1] = "[C" .. c.ordinal .. "] " .. c.heading_path .. pages .. "\n" .. c.content
-    end
-    return table.concat(out, "\n\n")
-end
-
-local function field_lines(fields: { any }): string
-    local out = {}
-    for _, f in ipairs(fields) do
-        local t = f.type == "list" and ("list of " .. f.item_type) or f.type
-        local parts = { "- " .. f.name .. " (" .. t .. (f.required and ", required" or "") .. "): " .. (f.description ~= "" and f.description or "no description") }
-        if #f.enum_values > 0 then parts[#parts + 1] = "  allowed: " .. table.concat(f.enum_values, ", ") end
-        if f.expected_format ~= "" then parts[#parts + 1] = "  format: " .. f.expected_format end
-        if f.validation_hints ~= "" then parts[#parts + 1] = "  rules: " .. f.validation_hints end
-        out[#out + 1] = table.concat(parts, "\n")
-    end
-    return table.concat(out, "\n")
-end
 
 -- Region (chunk ordinals) a field searches within, or nil for the whole document.
 local function region(run: any, field: any): { integer }?
@@ -61,26 +19,35 @@ local function region(run: any, field: any): { integer }?
     return run.regions[field.name]
 end
 
-local function ordinals_of(outline: { any }, ids: { string }): { integer }
-    local wanted, out = {}, {}
-    for _, id in ipairs(ids) do wanted[id] = true end
-    for _, s in ipairs(outline) do
-        if wanted[s.id] then for n = s.chunk_start, s.chunk_end do out[#out + 1] = n end end
-    end
-    return out
-end
-
 -- Map: outline from headings, or built by the model; then the sections each
 -- "search within sections" field should read.
-local OUTLINE_SCHEMA = { type = "object", additionalProperties = false, required = { "sections" }, properties = {
-    sections = { type = "array", items = { type = "object", additionalProperties = false, required = { "title", "first_chunk" },
-        properties = { title = { type = "string" }, first_chunk = { type = "integer" } } } } } }
-local SUMMARY_SCHEMA = { type = "object", additionalProperties = false, required = { "summaries" }, properties = {
-    summaries = { type = "array", items = { type = "object", additionalProperties = false, required = { "section_id", "summary" },
-        properties = { section_id = { type = "string" }, summary = { type = "string" } } } } } }
-local SELECT_SCHEMA = { type = "object", additionalProperties = false, required = { "fields" }, properties = {
-    fields = { type = "array", items = { type = "object", additionalProperties = false, required = { "field", "section_ids" },
-        properties = { field = { type = "string" }, section_ids = { type = "array", items = { type = "string" } } } } } } }
+local function outline_schema(chunks: integer): any
+    return { type = "object", additionalProperties = false, required = { "sections" }, properties = {
+        sections = { type = "array", minItems = 1, maxItems = chunks, items = { type = "object", additionalProperties = false, required = { "title", "first_chunk" },
+            properties = { title = { type = "string" }, first_chunk = { type = "integer", minimum = 1, maximum = chunks } } } } } }
+end
+
+local function section_ids(outline: { any }): { string }
+    local ids = {}
+    for _, s in ipairs(outline) do ids[#ids + 1] = s.id end
+    return ids
+end
+
+local function summary_schema(outline: { any }): any
+    return { type = "object", additionalProperties = false, required = { "summaries" }, properties = {
+        summaries = { type = "array", maxItems = #outline, items = { type = "object", additionalProperties = false, required = { "section_id", "summary" },
+            properties = { section_id = { type = "string", enum = section_ids(outline) }, summary = { type = "string" } } } } } }
+end
+
+-- Exactly one selection per field, each with at least one existing section.
+local function select_schema(outline: { any }, fields: { any }): any
+    local names = {}
+    for _, f in ipairs(fields) do names[#names + 1] = f.name end
+    return { type = "object", additionalProperties = false, required = { "fields" }, properties = {
+        fields = { type = "array", minItems = #fields, maxItems = #fields, items = { type = "object", additionalProperties = false, required = { "field", "section_ids" },
+            properties = { field = { type = "string", enum = names },
+                section_ids = { type = "array", minItems = 1, maxItems = #outline, items = { type = "string", enum = section_ids(outline) } } } } } } }
+end
 
 function M.map(run: any, step: any): error?
     local cfg = run.config.stages.map
@@ -92,7 +59,7 @@ function M.map(run: any, step: any): error?
         if err then return err end
         local preview = {}
         for _, c in ipairs(chunks) do preview[#preview + 1] = "[C" .. c.ordinal .. "] " .. c.content:sub(1, 160):gsub("\n", " ") end
-        local built, build_err = ai.structured(step.meter, cfg.model, OUTLINE_SCHEMA,
+        local built, build_err = ai.structured(step.meter, cfg.model, outline_schema(#chunks),
             "You divide a document into its logical sections. Give each section a short title and the chunk number where it starts, in order; the first section starts at chunk 1.",
             table.concat(preview, "\n"))
         if build_err then return build_err end
@@ -127,7 +94,7 @@ function M.map(run: any, step: any): error?
             for _, c in ipairs(chunks) do body[#body + 1] = c.content end
             listing[#listing + 1] = "## " .. s.id .. " " .. s.path .. "\n" .. table.concat(body, "\n"):sub(1, 1500)
         end
-        local result, err = ai.structured(step.meter, cfg.model, SUMMARY_SCHEMA,
+        local result, err = ai.structured(step.meter, cfg.model, summary_schema(run.document.outline),
             "Summarize each section in one sentence, naming what it covers. Return one summary per section id.", table.concat(listing, "\n\n"))
         if err then return err end
         for _, item in ipairs(result.summaries) do
@@ -137,13 +104,13 @@ function M.map(run: any, step: any): error?
     local scoped = {}
     for _, f in ipairs(run.config.fields) do if f.search_within == "sections" then scoped[#scoped + 1] = f end end
     if #scoped > 0 then
-        local result, err = ai.structured(step.meter, cfg.model, SELECT_SCHEMA,
+        local result, err = ai.structured(step.meter, cfg.model, select_schema(run.document.outline, scoped),
             "You pick, for each field, the sections of the outline most likely to contain its value. Choose few but enough sections; include definitions or schedules a field depends on.",
             "Outline:\n" .. doctools.outline_text(run.document.outline) .. "\n\nFields:\n" .. field_lines(scoped))
         if err then return err end
         local picked = {}
         for _, item in ipairs(result.fields) do
-            run.regions[item.field] = ordinals_of(run.document.outline, item.section_ids)
+            run.regions[item.field] = shapes.ordinals_of(run.document.outline, item.section_ids)
             picked[#picked + 1] = item.field .. " → " .. table.concat(item.section_ids, ", ")
         end
         step.queries = picked
@@ -164,10 +131,10 @@ function M.prefetch(run: any, step: any): error?
     end
     for _, f in ipairs(run.config.fields) do
         if f.strategy ~= "deep" or not run.config.stages.deep.enabled then
-            for _, hint in ipairs(lines(f.search_hints)) do
-                local hits, err = doctools.search(ctx, mode, hint, f.chunks, region(run, f))
+            for _, query in ipairs(shapes.field_queries(f)) do
+                local hits, err = doctools.search(ctx, mode, query, f.chunks, region(run, f))
                 if err then return err end
-                add(run.pool, hits); queries[#queries + 1] = hint
+                add(run.pool, hits); queries[#queries + 1] = query
             end
         end
     end
@@ -176,17 +143,29 @@ function M.prefetch(run: any, step: any): error?
     return nil
 end
 
-local SCOUT_SCHEMA = { type = "object", additionalProperties = false, required = { "confidence", "drop", "queries", "notes" }, properties = {
-    confidence = { type = "number" },
-    drop = { type = "array", items = { type = "integer" } },
-    queries = { type = "array", items = { type = "object", additionalProperties = false, required = { "field", "query" },
-        properties = { field = { type = "string" }, query = { type = "string" } } } },
-    notes = { type = "array", items = { type = "object", additionalProperties = false, required = { "field", "note" },
-        properties = { field = { type = "string" }, note = { type = "string" } } } } } }
+-- The scout names, per field, the passages holding its evidence; the engine
+-- drops only passages no field cites.
+local function scout_schema(cfg: any, fields: { any }, pool: { any }): any
+    local names, ordinals = {}, {}
+    for _, f in ipairs(fields) do names[#names + 1] = f.name end
+    for _, c in ipairs(pool) do ordinals[#ordinals + 1] = c.ordinal end
+    local chunk = #ordinals > 0 and { type = "integer", enum = ordinals } or { type = "integer" }
+    return { type = "object", additionalProperties = false, required = { "confidence", "evidence", "drop", "queries", "notes" }, properties = {
+        confidence = { type = "number", minimum = 0, maximum = 1 },
+        evidence = { type = "array", maxItems = #fields, items = { type = "object", additionalProperties = false, required = { "field", "chunks" },
+            properties = { field = { type = "string", enum = names }, chunks = { type = "array", maxItems = #ordinals, items = chunk } } } },
+        drop = { type = "array", maxItems = #ordinals, items = chunk },
+        queries = { type = "array", maxItems = cfg.max_extra_queries, items = { type = "object", additionalProperties = false, required = { "field", "query" },
+            properties = { field = { type = "string", enum = names }, query = { type = "string" } } } },
+        notes = { type = "array", maxItems = #fields, items = { type = "object", additionalProperties = false, required = { "field", "note" },
+            properties = { field = { type = "string", enum = names }, note = { type = "string" } } } } } }
+end
+
 local SCOUT_SYSTEM = [[You review evidence gathered from one document before values are extracted.
-Rate from 0 to 1 how confident you are that the passages contain every field's value. List chunk numbers that are irrelevant noise
-(only the number, without C). Propose focused search queries for fields whose evidence is missing or weak, and leave short notes
-about where each value is or what to watch for. Do not extract values.]]
+Rate from 0 to 1 how confident you are that the passages contain every field's value. For each field, list the chunk numbers
+whose passages state or help determine its value. List chunk numbers that serve no field as noise. Propose focused search
+queries for fields whose evidence is missing or weak, and leave short notes about where each value is or what to watch for.
+Do not extract values. Chunk numbers are the numbers after C, without the C.]]
 
 function M.scout(run: any, step: any): error?
     local cfg = run.config.stages.scout
@@ -218,19 +197,12 @@ function M.scout(run: any, step: any): error?
     local rounds, queries_run = 0, {}
     while true do
         rounds = rounds + 1
-        local result, err = ai.structured(step.meter, cfg.model, SCOUT_SCHEMA, SCOUT_SYSTEM,
+        local result, err = ai.structured(step.meter, cfg.model, scout_schema(cfg, fields, ordered(run.pool)), SCOUT_SYSTEM,
             "Fields:\n" .. field_lines(fields) .. (#run.notes > 0 and ("\n\nEarlier notes:\n" .. table.concat(run.notes, "\n")) or "") ..
             "\n\nEvidence:\n" .. render(ordered(run.pool)), { max_tokens = cfg.max_tokens })
         if err then return err end
         run.confidence = tonumber(result.confidence) or 0
-        if cfg.drop_noise then
-            for _, n in ipairs(result.drop) do
-                local ordinal = math.tointeger(tonumber(n))
-                if ordinal and run.pool.by_ordinal[ordinal] then
-                    run.pool.by_ordinal[ordinal] = nil; run.pool.dropped[ordinal] = true; run.pool.count = run.pool.count - 1
-                end
-            end
-        end
+        if cfg.drop_noise then shapes.prune(run.pool, result.drop, result.evidence) end
         if cfg.share_notes then for _, note in ipairs(result.notes) do run.notes[#run.notes + 1] = note.field .. ": " .. note.note end end
         if rounds > cfg.max_rounds or run.confidence >= cfg.target_confidence or #result.queries == 0 then break end
         for i, q in ipairs(result.queries) do
@@ -249,18 +221,20 @@ end
 
 -- Deep analysis: each deep field writes its own queries, reads what they find
 -- (or the sections around it) and leaves an analysis for extraction.
-local QUERIES_SCHEMA = { type = "object", additionalProperties = false, required = { "queries" },
-    properties = { queries = { type = "array", items = { type = "string" } } } }
+local function queries_schema(limit: integer): any
+    return { type = "object", additionalProperties = false, required = { "queries" },
+        properties = { queries = { type = "array", maxItems = limit, items = { type = "string" } } } }
+end
 
 local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { string }): error?
     local cfg = run.config.stages.deep
-    local generated, err = ai.structured(step.meter, cfg.query_model, QUERIES_SCHEMA,
+    local generated, err = ai.structured(step.meter, cfg.query_model, queries_schema(cfg.max_queries),
         "Write up to " .. cfg.max_queries .. " varied search queries that would find passages stating this field's value, including synonyms and related clauses.",
         field_lines({ f }) .. (f.search_hints ~= "" and ("\nHints: " .. f.search_hints) or ""), { temperature = cfg.query_temperature })
     if err then return err end
     local seen, found = {}, {}
     local queries = {}
-    for _, h in ipairs(lines(f.search_hints)) do queries[#queries + 1] = h end
+    for _, q in ipairs(shapes.field_queries(f)) do queries[#queries + 1] = q end
     for _, q in ipairs(generated.queries) do if #queries < cfg.max_queries then queries[#queries + 1] = q end end
     for _, q in ipairs(queries) do
         local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q, cfg.chunks_per_query, region(run, f), cfg.min_similarity)
@@ -330,9 +304,13 @@ end
 
 -- Highlighter: a small model keeps only the sentences each passage holds for
 -- the fields, so extraction reads less and cites tighter quotes.
-local HIGHLIGHT_SCHEMA = { type = "object", additionalProperties = false, required = { "passages" }, properties = {
-    passages = { type = "array", items = { type = "object", additionalProperties = false, required = { "chunk", "excerpts" },
-        properties = { chunk = { type = "integer" }, excerpts = { type = "array", items = { type = "string" } } } } } } }
+local HIGHLIGHT_EXCERPTS = 4
+
+local function highlight_schema(batch: integer): any
+    return { type = "object", additionalProperties = false, required = { "passages" }, properties = {
+        passages = { type = "array", maxItems = batch, items = { type = "object", additionalProperties = false, required = { "chunk", "excerpts" },
+            properties = { chunk = { type = "integer" }, excerpts = { type = "array", maxItems = HIGHLIGHT_EXCERPTS, items = { type = "string" } } } } } } }
+end
 local HIGHLIGHT_BATCH = 12
 
 function M.highlight(run: any, step: any): error?
@@ -342,7 +320,7 @@ function M.highlight(run: any, step: any): error?
     for start = 1, #chunks, HIGHLIGHT_BATCH do
         local batch = {}
         for i = start, math.min(#chunks, start + HIGHLIGHT_BATCH - 1) do batch[#batch + 1] = chunks[i] end
-        local result, err = ai.structured(step.meter, model, HIGHLIGHT_SCHEMA,
+        local result, err = ai.structured(step.meter, model, highlight_schema(#batch),
             "For each passage, copy word for word the sentences that state or help determine any field's value. Return no excerpts for passages that do not.",
             "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch))
         if err then return err end
@@ -354,8 +332,7 @@ function M.highlight(run: any, step: any): error?
                 c.content = table.concat(found, " … ")
                 kept = kept + 1
             else
-                run.pool.by_ordinal[c.ordinal] = nil
-                run.pool.count = run.pool.count - 1
+                shapes.drop(run.pool, c.ordinal)
             end
         end
     end
@@ -364,35 +341,6 @@ function M.highlight(run: any, step: any): error?
 end
 
 -- Extraction: one structured call per group of fields over the evidence pool.
-local JSON_TYPES = { text = "string", number = "number", boolean = "boolean", date = "string", enum = "string", object = "object" }
-
-local function value_schema(f: any): any
-    if f.type == "list" then
-        local item: any = { type = JSON_TYPES[f.item_type] or "string" }
-        if #f.enum_values > 0 then item = { type = "string", enum = f.enum_values } end
-        if item.type == "object" then item.additionalProperties = true end
-        return { type = "array", items = item }
-    end
-    if f.type == "enum" then return { type = "string", enum = f.enum_values } end
-    if f.type == "object" then return { type = "object", additionalProperties = true } end
-    return { type = JSON_TYPES[f.type] or "string" }
-end
-
-local function group_schema(fields: { any }): any
-    local properties, required = {}, {}
-    for _, f in ipairs(fields) do
-        properties[f.name] = { type = "object", additionalProperties = false, required = { "found", "value", "confidence", "evidence" }, properties = {
-            found = { type = "boolean" },
-            value = value_schema(f),
-            confidence = { type = "number" },
-            evidence = { type = "array", items = { type = "object", additionalProperties = false, required = { "chunk", "quote" },
-                properties = { chunk = { type = "integer" }, quote = { type = "string" } } } },
-        } }
-        required[#required + 1] = f.name
-    end
-    return { type = "object", additionalProperties = false, required = required, properties = properties }
-end
-
 local EXTRACT_SYSTEM = [[You extract field values from passages of one document. Use only what the passages state.
 For each field say whether the passages state it (found), give the value (any placeholder of the right type when not found), your confidence from 0 to 1, and evidence:
 the chunk number and an exact quote copied character for character from that chunk.]]
@@ -421,13 +369,10 @@ function M.extract(run: any, step: any): error?
                 "\n\nPassages:\n" .. evidence
             local result, err
             if cfg.structured_output then
-                result, err = ai.structured(step.meter, cfg.model, group_schema(batch), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
+                result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
             else
                 local textual, gen_err = ai.generate(step.meter, cfg.model, EXTRACT_SYSTEM .. "\nReply with a JSON object keyed by field name, each {found, value, confidence, evidence:[{chunk, quote}]}.", user, { max_tokens = cfg.max_output_tokens })
-                if gen_err then err = gen_err else
-                    local body = textual:match("%b{}")
-                    result, err = json.decode(body or "")
-                end
+                if gen_err then err = gen_err else result, err = shapes.json_object(textual) end
             end
             if err then return err end
             calls = calls + 1
@@ -456,11 +401,13 @@ end
 
 -- Verify: quotes must appear in the document; a model may also confirm each
 -- quote supports its value.
-local function normalize(s: string): string return (s:lower():gsub("[%s%p]+", " ")):gsub("^%s+", ""):gsub("%s+$", "") end
-
-local SUPPORT_SCHEMA = { type = "object", additionalProperties = false, required = { "checks" }, properties = {
-    checks = { type = "array", items = { type = "object", additionalProperties = false, required = { "field", "supported", "reason" },
-        properties = { field = { type = "string" }, supported = { type = "boolean" }, reason = { type = "string" } } } } } }
+local function support_schema(values: { any }): any
+    local names = {}
+    for _, v in ipairs(values) do names[#names + 1] = v.name end
+    return { type = "object", additionalProperties = false, required = { "checks" }, properties = {
+        checks = { type = "array", maxItems = #names, items = { type = "object", additionalProperties = false, required = { "field", "supported", "reason" },
+            properties = { field = { type = "string", enum = names }, supported = { type = "boolean" }, reason = { type = "string" } } } } } }
+end
 
 function M.verify(run: any, step: any): error?
     local cfg = run.config.stages.verify
@@ -469,11 +416,11 @@ function M.verify(run: any, step: any): error?
         local chunks, err = store.all_chunks(run.document.id)
         if err then return err end
         local by_ordinal = {}
-        for _, c in ipairs(chunks) do by_ordinal[c.ordinal] = normalize(c.content) end
+        for _, c in ipairs(chunks) do by_ordinal[c.ordinal] = shapes.normalize(c.content) end
         for _, v in ipairs(run.values) do
             v.quotes_found = #v.evidence > 0
             for _, e in ipairs(v.evidence) do
-                local q = normalize(e.quote)
+                local q = shapes.normalize(e.quote)
                 local hay = e.chunk and by_ordinal[e.chunk]
                 e.found = q ~= "" and hay ~= nil and hay:find(q, 1, true) ~= nil
                 if not e.found then
@@ -494,7 +441,7 @@ function M.verify(run: any, step: any): error?
             for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" end
             lines_out[#lines_out + 1] = "- " .. v.name .. " = " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | ")
         end
-        local result, err = ai.structured(step.meter, cfg.model, SUPPORT_SCHEMA,
+        local result, err = ai.structured(step.meter, cfg.model, support_schema(run.values),
             "For each field, decide whether its quotes support its value exactly. A null value is supported when no quote is given.",
             table.concat(lines_out, "\n"))
         if err then return err end
