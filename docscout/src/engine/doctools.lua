@@ -25,7 +25,7 @@ M.TOOLS = {
     },
     ["kickside.docscout.tools:read_outline"] = {
         name = "read_outline", description = "List the document's sections with their ids, pages and sizes.",
-        schema = { type = "object", additionalProperties = false, required = {}, properties = {} },
+        schema = { type = "object", additionalProperties = false, properties = { detail = { type = "string", enum = { "titles" } } }, required = { "detail" } },
     },
 }
 

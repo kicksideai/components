@@ -312,6 +312,8 @@ entries:
   modules:
   - json
   - uuid
+  - sql
+  - funcs
   imports:
     test: wippy.test:test
     process: kickside.docscout.engine:process

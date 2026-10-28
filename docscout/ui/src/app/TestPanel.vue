@@ -14,8 +14,9 @@ const percent=(n:number)=>`${Math.round(n*100)}%`
 const value=(v:unknown)=>v===null||v===undefined?'—':typeof v==='string'?v:Array.isArray(v)&&v.every(x=>typeof x!=='object')?v.join(', '):typeof v==='object'?JSON.stringify(v):String(v)
 const seconds=(ms:number)=>`${(ms/1000).toFixed(1)}s`
 const longest=computed(()=>Math.max(1,...(props.result?.trace.map(t=>t.duration_ms)??[1])))
-const label=(kind:string)=>kind==='read'?'Read document':stageLabels[kind as StageKey]??kind
-const icon=(kind:string)=>kind==='read'?'tabler:file-text':stageIcons[kind as StageKey]??'tabler:point'
+const extra:Record<string,{label:string;icon:string}>={read:{label:'Read document',icon:'tabler:file-text'},highlight:{label:'Highlighter',icon:'tabler:highlight'}}
+const label=(kind:string)=>extra[kind]?.label??stageLabels[kind as StageKey]??kind
+const icon=(kind:string)=>extra[kind]?.icon??stageIcons[kind as StageKey]??'tabler:point'
 const tone=(c:number)=>c>=.9?'high':c>=.7?'mid':'low'
 </script>
 <template>

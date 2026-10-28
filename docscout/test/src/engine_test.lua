@@ -5,6 +5,8 @@ local uuid = require("uuid")
 local process = require("process")
 local store = require("store")
 local stages = require("stages")
+local sql = require("sql")
+local funcs = require("funcs")
 
 local MARKDOWN = table.concat({
     "<!-- page 1 -->", "", "Preamble before any heading.", "",
@@ -89,6 +91,29 @@ return { run = test.run_cases(function()
             local removed = assert(store.expire(100))
             test.is_true(removed >= 1)
             test.eq(#assert(store.all_chunks(again)), 0)
+        end)
+    end)
+
+    test.describe("Retention", function()
+        test.it("removes expired processed documents and runs and keeps fresh ones", function()
+            local owner = "owner-" .. uuid.v4()
+            local stale = assert(store.save({ owner_id = owner, upload_id = "u-old", checksum = "c", processing_key = "k", outline = {},
+                page_count = 0, tokens = 0, expires_at = "2000-01-01T00:00:00Z" }, { { ordinal = 1, section_id = "s1", heading_path = "A", content = "old", vector = unit(3) } }))
+            local fresh = assert(store.save({ owner_id = owner, upload_id = "u-new", checksum = "c", processing_key = "k", outline = {},
+                page_count = 0, tokens = 0, expires_at = far_future() }, { { ordinal = 1, section_id = "s1", heading_path = "A", content = "new", vector = unit(4) } }))
+            local db = assert(sql.get("app:db"))
+            local run_id = uuid.v4()
+            assert(db:execute([[INSERT INTO kickside_docscout_runs (id,component_id,user_id,upload_id,caller,status,config_revision,duration_ms,tokens,created_at,expires_at)
+                VALUES ($1,'extractor',$2,'u-old','ui','completed',0,1,1,'2000-01-01T00:00:00Z','2000-01-01T00:00:00Z')]], { run_id, owner }))
+            db:release()
+            local result = assert(funcs.new():call("kickside.docscout:retention_owner", { change = {} }))
+            test.is_true(result.success); test.is_true(result.deleted >= 2)
+            test.eq(#assert(store.all_chunks(stale)), 0)
+            test.eq(#assert(store.all_chunks(fresh)), 1)
+            db = assert(sql.get("app:db"))
+            local rows = assert(db:query("SELECT count(*) AS n FROM kickside_docscout_runs WHERE id=$1", { run_id }))
+            db:release()
+            test.eq(tonumber(rows[1].n), 0)
         end)
     end)
 

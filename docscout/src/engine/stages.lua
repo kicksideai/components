@@ -252,56 +252,114 @@ end
 local QUERIES_SCHEMA = { type = "object", additionalProperties = false, required = { "queries" },
     properties = { queries = { type = "array", items = { type = "string" } } } }
 
+local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { string }): error?
+    local cfg = run.config.stages.deep
+    local generated, err = ai.structured(step.meter, cfg.query_model, QUERIES_SCHEMA,
+        "Write up to " .. cfg.max_queries .. " varied search queries that would find passages stating this field's value, including synonyms and related clauses.",
+        field_lines({ f }) .. (f.search_hints ~= "" and ("\nHints: " .. f.search_hints) or ""), { temperature = cfg.query_temperature })
+    if err then return err end
+    local seen, found = {}, {}
+    local queries = {}
+    for _, h in ipairs(lines(f.search_hints)) do queries[#queries + 1] = h end
+    for _, q in ipairs(generated.queries) do if #queries < cfg.max_queries then queries[#queries + 1] = q end end
+    for _, q in ipairs(queries) do
+        local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q, cfg.chunks_per_query, region(run, f), cfg.min_similarity)
+        if search_err then return search_err end
+        for _, c in ipairs(hits) do if not seen[c.ordinal] and #found < cfg.chunk_cap then seen[c.ordinal] = true; found[#found + 1] = c end end
+        all_queries[#all_queries + 1] = q
+    end
+    if cfg.read == "sections" then
+        local sections, budget, wide = {}, run.config.retrieval.section_budget, {}
+        for _, c in ipairs(found) do
+            for _, s in ipairs(run.document.outline) do
+                if c.ordinal >= s.chunk_start and c.ordinal <= s.chunk_end and not sections[s.id] then
+                    sections[s.id] = true
+                    if (s.tokens or 0) <= budget then
+                        local chunks, section_err = doctools.section(ctx, s.id)
+                        if section_err then return section_err end
+                        for _, sc in ipairs(chunks) do wide[#wide + 1] = sc end
+                    else
+                        step.long_sections = true
+                    end
+                end
+            end
+        end
+        for _, c in ipairs(wide) do if not seen[c.ordinal] then seen[c.ordinal] = true; found[#found + 1] = c end end
+        table.sort(found, function(a: any, b: any): boolean return a.ordinal < b.ordinal end)
+    end
+    add(run.pool, found)
+    local analysis, analysis_err = ai.generate(step.meter, cfg.model,
+        "You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it.",
+        field_lines({ f }) .. "\n\nPassages:\n" .. render(found), { temperature = cfg.analysis_temperature })
+    if analysis_err then return analysis_err end
+    run.analyses[f.name] = analysis
+    return nil
+end
+
+-- Deep analysis runs as a worker pool: "fields at a time" workers take deep
+-- fields from a channel, so their model calls overlap.
 function M.deep(run: any, step: any): error?
     local cfg = run.config.stages.deep
     local ctx = { document = run.document, retrieval = run.config.retrieval, meter = step.meter }
-    local all_queries, analysed = {}, 0
-    for _, f in ipairs(run.config.fields) do
-        if f.strategy == "deep" then
-            local generated, err = ai.structured(step.meter, cfg.query_model, QUERIES_SCHEMA,
-                "Write up to " .. cfg.max_queries .. " varied search queries that would find passages stating this field's value, including synonyms and related clauses.",
-                field_lines({ f }) .. (f.search_hints ~= "" and ("\nHints: " .. f.search_hints) or ""), { temperature = cfg.query_temperature })
-            if err then return err end
-            local seen, found = {}, {}
-            local queries = {}
-            for _, h in ipairs(lines(f.search_hints)) do queries[#queries + 1] = h end
-            for _, q in ipairs(generated.queries) do if #queries < cfg.max_queries then queries[#queries + 1] = q end end
-            for _, q in ipairs(queries) do
-                local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q, cfg.chunks_per_query, region(run, f), cfg.min_similarity)
-                if search_err then return search_err end
-                for _, c in ipairs(hits) do if not seen[c.ordinal] and #found < cfg.chunk_cap then seen[c.ordinal] = true; found[#found + 1] = c end end
-                all_queries[#all_queries + 1] = q
+    local fields = {}
+    for _, f in ipairs(run.config.fields) do if f.strategy == "deep" then fields[#fields + 1] = f end end
+    local all_queries = {}
+    local work = channel.new(#fields)
+    local results = channel.new(#fields)
+    for _ = 1, math.min(cfg.parallel_fields, #fields) do
+        coroutine.spawn(function()
+            while true do
+                local f, ok = work:receive()
+                if not ok then return end
+                results:send({ name = f.name, err = analyse(run, step, ctx, f, all_queries) })
             end
-            if cfg.read == "sections" then
-                local sections, budget, wide = {}, run.config.retrieval.section_budget, {}
-                for _, c in ipairs(found) do
-                    for _, s in ipairs(run.document.outline) do
-                        if c.ordinal >= s.chunk_start and c.ordinal <= s.chunk_end and not sections[s.id] then
-                            sections[s.id] = true
-                            if (s.tokens or 0) <= budget then
-                                local chunks, section_err = doctools.section(ctx, s.id)
-                                if section_err then return section_err end
-                                for _, sc in ipairs(chunks) do wide[#wide + 1] = sc end
-                            else
-                                step.message = "Long sections read as chunks"
-                            end
-                        end
-                    end
-                end
-                for _, c in ipairs(wide) do if not seen[c.ordinal] then seen[c.ordinal] = true; found[#found + 1] = c end end
-                table.sort(found, function(a: any, b: any): boolean return a.ordinal < b.ordinal end)
+        end)
+    end
+    for _, f in ipairs(fields) do work:send(f) end
+    work:close()
+    local failure: error? = nil
+    for _ = 1, #fields do
+        local outcome = results:receive()
+        if outcome.err and not failure then failure = outcome.err end
+    end
+    if failure then return failure end
+    step.queries = all_queries
+    step.message = #fields .. (#fields == 1 and " field" or " fields") .. " analysed" .. (step.long_sections and " · long sections read as chunks" or "")
+    return nil
+end
+
+-- Highlighter: a small model keeps only the sentences each passage holds for
+-- the fields, so extraction reads less and cites tighter quotes.
+local HIGHLIGHT_SCHEMA = { type = "object", additionalProperties = false, required = { "passages" }, properties = {
+    passages = { type = "array", items = { type = "object", additionalProperties = false, required = { "chunk", "excerpts" },
+        properties = { chunk = { type = "integer" }, excerpts = { type = "array", items = { type = "string" } } } } } } }
+local HIGHLIGHT_BATCH = 12
+
+function M.highlight(run: any, step: any): error?
+    local model = run.config.retrieval.highlighter_model
+    local chunks = ordered(run.pool)
+    local kept, before = 0, #chunks
+    for start = 1, #chunks, HIGHLIGHT_BATCH do
+        local batch = {}
+        for i = start, math.min(#chunks, start + HIGHLIGHT_BATCH - 1) do batch[#batch + 1] = chunks[i] end
+        local result, err = ai.structured(step.meter, model, HIGHLIGHT_SCHEMA,
+            "For each passage, copy word for word the sentences that state or help determine any field's value. Return no excerpts for passages that do not.",
+            "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch))
+        if err then return err end
+        local excerpts = {}
+        for _, p in ipairs(result.passages) do excerpts[math.tointeger(tonumber(p.chunk)) or -1] = p.excerpts end
+        for _, c in ipairs(batch) do
+            local found = excerpts[c.ordinal]
+            if found and #found > 0 then
+                c.content = table.concat(found, " … ")
+                kept = kept + 1
+            else
+                run.pool.by_ordinal[c.ordinal] = nil
+                run.pool.count = run.pool.count - 1
             end
-            add(run.pool, found)
-            local analysis, analysis_err = ai.generate(step.meter, cfg.model,
-                "You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it.",
-                field_lines({ f }) .. "\n\nPassages:\n" .. render(found), { temperature = cfg.analysis_temperature })
-            if analysis_err then return analysis_err end
-            run.analyses[f.name] = analysis
-            analysed = analysed + 1
         end
     end
-    step.queries = all_queries
-    step.message = (step.message and (step.message .. " · ") or "") .. analysed .. (analysed == 1 and " field" or " fields") .. " analysed"
+    step.message = "Kept " .. kept .. " of " .. before .. " passages"
     return nil
 end
 

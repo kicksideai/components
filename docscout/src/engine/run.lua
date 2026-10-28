@@ -65,6 +65,7 @@ function M.run(input: any): (any?, error?)
     local has_deep = false
     for _, f in ipairs(config.fields) do if f.strategy == "deep" then has_deep = true end end
     if ok and s.deep.enabled and has_deep then ok = step("deep", s.deep.read == "sections" and "section" or "chunk", s.deep.model, function(r: any): error? return stages.deep(run, r) end) end
+    if ok and config.retrieval.highlighter then ok = step("highlight", "chunk", config.retrieval.highlighter_model, function(r: any): error? return stages.highlight(run, r) end) end
     if ok then ok = step("extract", "chunk", s.extract.model, function(r: any): error? return stages.extract(run, r) end) end
     if ok and s.verify.enabled then ok = step("verify", "chunk", s.verify.check_support and s.verify.model or nil, function(r: any): error? return stages.verify(run, r) end) end
 

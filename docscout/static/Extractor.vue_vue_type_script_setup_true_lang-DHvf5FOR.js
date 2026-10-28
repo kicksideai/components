@@ -1,4 +1,4 @@
-import { defineComponent as Q, useModel as re, openBlock as s, createElementBlock as o, withModifiers as ye, createElementVNode as e, mergeModels as ge, computed as B, withKeys as Ke, unref as h, normalizeClass as L, createVNode as u, toDisplayString as i, Fragment as C, renderList as T, createCommentVNode as p, createTextVNode as k, createBlock as X, watch as ae, withDirectives as O, vModelText as K, vModelSelect as ie, ref as R, onMounted as fe, normalizeStyle as ne, onBeforeUnmount as Ee, nextTick as He, vShow as be, vModelDynamic as Ge, toRaw as qe } from "vue";
+import { defineComponent as Q, useModel as re, openBlock as s, createElementBlock as o, withModifiers as ye, createElementVNode as e, mergeModels as ge, computed as B, withKeys as Ke, unref as h, normalizeClass as L, createVNode as u, toDisplayString as i, Fragment as q, renderList as T, createCommentVNode as p, createTextVNode as k, createBlock as X, watch as ae, withDirectives as F, vModelText as K, vModelSelect as ie, ref as R, onMounted as fe, normalizeStyle as ne, onBeforeUnmount as Ee, nextTick as He, vShow as be, vModelDynamic as Ge, toRaw as qe } from "vue";
 import { loadByTagName as Be, on as Xe } from "@wippy-fe/proxy";
 import { i as ce, h as Re, t as pe, g as _, j as he, k as Ye, m as Te, l as De, o as Ue, p as Ze, q as _e, r as el, v as ll, w as Me, x as tl, y as de, z as al, A as nl, s as H, n as Ne, C as sl, D as ol, c as oe } from "./index-DC4KoVbP.js";
 import { Icon as z } from "@iconify/vue";
@@ -47,26 +47,26 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
   },
   emits: ["select"],
   setup(t, { emit: v }) {
-    const n = t, m = v, r = B(() => ce(n.config, n.stage)), $ = B(() => n.config.stages[n.stage].model), x = B({ get: () => r.value, set: (V) => {
-      n.config.stages[n.stage].enabled = V;
-    } }), g = B(() => {
-      const V = n.config, l = V.stages;
+    const n = t, m = v, r = B(() => ce(n.config, n.stage)), $ = B(() => n.config.stages[n.stage].model), x = B({ get: () => r.value, set: (w) => {
+      n.config.stages[n.stage].enabled = w;
+    } }), f = B(() => {
+      const w = n.config, l = w.stages;
       switch (n.stage) {
         case "map":
-          return V.fields.filter((a) => a.search_within === "sections").map((a) => ({ text: a.name || "New field", tone: "primary" }));
+          return w.fields.filter((a) => a.search_within === "sections").map((a) => ({ text: a.name || "New field", tone: "primary" }));
         case "prefetch":
-          return [...l.prefetch.queries.map((a) => ({ text: a.name || "Untitled query", tone: "" })), ...V.fields.filter((a) => a.search_hints.trim()).map((a) => ({ text: a.name, tone: "hint" }))];
+          return [...l.prefetch.queries.map((a) => ({ text: a.name || "Untitled query", tone: "" })), ...w.fields.filter((a) => a.search_hints.trim()).map((a) => ({ text: a.name, tone: "hint" }))];
         case "scout":
           return l.scout.mode === "agent" ? l.scout.tools.map((a) => ({ text: pe(a).toLowerCase(), tone: "" })) : [];
         case "deep":
-          return V.fields.filter((a) => a.strategy === "deep").map((a) => ({ text: a.name || "New field", tone: "primary" }));
+          return w.fields.filter((a) => a.strategy === "deep").map((a) => ({ text: a.name || "New field", tone: "primary" }));
         case "extract":
-          return Re(V).map((a) => ({ text: `${a.name} · ${a.fields.length}`, tone: "" }));
+          return Re(w).map((a) => ({ text: `${a.name} · ${a.fields.length}`, tone: "" }));
         default:
           return [];
       }
-    }), E = (V) => [`${(V.duration_ms / 1e3).toFixed(1)}s`, `${(V.input_tokens + V.output_tokens).toLocaleString()} tokens`, V.queries?.length ? `${V.queries.length} queries` : "", V.message ?? ""].filter(Boolean).join(" · ");
-    return (V, l) => (s(), o("div", {
+    }), N = (w) => [`${(w.duration_ms / 1e3).toFixed(1)}s`, `${(w.input_tokens + w.output_tokens).toLocaleString()} tokens`, w.queries?.length ? `${w.queries.length} queries` : "", w.message ?? ""].filter(Boolean).join(" · ");
+    return (w, l) => (s(), o("div", {
       class: L(["node", { active: t.active, off: !r.value, fixed: t.stage === "extract" }]),
       role: "button",
       tabindex: "0",
@@ -82,8 +82,8 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       e("span", rl, [
         e("span", cl, i(h(_)[t.stage]), 1),
         e("span", ml, i(r.value ? h(Ye)(t.stage, t.config) : "Off"), 1),
-        r.value && g.value.length ? (s(), o("span", vl, [
-          (s(!0), o(C, null, T(g.value, (a) => (s(), o("span", {
+        r.value && f.value.length ? (s(), o("span", vl, [
+          (s(!0), o(q, null, T(f.value, (a) => (s(), o("span", {
             key: a.text,
             class: L(["chip", { primary: a.tone === "primary", "muted-chip": a.tone === "hint" }])
           }, i(a.text), 3))), 128))
@@ -92,7 +92,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           u(h(z), {
             icon: t.trace.status === "failed" ? "tabler:alert-circle" : "tabler:circle-check"
           }, null, 8, ["icon"]),
-          k(i(E(t.trace)), 1)
+          k(i(N(t.trace)), 1)
         ])) : p("", !0)
       ]),
       e("span", pl, [
@@ -132,22 +132,22 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
   },
   emits: ["remove"],
   setup(t, { emit: v }) {
-    const n = t, m = v, r = [{ value: "text", label: "Text" }, { value: "number", label: "Number" }, { value: "boolean", label: "Yes / no" }, { value: "date", label: "Date" }, { value: "enum", label: "One of a set" }, { value: "list", label: "List" }, { value: "object", label: "Object" }], $ = r.filter((V) => ["text", "number", "boolean", "date", "object"].includes(V.value)), x = B(() => De(n.field, n.otherNames)), g = B(() => n.field.type !== "boolean" && n.field.type !== "enum" && !(n.field.type === "list" && n.field.item_type === "boolean"));
+    const n = t, m = v, r = [{ value: "text", label: "Text" }, { value: "number", label: "Number" }, { value: "boolean", label: "Yes / no" }, { value: "date", label: "Date" }, { value: "enum", label: "One of a set" }, { value: "list", label: "List" }, { value: "object", label: "Object" }], $ = r.filter((w) => ["text", "number", "boolean", "date", "object"].includes(w.value)), x = B(() => De(n.field, n.otherNames)), f = B(() => n.field.type !== "boolean" && n.field.type !== "enum" && !(n.field.type === "list" && n.field.item_type === "boolean"));
     ae(() => n.field.type, () => {
       !Ue(n.field) && n.field.enum_values.length && (n.field.enum_values = []);
     });
-    function E(V) {
-      n.field.enum_values = [...new Set(V.target.value.split(`
+    function N(w) {
+      n.field.enum_values = [...new Set(w.target.value.split(`
 `).map((l) => l.trim()).filter(Boolean))];
     }
-    return (V, l) => (s(), o("fieldset", {
+    return (w, l) => (s(), o("fieldset", {
       class: "inspector-form",
       disabled: t.readonly
     }, [
       e("div", fl, [
         e("label", null, [
           l[15] || (l[15] = k("Name", -1)),
-          O(e("input", {
+          F(e("input", {
             "onUpdate:modelValue": l[0] || (l[0] = (a) => t.field.name = a),
             placeholder: "invoice_total",
             "aria-label": "Field name",
@@ -165,11 +165,11 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
         ]),
         e("label", null, [
           l[16] || (l[16] = k("Type", -1)),
-          O(e("select", {
+          F(e("select", {
             "onUpdate:modelValue": l[1] || (l[1] = (a) => t.field.type = a),
             "aria-label": "Field type"
           }, [
-            (s(), o(C, null, T(r, (a) => e("option", {
+            (s(), o(q, null, T(r, (a) => e("option", {
               key: a.value,
               value: a.value
             }, i(a.label), 9, kl)), 64))
@@ -184,10 +184,10 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       ])) : p("", !0),
       t.field.type === "list" ? (s(), o("label", xl, [
         l[17] || (l[17] = k("Each item is", -1)),
-        O(e("select", {
+        F(e("select", {
           "onUpdate:modelValue": l[2] || (l[2] = (a) => t.field.item_type = a)
         }, [
-          (s(!0), o(C, null, T(h($), (a) => (s(), o("option", {
+          (s(!0), o(q, null, T(h($), (a) => (s(), o("option", {
             key: a.value,
             value: a.value
           }, i(a.label), 9, wl))), 128))
@@ -202,13 +202,13 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
 `),
           rows: "3",
           placeholder: "One per line",
-          onChange: E
+          onChange: N
         }, null, 40, Sl),
         e("small", null, i(t.field.type === "enum" ? "The value must be exactly one of these." : "When set, every item must be one of these."), 1)
       ])) : p("", !0),
       e("label", null, [
         l[18] || (l[18] = k("Description", -1)),
-        O(e("textarea", {
+        F(e("textarea", {
           "onUpdate:modelValue": l[3] || (l[3] = (a) => t.field.description = a),
           rows: "2",
           placeholder: "What this value means in the document"
@@ -220,7 +220,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       l[35] || (l[35] = e("h4", null, "Finding it", -1)),
       e("label", null, [
         l[20] || (l[20] = k("Search hints", -1)),
-        O(e("textarea", {
+        F(e("textarea", {
           "onUpdate:modelValue": l[4] || (l[4] = (a) => t.field.search_hints = a),
           rows: "2",
           placeholder: "One query per line"
@@ -232,7 +232,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       e("div", Cl, [
         e("label", null, [
           l[23] || (l[23] = k("Strategy", -1)),
-          O(e("select", {
+          F(e("select", {
             "onUpdate:modelValue": l[5] || (l[5] = (a) => t.field.strategy = a)
           }, [...l[22] || (l[22] = [
             e("option", { value: "standard" }, "Standard", -1),
@@ -243,7 +243,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
         ]),
         e("label", null, [
           l[24] || (l[24] = k("Chunks to read", -1)),
-          O(e("input", {
+          F(e("input", {
             "onUpdate:modelValue": l[6] || (l[6] = (a) => t.field.chunks = a),
             type: "number",
             min: "1",
@@ -287,7 +287,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       ])) : p("", !0),
       e("label", null, [
         l[29] || (l[29] = k("Group", -1)),
-        O(e("input", {
+        F(e("input", {
           "onUpdate:modelValue": l[9] || (l[9] = (a) => t.field.group = a),
           list: "docscout-groups",
           placeholder: "Default"
@@ -300,7 +300,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           ]
         ]),
         e("datalist", Rl, [
-          (s(!0), o(C, null, T(t.groups, (a) => (s(), o("option", {
+          (s(!0), o(q, null, T(t.groups, (a) => (s(), o("option", {
             key: a,
             value: a
           }, null, 8, Tl))), 128))
@@ -310,7 +310,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       l[36] || (l[36] = e("h4", null, "Checking it", -1)),
       e("label", null, [
         l[31] || (l[31] = k("Validation hints", -1)),
-        O(e("textarea", {
+        F(e("textarea", {
           "onUpdate:modelValue": l[10] || (l[10] = (a) => t.field.validation_hints = a),
           rows: "2",
           placeholder: "Rules the value must satisfy"
@@ -318,9 +318,9 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           [K, t.field.validation_hints]
         ])
       ]),
-      g.value ? (s(), o("label", Dl, [
+      f.value ? (s(), o("label", Dl, [
         l[32] || (l[32] = k("Expected format", -1)),
-        O(e("input", {
+        F(e("input", {
           "onUpdate:modelValue": l[11] || (l[11] = (a) => t.field.expected_format = a),
           placeholder: h(Ze)(t.field)
         }, null, 8, zl), [
@@ -386,10 +386,10 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
         }
     });
     function $(x) {
-      const g = x.detail;
-      typeof g == "string" && n("select", g);
+      const f = x.detail;
+      typeof f == "string" && n("select", f);
     }
-    return (x, g) => m.value ? (s(), o("wc-model-picker", {
+    return (x, f) => m.value ? (s(), o("wc-model-picker", {
       key: 0,
       value: t.value,
       capability: t.capability,
@@ -419,21 +419,21 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
   }),
   emits: ["update:modelValue"],
   setup(t) {
-    const v = t, n = re(t, "modelValue"), m = B(() => v.percent ? `${Math.round(n.value * 100)}%` : `${n.value.toLocaleString()}${v.unit ? ` ${v.unit}` : ""}`), r = (g) => v.log ? Math.log(g / v.min) / Math.log(v.max / v.min) * te : (g - v.min) / (v.max - v.min) * te;
-    function $(g) {
-      const E = v.log ? v.min * Math.pow(v.max / v.min, g / te) : v.min + (v.max - v.min) * g / te, V = Math.round(E / v.step) * v.step;
-      return Math.min(v.max, Math.max(v.min, Number(V.toFixed(4))));
+    const v = t, n = re(t, "modelValue"), m = B(() => v.percent ? `${Math.round(n.value * 100)}%` : `${n.value.toLocaleString()}${v.unit ? ` ${v.unit}` : ""}`), r = (f) => v.log ? Math.log(f / v.min) / Math.log(v.max / v.min) * te : (f - v.min) / (v.max - v.min) * te;
+    function $(f) {
+      const N = v.log ? v.min * Math.pow(v.max / v.min, f / te) : v.min + (v.max - v.min) * f / te, w = Math.round(N / v.step) * v.step;
+      return Math.min(v.max, Math.max(v.min, Number(w.toFixed(4))));
     }
-    const x = B({ get: () => Math.round(r(n.value)), set: (g) => {
-      n.value = $(g);
+    const x = B({ get: () => Math.round(r(n.value)), set: (f) => {
+      n.value = $(f);
     } });
-    return (g, E) => (s(), o("div", Il, [
+    return (f, N) => (s(), o("div", Il, [
       e("div", Wl, [
         e("span", null, i(t.label), 1),
         e("output", Ql, i(m.value), 1)
       ]),
-      O(e("input", {
-        "onUpdate:modelValue": E[0] || (E[0] = (V) => x.value = V),
+      F(e("input", {
+        "onUpdate:modelValue": N[0] || (N[0] = (w) => x.value = w),
         type: "range",
         min: "0",
         max: te,
@@ -472,16 +472,16 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
     return (n, m) => (s(), o("figure", Gl, [
       e("div", Xl, [
         m[2] || (m[2] = e("span", { class: "fd-node solid" }, "Pass", -1)),
-        (s(!0), o(C, null, T(Math.min(v.rounds, 8), (r) => (s(), o(C, { key: r }, [
+        (s(!0), o(q, null, T(Math.min(v.rounds, 8), (r) => (s(), o(q, { key: r }, [
           m[0] || (m[0] = e("span", { class: "fd-link" }, null, -1)),
           e("span", Yl, [
             e("span", null, "R" + i(r), 1),
             e("span", Zl, [
-              (s(!0), o(C, null, T(Math.min(v.extra, 6), ($) => (s(), o("i", { key: $ }))), 128))
+              (s(!0), o(q, null, T(Math.min(v.extra, 6), ($) => (s(), o("i", { key: $ }))), 128))
             ])
           ])
         ], 64))), 128)),
-        v.rounds > 8 ? (s(), o(C, { key: 0 }, [
+        v.rounds > 8 ? (s(), o(q, { key: 0 }, [
           m[1] || (m[1] = e("span", { class: "fd-link" }, null, -1)),
           e("span", _l, "+" + i(v.rounds - 8), 1)
         ], 64)) : p("", !0),
@@ -581,17 +581,17 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
     readonly: { type: Boolean }
   },
   setup(t) {
-    const v = t, n = B(() => v.config.stages), m = (V) => tl(v.stage, V), r = _e(), $ = B(() => v.config.fields.filter((V) => V.strategy === "deep").length), x = B(() => v.config.fields.filter((V) => V.search_within === "sections").map((V) => V.name || "New field")), g = B(() => Re(v.config));
-    function E(V, l) {
-      const a = n.value.scout.tools.filter((S) => S !== V);
-      n.value.scout.tools = l ? [...a, V] : a;
+    const v = t, n = B(() => v.config.stages), m = (w) => tl(v.stage, w), r = _e(), $ = B(() => v.config.fields.filter((w) => w.strategy === "deep").length), x = B(() => v.config.fields.filter((w) => w.search_within === "sections").map((w) => w.name || "New field")), f = B(() => Re(v.config));
+    function N(w, l) {
+      const a = n.value.scout.tools.filter((S) => S !== w);
+      n.value.scout.tools = l ? [...a, w] : a;
     }
-    return (V, l) => (s(), o("fieldset", {
+    return (w, l) => (s(), o("fieldset", {
       class: "inspector-form",
       disabled: t.readonly
     }, [
       e("p", rt, i(h(el)[t.stage]), 1),
-      t.stage === "map" ? (s(), o(C, { key: 0 }, [
+      t.stage === "map" ? (s(), o(q, { key: 0 }, [
         e("div", ct, [
           l[37] || (l[37] = e("span", null, "Stage enabled", -1)),
           u(j, {
@@ -643,13 +643,13 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
         ]),
         l[43] || (l[43] = e("h4", null, "Fields that read sections", -1)),
         x.value.length ? (s(), o("p", ft, [
-          (s(!0), o(C, null, T(x.value, (a) => (s(), o("span", {
+          (s(!0), o(q, null, T(x.value, (a) => (s(), o("span", {
             key: a,
             class: "chip primary"
           }, i(a), 1))), 128))
         ])) : (s(), o("p", ht, 'None. Set "Search within" on a field to read only the sections Map picks for it.'))
       ], 64)) : p("", !0),
-      t.stage === "prefetch" ? (s(), o(C, { key: 1 }, [
+      t.stage === "prefetch" ? (s(), o(q, { key: 1 }, [
         e("div", kt, [
           l[44] || (l[44] = e("span", null, "Stage enabled", -1)),
           u(j, {
@@ -660,15 +660,15 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           }, null, 8, ["modelValue", "disabled"])
         ]),
         l[48] || (l[48] = e("h4", null, "Queries", -1)),
-        (s(!0), o(C, null, T(n.value.prefetch.queries, (a, S) => (s(), o("div", {
+        (s(!0), o(q, null, T(n.value.prefetch.queries, (a, S) => (s(), o("div", {
           key: S,
           class: "query-row"
         }, [
           e("div", $t, [
             e("label", null, [
               l[45] || (l[45] = k("Name", -1)),
-              O(e("input", {
-                "onUpdate:modelValue": (f) => a.name = f,
+              F(e("input", {
+                "onUpdate:modelValue": (E) => a.name = E,
                 placeholder: "Parties"
               }, null, 8, xt), [
                 [K, a.name]
@@ -676,8 +676,8 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             ]),
             e("label", null, [
               l[46] || (l[46] = k("Chunks", -1)),
-              O(e("input", {
-                "onUpdate:modelValue": (f) => a.chunks = f,
+              F(e("input", {
+                "onUpdate:modelValue": (E) => a.chunks = E,
                 type: "number",
                 min: "1",
                 max: "1000"
@@ -693,8 +693,8 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           ]),
           e("label", null, [
             l[47] || (l[47] = k("Query", -1)),
-            O(e("textarea", {
-              "onUpdate:modelValue": (f) => a.query = f,
+            F(e("textarea", {
+              "onUpdate:modelValue": (E) => a.query = E,
               rows: "2",
               placeholder: "Who signed the agreement and on whose behalf"
             }, null, 8, Vt), [
@@ -705,7 +705,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             key: 0,
             type: "button",
             class: "btn subtle",
-            onClick: (f) => n.value.prefetch.queries.splice(S, 1)
+            onClick: (E) => n.value.prefetch.queries.splice(S, 1)
           }, "Remove query", 8, St))
         ]))), 128)),
         n.value.prefetch.queries.length ? p("", !0) : (s(), o("p", Ct, "No fixed queries. Field search hints still run.")),
@@ -716,7 +716,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           onClick: l[6] || (l[6] = (a) => n.value.prefetch.queries.push(h(ll)()))
         }, "Add query"))
       ], 64)) : p("", !0),
-      t.stage === "scout" ? (s(), o(C, { key: 2 }, [
+      t.stage === "scout" ? (s(), o(q, { key: 2 }, [
         e("div", qt, [
           l[49] || (l[49] = e("span", null, "Stage enabled", -1)),
           u(j, {
@@ -823,9 +823,9 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             disabled: t.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        n.value.scout.mode === "agent" ? (s(), o(C, { key: 0 }, [
+        n.value.scout.mode === "agent" ? (s(), o(q, { key: 0 }, [
           l[54] || (l[54] = e("h4", null, "Agent tools", -1)),
-          (s(!0), o(C, null, T(h(r), (a) => (s(), o("div", {
+          (s(!0), o(q, null, T(h(r), (a) => (s(), o("div", {
             key: a,
             class: "toggle-row"
           }, [
@@ -837,12 +837,12 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
               "model-value": n.value.scout.tools.includes(a),
               label: h(pe)(a),
               disabled: t.readonly,
-              "onUpdate:modelValue": (S) => E(a, S)
+              "onUpdate:modelValue": (S) => N(a, S)
             }, null, 8, ["model-value", "label", "disabled", "onUpdate:modelValue"])
           ]))), 128))
         ], 64)) : p("", !0)
       ], 64)) : p("", !0),
-      t.stage === "deep" ? (s(), o(C, { key: 3 }, [
+      t.stage === "deep" ? (s(), o(q, { key: 3 }, [
         e("div", zt, [
           l[57] || (l[57] = e("span", null, "Stage enabled", -1)),
           u(j, {
@@ -966,7 +966,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           disabled: t.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"])
       ], 64)) : p("", !0),
-      t.stage === "extract" ? (s(), o(C, { key: 4 }, [
+      t.stage === "extract" ? (s(), o(q, { key: 4 }, [
         l[67] || (l[67] = e("h4", null, "Models", -1)),
         e("div", It, [
           l[65] || (l[65] = e("span", null, "Extraction", -1)),
@@ -979,14 +979,14 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
         ]),
         l[68] || (l[68] = e("h4", null, "Field groups", -1)),
         e("ul", Wt, [
-          (s(!0), o(C, null, T(g.value, (a) => (s(), o("li", {
+          (s(!0), o(q, null, T(f.value, (a) => (s(), o("li", {
             key: a.name
           }, [
             e("span", null, i(a.name), 1),
             e("span", Qt, i(a.fields.length) + " field" + i(a.fields.length === 1 ? "" : "s"), 1)
           ]))), 128))
         ]),
-        g.value.length ? p("", !0) : (s(), o("p", Jt, "No fields yet.")),
+        f.value.length ? p("", !0) : (s(), o("p", Jt, "No fields yet.")),
         u(W, {
           modelValue: n.value.extract.max_fields_per_call,
           "onUpdate:modelValue": l[30] || (l[30] = (a) => n.value.extract.max_fields_per_call = a),
@@ -1020,7 +1020,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           }, null, 8, ["modelValue", "disabled"])
         ])
       ], 64)) : p("", !0),
-      t.stage === "verify" ? (s(), o(C, { key: 5 }, [
+      t.stage === "verify" ? (s(), o(q, { key: 5 }, [
         e("div", Ht, [
           l[69] || (l[69] = e("span", null, "Stage enabled", -1)),
           u(j, {
@@ -1054,7 +1054,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             disabled: t.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        n.value.verify.check_support ? (s(), o(C, { key: 0 }, [
+        n.value.verify.check_support ? (s(), o(q, { key: 0 }, [
           l[73] || (l[73] = e("h4", null, "Models", -1)),
           e("div", Yt, [
             l[72] || (l[72] = e("span", null, "Checker", -1)),
@@ -1088,16 +1088,16 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
     });
     return (r, $) => (s(), o("figure", _t, [
       (s(), o("svg", ea, [
-        (s(!0), o(C, null, T(m.value, (x, g) => (s(), o("rect", {
-          key: g,
+        (s(!0), o(q, null, T(m.value, (x, f) => (s(), o("rect", {
+          key: f,
           x: x.x,
-          y: g % 2 ? 14 : 4,
+          y: f % 2 ? 14 : 4,
           width: x.w,
           height: "14",
           rx: "2",
           class: "chunk"
         }, null, 8, la))), 128)),
-        (s(), o(C, null, T([1, 2], (x) => e("rect", {
+        (s(), o(q, null, T([1, 2], (x) => e("rect", {
           key: "o" + x,
           x: m.value[x].x,
           y: 4,
@@ -1136,7 +1136,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
     readonly: { type: Boolean }
   },
   setup(t) {
-    const v = t, n = B(() => v.config.retrieval), m = [{ value: "keyword", label: "Keyword", note: "Exact words and numbers" }, { value: "semantic", label: "Semantic", note: "Meaning, even with other wording" }, { value: "hybrid", label: "Hybrid", note: "Both, merged by rank" }], r = [{ value: "none", label: "None", note: "Chunks are embedded as they are." }, { value: "headings", label: "Headings", note: 'Each chunk is embedded with its heading path, for example "Article 2 › Purchase price". No model call.' }, { value: "generated", label: "Generated", note: "A model writes one or two sentences placing each chunk in the document before it is embedded. One call per chunk, cached with the processed document." }], $ = de("chunk_size"), x = de("overlap"), g = de("top_results"), E = de("section_budget"), V = B(() => Math.min(x.max, n.value.chunk_size - 50));
+    const v = t, n = B(() => v.config.retrieval), m = [{ value: "keyword", label: "Keyword", note: "Exact words and numbers" }, { value: "semantic", label: "Semantic", note: "Meaning, even with other wording" }, { value: "hybrid", label: "Hybrid", note: "Both, merged by rank" }], r = [{ value: "none", label: "None", note: "Chunks are embedded as they are." }, { value: "headings", label: "Headings", note: 'Each chunk is embedded with its heading path, for example "Article 2 › Purchase price". No model call.' }, { value: "generated", label: "Generated", note: "A model writes one or two sentences placing each chunk in the document before it is embedded. One call per chunk, cached with the processed document." }], $ = de("chunk_size"), x = de("overlap"), f = de("top_results"), N = de("section_budget"), w = B(() => Math.min(x.max, n.value.chunk_size - 50));
     return (l, a) => (s(), o("fieldset", {
       class: "inspector-form",
       disabled: t.readonly
@@ -1164,7 +1164,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
         "onUpdate:modelValue": a[1] || (a[1] = (S) => n.value.overlap = S),
         label: "Overlap",
         min: h(x).min,
-        max: V.value,
+        max: w.value,
         step: 10,
         unit: "tokens",
         disabled: t.readonly
@@ -1197,8 +1197,8 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
         modelValue: n.value.section_budget,
         "onUpdate:modelValue": a[4] || (a[4] = (S) => n.value.section_budget = S),
         label: "Section budget",
-        min: h(E).min,
-        max: h(E).max,
+        min: h(N).min,
+        max: h(N).max,
         step: 100,
         log: "",
         unit: "tokens",
@@ -1209,12 +1209,12 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       e("div", da, [
         a[12] || (a[12] = e("span", { id: "context-label" }, "Chunk context", -1)),
         e("div", ua, [
-          (s(), o(C, null, T(r, (S) => e("button", {
+          (s(), o(q, null, T(r, (S) => e("button", {
             key: S.value,
             type: "button",
             role: "radio",
             "aria-checked": n.value.context === S.value,
-            onClick: (f) => n.value.context = S.value
+            onClick: (E) => n.value.context = S.value
           }, i(S.label), 9, ra)), 64))
         ]),
         e("small", null, i(r.find((S) => S.value === n.value.context)?.note), 1)
@@ -1232,12 +1232,12 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       e("div", ma, [
         a[14] || (a[14] = e("span", { id: "mode-label" }, "Search mode", -1)),
         e("div", va, [
-          (s(), o(C, null, T(m, (S) => e("button", {
+          (s(), o(q, null, T(m, (S) => e("button", {
             key: S.value,
             type: "button",
             role: "radio",
             "aria-checked": n.value.search_mode === S.value,
-            onClick: (f) => n.value.search_mode = S.value
+            onClick: (E) => n.value.search_mode = S.value
           }, i(S.label), 9, ba)), 64))
         ]),
         e("small", null, i(m.find((S) => S.value === n.value.search_mode)?.note), 1)
@@ -1246,8 +1246,8 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
         modelValue: n.value.top_results,
         "onUpdate:modelValue": a[6] || (a[6] = (S) => n.value.top_results = S),
         label: "Results per query",
-        min: h(g).min,
-        max: h(g).max,
+        min: h(f).min,
+        max: h(f).max,
         disabled: t.readonly
       }, null, 8, ["modelValue", "min", "max", "disabled"]),
       a[21] || (a[21] = e("h4", null, "Models", -1)),
@@ -1343,8 +1343,8 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
     const v = t, n = re(t, "title"), m = re(t, "description"), r = R({ kind: "document" });
     function $(b, d) {
       try {
-        const U = localStorage.getItem(`docscout.${b}`);
-        return U === null ? d : U === "1";
+        const M = localStorage.getItem(`docscout.${b}`);
+        return M === null ? d : M === "1";
       } catch {
         return d;
       }
@@ -1355,7 +1355,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       } catch {
       }
     }
-    const g = R($("panel", !0)), E = R($("fields", !0)), V = R($("flow", !0));
+    const f = R($("panel", !0)), N = R($("fields", !0)), w = R($("flow", !0));
     function l() {
       try {
         const b = Number(localStorage.getItem("docscout.panelWidth"));
@@ -1368,30 +1368,30 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       const b = A.value?.clientWidth;
       return b ? Math.max(ue, b - 420) : Number.POSITIVE_INFINITY;
     };
-    function f(b, d = !0) {
+    function E(b, d = !0) {
       if (a.value = Math.round(Math.min(S(), Math.max(ue, b))), d)
         try {
           localStorage.setItem("docscout.panelWidth", String(a.value));
         } catch {
         }
     }
-    const N = R(!1);
-    function w(b) {
-      const d = b.currentTarget, U = b.clientX, J = a.value;
-      d.setPointerCapture(b.pointerId), N.value = !0;
-      const Z = (Je) => f(J + (U - Je.clientX), !1), Ce = () => {
-        N.value = !1, f(a.value), d.removeEventListener("pointermove", Z), d.removeEventListener("pointerup", Ce);
+    const V = R(!1);
+    function O(b) {
+      const d = b.currentTarget, M = b.clientX, J = a.value;
+      d.setPointerCapture(b.pointerId), V.value = !0;
+      const Z = (Je) => E(J + (M - Je.clientX), !1), Ce = () => {
+        V.value = !1, E(a.value), d.removeEventListener("pointermove", Z), d.removeEventListener("pointerup", Ce);
       };
       d.addEventListener("pointermove", Z), d.addEventListener("pointerup", Ce);
     }
+    function g(b) {
+      b.key === "ArrowLeft" ? (E(a.value + 24), b.preventDefault()) : b.key === "ArrowRight" && (E(a.value - 24), b.preventDefault());
+    }
+    function C(b) {
+      f.value = b, I.value || x("panel", b);
+    }
     function D(b) {
-      b.key === "ArrowLeft" ? (f(a.value + 24), b.preventDefault()) : b.key === "ArrowRight" && (f(a.value - 24), b.preventDefault());
-    }
-    function M(b) {
-      g.value = b, I.value || x("panel", b);
-    }
-    function F(b) {
-      const d = b === "fields" ? E : V;
+      const d = b === "fields" ? N : w;
       d.value = !d.value, x(b, d.value);
     }
     const A = R(), I = R(!1);
@@ -1399,15 +1399,15 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
     fe(() => {
       Y = new ResizeObserver(([b]) => {
         const d = I.value;
-        I.value = b.contentRect.width < 1e3, I.value && !d && (g.value = !1), !I.value && d && (g.value = $("panel", !0));
+        I.value = b.contentRect.width < 1e3, I.value && !d && (f.value = !1), !I.value && d && (f.value = $("panel", !0));
       }), A.value && Y.observe(A.value);
     }), Ee(() => Y?.disconnect());
     const se = R();
     ae(r, async () => {
       await He(), se.value && (se.value.scrollTop = 0);
     });
-    function q(b) {
-      r.value = b, g.value = !0;
+    function U(b) {
+      r.value = b, f.value = !0;
     }
     const y = (b) => JSON.stringify(b) === JSON.stringify(r.value), c = B(() => r.value.kind === "field" ? v.config.fields[r.value.index] : void 0), P = B(() => {
       const b = r.value;
@@ -1415,18 +1415,18 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
     }), Fe = B(() => {
       const b = r.value;
       return b.kind === "stage" ? he[b.stage] : b.kind === "field" ? "tabler:forms" : b.kind === "document" ? "tabler:file-text" : b.kind === "output" ? "tabler:braces" : "tabler:info-circle";
-    }), Oe = B(() => v.config.fields.filter((b, d) => !(r.value.kind === "field" && r.value.index === d)).map((b) => b.name)), me = B(() => v.config.stages.deep.enabled), ke = B(() => v.config.stages.map.enabled), Pe = B(() => [...new Set(v.config.fields.map((b) => b.group.trim()).filter(Boolean))]), $e = (b) => De(v.config.fields[b], v.config.fields.filter((d, U) => U !== b).map((d) => d.name)), xe = ["map", "prefetch", "scout", "deep", "extract", "verify"], Le = B(() => xe.filter((b) => ce(v.config, b)).map((b) => _[b]).join(" · ")), je = B(() => v.config.fields.map((b) => b.name || "New field").join(", ")), Ie = B(() => xe.filter((b) => ce(v.config, b)).length), ee = (b) => v.result?.trace.find((d) => d.kind === b);
+    }), Oe = B(() => v.config.fields.filter((b, d) => !(r.value.kind === "field" && r.value.index === d)).map((b) => b.name)), me = B(() => v.config.stages.deep.enabled), ke = B(() => v.config.stages.map.enabled), Pe = B(() => [...new Set(v.config.fields.map((b) => b.group.trim()).filter(Boolean))]), $e = (b) => De(v.config.fields[b], v.config.fields.filter((d, M) => M !== b).map((d) => d.name)), xe = ["map", "prefetch", "scout", "deep", "extract", "verify"], Le = B(() => xe.filter((b) => ce(v.config, b)).map((b) => _[b]).join(" · ")), je = B(() => v.config.fields.map((b) => b.name || "New field").join(", ")), Ie = B(() => xe.filter((b) => ce(v.config, b)).length), ee = (b) => v.result?.trace.find((d) => d.kind === b);
     function We() {
-      v.config.fields.push(nl()), E.value = !0, q({ kind: "field", index: v.config.fields.length - 1 });
+      v.config.fields.push(nl()), N.value = !0, U({ kind: "field", index: v.config.fields.length - 1 });
     }
     function Qe(b) {
       v.config.fields.splice(b, 1), r.value = { kind: "document" };
     }
     function we(b, d) {
-      const U = v.config.fields, J = b + d;
-      if (J < 0 || J >= U.length) return;
-      const [Z] = U.splice(b, 1);
-      U.splice(J, 0, Z), r.value = { kind: "field", index: J };
+      const M = v.config.fields, J = b + d;
+      if (J < 0 || J >= M.length) return;
+      const [Z] = M.splice(b, 1);
+      M.splice(J, 0, Z), r.value = { kind: "field", index: J };
     }
     const Ve = (b) => b.type === "list" ? `list of ${b.item_type}` : b.type, Se = B({ get: () => v.config.tags.join(", "), set: (b) => {
       v.config.tags = [...new Set(b.split(",").map((d) => d.trim()).filter(Boolean))];
@@ -1434,7 +1434,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
     return (b, d) => (s(), o("div", {
       ref_key: "root",
       ref: A,
-      class: L(["builder", { narrow: I.value, "panel-open": g.value, resizing: N.value }])
+      class: L(["builder", { narrow: I.value, "panel-open": f.value, resizing: V.value }])
     }, [
       e("div", ha, [
         e("div", ka, [
@@ -1443,17 +1443,17 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
               e("button", {
                 type: "button",
                 class: "collapse",
-                "aria-expanded": E.value,
+                "aria-expanded": N.value,
                 "aria-controls": "fields-body",
-                onClick: d[0] || (d[0] = (U) => F("fields"))
+                onClick: d[0] || (d[0] = (M) => D("fields"))
               }, [
                 u(h(z), {
-                  icon: E.value ? "tabler:chevron-down" : "tabler:chevron-right"
+                  icon: N.value ? "tabler:chevron-down" : "tabler:chevron-right"
                 }, null, 8, ["icon"]),
                 d[19] || (d[19] = e("h2", { id: "fields-head" }, "Fields", -1)),
                 e("span", Va, i(t.config.fields.length), 1)
               ], 8, wa),
-              !E.value && t.config.fields.length ? (s(), o("span", Sa, i(je.value), 1)) : p("", !0),
+              !N.value && t.config.fields.length ? (s(), o("span", Sa, i(je.value), 1)) : p("", !0),
               t.readonly ? p("", !0) : (s(), o("button", {
                 key: 1,
                 type: "button",
@@ -1464,20 +1464,20 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                 d[20] || (d[20] = k("Add field", -1))
               ]))
             ]),
-            O(e("div", Ca, [
+            F(e("div", Ca, [
               t.config.fields.length ? (s(), o("ul", Ua, [
-                (s(!0), o(C, null, T(t.config.fields, (U, J) => (s(), o("li", {
+                (s(!0), o(q, null, T(t.config.fields, (M, J) => (s(), o("li", {
                   key: J,
                   class: L(["row-item", { active: y({ kind: "field", index: J }) }])
                 }, [
                   e("button", {
                     type: "button",
                     class: "row-main",
-                    onClick: (Z) => q({ kind: "field", index: J })
+                    onClick: (Z) => U({ kind: "field", index: J })
                   }, [
                     e("span", Na, [
-                      k(i(U.name || "New field"), 1),
-                      U.required ? (s(), o("span", Ea, "*")) : p("", !0),
+                      k(i(M.name || "New field"), 1),
+                      M.required ? (s(), o("span", Ea, "*")) : p("", !0),
                       $e(J) ? (s(), X(h(z), {
                         key: 1,
                         icon: "tabler:alert-circle",
@@ -1486,22 +1486,22 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                       }, null, 8, ["title"])) : p("", !0)
                     ]),
                     e("span", {
-                      class: L(["row-desc", { missing: !U.description }])
-                    }, i(U.description || "No description"), 3),
+                      class: L(["row-desc", { missing: !M.description }])
+                    }, i(M.description || "No description"), 3),
                     e("span", Ba, [
-                      U.search_within === "sections" ? (s(), o("span", {
+                      M.search_within === "sections" ? (s(), o("span", {
                         key: 0,
                         class: L(["chip", ke.value ? "" : "muted-chip"]),
                         title: "Reads the sections Map picks"
                       }, "sections", 2)) : p("", !0),
-                      U.group.trim() ? (s(), o("span", Ra, i(U.group), 1)) : p("", !0),
-                      U.strategy === "deep" ? (s(), o("span", {
+                      M.group.trim() ? (s(), o("span", Ra, i(M.group), 1)) : p("", !0),
+                      M.strategy === "deep" ? (s(), o("span", {
                         key: 2,
                         class: L(["chip", me.value ? "primary" : "muted-chip"]),
                         title: me.value ? "Deep analysis" : "Deep analysis is off in the flow"
                       }, "deep", 10, Ta)) : p("", !0),
-                      e("span", Da, i(Ve(U)), 1),
-                      U.evidence_required ? (s(), o("span", za, [
+                      e("span", Da, i(Ve(M)), 1),
+                      M.evidence_required ? (s(), o("span", za, [
                         u(h(z), { icon: "tabler:quote" })
                       ])) : p("", !0)
                     ])
@@ -1529,7 +1529,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                 ], 2))), 128))
               ])) : (s(), o("p", qa, "Add the values to pull from each document."))
             ], 512), [
-              [be, E.value]
+              [be, N.value]
             ])
           ]),
           e("section", Pa, [
@@ -1537,31 +1537,31 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
               e("button", {
                 type: "button",
                 class: "collapse",
-                "aria-expanded": V.value,
+                "aria-expanded": w.value,
                 "aria-controls": "flow-body",
-                onClick: d[1] || (d[1] = (U) => F("flow"))
+                onClick: d[1] || (d[1] = (M) => D("flow"))
               }, [
                 u(h(z), {
-                  icon: V.value ? "tabler:chevron-down" : "tabler:chevron-right"
+                  icon: w.value ? "tabler:chevron-down" : "tabler:chevron-right"
                 }, null, 8, ["icon"]),
                 d[21] || (d[21] = e("h2", { id: "flow-head" }, "Flow", -1)),
                 e("span", Ia, i(Ie.value) + " of 6", 1)
               ], 8, ja),
-              V.value ? p("", !0) : (s(), o("span", Wa, i(Le.value), 1)),
+              w.value ? p("", !0) : (s(), o("span", Wa, i(Le.value), 1)),
               e("button", {
                 type: "button",
                 class: L(["btn small subtle push", { on: y({ kind: "details" }) }]),
-                onClick: d[2] || (d[2] = (U) => q({ kind: "details" }))
+                onClick: d[2] || (d[2] = (M) => U({ kind: "details" }))
               }, [
                 u(h(z), { icon: "tabler:info-circle" }),
                 d[22] || (d[22] = k("Details", -1))
               ], 2)
             ]),
-            O(e("div", Qa, [
+            F(e("div", Qa, [
               e("button", {
                 type: "button",
                 class: L(["node fixed", { active: y({ kind: "document" }) }]),
-                onClick: d[3] || (d[3] = (U) => q({ kind: "document" }))
+                onClick: d[3] || (d[3] = (M) => U({ kind: "document" }))
               }, [
                 e("span", Ja, [
                   u(h(z), { icon: "tabler:file-text" })
@@ -1581,7 +1581,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                 active: y({ kind: "stage", stage: "map" }),
                 trace: ee("map"),
                 readonly: t.readonly,
-                onSelect: d[4] || (d[4] = (U) => q({ kind: "stage", stage: "map" }))
+                onSelect: d[4] || (d[4] = (M) => U({ kind: "stage", stage: "map" }))
               }, null, 8, ["config", "active", "trace", "readonly"]),
               d[29] || (d[29] = e("div", {
                 class: "fork",
@@ -1598,7 +1598,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                     active: y({ kind: "stage", stage: "prefetch" }),
                     trace: ee("prefetch"),
                     readonly: t.readonly,
-                    onSelect: d[5] || (d[5] = (U) => q({ kind: "stage", stage: "prefetch" }))
+                    onSelect: d[5] || (d[5] = (M) => U({ kind: "stage", stage: "prefetch" }))
                   }, null, 8, ["config", "active", "trace", "readonly"]),
                   d[25] || (d[25] = e("div", { class: "connector" }, null, -1)),
                   u(le, {
@@ -1607,7 +1607,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                     active: y({ kind: "stage", stage: "scout" }),
                     trace: ee("scout"),
                     readonly: t.readonly,
-                    onSelect: d[6] || (d[6] = (U) => q({ kind: "stage", stage: "scout" }))
+                    onSelect: d[6] || (d[6] = (M) => U({ kind: "stage", stage: "scout" }))
                   }, null, 8, ["config", "active", "trace", "readonly"])
                 ]),
                 e("div", _a, [
@@ -1618,7 +1618,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                     active: y({ kind: "stage", stage: "deep" }),
                     trace: ee("deep"),
                     readonly: t.readonly,
-                    onSelect: d[7] || (d[7] = (U) => q({ kind: "stage", stage: "deep" }))
+                    onSelect: d[7] || (d[7] = (M) => U({ kind: "stage", stage: "deep" }))
                   }, null, 8, ["config", "active", "trace", "readonly"])
                 ])
               ]),
@@ -1634,7 +1634,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                 active: y({ kind: "stage", stage: "extract" }),
                 trace: ee("extract"),
                 readonly: t.readonly,
-                onSelect: d[8] || (d[8] = (U) => q({ kind: "stage", stage: "extract" }))
+                onSelect: d[8] || (d[8] = (M) => U({ kind: "stage", stage: "extract" }))
               }, null, 8, ["config", "active", "trace", "readonly"]),
               d[31] || (d[31] = e("div", { class: "connector" }, null, -1)),
               u(le, {
@@ -1643,13 +1643,13 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                 active: y({ kind: "stage", stage: "verify" }),
                 trace: ee("verify"),
                 readonly: t.readonly,
-                onSelect: d[9] || (d[9] = (U) => q({ kind: "stage", stage: "verify" }))
+                onSelect: d[9] || (d[9] = (M) => U({ kind: "stage", stage: "verify" }))
               }, null, 8, ["config", "active", "trace", "readonly"]),
               d[32] || (d[32] = e("div", { class: "connector" }, null, -1)),
               e("button", {
                 type: "button",
                 class: L(["node fixed", { active: y({ kind: "output" }) }]),
-                onClick: d[10] || (d[10] = (U) => q({ kind: "output" }))
+                onClick: d[10] || (d[10] = (M) => U({ kind: "output" }))
               }, [
                 e("span", en, [
                   u(h(z), { icon: "tabler:braces" })
@@ -1660,17 +1660,17 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                 ])
               ], 2)
             ], 512), [
-              [be, V.value]
+              [be, w.value]
             ])
           ])
         ])
       ]),
-      I.value && g.value ? (s(), o("div", {
+      I.value && f.value ? (s(), o("div", {
         key: 0,
         class: "scrim",
-        onClick: d[11] || (d[11] = (U) => M(!1))
+        onClick: d[11] || (d[11] = (M) => C(!1))
       })) : p("", !0),
-      g.value ? (s(), o("aside", {
+      f.value ? (s(), o("aside", {
         key: 1,
         class: "side-panel",
         "aria-label": "Settings panel",
@@ -1678,16 +1678,16 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       }, [
         I.value ? p("", !0) : (s(), o("div", {
           key: 0,
-          class: L(["resizer", { active: N.value }]),
+          class: L(["resizer", { active: V.value }]),
           role: "separator",
           "aria-orientation": "vertical",
           "aria-label": "Resize panel",
           tabindex: "0",
           "aria-valuenow": a.value,
           "aria-valuemin": ue,
-          onPointerdown: ye(w, ["prevent"]),
-          onKeydown: D,
-          onDblclick: d[12] || (d[12] = (U) => f(ve))
+          onPointerdown: ye(O, ["prevent"]),
+          onKeydown: g,
+          onDblclick: d[12] || (d[12] = (M) => E(ve))
         }, null, 42, an)),
         e("header", nn, [
           e("span", sn, [
@@ -1699,7 +1699,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             class: "icon-btn push",
             "aria-label": "Collapse panel",
             title: "Collapse panel",
-            onClick: d[13] || (d[13] = (U) => M(!1))
+            onClick: d[13] || (d[13] = (M) => C(!1))
           }, [
             u(h(z), {
               icon: I.value ? "tabler:x" : "tabler:layout-sidebar-right-collapse"
@@ -1729,7 +1729,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             "deep-enabled": me.value,
             "map-enabled": ke.value,
             readonly: t.readonly,
-            onRemove: d[14] || (d[14] = (U) => Qe(r.value.index))
+            onRemove: d[14] || (d[14] = (M) => Qe(r.value.index))
           }, null, 8, ["field", "other-names", "groups", "deep-enabled", "map-enabled", "readonly"])) : r.value.kind === "details" ? (s(), o("fieldset", {
             key: 3,
             class: "inspector-form",
@@ -1737,8 +1737,8 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           }, [
             e("label", null, [
               d[33] || (d[33] = k("Name", -1)),
-              O(e("input", {
-                "onUpdate:modelValue": d[15] || (d[15] = (U) => n.value = U),
+              F(e("input", {
+                "onUpdate:modelValue": d[15] || (d[15] = (M) => n.value = M),
                 "aria-label": "Extractor name"
               }, null, 512), [
                 [K, n.value]
@@ -1746,8 +1746,8 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             ]),
             e("label", null, [
               d[34] || (d[34] = k("Description", -1)),
-              O(e("textarea", {
-                "onUpdate:modelValue": d[16] || (d[16] = (U) => m.value = U),
+              F(e("textarea", {
+                "onUpdate:modelValue": d[16] || (d[16] = (M) => m.value = M),
                 rows: "3",
                 placeholder: "What this extractor reads"
               }, null, 512), [
@@ -1756,8 +1756,8 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             ]),
             e("label", null, [
               d[35] || (d[35] = k("Tags", -1)),
-              O(e("input", {
-                "onUpdate:modelValue": d[17] || (d[17] = (U) => Se.value = U),
+              F(e("input", {
+                "onUpdate:modelValue": d[17] || (d[17] = (M) => Se.value = M),
                 placeholder: "invoices, finance"
               }, null, 512), [
                 [
@@ -1772,11 +1772,11 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           ], 8, on)) : r.value.kind === "output" ? (s(), o("div", dn, [
             d[37] || (d[37] = e("p", { class: "muted" }, "Every caller gets the same result: one value per field with confidence, evidence quotes and their section, plus the run trace.", -1)),
             e("ul", un, [
-              (s(!0), o(C, null, T(t.config.fields, (U) => (s(), o("li", {
-                key: U.name
+              (s(!0), o(q, null, T(t.config.fields, (M) => (s(), o("li", {
+                key: M.name
               }, [
-                e("span", rn, i(U.name || "New field"), 1),
-                e("span", cn, i(Ve(U)), 1)
+                e("span", rn, i(M.name || "New field"), 1),
+                e("span", cn, i(Ve(M)), 1)
               ]))), 128))
             ]),
             d[38] || (d[38] = e("p", { class: "muted" }, "Used by people in Test, by agents through the Docscout tools, by evals, and in Workflows as the Extract document fields block.", -1))
@@ -1788,7 +1788,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
         class: "rail",
         "aria-label": "Open panel",
         title: "Open panel",
-        onClick: d[18] || (d[18] = (U) => M(!0))
+        onClick: d[18] || (d[18] = (M) => C(!0))
       }, [
         u(h(z), { icon: "tabler:layout-sidebar-right-expand" }),
         e("span", mn, i(P.value), 1)
@@ -1817,10 +1817,10 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       }
     });
     function $(x) {
-      const g = x.detail;
-      n("select", g.selected[0] || "", g.labels?.[0] || "");
+      const f = x.detail;
+      n("select", f.selected[0] || "", f.labels?.[0] || "");
     }
-    return (x, g) => m.value ? (s(), o("wc-multiselect", {
+    return (x, f) => m.value ? (s(), o("wc-multiselect", {
       key: 0,
       source: "/api/v1/uploads/list",
       "response-key": "uploads",
@@ -1867,20 +1867,20 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
   },
   emits: ["run"],
   setup(t, { emit: v }) {
-    const n = t, m = v, r = R(""), $ = R(), x = (f) => `${Math.round(f * 100)}%`, g = (f) => f == null ? "—" : typeof f == "string" ? f : Array.isArray(f) && f.every((N) => typeof N != "object") ? f.join(", ") : typeof f == "object" ? JSON.stringify(f) : String(f), E = (f) => `${(f / 1e3).toFixed(1)}s`, V = B(() => Math.max(1, ...n.result?.trace.map((f) => f.duration_ms) ?? [1])), l = (f) => f === "read" ? "Read document" : _[f] ?? f, a = (f) => f === "read" ? "tabler:file-text" : he[f] ?? "tabler:point", S = (f) => f >= 0.9 ? "high" : f >= 0.7 ? "mid" : "low";
-    return (f, N) => (s(), o("div", gn, [
+    const n = t, m = v, r = R(""), $ = R(), x = (V) => `${Math.round(V * 100)}%`, f = (V) => V == null ? "—" : typeof V == "string" ? V : Array.isArray(V) && V.every((O) => typeof O != "object") ? V.join(", ") : typeof V == "object" ? JSON.stringify(V) : String(V), N = (V) => `${(V / 1e3).toFixed(1)}s`, w = B(() => Math.max(1, ...n.result?.trace.map((V) => V.duration_ms) ?? [1])), l = { read: { label: "Read document", icon: "tabler:file-text" }, highlight: { label: "Highlighter", icon: "tabler:highlight" } }, a = (V) => l[V]?.label ?? _[V] ?? V, S = (V) => l[V]?.icon ?? he[V] ?? "tabler:point", E = (V) => V >= 0.9 ? "high" : V >= 0.7 ? "mid" : "low";
+    return (V, O) => (s(), o("div", gn, [
       e("section", fn, [
         e("div", hn, [
           u(Ae, {
             value: r.value,
-            onSelect: N[0] || (N[0] = (w) => r.value = w)
+            onSelect: O[0] || (O[0] = (g) => r.value = g)
           }, null, 8, ["value"])
         ]),
         u(h(H), {
           label: t.running ? "Extracting…" : "Run extraction",
           loading: t.running,
           disabled: !r.value || t.running || !t.canRun,
-          onClick: N[1] || (N[1] = (w) => m("run", r.value))
+          onClick: O[1] || (O[1] = (g) => m("run", r.value))
         }, null, 8, ["label", "loading", "disabled"]),
         e("p", kn, i(t.canRun ? "" : "Add fields in the Builder first. ") + "Processed documents and runs expire after " + i(t.retention) + ".", 1)
       ]),
@@ -1892,119 +1892,119 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       t.result ? (s(), o("div", wn, [
         e("section", Vn, [
           e("header", Sn, [
-            N[2] || (N[2] = e("h2", { class: "block-title" }, "Values", -1)),
+            O[2] || (O[2] = e("h2", { class: "block-title" }, "Values", -1)),
             e("span", Cn, [
-              k(i(t.result.tokens.toLocaleString()) + " tokens · " + i(E(t.result.duration_ms)), 1),
-              t.result.cost !== void 0 ? (s(), o(C, { key: 0 }, [
+              k(i(t.result.tokens.toLocaleString()) + " tokens · " + i(N(t.result.duration_ms)), 1),
+              t.result.cost !== void 0 ? (s(), o(q, { key: 0 }, [
                 k(" · $" + i(t.result.cost.toFixed(3)), 1)
               ], 64)) : p("", !0)
             ])
           ]),
           e("ul", qn, [
-            (s(!0), o(C, null, T(t.result.fields, (w) => (s(), o("li", {
-              key: w.name,
+            (s(!0), o(q, null, T(t.result.fields, (g) => (s(), o("li", {
+              key: g.name,
               class: "value-row"
             }, [
               e("button", {
                 type: "button",
                 class: "value-main",
-                "aria-expanded": $.value === w.name,
-                onClick: (D) => $.value = $.value === w.name ? void 0 : w.name
+                "aria-expanded": $.value === g.name,
+                onClick: (C) => $.value = $.value === g.name ? void 0 : g.name
               }, [
-                e("span", Mn, i(w.name), 1),
+                e("span", Mn, i(g.name), 1),
                 e("span", {
-                  class: L(["value-text", { missing: w.missing }]),
-                  title: w.missing ? void 0 : g(w.value)
-                }, i(w.missing ? "Not in the document" : g(w.value)), 11, Nn),
+                  class: L(["value-text", { missing: g.missing }]),
+                  title: g.missing ? void 0 : f(g.value)
+                }, i(g.missing ? "Not in the document" : f(g.value)), 11, Nn),
                 e("span", {
-                  class: L(["confidence", S(w.confidence)])
+                  class: L(["confidence", E(g.confidence)])
                 }, [
                   e("span", En, [
                     e("span", {
-                      style: ne({ width: x(w.confidence) })
+                      style: ne({ width: x(g.confidence) })
                     }, null, 4)
                   ]),
-                  k(i(x(w.confidence)) + " confidence", 1)
+                  k(i(x(g.confidence)) + " confidence", 1)
                 ], 2),
                 e("span", {
-                  class: L(["chip", w.verified ? "primary" : "warn"]),
-                  title: w.reason
+                  class: L(["chip", g.verified ? "primary" : "warn"]),
+                  title: g.reason
                 }, [
                   u(h(z), {
-                    icon: w.verified ? "tabler:shield-check" : "tabler:shield-question"
+                    icon: g.verified ? "tabler:shield-check" : "tabler:shield-question"
                   }, null, 8, ["icon"]),
-                  k(i(w.verified ? "Verified" : "Check"), 1)
+                  k(i(g.verified ? "Verified" : "Check"), 1)
                 ], 10, Bn),
                 u(h(z), {
-                  icon: $.value === w.name ? "tabler:chevron-up" : "tabler:chevron-down",
+                  icon: $.value === g.name ? "tabler:chevron-up" : "tabler:chevron-down",
                   class: "value-caret"
                 }, null, 8, ["icon"])
               ], 8, Un),
-              O(e("div", Rn, [
-                w.missing ? p("", !0) : (s(), o("p", Tn, i(g(w.value)), 1)),
-                (s(!0), o(C, null, T(w.evidence, (D, M) => (s(), o("blockquote", {
-                  key: M,
-                  class: L({ unfound: D.found === !1 })
+              F(e("div", Rn, [
+                g.missing ? p("", !0) : (s(), o("p", Tn, i(f(g.value)), 1)),
+                (s(!0), o(q, null, T(g.evidence, (C, D) => (s(), o("blockquote", {
+                  key: D,
+                  class: L({ unfound: C.found === !1 })
                 }, [
-                  e("p", null, "“" + i(D.quote) + "”", 1),
+                  e("p", null, "“" + i(C.quote) + "”", 1),
                   e("cite", null, [
-                    k(i(D.section), 1),
-                    D.page !== void 0 && D.page !== null ? (s(), o(C, { key: 0 }, [
-                      k(" · Page " + i(D.page), 1)
+                    k(i(C.section), 1),
+                    C.page !== void 0 && C.page !== null ? (s(), o(q, { key: 0 }, [
+                      k(" · Page " + i(C.page), 1)
                     ], 64)) : p("", !0),
-                    D.found === !1 ? (s(), o(C, { key: 1 }, [
+                    C.found === !1 ? (s(), o(q, { key: 1 }, [
                       k(" · not found word for word in the document")
                     ], 64)) : p("", !0)
                   ])
                 ], 2))), 128)),
-                w.evidence.length ? p("", !0) : (s(), o("p", Dn, "No evidence.")),
-                w.reason ? (s(), o("p", zn, i(w.reason), 1)) : p("", !0)
+                g.evidence.length ? p("", !0) : (s(), o("p", Dn, "No evidence.")),
+                g.reason ? (s(), o("p", zn, i(g.reason), 1)) : p("", !0)
               ], 512), [
-                [be, $.value === w.name]
+                [be, $.value === g.name]
               ])
             ]))), 128))
           ])
         ]),
         e("section", An, [
-          N[3] || (N[3] = e("header", { class: "block-head" }, [
+          O[3] || (O[3] = e("header", { class: "block-head" }, [
             e("h2", { class: "block-title" }, "Steps")
           ], -1)),
           e("ol", Fn, [
-            (s(!0), o(C, null, T(t.result.trace, (w, D) => (s(), o("li", {
-              key: D,
-              class: L(w.status)
+            (s(!0), o(q, null, T(t.result.trace, (g, C) => (s(), o("li", {
+              key: C,
+              class: L(g.status)
             }, [
               e("span", On, [
                 u(h(z), {
-                  icon: a(w.kind)
+                  icon: S(g.kind)
                 }, null, 8, ["icon"])
               ]),
               e("div", Pn, [
                 e("div", Ln, [
-                  e("strong", null, i(l(w.kind)), 1),
-                  e("span", jn, i(E(w.duration_ms)), 1)
+                  e("strong", null, i(a(g.kind)), 1),
+                  e("span", jn, i(N(g.duration_ms)), 1)
                 ]),
                 e("span", In, [
                   e("span", {
-                    style: ne({ width: `${Math.max(4, w.duration_ms / V.value * 100)}%` })
+                    style: ne({ width: `${Math.max(4, g.duration_ms / w.value * 100)}%` })
                   }, null, 4)
                 ]),
                 e("p", Wn, [
-                  k(i(w.scope), 1),
-                  w.model ? (s(), o(C, { key: 0 }, [
-                    k(" · " + i(w.model), 1)
+                  k(i(g.scope), 1),
+                  g.model ? (s(), o(q, { key: 0 }, [
+                    k(" · " + i(g.model), 1)
                   ], 64)) : p("", !0),
-                  k(" · " + i((w.input_tokens + w.output_tokens).toLocaleString()) + " tokens", 1),
-                  w.cost !== void 0 ? (s(), o(C, { key: 1 }, [
-                    k(" · $" + i(w.cost.toFixed(4)), 1)
+                  k(" · " + i((g.input_tokens + g.output_tokens).toLocaleString()) + " tokens", 1),
+                  g.cost !== void 0 ? (s(), o(q, { key: 1 }, [
+                    k(" · $" + i(g.cost.toFixed(4)), 1)
                   ], 64)) : p("", !0)
                 ]),
-                w.message ? (s(), o("p", Qn, i(w.message), 1)) : p("", !0),
-                w.queries?.length ? (s(), o("div", Jn, [
-                  (s(!0), o(C, null, T(w.queries, (M) => (s(), o("span", {
-                    key: M,
+                g.message ? (s(), o("p", Qn, i(g.message), 1)) : p("", !0),
+                g.queries?.length ? (s(), o("div", Jn, [
+                  (s(!0), o(q, null, T(g.queries, (D) => (s(), o("span", {
+                    key: D,
                     class: "chip"
-                  }, i(M), 1))), 128))
+                  }, i(D), 1))), 128))
                 ])) : p("", !0)
               ])
             ], 2))), 128))
@@ -2052,50 +2052,50 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
   },
   emits: ["add-case", "delete-case"],
   setup(t, { emit: v }) {
-    const n = t, m = v, r = R(!1), $ = R(""), x = R(""), g = R({}), E = R("");
+    const n = t, m = v, r = R(!1), $ = R(""), x = R(""), f = R({}), N = R("");
     ae(() => n.cases, () => {
-      r.value = !1, $.value = "", g.value = {};
+      r.value = !1, $.value = "", f.value = {};
     });
-    function V() {
-      E.value = "";
-      const q = {};
+    function w() {
+      N.value = "";
+      const U = {};
       try {
         for (const y of n.fields) {
-          const c = g.value[y.name] ?? "";
-          q[y.name] = ["number", "boolean", "list", "object"].includes(y.type) ? c.trim() ? JSON.parse(c) : null : c;
+          const c = f.value[y.name] ?? "";
+          U[y.name] = ["number", "boolean", "list", "object"].includes(y.type) ? c.trim() ? JSON.parse(c) : null : c;
         }
-        m("add-case", { upload_id: $.value, upload_name: x.value, expected: q });
+        m("add-case", { upload_id: $.value, upload_name: x.value, expected: U });
       } catch {
-        E.value = "Use valid JSON for numbers, lists, and objects.";
+        N.value = "Use valid JSON for numbers, lists, and objects.";
       }
     }
-    const l = B(() => [...n.results].sort((q, y) => q.revision - y.revision)), a = R(), S = R(), f = B(() => l.value.find((q) => q.revision === S.value) ?? l.value.at(-1)), N = B(() => l.value.find((q) => q.revision === a.value) ?? l.value.at(-2) ?? l.value.at(-1)), w = (q) => q && q.metrics.length ? q.metrics.reduce((y, c) => y + c.accuracy, 0) / q.metrics.length : 0, D = B(() => [...new Set([...N.value?.metrics ?? [], ...f.value?.metrics ?? []].map((y) => y.field))].map((y) => ({ name: y, a: N.value?.metrics.find((c) => c.field === y), b: f.value?.metrics.find((c) => c.field === y) }))), M = (q) => `${Math.round(q * 100)}%`, F = (q) => `${q > 0 ? "+" : q < 0 ? "−" : ""}${Math.abs(Math.round(q * 100))} pts`, A = (q) => Math.round(q * 100) > 0 ? "up" : Math.round(q * 100) < 0 ? "down" : "flat", I = (q) => `$${q.toFixed(3)}`, Y = (q) => `${(q / 1e3).toFixed(1)}s`, se = (q) => q == null || q === "" ? "—" : typeof q == "string" ? q : JSON.stringify(q);
-    return (q, y) => (s(), o("div", Hn, [
-      f.value ? (s(), o("div", Gn, [
+    const l = B(() => [...n.results].sort((U, y) => U.revision - y.revision)), a = R(), S = R(), E = B(() => l.value.find((U) => U.revision === S.value) ?? l.value.at(-1)), V = B(() => l.value.find((U) => U.revision === a.value) ?? l.value.at(-2) ?? l.value.at(-1)), O = (U) => U && U.metrics.length ? U.metrics.reduce((y, c) => y + c.accuracy, 0) / U.metrics.length : 0, g = B(() => [...new Set([...V.value?.metrics ?? [], ...E.value?.metrics ?? []].map((y) => y.field))].map((y) => ({ name: y, a: V.value?.metrics.find((c) => c.field === y), b: E.value?.metrics.find((c) => c.field === y) }))), C = (U) => `${Math.round(U * 100)}%`, D = (U) => `${U > 0 ? "+" : U < 0 ? "−" : ""}${Math.abs(Math.round(U * 100))} pts`, A = (U) => Math.round(U * 100) > 0 ? "up" : Math.round(U * 100) < 0 ? "down" : "flat", I = (U) => `$${U.toFixed(3)}`, Y = (U) => `${(U / 1e3).toFixed(1)}s`, se = (U) => U == null || U === "" ? "—" : typeof U == "string" ? U : JSON.stringify(U);
+    return (U, y) => (s(), o("div", Hn, [
+      E.value ? (s(), o("div", Gn, [
         e("div", Xn, [
-          e("span", Yn, "Accuracy · revision " + i(f.value.revision), 1),
-          e("span", Zn, i(M(w(f.value))), 1),
-          N.value && N.value !== f.value ? (s(), o("span", {
+          e("span", Yn, "Accuracy · revision " + i(E.value.revision), 1),
+          e("span", Zn, i(C(O(E.value))), 1),
+          V.value && V.value !== E.value ? (s(), o("span", {
             key: 0,
-            class: L(["stat-delta", A(w(f.value) - w(N.value))])
-          }, i(F(w(f.value) - w(N.value))) + " vs revision " + i(N.value.revision), 3)) : p("", !0)
+            class: L(["stat-delta", A(O(E.value) - O(V.value))])
+          }, i(D(O(E.value) - O(V.value))) + " vs revision " + i(V.value.revision), 3)) : p("", !0)
         ]),
         e("div", _n, [
           y[5] || (y[5] = e("span", { class: "stat-label" }, "Cases", -1)),
-          e("span", es, i(f.value.cases), 1)
+          e("span", es, i(E.value.cases), 1)
         ]),
         e("div", ls, [
           y[6] || (y[6] = e("span", { class: "stat-label" }, "Cost per eval", -1)),
-          e("span", ts, i(I(f.value.cost)), 1),
-          N.value && N.value !== f.value ? (s(), o("span", as, i(I(N.value.cost)) + " before", 1)) : p("", !0)
+          e("span", ts, i(I(E.value.cost)), 1),
+          V.value && V.value !== E.value ? (s(), o("span", as, i(I(V.value.cost)) + " before", 1)) : p("", !0)
         ]),
         e("div", ns, [
           y[7] || (y[7] = e("span", { class: "stat-label" }, "Time per eval", -1)),
-          e("span", ss, i(Y(f.value.duration_ms)), 1),
-          N.value && N.value !== f.value ? (s(), o("span", {
+          e("span", ss, i(Y(E.value.duration_ms)), 1),
+          V.value && V.value !== E.value ? (s(), o("span", {
             key: 0,
-            class: L(["stat-delta", f.value.duration_ms < N.value.duration_ms ? "up" : "flat"])
-          }, i(Y(N.value.duration_ms)) + " before", 3)) : p("", !0)
+            class: L(["stat-delta", E.value.duration_ms < V.value.duration_ms ? "up" : "flat"])
+          }, i(Y(V.value.duration_ms)) + " before", 3)) : p("", !0)
         ])
       ])) : p("", !0),
       e("section", os, [
@@ -2103,22 +2103,22 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           y[8] || (y[8] = e("h2", { class: "block-title" }, "Field accuracy", -1)),
           l.value.length ? (s(), o("div", ds, [
             e("select", {
-              value: N.value?.revision,
+              value: V.value?.revision,
               "aria-label": "Baseline revision",
               onChange: y[0] || (y[0] = (c) => a.value = Number(c.target.value))
             }, [
-              (s(!0), o(C, null, T(l.value, (c) => (s(), o("option", {
+              (s(!0), o(q, null, T(l.value, (c) => (s(), o("option", {
                 key: c.revision,
                 value: c.revision
               }, "Revision " + i(c.revision), 9, rs))), 128))
             ], 40, us),
             u(h(z), { icon: "tabler:arrow-right" }),
             e("select", {
-              value: f.value?.revision,
+              value: E.value?.revision,
               "aria-label": "Compared revision",
               onChange: y[1] || (y[1] = (c) => S.value = Number(c.target.value))
             }, [
-              (s(!0), o(C, null, T(l.value, (c) => (s(), o("option", {
+              (s(!0), o(q, null, T(l.value, (c) => (s(), o("option", {
                 key: c.revision,
                 value: c.revision
               }, "Revision " + i(c.revision), 9, ms))), 128))
@@ -2129,15 +2129,15 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           e("thead", null, [
             e("tr", null, [
               y[9] || (y[9] = e("th", null, "Field", -1)),
-              e("th", null, "Revision " + i(N.value?.revision), 1),
-              e("th", null, "Revision " + i(f.value?.revision), 1),
+              e("th", null, "Revision " + i(V.value?.revision), 1),
+              e("th", null, "Revision " + i(E.value?.revision), 1),
               y[10] || (y[10] = e("th", null, "Change", -1)),
               y[11] || (y[11] = e("th", { class: "num" }, "Cost", -1)),
               y[12] || (y[12] = e("th", { class: "num" }, "Time", -1))
             ])
           ]),
           e("tbody", null, [
-            (s(!0), o(C, null, T(D.value, (c) => (s(), o("tr", {
+            (s(!0), o(q, null, T(g.value, (c) => (s(), o("tr", {
               key: c.name
             }, [
               e("td", ps, i(c.name), 1),
@@ -2145,20 +2145,20 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                 e("span", ys, [
                   e("span", gs, [
                     e("span", {
-                      style: ne({ width: M(c.a?.accuracy ?? 0) })
+                      style: ne({ width: C(c.a?.accuracy ?? 0) })
                     }, null, 4)
                   ]),
-                  k(i(c.a ? M(c.a.accuracy) : "—"), 1)
+                  k(i(c.a ? C(c.a.accuracy) : "—"), 1)
                 ])
               ]),
               e("td", null, [
                 e("span", fs, [
                   e("span", hs, [
                     e("span", {
-                      style: ne({ width: M(c.b?.accuracy ?? 0) })
+                      style: ne({ width: C(c.b?.accuracy ?? 0) })
                     }, null, 4)
                   ]),
-                  k(i(c.b ? M(c.b.accuracy) : "—"), 1)
+                  k(i(c.b ? C(c.b.accuracy) : "—"), 1)
                 ])
               ]),
               e("td", null, [
@@ -2169,7 +2169,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                   u(h(z), {
                     icon: A(c.b.accuracy - c.a.accuracy) === "up" ? "tabler:trending-up" : A(c.b.accuracy - c.a.accuracy) === "down" ? "tabler:trending-down" : "tabler:minus"
                   }, null, 8, ["icon"]),
-                  k(i(F(c.b.accuracy - c.a.accuracy)), 1)
+                  k(i(D(c.b.accuracy - c.a.accuracy)), 1)
                 ], 2)) : p("", !0)
               ]),
               e("td", ks, i(c.b ? I(c.b.cost) : "—"), 1),
@@ -2200,7 +2200,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
         r.value ? (s(), o("form", {
           key: 0,
           class: "case-form",
-          onSubmit: ye(V, ["prevent"])
+          onSubmit: ye(w, ["prevent"])
         }, [
           e("label", null, [
             y[14] || (y[14] = k("Upload", -1)),
@@ -2212,45 +2212,45 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             }, null, 8, ["value"])
           ]),
           e("div", Cs, [
-            (s(!0), o(C, null, T(t.fields, (c) => (s(), o("label", {
+            (s(!0), o(q, null, T(t.fields, (c) => (s(), o("label", {
               key: c.name
             }, [
               e("span", qs, i(c.name), 1),
-              c.type === "boolean" ? O((s(), o("select", {
+              c.type === "boolean" ? F((s(), o("select", {
                 key: 0,
-                "onUpdate:modelValue": (P) => g.value[c.name] = P
+                "onUpdate:modelValue": (P) => f.value[c.name] = P
               }, [...y[15] || (y[15] = [
                 e("option", { value: "" }, "No value", -1),
                 e("option", { value: "true" }, "Yes", -1),
                 e("option", { value: "false" }, "No", -1)
               ])], 8, Us)), [
-                [ie, g.value[c.name]]
-              ]) : c.type === "enum" ? O((s(), o("select", {
+                [ie, f.value[c.name]]
+              ]) : c.type === "enum" ? F((s(), o("select", {
                 key: 1,
-                "onUpdate:modelValue": (P) => g.value[c.name] = P
+                "onUpdate:modelValue": (P) => f.value[c.name] = P
               }, [
                 y[16] || (y[16] = e("option", { value: "" }, "No value", -1)),
-                (s(!0), o(C, null, T(c.enum_values, (P) => (s(), o("option", { key: P }, i(P), 1))), 128))
+                (s(!0), o(q, null, T(c.enum_values, (P) => (s(), o("option", { key: P }, i(P), 1))), 128))
               ], 8, Ms)), [
-                [ie, g.value[c.name]]
-              ]) : ["object", "list"].includes(c.type) ? O((s(), o("textarea", {
+                [ie, f.value[c.name]]
+              ]) : ["object", "list"].includes(c.type) ? F((s(), o("textarea", {
                 key: 2,
-                "onUpdate:modelValue": (P) => g.value[c.name] = P,
+                "onUpdate:modelValue": (P) => f.value[c.name] = P,
                 rows: "2",
                 placeholder: "JSON value"
               }, null, 8, Ns)), [
-                [K, g.value[c.name]]
-              ]) : O((s(), o("input", {
+                [K, f.value[c.name]]
+              ]) : F((s(), o("input", {
                 key: 3,
-                "onUpdate:modelValue": (P) => g.value[c.name] = P,
+                "onUpdate:modelValue": (P) => f.value[c.name] = P,
                 type: c.type === "number" ? "number" : c.type === "date" ? "date" : "text",
                 placeholder: "Expected value"
               }, null, 8, Es)), [
-                [Ge, g.value[c.name]]
+                [Ge, f.value[c.name]]
               ])
             ]))), 128))
           ]),
-          E.value ? (s(), o("p", Bs, i(E.value), 1)) : p("", !0),
+          N.value ? (s(), o("p", Bs, i(N.value), 1)) : p("", !0),
           e("div", Rs, [
             u(h(H), {
               label: "Save case",
@@ -2273,7 +2273,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             e("thead", null, [
               e("tr", null, [
                 y[17] || (y[17] = e("th", null, "Document", -1)),
-                (s(!0), o(C, null, T(t.fields, (c) => (s(), o("th", {
+                (s(!0), o(q, null, T(t.fields, (c) => (s(), o("th", {
                   key: c.name,
                   class: "mono"
                 }, i(c.name), 1))), 128)),
@@ -2281,7 +2281,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
               ])
             ]),
             e("tbody", null, [
-              (s(!0), o(C, null, T(t.cases, (c) => (s(), o("tr", {
+              (s(!0), o(q, null, T(t.cases, (c) => (s(), o("tr", {
                 key: c.id
               }, [
                 e("td", null, [
@@ -2291,7 +2291,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
                   }),
                   k(" " + i(c.upload_name), 1)
                 ]),
-                (s(!0), o(C, null, T(t.fields, (P) => (s(), o("td", {
+                (s(!0), o(q, null, T(t.fields, (P) => (s(), o("td", {
                   key: P.name
                 }, i(se(c.expected[P.name])), 1))), 128)),
                 e("td", As, [
@@ -2323,7 +2323,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           })
         ]),
         t.proposals.length ? p("", !0) : (s(), o("p", Ls, "No tuning proposals yet.")),
-        (s(!0), o(C, null, T(t.proposals, (c) => (s(), o("article", {
+        (s(!0), o(q, null, T(t.proposals, (c) => (s(), o("article", {
           key: c.id,
           class: "proposal"
         }, [
@@ -2334,12 +2334,12 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
           e("div", Ws, [
             e("span", {
               class: L(["chip", c.accuracy_delta > 0 ? "primary" : ""])
-            }, i(F(c.accuracy_delta)) + " accuracy", 3),
+            }, i(D(c.accuracy_delta)) + " accuracy", 3),
             e("span", Qs, i(c.cost_delta >= 0 ? "+" : "−") + i(I(Math.abs(c.cost_delta))) + " cost", 1),
             e("span", Js, i(c.duration_delta_ms >= 0 ? "+" : "−") + i(Y(Math.abs(c.duration_delta_ms))) + " time", 1)
           ]),
           e("ul", Ks, [
-            (s(!0), o(C, null, T(c.changes, (P) => (s(), o("li", { key: P }, i(P), 1))), 128))
+            (s(!0), o(q, null, T(c.changes, (P) => (s(), o("li", { key: P }, i(P), 1))), 128))
           ]),
           e("div", Hs, [
             u(h(H), {
@@ -2374,13 +2374,13 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
   },
   setup(t) {
     const v = (n) => new Date(n).toLocaleString(void 0, { dateStyle: "medium", timeStyle: "short" });
-    return (n, m) => (s(), o(C, null, [
+    return (n, m) => (s(), o(q, null, [
       e("div", Xs, [
         m[0] || (m[0] = e("h2", null, "Recent runs", -1)),
         e("span", Ys, "Retention " + i(t.retention), 1)
       ]),
       t.runs.length ? (s(), o("div", _s, [
-        (s(!0), o(C, null, T(t.runs, (r) => (s(), o("article", {
+        (s(!0), o(q, null, T(t.runs, (r) => (s(), o("article", {
           key: r.id,
           class: "run-card"
         }, [
@@ -2430,38 +2430,38 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
   },
   emits: ["save", "add-case", "delete-case", "back", "run"],
   setup(t, { emit: v }) {
-    const n = t, m = v, r = R(), $ = R("Builder"), x = R(Ne()), g = R(""), E = R(""), V = B(() => n.snapshot.can_edit ? ["Builder", "Test", "Evals", "Runs"] : ["Test", "Runs"]);
+    const n = t, m = v, r = R(), $ = R("Builder"), x = R(Ne()), f = R(""), N = R(""), w = B(() => n.snapshot.can_edit ? ["Builder", "Test", "Evals", "Runs"] : ["Test", "Runs"]);
     ae($, () => {
       r.value && (r.value.scrollTop = 0);
     }, { flush: "post" });
     const l = B(() => n.engine ?? ze()), a = R();
-    function S(M) {
-      return g.value === M.title && E.value === (M.description ?? "") && ol(x.value, M.config);
+    function S(C) {
+      return f.value === C.title && N.value === (C.description ?? "") && ol(x.value, C.config);
     }
-    ae(() => n.snapshot, (M, F) => {
-      V.value.includes($.value) || ($.value = V.value[0]), !(F && M.id === F.id && M.can_edit && F.can_edit && !S(F) && !S(M)) && (x.value = structuredClone(qe(M.config ?? Ne())), g.value = M.title, E.value = M.description ?? "", a.value = M.expected_revision);
+    ae(() => n.snapshot, (C, D) => {
+      w.value.includes($.value) || ($.value = w.value[0]), !(D && C.id === D.id && C.can_edit && D.can_edit && !S(D) && !S(C)) && (x.value = structuredClone(qe(C.config ?? Ne())), f.value = C.title, N.value = C.description ?? "", a.value = C.expected_revision);
     }, { immediate: !0 });
-    const f = B(() => n.snapshot.can_edit && !S(n.snapshot)), N = B(() => sl(x.value)), w = B(() => Object.keys(_).filter((M) => ce(x.value, M)).length);
-    function D() {
-      m("save", { title: g.value, description: E.value, config: structuredClone(qe(x.value)), expected_revision: a.value });
+    const E = B(() => n.snapshot.can_edit && !S(n.snapshot)), V = B(() => sl(x.value)), O = B(() => Object.keys(_).filter((C) => ce(x.value, C)).length);
+    function g() {
+      m("save", { title: f.value, description: N.value, config: structuredClone(qe(x.value)), expected_revision: a.value });
     }
-    return (M, F) => (s(), o("main", no, [
+    return (C, D) => (s(), o("main", no, [
       e("div", so, [
         e("div", oo, [
-          t.back ? (s(), o(C, { key: 0 }, [
+          t.back ? (s(), o(q, { key: 0 }, [
             e("button", {
               type: "button",
               class: "icon-btn",
               "aria-label": "All extractors",
               title: "All extractors",
-              onClick: F[0] || (F[0] = (A) => m("back"))
+              onClick: D[0] || (D[0] = (A) => m("back"))
             }, [
               u(h(z), { icon: "tabler:arrow-left" })
             ]),
             e("span", io, i(t.snapshot.title), 1)
           ], 64)) : p("", !0),
           e("nav", uo, [
-            (s(!0), o(C, null, T(V.value, (A) => (s(), o("button", {
+            (s(!0), o(q, null, T(w.value, (A) => (s(), o("button", {
               id: `tab-${A}`,
               key: A,
               role: "tab",
@@ -2474,28 +2474,28 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
         e("div", co, [
           e("span", mo, [
             k(i(t.snapshot.field_count) + " " + i(t.snapshot.field_count === 1 ? "field" : "fields"), 1),
-            t.snapshot.can_edit ? (s(), o(C, { key: 0 }, [
-              k(" · " + i(w.value) + " steps · revision " + i(t.snapshot.expected_revision), 1)
-            ], 64)) : (s(), o(C, { key: 1 }, [
+            t.snapshot.can_edit ? (s(), o(q, { key: 0 }, [
+              k(" · " + i(O.value) + " steps · revision " + i(t.snapshot.expected_revision), 1)
+            ], 64)) : (s(), o(q, { key: 1 }, [
               k(" · Read access")
             ], 64))
           ]),
-          t.snapshot.can_edit ? (s(), o(C, { key: 0 }, [
-            N.value ? (s(), o("span", {
+          t.snapshot.can_edit ? (s(), o(q, { key: 0 }, [
+            V.value ? (s(), o("span", {
               key: 0,
               class: "invalid",
               role: "alert",
-              title: N.value
+              title: V.value
             }, [
               u(h(z), { icon: "tabler:alert-circle" }),
-              k(i(N.value), 1)
-            ], 8, vo)) : f.value ? (s(), o("span", bo, "Unsaved")) : p("", !0),
+              k(i(V.value), 1)
+            ], 8, vo)) : E.value ? (s(), o("span", bo, "Unsaved")) : p("", !0),
             u(h(H), {
               label: "Save",
               size: "small",
               loading: t.saving,
-              disabled: !f.value || !!N.value || !g.value.trim(),
-              onClick: D
+              disabled: !E.value || !!V.value || !f.value.trim(),
+              onClick: g
             }, null, 8, ["loading", "disabled"])
           ], 64)) : p("", !0)
         ])
@@ -2503,10 +2503,10 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
       t.error ? (s(), o("p", po, i(t.error), 1)) : p("", !0),
       $.value === "Builder" && t.snapshot.can_edit ? (s(), o("div", yo, [
         u(vn, {
-          title: g.value,
-          "onUpdate:title": F[1] || (F[1] = (A) => g.value = A),
-          description: E.value,
-          "onUpdate:description": F[2] || (F[2] = (A) => E.value = A),
+          title: f.value,
+          "onUpdate:title": D[1] || (D[1] = (A) => f.value = A),
+          description: N.value,
+          "onUpdate:description": D[2] || (D[2] = (A) => N.value = A),
           config: x.value,
           retention: t.snapshot.retention,
           result: l.value.result
@@ -2529,7 +2529,7 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             retention: t.snapshot.retention,
             running: t.running,
             "can-run": t.snapshot.field_count > 0,
-            onRun: F[3] || (F[3] = (A) => m("run", A))
+            onRun: D[3] || (D[3] = (A) => m("run", A))
           }, null, 8, ["result", "retention", "running", "can-run"])) : p("", !0),
           $.value === "Evals" && t.snapshot.can_edit ? (s(), X(Gs, {
             key: 1,
@@ -2538,8 +2538,8 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
             proposals: l.value.proposals,
             fields: t.snapshot.config?.fields ?? [],
             saving: t.saving,
-            onAddCase: F[4] || (F[4] = (A) => m("add-case", A)),
-            onDeleteCase: F[5] || (F[5] = (A) => m("delete-case", A))
+            onAddCase: D[4] || (D[4] = (A) => m("add-case", A)),
+            onDeleteCase: D[5] || (D[5] = (A) => m("delete-case", A))
           }, null, 8, ["cases", "results", "proposals", "fields", "saving"])) : p("", !0),
           $.value === "Runs" ? (s(), X(ao, {
             key: 2,
@@ -2566,58 +2566,58 @@ const ze = () => ({ result: null, evals: [], proposals: [] }), il = ["aria-check
   },
   emits: ["back"],
   setup(t, { emit: v }) {
-    const n = t, m = v, r = R(), $ = R(""), x = R(!1), g = R(!1), E = R(ze());
-    let V;
+    const n = t, m = v, r = R(), $ = R(""), x = R(!1), f = R(!1), N = R(ze());
+    let w;
     async function l() {
       if (!n.id) {
         $.value = "No extractor selected.";
         return;
       }
-      const D = n.id;
+      const g = n.id;
       try {
-        const M = await oe.get(D);
-        D === n.id && (r.value = M, $.value = "");
-      } catch (M) {
-        $.value = M instanceof Error ? M.message : String(M);
+        const C = await oe.get(g);
+        g === n.id && (r.value = C, $.value = "");
+      } catch (C) {
+        $.value = C instanceof Error ? C.message : String(C);
       }
     }
     ae(() => n.id, () => {
-      r.value = void 0, V?.(), l(), n.id && (V = Xe(`component.${n.id}`, () => l()));
-    }, { immediate: !0 }), Ee(() => V?.());
-    async function a(D) {
+      r.value = void 0, w?.(), l(), n.id && (w = Xe(`component.${n.id}`, () => l()));
+    }, { immediate: !0 }), Ee(() => w?.());
+    async function a(g) {
       x.value = !0, $.value = "";
       try {
-        await D(), await l();
-      } catch (M) {
-        $.value = M instanceof Error ? M.message : String(M);
+        await g(), await l();
+      } catch (C) {
+        $.value = C instanceof Error ? C.message : String(C);
       } finally {
         x.value = !1;
       }
     }
-    const S = (D) => a(() => oe.update(n.id, D)), f = (D) => a(() => oe.addCase(n.id, D)), N = (D) => a(() => oe.deleteCase(n.id, D));
-    async function w(D) {
-      g.value = !0, $.value = "";
+    const S = (g) => a(() => oe.update(n.id, g)), E = (g) => a(() => oe.addCase(n.id, g)), V = (g) => a(() => oe.deleteCase(n.id, g));
+    async function O(g) {
+      f.value = !0, $.value = "";
       try {
-        E.value = { ...E.value, result: await oe.run(n.id, D) }, await l();
-      } catch (M) {
-        $.value = M instanceof Error ? M.message : String(M);
+        N.value = { ...N.value, result: await oe.run(n.id, g) }, await l();
+      } catch (C) {
+        $.value = C instanceof Error ? C.message : String(C);
       } finally {
-        g.value = !1;
+        f.value = !1;
       }
     }
-    return (D, M) => r.value ? (s(), X(fo, {
+    return (g, C) => r.value ? (s(), X(fo, {
       key: 0,
       snapshot: r.value,
       saving: x.value,
-      running: g.value,
-      engine: E.value,
+      running: f.value,
+      engine: N.value,
       error: $.value,
       back: t.back,
-      onBack: M[0] || (M[0] = (F) => m("back")),
-      onRun: w,
+      onBack: C[0] || (C[0] = (D) => m("back")),
+      onRun: O,
       onSave: S,
-      onAddCase: f,
-      onDeleteCase: N
+      onAddCase: E,
+      onDeleteCase: V
     }, null, 8, ["snapshot", "saving", "running", "engine", "error", "back"])) : $.value ? (s(), o("p", ho, i($.value), 1)) : (s(), o("p", ko, "Loading Docscout…"));
   }
 });

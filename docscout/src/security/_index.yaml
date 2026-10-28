@@ -42,6 +42,17 @@ entries:
     - funcs.call
     - funcs.security
     effect: allow
+- name: retention_db_access
+  kind: security.policy
+  meta:
+    private: true
+    comment: Lets the retention callback open the Docscout database.
+  groups: []
+  policy:
+    resources: '*'
+    actions:
+    - db.get
+    effect: allow
 - name: member_endpoints
   kind: security.policy
   meta:
