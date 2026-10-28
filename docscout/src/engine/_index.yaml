@@ -37,7 +37,6 @@ entries:
     comment: Builds or reuses the processed copy of an upload.
   source: file://process.lua
   modules:
-  - json
   - hash
   - text
   - security
@@ -56,6 +55,7 @@ entries:
   imports:
     store: kickside.docscout.engine:store
     ai: kickside.docscout.engine:ai
+    shapes: kickside.docscout.engine:shapes
 - name: stages
   kind: library.lua
   meta:

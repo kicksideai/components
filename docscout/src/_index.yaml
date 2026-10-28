@@ -55,6 +55,14 @@ entries:
   version: '>=0.8.15'
   meta:
     comment: Reads the page and slide markers in converted Markdown.
+- name: dep.kickside.jobs
+  kind: ns.dependency
+  component: kickside/jobs
+  version: '*'
+- name: dep.kickside.execution
+  kind: ns.dependency
+  component: kickside/execution
+  version: '*'
 - name: dep.wippy.llm
   kind: ns.dependency
   component: wippy/llm
@@ -74,6 +82,8 @@ entries:
     path: .meta.db_id
   - entry: kickside.docscout.migrations:01_docscout
     path: .meta.target_db
+  - entry: kickside.docscout.security:system_db_access
+    path: .policy.resources
 - name: api_router
   kind: ns.requirement
   meta:
@@ -95,6 +105,12 @@ entries:
     path: .meta.router
   - entry: kickside.docscout.api:run.endpoint
     path: .meta.router
+  - entry: kickside.docscout.api:start_eval.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:list_evals.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:get_eval.endpoint
+    path: .meta.router
 - name: ui_server
   kind: ns.requirement
   meta:
@@ -108,6 +124,8 @@ entries:
   modules:
   - json
   - registry
+  imports:
+    shapes: kickside.docscout.engine:shapes
 - name: repository
   kind: library.lua
   source: file://repository.lua
@@ -185,7 +203,7 @@ entries:
     actor:
       id: system:kickside.docscout.retention
     policies:
-    - kickside.docscout.security:retention_db_access
+    - kickside.docscout.security:system_db_access
   imports:
     store: kickside.docscout.engine:store
     repository: kickside.docscout:repository

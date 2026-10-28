@@ -4,7 +4,6 @@
 -- configuration says so, page or slide locators from Doc2MD markers, a context
 -- line per chunk, and one vector per chunk. A processed copy is reused while it
 -- is fresh for the same owner, content and processing settings.
-local json = require("json")
 local hash = require("hash")
 local text = require("text")
 local security = require("security")
@@ -44,6 +43,11 @@ function M.content(upload_id: string): (any?, error?)
     if type(content) ~= "table" or content.success == false or type(content.content) ~= "string" then
         return nil, (content and content.error) or invalid("upload has no readable content")
     end
+    -- Extracted text arrives as Markdown; an upload without it serves its original bytes.
+    if type(content.content_type) ~= "string" or not content.content_type:match("^text/") then
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
+            message = "the upload has no extracted text yet (" .. tostring(content.content_type) .. ")" })
+    end
     return {
         markdown = content.content,
         checksum = content.checksum or hash.sha256(content.content),
@@ -51,13 +55,15 @@ function M.content(upload_id: string): (any?, error?)
     }, nil
 end
 
--- Settings that change the processed copy; reading settings stay out.
-function M.processing_key(retrieval: any): string
+-- Settings that change the processed copy; reading settings stay out. Models
+-- are named by the card a reference resolves to, so reassigning a class makes
+-- a new copy.
+function M.processing_key(retrieval: any, models: { [string]: string }): string
     local parts = {
         chunk_size = retrieval.chunk_size, overlap = retrieval.overlap,
         split_headings = retrieval.split_headings, keep_tables = retrieval.keep_tables,
-        context = retrieval.context, embedding_model = retrieval.embedding_model,
-        context_model = retrieval.context == "generated" and retrieval.context_model or "",
+        context = retrieval.context, embedding_model = models.embedding,
+        context_model = retrieval.context == "generated" and models.context or "",
     }
     local keys = {}
     for k in pairs(parts) do keys[#keys + 1] = k end
@@ -212,12 +218,20 @@ end
 function M.ensure(owner_id: string, upload_id: string, retrieval: any, step: any): (any?, error?)
     local content, err = M.content(upload_id)
     if err then return nil, err end
-    local key = M.processing_key(retrieval)
+    local models = {}
+    local embedder, embed_lookup_err = ai.resolve(retrieval.embedding_model)
+    if embed_lookup_err then return nil, embed_lookup_err end
+    models.embedding = tostring(embedder.name)
+    if retrieval.context == "generated" then
+        local writer, context_lookup_err = ai.resolve(retrieval.context_model)
+        if context_lookup_err then return nil, context_lookup_err end
+        models.context = tostring(writer.name)
+    end
+    local key = M.processing_key(retrieval, models)
     local existing, find_err = store.find(owner_id, upload_id, content.checksum, key)
     if find_err then return nil, find_err end
     if existing then
         step.message = "Reused the processed copy (" .. existing.chunk_count .. " chunks)"
-        existing.markdown = content.markdown
         return existing, nil
     end
     local chunks, outline, pages = M.chunk(content.markdown, retrieval)
@@ -239,7 +253,7 @@ function M.ensure(owner_id: string, upload_id: string, retrieval: any, step: any
     }, chunks)
     if save_err then return nil, save_err end
     step.message = "Processed " .. #chunks .. " chunks in " .. #outline .. " sections" .. (pages > 0 and (" over " .. pages .. " pages") or "")
-    return { id = id, outline = outline, page_count = pages, chunk_count = #chunks, tokens = tokens, markdown = content.markdown }, nil
+    return { id = id, outline = outline, page_count = pages, chunk_count = #chunks, tokens = tokens }, nil
 end
 
 return M

@@ -26,9 +26,10 @@ local function date_of(v: any): string
     return (tostring(v):gsub("%D", ""))
 end
 
+-- Words for overlap scoring: punctuation separates words here, unlike quote matching.
 local function words(s: string): { [string]: integer }
     local bag = {}
-    for word in shapes.normalize(s):gmatch("%S+") do bag[word] = (bag[word] or 0) + 1 end
+    for word in shapes.normalize(s):gmatch("[^%s%p]+") do bag[word] = (bag[word] or 0) + 1 end
     return bag
 end
 

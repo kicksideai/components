@@ -96,7 +96,10 @@ function M.run(input: any): (any?, error?)
     if record_err then return nil, record_err end
     result.run_id = run_id
     if failure then
-        return nil, errors.new({ kind = (failure :: any):kind() or errors.INTERNAL, message = tostring(failure), details = { run_id = run_id, trace = trace } })
+        local f = failure :: any
+        local details = f:details() or {}
+        details.run_id, details.trace = run_id, trace
+        return nil, errors.new({ kind = f:kind() or errors.INTERNAL, retryable = f:retryable(), message = f:message(), details = details })
     end
     return result, nil
 end

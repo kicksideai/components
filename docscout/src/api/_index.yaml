@@ -10,6 +10,7 @@ entries:
   - http
   imports:
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
     http_errors: kickside.contract:http_errors
 - name: create.endpoint
   kind: http.endpoint
@@ -24,6 +25,7 @@ entries:
   - http
   imports:
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
     http_errors: kickside.contract:http_errors
 - name: get.endpoint
   kind: http.endpoint
@@ -38,6 +40,7 @@ entries:
   - http
   imports:
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
     http_errors: kickside.contract:http_errors
 - name: update.endpoint
   kind: http.endpoint
@@ -52,6 +55,7 @@ entries:
   - http
   imports:
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
     http_errors: kickside.contract:http_errors
 - name: delete.endpoint
   kind: http.endpoint
@@ -66,6 +70,7 @@ entries:
   - http
   imports:
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
     http_errors: kickside.contract:http_errors
 - name: list.endpoint
   kind: http.endpoint
@@ -80,6 +85,7 @@ entries:
   - http
   imports:
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
     http_errors: kickside.contract:http_errors
 - name: add_case.endpoint
   kind: http.endpoint
@@ -94,6 +100,7 @@ entries:
   - http
   imports:
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
     http_errors: kickside.contract:http_errors
 - name: delete_case.endpoint
   kind: http.endpoint
@@ -114,3 +121,48 @@ entries:
   method: POST
   path: /docscout/{id}/run
   func: run
+- name: start_eval
+  kind: function.lua
+  source: file://handlers.lua
+  method: start_eval
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: start_eval.endpoint
+  kind: http.endpoint
+  method: POST
+  path: /docscout/{id}/evaluations
+  func: start_eval
+- name: list_evals
+  kind: function.lua
+  source: file://handlers.lua
+  method: list_evals
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: list_evals.endpoint
+  kind: http.endpoint
+  method: GET
+  path: /docscout/{id}/evaluations
+  func: list_evals
+- name: get_eval
+  kind: function.lua
+  source: file://handlers.lua
+  method: get_eval
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: get_eval.endpoint
+  kind: http.endpoint
+  method: GET
+  path: /docscout/{id}/evaluations/{eval_id}
+  func: get_eval

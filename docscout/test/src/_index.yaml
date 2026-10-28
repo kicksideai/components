@@ -283,6 +283,8 @@ entries:
   method: run
   imports:
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    repository: kickside.docscout:repository
 - name: lifecycle_test
   kind: function.lua
   meta:
@@ -348,3 +350,34 @@ entries:
   - uuid
   imports:
     test: wippy.test:test
+- name: scoring_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: docscout_scoring
+    group: Docscout
+  source: file://scoring_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    scoring: kickside.docscout.evals:scoring
+    evals: kickside.docscout.evals:evals
+- name: evals_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: docscout_evals
+    group: Docscout
+  source: file://evals_test.lua
+  method: run
+  modules:
+  - funcs
+  - security
+  - registry
+  - json
+  - uuid
+  - time
+  imports:
+    test: wippy.test:test
+    user_repo: kickside.users.persist:user_repo
+    user_groups_repo: kickside.users.persist:user_groups_repo

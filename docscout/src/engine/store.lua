@@ -23,7 +23,10 @@ local SPEC = {
     tsvector = "search_vector",
 }
 
+-- Database failures: a native error keeps its classification; a driver
+-- message is an unavailable database.
 local function failed(message: string, cause: any): error
+    if type(cause) == "userdata" then return errors.wrap(cause, message) end
     return errors.new({ kind = errors.UNAVAILABLE, message = message .. ": " .. tostring(cause), retryable = true })
 end
 
@@ -65,8 +68,9 @@ function M.find(owner_id: string, upload_id: string, checksum: string, processin
     return row, nil
 end
 
--- Stores a processed document with its chunks and vectors in one transaction,
--- replacing an expired copy under the same key.
+-- Stores a processed document with its chunks and vectors in one transaction
+-- and returns its id. A fresh copy saved meanwhile by another run under the
+-- same key is kept and its id returned; an expired copy is replaced.
 function M.save(doc: any, chunks: { any }): (string?, error?)
     local db, sqlite, err = open()
     if err then return nil, err end
@@ -76,11 +80,16 @@ function M.save(doc: any, chunks: { any }): (string?, error?)
         tx:rollback(); db:release()
         return nil, failed(message, cause)
     end
-    local stale, stale_err = tx:query([[SELECT id FROM kickside_docscout_documents
+    local existing, lookup_err = tx:query([[SELECT id, expires_at FROM kickside_docscout_documents
         WHERE owner_id=$1 AND upload_id=$2 AND content_checksum=$3 AND processing_key=$4]],
         { doc.owner_id, doc.upload_id, doc.checksum, doc.processing_key })
-    if stale_err then return abort("processed document lookup failed", stale_err) end
-    for _, row in ipairs(stale or {}) do
+    if lookup_err then return abort("processed document lookup failed", lookup_err) end
+    for _, row in ipairs(existing or {}) do
+        if row.expires_at > now() then
+            local _, rollback_err = tx:rollback(); db:release()
+            if rollback_err then return nil, failed("processed document transaction could not end", rollback_err) end
+            return row.id, nil
+        end
         local remove_err = M.remove_tx(tx, sqlite, row.id)
         if remove_err then return abort("expired processed document could not be removed", remove_err) end
     end
@@ -155,12 +164,14 @@ function M.expire(limit: integer): (integer?, error?)
 end
 
 -- Searches one processed document. mode is keyword, semantic or hybrid;
--- ordinals, when given, keeps results inside that region of the document.
+-- ordinals, when given, keeps results inside that region of the document,
+-- and an empty region holds nothing.
 function M.search(document_id: string, opts: any): (any?, error?)
-    local db, sqlite, err = open()
+    if opts.ordinals and #opts.ordinals == 0 then return {}, nil end
+    local db, _, err = open()
     if err then return nil, err end
     local filters: { any } = {}
-    if opts.ordinals and #opts.ordinals > 0 then filters[1] = { column = "ordinal", values = opts.ordinals } end
+    if opts.ordinals then filters[1] = { column = "ordinal", values = opts.ordinals } end
     local search_opts: any = { partition = document_id, limit = math.tointeger(opts.limit) or 10, filters = filters, query_text = opts.text }
     local rows, search_err
     if opts.mode == "keyword" then

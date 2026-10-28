@@ -84,10 +84,13 @@ function M.delete(id)
     if svc_err or not svc then return nil,svc_err end
     return checked(svc:delete({component_id=id}))
 end
+local LIST_LIMIT = 100
 function M.list()
-    local rows,err = component.query({impl_ids={KIND},include={meta=true},limit=100})
+    local rows,err = component.query({impl_ids={KIND},include={meta=true},limit=LIST_LIMIT + 1})
     if err then return nil,err end
-    return {success=true,items=rows},nil
+    local truncated = #rows > LIST_LIMIT
+    if truncated then rows[#rows] = nil end
+    return {success=true,items=rows,truncated=truncated},nil
 end
 function M.add_case(id,dto)
     local context,err=access(id,component.ACCESS.WRITE)

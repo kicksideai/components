@@ -4,6 +4,7 @@
 -- tools; stages call them directly.
 local store = require("store")
 local ai = require("ai")
+local shapes = require("shapes")
 
 local M = {}
 
@@ -29,7 +30,7 @@ M.TOOLS = {
     },
 }
 
--- ctx: { document, retrieval, meter, region (ordinals or nil), pool (optional) }
+-- ctx: { document, retrieval, meter }. region, when given, keeps results inside those chunk ordinals.
 function M.search(ctx: any, mode: string, query: string, limit: integer, region: { integer }?, min_similarity: number?): (any?, error?)
     local vector = nil
     if mode ~= "keyword" then
@@ -60,20 +61,21 @@ function M.outline_text(outline: { any }): string
     return table.concat(lines, "\n")
 end
 
--- Runs one tool call for the agent scout and returns chunks found plus a text result.
-function M.call(ctx: any, name: string, args: any): (any, string)
+-- Runs one tool call for the agent scout: chunks found, their text for the model, or an error.
+function M.call(ctx: any, name: string, args: any): (any, string?, error?)
+    local limit = math.tointeger(args.limit) or 5
     local hits, err
-    if name == "keyword_search" then hits, err = M.search(ctx, "keyword", tostring(args.query or ""), math.tointeger(math.min(20, tonumber(args.limit) or 5)) or 5, ctx.region)
-    elseif name == "semantic_search" then hits, err = M.search(ctx, "semantic", tostring(args.query or ""), math.tointeger(math.min(20, tonumber(args.limit) or 5)) or 5, ctx.region)
-    elseif name == "read_section" then hits, err = M.section(ctx, tostring(args.section_id or ""))
-    elseif name == "read_outline" then return {}, M.outline_text(ctx.document.outline)
-    else return {}, "Unknown tool " .. tostring(name) end
-    if err then return {}, "Error: " .. tostring(err) end
-    local lines = {}
-    for _, c in ipairs(hits or {}) do
-        lines[#lines + 1] = "[C" .. c.ordinal .. "] " .. c.heading_path .. (c.page_start and (" (p." .. c.page_start .. ")") or "") .. "\n" .. c.content
-    end
-    return hits or {}, #lines > 0 and table.concat(lines, "\n\n") or "No passages found."
+    if name == "keyword_search" then hits, err = M.search(ctx, "keyword", tostring(args.query or ""), limit, nil)
+    elseif name == "semantic_search" then hits, err = M.search(ctx, "semantic", tostring(args.query or ""), limit, nil)
+    elseif name == "read_section" then
+        hits, err = M.section(ctx, tostring(args.section_id or ""))
+        -- An unknown section id is the model's mistake; it can correct it from the outline.
+        if err and (err :: any):kind() == errors.NOT_FOUND then return {}, tostring(err), nil end
+    elseif name == "read_outline" then return {}, M.outline_text(ctx.document.outline), nil
+    else return nil, nil, errors.new({ kind = errors.INVALID, message = "unknown document tool " .. tostring(name) }) end
+    if err then return nil, nil, err end
+    if #hits == 0 then return hits, "No passages found.", nil end
+    return hits, shapes.render(hits), nil
 end
 
 return M

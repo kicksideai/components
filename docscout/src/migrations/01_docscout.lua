@@ -1,7 +1,8 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Docscout's own tables. Processed documents are an expiring cache: one row per
 -- upload, owner and processing settings, with chunks searchable by keyword and by
--- vector through kickside/search-index. Runs expire with the same window.
+-- vector through kickside/search-index; both dialects index the chunk's context
+-- with its text. Runs expire with the same window.
 -- Evaluation cases, evaluations and their per-case results belong to the
 -- extractor and go when it is deleted.
 local SQLITE = {
@@ -35,7 +36,7 @@ local SQLITE = {
         upload_name TEXT NOT NULL, expected_values TEXT NOT NULL, created_at TEXT NOT NULL)]=],
     [=[CREATE INDEX kickside_docscout_cases_owner ON kickside_docscout_cases(component_id)]=],
     [=[CREATE TABLE kickside_docscout_evals (
-        id TEXT PRIMARY KEY, component_id TEXT NOT NULL, config_revision BIGINT NOT NULL,
+        id TEXT PRIMARY KEY, component_id TEXT NOT NULL, config_revision BIGINT NOT NULL, fields TEXT NOT NULL,
         status TEXT NOT NULL, actor_id TEXT NOT NULL, actor_context TEXT NOT NULL,
         case_count INTEGER NOT NULL, metrics TEXT, tokens BIGINT NOT NULL DEFAULT 0,
         duration_ms BIGINT NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, finished_at TEXT)]=],
@@ -58,7 +59,7 @@ local POSTGRES = {
         id TEXT PRIMARY KEY, document_id TEXT NOT NULL, ordinal INTEGER NOT NULL,
         section_id TEXT NOT NULL, heading_path TEXT NOT NULL, page_start INTEGER, page_end INTEGER,
         content TEXT NOT NULL, context TEXT NOT NULL DEFAULT '',
-        search_vector tsvector GENERATED ALWAYS AS (to_tsvector('simple', regexp_replace(COALESCE(content, ''), '[^[:alnum:]]+', ' ', 'g'))) STORED)]=],
+        search_vector tsvector GENERATED ALWAYS AS (to_tsvector('simple', regexp_replace(COALESCE(context, '') || ' ' || COALESCE(content, ''), '[^[:alnum:]]+', ' ', 'g'))) STORED)]=],
     [=[CREATE INDEX kickside_docscout_chunks_document ON kickside_docscout_chunks(document_id,ordinal)]=],
     [=[CREATE INDEX kickside_docscout_chunks_section ON kickside_docscout_chunks(document_id,section_id)]=],
     [=[CREATE INDEX kickside_docscout_chunks_fts ON kickside_docscout_chunks USING gin (search_vector)]=],
@@ -79,7 +80,7 @@ local POSTGRES = {
         upload_name TEXT NOT NULL, expected_values TEXT NOT NULL, created_at TEXT NOT NULL)]=],
     [=[CREATE INDEX kickside_docscout_cases_owner ON kickside_docscout_cases(component_id)]=],
     [=[CREATE TABLE kickside_docscout_evals (
-        id TEXT PRIMARY KEY, component_id TEXT NOT NULL, config_revision BIGINT NOT NULL,
+        id TEXT PRIMARY KEY, component_id TEXT NOT NULL, config_revision BIGINT NOT NULL, fields TEXT NOT NULL,
         status TEXT NOT NULL, actor_id TEXT NOT NULL, actor_context TEXT NOT NULL,
         case_count INTEGER NOT NULL, metrics TEXT, tokens BIGINT NOT NULL DEFAULT 0,
         duration_ms BIGINT NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, finished_at TEXT)]=],

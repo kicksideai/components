@@ -18,6 +18,7 @@ entries:
     - kickside.docscout.api:*
     - kickside.docscout.engine:*
     - kickside.docscout.callers:*
+    - kickside.docscout.evals:*
     actions:
     - registry.get
     - registry.find
@@ -33,6 +34,7 @@ entries:
     - kickside.docscout.api:*
     - kickside.docscout.engine:*
     - kickside.docscout.callers:*
+    - kickside.docscout.evals:*
     actions:
     - contract.get
     - contract.open
@@ -42,16 +44,39 @@ entries:
     - funcs.call
     - funcs.security
     effect: allow
-- name: retention_db_access
+- name: system_db_access
   kind: security.policy
   meta:
     private: true
-    comment: Lets the retention callback open the Docscout database.
+    comment: Lets Docscout's system workers open the requirement-bound Docscout database.
   groups: []
   policy:
-    resources: '*'
     actions:
     - db.get
+    effect: allow
+- name: eval_defer
+  kind: security.policy
+  meta:
+    private: true
+    comment: The evaluation case worker resolves the identity an evaluation recorded.
+  groups: []
+  policy:
+    resources:
+    - kickside.docscout.evals:case_worker
+    actions:
+    - kickside.execution.defer
+    effect: allow
+- name: eval_actor
+  kind: security.policy
+  meta:
+    private: true
+    comment: The evaluation case worker builds the live actor of the recorded principal.
+  groups: []
+  policy:
+    resources:
+    - '*'
+    actions:
+    - security.actor.create
     effect: allow
 - name: member_endpoints
   kind: security.policy
@@ -71,6 +96,9 @@ entries:
     - kickside.docscout.api:add_case.endpoint
     - kickside.docscout.api:delete_case.endpoint
     - kickside.docscout.api:run.endpoint
+    - kickside.docscout.api:start_eval.endpoint
+    - kickside.docscout.api:list_evals.endpoint
+    - kickside.docscout.api:get_eval.endpoint
     - kickside.docscout:page_view
     actions:
     - access

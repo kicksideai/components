@@ -10,9 +10,15 @@ local M = {}
 M.DIMENSIONS = 512
 local EMBED_BATCH = 64
 
+-- The llm module reports provider failures as strings; those are transient.
+-- A native error keeps its own kind and retryability.
 local function model_error(what: string, err: any): error
+    if type(err) == "userdata" then return errors.wrap(err, what .. " failed") end
     return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = what .. " failed: " .. tostring(err) })
 end
+
+-- Characters per token for prompt size estimates; matches the chunker.
+local CHARS_PER_TOKEN = 4
 
 local function messages(system: string, user: string): { any }
     return {
@@ -30,6 +36,30 @@ end
 
 function M.meter(): any
     return { input_tokens = 0, output_tokens = 0 }
+end
+
+-- The model behind a reference such as class:fast, as its catalog card.
+function M.resolve(model: string): (any?, error?)
+    local card, err = llm.resolve_model(model)
+    if err then return nil, model_error("model lookup (" .. model .. ")", err) end
+    if type(card) ~= "table" then
+        return nil, errors.new({ kind = errors.NOT_FOUND, message = "no model answers to " .. model })
+    end
+    return card, nil
+end
+
+-- Refuses a prompt that, with its output allowance, exceeds the model's context window.
+function M.check_budget(model: string, prompt_text: string, output_tokens: integer): error?
+    local card, err = M.resolve(model)
+    if err then return err end
+    local window = tonumber(card.max_tokens)
+    if not window or window <= 0 then return nil end
+    local needed = math.ceil(#prompt_text / CHARS_PER_TOKEN) + output_tokens
+    if needed > window then
+        return errors.new({ kind = errors.INVALID, message = "the extraction prompt needs about " .. needed .. " tokens but " .. tostring(card.name or model) ..
+            " takes " .. math.floor(window) .. "; lower Top results, passages per field or fields per call" })
+    end
+    return nil
 end
 
 -- Structured output as a Lua table that matches schema.
@@ -57,9 +87,10 @@ function M.generate(meter: any, model: string, system: string, user: string, opt
 end
 
 -- A tool-using conversation: call(name, args) runs a tool and returns its text.
--- Stops when the model answers without tools or after max_calls tool calls.
+-- Stops when the model answers without tools, after max_calls tool calls, or
+-- when a tool fails.
 function M.agent(meter: any, model: string, system: string, user: string, tools: { any }, max_calls: integer,
-        call: (string, any) -> string, opts: any?): (string?, integer, error?)
+        call: (string, any) -> (string?, error?), opts: any?): (string?, integer, error?)
     local conversation = prompt.new()
     conversation:add_system(system)
     conversation:add_user(user)
@@ -77,7 +108,12 @@ function M.agent(meter: any, model: string, system: string, user: string, tools:
             local args, encode_err = json.encode(tc.arguments or {})
             if encode_err then return nil, calls, model_error("agent tool call", encode_err) end
             conversation:add_function_call(tc.name, args, tc.id)
-            local result = calls <= max_calls and call(tc.name, tc.arguments or {}) or "Tool budget used; answer now."
+            local result = "Tool budget used; answer now."
+            if calls <= max_calls then
+                local text, call_err = call(tc.name, tc.arguments or {})
+                if call_err then return nil, calls, call_err end
+                result = text :: string
+            end
             local encoded = json.encode(result)
             conversation:add_function_result(tc.name, encoded, tc.id)
         end

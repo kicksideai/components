@@ -33,20 +33,24 @@ entries:
   kind: function.lua
   source: file://callers.lua
   method: contract_run
-  modules: [json, registry]
   imports:
     engine: kickside.docscout.engine:run
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    config: kickside.docscout:config
+    shapes: kickside.docscout.engine:shapes
 - name: block_run
   kind: function.lua
   meta:
     comment: Execution target of the Extract document fields Block.
   source: file://callers.lua
   method: block
-  modules: [json, registry]
   imports:
     engine: kickside.docscout.engine:run
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    config: kickside.docscout:config
+    shapes: kickside.docscout.engine:shapes
 - name: block.extract
   kind: registry.entry
   meta:
@@ -102,73 +106,126 @@ entries:
     type: tool
     title: Run Docscout
     llm_alias: DocscoutExtract
-    llm_description: Run a Docscout extractor on an uploaded document and get each field's value with a supporting quote and page. Use DocscoutList to find extractors.
+    llm_description: "Run a Docscout extractor on an uploaded document and get each field's value with a supporting quote and page. Use DocscoutList to find extractors."
     mcp:
       required_scopes: [state.read]
     input_schema: |
-      {"type": "object", "additionalProperties": false, "required": ["extractor_id", "upload_id"],
-       "properties": {"extractor_id": {"type": "string", "description": "Extractor id from DocscoutList"},
-                      "upload_id": {"type": "string", "description": "Id of an upload you can read"}}}
+      {"type": "object", "additionalProperties": false, "required": ["extractor_id", "upload_id"], "properties": {"extractor_id": {"type": "string", "description": "Extractor id from DocscoutList"}, "upload_id": {"type": "string", "description": "Id of an upload you can read"}}}
+    output_schema: |
+      {"type": "object", "required": ["success"], "properties": {"success": {"type": "boolean"}, "error": {"type": "string"}, "kind": {"type": "string"}, "retryable": {"type": "boolean"}, "run_id": {"type": "string"}, "verified": {"type": "boolean"}, "fields": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}, "value": {}, "found": {"type": "boolean"}, "verified": {"type": "boolean"}, "confidence": {"type": "number"}, "reason": {"type": "string"}, "quote": {"type": "string"}, "section": {"type": "string"}, "page": {"type": "integer"}}}}}}
   source: file://callers.lua
   method: tool_run
-  modules: [json, registry]
   imports:
     engine: kickside.docscout.engine:run
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    config: kickside.docscout:config
+    shapes: kickside.docscout.engine:shapes
 - name: list_tool
   kind: function.lua
   meta:
     type: tool
     title: List Docscout extractors
     llm_alias: DocscoutList
-    llm_description: List the Docscout extractors you can use, with their ids and field counts.
+    llm_description: "List the Docscout extractors you can use, with their ids and field counts."
     mcp:
       required_scopes: [state.read]
     input_schema: |
       {"type": "object", "additionalProperties": false, "properties": {"filter": {"type": "string", "description": "Optional text to match in titles"}}}
+    output_schema: |
+      {"type": "object", "required": ["success"], "properties": {"success": {"type": "boolean"}, "error": {"type": "string"}, "kind": {"type": "string"}, "retryable": {"type": "boolean"}, "truncated": {"type": "boolean"}, "extractors": {"type": "array", "items": {"type": "object", "properties": {"extractor_id": {"type": "string"}, "title": {"type": "string"}, "description": {"type": "string"}, "fields": {"type": "integer"}}}}}}
   source: file://callers.lua
   method: tool_list
-  modules: [json, registry]
   imports:
     engine: kickside.docscout.engine:run
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    config: kickside.docscout:config
+    shapes: kickside.docscout.engine:shapes
 - name: get_tool
   kind: function.lua
   meta:
     type: tool
     title: Read a Docscout extractor
     llm_alias: DocscoutGet
-    llm_description: Read an extractor's full configuration, its revision and the JSON Schema the configuration must satisfy. Needs write access.
+    llm_description: "Read an extractor's full configuration, its revision, its evaluation case count and the JSON Schema the configuration must satisfy. Needs edit access."
     mcp:
       required_scopes: [state.read]
     input_schema: |
       {"type": "object", "additionalProperties": false, "required": ["extractor_id"], "properties": {"extractor_id": {"type": "string"}}}
+    output_schema: |
+      {"type": "object", "required": ["success"], "properties": {"success": {"type": "boolean"}, "error": {"type": "string"}, "kind": {"type": "string"}, "retryable": {"type": "boolean"}, "title": {"type": "string"}, "description": {"type": "string"}, "expected_revision": {"type": "integer"}, "cases": {"type": "integer"}, "config": {"type": "object"}, "config_schema": {"type": "object"}}}
   source: file://callers.lua
   method: tool_get
-  modules: [json, registry]
   imports:
     engine: kickside.docscout.engine:run
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    config: kickside.docscout:config
+    shapes: kickside.docscout.engine:shapes
 - name: configure_tool
   kind: function.lua
   meta:
     type: tool
     title: Configure a Docscout extractor
     llm_alias: DocscoutConfigure
-    llm_description: Save a new configuration for an extractor. Pass the whole configuration as read with DocscoutGet, changed as needed, and the expected_revision it returned; the save fails if someone changed it meanwhile.
+    llm_description: "Save a new configuration for an extractor. Pass the whole configuration as read with DocscoutGet, changed as needed, and the expected_revision it returned; the save fails if someone changed it meanwhile."
     mcp:
       required_scopes: [state.read, state.write]
     input_schema: |
-      {"type": "object", "additionalProperties": false, "required": ["extractor_id", "title", "config", "expected_revision"],
-       "properties": {"extractor_id": {"type": "string"}, "title": {"type": "string"}, "description": {"type": "string"},
-                      "config": {"type": "object", "description": "Complete configuration matching config_schema from DocscoutGet"},
-                      "expected_revision": {"type": "integer"}}}
+      {"type": "object", "additionalProperties": false, "required": ["extractor_id", "title", "config", "expected_revision"], "properties": {"extractor_id": {"type": "string"}, "title": {"type": "string"}, "description": {"type": "string"}, "config": {"type": "object", "description": "Complete configuration matching config_schema from DocscoutGet"}, "expected_revision": {"type": "integer"}}}
+    output_schema: |
+      {"type": "object", "required": ["success"], "properties": {"success": {"type": "boolean"}, "error": {"type": "string"}, "kind": {"type": "string"}, "retryable": {"type": "boolean"}, "revision": {"type": "integer"}}}
   source: file://callers.lua
   method: tool_configure
-  modules: [json, registry]
   imports:
     engine: kickside.docscout.engine:run
     extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    config: kickside.docscout:config
+    shapes: kickside.docscout.engine:shapes
+- name: evaluate_tool
+  kind: function.lua
+  meta:
+    type: tool
+    title: Evaluate a Docscout extractor
+    llm_alias: DocscoutEvaluate
+    llm_description: "Start an evaluation: every evaluation case runs at the extractor's current configuration in the background. Read the outcome with DocscoutEvaluation once it completes."
+    mcp:
+      required_scopes: [state.read, state.write]
+    input_schema: |
+      {"type": "object", "additionalProperties": false, "required": ["extractor_id"], "properties": {"extractor_id": {"type": "string"}}}
+    output_schema: |
+      {"type": "object", "required": ["success"], "properties": {"success": {"type": "boolean"}, "error": {"type": "string"}, "kind": {"type": "string"}, "retryable": {"type": "boolean"}, "eval_id": {"type": "string"}}}
+  source: file://callers.lua
+  method: tool_evaluate
+  imports:
+    engine: kickside.docscout.engine:run
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    config: kickside.docscout:config
+    shapes: kickside.docscout.engine:shapes
+- name: evaluation_tool
+  kind: function.lua
+  meta:
+    type: tool
+    title: Read a Docscout evaluation
+    llm_alias: DocscoutEvaluation
+    llm_description: "Read an evaluation's status, per-field accuracy and per-case scores; without eval_id, the latest one."
+    mcp:
+      required_scopes: [state.read]
+    input_schema: |
+      {"type": "object", "additionalProperties": false, "required": ["extractor_id"], "properties": {"extractor_id": {"type": "string"}, "eval_id": {"type": "string"}}}
+    output_schema: |
+      {"type": "object", "required": ["success"], "properties": {"success": {"type": "boolean"}, "error": {"type": "string"}, "kind": {"type": "string"}, "retryable": {"type": "boolean"}, "eval_id": {"type": "string"}, "status": {"type": "string", "enum": ["queued", "running", "completed", "failed"]}, "revision": {"type": "integer"}, "accuracy": {"type": "array"}, "cases": {"type": "array"}}}
+  source: file://callers.lua
+  method: tool_evaluation
+  imports:
+    engine: kickside.docscout.engine:run
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    config: kickside.docscout:config
+    shapes: kickside.docscout.engine:shapes
 - name: reader
   kind: registry.entry
   meta:
@@ -191,13 +248,16 @@ entries:
     title: Build and tune Docscout extractors
     public: true
     icon: tabler:adjustments
-    comment: Lets an agent read, configure and test Docscout extractors.
+    comment: Lets an agent configure Docscout extractors and measure each change against their evaluation cases.
   prompt: |
-    You can configure Docscout extractors. Read the configuration and its schema with DocscoutGet, change fields or stages,
-    save with DocscoutConfigure using the returned expected_revision, and test with DocscoutExtract on an upload.
-    Change one thing at a time and compare results before keeping it.
+    You can configure and tune Docscout extractors. Read the configuration and its schema with DocscoutGet. Measure before
+    changing anything: start an evaluation with DocscoutEvaluate and read it with DocscoutEvaluation when it completes.
+    Change one thing at a time, save it with DocscoutConfigure using the returned expected_revision, evaluate again, and
+    keep the change only when accuracy rises or holds at lower cost; otherwise restore the earlier configuration.
   tools:
   - kickside.docscout.callers:list_tool
   - kickside.docscout.callers:get_tool
   - kickside.docscout.callers:configure_tool
   - kickside.docscout.callers:run_tool
+  - kickside.docscout.callers:evaluate_tool
+  - kickside.docscout.callers:evaluation_tool

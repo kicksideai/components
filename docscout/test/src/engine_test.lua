@@ -54,13 +54,16 @@ return { run = test.run_cases(function()
             test.eq(termination.title, "Termination"); test.eq(termination.page_start, 2)
             test.eq(chunks[#chunks].section_id, termination.id)
         end)
-        test.it("keys processed copies by the settings that change them", function()
-            local base = process.processing_key(retrieval())
-            test.eq(base, process.processing_key(retrieval({ top_results = 20, section_budget = 900 })))
-            test.is_true(base ~= process.processing_key(retrieval({ chunk_size = 600 })))
-            test.is_true(base ~= process.processing_key(retrieval({ context = "generated" })))
-            test.eq(process.processing_key(retrieval({ context_model = "class:nano" })), base)
-            test.is_true(process.processing_key(retrieval({ context = "generated", context_model = "class:nano" })) ~= process.processing_key(retrieval({ context = "generated" })))
+        test.it("keys processed copies by the settings and resolved models that change them", function()
+            local models = { embedding = "towers/qwen3-embed", context = "towers/gemma" }
+            local base = process.processing_key(retrieval(), models)
+            test.eq(base, process.processing_key(retrieval({ top_results = 20, section_budget = 900 }), models))
+            test.is_true(base ~= process.processing_key(retrieval({ chunk_size = 600 }), models))
+            test.is_true(base ~= process.processing_key(retrieval({ context = "generated" }), models))
+            test.is_true(base ~= process.processing_key(retrieval(), { embedding = "other/embedder", context = "towers/gemma" }))
+            test.eq(process.processing_key(retrieval(), { embedding = "towers/qwen3-embed", context = "other/writer" }), base)
+            test.is_true(process.processing_key(retrieval({ context = "generated" }), models) ~=
+                process.processing_key(retrieval({ context = "generated" }), { embedding = "towers/qwen3-embed", context = "other/writer" }))
         end)
     end)
 
@@ -84,13 +87,18 @@ return { run = test.run_cases(function()
             test.eq(semantic[1].ordinal, 1)
             local scoped = assert(store.search(id, { mode = "semantic", vector = unit(1), limit = 5, ordinals = { 2 } }))
             test.eq(#scoped, 1); test.eq(scoped[1].ordinal, 2)
-            local again, again_err = store.save({ owner_id = owner, upload_id = upload, checksum = "c1", processing_key = "k1",
-                outline = {}, page_count = 0, tokens = 0, expires_at = "2000-01-01T00:00:00Z" }, { chunks[1] })
-            test.is_nil(again_err, tostring(again_err))
-            test.is_nil((store.find(owner, upload, "c1", "k1")))
-            local removed = assert(store.expire(100))
-            test.is_true(removed >= 1)
-            test.eq(#assert(store.all_chunks(again)), 0)
+            test.eq(#assert(store.search(id, { mode = "keyword", text = "terminate", limit = 5, ordinals = {} })), 0)
+            local concurrent = assert(store.save({ owner_id = owner, upload_id = upload, checksum = "c1", processing_key = "k1",
+                outline = {}, page_count = 0, tokens = 0, expires_at = far_future() }, { chunks[1] }))
+            test.eq(concurrent, id)
+            test.eq(#assert(store.all_chunks(id)), 2)
+            local expired = assert(store.save({ owner_id = owner, upload_id = upload, checksum = "c2", processing_key = "k1",
+                outline = {}, page_count = 0, tokens = 0, expires_at = "2000-01-01T00:00:00Z" }, { chunks[1] }))
+            local replaced = assert(store.save({ owner_id = owner, upload_id = upload, checksum = "c2", processing_key = "k1",
+                outline = {}, page_count = 0, tokens = 0, expires_at = far_future() }, { chunks[2] }))
+            test.is_true(replaced ~= expired)
+            test.eq(#assert(store.all_chunks(expired)), 0)
+            test.eq(assert(store.all_chunks(replaced))[1].content, chunks[2].content)
         end)
     end)
 
@@ -118,27 +126,58 @@ return { run = test.run_cases(function()
     end)
 
     test.describe("Verification", function()
-        test.it("accepts quotes found in the document, rejects invented ones and finds quotes cited against the wrong chunk", function()
-            local owner, upload = "owner-" .. uuid.v4(), "upload-" .. uuid.v4()
-            local id = assert(store.save({ owner_id = owner, upload_id = upload, checksum = "c", processing_key = "k", outline = {},
+        local function document(): string
+            return assert(store.save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k", outline = {},
                 page_count = 0, tokens = 0, expires_at = far_future() }, {
-                { ordinal = 1, section_id = "s1", heading_path = "Payment", content = "The total amount due is USD 1,250.00.", vector = unit(1) },
-                { ordinal = 2, section_id = "s2", heading_path = "Terms", content = "Payment within 30 days of receipt.", vector = unit(2) },
+                { ordinal = 1, section_id = "s1", heading_path = "Payment", content = "The **total amount due** is USD 1,250.00.", page_start = 1, vector = unit(1) },
+                { ordinal = 2, section_id = "s2", heading_path = "Terms", content = "Payment within 30 days of receipt. Discount: -5%.", page_start = 2, vector = unit(2) },
             }))
-            local run = { document = { id = id }, config = { stages = { verify = { enabled = true, check_quotes = true, check_support = false, model = "class:fast" } } },
-                values = {
-                    { name = "total", value = 1250, missing = false, evidence = { { quote = "total amount due is USD 1,250.00", chunk = 1 } } },
-                    { name = "terms", value = "Net 30", missing = false, evidence = { { quote = "Payment within 30 days", chunk = 1 } } },
-                    { name = "invented", value = "Net 60", missing = false, evidence = { { quote = "payable within 60 days", chunk = 2 } } },
-                    { name = "absent", value = nil, missing = true, evidence = {} },
-                } }
+        end
+        local function field(name: string, over: any?): any
+            local f = { name = name, search_within = "document", evidence_required = true }
+            for k, v in pairs(over or {}) do f[k] = v end
+            return f
+        end
+        local function quotes_only(fields: { any }, values: { any }): any
+            return { document = { id = document() }, regions = {}, values = values,
+                config = { fields = fields, stages = { verify = { enabled = true, check_quotes = true, check_support = false, model = "class:fast" } } } }
+        end
+        test.it("accepts quotes in the document, relocates misattributed ones with all their locators and rejects changed signs", function()
+            local run = quotes_only({ field("total"), field("terms"), field("discount"), field("absent") }, {
+                { name = "total", value = 1250, missing = false, evidence = { { quote = "total amount due is USD 1,250.00", chunk = 1 } } },
+                { name = "terms", value = "Net 30", missing = false, evidence = { { quote = "Payment within 30 days", chunk = 1, chunk_id = "wrong", section = "Payment", page = 1 } } },
+                { name = "discount", value = 5, missing = false, evidence = { { quote = "Discount: +5%", chunk = 2 } } },
+                { name = "absent", missing = true, evidence = {} },
+            })
             local step = { meter = { input_tokens = 0, output_tokens = 0 } }
             test.is_nil(stages.verify(run, step))
             test.is_true(run.values[1].verified)
-            test.is_true(run.values[2].verified); test.eq(run.values[2].evidence[1].chunk, 2)
-            test.is_false(run.values[3].verified)
+            local moved = run.values[2].evidence[1]
+            test.is_true(run.values[2].verified); test.eq(moved.chunk, 2); test.eq(moved.section, "Terms"); test.eq(moved.page, 2)
+            test.is_true(moved.chunk_id ~= "wrong")
+            test.is_false(run.values[3].verified); test.eq(run.values[3].reason, "A quote is not in the document")
             test.is_true(run.values[4].verified)
-            test.eq(step.message, "1 values need review")
+            test.eq(step.message, "1 value needs review")
+        end)
+        test.it("fails a value without a quote when its field requires evidence", function()
+            local run = quotes_only({ field("total"), field("note", { evidence_required = false }) }, {
+                { name = "total", value = 1250, missing = false, reason = "No quote supports this value", evidence = {} },
+                { name = "note", value = "paid", missing = false, evidence = {} },
+            })
+            local step = { meter = { input_tokens = 0, output_tokens = 0 } }
+            test.is_nil(stages.verify(run, step))
+            test.is_false(run.values[1].verified)
+            test.is_true(run.values[1].reason:find("No quote supports this value", 1, true) ~= nil)
+            test.eq(step.message, "2 values need review")
+        end)
+        test.it("only relocates a quote inside the field's selected sections", function()
+            local run = quotes_only({ field("terms", { search_within = "sections" }) }, {
+                { name = "terms", value = "Net 30", missing = false, evidence = { { quote = "Payment within 30 days", chunk = 1 } } },
+            })
+            run.regions.terms = { 1 }
+            local step = { meter = { input_tokens = 0, output_tokens = 0 } }
+            test.is_nil(stages.verify(run, step))
+            test.is_false(run.values[1].verified)
         end)
     end)
 end) }
