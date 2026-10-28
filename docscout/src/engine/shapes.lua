@@ -119,6 +119,25 @@ function M.json_object(reply: string): (any?, error?)
     return decoded, nil
 end
 
+-- Characters of a model reply kept with an error about it.
+M.REPLY_EXCERPT = 4000
+
+-- The object in a text reply that must satisfy schema; an error keeps an
+-- excerpt of the reply as raw_content.
+function M.reply_object(reply: string, schema: any): (any?, error?)
+    local excerpt = reply:sub(1, M.REPLY_EXCERPT)
+    local decoded, err = M.json_object(reply)
+    if err then
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = (err :: any):message(), details = { raw_content = excerpt } })
+    end
+    local valid, invalid_err = json.validate(schema, decoded)
+    if not valid then
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, details = { raw_content = excerpt },
+            message = "the reply does not match the schema: " .. tostring(invalid_err) })
+    end
+    return decoded, nil
+end
+
 -- Quotes a value may cite.
 M.EVIDENCE_LIMIT = 5
 

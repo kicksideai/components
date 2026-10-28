@@ -486,13 +486,7 @@ function M.extract(run: any, step: any): error?
             local textual, gen_err = ai.generate(step.meter, cfg.model, EXTRACT_SYSTEM ..
                 "\nReply with only a JSON object that satisfies this JSON Schema; chunk is the integer after C. Use null for value when found is false.\n" .. schema_text,
                 user, { max_tokens = cfg.max_output_tokens })
-            if gen_err then err = gen_err else result, err = shapes.json_object(textual) end
-            if not err then
-                local valid, invalid_err = json.validate(shapes.group_schema(batch, true), result)
-                if not valid then
-                    err = errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply does not match the field schema: " .. tostring(invalid_err) })
-                end
-            end
+            if gen_err then err = gen_err else result, err = shapes.reply_object(textual :: string, shapes.group_schema(batch, true)) end
         end
         if err then
             -- The llm module refuses a prompt larger than the model's window before calling it.
