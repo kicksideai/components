@@ -22,13 +22,17 @@ describe('Extractor configuration',()=>{
   c.stages.map.enabled=false;expect(configError(c)).toContain('Map the document')
   c.stages.map.enabled=true;expect(configError(c)).toBe('')
   c.stages.scout.mode='agent';c.stages.scout.tools=[];expect(configError(c)).toContain('at least one tool')
-  c.stages.scout.tools=['kickside.docscout.tools:read_section'];c.stages.verify.enabled=true;c.stages.verify.check_quotes=false;c.stages.verify.check_support=false
+  c.stages.scout.tools=['kickside.docscout.tools:read_section'];c.stages.scout.max_rounds=0;expect(configError(c)).toContain('at least one round')
+  c.stages.scout.max_rounds=2;c.stages.verify.enabled=true;c.stages.verify.check_quotes=false;c.stages.verify.check_support=false
   expect(configError(c)).toContain('Verify needs')
+  c.stages.verify.check_quotes=true;c.fields=[{...newField(),name:'amounts',type:'list',item_type:'number',enum_values:['1']}]
+  expect(configError(c)).toContain('Allowed values apply to enum fields and lists of text')
  })
  it('suggests an expected format that matches the value type',()=>{
   expect(formatPlaceholder({...newField(),type:'date'})).toContain('YYYY-MM-DD')
   expect(formatPlaceholder({...newField(),type:'list',item_type:'number'})).toContain('decimal')
   expect(takesChoices({...newField(),type:'list'})).toBe(true);expect(takesChoices({...newField(),type:'text'})).toBe(false)
+  expect(takesChoices({...newField(),type:'list',item_type:'number'})).toBe(false)
  })
 })
 

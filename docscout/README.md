@@ -1,15 +1,26 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Docscout
 
-Docscout configures owned, shareable document extractors. The workspace discovers its create and manage views through the `kickside.docscout:extractor` component kind.
+Docscout extracts typed fields from uploaded documents, with a quote, section and page for every value. Each extractor is a shareable component of kind `kickside.docscout:extractor`: WRITE edits its configuration, cases and evaluations; READ runs it.
 
-Configuration lives in component private context. Updates require WRITE and an `expected_revision`; the component service commits configuration and public metadata atomically. READ grants expose Test and Runs. The public metadata contains title, description, field count, and status. Deletion uses the component service and removes the extractor's document, run, and evaluation case rows.
+## Extraction
 
-The manage view provides Fields, Workflow, Retrieval, Test, Evals, and Runs. Models use `wc-model-picker`; uploads use the shared async picker over the Uploads catalog. The configuration schema and defaults live in `src/config.schema.json` and serve both native validation and the UI.
+The engine reads an upload's extracted Markdown through `kickside.contract:content_provider`, splits it into chunks that keep sections and tables, and indexes them for keyword and vector search through `kickside/search-index` in Docscout's own tables. A processed copy belongs to the user and upload and is reused while fresh for the same content, chunking settings and resolved models. Then the configured stages run in order: Map, Prefetch, Scout (structured loop or agent with document tools), Deep analysis, the optional highlighter, Extract per field group, and Verify. Document text is treated as untrusted data in every prompt, every model output is bounded by the configuration, and Verify checks each quote against the stored chunks.
 
-`kickside.docscout:extraction.run` declares the single extraction interface. Block and agent caller declarations include their schemas and remain private until their execution targets exist. This module does not implement extraction, chunking, embeddings, evaluation execution, or tuning. Test and execution controls show unavailable states. Development fixtures live only in `ui/harness`, which the module package excludes.
+Every run is recorded with a per-step trace of time, tokens, queries and messages. Processed documents and runs expire after the global `kickside.docscout.retention` duration (default `2h`); the `kickside.retention.owner` callback removes them.
 
-The global `kickside.docscout.retention` duration setting defaults to `2h`. Processed documents and run tables carry ownership, upload references, and expiry. Their future writers and retention callback belong to the extraction engine. Evaluation cases persist upload references and typed expected values without reading or modifying upload storage.
+## Callers
+
+- Test tab: `POST /docscout/{id}/run` with an upload.
+- Contract `kickside.docscout.callers:extraction`, method `run`.
+- Workflow Block `kickside.docscout.callers:block.extract`: config picks the extractor, input carries `upload_id`; output has `values`, `fields`, `verified`, `run_id`, `pages`, and failures route to the `failed` port.
+- Agent tools DocscoutList, DocscoutExtract, DocscoutGet, DocscoutConfigure, DocscoutEvaluate and DocscoutEvaluation, exposed by the traits `reader` and `configurator`.
+
+All callers run under their own identity and need READ on the extractor and access to the upload.
+
+## Evaluations
+
+Cases pair an upload with the values it states; a field left out is one the document does not state. An evaluation runs every case as its own `kickside/jobs` job through the extraction contract, under the identity of the person who started it, resolved again when each job runs. Values are scored by field type: numbers as printed, dates by their digits, text by word overlap, lists as order-free F1 and objects by their expected keys. The last case writes per-field accuracy. Cases, evaluations and their results go with the extractor.
 
 ## Development
 

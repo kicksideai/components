@@ -24,7 +24,7 @@ const chips=computed(()=>{
 const traceLine=(t:TraceStep)=>[`${(t.duration_ms/1000).toFixed(1)}s`,`${(t.input_tokens+t.output_tokens).toLocaleString()} tokens`,t.queries?.length?`${t.queries.length} queries`:'',t.message??''].filter(Boolean).join(' · ')
 </script>
 <template>
- <div class="node" :class="{active,off:!on,fixed:stage==='extract'}" role="button" tabindex="0" :aria-label="stageLabels[stage]" @click="emit('select')" @keydown.enter="emit('select')">
+ <div class="node" :class="{active,off:!on,fixed:stage==='extract'}" role="button" tabindex="0" :aria-label="stageLabels[stage]" @click="emit('select')" @keydown.enter="emit('select')" @keydown.space.prevent="emit('select')">
   <span class="node-icon"><Icon :icon="stageIcons[stage]"/></span>
   <span class="node-main">
    <span class="node-title">{{stageLabels[stage]}}</span>

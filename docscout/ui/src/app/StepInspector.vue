@@ -3,6 +3,7 @@
 import {computed} from 'vue'
 import ModelPicker from './ModelPicker.vue'
 import Toggle from './Toggle.vue'
+import Segmented from './Segmented.vue'
 import Slider from './Slider.vue'
 import ScoutDiagram from './ScoutDiagram.vue'
 import DeepDiagram from './DeepDiagram.vue'
@@ -25,7 +26,7 @@ function setTool(id:string,on:boolean){
 
   <template v-if="stage==='map'">
    <div class="toggle-row"><span>Stage enabled</span><Toggle v-model="s.map.enabled" label="Enable step" :disabled="readonly"/></div>
-   <div class="label-block"><span id="outline-label">Outline</span><div class="segmented" role="radiogroup" aria-labelledby="outline-label"><button type="button" role="radio" :aria-checked="s.map.outline==='find_or_build'" @click="s.map.outline='find_or_build'">Use contents first</button><button type="button" role="radio" :aria-checked="s.map.outline==='build'" @click="s.map.outline='build'">Always build</button></div><small>The document's own headings are used when it has them; otherwise the model builds an outline.</small></div>
+   <div class="label-block"><span id="outline-label">Outline</span><Segmented v-model="s.map.outline" labelled-by="outline-label" :options="[{value:'find_or_build',label:'Use contents first'},{value:'build',label:'Always build'}]"/><small>The document's own headings are used when it has them; otherwise the model builds an outline.</small></div>
    <div class="toggle-row"><span>Section summaries<small>A short summary per section helps pick the right sections in long documents.</small></span><Toggle v-model="s.map.section_summaries" label="Section summaries" :disabled="readonly"/></div>
    <h4>Models</h4>
    <div id="model-map" class="model-role"><span>Outliner</span><ModelPicker :value="s.map.model" capability="generate" labelled-by="model-map" @select="s.map.model=$event"/></div>
@@ -48,16 +49,17 @@ function setTool(id:string,on:boolean){
 
   <template v-if="stage==='scout'">
    <div class="toggle-row"><span>Stage enabled</span><Toggle v-model="s.scout.enabled" label="Enable step" :disabled="readonly"/></div>
-   <div class="label-block"><span id="mode-label">Mode</span><div class="segmented" role="radiogroup" aria-labelledby="mode-label"><button type="button" role="radio" :aria-checked="s.scout.mode==='loop'" @click="s.scout.mode='loop'">Structured loop</button><button type="button" role="radio" :aria-checked="s.scout.mode==='agent'" @click="s.scout.mode='agent'">Agent</button></div><small>{{s.scout.mode==='loop'?'Each round the model rates the evidence, drops noise and proposes queries; the engine runs them.':'The model reads the document itself with the tools below, following references until confident.'}}</small></div>
-   <ScoutDiagram :rounds="s.scout.max_rounds" :confidence="s.scout.target_confidence" :extra="s.scout.max_extra_queries"/>
+   <div class="label-block"><span id="mode-label">Mode</span><Segmented v-model="s.scout.mode" labelled-by="mode-label" :options="[{value:'loop',label:'Structured loop'},{value:'agent',label:'Agent'}]"/><small>{{s.scout.mode==='loop'?'Each round the model rates the evidence, drops noise and proposes queries; the engine runs them.':'The model reads the document itself with the tools below, following references until confident.'}}</small></div>
+   <ScoutDiagram v-if="s.scout.mode==='loop'" :rounds="s.scout.max_rounds" :confidence="s.scout.target_confidence" :extra="s.scout.max_extra_queries"/>
    <h4>Models</h4>
    <div id="model-scout" class="model-role"><span>Scout</span><ModelPicker :value="s.scout.model" capability="generate" labelled-by="model-scout" @select="s.scout.model=$event"/></div>
    <h4>Loop</h4>
-   <Slider v-model="s.scout.max_rounds" label="Follow-up rounds" :min="b('max_rounds').min" :max="b('max_rounds').max" :hints="['Single pass','Thorough']" :disabled="readonly"/>
-   <Slider v-model="s.scout.target_confidence" label="Stop at confidence" :min="b('target_confidence').min" :max="b('target_confidence').max" :step="0.05" percent :hints="['Stop early','Keep looking']" :disabled="readonly"/>
+   <Slider v-model="s.scout.max_rounds" :label="s.scout.mode==='agent'?'Rounds':'Follow-up rounds'" :min="b('max_rounds').min" :max="b('max_rounds').max" :hints="['Single pass','Thorough']" :disabled="readonly"/>
+   <Slider v-if="s.scout.mode==='loop'" v-model="s.scout.target_confidence" label="Stop at confidence" :min="b('target_confidence').min" :max="b('target_confidence').max" :step="0.05" percent :hints="['Stop early','Keep looking']" :disabled="readonly"/>
    <Slider v-model="s.scout.max_extra_queries" :label="s.scout.mode==='agent'?'Tool calls per round':'New queries per round'" :min="b('max_extra_queries').min" :max="b('max_extra_queries').max" :disabled="readonly"/>
    <Slider v-model="s.scout.max_tokens" label="Scout output limit" :min="b('max_tokens').min" :max="b('max_tokens').max" log :step="64" unit="tokens" :disabled="readonly"/>
-   <div class="toggle-row"><span>Drop noisy chunks<small>Chunks the scout judges irrelevant leave the evidence pool.</small></span><Toggle v-model="s.scout.drop_noise" label="Drop noisy chunks" :disabled="readonly"/></div>
+   <p v-if="s.scout.mode==='agent'" class="muted">Tool budget: {{s.scout.max_rounds*s.scout.max_extra_queries}} calls.</p>
+   <div v-if="s.scout.mode==='loop'" class="toggle-row"><span>Drop noisy chunks<small>Chunks no field needs leave the evidence pool; chunks cited for a field always stay.</small></span><Toggle v-model="s.scout.drop_noise" label="Drop noisy chunks" :disabled="readonly"/></div>
    <div class="toggle-row"><span>Share scout notes with extraction<small>Extraction sees what the scout learned.</small></span><Toggle v-model="s.scout.share_notes" label="Share scout notes with extraction" :disabled="readonly"/></div>
    <template v-if="s.scout.mode==='agent'">
     <h4>Agent tools</h4>
@@ -68,7 +70,7 @@ function setTool(id:string,on:boolean){
   <template v-if="stage==='deep'">
    <div class="toggle-row"><span>Stage enabled</span><Toggle v-model="s.deep.enabled" label="Enable step" :disabled="readonly"/></div>
    <DeepDiagram :fields="deepCount" :parallel="s.deep.parallel_fields" :queries="s.deep.max_queries" :per-query="s.deep.chunks_per_query" :cap="s.deep.chunk_cap"/>
-   <div class="label-block"><span id="read-label">Reads</span><div class="segmented" role="radiogroup" aria-labelledby="read-label"><button type="button" role="radio" :aria-checked="s.deep.read==='chunks'" @click="s.deep.read='chunks'">Retrieved chunks</button><button type="button" role="radio" :aria-checked="s.deep.read==='sections'" @click="s.deep.read='sections'">Whole sections</button></div><small>Whole sections suit clauses that span many passages; long sections fall back to chunks.</small></div>
+   <div class="label-block"><span id="read-label">Reads</span><Segmented v-model="s.deep.read" labelled-by="read-label" :options="[{value:'chunks',label:'Retrieved chunks'},{value:'sections',label:'Whole sections'}]"/><small>Whole sections suit clauses that span many passages; long sections fall back to chunks.</small></div>
    <h4>Models</h4>
    <div id="model-deep" class="model-role"><span>Analysis</span><ModelPicker :value="s.deep.model" capability="generate" labelled-by="model-deep" @select="s.deep.model=$event"/></div>
    <div id="model-deep-query" class="model-role"><span>Query writer</span><ModelPicker :value="s.deep.query_model" capability="generate" labelled-by="model-deep-query" @select="s.deep.query_model=$event"/></div>

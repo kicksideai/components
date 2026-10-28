@@ -50,25 +50,19 @@
       "properties": {
         "entry-id": {
           "type": "string",
-          "description": "Selected component id supplied by the workspace."
+          "default": "",
+          "description": "Id of the extractor component to manage, supplied by the workspace. Empty shows a message instead of an extractor."
         }
       }
     },
     "events": {
       "type": "object",
-      "properties": {
-        "navigate": {
-          "type": "object"
-        },
-        "created": {
-          "type": "object"
-        }
-      }
+      "properties": {}
     },
     "scripts": {
       "build": "build"
     },
-    "description": "Component manage view with field, workflow, retrieval, test, evaluation, and run tabs."
+    "description": "Docscout extractor view for the workspace: Builder for fields and the reading flow, Test to run on an upload, Evals to measure accuracy against expected values, and Runs. The create view emits created with {id}; the page view emits navigate with its sub-path."
   },
   "scripts": {
     "build": "vite build",

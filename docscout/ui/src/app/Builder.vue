@@ -149,7 +149,7 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
      <label>Tags<input v-model.lazy="tags" placeholder="invoices, finance"/><small>Comma separated</small></label>
     </fieldset>
     <div v-else-if="selected.kind==='output'" class="inspector-form">
-     <p class="muted">Every caller gets the same result: one value per field with confidence, evidence quotes and their section, plus the run trace.</p>
+     <p class="muted">The Test tab, agents, evaluations and Workflows all run this configuration. Each value comes with its confidence, verification and quotes with section and page; every run is recorded with its step trace.</p>
      <ul class="output-list"><li v-for="f in config.fields" :key="f.name"><span class="mono">{{f.name||'New field'}}</span><span class="chip">{{typeLabel(f)}}</span></li></ul>
      <p class="muted">Used by people in Test, by agents through the Docscout tools, by evals, and in Workflows as the Extract document fields block.</p>
     </div>

@@ -13,6 +13,12 @@ local function call(id,dto) return funcs.new():with_actor(actor(id)):with_scope(
 local function defaults()
     return assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).default
 end
+local function field(name,over)
+    local f=assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+    f.name=name
+    for k,v in pairs(over or {}) do f[k]=v end
+    return f
+end
 local function input()
     return {title="Invoice reader",description="Invoice fields",config=defaults()}
 end
@@ -68,7 +74,11 @@ return {run=test.run_cases(function()
                 function(c) c.stages.prefetch.queries={{name="Q",query="",chunks=5}} end,
                 function(c) c.stages.scout.mode="swarm" end,
                 function(c) c.retrieval.context="summaries" end,
-                function(c) c.stages.extract.enabled=false end
+                function(c) c.stages.extract.enabled=false end,
+                function(c) c.stages.scout.mode="agent";c.stages.scout.max_rounds=0 end,
+                function(c) c.stages.scout.mode="agent";c.stages.scout.max_rounds=2;c.stages.scout.max_extra_queries=0 end,
+                function(c) c.fields={field("amounts",{type="list",item_type="number",enum_values={"1","2"}})} end,
+                function(c) c.fields={field("vendor",{enum_values={"a"}})} end
             }) do
                 local invalid=input();mutate(invalid.config)
                 local result,validation_err=call(who,{op="create",input=invalid})
@@ -141,6 +151,11 @@ return {run=test.run_cases(function()
             test.eq(#view.cases,1);test.eq(view.cases[1].expected.total,1250);test.eq(view.cases[1].upload_name,"Example invoice.pdf")
             local invalid,invalid_err=call(who,{op="add_case",id=id,input={upload_id="example-upload",upload_name="Example invoice.pdf",expected={total="invalid"}}})
             test.is_nil(invalid);test.not_nil(invalid_err)
+            local unstated,unstated_err=call(who,{op="add_case",id=id,input={upload_id="other-upload",upload_name="Unstated total.pdf",expected=json.decode("{}")}})
+            test.is_nil(unstated_err,tostring(unstated_err));test.not_nil(unstated)
+            local unknown,unknown_err=call(who,{op="add_case",id=id,input={upload_id="example-upload",upload_name="Example invoice.pdf",expected={vendor="x"}}})
+            test.is_nil(unknown);test.not_nil(unknown_err)
+            test.not_nil(call(who,{op="delete_case",id=id,case_id=unstated.id}))
             local stranger,stranger_err=call(uuid.v4(),{op="add_case",id=id,input={upload_id="example-upload",upload_name="Example invoice.pdf",expected={total=100}}})
             test.is_nil(stranger);test.not_nil(stranger_err)
             test.not_nil(call(who,{op="delete_case",id=id,case_id=added.id}))

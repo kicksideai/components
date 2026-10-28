@@ -31,9 +31,9 @@ export const stageLabels:Record<StageKey,string>={map:'Map the document',prefetc
 export const stageIcons:Record<StageKey,string>={map:'tabler:list-tree',prefetch:'tabler:search',scout:'tabler:radar-2',deep:'tabler:microscope',extract:'tabler:table-export',verify:'tabler:shield-check'}
 export const stagePurpose:Record<StageKey,string>={
  map:'Find the table of contents or build an outline, then pick the sections each field should read.',
- prefetch:'Run fixed queries and every field\'s search hints to fill the evidence pool.',
+ prefetch:'Search for every field by its name, description and hints, plus any fixed queries, to fill the evidence pool.',
  scout:'Judge the evidence, drop noise and look for more until confident.',
- deep:'Give each deep field its own search and analysis, in parallel with scouting.',
+ deep:'Give each deep field its own searches and a written analysis, several fields at a time.',
  extract:'Fill the fields from the evidence, one group of fields per call.',
  verify:'Check that each quote exists in the document and supports its value.',
 }
@@ -53,7 +53,7 @@ export function stageSummary(key:StageKey,config:Config):string{
  const s=config.stages
  switch(key){
   case 'map':{const scoped=config.fields.filter(f=>f.search_within==='sections').length;return [s.map.outline==='build'?'Always build an outline':'Contents first, else build',scoped?`${plural(scoped,'field')} read Map's sections`:''].filter(Boolean).join(' · ')}
-  case 'prefetch':{const hints=config.fields.filter(f=>f.search_hints.trim()).length;return [plural(s.prefetch.queries.length,'query'),hints?plural(hints,'field hint'):''].filter(Boolean).join(' · ')}
+  case 'prefetch':{const searched=config.fields.filter(f=>f.strategy!=='deep'||!s.deep.enabled).length,hints=config.fields.filter(f=>f.search_hints.trim()).length;return [plural(searched,'field'),hints?plural(hints,'field hint'):'',s.prefetch.queries.length?plural(s.prefetch.queries.length,'query'):''].filter(Boolean).join(' · ')}
   case 'scout':return `${s.scout.mode==='agent'?'Agent with tools':'Structured loop'} · ${s.scout.max_rounds?`up to ${plural(s.scout.max_rounds,'round')}, stop at ${Math.round(s.scout.target_confidence*100)}%`:'single pass'}`
   case 'deep':{const deep=config.fields.filter(f=>f.strategy==='deep').length;return deep?`${plural(deep,'field')} · reads ${s.deep.read} · ${s.deep.parallel_fields} at a time`:'No deep fields'}
   case 'extract':{const calls=extractCalls(config);return `${s.extract.structured_output?'Structured output':'Free text'} · ${plural(fieldGroups(config).length,'group')}, ${plural(calls,'call')}`}
@@ -74,12 +74,13 @@ export function toolLabel(id:string):string{
  return name.replace(/_/g,' ').replace(/^\w/,c=>c.toUpperCase())
 }
 
-export const takesChoices=(f:Field)=>f.type==='enum'||f.type==='list'
+export const takesChoices=(f:Field)=>f.type==='enum'||(f.type==='list'&&f.item_type==='text')
 export function fieldError(f:Field,otherNames:string[]):string{
  if(!f.name)return 'Name the field.'
  if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(f.name))return 'Start with a letter; use letters, numbers and underscores.'
  if(otherNames.includes(f.name))return 'Another field already uses this name.'
  if(f.type==='enum'&&!f.enum_values.length)return 'Add at least one allowed value.'
+ if(f.enum_values.length&&f.type!=='enum'&&!(f.type==='list'&&f.item_type==='text'))return 'Allowed values apply to enum fields and lists of text.'
  return ''
 }
 export function formatPlaceholder(f:Field):string{
@@ -92,6 +93,7 @@ export function configError(config:Config):string {
  if(s.prefetch.queries.some(q=>!q.name.trim()||!q.query.trim()))return 'Prefetch queries need a name and a query.'
  if(!s.map.enabled&&config.fields.some(f=>f.search_within==='sections'))return 'Fields that read sections need Map the document.'
  if(s.scout.enabled&&s.scout.mode==='agent'&&!s.scout.tools.length)return 'Agent scouting needs at least one tool.'
+ if(s.scout.enabled&&s.scout.mode==='agent'&&(!s.scout.max_rounds||!s.scout.max_extra_queries))return 'Agent scouting needs at least one round and one tool call per round.'
  if(s.verify.enabled&&!s.verify.check_quotes&&!s.verify.check_support)return 'Verify needs at least one check.'
  if(config.retrieval.overlap>=config.retrieval.chunk_size)return 'Overlap must be smaller than chunk size.'
  return ''

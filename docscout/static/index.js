@@ -1,20 +1,14 @@
-import { defineComponent as n, computed as r, openBlock as p, createBlock as c } from "vue";
+import { defineComponent as t, computed as r, openBlock as n, createBlock as p } from "vue";
 import "@iconify/vue";
-import { define as i } from "@wippy-fe/proxy";
-import { u as s, d as m } from "./index-DC4KoVbP.js";
-import { _ as a } from "./Extractor.vue_vue_type_script_setup_true_lang-DHvf5FOR.js";
+import { define as c } from "@wippy-fe/proxy";
+import { u as i, d as s } from "./index-DmncycM2.js";
+import { _ as m } from "./Extractor.vue_vue_type_script_setup_true_lang-CwtlFikD.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
-const d = /* @__PURE__ */ n({
+const a = /* @__PURE__ */ t({
   __name: "ManageRoot",
   setup(u) {
-    const o = s(), t = r(() => o.value.entryId ?? "");
-    return (l, _) => (p(), c(a, { id: t.value }, null, 8, ["id"]));
+    const e = i(), o = r(() => e.value.entryId ?? "");
+    return (l, _) => (n(), p(m, { id: o.value }, null, 8, ["id"]));
   }
-}), e = m(d, { type: "object", properties: { "entry-id": { type: "string", description: "Selected component id supplied by the workspace." } } });
-async function h() {
-  return e;
-}
-i(import.meta.url, e);
-export {
-  h as webComponent
-};
+}), d = s(a, { type: "object", properties: { "entry-id": { type: "string", description: "Selected component id supplied by the workspace." } } });
+c(import.meta.url, d);
