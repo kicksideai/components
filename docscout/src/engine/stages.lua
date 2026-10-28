@@ -285,7 +285,11 @@ function M.scout(run: any, step: any): error?
             M.scout_input(run, fields), { max_tokens = cfg.max_tokens })
         if err then return err end
         run.confidence = tonumber(result.confidence) or 0
-        if cfg.drop_noise then shapes.prune(run.pool, result.drop, result.evidence) end
+        if cfg.drop_noise then
+            local selected = {}
+            for _, f in ipairs(fields) do for _, n in ipairs(M.region(run, f) or {}) do selected[#selected + 1] = n end end
+            shapes.prune(run.pool, result.drop, result.evidence, selected)
+        end
         if cfg.share_notes then for _, note in ipairs(result.notes) do run.notes[#run.notes + 1] = { field = note.field, text = note.note } end end
         if rounds > cfg.max_rounds or run.confidence >= cfg.target_confidence or #result.queries == 0 then break end
         for i, q in ipairs(result.queries) do

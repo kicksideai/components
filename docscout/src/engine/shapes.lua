@@ -40,12 +40,14 @@ function M.drop(pool: any, ordinal: integer): boolean
 end
 
 -- Drops the passages a reviewer marked as noise, except any it cites as a
--- field's evidence. Returns how many were dropped.
-function M.prune(pool: any, noise: { any }, evidence: { any }): integer
+-- field's evidence and any inside selected, the regions Map chose for
+-- sections fields. Returns how many were dropped.
+function M.prune(pool: any, noise: { any }, evidence: { any }, selected: { integer }?): integer
     local cited = {}
     for _, item in ipairs(evidence) do
         for _, n in ipairs(item.chunks) do cited[math.tointeger(tonumber(n)) or -1] = true end
     end
+    for _, n in ipairs(selected or {}) do cited[n] = true end
     local dropped = 0
     for _, n in ipairs(noise) do
         local ordinal = math.tointeger(tonumber(n))
