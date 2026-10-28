@@ -7,6 +7,7 @@ local store = require("store")
 local stages = require("stages")
 local sql = require("sql")
 local funcs = require("funcs")
+local shapes = require("shapes")
 
 local MARKDOWN = table.concat({
     "<!-- page 1 -->", "", "Preamble before any heading.", "",
@@ -85,6 +86,8 @@ return { run = test.run_cases(function()
             test.eq(keyword[1].ordinal, 2); test.eq(keyword[1].page_start, 2)
             local semantic = assert(store.search(id, { mode = "semantic", vector = unit(1), limit = 1 }))
             test.eq(semantic[1].ordinal, 1)
+            local close = assert(store.search(id, { mode = "hybrid", text = "amount due", vector = unit(1), limit = 5, min_similarity = 0.5 }))
+            test.eq(#close, 1); test.eq(close[1].ordinal, 1); test.eq(type(close[1].similarity), "number")
             local scoped = assert(store.search(id, { mode = "semantic", vector = unit(1), limit = 5, ordinals = { 2 } }))
             test.eq(#scoped, 1); test.eq(scoped[1].ordinal, 2)
             test.eq(#assert(store.search(id, { mode = "keyword", text = "terminate", limit = 5, ordinals = {} })), 0)
@@ -122,6 +125,32 @@ return { run = test.run_cases(function()
             local rows = assert(db:query("SELECT count(*) AS n FROM kickside_docscout_runs WHERE id=$1", { run_id }))
             db:release()
             test.eq(tonumber(rows[1].n), 0)
+        end)
+    end)
+
+    test.describe("Regions", function()
+        test.it("returns exactly the selected region and refuses a sections field without one", function()
+            local run = { regions = { terms = { 2, 3 } } }
+            local count = select("#", stages.region(run, { name = "terms", search_within = "sections" }))
+            test.eq(count, 1)
+            test.is_nil(stages.region(run, { name = "total", search_within = "document" }))
+            local ok = pcall(stages.region, run, { name = "missing", search_within = "sections" })
+            test.is_false(ok)
+        end)
+        test.it("prefetches a sections field only inside its region", function()
+            local id = assert(store.save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k", outline = {},
+                page_count = 0, tokens = 0, expires_at = far_future() }, {
+                { ordinal = 1, section_id = "s1", heading_path = "Fees", content = "The renewal fee is USD 100.", vector = unit(1) },
+                { ordinal = 2, section_id = "s2", heading_path = "Term", content = "Renewal notice is ninety days.", vector = unit(2) },
+            }))
+            local field = { name = "notice", description = "renewal notice", search_hints = "", strategy = "standard", search_within = "sections", chunks = 5 }
+            local run = { document = { id = id }, regions = { notice = { 2 } }, pool = shapes.pool(),
+                config = { fields = { field }, retrieval = { search_mode = "keyword" }, stages = { deep = { enabled = false }, prefetch = { queries = {} } } } }
+            local step = { meter = { input_tokens = 0, output_tokens = 0 } }
+            test.is_nil(stages.prefetch(run, step))
+            local ordinals = {}
+            for _, c in ipairs(shapes.ordered(run.pool)) do ordinals[#ordinals + 1] = c.ordinal end
+            test.eq(json.encode(ordinals), json.encode({ 2 }))
         end)
     end)
 

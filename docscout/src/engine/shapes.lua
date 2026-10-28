@@ -137,11 +137,14 @@ function M.value_schema(f: any): any
     return { type = JSON_TYPES[f.type] }
 end
 
--- One structured-output schema for a group of fields.
-function M.group_schema(fields: { any }): any
+-- One structured-output schema for a group of fields. Strict structured output
+-- has the model fill value with a placeholder when found is false; a free-text
+-- reply may leave it null instead, so its schema does not require value.
+function M.group_schema(fields: { any }, optional_values: boolean?): any
     local properties, required = {}, {}
+    local members = optional_values and { "found", "confidence", "evidence" } or { "found", "value", "confidence", "evidence" }
     for _, f in ipairs(fields) do
-        properties[f.name] = { type = "object", additionalProperties = false, required = { "found", "value", "confidence", "evidence" }, properties = {
+        properties[f.name] = { type = "object", additionalProperties = false, required = members, properties = {
             found = { type = "boolean" },
             value = M.value_schema(f),
             confidence = { type = "number", minimum = 0, maximum = 1 },

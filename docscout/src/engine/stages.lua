@@ -15,14 +15,16 @@ local M = {}
 
 -- Region (chunk ordinals) a field searches within, or nil for the whole
 -- document. Map selects a region for every "sections" field before any search.
-local function region(run: any, field: any): { integer }?
+function M.region(run: any, field: any): { integer }?
     if field.search_within ~= "sections" then return nil end
-    return assert(run.regions[field.name], "no region selected for " .. field.name)
+    local selected = run.regions[field.name]
+    if not selected then error(errors.new({ kind = errors.INTERNAL, message = "no region selected for " .. field.name })) end
+    return selected
 end
 
 -- Whether a field may read the chunk at this ordinal.
 local function visible(run: any, field: any, ordinal: integer): boolean
-    local r = region(run, field)
+    local r = M.region(run, field)
     if not r then return true end
     for _, n in ipairs(r) do if n == ordinal then return true end end
     return false
@@ -150,7 +152,7 @@ function M.prefetch(run: any, step: any): error?
     for _, f in ipairs(run.config.fields) do
         if f.strategy ~= "deep" or not run.config.stages.deep.enabled then
             for _, query in ipairs(shapes.field_queries(f)) do
-                local hits, err = doctools.search(ctx, mode, query, f.chunks, region(run, f))
+                local hits, err = doctools.search(ctx, mode, query, f.chunks, M.region(run, f))
                 if err then return err end
                 add(run.pool, hits); queries[#queries + 1] = query
             end
@@ -232,7 +234,7 @@ function M.scout(run: any, step: any): error?
             if i > cfg.max_extra_queries then break end
             local field = nil
             for _, f in ipairs(fields) do if f.name == q.field then field = f end end
-            local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q.query, field and field.chunks or run.config.retrieval.top_results, field and region(run, field) or nil)
+            local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q.query, field and field.chunks or run.config.retrieval.top_results, field and M.region(run, field) or nil)
             if search_err then return search_err end
             add(run.pool, hits); queries_run[#queries_run + 1] = q.query
         end
@@ -264,7 +266,7 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
     end
     local seen, found = {}, {}
     for _, q in ipairs(queries) do
-        local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q, cfg.chunks_per_query, region(run, f), cfg.min_similarity)
+        local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q, cfg.chunks_per_query, M.region(run, f), cfg.min_similarity)
         if search_err then return search_err end
         for _, c in ipairs(hits) do if not seen[c.ordinal] and #found < cfg.chunk_cap then seen[c.ordinal] = true; found[#found + 1] = c end end
         all_queries[#all_queries + 1] = q
@@ -408,15 +410,17 @@ function M.extract(run: any, step: any): error?
                 "\n\nPassages:\n" .. evidence
             local budget_err = ai.check_budget(cfg.model, EXTRACT_SYSTEM .. user, cfg.max_output_tokens)
             if budget_err then return budget_err end
-            local schema = shapes.group_schema(batch)
             local result, err
             if cfg.structured_output then
-                result, err = ai.structured(step.meter, cfg.model, schema, EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
+                result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
             else
-                local textual, gen_err = ai.generate(step.meter, cfg.model, EXTRACT_SYSTEM .. "\nReply with only a JSON object keyed by field name, each {found, value, confidence, evidence:[{chunk, quote}]}.", user, { max_tokens = cfg.max_output_tokens })
+                local schema_text = json.encode(shapes.group_schema(batch, true))
+                local textual, gen_err = ai.generate(step.meter, cfg.model, EXTRACT_SYSTEM ..
+                    "\nReply with only a JSON object that satisfies this JSON Schema; chunk is the integer after C. Use null for value when found is false.\n" .. schema_text,
+                    user, { max_tokens = cfg.max_output_tokens })
                 if gen_err then err = gen_err else result, err = shapes.json_object(textual) end
                 if not err then
-                    local valid, invalid_err = json.validate(schema, result)
+                    local valid, invalid_err = json.validate(shapes.group_schema(batch, true), result)
                     if not valid then
                         err = errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply does not match the field schema: " .. tostring(invalid_err) })
                     end
@@ -427,6 +431,10 @@ function M.extract(run: any, step: any): error?
             for _, f in ipairs(batch) do
                 local item = result[f.name]
                 local cited = {}
+                -- A found value must have its type; null only stands for not found.
+                if item.found and item.value == nil then
+                    return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply marks " .. f.name .. " found without a value" })
+                end
                 for _, e in ipairs(item.evidence) do
                     local ordinal = math.tointeger(e.chunk)
                     -- A citation outside the field's region is not evidence for it.

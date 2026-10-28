@@ -78,7 +78,8 @@ return {run=test.run_cases(function()
                 function(c) c.stages.scout.mode="agent";c.stages.scout.max_rounds=0 end,
                 function(c) c.stages.scout.mode="agent";c.stages.scout.max_rounds=2;c.stages.scout.max_extra_queries=0 end,
                 function(c) c.fields={field("amounts",{type="list",item_type="number",enum_values={"1","2"}})} end,
-                function(c) c.fields={field("vendor",{enum_values={"a"}})} end
+                function(c) c.fields={field("vendor",{enum_values={"a"}})} end,
+                function(c) c.fields={field("vendor")};c.stages.prefetch.enabled=false;c.stages.scout.enabled=false end
             }) do
                 local invalid=input();mutate(invalid.config)
                 local result,validation_err=call(who,{op="create",input=invalid})

@@ -321,6 +321,7 @@ entries:
     process: kickside.docscout.engine:process
     store: kickside.docscout.engine:store
     stages: kickside.docscout.engine:stages
+    shapes: kickside.docscout.engine:shapes
 - name: shapes_test
   kind: function.lua
   meta:

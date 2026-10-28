@@ -92,6 +92,8 @@ export function configError(config:Config):string {
  const s=config.stages
  if(s.prefetch.queries.some(q=>!q.name.trim()||!q.query.trim()))return 'Prefetch queries need a name and a query.'
  if(!s.map.enabled&&config.fields.some(f=>f.search_within==='sections'))return 'Fields that read sections need Map the document.'
+ const unread=config.fields.find(f=>!(f.strategy==='deep'&&s.deep.enabled)&&!s.prefetch.enabled&&!s.scout.enabled)
+ if(unread)return `Turn on Prefetch or Scout so extraction has passages to read for ${unread.name}.`
  if(s.scout.enabled&&s.scout.mode==='agent'&&!s.scout.tools.length)return 'Agent scouting needs at least one tool.'
  if(s.scout.enabled&&s.scout.mode==='agent'&&(!s.scout.max_rounds||!s.scout.max_extra_queries))return 'Agent scouting needs at least one round and one tool call per round.'
  if(s.verify.enabled&&!s.verify.check_quotes&&!s.verify.check_support)return 'Verify needs at least one check.'

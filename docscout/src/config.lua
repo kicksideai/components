@@ -34,6 +34,12 @@ function M.validate(value: any): error?
     end
     local stages = value.stages
     if sections and not stages.map.enabled then return invalid("Fields that search within sections need Map the document") end
+    for _, field in ipairs(value.fields) do
+        local deep = field.strategy == "deep" and stages.deep.enabled
+        if not deep and not stages.prefetch.enabled and not stages.scout.enabled then
+            return invalid("Turn on Prefetch or Scout so extraction has passages to read for " .. field.name)
+        end
+    end
     if stages.scout.enabled and stages.scout.mode == "agent" then
         if #stages.scout.tools == 0 then return invalid("Agent scouting needs at least one tool") end
         if stages.scout.max_rounds == 0 or stages.scout.max_extra_queries == 0 then

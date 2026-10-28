@@ -1,6 +1,6 @@
 import { defineComponent as H, useModel as ge, openBlock as s, createElementBlock as o, withModifiers as xe, createElementVNode as e, mergeModels as we, computed as T, withKeys as Te, unref as h, normalizeClass as P, createVNode as r, toDisplayString as i, Fragment as S, renderList as O, createCommentVNode as p, createTextVNode as $, createBlock as ee, ref as D, watch as de, withDirectives as W, vModelText as Z, vModelSelect as fe, onMounted as qe, normalizeStyle as pe, onBeforeUnmount as Oe, nextTick as Xe, vShow as Se, vModelDynamic as Ye, toRaw as Re } from "vue";
 import { loadByTagName as Fe, on as Ze } from "@wippy-fe/proxy";
-import { i as $e, h as ze, t as Ce, g as ie, j as Ue, k as _e, m as Pe, l as We, o as Ae, p as el, q as ll, r as tl, v as al, w as De, x as nl, y as he, z as sl, A as ol, s as ve, n as Le, C as il, D as dl, c as se } from "./index-DmncycM2.js";
+import { i as $e, h as ze, t as Ce, g as ie, j as Ue, k as _e, m as Pe, l as We, o as Ae, p as el, q as ll, r as tl, v as al, w as De, x as nl, y as he, z as sl, A as ol, s as ve, n as Le, C as il, D as dl, c as se } from "./index-BKNQMwAG.js";
 import { Icon as L } from "@iconify/vue";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const ye = (l) => l.status === "completed" || l.status === "failed", re = (l) => l.metrics.length ? l.metrics.reduce((c, n) => c + n.accuracy, 0) / l.metrics.length : 0, ul = ["aria-checked", "aria-label", "disabled"], K = /* @__PURE__ */ H({

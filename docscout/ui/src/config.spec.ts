@@ -27,6 +27,9 @@ describe('Extractor configuration',()=>{
   expect(configError(c)).toContain('Verify needs')
   c.stages.verify.check_quotes=true;c.fields=[{...newField(),name:'amounts',type:'list',item_type:'number',enum_values:['1']}]
   expect(configError(c)).toContain('Allowed values apply to enum fields and lists of text')
+  c.fields=[{...newField(),name:'vendor'}];c.stages.prefetch.enabled=false;c.stages.scout.enabled=false
+  expect(configError(c)).toContain('Turn on Prefetch or Scout')
+  c.fields=[{...newField(),name:'terms',strategy:'deep'}];expect(configError(c)).toBe('')
  })
  it('suggests an expected format that matches the value type',()=>{
   expect(formatPlaceholder({...newField(),type:'date'})).toContain('YYYY-MM-DD')

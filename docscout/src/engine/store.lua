@@ -46,6 +46,7 @@ local function decode_chunk(row: any): any
     row.ordinal = math.tointeger(tonumber(row.ordinal)) or 0
     row.page_start = row.page_start and math.tointeger(tonumber(row.page_start)) or nil
     row.page_end = row.page_end and math.tointeger(tonumber(row.page_end)) or nil
+    row.similarity = row.similarity and tonumber(row.similarity) or nil
     return row
 end
 

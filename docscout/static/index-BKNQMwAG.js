@@ -3100,12 +3100,15 @@ function Ui(e) {
   return { text: "For example, full legal name", number: "For example, decimal with 2 places", date: "For example, YYYY-MM-DD", object: 'For example, {"name": "", "amount": 0}', boolean: "", enum: "" }[t] ?? "";
 }
 function qi(e) {
-  for (const [r, n] of e.fields.entries()) {
-    const o = Ka(n, e.fields.filter((i, l) => l !== r).map((i) => i.name));
-    if (o) return `${n.name || "New field"}: ${o}`;
+  for (const [n, o] of e.fields.entries()) {
+    const i = Ka(o, e.fields.filter((l, s) => s !== n).map((l) => l.name));
+    if (i) return `${o.name || "New field"}: ${i}`;
   }
   const t = e.stages;
-  return t.prefetch.queries.some((r) => !r.name.trim() || !r.query.trim()) ? "Prefetch queries need a name and a query." : !t.map.enabled && e.fields.some((r) => r.search_within === "sections") ? "Fields that read sections need Map the document." : t.scout.enabled && t.scout.mode === "agent" && !t.scout.tools.length ? "Agent scouting needs at least one tool." : t.scout.enabled && t.scout.mode === "agent" && (!t.scout.max_rounds || !t.scout.max_extra_queries) ? "Agent scouting needs at least one round and one tool call per round." : t.verify.enabled && !t.verify.check_quotes && !t.verify.check_support ? "Verify needs at least one check." : e.retrieval.overlap >= e.retrieval.chunk_size ? "Overlap must be smaller than chunk size." : "";
+  if (t.prefetch.queries.some((n) => !n.name.trim() || !n.query.trim())) return "Prefetch queries need a name and a query.";
+  if (!t.map.enabled && e.fields.some((n) => n.search_within === "sections")) return "Fields that read sections need Map the document.";
+  const r = e.fields.find((n) => !(n.strategy === "deep" && t.deep.enabled) && !t.prefetch.enabled && !t.scout.enabled);
+  return r ? `Turn on Prefetch or Scout so extraction has passages to read for ${r.name}.` : t.scout.enabled && t.scout.mode === "agent" && !t.scout.tools.length ? "Agent scouting needs at least one tool." : t.scout.enabled && t.scout.mode === "agent" && (!t.scout.max_rounds || !t.scout.max_extra_queries) ? "Agent scouting needs at least one round and one tool call per round." : t.verify.enabled && !t.verify.check_quotes && !t.verify.check_support ? "Verify needs at least one check." : e.retrieval.overlap >= e.retrieval.chunk_size ? "Overlap must be smaller than chunk size." : "";
 }
 function Fi(e, t) {
   const r = (n, o) => o !== null && typeof o == "object" && !Array.isArray(o) ? Object.fromEntries(Object.keys(o).sort().map((i) => [i, o[i]])) : o;
