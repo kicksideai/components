@@ -7,6 +7,7 @@ local contract=require("contract")
 local uuid=require("uuid")
 local json=require("json")
 local sql=require("sql")
+local upload_records=require("upload_records")
 local function scope() return security.new_scope({assert(security.policy("app:user"))}) end
 local function actor(id) return security.new_actor(id,{security_groups={}}) end
 local function call(id,dto) return funcs.new():with_actor(actor(id)):with_scope(scope()):call("app:probe",dto) end
@@ -21,6 +22,12 @@ local function field(name,over)
 end
 local function input()
     return {title="Invoice reader",description="Invoice fields",config=defaults()}
+end
+-- A completed upload owned by who, named as its file.
+local function upload(who,filename)
+    local id=uuid.v4()
+    assert(upload_records.create(id,who,10,"text/markdown","app:uploads",id..".md","generic",{filename=filename},"completed"))
+    return id
 end
 local function svc(id)
     return assert(contract.get("kickside.component:component_service")):with_actor(actor(id)):with_scope(scope()):open()
@@ -146,22 +153,46 @@ return {run=test.run_cases(function()
             local who=uuid.v4();local dto=input()
             dto.config.fields={{name="total",type="number",description="Total due",enum_values=assert(json.decode("[]")),item_type="text",required=true,search_hints="",validation_hints="",expected_format="",strategy="standard",evidence_required=true,chunks=5,search_within="document",group=""}}
             local id=assert(call(who,{op="create",input=dto})).component_id
-            local added,err=call(who,{op="add_case",id=id,input={upload_id="example-upload",upload_name="Example invoice.pdf",expected={total=1250}}})
+            local example,other=upload(who,"Example invoice.pdf"),upload(who,"Unstated total.pdf")
+            local added,err=call(who,{op="add_case",id=id,input={upload_id=example,expected={total=1250}}})
             test.is_nil(err,tostring(err));test.not_nil(added)
             local view=assert(call(who,{op="get",id=id}))
             test.eq(#view.cases,1);test.eq(view.cases[1].expected.total,1250);test.eq(view.cases[1].upload_name,"Example invoice.pdf")
-            local invalid,invalid_err=call(who,{op="add_case",id=id,input={upload_id="example-upload",upload_name="Example invoice.pdf",expected={total="invalid"}}})
+            local named,named_err=call(who,{op="add_case",id=id,input={upload_id=example,upload_name="Renamed.pdf",expected={total=1}}})
+            test.is_nil(named);test.not_nil(named_err)
+            local missing,missing_err=call(who,{op="add_case",id=id,input={upload_id="missing-"..uuid.v4(),expected={total=1}}})
+            test.is_nil(missing);test.not_nil(missing_err)
+            local invalid,invalid_err=call(who,{op="add_case",id=id,input={upload_id=example,expected={total="invalid"}}})
             test.is_nil(invalid);test.not_nil(invalid_err)
-            local unstated,unstated_err=call(who,{op="add_case",id=id,input={upload_id="other-upload",upload_name="Unstated total.pdf",expected=json.decode("{}")}})
+            local unstated,unstated_err=call(who,{op="add_case",id=id,input={upload_id=other,expected=json.decode("{}")}})
             test.is_nil(unstated_err,tostring(unstated_err));test.not_nil(unstated)
-            local unknown,unknown_err=call(who,{op="add_case",id=id,input={upload_id="example-upload",upload_name="Example invoice.pdf",expected={vendor="x"}}})
+            local unknown,unknown_err=call(who,{op="add_case",id=id,input={upload_id=example,expected={vendor="x"}}})
             test.is_nil(unknown);test.not_nil(unknown_err)
             test.not_nil(call(who,{op="delete_case",id=id,case_id=unstated.id}))
-            local stranger,stranger_err=call(uuid.v4(),{op="add_case",id=id,input={upload_id="example-upload",upload_name="Example invoice.pdf",expected={total=100}}})
+            local stranger,stranger_err=call(uuid.v4(),{op="add_case",id=id,input={upload_id=example,expected={total=100}}})
             test.is_nil(stranger);test.not_nil(stranger_err)
             test.not_nil(call(who,{op="delete_case",id=id,case_id=added.id}))
             test.eq(#assert(call(who,{op="get",id=id})).cases,0)
             test.not_nil(call(who,{op="delete",id=id}))
+        end)
+        test.it("shows each person only the runs they made",function()
+            local owner,reader=uuid.v4(),uuid.v4()
+            local id=assert(call(owner,{op="create",input=input()})).component_id
+            local service=assert(svc(owner))
+            assert(service:grant_subtree({root_component_id=id,subject={subject_type="user",subject_id=reader},access_mask=1}))
+            local db=assert(sql.get("app:db"))
+            for _,who in ipairs({owner,reader}) do
+                local _,run_err=db:execute([[INSERT INTO kickside_docscout_runs
+                    (id,component_id,user_id,upload_id,caller,status,config_revision,result,trace,duration_ms,tokens,created_at,expires_at)
+                    VALUES($1,$2,$3,$4,'ui','completed',0,'{}','[]',20,100,'2026-01-01','2999-01-02')]],{uuid.v4(),id,who,"upload-of-"..who})
+                test.is_nil(run_err,tostring(run_err))
+            end
+            db:release()
+            for _,who in ipairs({owner,reader}) do
+                local view=assert(call(who,{op="get",id=id}))
+                test.eq(#view.runs,1);test.eq(view.runs[1].upload_id,"upload-of-"..who)
+            end
+            test.not_nil(call(owner,{op="delete",id=id}))
         end)
         test.it("tears down the extractor's runs and cases and declares one retention duration",function()
             local who=uuid.v4();local id=assert(call(who,{op="create",input=input()})).component_id

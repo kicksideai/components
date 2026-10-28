@@ -303,6 +303,7 @@ entries:
   - uuid
   imports:
     test: wippy.test:test
+    upload_records: kickside.uploads.persist:upload_record_repo
 - name: engine_test
   kind: function.lua
   meta:
@@ -387,6 +388,7 @@ entries:
     test: wippy.test:test
     user_repo: kickside.users.persist:user_repo
     user_groups_repo: kickside.users.persist:user_groups_repo
+    upload_records: kickside.uploads.persist:upload_record_repo
 - name: fixture_llm_refuse
   kind: function.lua
   meta:

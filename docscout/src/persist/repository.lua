@@ -66,10 +66,10 @@ local function encoded(value: any, what: string): (string?, error?)
 end
 
 -- Runs and evaluation cases shown with an extractor.
-function M.snapshot(component_id: string): (any?, error?)
+function M.snapshot(component_id: string, user_id: string): (any?, error?)
     return with_db(function(db: any): (any?, error?)
         local runs, run_err = db:query([[SELECT id, caller, status, upload_id, duration_ms, tokens, created_at, expires_at
-            FROM kickside_docscout_runs WHERE component_id=$1 ORDER BY created_at DESC LIMIT 100]], { component_id })
+            FROM kickside_docscout_runs WHERE component_id=$1 AND user_id=$2 ORDER BY created_at DESC LIMIT 100]], { component_id, user_id })
         if run_err then return nil, failed("runs could not be read", run_err) end
         local cases, case_err = db:query([[SELECT id, upload_id, upload_name, expected_values
             FROM kickside_docscout_cases WHERE component_id=$1 ORDER BY created_at, id]], { component_id })

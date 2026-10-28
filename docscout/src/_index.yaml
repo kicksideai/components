@@ -131,11 +131,13 @@ entries:
   source: file://extractors.lua
   modules:
   - contract
+  - security
   imports:
     component: kickside.component:component
     config: kickside.docscout:config
     repository: kickside.docscout.persist:repository
     retention: kickside.docscout:retention
+    process: kickside.docscout.engine:process
 - name: extraction
   kind: contract.definition
   meta:

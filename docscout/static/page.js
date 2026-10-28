@@ -3,7 +3,7 @@ import { Icon as k } from "@iconify/vue";
 import { define as j } from "@wippy-fe/proxy";
 import { s as x, c as C, n as q, u as I, a as O, d as R } from "./index-BBnkhKOj.js";
 import { _ as T } from "./CreateForm.vue_vue_type_script_setup_true_lang-CBNufO4T.js";
-import { _ as U } from "./Extractor.vue_vue_type_script_setup_true_lang-DtuC8gVv.js";
+import { _ as U } from "./Extractor.vue_vue_type_script_setup_true_lang-CnaV8A6l.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const A = { class: "docscout list-page" }, G = { class: "toolbar" }, H = { class: "toolbar-title" }, J = {
   key: 0,

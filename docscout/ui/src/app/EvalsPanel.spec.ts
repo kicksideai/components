@@ -27,7 +27,7 @@ describe('Docscout evaluations',()=>{
   w.getComponent(UploadPicker).vm.$emit('select','u2','receipt.pdf')
   await w.get('input[type=number]').setValue('99.5')
   await w.get('form').trigger('submit')
-  expect(w.emitted('add-case')?.[0][0]).toEqual({upload_id:'u2',upload_name:'receipt.pdf',expected:{total:99.5}})
+  expect(w.emitted('add-case')?.[0][0]).toEqual({upload_id:'u2',expected:{total:99.5}})
  })
  it('rejects malformed JSON for list and object values',async()=>{
   const w=mountPanel({fields:[{...newField(),name:'items',type:'list'}]})

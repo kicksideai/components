@@ -27,8 +27,8 @@ local function invalid(message: string): error
 end
 
 
--- The upload's primary Markdown through the uploads content provider, read as the caller.
-function M.content(upload_id: string): (any?, error?)
+-- The uploads content provider for one upload, opened as the caller.
+local function provider_for(upload_id: string): (any?, error?)
     local definition, err = contract.get("kickside.contract:content_provider")
     if err or not definition then
         if type(err) == "userdata" then return nil, errors.wrap(err :: error, "content provider unavailable") end
@@ -40,7 +40,30 @@ function M.content(upload_id: string): (any?, error?)
         if type(open_err) == "userdata" then return nil, errors.wrap(open_err :: error, "upload content unavailable") end
         return nil, errors.new({ kind = errors.UNAVAILABLE, message = "upload content unavailable: " .. tostring(open_err) })
     end
-    local content, content_err = provider:get_content({})
+    return provider, nil
+end
+
+-- What the caller may know about an upload without reading it: its file name
+-- and type. Fails when the caller cannot read the upload.
+function M.info(upload_id: string): (any?, error?)
+    local provider, err = provider_for(upload_id)
+    if err then return nil, err end
+    local info, info_err = (provider :: any):get_info({})
+    if info_err then
+        if type(info_err) == "userdata" then return nil, errors.wrap(info_err :: error, "upload unavailable") end
+        return nil, errors.new({ kind = errors.NOT_FOUND, message = "upload unavailable: " .. tostring(info_err) })
+    end
+    if type(info) ~= "table" or info.success == false then
+        return nil, errors.new({ kind = errors.NOT_FOUND, message = "upload unavailable: " .. tostring(info and info.error) })
+    end
+    return { filename = tostring(info.filename or "upload"), content_type = info.content_type }, nil
+end
+
+-- The upload's primary Markdown through the uploads content provider, read as the caller.
+function M.content(upload_id: string): (any?, error?)
+    local provider, err = provider_for(upload_id)
+    if err then return nil, err end
+    local content, content_err = (provider :: any):get_content({})
     if content_err then return nil, content_err end
     if type(content) ~= "table" or content.success == false or type(content.content) ~= "string" then
         return nil, (content and content.error) or invalid("upload has no readable content")

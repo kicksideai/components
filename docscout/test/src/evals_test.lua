@@ -8,6 +8,7 @@ local uuid = require("uuid")
 local time = require("time")
 local user_repo = require("user_repo")
 local user_groups_repo = require("user_groups_repo")
+local upload_records = require("upload_records")
 
 local function scope() return security.new_scope({ assert(security.policy("app:user")) }) end
 local function call(who: string, dto: any): (any?, error?)
@@ -18,6 +19,13 @@ local function member(): string
     local id = uuid.v4()
     assert(user_repo.create({ user_id = id, email = id .. "@docscout.test", password = "docscout-eval-test", status = "active" }))
     assert(user_groups_repo.assign_user_to_group(id, "app:user"))
+    return id
+end
+
+-- An upload record owned by who whose stored file does not exist, so reading it fails.
+local function upload(who: string, filename: string): string
+    local id = uuid.v4()
+    assert(upload_records.create(id, who, 10, "application/pdf", "app:uploads", id .. ".pdf", "generic", { filename = filename }, "completed"))
     return id
 end
 
@@ -54,7 +62,7 @@ return { run = test.run_cases(function()
         test.it("runs each case as a job under the starter's resolved identity and records a failed case with its reason", function()
             local who = member()
             local id = extractor(who)
-            assert(call(who, { op = "add_case", id = id, input = { upload_id = "missing-" .. uuid.v4(), upload_name = "missing.pdf", expected = { total = 10 } } }))
+            assert(call(who, { op = "add_case", id = id, input = { upload_id = upload(who, "missing.pdf"), expected = { total = 10 } } }))
             local started, err = call(who, { op = "start_eval", id = id })
             test.is_nil(err, tostring(err)); test.not_nil(started.eval_id)
             local found
@@ -76,7 +84,7 @@ return { run = test.run_cases(function()
         test.it("records a case as failed when the starter's identity no longer resolves", function()
             local who = "eval-ghost-" .. uuid.v4()
             local id = extractor(who)
-            assert(call(who, { op = "add_case", id = id, input = { upload_id = "u-" .. uuid.v4(), upload_name = "a.pdf", expected = { total = 1 } } }))
+            assert(call(who, { op = "add_case", id = id, input = { upload_id = upload(who, "a.pdf"), expected = { total = 1 } } }))
             local started = assert(call(who, { op = "start_eval", id = id }))
             local e
             for _ = 1, 100 do
@@ -91,7 +99,7 @@ return { run = test.run_cases(function()
         test.it("returns the active evaluation when started again", function()
             local who = member()
             local id = extractor(who)
-            assert(call(who, { op = "add_case", id = id, input = { upload_id = "u-" .. uuid.v4(), upload_name = "a.pdf", expected = { total = 1 } } }))
+            assert(call(who, { op = "add_case", id = id, input = { upload_id = upload(who, "a.pdf"), expected = { total = 1 } } }))
             local first = assert(call(who, { op = "start_eval", id = id }))
             local second = assert(call(who, { op = "start_eval", id = id }))
             if second.existing then test.eq(second.eval_id, first.eval_id) else test.is_true(second.eval_id ~= first.eval_id) end
@@ -100,7 +108,7 @@ return { run = test.run_cases(function()
         test.it("refuses to evaluate cases that no longer match the fields", function()
             local who = "eval-owner-" .. uuid.v4()
             local id = extractor(who)
-            assert(call(who, { op = "add_case", id = id, input = { upload_id = "u-" .. uuid.v4(), upload_name = "old.pdf", expected = { total = 1 } } }))
+            assert(call(who, { op = "add_case", id = id, input = { upload_id = upload(who, "old.pdf"), expected = { total = 1 } } }))
             local view = assert(call(who, { op = "get", id = id }))
             local cfg = view.config
             cfg.fields[1].name = "amount"

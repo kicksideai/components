@@ -10,7 +10,7 @@ import RunsPanel from './RunsPanel.vue'
 import {configError,isOn,newConfig,sameConfig,stageLabels,type StageKey} from '../config'
 import type {Snapshot,Extraction,Evaluation} from '../models'
 const props=withDefaults(defineProps<{snapshot:Snapshot;result?:Extraction|null;evaluations?:Evaluation[];evaluation?:Evaluation;saving?:boolean;running?:boolean;starting?:boolean;error?:string;back?:boolean}>(),{result:null,evaluations:()=>[]})
-const emit=defineEmits<{save:[input:{title:string;description:string;config:ReturnType<typeof newConfig>;expected_revision:number}];'add-case':[input:{upload_id:string;upload_name:string;expected:Record<string,unknown>}];'delete-case':[id:string];back:[];run:[upload_id:string];evaluate:[];'open-evaluation':[eval_id:string]}>()
+const emit=defineEmits<{save:[input:{title:string;description:string;config:ReturnType<typeof newConfig>;expected_revision:number}];'add-case':[input:{upload_id:string;expected:Record<string,unknown>}];'delete-case':[id:string];back:[];run:[upload_id:string];evaluate:[];'open-evaluation':[eval_id:string]}>()
 const body=ref<HTMLElement>()
 const tab=ref('Builder'),draft=ref(newConfig()),title=ref(''),description=ref('')
 const tabs=computed(()=>props.snapshot.can_edit?['Builder','Test','Evals','Runs']:['Test','Runs'])

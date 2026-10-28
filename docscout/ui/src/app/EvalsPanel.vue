@@ -7,10 +7,10 @@ import UploadPicker from './UploadPicker.vue'
 import type {Field} from '../config'
 import {finished,meanAccuracy,type EvalCase,type Evaluation,type CaseResult,type FieldScore} from '../models'
 const props=defineProps<{cases:EvalCase[];fields:Field[];evaluations:Evaluation[];evaluation?:Evaluation;revision:number;changed?:boolean;saving?:boolean;starting?:boolean}>()
-const emit=defineEmits<{'add-case':[input:{upload_id:string;upload_name:string;expected:Record<string,unknown>}];'delete-case':[id:string];evaluate:[];open:[eval_id:string]}>()
+const emit=defineEmits<{'add-case':[input:{upload_id:string;expected:Record<string,unknown>}];'delete-case':[id:string];evaluate:[];open:[eval_id:string]}>()
 
 // Case editor. A blank input means the document does not state the field, so it is left out.
-const adding=ref(false),upload=ref(''),uploadName=ref(''),expected=ref<Record<string,string|number>>({}),error=ref('')
+const adding=ref(false),upload=ref(''),expected=ref<Record<string,string|number>>({}),error=ref('')
 watch(()=>props.cases,()=>{adding.value=false;upload.value='';expected.value={}})
 function parse(field:Field,raw:string):unknown{
  if(field.type==='number')return Number(raw)
@@ -23,7 +23,7 @@ function addCase(){
  const values:Record<string,unknown>={}
  try{for(const field of props.fields){const raw=String(expected.value[field.name]??'').trim();if(raw)values[field.name]=parse(field,raw)}}
  catch{error.value='Lists and objects need valid JSON, for example ["a","b"] or {"city":"Hamburg"}.';return}
- emit('add-case',{upload_id:upload.value,upload_name:uploadName.value,expected:values})
+ emit('add-case',{upload_id:upload.value,expected:values})
 }
 
 const running=computed(()=>props.evaluations.find(e=>!finished(e)))
@@ -134,7 +134,7 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
   <section class="block">
    <header class="block-head"><h2 class="block-title">Cases</h2><span class="count">{{cases.length}}</span><Button label="Add case" size="small" severity="secondary" class="push" :disabled="!fields.length" @click="adding=!adding"/></header>
    <form v-if="adding" class="case-form" @submit.prevent="addCase">
-    <label>Document<UploadPicker :value="upload" @select="(id,name)=>{upload=id;uploadName=name}"/></label>
+    <label>Document<UploadPicker :value="upload" @select="id=>{upload=id}"/></label>
     <p class="muted">Enter what the document states. Leave a field blank when the document does not state it; the case then expects Docscout to report it missing.</p>
     <div class="grid"><label v-for="field in fields" :key="field.name"><span class="mono">{{field.name}}</span>
      <select v-if="field.type==='boolean'" v-model="expected[field.name]"><option value="">Not stated</option><option value="true">Yes</option><option value="false">No</option></select>

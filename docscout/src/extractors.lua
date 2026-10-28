@@ -4,6 +4,8 @@ local config = require("config")
 local repository = require("repository")
 local retention = require("retention")
 local contract = require("contract")
+local security = require("security")
+local process = require("process")
 local M = {}
 local KIND = "kickside.docscout:extractor"
 local function invalid(message)
@@ -56,7 +58,8 @@ function M.get(id)
     local row, row_err = checked(svc:get({component_id=id}))
     if row_err then return nil,row_err end
     local can_edit = math.floor(context.access_level / component.ACCESS.WRITE) % 2 == 1
-    local records, records_err = repository.snapshot(id)
+    -- Each person sees the runs they made; others' runs name their uploads.
+    local records, records_err = repository.snapshot(id, security.actor():id())
     if records_err then return nil, records_err end
     local window,retention_err = retention.window()
     if retention_err then return nil,retention_err end
@@ -95,11 +98,14 @@ end
 function M.add_case(id,dto)
     local context,err=access(id,component.ACCESS.WRITE)
     if err then return nil,err end
-    if type(dto)~="table" or type(dto.upload_id)~="string" or dto.upload_id=="" or type(dto.upload_name)~="string" or dto.upload_name=="" then return nil,invalid("Choose an upload") end
-    for key in pairs(dto) do if key~="upload_id" and key~="upload_name" and key~="expected" then return nil,invalid("Unknown case field: "..tostring(key)) end end
+    if type(dto)~="table" or type(dto.upload_id)~="string" or dto.upload_id=="" then return nil,invalid("Choose an upload") end
+    for key in pairs(dto) do if key~="upload_id" and key~="expected" then return nil,invalid("Unknown case field: "..tostring(key)) end end
     local validation_err=config.validate_expected(context.context.config.fields,dto.expected)
     if validation_err then return nil,validation_err end
-    return repository.add_case(id,dto)
+    -- A case names an upload its author can read, by the upload's own file name.
+    local upload,upload_err=process.info(dto.upload_id)
+    if upload_err then return nil,upload_err end
+    return repository.add_case(id,{upload_id=dto.upload_id,upload_name=upload.filename,expected=dto.expected})
 end
 function M.delete_case(id,case_id)
     local _,err=access(id,component.ACCESS.WRITE)
