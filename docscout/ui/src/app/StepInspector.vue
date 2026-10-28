@@ -63,7 +63,7 @@ function setTool(id:string,on:boolean){
    <div class="toggle-row"><span>Share scout notes with extraction<small>Extraction sees what the scout learned.</small></span><Toggle v-model="s.scout.share_notes" label="Share scout notes with extraction" :disabled="readonly"/></div>
    <template v-if="s.scout.mode==='agent'">
     <h4>Agent tools</h4>
-    <div v-for="id in tools" :key="id" class="toggle-row"><span>{{toolLabel(id)}}<small class="mono">{{id}}</small></span><Toggle :model-value="s.scout.tools.includes(id)" :label="toolLabel(id)" :disabled="readonly" @update:model-value="setTool(id,$event)"/></div>
+    <div v-for="id in tools" :key="id" class="toggle-row"><span>{{toolLabel(id)}}</span><Toggle :model-value="s.scout.tools.includes(id)" :label="toolLabel(id)" :disabled="readonly" @update:model-value="setTool(id,$event)"/></div>
    </template>
   </template>
 

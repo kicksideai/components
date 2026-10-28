@@ -198,4 +198,17 @@ function M.object(): { [string]: any }
     return t
 end
 
+-- Values of an extraction result keyed by field name; fields not found are absent.
+function M.values(result: any): { [string]: any }
+    local out = M.object()
+    for _, f in ipairs(result.fields) do if not f.missing then out[f.name] = f.value end end
+    return out
+end
+
+-- Whether every field of an extraction result passed verification.
+function M.verified(result: any): boolean
+    for _, f in ipairs(result.fields) do if not f.verified then return false end end
+    return true
+end
+
 return M

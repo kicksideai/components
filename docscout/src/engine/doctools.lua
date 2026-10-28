@@ -9,22 +9,22 @@ local shapes = require("shapes")
 local M = {}
 
 M.TOOLS = {
-    ["kickside.docscout.tools:keyword_search"] = {
+    ["keyword_search"] = {
         name = "keyword_search", description = "Find passages containing exact words, names or numbers.",
         schema = { type = "object", additionalProperties = false, required = { "query", "limit" },
             properties = { query = { type = "string" }, limit = { type = "integer", minimum = 1, maximum = 20 } } },
     },
-    ["kickside.docscout.tools:semantic_search"] = {
+    ["semantic_search"] = {
         name = "semantic_search", description = "Find passages by meaning, even when the wording differs.",
         schema = { type = "object", additionalProperties = false, required = { "query", "limit" },
             properties = { query = { type = "string" }, limit = { type = "integer", minimum = 1, maximum = 20 } } },
     },
-    ["kickside.docscout.tools:read_section"] = {
+    ["read_section"] = {
         name = "read_section", description = "Read a whole section by its id from the outline.",
         schema = { type = "object", additionalProperties = false, required = { "section_id" },
             properties = { section_id = { type = "string" } } },
     },
-    ["kickside.docscout.tools:read_outline"] = {
+    ["read_outline"] = {
         name = "read_outline", description = "List the document's sections with their ids, pages and sizes.",
         schema = { type = "object", additionalProperties = false, properties = { detail = { type = "string", enum = { "titles" } } }, required = { "detail" } },
     },

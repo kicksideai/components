@@ -1,7 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
--- Every caller of the engine besides the Test tab: the extraction contract,
--- the Workflow Block and the agent tools. Each one runs the same engine under
--- the caller's identity.
+-- Agent tools: list, run, read and configure extractors, and evaluate them.
+-- Each runs under the calling agent's identity.
 local engine = require("engine")
 local extractors = require("extractors")
 local evals = require("evals")
@@ -19,34 +18,6 @@ local function failure(err: any): any
     return { success = false, error = tostring(err) }
 end
 
--- Field values keyed by name, as Workflow data and agent answers use them.
-local function values(result: any): { [string]: any }
-    local out = shapes.object()
-    for _, f in ipairs(result.fields) do if not f.missing then out[f.name] = f.value end end
-    return out
-end
-
-local function verified(result: any): boolean
-    for _, f in ipairs(result.fields) do if not f.verified then return false end end
-    return true
-end
-
-local function contract_run(input: any): (any?, error?)
-    if type(input) ~= "table" then return nil, invalid("Request must be an object") end
-    local caller = input.caller or "agent"
-    if caller ~= "agent" and caller ~= "workflow" and caller ~= "eval" then return nil, invalid("caller must be agent, workflow or eval") end
-    return engine.run({ id = input.extractor_id, upload_id = input.upload_id, caller = caller, deadline = input.deadline })
-end
-
-local function block(request: any): (any?, error?)
-    local cfg, input = request and request.config or {}, request and request.input or {}
-    if type(cfg.extractor_id) ~= "string" or cfg.extractor_id == "" then return nil, invalid("Choose an extractor") end
-    if type(input.upload_id) ~= "string" or input.upload_id == "" then return nil, invalid("The input needs an upload_id") end
-    local result, err = engine.run({ id = cfg.extractor_id, upload_id = input.upload_id, caller = "workflow" })
-    if err then return nil, err end
-    return { values = values(result), fields = result.fields, verified = verified(result), run_id = result.run_id, pages = result.pages }, nil
-end
-
 local function tool_run(args: any): any
     local result, err = engine.run({ id = args.extractor_id, upload_id = args.upload_id, caller = "agent" })
     if err then return failure(err) end
@@ -56,7 +27,7 @@ local function tool_run(args: any): any
         fields[#fields + 1] = { name = f.name, value = f.value, found = not f.missing, verified = f.verified, confidence = f.confidence,
             reason = f.reason, quote = quote and quote.quote or nil, section = quote and quote.section or nil, page = quote and quote.page or nil }
     end
-    return { success = true, run_id = result.run_id, verified = verified(result), fields = fields }
+    return { success = true, run_id = result.run_id, verified = shapes.verified(result), fields = fields }
 end
 
 local function tool_list(args: any): any
@@ -113,6 +84,5 @@ local function tool_evaluation(args: any): any
 end
 
 return {
-    contract_run = contract_run, block = block, tool_run = tool_run, tool_list = tool_list, tool_get = tool_get,
-    tool_configure = tool_configure, tool_evaluate = tool_evaluate, tool_evaluation = tool_evaluation,
+    run = tool_run, list = tool_list, get = tool_get, configure = tool_configure, evaluate = tool_evaluate, evaluation = tool_evaluation,
 }

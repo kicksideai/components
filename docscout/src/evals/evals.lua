@@ -134,7 +134,7 @@ function M.run_case(input: any): any
     if row_err then return finish(eval, payload.case_id, { status = "failed", error = tostring(row_err) }) end
     local executor, bind_err = execution_identity.bind(stored, { deferred_owner = WORKER })
     if bind_err then return finish(eval, payload.case_id, { status = "failed", error = tostring(bind_err) }) end
-    local result, run_err = executor:call("kickside.docscout.callers:contract_run",
+    local result, run_err = executor:call("kickside.docscout:extraction_run",
         { extractor_id = eval.component_id, upload_id = expected.upload_id, caller = "eval", deadline = input.job and input.job.deadline })
     if run_err then
         -- A run that stopped partway still spent time and tokens; its trace says how much.

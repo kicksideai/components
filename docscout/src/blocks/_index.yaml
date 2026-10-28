@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.blocks
+entries:
+- name: extract_run
+  kind: function.lua
+  meta:
+    comment: Execution target of the Extract document fields Block.
+  source: file://extract.lua
+  method: run
+  imports:
+    engine: kickside.docscout.engine:run
+    shapes: kickside.docscout.engine:shapes
+- name: extract
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Extract document fields
+    description: Runs a Docscout extractor on an upload and returns its field values with evidence.
+  data:
+    block:
+      api_version: kickside.block/v1
+      input:
+        type: object
+        additionalProperties: true
+        required: [upload_id]
+        properties:
+          upload_id: { type: string, minLength: 1, title: Upload }
+      config:
+        type: object
+        additionalProperties: false
+        required: [extractor_id]
+        properties:
+          extractor_id: { type: string, title: Extractor, picker: wc-component-picker, class: kickside.docscout }
+      output:
+        type: object
+        additionalProperties: false
+        required: [values, fields, verified, run_id]
+        properties:
+          values: { type: object, description: Field values keyed by field name; fields not in the document are absent. }
+          fields: { type: array, description: Each field with value, confidence, verification and evidence. }
+          verified: { type: boolean, description: True when every value passed verification. }
+          run_id: { type: string }
+          pages: { type: integer }
+      error:
+        type: object
+        required: [code, message]
+        properties:
+          code: { type: string }
+          message: { type: string }
+      ports:
+      - { id: result, label: Values, direction: out }
+      - { id: failed, label: Failed, direction: out }
+      presentation:
+        category: Documents
+        icon: tabler:file-search
+        hue: violet
+        blurb: Pulls typed fields from a document, with quotes and pages for each value.
+      execution:
+        kind: function
+        function_id: kickside.docscout.blocks:extract_run

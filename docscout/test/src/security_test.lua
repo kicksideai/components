@@ -45,7 +45,7 @@ return { run = test.run_cases(function()
             test.eq(#listed, 11)
             for _, id in ipairs(listed) do test.eq(scope:evaluate(actor, "access", id, {}), "allow", id) end
             for _, id in ipairs(VIEWS) do test.eq(scope:evaluate(actor, "access", id, {}), "allow", id) end
-            for _, id in ipairs({ "kickside.docscout.callers:run_tool", "kickside.docscout.callers:block_run", "kickside.docscout.callers:contract_run" }) do
+            for _, id in ipairs({ "kickside.docscout.traits:run_tool", "kickside.docscout.blocks:extract_run", "kickside.docscout:extraction_run" }) do
                 test.eq(scope:evaluate(actor, "funcs.call", id, {}), "allow", id)
             end
             test.eq(scope:evaluate(actor, "registry.get", "kickside.docscout:config_schema", {}), "allow")
@@ -59,7 +59,7 @@ return { run = test.run_cases(function()
             test.eq(scope:evaluate(actor, "db.get", "app:db", {}), "undefined")
             local worker = scope_of(WORKER)
             test.eq(worker:evaluate(actor, "kickside.execution.defer", "kickside.docscout.evals:case_worker", {}), "allow")
-            test.eq(worker:evaluate(actor, "kickside.execution.defer", "kickside.docscout.callers:run_tool", {}), "undefined")
+            test.eq(worker:evaluate(actor, "kickside.execution.defer", "kickside.docscout.traits:run_tool", {}), "undefined")
             test.eq(worker:evaluate(actor, "db.get", "app:db", {}), "allow")
         end)
 
@@ -67,7 +67,7 @@ return { run = test.run_cases(function()
             local scope, actor = security.new_scope({}), security.new_actor("outsider", {})
             for _, id in ipairs(endpoints()) do test.eq(scope:evaluate(actor, "access", id, {}), "undefined", id) end
             for _, id in ipairs(VIEWS) do test.eq(scope:evaluate(actor, "access", id, {}), "undefined", id) end
-            test.eq(scope:evaluate(actor, "funcs.call", "kickside.docscout.callers:run_tool", {}), "undefined")
+            test.eq(scope:evaluate(actor, "funcs.call", "kickside.docscout.traits:run_tool", {}), "undefined")
         end)
     end)
 end) }

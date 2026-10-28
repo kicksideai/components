@@ -126,17 +126,6 @@ entries:
   - registry
   imports:
     shapes: kickside.docscout.engine:shapes
-- name: repository
-  kind: library.lua
-  source: file://repository.lua
-  modules:
-  - sql
-  - registry
-  - json
-  - uuid
-  - time
-  imports:
-    component: kickside.component:component
 - name: extractors
   kind: library.lua
   source: file://extractors.lua
@@ -145,8 +134,44 @@ entries:
   imports:
     component: kickside.component:component
     config: kickside.docscout:config
-    repository: kickside.docscout:repository
+    repository: kickside.docscout.persist:repository
     retention: kickside.docscout:retention
+- name: extraction
+  kind: contract.definition
+  meta:
+    title: Docscout extraction
+    comment: Runs an extractor on an upload under the caller's identity and returns field values with evidence.
+  methods:
+  - name: run
+    description: Run an extractor the caller can read on an upload the caller can read.
+    input_schemas:
+    - format: application/schema+json
+      definition: |
+        {"type": "object", "additionalProperties": false, "required": ["extractor_id", "upload_id"],
+         "properties": {"extractor_id": {"type": "string", "minLength": 1}, "upload_id": {"type": "string", "minLength": 1},
+                        "caller": {"type": "string", "enum": ["agent", "workflow", "eval"]},
+                        "deadline": {"type": "string", "format": "date-time"}}}
+    output_schemas:
+    - format: application/schema+json
+      definition: |
+        {"type": "object", "required": ["run_id", "fields", "trace"],
+         "properties": {"run_id": {"type": "string"}, "fields": {"type": "array"}, "trace": {"type": "array"}, "pages": {"type": "integer"}}}
+- name: engine
+  kind: contract.binding
+  meta:
+    comment: The Docscout engine behind the extraction contract.
+  contracts:
+  - contract: kickside.docscout:extraction
+    methods:
+      run: kickside.docscout:extraction_run
+- name: extraction_run
+  kind: function.lua
+  meta:
+    comment: The extraction contract's run method.
+  source: file://extraction.lua
+  method: run
+  imports:
+    engine: kickside.docscout.engine:run
 - name: retention
   kind: library.lua
   meta:
@@ -162,7 +187,7 @@ entries:
   modules:
   - ctx
   imports:
-    repository: kickside.docscout:repository
+    repository: kickside.docscout.persist:repository
 - name: teardown
   kind: function.lua
   source: file://binding.lua
@@ -170,7 +195,7 @@ entries:
   modules:
   - ctx
   imports:
-    repository: kickside.docscout:repository
+    repository: kickside.docscout.persist:repository
 - name: extractor
   kind: contract.binding
   meta:
@@ -205,8 +230,8 @@ entries:
     policies:
     - kickside.docscout.security:system_db_access
   imports:
-    store: kickside.docscout.engine:store
-    repository: kickside.docscout:repository
+    store: kickside.docscout.persist:store
+    repository: kickside.docscout.persist:repository
 - name: setting.retention
   kind: registry.entry
   meta:

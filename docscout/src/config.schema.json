@@ -301,18 +301,18 @@
             "tools": {
               "type": "array",
               "default": [
-                "kickside.docscout.tools:keyword_search",
-                "kickside.docscout.tools:semantic_search",
-                "kickside.docscout.tools:read_section",
-                "kickside.docscout.tools:read_outline"
+                "keyword_search",
+                "semantic_search",
+                "read_section",
+                "read_outline"
               ],
               "items": {
                 "type": "string",
                 "enum": [
-                  "kickside.docscout.tools:keyword_search",
-                  "kickside.docscout.tools:semantic_search",
-                  "kickside.docscout.tools:read_section",
-                  "kickside.docscout.tools:read_outline"
+                  "keyword_search",
+                  "semantic_search",
+                  "read_section",
+                  "read_outline"
                 ]
               },
               "uniqueItems": true
@@ -341,10 +341,10 @@
             "drop_noise": true,
             "share_notes": true,
             "tools": [
-              "kickside.docscout.tools:keyword_search",
-              "kickside.docscout.tools:semantic_search",
-              "kickside.docscout.tools:read_section",
-              "kickside.docscout.tools:read_outline"
+              "keyword_search",
+              "semantic_search",
+              "read_section",
+              "read_outline"
             ]
           }
         },
@@ -553,10 +553,10 @@
           "drop_noise": true,
           "share_notes": true,
           "tools": [
-            "kickside.docscout.tools:keyword_search",
-            "kickside.docscout.tools:semantic_search",
-            "kickside.docscout.tools:read_section",
-            "kickside.docscout.tools:read_outline"
+            "keyword_search",
+            "semantic_search",
+            "read_section",
+            "read_outline"
           ]
         },
         "deep": {
@@ -726,10 +726,10 @@
         "drop_noise": true,
         "share_notes": true,
         "tools": [
-          "kickside.docscout.tools:keyword_search",
-          "kickside.docscout.tools:semantic_search",
-          "kickside.docscout.tools:read_section",
-          "kickside.docscout.tools:read_outline"
+          "keyword_search",
+          "semantic_search",
+          "read_section",
+          "read_outline"
         ]
       },
       "deep": {

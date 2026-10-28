@@ -19,19 +19,6 @@ entries:
     comment: Pure helpers for the evidence pool, model-facing text, extraction schemas and quote matching.
   source: file://shapes.lua
   modules: [json]
-- name: store
-  kind: library.lua
-  meta:
-    comment: Processed documents, their chunks and keyword and vector search.
-  source: file://store.lua
-  modules:
-  - sql
-  - registry
-  - json
-  - time
-  - uuid
-  imports:
-    index: kickside.search_index:index
 - name: process
   kind: library.lua
   meta:
@@ -44,7 +31,7 @@ entries:
   - contract
   imports:
     doc2md: kickside.convert.doc2md:doc2md
-    store: kickside.docscout.engine:store
+    store: kickside.docscout.persist:store
     ai: kickside.docscout.engine:ai
     retention: kickside.docscout:retention
     shapes: kickside.docscout.engine:shapes
@@ -54,7 +41,7 @@ entries:
     comment: Search, section and outline reads over one processed document.
   source: file://doctools.lua
   imports:
-    store: kickside.docscout.engine:store
+    store: kickside.docscout.persist:store
     ai: kickside.docscout.engine:ai
     shapes: kickside.docscout.engine:shapes
 - name: stages
@@ -67,7 +54,7 @@ entries:
   - channel
   imports:
     ai: kickside.docscout.engine:ai
-    store: kickside.docscout.engine:store
+    store: kickside.docscout.persist:store
     doctools: kickside.docscout.engine:doctools
     process: kickside.docscout.engine:process
     shapes: kickside.docscout.engine:shapes
@@ -81,7 +68,7 @@ entries:
   - security
   imports:
     extractors: kickside.docscout:extractors
-    repository: kickside.docscout:repository
+    repository: kickside.docscout.persist:repository
     retention: kickside.docscout:retention
     process: kickside.docscout.engine:process
     stages: kickside.docscout.engine:stages

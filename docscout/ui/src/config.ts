@@ -70,8 +70,7 @@ export function modelLabel(model:string|undefined):string{
  return model.split('/').pop()??model
 }
 export function toolLabel(id:string):string{
- const name=id.split(':').pop()??id
- return name.replace(/_/g,' ').replace(/^\w/,c=>c.toUpperCase())
+ return id.replace(/_/g,' ').replace(/^\w/,c=>c.toUpperCase())
 }
 
 export const takesChoices=(f:Field)=>f.type==='enum'||(f.type==='list'&&f.item_type==='text')

@@ -1,0 +1,18 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+-- The Extract document fields Block: runs the configured extractor on the
+-- input upload under the Workflow's identity.
+local engine = require("engine")
+local shapes = require("shapes")
+
+local function invalid(message: string): error return errors.new({ kind = errors.INVALID, message = message }) end
+
+local function run(request: any): (any?, error?)
+    local cfg, input = request and request.config or {}, request and request.input or {}
+    if type(cfg.extractor_id) ~= "string" or cfg.extractor_id == "" then return nil, invalid("Choose an extractor") end
+    if type(input.upload_id) ~= "string" or input.upload_id == "" then return nil, invalid("The input needs an upload_id") end
+    local result, err = engine.run({ id = cfg.extractor_id, upload_id = input.upload_id, caller = "workflow" })
+    if err then return nil, err end
+    return { values = shapes.values(result), fields = result.fields, verified = shapes.verified(result), run_id = result.run_id, pages = result.pages }, nil
+end
+
+return { run = run }

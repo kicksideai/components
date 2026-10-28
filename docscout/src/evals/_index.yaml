@@ -18,7 +18,7 @@ entries:
   imports:
     jobs: kickside.core.jobs:jobs
     execution_identity: kickside.execution:execution_identity
-    repository: kickside.docscout:repository
+    repository: kickside.docscout.persist:repository
     extractors: kickside.docscout:extractors
     scoring: kickside.docscout.evals:scoring
     config: kickside.docscout:config

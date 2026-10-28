@@ -284,7 +284,7 @@ entries:
   imports:
     extractors: kickside.docscout:extractors
     evals: kickside.docscout.evals:evals
-    repository: kickside.docscout:repository
+    repository: kickside.docscout.persist:repository
 - name: lifecycle_test
   kind: function.lua
   meta:
@@ -322,7 +322,7 @@ entries:
     test: wippy.test:test
     ai: kickside.docscout.engine:ai
     process: kickside.docscout.engine:process
-    store: kickside.docscout.engine:store
+    store: kickside.docscout.persist:store
     stages: kickside.docscout.engine:stages
     shapes: kickside.docscout.engine:shapes
 - name: shapes_test

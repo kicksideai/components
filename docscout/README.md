@@ -5,15 +5,15 @@ Docscout extracts typed fields from uploaded documents, with a quote, section an
 
 ## Extraction
 
-The engine reads an upload's extracted Markdown through `kickside.contract:content_provider`, splits it into chunks that keep sections and tables, and indexes them for keyword and vector search through `kickside/search-index` in Docscout's own tables. A processed copy belongs to the user and upload and is reused while fresh for the same content, chunking settings and resolved models. Then the configured stages run in order: Map, Prefetch, Scout (structured loop or agent with document tools), Deep analysis, the optional highlighter, Extract per field group, and Verify. Document text is treated as untrusted data in every prompt, every model output is bounded by the configuration, and Verify checks each quote against the stored chunks.
+The engine reads an upload's extracted Markdown through `kickside.contract:content_provider`, splits it into chunks that keep sections and tables, and indexes them for keyword and vector search through `kickside/search-index` in Docscout's own tables. A processed copy belongs to the user and upload and is reused while fresh for the same content, chunking settings and resolved models. Then the configured stages run in order: Map, Prefetch, Scout (structured loop or agent with document tools), Deep analysis, the optional highlighter, Extract per field group, and Verify. Document text is treated as untrusted data in every prompt, structured model replies are bounded by their schemas, every prompt is checked against the model's context window before it is sent, and Verify checks each quote against the stored chunks.
 
 Every run is recorded with a per-step trace of time, tokens, queries and messages. Processed documents and runs expire after the global `kickside.docscout.retention` duration (default `2h`); the `kickside.retention.owner` callback removes them.
 
 ## Callers
 
 - Test tab: `POST /docscout/{id}/run` with an upload.
-- Contract `kickside.docscout.callers:extraction`, method `run`.
-- Workflow Block `kickside.docscout.callers:block.extract`: config picks the extractor, input carries `upload_id`; output has `values`, `fields`, `verified`, `run_id`, `pages`, and failures route to the `failed` port.
+- Contract `kickside.docscout:extraction`, method `run`. An optional RFC3339 `deadline` bounds every model call; a run that reaches it fails with a timeout. Evaluations pass their job's deadline.
+- Workflow Block `kickside.docscout.blocks:extract`: config picks the extractor, input carries `upload_id`; output has `values`, `fields`, `verified`, `run_id`, `pages`, and failures route to the `failed` port.
 - Agent tools DocscoutList, DocscoutExtract, DocscoutGet, DocscoutConfigure, DocscoutEvaluate and DocscoutEvaluation, exposed by the traits `reader` and `configurator`.
 
 All callers run under their own identity and need READ on the extractor and access to the upload.

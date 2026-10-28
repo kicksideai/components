@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.persist
+entries:
+- name: repository
+  kind: library.lua
+  source: file://repository.lua
+  modules:
+  - sql
+  - registry
+  - json
+  - uuid
+  - time
+  imports:
+    component: kickside.component:component
+- name: store
+  kind: library.lua
+  meta:
+    comment: Processed documents, their chunks and keyword and vector search.
+  source: file://store.lua
+  modules:
+  - sql
+  - registry
+  - json
+  - time
+  - uuid
+  imports:
+    index: kickside.search_index:index
