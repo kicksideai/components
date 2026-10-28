@@ -4,6 +4,18 @@ User single sign-on for kickside apps. Lets people log in with external identity
 providers (Google, Microsoft/Entra, GitHub, and any generic OIDC issuer) on top
 of the existing `app_users` / token-store auth, without replacing password login.
 
+## Compatibility
+
+Requires `kickside/users >=0.2.9`, which provides the
+`kickside.users.security:resolve_scope_groups` policy used by the login callback.
+Older Users packages are rejected during dependency resolution instead of
+failing when a callback resolves its runtime policies.
+
+For existing installations, include Users and SSO in the same update plan.
+An older SSO callback lacks the resolver permission required by newer Users
+packages. The callback policy update preserves existing sessions and pending
+provider login state.
+
 ## What it does
 
 - **Pluggable connectors.** Providers are connector libraries dispatched by
@@ -88,6 +100,15 @@ SQLite or PostgreSQL supplies application persistence. Frontend builds use
 Node.js 22, npm, and Make.
 
 ## Development
+
+The default harness resolves the declared Users package rather than replacing it
+with an unversioned local checkout. Run `make lockrefresh` before the test commands
+when dependency declarations change. Users must satisfy the minimum above.
+
+To qualify an unreleased Users/SSO source pair, use a separate test configuration
+with explicit source replacements and a lock derived from the exact candidate
+versions. Record those revisions and SDK pins separately from published-package
+or installed-upgrade results.
 
 Run `wippy install` in `test/`, then `make lint` and `make test` in this
 directory. For PostgreSQL, run `wippy test --profile postgres` in `test/`

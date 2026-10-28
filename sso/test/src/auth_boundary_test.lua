@@ -12,7 +12,7 @@ type FunctionEntry = { data: FunctionData? }
 
 local EXPECTED_DEPS: { [string]: { string } } = {
     ["kickside.sso:dep.kickside.settings"] = { "kickside/settings", "*" },
-    ["kickside.sso:dep.kickside.users"] = { "kickside/users", "*" },
+    ["kickside.sso:dep.kickside.users"] = { "kickside/users", ">=0.2.9" },
     ["kickside.sso:dep.wippy.migration"] = { "wippy/migration", "*" },
 }
 

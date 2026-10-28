@@ -21,6 +21,7 @@ local consts = require("sso_consts")
 local fixtures = {}
 local settings
 local saved_settings = {}
+local restore_registry_version
 
 local function execute(query)
     local db = assert(sql.get("app:db"))
@@ -62,7 +63,7 @@ local function no_provider_group(id)
     end
 end
 
-local function complete_callback(id, mode, subject)
+local function complete_callback(id, mode, subject, before_callback)
     local code = oauth_fixture.issue({subject = subject, email = id .. "@allowed.com"})
     local state = assert(crypto.random.uuid())
     local stored, store_err = flows.put(state, {provider = "github", redirect_uri = "http://fixture/callback",
@@ -70,6 +71,7 @@ local function complete_callback(id, mode, subject)
         link_user_id = mode == "link" and id or nil})
     test.is_nil(store_err, tostring(store_err))
     test.is_true(stored)
+    if before_callback then before_callback() end
     local port = assert(tostring(assert(registry.get("app:gateway")).data.addr):match(":(%d+)$"))
     local response, err = http_client.get("http://127.0.0.1:" .. port
         .. "/api/public/sso/github/callback?state=" .. state .. "&code=" .. code, {
@@ -130,6 +132,10 @@ return {run = test.run_cases(function()
             end
         end)
         test.after_each(function()
+            if restore_registry_version then
+                test.is_nil(select(2, registry.apply_version(restore_registry_version)))
+                restore_registry_version = nil
+            end
             for _, id in ipairs(fixtures) do
                 execute(sql.builder.delete("app_user_identities"):where("user_id = ?", id))
                 execute(sql.builder.delete("app_user_bot_accounts"):where("user_id = ?", id))
@@ -181,6 +187,44 @@ return {run = test.run_cases(function()
             test.is_nil(err)
             test.not_nil(scope)
             test.eq(actor:id(), id)
+            test.eq(identities.count_by_user(id), 1)
+            test.eq(assert(users.get(id)).password_hash, "!sso:no-password")
+        end)
+        test.it("upgrading the callback sandbox preserves existing sessions and an in-flight provider login", function()
+            local id = fixture(false, true)
+            local existing, mint_err = session.mint({user_id = id}, {sso_provider = "github"})
+            test.is_nil(mint_err, tostring(mint_err))
+            test.not_nil(existing.token)
+            restore_registry_version = assert(registry.current_version())
+            local legacy = assert(registry.get("kickside.sso.api:callback"))
+            local policies = {}
+            for _, policy in ipairs(legacy.data.security.policies) do
+                if policy ~= "kickside.users.security:resolve_scope_groups" then
+                    policies[#policies + 1] = policy
+                end
+            end
+            legacy.data.security.policies = policies
+            local changes = assert(registry.snapshot()):changes()
+            changes:update(legacy)
+            test.is_nil(select(2, changes:apply()))
+
+            -- Store the provider flow under the old callback declaration, then
+            -- apply the corrected declaration before completing the same flow.
+            local location = complete_callback(id, "email", assert(crypto.random.uuid()), function()
+                test.is_nil(select(2, registry.apply_version(restore_registry_version)))
+                restore_registry_version = nil
+            end)
+            local encoded = location:match("#sso_token=(.+)$")
+            test.not_nil(encoded, location)
+            local minted = assert(http_client.decode_uri(encoded))
+            local tokens = assert(security.token_store("kickside.users.security:tokens"))
+            for _, token in ipairs({existing.token, minted}) do
+                local actor, scope, validate_err = tokens:validate(token)
+                test.is_nil(validate_err, tostring(validate_err))
+                test.not_nil(scope)
+                test.eq(actor:id(), id)
+            end
+            tokens:close()
             test.eq(identities.count_by_user(id), 1)
             test.eq(assert(users.get(id)).password_hash, "!sso:no-password")
         end)

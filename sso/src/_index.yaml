@@ -16,7 +16,7 @@ entries:
   - name: dep.kickside.users
     kind: ns.dependency
     component: kickside/users
-    version: '*'
+    version: '>=0.2.9'
 
   - name: dep.wippy.migration
     kind: ns.dependency

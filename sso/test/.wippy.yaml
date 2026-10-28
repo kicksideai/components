@@ -25,7 +25,6 @@ workspace:
     kickside/sso: ..
     kickside/settings: ../../../kickside/platform/settings
     kickside/contract: ../../../kickside/core/contract
-    kickside/users: ../../../kickside/platform/users
     kickside/execution: ../../../kickside/core/execution
     kickside/sso-google: ../../../providers/sso-google
     kickside/sso-microsoft: ../../../providers/sso-microsoft
