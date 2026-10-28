@@ -7,8 +7,8 @@ import {client,type ExtractorItem} from '../client'
 import {newConfig} from '../config'
 import CreateForm from './CreateForm.vue'
 const emit=defineEmits<{open:[id:string]}>()
-const items=ref<ExtractorItem[]>(),error=ref(''),creating=ref(false),saving=ref(false),createError=ref(''),filter=ref('')
-async function load(){try{items.value=await client.list();error.value=''}catch(e){error.value=e instanceof Error?e.message:String(e)}}
+const items=ref<ExtractorItem[]>(),truncated=ref(false),error=ref(''),creating=ref(false),saving=ref(false),createError=ref(''),filter=ref('')
+async function load(){try{const listed=await client.list();items.value=listed.items;truncated.value=listed.truncated;error.value=''}catch(e){error.value=e instanceof Error?e.message:String(e)}}
 onMounted(load)
 const shown=computed(()=>{const q=filter.value.trim().toLowerCase();return (items.value??[]).filter(i=>!q||i.meta.title.toLowerCase().includes(q)||(i.meta.description??'').toLowerCase().includes(q))})
 async function create(input:{title:string;description:string}){
@@ -39,6 +39,7 @@ const updated=(at:string)=>new Date(at).toLocaleDateString(undefined,{month:'sho
      <span class="card-main"><span class="card-title">{{i.meta.title}}</span><span v-if="i.meta.description" class="card-desc">{{i.meta.description}}</span><span class="card-meta">{{i.meta.field_count??0}} {{i.meta.field_count==='1'?'field':'fields'}} · updated {{updated(i.updated_at)}}</span></span>
     </button>
     <p v-if="items.length&&!shown.length" class="empty">No extractors match.</p>
+    <p v-if="truncated" class="muted">Showing the first {{items.length}} extractors.</p>
    </div>
   </div>
  </main>

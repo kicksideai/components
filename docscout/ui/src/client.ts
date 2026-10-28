@@ -9,7 +9,7 @@ const path=(id:string)=>`/api/v1/docscout/${encodeURIComponent(id)}`
 function checked<T>(data:T&{success?:boolean;error?:string}):T{if(data.success===false)throw new Error(data.error||'Request failed');return data}
 const failure=(e:unknown)=>(e as {response?:{data?:Failure}}).response?.data
 export const client={
- async list():Promise<ExtractorItem[]>{return checked((await api.get('/api/v1/docscout')).data).items},
+ async list():Promise<{items:ExtractorItem[];truncated:boolean}>{const data=checked((await api.get('/api/v1/docscout')).data);return {items:data.items,truncated:!!data.truncated}},
  async get(id:string):Promise<Snapshot>{return checked((await api.get(path(id))).data)},
  async create(input:{title:string;description:string;config:Config;parent_id?:string}):Promise<{component_id:string}>{return checked((await api.post('/api/v1/docscout',input)).data)},
  async update(id:string,input:{title:string;description:string;config:Config;expected_revision:number}):Promise<{context_revision:number}>{return checked((await api.put(path(id),input)).data)},

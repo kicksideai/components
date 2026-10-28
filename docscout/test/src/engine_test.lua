@@ -20,7 +20,7 @@ local MARKDOWN = table.concat({
 
 local function retrieval(over: any?): any
     local r = { chunk_size = 1200, overlap = 150, split_headings = true, keep_tables = true, search_mode = "hybrid",
-        top_results = 6, embedding_model = "class:embed", context = "headings", context_model = "class:fast", section_budget = 6000 }
+        embedding_model = "class:embed", context = "headings", context_model = "class:fast", section_budget = 6000 }
     for k, v in pairs(over or {}) do r[k] = v end
     return r
 end
@@ -58,7 +58,7 @@ return { run = test.run_cases(function()
         test.it("keys processed copies by the settings and resolved models that change them", function()
             local models = { embedding = "towers/qwen3-embed", context = "towers/gemma" }
             local base = process.processing_key(retrieval(), models)
-            test.eq(base, process.processing_key(retrieval({ top_results = 20, section_budget = 900 }), models))
+            test.eq(base, process.processing_key(retrieval({ search_mode = "keyword", section_budget = 900 }), models))
             test.is_true(base ~= process.processing_key(retrieval({ chunk_size = 600 }), models))
             test.is_true(base ~= process.processing_key(retrieval({ context = "generated" }), models))
             test.is_true(base ~= process.processing_key(retrieval(), { embedding = "other/embedder", context = "towers/gemma" }))
@@ -197,7 +197,8 @@ return { run = test.run_cases(function()
             test.is_nil(stages.verify(run, step))
             test.is_false(run.values[1].verified)
             test.is_true(run.values[1].reason:find("No quote supports this value", 1, true) ~= nil)
-            test.eq(step.message, "2 values need review")
+            test.is_true(run.values[2].verified)
+            test.eq(step.message, "1 value needs review")
         end)
         test.it("only relocates a quote inside the field's selected sections", function()
             local run = quotes_only({ field("terms", { search_within = "sections" }) }, {

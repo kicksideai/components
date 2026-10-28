@@ -12,7 +12,7 @@ export interface Stages {
  verify:{enabled:boolean;model:string;check_quotes:boolean;check_support:boolean}
 }
 export type StageKey = keyof Stages
-export interface Retrieval {chunk_size:number;overlap:number;split_headings:boolean;keep_tables:boolean;search_mode:'keyword'|'semantic'|'hybrid';top_results:number;embedding_model:string;context:'none'|'headings'|'generated';context_model:string;highlighter:boolean;highlighter_model:string;section_budget:number}
+export interface Retrieval {chunk_size:number;overlap:number;split_headings:boolean;keep_tables:boolean;search_mode:'keyword'|'semantic'|'hybrid';embedding_model:string;context:'none'|'headings'|'generated';context_model:string;highlighter:boolean;highlighter_model:string;section_budget:number}
 export interface Config {fields:Field[];stages:Stages;retrieval:Retrieval;tags:string[]}
 
 export const newConfig=():Config=>structuredClone(schema.default) as Config
@@ -54,7 +54,7 @@ export function stageSummary(key:StageKey,config:Config):string{
  switch(key){
   case 'map':{const scoped=config.fields.filter(f=>f.search_within==='sections').length;return [s.map.outline==='build'?'Always build an outline':'Contents first, else build',scoped?`${plural(scoped,'field')} read Map's sections`:''].filter(Boolean).join(' · ')}
   case 'prefetch':{const searched=config.fields.filter(f=>f.strategy!=='deep'||!s.deep.enabled).length,hints=config.fields.filter(f=>f.search_hints.trim()).length;return [plural(searched,'field'),hints?plural(hints,'field hint'):'',s.prefetch.queries.length?plural(s.prefetch.queries.length,'query'):''].filter(Boolean).join(' · ')}
-  case 'scout':return `${s.scout.mode==='agent'?'Agent with tools':'Structured loop'} · ${s.scout.max_rounds?`up to ${plural(s.scout.max_rounds,'round')}, stop at ${Math.round(s.scout.target_confidence*100)}%`:'single pass'}`
+  case 'scout':return s.scout.mode==='agent'?`Agent with tools · up to ${plural(s.scout.max_rounds*s.scout.max_extra_queries,'tool call')}`:`Structured loop · ${s.scout.max_rounds?`up to ${plural(s.scout.max_rounds,'round')}, stop at ${Math.round(s.scout.target_confidence*100)}%`:'single pass'}`
   case 'deep':{const deep=config.fields.filter(f=>f.strategy==='deep').length;return deep?`${plural(deep,'field')} · reads ${s.deep.read} · ${s.deep.parallel_fields} at a time`:'No deep fields'}
   case 'extract':{const calls=extractCalls(config);return `${s.extract.structured_output?'Structured output':'Free text'} · ${plural(fieldGroups(config).length,'group')}, ${plural(calls,'call')}`}
   case 'verify':return [s.verify.check_quotes?'quotes exist':'',s.verify.check_support?'quotes support values':''].filter(Boolean).join(' · ')||'No checks'

@@ -57,7 +57,7 @@ function M.check_budget(model: string, prompt_text: string, output_tokens: integ
     local needed = math.ceil(#prompt_text / CHARS_PER_TOKEN) + output_tokens
     if needed > window then
         return errors.new({ kind = errors.INVALID, message = "the extraction prompt needs about " .. needed .. " tokens but " .. tostring(card.name or model) ..
-            " takes " .. math.floor(window) .. "; lower Top results, passages per field or fields per call" })
+            " takes " .. math.floor(window) .. "; lower passages per field, Deep chunk cap or fields per call" })
     end
     return nil
 end

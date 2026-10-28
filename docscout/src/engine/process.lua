@@ -31,11 +31,13 @@ end
 function M.content(upload_id: string): (any?, error?)
     local definition, err = contract.get("kickside.contract:content_provider")
     if err or not definition then
+        if type(err) == "userdata" then return nil, errors.wrap(err :: error, "content provider unavailable") end
         return nil, errors.new({ kind = errors.UNAVAILABLE, message = "content provider unavailable: " .. tostring(err) })
     end
     local provider, open_err = (definition :: any):with_actor(security.actor()):with_scope(security.scope())
         :with_context({ upload_id = upload_id }):open("kickside.uploads:content_provider")
     if open_err or not provider then
+        if type(open_err) == "userdata" then return nil, errors.wrap(open_err :: error, "upload content unavailable") end
         return nil, errors.new({ kind = errors.UNAVAILABLE, message = "upload content unavailable: " .. tostring(open_err) })
     end
     local content, content_err = provider:get_content({})
@@ -189,9 +191,10 @@ local function context_schema(count: integer): any
 end
 local CONTEXT_SYSTEM = [[You place passages of one document in context for search.
 For each passage write one or two sentences that say where it sits in the document and what it is about,
-naming the parties, figures or terms it concerns. Do not repeat the passage. Return exactly one context per passage, in order.]]
+naming the parties, figures or terms it concerns. Do not repeat the passage. Return exactly one context per passage, in order.
+]] .. shapes.DATA_RULE
 
-local function contexts(meter: any, retrieval: any, chunks: { any }, filename: string?): error?
+local function contexts(meter: any, retrieval: any, models: { [string]: string }, chunks: { any }, filename: string?): error?
     if retrieval.context == "none" then return nil end
     if retrieval.context == "headings" then
         for _, c in ipairs(chunks) do c.context = c.heading_path end
@@ -203,7 +206,7 @@ local function contexts(meter: any, retrieval: any, chunks: { any }, filename: s
             batch[#batch + 1] = chunks[i]
             lines[#lines + 1] = "\n## Passage " .. tostring(#batch) .. " (section: " .. chunks[i].heading_path .. ")\n" .. chunks[i].content
         end
-        local result, err = ai.structured(meter, retrieval.context_model, context_schema(#batch), CONTEXT_SYSTEM, table.concat(lines, "\n"))
+        local result, err = ai.structured(meter, models.context :: string, context_schema(#batch), CONTEXT_SYSTEM, table.concat(lines, "\n"))
         if err then return err end
         if #result.contexts ~= #batch then
             return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "context model returned " .. #result.contexts .. " contexts for " .. #batch .. " passages" })
@@ -232,15 +235,16 @@ function M.ensure(owner_id: string, upload_id: string, retrieval: any, step: any
     if find_err then return nil, find_err end
     if existing then
         step.message = "Reused the processed copy (" .. existing.chunk_count .. " chunks)"
+        existing.embedding_model = models.embedding
         return existing, nil
     end
     local chunks, outline, pages = M.chunk(content.markdown, retrieval)
     if #chunks == 0 then return nil, invalid("the upload has no text to read") end
-    local context_err = contexts(step.meter, retrieval, chunks, content.filename)
+    local context_err = contexts(step.meter, retrieval, models, chunks, content.filename)
     if context_err then return nil, context_err end
     local texts = {}
     for i, c in ipairs(chunks) do texts[i] = (c.context and c.context ~= "" and (c.context .. "\n\n") or "") .. c.content end
-    local vectors, embed_err = ai.embed(step.meter, retrieval.embedding_model, texts)
+    local vectors, embed_err = ai.embed(step.meter, models.embedding, texts)
     if embed_err then return nil, embed_err end
     for i, c in ipairs(chunks) do c.vector = vectors[i] end
     local expires_at, expiry_err = retention.expires_at()
@@ -253,7 +257,7 @@ function M.ensure(owner_id: string, upload_id: string, retrieval: any, step: any
     }, chunks)
     if save_err then return nil, save_err end
     step.message = "Processed " .. #chunks .. " chunks in " .. #outline .. " sections" .. (pages > 0 and (" over " .. pages .. " pages") or "")
-    return { id = id, outline = outline, page_count = pages, chunk_count = #chunks, tokens = tokens }, nil
+    return { id = id, outline = outline, page_count = pages, chunk_count = #chunks, tokens = tokens, embedding_model = models.embedding }, nil
 end
 
 return M

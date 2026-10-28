@@ -359,6 +359,8 @@ entries:
     group: Docscout
   source: file://scoring_test.lua
   method: run
+  modules:
+  - json
   imports:
     test: wippy.test:test
     scoring: kickside.docscout.evals:scoring

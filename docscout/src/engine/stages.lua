@@ -9,7 +9,7 @@ local doctools = require("doctools")
 local process = require("process")
 local shapes = require("shapes")
 
-local trim, lines, add, ordered, render, field_lines = shapes.trim, shapes.lines, shapes.add, shapes.ordered, shapes.render, shapes.field_lines
+local trim, add, ordered, render, field_lines = shapes.trim, shapes.add, shapes.ordered, shapes.render, shapes.field_lines
 
 local M = {}
 
@@ -128,6 +128,13 @@ function M.map(run: any, step: any): error?
             system("You pick, for each field, the sections of the outline most likely to contain its value. Choose few but enough sections; include definitions or schedules a field depends on."),
             "Outline:\n" .. doctools.outline_text(run.document.outline) .. "\n\nFields:\n" .. field_lines(scoped))
         if err then return err end
+        local seen = {}
+        for _, item in ipairs(result.fields) do
+            if seen[item.field] then
+                return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the section choice names " .. item.field .. " twice and leaves a field out" })
+            end
+            seen[item.field] = true
+        end
         local picked = {}
         for _, item in ipairs(result.fields) do
             run.regions[item.field] = shapes.ordinals_of(run.document.outline, item.section_ids)
@@ -219,7 +226,8 @@ function M.scout(run: any, step: any): error?
         step.message = calls .. " tool calls added " .. found .. " passages"
         return nil
     end
-    local rounds, queries_run = 0, {}
+    local rounds, queries_run, by_name = 0, {}, {}
+    for _, f in ipairs(fields) do by_name[f.name] = f end
     while true do
         rounds = rounds + 1
         local result, err = ai.structured(step.meter, cfg.model, scout_schema(cfg, fields, ordered(run.pool)), SCOUT_SYSTEM,
@@ -232,9 +240,9 @@ function M.scout(run: any, step: any): error?
         if rounds > cfg.max_rounds or run.confidence >= cfg.target_confidence or #result.queries == 0 then break end
         for i, q in ipairs(result.queries) do
             if i > cfg.max_extra_queries then break end
-            local field = nil
-            for _, f in ipairs(fields) do if f.name == q.field then field = f end end
-            local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q.query, field and field.chunks or run.config.retrieval.top_results, field and M.region(run, field) or nil)
+            -- The schema limits q.field to the scouted fields.
+            local field = by_name[q.field]
+            local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q.query, field.chunks, M.region(run, field))
             if search_err then return search_err end
             add(run.pool, hits); queries_run[#queries_run + 1] = q.query
         end
@@ -482,7 +490,7 @@ function M.verify(run: any, step: any): error?
             bodies[c.ordinal] = shapes.normalize(c.content); by_ordinal[c.ordinal] = c; order[#order + 1] = c.ordinal
         end
         for _, v in ipairs(run.values) do
-            v.quotes_found = #v.evidence > 0
+            v.quotes_found = true
             for _, e in ipairs(v.evidence) do
                 local candidates = {}
                 for _, ordinal in ipairs(order) do if visible(run, fields[v.name], ordinal) then candidates[#candidates + 1] = ordinal end end

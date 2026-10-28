@@ -59,8 +59,12 @@ local function object_score(expected: any, got: any): number
     return total / n
 end
 
--- Type-inferred comparison for list items and object members.
+local function empty_table(v: any): boolean return type(v) == "table" and next(v) == nil end
+
+-- Type-inferred comparison for list items and object members. An empty list
+-- or object matches only an empty one.
 scalar = function(expected: any, got: any): number
+    if empty_table(expected) then return empty_table(got) and 1 or 0 end
     if absent(expected) then return absent(got) and 1 or 0 end
     if absent(got) then return 0 end
     if type(expected) == "boolean" then return expected == got and 1 or 0 end
@@ -75,23 +79,65 @@ scalar = function(expected: any, got: any): number
     return text_score(tostring(expected), tostring(got))
 end
 
--- Order-free F1 over items: each extracted item pairs with the expected item it
--- matches best, and each expected item is used once.
+-- Largest total weight of a one-to-one pairing between rows and columns of
+-- weights (each in 0..1), by the Hungarian method on a square cost matrix.
+-- u, v, p, way and minv hold an entry for every index 0..n before use.
+local function best_pairing(weights: { { number } }, rows: integer, cols: integer): number
+    local n = math.max(rows, cols)
+    local function cost(i: integer, j: integer): number
+        if i > rows or j > cols then return 1 end
+        return 1 - weights[i][j]
+    end
+    local u: { [integer]: number }, v: { [integer]: number } = {}, {}
+    local p: { [integer]: integer }, way: { [integer]: integer } = {}, {}
+    for i = 0, n do u[i], v[i], p[i], way[i] = 0, 0, 0, 0 end
+    for i = 1, n do
+        p[0] = i
+        local j0 = 0
+        local minv: { [integer]: number }, used: { [integer]: boolean } = {}, {}
+        for j = 0, n do minv[j], used[j] = math.huge, false end
+        repeat
+            used[j0] = true
+            local i0, delta, j1 = p[j0], math.huge, 0
+            for j = 1, n do
+                if not used[j] then
+                    local cur = cost(i0, j) - (u[i0] :: number) - (v[j] :: number)
+                    if cur < (minv[j] :: number) then minv[j], way[j] = cur, j0 end
+                    if (minv[j] :: number) < delta then delta, j1 = minv[j] :: number, j end
+                end
+            end
+            for j = 0, n do
+                if used[j] then u[p[j]] = (u[p[j]] :: number) + delta; v[j] = (v[j] :: number) - delta else minv[j] = (minv[j] :: number) - delta end
+            end
+            j0 = j1
+        until p[j0] == 0
+        repeat
+            local j1 = way[j0]
+            p[j0] = p[j1]
+            j0 = j1
+        until j0 == 0
+    end
+    local total = 0
+    for j = 1, n do
+        local i = p[j]
+        if i >= 1 and i <= rows and j <= cols then total = total + weights[i][j] end
+    end
+    return total
+end
+
+-- Order-free F1 over items: expected and extracted items pair one to one so
+-- that the summed item scores are as large as possible.
 function M.list(expected: any, got: any, item_type: string?): number
     if type(got) ~= "table" then return 0 end
     if #expected == 0 then return #got == 0 and 1 or 0 end
     if #got == 0 then return 0 end
-    local used, matched = {}, 0
-    for _, g in ipairs(got) do
-        local best, best_i = 0, nil
-        for i, e in ipairs(expected) do
-            if not used[i] then
-                local s = item_type and M.value(item_type, e, g, {}) or scalar(e, g)
-                if s > best then best, best_i = s, i end
-            end
-        end
-        if best_i then used[best_i] = true; matched = matched + best end
+    local weights: { { number } } = {}
+    for i, e in ipairs(expected) do
+        local row: { number } = {}
+        for j, g in ipairs(got) do row[j] = item_type and M.value(item_type, e, g, {}) or scalar(e, g) end
+        weights[i] = row
     end
+    local matched = best_pairing(weights, #expected, #got)
     local precision, recall = matched / #got, matched / #expected
     if precision + recall == 0 then return 0 end
     return 2 * precision * recall / (precision + recall)
@@ -119,18 +165,20 @@ function M.value(kind: string, expected: any, got: any, field: any): number
     return text_score(tostring(expected), tostring(got))
 end
 
--- Scores every field of one case. values: the run's fields by name.
+-- Scores every field of one case. values: the run's fields by name. A field
+-- the case leaves out is correct only when the run reports it missing.
 function M.case(fields: { any }, expected: any, values: { [string]: any }): { any }
     local out = {}
     for _, f in ipairs(fields) do
         local got = values[f.name]
+        local found = got ~= nil and not got.missing
         local value = nil
-        if got and not got.missing then value = got.value end
-        out[#out + 1] = {
-            field = f.name, expected = expected[f.name], value = value,
-            score = M.value(f.type, expected[f.name], value, f),
-            verified = got ~= nil and got.verified == true,
-        }
+        if found then value = got.value end
+        local score
+        if expected[f.name] == nil then score = found and 0 or 1
+        elseif not found then score = 0
+        else score = M.value(f.type, expected[f.name], value, f) end
+        out[#out + 1] = { field = f.name, expected = expected[f.name], value = value, score = score, verified = got ~= nil and got.verified == true }
     end
     return out
 end

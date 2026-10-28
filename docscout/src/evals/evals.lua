@@ -9,22 +9,52 @@ local execution_identity = require("execution_identity")
 local repository = require("repository")
 local extractors = require("extractors")
 local scoring = require("scoring")
+local config = require("config")
 
 local M = {}
 
 local WORKER = "kickside.docscout.evals:case_worker"
+-- Attempts per case job: settling a case is idempotent, so a retry after a
+-- transient failure finishes it instead of leaving the evaluation running.
+local ATTEMPTS = 3
 local HISTORY = 20
 
 local function invalid(message: string): error return errors.new({ kind = errors.INVALID, message = message }) end
 
--- Starts an evaluation of every case at the current configuration.
+-- Queues one job per case. Job keys derive from the evaluation and case, so
+-- enrolling again reuses existing jobs and only adds missing ones.
+local function enroll(id: string, eval_id: string, case_ids: { string }): error?
+    for _, case_id in ipairs(case_ids) do
+        local _, err = jobs.enqueue({
+            namespace = "docscout", scope = id, key = "eval:" .. eval_id .. ":" .. case_id,
+            owner_locator = { kind = "component", id = id }, job_type = WORKER, max_attempts = ATTEMPTS,
+            immutable_payload = { component_id = id, eval_id = eval_id, case_id = case_id },
+        })
+        if err then return err end
+    end
+    return nil
+end
+
+-- Starts an evaluation of every case at the saved configuration. While one is
+-- active, starting again returns it and enrolls any case that lacks its job.
 function M.start(id: string): (any?, error?)
     local snapshot, err = extractors.get(id)
     if err then return nil, err end
     if not snapshot.can_edit then return nil, errors.new({ kind = errors.PERMISSION_DENIED, message = "Evaluating an extractor needs edit access" }) end
+    local active, active_err = repository.active_eval(id)
+    if active_err then return nil, active_err end
+    if active then
+        local enroll_err = enroll(id, active.id, active.queued)
+        if enroll_err then return nil, enroll_err end
+        return { success = true, eval_id = active.id, existing = true }, nil
+    end
     if #snapshot.cases == 0 then return nil, invalid("Add an evaluation case first") end
     if #snapshot.config.fields == 0 then return nil, invalid("Add at least one field first") end
-    local identity, capture_err = execution_identity.capture({ component_id = id })
+    for _, case in ipairs(snapshot.cases) do
+        local case_err = config.validate_expected(snapshot.config.fields :: { any }, case.expected)
+        if case_err then return nil, invalid("Case " .. case.upload_name .. " no longer matches the fields: " .. tostring(case_err) .. ". Update or remove it.") end
+    end
+    local identity, capture_err = execution_identity.capture()
     if capture_err then return nil, capture_err end
     local row, row_err = execution_identity.to_row(identity)
     if row_err then return nil, row_err end
@@ -35,17 +65,10 @@ function M.start(id: string): (any?, error?)
     }, snapshot.cases)
     if add_err then return nil, add_err end
     local queued = eval_id :: string
-    for _, case in ipairs(snapshot.cases) do
-        local _, enqueue_err = jobs.enqueue({
-            namespace = "docscout", scope = id, key = "eval:" .. queued .. ":" .. case.id,
-            owner_locator = { kind = "component", id = id }, job_type = WORKER, max_attempts = 1,
-            immutable_payload = { component_id = id, eval_id = queued, case_id = case.id },
-        })
-        if enqueue_err then
-            local _, mark_err = repository.mark_eval(queued, "failed", "Cases could not be queued: " .. tostring(enqueue_err))
-            return nil, mark_err or enqueue_err
-        end
-    end
+    local case_ids = {}
+    for _, case in ipairs(snapshot.cases) do case_ids[#case_ids + 1] = case.id end
+    local enroll_err = enroll(id, queued, case_ids)
+    if enroll_err then return nil, enroll_err end
     return { success = true, eval_id = queued }, nil
 end
 
@@ -101,7 +124,8 @@ function M.run_case(input: any): any
     if err then return { ok = false, job_error = tostring(err) } end
     local case = nil
     for _, r in ipairs(eval.results) do if r.case_id == payload.case_id then case = r end end
-    if not case or case.status ~= "queued" then return { ok = true, record = { status = "completed" } } end
+    local active = eval.status == "queued" or eval.status == "running"
+    if not active or not case or case.status ~= "queued" then return { ok = true, record = { status = "completed" } } end
     local _, mark_err = repository.mark_eval(eval.id, "running")
     if mark_err then return { ok = false, job_error = tostring(mark_err) } end
     local expected, case_err = repository.get_case(eval.component_id, payload.case_id)
@@ -126,7 +150,7 @@ function M.run_case(input: any): any
             tokens = tokens, duration_ms = duration })
     end
     if result.config_revision ~= eval.config_revision then
-        return finish(eval, payload.case_id, { status = "failed", run_id = result.run_id,
+        return finish(eval, payload.case_id, { status = "failed", run_id = result.run_id, tokens = result.tokens, duration_ms = result.duration_ms,
             error = "The configuration changed during the evaluation" })
     end
     local values = {}

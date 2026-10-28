@@ -619,12 +619,6 @@
             "hybrid"
           ]
         },
-        "top_results": {
-          "type": "integer",
-          "default": 6,
-          "minimum": 1,
-          "maximum": 100
-        },
         "embedding_model": {
           "type": "string",
           "default": "class:embed",
@@ -669,7 +663,6 @@
         "split_headings",
         "keep_tables",
         "search_mode",
-        "top_results",
         "embedding_model",
         "context",
         "context_model",
@@ -683,7 +676,6 @@
         "split_headings": true,
         "keep_tables": true,
         "search_mode": "hybrid",
-        "top_results": 6,
         "embedding_model": "class:embed",
         "context": "headings",
         "context_model": "class:fast",
@@ -772,7 +764,6 @@
       "split_headings": true,
       "keep_tables": true,
       "search_mode": "hybrid",
-      "top_results": 6,
       "embedding_model": "class:embed",
       "context": "headings",
       "context_model": "class:fast",

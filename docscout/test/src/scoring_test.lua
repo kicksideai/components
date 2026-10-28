@@ -2,6 +2,7 @@
 local test = require("test")
 local scoring = require("scoring")
 local evals = require("evals")
+local json = require("json")
 
 local function near(a: number, b: number): boolean return math.abs(a - b) < 1e-9 end
 
@@ -45,6 +46,17 @@ return { run = test.run_cases(function()
             test.eq(scoring.value("list", { "a" }, "a", field), 0)
             test.eq(scoring.value("list", { 1, 2 }, { "1", "2" }, { item_type = "number" }), 1)
         end)
+        test.it("pairs list items optimally, whatever their order", function()
+            local field = { item_type = "text" }
+            local a = scoring.value("list", { "red green", "red blue" }, { "red", "red green" }, field)
+            local b = scoring.value("list", { "red green", "red blue" }, { "red green", "red" }, field)
+            test.is_true(near(a, b), a .. " vs " .. b)
+            test.is_true(a > 0.8)
+        end)
+        test.it("matches empty lists and objects only with empty ones", function()
+            test.eq(scoring.value("object", { items = json.decode("[]") }, { items = { "invented" } }, {}), 0)
+            test.eq(scoring.value("object", { items = json.decode("[]") }, { items = json.decode("[]") }, {}), 1)
+        end)
         test.it("scores objects and lists of objects by their expected keys", function()
             local expected = { { item = "Aluminium housing", qty = 40 }, { item = "Assembly labour", qty = 12 } }
             local got = { { item = "Assembly labour", qty = 12, amount = 750 }, { item = "Aluminium housing", qty = 40 } }
@@ -66,6 +78,8 @@ return { run = test.run_cases(function()
             test.eq(scored[1].score, 1); test.is_true(scored[1].verified)
             test.eq(scored[2].score, 1); test.is_nil(scored[2].value)
             test.eq(scored[3].score, 1); test.is_false(scored[3].verified)
+            local invented = scoring.case({ { name = "po", type = "text" } }, {}, { po = { value = "", missing = false, verified = true } })
+            test.eq(invented[1].score, 0)
         end)
         test.it("averages accuracy per field over cases", function()
             local fields = { { name = "a" }, { name = "b" } }

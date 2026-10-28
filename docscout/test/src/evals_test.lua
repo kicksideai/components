@@ -88,6 +88,28 @@ return { run = test.run_cases(function()
             test.is_true(tostring(e.results[1].error):find("User not found", 1, true) ~= nil, tostring(e.results[1].error))
         end)
 
+        test.it("returns the active evaluation when started again", function()
+            local who = member()
+            local id = extractor(who)
+            assert(call(who, { op = "add_case", id = id, input = { upload_id = "u-" .. uuid.v4(), upload_name = "a.pdf", expected = { total = 1 } } }))
+            local first = assert(call(who, { op = "start_eval", id = id }))
+            local second = assert(call(who, { op = "start_eval", id = id }))
+            if second.existing then test.eq(second.eval_id, first.eval_id) else test.is_true(second.eval_id ~= first.eval_id) end
+        end)
+
+        test.it("refuses to evaluate cases that no longer match the fields", function()
+            local who = "eval-owner-" .. uuid.v4()
+            local id = extractor(who)
+            assert(call(who, { op = "add_case", id = id, input = { upload_id = "u-" .. uuid.v4(), upload_name = "old.pdf", expected = { total = 1 } } }))
+            local view = assert(call(who, { op = "get", id = id }))
+            local cfg = view.config
+            cfg.fields[1].name = "amount"
+            assert(call(who, { op = "update", id = id, input = { title = view.title, description = "", config = cfg, expected_revision = view.expected_revision } }))
+            local _, stale = call(who, { op = "start_eval", id = id })
+            test.not_nil(stale); test.is_true(errors.is(stale, errors.INVALID), tostring(stale))
+            test.is_true(tostring(stale):find("old.pdf", 1, true) ~= nil, tostring(stale))
+        end)
+
         test.it("removes evaluations with the extractor", function()
             local who = "eval-owner-" .. uuid.v4()
             local id = extractor(who)

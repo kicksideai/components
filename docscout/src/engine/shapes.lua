@@ -169,12 +169,10 @@ local EQUIVALENT = {
 -- decimal points and other punctuation stay, so a changed number never matches.
 function M.normalize(s: string): string
     local out = {}
-    for ch in s:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
-        local plain = EQUIVALENT[ch] or ch
-        if plain == "*" or plain == "_" or plain == "`" or plain == "|" then plain = " " end
-        out[#out + 1] = plain
-    end
-    local folded = table.concat(out):lower():gsub("%s+", " ")
+    for ch in s:gmatch("[%z\1-\127\194-\244][\128-\191]*") do out[#out + 1] = EQUIVALENT[ch] or ch end
+    -- Markdown emphasis runs, code ticks and table bars are formatting, not text.
+    local plain = table.concat(out):gsub("([^%s%*])%*+", "%1 "):gsub("%*+([^%s%*])", " %1"):gsub("__+", " "):gsub("`+", " "):gsub("|", " ")
+    local folded = plain:lower():gsub("%s+", " ")
     return M.trim(folded)
 end
 

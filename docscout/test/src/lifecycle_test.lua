@@ -35,11 +35,11 @@ return {run=test.run_cases(function()
             local row=assert(call(who,{op="get",id=id}))
             test.eq(row.title,"Invoice reader");test.eq(row.expected_revision,0);test.is_true(row.can_edit)
             local changed=input();changed.title="Contract reader";changed.expected_revision=0
-            changed.config.retrieval.top_results=9
+            changed.config.retrieval.section_budget=9000
             local updated,update_err=call(who,{op="update",id=id,input=changed})
             test.is_nil(update_err,tostring(update_err));test.eq(updated.context_revision,1)
             local after=assert(call(who,{op="get",id=id}))
-            test.eq(after.title,"Contract reader");test.eq(after.config.retrieval.top_results,9)
+            test.eq(after.title,"Contract reader");test.eq(after.config.retrieval.section_budget,9000)
             local conflict,conflict_err=call(who,{op="update",id=id,input=changed})
             test.is_nil(conflict);test.not_nil(conflict_err)
             test.is_true(errors.is(conflict_err,errors.CONFLICT),tostring(conflict_err))
@@ -117,7 +117,7 @@ return {run=test.run_cases(function()
             end
             for _,mutate in ipairs({
                 function(v) v.config.retrieval.overlap=v.config.retrieval.chunk_size end,
-                function(v) v.config.retrieval.top_results=0 end,
+                function(v) v.config.retrieval.top_results=6 end,
                 function(v) v.config.stages.scout.tools={"unknown:tool"} end,
                 function(v) v.config.stages.scout.mode="agent";v.config.stages.scout.tools=assert(json.decode("[]")) end,
                 function(v) v.config.stages.verify.enabled=true;v.config.stages.verify.check_quotes=false;v.config.stages.verify.check_support=false end,

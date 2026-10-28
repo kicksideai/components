@@ -41,6 +41,7 @@ local SQLITE = {
         case_count INTEGER NOT NULL, metrics TEXT, tokens BIGINT NOT NULL DEFAULT 0,
         duration_ms BIGINT NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, finished_at TEXT)]=],
     [=[CREATE INDEX kickside_docscout_evals_owner ON kickside_docscout_evals(component_id,created_at)]=],
+    [=[CREATE UNIQUE INDEX kickside_docscout_evals_active ON kickside_docscout_evals(component_id) WHERE status IN ('queued','running')]=],
     [=[CREATE TABLE kickside_docscout_eval_results (
         eval_id TEXT NOT NULL, case_id TEXT NOT NULL, upload_name TEXT NOT NULL, status TEXT NOT NULL,
         run_id TEXT, scores TEXT, tokens BIGINT NOT NULL DEFAULT 0, duration_ms BIGINT NOT NULL DEFAULT 0,
@@ -85,6 +86,7 @@ local POSTGRES = {
         case_count INTEGER NOT NULL, metrics TEXT, tokens BIGINT NOT NULL DEFAULT 0,
         duration_ms BIGINT NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, finished_at TEXT)]=],
     [=[CREATE INDEX kickside_docscout_evals_owner ON kickside_docscout_evals(component_id,created_at)]=],
+    [=[CREATE UNIQUE INDEX kickside_docscout_evals_active ON kickside_docscout_evals(component_id) WHERE status IN ('queued','running')]=],
     [=[CREATE TABLE kickside_docscout_eval_results (
         eval_id TEXT NOT NULL, case_id TEXT NOT NULL, upload_name TEXT NOT NULL, status TEXT NOT NULL,
         run_id TEXT, scores TEXT, tokens BIGINT NOT NULL DEFAULT 0, duration_ms BIGINT NOT NULL DEFAULT 0,

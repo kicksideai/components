@@ -102,7 +102,16 @@ function M.save(doc: any, chunks: { any }): (string?, error?)
         (id, owner_id, upload_id, content_checksum, processing_key, outline, page_count, chunk_count, tokens, created_at, expires_at)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)]],
         { id, doc.owner_id, doc.upload_id, doc.checksum, doc.processing_key, outline, doc.page_count, #chunks, doc.tokens, created, doc.expires_at })
-    if insert_err then return abort("processed document could not be stored", insert_err) end
+    if insert_err then
+        -- Another run stored the same copy between the lookup and this insert; use it.
+        tx:rollback()
+        local winner, winner_err = db:query([[SELECT id FROM kickside_docscout_documents
+            WHERE owner_id=$1 AND upload_id=$2 AND content_checksum=$3 AND processing_key=$4 AND expires_at > $5]],
+            { doc.owner_id, doc.upload_id, doc.checksum, doc.processing_key, now() })
+        db:release()
+        if not winner_err and winner and winner[1] then return winner[1].id, nil end
+        return nil, failed("processed document could not be stored", insert_err)
+    end
     local rows, vectors = {}, {}
     for _, chunk in ipairs(chunks) do
         local chunk_id = id .. ":" .. tostring(chunk.ordinal)

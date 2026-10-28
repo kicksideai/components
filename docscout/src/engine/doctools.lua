@@ -34,7 +34,7 @@ M.TOOLS = {
 function M.search(ctx: any, mode: string, query: string, limit: integer, region: { integer }?, min_similarity: number?): (any?, error?)
     local vector = nil
     if mode ~= "keyword" then
-        local vectors, err = ai.embed(ctx.meter, ctx.retrieval.embedding_model, { query })
+        local vectors, err = ai.embed(ctx.meter, ctx.document.embedding_model, { query })
         if err then return nil, err end
         vector = vectors[1]
     end

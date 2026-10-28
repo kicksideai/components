@@ -168,14 +168,19 @@ end
 
 -- Evaluations ---------------------------------------------------------------
 
--- Records a queued evaluation with one pending result per case.
+local function conflict(): error
+    return errors.new({ kind = errors.CONFLICT, message = "An evaluation of this extractor is already running" })
+end
+
+local ACTIVE = "SELECT id FROM kickside_docscout_evals WHERE component_id=$1 AND status IN ('queued','running')"
+
+-- Records a queued evaluation with one pending result per case. A unique index
+-- admits one active evaluation per extractor, so concurrent starts cannot both win.
 function M.add_eval(component_id: string, row: any, cases: { any }): (string?, error?)
     return fenced(component_id, function(tx: any): (any?, error?)
-        local running, running_err = tx:query("SELECT id FROM kickside_docscout_evals WHERE component_id=$1 AND status IN ('queued','running')", { component_id })
+        local running, running_err = tx:query(ACTIVE, { component_id })
         if running_err then return nil, failed("evaluations could not be read", running_err) end
-        if #running > 0 then
-            return nil, errors.new({ kind = errors.CONFLICT, message = "An evaluation of this extractor is already running" })
-        end
+        if #running > 0 then return nil, conflict() end
         local id = uuid.v7()
         local _, err = tx:execute([[INSERT INTO kickside_docscout_evals
             (id, component_id, config_revision, fields, status, actor_id, actor_context, case_count, created_at)
@@ -187,6 +192,20 @@ function M.add_eval(component_id: string, row: any, cases: { any }): (string?, e
             if result_err then return nil, failed("evaluation case could not be queued", result_err) end
         end
         return id, nil
+    end)
+end
+
+-- The active evaluation of an extractor with its queued cases, or nil.
+function M.active_eval(component_id: string): (any?, error?)
+    return with_db(function(db: any): (any?, error?)
+        local rows, err = db:query(ACTIVE, { component_id })
+        if err then return nil, failed("evaluations could not be read", err) end
+        if not rows[1] then return nil, nil end
+        local queued, queued_err = db:query("SELECT case_id FROM kickside_docscout_eval_results WHERE eval_id=$1 AND status='queued'", { rows[1].id })
+        if queued_err then return nil, failed("evaluation cases could not be read", queued_err) end
+        local ids = {}
+        for _, r in ipairs(queued) do ids[#ids + 1] = r.case_id end
+        return { id = rows[1].id, queued = ids }, nil
     end)
 end
 
@@ -254,13 +273,17 @@ function M.mark_eval(eval_id: string, status: string, error_message: string?): (
     end)
 end
 
--- Stores one case's outcome. When it is the last case, the evaluation's
--- totals are written in the same transaction and the totals returned.
+-- Stores one case's outcome once, while its evaluation is active. The
+-- evaluation row is written first, so concurrent final cases queue on it and
+-- exactly one of them sees every case settled and writes the totals.
 function M.finish_case(component_id: string, eval_id: string, case_id: string, outcome: any,
         summarize: ({ any }) -> any): (any?, error?)
     local scores, scores_err = encoded(outcome.scores or {}, "case scores")
     if scores_err then return nil, scores_err end
     return fenced(component_id, function(tx: any): (any?, error?)
+        local held, hold_err = tx:execute("UPDATE kickside_docscout_evals SET status='running' WHERE id=$1 AND status IN ('queued','running')", { eval_id })
+        if hold_err then return nil, failed("evaluation could not be locked", hold_err) end
+        if held.rows_affected == 0 then return nil, nil end
         local _, err = tx:execute([[UPDATE kickside_docscout_eval_results
             SET status=$1, run_id=$2, scores=$3, tokens=$4, duration_ms=$5, error=$6, finished_at=$7
             WHERE eval_id=$8 AND case_id=$9 AND status='queued']],
@@ -281,8 +304,7 @@ function M.finish_case(component_id: string, eval_id: string, case_id: string, o
         local metrics, metrics_err = encoded(totals.metrics, "evaluation metrics")
         if metrics_err then return nil, metrics_err end
         local _, done_err = tx:execute([[UPDATE kickside_docscout_evals SET status=$1, metrics=$2, tokens=$3, duration_ms=$4, error=$5, finished_at=$6
-            WHERE id=$7 AND status IN ('queued','running')]],
-            { totals.status, metrics, totals.tokens, totals.duration_ms, totals.error or sql.as.null(), now(), eval_id })
+            WHERE id=$7]], { totals.status, metrics, totals.tokens, totals.duration_ms, totals.error or sql.as.null(), now(), eval_id })
         if done_err then return nil, failed("evaluation totals could not be stored", done_err) end
         return totals, nil
     end)
