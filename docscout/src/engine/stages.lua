@@ -188,6 +188,14 @@ local function scout_schema(cfg: any, fields: { any }, pool: { any }): any
             properties = { field = { type = "string", enum = names }, note = { type = "string" } } } } } }
 end
 
+-- Notes as prompt lines. A note names its field, or covers the document as a
+-- whole when an agent scout wrote it.
+local function note_lines(notes: { any }): { string }
+    local out = {}
+    for _, n in ipairs(notes) do out[#out + 1] = n.field and (n.field .. ": " .. n.text) or ("agent: " .. n.text) end
+    return out
+end
+
 local SCOUT_SYSTEM = system([[You review evidence gathered from one document before values are extracted.
 Rate from 0 to 1 how confident you are that the passages contain every field's value. For each field, list the chunk numbers
 whose passages state or help determine its value. List chunk numbers that serve no field as noise. Propose focused search
@@ -222,7 +230,7 @@ function M.scout(run: any, step: any): error?
                 return text, nil
             end, { max_tokens = cfg.max_tokens })
         if err then return err end
-        if cfg.share_notes and answer and trim(answer) ~= "" then run.notes[#run.notes + 1] = trim(answer) end
+        if cfg.share_notes and answer and trim(answer) ~= "" then run.notes[#run.notes + 1] = { text = trim(answer) } end
         step.message = calls .. " tool calls added " .. found .. " passages"
         return nil
     end
@@ -231,12 +239,12 @@ function M.scout(run: any, step: any): error?
     while true do
         rounds = rounds + 1
         local result, err = ai.structured(step.meter, cfg.model, scout_schema(cfg, fields, ordered(run.pool)), SCOUT_SYSTEM,
-            "Fields:\n" .. field_lines(fields) .. (#run.notes > 0 and ("\n\nEarlier notes:\n" .. table.concat(run.notes, "\n")) or "") ..
+            "Fields:\n" .. field_lines(fields) .. (#run.notes > 0 and ("\n\nEarlier notes:\n" .. table.concat(note_lines(run.notes), "\n")) or "") ..
             "\n\nEvidence:\n" .. render(ordered(run.pool)), { max_tokens = cfg.max_tokens })
         if err then return err end
         run.confidence = tonumber(result.confidence) or 0
         if cfg.drop_noise then shapes.prune(run.pool, result.drop, result.evidence) end
-        if cfg.share_notes then for _, note in ipairs(result.notes) do run.notes[#run.notes + 1] = note.field .. ": " .. note.note end end
+        if cfg.share_notes then for _, note in ipairs(result.notes) do run.notes[#run.notes + 1] = { field = note.field, text = note.note } end end
         if rounds > cfg.max_rounds or run.confidence >= cfg.target_confidence or #result.queries == 0 then break end
         for i, q in ipairs(result.queries) do
             if i > cfg.max_extra_queries then break end
@@ -391,7 +399,8 @@ the chunk number and an exact quote copied character for character from that chu
 
 -- Extraction calls: fields grouped by their group, then by the region they read,
 -- in at most "fields per call" per call. Every passage in a call is one each of
--- its fields may read.
+-- its fields may read; a call gets its own fields' notes, and document-wide
+-- notes only when its fields read the whole document.
 function M.extraction_calls(run: any): { any }
     local limit = run.config.stages.extract.max_fields_per_call
     local sets, order = {}, {}
@@ -405,7 +414,7 @@ function M.extraction_calls(run: any): { any }
             reads = table.concat(sorted, ",")
         end
         local key = (trim(f.group) ~= "" and trim(f.group) or "Default") .. "\0" .. reads
-        if not sets[key] then sets[key] = { fields = {} }; order[#order + 1] = key end
+        if not sets[key] then sets[key] = { fields = {}, whole = region == nil }; order[#order + 1] = key end
         local set = sets[key]
         set.fields[#set.fields + 1] = f
     end
@@ -416,8 +425,14 @@ function M.extraction_calls(run: any): { any }
         for _, c in ipairs(pool) do if visible(run, set.fields[1], c.ordinal) then passages[#passages + 1] = c end end
         for start = 1, #set.fields, limit do
             local batch = {}
-            for i = start, math.min(#set.fields, start + limit - 1) do batch[#batch + 1] = set.fields[i] end
-            calls[#calls + 1] = { fields = batch, passages = passages }
+            local names, notes = {}, {}
+            for i = start, math.min(#set.fields, start + limit - 1) do
+                batch[#batch + 1] = set.fields[i]; names[set.fields[i].name] = true
+            end
+            for _, n in ipairs(run.notes) do
+                if (n.field and names[n.field]) or (not n.field and set.whole) then notes[#notes + 1] = n end
+            end
+            calls[#calls + 1] = { fields = batch, passages = passages, notes = note_lines(notes) }
         end
     end
     return calls
@@ -427,12 +442,12 @@ function M.extract(run: any, step: any): error?
     local cfg = run.config.stages.extract
     local calls = 0
     for _, call in ipairs(M.extraction_calls(run)) do
-        local batch, passages = call.fields, call.passages
+        local batch, passages, notes = call.fields, call.passages, call.notes
         local context = {}
         for _, f in ipairs(batch) do if run.analyses[f.name] then context[#context + 1] = "Analysis of " .. f.name .. ":\n" .. run.analyses[f.name] end end
         local evidence = render(passages)
         local user = "Fields:\n" .. field_lines(batch) ..
-            (#run.notes > 0 and ("\n\nScout notes:\n" .. table.concat(run.notes, "\n")) or "") ..
+            (#notes > 0 and ("\n\nScout notes:\n" .. table.concat(notes, "\n")) or "") ..
             (#context > 0 and ("\n\n" .. table.concat(context, "\n\n")) or "") ..
             "\n\nPassages:\n" .. evidence
         local budget_err = ai.check_budget(cfg.model, EXTRACT_SYSTEM .. user, cfg.max_output_tokens)
