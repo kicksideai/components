@@ -456,10 +456,6 @@
               "minLength": 1,
               "maxLength": 200
             },
-            "structured_output": {
-              "type": "boolean",
-              "default": true
-            },
             "max_output_tokens": {
               "type": "integer",
               "default": 4096,
@@ -475,13 +471,11 @@
           },
           "required": [
             "model",
-            "structured_output",
             "max_output_tokens",
             "max_fields_per_call"
           ],
           "default": {
             "model": "class:premium",
-            "structured_output": true,
             "max_output_tokens": 4096,
             "max_fields_per_call": 20
           }
@@ -574,7 +568,6 @@
         },
         "extract": {
           "model": "class:premium",
-          "structured_output": true,
           "max_output_tokens": 4096,
           "max_fields_per_call": 20
         },
@@ -747,7 +740,6 @@
       },
       "extract": {
         "model": "class:premium",
-        "structured_output": true,
         "max_output_tokens": 4096,
         "max_fields_per_call": 20
       },

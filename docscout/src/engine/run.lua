@@ -11,6 +11,8 @@ local process = require("process")
 local stages = require("stages")
 local ai = require("ai")
 local shapes = require("shapes")
+local error_envelope = require("error_envelope")
+local execution_identity = require("execution_identity")
 
 local M = {}
 
@@ -40,6 +42,24 @@ function M.run(input: any): (any?, error?)
     if not actor then return nil, errors.new({ kind = errors.UNAUTHENTICATED, message = "authentication required" }) end
     local extractor, access_err = extractors.for_run(input.id)
     if access_err then return nil, access_err end
+    if caller == "eval" then
+        if type(input.evaluation_id) ~= "string" or type(input.case_id) ~= "string" then return nil, invalid("Evaluation and case references are required") end
+        local evaluation, eval_err = repository.get_eval(input.evaluation_id, true)
+        if eval_err then return nil, eval_err end
+        local current, current_err = execution_identity.capture()
+        if current_err then return nil, current_err end
+        local row, row_err = execution_identity.to_row(current)
+        if row_err then return nil, row_err end
+        if evaluation.component_id ~= input.id or evaluation.identity.actor_id ~= row.actor_id then
+            return nil, errors.new({ kind = errors.PERMISSION_DENIED, retryable = false, message = "Evaluation snapshot access denied" })
+        end
+        local admitted = nil
+        for _, case in ipairs(evaluation.results) do if case.case_id == input.case_id then admitted = case end end
+        if not admitted or admitted.upload_id ~= input.upload_id then return nil, invalid("Upload does not match the admitted case") end
+        extractor = { config = evaluation.config_snapshot, revision = evaluation.config_revision }
+    elseif input.evaluation_id ~= nil or input.case_id ~= nil then
+        return nil, invalid("Snapshot references require an evaluation caller")
+    end
     local config = extractor.config
     if #config.fields == 0 then return nil, invalid("Add at least one field before running") end
 
@@ -66,7 +86,7 @@ function M.run(input: any): (any?, error?)
 
     local s = config.stages
     local ok = step("read", "document", config.retrieval.embedding_model, function(record: any): error?
-        local document, err = process.ensure(actor:id(), input.upload_id, config.retrieval, record)
+        local document, err = process.ensure(input.id, actor:id(), input.upload_id, config.retrieval, record)
         if err then return err end
         run.document = document
         return nil
@@ -87,30 +107,33 @@ function M.run(input: any): (any?, error?)
     for _, v in ipairs(run.values) do
         local evidence = {}
         for _, e in ipairs(v.evidence) do
-            evidence[#evidence + 1] = { quote = e.quote, section = e.section, page = e.page, chunk_id = e.chunk_id, found = e.found }
+            evidence[#evidence + 1] = { quote = e.quote, section = e.section, page = e.page, page_start = e.page_start, page_end = e.page_end, chunk_id = e.chunk_id, found = e.found }
         end
         fields[#fields + 1] = { name = v.name, value = v.value, confidence = v.confidence, verified = v.verified, missing = v.missing, reason = v.reason, evidence = evidence }
     end
     local result = {
         upload_id = input.upload_id, config_revision = extractor.revision, fields = fields, trace = trace,
         duration_ms = millis() - started, tokens = tokens, status = failure and "failed" or "completed",
-        error = failure and tostring(failure) or nil,
+        error = failure and error_envelope.encode(failure) or nil,
         pages = run.document and run.document.page_count or 0,
     }
     local expires_at, expiry_err = retention.expires_at()
-    if expiry_err then return nil, expiry_err end
+    if expiry_err then
+        if failure then return nil, error_envelope.wrap_secondary(expiry_err, failure, "run retention failed") end
+        return nil, expiry_err
+    end
     local run_id, record_err = repository.add_run(input.id, {
         user_id = actor:id(), upload_id = input.upload_id, caller = caller, status = result.status,
         config_revision = extractor.revision, result = { fields = fields, error = result.error }, trace = trace,
         duration_ms = result.duration_ms, tokens = tokens, expires_at = expires_at,
     })
-    if record_err then return nil, record_err end
+    if record_err then
+        if failure then return nil, error_envelope.wrap_secondary(record_err, failure, "run recording failed") end
+        return nil, record_err
+    end
     result.run_id = run_id
     if failure then
-        local f = failure :: any
-        local details = f:details() or {}
-        details.run_id, details.trace = run_id, trace
-        return nil, errors.new({ kind = f:kind() or errors.INTERNAL, retryable = f:retryable(), message = f:message(), details = details })
+        return nil, error_envelope.wrap(failure, "extraction failed", { run_id = run_id, trace = trace })
     end
     return result, nil
 end

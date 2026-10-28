@@ -30,7 +30,9 @@ entries:
   - security
   - contract
   imports:
+    error_envelope: kickside.contract:error_envelope
     doc2md: kickside.convert.doc2md:doc2md
+    canonical_json: kickside.contract:canonical_json
     store: kickside.docscout.persist:store
     ai: kickside.docscout.engine:ai
     retention: kickside.docscout:retention
@@ -74,3 +76,5 @@ entries:
     stages: kickside.docscout.engine:stages
     ai: kickside.docscout.engine:ai
     shapes: kickside.docscout.engine:shapes
+    error_envelope: kickside.contract:error_envelope
+    execution_identity: kickside.execution:execution_identity

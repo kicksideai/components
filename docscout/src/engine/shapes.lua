@@ -21,8 +21,8 @@ function M.pool(): any
     return { by_ordinal = {}, dropped = {}, count = 0 }
 end
 
--- Adds chunks the pool does not hold and has not dropped.
-function M.add(pool: any, chunks: { any })
+-- Adds newly retained chunks to the pool.
+function M.add(pool: any, chunks: { any }?)
     for _, c in ipairs(chunks or {}) do
         if not pool.dropped[c.ordinal] and not pool.by_ordinal[c.ordinal] then
             pool.by_ordinal[c.ordinal] = c
@@ -114,39 +114,6 @@ function M.ordinals_of(outline: { any }, ids: { string }): { integer }
     return out
 end
 
--- The JSON object in a model reply that may wrap it in prose or a code fence.
-function M.json_object(reply: string): (any?, error?)
-    local first, last = reply:find("{", 1, true), nil
-    for i = #reply, 1, -1 do if reply:sub(i, i) == "}" then last = i; break end end
-    if not first or not last or last < first then
-        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the model reply holds no JSON object" })
-    end
-    local decoded, err = json.decode(reply:sub(first, last))
-    if err or type(decoded) ~= "table" then
-        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the model reply is not valid JSON: " .. tostring(err) })
-    end
-    return decoded, nil
-end
-
--- Characters of a model reply kept with an error about it.
-M.REPLY_EXCERPT = 4000
-
--- The object in a text reply that must satisfy schema; an error keeps an
--- excerpt of the reply as raw_content.
-function M.reply_object(reply: string, schema: any): (any?, error?)
-    local excerpt = reply:sub(1, M.REPLY_EXCERPT)
-    local decoded, err = M.json_object(reply)
-    if err then
-        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = (err :: any):message(), details = { raw_content = excerpt } })
-    end
-    local valid, invalid_err = json.validate(schema, decoded)
-    if not valid then
-        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, details = { raw_content = excerpt },
-            message = "the reply does not match the schema: " .. tostring(invalid_err) })
-    end
-    return decoded, nil
-end
-
 -- Quotes a value may cite.
 M.EVIDENCE_LIMIT = 5
 
@@ -173,14 +140,11 @@ function M.passage_ref(chunks: { any }): any
     return { type = "integer", enum = ordinals }
 end
 
--- One structured-output schema for a group of fields; evidence cites the given
--- passages. Strict structured output has the model fill value with a placeholder
--- when found is false; a free-text reply may leave it null instead, so its schema
--- does not require value.
-function M.group_schema(fields: { any }, passages: { any }, optional_values: boolean?): any
+-- One structured-output schema for a group of fields and its evidence passages.
+function M.group_schema(fields: { any }, passages: { any }): any
     local properties, required = {}, {}
     local chunk = M.passage_ref(passages)
-    local members = optional_values and { "found", "confidence", "evidence" } or { "found", "value", "confidence", "evidence" }
+    local members = { "found", "value", "confidence", "evidence" }
     for _, f in ipairs(fields) do
         properties[f.name] = { type = "object", additionalProperties = false, required = members, properties = {
             found = { type = "boolean" },
@@ -194,27 +158,6 @@ function M.group_schema(fields: { any }, passages: { any }, optional_values: boo
     return { type = "object", additionalProperties = false, required = required, properties = properties }
 end
 
--- A sample value of one field type, as a text reply would write it.
-local function sample(kind: string, f: any): any
-    if #f.enum_values > 0 and (kind == "enum" or kind == "text") then return f.enum_values[1] end
-    if kind == "number" then return 0 end
-    if kind == "boolean" then return true end
-    if kind == "date" then return f.expected_format ~= "" and f.expected_format or "YYYY-MM-DD" end
-    if kind == "object" then return M.object() end
-    return f.expected_format ~= "" and f.expected_format or "value as the document states it"
-end
-
--- An example reply for a group of fields. A text reply is shown this instance
--- rather than the JSON Schema, so the model writes values, not schema keywords.
-function M.reply_example(fields: { any }): any
-    local out = M.object()
-    for _, f in ipairs(fields) do
-        local value = f.type == "list" and { sample(f.item_type, f) } or sample(f.type, f)
-        out[f.name] = { found = true, value = value, confidence = 0.9, evidence = { { chunk = 1, quote = "exact words copied from chunk 1" } } }
-    end
-    return out
-end
-
 -- Typographic characters that PDFs and models swap for plain ones.
 local EQUIVALENT = {
     ["‘"] = "'", ["’"] = "'", ["‚"] = "'", ["′"] = "'",
@@ -225,11 +168,11 @@ local EQUIVALENT = {
 
 -- Text compared for quote matching: lower case, typographic characters made
 -- plain, Markdown emphasis and table bars removed, whitespace collapsed. Signs,
--- decimal points and other punctuation stay, so a changed number never matches.
+-- decimal points and numeric punctuation remain significant.
 function M.normalize(s: string): string
     local out = {}
     for ch in s:gmatch("[%z\1-\127\194-\244][\128-\191]*") do out[#out + 1] = EQUIVALENT[ch] or ch end
-    -- Markdown emphasis runs, code ticks and table bars are formatting, not text.
+    -- Normalization removes Markdown emphasis, code ticks and table bars.
     local plain = table.concat(out):gsub("([^%s%*])%*+", "%1 "):gsub("%*+([^%s%*])", " %1"):gsub("__+", " "):gsub("`+", " "):gsub("|", " ")
     local folded = plain:lower():gsub("%s+", " ")
     return M.trim(folded)
@@ -257,7 +200,7 @@ function M.object(): { [string]: any }
     return t
 end
 
--- Values of an extraction result keyed by field name; fields not found are absent.
+-- Extracted values keyed by field name.
 function M.values(result: any): { [string]: any }
     local out = M.object()
     for _, f in ipairs(result.fields) do if not f.missing then out[f.name] = f.value end end
@@ -268,6 +211,27 @@ end
 function M.verified(result: any): boolean
     for _, f in ipairs(result.fields) do if not f.verified then return false end end
     return true
+end
+
+-- Resolves a quote to one page; ambiguous and cross-page quotes retain the range.
+function M.quote_location(chunk: any, quote: string): any
+    if not chunk then return {} end
+    local normalized = M.normalize(quote)
+    local matched, page = false, nil
+    for _, span in ipairs(chunk.page_spans or {}) do
+        if normalized ~= "" and M.normalize(span.text):find(normalized, 1, true) then
+            if span.page == nil or (matched and page ~= span.page) then
+                return { page_start = chunk.page_start, page_end = chunk.page_end }
+            end
+            matched, page = true, span.page
+        end
+    end
+    if matched then return { page = page } end
+    if #(chunk.page_spans or {}) == 0 and (chunk.page_end == nil or chunk.page_start == chunk.page_end)
+        and normalized ~= "" and M.normalize(chunk.content):find(normalized, 1, true) then
+        return { page = chunk.page_start }
+    end
+    return { page_start = chunk.page_start, page_end = chunk.page_end }
 end
 
 return M

@@ -38,7 +38,14 @@ end
 
 function M.get() respond(extractors.get(param("id"))) end
 
-function M.list() respond(extractors.list()) end
+function M.list()
+    local req = http.request()
+    local limit = req:query("limit")
+    if limit ~= nil and tonumber(limit) == nil then
+        return respond(nil, errors.new({ kind = errors.INVALID, retryable = false, message = "limit must be an integer" }))
+    end
+    respond(extractors.list({ filter = req:query("filter"), cursor = req:query("cursor"), limit = limit and tonumber(limit) }))
+end
 
 function M.update()
     local dto, err = body()

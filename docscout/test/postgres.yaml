@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+services:
+  database:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: docscout_test
+      POSTGRES_USER: kickside
+      POSTGRES_PASSWORD: kickside
+    ports:
+      - "${DOCSCOUT_PG_PORT:-5433}:5432"
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U kickside -d docscout_test"]
+      interval: 1s
+      timeout: 5s
+      retries: 30

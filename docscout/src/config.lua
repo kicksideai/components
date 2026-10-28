@@ -17,6 +17,12 @@ function M.schema(): (any?, error?)
     return json.decode((entry :: any).data.schema_json)
 end
 
+-- Retires the former extraction selector in stored component contexts.
+function M.migrate(value: any): any
+    value.stages.extract.structured_output = nil
+    return value
+end
+
 function M.validate(value: any): error?
     local schema, schema_err = M.schema()
     if schema_err then return schema_err end
@@ -52,7 +58,7 @@ function M.validate(value: any): error?
 end
 
 -- Expected values of an evaluation case keyed by field name, each a value of
--- the field's type. An absent field is one the document does not state.
+-- the field's type; absent fields represent unstated values.
 function M.validate_expected(fields: { any }, value: any): error?
     local properties = shapes.object()
     for _, field in ipairs(fields) do properties[field.name] = shapes.value_schema(field) end

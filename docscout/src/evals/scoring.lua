@@ -47,7 +47,7 @@ end
 
 local scalar
 
--- Mean score over the expected keys; extra keys in the extracted object do not count.
+-- Mean score over the expected keys.
 local function object_score(expected: any, got: any): number
     if type(got) ~= "table" then return 0 end
     local total, n = 0, 0

@@ -1,10 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
--- Turns an upload's Markdown into a processed document: sections from its
--- headings, chunks that keep tables whole and never cross a heading when the
--- configuration says so, page or slide locators from Doc2MD markers, a context
--- line per chunk, and one vector per chunk. A processed copy is reused while it
--- is fresh for the same owner, content and processing settings.
+-- Processes Markdown into sections, page spans, chunks, contexts and vectors.
 local hash = require("hash")
+local canonical_json = require("canonical_json")
 local text = require("text")
 local security = require("security")
 local contract = require("contract")
@@ -13,6 +10,7 @@ local store = require("store")
 local ai = require("ai")
 local retention = require("retention")
 local shapes = require("shapes")
+local error_envelope = require("error_envelope")
 
 local trim = shapes.trim
 
@@ -21,6 +19,7 @@ local M = {}
 -- The splitter measures characters; configuration speaks in tokens.
 M.CHARS_PER_TOKEN = 4
 local CONTEXT_BATCH = 8
+local PROVIDER_RESPONSE = "docscout_content_provider_response"
 
 local function invalid(message: string): error
     return errors.new({ kind = errors.INVALID, message = message })
@@ -29,22 +28,30 @@ end
 
 -- The uploads content provider for one upload, opened as the caller.
 local function provider_for(upload_id: string): (any?, error?)
-    local definition, err = contract.get("kickside.contract:content_provider")
-    if err or not definition then
-        if type(err) == "userdata" then return nil, errors.wrap(err :: error, "content provider unavailable") end
-        return nil, errors.new({ kind = errors.UNAVAILABLE, message = "content provider unavailable: " .. tostring(err) })
+    local actor, scope = security.actor(), security.scope()
+    if not actor then
+        return nil, errors.new({ kind = errors.UNAUTHENTICATED, retryable = false, message = "authentication required" })
     end
-    local provider, open_err = (definition :: any):with_actor(security.actor()):with_scope(security.scope())
-        :with_context({ upload_id = upload_id }):open("kickside.uploads:content_provider")
-    if open_err or not provider then
-        if type(open_err) == "userdata" then return nil, errors.wrap(open_err :: error, "upload content unavailable") end
-        return nil, errors.new({ kind = errors.UNAVAILABLE, message = "upload content unavailable: " .. tostring(open_err) })
+    if not scope then
+        return nil, errors.new({ kind = errors.PERMISSION_DENIED, retryable = false, message = "authorization scope required" })
     end
-    return provider, nil
+    local definition, get_err = contract.get("kickside.contract:content_provider")
+    local wrapper, err = error_envelope.binding(definition, get_err, "with_actor", "content provider unavailable", PROVIDER_RESPONSE)
+    if err then return nil, err end
+    local actor_bound, actor_err = (wrapper :: any):with_actor(actor)
+    wrapper, err = error_envelope.binding(actor_bound, actor_err, "with_scope", "content provider actor binding failed", PROVIDER_RESPONSE)
+    if err then return nil, err end
+    local scope_bound, scope_err = (wrapper :: any):with_scope(scope)
+    wrapper, err = error_envelope.binding(scope_bound, scope_err, "with_context", "content provider scope binding failed", PROVIDER_RESPONSE)
+    if err then return nil, err end
+    local context_bound, context_err = (wrapper :: any):with_context({ upload_id = upload_id })
+    wrapper, err = error_envelope.binding(context_bound, context_err, "open", "content provider context binding failed", PROVIDER_RESPONSE)
+    if err then return nil, err end
+    local provider, open_err = (wrapper :: any):open("kickside.uploads:content_provider")
+    return error_envelope.binding(provider, open_err, nil, "upload content unavailable", PROVIDER_RESPONSE)
 end
 
--- What the caller may know about an upload without reading it: its file name
--- and type. Fails when the caller cannot read the upload.
+-- Reads upload metadata through the caller's content provider.
 function M.info(upload_id: string): (any?, error?)
     local provider, err = provider_for(upload_id)
     if err then return nil, err end
@@ -68,10 +75,9 @@ function M.content(upload_id: string): (any?, error?)
     if type(content) ~= "table" or content.success == false or type(content.content) ~= "string" then
         return nil, (content and content.error) or invalid("upload has no readable content")
     end
-    -- Extracted text arrives as Markdown; an upload without it serves its original bytes.
-    if type(content.content_type) ~= "string" or not content.content_type:match("^text/") then
+    if type(content.artifact_id) ~= "string" or content.artifact_id == "" or content.content_type ~= "text/markdown" then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
-            message = "the upload has no extracted text yet (" .. tostring(content.content_type) .. ")" })
+            message = "The upload needs an extracted Markdown artifact", details = { code = "markdown_artifact_required" } })
     end
     return {
         markdown = content.content,
@@ -83,19 +89,14 @@ end
 -- Settings that change the processed copy; reading settings stay out. Models
 -- are named by the card a reference resolves to, so reassigning a class makes
 -- a new copy.
-function M.processing_key(retrieval: any, models: { [string]: string }): string
+function M.processing_key(retrieval: any, models: { [string]: string }): (string?, error?)
     local parts = {
         chunk_size = retrieval.chunk_size, overlap = retrieval.overlap,
         split_headings = retrieval.split_headings, keep_tables = retrieval.keep_tables,
         context = retrieval.context, embedding_model = models.embedding,
         context_model = retrieval.context == "generated" and models.context or "",
     }
-    local keys = {}
-    for k in pairs(parts) do keys[#keys + 1] = k end
-    table.sort(keys)
-    local line = {}
-    for _, k in ipairs(keys) do line[#line + 1] = k .. "=" .. tostring(parts[k]) end
-    return hash.sha256(table.concat(line, ";"))
+    return canonical_json.hash(parts)
 end
 
 -- A heading section is always kept; the text before the first heading only
@@ -133,33 +134,37 @@ function M.sections(markdown: string): { any }
     return sections
 end
 
-local function split(input: string, retrieval: any): { string }
-    if trim(input) == "" then return {} end
+local function split(input: string, retrieval: any): ({ string }?, error?)
+    if trim(input) == "" then return {}, nil end
     local splitter, err = text.splitter.markdown({
         chunk_size = retrieval.chunk_size * M.CHARS_PER_TOKEN,
         chunk_overlap = retrieval.overlap * M.CHARS_PER_TOKEN,
         code_blocks = true,
         join_table_rows = retrieval.keep_tables,
     })
-    if err or not splitter then error(errors.new({ kind = errors.INTERNAL, message = "text splitter unavailable: " .. tostring(err) })) end
+    if err then return nil, errors.wrap(err, "text splitter unavailable") end
     local raw, split_err = splitter:split_text(input)
-    if split_err then error(errors.new({ kind = errors.INTERNAL, message = "text split failed: " .. tostring(split_err) })) end
+    if split_err then return nil, errors.wrap(split_err, "text split failed") end
     local out = {}
     for _, c in ipairs(raw or {}) do if type(c) == "string" and trim(c) ~= "" then out[#out + 1] = c end end
-    return out
+    return out, nil
 end
 
 -- Chunks with section, heading path and page or slide range, markers removed.
-function M.chunk(markdown: string, retrieval: any): ({ any }, { any }, integer)
+function M.chunk(markdown: string, retrieval: any): (any?, error?)
     local sections = M.sections(markdown)
     local pieces: { any } = {}
     if retrieval.split_headings then
         for _, s in ipairs(sections) do
-            for _, c in ipairs(split(s.text, retrieval)) do pieces[#pieces + 1] = { section = s, text = c } end
+            local split_chunks, err = split(s.text, retrieval)
+            if err then return nil, err end
+            for _, c in ipairs(split_chunks) do pieces[#pieces + 1] = { section = s, text = c } end
         end
     else
         local by_line: { any } = {}
-        for _, c in ipairs(split(markdown, retrieval)) do
+        local split_chunks, err = split(markdown, retrieval)
+        if err then return nil, err end
+        for _, c in ipairs(split_chunks) do
             local owner = sections[1]
             local probe = c:sub(1, 80)
             for _, s in ipairs(sections) do if s.text:find(probe, 1, true) then owner = s; break end end
@@ -172,6 +177,14 @@ function M.chunk(markdown: string, retrieval: any): ({ any }, { any }, integer)
     local pages = 0
     for _, piece in ipairs(pieces) do
         local found = doc2md.markers(piece.text)
+        local spans, offset, page = {}, 1, current and current.number or nil
+        for _, marker in ipairs(found) do
+            local body = trim(doc2md.strip_markers(piece.text:sub(offset, marker.start - 1)))
+            if body ~= "" then spans[#spans + 1] = { page = page, text = body } end
+            offset, page = marker.start, marker.number
+        end
+        local tail = trim(doc2md.strip_markers(piece.text:sub(offset)))
+        if tail ~= "" then spans[#spans + 1] = { page = page, text = tail } end
         local first, last = current, current
         if #found > 0 then
             if first == nil or trim(piece.text:sub(1, found[1].start - 1)) == "" then first = found[1] end
@@ -182,7 +195,7 @@ function M.chunk(markdown: string, retrieval: any): ({ any }, { any }, integer)
         local content = trim(doc2md.strip_markers(piece.text))
         if content ~= "" then
             chunks[#chunks + 1] = {
-                ordinal = #chunks + 1, section_id = piece.section.id, heading_path = piece.section.path, content = content,
+                page_spans = spans, ordinal = #chunks + 1, section_id = piece.section.id, heading_path = piece.section.path, content = content,
                 page_start = first and first.number or nil, page_end = last and last.number or nil,
             }
         end
@@ -203,7 +216,7 @@ function M.chunk(markdown: string, retrieval: any): ({ any }, { any }, integer)
     end
     local kept = {}
     for _, entry in ipairs(outline) do if entry.chunk_start then kept[#kept + 1] = entry end end
-    return chunks, kept, pages
+    return { chunks = chunks, outline = kept, page_count = pages }, nil
 end
 
 local function context_schema(count: integer): any
@@ -239,9 +252,8 @@ local function contexts(meter: any, retrieval: any, models: { [string]: string }
     return nil
 end
 
--- Returns the processed document for this upload and settings, building it
--- when no fresh copy exists. trace receives the read step.
-function M.ensure(owner_id: string, upload_id: string, retrieval: any, step: any): (any?, error?)
+-- Builds or reuses the processed document and updates the read-step state.
+function M.ensure(component_id: string, owner_id: string, upload_id: string, retrieval: any, step: any): (any?, error?)
     local content, err = M.content(upload_id)
     if err then return nil, err end
     local models = {}
@@ -253,15 +265,18 @@ function M.ensure(owner_id: string, upload_id: string, retrieval: any, step: any
         if context_lookup_err then return nil, context_lookup_err end
         models.context = tostring(writer.name)
     end
-    local key = M.processing_key(retrieval, models)
-    local existing, find_err = store.find(owner_id, upload_id, content.checksum, key)
+    local key, key_err = M.processing_key(retrieval, models)
+    if key_err then return nil, key_err end
+    local existing, find_err = store.find(component_id, owner_id, upload_id, content.checksum, key :: string)
     if find_err then return nil, find_err end
     if existing then
         step.message = "Reused the processed copy (" .. existing.chunk_count .. " chunks)"
         existing.embedding_model = models.embedding
         return existing, nil
     end
-    local chunks, outline, pages = M.chunk(content.markdown, retrieval)
+    local chunked, chunk_err = M.chunk(content.markdown, retrieval)
+    if chunk_err then return nil, chunk_err end
+    local chunks, outline, pages = chunked.chunks, chunked.outline, chunked.page_count
     if #chunks == 0 then return nil, invalid("the upload has no text to read") end
     local context_err = contexts(step.meter, retrieval, models, chunks, content.filename)
     if context_err then return nil, context_err end
@@ -275,7 +290,7 @@ function M.ensure(owner_id: string, upload_id: string, retrieval: any, step: any
     local tokens = 0
     for _, c in ipairs(chunks) do tokens = tokens + math.ceil(#c.content / M.CHARS_PER_TOKEN) end
     local id, save_err = store.save({
-        owner_id = owner_id, upload_id = upload_id, checksum = content.checksum, processing_key = key,
+        component_id = component_id, owner_id = owner_id, upload_id = upload_id, checksum = content.checksum, processing_key = key,
         outline = outline, page_count = pages, tokens = tokens, expires_at = expires_at,
     }, chunks)
     if save_err then return nil, save_err end

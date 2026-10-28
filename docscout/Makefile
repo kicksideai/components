@@ -10,7 +10,8 @@ lockrefresh:
 lint:
 	cd test && $(WIPPY) lint --ns kickside.docscout --ns 'kickside.docscout.*' --set "vars.kickside_root=$(KICKSIDE_SOURCE_ROOT)"
 test:
-	cd test && $(WIPPY) test --set "vars.kickside_root=$(KICKSIDE_SOURCE_ROOT)" $(WIPPY_ARGS) 2>&1 | tee .wippy/test-result.log
+	test_http_address=$$(python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print("%s:%s" % s.getsockname()); s.close()'); \
+	cd test && $(WIPPY) test --set "vars.kickside_root=$(KICKSIDE_SOURCE_ROOT)" --set "vars.http_address=$$test_http_address" $(WIPPY_ARGS) 2>&1 | tee .wippy/test-result.log
 	! grep -Eq 'FAILED|No tests found|No tests match filter' test/.wippy/test-result.log
 	grep -Eq '[1-9][0-9]* tests' test/.wippy/test-result.log
 test-pg:
@@ -29,3 +30,13 @@ test-ui:
 
 preview:
 	cd ui && npm run preview
+
+.PHONY: setup verify postgres-up postgres-down test-sqlite
+setup: lockrefresh
+verify:
+	$(MAKE) lint test typecheck test-ui build
+postgres-up:
+	docker compose -f test/postgres.yaml up -d --wait
+postgres-down:
+	docker compose -f test/postgres.yaml down -v
+test-sqlite: test
