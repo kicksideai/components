@@ -114,8 +114,8 @@ local function finish(eval: any, case_id: string, outcome: any): (any?, error?)
 end
 
 local function returned_failure(input: any, primary: error): (nil, error)
-    if (input.job and input.job.is_final_attempt) or not primary:retryable()
-        or job_types.is_deterministic_kind(primary:kind()) then
+    -- Jobs runs the case again unless this is its final attempt or the kind is deterministic.
+    if (input.job and input.job.is_final_attempt) or job_types.is_deterministic_kind(primary:kind()) then
         local payload = input.payload
         local _, settle_err = finish({ component_id = payload.component_id, id = payload.eval_id }, payload.case_id,
             { status = "failed", error = error_envelope.encode(primary) })
