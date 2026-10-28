@@ -194,15 +194,14 @@ end
 -- The scout names, per field, the passages holding its evidence; the engine
 -- drops only passages no field cites.
 local function scout_schema(cfg: any, fields: { any }, pool: { any }): any
-    local names, ordinals = {}, {}
+    local names = {}
     for _, f in ipairs(fields) do names[#names + 1] = f.name end
-    for _, c in ipairs(pool) do ordinals[#ordinals + 1] = c.ordinal end
-    local chunk = #ordinals > 0 and { type = "integer", enum = ordinals } or { type = "integer" }
+    local chunk = shapes.passage_ref(pool)
     return { type = "object", additionalProperties = false, required = { "confidence", "evidence", "drop", "queries", "notes" }, properties = {
         confidence = { type = "number", minimum = 0, maximum = 1 },
         evidence = { type = "array", maxItems = #fields, items = { type = "object", additionalProperties = false, required = { "field", "chunks" },
-            properties = { field = { type = "string", enum = names }, chunks = { type = "array", maxItems = #ordinals, items = chunk } } } },
-        drop = { type = "array", maxItems = #ordinals, items = chunk },
+            properties = { field = { type = "string", enum = names }, chunks = { type = "array", maxItems = #pool, items = chunk } } } },
+        drop = { type = "array", maxItems = #pool, items = chunk },
         queries = { type = "array", maxItems = cfg.max_extra_queries, items = { type = "object", additionalProperties = false, required = { "field", "query" },
             properties = { field = { type = "string", enum = names }, query = { type = "string" } } } },
         notes = { type = "array", maxItems = #fields, items = { type = "object", additionalProperties = false, required = { "field", "note" },
@@ -354,7 +353,8 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
         end
         table.sort(found, function(a: any, b: any): boolean return a.ordinal < b.ordinal end)
     end
-    add(run.pool, found)
+    -- The scout reviews no deep field, so its noise verdicts do not cover these finds.
+    shapes.admit(run.pool, found)
     local analysis, analysis_err = ai.generate(step.meter, cfg.model,
         system("You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it."),
         field_lines({ f }) .. "\n\nPassages:\n" .. render(found), { temperature = cfg.analysis_temperature })
@@ -391,7 +391,7 @@ function M.deep(run: any, step: any): error?
     end
     if failure then return failure end
     step.queries = all_queries
-    step.message = #fields .. (#fields == 1 and " field" or " fields") .. " analysed" .. (step.long_sections and " · long sections read as chunks" or "")
+    step.message = #fields .. (#fields == 1 and " field" or " fields") .. " analysed · " .. run.pool.count .. " passages" .. (step.long_sections and " · long sections read as chunks" or "")
     return nil
 end
 
@@ -399,10 +399,10 @@ end
 -- the fields, so extraction reads less and cites tighter quotes.
 local HIGHLIGHT_EXCERPTS = 4
 
-local function highlight_schema(batch: integer): any
+function M.highlight_schema(batch: { any }): any
     return { type = "object", additionalProperties = false, required = { "passages" }, properties = {
-        passages = { type = "array", maxItems = batch, items = { type = "object", additionalProperties = false, required = { "chunk", "excerpts" },
-            properties = { chunk = { type = "integer" }, excerpts = { type = "array", maxItems = HIGHLIGHT_EXCERPTS, items = { type = "string" } } } } } } }
+        passages = { type = "array", maxItems = #batch, items = { type = "object", additionalProperties = false, required = { "chunk", "excerpts" },
+            properties = { chunk = shapes.passage_ref(batch), excerpts = { type = "array", maxItems = HIGHLIGHT_EXCERPTS, items = { type = "string" } } } } } } }
 end
 local HIGHLIGHT_BATCH = 12
 
@@ -413,7 +413,7 @@ function M.highlight(run: any, step: any): error?
     for start = 1, #chunks, HIGHLIGHT_BATCH do
         local batch = {}
         for i = start, math.min(#chunks, start + HIGHLIGHT_BATCH - 1) do batch[#batch + 1] = chunks[i] end
-        local result, err = ai.structured(step.meter, model, highlight_schema(#batch),
+        local result, err = ai.structured(step.meter, model, M.highlight_schema(batch),
             system("For each passage, copy word for word the sentences that state or help determine any field's value. Return no excerpts for passages that do not."),
             "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch))
         if err then return err end
@@ -503,14 +503,15 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
         "\n\nPassages:\n" .. evidence
     local result, err
     if cfg.structured_output then
-        result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
+        result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch, passages), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
     else
         local example = json.encode(shapes.reply_example(batch))
         local textual, gen_err = ai.generate(step.meter, cfg.model, EXTRACT_SYSTEM ..
             "\nReply with only a JSON object shaped like this example, with one entry per field and the value typed as the field says;" ..
             " chunk is the integer after C. When the passages do not state a field, set found to false, value to null and evidence to [].\n" .. example,
             user, { max_tokens = cfg.max_output_tokens })
-        if gen_err then err = gen_err else result, err = shapes.reply_object(textual :: string, shapes.group_schema(batch, true)) end
+        -- A text reply's chunk numbers are unconstrained; Verify locates each quote in the document.
+        if gen_err then err = gen_err else result, err = shapes.reply_object(textual :: string, shapes.group_schema(batch, {}, true)) end
     end
     if err then
         -- The llm module refuses a prompt larger than the model's window before calling it.

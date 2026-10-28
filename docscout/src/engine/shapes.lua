@@ -31,6 +31,13 @@ function M.add(pool: any, chunks: { any })
     end
 end
 
+-- Adds chunks a stage found for its own fields, including ones another stage
+-- dropped as noise for the fields it reviewed.
+function M.admit(pool: any, chunks: { any })
+    for _, c in ipairs(chunks) do pool.dropped[c.ordinal] = nil end
+    M.add(pool, chunks)
+end
+
 function M.drop(pool: any, ordinal: integer): boolean
     if not pool.by_ordinal[ordinal] then return false end
     pool.by_ordinal[ordinal] = nil
@@ -158,11 +165,21 @@ function M.value_schema(f: any): any
     return { type = JSON_TYPES[f.type] }
 end
 
--- One structured-output schema for a group of fields. Strict structured output
--- has the model fill value with a placeholder when found is false; a free-text
--- reply may leave it null instead, so its schema does not require value.
-function M.group_schema(fields: { any }, optional_values: boolean?): any
+-- A chunk number a reply may give: one of the passages the model was sent.
+function M.passage_ref(chunks: { any }): any
+    local ordinals = {}
+    for _, c in ipairs(chunks) do ordinals[#ordinals + 1] = c.ordinal end
+    if #ordinals == 0 then return { type = "integer" } end
+    return { type = "integer", enum = ordinals }
+end
+
+-- One structured-output schema for a group of fields; evidence cites the given
+-- passages. Strict structured output has the model fill value with a placeholder
+-- when found is false; a free-text reply may leave it null instead, so its schema
+-- does not require value.
+function M.group_schema(fields: { any }, passages: { any }, optional_values: boolean?): any
     local properties, required = {}, {}
+    local chunk = M.passage_ref(passages)
     local members = optional_values and { "found", "confidence", "evidence" } or { "found", "value", "confidence", "evidence" }
     for _, f in ipairs(fields) do
         properties[f.name] = { type = "object", additionalProperties = false, required = members, properties = {
@@ -170,7 +187,7 @@ function M.group_schema(fields: { any }, optional_values: boolean?): any
             value = M.value_schema(f),
             confidence = { type = "number", minimum = 0, maximum = 1 },
             evidence = { type = "array", maxItems = M.EVIDENCE_LIMIT, items = { type = "object", additionalProperties = false, required = { "chunk", "quote" },
-                properties = { chunk = { type = "integer" }, quote = { type = "string" } } } },
+                properties = { chunk = chunk, quote = { type = "string" } } } },
         } }
         required[#required + 1] = f.name
     end
