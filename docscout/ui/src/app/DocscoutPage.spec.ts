@@ -113,7 +113,7 @@ describe('Docscout manage surface',()=>{
   expect(wrapper.find('.description').exists()).toBe(false)
  })
  it('shows evidence locators, trace time and tokens from the typed result',async()=>{
-  const result:Extraction={run_id:'run',upload_id:'upload',config_revision:7,duration_ms:4200,tokens:850,fields:[{name:'total',value:1250,confidence:.96,verified:true,evidence:[{quote:'Amount due: 1,250',section:'Summary',chunk_id:'chunk'}]}],trace:[{kind:'extract',status:'completed',scope:'chunk',duration_ms:4200,input_tokens:800,output_tokens:50}]}
+  const result:Extraction={run_id:'run',upload_id:'upload',config_revision:7,duration_ms:4200,tokens:850,values:{total:1250},fields:[{name:'total',path:'total',value:1250,confidence:.96,verified:true,evidence:[{quote:'Amount due: 1,250',section:'Summary',chunk_id:'chunk'}]}],trace:[{kind:'extract',status:'completed',scope:'chunk',duration_ms:4200,input_tokens:800,output_tokens:50}]}
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot(),result}})
   await wrapper.findAll('[role=tab]').find(t=>t.text()==='Test')!.trigger('click')
   expect(wrapper.text()).toContain('Amount due: 1,250');expect(wrapper.text()).toContain('96% confidence');expect(wrapper.text()).toContain('850 tokens');expect(wrapper.text()).not.toContain('Page')
@@ -142,13 +142,13 @@ describe('Docscout manage surface',()=>{
   expect(nodes.find(n=>n.text().includes('Prefetch'))!.text()).toContain('1 field hint')
  })
  it('records the per-step run trace on the flow',()=>{
-  const result:Extraction={run_id:'run',upload_id:'upload',config_revision:7,duration_ms:2000,tokens:300,fields:[],trace:[{kind:'scout',status:'completed',scope:'chunk',duration_ms:2000,input_tokens:250,output_tokens:50,queries:['a','b']}]}
+  const result:Extraction={run_id:'run',upload_id:'upload',config_revision:7,duration_ms:2000,tokens:300,values:{},fields:[],trace:[{kind:'scout',status:'completed',scope:'chunk',duration_ms:2000,input_tokens:250,output_tokens:50,queries:['a','b']}]}
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot(),result}})
   expect(wrapper.findAll('.node').find(n=>n.text().includes('Scout loop'))!.get('.trace-line').text()).toContain('2.0s · 300 tokens · 2 queries')
  })
  it('shows where a failed run stopped and marks values the document does not state',async()=>{
-  const result:Extraction={run_id:'r',upload_id:'u',config_revision:1,duration_ms:900,tokens:40,status:'failed',error:'model unavailable',
-   fields:[{name:'total',value:null,confidence:0,verified:true,missing:true,evidence:[]}],
+  const result:Extraction={run_id:'r',upload_id:'u',config_revision:1,duration_ms:900,tokens:40,values:{},status:'failed',error:'model unavailable',
+   fields:[{name:'total',path:'total',value:null,confidence:0,verified:true,missing:true,evidence:[]}],
    trace:[{kind:'read',status:'completed',duration_ms:100,input_tokens:40,output_tokens:0,message:'Processed 4 chunks'},{kind:'extract',status:'failed',duration_ms:800,input_tokens:0,output_tokens:0,message:'model unavailable'}]}
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot(),result}})
   await wrapper.findAll('[role=tab]').find(t=>t.text()==='Test')!.trigger('click')

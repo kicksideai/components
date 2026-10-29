@@ -25,17 +25,17 @@ describe('Extractor configuration',()=>{
   c.stages.scout.tools=['read_section'];c.stages.scout.max_rounds=0;expect(configError(c)).toContain('at least one round')
   c.stages.scout.max_rounds=2;c.stages.verify.enabled=true;c.stages.verify.check_quotes=false;c.stages.verify.check_support=false
   expect(configError(c)).toContain('Verify needs')
-  c.stages.verify.check_quotes=true;c.fields=[{...newField(),name:'amounts',type:'list',item_type:'number',enum_values:['1']}]
-  expect(configError(c)).toContain('Allowed values apply to enum fields and lists of text')
+  c.stages.verify.check_quotes=true;c.fields=[{...newField(),name:'amounts',type:'list',item:{type:'number'},enum_values:['1']}]
+  expect(configError(c)).toContain('Allowed values apply to enum fields and text items')
   c.fields=[{...newField(),name:'vendor'}];c.stages.prefetch.enabled=false;c.stages.scout.enabled=false
   expect(configError(c)).toContain('Turn on Prefetch or Scout')
   c.fields=[{...newField(),name:'terms',strategy:'deep'}];expect(configError(c)).toBe('')
  })
  it('suggests an expected format that matches the value type',()=>{
   expect(formatPlaceholder({...newField(),type:'date'})).toContain('YYYY-MM-DD')
-  expect(formatPlaceholder({...newField(),type:'list',item_type:'number'})).toContain('decimal')
-  expect(takesChoices({...newField(),type:'list'})).toBe(true);expect(takesChoices({...newField(),type:'text'})).toBe(false)
-  expect(takesChoices({...newField(),type:'list',item_type:'number'})).toBe(false)
+  expect(formatPlaceholder({...newField(),type:'list',item:{type:'number'}})).toContain('decimal')
+  expect(takesChoices({type:'text'},false)).toBe(true);expect(takesChoices({...newField(),type:'enum'})).toBe(true);expect(takesChoices({...newField(),type:'text'})).toBe(false)
+  expect(takesChoices({...newField(),type:'list',item:{type:'number'}})).toBe(false)
  })
 })
 
@@ -52,8 +52,8 @@ describe('Complete flow configuration',()=>{
  })
  it('plans extraction calls per field group',()=>{
   const c=newConfig();c.stages.extract.max_fields_per_call=2
-  c.fields=['a','b','c'].map(name=>({...newField(),name,group:'Payment'})).concat([{...newField(),name:'d'}])
-  expect(fieldGroups(c).map(g=>[g.name,g.fields.length])).toEqual([['Payment',3],['Default',1]])
+  c.fields=['a','b','c'].map(name=>({...newField(),name,group:'payment'})).concat([{...newField(),name:'d'}])
+  expect(fieldGroups(c).map(g=>[g.name,g.fields.length])).toEqual([['payment',3],['Default',1]])
   expect(extractCalls(c)).toBe(3)
   expect(stageSummary('extract',c)).toContain('2 groups, 3 calls')
  })

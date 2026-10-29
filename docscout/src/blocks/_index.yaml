@@ -38,8 +38,8 @@ entries:
         additionalProperties: false
         required: [values, fields, verified, run_id]
         properties:
-          values: { type: object, description: Field values keyed by field name; fields not in the document are absent. }
-          fields: {"type": "array", "items": {"type": "object", "required": ["name", "confidence", "verified", "missing", "evidence"], "properties": {"name": {"type": "string"}, "value": {}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "verified": {"type": "boolean"}, "missing": {"type": "boolean"}, "reason": {"type": "string"}, "evidence": {"type": "array", "items": {"type": "object", "required": ["quote", "section", "chunk_id"], "properties": {"quote": {"type": "string"}, "section": {"type": "string"}, "chunk_id": {"type": "string"}, "page": {"type": "integer", "minimum": 0}, "page_start": {"type": "integer", "minimum": 0}, "page_end": {"type": "integer", "minimum": 0}, "found": {"type": "boolean"}}}}}}}
+          values: { type: object, description: Field values nested by group path; fields not in the document are absent. }
+          fields: {"type": "array", "items": {"type": "object", "required": ["name", "confidence", "verified", "missing", "evidence", "path"], "properties": {"name": {"type": "string"}, "value": {}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "verified": {"type": "boolean"}, "missing": {"type": "boolean"}, "reason": {"type": "string"}, "evidence": {"type": "array", "items": {"type": "object", "required": ["quote", "section", "chunk_id"], "properties": {"quote": {"type": "string"}, "section": {"type": "string"}, "chunk_id": {"type": "string"}, "page": {"type": "integer", "minimum": 0}, "page_start": {"type": "integer", "minimum": 0}, "page_end": {"type": "integer", "minimum": 0}, "found": {"type": "boolean"}}}}, "path": {"type": "string", "description": "Full dotted field path."}}}}
           verified: { type: boolean, description: True when every value passed verification. }
           run_id: { type: string }
           pages: { type: integer }

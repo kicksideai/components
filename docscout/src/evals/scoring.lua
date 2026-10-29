@@ -45,38 +45,15 @@ local function text_score(expected: string, got: string): number
     return 2 * precision * recall / (precision + recall)
 end
 
-local scalar
-
--- Mean score over the expected keys.
-local function object_score(expected: any, got: any): number
-    if type(got) ~= "table" then return 0 end
+-- Objects score every declared property, including properties absent from the case.
+local function object_score(field: any, expected: any, got: any): number
+    if type(expected) ~= "table" or type(got) ~= "table" then return 0 end
     local total, n = 0, 0
-    for key, value in pairs(expected) do
+    for _, p in ipairs(field.properties) do
         n = n + 1
-        total = total + scalar(value, got[key])
+        total = total + M.value(p.type, expected[p.name], got[p.name], p)
     end
-    if n == 0 then return 1 end
-    return total / n
-end
-
-local function empty_table(v: any): boolean return type(v) == "table" and next(v) == nil end
-
--- Type-inferred comparison for list items and object members. An empty list
--- or object matches only an empty one.
-scalar = function(expected: any, got: any): number
-    if empty_table(expected) then return empty_table(got) and 1 or 0 end
-    if absent(expected) then return absent(got) and 1 or 0 end
-    if absent(got) then return 0 end
-    if type(expected) == "boolean" then return expected == got and 1 or 0 end
-    if type(expected) == "number" then
-        local n = number_of(got)
-        return n ~= nil and same_number(expected, n) and 1 or 0
-    end
-    if type(expected) == "table" then
-        if #expected > 0 then return M.list(expected, got, nil) end
-        return object_score(expected, got)
-    end
-    return text_score(tostring(expected), tostring(got))
+    return n == 0 and 1 or total / n
 end
 
 -- Largest total weight of a one-to-one pairing between rows and columns of
@@ -127,14 +104,14 @@ end
 
 -- Order-free F1 over items: expected and extracted items pair one to one so
 -- that the summed item scores are as large as possible.
-function M.list(expected: any, got: any, item_type: string?): number
+function M.list(expected: any, got: any, item: any): number
     if type(got) ~= "table" then return 0 end
     if #expected == 0 then return #got == 0 and 1 or 0 end
     if #got == 0 then return 0 end
     local weights: { { number } } = {}
     for i, e in ipairs(expected) do
         local row: { number } = {}
-        for j, g in ipairs(got) do row[j] = item_type and M.value(item_type, e, g, {}) or scalar(e, g) end
+        for j, g in ipairs(got) do row[j] = M.value(item.type, e, g, item) end
         weights[i] = row
     end
     local matched = best_pairing(weights, #expected, #got)
@@ -143,7 +120,7 @@ function M.list(expected: any, got: any, item_type: string?): number
     return 2 * precision * recall / (precision + recall)
 end
 
--- Score of one value of a field type. field supplies item_type for lists.
+-- Score of one value using its declared recursive shape.
 function M.value(kind: string, expected: any, got: any, field: any): number
     if absent(expected) then return absent(got) and 1 or 0 end
     if absent(got) then return 0 end
@@ -156,29 +133,31 @@ function M.value(kind: string, expected: any, got: any, field: any): number
     if kind == "enum" then return shapes.normalize(tostring(expected)) == shapes.normalize(tostring(got)) and 1 or 0 end
     if kind == "list" then
         if type(expected) ~= "table" then return 0 end
-        return M.list(expected, got, field.item_type)
+        return M.list(expected, got, field.item)
     end
     if kind == "object" then
         if type(expected) ~= "table" then return 0 end
-        return object_score(expected, got)
+        return object_score(field, expected, got)
     end
     return text_score(tostring(expected), tostring(got))
 end
 
--- Scores every field of one case. values: the run's fields by name. A field
+-- Scores every field of one case. values: the run's fields by full path. A field
 -- the case leaves out is correct only when the run reports it missing.
 function M.case(fields: { any }, expected: any, values: { [string]: any }): { any }
     local out = {}
     for _, f in ipairs(fields) do
-        local got = values[f.name]
+        local path = shapes.path(f)
+        local wanted = shapes.get(expected, path)
+        local got = values[path]
         local found = got ~= nil and not got.missing
         local value = nil
         if found then value = got.value end
         local score
-        if expected[f.name] == nil then score = found and 0 or 1
+        if wanted == nil then score = found and 0 or 1
         elseif not found then score = 0
-        else score = M.value(f.type, expected[f.name], value, f) end
-        out[#out + 1] = { field = f.name, expected = expected[f.name], value = value, score = score, verified = got ~= nil and got.verified == true }
+        else score = M.value(f.type, wanted, value, f) end
+        out[#out + 1] = { field = path, expected = wanted, value = value, score = score, verified = got ~= nil and got.verified == true }
     end
     return out
 end
@@ -193,7 +172,7 @@ function M.metrics(fields: { any }, cases: { { any } }): { any }
             if scored[i].verified then verified = verified + 1 end
         end
         local n = math.max(1, #cases)
-        out[#out + 1] = { field = f.name, accuracy = total / n, verified = verified / n }
+        out[#out + 1] = { field = shapes.path(f), accuracy = total / n, verified = verified / n }
     end
     return out
 end

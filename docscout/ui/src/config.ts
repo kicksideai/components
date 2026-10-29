@@ -1,7 +1,30 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import schema from '../../src/config.schema.json'
 export type FieldType = 'text' | 'number' | 'boolean' | 'date' | 'enum' | 'list' | 'object'
-export interface Field { name:string; type:FieldType; description:string; enum_values:string[]; item_type:string; required:boolean; search_hints:string; validation_hints:string; expected_format:string; strategy:'standard'|'deep'; search_within:'document'|'sections'; group:string; evidence_required:boolean; chunks:number }
+export interface Shape {type:FieldType;description?:string;enum_values?:string[];expected_format?:string;properties?:Property[];item?:Shape}
+export interface Property extends Shape {name:string;description:string;enum_values:string[];expected_format:string;required:boolean}
+export interface Field extends Property {search_hints:string;validation_hints:string;strategy:'standard'|'deep';search_within:'document'|'sections';group:string;evidence_required:boolean;chunks:number}
+export const MAX_SHAPE_DEPTH=4
+export const newProperty=():Property=>({name:'',type:'text',description:'',enum_values:[],expected_format:'',required:false})
+export const newItem=():Shape=>({type:'text',description:'',enum_values:[],expected_format:''})
+export const fieldPath=(f:Pick<Field,'name'|'group'>)=>f.group?`${f.group}.${f.name}`:f.name
+export const groupPattern=/^(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)*(?:\.[a-z][a-z0-9]*(?:_[a-z0-9]+)*)*)?$/
+export function getValue(value:Record<string,unknown>,path:string):unknown{
+ let node:unknown=value
+ for(const segment of path.split('.')){if(node===null||typeof node!=='object'||!Object.hasOwn(node,segment))return undefined;node=(node as Record<string,unknown>)[segment]}
+ return node
+}
+export function setValue(value:Record<string,unknown>,path:string,item:unknown){
+ const segments=path.split('.');let node=value
+ for(const segment of segments.slice(0,-1)){if(!Object.hasOwn(node,segment))node[segment]={};node=node[segment] as Record<string,unknown>}
+ Object.defineProperty(node,segments.at(-1)!,{value:item,writable:true,enumerable:true,configurable:true})
+}
+export interface GroupNode {name:string;path:string;indices:number[];children:GroupNode[]}
+export function groupTree(paths:string[]):GroupNode{
+ const root:GroupNode={name:'',path:'',indices:[],children:[]}
+ paths.forEach((path,index)=>{let node=root;for(const name of path.split('.').slice(0,-1)){let child=node.children.find(c=>c.name===name);if(!child){child={name,path:node.path?`${node.path}.${name}`:name,indices:[],children:[]};node.children.push(child)}node=child}node.indices.push(index)})
+ return root
+}
 export interface PrefetchQuery { name:string; query:string; chunks:number }
 export interface Stages {
  map:{enabled:boolean;model:string;outline:'find_or_build'|'build';section_summaries:boolean}
@@ -77,21 +100,41 @@ export function toolLabel(id:string):string{
  return id.replace(/_/g,' ').replace(/^\w/,c=>c.toUpperCase())
 }
 
-export const takesChoices=(f:Field)=>f.type==='enum'||(f.type==='list'&&f.item_type==='text')
-export function fieldError(f:Field,otherNames:string[]):string{
- if(!f.name)return 'Name the field.'
- if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(f.name))return 'Start with a letter; use letters, numbers and underscores.'
- if(otherNames.includes(f.name))return 'Another field already uses this name.'
- if(f.type==='enum'&&!f.enum_values.length)return 'Add at least one allowed value.'
- if(f.enum_values.length&&f.type!=='enum'&&!(f.type==='list'&&f.item_type==='text'))return 'Allowed values apply to enum fields and lists of text.'
+export const takesChoices=(f:Shape,named=true)=>f.type==='enum'||(!named&&f.type==='text')
+export function shapeError(f:Shape,depth=1):string{
+ if(depth>MAX_SHAPE_DEPTH)return 'Shapes support at most four levels.'
+ if(f.type==='enum'&&!f.enum_values?.length)return 'Add at least one allowed value.'
+ if(f.enum_values?.length&&f.type!=='enum'&&f.type!=='text')return 'Allowed values apply to enum fields and text items.'
+ if(f.type==='object'){
+  if(!f.properties?.length)return 'Add at least one declared property.'
+  const names=new Set<string>()
+  for(const p of f.properties){const error=nameError(p.name,[...names])||shapeError(p,depth+1);if(error)return `${p.name||'New property'}: ${error}`;names.add(p.name)}
+ }else if(f.properties)return 'Properties apply to object shapes.'
+ if(f.type==='list'){if(!f.item)return 'Declare the item shape.';return shapeError(f.item,depth+1)}
+ if(f.item)return 'Item shapes apply to lists.'
  return ''
 }
-export function formatPlaceholder(f:Field):string{
- const item=f.type==='list'?f.item_type:f.type
- return ({text:'For example, full legal name',number:'For example, decimal with 2 places',date:'For example, YYYY-MM-DD',object:'For example, {"name": "", "amount": 0}',boolean:'',enum:''} as Record<string,string>)[item]??''
+function nameError(name:string,otherNames:string[]):string{
+ if(!name)return 'Name the field.'
+ if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(name))return 'Start with a letter; use letters, numbers and underscores.'
+ if(otherNames.includes(name))return 'Another field already uses this name.'
+ return ''
+}
+export function fieldError(f:Field,otherPaths:string[]):string{
+ const error=nameError(f.name,otherPaths.includes(fieldPath(f))?[f.name]:[])
+ if(error)return error
+ if(!groupPattern.test(f.group))return 'Use a dotted path of snake_case group names.'
+ if(f.enum_values.length&&f.type!=='enum')return 'Allowed values apply to enum fields and text items.'
+ return shapeError(f)
+}
+export function formatPlaceholder(f:Shape):string{
+ const item=f.type==='list'?f.item?.type:f.type
+ return ({text:'For example, full legal name',number:'For example, decimal with 2 places',date:'For example, YYYY-MM-DD',object:'Describe the object format',boolean:'',enum:''} as Record<string,string>)[item??'']??''
 }
 export function configError(config:Config):string {
- for(const [i,f] of config.fields.entries()){const error=fieldError(f,config.fields.filter((_,j)=>j!==i).map(o=>o.name));if(error)return `${f.name||'New field'}: ${error}`}
+ for(const [i,f] of config.fields.entries()){const error=fieldError(f,config.fields.filter((_,j)=>j!==i).map(fieldPath));if(error)return `${f.name||'New field'}: ${error}`}
+ const paths=config.fields.map(fieldPath)
+ for(const path of paths){if(paths.some(other=>other!==path&&other.startsWith(path+'.')))return `Group path collides with field ${path}.`}
  const s=config.stages
  if(s.prefetch.queries.some(q=>!q.name.trim()||!q.query.trim()))return 'Prefetch queries need a name and a query.'
  if(!s.map.enabled&&config.fields.some(f=>f.search_within==='sections'))return 'Fields that read sections need Map the document.'

@@ -32,6 +32,31 @@ Listings accept `filter`, `limit` and `cursor`; `next_cursor` continues a stable
 
 Every run records its outcome and trace, including failed steps. Documents and runs expire after `kickside.docscout.retention` (default `2h`). Component teardown removes its documents, search-index rows, cases, runs and evaluations.
 
+## Field groups and declared shapes
+
+A field's `group` is empty for a top-level value or a dotted snake_case path such as `parties.borrower`. Its identity is the group plus its name (`parties.borrower.name`); names can repeat in different groups. A field path cannot also serve as a group path. Each extraction response includes `values` nested by group and `fields[]` entries with the leaf `name`, full `path`, value and evidence. The extraction contract, Block and agent tool use this same shape.
+
+Objects declare a non-empty `properties` array. Each property has `name`, `type`, `description`, `enum_values`, `expected_format` and `required`, plus `properties` for an object or `item` for a list. Lists declare an `item` shape using those same value attributes, without a property name or required flag. For example, a list of payment objects declares:
+
+```json
+{
+  "type": "list",
+  "item": {
+    "type": "object",
+    "properties": [
+      {"name": "amount", "type": "number", "description": "Payment amount", "enum_values": [], "expected_format": "", "required": true},
+      {"name": "due", "type": "date", "description": "Due date", "enum_values": [], "expected_format": "YYYY-MM-DD", "required": false}
+    ]
+  }
+}
+```
+
+Value shapes have at most **four levels**, counting the field as level one and each property or list item as another level. This admits the acceptance agreement's deepest shapes while bounding model schemas and the property editor. Group segments do not consume value levels. Objects are closed to undeclared properties; required properties and enum choices appear in extraction schemas and verification. `expected_format` describes the requested representation to the model.
+
+Extraction calls share a group path and selected region, then split at the fields-per-call limit. Evaluation cases use the same nested values. Scoring follows declared types recursively: printed numbers, date digits, text overlap, order-free list F1 and mean scores over declared object properties. A property omitted from the expectation scores as absent.
+
+Builder groups collapse independently; changing a group path renames its subtree, and the field inspector moves individual fields. Test, saved Runs and evaluation comparisons display object properties and list rows. Existing development configurations with free-text groups, untyped objects or `item_type` lists must be edited to declare their paths and shapes; there is no stored-config migration.
+
 ## Evaluations and realtime
 
 Admission snapshots the config revision, configuration, case upload references and expected values. It commits evaluation rows and all Jobs admissions together, then wakes the pool. Workers restore the starter's identity and run the admitted snapshot through the extraction contract. The last case writes aggregate scores. Native case failures retain kind, message, retryability and details.

@@ -4,20 +4,17 @@ import {computed,ref} from 'vue'
 import {Icon} from '@iconify/vue'
 import Button from 'primevue/button'
 import UploadPicker from './UploadPicker.vue'
+import ResultFields from './ResultFields.vue'
 import {stageIcons,stageLabels,type StageKey} from '../config'
 import type {Extraction} from '../models'
 const props=defineProps<{result:Extraction|null;retention:string;running?:boolean;canRun?:boolean}>()
 const emit=defineEmits<{run:[upload_id:string]}>()
 const upload=ref('')
-const open=ref<string>()
-const percent=(n:number)=>`${Math.round(n*100)}%`
-const value=(v:unknown)=>v===null||v===undefined?'—':typeof v==='string'?v:Array.isArray(v)&&v.every(x=>typeof x!=='object')?v.join(', '):typeof v==='object'?JSON.stringify(v):String(v)
 const seconds=(ms:number)=>`${(ms/1000).toFixed(1)}s`
 const longest=computed(()=>Math.max(1,...(props.result?.trace.map(t=>t.duration_ms)??[1])))
 const extra:Record<string,{label:string;icon:string}>={read:{label:'Read document',icon:'tabler:file-text'},highlight:{label:'Highlighter',icon:'tabler:highlight'}}
 const label=(kind:string)=>extra[kind]?.label??stageLabels[kind as StageKey]??kind
 const icon=(kind:string)=>extra[kind]?.icon??stageIcons[kind as StageKey]??'tabler:point'
-const tone=(c:number)=>c>=.9?'high':c>=.7?'mid':'low'
 </script>
 <template>
  <div class="test">
@@ -31,23 +28,7 @@ const tone=(c:number)=>c>=.9?'high':c>=.7?'mid':'low'
   <div v-if="result" class="test-grid">
    <section class="block">
     <header class="block-head"><h2 class="block-title">Values</h2><span class="muted push">{{result.tokens.toLocaleString()}} tokens · {{seconds(result.duration_ms)}}<template v-if="result.pages"> · {{result.pages}} pages</template></span></header>
-    <ul class="value-list">
-     <li v-for="field in result.fields" :key="field.name" class="value-row">
-      <button type="button" class="value-main" :aria-expanded="open===field.name" @click="open=open===field.name?undefined:field.name">
-       <span class="value-name">{{field.name}}</span>
-       <span class="value-text" :class="{missing:field.missing}" :title="field.missing?undefined:value(field.value)">{{field.missing?'Not in the document':value(field.value)}}</span>
-       <span class="confidence" :class="tone(field.confidence)"><span class="bar"><span :style="{width:percent(field.confidence)}"/></span>{{percent(field.confidence)}}<span class="conf-word"> confidence</span></span>
-       <span class="chip" :class="field.verified?'primary':'warn'" :title="field.reason"><Icon :icon="field.verified?'tabler:shield-check':'tabler:shield-question'"/>{{field.verified?'Verified':'Check'}}</span>
-       <Icon :icon="open===field.name?'tabler:chevron-up':'tabler:chevron-down'" class="value-caret"/>
-      </button>
-      <div v-show="open===field.name" class="evidence">
-       <p v-if="!field.missing" class="full-value">{{value(field.value)}}</p>
-       <blockquote v-for="(e,i) in field.evidence" :key="i" :class="{unfound:e.found===false}"><p>“{{e.quote}}”</p><cite>{{e.section}}<template v-if="e.page!==undefined&&e.page!==null"> · Page {{e.page}}</template><template v-if="e.found===false"> · not found word for word in the document</template></cite></blockquote>
-       <p v-if="!field.evidence.length" class="muted">No evidence.</p>
-       <p v-if="field.reason" class="muted">{{field.reason}}</p>
-      </div>
-     </li>
-    </ul>
+    <ResultFields :fields="result.fields"/>
    </section>
    <section class="block">
     <header class="block-head"><h2 class="block-title">Steps</h2></header>

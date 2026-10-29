@@ -718,3 +718,21 @@ entries:
     resources: [kickside.component:notify_access]
     actions: [funcs.call]
     effect: deny
+
+- name: acceptance_fields
+  kind: library.lua
+  source: file://acceptance_fields.lua
+  modules: [json]
+- name: nested_fields_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_nested_fields, group: Docscout}
+  source: file://nested_fields_test.lua
+  method: run
+  modules: [json]
+  imports:
+    test: wippy.test:test
+    config: kickside.docscout:config
+    shapes: kickside.docscout.engine:shapes
+    stages: kickside.docscout.engine:stages
+    scoring: kickside.docscout.evals:scoring
+    acceptance: app:acceptance_fields

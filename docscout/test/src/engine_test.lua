@@ -106,8 +106,8 @@ return { run = test.run_cases(function()
             chunk.vector = unit(1)
             local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload", checksum = "c", processing_key = "k", outline = document.outline,
                 page_count = 2, tokens = 0, expires_at = far_future() }, { chunk }))
-            local run = { document = { id = id }, regions = {}, config = { fields = { { name = "tax", search_within = "document" } },
-                stages = { verify = { check_quotes = true, check_support = false } } }, values = { { name = "tax", missing = false, evidence = {
+            local run = { document = { id = id }, regions = {}, config = { fields = { { name = "tax", type = "number", search_within = "document" } },
+                stages = { verify = { check_quotes = true, check_support = false } } }, values = { { name = "tax", value = 250, missing = false, evidence = {
                     { quote = "Tax 250", chunk = 1, page = 1 }, { quote = "Fee 100 Tax 250", chunk = 1, page = 1 } } } } }
             test.is_nil(stages.verify(run, {}))
             test.eq(run.values[1].evidence[1].page, 2)
@@ -323,7 +323,7 @@ return { run = test.run_cases(function()
             local run = { pool = pool, regions = { notice = { 2 }, law = { 3 }, term = { 2 } },
                 notes = { { field = "fee", text = "fee in C1" }, { field = "law", text = "law in C3" }, { text = "Delaware law in C3" } },
                 config = { stages = { extract = { max_fields_per_call = 5 } },
-                    fields = { f("fee", "document"), f("notice", "sections"), f("law", "sections"), f("term", "sections"), f("total", "document"), f("party", "document", "Parties") } } }
+                    fields = { f("fee", "document"), f("notice", "sections"), f("law", "sections"), f("term", "sections"), f("total", "document"), f("party", "document", "parties") } } }
             local shape = {}
             for _, call in ipairs(stages.extraction_calls(run)) do
                 local names, ordinals = {}, {}
@@ -375,7 +375,7 @@ return { run = test.run_cases(function()
             }))
         end
         local function field(name: string, over: any?): any
-            local f = { name = name, search_within = "document", evidence_required = true }
+            local f = { name = name, type = "text", search_within = "document", evidence_required = true }
             for k, v in pairs(over or {}) do f[k] = v end
             return f
         end
@@ -384,7 +384,7 @@ return { run = test.run_cases(function()
                 config = { fields = fields, stages = { verify = { enabled = true, check_quotes = true, check_support = false, model = "class:fast" } } } }
         end
         test.it("accepts quotes in the document, relocates misattributed ones with all their locators and rejects changed signs", function()
-            local run = quotes_only({ field("total"), field("terms"), field("discount"), field("absent") }, {
+            local run = quotes_only({ field("total", { type = "number" }), field("terms"), field("discount", { type = "number" }), field("absent") }, {
                 { name = "total", value = 1250, missing = false, evidence = { { quote = "total amount due is USD 1,250.00", chunk = 1 } } },
                 { name = "terms", value = "Net 30", missing = false, evidence = { { quote = "Payment within 30 days", chunk = 1, chunk_id = "wrong", section = "Payment", page = 1 } } },
                 { name = "discount", value = 5, missing = false, evidence = { { quote = "Discount: +5%", chunk = 2 } } },
@@ -401,7 +401,7 @@ return { run = test.run_cases(function()
             test.eq(step.message, "1 value needs review")
         end)
         test.it("fails a value without a quote when its field requires evidence", function()
-            local run = quotes_only({ field("total"), field("note", { evidence_required = false }) }, {
+            local run = quotes_only({ field("total", { type = "number" }), field("note", { evidence_required = false }) }, {
                 { name = "total", value = 1250, missing = false, reason = "No quote supports this value", evidence = {} },
                 { name = "note", value = "paid", missing = false, evidence = {} },
             })

@@ -84,14 +84,44 @@ function M.render(chunks: { any }): string
     return table.concat(out, "\n\n")
 end
 
+-- Stable identity across retrieval, extraction, verification and evaluation.
+function M.path(f: any): string
+    return f.path or ((f.group and f.group ~= "") and (f.group .. "." .. f.name) or f.name)
+end
+
+function M.get(value: any, path: string): any
+    local node = value
+    for segment in path:gmatch("[^.]+") do
+        if type(node) ~= "table" then return nil end
+        node = node[segment]
+    end
+    return node
+end
+
+function M.set(value: any, path: string, item: any)
+    local node = value
+    local segments = {}
+    for segment in path:gmatch("[^.]+") do segments[#segments + 1] = segment end
+    for i = 1, #segments - 1 do
+        local key = segments[i]
+        if not node[key] then node[key] = M.object() end
+        node = node[key]
+    end
+    node[segments[#segments]] = item
+end
+
 function M.field_lines(fields: { any }): string
     local out = {}
     for _, f in ipairs(fields) do
-        local t = f.type == "list" and ("list of " .. f.item_type) or f.type
-        local parts = { "- " .. f.name .. " (" .. t .. (f.required and ", required" or "") .. "): " .. (f.description ~= "" and f.description or "no description") }
-        if #f.enum_values > 0 then parts[#parts + 1] = "  allowed: " .. table.concat(f.enum_values, ", ") end
-        if f.expected_format ~= "" then parts[#parts + 1] = "  format: " .. f.expected_format end
-        if f.validation_hints ~= "" then parts[#parts + 1] = "  rules: " .. f.validation_hints end
+        local t = f.type == "list" and ("list of " .. f.item.type) or f.type
+        local parts = { "- " .. M.path(f) .. " (" .. t .. (f.required and ", required" or "") .. "): " .. (f.description ~= "" and f.description or "no description") }
+        if #(f.enum_values or {}) > 0 then parts[#parts + 1] = "  allowed: " .. table.concat(f.enum_values, ", ") end
+        if f.expected_format and f.expected_format ~= "" then parts[#parts + 1] = "  format: " .. f.expected_format end
+        if f.validation_hints and f.validation_hints ~= "" then parts[#parts + 1] = "  rules: " .. f.validation_hints end
+        if f.type == "object" then parts[#parts + 1] = M.field_lines(f.properties) end
+        if f.type == "list" then
+            parts[#parts + 1] = "  item schema: " .. json.encode(M.value_schema(f.item))
+        end
         out[#out + 1] = table.concat(parts, "\n")
     end
     return table.concat(out, "\n")
@@ -121,15 +151,47 @@ local JSON_TYPES = { text = "string", number = "number", boolean = "boolean", da
 
 -- The JSON Schema of a field's value; "found" says whether it is present.
 function M.value_schema(f: any): any
+    local schema: any
     if f.type == "list" then
-        local item: any = { type = JSON_TYPES[f.item_type] }
-        if #f.enum_values > 0 then item = { type = "string", enum = f.enum_values } end
-        if item.type == "object" then item.additionalProperties = true end
-        return { type = "array", items = item }
+        schema = { type = "array", items = M.value_schema(f.item) }
+    elseif f.type == "object" then
+        local properties, required = M.object(), {}
+        for _, p in ipairs(f.properties) do
+            properties[p.name] = M.value_schema(p)
+            if p.required then required[#required + 1] = p.name end
+        end
+        schema = { type = "object", additionalProperties = false, properties = properties, required = required }
+    elseif f.type == "enum" then
+        schema = { type = "string", enum = f.enum_values }
+    else
+        schema = { type = JSON_TYPES[f.type] }
+        if f.type == "text" and #(f.enum_values or {}) > 0 then schema.enum = f.enum_values end
     end
-    if f.type == "enum" then return { type = "string", enum = f.enum_values } end
-    if f.type == "object" then return { type = "object", additionalProperties = true } end
-    return { type = JSON_TYPES[f.type] }
+    if f.description and f.description ~= "" then schema.description = f.description end
+    if f.expected_format and f.expected_format ~= "" then
+        schema.description = (schema.description and (schema.description .. "\n") or "") .. "Format: " .. f.expected_format
+    end
+    return schema
+end
+
+-- Adds a field schema beneath its group nodes.
+function M.schema_field(root: any, f: any, value: any, required: boolean)
+    local node = root
+    for segment in (f.group or ""):gmatch("[^.]+") do
+        if not node.properties[segment] then
+            node.properties[segment] = { type = "object", additionalProperties = false, properties = M.object(), required = {} }
+            if required then node.required[#node.required + 1] = segment end
+        end
+        node = node.properties[segment]
+    end
+    node.properties[f.name] = value
+    if required then node.required[#node.required + 1] = f.name end
+end
+
+function M.expected_schema(fields: { any }): any
+    local root = { type = "object", additionalProperties = false, properties = M.object(), required = {} }
+    for _, f in ipairs(fields) do M.schema_field(root, f, M.value_schema(f), false) end
+    return root
 end
 
 -- A chunk number a reply may give: one of the passages the model was sent.
@@ -142,20 +204,20 @@ end
 
 -- One structured-output schema for a group of fields and its evidence passages.
 function M.group_schema(fields: { any }, passages: { any }): any
-    local properties, required = {}, {}
+    local root = { type = "object", additionalProperties = false, required = {}, properties = M.object() }
     local chunk = M.passage_ref(passages)
     local members = { "found", "value", "confidence", "evidence" }
     for _, f in ipairs(fields) do
-        properties[f.name] = { type = "object", additionalProperties = false, required = members, properties = {
+        local value = { type = "object", additionalProperties = false, required = members, properties = {
             found = { type = "boolean" },
             value = M.value_schema(f),
             confidence = { type = "number", minimum = 0, maximum = 1 },
             evidence = { type = "array", maxItems = M.EVIDENCE_LIMIT, items = { type = "object", additionalProperties = false, required = { "chunk", "quote" },
                 properties = { chunk = chunk, quote = { type = "string" } } } },
         } }
-        required[#required + 1] = f.name
+        M.schema_field(root, f, value, true)
     end
-    return { type = "object", additionalProperties = false, required = required, properties = properties }
+    return root
 end
 
 -- Typographic characters that PDFs and models swap for plain ones.
@@ -200,10 +262,10 @@ function M.object(): { [string]: any }
     return t
 end
 
--- Extracted values keyed by field name.
+-- Extracted values nested by the full field path.
 function M.values(result: any): { [string]: any }
     local out = M.object()
-    for _, f in ipairs(result.fields) do if not f.missing then out[f.name] = f.value end end
+    for _, f in ipairs(result.fields) do if not f.missing then M.set(out, M.path(f), f.value) end end
     return out
 end
 

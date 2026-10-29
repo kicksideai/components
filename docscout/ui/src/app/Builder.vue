@@ -5,9 +5,10 @@ import {Icon} from '@iconify/vue'
 import vFocusTrap from 'primevue/focustrap'
 import StageNode from './StageNode.vue'
 import FieldInspector from './FieldInspector.vue'
+import FieldGroups from './FieldGroups.vue'
 import StepInspector from './StepInspector.vue'
 import DocumentInspector from './DocumentInspector.vue'
-import {documentSummary,fieldError,isOn,modelLabel,newField,stageIcons,stageLabels,type Config,type StageKey} from '../config'
+import {documentSummary,fieldError,fieldPath,groupTree,groupPattern,isOn,modelLabel,newField,stageIcons,stageLabels,type Config,type StageKey} from '../config'
 import type {Extraction,TraceStep} from '../models'
 const props=defineProps<{config:Config;retention:string;result:Extraction|null;readonly?:boolean}>()
 const title=defineModel<string>('title',{required:true})
@@ -62,20 +63,29 @@ const is=(s:Selection)=>JSON.stringify(s)===JSON.stringify(selected.value)
 const selectedField=computed(()=>selected.value.kind==='field'?props.config.fields[selected.value.index]:undefined)
 const panelTitle=computed(()=>{const s=selected.value;return s.kind==='stage'?stageLabels[s.stage]:s.kind==='field'?(selectedField.value?.name||'New field'):s.kind==='document'?'Read document':s.kind==='output'?'Output':'Details'})
 const panelIcon=computed(()=>{const s=selected.value;return s.kind==='stage'?stageIcons[s.stage]:s.kind==='field'?'tabler:forms':s.kind==='document'?'tabler:file-text':s.kind==='output'?'tabler:braces':'tabler:info-circle'})
-const otherNames=computed(()=>props.config.fields.filter((_,i)=>!(selected.value.kind==='field'&&selected.value.index===i)).map(f=>f.name))
+const otherNames=computed(()=>props.config.fields.filter((_,i)=>!(selected.value.kind==='field'&&selected.value.index===i)).map(fieldPath))
 const deepEnabled=computed(()=>props.config.stages.deep.enabled)
 const mapEnabled=computed(()=>props.config.stages.map.enabled)
+const groups=computed(()=>groupTree(props.config.fields.map(fieldPath)))
+const groupDraft=ref(''),groupError=ref('')
+function renameGroup(path:string,event:Event){
+ const next=(event.target as HTMLInputElement).value.trim()
+ if(!groupPattern.test(next)||!next){groupError.value='Use a dotted path of snake_case group names.';return}
+ for(const f of props.config.fields)if(f.group===path||f.group.startsWith(path+'.'))f.group=next+f.group.slice(path.length)
+ groupError.value=''
+}
+function addGroup(){if(!groupDraft.value||!groupPattern.test(groupDraft.value)){groupError.value='Use a dotted path of snake_case group names.';return}addField(groupDraft.value);groupDraft.value='';groupError.value=''}
 const groupNames=computed(()=>[...new Set(props.config.fields.map(f=>f.group.trim()).filter(Boolean))])
-const rowError=(i:number)=>fieldError(props.config.fields[i],props.config.fields.filter((_,j)=>j!==i).map(f=>f.name))
+const rowError=(i:number)=>fieldError(props.config.fields[i],props.config.fields.filter((_,j)=>j!==i).map(fieldPath))
 const order:StageKey[]=['map','prefetch','scout','deep','extract','verify']
 const flowPeek=computed(()=>order.filter(k=>isOn(props.config,k)).map(k=>stageLabels[k]).join(' · '))
 const fieldsPeek=computed(()=>props.config.fields.map(f=>f.name||'New field').join(', '))
 const enabledSteps=computed(()=>order.filter(k=>isOn(props.config,k)).length)
 const trace=(kind:string):TraceStep|undefined=>props.result?.trace.find(t=>t.kind===kind)
-function addField(){props.config.fields.push(newField());fieldsOpen.value=true;select({kind:'field',index:props.config.fields.length-1})}
+function addField(group=''){props.config.fields.push({...newField(),group});fieldsOpen.value=true;select({kind:'field',index:props.config.fields.length-1})}
 function removeField(index:number){props.config.fields.splice(index,1);selected.value={kind:'document'}}
 function moveField(index:number,delta:number){const f=props.config.fields;const next=index+delta;if(next<0||next>=f.length)return;const [x]=f.splice(index,1);f.splice(next,0,x);selected.value={kind:'field',index:next}}
-const typeLabel=(f:Config['fields'][number])=>f.type==='list'?`list of ${f.item_type}`:f.type
+const typeLabel=(f:Config['fields'][number])=>f.type==='list'?`list of ${f.item?.type}`:f.type
 const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props.config.tags=[...new Set(v.split(',').map(t=>t.trim()).filter(Boolean))]}})
 </script>
 <template>
@@ -86,20 +96,25 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
      <header class="block-head">
       <button type="button" class="collapse" :aria-expanded="fieldsOpen" aria-controls="fields-body" @click="toggleSection('fields')"><Icon :icon="fieldsOpen?'tabler:chevron-down':'tabler:chevron-right'"/><h2 id="fields-head">Fields</h2><span class="count">{{config.fields.length}}</span></button>
       <span v-if="!fieldsOpen&&config.fields.length" class="block-peek">{{fieldsPeek}}</span>
-      <button v-if="!readonly" type="button" class="kx-btn kx-btn-ghost kx-focus-halo sm push" @click="addField"><Icon icon="tabler:plus"/>Add field</button>
+      <button v-if="!readonly" type="button" class="kx-btn kx-btn-ghost kx-focus-halo sm push" @click="addField()"><Icon icon="tabler:plus"/>Add field</button>
      </header>
      <div v-show="fieldsOpen" id="fields-body" class="block-body">
       <p v-if="!config.fields.length" class="block-empty">Add the values to pull from each document.</p>
-      <ul v-else class="rows">
-       <li v-for="(f,i) in config.fields" :key="i" class="row-item" :class="{active:is({kind:'field',index:i})}">
+      <form v-if="!readonly" class="group-add row" @submit.prevent="addGroup"><label>New group<input v-model.trim="groupDraft" placeholder="parties.borrower" aria-label="New group path"/></label><button type="submit" class="kx-btn kx-btn-ghost kx-focus-halo sm">Add group</button></form>
+      <p v-if="groupError" class="field-error" role="alert">{{groupError}}</p>
+      <FieldGroups :node="groups">
+       <template #header="{path}"><label v-if="!readonly" class="group-rename">Group path<input :value="path" :aria-label="`Rename group ${path}`" @change="renameGroup(path,$event)"/></label></template>
+       <template #default="{index:i}"><template v-for="f in [config.fields[i]]" :key="i">
+        <div class="row-item" :class="{active:is({kind:'field',index:i})}">
         <button type="button" class="row-main" @click="select({kind:'field',index:i})">
          <span class="row-name">{{f.name||'New field'}}<span v-if="f.required" class="req" title="Required">*</span><Icon v-if="rowError(i)" icon="tabler:alert-circle" class="row-warn" :title="rowError(i)"/></span>
          <span class="row-desc" :class="{missing:!f.description}">{{f.description||'No description'}}</span>
          <span class="chips"><span v-if="f.search_within==='sections'" class="chip" :class="mapEnabled?'':'muted-chip'" title="Reads the sections Map picks">sections</span><span v-if="f.group.trim()" class="chip">{{f.group}}</span><span v-if="f.strategy==='deep'" class="chip" :class="deepEnabled?'primary':'muted-chip'" :title="deepEnabled?'Deep analysis':'Deep analysis is off in the flow'">deep</span><span class="chip">{{typeLabel(f)}}</span><span v-if="f.evidence_required" class="chip" title="Evidence required"><Icon icon="tabler:quote"/></span></span>
         </button>
         <span v-if="!readonly" class="row-actions"><button type="button" class="kx-iconbtn kx-focus-outline" aria-label="Move field up" :disabled="i===0" @click="moveField(i,-1)"><Icon icon="tabler:chevron-up"/></button><button type="button" class="kx-iconbtn kx-focus-outline" aria-label="Move field down" :disabled="i===config.fields.length-1" @click="moveField(i,1)"><Icon icon="tabler:chevron-down"/></button></span>
-       </li>
-      </ul>
+        </div>
+       </template></template>
+      </FieldGroups>
      </div>
     </section>
 
@@ -163,7 +178,7 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
     </fieldset>
     <div v-else-if="selected.kind==='output'" class="inspector-form">
      <p class="muted">The Test tab, agents, evaluations and Workflows all run this configuration. Each value comes with its confidence, verification and quotes with section and page; every run is recorded with its step trace.</p>
-     <ul class="output-list"><li v-for="f in config.fields" :key="f.name"><span class="mono">{{f.name||'New field'}}</span><span class="chip">{{typeLabel(f)}}</span></li></ul>
+     <ul class="output-list"><li v-for="f in config.fields" :key="fieldPath(f)"><span class="mono">{{fieldPath(f)||'New field'}}</span><span class="chip">{{typeLabel(f)}}</span></li></ul>
      <p class="muted">Used by people in Test, by agents through the Docscout tools, by evals, and in Workflows as the Extract document fields block.</p>
     </div>
    </div>

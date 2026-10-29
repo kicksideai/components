@@ -4,7 +4,7 @@ local json = require("json")
 local shapes = require("shapes")
 
 local function field(over: any): any
-    local f = { name = "f", type = "text", description = "", enum_values = {}, item_type = "text", required = false,
+    local f = { name = "f", type = "text", description = "", enum_values = {}, required = false,
         search_hints = "", validation_hints = "", expected_format = "", strategy = "standard", search_within = "document",
         group = "", evidence_required = true, chunks = 5 }
     for k, v in pairs(over or {}) do f[k] = v end
@@ -110,7 +110,7 @@ return { run = test.run_cases(function()
         test.it("states type, requirement, allowed values, format and rules", function()
             local text = shapes.field_lines({
                 field({ name = "status", type = "enum", enum_values = { "Paid", "Unpaid" }, required = true, description = "Payment status" }),
-                field({ name = "items", type = "list", item_type = "number", expected_format = "decimal", validation_hints = "positive" }),
+                field({ name = "items", type = "list", item = { type = "number" }, expected_format = "decimal", validation_hints = "positive" }),
             })
             test.is_true(text:find("- status (enum, required): Payment status", 1, true) ~= nil)
             test.is_true(text:find("allowed: Paid, Unpaid", 1, true) ~= nil)
@@ -128,14 +128,14 @@ return { run = test.run_cases(function()
             test.eq(shapes.value_schema(field({ type = "boolean" })).type, "boolean")
             local enum = shapes.value_schema(field({ type = "enum", enum_values = { "A", "B" } }))
             test.eq(enum.type, "string"); test.eq((json.encode(enum.enum)), (json.encode({ "A", "B" })))
-            local object = shapes.value_schema(field({ type = "object" }))
-            test.eq(object.type, "object"); test.is_true(object.additionalProperties)
-            local numbers = shapes.value_schema(field({ type = "list", item_type = "number" }))
+            local object = shapes.value_schema(field({ type = "object", properties = { { name = "label", type = "text" } } }))
+            test.eq(object.type, "object"); test.is_false(object.additionalProperties); test.eq(object.properties.label.type, "string")
+            local numbers = shapes.value_schema(field({ type = "list", item = { type = "number" } }))
             test.eq(numbers.type, "array"); test.eq(numbers.items.type, "number")
-            local choices = shapes.value_schema(field({ type = "list", item_type = "text", enum_values = { "x", "y" } }))
+            local choices = shapes.value_schema(field({ type = "list", item = { type = "text", enum_values = { "x", "y" } } }))
             test.eq((json.encode(choices.items.enum)), (json.encode({ "x", "y" })))
-            local objects = shapes.value_schema(field({ type = "list", item_type = "object" }))
-            test.eq(objects.items.type, "object"); test.is_true(objects.items.additionalProperties)
+            local objects = shapes.value_schema(field({ type = "list", item = { type = "object", properties = { { name = "label", type = "text" } } } }))
+            test.eq(objects.items.type, "object"); test.is_false(objects.items.additionalProperties); test.eq(objects.items.properties.label.type, "string")
         end)
         test.it("searches each field by its name and description, then by each hint", function()
             local q = shapes.field_queries(field({ name = "renewal_notice_days", description = "Notice to stop renewal", search_hints = "non-renewal\n\nwritten notice" }))
