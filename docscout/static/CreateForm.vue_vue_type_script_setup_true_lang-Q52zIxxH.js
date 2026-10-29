@@ -1,5 +1,5 @@
 import { mergeProps as x, openBlock as p, createElementBlock as f, defineComponent as T, ref as g, withModifiers as _, createElementVNode as o, createTextVNode as w, createVNode as y, unref as u, toDisplayString as h, createCommentVNode as V } from "vue";
-import { e as O, f as z, B as S, g as P, n as R, h as k, i as H, m as D, s as U } from "./index-SBSeBTrh.js";
+import { e as O, f as z, B as S, g as P, n as R, h as k, i as H, m as D, s as U } from "./index-AgwNDP2E.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 var A = {
   name: "BaseEditableHolder",
