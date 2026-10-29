@@ -1,8 +1,8 @@
 import { defineComponent as o, computed as r, openBlock as n, createBlock as p } from "vue";
 import "@iconify/vue";
 import { define as s } from "@wippy-fe/proxy";
-import { u as a, d as m } from "./index-BSNmzu7_.js";
-import { _ as c } from "./Extractor.vue_vue_type_script_setup_true_lang-CZzf4oA0.js";
+import { u as a, d as m } from "./index-DGAs3miR.js";
+import { _ as c } from "./Extractor.vue_vue_type_script_setup_true_lang-BDOnOvId.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const i = /* @__PURE__ */ o({
   __name: "ManageRoot",
