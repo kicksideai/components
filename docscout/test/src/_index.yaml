@@ -327,7 +327,7 @@ entries:
   - uuid
   imports:
     test: wippy.test:test
-    upload_records: kickside.uploads.persist:upload_record_repo
+    data: app:fixture_data
 - name: engine_test
   kind: function.lua
   meta:
@@ -604,7 +604,7 @@ entries:
     users: kickside.users.persist:user_repo
     groups: kickside.users.persist:user_groups_repo
     sessions: kickside.users:session
-    uploads: kickside.uploads.persist:upload_record_repo
+    data: app:fixture_data
     artifacts: kickside.uploads.persist:artifact_content_repo
 
 - name: docscout_tools
@@ -658,10 +658,11 @@ entries:
 - name: fixture_data
   kind: library.lua
   source: file://fixture_data.lua
-  modules: [funcs, security, registry, json, uuid, sql, fs]
+  modules: [funcs, security, registry, json, uuid, sql, fs, contract]
   imports:
     uploads: kickside.uploads.persist:upload_record_repo
     artifacts: kickside.uploads.persist:artifact_content_repo
+    upload_types: kickside.uploads:types
 
 - name: runtime_members
   kind: security.scope

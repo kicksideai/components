@@ -7,7 +7,7 @@ local contract=require("contract")
 local uuid=require("uuid")
 local json=require("json")
 local sql=require("sql")
-local upload_records=require("upload_records")
+local data=require("data")
 local function scope() return security.new_scope({assert(security.policy("app:user"))}) end
 local function actor(id) return security.new_actor(id,{security_groups={}}) end
 local function call(id,dto) return funcs.new():with_actor(actor(id)):with_scope(scope()):call("app:probe",dto) end
@@ -25,9 +25,7 @@ local function input()
 end
 -- A completed upload owned by who, named as its file.
 local function upload(who,filename)
-    local id=uuid.v4()
-    assert(upload_records.create(id,who,10,"text/markdown","app:uploads",id..".md","generic",{filename=filename},"completed"))
-    return id
+    return data.upload_record(who,"text/markdown",filename,10)
 end
 local function svc(id)
     return assert(contract.get("kickside.component:component_service")):with_actor(actor(id)):with_scope(scope()):open()

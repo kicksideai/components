@@ -8,6 +8,8 @@ local sql = require("sql")
 local fs = require("fs")
 local uploads = require("uploads")
 local artifacts = require("artifacts")
+local contract = require("contract")
+local upload_types = require("upload_types")
 local M = {}
 
 function M.caller(owner: string): any
@@ -20,12 +22,31 @@ function M.extractor(owner: string): string
     return assert(M.caller(owner):call("app:probe", { op = "create", input = { title = "Fixture reader", config = config } })).component_id
 end
 
-function M.upload(owner: string, mime: string, body: string, markdown: string?): string
+-- File-state fixtures may deliberately omit original bytes, but admission still
+-- requires the owner's declared Uploads component. Let the thread owner create
+-- and converge it instead of fabricating component or access rows.
+function M.upload_record(owner: string, mime: string, filename: string, size: number): string
+    local definition, definition_err = contract.get("kickside.core:threads")
+    assert(definition, tostring(definition_err))
+    local threads, open_err = definition:with_actor(security.new_actor(owner, {}))
+        :with_scope(security.new_scope({ assert(security.policy("app:user")) })):open()
+    assert(threads, tostring(open_err))
+    local initialized, init_err = threads:upsert({
+        thread_id = upload_types.component_id_for_owner(owner),
+        impl_id = upload_types.IMPL,
+        thread_class = upload_types.CLASS,
+    })
+    assert(initialized, tostring(init_err))
     local id = uuid.v4()
+    assert(uploads.create(id, owner, size, mime, "app:uploads", id, "generic", { filename = filename }, "completed"))
+    return id
+end
+
+function M.upload(owner: string, mime: string, body: string, markdown: string?): string
+    local id = M.upload_record(owner, mime, "document", #body)
     local storage = assert(fs.get("app:uploads"))
     local _, write_err = storage:writefile(id, body)
     assert(write_err == nil, tostring(write_err))
-    assert(uploads.create(id, owner, #body, mime, "app:uploads", id, "generic", { filename = "document" }, "completed"))
     if markdown then
         assert(artifacts.create_artifact({ upload_id = id, kind = "markdown", role = "primary", mime_type = "text/markdown",
             content = markdown, storage_id = "app:uploads" }))

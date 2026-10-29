@@ -10,7 +10,6 @@ local process = require("process")
 local channel = require("channel")
 local user_repo = require("user_repo")
 local user_groups_repo = require("user_groups_repo")
-local upload_records = require("upload_records")
 local data = require("data")
 local security = require("security")
 
@@ -27,9 +26,7 @@ end
 
 -- An upload record owned by who whose stored file does not exist, so reading it fails.
 local function upload(who: string, filename: string): string
-    local id = uuid.v4()
-    assert(upload_records.create(id, who, 10, "application/pdf", "app:uploads", id .. ".pdf", "generic", { filename = filename }, "completed"))
-    return id
+    return data.upload_record(who, "application/pdf", filename, 10)
 end
 
 local function extractor(who: string): string
