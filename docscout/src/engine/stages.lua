@@ -17,8 +17,8 @@ local M = {}
 -- document. Map selects a region for every "sections" field before any search.
 function M.region(run: any, field: any): ({ integer }?, error?)
     if field.search_within ~= "sections" then return nil, nil end
-    local selected = run.regions[field.name]
-    if not selected then return nil, errors.new({ kind = errors.INTERNAL, message = "no region selected for " .. field.name }) end
+    local selected = run.regions[shapes.path(field)]
+    if not selected then return nil, errors.new({ kind = errors.INTERNAL, message = "no region selected for " .. shapes.path(field) }) end
     return selected, nil
 end
 
@@ -75,7 +75,7 @@ end
 -- Exactly one selection per field, each with at least one existing section.
 local function select_schema(outline: { any }, fields: { any }): any
     local names = {}
-    for _, f in ipairs(fields) do names[#names + 1] = f.name end
+    for _, f in ipairs(fields) do names[#names + 1] = shapes.path(f) end
     return { type = "object", additionalProperties = false, required = { "fields" }, properties = {
         fields = { type = "array", minItems = #fields, maxItems = #fields, items = { type = "object", additionalProperties = false, required = { "field", "section_ids" },
             properties = { field = { type = "string", enum = names },
@@ -198,7 +198,7 @@ end
 -- retains passages cited by a field.
 local function scout_schema(cfg: any, fields: { any }, pool: { any }): any
     local names = {}
-    for _, f in ipairs(fields) do names[#names + 1] = f.name end
+    for _, f in ipairs(fields) do names[#names + 1] = shapes.path(f) end
     local chunk = shapes.passage_ref(pool)
     return { type = "object", additionalProperties = false, required = { "confidence", "evidence", "drop", "queries", "notes" }, properties = {
         confidence = { type = "number", minimum = 0, maximum = 1 },
@@ -229,7 +229,7 @@ local function scout_fields(run: any, fields: { any }): (string?, error?)
         if region then
             local labels = {}
             for i, n in ipairs(region) do labels[i] = "C" .. n end
-            limits[#limits + 1] = "- " .. f.name .. " reads only " .. table.concat(labels, ", ")
+            limits[#limits + 1] = "- " .. shapes.path(f) .. " reads only " .. table.concat(labels, ", ")
         end
     end
     return "Fields:\n" .. field_lines(fields) ..
@@ -285,7 +285,7 @@ function M.scout(run: any, step: any): error?
         return nil
     end
     local rounds, queries_run, by_name = 0, {}, {}
-    for _, f in ipairs(fields) do by_name[f.name] = f end
+    for _, f in ipairs(fields) do by_name[shapes.path(f)] = f end
     while true do
         rounds = rounds + 1
         local scout_text, scout_err = M.scout_input(run, fields)
@@ -377,7 +377,7 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
         system("You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it."),
         field_lines({ f }) .. "\n\nPassages:\n" .. render(found), { temperature = cfg.analysis_temperature })
     if analysis_err then return analysis_err end
-    run.analyses[f.name] = analysis
+    run.analyses[shapes.path(f)] = analysis
     return nil
 end
 
@@ -396,7 +396,7 @@ function M.deep(run: any, step: any): error?
             while true do
                 local f, ok = work:receive()
                 if not ok then return end
-                results:send({ name = f.name, err = analyse(run, step, ctx, f, all_queries) })
+                results:send({ name = shapes.path(f), err = analyse(run, step, ctx, f, all_queries) })
             end
         end)
     end
@@ -460,7 +460,7 @@ end
 type Citation = { quote: string, chunk: integer?, section: string, page: integer?, chunk_id: string, found: boolean? }
 
 -- One field's extracted value and evidence status.
-type Value = { name: string, value: any?, confidence: number, evidence: { Citation }, verified: boolean, missing: boolean,
+type Value = { name: string, path: string, value: any?, confidence: number, evidence: { Citation }, verified: boolean, missing: boolean,
     reason: string?, quotes_found: boolean? }
 
 -- Extraction: structured calls over the evidence pool, each for fields that share a group and a region.
@@ -485,7 +485,7 @@ function M.extraction_calls(run: any): ({ any }?, error?)
             table.sort(sorted)
             reads = table.concat(sorted, ",")
         end
-        local key = (trim(f.group) ~= "" and trim(f.group) or "Default") .. "\0" .. reads
+        local key = f.group .. "\0" .. reads
         if not sets[key] then sets[key] = { fields = {}, whole = region == nil }; order[#order + 1] = key end
         local set = sets[key]
         set.fields[#set.fields + 1] = f
@@ -503,7 +503,7 @@ function M.extraction_calls(run: any): ({ any }?, error?)
             local batch = {}
             local names, notes = {}, {}
             for i = start, math.min(#set.fields, start + limit - 1) do
-                batch[#batch + 1] = set.fields[i]; names[set.fields[i].name] = true
+                batch[#batch + 1] = set.fields[i]; names[shapes.path(set.fields[i])] = true
             end
             for _, n in ipairs(run.notes) do
                 if (n.field and names[n.field]) or (not n.field and set.whole) then notes[#notes + 1] = n end
@@ -518,7 +518,7 @@ end
 local function extract_call(run: any, step: any, cfg: any, call: any): error?
     local batch, passages, notes = call.fields, call.passages, call.notes
     local context = {}
-    for _, f in ipairs(batch) do if run.analyses[f.name] then context[#context + 1] = "Analysis of " .. f.name .. ":\n" .. run.analyses[f.name] end end
+    for _, f in ipairs(batch) do if run.analyses[shapes.path(f)] then context[#context + 1] = "Analysis of " .. shapes.path(f) .. ":\n" .. run.analyses[shapes.path(f)] end end
     local evidence = render(passages)
     local user = "Fields:\n" .. field_lines(batch) ..
         (#notes > 0 and ("\n\nScout notes:\n" .. table.concat(notes, "\n")) or "") ..
@@ -534,11 +534,11 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
         return err
     end
     for _, f in ipairs(batch) do
-        local item = result[f.name]
+        local item = shapes.get(result, shapes.path(f))
         local cited = {}
         -- Found values carry their declared type.
         if item.found and item.value == nil then
-            return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply marks " .. f.name .. " found without a value" })
+            return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply marks " .. shapes.path(f) .. " found without a value" })
         end
         for _, e in ipairs(item.evidence) do
             local ordinal = math.tointeger(e.chunk)
@@ -552,7 +552,7 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
                     section = chunk and chunk.heading_path or "", page = location.page, page_start = location.page_start, page_end = location.page_end, chunk_id = chunk and chunk.id or "" }
             end
         end
-        local entry: Value = { name = f.name, confidence = 0, evidence = {}, verified = false, missing = true }
+        local entry: Value = { name = f.name, path = shapes.path(f), confidence = 0, evidence = {}, verified = false, missing = true }
         if item.found then
             entry.value = item.value
             entry.confidence = item.confidence
@@ -574,7 +574,7 @@ function M.extract(run: any, step: any): error?
         if #call.passages == 0 then
             -- Empty passage sets produce missing fields.
             for _, f in ipairs(call.fields) do
-                run.values[#run.values + 1] = { name = f.name, confidence = 0, evidence = {}, verified = false, missing = true,
+                run.values[#run.values + 1] = { name = f.name, path = shapes.path(f), confidence = 0, evidence = {}, verified = false, missing = true,
                     reason = f.search_within == "sections" and "No passage from its sections reached extraction" or "No passage reached extraction" }
             end
         else
@@ -584,8 +584,8 @@ function M.extract(run: any, step: any): error?
         end
     end
     local position = {}
-    for i, f in ipairs(run.config.fields) do position[f.name] = i end
-    table.sort(run.values, function(a: any, b: any): boolean return position[a.name] < position[b.name] end)
+    for i, f in ipairs(run.config.fields) do position[shapes.path(f)] = i end
+    table.sort(run.values, function(a: any, b: any): boolean return position[shapes.path(a)] < position[shapes.path(b)] end)
     step.message = calls .. (calls == 1 and " call" or " calls") .. " · " .. #run.values .. " values"
     return nil
 end
@@ -594,7 +594,7 @@ end
 -- quote supports its value.
 local function support_schema(values: { any }): any
     local names = {}
-    for _, v in ipairs(values) do names[#names + 1] = v.name end
+    for _, v in ipairs(values) do names[#names + 1] = shapes.path(v) end
     return { type = "object", additionalProperties = false, required = { "checks" }, properties = {
         checks = { type = "array", maxItems = #names, items = { type = "object", additionalProperties = false, required = { "field", "supported", "reason" },
             properties = { field = { type = "string", enum = names }, supported = { type = "boolean" }, reason = { type = "string" } } } } } }
@@ -603,7 +603,7 @@ end
 function M.verify(run: any, step: any): error?
     local cfg = run.config.stages.verify
     local fields = {}
-    for _, f in ipairs(run.config.fields) do fields[f.name] = f end
+    for _, f in ipairs(run.config.fields) do fields[shapes.path(f)] = f end
     if cfg.check_quotes then
         local chunks, err = store.all_chunks(run.document.id)
         if err then return err end
@@ -616,7 +616,7 @@ function M.verify(run: any, step: any): error?
             for _, e in ipairs(v.evidence) do
                 local candidates = {}
                 for _, ordinal in ipairs(order) do
-                    local allowed, region_err = visible(run, fields[v.name], ordinal)
+                    local allowed, region_err = visible(run, fields[shapes.path(v)], ordinal)
                     if region_err then return region_err end
                     if allowed then candidates[#candidates + 1] = ordinal end
                 end
@@ -640,7 +640,7 @@ function M.verify(run: any, step: any): error?
                 found[#found + 1] = v
                 local quotes = {}
                 for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" end
-                lines_out[#lines_out + 1] = "- " .. v.name .. " = " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | ")
+                lines_out[#lines_out + 1] = "- " .. shapes.path(v) .. " = " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | ")
             end
         end
         if #found > 0 then
@@ -655,9 +655,13 @@ function M.verify(run: any, step: any): error?
     for _, v in ipairs(run.values) do
         local reasons = {}
         if v.reason then reasons[#reasons + 1] = v.reason end
+        if not v.missing then
+            local valid, shape_err = json.validate(shapes.value_schema(fields[shapes.path(v)]), v.value)
+            if not valid then reasons[#reasons + 1] = "Value does not match its declared shape: " .. tostring(shape_err) end
+        end
         if cfg.check_quotes and not v.missing and not v.quotes_found then reasons[#reasons + 1] = "A quote is not in the document" end
         if cfg.check_support and not v.missing then
-            local check = support[v.name]
+            local check = support[shapes.path(v)]
             if not check then reasons[#reasons + 1] = "The support check gave no verdict"
             elseif not check.supported then reasons[#reasons + 1] = check.reason end
         end

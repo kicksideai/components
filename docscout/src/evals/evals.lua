@@ -156,7 +156,7 @@ function M.run_case(input: any): (any?, error?)
             tokens = tokens, duration_ms = duration })
     end
     local values = {}
-    for _, f in ipairs(result.fields) do values[f.name] = f end
+    for _, f in ipairs(result.fields) do values[f.path] = f end
     return finish(eval, payload.case_id, {
         status = "completed", run_id = result.run_id, tokens = result.tokens, duration_ms = result.duration_ms,
         scores = scoring.case(eval.fields, expected.expected, values),

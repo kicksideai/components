@@ -24,13 +24,20 @@ function M.validate(value: any): error?
     if not valid then return invalid("Invalid configuration: " .. tostring(validation_err)) end
     local names, sections = {}, false
     for _, field in ipairs(value.fields) do
-        if names[field.name] then return invalid("Field names must be unique") end
-        names[field.name] = true
-        if field.type == "enum" and #field.enum_values == 0 then return invalid("Enum fields need at least one value") end
-        if #field.enum_values > 0 and field.type ~= "enum" and not (field.type == "list" and field.item_type == "text") then
-            return invalid("Allowed values apply to enum fields and lists of text; remove them from " .. field.name)
-        end
+        local path = shapes.path(field)
+        if names[path] then return invalid("Field paths must be unique") end
+        names[path] = true
+        if #field.enum_values > 0 and field.type ~= "enum" then return invalid("Allowed values apply to enum fields and text items") end
+        local shape_err = M.validate_shape(field, 1)
+        if shape_err then return shape_err end
         if field.search_within == "sections" then sections = true end
+    end
+    for path in pairs(names) do
+        local prefix = ""
+        for segment in path:gmatch("[^.]+") do
+            prefix = prefix == "" and segment or prefix .. "." .. segment
+            if prefix ~= path and names[prefix] then return invalid("Group path collides with field " .. prefix) end
+        end
     end
     local stages = value.stages
     if sections and not stages.map.enabled then return invalid("Fields that search within sections need Map the document") end
@@ -51,13 +58,35 @@ function M.validate(value: any): error?
     return nil
 end
 
--- Expected values of an evaluation case keyed by field name, each a value of
--- the field's type; absent fields represent unstated values.
+-- Declared properties have local names; list items are shapes without a name.
+function M.validate_shape(field: any, depth: integer): error?
+    if depth > 4 then return invalid("Field shapes support at most four levels") end
+    local enums = field.enum_values or {}
+    if field.type == "enum" and #enums == 0 then return invalid("Enum fields need at least one value") end
+    if #enums > 0 and field.type ~= "enum" and field.type ~= "text" then
+        return invalid("Allowed values apply to enum fields and text items")
+    end
+    if field.type == "object" then
+        if not field.properties or #field.properties == 0 then return invalid("Object fields need a declared property") end
+        local names = {}
+        for _, p in ipairs(field.properties) do
+            if names[p.name] then return invalid("Property names must be unique") end
+            names[p.name] = true
+            local err = M.validate_shape(p, depth + 1)
+            if err then return err end
+        end
+    elseif field.properties ~= nil then return invalid("Properties apply to object shapes") end
+    if field.type == "list" then
+        if not field.item then return invalid("Lists need a declared item shape") end
+        local err = M.validate_shape(field.item, depth + 1)
+        if err then return err end
+    elseif field.item ~= nil then return invalid("Item shapes apply to lists") end
+    return nil
+end
+
+-- Expected values share the extraction's nested group and typed value shape.
 function M.validate_expected(fields: { any }, value: any): error?
-    local properties = shapes.object()
-    for _, field in ipairs(fields) do properties[field.name] = shapes.value_schema(field) end
-    local schema = { type = "object", additionalProperties = false, properties = properties }
-    local valid, err = json.validate(schema, value)
+    local valid, err = json.validate(shapes.expected_schema(fields), value)
     if not valid then return invalid("Expected values do not match the fields: " .. tostring(err)) end
     return nil
 end

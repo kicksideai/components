@@ -102,6 +102,61 @@ return { run = test.run_cases(function()
             local deleted = request("DELETE", "/api/docscout/" .. id, owner_token)
             test.eq(deleted.status_code, 200, deleted.body)
         end)
+        test.it("returns nested typed fields through the contract, HTTP, Block, tool and stored runs", function()
+            local owner, caller, token = member(true)
+            local cfg = configuration()
+            local schema = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json))
+            local amount = cfg.fields[1]
+            amount.group = "parties.borrower"
+            local terms = schema.properties.fields.items.default
+            terms.name, terms.group, terms.type = "total", "parties.agent", "list"
+            terms.item = { type = "object", properties = {
+                { name = "amount", type = "number", description = "Amount", enum_values = {}, expected_format = "", required = true },
+                { name = "paid", type = "boolean", description = "Paid", enum_values = {}, expected_format = "", required = true },
+            } }
+            cfg.fields[2] = terms
+            cfg.stages.verify.enabled = true
+            local response = request("POST", "/api/docscout", token, { title = "Nested reader", config = cfg })
+            test.eq(response.status_code, 201, response.body)
+            local id = assert(json.decode(response.body)).component_id
+            local upload_id = uuid.v4()
+            assert(uploads.create(upload_id, owner, 20, "application/pdf", "app:uploads", upload_id, "generic", { filename = "nested.pdf" }, "completed"))
+            assert(artifacts.create_artifact({ upload_id = upload_id, kind = "markdown", role = "primary", mime_type = "text/markdown",
+                content = "# Terms\nThe total amount is 1250.", storage_id = "app:uploads" }))
+            local direct, err = caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload_id, caller = "agent" })
+            test.is_nil(err, tostring(err))
+            local http_result = request("POST", "/api/docscout/" .. id .. "/run", token, { upload_id = upload_id })
+            test.eq(http_result.status_code, 200, http_result.body)
+            local tool = assert(caller:call("kickside.docscout.traits:run_tool", { extractor_id = id, upload_id = upload_id }))
+            local block = assert(caller:call("kickside.docscout.blocks:extract_run", { config = { extractor_id = id }, input = { upload_id = upload_id } }))
+            for _, result in ipairs({ direct, assert(json.decode(http_result.body)), tool, block }) do
+                test.eq(result.values.parties.borrower.total, 1250)
+                test.eq(result.values.parties.agent.total[1].amount, 1250)
+                test.is_false(result.values.parties.agent.total[1].paid)
+                test.eq(result.fields[1].path, "parties.borrower.total")
+                test.eq(result.fields[2].path, "parties.agent.total")
+                test.is_true(result.fields[1].verified); test.is_true(result.fields[2].verified)
+            end
+            local stored = request("GET", "/api/docscout/" .. id, token)
+            test.eq(stored.status_code, 200, stored.body)
+            local saved = assert(json.decode(stored.body))
+            test.eq(saved.runs[1].result.values.parties.agent.total[1].amount, 1250)
+            local expected = { parties = { borrower = { total = 1250 }, agent = { total = { { amount = 1250, paid = false } } } } }
+            local case_response = request("POST", "/api/docscout/" .. id .. "/cases", token, { upload_id = upload_id, expected = expected })
+            test.eq(case_response.status_code, 201, case_response.body)
+            local start = request("POST", "/api/docscout/" .. id .. "/evaluations", token)
+            test.eq(start.status_code, 202, start.body)
+            local eval_id = assert(json.decode(start.body)).eval_id
+            local evaluation
+            for _ = 1, 100 do
+                local result = request("GET", "/api/docscout/" .. id .. "/evaluations/" .. eval_id, token)
+                evaluation = assert(json.decode(result.body)).evaluation
+                if evaluation.status == "completed" or evaluation.status == "failed" then break end
+                time.sleep("100ms")
+            end
+            test.eq(evaluation.status, "completed"); test.eq(evaluation.metrics[1].field, "parties.borrower.total")
+            test.eq(evaluation.metrics[1].accuracy, 1); test.eq(evaluation.metrics[2].accuracy, 1)
+        end)
         test.it("runs the real contract from UI, tool, Block and evaluation with persisted evidence and trace", function()
             local owner, caller, token = member(true)
             local created_response = request("POST", "/api/docscout", token, { title = "Invoice", config = configuration() })

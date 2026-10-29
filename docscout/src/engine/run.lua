@@ -109,7 +109,7 @@ function M.run(input: any): (any?, error?)
         for _, e in ipairs(v.evidence) do
             evidence[#evidence + 1] = { quote = e.quote, section = e.section, page = e.page, page_start = e.page_start, page_end = e.page_end, chunk_id = e.chunk_id, found = e.found }
         end
-        fields[#fields + 1] = { name = v.name, value = v.value, confidence = v.confidence, verified = v.verified, missing = v.missing, reason = v.reason, evidence = evidence }
+        fields[#fields + 1] = { name = v.name, path = v.path, value = v.value, confidence = v.confidence, verified = v.verified, missing = v.missing, reason = v.reason, evidence = evidence }
     end
     local result = {
         upload_id = input.upload_id, config_revision = extractor.revision, fields = fields, trace = trace,
@@ -117,6 +117,7 @@ function M.run(input: any): (any?, error?)
         error = failure and error_envelope.encode(failure) or nil,
         pages = run.document and run.document.page_count or 0,
     }
+    result.values = shapes.values(result)
     local expires_at, expiry_err = retention.expires_at()
     if expiry_err then
         if failure then return nil, error_envelope.wrap_secondary(expiry_err, failure, "run retention failed") end
@@ -124,7 +125,7 @@ function M.run(input: any): (any?, error?)
     end
     local run_id, record_err = repository.add_run(input.id, {
         user_id = actor:id(), upload_id = input.upload_id, caller = caller, status = result.status,
-        config_revision = extractor.revision, result = { fields = fields, error = result.error }, trace = trace,
+        config_revision = extractor.revision, result = { fields = fields, values = result.values, error = result.error }, trace = trace,
         duration_ms = result.duration_ms, tokens = tokens, expires_at = expires_at,
     })
     if record_err then

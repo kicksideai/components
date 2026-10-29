@@ -12,7 +12,7 @@ local function run(request: any): (any?, error?)
     if type(input.upload_id) ~= "string" or input.upload_id == "" then return nil, invalid("The input needs an upload_id") end
     local result, err = client.run({ extractor_id = cfg.extractor_id, upload_id = input.upload_id, caller = "workflow" })
     if err then return nil, err end
-    return { values = shapes.values(result), fields = result.fields, verified = shapes.verified(result), run_id = result.run_id, pages = result.pages,
+    return { values = result.values, fields = result.fields, verified = shapes.verified(result), run_id = result.run_id, pages = result.pages,
         config_revision = result.config_revision, status = result.status, duration_ms = result.duration_ms, tokens = result.tokens, trace = result.trace }, nil
 end
 

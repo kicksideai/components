@@ -74,7 +74,7 @@ return {run=test.run_cases(function()
             st.extract.max_fields_per_call=8
             st.verify.enabled=true;st.verify.check_support=false
             dto.config.retrieval.context="generated";dto.config.retrieval.context_model="class:nano";dto.config.retrieval.keep_tables=false
-            dto.config.fields={{name="terms",type="text",description="",enum_values=assert(json.decode("[]")),item_type="text",required=false,search_hints="",validation_hints="",expected_format="",strategy="deep",search_within="sections",group="payment",evidence_required=true,chunks=5}}
+            dto.config.fields={{name="terms",type="text",description="",enum_values=assert(json.decode("[]")),required=false,search_hints="",validation_hints="",expected_format="",strategy="deep",search_within="sections",group="payment",evidence_required=true,chunks=5}}
             local created,err=call(who,{op="create",input=dto})
             test.is_nil(err,tostring(err));test.not_nil(created)
             local saved=assert(call(who,{op="get",id=created.component_id})).config
@@ -96,7 +96,7 @@ return {run=test.run_cases(function()
                 function(c) c.stages.extract.enabled=false end,
                 function(c) c.stages.scout.mode="agent";c.stages.scout.max_rounds=0 end,
                 function(c) c.stages.scout.mode="agent";c.stages.scout.max_rounds=2;c.stages.scout.max_extra_queries=0 end,
-                function(c) c.fields={field("amounts",{type="list",item_type="number",enum_values={"1","2"}})} end,
+                function(c) c.fields={field("amounts",{type="list",item = { type = "number" },enum_values={"1","2"}})} end,
                 function(c) c.fields={field("vendor",{enum_values={"a"}})} end,
                 function(c) c.fields={field("vendor")};c.stages.prefetch.enabled=false;c.stages.scout.enabled=false end
             }) do
@@ -133,10 +133,30 @@ return {run=test.run_cases(function()
             test.is_nil(removed);test.not_nil(remove_err)
             test.not_nil((call(owner,{op="delete",id=id})))
         end)
+        test.it("validates nested identities and typed shapes through extractor creation",function()
+            local who=uuid.v4();local dto=input()
+            dto.config.fields={field("name",{group="parties.borrower"}),field("name",{group="parties.agent"})}
+            local created,err=call(who,{op="create",input=dto})
+            test.is_nil(err,tostring(err));test.not_nil(created)
+            local saved=assert(call(who,{op="get",id=created.component_id}))
+            test.eq(saved.config.fields[1].group,"parties.borrower");test.eq(saved.config.fields[2].group,"parties.agent")
+            for _,fields in ipairs({
+                {field("parties"),field("name",{group="parties.borrower"})},
+                {field("name",{group="parties.borrower"}),field("name",{group="parties.borrower"})},
+                {field("name",{group="Borrower details"})},
+                {field("terms",{type="object"})},
+                {field("terms",{type="list"})},
+                {field("terms",{type="object",properties={{name="amount",type="number",description="",enum_values={},expected_format="",required=true},{name="amount",type="number",description="",enum_values={},expected_format="",required=false}}})},
+            }) do
+                dto.config.fields=fields
+                local value,invalid_err=call(who,{op="create",input=dto})
+                test.is_nil(value);test.not_nil(invalid_err);test.is_true(errors.is(invalid_err,errors.INVALID))
+            end
+        end)
         test.it("rejects invalid configuration before creation",function()
             local who=uuid.v4()
             local function field(over)
-                local f={name="status",type="text",description="",enum_values=assert(json.decode("[]")),item_type="text",required=false,search_hints="",validation_hints="",expected_format="",strategy="standard",search_within="document",group="",evidence_required=true,chunks=5}
+                local f={name="status",type="text",description="",enum_values=assert(json.decode("[]")),required=false,search_hints="",validation_hints="",expected_format="",strategy="standard",search_within="document",group="",evidence_required=true,chunks=5}
                 for k,v in pairs(over) do f[k]=v end
                 return f
             end
@@ -169,7 +189,7 @@ return {run=test.run_cases(function()
         end)
         test.it("stores expected field values in extractor-owned evaluation cases",function()
             local who=uuid.v4();local dto=input()
-            dto.config.fields={{name="total",type="number",description="Total due",enum_values=assert(json.decode("[]")),item_type="text",required=true,search_hints="",validation_hints="",expected_format="",strategy="standard",evidence_required=true,chunks=5,search_within="document",group=""}}
+            dto.config.fields={{name="total",type="number",description="Total due",enum_values=assert(json.decode("[]")),required=true,search_hints="",validation_hints="",expected_format="",strategy="standard",evidence_required=true,chunks=5,search_within="document",group=""}}
             local id=assert(call(who,{op="create",input=dto})).component_id
             local example,other=upload(who,"Example invoice.pdf"),upload(who,"Unstated total.pdf")
             local added,err=call(who,{op="add_case",id=id,input={upload_id=example,expected={total=1250}}})

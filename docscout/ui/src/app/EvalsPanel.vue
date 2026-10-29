@@ -4,7 +4,9 @@ import {computed,ref,watch} from 'vue'
 import {Icon} from '@iconify/vue'
 import Button from 'primevue/button'
 import UploadPicker from './UploadPicker.vue'
-import type {Field} from '../config'
+import {fieldPath,getValue,setValue,groupTree,type Field} from '../config'
+import NestedValue from './NestedValue.vue'
+import FieldGroups from './FieldGroups.vue'
 import {finished,meanAccuracy,type EvalCase,type Evaluation,type CaseResult,type FieldScore} from '../models'
 import {when} from '../format'
 const props=defineProps<{cases:EvalCase[];addedCaseId?:string;fields:Field[];evaluations:Evaluation[];evaluation?:Evaluation;revision:number;changed?:boolean;saving?:boolean;starting?:boolean}>()
@@ -22,7 +24,7 @@ function parse(field:Field,raw:string):unknown{
 function addCase(){
  error.value=''
  const values:Record<string,unknown>={}
- try{for(const field of props.fields){const raw=String(expected.value[field.name]??'').trim();if(raw)values[field.name]=parse(field,raw)}}
+ try{for(const field of props.fields){const raw=String(expected.value[fieldPath(field)]??'').trim();if(raw)setValue(values,fieldPath(field),parse(field,raw))}}
  catch{error.value='Lists and objects need valid JSON, for example ["a","b"] or {"city":"Hamburg"}.';return}
  emit('add-case',{upload_id:upload.value,expected:values})
 }
@@ -43,7 +45,8 @@ const baseline=computed(()=>{
 })
 const rows=computed(()=>(shown.value?.metrics??[]).map(m=>({...m,before:baseline.value?.metrics.find(b=>b.field===m.field)})))
 
-const columns=computed(()=>(shown.value?.fields??[]).map(f=>f.name))
+const columns=computed(()=>(shown.value?.fields??[]).map(fieldPath))
+const groups=computed(()=>groupTree(props.fields.map(fieldPath)))
 const score=(r:CaseResult,field:string)=>r.scores.find(s=>s.field===field)
 const open=ref<string>()
 const pct=(n:number)=>`${Math.round(n*100)}%`
@@ -117,12 +120,11 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
        </tr>
        <tr v-if="open===r.case_id" class="result-detail"><td :colspan="columns.length+1">
         <p v-if="r.error" class="muted" :data-error-kind="r.error.kind" :title="r.error.kind">{{r.error.message}}</p>
-        <dl v-else class="compare">
-         <template v-for="s in r.scores" :key="s.field">
-          <dt class="mono">{{s.field}}</dt>
-          <dd><span class="cell" :class="grade(s)">{{pct(s.score)}}</span><span class="cmp"><span class="cmp-label">Expected</span>{{value(s.expected)}}</span><span class="cmp"><span class="cmp-label">Extracted</span>{{value(s.value)}}</span><span><span class="chip" :class="s.verified?'primary':'warn'"><Icon :icon="s.verified?'tabler:shield-check':'tabler:shield-question'"/>{{s.verified?'Verified':'Unverified'}}</span></span></dd>
-         </template>
-        </dl>
+        <FieldGroups v-else :node="groupTree(r.scores.map(s=>s.field))"><template #default="{index}"><dl v-for="s in [r.scores[index]]" :key="s.field" class="compare">
+          <dt class="mono">{{s.field.split('.').at(-1)}}</dt>
+          <dd><span class="cell" :class="grade(s)">{{pct(s.score)}}</span><div class="cmp"><span class="cmp-label">Expected</span><NestedValue :value="s.expected"/></div><div class="cmp"><span class="cmp-label">Extracted</span><NestedValue :value="s.value"/></div><span><span class="chip" :class="s.verified?'primary':'warn'"><Icon :icon="s.verified?'tabler:shield-check':'tabler:shield-question'"/>{{s.verified?'Verified':'Unverified'}}</span></span></dd>
+        </dl></template></FieldGroups>
+
         <p class="muted case-meta">{{r.tokens.toLocaleString()}} tokens · {{secs(r.duration_ms)}}</p>
        </td></tr>
       </template>
@@ -136,12 +138,12 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
    <form v-if="adding" class="case-form" @submit.prevent="addCase">
     <label>Document<UploadPicker :value="upload" @select="id=>{upload=id}"/></label>
     <p class="muted">Enter what the document states. Leave a field blank when the document does not state it; the case then expects Docscout to report it missing.</p>
-    <div class="grid"><label v-for="field in fields" :key="field.name"><span class="mono">{{field.name}}</span>
-     <select v-if="field.type==='boolean'" v-model="expected[field.name]"><option value="">Not stated</option><option value="true">Yes</option><option value="false">No</option></select>
-     <select v-else-if="field.type==='enum'" v-model="expected[field.name]"><option value="">Not stated</option><option v-for="v in field.enum_values" :key="v">{{v}}</option></select>
-     <textarea v-else-if="field.type==='object'||field.type==='list'" v-model="expected[field.name]" rows="2" :placeholder="field.type==='list'?'[&quot;first&quot;, &quot;second&quot;]':'{&quot;key&quot;: &quot;value&quot;}'"/>
-     <input v-else v-model="expected[field.name]" :type="field.type==='number'?'number':field.type==='date'?'date':'text'" placeholder="Not stated"/>
-    </label></div>
+    <FieldGroups :node="groups"><template #default="{index}"><label v-for="field in [fields[index]]" :key="fieldPath(field)"><span class="mono">{{field.name}}</span>
+     <select v-if="field.type==='boolean'" v-model="expected[fieldPath(field)]"><option value="">Not stated</option><option value="true">Yes</option><option value="false">No</option></select>
+     <select v-else-if="field.type==='enum'" v-model="expected[fieldPath(field)]"><option value="">Not stated</option><option v-for="v in field.enum_values" :key="v">{{v}}</option></select>
+     <textarea v-else-if="field.type==='object'||field.type==='list'" v-model="expected[fieldPath(field)]" rows="2" :placeholder="field.type==='list'?'[&quot;first&quot;, &quot;second&quot;]':'{&quot;key&quot;: &quot;value&quot;}'"/>
+     <input v-else v-model="expected[fieldPath(field)]" :type="field.type==='number'?'number':field.type==='date'?'date':'text'" placeholder="Not stated"/>
+    </label></template></FieldGroups>
     <p v-if="error" class="error" role="alert">{{error}}</p>
     <div class="row"><Button label="Save case" size="small" type="submit" :disabled="!upload" :loading="saving"/><Button label="Cancel" size="small" severity="secondary" text @click="adding=false"/></div>
    </form>
@@ -149,8 +151,10 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
    <p v-else-if="!cases.length&&!adding" class="block-empty">No cases yet. Add a document with the values you expect, then run all cases to measure this configuration.</p>
    <div v-else-if="cases.length" class="table-scroll">
     <table class="metric-table case-table">
-     <thead><tr><th>Document</th><th v-for="f in fields" :key="f.name" class="mono">{{f.name}}</th><th/></tr></thead>
-     <tbody><tr v-for="item in cases" :key="item.id"><td><Icon icon="tabler:file-text" class="muted"/> {{item.upload_name}}</td><td v-for="f in fields" :key="f.name" :data-label="f.name" :class="{muted:!(f.name in item.expected)}">{{f.name in item.expected?value(item.expected[f.name]):'Not stated'}}</td><td class="num"><button type="button" class="kx-iconbtn kx-focus-outline" :aria-label="`Remove case ${item.upload_name}`" :disabled="saving" @click="emit('delete-case',item.id)"><Icon icon="tabler:trash"/></button></td></tr></tbody>
+     <thead><tr><th>Document</th><th>Expected values</th><th/></tr></thead>
+     <tbody><tr v-for="item in cases" :key="item.id"><td><Icon icon="tabler:file-text" class="muted"/> {{item.upload_name}}</td><td>
+      <FieldGroups :node="groups"><template #default="{index}"><div class="case-value"><strong>{{fields[index].name}}</strong><NestedValue v-if="getValue(item.expected,fieldPath(fields[index]))!==undefined" :value="getValue(item.expected,fieldPath(fields[index]))"/><span v-else class="muted">Not stated</span></div></template></FieldGroups>
+     </td><td class="num"><button type="button" class="kx-iconbtn kx-focus-outline" :aria-label="`Remove case ${item.upload_name}`" :disabled="saving" @click="emit('delete-case',item.id)"><Icon icon="tabler:trash"/></button></td></tr></tbody>
     </table>
    </div>
   </section>

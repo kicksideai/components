@@ -23,7 +23,7 @@ export const client={
   catch(e){
    const data=failure(e),trace=data?.details?.trace
    if(!trace)throw e
-   return {run_id:data?.details?.run_id??'',upload_id,config_revision:0,fields:[],trace,duration_ms:trace.reduce((n,t)=>n+t.duration_ms,0),tokens:trace.reduce((n,t)=>n+t.input_tokens+t.output_tokens,0),status:'failed',error:data?.error}
+   return {run_id:data?.details?.run_id??'',upload_id,config_revision:0,values:{},fields:[],trace,duration_ms:trace.reduce((n,t)=>n+t.duration_ms,0),tokens:trace.reduce((n,t)=>n+t.input_tokens+t.output_tokens,0),status:'failed',error:data?.error}
   }
  },
  async evaluate(id:string):Promise<{eval_id:string}>{return checked((await api.post(path(id)+'/evaluations',{})).data)},
