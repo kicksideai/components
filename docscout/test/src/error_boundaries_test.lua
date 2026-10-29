@@ -21,6 +21,25 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Real persistence boundaries", function()
+        test.it("rejects late document and evaluation writes after extractor deletion", function()
+            local owner = uuid.v4(); local id = data.extractor(owner)
+            local doc = { component_id = id, owner_id = owner, upload_id = "upload", checksum = "checksum",
+                processing_key = "key", outline = {}, page_count = 0, tokens = 0, expires_at = "2999-01-01T00:00:00Z" }
+            test.not_nil((store.save(doc, {})))
+            local eval_id = evaluation(id)
+            test.not_nil((repository.mark_eval(id, eval_id, "running")))
+            test.not_nil((data.caller(owner):call("app:probe", { op = "delete", id = id })))
+
+            local document, document_err = store.save(doc, {})
+            test.is_nil(document); test.not_nil(document_err)
+            local completed, completion_err = repository.finish_case(id, eval_id, "case", { status = "completed" },
+                function() error("a deleted evaluation must not be summarized") end)
+            test.is_nil(completed); test.not_nil(completion_err)
+            local remaining, read_err = store.find(id, owner, "upload", "checksum", "key")
+            test.is_nil(read_err, tostring(read_err)); test.is_nil(remaining)
+            local removed, removed_err = repository.get_eval(eval_id, true)
+            test.is_nil(removed); test.is_true(errors.is(removed_err, errors.NOT_FOUND), tostring(removed_err))
+        end)
         test.it("rolls back a document and its chunks when the vector insert fails", function()
             local owner = uuid.v4(); local component_id = data.extractor(owner)
             local value, err = store.save({ component_id = component_id, owner_id = owner, upload_id = "upload", checksum = "checksum",
