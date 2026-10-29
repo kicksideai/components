@@ -89,8 +89,20 @@ function M.structured(meter: Meter, model: string, schema: any, system: string, 
     local response, err = llm.structured_output(schema, messages(system, user), options)
     if err then return nil, model_error("structured model call (" .. model .. ")", err) end
     count(meter, response)
+    if response.finish_reason == "length" then
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
+            message = "Structured model reply is truncated", details = { code = "structured_reply_truncated", model = model } })
+    end
     if type(response.result) ~= "table" then
         return nil, model_error("structured model call (" .. model .. ")", "no structured result")
+    end
+    local encoded, encode_err = json.encode(response.result)
+    if encode_err then return nil, model_error("structured reply encoding", encode_err) end
+    local valid, validation_err = json.validate_string(schema, encoded)
+    if not valid then
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
+            message = "Structured model reply does not match its schema: " .. tostring(validation_err),
+            details = { code = "structured_reply_invalid", model = model } })
     end
     return response.result, nil
 end

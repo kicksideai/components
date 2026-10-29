@@ -42,6 +42,40 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Evaluations", function()
+        for _, status in ipairs({ "partial", "failed" }) do
+            test.it("persists failed-field scores and causes for " .. status .. " extraction", function()
+                local who = member()
+                local schema = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json))
+                local cfg = schema.default
+                local failed = schema.properties.fields.items.default
+                failed.name, failed.type, failed.description = "provider_failure", "number", "Total amount"
+                cfg.fields = { failed }
+                if status == "partial" then
+                    local good = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+                    good.name, good.type, good.description = "total", "number", "Total amount"
+                    cfg.fields[2] = good
+                end
+                cfg.retrieval.embedding_model, cfg.retrieval.context, cfg.retrieval.search_mode = "class:docscout-success", "none", "keyword"
+                cfg.stages.map.enabled, cfg.stages.scout.enabled, cfg.stages.deep.enabled = false, false, false
+                cfg.stages.verify.check_support = false
+                cfg.stages.extract.model, cfg.stages.extract.max_fields_per_call = "class:docscout-success", 1
+                local id = assert(call(who, { op = "create", input = { title = "Evaluated partial reader", config = cfg } })).component_id
+                local upload_id = data.upload(who, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+                assert(call(who, { op = "add_case", id = id, input = { upload_id = upload_id, expected = status == "partial" and { total = 1250 } or {} } }))
+                local snapshot = assert(call(who, { op = "get", id = id }))
+                local eval_id = assert(call(who, { op = "queue_eval", id = id, cases = snapshot.cases }))
+                local result, err = funcs.call("kickside.docscout.evals:case_worker", {
+                    payload = { component_id = id, eval_id = eval_id, case_id = snapshot.cases[1].id },
+                })
+                test.is_nil(err, tostring(err)); test.not_nil(result)
+                local evaluation = assert(call(who, { op = "get_eval", id = id, eval_id = eval_id })).evaluation
+                test.eq(evaluation.results[1].status, status)
+                test.eq(evaluation.results[1].scores[1].score, 0)
+                test.eq(evaluation.results[1].scores[1].error.details.code, "fixture_provider_failure")
+                test.eq(evaluation.metrics[1].accuracy, 0)
+                if status == "partial" then test.eq(evaluation.metrics[2].accuracy, 1) end
+            end)
+        end
         test.it("refuses to start without cases or edit access", function()
             local who = "eval-owner-" .. uuid.v4()
             local id = extractor(who)

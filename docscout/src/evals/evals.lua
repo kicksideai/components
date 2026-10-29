@@ -93,7 +93,7 @@ function M.summarize(fields: { any }, finished: { any }): any
     local scored, tokens, duration, failed = {}, 0, 0, 0
     for _, r in ipairs(finished) do
         tokens, duration = tokens + r.tokens, duration + r.duration_ms
-        if r.status == "completed" then scored[#scored + 1] = r.scores else failed = failed + 1 end
+        if r.status == "completed" or r.status == "partial" or (r.scores and #r.scores > 0) then scored[#scored + 1] = r.scores else failed = failed + 1 end
     end
     local totals: any = { tokens = tokens, duration_ms = duration, metrics = scoring.metrics(fields, scored) }
     if #scored == 0 then
@@ -158,7 +158,7 @@ function M.run_case(input: any): (any?, error?)
     local values = {}
     for _, f in ipairs(result.fields) do values[f.path] = f end
     return finish(eval, payload.case_id, {
-        status = "completed", run_id = result.run_id, tokens = result.tokens, duration_ms = result.duration_ms,
+        status = result.status, run_id = result.run_id, tokens = result.tokens, duration_ms = result.duration_ms,
         scores = scoring.case(eval.fields, expected.expected, values),
     })
 end

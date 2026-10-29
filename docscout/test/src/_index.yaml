@@ -535,6 +535,10 @@ entries:
   select:
     meta.surface: kickside.docscout
     meta.intent: module_access
+- name: fixture_success_generate
+  kind: function.lua
+  source: file://fixture_success.lua
+  method: generate
 - name: fixture_success_structured
   kind: function.lua
   source: file://fixture_success.lua
@@ -550,6 +554,9 @@ entries:
 - name: fixture_success_driver
   kind: contract.binding
   contracts:
+  - contract: wippy.llm:generator
+    methods:
+      generate: app:fixture_success_generate
   - contract: wippy.llm:structured_output
     methods:
       structured_output: app:fixture_success_structured
@@ -574,7 +581,7 @@ entries:
     type: llm.model
     name: docscout-success
     title: Successful fixture model
-    capabilities: [structured_output, embed]
+    capabilities: [generate, structured_output, embed]
     class: [docscout-success]
     priority: 100
   dimensions: 512
@@ -736,3 +743,36 @@ entries:
     stages: kickside.docscout.engine:stages
     scoring: kickside.docscout.evals:scoring
     acceptance: app:acceptance_fields
+
+- name: partial_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_partial, group: Docscout}
+  source: file://partial_test.lua
+  method: run
+  modules: [json, registry, uuid, time, process, channel]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    ai: kickside.docscout.engine:ai
+    stages: kickside.docscout.engine:stages
+    shapes: kickside.docscout.engine:shapes
+    scoring: kickside.docscout.evals:scoring
+
+- name: user_agent_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_user_agents, group: Docscout}
+  source: file://user_agent_test.lua
+  method: run
+  modules: [registry, json, uuid]
+  imports:
+    flow_repo: userspace.dataflow.persist:dataflow_repo
+    test: wippy.test:test
+    data: app:fixture_data
+    users: kickside.users.persist:user_repo
+    groups: kickside.users.persist:user_groups_repo
+- name: agent_share_probe
+  kind: function.lua
+  source: file://agent_share_probe.lua
+  method: run
+  imports:
+    component: kickside.component:component

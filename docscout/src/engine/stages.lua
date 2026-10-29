@@ -8,10 +8,17 @@ local store = require("store")
 local doctools = require("doctools")
 local process = require("process")
 local shapes = require("shapes")
+local error_envelope = require("error_envelope")
+local user_agent = require("user_agent")
 
 local trim, add, ordered, render, field_lines = shapes.trim, shapes.add, shapes.ordered, shapes.render, shapes.field_lines
 
 local M = {}
+
+local function failed_field(run: any, field: any, err: error)
+    run.values[#run.values + 1] = { name = field.name, path = shapes.path(field), confidence = 0,
+        evidence = {}, verified = false, missing = false, failed = true, error = error_envelope.encode(err) }
+end
 
 -- Region (chunk ordinals) a field searches within, or nil for the whole
 -- document. Map selects a region for every "sections" field before any search.
@@ -267,18 +274,26 @@ function M.scout(run: any, step: any): error?
         local found = 0
         local fields_text, fields_err = scout_fields(run, fields)
         if fields_err then return fields_err end
-        local answer, calls, err = ai.agent(step.meter, cfg.model,
-            system("You read one document with the tools to find evidence for the fields below. Follow references to definitions and schedules. When you have enough, reply with short notes per field saying where each value is."),
-            fields_text .. "\n\nEvidence so far:\n" .. render(ordered(run.pool)),
-            tools, M.agent_budget(cfg),
-            function(name: string, args: any): (string?, error?)
-                local hits, text, call_err = doctools.call(ctx, name, args)
-                if call_err then return nil, call_err end
-                local before = run.pool.count
-                add(run.pool, hits)
-                found = found + (run.pool.count - before)
-                return text, nil
-            end, { max_tokens = cfg.max_tokens })
+        local before = run.pool.count
+        local instruction = system("You read one document with the tools to find evidence for the fields below. Follow references to definitions and schedules. When you have enough, reply with short notes per field saying where each value is.")
+        local input = fields_text .. "\n\nEvidence so far:\n" .. render(ordered(run.pool))
+        local answer, calls, err
+        if cfg.agent_id then
+            answer, calls, err = user_agent.run(run, step, instruction, input)
+        else
+            answer, calls, err = ai.agent(step.meter, cfg.model, instruction, input,
+                tools, M.agent_budget(cfg),
+                function(name: string, args: any): (string?, error?)
+                    local hits, text, call_err = doctools.call(ctx, name, args)
+                    step.tool_calls = step.tool_calls or {}
+                    step.tool_calls[#step.tool_calls + 1] = { name = name, arguments = args,
+                        result = { text = text, chunks = hits }, error = call_err and error_envelope.encode(call_err) or nil }
+                    if call_err then return nil, call_err end
+                    add(run.pool, hits)
+                    return text, nil
+                end, { max_tokens = cfg.max_tokens })
+        end
+        found = run.pool.count - before
         if err then return err end
         if cfg.share_notes and answer and trim(answer) ~= "" then run.notes[#run.notes + 1] = { text = trim(answer) } end
         step.message = calls .. " tool calls added " .. found .. " passages"
@@ -402,12 +417,13 @@ function M.deep(run: any, step: any): error?
     end
     for _, f in ipairs(fields) do work:send(f) end
     work:close()
-    local failure: error? = nil
+    run.field_errors = run.field_errors or {}
+    local failed = 0
     for _ = 1, #fields do
         local outcome = results:receive()
-        if outcome.err and not failure then failure = outcome.err end
+        if outcome.err then run.field_errors[outcome.name] = outcome.err; failed = failed + 1 end
     end
-    if failure then return failure end
+    step.status = failed == #fields and "failed" or (failed > 0 and "partial" or "completed")
     step.queries = all_queries
     step.message = #fields .. (#fields == 1 and " field" or " fields") .. " analysed · " .. run.pool.count .. " passages" .. (step.long_sections and " · long sections read as chunks" or "")
     return nil
@@ -476,6 +492,7 @@ function M.extraction_calls(run: any): ({ any }?, error?)
     local limit = run.config.stages.extract.max_fields_per_call
     local sets, order = {}, {}
     for _, f in ipairs(run.config.fields) do
+        if run.field_errors and run.field_errors[shapes.path(f)] then goto continue_field end
         local region, region_err = M.region(run, f)
         if region_err then return nil, region_err end
         local reads = "*"
@@ -489,6 +506,7 @@ function M.extraction_calls(run: any): ({ any }?, error?)
         if not sets[key] then sets[key] = { fields = {}, whole = region == nil }; order[#order + 1] = key end
         local set = sets[key]
         set.fields[#set.fields + 1] = f
+        ::continue_field::
     end
     local pool, calls = ordered(run.pool), {}
     for _, key in ipairs(order) do
@@ -533,13 +551,10 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
         end
         return err
     end
+    local entries = {}
     for _, f in ipairs(batch) do
         local item = shapes.get(result, shapes.path(f))
         local cited = {}
-        -- Found values carry their declared type.
-        if item.found and item.value == nil then
-            return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the extraction reply marks " .. shapes.path(f) .. " found without a value" })
-        end
         for _, e in ipairs(item.evidence) do
             local ordinal = math.tointeger(e.chunk)
             -- Citations stay inside the field's selected region.
@@ -552,7 +567,7 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
                     section = chunk and chunk.heading_path or "", page = location.page, page_start = location.page_start, page_end = location.page_end, chunk_id = chunk and chunk.id or "" }
             end
         end
-        local entry: Value = { name = f.name, path = shapes.path(f), confidence = 0, evidence = {}, verified = false, missing = true }
+        local entry: Value = { name = f.name, path = shapes.path(f), confidence = 0, evidence = {}, verified = false, missing = true, failed = false }
         if item.found then
             entry.value = item.value
             entry.confidence = item.confidence
@@ -560,26 +575,35 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
             entry.missing = false
             if f.evidence_required and #cited == 0 then entry.reason = "No quote supports this value" end
         end
-        run.values[#run.values + 1] = entry
+        entries[#entries + 1] = entry
     end
+    for _, entry in ipairs(entries) do run.values[#run.values + 1] = entry end
     return nil
 end
 
 function M.extract(run: any, step: any): error?
     local cfg = run.config.stages.extract
-    local calls = 0
+    local calls, successes = 0, 0
+    local failure: error? = nil
     local extraction_calls, calls_err = M.extraction_calls(run)
     if calls_err then return calls_err end
+    for _, f in ipairs(run.config.fields) do
+        local err = run.field_errors and run.field_errors[shapes.path(f)]
+        if err then failed_field(run, f, err); failure = failure or err end
+    end
     for _, call in ipairs(extraction_calls) do
         if #call.passages == 0 then
             -- Empty passage sets produce missing fields.
             for _, f in ipairs(call.fields) do
-                run.values[#run.values + 1] = { name = f.name, path = shapes.path(f), confidence = 0, evidence = {}, verified = false, missing = true,
+                run.values[#run.values + 1] = { name = f.name, path = shapes.path(f), confidence = 0, evidence = {}, verified = false, missing = true, failed = false,
                     reason = f.search_within == "sections" and "No passage from its sections reached extraction" or "No passage reached extraction" }
             end
         else
             local err = extract_call(run, step, cfg, call)
-            if err then return err end
+            if err then
+                failure = failure or err
+                for _, f in ipairs(call.fields) do failed_field(run, f, err) end
+            else successes = successes + 1 end
             calls = calls + 1
         end
     end
@@ -587,6 +611,10 @@ function M.extract(run: any, step: any): error?
     for i, f in ipairs(run.config.fields) do position[shapes.path(f)] = i end
     table.sort(run.values, function(a: any, b: any): boolean return position[shapes.path(a)] < position[shapes.path(b)] end)
     step.message = calls .. (calls == 1 and " call" or " calls") .. " · " .. #run.values .. " values"
+    local failed = 0
+    for _, v in ipairs(run.values) do if v.failed then failed = failed + 1 end end
+    step.status = failed == #run.config.fields and "failed" or (failed > 0 and "partial" or "completed")
+    if failure and successes == 0 and failed == #run.config.fields then return failure end
     return nil
 end
 
@@ -636,7 +664,7 @@ function M.verify(run: any, step: any): error?
     if cfg.check_support then
         local found, lines_out = {}, {}
         for _, v in ipairs(run.values) do
-            if not v.missing then
+            if not v.missing and not v.failed then
                 found[#found + 1] = v
                 local quotes = {}
                 for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" end
@@ -655,17 +683,17 @@ function M.verify(run: any, step: any): error?
     for _, v in ipairs(run.values) do
         local reasons = {}
         if v.reason then reasons[#reasons + 1] = v.reason end
-        if not v.missing then
+        if not v.missing and not v.failed then
             local valid, shape_err = json.validate(shapes.value_schema(fields[shapes.path(v)]), v.value)
             if not valid then reasons[#reasons + 1] = "Value does not match its declared shape: " .. tostring(shape_err) end
         end
-        if cfg.check_quotes and not v.missing and not v.quotes_found then reasons[#reasons + 1] = "A quote is not in the document" end
-        if cfg.check_support and not v.missing then
+        if cfg.check_quotes and not v.missing and not v.failed and not v.quotes_found then reasons[#reasons + 1] = "A quote is not in the document" end
+        if cfg.check_support and not v.missing and not v.failed then
             local check = support[shapes.path(v)]
             if not check then reasons[#reasons + 1] = "The support check gave no verdict"
             elseif not check.supported then reasons[#reasons + 1] = check.reason end
         end
-        v.verified = #reasons == 0
+        v.verified = not v.failed and #reasons == 0
         v.reason = #reasons > 0 and table.concat(reasons, "; ") or nil
         if not v.verified then failed = failed + 1 end
     end
