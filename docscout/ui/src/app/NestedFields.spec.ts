@@ -90,10 +90,12 @@ describe('Saved nested runs',()=>{
 describe('Group creation and removal',()=>{
  it('creates a field within a new dotted group and removes the field through the inspector',async()=>{
   const c=newConfig();const w=mount(Builder,{props:{config:c,retention:'2h',result:null,title:'Reader',description:''}})
+  await w.get('button[aria-label="Add group"]').trigger('click')
   await w.get('input[aria-label="New group path"]').setValue('parties.borrower')
-  await w.get('.group-add').trigger('submit')
+  await w.get('.group-create-row form').trigger('submit')
   expect(c.fields).toHaveLength(1);expect(c.fields[0].group).toBe('parties.borrower')
   expect(w.findAll('section.field-group')).toHaveLength(2)
+  await w.get('.row-main').trigger('click')
   await w.findAll('button').find(b=>b.text()==='Remove field')!.trigger('click')
   expect(c.fields).toHaveLength(0);expect(w.findAll('section.field-group')).toHaveLength(0)
  })

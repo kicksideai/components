@@ -7,11 +7,12 @@ import StageNode from './StageNode.vue'
 import FieldInspector from './FieldInspector.vue'
 import FieldGroups from './FieldGroups.vue'
 import GroupHeader from './GroupHeader.vue'
+import GroupPathEditor from './GroupPathEditor.vue'
 import ShapeTree from './ShapeTree.vue'
 import {shapeNodes,shapeKey,moveTargets,moveShape,outputPreview,type Trail} from '../shape-builder'
 import StepInspector from './StepInspector.vue'
 import DocumentInspector from './DocumentInspector.vue'
-import {documentSummary,fieldError,fieldPath,pathCollision,groupTree,groupPattern,isOn,modelLabel,newField,newProperty,stageIcons,stageLabels,type Config,type StageKey} from '../config'
+import {documentSummary,fieldError,fieldPath,pathCollision,groupTree,isOn,modelLabel,newField,newProperty,stageIcons,stageLabels,type Config,type StageKey} from '../config'
 import type {Extraction,TraceStep} from '../models'
 const props=defineProps<{config:Config;retention:string;result:Extraction|null;readonly?:boolean}>()
 const title=defineModel<string>('title',{required:true})
@@ -80,14 +81,15 @@ const otherNames=computed(()=>props.config.fields.filter((_,i)=>!(selected.value
 const deepEnabled=computed(()=>props.config.stages.deep.enabled)
 const mapEnabled=computed(()=>props.config.stages.map.enabled)
 const groups=computed(()=>groupTree(props.config.fields.map(fieldPath)))
-const groupDraft=ref(''),groupError=ref('')
+const addingGroup=ref(false),addGroupButton=ref<HTMLButtonElement>(),groupCreateId=useId()
 function renameGroup(path:string,next:string){
-
  for(const f of props.config.fields)if(f.group===path||f.group.startsWith(path+'.'))f.group=next+f.group.slice(path.length)
- groupError.value=''
 }
 const groupNameLimit=(path:string)=>320-Math.max(0,...props.config.fields.filter(f=>f.group===path||f.group.startsWith(path+'.')).map(f=>f.group.length-path.length))
-function addGroup(){if(!groupDraft.value||!groupPattern.test(groupDraft.value)){groupError.value='Use a dotted path of snake_case group names.';return}addField(groupDraft.value);groupDraft.value='';groupError.value=''}
+function startGroup(){fieldsOpen.value=true;addingGroup.value=true}
+async function closeGroup(){addingGroup.value=false;await nextTick();addGroupButton.value!.focus()}
+function addGroup(path:string){props.config.fields.push({...newField(),group:path});closeGroup()}
+
 const groupNames=computed(()=>[...new Set(props.config.fields.map(f=>f.group.trim()).filter(Boolean))])
 const rowError=(i:number)=>fieldError(props.config.fields[i],props.config.fields.filter((_,j)=>j!==i).map(fieldPath))
 const order:StageKey[]=['map','prefetch','scout','deep','extract','verify']
@@ -153,13 +155,16 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
      <header class="block-head">
       <button type="button" class="collapse" :aria-expanded="fieldsOpen" aria-controls="fields-body" @click="toggleSection('fields')"><Icon :icon="fieldsOpen?'tabler:chevron-down':'tabler:chevron-right'"/><h2 id="fields-head">Fields</h2><span class="count">{{config.fields.length}}</span></button>
       <span v-if="!fieldsOpen&&config.fields.length" class="block-peek">{{fieldsPeek}}</span>
-      <button v-if="!readonly" type="button" class="kx-btn kx-btn-ghost kx-focus-halo sm push" :disabled="config.fields.length>=100" @click="addField()"><Icon icon="tabler:plus"/>Add field</button>
+      <div v-if="!readonly" class="field-add-actions push">
+       <button ref="addGroupButton" type="button" class="kx-btn kx-btn-ghost kx-focus-halo sm" aria-label="Add group" :aria-expanded="addingGroup" :aria-controls="groupCreateId" :disabled="config.fields.length>=100" @click="startGroup"><Icon icon="tabler:folder-plus"/>Add group</button>
+       <button type="button" class="kx-btn kx-btn-ghost kx-focus-halo sm" :disabled="config.fields.length>=100" @click="addField()"><Icon icon="tabler:plus"/>Add field</button>
+      </div>
      </header>
      <div v-show="fieldsOpen" id="fields-body" class="block-body">
       <p v-if="!config.fields.length" class="block-empty">Add the values to pull from each document.</p>
-      <form v-if="!readonly" class="group-add row" @submit.prevent="addGroup"><label>New group<input v-model.trim="groupDraft" placeholder="parties.borrower" aria-label="New group path" maxlength="320"/></label><button type="submit" class="kx-btn kx-btn-ghost kx-focus-halo sm" :disabled="config.fields.length>=100">Add group</button></form>
-      <p v-if="groupError" class="field-error" role="alert">{{groupError}}</p>
-      <div class="field-tree"><FieldGroups :node="groups">
+      <div class="field-tree">
+       <div v-if="addingGroup&&!readonly" :id="groupCreateId" class="group-create-row"><span class="tree-indent" aria-hidden="true"><Icon icon="tabler:folder-plus"/></span><GroupPathEditor input-label="New group path" save-label="Create group" cancel-label="Cancel group creation" @save="addGroup" @cancel="closeGroup"/></div>
+       <FieldGroups :node="groups">
        <template #header="{path,label,count,first,last}">
         <GroupHeader :path="path" :name="label" :count="count" :first="first" :last="last" :max-length="groupNameLimit(path)" :can-add="config.fields.length<100" :readonly="readonly" @rename="renameGroup(path,$event)" @add="addField(path)" @reorder="reorderGroup(path,$event)" @remove="deleteGroup(path)"/>
        </template>

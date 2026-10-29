@@ -2,11 +2,17 @@
 <script setup lang="ts">
 import {computed,ref,useId,watch} from 'vue'
 import {Icon} from '@iconify/vue'
+import Menu from 'primevue/menu'
 import {MAX_SHAPE_DEPTH,type Shape,type Property,type Field} from '../config'
 import {shapeKey,typeIcon,type Trail} from '../shape-builder'
 const props=defineProps<{shape:Shape;field:number;trail:Trail;path:string;selected:string;readonly?:boolean;first?:boolean;last?:boolean;error?:string}>()
 const emit=defineEmits<{select:[field:number,trail:Trail];add:[field:number,trail:Trail];reorder:[field:number,trail:Trail,delta:number]}>()
-const descriptionId=useId()
+const descriptionId=useId(),menuId=useId()
+const menu=ref<InstanceType<typeof Menu>>(),menuOpen=ref(false)
+const reorderActions=computed(()=>[
+ {label:'Move up',disabled:props.first,command:()=>emit('reorder',props.field,props.trail,-1)},
+ {label:'Move down',disabled:props.last,command:()=>emit('reorder',props.field,props.trail,1)},
+])
 const open=ref(true)
 watch(()=>props.selected,selected=>{
  const key=shapeKey(props.field,props.trail)
@@ -45,6 +51,10 @@ function keys(event:KeyboardEvent){
     <button type="button" class="kx-iconbtn kx-focus-outline" :aria-label="`Move ${path} up`" :disabled="first" @click="emit('reorder',field,trail,-1)"><Icon icon="tabler:chevron-up"/></button>
     <button type="button" class="kx-iconbtn kx-focus-outline" :aria-label="`Move ${path} down`" :disabled="last" @click="emit('reorder',field,trail,1)"><Icon icon="tabler:chevron-down"/></button>
    </span>
+   <div v-if="!readonly&&named" class="row-overflow" @keydown.stop>
+    <button type="button" class="kx-iconbtn kx-focus-outline" :aria-label="`Actions for ${path}`" aria-haspopup="menu" :aria-expanded="menuOpen" :aria-controls="menuId" @click="menu!.toggle($event)"><Icon icon="tabler:dots"/></button>
+    <Menu :id="menuId" ref="menu" :model="reorderActions" popup append-to="self" @show="menuOpen=true" @hide="menuOpen=false"/>
+   </div>
   </div>
   <ul v-if="expandable&&open" class="tree-children">
    <li v-for="(p,i) in shape.properties" :key="i"><ShapeTree :shape="p" :field="field" :trail="[...trail,i]" :path="`${path}.${p.name||'New property'}`" :selected="selected" :readonly="readonly" :first="i===0" :last="i===shape.properties!.length-1" @select="(f,t)=>emit('select',f,t)" @add="(f,t)=>emit('add',f,t)" @reorder="(f,t,d)=>emit('reorder',f,t,d)"/></li>

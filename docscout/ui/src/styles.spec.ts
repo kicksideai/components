@@ -32,6 +32,13 @@ describe('Surface style contract',()=>{
   expect(declarations('.shape-tree-node .row-main','fields (max-width:400px)')['min-height']).toBe('calc(var(--kx-row-height)*2 + var(--docscout-space)*4)')
   expect(declarations('.shape-tree-node .row-name')['font-family']).toBe('var(--kx-font-body)')
  })
+ it('uses overflow reorder only at narrow field-container widths',()=>{
+  expect(declarations('.row-actions')).toMatchObject({display:'flex',opacity:'0'})
+  expect(declarations('.row-item:hover .row-actions,.row-item:focus-within .row-actions')['opacity']).toBe('1')
+  expect(declarations('.row-overflow')['display']).toBe('none')
+  expect(declarations('.row-actions','fields (max-width:400px)')['display']).toBe('none')
+  expect(declarations('.row-overflow','fields (max-width:400px)')['display']).toBe('flex')
+ })
  it('uses semantic tokens for colors and shadows',()=>{
   expect(css).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(|--p-[\w-]+-\d{2,3}\b/i)
  })
