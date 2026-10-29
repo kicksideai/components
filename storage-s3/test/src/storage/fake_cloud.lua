@@ -35,6 +35,8 @@ function M.get(_id: string): any
     end
     function storage:download_object(key: string, writer: any, options: any): (any?, any?)
         if options.if_match ~= '"fake-etag"' then return nil, "unpinned download" end
+        if mode == "download_error" then return nil, errors.new({ message = "verification interrupted", kind = errors.UNAVAILABLE, retryable = true }) end
+        if objects[key] == "" then return true, nil end
         local _, err = writer:write(objects[key])
         return err == nil, err
     end

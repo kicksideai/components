@@ -99,6 +99,7 @@ entries:
   meta: {type: test, suite: storage_s3_copy}
   source: file://copy_failure_test.lua
   method: run
+  modules: [fs]
   imports:
     test: wippy.test:test
     cloud_factory: app.storage_s3:fake_cloud

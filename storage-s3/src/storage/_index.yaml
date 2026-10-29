@@ -4,6 +4,7 @@ entries:
 - name: copy
   kind: library.lua
   source: file://copy.lua
+  modules: [hash, uuid]
 - name: stage
   kind: function.lua
   source: file://stage.lua

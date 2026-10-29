@@ -42,7 +42,9 @@ local function copy(storage_id: string, source_path: string, cloud: any, resourc
     if not storage then return nil, unavailable("Source storage unavailable") end
     local source, open_err = storage:open(source_path, "r")
     if open_err then return nil, open_err end
-    local _, copy_err = copier.copy(source, cloud, key, mime_type)
+    local staging, staging_err = uploads_resources.get_storage()
+    if staging_err or not staging then source:close(); return nil, staging_err or unavailable("Staging storage unavailable") end
+    local _, copy_err = copier.copy(source, cloud, key, mime_type, staging)
     if copy_err then return nil, copy_err end
     return "s3://" .. resource_id .. "/" .. key, nil
 end
