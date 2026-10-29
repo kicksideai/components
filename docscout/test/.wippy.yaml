@@ -48,6 +48,8 @@ vars:
   pg_username: kickside
   pg_password: kickside
 override:
+  # The suite runs retention explicitly and asserts the rows consumed by that tick.
+  kickside.core.retention.service:sweeper.service:lifecycle.auto_start: false
   app:gateway:addr: ${http_address}
   kickside.docscout.security:tool_access:groups: [app:docscout_tools]
 profiles:

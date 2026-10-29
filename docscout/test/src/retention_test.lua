@@ -6,24 +6,27 @@ local data = require("data")
 
 -- The default settings binding is the retention reader's declared boundary.
 local function window(owner: string, denied: boolean?): (any?, error?)
-    local binding = assert(registry.get("kickside.settings:settings_binding"))
-    binding.data.contracts[1].methods.get = "app:fixture_settings_get"
-    local overlay = assert(registry.overlay("app:retention_test"))
-    assert(overlay:changes():update(binding):apply())
     local caller = data.caller(owner)
     if denied then
         caller = caller:with_scope(security.new_scope({ assert(security.policy("app:user")),
             assert(security.policy("app:deny_provider_security")) }))
     end
-    local value, err = caller:call("app:probe", { op = "retention" })
-    local cleanup = assert(registry.overlay("app:retention_test")):changes()
-    cleanup:delete("kickside.settings:settings_binding")
-    assert(cleanup:apply())
-    return value, err
+    return caller:call("app:probe", { op = "retention" })
 end
 
 return { run = test.run_cases(function()
     test.describe("Retention settings", function()
+        test.before_all(function()
+            local binding = assert(registry.get("kickside.settings:settings_binding"))
+            binding.data.contracts[1].methods.get = "app:fixture_settings_get"
+            local overlay = assert(registry.overlay("app:retention_test"))
+            assert(overlay:changes():update(binding):apply())
+        end)
+        test.after_all(function()
+            local cleanup = assert(registry.overlay("app:retention_test")):changes()
+            cleanup:delete("kickside.settings:settings_binding")
+            assert(cleanup:apply())
+        end)
         test.it("binds the caller actor and returns a native builder denial", function()
             local value, err = window("retention-reader")
             test.is_nil(err, tostring(err)); test.eq(value, "retention-reader")
