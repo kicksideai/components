@@ -399,7 +399,10 @@ entries:
   source: file://fixture_cleanup.lua
   modules:
   - sql
+  - contract
+  - security
   imports:
+    upload_types: kickside.uploads:types
     component: kickside.component:component
     teardown: kickside.core.threads.persist:teardown
     test: wippy.test:test

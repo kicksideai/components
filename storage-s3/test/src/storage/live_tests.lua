@@ -12,6 +12,7 @@ local pipeline = require("pipeline")
 local cleanup = require("cleanup")
 local execution_identity = require("execution_identity")
 local sql = require("sql")
+local fixture_cleanup = require("fixture_cleanup")
 
 local STORAGE = "app:uploads"
 local RESOURCE = "app.storage_s3:s3"
@@ -40,6 +41,7 @@ local function pipeline_metadata(owner: string): any
             ON CONFLICT (user_id,group_id) DO NOTHING]], { owner, group }))
     end
     db:release()
+    fixture_cleanup.initialize_uploads(owner)
     local identity = assert(execution_identity.to_row({
         version = execution_identity.VERSION,
         principal = { kind = execution_identity.KIND.USER, id = owner },
@@ -101,8 +103,8 @@ return { run = test.run_cases(function()
             test.eq(assert(cloud:head_object(original_key)).size, #original)
             test.eq(assert(cloud:head_object(blob_key)).size, #("derived bytes " .. id))
             cloud:release()
-            test.is_true(storage:exists(original_path))
-            test.is_true(storage:exists(blob_path))
+            test.is_true((storage:exists(original_path)))
+            test.is_true((storage:exists(blob_path)))
         end)
 
         test.it("retains an S3 original while relocating local derived blobs", function()
@@ -129,12 +131,12 @@ return { run = test.run_cases(function()
             test.eq(1, #result.relocation.blobs)
             test.eq(artifact.blob_id, result.relocation.blobs[1].blob_id)
             test.eq("s3://" .. RESOURCE .. "/" .. blob_key, result.relocation.blobs[1].storage_path)
-            test.is_true(assert(fs.get(STORAGE)):exists(blob_path))
+            test.is_true((assert(fs.get(STORAGE)):exists(blob_path)))
             local relocated, err = pipeline.apply_relocation(upload, result.relocation)
             test.is_nil(err, tostring(err))
             test.eq(original_path, relocated.storage_path)
             test.eq(derived_bytes, assert(artifacts.read_artifact_content(id, artifact.artifact_id)))
-            test.is_false(assert(fs.get(STORAGE)):exists(blob_path))
+            test.is_false((assert(fs.get(STORAGE)):exists(blob_path)))
             test.eq(15, assert(cloud:head_object(original_key)).size)
             local missing, missing_err = cloud:head_object(prefix .. "/" .. id .. "/original")
             cloud:release()
@@ -194,7 +196,7 @@ return { run = test.run_cases(function()
             test.is_true(success)
             original_key = prefix .. "/" .. id .. "/original"
             test.eq(processed.storage_path, "s3://" .. RESOURCE .. "/" .. original_key)
-            test.is_false(storage:exists(original_path))
+            test.is_false((storage:exists(original_path)))
 
             local derived = assert(artifacts.get_artifact(id, processed.metadata.derived_artifact_id))
             local blob = assert(artifacts.get_blob(derived.blob_id))

@@ -95,3 +95,4 @@ entries:
     pipeline: kickside.uploads:pipeline
     cleanup: kickside.uploads.persist:artifact_cleanup_repo
     execution_identity: kickside.execution:execution_identity
+    fixture_cleanup: app:fixture_cleanup

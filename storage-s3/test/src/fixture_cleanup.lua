@@ -2,6 +2,17 @@ local component = require("component")
 local teardown = require("teardown")
 local sql = require("sql")
 local test = require("test")
+local contract = require("contract")
+local security = require("security")
+local upload_types = require("upload_types")
+
+local function initialize_uploads(owner: string): ()
+    local threads = assert(assert(contract.get("kickside.core:threads"))
+        :with_actor(security.new_actor(owner, {}))
+        :with_scope(security.new_scope({ assert(security.policy("app:test_scope_policy")) })):open())
+    assert(threads:upsert({ thread_id = upload_types.component_id_for_owner(owner),
+        impl_id = upload_types.IMPL, thread_class = upload_types.CLASS }))
+end
 
 local function cleanup(id: string): ()
     local released, release_err = component.system_delete(id)
@@ -30,4 +41,4 @@ local function cleanup(id: string): ()
     local _, release_db_err = db:release()
     test.is_nil(release_db_err)
 end
-return { cleanup = cleanup }
+return { cleanup = cleanup, initialize_uploads = initialize_uploads }

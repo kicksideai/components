@@ -42,11 +42,12 @@ return { run = test.run_cases(function()
             } })
             test.is_true(saved.success, tostring(saved.error))
             local owner = "kb-storage-" .. uuid.v4()
+            fixture_cleanup.initialize_uploads(owner)
             upload_id, kb_id = uuid.v4(), uuid.v7()
             local path = "kb-storage-" .. upload_id
             local bytes = "Verified knowledge from remote storage. " .. uuid.v4()
             local storage = assert(fs.get(STORAGE))
-            test.not_nil(storage:writefile(path, bytes))
+            test.not_nil((storage:writefile(path, bytes)))
             local upload = assert(records.create(upload_id, owner, #bytes, "text/plain", STORAGE,
                 path, "text", { filename = "remote.txt" }, "completed"))
             local primary = assert(artifacts.create_artifact({ upload_id = upload_id, kind = "markdown",
@@ -60,7 +61,7 @@ return { run = test.run_cases(function()
             local relocated, relocation_err = pipeline.apply_relocation(upload, staged.relocation)
             test.is_nil(relocation_err, tostring(relocation_err))
             test.is_true(relocated.storage_path:sub(1, 5) == "s3://")
-            test.is_false(storage:exists(path))
+            test.is_false((storage:exists(path)))
             for _, artifact in ipairs({ primary, image }) do
                 local blob = assert(artifacts.get_blob(artifact.blob_id))
                 test.is_true(blob.storage_path:sub(1, 5) == "s3://")
