@@ -9,6 +9,9 @@ export const newProperty=():Property=>({name:'',type:'text',description:'',enum_
 export const newItem=():Shape=>({type:'text',description:'',enum_values:[],expected_format:''})
 export const fieldPath=(f:Pick<Field,'name'|'group'>)=>f.group?`${f.group}.${f.name}`:f.name
 export const groupPattern=/^(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)*(?:\.[a-z][a-z0-9]*(?:_[a-z0-9]+)*)*)?$/
+export function pathCollision(paths:string[]):string|undefined{
+ return paths.find(path=>paths.some(other=>other!==path&&other.startsWith(path+'.')))
+}
 export function getValue(value:Record<string,unknown>,path:string):unknown{
  let node:unknown=value
  for(const segment of path.split('.')){if(node===null||typeof node!=='object'||!Object.hasOwn(node,segment))return undefined;node=(node as Record<string,unknown>)[segment]}
@@ -29,7 +32,7 @@ export interface PrefetchQuery { name:string; query:string; chunks:number }
 export interface Stages {
  map:{enabled:boolean;model:string;outline:'find_or_build'|'build';section_summaries:boolean}
  prefetch:{enabled:boolean;queries:PrefetchQuery[]}
- scout:{enabled:boolean;mode:'loop'|'agent';model:string;max_rounds:number;target_confidence:number;max_extra_queries:number;max_tokens:number;drop_noise:boolean;share_notes:boolean;tools:string[]}
+ scout:{enabled:boolean;mode:'loop'|'agent';agent_id?:string;model:string;max_rounds:number;target_confidence:number;max_extra_queries:number;max_tokens:number;drop_noise:boolean;share_notes:boolean;tools:string[]}
  deep:{enabled:boolean;model:string;query_model:string;read:'chunks'|'sections';parallel_fields:number;max_queries:number;chunks_per_query:number;chunk_cap:number;min_similarity:number;query_temperature:number;analysis_temperature:number}
  extract:{model:string;max_output_tokens:number;max_fields_per_call:number}
  verify:{enabled:boolean;model:string;check_quotes:boolean;check_support:boolean}
@@ -40,8 +43,8 @@ export interface Config {fields:Field[];stages:Stages;retrieval:Retrieval;tags:s
 
 export function newConfig():Config{
  const config=structuredClone(schema.default)
- const {model,max_output_tokens,max_fields_per_call}=config.stages.extract
- return {...config,stages:{...config.stages,extract:{model,max_output_tokens,max_fields_per_call}}} as Config
+ const {max_output_tokens,max_fields_per_call}=config.stages.extract
+ return {...config,stages:{...config.stages,extract:{model:'class:fast',max_output_tokens,max_fields_per_call}}} as Config
 }
 export const newField=():Field=>structuredClone(schema.properties.fields.items.default) as Field
 export const newQuery=():PrefetchQuery=>({name:'',query:'',chunks:5})
@@ -103,10 +106,16 @@ export function toolLabel(id:string):string{
 export const takesChoices=(f:Shape,named=true)=>f.type==='enum'||(!named&&f.type==='text')
 export function shapeError(f:Shape,depth=1):string{
  if(depth>MAX_SHAPE_DEPTH)return 'Shapes support at most four levels.'
+ if((f.description?.length??0)>4000)return 'Use at most 4000 characters for the description.'
+ if((f.expected_format?.length??0)>400)return 'Use at most 400 characters for the expected format.'
+ if((f.enum_values?.length??0)>100)return 'Use at most 100 allowed values.'
+ if(f.enum_values?.some(v=>!v.length||v.length>200))return 'Allowed values need 1 to 200 characters.'
+ if(new Set(f.enum_values).size!==(f.enum_values?.length??0))return 'Allowed values must be unique.'
  if(f.type==='enum'&&!f.enum_values?.length)return 'Add at least one allowed value.'
  if(f.enum_values?.length&&f.type!=='enum'&&f.type!=='text')return 'Allowed values apply to enum fields and text items.'
  if(f.type==='object'){
   if(!f.properties?.length)return 'Add at least one declared property.'
+  if(f.properties.length>100)return 'Use at most 100 properties.'
   const names=new Set<string>()
   for(const p of f.properties){const error=nameError(p.name,[...names])||shapeError(p,depth+1);if(error)return `${p.name||'New property'}: ${error}`;names.add(p.name)}
  }else if(f.properties)return 'Properties apply to object shapes.'
@@ -114,8 +123,9 @@ export function shapeError(f:Shape,depth=1):string{
  if(f.item)return 'Item shapes apply to lists.'
  return ''
 }
-function nameError(name:string,otherNames:string[]):string{
+export function nameError(name:string,otherNames:string[]):string{
  if(!name)return 'Name the field.'
+ if(name.length>80)return 'Use at most 80 characters for a name.'
  if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(name))return 'Start with a letter; use letters, numbers and underscores.'
  if(otherNames.includes(name))return 'Another field already uses this name.'
  return ''
@@ -123,7 +133,11 @@ function nameError(name:string,otherNames:string[]):string{
 export function fieldError(f:Field,otherPaths:string[]):string{
  const error=nameError(f.name,otherPaths.includes(fieldPath(f))?[f.name]:[])
  if(error)return error
+ if(otherPaths.some(path=>path!==fieldPath(f)&&(path.startsWith(fieldPath(f)+'.')||fieldPath(f).startsWith(path+'.'))))return `Group path collides with field ${fieldPath(f)}.`
+ if(f.group.length>320)return 'Use at most 320 characters for a group path.'
  if(!groupPattern.test(f.group))return 'Use a dotted path of snake_case group names.'
+ if(f.search_hints.length>4000||f.validation_hints.length>4000)return 'Use at most 4000 characters for hints.'
+ if(!Number.isInteger(f.chunks)||f.chunks<1||f.chunks>1000)return 'Chunks to read must be an integer from 1 to 1000.'
  if(f.enum_values.length&&f.type!=='enum')return 'Allowed values apply to enum fields and text items.'
  return shapeError(f)
 }
@@ -132,9 +146,8 @@ export function formatPlaceholder(f:Shape):string{
  return ({text:'For example, full legal name',number:'For example, decimal with 2 places',date:'For example, YYYY-MM-DD',object:'Describe the object format',boolean:'',enum:''} as Record<string,string>)[item??'']??''
 }
 export function configError(config:Config):string {
+ if(config.fields.length>100)return 'Use at most 100 fields.'
  for(const [i,f] of config.fields.entries()){const error=fieldError(f,config.fields.filter((_,j)=>j!==i).map(fieldPath));if(error)return `${f.name||'New field'}: ${error}`}
- const paths=config.fields.map(fieldPath)
- for(const path of paths){if(paths.some(other=>other!==path&&other.startsWith(path+'.')))return `Group path collides with field ${path}.`}
  const s=config.stages
  if(s.prefetch.queries.some(q=>!q.name.trim()||!q.query.trim()))return 'Prefetch queries need a name and a query.'
  if(!s.map.enabled&&config.fields.some(f=>f.search_within==='sections'))return 'Fields that read sections need Map the document.'
