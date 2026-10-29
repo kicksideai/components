@@ -4,7 +4,7 @@
 `_index.yaml` declares the extraction contract, engine binding, component lifecycle, retention setting and host requirements. See the package README for installation and public callers.
 
 - `client.lua` opens the extraction contract in the current security frame.
-- `engine/` processes Markdown artifacts, gathers evidence and records extraction traces.
+- `engine/` processes Markdown artifacts, gathers evidence, assembles independent extraction outcomes and records traces. `user_agent.lua` invokes the native Dataflow agent node; `document_tool.lua` exposes document tools under the caller's identity.
 - `persist/` owns fenced SQL transactions, processed copies, cases, runs and admitted evaluation snapshots.
 - `evals/` admits Jobs atomically and runs saved snapshots under restored execution identities.
 - `notify.lua` publishes committed-state wakeups through component fanout and the realtime contract.

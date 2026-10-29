@@ -154,10 +154,11 @@ function M.case(fields: { any }, expected: any, values: { [string]: any }): { an
         local value = nil
         if found then value = got.value end
         local score
-        if wanted == nil then score = found and 0 or 1
+        if got and got.failed then score = 0
+        elseif wanted == nil then score = found and 0 or 1
         elseif not found then score = 0
         else score = M.value(f.type, wanted, value, f) end
-        out[#out + 1] = { field = path, expected = wanted, value = value, score = score, verified = got ~= nil and got.verified == true }
+        out[#out + 1] = { field = path, expected = wanted, value = value, score = score, verified = got ~= nil and not got.failed and got.verified == true, failed = got ~= nil and got.failed == true, error = got and got.error }
     end
     return out
 end

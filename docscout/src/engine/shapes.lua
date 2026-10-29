@@ -265,7 +265,7 @@ end
 -- Extracted values nested by the full field path.
 function M.values(result: any): { [string]: any }
     local out = M.object()
-    for _, f in ipairs(result.fields) do if not f.missing then M.set(out, M.path(f), f.value) end end
+    for _, f in ipairs(result.fields) do if not f.missing and not f.failed then M.set(out, M.path(f), f.value) end end
     return out
 end
 

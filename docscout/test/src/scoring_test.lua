@@ -8,6 +8,17 @@ local function near(a: number, b: number): boolean return math.abs(a - b) < 1e-9
 
 return { run = test.run_cases(function()
     test.describe("Scoring values", function()
+        test.it("includes failed fields in partial and fully failed case metrics", function()
+            local fields = { { name = "amount", type = "number" } }
+            local cause = { kind = errors.TIMEOUT, message = "Call timed out", retryable = true }
+            local failed = scoring.case(fields, {}, { amount = { failed = true, missing = false, error = cause } })
+            test.eq(failed[1].score, 0); test.eq(failed[1].error.kind, errors.TIMEOUT)
+            local totals = evals.summarize(fields, {
+                { status = "partial", scores = { { score = 1, verified = true } }, tokens = 10, duration_ms = 5 },
+                { status = "failed", scores = failed, tokens = 8, duration_ms = 3 },
+            })
+            test.eq(totals.metrics[1].accuracy, 0.5); test.eq(totals.tokens, 18)
+        end)
         test.it("compares numbers as printed in documents", function()
             test.eq(scoring.value("number", 5188.4, "5,188.40", {}), 1)
             test.eq(scoring.value("number", 18500, "USD 18,500", {}), 1)

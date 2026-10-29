@@ -22,11 +22,32 @@ Caller scopes need the native contract capabilities `contract.security` on `secu
 
 Every caller opens `kickside.docscout:extraction`, binding `kickside.docscout:engine`, under its execution identity. The `run` input has `extractor_id`, `upload_id`, `caller` (`ui`, `agent`, `workflow`, `eval`) and an optional RFC3339 deadline. Evaluation calls additionally identify the admitted evaluation and case. The contract accepts saved configuration; chat tuning edits that configuration through the configurator trait.
 
-The ordered stages read and process the document, map sections, prefetch evidence, scout, analyze deep fields, highlight, extract with structured output, and verify. Processed copies belong to extractor plus user, upload, checksum and processing settings. Chunks use `kickside/search-index` for keyword and vector retrieval. Exact page locations come from saved page spans; uncertain locations retain their range.
+The ordered stages read and process the document, map sections, prefetch evidence, scout, analyze deep fields, highlight, extract with structured output, and verify. Extract defaults to `class:fast`. Processed copies belong to extractor plus user, upload, checksum and processing settings. Chunks use `kickside/search-index` for keyword and vector retrieval. Exact page locations come from saved page spans; uncertain locations retain their range.
 
 - UI: `POST /docscout/{id}/run`.
 - Block: `kickside.docscout.blocks:extract`, with `extractor_id` in config and `upload_id` in input. Its result contains values, fields with evidence, verification, run ID, pages, trace, revision, duration and tokens.
 - Traits: `kickside.docscout.traits:reader` and `:configurator`, exposing DocscoutList, DocscoutExtract, DocscoutGet, DocscoutConfigure, DocscoutEvaluate and DocscoutEvaluation. Typed tool failures use `nil, err`.
+
+Each Extract call settles independently. A provider error, timeout, truncated reply or invalid structured reply fails every field in that call without retaining any of its reply. Other calls continue. Failed fields have no value (`nil` in Lua), `missing: false`, `failed: true`, `verified: false`, and an `error` envelope containing `kind`, `message`, `retryable` and provider details. Successful fields have `failed: false`; `missing: true` means the document did not supply a value. The nested `values` object contains successfully extracted fields. The JSON `value` key is optional: it is absent for failed or missing fields. Consumers, including the UI, must check `failed` before `missing` or `value`; `failed: true` with an absent value is an extraction error, and its `error` supplies the cause. It never means that the document lacks the field, and it scores zero even when the expected value is absent. The nested `values` object omits failed and missing fields. Renderers accept an absent value as `undefined` and display an empty value without coercing it to a number, string or Boolean. Explicit JSON null is also accepted for a failed field; a null sentinel is unnecessary.
+
+The run status is `completed` when it extracts values without field failures, `partial` when values survive alongside field failures, and `failed` when nothing is extracted or a shared stage fails. Extraction outcomes, including fully failed calls, return a result with fields and status through the contract and tool. Shared-stage errors return `nil, err` and retain their failed run and trace. The Block routes completed results to `result` and partial results to `partial`. Fully failed results return a native error through `failed`, with the complete extraction outcome in `err:details().result`; this uses the Workflow compiler's native error route.
+
+| Stage | Error scope and reason |
+| --- | --- |
+| Read, Map | Run: processing and region selection establish the document every field reads. |
+| Prefetch, Scout | Run: queries and evidence selection build the shared evidence pool. |
+| Deep | Field: each analysis and its queries serve exactly one field; that field skips Extract after failure. |
+| Highlight | Run: each batch rewrites passages shared across fields. |
+| Extract | Call: all fields sharing a failed call fail together; later calls continue. |
+| Verify | Run for native errors: document reads and support verdicts are shared. Unsupported values retain their value and fail verification. Failed extraction fields stay unverified. |
+
+### User-selected agents
+
+For Scout's `mode: "agent"`, set `stages.scout.agent_id` to an agent component's bare id. Omitting it uses the built-in document loop. Scout is the configuration's agent-loop option; structured scouting uses `mode: "loop"`.
+
+Save and update require READ access to the selected agent and reject components of another kind. Each run checks the runner's READ access again. Missing or unreadable agents return native typed errors with code `docscout_agent_access`. Sharing an extractor does not grant access to its selected agent.
+
+The native Dataflow agent node resolves the selected agent through `wippy.agent:resolver` under the caller's execution identity. The agent retains its model, prompt, tools and traits, with Docscout's configured document tools added for that run. Those tools read only the caller's processed document under the extractor's READ grant. Both agent modes require positive `max_rounds` and `max_extra_queries`; switching from the structured scout's zero-round default requires setting a positive budget. Selected-agent runs use a native iteration limit of `max_rounds * max_extra_queries + 1`; the extra iteration permits final notes after tool use. Agents must complete synchronously without waiting. Trace steps include `agent_id`, `dataflow_id`, actual model, native tool calls and results, model tokens and document-tool embedding tokens. The built-in loop records its document tool calls too.
 
 Listings accept `filter`, `limit` and `cursor`; `next_cursor` continues a stable component-ID order. The component service filters access and search text before paging.
 
@@ -59,7 +80,7 @@ Builder groups collapse independently; changing a group path renames its subtree
 
 ## Evaluations and realtime
 
-Admission snapshots the config revision, configuration, case upload references and expected values. It commits evaluation rows and all Jobs admissions together, then wakes the pool. Workers restore the starter's identity and run the admitted snapshot through the extraction contract. The last case writes aggregate scores. Native case failures retain kind, message, retryability and details.
+Admission snapshots the config revision, configuration, case upload references and expected values. It commits evaluation rows and all Jobs admissions together, then wakes the pool. Workers restore the starter's identity and run the admitted snapshot through the extraction contract. The last case writes aggregate scores. Native case failures retain kind, message, retryability and details. Partial and fully failed extraction results retain per-field scores: a failed field scores zero even when its expected value is absent, and its score records the error cause. These scored cases contribute to aggregate accuracy.
 
 Committed config, case and evaluation writes wake the effective READ audience on `component.<id>`. Runs wake their maker on `docscout.runs.<id>`. Docscout wakeup payloads contain identifiers. Readers subscribe before loading and refetch committed state after wakeups and host visibility changes.
 

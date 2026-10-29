@@ -14,7 +14,7 @@ local function tool_run(args: any): (any?, error?)
     local fields = {}
     for _, f in ipairs(result.fields) do
         local quote = f.evidence[1]
-        fields[#fields + 1] = { name = f.name, path = f.path, value = f.value, found = not f.missing, verified = f.verified, confidence = f.confidence,
+        fields[#fields + 1] = { name = f.name, path = f.path, value = f.value, found = not f.missing and not f.failed, failed = f.failed, error = f.error, verified = f.verified, confidence = f.confidence,
             evidence = f.evidence, missing = f.missing, reason = f.reason, quote = quote and quote.quote or nil, section = quote and quote.section or nil, page = quote and quote.page or nil }
     end
     return { success = true, run_id = result.run_id, verified = shapes.verified(result), values = result.values, fields = fields,

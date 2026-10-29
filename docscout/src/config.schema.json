@@ -299,7 +299,8 @@
               "type": "integer",
               "default": 0,
               "minimum": 0,
-              "maximum": 30
+              "maximum": 30,
+              "description": "Extra search rounds for structured scouting. Agent mode requires at least one round, including when a user agent is selected."
             },
             "target_confidence": {
               "type": "number",
@@ -311,7 +312,8 @@
               "type": "integer",
               "default": 3,
               "minimum": 0,
-              "maximum": 20
+              "maximum": 20,
+              "description": "Search budget per round. Agent mode requires a positive value; selected agents use max_rounds * max_extra_queries + 1 native iterations, including the final answer."
             },
             "max_tokens": {
               "type": "integer",
@@ -345,6 +347,14 @@
                 ]
               },
               "uniqueItems": true
+            },
+            "agent_id": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Scouting agent",
+              "description": "Agent component id readable by the saver and runner. Applies to agent mode; omit to use the built-in loop.",
+              "picker": "wc-component-picker",
+              "class": "agent"
             }
           },
           "required": [
@@ -481,7 +491,7 @@
           "properties": {
             "model": {
               "type": "string",
-              "default": "class:premium",
+              "default": "class:fast",
               "minLength": 1,
               "maxLength": 200
             },
@@ -504,7 +514,7 @@
             "max_fields_per_call"
           ],
           "default": {
-            "model": "class:premium",
+            "model": "class:fast",
             "max_output_tokens": 4096,
             "max_fields_per_call": 20
           }
@@ -596,7 +606,7 @@
           "analysis_temperature": 0.2
         },
         "extract": {
-          "model": "class:premium",
+          "model": "class:fast",
           "max_output_tokens": 4096,
           "max_fields_per_call": 20
         },
@@ -768,7 +778,7 @@
         "analysis_temperature": 0.2
       },
       "extract": {
-        "model": "class:premium",
+        "model": "class:fast",
         "max_output_tokens": 4096,
         "max_fields_per_call": 20
       },

@@ -54,6 +54,19 @@ function M.find(component_id: string, owner_id: string, upload_id: string, check
     end)
 end
 
+-- A live processed document scoped to the current extraction owner.
+function M.for_agent(component_id: string, owner_id: string, document_id: string): (any?, error?)
+    return database.with_db(function(db: any): (any?, error?)
+        local rows, query_err = db:query([[SELECT id FROM kickside_docscout_documents
+            WHERE id=$1 AND component_id=$2 AND owner_id=$3 AND expires_at > $4]],
+            { document_id, component_id, owner_id, now() })
+        if query_err then return nil, failed("agent document lookup failed", query_err) end
+        local row = rows and rows[1]
+        if not row then return nil, errors.new({ kind = errors.NOT_FOUND, message = "Scouting document is unavailable" }) end
+        return row, nil
+    end)
+end
+
 -- Stores a processed document with its chunks and vectors in one transaction
 -- and returns its id. A fresh copy saved meanwhile by another run under the
 -- same key is kept and its id returned; an expired copy is replaced.

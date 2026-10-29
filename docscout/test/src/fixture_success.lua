@@ -19,11 +19,42 @@ local function extraction(schema: any): any
             evidence = { { chunk = chunk, quote = "The total amount is 1250." } } }
     end
     local out = {}
-    for name, property in pairs(schema.properties) do out[name] = extraction(property) end
+    for name, property in pairs(schema.properties) do
+        out[name] = extraction(property)
+        if name == "missing_reply" then out[name].found, out[name].evidence = false, {} end
+    end
     return out
 end
 function M.structured(args: any): (any?, error?)
+    if args.schema.properties.provider_failure then
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Fixture provider unavailable", details = { code = "fixture_provider_failure" } })
+    end
+    if args.schema.properties.truncated_reply then
+        return { result = { data = extraction(args.schema) }, finish_reason = "length",
+            tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
+    end
+    if args.schema.properties.invalid_reply then
+        return { result = { data = {} }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
+    end
     return { result = { data = extraction(args.schema) }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
+end
+function M.generate(args: any): (any?, error?)
+    for _, message in ipairs(args.messages) do
+        for _, part in ipairs(message.content or {}) do
+            if part.type == "text" and part.text:find("deep_failure", 1, true) then
+                return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Deep analysis unavailable", details = { code = "fixture_deep_failure" } })
+            end
+        end
+    end
+    for _, message in ipairs(args.messages) do
+        if message.role == "function_result" then
+            return { result = { content = "The total is in the Invoice section, passage C1." },
+                tokens = { prompt_tokens = 14, completion_tokens = 9 } }, nil
+        end
+    end
+    return { result = { content = "", tool_calls = {
+        { id = "fixture-search", name = "keyword_search", arguments = { query = "total amount", limit = 5 } },
+    } }, tokens = { prompt_tokens = 11, completion_tokens = 7 } }, nil
 end
 function M.embed(args: any): (any?, error?)
     local vectors = {}

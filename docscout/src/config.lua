@@ -4,6 +4,7 @@
 local json = require("json")
 local registry = require("registry")
 local shapes = require("shapes")
+local user_agent = require("user_agent")
 
 local M = {}
 
@@ -46,6 +47,11 @@ function M.validate(value: any): error?
         if not deep and not stages.prefetch.enabled and not stages.scout.enabled then
             return invalid("Turn on Prefetch or Scout so extraction has passages to read for " .. field.name)
         end
+    end
+    if stages.scout.agent_id ~= nil then
+        if stages.scout.mode ~= "agent" then return invalid("A scouting agent requires agent mode") end
+        local agent_err = user_agent.validate(stages.scout.agent_id)
+        if agent_err then return agent_err end
     end
     if stages.scout.enabled and stages.scout.mode == "agent" then
         if #stages.scout.tools == 0 then return invalid("Agent scouting needs at least one tool") end
