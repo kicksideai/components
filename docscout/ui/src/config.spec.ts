@@ -2,11 +2,11 @@
 import {describe,it,expect} from 'vitest'
 import {newConfig,newField,configError,extractCalls,fieldGroups,formatPlaceholder,isOn,stageSummary,takesChoices} from './config'
 describe('Extractor configuration',()=>{
- it('uses independent drafts, the premium extraction class and the stage graph',()=>{
+ it('uses independent drafts, the fast extraction class and the stage graph',()=>{
   const one=newConfig(),two=newConfig();one.fields.push(newField())
   expect(two.fields).toEqual([])
   expect(Object.keys(two.stages)).toEqual(['map','prefetch','scout','deep','extract','verify'])
-  expect(two.stages.extract.model).toBe('class:premium')
+  expect(two.stages.extract.model).toBe('class:fast')
   expect(isOn(two,'extract')).toBe(true);expect(isOn(two,'verify')).toBe(false)
  })
  it('explains missing, invalid and duplicate names, empty enums, and overlapping chunks',()=>{
@@ -45,7 +45,7 @@ describe('Complete flow configuration',()=>{
   expect(c.tags).toEqual([])
   expect(newField()).toMatchObject({chunks:5,search_within:'document',group:''})
   expect(c.stages.scout).toMatchObject({mode:'loop',max_rounds:0,target_confidence:.7,max_extra_queries:3,max_tokens:4096,share_notes:true})
-  expect(c.stages.extract).toEqual({model:'class:premium',max_output_tokens:4096,max_fields_per_call:20})
+  expect(c.stages.extract).toEqual({model:'class:fast',max_output_tokens:4096,max_fields_per_call:20})
   expect(c.stages.deep).toMatchObject({query_model:'class:fast',max_queries:5,chunks_per_query:50,chunk_cap:100,min_similarity:.2,query_temperature:.2,analysis_temperature:.2})
   expect(c.stages.scout.tools).toEqual(['keyword_search','semantic_search','read_section','read_outline'])
   expect(c.retrieval).toMatchObject({context:'headings',keep_tables:true})

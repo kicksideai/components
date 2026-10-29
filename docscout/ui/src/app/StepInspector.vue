@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import {computed} from 'vue'
+import AgentPicker from './AgentPicker.vue'
 import ModelPicker from './ModelPicker.vue'
 import Toggle from './Toggle.vue'
 import Segmented from './Segmented.vue'
@@ -15,6 +16,7 @@ const tools=documentTools()
 const deepCount=computed(()=>props.config.fields.filter(f=>f.strategy==='deep').length)
 const sectionFields=computed(()=>props.config.fields.filter(f=>f.search_within==='sections').map(f=>f.name||'New field'))
 const groups=computed(()=>fieldGroups(props.config))
+function selectAgent(id:string){if(id)s.value.scout.agent_id=id;else delete s.value.scout.agent_id}
 function setTool(id:string,on:boolean){
  const list=s.value.scout.tools.filter(t=>t!==id)
  s.value.scout.tools=on?[...list,id]:list
@@ -50,6 +52,7 @@ function setTool(id:string,on:boolean){
   <template v-if="stage==='scout'">
    <div class="toggle-row"><span>Stage enabled</span><Toggle v-model="s.scout.enabled" label="Enable step" :disabled="readonly"/></div>
    <div class="label-block"><span id="mode-label">Mode</span><Segmented v-model="s.scout.mode" labelled-by="mode-label" :options="[{value:'loop',label:'Structured loop'},{value:'agent',label:'Agent'}]"/><small>{{s.scout.mode==='loop'?'Each round the model rates the evidence, drops noise and proposes queries; the engine runs them.':'The model reads the document itself with the tools below, following references until confident.'}}</small></div>
+   <AgentPicker v-if="s.scout.mode==='agent'" :value="s.scout.agent_id" :readonly="readonly" @select="selectAgent"/>
    <ScoutDiagram v-if="s.scout.mode==='loop'" :rounds="s.scout.max_rounds" :confidence="s.scout.target_confidence" :extra="s.scout.max_extra_queries"/>
    <h4>Models</h4>
    <div id="model-scout" class="model-role"><span>Scout</span><ModelPicker :value="s.scout.model" capability="generate" labelled-by="model-scout" @select="s.scout.model=$event"/></div>

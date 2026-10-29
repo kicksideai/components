@@ -4,10 +4,10 @@ import {ref} from 'vue'
 import DocscoutPage from '../src/app/DocscoutPage.vue'
 import CreateForm from '../src/app/CreateForm.vue'
 import type {Snapshot} from '../src/models'
-import {snapshot,result,evaluations,evaluation} from './fixtures'
+import {scenario} from './scenarios'
 const params=new URLSearchParams(location.search)
 const create=params.get('view')==='create',empty=params.get('state')==='empty'
-const initial=structuredClone(snapshot)
+const {data:initial,run:result,history:evaluations,current:evaluation}=scenario(params.get('state'))
 if(empty&&initial.can_edit){initial.cases=[];initial.runs=[];initial.config.fields=[];initial.field_count=0}
 const data=ref<Snapshot>(params.get('access')==='read'?{id:initial.id,title:initial.title,description:initial.description,field_count:initial.field_count,status:initial.status,retention:initial.retention,runs:initial.runs,can_edit:false,can_share:false}:initial)
 </script>

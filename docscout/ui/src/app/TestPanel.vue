@@ -25,6 +25,7 @@ const icon=(kind:string)=>extra[kind]?.icon??stageIcons[kind as StageKey]??'tabl
   </section>
   <p v-if="!result" class="empty">No extraction results yet.</p>
   <p v-if="result?.status==='failed'" class="run-failed" role="alert"><Icon icon="tabler:alert-triangle"/>The run stopped: {{result.error}}</p>
+  <p v-if="result?.status==='partial'" class="eval-warning" role="status"><Icon icon="tabler:alert-triangle"/>Partial result · Some fields failed. Successful values are available below.</p>
   <div v-if="result" class="test-grid">
    <section class="block">
     <header class="block-head"><h2 class="block-title">Values</h2><span class="muted push">{{result.tokens.toLocaleString()}} tokens · {{seconds(result.duration_ms)}}<template v-if="result.pages"> · {{result.pages}} pages</template></span></header>

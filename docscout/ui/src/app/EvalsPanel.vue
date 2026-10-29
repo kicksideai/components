@@ -3,6 +3,7 @@
 import {computed,ref,watch} from 'vue'
 import {Icon} from '@iconify/vue'
 import Button from 'primevue/button'
+import FieldFailure from './FieldFailure.vue'
 import UploadPicker from './UploadPicker.vue'
 import {fieldPath,getValue,setValue,groupTree,type Field} from '../config'
 import NestedValue from './NestedValue.vue'
@@ -54,9 +55,9 @@ const delta=(n:number)=>{const p=Math.round(n*100);return `${p>0?'+':p<0?'−':'
 const trend=(n:number)=>Math.round(n*100)>0?'up':Math.round(n*100)<0?'down':'flat'
 const secs=(ms:number)=>ms>=60000?`${Math.floor(ms/60000)}m ${Math.round(ms%60000/1000)}s`:`${(ms/1000).toFixed(1)}s`
 const value=(v:unknown)=>v===null||v===undefined||v===''?'—':typeof v==='string'?v:Array.isArray(v)&&v.every(x=>typeof x!=='object')?v.join(', '):JSON.stringify(v)
-const grade=(s?:FieldScore)=>!s?'none':s.score>=.999?'pass':s.score>0?'partial':'fail'
+const grade=(s?:FieldScore)=>!s?'none':s.failed?'fail':s.score>=.999?'pass':s.score>0?'partial':'fail'
 const completed=(e:Evaluation)=>(e.results??[]).filter(r=>r.status==='completed').length
-const statusLabel:Record<string,string>={queued:'Queued',running:'Running',completed:'Completed',failed:'Failed'}
+const statusLabel:Record<string,string>={queued:'Queued',running:'Running',completed:'Completed',partial:'Partial',failed:'Failed'}
 </script>
 <template>
  <div class="evals">
@@ -79,7 +80,7 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
    <p v-if="shown.error" :class="shown.status==='failed'?'run-failed':'eval-warning'" role="alert"><Icon icon="tabler:alert-triangle"/>{{shown.error}}</p>
    <div class="stat-row">
     <div class="stat"><span class="stat-label">Accuracy · revision {{shown.config_revision}}</span><span class="stat-value">{{pct(meanAccuracy(shown))}}</span><span v-if="baseline" class="stat-delta" :class="trend(meanAccuracy(shown)-meanAccuracy(baseline))">{{delta(meanAccuracy(shown)-meanAccuracy(baseline))}} vs revision {{baseline.config_revision}}</span></div>
-    <div class="stat"><span class="stat-label">Cases</span><span class="stat-value">{{completed(shown)}}<small> / {{shown.case_count}}</small></span><span class="stat-delta flat">{{shown.case_count-completed(shown)}} failed</span></div>
+    <div class="stat"><span class="stat-label">Cases</span><span class="stat-value">{{completed(shown)}}<small> / {{shown.case_count}}</small></span><span class="stat-delta flat">{{(shown.results??[]).filter(r=>r.status==='partial').length}} partial · {{(shown.results??[]).filter(r=>r.status==='failed').length}} failed</span></div>
     <div class="stat"><span class="stat-label">Tokens</span><span class="stat-value">{{shown.tokens.toLocaleString()}}</span><span v-if="baseline" class="stat-delta flat">{{baseline.tokens.toLocaleString()}} before</span></div>
     <div class="stat"><span class="stat-label">Model time</span><span class="stat-value">{{secs(shown.duration_ms)}}</span><span v-if="baseline" class="stat-delta flat">{{secs(baseline.duration_ms)}} before</span></div>
    </div>
@@ -114,15 +115,15 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
      <tbody>
       <template v-for="r in shown.results" :key="r.case_id">
        <tr class="result-row" :class="{active:open===r.case_id}">
-        <td><button type="button" class="case-toggle" :aria-expanded="open===r.case_id" @click="open=open===r.case_id?undefined:r.case_id"><Icon :icon="open===r.case_id?'tabler:chevron-down':'tabler:chevron-right'"/>{{r.upload_name}}</button></td>
-        <td v-if="r.status!=='completed'" :colspan="columns.length" class="muted"><span v-if="r.status==='queued'" class="cell-state"><Icon icon="tabler:loader-2" class="spin"/>Waiting</span><span v-else class="cell-state fail" :data-error-kind="r.error?.kind" :title="r.error?.kind"><Icon icon="tabler:alert-triangle"/>{{r.error?.message}}</span></td>
-        <template v-else><td v-for="name in columns" :key="name" :data-label="name"><span class="cell" :class="grade(score(r,name))" :title="value(score(r,name)?.value)">{{score(r,name)?pct(score(r,name)!.score):'—'}}</span></td></template>
+        <td><button type="button" class="case-toggle" :aria-expanded="open===r.case_id" @click="open=open===r.case_id?undefined:r.case_id"><Icon :icon="open===r.case_id?'tabler:chevron-down':'tabler:chevron-right'"/>{{r.upload_name}}</button><span v-if="r.status==='partial'" class="badge" data-status="partial">Partial</span></td>
+        <td v-if="r.status==='queued'||r.status==='failed'" :colspan="columns.length" class="muted"><span v-if="r.status==='queued'" class="cell-state"><Icon icon="tabler:loader-2" class="spin"/>Waiting</span><span v-else class="cell-state fail" :data-error-kind="r.error?.kind" :title="r.error?.kind"><Icon icon="tabler:alert-triangle"/>{{r.error?.message}}</span></td>
+        <template v-else><td v-for="name in columns" :key="name" :data-label="name"><span class="cell" :class="grade(score(r,name))" :title="value(score(r,name)?.value)">{{score(r,name)?.failed?'Failed':score(r,name)?pct(score(r,name)!.score):'—'}}</span></td></template>
        </tr>
        <tr v-if="open===r.case_id" class="result-detail"><td :colspan="columns.length+1">
         <p v-if="r.error" class="muted" :data-error-kind="r.error.kind" :title="r.error.kind">{{r.error.message}}</p>
-        <FieldGroups v-else :node="groupTree(r.scores.map(s=>s.field))"><template #default="{index}"><dl v-for="s in [r.scores[index]]" :key="s.field" class="compare">
+        <FieldGroups :node="groupTree(r.scores.map(s=>s.field))"><template #default="{index}"><dl v-for="s in [r.scores[index]]" :key="s.field" class="compare">
           <dt class="mono">{{s.field.split('.').at(-1)}}</dt>
-          <dd><span class="cell" :class="grade(s)">{{pct(s.score)}}</span><div class="cmp"><span class="cmp-label">Expected</span><NestedValue :value="s.expected"/></div><div class="cmp"><span class="cmp-label">Extracted</span><NestedValue :value="s.value"/></div><span><span class="chip" :class="s.verified?'primary':'warn'"><Icon :icon="s.verified?'tabler:shield-check':'tabler:shield-question'"/>{{s.verified?'Verified':'Unverified'}}</span></span></dd>
+          <dd><span class="cell" :class="grade(s)">{{s.failed?'Failed':pct(s.score)}}</span><div class="cmp"><span class="cmp-label">Expected</span><NestedValue :value="s.expected"/></div><div class="cmp"><span class="cmp-label">Extracted</span><FieldFailure v-if="s.failed" :error="s.error"/><NestedValue v-else :value="s.value"/></div><span v-if="!s.failed"><span class="chip" :class="s.verified?'primary':'warn'"><Icon :icon="s.verified?'tabler:shield-check':'tabler:shield-question'"/>{{s.verified?'Verified':'Unverified'}}</span></span></dd>
         </dl></template></FieldGroups>
 
         <p class="muted case-meta">{{r.tokens.toLocaleString()}} tokens · {{secs(r.duration_ms)}}</p>
@@ -166,7 +167,7 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
      <span class="badge" :data-status="e.status">{{statusLabel[e.status]}}</span>
      <span>Revision {{e.config_revision}}</span>
      <span class="muted">{{when(e.created_at)}}</span>
-     <strong class="push">{{e.status==='completed'?pct(meanAccuracy(e)):'—'}}</strong>
+     <strong class="push">{{e.status==='completed'||e.status==='partial'?pct(meanAccuracy(e)):'—'}}</strong>
     </button></li>
    </ul>
   </section>

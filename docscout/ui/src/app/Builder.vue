@@ -6,15 +6,18 @@ import vFocusTrap from 'primevue/focustrap'
 import StageNode from './StageNode.vue'
 import FieldInspector from './FieldInspector.vue'
 import FieldGroups from './FieldGroups.vue'
+import GroupHeader from './GroupHeader.vue'
+import ShapeTree from './ShapeTree.vue'
+import {shapeNodes,shapeKey,moveTargets,moveShape,outputPreview,type Trail} from '../shape-builder'
 import StepInspector from './StepInspector.vue'
 import DocumentInspector from './DocumentInspector.vue'
-import {documentSummary,fieldError,fieldPath,groupTree,groupPattern,isOn,modelLabel,newField,stageIcons,stageLabels,type Config,type StageKey} from '../config'
+import {documentSummary,fieldError,fieldPath,pathCollision,groupTree,groupPattern,isOn,modelLabel,newField,newProperty,stageIcons,stageLabels,type Config,type StageKey} from '../config'
 import type {Extraction,TraceStep} from '../models'
 const props=defineProps<{config:Config;retention:string;result:Extraction|null;readonly?:boolean}>()
 const title=defineModel<string>('title',{required:true})
 const description=defineModel<string>('description',{required:true})
 
-type Selection={kind:'details'}|{kind:'document'}|{kind:'output'}|{kind:'stage';stage:StageKey}|{kind:'field';index:number}
+type Selection={kind:'details'}|{kind:'document'}|{kind:'output'}|{kind:'stage';stage:StageKey}|{kind:'field';index:number;trail?:Trail}
 const selected=ref<Selection>({kind:'document'})
 
 function stored(key:string,fallback:boolean):boolean{try{const v=localStorage.getItem(`docscout.${key}`);return v===null?fallback:v==='1'}catch{return fallback}}
@@ -61,19 +64,29 @@ async function select(s:Selection){
 }
 const is=(s:Selection)=>JSON.stringify(s)===JSON.stringify(selected.value)
 const selectedField=computed(()=>selected.value.kind==='field'?props.config.fields[selected.value.index]:undefined)
-const panelTitle=computed(()=>{const s=selected.value;return s.kind==='stage'?stageLabels[s.stage]:s.kind==='field'?(selectedField.value?.name||'New field'):s.kind==='document'?'Read document':s.kind==='output'?'Output':'Details'})
+const nodes=computed(()=>shapeNodes(props.config.fields))
+const selectedNode=computed(()=>selected.value.kind==='field'?nodes.value.find(n=>n.key===shapeKey((selected.value as {index:number}).index,(selected.value as {trail?:Trail}).trail??[])):undefined)
+const selectedKey=computed(()=>selectedNode.value?.key??'')
+const siblingNames=computed(()=>{const n=selectedNode.value;if(!n||n.trail.at(-1)==='item')return undefined;if(!n.trail.length)return undefined;const parent=nodes.value.find(p=>p.key===shapeKey(n.field,n.trail.slice(0,-1)))!;return parent.shape.properties!.filter(p=>p!==n.shape).map(p=>p.name)})
+const destination=ref('')
+watch(selectedKey,()=>{destination.value=''})
+const targets=computed(()=>selectedNode.value?moveTargets(props.config.fields,selectedNode.value):[])
+const previewError=computed(()=>{const path=pathCollision(props.config.fields.map(fieldPath));return path?`Group path collides with field ${path}.`:''})
+const preview=computed(()=>previewError.value?null:outputPreview(props.config.fields))
+const example=computed(()=>previewError.value?null:outputPreview(props.config.fields,true))
+const panelTitle=computed(()=>{const s=selected.value;return s.kind==='stage'?stageLabels[s.stage]:s.kind==='field'?(selectedNode.value?.trail.length?selectedNode.value.path:(selectedField.value?.name||'New field')):s.kind==='document'?'Read document':s.kind==='output'?'Output':'Details'})
 const panelIcon=computed(()=>{const s=selected.value;return s.kind==='stage'?stageIcons[s.stage]:s.kind==='field'?'tabler:forms':s.kind==='document'?'tabler:file-text':s.kind==='output'?'tabler:braces':'tabler:info-circle'})
 const otherNames=computed(()=>props.config.fields.filter((_,i)=>!(selected.value.kind==='field'&&selected.value.index===i)).map(fieldPath))
 const deepEnabled=computed(()=>props.config.stages.deep.enabled)
 const mapEnabled=computed(()=>props.config.stages.map.enabled)
 const groups=computed(()=>groupTree(props.config.fields.map(fieldPath)))
 const groupDraft=ref(''),groupError=ref('')
-function renameGroup(path:string,event:Event){
- const next=(event.target as HTMLInputElement).value.trim()
- if(!groupPattern.test(next)||!next){groupError.value='Use a dotted path of snake_case group names.';return}
+function renameGroup(path:string,next:string){
+
  for(const f of props.config.fields)if(f.group===path||f.group.startsWith(path+'.'))f.group=next+f.group.slice(path.length)
  groupError.value=''
 }
+const groupNameLimit=(path:string)=>320-Math.max(0,...props.config.fields.filter(f=>f.group===path||f.group.startsWith(path+'.')).map(f=>f.group.length-path.length))
 function addGroup(){if(!groupDraft.value||!groupPattern.test(groupDraft.value)){groupError.value='Use a dotted path of snake_case group names.';return}addField(groupDraft.value);groupDraft.value='';groupError.value=''}
 const groupNames=computed(()=>[...new Set(props.config.fields.map(f=>f.group.trim()).filter(Boolean))])
 const rowError=(i:number)=>fieldError(props.config.fields[i],props.config.fields.filter((_,j)=>j!==i).map(fieldPath))
@@ -84,7 +97,51 @@ const enabledSteps=computed(()=>order.filter(k=>isOn(props.config,k)).length)
 const trace=(kind:string):TraceStep|undefined=>props.result?.trace.find(t=>t.kind===kind)
 function addField(group=''){props.config.fields.push({...newField(),group});fieldsOpen.value=true;select({kind:'field',index:props.config.fields.length-1})}
 function removeField(index:number){props.config.fields.splice(index,1);selected.value={kind:'document'}}
-function moveField(index:number,delta:number){const f=props.config.fields;const next=index+delta;if(next<0||next>=f.length)return;const [x]=f.splice(index,1);f.splice(next,0,x);selected.value={kind:'field',index:next}}
+function selectShape(field:number,trail:Trail=[]){select({kind:'field',index:field,...(trail.length?{trail}:{})})}
+function addProperty(field:number,trail:Trail){
+ const node=nodes.value.find(n=>n.key===shapeKey(field,trail))!
+ node.shape.properties!.push(newProperty());selectShape(field,[...trail,node.shape.properties!.length-1])
+}
+function removeNode(){
+ const node=selectedNode.value!
+ if(!node.trail.length){removeField(node.field);return}
+ const parent=nodes.value.find(n=>n.key===shapeKey(node.field,node.trail.slice(0,-1)))!
+ parent.shape.properties!.splice(node.trail.at(-1) as number,1);selectShape(parent.field,parent.trail)
+}
+function reorder(field:number,trail:Trail,delta:number){
+ if(!trail.length){
+  const indices=props.config.fields.map((f,i)=>f.group===props.config.fields[field].group?i:-1).filter(i=>i>=0)
+  const next=indices[indices.indexOf(field)+delta];if(next===undefined)return
+  const fields=props.config.fields;[fields[field],fields[next]]=[fields[next],fields[field]];selectShape(next)
+ }else{
+  const parent=nodes.value.find(n=>n.key===shapeKey(field,trail.slice(0,-1)))!
+  const siblings=parent.shape.properties!,index=trail.at(-1) as number,next=index+delta
+  if(next<0||next>=siblings.length)return
+  ;[siblings[index],siblings[next]]=[siblings[next],siblings[index]];selectShape(field,[...trail.slice(0,-1),next])
+ }
+}
+function moveSelected(){
+ const source=selectedNode.value!,target=targets.value.find(n=>n.key===destination.value)
+ const moved=moveShape(props.config.fields,source,target);selectShape(moved.field,moved.trail)
+}
+function deleteGroup(path:string){
+ const keep=selectedNode.value?.shape
+ props.config.fields.splice(0,props.config.fields.length,...props.config.fields.filter(f=>f.group!==path&&!f.group.startsWith(path+'.')))
+ const node=nodes.value.find(n=>n.shape===keep);if(node)selectShape(node.field,node.trail);else selected.value={kind:'document'}
+}
+function reorderGroup(path:string,delta:number){
+ const parent=path.split('.').slice(0,-1).join('.')
+ const siblings=groupTree(props.config.fields.map(fieldPath))
+ let node=siblings
+ for(const segment of parent.split('.').filter(Boolean))node=node.children.find(n=>n.name===segment)!
+ const index=node.children.findIndex(n=>n.path===path),other=node.children[index+delta]?.path
+ if(!other)return
+ const a=props.config.fields.filter(f=>f.group===path||f.group.startsWith(path+'.')),b=props.config.fields.filter(f=>f.group===other||f.group.startsWith(other+'.'))
+ const fields=props.config.fields,first=Math.min(fields.indexOf(a[0]),fields.indexOf(b[0])),remaining=fields.filter(f=>!a.includes(f)&&!b.includes(f))
+ remaining.splice(first,0,...(delta>0?[...b,...a]:[...a,...b]))
+ const keep=selectedNode.value?.shape;fields.splice(0,fields.length,...remaining)
+ const next=nodes.value.find(n=>n.shape===keep);if(next)selectShape(next.field,next.trail)
+}
 const typeLabel=(f:Config['fields'][number])=>f.type==='list'?`list of ${f.item?.type}`:f.type
 const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props.config.tags=[...new Set(v.split(',').map(t=>t.trim()).filter(Boolean))]}})
 </script>
@@ -92,29 +149,29 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
  <div ref="root" class="builder" :class="{narrow,'panel-open':panelOpen,resizing}">
   <div class="canvas" :inert="narrow&&panelOpen">
    <div class="canvas-inner">
-    <section class="block" aria-labelledby="fields-head">
+    <section class="block fields-block" aria-labelledby="fields-head">
      <header class="block-head">
       <button type="button" class="collapse" :aria-expanded="fieldsOpen" aria-controls="fields-body" @click="toggleSection('fields')"><Icon :icon="fieldsOpen?'tabler:chevron-down':'tabler:chevron-right'"/><h2 id="fields-head">Fields</h2><span class="count">{{config.fields.length}}</span></button>
       <span v-if="!fieldsOpen&&config.fields.length" class="block-peek">{{fieldsPeek}}</span>
-      <button v-if="!readonly" type="button" class="kx-btn kx-btn-ghost kx-focus-halo sm push" @click="addField()"><Icon icon="tabler:plus"/>Add field</button>
+      <button v-if="!readonly" type="button" class="kx-btn kx-btn-ghost kx-focus-halo sm push" :disabled="config.fields.length>=100" @click="addField()"><Icon icon="tabler:plus"/>Add field</button>
      </header>
      <div v-show="fieldsOpen" id="fields-body" class="block-body">
       <p v-if="!config.fields.length" class="block-empty">Add the values to pull from each document.</p>
-      <form v-if="!readonly" class="group-add row" @submit.prevent="addGroup"><label>New group<input v-model.trim="groupDraft" placeholder="parties.borrower" aria-label="New group path"/></label><button type="submit" class="kx-btn kx-btn-ghost kx-focus-halo sm">Add group</button></form>
+      <form v-if="!readonly" class="group-add row" @submit.prevent="addGroup"><label>New group<input v-model.trim="groupDraft" placeholder="parties.borrower" aria-label="New group path" maxlength="320"/></label><button type="submit" class="kx-btn kx-btn-ghost kx-focus-halo sm" :disabled="config.fields.length>=100">Add group</button></form>
       <p v-if="groupError" class="field-error" role="alert">{{groupError}}</p>
-      <FieldGroups :node="groups">
-       <template #header="{path}"><label v-if="!readonly" class="group-rename">Group path<input :value="path" :aria-label="`Rename group ${path}`" @change="renameGroup(path,$event)"/></label></template>
-       <template #default="{index:i}"><template v-for="f in [config.fields[i]]" :key="i">
-        <div class="row-item" :class="{active:is({kind:'field',index:i})}">
-        <button type="button" class="row-main" @click="select({kind:'field',index:i})">
-         <span class="row-name">{{f.name||'New field'}}<span v-if="f.required" class="req" title="Required">*</span><Icon v-if="rowError(i)" icon="tabler:alert-circle" class="row-warn" :title="rowError(i)"/></span>
-         <span class="row-desc" :class="{missing:!f.description}">{{f.description||'No description'}}</span>
-         <span class="chips"><span v-if="f.search_within==='sections'" class="chip" :class="mapEnabled?'':'muted-chip'" title="Reads the sections Map picks">sections</span><span v-if="f.group.trim()" class="chip">{{f.group}}</span><span v-if="f.strategy==='deep'" class="chip" :class="deepEnabled?'primary':'muted-chip'" :title="deepEnabled?'Deep analysis':'Deep analysis is off in the flow'">deep</span><span class="chip">{{typeLabel(f)}}</span><span v-if="f.evidence_required" class="chip" title="Evidence required"><Icon icon="tabler:quote"/></span></span>
-        </button>
-        <span v-if="!readonly" class="row-actions"><button type="button" class="kx-iconbtn kx-focus-outline" aria-label="Move field up" :disabled="i===0" @click="moveField(i,-1)"><Icon icon="tabler:chevron-up"/></button><button type="button" class="kx-iconbtn kx-focus-outline" aria-label="Move field down" :disabled="i===config.fields.length-1" @click="moveField(i,1)"><Icon icon="tabler:chevron-down"/></button></span>
-        </div>
-       </template></template>
-      </FieldGroups>
+      <div class="field-tree"><FieldGroups :node="groups">
+       <template #header="{path,label,count,first,last}">
+        <GroupHeader :path="path" :name="label" :count="count" :first="first" :last="last" :max-length="groupNameLimit(path)" :can-add="config.fields.length<100" :readonly="readonly" @rename="renameGroup(path,$event)" @add="addField(path)" @reorder="reorderGroup(path,$event)" @remove="deleteGroup(path)"/>
+       </template>
+       <template #default="{index:i}">
+        <ShapeTree :shape="config.fields[i]" :field="i" :trail="[]" :path="fieldPath(config.fields[i])||'New field'" :selected="selectedKey" :readonly="readonly" :error="rowError(i)" :first="!config.fields.slice(0,i).some(f=>f.group===config.fields[i].group)" :last="!config.fields.slice(i+1).some(f=>f.group===config.fields[i].group)" @select="selectShape" @add="addProperty" @reorder="reorder"/>
+       </template>
+      </FieldGroups></div>
+      <details class="shape-preview" open><summary class="kx-focus-outline"><Icon icon="tabler:braces"/>Output preview</summary>
+       <p v-if="previewError" class="field-error" role="alert">{{previewError}}</p>
+       <div v-else class="preview-grid"><div><h3>Output shape</h3><pre aria-label="Output shape">{{JSON.stringify(preview,null,2)}}</pre></div><div><h3>Example value</h3><pre aria-label="Example output">{{JSON.stringify(example,null,2)}}</pre></div></div>
+       <small>Example values illustrate the shape; extracted values come from your document.</small>
+      </details>
      </div>
     </section>
 
@@ -170,7 +227,14 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
    <div ref="panelBody" class="side-panel-body">
     <DocumentInspector v-if="selected.kind==='document'" :config="config" :retention="retention" :readonly="readonly"/>
     <StepInspector v-else-if="selected.kind==='stage'" :stage="selected.stage" :config="config" :readonly="readonly"/>
-    <FieldInspector v-else-if="selected.kind==='field'&&selectedField" :field="selectedField" :other-names="otherNames" :groups="groupNames" :deep-enabled="deepEnabled" :map-enabled="mapEnabled" :readonly="readonly" @remove="removeField((selected as {index:number}).index)"/>
+    <template v-else-if="selected.kind==='field'&&selectedField&&selectedNode">
+     <p class="node-breadcrumb mono">{{selectedNode.path}}</p>
+     <FieldInspector :field="selectedField" :shape="selectedNode.shape" :depth="selectedNode.depth" :sibling-names="siblingNames" :other-names="otherNames" :groups="groupNames" :deep-enabled="deepEnabled" :map-enabled="mapEnabled" :readonly="readonly" @remove="removeNode" @add="addProperty(selectedNode.field,selectedNode.trail)" @select-item="selectShape(selectedNode.field,[...selectedNode.trail,'item'])"/>
+     <fieldset v-if="!readonly&&selectedNode.trail.at(-1)!=='item'" class="move-node" aria-label="Move node">
+      <label>Move to parent<select v-model="destination" aria-label="Move to parent"><option v-if="selectedNode.trail.length" value="">Top-level field</option><option v-else value="" disabled>Choose an object…</option><option v-for="target in targets" :key="target.key" :value="target.key">{{target.path}}</option></select></label>
+      <button type="button" class="kx-btn kx-btn-ghost kx-focus-halo" aria-label="Move selected node" :disabled="(!destination&&!selectedNode.trail.length)||(!destination&&config.fields.length>=100)" @click="moveSelected">Move</button>
+     </fieldset>
+    </template>
     <fieldset v-else-if="selected.kind==='details'" class="inspector-form" :disabled="readonly">
      <label>Name<input v-model="title" aria-label="Extractor name"/></label>
      <label>Description<textarea v-model="description" rows="3" placeholder="What this extractor reads"/></label>
