@@ -1,4 +1,4 @@
-import { hasInjectionContext as En, inject as st, effectScope as An, ref as X, markRaw as jn, createApp as In, onMounted as Sr, onUnmounted as zn, watch as $e, readonly as Nn, getCurrentInstance as Vt, nextTick as Rn, reactive as Vn, renderSlot as D, openBlock as $, createBlock as ee, Teleport as $r, createCommentVNode as V, useId as Mn, mergeProps as S, resolveDirective as Pr, createElementBlock as E, createElementVNode as et, withDirectives as Or, resolveDynamicComponent as ht, normalizeClass as bt, toDisplayString as lt, resolveComponent as tt, withCtx as gt, createVNode as Dn, Transition as Bn, Fragment as Oe, renderList as Mt, createTextVNode as Cr, h as Un } from "vue";
+import { hasInjectionContext as An, inject as st, effectScope as En, ref as X, markRaw as jn, createApp as In, onMounted as Sr, onUnmounted as zn, watch as $e, readonly as Nn, getCurrentInstance as Vt, nextTick as Rn, reactive as Vn, renderSlot as D, openBlock as $, createBlock as ee, Teleport as $r, createCommentVNode as V, useId as Mn, mergeProps as S, resolveDirective as Pr, createElementBlock as A, createElementVNode as et, withDirectives as Or, resolveDynamicComponent as ht, normalizeClass as gt, toDisplayString as lt, resolveComponent as tt, withCtx as bt, createVNode as Dn, Transition as Bn, Fragment as Oe, renderList as Mt, createTextVNode as Cr, h as Un } from "vue";
 import { addCollection as Hn } from "@iconify/vue";
 import { config as Dt, addIcons as qn, on as Wn, applyThemeMode as Fe, host as Fn, hostCss as Kn, loadCss as Yn, api as B } from "@wippy-fe/proxy";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
@@ -451,17 +451,17 @@ function po(e) {
  * (c) 2026 Eduardo San Martin Morote
  * @license MIT
  */
-let Er;
-const Ar = (e) => Er = e, uo = () => En() && st(jr) || Er, jr = (
+let Ar;
+const Er = (e) => Ar = e, uo = () => An() && st(jr) || Ar, jr = (
   /* istanbul ignore next */
   Symbol()
 );
 function mo() {
-  const e = An(!0), t = e.run(() => X({}));
+  const e = En(!0), t = e.run(() => X({}));
   let r = [], n = [];
   const o = jn({
     install(a) {
-      Ar(o), o._a = a, a.provide(jr, o), a.config.globalProperties.$pinia = o, n.forEach((s) => r.push(s)), n = [];
+      Er(o), o._a = a, a.provide(jr, o), a.config.globalProperties.$pinia = o, n.forEach((s) => r.push(s)), n = [];
     },
     use(a) {
       return this._a ? r.push(a) : n.push(a), this;
@@ -474,7 +474,7 @@ function mo() {
   });
   return o;
 }
-var fo = Object.defineProperty, ho = (e, t, r) => t in e ? fo(e, t, { enumerable: !0, configurable: !0, writable: !0, value: r }) : e[t] = r, ke = (e, t, r) => ho(e, typeof t != "symbol" ? t + "" : t, r), Ir = /* @__PURE__ */ Symbol("wippy:emit"), zr = /* @__PURE__ */ Symbol("wippy:props"), bo = /* @__PURE__ */ Symbol("wippy:props_error"), go = /* @__PURE__ */ Symbol("wippy:content"), vo = /* @__PURE__ */ Symbol("wippy:panel-id"), yo = /* @__PURE__ */ Symbol("wippy:layout-bus"), xo = /* @__PURE__ */ Symbol("wippy:host"), Nr = /* @__PURE__ */ Symbol("wippy:host-visibility");
+var fo = Object.defineProperty, ho = (e, t, r) => t in e ? fo(e, t, { enumerable: !0, configurable: !0, writable: !0, value: r }) : e[t] = r, ke = (e, t, r) => ho(e, typeof t != "symbol" ? t + "" : t, r), Ir = /* @__PURE__ */ Symbol("wippy:emit"), zr = /* @__PURE__ */ Symbol("wippy:props"), go = /* @__PURE__ */ Symbol("wippy:props_error"), bo = /* @__PURE__ */ Symbol("wippy:content"), vo = /* @__PURE__ */ Symbol("wippy:panel-id"), yo = /* @__PURE__ */ Symbol("wippy:layout-bus"), xo = /* @__PURE__ */ Symbol("wippy:host"), Nr = /* @__PURE__ */ Symbol("wippy:host-visibility");
 function Cs() {
   const e = st(zr);
   if (!e)
@@ -555,7 +555,7 @@ var ko = class extends lo {
       if (p.use(u), d.plugins)
         for (const m of d.plugins)
           p.use(m);
-      p.provide(zr, this._propsRef), p.provide(bo, this._errorsRef), p.provide(Ir, this.emitEvent.bind(this)), p.provide(go, this._contentRef), p.provide(Nr, this._hostVisibilityRef), p.provide(vo, po(this)), p.provide(yo, co(this)), p.provide(xo, Lr(this)), d.providers && d.providers(p, this), p.mount(t), c && Ar(c);
+      p.provide(zr, this._propsRef), p.provide(go, this._errorsRef), p.provide(Ir, this.emitEvent.bind(this)), p.provide(bo, this._contentRef), p.provide(Nr, this._hostVisibilityRef), p.provide(vo, po(this)), p.provide(yo, co(this)), p.provide(xo, Lr(this)), d.providers && d.providers(p, this), p.mount(t), c && Er(c);
     };
     if (s.rootComponent)
       i(s);
@@ -580,14 +580,14 @@ var ko = class extends lo {
   if (Ht) for (var r of Ht(t)) $o.call(t, r) && qt(e, r, t[r]);
   return e;
 };
-function be(e) {
+function ge(e) {
   return e == null || e === "" || Array.isArray(e) && e.length === 0 || !(e instanceof Date) && typeof e == "object" && Object.keys(e).length === 0;
 }
 function Lt(e) {
   return typeof e == "function" && "call" in e && "apply" in e;
 }
 function T(e) {
-  return !be(e);
+  return !ge(e);
 }
 function Y(e, t = !0) {
   return e instanceof Object && e.constructor === Object && (t || Object.keys(e).length !== 0);
@@ -611,12 +611,12 @@ function R(e, t = !0) {
 function K(e) {
   return R(e) ? e.replace(/(-|_)/g, "").toLowerCase() : e;
 }
-function Et(e, t = "", r = {}) {
+function At(e, t = "", r = {}) {
   let n = K(t).split("."), o = n.shift();
   if (o) {
     if (Y(e)) {
       let a = Object.keys(e).find((s) => K(s) === o) || "";
-      return Et(N(e[a], r), n.join("."), r);
+      return At(N(e[a], r), n.join("."), r);
     }
     return;
   }
@@ -638,7 +638,7 @@ function me(e, t) {
 function To(...e) {
   return Oo(...e);
 }
-function Ee(e) {
+function Ae(e) {
   return e && e.replace(/\/\*(?:(?!\*\/)[\s\S])*\*\/|[\r\n\t]+/g, "").replace(/ {2,}/g, " ").replace(/ ([{:}]) /g, "$1").replace(/([;,]) /g, "$1").replace(/ !/g, "!").replace(/: /g, ":").trim();
 }
 function Lo(e) {
@@ -647,7 +647,7 @@ function Lo(e) {
 function Mr(e) {
   return R(e) ? e.replace(/(_)/g, "-").replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase() : e;
 }
-function At() {
+function Et() {
   let e = /* @__PURE__ */ new Map();
   return { on(t, r) {
     let n = e.get(t);
@@ -680,13 +680,13 @@ function fe(...e) {
     return t.join(" ").trim();
   }
 }
-function Eo(e, t) {
+function Ao(e, t) {
   return e ? e.classList ? e.classList.contains(t) : new RegExp("(^| )" + t + "( |$)", "gi").test(e.className) : !1;
 }
-function Ao(e, t) {
+function Eo(e, t) {
   if (e && t) {
     let r = (n) => {
-      Eo(e, n) || (e.classList ? e.classList.add(n) : e.className += " " + n);
+      Ao(e, n) || (e.classList ? e.classList.add(n) : e.className += " " + n);
     };
     [t].flat().filter(Boolean).forEach((n) => n.split(" ").forEach(r));
   }
@@ -735,8 +735,8 @@ function Ro(e) {
 function Vo(e, t, r = !0) {
   var n, o, a, s;
   if (e) {
-    let l = e.offsetParent ? { width: e.offsetWidth, height: e.offsetHeight } : jo(e), i = l.height, d = l.width, c = t.offsetHeight, p = t.offsetWidth, u = t.getBoundingClientRect(), m = No(), f = zo(), g = Io(), b, v, x = "top";
-    u.top + c + i > g.height ? (b = u.top + m - i, x = "bottom", b < 0 && (b = m)) : b = c + u.top + m, u.left + d > g.width ? v = Math.max(0, u.left + f + p - d) : v = u.left + f, Ro(e) ? e.style.insetInlineEnd = v + "px" : e.style.insetInlineStart = v + "px", e.style.top = b + "px", e.style.transformOrigin = x, r && (e.style.marginTop = x === "bottom" ? `calc(${(o = (n = Wt(/-anchor-gutter$/)) == null ? void 0 : n.value) != null ? o : "2px"} * -1)` : (s = (a = Wt(/-anchor-gutter$/)) == null ? void 0 : a.value) != null ? s : "");
+    let l = e.offsetParent ? { width: e.offsetWidth, height: e.offsetHeight } : jo(e), i = l.height, d = l.width, c = t.offsetHeight, p = t.offsetWidth, u = t.getBoundingClientRect(), m = No(), f = zo(), b = Io(), g, v, x = "top";
+    u.top + c + i > b.height ? (g = u.top + m - i, x = "bottom", g < 0 && (g = m)) : g = c + u.top + m, u.left + d > b.width ? v = Math.max(0, u.left + f + p - d) : v = u.left + f, Ro(e) ? e.style.insetInlineEnd = v + "px" : e.style.insetInlineStart = v + "px", e.style.top = g + "px", e.style.transformOrigin = x, r && (e.style.marginTop = x === "bottom" ? `calc(${(o = (n = Wt(/-anchor-gutter$/)) == null ? void 0 : n.value) != null ? o : "2px"} * -1)` : (s = (a = Wt(/-anchor-gutter$/)) == null ? void 0 : a.value) != null ? s : "");
   }
 }
 function Mo(e, t) {
@@ -755,11 +755,11 @@ function Dr(e) {
 function Do(e) {
   return !!(e !== null && typeof e < "u" && e.nodeName && Dr(e));
 }
-function ge(e) {
+function be(e) {
   return typeof Element < "u" ? e instanceof Element : e !== null && typeof e == "object" && e.nodeType === 1 && typeof e.nodeName == "string";
 }
 function rt(e, t = {}) {
-  if (ge(e)) {
+  if (be(e)) {
     let r = (n, o) => {
       var a, s;
       let l = (a = e?.$attrs) != null && a[n] ? [(s = e?.$attrs) == null ? void 0 : s[n]] : [];
@@ -790,16 +790,16 @@ function Bo(e, t = {}, ...r) {
   }
 }
 function Te(e, t) {
-  return ge(e) ? Array.from(e.querySelectorAll(t)) : [];
+  return be(e) ? Array.from(e.querySelectorAll(t)) : [];
 }
 function nt(e, t) {
-  return ge(e) ? e.matches(t) ? e : e.querySelector(t) : null;
+  return be(e) ? e.matches(t) ? e : e.querySelector(t) : null;
 }
 function Ke(e, t) {
   e && document.activeElement !== e && e.focus(t);
 }
 function Uo(e, t) {
-  if (ge(e)) {
+  if (be(e)) {
     let r = e.getAttribute(t);
     return isNaN(r) ? r === "true" || r === "false" ? r === "true" : r : +r;
   }
@@ -815,7 +815,7 @@ function Br(e, t = "") {
   for (let o of r) getComputedStyle(o).display != "none" && getComputedStyle(o).visibility != "hidden" && n.push(o);
   return n;
 }
-function Es(e, t) {
+function As(e, t) {
   let r = Br(e, t);
   return r.length > 0 ? r[0] : null;
 }
@@ -826,7 +826,7 @@ function Ft(e) {
   }
   return 0;
 }
-function As(e, t) {
+function Es(e, t) {
   let r = Br(e, t);
   return r.length > 0 ? r[r.length - 1] : null;
 }
@@ -880,7 +880,7 @@ function Hr() {
   return !!(typeof window < "u" && window.document && window.document.createElement);
 }
 function js(e, t = "") {
-  return ge(e) ? e.matches(`button:not([tabindex = "-1"]):not([disabled]):not([style*="display:none"]):not([hidden])${t},
+  return be(e) ? e.matches(`button:not([tabindex = "-1"]):not([disabled]):not([style*="display:none"]):not([hidden])${t},
             [href][clientHeight][clientWidth]:not([tabindex = "-1"]):not([disabled]):not([style*="display:none"]):not([hidden])${t},
             input:not([tabindex = "-1"]):not([disabled]):not([style*="display:none"]):not([hidden])${t},
             select:not([tabindex = "-1"]):not([disabled]):not([style*="display:none"]):not([hidden])${t},
@@ -892,7 +892,7 @@ function Fo() {
   return "ontouchstart" in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
 }
 function Ko(e, t = "", r) {
-  ge(e) && r !== null && r !== void 0 && e.setAttribute(t, r);
+  be(e) && r !== null && r !== void 0 && e.setAttribute(t, r);
 }
 var Ye = {};
 function Yo(e = "pui_id_") {
@@ -920,7 +920,7 @@ var ut = Go(), Zo = Object.defineProperty, Jo = Object.defineProperties, Qo = Ob
   for (var n in e) qr.call(e, n) && t.indexOf(n) < 0 && (r[n] = e[n]);
   if (e != null && ot) for (var n of ot(e)) t.indexOf(n) < 0 && Wr.call(e, n) && (r[n] = e[n]);
   return r;
-}, Xo = At(), j = Xo, Ae = /{([^}]*)}/g, Fr = /(\d+\s+[\+\-\*\/]\s+\d+)/g, Kr = /var\([^)]+\)/g;
+}, Xo = Et(), j = Xo, Ee = /{([^}]*)}/g, Fr = /(\d+\s+[\+\-\*\/]\s+\d+)/g, Kr = /var\([^)]+\)/g;
 function Gt(e) {
   return R(e) ? e.replace(/[A-Z]/g, (t, r) => r === 0 ? t : "." + t.toLowerCase()).toLowerCase() : e;
 }
@@ -944,8 +944,8 @@ function Gr(e, t = "", r = "", n = [], o) {
   if (R(e)) {
     let a = e.trim();
     if (ra(a)) return;
-    if (me(a, Ae)) {
-      let s = a.replaceAll(Ae, (l) => {
+    if (me(a, Ee)) {
+      let s = a.replaceAll(Ee, (l) => {
         let i = l.replace(/{|}/g, "").split(".").filter((d) => !n.some((c) => me(d, c)));
         return `var(${Yr(r, Mr(i.join("-")))}${T(o) ? `, ${o}` : ""})`;
       });
@@ -996,8 +996,8 @@ function Zr(e, t) {
 }
 var he = (...e) => oa(P.getTheme(), ...e), oa = (e = {}, t, r, n) => {
   if (t) {
-    let { variable: o, options: a } = P.defaults || {}, { prefix: s, transform: l } = e?.options || a || {}, i = me(t, Ae) ? t : `{${t}}`;
-    return n === "value" || be(n) && l === "strict" ? P.getTokenValue(t) : Gr(i, void 0, s, [o.excludedKeyRegex], r);
+    let { variable: o, options: a } = P.defaults || {}, { prefix: s, transform: l } = e?.options || a || {}, i = me(t, Ee) ? t : `{${t}}`;
+    return n === "value" || ge(n) && l === "strict" ? P.getTokenValue(t) : Gr(i, void 0, s, [o.excludedKeyRegex], r);
   }
   return "";
 };
@@ -1016,12 +1016,12 @@ function aa(e, t = {}) {
   for (; i.length; ) {
     let { node: c, path: p } = i.pop();
     for (let u in c) {
-      let m = c[u], f = ea(m), g = me(u, a) ? xt(p) : xt(p, Mr(u));
-      if (Y(f)) i.push({ node: f, path: g });
+      let m = c[u], f = ea(m), b = me(u, a) ? xt(p) : xt(p, Mr(u));
+      if (Y(f)) i.push({ node: f, path: b });
       else {
-        let b = Yr(g), v = Gr(f, g, n, [a]);
-        na(l, b, v);
-        let x = g;
+        let g = Yr(b), v = Gr(f, b, n, [a]);
+        na(l, g, v);
+        let x = b;
         n && x.startsWith(n + "-") && (x = x.slice(n.length + 1)), s.push(x.replace(/-/g, "."));
       }
     }
@@ -1049,21 +1049,21 @@ var U = { regex: { rules: { class: { pattern: /^\.([a-zA-Z][\w-]*)$/, resolve(e)
   return aa(e, { prefix: t?.prefix });
 }, getCommon({ name: e = "", theme: t = {}, params: r, set: n, defaults: o }) {
   var a, s, l, i, d, c, p;
-  let { preset: u, options: m } = t, f, g, b, v, x, O, h;
+  let { preset: u, options: m } = t, f, b, g, v, x, O, h;
   if (T(u) && m.transform !== "strict") {
-    let { primitive: w, semantic: A, extend: M } = u, te = A || {}, { colorScheme: re } = te, se = Z(te, ["colorScheme"]), ne = M || {}, { colorScheme: le } = ne, de = Z(ne, ["colorScheme"]), oe = re || {}, { dark: ce } = oe, ve = Z(oe, ["dark"]), pe = le || {}, { dark: ye } = pe, xe = Z(pe, ["dark"]), G = T(w) ? this._toVariables({ primitive: w }, m) : {}, W = T(se) ? this._toVariables({ semantic: se }, m) : {}, ue = T(ve) ? this._toVariables({ light: ve }, m) : {}, We = T(ce) ? this._toVariables({ dark: ce }, m) : {}, we = T(de) ? this._toVariables({ semantic: de }, m) : {}, Nt = T(xe) ? this._toVariables({ light: xe }, m) : {}, Rt = T(ye) ? this._toVariables({ dark: ye }, m) : {}, [mn, fn] = [(a = G.declarations) != null ? a : "", G.tokens], [hn, bn] = [(s = W.declarations) != null ? s : "", W.tokens || []], [gn, vn] = [(l = ue.declarations) != null ? l : "", ue.tokens || []], [yn, xn] = [(i = We.declarations) != null ? i : "", We.tokens || []], [wn, kn] = [(d = we.declarations) != null ? d : "", we.tokens || []], [_n, Sn] = [(c = Nt.declarations) != null ? c : "", Nt.tokens || []], [$n, Pn] = [(p = Rt.declarations) != null ? p : "", Rt.tokens || []];
-    f = this.transformCSS(e, mn, "light", "variable", m, n, o), g = fn;
-    let On = this.transformCSS(e, `${hn}${gn}`, "light", "variable", m, n, o), Cn = this.transformCSS(e, `${yn}`, "dark", "variable", m, n, o);
-    b = `${On}${Cn}`, v = [.../* @__PURE__ */ new Set([...bn, ...vn, ...xn])];
+    let { primitive: w, semantic: E, extend: M } = u, te = E || {}, { colorScheme: re } = te, se = Z(te, ["colorScheme"]), ne = M || {}, { colorScheme: le } = ne, de = Z(ne, ["colorScheme"]), oe = re || {}, { dark: ce } = oe, ve = Z(oe, ["dark"]), pe = le || {}, { dark: ye } = pe, xe = Z(pe, ["dark"]), G = T(w) ? this._toVariables({ primitive: w }, m) : {}, W = T(se) ? this._toVariables({ semantic: se }, m) : {}, ue = T(ve) ? this._toVariables({ light: ve }, m) : {}, We = T(ce) ? this._toVariables({ dark: ce }, m) : {}, we = T(de) ? this._toVariables({ semantic: de }, m) : {}, Nt = T(xe) ? this._toVariables({ light: xe }, m) : {}, Rt = T(ye) ? this._toVariables({ dark: ye }, m) : {}, [mn, fn] = [(a = G.declarations) != null ? a : "", G.tokens], [hn, gn] = [(s = W.declarations) != null ? s : "", W.tokens || []], [bn, vn] = [(l = ue.declarations) != null ? l : "", ue.tokens || []], [yn, xn] = [(i = We.declarations) != null ? i : "", We.tokens || []], [wn, kn] = [(d = we.declarations) != null ? d : "", we.tokens || []], [_n, Sn] = [(c = Nt.declarations) != null ? c : "", Nt.tokens || []], [$n, Pn] = [(p = Rt.declarations) != null ? p : "", Rt.tokens || []];
+    f = this.transformCSS(e, mn, "light", "variable", m, n, o), b = fn;
+    let On = this.transformCSS(e, `${hn}${bn}`, "light", "variable", m, n, o), Cn = this.transformCSS(e, `${yn}`, "dark", "variable", m, n, o);
+    g = `${On}${Cn}`, v = [.../* @__PURE__ */ new Set([...gn, ...vn, ...xn])];
     let Tn = this.transformCSS(e, `${wn}${_n}color-scheme:light`, "light", "variable", m, n, o), Ln = this.transformCSS(e, `${$n}color-scheme:dark`, "dark", "variable", m, n, o);
     x = `${Tn}${Ln}`, O = [.../* @__PURE__ */ new Set([...kn, ...Sn, ...Pn])], h = N(u.css, { dt: he });
   }
-  return { primitive: { css: f, tokens: g }, semantic: { css: b, tokens: v }, global: { css: x, tokens: O }, style: h };
+  return { primitive: { css: f, tokens: b }, semantic: { css: g, tokens: v }, global: { css: x, tokens: O }, style: h };
 }, getPreset({ name: e = "", preset: t = {}, options: r, params: n, set: o, defaults: a, selector: s }) {
   var l, i, d;
   let c, p, u;
   if (T(t) && r.transform !== "strict") {
-    let m = e.replace("-directive", ""), f = t, { colorScheme: g, extend: b, css: v } = f, x = Z(f, ["colorScheme", "extend", "css"]), O = b || {}, { colorScheme: h } = O, w = Z(O, ["colorScheme"]), A = g || {}, { dark: M } = A, te = Z(A, ["dark"]), re = h || {}, { dark: se } = re, ne = Z(re, ["dark"]), le = T(x) ? this._toVariables({ [m]: q(q({}, x), w) }, r) : {}, de = T(te) ? this._toVariables({ [m]: q(q({}, te), ne) }, r) : {}, oe = T(M) ? this._toVariables({ [m]: q(q({}, M), se) }, r) : {}, [ce, ve] = [(l = le.declarations) != null ? l : "", le.tokens || []], [pe, ye] = [(i = de.declarations) != null ? i : "", de.tokens || []], [xe, G] = [(d = oe.declarations) != null ? d : "", oe.tokens || []], W = this.transformCSS(m, `${ce}${pe}`, "light", "variable", r, o, a, s), ue = this.transformCSS(m, xe, "dark", "variable", r, o, a, s);
+    let m = e.replace("-directive", ""), f = t, { colorScheme: b, extend: g, css: v } = f, x = Z(f, ["colorScheme", "extend", "css"]), O = g || {}, { colorScheme: h } = O, w = Z(O, ["colorScheme"]), E = b || {}, { dark: M } = E, te = Z(E, ["dark"]), re = h || {}, { dark: se } = re, ne = Z(re, ["dark"]), le = T(x) ? this._toVariables({ [m]: q(q({}, x), w) }, r) : {}, de = T(te) ? this._toVariables({ [m]: q(q({}, te), ne) }, r) : {}, oe = T(M) ? this._toVariables({ [m]: q(q({}, M), se) }, r) : {}, [ce, ve] = [(l = le.declarations) != null ? l : "", le.tokens || []], [pe, ye] = [(i = de.declarations) != null ? i : "", de.tokens || []], [xe, G] = [(d = oe.declarations) != null ? d : "", oe.tokens || []], W = this.transformCSS(m, `${ce}${pe}`, "light", "variable", r, o, a, s), ue = this.transformCSS(m, xe, "dark", "variable", r, o, a, s);
     c = `${W}${ue}`, p = [.../* @__PURE__ */ new Set([...ve, ...ye, ...G])], u = N(v, { dt: he });
   }
   return { css: c, tokens: p, style: u };
@@ -1087,7 +1087,7 @@ var U = { regex: { rules: { class: { pattern: /^\.([a-zA-Z][\w-]*)$/, resolve(e)
   let s = this.getCommon({ name: e, theme: t, params: r, set: o, defaults: a }), l = Object.entries(n).reduce((i, [d, c]) => i.push(`${d}="${c}"`) && i, []).join(" ");
   return Object.entries(s || {}).reduce((i, [d, c]) => {
     if (Y(c) && Object.hasOwn(c, "css")) {
-      let p = Ee(c.css), u = `${d}-variables`;
+      let p = Ae(c.css), u = `${d}-variables`;
       i.push(`<style type="text/css" data-primevue-style-id="${u}" ${l}>${p}</style>`);
     }
     return i;
@@ -1095,33 +1095,33 @@ var U = { regex: { rules: { class: { pattern: /^\.([a-zA-Z][\w-]*)$/, resolve(e)
 }, getStyleSheet({ name: e = "", theme: t = {}, params: r, props: n = {}, set: o, defaults: a }) {
   var s;
   let l = { name: e, theme: t, params: r, set: o, defaults: a }, i = (s = e.includes("-directive") ? this.getPresetD(l) : this.getPresetC(l)) == null ? void 0 : s.css, d = Object.entries(n).reduce((c, [p, u]) => c.push(`${p}="${u}"`) && c, []).join(" ");
-  return i ? `<style type="text/css" data-primevue-style-id="${e}-variables" ${d}>${Ee(i)}</style>` : "";
+  return i ? `<style type="text/css" data-primevue-style-id="${e}-variables" ${d}>${Ae(i)}</style>` : "";
 }, createTokens(e = {}, t, r = "", n = "", o = {}) {
   let a = function(l, i = {}, d = []) {
     if (d.includes(this.path)) return console.warn(`Circular reference detected at ${this.path}`), { colorScheme: l, path: this.path, paths: i, value: void 0 };
     d.push(this.path), i.name = this.path, i.binding || (i.binding = {});
     let c = this.value;
-    if (typeof this.value == "string" && Ae.test(this.value)) {
-      let p = this.value.trim().replace(Ae, (u) => {
+    if (typeof this.value == "string" && Ee.test(this.value)) {
+      let p = this.value.trim().replace(Ee, (u) => {
         var m;
-        let f = u.slice(1, -1), g = this.tokens[f];
-        if (!g) return console.warn(`Token not found for path: ${f}`), "__UNRESOLVED__";
-        let b = g.computed(l, i, d);
-        return Array.isArray(b) && b.length === 2 ? `light-dark(${b[0].value},${b[1].value})` : (m = b?.value) != null ? m : "__UNRESOLVED__";
+        let f = u.slice(1, -1), b = this.tokens[f];
+        if (!b) return console.warn(`Token not found for path: ${f}`), "__UNRESOLVED__";
+        let g = b.computed(l, i, d);
+        return Array.isArray(g) && g.length === 2 ? `light-dark(${g[0].value},${g[1].value})` : (m = g?.value) != null ? m : "__UNRESOLVED__";
       });
       c = Fr.test(p.replace(Kr, "0")) ? `calc(${p})` : p;
     }
-    return be(i.binding) && delete i.binding, d.pop(), { colorScheme: l, path: this.path, paths: i, value: c.includes("__UNRESOLVED__") ? void 0 : c };
+    return ge(i.binding) && delete i.binding, d.pop(), { colorScheme: l, path: this.path, paths: i, value: c.includes("__UNRESOLVED__") ? void 0 : c };
   }, s = (l, i, d) => {
     Object.entries(l).forEach(([c, p]) => {
       let u = me(c, t.variable.excludedKeyRegex) ? i : i ? `${i}.${Gt(c)}` : Gt(c), m = d ? `${d}.${c}` : c;
-      Y(p) ? s(p, u, m) : (o[u] || (o[u] = { paths: [], computed: (f, g = {}, b = []) => {
-        if (o[u].paths.length === 1) return o[u].paths[0].computed(o[u].paths[0].scheme, g.binding, b);
+      Y(p) ? s(p, u, m) : (o[u] || (o[u] = { paths: [], computed: (f, b = {}, g = []) => {
+        if (o[u].paths.length === 1) return o[u].paths[0].computed(o[u].paths[0].scheme, b.binding, g);
         if (f && f !== "none") for (let v = 0; v < o[u].paths.length; v++) {
           let x = o[u].paths[v];
-          if (x.scheme === f) return x.computed(f, g.binding, b);
+          if (x.scheme === f) return x.computed(f, b.binding, g);
         }
-        return o[u].paths.map((v) => v.computed(v.scheme, g[v.scheme], b));
+        return o[u].paths.map((v) => v.computed(v.scheme, b[v.scheme], g));
       } }), o[u].paths.push({ path: m, value: p, scheme: m.includes("colorScheme.light") ? "light" : m.includes("colorScheme.dark") ? "dark" : "none", computed: a, tokens: o }));
     });
   };
@@ -1395,11 +1395,11 @@ function ca(e) {
 }
 var pa = 0;
 function ua(e) {
-  var t = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {}, r = X(!1), n = X(e), o = X(null), a = Hr() ? window.document : void 0, s = t.document, l = s === void 0 ? a : s, i = t.immediate, d = i === void 0 ? !0 : i, c = t.manual, p = c === void 0 ? !1 : c, u = t.name, m = u === void 0 ? "style_".concat(++pa) : u, f = t.id, g = f === void 0 ? void 0 : f, b = t.media, v = b === void 0 ? void 0 : b, x = t.nonce, O = x === void 0 ? void 0 : x, h = t.first, w = h === void 0 ? !1 : h, A = t.onMounted, M = A === void 0 ? void 0 : A, te = t.onUpdated, re = te === void 0 ? void 0 : te, se = t.onLoad, ne = se === void 0 ? void 0 : se, le = t.props, de = le === void 0 ? {} : le, oe = function() {
+  var t = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {}, r = X(!1), n = X(e), o = X(null), a = Hr() ? window.document : void 0, s = t.document, l = s === void 0 ? a : s, i = t.immediate, d = i === void 0 ? !0 : i, c = t.manual, p = c === void 0 ? !1 : c, u = t.name, m = u === void 0 ? "style_".concat(++pa) : u, f = t.id, b = f === void 0 ? void 0 : f, g = t.media, v = g === void 0 ? void 0 : g, x = t.nonce, O = x === void 0 ? void 0 : x, h = t.first, w = h === void 0 ? !1 : h, E = t.onMounted, M = E === void 0 ? void 0 : E, te = t.onUpdated, re = te === void 0 ? void 0 : te, se = t.onLoad, ne = se === void 0 ? void 0 : se, le = t.props, de = le === void 0 ? {} : le, oe = function() {
   }, ce = function(ye) {
     var xe = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {};
     if (l) {
-      var G = Jt(Jt({}, de), xe), W = G.name || m, ue = G.id || g, We = G.nonce || O;
+      var G = Jt(Jt({}, de), xe), W = G.name || m, ue = G.id || b, We = G.nonce || O;
       o.value = l.querySelector('style[data-primevue-style-id="'.concat(W, '"]')) || l.getElementById(ue) || l.createElement("style"), o.value.isConnected || (n.value = ye || e, rt(o.value, {
         type: "text/css",
         id: ue,
@@ -1419,7 +1419,7 @@ function ua(e) {
     !l || !r.value || (oe(), Do(o.value) && l.head.removeChild(o.value), r.value = !1, o.value = null);
   };
   return d && !p && ca(ce), {
-    id: g,
+    id: b,
     name: m,
     el: o,
     css: n,
@@ -1438,7 +1438,7 @@ function Ie(e) {
 }
 var Qt, Xt, er, tr;
 function rr(e, t) {
-  return ba(e) || ha(e, t) || fa(e, t) || ma();
+  return ga(e) || ha(e, t) || fa(e, t) || ma();
 }
 function ma() {
   throw new TypeError(`Invalid attempt to destructure non-iterable instance.
@@ -1474,7 +1474,7 @@ function ha(e, t) {
     return l;
   }
 }
-function ba(e) {
+function ga(e) {
   if (Array.isArray(e)) return e;
 }
 function or(e, t) {
@@ -1491,14 +1491,14 @@ function ft(e) {
   for (var t = 1; t < arguments.length; t++) {
     var r = arguments[t] != null ? arguments[t] : {};
     t % 2 ? or(Object(r), !0).forEach(function(n) {
-      ga(e, n, r[n]);
+      ba(e, n, r[n]);
     }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(r)) : or(Object(r)).forEach(function(n) {
       Object.defineProperty(e, n, Object.getOwnPropertyDescriptor(r, n));
     });
   }
   return e;
 }
-function ga(e, t, r) {
+function ba(e, t, r) {
   return (t = va(t)) in e ? Object.defineProperty(e, t, { value: r, enumerable: !0, configurable: !0, writable: !0 }) : e[t] = r, e;
 }
 function va(e) {
@@ -1550,7 +1550,7 @@ var xa = function(t) {
     var r = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {}, n = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : function(a) {
       return a;
     }, o = n(Ge(Qt || (Qt = Ze(["", ""])), t));
-    return T(o) ? ua(Ee(o), ft({
+    return T(o) ? ua(Ae(o), ft({
       name: this.name
     }, r)) : {};
   },
@@ -1585,7 +1585,7 @@ var xa = function(t) {
     if (this.css) {
       var n = N(this.css, {
         dt: he
-      }) || "", o = Ee(Ge(er || (er = Ze(["", "", ""])), n, t)), a = Object.entries(r).reduce(function(s, l) {
+      }) || "", o = Ae(Ge(er || (er = Ze(["", "", ""])), n, t)), a = Object.entries(r).reduce(function(s, l) {
         var i = rr(l, 2), d = i[0], c = i[1];
         return s.push("".concat(d, '="').concat(c, '"')) && s;
       }, []).join(" ");
@@ -1602,7 +1602,7 @@ var xa = function(t) {
     if (this.style) {
       var o = this.name === "base" ? "global-style" : "".concat(this.name, "-style"), a = Ge(tr || (tr = Ze(["", ""])), N(this.style, {
         dt: he
-      })), s = Ee(P.transformCSS(o, a)), l = Object.entries(r).reduce(function(i, d) {
+      })), s = Ae(P.transformCSS(o, a)), l = Object.entries(r).reduce(function(i, d) {
         var c = rr(d, 2), p = c[0], u = c[1];
         return i.push("".concat(p, '="').concat(u, '"')) && i;
       }, []).join(" ");
@@ -1616,7 +1616,7 @@ var xa = function(t) {
       style: void 0
     }, t);
   }
-}, ie = At();
+}, ie = Et();
 function ze(e) {
   "@babel/helpers - typeof";
   return ze = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(t) {
@@ -1826,18 +1826,18 @@ function La(e, t) {
   var r = X(!1), n = function() {
     var d;
     if (((d = t.config) === null || d === void 0 ? void 0 : d.theme) !== "none" && !P.isStyleNameLoaded("common")) {
-      var c, p, u = ((c = C.getCommonTheme) === null || c === void 0 ? void 0 : c.call(C)) || {}, m = u.primitive, f = u.semantic, g = u.global, b = u.style, v = {
+      var c, p, u = ((c = C.getCommonTheme) === null || c === void 0 ? void 0 : c.call(C)) || {}, m = u.primitive, f = u.semantic, b = u.global, g = u.style, v = {
         nonce: (p = t.config) === null || p === void 0 || (p = p.csp) === null || p === void 0 ? void 0 : p.nonce
       };
       C.load(m?.css, Je({
         name: "primitive-variables"
       }, v)), C.load(f?.css, Je({
         name: "semantic-variables"
-      }, v)), C.load(g?.css, Je({
+      }, v)), C.load(b?.css, Je({
         name: "global-variables"
       }, v)), C.loadStyle(Je({
         name: "global-style"
-      }, v), b), P.setLoadedStyleName("common");
+      }, v), g), P.setLoadedStyleName("common");
     }
   };
   j.on("theme:change", function(i) {
@@ -1884,7 +1884,7 @@ function La(e, t) {
   });
   Pe.push(o), Pe.push(a), Pe.push(s), Pe.push(l);
 }
-var Ea = {
+var Aa = {
   install: function(t, r) {
     var n = To(Pa, r);
     Ca(t, n);
@@ -1915,7 +1915,7 @@ var Ea = {
     }
   }
 };
-function Aa(e, t, r, n, o, a) {
+function Ea(e, t, r, n, o, a) {
   return a.inline ? D(e.$slots, "default", {
     key: 0
   }) : o.mounted ? ($(), ee($r, {
@@ -1923,7 +1923,7 @@ function Aa(e, t, r, n, o, a) {
     to: r.appendTo
   }, [D(e.$slots, "default")], 8, ["to"])) : V("", !0);
 }
-jt.render = Aa;
+jt.render = Ea;
 var ae = {
   _loadedStyleNames: /* @__PURE__ */ new Set(),
   getLoadedStyleNames: function() {
@@ -2093,15 +2093,15 @@ var qe = {
   beforeCreate: function() {
     var t, r, n, o, a, s, l, i, d, c, p, u = (t = this.pt) === null || t === void 0 ? void 0 : t._usept, m = u ? (r = this.pt) === null || r === void 0 || (r = r.originalValue) === null || r === void 0 ? void 0 : r[this.$.type.name] : void 0, f = u ? (n = this.pt) === null || n === void 0 || (n = n.value) === null || n === void 0 ? void 0 : n[this.$.type.name] : this.pt;
     (o = f || m) === null || o === void 0 || (o = o.hooks) === null || o === void 0 || (a = o.onBeforeCreate) === null || a === void 0 || a.call(o);
-    var g = (s = this.$primevueConfig) === null || s === void 0 || (s = s.pt) === null || s === void 0 ? void 0 : s._usept, b = g ? (l = this.$primevue) === null || l === void 0 || (l = l.config) === null || l === void 0 || (l = l.pt) === null || l === void 0 ? void 0 : l.originalValue : void 0, v = g ? (i = this.$primevue) === null || i === void 0 || (i = i.config) === null || i === void 0 || (i = i.pt) === null || i === void 0 ? void 0 : i.value : (d = this.$primevue) === null || d === void 0 || (d = d.config) === null || d === void 0 ? void 0 : d.pt;
-    (c = v || b) === null || c === void 0 || (c = c[this.$.type.name]) === null || c === void 0 || (c = c.hooks) === null || c === void 0 || (p = c.onBeforeCreate) === null || p === void 0 || p.call(c), this.$attrSelector = ja(), this.uid = this.$attrs.id || this.$attrSelector.replace("pc", "pv_id_");
+    var b = (s = this.$primevueConfig) === null || s === void 0 || (s = s.pt) === null || s === void 0 ? void 0 : s._usept, g = b ? (l = this.$primevue) === null || l === void 0 || (l = l.config) === null || l === void 0 || (l = l.pt) === null || l === void 0 ? void 0 : l.originalValue : void 0, v = b ? (i = this.$primevue) === null || i === void 0 || (i = i.config) === null || i === void 0 || (i = i.pt) === null || i === void 0 ? void 0 : i.value : (d = this.$primevue) === null || d === void 0 || (d = d.config) === null || d === void 0 ? void 0 : d.pt;
+    (c = v || g) === null || c === void 0 || (c = c[this.$.type.name]) === null || c === void 0 || (c = c.hooks) === null || c === void 0 || (p = c.onBeforeCreate) === null || p === void 0 || p.call(c), this.$attrSelector = ja(), this.uid = this.$attrs.id || this.$attrSelector.replace("pc", "pv_id_");
   },
   created: function() {
     this._hook("onCreated");
   },
   beforeMount: function() {
     var t;
-    this.rootEl = nt(ge(this.$el) ? this.$el : (t = this.$el) === null || t === void 0 ? void 0 : t.parentElement, "[".concat(this.$attrSelector, "]")), this.rootEl && (this.rootEl.$pc = k({
+    this.rootEl = nt(be(this.$el) ? this.$el : (t = this.$el) === null || t === void 0 ? void 0 : t.parentElement, "[".concat(this.$attrSelector, "]")), this.rootEl && (this.rootEl.$pc = k({
       name: this.$.type.name,
       attrSelector: this.$attrSelector
     }, this.$params)), this._loadStyles(), this._hook("onBeforeMount");
@@ -2165,12 +2165,12 @@ var qe = {
           }, this.$styleOptions), d), P.setLoadedStyleName("common");
         }
         if (!P.isStyleNameLoaded((t = this.$style) === null || t === void 0 ? void 0 : t.name) && (r = this.$style) !== null && r !== void 0 && r.name) {
-          var c, p, u, m, f = ((c = this.$style) === null || c === void 0 || (p = c.getComponentTheme) === null || p === void 0 ? void 0 : p.call(c)) || {}, g = f.css, b = f.style;
-          (u = this.$style) === null || u === void 0 || u.load(g, k({
+          var c, p, u, m, f = ((c = this.$style) === null || c === void 0 || (p = c.getComponentTheme) === null || p === void 0 ? void 0 : p.call(c)) || {}, b = f.css, g = f.style;
+          (u = this.$style) === null || u === void 0 || u.load(b, k({
             name: "".concat(this.$style.name, "-variables")
           }, this.$styleOptions)), (m = this.$style) === null || m === void 0 || m.loadStyle(k({
             name: "".concat(this.$style.name, "-style")
-          }, this.$styleOptions), b), P.setLoadedStyleName(this.$style.name);
+          }, this.$styleOptions), g), P.setLoadedStyleName(this.$style.name);
         }
         if (!P.isStyleNameLoaded("layer-order")) {
           var v, x, O = (v = this.$style) === null || v === void 0 || (x = v.getLayerOrderThemeCSS) === null || x === void 0 ? void 0 : x.call(v);
@@ -2208,7 +2208,7 @@ var qe = {
     },
     _getOptionValue: function(t) {
       var r = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : "", n = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : {};
-      return Et(t, r, n);
+      return At(t, r, n);
     },
     _getPTValue: function() {
       var t, r = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {}, n = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : "", o = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : {}, a = arguments.length > 3 && arguments[3] !== void 0 ? arguments[3] : !0, s = /./g.test(n) && !!o[n.split(".")[0]], l = this._getPropValue("ptOptions") || ((t = this.$primevueConfig) === null || t === void 0 ? void 0 : t.ptOptions) || {}, i = l.mergeSections, d = i === void 0 ? !0 : i, c = l.mergeProps, p = c === void 0 ? !1 : c, u = a ? s ? this._useGlobalPT(this._getPTClassValue, n, o) : this._useDefaultPT(this._getPTClassValue, n, o) : void 0, m = s ? void 0 : this._getPTSelf(r, this._getPTClassValue, n, k(k({}, o), {}, {
@@ -2248,8 +2248,8 @@ var qe = {
       } : a(t, !0);
     },
     _usePT: function(t, r, n, o) {
-      var a = function(g) {
-        return r(g, n, o);
+      var a = function(b) {
+        return r(b, n, o);
       };
       if (t != null && t.hasOwnProperty("_usept")) {
         var s, l = t._usept || ((s = this.$primevueConfig) === null || s === void 0 ? void 0 : s.ptOptions) || {}, i = l.mergeSections, d = i === void 0 ? !0 : i, c = l.mergeProps, p = c === void 0 ? !1 : c, u = a(t.originalValue), m = a(t.value);
@@ -2488,7 +2488,7 @@ var qa = {
   },
   methods: {
     pti: function() {
-      var t = be(this.label);
+      var t = ge(this.label);
       return dr(dr({}, !this.isUnstyled && {
         class: ["p-icon", {
           "p-icon-spin": this.spin
@@ -2595,17 +2595,17 @@ var y = {
     var n, o, a;
     return (n = (t == null || (o = t.instance) === null || o === void 0 ? void 0 : o.$primevue) || (r == null || (a = r.ctx) === null || a === void 0 || (a = a.appContext) === null || a === void 0 || (a = a.config) === null || a === void 0 || (a = a.globalProperties) === null || a === void 0 ? void 0 : a.$primevue)) === null || n === void 0 ? void 0 : n.config;
   },
-  _getOptionValue: Et,
+  _getOptionValue: At,
   _getPTValue: function() {
     var t, r, n = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {}, o = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {}, a = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : "", s = arguments.length > 3 && arguments[3] !== void 0 ? arguments[3] : {}, l = arguments.length > 4 && arguments[4] !== void 0 ? arguments[4] : !0, i = function() {
       var x = y._getOptionValue.apply(y, arguments);
       return R(x) || Vr(x) ? {
         class: x
       } : x;
-    }, d = ((t = n.binding) === null || t === void 0 || (t = t.value) === null || t === void 0 ? void 0 : t.ptOptions) || ((r = n.$primevueConfig) === null || r === void 0 ? void 0 : r.ptOptions) || {}, c = d.mergeSections, p = c === void 0 ? !0 : c, u = d.mergeProps, m = u === void 0 ? !1 : u, f = l ? y._useDefaultPT(n, n.defaultPT(), i, a, s) : void 0, g = y._usePT(n, y._getPT(o, n.$name), i, a, _(_({}, s), {}, {
+    }, d = ((t = n.binding) === null || t === void 0 || (t = t.value) === null || t === void 0 ? void 0 : t.ptOptions) || ((r = n.$primevueConfig) === null || r === void 0 ? void 0 : r.ptOptions) || {}, c = d.mergeSections, p = c === void 0 ? !0 : c, u = d.mergeProps, m = u === void 0 ? !1 : u, f = l ? y._useDefaultPT(n, n.defaultPT(), i, a, s) : void 0, b = y._usePT(n, y._getPT(o, n.$name), i, a, _(_({}, s), {}, {
       global: f || {}
-    })), b = y._getPTDatasets(n, a);
-    return p || !p && g ? m ? y._mergeProps(n, m, f, g, b) : _(_(_({}, f), g), b) : _(_({}, g), b);
+    })), g = y._getPTDatasets(n, a);
+    return p || !p && b ? m ? y._mergeProps(n, m, f, b, g) : _(_(_({}, f), b), g) : _(_({}, b), g);
   },
   _getPTDatasets: function() {
     var t = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {}, r = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : "", n = "data-pc-";
@@ -2623,8 +2623,8 @@ var y = {
     } : o(t);
   },
   _usePT: function() {
-    var t = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {}, r = arguments.length > 1 ? arguments[1] : void 0, n = arguments.length > 2 ? arguments[2] : void 0, o = arguments.length > 3 ? arguments[3] : void 0, a = arguments.length > 4 ? arguments[4] : void 0, s = function(b) {
-      return n(b, o, a);
+    var t = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {}, r = arguments.length > 1 ? arguments[1] : void 0, n = arguments.length > 2 ? arguments[2] : void 0, o = arguments.length > 3 ? arguments[3] : void 0, a = arguments.length > 4 ? arguments[4] : void 0, s = function(g) {
+      return n(g, o, a);
     };
     if (r && Object.hasOwn(r, "_usept")) {
       var l, i = r._usept || ((l = t.$primevueConfig) === null || l === void 0 ? void 0 : l.ptOptions) || {}, d = i.mergeSections, c = d === void 0 ? !0 : d, p = i.mergeProps, u = p === void 0 ? !1 : p, m = s(r.originalValue), f = s(r.value);
@@ -2667,16 +2667,16 @@ var y = {
         }, a), u), P.setLoadedStyleName("common");
       }
       if (!P.isStyleNameLoaded((r = o.$style) === null || r === void 0 ? void 0 : r.name) && (n = o.$style) !== null && n !== void 0 && n.name) {
-        var m, f, g, b, v = ((m = o.$style) === null || m === void 0 || (f = m.getDirectiveTheme) === null || f === void 0 ? void 0 : f.call(m)) || {}, x = v.css, O = v.style;
-        (g = o.$style) === null || g === void 0 || g.load(x, _({
+        var m, f, b, g, v = ((m = o.$style) === null || m === void 0 || (f = m.getDirectiveTheme) === null || f === void 0 ? void 0 : f.call(m)) || {}, x = v.css, O = v.style;
+        (b = o.$style) === null || b === void 0 || b.load(x, _({
           name: "".concat(o.$style.name, "-variables")
-        }, a)), (b = o.$style) === null || b === void 0 || b.loadStyle(_({
+        }, a)), (g = o.$style) === null || g === void 0 || g.loadStyle(_({
           name: "".concat(o.$style.name, "-style")
         }, a), O), P.setLoadedStyleName(o.$style.name);
       }
       if (!P.isStyleNameLoaded("layer-order")) {
-        var h, w, A = (h = o.$style) === null || h === void 0 || (w = h.getLayerOrderThemeCSS) === null || w === void 0 ? void 0 : w.call(h);
-        C.load(A, _({
+        var h, w, E = (h = o.$style) === null || h === void 0 || (w = h.getLayerOrderThemeCSS) === null || w === void 0 ? void 0 : w.call(h);
+        C.load(E, _({
           name: "layer-order",
           first: !0
         }, a)), P.setLoadedStyleName("layer-order");
@@ -2718,9 +2718,9 @@ var y = {
   },
   _extend: function(t) {
     var r = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {}, n = function(l, i, d, c, p) {
-      var u, m, f, g;
+      var u, m, f, b;
       i._$instances = i._$instances || {};
-      var b = y._getConfig(d, c), v = i._$instances[t] || {}, x = be(v) ? _(_({}, r), r?.methods) : {};
+      var g = y._getConfig(d, c), v = i._$instances[t] || {}, x = ge(v) ? _(_({}, r), r?.methods) : {};
       i._$instances[t] = _(_({}, v), {}, {
         /* new instance variables to pass in directive methods */
         $name: t,
@@ -2739,18 +2739,18 @@ var y = {
           loadStyle: function() {
           }
         }, r?.style),
-        $primevueConfig: b,
+        $primevueConfig: g,
         $attrSelector: (u = i.$pd) === null || u === void 0 || (u = u[t]) === null || u === void 0 ? void 0 : u.attrSelector,
         /* computed instance variables */
         defaultPT: function() {
-          return y._getPT(b?.pt, void 0, function(h) {
+          return y._getPT(g?.pt, void 0, function(h) {
             var w;
             return h == null || (w = h.directives) === null || w === void 0 ? void 0 : w[t];
           });
         },
         isUnstyled: function() {
           var h, w;
-          return ((h = i._$instances[t]) === null || h === void 0 || (h = h.$binding) === null || h === void 0 || (h = h.value) === null || h === void 0 ? void 0 : h.unstyled) !== void 0 ? (w = i._$instances[t]) === null || w === void 0 || (w = w.$binding) === null || w === void 0 || (w = w.value) === null || w === void 0 ? void 0 : w.unstyled : b?.unstyled;
+          return ((h = i._$instances[t]) === null || h === void 0 || (h = h.$binding) === null || h === void 0 || (h = h.value) === null || h === void 0 ? void 0 : h.unstyled) !== void 0 ? (w = i._$instances[t]) === null || w === void 0 || (w = w.$binding) === null || w === void 0 || (w = w.value) === null || w === void 0 ? void 0 : w.unstyled : g?.unstyled;
         },
         theme: function() {
           var h;
@@ -2762,31 +2762,31 @@ var y = {
         },
         /* instance's methods */
         ptm: function() {
-          var h, w = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : "", A = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {};
-          return y._getPTValue(i._$instances[t], (h = i._$instances[t]) === null || h === void 0 || (h = h.$binding) === null || h === void 0 || (h = h.value) === null || h === void 0 ? void 0 : h.pt, w, _({}, A));
+          var h, w = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : "", E = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {};
+          return y._getPTValue(i._$instances[t], (h = i._$instances[t]) === null || h === void 0 || (h = h.$binding) === null || h === void 0 || (h = h.value) === null || h === void 0 ? void 0 : h.pt, w, _({}, E));
         },
         ptmo: function() {
-          var h = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {}, w = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : "", A = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : {};
-          return y._getPTValue(i._$instances[t], h, w, A, !1);
+          var h = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {}, w = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : "", E = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : {};
+          return y._getPTValue(i._$instances[t], h, w, E, !1);
         },
         cx: function() {
-          var h, w, A = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : "", M = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {};
-          return (h = i._$instances[t]) !== null && h !== void 0 && h.isUnstyled() ? void 0 : y._getOptionValue((w = i._$instances[t]) === null || w === void 0 || (w = w.$style) === null || w === void 0 ? void 0 : w.classes, A, _({}, M));
+          var h, w, E = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : "", M = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {};
+          return (h = i._$instances[t]) !== null && h !== void 0 && h.isUnstyled() ? void 0 : y._getOptionValue((w = i._$instances[t]) === null || w === void 0 || (w = w.$style) === null || w === void 0 ? void 0 : w.classes, E, _({}, M));
         },
         sx: function() {
-          var h, w = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : "", A = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : !0, M = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : {};
-          return A ? y._getOptionValue((h = i._$instances[t]) === null || h === void 0 || (h = h.$style) === null || h === void 0 ? void 0 : h.inlineStyles, w, _({}, M)) : void 0;
+          var h, w = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : "", E = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : !0, M = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : {};
+          return E ? y._getOptionValue((h = i._$instances[t]) === null || h === void 0 || (h = h.$style) === null || h === void 0 ? void 0 : h.inlineStyles, w, _({}, M)) : void 0;
         }
-      }, x), i.$instance = i._$instances[t], (m = (f = i.$instance)[l]) === null || m === void 0 || m.call(f, i, d, c, p), i["$".concat(t)] = i.$instance, y._hook(t, l, i, d, c, p), i.$pd || (i.$pd = {}), i.$pd[t] = _(_({}, (g = i.$pd) === null || g === void 0 ? void 0 : g[t]), {}, {
+      }, x), i.$instance = i._$instances[t], (m = (f = i.$instance)[l]) === null || m === void 0 || m.call(f, i, d, c, p), i["$".concat(t)] = i.$instance, y._hook(t, l, i, d, c, p), i.$pd || (i.$pd = {}), i.$pd[t] = _(_({}, (b = i.$pd) === null || b === void 0 ? void 0 : b[t]), {}, {
         name: t,
         instance: i._$instances[t]
       });
     }, o = function(l) {
-      var i, d, c, p = l._$instances[t], u = p?.watch, m = function(b) {
-        var v, x = b.newValue, O = b.oldValue;
+      var i, d, c, p = l._$instances[t], u = p?.watch, m = function(g) {
+        var v, x = g.newValue, O = g.oldValue;
         return u == null || (v = u.config) === null || v === void 0 ? void 0 : v.call(p, x, O);
-      }, f = function(b) {
-        var v, x = b.newValue, O = b.oldValue;
+      }, f = function(g) {
+        var v, x = g.newValue, O = g.oldValue;
         return u == null || (v = u["config.ripple"]) === null || v === void 0 ? void 0 : v.call(p, x, O);
       };
       p.$watchersCallback = {
@@ -2957,7 +2957,7 @@ var en = ei.extend("ripple", {
           o.style.height = a + "px", o.style.width = a + "px";
         }
         var s = Ho(n), l = t.pageX - s.left + document.body.scrollTop - Kt(o) / 2, i = t.pageY - s.top + document.body.scrollLeft - Ft(o) / 2;
-        o.style.top = i + "px", o.style.left = l + "px", !this.isUnstyled() && Ao(o, "p-ink-active"), o.setAttribute("data-p-ink-active", "true"), this.timeout = setTimeout(function() {
+        o.style.top = i + "px", o.style.left = l + "px", !this.isUnstyled() && Eo(o, "p-ink-active"), o.setAttribute("data-p-ink-active", "true"), this.timeout = setTimeout(function() {
           o && (!r.isUnstyled() && pt(o, "p-ink-active"), o.setAttribute("data-p-ink-active", "false"));
         }, 401);
       }
@@ -3032,7 +3032,7 @@ var mi = /* @__PURE__ */ (function() {
       this.unbindScrollListener(), this.element = null, this.listener = null, this.scrollableParents = null;
     }
   }]);
-})(), fi = At(), hi = `
+})(), fi = Et(), hi = `
     .p-menu {
         background: dt('menu.background');
         color: dt('menu.color');
@@ -3114,7 +3114,7 @@ var mi = /* @__PURE__ */ (function() {
     .p-menu-separator {
         border-block-start: 1px solid dt('menu.separator.border.color');
     }
-`, bi = {
+`, gi = {
   root: function(t) {
     var r = t.props;
     return ["p-menu p-component", {
@@ -3137,10 +3137,10 @@ var mi = /* @__PURE__ */ (function() {
   itemLink: "p-menu-item-link",
   itemIcon: "p-menu-item-icon",
   itemLabel: "p-menu-item-label"
-}, gi = C.extend({
+}, bi = C.extend({
   name: "menu",
   style: hi,
-  classes: bi
+  classes: gi
 }), vi = {
   name: "BaseMenu",
   extends: qe,
@@ -3178,7 +3178,7 @@ var mi = /* @__PURE__ */ (function() {
       default: null
     }
   },
-  style: gi,
+  style: bi,
   provide: function() {
     return {
       $pcMenu: this,
@@ -3271,7 +3271,7 @@ var mi = /* @__PURE__ */ (function() {
 }, yi = ["id", "aria-label", "aria-disabled", "data-p-focused", "data-p-disabled", "data-p"], xi = ["data-p"], wi = ["href", "target"], ki = ["data-p"], _i = ["data-p"];
 function Si(e, t, r, n, o, a) {
   var s = Pr("ripple");
-  return a.visible() ? ($(), E("li", S({
+  return a.visible() ? ($(), A("li", S({
     key: 0,
     id: r.id,
     class: [e.cx("item"), r.item.class],
@@ -3296,7 +3296,7 @@ function Si(e, t, r, n, o, a) {
     item: r.item,
     label: a.label(),
     props: a.getMenuItemProps(r.item)
-  }, null, 8, ["item", "label", "props"])) : V("", !0) : Or(($(), E("a", S({
+  }, null, 8, ["item", "label", "props"])) : V("", !0) : Or(($(), A("a", S({
     key: 0,
     href: r.item.url,
     class: e.cx("itemLink"),
@@ -3305,8 +3305,8 @@ function Si(e, t, r, n, o, a) {
   }, a.getPTOptions("itemLink")), [r.templates.itemicon ? ($(), ee(ht(r.templates.itemicon), {
     key: 0,
     item: r.item,
-    class: bt(e.cx("itemIcon"))
-  }, null, 8, ["item", "class"])) : r.item.icon ? ($(), E("span", S({
+    class: gt(e.cx("itemIcon"))
+  }, null, 8, ["item", "class"])) : r.item.icon ? ($(), A("span", S({
     key: 1,
     class: [e.cx("itemIcon"), r.item.icon],
     "data-p": a.dataP
@@ -3539,22 +3539,22 @@ var rn = {
     PVMenuitem: tn,
     Portal: jt
   }
-}, Ti = ["id", "data-p"], Li = ["id", "tabindex", "aria-activedescendant", "aria-label", "aria-labelledby"], Ei = ["id"];
-function Ai(e, t, r, n, o, a) {
+}, Ti = ["id", "data-p"], Li = ["id", "tabindex", "aria-activedescendant", "aria-label", "aria-labelledby"], Ai = ["id"];
+function Ei(e, t, r, n, o, a) {
   var s = tt("PVMenuitem"), l = tt("Portal");
   return $(), ee(l, {
     appendTo: e.appendTo,
     disabled: !e.popup
   }, {
-    default: gt(function() {
+    default: bt(function() {
       return [Dn(Bn, S({
         name: "p-anchored-overlay",
         onEnter: a.onEnter,
         onLeave: a.onLeave,
         onAfterLeave: a.onAfterLeave
       }, e.ptm("transition")), {
-        default: gt(function() {
-          return [!e.popup || o.overlayVisible ? ($(), E("div", S({
+        default: bt(function() {
+          return [!e.popup || o.overlayVisible ? ($(), A("div", S({
             key: 0,
             ref: a.containerRef,
             id: e.$id,
@@ -3563,7 +3563,7 @@ function Ai(e, t, r, n, o, a) {
               return a.onOverlayClick && a.onOverlayClick.apply(a, arguments);
             }),
             "data-p": a.dataP
-          }, e.ptmi("root")), [e.$slots.start ? ($(), E("div", S({
+          }, e.ptmi("root")), [e.$slots.start ? ($(), A("div", S({
             key: 0,
             class: e.cx("start")
           }, e.ptm("start")), [D(e.$slots, "start")], 16)) : V("", !0), et("ul", S({
@@ -3584,12 +3584,12 @@ function Ai(e, t, r, n, o, a) {
             onKeydown: t[2] || (t[2] = function() {
               return a.onListKeyDown && a.onListKeyDown.apply(a, arguments);
             })
-          }, e.ptm("list")), [($(!0), E(Oe, null, Mt(e.model, function(i, d) {
-            return $(), E(Oe, {
+          }, e.ptm("list")), [($(!0), A(Oe, null, Mt(e.model, function(i, d) {
+            return $(), A(Oe, {
               key: a.label(i) + d.toString()
-            }, [i.items && a.visible(i) && !i.separator ? ($(), E(Oe, {
+            }, [i.items && a.visible(i) && !i.separator ? ($(), A(Oe, {
               key: 0
-            }, [i.items ? ($(), E("li", S({
+            }, [i.items ? ($(), A("li", S({
               key: 0,
               id: e.$id + "_" + d,
               class: [e.cx("submenuLabel"), i.class],
@@ -3600,8 +3600,8 @@ function Ai(e, t, r, n, o, a) {
               item: i
             }, function() {
               return [Cr(lt(a.label(i)), 1)];
-            })], 16, Ei)) : V("", !0), ($(!0), E(Oe, null, Mt(i.items, function(c, p) {
-              return $(), E(Oe, {
+            })], 16, Ai)) : V("", !0), ($(!0), A(Oe, null, Mt(i.items, function(c, p) {
+              return $(), A(Oe, {
                 key: c.label + d + "_" + p
               }, [a.visible(c) && !c.separator ? ($(), ee(s, {
                 key: 0,
@@ -3613,7 +3613,7 @@ function Ai(e, t, r, n, o, a) {
                 onItemClick: a.itemClick,
                 onItemMousemove: a.itemMouseMove,
                 pt: e.pt
-              }, null, 8, ["id", "item", "templates", "focusedOptionId", "unstyled", "onItemClick", "onItemMousemove", "pt"])) : a.visible(c) && c.separator ? ($(), E("li", S({
+              }, null, 8, ["id", "item", "templates", "focusedOptionId", "unstyled", "onItemClick", "onItemMousemove", "pt"])) : a.visible(c) && c.separator ? ($(), A("li", S({
                 key: "separator" + d + p,
                 class: [e.cx("separator"), i.class],
                 style: c.style,
@@ -3621,7 +3621,7 @@ function Ai(e, t, r, n, o, a) {
               }, {
                 ref_for: !0
               }, e.ptm("separator")), null, 16)) : V("", !0)], 64);
-            }), 128))], 64)) : a.visible(i) && i.separator ? ($(), E("li", S({
+            }), 128))], 64)) : a.visible(i) && i.separator ? ($(), A("li", S({
               key: "separator" + d.toString(),
               class: [e.cx("separator"), i.class],
               style: i.style,
@@ -3640,7 +3640,7 @@ function Ai(e, t, r, n, o, a) {
               onItemMousemove: a.itemMouseMove,
               pt: e.pt
             }, null, 8, ["id", "item", "index", "templates", "focusedOptionId", "unstyled", "onItemClick", "onItemMousemove", "pt"]))], 64);
-          }), 128))], 16, Li), e.$slots.end ? ($(), E("div", S({
+          }), 128))], 16, Li), e.$slots.end ? ($(), A("div", S({
             key: 1,
             class: e.cx("end")
           }, e.ptm("end")), [D(e.$slots, "end")], 16)) : V("", !0)], 16, Ti)) : V("", !0)];
@@ -3651,7 +3651,7 @@ function Ai(e, t, r, n, o, a) {
     _: 3
   }, 8, ["appendTo", "disabled"]);
 }
-rn.render = Ai;
+rn.render = Ei;
 const ji = "data-wippy-overlay-layer";
 function nn() {
   return typeof window < "u" && typeof window.document < "u";
@@ -3704,8 +3704,8 @@ function $t(e) {
   e.style.top = `${-window.scrollY - t.top}px`, e.style.left = `${-window.scrollX - t.left}px`;
 }
 const it = /* @__PURE__ */ new Set(), zt = /* @__PURE__ */ new WeakMap();
-let br = !1, Pt = !1;
-const gr = ["w-theme-dark", "w-theme-light"], Qe = "data-wippy-theme-root", Ot = /* @__PURE__ */ new WeakMap();
+let gr = !1, Pt = !1;
+const br = ["w-theme-dark", "w-theme-light"], Qe = "data-wippy-theme-root", Ot = /* @__PURE__ */ new WeakMap();
 function Mi(e) {
   const t = [];
   let r = e ? e.parentNode : null;
@@ -3717,14 +3717,14 @@ function Di(e, t, r) {
   const n = [...Mi(t), r.host], o = () => {
     let s;
     for (const l of n) {
-      if (gr.some((i) => l.classList.contains(i))) {
+      if (br.some((i) => l.classList.contains(i))) {
         s = l;
         break;
       }
       if (l.hasAttribute(Qe))
         break;
     }
-    for (const l of gr)
+    for (const l of br)
       e.classList.toggle(l, !!(s && s.classList.contains(l)));
     s ? e.setAttribute(Qe, "") : e.removeAttribute(Qe);
   };
@@ -3775,7 +3775,7 @@ function Ui(e) {
     }
     t.isConnected && t.childElementCount > 0 && $t(t);
   });
-  return n.observe(t, { childList: !0 }), zt.set(t, n), it.add(t), br || (br = !0, window.addEventListener("scroll", vr, { capture: !0, passive: !0 }), window.addEventListener("resize", vr, { passive: !0 })), t;
+  return n.observe(t, { childList: !0 }), zt.set(t, n), it.add(t), gr || (gr = !0, window.addEventListener("scroll", vr, { capture: !0, passive: !0 }), window.addEventListener("resize", vr, { passive: !0 })), t;
 }
 function yr(e) {
   if (!(!e.hostRoot || e.layer) && (e.layer = Ui(e.hostRoot), Di(e.layer, e.$el, e.hostRoot), Ii())) {
@@ -3828,7 +3828,7 @@ function qi() {
 }
 const Wi = {
   install: (e) => {
-    Hi(), qi(), e.use(Ea, { theme: "none" });
+    Hi(), qi(), e.use(Aa, { theme: "none" });
   }
 }, Fi = ':root{--p-form-field-padding-x: .75rem;--p-form-field-padding-y: .5rem;--p-form-field-sm-padding-x: .625rem;--p-form-field-sm-padding-y: .375rem;--p-form-field-lg-padding-x: .875rem;--p-form-field-lg-padding-y: .625rem;--p-form-field-border-radius: .375rem;--p-form-field-transition-duration: .2s;--p-form-field-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), 0 1px 2px 0 rgba(18, 18, 23, .05);--p-focus-ring-width: 1px;--p-focus-ring-style: solid;--p-focus-ring-color: color-mix(in srgb, var(--p-primary-color) 100%, transparent);--p-focus-ring-offset: 2px;--p-toggleswitch-width: 2.5rem;--p-toggleswitch-height: 1.5rem;--p-toggleswitch-border-radius: 30px;--p-toggleswitch-gap: .25rem;--p-toggleswitch-border-width: 1px;--p-toggleswitch-transition-duration: .2s;--p-toggleswitch-slide-duration: .2s;--p-toggleswitch-handle-size: 1rem;--p-toggleswitch-handle-border-radius: 9999px}:root{color-scheme:light dark;--p-primary: rgb(0, 95, 178);--p-primary-50: color-mix(in srgb, var(--p-primary) 5%, white);--p-primary-100: color-mix(in srgb, var(--p-primary) 10%, white);--p-primary-200: color-mix(in srgb, var(--p-primary) 20%, white);--p-primary-300: color-mix(in srgb, var(--p-primary) 30%, white);--p-primary-400: color-mix(in srgb, var(--p-primary) 40%, white);--p-primary-500: var(--p-primary);--p-primary-600: color-mix(in srgb, var(--p-primary) 80%, black);--p-primary-700: color-mix(in srgb, var(--p-primary) 70%, black);--p-primary-800: color-mix(in srgb, var(--p-primary) 60%, black);--p-primary-900: color-mix(in srgb, var(--p-primary) 50%, black);--p-primary-950: color-mix(in srgb, var(--p-primary) 40%, black);--p-secondary: #6f7385;--p-secondary-50: color-mix(in srgb, var(--p-secondary) 5%, white);--p-secondary-100: color-mix(in srgb, var(--p-secondary) 10%, white);--p-secondary-200: color-mix(in srgb, var(--p-secondary) 20%, white);--p-secondary-300: color-mix(in srgb, var(--p-secondary) 35%, white);--p-secondary-400: color-mix(in srgb, var(--p-secondary) 65%, white);--p-secondary-500: var(--p-secondary);--p-secondary-600: color-mix(in srgb, var(--p-secondary) 80%, black);--p-secondary-700: color-mix(in srgb, var(--p-secondary) 65%, black);--p-secondary-800: color-mix(in srgb, var(--p-secondary) 55%, black);--p-secondary-900: color-mix(in srgb, var(--p-secondary) 50%, black);--p-secondary-950: color-mix(in srgb, var(--p-secondary) 30%, black);--p-danger: rgb(239, 68, 68);--p-danger-50: color-mix(in srgb, var(--p-danger) 5%, white);--p-danger-100: color-mix(in srgb, var(--p-danger) 10%, white);--p-danger-200: color-mix(in srgb, var(--p-danger) 20%, white);--p-danger-300: color-mix(in srgb, var(--p-danger) 30%, white);--p-danger-400: color-mix(in srgb, var(--p-danger) 40%, white);--p-danger-500: var(--p-danger);--p-danger-600: color-mix(in srgb, var(--p-danger) 80%, black);--p-danger-700: color-mix(in srgb, var(--p-danger) 70%, black);--p-danger-800: color-mix(in srgb, var(--p-danger) 60%, black);--p-danger-900: color-mix(in srgb, var(--p-danger) 50%, black);--p-danger-950: color-mix(in srgb, var(--p-danger) 40%, black);--p-success: rgb(34, 197, 94);--p-success-50: color-mix(in srgb, var(--p-success) 5%, white);--p-success-100: color-mix(in srgb, var(--p-success) 10%, white);--p-success-200: color-mix(in srgb, var(--p-success) 20%, white);--p-success-300: color-mix(in srgb, var(--p-success) 30%, white);--p-success-400: color-mix(in srgb, var(--p-success) 40%, white);--p-success-500: var(--p-success);--p-success-600: color-mix(in srgb, var(--p-success) 80%, black);--p-success-700: color-mix(in srgb, var(--p-success) 70%, black);--p-success-800: color-mix(in srgb, var(--p-success) 60%, black);--p-success-900: color-mix(in srgb, var(--p-success) 50%, black);--p-success-950: color-mix(in srgb, var(--p-success) 40%, black);--p-warn: rgb(249, 115, 22);--p-warn-50: color-mix(in srgb, var(--p-warn) 5%, white);--p-warn-100: color-mix(in srgb, var(--p-warn) 10%, white);--p-warn-200: color-mix(in srgb, var(--p-warn) 20%, white);--p-warn-300: color-mix(in srgb, var(--p-warn) 30%, white);--p-warn-400: color-mix(in srgb, var(--p-warn) 40%, white);--p-warn-500: var(--p-warn);--p-warn-600: color-mix(in srgb, var(--p-warn) 80%, black);--p-warn-700: color-mix(in srgb, var(--p-warn) 70%, black);--p-warn-800: color-mix(in srgb, var(--p-warn) 60%, black);--p-warn-900: color-mix(in srgb, var(--p-warn) 50%, black);--p-warn-950: color-mix(in srgb, var(--p-warn) 40%, black);--p-info: rgb(14, 165, 233);--p-info-50: color-mix(in srgb, var(--p-info) 5%, white);--p-info-100: color-mix(in srgb, var(--p-info) 10%, white);--p-info-200: color-mix(in srgb, var(--p-info) 20%, white);--p-info-300: color-mix(in srgb, var(--p-info) 30%, white);--p-info-400: color-mix(in srgb, var(--p-info) 40%, white);--p-info-500: var(--p-info);--p-info-600: color-mix(in srgb, var(--p-info) 80%, black);--p-info-700: color-mix(in srgb, var(--p-info) 70%, black);--p-info-800: color-mix(in srgb, var(--p-info) 60%, black);--p-info-900: color-mix(in srgb, var(--p-info) 50%, black);--p-info-950: color-mix(in srgb, var(--p-info) 40%, black);--p-help: rgb(168, 85, 247);--p-help-50: color-mix(in srgb, var(--p-help) 5%, white);--p-help-100: color-mix(in srgb, var(--p-help) 10%, white);--p-help-200: color-mix(in srgb, var(--p-help) 20%, white);--p-help-300: color-mix(in srgb, var(--p-help) 30%, white);--p-help-400: color-mix(in srgb, var(--p-help) 40%, white);--p-help-500: var(--p-help);--p-help-600: color-mix(in srgb, var(--p-help) 80%, black);--p-help-700: color-mix(in srgb, var(--p-help) 70%, black);--p-help-800: color-mix(in srgb, var(--p-help) 60%, black);--p-help-900: color-mix(in srgb, var(--p-help) 50%, black);--p-help-950: color-mix(in srgb, var(--p-help) 40%, black);--p-accent: rgb(20, 184, 166);--p-accent-50: color-mix(in srgb, var(--p-accent) 5%, white);--p-accent-100: color-mix(in srgb, var(--p-accent) 10%, white);--p-accent-200: color-mix(in srgb, var(--p-accent) 20%, white);--p-accent-300: color-mix(in srgb, var(--p-accent) 30%, white);--p-accent-400: color-mix(in srgb, var(--p-accent) 40%, white);--p-accent-500: var(--p-accent);--p-accent-600: color-mix(in srgb, var(--p-accent) 80%, black);--p-accent-700: color-mix(in srgb, var(--p-accent) 70%, black);--p-accent-800: color-mix(in srgb, var(--p-accent) 60%, black);--p-accent-900: color-mix(in srgb, var(--p-accent) 50%, black);--p-accent-950: color-mix(in srgb, var(--p-accent) 40%, black);--p-surface-0: #ffffff;--p-surface-50: #fafafa;--p-surface-100: #f5f5f5;--p-surface-200: #e5e5e5;--p-surface-300: #d4d4d4;--p-surface-400: #a3a3a3;--p-surface-500: #737373;--p-surface-600: #525252;--p-surface-700: #404040;--p-surface-800: #262626;--p-surface-850: color-mix(in srgb, var(--p-surface-800) 50%, var(--p-surface-900));--p-surface-900: #171717;--p-surface-950: #0a0a0a;--p-content-border-radius: 6px;--p-font-heading-family: var(--v-font-family-head, Arial);--p-font-heading-scale: 1;--p-font-heading-line-height: 1.5;--p-font-heading-letter-spacing: normal;--p-font-heading-stretch: normal;--p-font-heading-variation-settings: normal;--p-font-body-scale: 1;--p-font-body-line-height: 1.5;--p-font-body-letter-spacing: normal;--p-font-body-stretch: normal;--p-font-body-variation-settings: normal;--p-font-mono-family: ui-monospace}:root{--p-primary-color: var(--p-primary-500);--p-primary-contrast-color: var(--p-surface-0);--p-primary-hover-color: var(--p-primary-600);--p-primary-active-color: var(--p-primary-700);--p-secondary-color: var(--p-secondary-500);--p-secondary-contrast-color: var(--p-surface-0);--p-secondary-hover-color: var(--p-secondary-600);--p-secondary-active-color: var(--p-secondary-700);--p-danger-color: var(--p-danger-500);--p-danger-contrast-color: var(--p-surface-0);--p-danger-hover-color: var(--p-danger-600);--p-danger-active-color: var(--p-danger-700);--p-success-color: var(--p-success-500);--p-success-contrast-color: var(--p-surface-0);--p-success-hover-color: var(--p-success-600);--p-success-active-color: var(--p-success-700);--p-warn-color: var(--p-warn-500);--p-warn-contrast-color: var(--p-surface-0);--p-warn-hover-color: var(--p-warn-600);--p-warn-active-color: var(--p-warn-700);--p-info-color: var(--p-info-500);--p-info-contrast-color: var(--p-surface-0);--p-info-hover-color: var(--p-info-600);--p-info-active-color: var(--p-info-700);--p-help-color: var(--p-help-500);--p-help-contrast-color: var(--p-surface-0);--p-help-hover-color: var(--p-help-600);--p-help-active-color: var(--p-help-700);--p-accent-color: var(--p-accent-500);--p-accent-contrast-color: var(--p-surface-0);--p-accent-hover-color: var(--p-accent-600);--p-accent-active-color: var(--p-accent-700);--p-content-border-color: var(--p-surface-200);--p-content-hover-background: var(--p-surface-100);--p-content-hover-color: var(--p-surface-800);--p-highlight-background: var(--p-primary-50);--p-highlight-color: var(--p-primary-700);--p-highlight-focus-background: var(--p-primary-100);--p-highlight-focus-color: var(--p-primary-800);--p-content-background: var(--p-surface-0);--p-text-color: var(--p-surface-700);--p-text-hover-color: var(--p-surface-800);--p-text-muted-color: var(--p-surface-500);--p-text-hover-muted-color: var(--p-surface-600)}@media(prefers-color-scheme:dark){:root:not(.w-theme-light){--p-surface-D: #fff;--p-surface-0: #fff;--p-surface-50: #fafafa;--p-surface-100: #f4f4f5;--p-surface-200: #e4e4e7;--p-surface-300: #d4d4d8;--p-surface-400: #a1a1aa;--p-surface-500: #71717a;--p-surface-600: #545250;--p-surface-700: #403e3c;--p-surface-800: #2b2927;--p-surface-850: color-mix(in srgb, var(--p-surface-800) 50%, var(--p-surface-900));--p-surface-900: #1c1a19;--p-surface-950: #0f0e0d;--p-primary: rgb(0, 125, 178);--p-primary-50: color-mix(in srgb, var(--p-primary) 5%, white);--p-primary-100: color-mix(in srgb, var(--p-primary) 10%, white);--p-primary-200: color-mix(in srgb, var(--p-primary) 20%, white);--p-primary-300: color-mix(in srgb, var(--p-primary) 30%, white);--p-primary-400: color-mix(in srgb, var(--p-primary) 40%, white);--p-primary-500: var(--p-primary);--p-primary-600: color-mix(in srgb, var(--p-primary) 80%, black);--p-primary-700: color-mix(in srgb, var(--p-primary) 70%, black);--p-primary-800: color-mix(in srgb, var(--p-primary) 60%, black);--p-primary-900: color-mix(in srgb, var(--p-primary) 50%, black);--p-primary-950: color-mix(in srgb, var(--p-primary) 40%, black);--p-primary-color: var(--p-primary-400);--p-primary-contrast-color: var(--p-surface-900);--p-primary-hover-color: var(--p-primary-300);--p-primary-active-color: var(--p-primary-200);--p-secondary-color: var(--p-secondary-400);--p-secondary-contrast-color: var(--p-surface-900);--p-secondary-hover-color: var(--p-secondary-300);--p-secondary-active-color: var(--p-secondary-200);--p-danger-color: var(--p-danger-400);--p-danger-contrast-color: var(--p-surface-900);--p-danger-hover-color: var(--p-danger-300);--p-danger-active-color: var(--p-danger-200);--p-success-color: var(--p-success-400);--p-success-contrast-color: var(--p-surface-900);--p-success-hover-color: var(--p-success-300);--p-success-active-color: var(--p-success-200);--p-warn-color: var(--p-warn-400);--p-warn-contrast-color: var(--p-surface-900);--p-warn-hover-color: var(--p-warn-300);--p-warn-active-color: var(--p-warn-200);--p-info-color: var(--p-info-400);--p-info-contrast-color: var(--p-surface-900);--p-info-hover-color: var(--p-info-300);--p-info-active-color: var(--p-info-200);--p-help-color: var(--p-help-400);--p-help-contrast-color: var(--p-surface-900);--p-help-hover-color: var(--p-help-300);--p-help-active-color: var(--p-help-200);--p-accent-color: var(--p-accent-400);--p-accent-contrast-color: var(--p-surface-900);--p-accent-hover-color: var(--p-accent-300);--p-accent-active-color: var(--p-accent-200);--p-content-border-color: var(--p-surface-700);--p-content-hover-background: var(--p-surface-800);--p-content-hover-color: var(--p-surface-0);--p-highlight-background: color-mix(in srgb, var(--p-primary-400), transparent 84%);--p-highlight-color: rgba(255, 255, 255, 87%);--p-highlight-focus-background: color-mix(in srgb, var(--p-primary-400), transparent 76%);--p-highlight-focus-color: rgba(255, 255, 255, 87%);--p-content-background: var(--p-surface-900);--p-text-color: var(--p-surface-0);--p-text-hover-color: var(--p-surface-0);--p-text-muted-color: var(--p-surface-400);--p-text-hover-muted-color: var(--p-surface-300)}}:root.w-theme-dark,.w-theme-dark{color-scheme:dark;--p-surface-D: #fff;--p-surface-0: #fff;--p-surface-50: #fafafa;--p-surface-100: #f4f4f5;--p-surface-200: #e4e4e7;--p-surface-300: #d4d4d8;--p-surface-400: #a1a1aa;--p-surface-500: #71717a;--p-surface-600: #545250;--p-surface-700: #403e3c;--p-surface-800: #2b2927;--p-surface-850: color-mix(in srgb, var(--p-surface-800) 50%, var(--p-surface-900));--p-surface-900: #1c1a19;--p-surface-950: #0f0e0d;--p-primary: rgb(0, 125, 178);--p-primary-50: color-mix(in srgb, var(--p-primary) 5%, white);--p-primary-100: color-mix(in srgb, var(--p-primary) 10%, white);--p-primary-200: color-mix(in srgb, var(--p-primary) 20%, white);--p-primary-300: color-mix(in srgb, var(--p-primary) 30%, white);--p-primary-400: color-mix(in srgb, var(--p-primary) 40%, white);--p-primary-500: var(--p-primary);--p-primary-600: color-mix(in srgb, var(--p-primary) 80%, black);--p-primary-700: color-mix(in srgb, var(--p-primary) 70%, black);--p-primary-800: color-mix(in srgb, var(--p-primary) 60%, black);--p-primary-900: color-mix(in srgb, var(--p-primary) 50%, black);--p-primary-950: color-mix(in srgb, var(--p-primary) 40%, black);--p-primary-color: var(--p-primary-400);--p-primary-contrast-color: var(--p-surface-900);--p-primary-hover-color: var(--p-primary-300);--p-primary-active-color: var(--p-primary-200);--p-secondary-color: var(--p-secondary-400);--p-secondary-contrast-color: var(--p-surface-900);--p-secondary-hover-color: var(--p-secondary-300);--p-secondary-active-color: var(--p-secondary-200);--p-danger-color: var(--p-danger-400);--p-danger-contrast-color: var(--p-surface-900);--p-danger-hover-color: var(--p-danger-300);--p-danger-active-color: var(--p-danger-200);--p-success-color: var(--p-success-400);--p-success-contrast-color: var(--p-surface-900);--p-success-hover-color: var(--p-success-300);--p-success-active-color: var(--p-success-200);--p-warn-color: var(--p-warn-400);--p-warn-contrast-color: var(--p-surface-900);--p-warn-hover-color: var(--p-warn-300);--p-warn-active-color: var(--p-warn-200);--p-info-color: var(--p-info-400);--p-info-contrast-color: var(--p-surface-900);--p-info-hover-color: var(--p-info-300);--p-info-active-color: var(--p-info-200);--p-help-color: var(--p-help-400);--p-help-contrast-color: var(--p-surface-900);--p-help-hover-color: var(--p-help-300);--p-help-active-color: var(--p-help-200);--p-accent-color: var(--p-accent-400);--p-accent-contrast-color: var(--p-surface-900);--p-accent-hover-color: var(--p-accent-300);--p-accent-active-color: var(--p-accent-200);--p-content-border-color: var(--p-surface-700);--p-content-hover-background: var(--p-surface-800);--p-content-hover-color: var(--p-surface-0);--p-highlight-background: color-mix(in srgb, var(--p-primary-400), transparent 84%);--p-highlight-color: rgba(255, 255, 255, 87%);--p-highlight-focus-background: color-mix(in srgb, var(--p-primary-400), transparent 76%);--p-highlight-focus-color: rgba(255, 255, 255, 87%);--p-content-background: var(--p-surface-900);--p-text-color: var(--p-surface-0);--p-text-hover-color: var(--p-surface-0);--p-text-muted-color: var(--p-surface-400);--p-text-hover-muted-color: var(--p-surface-300)}:root.w-theme-light,.w-theme-light{color-scheme:light;--p-surface-0: #ffffff;--p-surface-50: #fafafa;--p-surface-100: #f5f5f5;--p-surface-200: #e5e5e5;--p-surface-300: #d4d4d4;--p-surface-400: #a3a3a3;--p-surface-500: #737373;--p-surface-600: #525252;--p-surface-700: #404040;--p-surface-800: #262626;--p-surface-850: color-mix(in srgb, var(--p-surface-800) 50%, var(--p-surface-900));--p-surface-900: #171717;--p-surface-950: #0a0a0a;--p-primary: rgb(0, 95, 178);--p-primary-50: color-mix(in srgb, var(--p-primary) 5%, white);--p-primary-100: color-mix(in srgb, var(--p-primary) 10%, white);--p-primary-200: color-mix(in srgb, var(--p-primary) 20%, white);--p-primary-300: color-mix(in srgb, var(--p-primary) 30%, white);--p-primary-400: color-mix(in srgb, var(--p-primary) 40%, white);--p-primary-500: var(--p-primary);--p-primary-600: color-mix(in srgb, var(--p-primary) 80%, black);--p-primary-700: color-mix(in srgb, var(--p-primary) 70%, black);--p-primary-800: color-mix(in srgb, var(--p-primary) 60%, black);--p-primary-900: color-mix(in srgb, var(--p-primary) 50%, black);--p-primary-950: color-mix(in srgb, var(--p-primary) 40%, black);--p-primary-color: var(--p-primary-500);--p-primary-contrast-color: var(--p-surface-0);--p-primary-hover-color: var(--p-primary-600);--p-primary-active-color: var(--p-primary-700);--p-secondary-color: var(--p-secondary-500);--p-secondary-contrast-color: var(--p-surface-0);--p-secondary-hover-color: var(--p-secondary-600);--p-secondary-active-color: var(--p-secondary-700);--p-danger-color: var(--p-danger-500);--p-danger-contrast-color: var(--p-surface-0);--p-danger-hover-color: var(--p-danger-600);--p-danger-active-color: var(--p-danger-700);--p-success-color: var(--p-success-500);--p-success-contrast-color: var(--p-surface-0);--p-success-hover-color: var(--p-success-600);--p-success-active-color: var(--p-success-700);--p-warn-color: var(--p-warn-500);--p-warn-contrast-color: var(--p-surface-0);--p-warn-hover-color: var(--p-warn-600);--p-warn-active-color: var(--p-warn-700);--p-info-color: var(--p-info-500);--p-info-contrast-color: var(--p-surface-0);--p-info-hover-color: var(--p-info-600);--p-info-active-color: var(--p-info-700);--p-help-color: var(--p-help-500);--p-help-contrast-color: var(--p-surface-0);--p-help-hover-color: var(--p-help-600);--p-help-active-color: var(--p-help-700);--p-accent-color: var(--p-accent-500);--p-accent-contrast-color: var(--p-surface-0);--p-accent-hover-color: var(--p-accent-600);--p-accent-active-color: var(--p-accent-700);--p-content-border-color: var(--p-surface-200);--p-content-hover-background: var(--p-surface-100);--p-content-hover-color: var(--p-surface-800);--p-highlight-background: var(--p-primary-50);--p-highlight-color: var(--p-primary-700);--p-highlight-focus-background: var(--p-primary-100);--p-highlight-focus-color: var(--p-primary-800);--p-content-background: var(--p-surface-0);--p-text-color: var(--p-surface-700);--p-text-hover-color: var(--p-surface-800);--p-text-muted-color: var(--p-surface-500);--p-text-hover-muted-color: var(--p-surface-600)}:host,:root{--kx-surface-1: color-mix(in srgb, var(--p-content-background) 96%, var(--p-text-color) 4%);--kx-surface-2: color-mix(in srgb, var(--p-content-background) 92%, var(--p-text-color) 8%);--kx-surface-3: color-mix(in srgb, var(--p-content-background) 86%, var(--p-text-color) 14%);--kx-surface-4: color-mix(in srgb, var(--p-content-background) 78%, var(--p-text-color) 22%);--kx-border-strong: color-mix(in srgb, var(--p-content-border-color) 60%, var(--p-text-color) 40%);--kx-border-stronger: color-mix(in srgb, var(--p-content-border-color) 30%, var(--p-text-color) 70%);--kx-text-faint: color-mix(in srgb, var(--p-text-muted-color) 70%, var(--p-content-background) 30%);--kx-text-fainter: color-mix(in srgb, var(--p-text-muted-color) 45%, var(--p-content-background) 55%);--kx-wash-primary: color-mix(in srgb, var(--p-primary-color) 12%, var(--p-content-background) 88%);--kx-wash-success: color-mix(in srgb, var(--p-success-500) 12%, var(--p-content-background) 88%);--kx-wash-info: color-mix(in srgb, var(--p-info-500) 12%, var(--p-content-background) 88%);--kx-wash-warn: color-mix(in srgb, var(--p-warn-500) 12%, var(--p-content-background) 88%);--kx-wash-danger: color-mix(in srgb, var(--p-danger-500) 12%, var(--p-content-background) 88%);--kx-wash-help: color-mix(in srgb, var(--p-help-500) 12%, var(--p-content-background) 88%);--kx-font-heading: "Outfit", system-ui, sans-serif;--kx-font-body: "Inter", system-ui, sans-serif;--kx-radius-4: 4px;--kx-radius-6: 6px;--kx-radius-8: 8px;--kx-radius-10: 10px;--kx-radius-14: 14px;--kx-radius-16: 16px;--kx-radius-tag: var(--p-content-border-radius, 6px);--kx-control-height: 34px;--kx-control-height-sm: 30px;--kx-rail-width: 264px;--kx-reading-measure: 880px;--kx-row-height: 32px;--kx-shadow-sm: 0 1px 2px rgba(0, 0, 0, .08);--kx-shadow-md: 0 4px 24px rgba(0, 0, 0, .12);--kx-shadow-lg: 0 16px 60px rgba(0, 0, 0, .18);--kx-overlay-hover: color-mix(in srgb, var(--p-text-color) 7%, transparent);--kx-overlay-subtle: color-mix(in srgb, var(--p-text-color) 4%, transparent)}@media(prefers-color-scheme:dark){:host(:not(.w-theme-light)),:root:not(.w-theme-light){--kx-shadow-sm: 0 1px 2px rgba(0, 0, 0, .35);--kx-shadow-md: 0 4px 24px rgba(0, 0, 0, .45);--kx-shadow-lg: 0 16px 60px rgba(0, 0, 0, .6)}}:host(.w-theme-dark),:root.w-theme-dark{--kx-shadow-sm: 0 1px 2px rgba(0, 0, 0, .35);--kx-shadow-md: 0 4px 24px rgba(0, 0, 0, .45);--kx-shadow-lg: 0 16px 60px rgba(0, 0, 0, .6)}.kx-iconbtn{width:28px;height:28px;flex:none;display:grid;place-items:center;cursor:pointer;border:1px solid transparent;border-radius:var(--kx-radius-8);background:transparent;color:var(--p-text-muted-color);transition:color .14s,background .14s,border-color .14s}.kx-iconbtn:hover:not(:disabled){color:var(--p-text-color);background:var(--kx-surface-2)}.kx-iconbtn.on{color:var(--p-primary-color);background:color-mix(in srgb,var(--p-primary-color) 14%,transparent)}.kx-iconbtn:disabled{opacity:.55;cursor:default}.kx-iconbtn svg{width:16px;height:16px}.kx-iconbtn.lg{width:var(--kx-control-height);height:var(--kx-control-height)}.kx-iconbtn.sm{width:var(--kx-control-height-sm);height:var(--kx-control-height-sm)}.kx-iconbtn.bordered{border-color:var(--p-content-border-color);background:var(--kx-surface-1);color:var(--p-text-muted-color)}.kx-iconbtn.bordered:hover:not(:disabled){border-color:color-mix(in srgb,var(--p-text-color) 18%,transparent)}.kx-iconbtn.danger:hover:not(:disabled),.kx-iconbtn.danger.on{background:color-mix(in srgb,var(--p-danger-500) 12%,transparent);color:var(--p-danger-500)}.kx-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:var(--kx-control-height);padding:0 14px;border-radius:var(--kx-radius-8);cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;border:1px solid transparent;transition:filter .15s,transform .15s,background .14s,border-color .14s,color .14s}.kx-btn svg{width:15px;height:15px}.kx-btn:disabled{opacity:.5;cursor:not-allowed}.kx-btn.sm{height:var(--kx-control-height-sm);padding:0 12px}.kx-btn-primary{background:var(--p-primary-color);color:var(--p-primary-contrast-color);border-color:var(--p-primary-color)}.kx-btn-primary:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px)}.kx-btn-ghost{background:transparent;color:var(--p-text-color);border-color:var(--p-content-border-color)}.kx-btn-ghost:hover:not(:disabled){background:var(--kx-surface-2);border-color:color-mix(in srgb,var(--p-text-color) 18%,transparent)}.kx-btn-soft{background:color-mix(in srgb,var(--p-primary-color) 14%,transparent);color:var(--p-primary-color);border-color:color-mix(in srgb,var(--p-primary-color) 30%,transparent)}.kx-btn-soft:hover:not(:disabled){background:color-mix(in srgb,var(--p-primary-color) 18%,transparent)}.kx-btn-danger{background:var(--p-danger-500);color:var(--p-danger-contrast-color);border-color:var(--p-danger-500)}.kx-btn-danger:hover:not(:disabled){filter:brightness(1.07)}.kx-search{position:relative;display:flex;align-items:center}.kx-search-ico{position:absolute;left:10px;width:15px;height:15px;color:var(--p-text-muted-color);pointer-events:none}.kx-search-input{width:100%;height:var(--kx-control-height);padding:0 30px 0 31px;font:inherit;font-size:13px;color:var(--p-text-color);background:var(--p-content-background);border:1px solid var(--p-content-border-color);border-radius:var(--kx-radius-8);transition:border-color .14s,box-shadow .14s}.kx-search-input::placeholder{color:var(--p-text-muted-color)}.kx-search-input:focus{outline:none;border-color:var(--p-focus-ring-color);box-shadow:var(--p-focus-ring-shadow)}.kx-search-clear{position:absolute;right:6px;width:22px;height:22px;border-radius:var(--kx-radius-8);display:grid;place-items:center;cursor:pointer;background:transparent;border:none;color:var(--p-text-muted-color)}.kx-search-clear:hover{color:var(--p-text-color);background:var(--kx-surface-2)}.kx-search-clear svg{width:14px;height:14px}.kx-chip{font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:var(--kx-radius-6);background:var(--kx-surface-2);color:var(--p-text-muted-color);border:1px solid var(--p-content-border-color)}.kx-count{min-width:18px;height:16px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;background:color-mix(in srgb,var(--p-primary-color) 14%,transparent);color:var(--p-primary-color)}.kx-focus-halo:focus-visible{border-color:var(--p-focus-ring-color);outline:none;box-shadow:var(--p-focus-ring-shadow)}.kx-focus-outline:focus-visible{outline:var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color);outline-offset:var(--p-focus-ring-offset);box-shadow:none}*,:before,:after{--tw-border-spacing-x: 0;--tw-border-spacing-y: 0;--tw-translate-x: 0;--tw-translate-y: 0;--tw-rotate: 0;--tw-skew-x: 0;--tw-skew-y: 0;--tw-scale-x: 1;--tw-scale-y: 1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness: proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width: 0px;--tw-ring-offset-color: #fff;--tw-ring-color: rgb(59 130 246 / .5);--tw-ring-offset-shadow: 0 0 #0000;--tw-ring-shadow: 0 0 #0000;--tw-shadow: 0 0 #0000;--tw-shadow-colored: 0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x: 0;--tw-border-spacing-y: 0;--tw-translate-x: 0;--tw-translate-y: 0;--tw-rotate: 0;--tw-skew-x: 0;--tw-skew-y: 0;--tw-scale-x: 1;--tw-scale-y: 1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness: proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width: 0px;--tw-ring-offset-color: #fff;--tw-ring-color: rgb(59 130 246 / .5);--tw-ring-offset-shadow: 0 0 #0000;--tw-ring-shadow: 0 0 #0000;--tw-shadow: 0 0 #0000;--tw-shadow-colored: 0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }*,:before,:after{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}:before,:after{--tw-content: ""}html,:host{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji",Segoe UI Symbol,"Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dl,dd,h1,h2,h3,h4,h5,h6,hr,figure,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}ol,ul,menu{list-style:none;margin:0;padding:0}dialog{padding:0}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}button,[role=button]{cursor:pointer}:disabled{cursor:default}img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}@supports (-moz-appearance:none){*{scrollbar-color:initial;scrollbar-width:initial}}:host{display:block;height:100%;min-height:0;color:var(--p-text-color);font-family:var(--kx-font-body)}:host>div{height:100%;min-height:0}*,*:before,*:after{box-sizing:border-box}button,input,textarea,select{font:inherit}h1,h2,h3,p{margin:0}h1{font-size:24px;line-height:1.3;font-weight:600;overflow-wrap:anywhere}h2{font-size:16px;font-weight:600;line-height:1.4}h3{font-size:14px;font-weight:600}p{line-height:1.5}button{cursor:pointer}button:disabled{cursor:default}label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;min-width:0}small{font-size:12px;color:var(--p-text-muted-color);font-weight:400}input:not([type=checkbox]),select,textarea{width:100%;min-width:0;background:var(--p-content-background);color:var(--p-text-color);border:1px solid var(--p-content-border-color);border-radius:var(--p-form-field-border-radius);padding:9px 11px;line-height:1.4}textarea{resize:vertical}wc-model-picker,wc-multiselect{display:block;min-width:0}.docscout{font-family:var(--kx-font-body);container-type:inline-size;container-name:docscout;height:100%;min-height:0;overflow-y:auto;display:flex;flex-direction:column;background:var(--p-content-background);color:var(--p-text-color);font-size:14px}.description{color:var(--p-text-muted-color);margin-top:8px;max-width:680px;overflow-wrap:anywhere}.row{display:flex;align-items:center;gap:12px;min-width:0}.wrap{flex-wrap:wrap}.push{margin-left:auto}.grow{flex:1;min-width:220px}.muted,.meta-line,.retention{font-size:13px;color:var(--p-text-muted-color)}.meta-line{margin-top:12px}.badge{display:inline-flex;align-items:center;white-space:nowrap;border-radius:var(--p-content-border-radius);padding:2px 7px;background:var(--p-content-hover-background);color:var(--p-text-muted-color);font-size:12px}.tabs{display:flex;gap:22px;flex-shrink:0;overflow-x:auto;min-width:0}.tabs button{background:transparent;border:0;border-bottom:2px solid transparent;padding:13px 0 11px;color:var(--p-text-muted-color);font-size:13px;font-weight:500;white-space:nowrap}.tabs button[aria-selected=true]{color:var(--p-primary-color);border-bottom-color:var(--p-primary-color)}.page-body{overflow-y:auto;min-height:0;flex:1;padding:22px 24px 36px}.panel{max-width:1000px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}.section-head p{margin-top:5px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.three{grid-template-columns:repeat(3,minmax(0,1fr))}.field-card{border:1px solid var(--p-content-border-color);border-radius:var(--p-content-border-radius);padding:20px;background:var(--p-content-background);margin-bottom:16px}.field-card>header{margin-bottom:18px}.field-card>label,.field-card>.grid{margin-bottom:18px}.field-card>:last-child{margin-bottom:0}.ordinal{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:var(--p-content-border-radius);background:var(--p-content-hover-background);font-size:12px;color:var(--p-text-muted-color);flex-shrink:0}.check{display:inline-flex;flex-direction:row;align-items:center;gap:8px;font-weight:400}.check input{accent-color:var(--p-primary-color);width:16px;height:16px;flex-shrink:0}.panel>section{margin-bottom:28px;padding-bottom:28px;border-bottom:1px solid var(--p-content-border-color)}section>h2{margin-bottom:20px}section>.grid,section>.check{margin-bottom:18px}.identity{padding-bottom:24px}.empty{padding:24px 0;color:var(--p-text-muted-color);font-size:13px}.error{color:var(--p-danger-color);padding:12px 0;overflow-wrap:anywhere}.retention{margin-top:12px}.test-input>.muted{margin-top:14px}.value{font-size:20px;font-weight:500;margin:6px 0}.confidence{font-size:12px;color:var(--p-text-muted-color)}blockquote{border-left:2px solid var(--p-primary-color);margin:16px 0 0;padding:2px 0 2px 14px}blockquote p{font-size:14px}cite{display:block;font-size:12px;color:var(--p-text-muted-color);font-style:normal;margin-top:6px}.trace{padding-left:20px;margin:20px 0}.trace>li{padding:0 0 24px 12px}.trace p,.trace ul{margin-top:8px}.comparison .field-card{margin:0}.values{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}.values dd{text-align:right}.values small{display:block;margin-top:4px}dd{margin:0;overflow-wrap:anywhere}dt{color:var(--p-text-muted-color)}.delta{color:var(--p-text-muted-color);font-size:13px;margin-top:10px}.capitalize{text-transform:capitalize}.create-pane{max-height:100%;overflow-y:auto;padding:24px;max-width:640px;margin:auto;color:var(--p-text-color)}.create-pane>header,.create-pane>label,.create-summary{margin-bottom:24px}.create-summary{padding:18px;border:1px solid var(--p-content-border-color);border-radius:var(--p-content-border-radius)}.create-summary dl{display:grid;grid-template-columns:110px 1fr;gap:12px;font-size:13px;margin-bottom:0}.create-summary h2{margin:0 0 14px}@container docscout (max-width:600px){.page-body{padding:22px 20px 32px}.grid,.three,.run-list{grid-template-columns:1fr;gap:16px}.field-card{padding:16px}.field-card>header{gap:8px}.field-card header h3{overflow-wrap:anywhere;min-width:0}.section-head{align-items:flex-start;gap:12px}.create-pane{max-height:100%;overflow-y:auto;padding:20px}.comparison{grid-template-columns:1fr}.confidence{max-width:112px;text-align:right}.create-summary dl{grid-template-columns:85px 1fr}}.title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.title-row .badge{font-weight:500}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 20px;border-bottom:1px solid var(--p-content-border-color);flex-shrink:0;min-height:46px}.toolbar-side{display:flex;align-items:center;gap:12px;min-width:0}.stats{font-size:12px;color:var(--p-text-muted-color);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sep{opacity:.6}.save-area{display:flex;align-items:center;gap:12px;flex-shrink:0}.unsaved{font-size:12px;color:var(--p-text-muted-color);display:inline-flex;align-items:center;gap:6px}.unsaved:before{content:"";width:7px;height:7px;border-radius:999px;background:var(--p-primary-color)}.banner{padding:8px 20px;border-bottom:1px solid var(--p-content-border-color)}.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;line-height:1.5;border-radius:6px;padding:1px 7px;background:color-mix(in srgb,var(--p-text-color) 8%,transparent);color:var(--p-text-muted-color);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.chip.primary{background:color-mix(in srgb,var(--p-primary-color) 14%,transparent);color:var(--p-primary-color)}.chip.muted-chip{background:transparent;border:1px dashed var(--p-content-border-color)}.chip.model{background:color-mix(in srgb,var(--p-primary-color) 10%,transparent);color:var(--p-text-color)}.node{display:flex;align-items:flex-start;gap:14px;width:100%;margin:0;text-align:left;background:var(--p-content-background);border:1px solid var(--p-content-border-color);border-radius:14px;padding:12px 14px 12px 12px;color:var(--p-text-color);cursor:pointer;transition:border-color .12s,box-shadow .12s}.node:where(:hover){border-color:color-mix(in srgb,var(--p-primary-color) 45%,var(--p-content-border-color))}.node:where(.active){border-color:var(--p-primary-color);box-shadow:0 0 0 3px color-mix(in srgb,var(--p-primary-color) 18%,transparent)}.node.off{background:transparent;border-style:dashed}.node.off .node-icon,.node.off .node-title{opacity:.55}.node-icon{width:32px;height:32px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;background:color-mix(in srgb,var(--p-primary-color) 12%,transparent);color:var(--p-primary-color)}.fixed .node-icon{background:color-mix(in srgb,var(--p-text-color) 8%,transparent);color:var(--p-text-color)}.node-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}.node-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}.scope{font-size:11px;font-weight:500;color:var(--p-text-muted-color);text-transform:capitalize}.scope:before{content:"· "}.node-summary{font-size:13px;color:var(--p-text-muted-color)}.trace-line{display:inline-flex;align-items:flex-start;gap:6px;font-size:12px;line-height:1.5;color:var(--p-primary-color)}.trace-line>svg{flex-shrink:0;margin-top:3px}.node-side{display:flex;align-items:center;gap:8px;flex-shrink:0}.node-actions{display:flex;align-items:center;gap:2px}.node-actions .switch{margin-left:6px}.connector{width:2px;height:18px;flex-shrink:0;margin:0 auto;background:color-mix(in srgb,var(--p-text-color) 18%,transparent);position:relative}.connector:after{content:"";position:absolute;bottom:-1px;left:-3px;width:8px;height:8px;border-radius:999px;background:color-mix(in srgb,var(--p-text-color) 25%,transparent)}.connector.off{background:repeating-linear-gradient(to bottom,color-mix(in srgb,var(--p-text-color) 18%,transparent) 0 4px,transparent 4px 8px)}.switch{position:relative;width:40px;height:23px;border:0;border-radius:999px;background:color-mix(in srgb,var(--p-text-color) 16%,transparent);flex-shrink:0;padding:0;transition:background .15s}.switch span{position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:999px;background:var(--p-toggleswitch-handle-background,var(--p-content-background));box-shadow:0 1px 2px color-mix(in srgb,var(--p-text-color) 25%,transparent);transition:transform .15s}.switch[aria-checked=true]{background:var(--p-primary-color)}.switch[aria-checked=true] span{transform:translate(17px)}.switch:disabled{opacity:.5}.inspector-body{padding:16px 20px 28px}.inspector-form{border:0;margin:0;padding:0;min-width:0;display:flex;flex-direction:column;gap:14px}.inspector-form h4{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--p-text-muted-color);margin:8px 0 -4px}.inspector-form .grid{gap:12px}.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:13px}.toggle-row>span{display:flex;flex-direction:column;gap:2px;min-width:0}.toggle-row small{overflow-wrap:anywhere}.mono{font-family:var(--p-font-mono-family);font-size:11px}.segmented{display:flex;padding:3px;gap:3px;border-radius:8px;background:color-mix(in srgb,var(--p-text-color) 7%,transparent)}.segmented button{flex:1;border:0;border-radius:6px;background:transparent;padding:6px 8px;font-size:13px;color:var(--p-text-muted-color)}.segmented button[aria-checked=true]{background:var(--p-content-background);color:var(--p-text-color);box-shadow:0 1px 2px color-mix(in srgb,var(--p-text-color) 12%,transparent);font-weight:500}.query-row{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--p-content-border-color);border-radius:10px}.query-row .kx-btn{align-self:flex-start}.output-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.output-list li{display:flex;justify-content:space-between;gap:12px;align-items:center}@container docscout (max-width:600px){.toolbar{padding:0 14px 0 20px;gap:10px}.crumb-row,.toolbar-title{padding-left:32px}.stats,.node-side .chip.model{display:none}.inspector-form .grid{grid-template-columns:1fr}}.label-block{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;min-width:0}.toolbar-lead{display:flex;align-items:center;gap:14px;min-width:0}.crumb{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;padding-right:10px;border-right:1px solid var(--p-content-border-color)}.toolbar-title{display:flex;align-items:center;gap:8px}.toolbar-title h1{font-size:15px;font-weight:600}.filter{width:220px!important;padding:5px 10px!important;font-size:13px}.pad-page{padding:24px}.list-page .page-body{padding:20px 24px 36px}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}.card{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:14px;border:1px solid var(--p-content-border-color);border-radius:14px;background:var(--p-content-background);color:var(--p-text-color);min-width:0}.card:where(:hover){border-color:color-mix(in srgb,var(--p-primary-color) 45%,var(--p-content-border-color))}.card-icon{width:32px;height:32px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:17px;background:color-mix(in srgb,var(--p-primary-color) 12%,transparent);color:var(--p-primary-color)}.card-main{display:flex;flex-direction:column;gap:4px;min-width:0}.card-title{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.card-desc{font-size:13px;color:var(--p-text-muted-color);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.card-meta{font-size:12px;color:var(--p-text-muted-color)}.create-card{position:relative;border:1px solid var(--p-content-border-color);border-radius:14px;margin-bottom:16px;max-width:640px}.create-card .create-pane{margin:0;padding:18px 20px}.create-card .create-pane>header,.create-card .create-pane>label,.create-card .create-summary{margin-bottom:16px}.create-close{position:absolute;top:12px;right:12px}.empty-state{display:flex;flex-direction:column;align-items:center;gap:12px;padding:64px 16px;color:var(--p-text-muted-color);font-size:13px;text-align:center}.empty-icon{font-size:30px}@container docscout (max-width:900px){.filter{width:150px!important}}@container docscout (max-width:600px){.filter{display:none}.list-page .page-body{padding:16px 14px 28px}}.builder-body{flex:1;min-height:0;display:flex}.builder{position:relative;flex:1;min-width:0;min-height:0;display:flex}.canvas{flex:1;min-width:0;overflow-y:auto;background:color-mix(in srgb,var(--p-text-color) 2.5%,transparent)}.canvas-inner{max-width:760px;margin:0 auto;padding:20px 24px 48px;display:flex;flex-direction:column;gap:18px}.block{background:var(--p-content-background);border:1px solid var(--p-content-border-color);border-radius:14px;min-width:0}.block-head{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 8px;min-width:0}.collapse{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--p-text-color);padding:4px 6px;border-radius:8px;flex-shrink:0}.collapse:hover{background:color-mix(in srgb,var(--p-text-color) 6%,transparent)}.collapse h2{font-size:14px}.collapse>svg{color:var(--p-text-muted-color)}.count{font-size:12px;color:var(--p-text-muted-color);background:color-mix(in srgb,var(--p-text-color) 8%,transparent);border-radius:999px;padding:1px 8px;white-space:nowrap}.block-peek{font-size:12px;color:var(--p-text-muted-color);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.block-body{border-top:1px solid var(--p-content-border-color)}.block-empty{padding:18px 20px;font-size:13px;color:var(--p-text-muted-color)}.rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--docscout-space)}.row-item{display:flex;align-items:center;gap:var(--docscout-space);border-radius:var(--kx-radius-8);border:1px solid transparent;min-width:0}.row-item:hover{background:var(--kx-overlay-subtle)}.row-item.active{background:var(--kx-wash-primary);border-color:color-mix(in srgb,var(--p-primary-color) 35%,var(--p-content-border-color))}.row-main{border:0;background:transparent;color:var(--p-text-color);text-align:left}.row-desc{color:var(--p-text-muted-color);font-size:12px;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}.row-actions{display:flex;flex-direction:column;flex:none;opacity:0;transition:opacity .12s}.row-item:hover .row-actions,.row-item:focus-within .row-actions{opacity:1}.flow{border-top:1px solid var(--p-content-border-color);padding:16px;display:flex;flex-direction:column}.side-panel{position:relative;width:400px;flex-shrink:0;display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--p-content-border-color);background:var(--p-content-background)}.side-panel-head{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 18px;border-bottom:1px solid var(--p-content-border-color);min-height:52px}.side-panel-head h2{font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.side-panel-icon{width:28px;height:28px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px;background:color-mix(in srgb,var(--p-primary-color) 12%,transparent);color:var(--p-primary-color)}.side-panel-body{flex:1;min-height:0;overflow-y:auto;padding:16px 18px 28px}.rail{width:44px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px 0;border:0;border-left:1px solid var(--p-content-border-color);background:var(--p-content-background);color:var(--p-text-muted-color);font-size:18px}.rail:hover{color:var(--p-text-color);background:color-mix(in srgb,var(--p-text-color) 4%,transparent)}.rail-label{writing-mode:vertical-rl;font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-height:240px}.builder.narrow .side-panel{position:absolute;top:0;right:0;bottom:0;width:min(420px,100%);z-index:5;box-shadow:-12px 0 32px color-mix(in srgb,var(--p-text-color) 18%,transparent)}.scrim{position:absolute;inset:0;z-index:4;background:color-mix(in srgb,var(--p-text-color) 18%,transparent)}@container docscout (max-width:760px){.canvas-inner{padding:14px 12px 36px;gap:14px}.flow,.node{padding:12px}.block-peek{display:none}}.resizer{position:absolute;top:0;bottom:0;left:-4px;width:8px;cursor:col-resize;z-index:2;touch-action:none}.resizer:after{content:"";position:absolute;top:0;bottom:0;left:3px;width:2px;background:transparent;transition:background .12s}.resizer:hover:after,.resizer.active:after,.resizer:focus-visible:after{background:var(--p-primary-color)}.builder.resizing{cursor:col-resize;user-select:none}.field-error,.field-note{display:flex;align-items:flex-start;gap:6px;font-size:12px;margin-top:-6px}.field-error{color:var(--p-danger-color)}.field-note{color:var(--p-text-muted-color)}.field-error svg,.field-note svg{flex-shrink:0;margin-top:2px}.mono-input{font-family:var(--p-font-mono-family);font-size:13px}input[aria-invalid=true]{border-color:var(--p-danger-color)}.row-warn{display:inline-block;color:var(--p-danger-color);margin-left:6px;vertical-align:-2px}.row-desc.missing{font-style:italic;opacity:.75}.inspector-form>.kx-btn{align-self:flex-start}.invalid{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--p-danger-color);max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.invalid svg{flex-shrink:0}@container docscout (max-width:760px){.invalid{max-width:140px}}.test,.evals{display:flex;flex-direction:column;gap:16px;max-width:1180px}.block-title{font-size:14px;padding-left:6px}.block-foot{padding:10px 18px 14px;font-size:12px;border-top:1px solid var(--p-content-border-color)}.run-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.run-input{flex:1;min-width:240px;max-width:520px}.run-note{flex-basis:100%;font-size:12px}.test-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:16px;align-items:start}.value-list{list-style:none;margin:0;padding:4px 6px 6px}.value-row+.value-row{border-top:1px solid var(--p-content-border-color)}.value-main{width:100%;display:grid;grid-template-columns:minmax(100px,150px) minmax(0,1fr) 172px 84px 18px;align-items:center;gap:12px;border:0;background:transparent;color:var(--p-text-color);text-align:left;padding:11px 10px}.value-main:hover{background:color-mix(in srgb,var(--p-text-color) 4%,transparent)}.value-name{font-family:var(--p-font-mono-family);font-size:12px;color:var(--p-text-muted-color);overflow:hidden;text-overflow:ellipsis}.value-text{font-size:14px;font-weight:600;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4;overflow-wrap:anywhere}.value-caret{color:var(--p-text-muted-color)}.confidence{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--p-text-muted-color);white-space:nowrap}.bar{position:relative;display:inline-block;width:56px;height:6px;border-radius:999px;background:color-mix(in srgb,var(--p-text-color) 10%,transparent);overflow:hidden;flex-shrink:0}.bar>span{position:absolute;inset:0 auto 0 0;border-radius:999px;background:var(--p-primary-color)}.confidence.mid .bar>span{background:color-mix(in srgb,var(--p-primary-color) 60%,var(--p-text-color))}.confidence.low .bar>span{background:var(--p-danger-color)}.evidence{padding:0 12px 12px 10px}.evidence blockquote{margin:6px 0 0;padding:6px 0 6px 12px;border-left:2px solid var(--p-primary-color)}.evidence blockquote p{font-size:13px}.timeline{list-style:none;margin:0;padding:8px 14px 14px}.timeline li{display:flex;gap:12px;padding:10px 0;position:relative}.timeline li+li{border-top:1px dashed var(--p-content-border-color)}.tl-icon{width:28px;height:28px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--p-primary-color) 12%,transparent);color:var(--p-primary-color)}.timeline li.failed .tl-icon{background:color-mix(in srgb,var(--p-danger-color) 14%,transparent);color:var(--p-danger-color)}.tl-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}.tl-head{display:flex;align-items:center;gap:8px;font-size:13px}.tl-bar{height:4px;border-radius:999px;background:color-mix(in srgb,var(--p-text-color) 8%,transparent);overflow:hidden}.tl-bar>span{display:block;height:100%;background:color-mix(in srgb,var(--p-primary-color) 70%,transparent);border-radius:999px}.tl-main p{font-size:12px}.tl-msg{color:var(--p-text-color)}.stat-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.stat{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border:1px solid var(--p-content-border-color);border-radius:14px;background:var(--p-content-background);min-width:0}.stat-label{font-size:12px;color:var(--p-text-muted-color)}.stat-value{font-size:24px;font-weight:600;line-height:1.2}.stat-delta{font-size:12px;color:var(--p-text-muted-color)}.stat-delta.up,.trend.up{color:var(--p-primary-color)}.stat-delta.down,.trend.down{color:var(--p-danger-color)}.metric-table{width:100%;border-collapse:collapse;font-size:13px}.metric-table th{text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--p-text-muted-color);padding:10px 14px;border-top:1px solid var(--p-content-border-color);border-bottom:1px solid var(--p-content-border-color);white-space:nowrap}.metric-table td{padding:10px 14px;border-bottom:1px solid var(--p-content-border-color);white-space:nowrap}.metric-table tr:last-child td{border-bottom:0}.metric-table .num{text-align:right}.metric-table .mono{font-family:var(--p-font-mono-family);font-size:12px;text-transform:none;letter-spacing:0}.acc{display:inline-flex;align-items:center;gap:8px}.acc.strong{font-weight:600}.trend{display:inline-flex;align-items:center;gap:4px;font-weight:500}.trend.flat{color:var(--p-text-muted-color)}.table-scroll{overflow-x:auto}.case-form{display:flex;flex-direction:column;gap:14px;padding:14px 18px;border-top:1px solid var(--p-content-border-color)}@container docscout (max-width:980px){.test-grid{grid-template-columns:1fr}.stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}}@container docscout (max-width:640px){.value-main{grid-template-columns:minmax(0,1fr) auto auto 18px}.conf-word{display:none}.value-name{grid-column:1/-1}.value-main .confidence .bar{display:none}}.metric-table td svg{display:inline-block;vertical-align:-2px}.slider{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500}.slider-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.slider-value{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;padding:1px 8px;border-radius:6px;background:color-mix(in srgb,var(--p-primary-color) 12%,transparent);color:var(--p-primary-color)}.slider input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;padding:0;border:0;border-radius:999px;background:linear-gradient(to right,var(--p-primary-color) var(--fill),color-mix(in srgb,var(--p-text-color) 12%,transparent) var(--fill));cursor:pointer}.slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:999px;background:var(--p-slider-handle-content-background,var(--p-content-background));border:2px solid var(--p-primary-color);box-shadow:0 1px 2px color-mix(in srgb,var(--p-text-color) 25%,transparent)}.slider input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:999px;background:var(--p-slider-handle-content-background,var(--p-content-background));border:2px solid var(--p-primary-color)}.slider input[type=range]:disabled{opacity:.5;cursor:default}.slider-hints{display:flex;justify-content:space-between;font-size:11px;font-weight:400;color:var(--p-text-muted-color)}.slider small{font-weight:400}.model-role{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:10px;font-size:13px}.model-role>span{color:var(--p-text-muted-color)}.diagram{margin:0;padding:12px;border-radius:10px;background:color-mix(in srgb,var(--p-text-color) 4%,transparent);display:flex;flex-direction:column;gap:8px}.diagram figcaption{font-size:12px;color:var(--p-text-muted-color);line-height:1.45}.chunk-diagram svg{width:100%;height:46px;display:block}.chunk-diagram .chunk{fill:color-mix(in srgb,var(--p-primary-color) 22%,transparent);stroke:var(--p-primary-color);stroke-width:.4;vector-effect:non-scaling-stroke}.chunk-diagram .shared{fill:color-mix(in srgb,var(--p-primary-color) 35%,transparent)}.fd-track{display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:2px}.fd-track.wrap{flex-wrap:wrap;row-gap:8px}.fd-node{display:inline-flex;flex-direction:column;align-items:center;gap:3px;padding:5px 9px;border-radius:8px;border:1px solid color-mix(in srgb,var(--p-primary-color) 40%,var(--p-content-border-color));background:var(--p-content-background);font-size:11px;white-space:nowrap;line-height:1.2}.fd-node b{font-size:13px}.fd-node small{font-size:10px;color:var(--p-text-muted-color)}.fd-node.solid{background:color-mix(in srgb,var(--p-primary-color) 14%,transparent)}.fd-node.goal{border-style:dashed;color:var(--p-primary-color);font-weight:600}.fd-dots{display:flex;gap:2px}.fd-dots i{width:4px;height:4px;border-radius:999px;background:var(--p-primary-color)}.fd-link{width:12px;height:2px;background:color-mix(in srgb,var(--p-primary-color) 40%,transparent);flex-shrink:0}.fd-arrow{color:var(--p-text-muted-color);padding:0 6px;font-size:12px}.fd-more{font-size:11px;color:var(--p-text-muted-color);padding:0 4px}.fd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.fd-grid .fd-node{position:relative;min-width:0;white-space:normal;text-align:center;padding:6px 4px}.fd-grid .fd-node:not(:last-child):after{content:"";position:absolute;right:-12px;top:50%;width:10px;height:2px;background:color-mix(in srgb,var(--p-primary-color) 45%,transparent)}.fork,.join{position:relative;height:22px;margin:0 25%}.fork span,.join span{position:absolute;left:0;right:0;border:2px solid color-mix(in srgb,var(--p-text-color) 18%,transparent)}.fork span{top:10px;bottom:0;border-bottom:0;border-radius:10px 10px 0 0}.join span{top:0;bottom:10px;border-top:0;border-radius:0 0 10px 10px}.fork:before,.join:after{content:"";position:absolute;left:50%;width:2px;height:10px;margin-left:-1px;background:color-mix(in srgb,var(--p-text-color) 18%,transparent)}.fork:before{top:0}.join:after{bottom:0}.branches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}.branch{display:flex;flex-direction:column;min-width:0}.branch-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--p-text-muted-color);text-align:center;margin-bottom:6px}.branch .node{padding:11px 12px}.branch .node-side .chip.model{display:none}@container docscout (max-width:900px){.branches{grid-template-columns:1fr}.fork,.join{margin:0 auto;width:2px}.fork span,.join span{display:none}.branch+.branch{margin-top:14px}}.run-failed{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:color-mix(in srgb,var(--p-danger-color) 10%,transparent);color:var(--p-danger-color);font-size:13px}.value-text.missing{font-weight:400;font-style:italic;color:var(--p-text-muted-color)}.chip.warn{background:color-mix(in srgb,var(--p-button-text-warn-color) 16%,transparent);color:var(--p-text-color)}blockquote.unfound{border-left-color:var(--p-button-text-warn-color)}.full-value{font-size:13px;line-height:1.5;padding:2px 0 4px;white-space:pre-wrap;overflow-wrap:anywhere}.eval-run{padding:16px 18px}.eval-run-main{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.eval-run-main .muted{margin-top:4px;max-width:560px}.eval-note{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;color:var(--p-primary-color)}.eval-progress{display:flex;align-items:center;gap:12px;margin-top:14px}.eval-progress .bar{flex:1;height:6px;border-radius:999px;background:var(--p-content-hover-background);overflow:hidden}.eval-progress .bar>span{display:block;height:100%;background:var(--p-primary-color);transition:width .3s}.evals{display:flex;flex-direction:column;gap:18px}.stat-value small{font-size:14px;font-weight:500;color:var(--p-text-muted-color)}.result-matrix td,.result-matrix th{white-space:nowrap}.result-row.active td{background:var(--p-content-hover-background)}.case-toggle{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--p-text-color);padding:0;font-weight:500;max-width:280px;overflow:hidden;text-overflow:ellipsis}.cell{display:inline-flex;align-items:center;justify-content:center;min-width:46px;padding:2px 8px;border-radius:var(--p-content-border-radius);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}.cell.pass{background:color-mix(in srgb,var(--p-primary-color) 16%,transparent);color:var(--p-primary-color)}.cell.partial{background:color-mix(in srgb,var(--p-button-text-warn-color) 18%,transparent);color:var(--p-button-text-warn-color)}.cell.fail{background:color-mix(in srgb,var(--p-danger-color) 16%,transparent);color:var(--p-danger-color)}.cell.none{color:var(--p-text-muted-color)}.cell-state{display:inline-flex;align-items:center;gap:6px;white-space:normal}.cell-state.fail{color:var(--p-danger-color)}.spin{animation:docscout-spin 1s linear infinite}@keyframes docscout-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spin{animation:none}}.result-detail>td{padding:12px 16px 16px;white-space:normal}.compare{display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:10px 16px;margin:0;max-width:860px}.compare dt{padding-top:3px;font-size:13px}.compare dd{display:grid;grid-template-columns:56px minmax(0,1fr) minmax(0,1fr) auto;align-items:start;gap:12px}.cmp{display:flex;flex-direction:column;min-width:0;font-size:13px;overflow-wrap:anywhere}.cmp-label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--p-text-muted-color)}.case-meta{margin-top:10px}.eval-history{list-style:none;margin:0;padding:0}.eval-history li+li{border-top:1px solid var(--p-content-border-color)}.eval-history button{display:flex;align-items:center;gap:12px;width:100%;padding:10px 18px;border:0;background:transparent;color:var(--p-text-color);text-align:left;font-size:13px}.eval-history button:hover,.eval-history button.active{background:var(--p-content-hover-background)}.badge[data-status=completed]{background:color-mix(in srgb,var(--p-primary-color) 14%,transparent);color:var(--p-primary-color)}.badge[data-status=failed]{background:color-mix(in srgb,var(--p-danger-color) 14%,transparent);color:var(--p-danger-color)}.badge[data-status=running],.badge[data-status=queued]{background:var(--p-content-hover-background);color:var(--p-text-color)}.caller{display:inline-flex;align-items:center;gap:6px}@container docscout (max-width:600px){.eval-run-main{flex-direction:column}.compare{grid-template-columns:1fr}.compare dd{grid-template-columns:56px minmax(0,1fr)}.compare dd>:last-child{grid-column:2}.matrix-hint{display:none}.compare-pick{width:100%;margin-left:0}.block-head:has(.compare-pick){flex-wrap:wrap}}.eval-run .block-title{padding:0}.compare-pick{flex-direction:row;align-items:center;gap:8px;font-weight:400}.compare-pick select{width:auto;max-width:100%;padding:5px 9px;font-size:13px}.eval-warning{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:var(--p-content-border-radius);background:var(--p-content-hover-background);color:var(--p-text-color);font-size:13px}.crumb-row{display:flex;align-items:center;gap:14px;min-width:0}@container docscout (max-width:900px){.toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"crumb side" "tabs tabs";column-gap:12px;row-gap:0}.toolbar-lead{display:contents}.crumb-row{grid-area:crumb;min-height:46px;gap:10px}.crumb{border-right:0;padding-right:0;max-width:none}.toolbar>.toolbar-lead>.tabs{grid-area:tabs}.toolbar-side{grid-area:side;min-height:46px}}@container docscout (max-width:600px){.btn-label{display:none}}.card-title-row{display:flex;align-items:center;gap:8px;min-width:0}.card-title-row .card-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.access{flex-shrink:0;font-size:11px;font-weight:500;line-height:1.5;border-radius:6px;padding:1px 7px;background:color-mix(in srgb,var(--p-primary-color) 12%,transparent);color:var(--p-primary-color);white-space:nowrap}.card-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@container docscout (max-width:600px){.metric-table th,.metric-table td{padding:9px 10px}.accuracy-table td:first-child{white-space:normal;overflow-wrap:anywhere}.acc .bar{width:32px}}.value-main>.confidence{justify-self:end}.value-main>.chip{justify-self:start}.cmp-label{white-space:nowrap}@container docscout (max-width:600px){.result-matrix,.result-matrix tbody{display:block}.result-matrix thead{display:none}.result-matrix tr.result-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:12px 14px;border-bottom:1px solid var(--p-content-border-color)}.result-matrix tr.result-row.active{background:var(--p-content-hover-background)}.result-matrix tr.result-row td{display:flex;align-items:center;gap:6px;padding:0;border:0;white-space:normal;background:transparent}.result-matrix tr.result-row td:first-child{flex-basis:100%}.result-matrix td[data-label]:before{content:attr(data-label);font-family:var(--p-font-mono-family);font-size:11px;color:var(--p-text-muted-color)}.case-toggle{max-width:100%;overflow-wrap:anywhere;text-align:left}.result-matrix tr.result-detail{display:block;border-bottom:1px solid var(--p-content-border-color)}.result-matrix tr.result-detail>td{display:block;padding:12px 14px 14px}.accuracy-table.comparing th:nth-child(3),.accuracy-table.comparing td:nth-child(3),.accuracy-table.comparing th:nth-child(4),.accuracy-table.comparing td:nth-child(4){display:none}.compare-pick{flex-wrap:nowrap}.compare-pick>.muted{white-space:nowrap}.compare-pick select{flex:1;min-width:0}.compare dd{grid-template-columns:56px minmax(0,1fr) minmax(0,1fr)}.compare dd>:last-child{grid-column:2/4}.case-table,.case-table tbody{display:block}.case-table thead{display:none}.case-table tr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:12px 14px;border-bottom:1px solid var(--p-content-border-color)}.case-table tr:last-child{border-bottom:0}.case-table td{display:flex;align-items:center;gap:6px;padding:0;border:0;white-space:normal;overflow-wrap:anywhere}.case-table td:first-child{flex:1 1 calc(100% - 44px);font-weight:500}.case-table td.num{order:-1;margin-left:auto;flex:0 0 auto}.case-table td:first-child{order:-2}.case-table td[data-label]{flex-basis:100%}.case-table td[data-label]:before{content:attr(data-label);font-family:var(--p-font-mono-family);font-size:11px;color:var(--p-text-muted-color);min-width:96px}}.eval-history button>span{white-space:nowrap}@container docscout (max-width:600px){.eval-history button{display:grid;grid-template-columns:auto minmax(0,1fr) auto;row-gap:2px;column-gap:10px;padding:10px 14px}.eval-history button>.muted{grid-column:2;grid-row:2;font-size:12px}.eval-history button>strong{grid-column:3;grid-row:1/3;align-self:center}}.value-main{border-radius:8px}@container docscout (max-width:600px){.runs-table,.runs-table tbody{display:block}.runs-table thead{display:none}.runs-table tr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:12px 4px;border-bottom:1px solid var(--p-content-border-color)}.runs-table tr:after{content:"";flex-basis:100%;height:0;order:3}.runs-table td{display:flex;align-items:center;gap:5px;padding:0;border:0}.runs-table td:nth-child(1){order:1;flex:1;font-weight:500}.runs-table td:nth-child(3){order:2}.runs-table td:nth-child(2){order:4}.runs-table td:nth-child(4){order:5}.runs-table td:nth-child(5){order:6}.runs-table td:nth-child(6){display:none}.runs-table td:nth-child(n+2):not(:nth-child(3)){font-size:12px;color:var(--p-text-muted-color)}.runs-table td[data-label]:before{content:attr(data-label)}}.builder,.field-groups{--docscout-space:calc(var(--kx-row-height)/8)}.fields-block>.block-head{padding:calc(var(--docscout-space)*3) calc(var(--docscout-space)*4);gap:calc(var(--docscout-space)*2)}.fields-block>.block-head .collapse{padding:0;min-height:var(--kx-row-height)}#fields-body{container-type:inline-size;container-name:fields;padding:calc(var(--docscout-space)*4)}#fields-body>.block-empty{padding:calc(var(--docscout-space)*2) 0 calc(var(--docscout-space)*4)}.group-add{display:flex;flex-wrap:wrap;align-items:end;gap:calc(var(--docscout-space)*2);padding:0 0 calc(var(--docscout-space)*4);margin-block-end:calc(var(--docscout-space)*4);border-block-end:1px solid var(--p-content-border-color)}.group-add>label{flex:1;min-width:0}.group-add input{height:var(--kx-control-height)}.group-add>.kx-btn{height:var(--kx-control-height)}.field-groups{display:flex;flex-direction:column;gap:calc(var(--docscout-space)*4);min-width:0}.field-group{min-width:0;margin:0;padding:0}.field-group-head{display:flex;align-items:center;gap:calc(var(--docscout-space)*2);min-height:calc(var(--kx-row-height) + var(--docscout-space)*2);padding-block:var(--docscout-space);min-width:0}.group-heading{display:flex;align-items:center;gap:calc(var(--docscout-space)*2);flex:1;min-width:0}.group-title{font-family:var(--kx-font-heading);font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.group-name-button{border:0;padding:0;justify-content:flex-start;background:transparent;height:var(--kx-row-height);max-width:100%}.group-name-button>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.group-name-button>svg{width:12px;height:12px;flex:none;color:var(--p-text-muted-color);opacity:0}.group-name-button:hover>svg,.group-name-button:focus-visible>svg{opacity:1}.group-count{flex:none;font-size:11px}.group-actions{display:flex;align-items:center;gap:var(--docscout-space);margin-inline-start:auto;position:relative;flex:none}.group-actions .p-menu{left:auto!important;right:0}.group-rename{display:flex;flex-wrap:wrap;align-items:center;gap:var(--docscout-space);width:100%;min-width:0;margin:0}.group-rename>input{flex:1;min-width:0;height:var(--kx-control-height)}.group-rename>.field-error{flex-basis:100%;margin:0}.group-content{margin-inline-start:calc(var(--docscout-space)*4);padding-inline-start:calc(var(--docscout-space)*4 - 1px);border-inline-start:1px solid var(--p-content-border-color);min-width:0}.shape-editor{display:flex;flex-direction:column;gap:12px;min-width:0}.nested-value{min-width:0;overflow-wrap:anywhere;white-space:normal}.nested-value dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:8px;margin:0}.nested-value dt{color:var(--p-text-muted-color);font-weight:500}.nested-value dd{min-width:0;margin:0}.nested-value ol{padding-inline-start:16px;margin:0}.nested-value li+li{margin-block-start:8px}.case-value{display:flex;flex-direction:column;gap:8px}@container docscout (max-width:600px){.nested-value dl{grid-template-columns:minmax(0,1fr)}.nested-value dd{padding-inline-start:12px}}.structured-value{padding:12px 16px}.rows>.value-row,.value-list .rows>li{list-style:none}.case-table td:has(.case-value){white-space:normal}@container docscout (max-width:600px){.runs-table .result-detail{display:block}.runs-table .result-detail>td{display:block;width:100%}.case-table td:has(.case-value){flex-basis:100%;display:block}.structured-value{padding-inline:8px}}.tree-toggle.kx-iconbtn,.tree-indent{width:var(--kx-row-height);height:var(--kx-row-height);flex:none}.shape-tree-node{min-width:0}.tree-children{list-style:none;margin-block:0;margin-inline:calc(var(--docscout-space)*4) 0;padding-block:0;padding-inline:calc(var(--docscout-space)*4 - 1px) 0;border-inline-start:1px solid var(--p-content-border-color)}.tree-children>li{min-width:0}.tree-children>li+li{margin-block-start:var(--docscout-space)}.shape-tree-node .row-main{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:calc(var(--docscout-space)*2);min-height:calc(var(--kx-row-height)*2);padding:calc(var(--docscout-space)*2) var(--docscout-space);min-width:0;flex:1;border-radius:var(--kx-radius-8)}.row-copy{display:flex;flex-direction:column;gap:var(--docscout-space);min-width:0}.shape-tree-node .row-name{display:flex;align-items:center;gap:calc(var(--docscout-space)*2);font-family:var(--kx-font-body);font-size:13px;font-weight:600;line-height:20px;min-width:0}.row-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.shape-tree-node .row-name>svg{width:16px;height:16px;flex:none;color:var(--p-text-muted-color)}.shape-tree-node .row-name>.row-warn{color:var(--p-danger-color);margin-inline-start:0}.field-badges{display:flex;flex-direction:column;align-items:flex-end;gap:var(--docscout-space);width:calc(var(--docscout-space)*24);min-width:0}.field-type{height:calc(var(--docscout-space)*5);max-width:100%}.field-flags{display:flex;align-items:center;justify-content:flex-end;gap:var(--docscout-space);height:calc(var(--docscout-space)*5);flex:none}.field-flag.chip{display:inline-flex;align-items:center;justify-content:center;width:calc(var(--docscout-space)*5);height:calc(var(--docscout-space)*5);padding:0;flex:none}.field-flag>svg{width:14px;height:14px}.type-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.type-picker button{flex-direction:column;gap:5px;min-height:58px;white-space:normal;font-size:12px}.type-picker button>svg{font-size:20px}.type-picker button:last-child{grid-column:auto}.context-stepper{display:flex;align-items:center;gap:4px}.context-stepper input{flex:1}.context-stepper .kx-btn{padding:7px 12px}.shape-preview{margin-block-start:18px;border-block-start:1px solid var(--p-content-border-color);padding-block:14px}.shape-preview summary{display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;margin-block-end:12px}.preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.preview-grid h3{font-size:12px;color:var(--p-text-muted-color);margin-block-end:8px}.preview-grid pre,.field-failure pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;background:var(--p-content-hover-background);border:1px solid var(--p-content-border-color);border-radius:var(--p-content-border-radius);padding:12px;font-size:12px}.node-breadcrumb{overflow-wrap:anywhere;margin-block-end:16px;color:var(--p-text-muted-color)}.move-node{display:flex;align-items:end;gap:8px;margin:20px 0 0;padding:14px 0 0;border:0;border-block-start:1px solid var(--p-content-border-color)}.move-node>label{flex:1}.field-failure{padding:10px 14px;color:var(--p-danger-color);overflow-wrap:anywhere}.field-failure details{margin-block-start:6px;color:var(--p-text-color)}.field-failure summary{cursor:pointer}.field-failure p{font-size:13px}.badge[data-status=partial]{background:color-mix(in srgb,var(--p-button-text-warn-color) 14%,transparent);color:var(--p-button-text-warn-color)}wc-agent-picker{display:block;min-width:0}@container docscout (max-width:600px){.preview-grid{grid-template-columns:minmax(0,1fr)}}.preview-grid pre,.field-failure pre{font-family:var(--p-font-mono-family)}h1,h2,h3,h4{font-family:var(--kx-font-heading)}@container fields (max-width:400px){.shape-tree-node .row-main{grid-template-columns:minmax(0,1fr);min-height:calc(var(--kx-row-height)*2 + var(--docscout-space)*4);gap:var(--docscout-space)}.field-badges{flex-direction:row;align-items:center;justify-content:space-between;width:auto;gap:var(--docscout-space)}.shape-tree-node .row-actions{opacity:1}.group-name-button>svg{opacity:1}.group-heading{gap:var(--docscout-space)}}';
 function Is(e, t) {
@@ -3887,9 +3887,9 @@ const Ki = (e) => e.response?.data, zs = {
   async remove(e) {
     H((await B.delete(J(e))).data);
   }
-}, Yi = { fields: { items: { default: { name: "", type: "text", description: "", enum_values: [], required: !1, search_hints: "", validation_hints: "", expected_format: "", strategy: "standard", search_within: "document", group: "", evidence_required: !0, chunks: 5 } } }, stages: { properties: { map: { type: "object", additionalProperties: !1, properties: { enabled: { type: "boolean", default: !0 }, model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, outline: { type: "string", default: "find_or_build", enum: ["find_or_build", "build"] }, section_summaries: { type: "boolean", default: !1 } }, required: ["enabled", "model", "outline", "section_summaries"], default: { enabled: !0, model: "class:fast", outline: "find_or_build", section_summaries: !1 } }, prefetch: { type: "object", additionalProperties: !1, properties: { enabled: { type: "boolean", default: !0 }, queries: { type: "array", default: [], items: { type: "object", additionalProperties: !1, properties: { name: { type: "string", minLength: 1, maxLength: 200, default: "" }, query: { type: "string", minLength: 1, maxLength: 4e3, default: "" }, chunks: { type: "integer", default: 5, minimum: 1, maximum: 1e3 } }, required: ["name", "query", "chunks"], default: { name: "", query: "", chunks: 5 } }, maxItems: 100 } }, required: ["enabled", "queries"], default: { enabled: !0, queries: [] } }, scout: { type: "object", additionalProperties: !1, properties: { enabled: { type: "boolean", default: !0 }, mode: { type: "string", default: "loop", enum: ["loop", "agent"] }, model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, max_rounds: { type: "integer", default: 0, minimum: 0, maximum: 30 }, target_confidence: { type: "number", default: 0.7, minimum: 0, maximum: 1 }, max_extra_queries: { type: "integer", default: 3, minimum: 0, maximum: 20 }, max_tokens: { type: "integer", default: 4096, minimum: 256, maximum: 64e3 }, drop_noise: { type: "boolean", default: !0 }, share_notes: { type: "boolean", default: !0 }, tools: { type: "array", default: ["keyword_search", "semantic_search", "read_section", "read_outline"], items: { type: "string", enum: ["keyword_search", "semantic_search", "read_section", "read_outline"] }, uniqueItems: !0 } }, required: ["enabled", "mode", "model", "max_rounds", "target_confidence", "max_extra_queries", "max_tokens", "drop_noise", "share_notes", "tools"], default: { enabled: !0, mode: "loop", model: "class:fast", max_rounds: 0, target_confidence: 0.7, max_extra_queries: 3, max_tokens: 4096, drop_noise: !0, share_notes: !0, tools: ["keyword_search", "semantic_search", "read_section", "read_outline"] } }, deep: { type: "object", additionalProperties: !1, properties: { enabled: { type: "boolean", default: !0 }, model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, query_model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, read: { type: "string", default: "chunks", enum: ["chunks", "sections"] }, parallel_fields: { type: "integer", default: 4, minimum: 1, maximum: 20 }, max_queries: { type: "integer", default: 5, minimum: 1, maximum: 100 }, chunks_per_query: { type: "integer", default: 50, minimum: 1, maximum: 1e3 }, chunk_cap: { type: "integer", default: 100, minimum: 1, maximum: 1e4 }, min_similarity: { type: "number", default: 0.2, minimum: 0, maximum: 1 }, query_temperature: { type: "number", default: 0.2, minimum: 0, maximum: 2 }, analysis_temperature: { type: "number", default: 0.2, minimum: 0, maximum: 2 } }, required: ["enabled", "model", "query_model", "read", "parallel_fields", "max_queries", "chunks_per_query", "chunk_cap", "min_similarity", "query_temperature", "analysis_temperature"], default: { enabled: !0, model: "class:fast", query_model: "class:fast", read: "chunks", parallel_fields: 4, max_queries: 5, chunks_per_query: 50, chunk_cap: 100, min_similarity: 0.2, query_temperature: 0.2, analysis_temperature: 0.2 } }, extract: { type: "object", additionalProperties: !1, properties: { model: { type: "string", default: "class:premium", minLength: 1, maxLength: 200 }, max_output_tokens: { type: "integer", default: 4096, minimum: 256, maximum: 64e3 }, max_fields_per_call: { type: "integer", default: 20, minimum: 1, maximum: 100 } }, required: ["model", "max_output_tokens", "max_fields_per_call"], default: { model: "class:premium", max_output_tokens: 4096, max_fields_per_call: 20 } }, verify: { type: "object", additionalProperties: !1, properties: { enabled: { type: "boolean", default: !1 }, model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, check_quotes: { type: "boolean", default: !0 }, check_support: { type: "boolean", default: !0 } }, required: ["enabled", "model", "check_quotes", "check_support"], default: { enabled: !1, model: "class:fast", check_quotes: !0, check_support: !0 } } } }, retrieval: { properties: { chunk_size: { type: "integer", default: 1200, minimum: 100, maximum: 16e3 }, overlap: { type: "integer", default: 150, minimum: 0, maximum: 4e3 }, split_headings: { type: "boolean", default: !0 }, keep_tables: { type: "boolean", default: !0 }, search_mode: { type: "string", default: "hybrid", enum: ["keyword", "semantic", "hybrid"] }, embedding_model: { type: "string", default: "class:embed", minLength: 1, maxLength: 200 }, context: { type: "string", default: "headings", enum: ["none", "headings", "generated"] }, context_model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, highlighter: { type: "boolean", default: !1 }, highlighter_model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, section_budget: { type: "integer", default: 6e3, minimum: 500, maximum: 64e3 } } } }, dt = {
+}, Yi = { fields: { items: { default: { name: "", type: "text", description: "", enum_values: [], required: !1, search_hints: "", validation_hints: "", expected_format: "", strategy: "standard", search_within: "document", group: "", evidence_required: !0, chunks: 5 } } }, stages: { properties: { map: { type: "object", additionalProperties: !1, properties: { enabled: { type: "boolean", default: !0 }, model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, outline: { type: "string", default: "find_or_build", enum: ["find_or_build", "build"] }, section_summaries: { type: "boolean", default: !1 } }, required: ["enabled", "model", "outline", "section_summaries"], default: { enabled: !0, model: "class:fast", outline: "find_or_build", section_summaries: !1 } }, prefetch: { type: "object", additionalProperties: !1, properties: { enabled: { type: "boolean", default: !0 }, queries: { type: "array", default: [], items: { type: "object", additionalProperties: !1, properties: { name: { type: "string", minLength: 1, maxLength: 200, default: "" }, query: { type: "string", minLength: 1, maxLength: 4e3, default: "" }, chunks: { type: "integer", default: 5, minimum: 1, maximum: 1e3 } }, required: ["name", "query", "chunks"], default: { name: "", query: "", chunks: 5 } }, maxItems: 100 } }, required: ["enabled", "queries"], default: { enabled: !0, queries: [] } }, scout: { type: "object", additionalProperties: !1, properties: { enabled: { type: "boolean", default: !0 }, mode: { type: "string", default: "loop", enum: ["loop", "agent"] }, model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, max_rounds: { type: "integer", default: 0, minimum: 0, maximum: 30, description: "Extra search rounds for structured scouting. Agent mode requires at least one round, including when a user agent is selected." }, target_confidence: { type: "number", default: 0.7, minimum: 0, maximum: 1 }, max_extra_queries: { type: "integer", default: 3, minimum: 0, maximum: 20, description: "Search budget per round. Agent mode requires a positive value; selected agents use max_rounds * max_extra_queries + 1 native iterations, including the final answer." }, max_tokens: { type: "integer", default: 4096, minimum: 256, maximum: 64e3 }, drop_noise: { type: "boolean", default: !0 }, share_notes: { type: "boolean", default: !0 }, tools: { type: "array", default: ["keyword_search", "semantic_search", "read_section", "read_outline"], items: { type: "string", enum: ["keyword_search", "semantic_search", "read_section", "read_outline"] }, uniqueItems: !0 }, agent_id: { type: "string", minLength: 1, title: "Scouting agent", description: "Agent component id readable by the saver and runner. Applies to agent mode; omit to use the built-in loop.", picker: "wc-component-picker", class: "agent" } }, required: ["enabled", "mode", "model", "max_rounds", "target_confidence", "max_extra_queries", "max_tokens", "drop_noise", "share_notes", "tools"], default: { enabled: !0, mode: "loop", model: "class:fast", max_rounds: 0, target_confidence: 0.7, max_extra_queries: 3, max_tokens: 4096, drop_noise: !0, share_notes: !0, tools: ["keyword_search", "semantic_search", "read_section", "read_outline"] } }, deep: { type: "object", additionalProperties: !1, properties: { enabled: { type: "boolean", default: !0 }, model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, query_model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, read: { type: "string", default: "chunks", enum: ["chunks", "sections"] }, parallel_fields: { type: "integer", default: 4, minimum: 1, maximum: 20 }, max_queries: { type: "integer", default: 5, minimum: 1, maximum: 100 }, chunks_per_query: { type: "integer", default: 50, minimum: 1, maximum: 1e3 }, chunk_cap: { type: "integer", default: 100, minimum: 1, maximum: 1e4 }, min_similarity: { type: "number", default: 0.2, minimum: 0, maximum: 1 }, query_temperature: { type: "number", default: 0.2, minimum: 0, maximum: 2 }, analysis_temperature: { type: "number", default: 0.2, minimum: 0, maximum: 2 } }, required: ["enabled", "model", "query_model", "read", "parallel_fields", "max_queries", "chunks_per_query", "chunk_cap", "min_similarity", "query_temperature", "analysis_temperature"], default: { enabled: !0, model: "class:fast", query_model: "class:fast", read: "chunks", parallel_fields: 4, max_queries: 5, chunks_per_query: 50, chunk_cap: 100, min_similarity: 0.2, query_temperature: 0.2, analysis_temperature: 0.2 } }, extract: { type: "object", additionalProperties: !1, properties: { model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, max_output_tokens: { type: "integer", default: 4096, minimum: 256, maximum: 64e3 }, max_fields_per_call: { type: "integer", default: 20, minimum: 1, maximum: 100 } }, required: ["model", "max_output_tokens", "max_fields_per_call"], default: { model: "class:fast", max_output_tokens: 4096, max_fields_per_call: 20 } }, verify: { type: "object", additionalProperties: !1, properties: { enabled: { type: "boolean", default: !1 }, model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, check_quotes: { type: "boolean", default: !0 }, check_support: { type: "boolean", default: !0 } }, required: ["enabled", "model", "check_quotes", "check_support"], default: { enabled: !1, model: "class:fast", check_quotes: !0, check_support: !0 } } } }, retrieval: { properties: { chunk_size: { type: "integer", default: 1200, minimum: 100, maximum: 16e3 }, overlap: { type: "integer", default: 150, minimum: 0, maximum: 4e3 }, split_headings: { type: "boolean", default: !0 }, keep_tables: { type: "boolean", default: !0 }, search_mode: { type: "string", default: "hybrid", enum: ["keyword", "semantic", "hybrid"] }, embedding_model: { type: "string", default: "class:embed", minLength: 1, maxLength: 200 }, context: { type: "string", default: "headings", enum: ["none", "headings", "generated"] }, context_model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, highlighter: { type: "boolean", default: !1 }, highlighter_model: { type: "string", default: "class:fast", minLength: 1, maxLength: 200 }, section_budget: { type: "integer", default: 6e3, minimum: 500, maximum: 64e3 } } } }, dt = {
   properties: Yi,
-  default: { fields: [], stages: { map: { enabled: !0, model: "class:fast", outline: "find_or_build", section_summaries: !1 }, prefetch: { enabled: !0, queries: [] }, scout: { enabled: !0, mode: "loop", model: "class:fast", max_rounds: 0, target_confidence: 0.7, max_extra_queries: 3, max_tokens: 4096, drop_noise: !0, share_notes: !0, tools: ["keyword_search", "semantic_search", "read_section", "read_outline"] }, deep: { enabled: !0, model: "class:fast", query_model: "class:fast", read: "chunks", parallel_fields: 4, max_queries: 5, chunks_per_query: 50, chunk_cap: 100, min_similarity: 0.2, query_temperature: 0.2, analysis_temperature: 0.2 }, extract: { model: "class:premium", max_output_tokens: 4096, max_fields_per_call: 20 }, verify: { enabled: !1, model: "class:fast", check_quotes: !0, check_support: !0 } }, retrieval: { chunk_size: 1200, overlap: 150, split_headings: !0, keep_tables: !0, search_mode: "hybrid", embedding_model: "class:embed", context: "headings", context_model: "class:fast", highlighter: !1, highlighter_model: "class:fast", section_budget: 6e3 }, tags: [] }
+  default: { fields: [], stages: { map: { enabled: !0, model: "class:fast", outline: "find_or_build", section_summaries: !1 }, prefetch: { enabled: !0, queries: [] }, scout: { enabled: !0, mode: "loop", model: "class:fast", max_rounds: 0, target_confidence: 0.7, max_extra_queries: 3, max_tokens: 4096, drop_noise: !0, share_notes: !0, tools: ["keyword_search", "semantic_search", "read_section", "read_outline"] }, deep: { enabled: !0, model: "class:fast", query_model: "class:fast", read: "chunks", parallel_fields: 4, max_queries: 5, chunks_per_query: 50, chunk_cap: 100, min_similarity: 0.2, query_temperature: 0.2, analysis_temperature: 0.2 }, extract: { model: "class:fast", max_output_tokens: 4096, max_fields_per_call: 20 }, verify: { enabled: !1, model: "class:fast", check_quotes: !0, check_support: !0 } }, retrieval: { chunk_size: 1200, overlap: 150, split_headings: !0, keep_tables: !0, search_mode: "hybrid", embedding_model: "class:embed", context: "headings", context_model: "class:fast", highlighter: !1, highlighter_model: "class:fast", section_budget: 6e3 }, tags: [] }
 }, Gi = 4, Ns = () => ({ name: "", type: "text", description: "", enum_values: [], expected_format: "", required: !1 }), Rs = () => ({ type: "text", description: "", enum_values: [], expected_format: "" }), Se = (e) => e.group ? `${e.group}.${e.name}` : e.name, Zi = /^(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)*(?:\.[a-z][a-z0-9]*(?:_[a-z0-9]+)*)*)?$/;
 function Vs(e) {
   return e.find((t) => e.some((r) => r !== t && r.startsWith(t + ".")));
@@ -4057,7 +4057,7 @@ function Tt(e, t) {
   return n;
 }
 function os(e, t, r, n, o, a) {
-  return $(), E("svg", S({
+  return $(), A("svg", S({
     width: "14",
     height: "14",
     viewBox: "0 0 14 14",
@@ -4149,7 +4149,7 @@ var as = `
     var r = t.props, n = t.instance;
     return ["p-badge p-component", {
       "p-badge-circle": T(r.value) && String(r.value).length === 1,
-      "p-badge-dot": be(r.value) && !n.$slots.default,
+      "p-badge-dot": ge(r.value) && !n.$slots.default,
       "p-badge-sm": r.size === "small",
       "p-badge-lg": r.size === "large",
       "p-badge-xl": r.size === "xlarge",
@@ -4229,7 +4229,7 @@ var un = {
   }
 }, ps = ["data-p"];
 function us(e, t, r, n, o, a) {
-  return $(), E("span", S({
+  return $(), A("span", S({
     class: e.cx("root"),
     "data-p": a.dataP
   }, e.ptmi("root")), [D(e.$slots, "default", {}, function() {
@@ -4913,7 +4913,7 @@ function hs(e, t) {
   }
   return (t === "string" ? String : Number)(e);
 }
-var bs = {
+var gs = {
   root: function(t) {
     var r = t.instance, n = t.props;
     return ["p-button p-component", F(F(F(F(F(F(F(F(F({
@@ -4929,10 +4929,10 @@ var bs = {
     return ["p-button-icon", F({}, "p-button-icon-".concat(r.iconPos), r.label)];
   },
   label: "p-button-label"
-}, gs = C.extend({
+}, bs = C.extend({
   name: "button",
   style: ms,
-  classes: bs
+  classes: gs
 }), vs = {
   name: "BaseButton",
   extends: qe,
@@ -5022,7 +5022,7 @@ var bs = {
       default: null
     }
   },
-  style: gs,
+  style: bs,
   provide: function() {
     return {
       $pcButton: this,
@@ -5102,7 +5102,7 @@ var ws = {
       };
     },
     hasFluid: function() {
-      return be(this.fluid) ? !!this.$pcFluid : this.fluid;
+      return ge(this.fluid) ? !!this.$pcFluid : this.fluid;
     },
     dataP: function() {
       return fe(z(z(z(z(z(z(z(z(z(z({}, this.size, this.size), "icon-only", this.hasIcon && !this.label && !this.badge), "loading", this.loading), "fluid", this.hasFluid), "rounded", this.rounded), "raised", this.raised), "outlined", this.outlined || this.variant === "outlined"), "text", this.text || this.variant === "text"), "link", this.link || this.variant === "link"), "vertical", (this.iconPos === "top" || this.iconPos === "bottom") && this.label));
@@ -5126,20 +5126,20 @@ function Ss(e, t, r, n, o, a) {
   var s = tt("SpinnerIcon"), l = tt("Badge"), i = Pr("ripple");
   return e.asChild ? D(e.$slots, "default", {
     key: 1,
-    class: bt(e.cx("root")),
+    class: gt(e.cx("root")),
     a11yAttrs: a.a11yAttrs
   }) : Or(($(), ee(ht(e.as), S({
     key: 0,
     class: e.cx("root"),
     "data-p": a.dataP
   }, a.attrs), {
-    default: gt(function() {
+    default: bt(function() {
       return [D(e.$slots, "default", {}, function() {
         return [e.loading ? D(e.$slots, "loadingicon", S({
           key: 0,
           class: [e.cx("loadingIcon"), e.cx("icon")]
         }, e.ptm("loadingIcon")), function() {
-          return [e.loadingIcon ? ($(), E("span", S({
+          return [e.loadingIcon ? ($(), A("span", S({
             key: 0,
             class: [e.cx("loadingIcon"), e.cx("icon"), e.loadingIcon]
           }, e.ptm("loadingIcon")), null, 16)) : ($(), ee(s, S({
@@ -5151,12 +5151,12 @@ function Ss(e, t, r, n, o, a) {
           key: 1,
           class: [e.cx("icon")]
         }, e.ptm("icon")), function() {
-          return [e.icon ? ($(), E("span", S({
+          return [e.icon ? ($(), A("span", S({
             key: 0,
             class: [e.cx("icon"), e.icon, e.iconClass],
             "data-p": a.dataIconP
           }, e.ptm("icon")), null, 16, ks)) : V("", !0)];
-        }), e.label ? ($(), E("span", S({
+        }), e.label ? ($(), A("span", S({
           key: 2,
           class: e.cx("label")
         }, e.ptm("label"), {
@@ -5164,7 +5164,7 @@ function Ss(e, t, r, n, o, a) {
         }), lt(e.label), 17, _s)) : V("", !0), e.badge ? ($(), ee(l, {
           key: 3,
           value: e.badge,
-          class: bt(e.badgeClass),
+          class: gt(e.badgeClass),
           severity: e.badgeSeverity,
           unstyled: e.unstyled,
           pt: e.ptm("pcBadge")
@@ -5187,7 +5187,7 @@ export {
   js as I,
   Zs as J,
   qs as K,
-  As as L,
+  Es as L,
   Gi as M,
   Ji as N,
   Fs as O,
@@ -5220,7 +5220,7 @@ export {
   ws as s,
   tl as t,
   Cs as u,
-  Es as v,
+  As as v,
   Ns as w,
   Hs as x,
   Rs as y,
