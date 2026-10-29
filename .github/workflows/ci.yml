@@ -38,7 +38,20 @@ jobs:
       with:
         fetch-depth: 0
         persist-credentials: false
-    - uses: kicksideai/.github/actions/legal-check@5e168263ac995d107c968af658b810e22788cb6a
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      with:
+        node-version: '22'
+    - uses: kicksideai/.github/actions/setup-wippy@5401fa65bed7d8648125957520e94206ed1ffd0b
+      with:
+        version: 0.3.54a
+        hub-url: https://hub.wippy.ai
+    - name: Materialize locked Docscout UI Kit for license provenance
+      run: |
+        set -euo pipefail
+        (cd docscout/build-inputs && wippy install)
+        version=$(jq -er '.packages[".wippy/npm/@kickside/ui-kit"].version' docscout/ui/package-lock.json)
+        wippy artifacts materialize "docscout/build-inputs/.wippy/vendor/kickside/ui-kit-$version.wapp" kickside.ui_kit:package_fs --root docscout/ui/.wippy
+    - uses: kicksideai/.github/actions/legal-check@e1186b6a3f9aac84125b7d5300077b7b23a70804
       with:
         base: ${{ github.event.pull_request.base.sha }}
   modules:

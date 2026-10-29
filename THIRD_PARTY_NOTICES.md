@@ -59,6 +59,12 @@ Lockfiles: `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage
 
 LICENSE: [License text](#license-text-769d154fbde32a915af110b1123650bc79f4cbe675acc66e005265bf069c6c6c)
 
+### npm: @kickside/ui-kit@1.6.0
+
+License: LicenseRef-KickSide-Community-1.0
+
+Lockfiles: `docscout/ui/package-lock.json`
+
 ### npm: @nodelib/fs.scandir@2.1.5
 
 License: MIT
@@ -87,7 +93,7 @@ LICENSE: [License text](#license-text-9363d160bf41d46d83901a5d24fc3fe2094c2afc17
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85829ea6be8b51549195ad31)
 
@@ -95,7 +101,7 @@ LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85829ea6be8b51549195ad31)
 
@@ -103,7 +109,7 @@ LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85829ea6be8b51549195ad31)
 
@@ -111,7 +117,7 @@ LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE.md: [License text](#license-text-39a2ce8d759cfcb59eccc49b0a417ad5c943f960c1bcdfba4720ca7547029af7)
 
@@ -119,7 +125,7 @@ LICENSE.md: [License text](#license-text-39a2ce8d759cfcb59eccc49b0a417ad5c943f96
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE.md: [License text](#license-text-39a2ce8d759cfcb59eccc49b0a417ad5c943f960c1bcdfba4720ca7547029af7)
 
@@ -127,7 +133,7 @@ LICENSE.md: [License text](#license-text-39a2ce8d759cfcb59eccc49b0a417ad5c943f96
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d28a17eca1350be9c367175c)
 
@@ -135,7 +141,7 @@ LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d2
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d28a17eca1350be9c367175c)
 
@@ -143,7 +149,7 @@ LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d2
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d28a17eca1350be9c367175c)
 
@@ -159,6 +165,12 @@ License: UNLICENSED
 
 Lockfiles: `storage-s3/ui/package-lock.json`
 
+### npm: @wippy-fe/theme@0.0.67
+
+License: UNLICENSED
+
+Lockfiles: `docscout/ui/package-lock.json`
+
 ### npm: @wippy-fe/webcomponent-core@0.0.60
 
 License: UNLICENSED
@@ -171,6 +183,12 @@ License: UNLICENSED
 
 Lockfiles: `storage-s3/ui/package-lock.json`
 
+### npm: @wippy-fe/webcomponent-core@0.0.67
+
+License: UNLICENSED
+
+Lockfiles: `docscout/ui/package-lock.json`
+
 ### npm: @wippy-fe/webcomponent-vue@0.0.60
 
 License: UNLICENSED
@@ -182,6 +200,12 @@ Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.j
 License: UNLICENSED
 
 Lockfiles: `storage-s3/ui/package-lock.json`
+
+### npm: @wippy-fe/webcomponent-vue@0.0.67
+
+License: UNLICENSED
+
+Lockfiles: `docscout/ui/package-lock.json`
 
 ### npm: any-promise@1.3.0
 
@@ -219,7 +243,7 @@ license: [License text](#license-text-96f0820026bd6dadc4af99c6dba7111d2e0190c092
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-67cd5e903c1f908edfa27c25606fa806ce629d9a8ddb7d83019d9fd1f83f7fde)
 
@@ -345,7 +369,7 @@ LICENSE: [License text](#license-text-bf9b0d665be2a689851eea667ca9f42066ea1d903b
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE.md: [License text](#license-text-3555f8c47cbff86d199d5a5033afd5ef9560e0095927296af670a886b8b1988d)
 
@@ -449,7 +473,7 @@ LICENSE: [License text](#license-text-e70ff771504ba41f2be55de812a017ff46433d7a25
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-acf17aff719bfab70f6bec3a93f1ba82ce9fe27ab74f83c0f2e1efb1273fa220)
 
@@ -481,7 +505,7 @@ LICENSE: [License text](#license-text-3f4609137f65070541b9214300ea0d640af8192857
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-46231df5a7733c3f52f11b71f3df61813007745b62b09031acfb45fb42d75082)
 
@@ -505,7 +529,7 @@ LICENSE: [License text](#license-text-91a2845c4db44e7497b514b98634a674c737986ad0
 
 License: MIT
 
-Lockfiles: `storage-s3/ui/package-lock.json`
+Lockfiles: `docscout/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-91a2845c4db44e7497b514b98634a674c737986ad0db81599307cf733bf850b2)
 
@@ -577,7 +601,7 @@ LICENSE: [License text](#license-text-3687447039151857a6ba378db062172c7f33d4aa70
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE.md: [License text](#license-text-39a2ce8d759cfcb59eccc49b0a417ad5c943f960c1bcdfba4720ca7547029af7)
 
@@ -649,7 +673,7 @@ LICENSE: [License text](#license-text-0f0ca96f50793990031ebc488a38f7292ff70bce8a
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-4e9b5aa2cc05bb36c49cde421465d7b73dd66635c69ddbf884b81a51d4929345)
 
@@ -665,7 +689,7 @@ LICENSE: [License text](#license-text-60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-5caf822f0a7fd3205c99676e06f0077657583230511f4f34640ec1a30c38a046)
 
