@@ -13,6 +13,7 @@ local cleanup = require("cleanup")
 local locations = require("locations")
 local offload = require("offload")
 local policy = require("policy")
+local upload_types = require("upload_types")
 local fixture_cleanup = require("fixture_cleanup")
 local DB, STORAGE = "app:db", "app:uploads"
 
@@ -25,7 +26,7 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Knowledge ingestion of S3-backed uploads", function()
-        local upload_id, kb_id
+        local upload_id, kb_id, uploads_component_id
         test.after_all(function()
             if kb_id then fixture_cleanup.cleanup(kb_id) end
             if upload_id then
@@ -35,6 +36,7 @@ return { run = test.run_cases(function()
                 local _, prune_err = offload.prune("2999-01-01T00:00:00Z", 100)
                 test.is_nil(prune_err, tostring(prune_err))
             end
+            if uploads_component_id then fixture_cleanup.cleanup(uploads_component_id) end
             local settings = assert(assert(contract.get("kickside.settings:settings")):open())
             test.is_true(settings:unset({ namespace = "kickside.storage_s3", key = "policy" }).success)
             test.is_true(assert(funcs.call("kickside.storage_s3.service:request", {})).success)
@@ -49,6 +51,16 @@ return { run = test.run_cases(function()
             test.is_true(assert(funcs.call("kickside.storage_s3.service:request", {})).success)
             local destination = assert(policy.current())
             local owner = "kb-storage-" .. uuid.v4()
+            local actor = assert(security.new_actor(owner, {}))
+            local scope = assert(security.new_scope({ assert(security.policy("app:limited_user")),
+                assert(security.policy("app:limited_no_process_scope")) }))
+            local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
+            uploads_component_id = upload_types.component_id_for_owner(owner)
+            local registered, register_err = executor:call("kickside.component.binding:register_component_func", {
+                component_id = uploads_component_id, impl_id = upload_types.IMPL,
+            })
+            test.is_nil(register_err, tostring(register_err))
+            test.is_true(registered.success, tostring(registered.error))
             upload_id, kb_id = uuid.v4(), uuid.v7()
             local path = "kb-storage-" .. upload_id
             local bytes = "Verified knowledge from remote storage. " .. uuid.v4()
@@ -76,9 +88,6 @@ return { run = test.run_cases(function()
                 execute([[INSERT INTO kickside_component_meta(meta_id,component_id,key,value,created_at,updated_at)
                     VALUES ($1,$2,$3,$4,0,0)]], { uuid.v7(), kb_id, key, value })
             end
-            local actor = assert(security.new_actor(owner, {}))
-            local scope = assert(security.new_scope({ assert(security.policy("app:limited_user")),
-                assert(security.policy("app:limited_no_process_scope")) }))
             local threads = assert(assert(contract.get("kickside.core:threads")):with_actor(actor):with_scope(scope):open())
             local _, ensure_err = threads:ensure_thread({ component_id = kb_id, impl_id = "app:test_engine_wiki",
                 thread_class = "kickside.knowledge.injection" })

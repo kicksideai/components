@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.41](https://github.com/kicksideai/components/compare/sso-v0.1.40...sso-v0.1.41) (2026-10-28)
+
+
+### Bug Fixes
+
+* **sso:** authorize Users scope resolution during login ([#18](https://github.com/kicksideai/components/issues/18)) ([2b91324](https://github.com/kicksideai/components/commit/2b91324058babebb392fc3d53079d061fc57aefc))
+
 ## 0.1.40 (2026-10-17)
 
 - Refresh packaged module descriptions and documentation.
