@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/kicksideai/components/compare/storage-s3-v0.1.1...storage-s3-v0.1.2) (2026-10-30)
+
+
+### Bug Fixes
+
+* **storage-s3:** omit source maps from production bundles ([#27](https://github.com/kicksideai/components/issues/27)) ([3e75ccc](https://github.com/kicksideai/components/commit/3e75ccc0e57bcade24c7d1088e998a5b283f7e9b))
+
 ## [0.1.1](https://github.com/kicksideai/components/compare/storage-s3-v0.1.0...storage-s3-v0.1.1) (2026-10-29)
 
 
