@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/kicksideai/components/compare/storage-s3-v0.1.0...storage-s3-v0.1.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **storage-s3:** strip log colors under any locale ([#24](https://github.com/kicksideai/components/issues/24)) ([3b7f6c9](https://github.com/kicksideai/components/commit/3b7f6c978fa54794177c46d6858f062c9235d046))
+
 ## 0.1.0 (2026-10-21)
 
 
