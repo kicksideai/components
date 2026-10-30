@@ -8254,4 +8254,3 @@ class _u extends ni {
   }
 }
 Ir(import.meta.url, _u);
-//# sourceMappingURL=index.js.map
