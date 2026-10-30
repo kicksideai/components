@@ -1,0 +1,168 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.api
+entries:
+- name: create
+  kind: function.lua
+  source: file://handlers.lua
+  method: create
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: create.endpoint
+  kind: http.endpoint
+  method: POST
+  path: /docscout
+  func: create
+- name: get
+  kind: function.lua
+  source: file://handlers.lua
+  method: get
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: get.endpoint
+  kind: http.endpoint
+  method: GET
+  path: /docscout/{id}
+  func: get
+- name: update
+  kind: function.lua
+  source: file://handlers.lua
+  method: update
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: update.endpoint
+  kind: http.endpoint
+  method: PUT
+  path: /docscout/{id}
+  func: update
+- name: delete
+  kind: function.lua
+  source: file://handlers.lua
+  method: delete
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: delete.endpoint
+  kind: http.endpoint
+  method: DELETE
+  path: /docscout/{id}
+  func: delete
+- name: list
+  kind: function.lua
+  source: file://handlers.lua
+  method: list
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: list.endpoint
+  kind: http.endpoint
+  method: GET
+  path: /docscout
+  func: list
+- name: add_case
+  kind: function.lua
+  source: file://handlers.lua
+  method: add_case
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: add_case.endpoint
+  kind: http.endpoint
+  method: POST
+  path: /docscout/{id}/cases
+  func: add_case
+- name: delete_case
+  kind: function.lua
+  source: file://handlers.lua
+  method: delete_case
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: delete_case.endpoint
+  kind: http.endpoint
+  method: DELETE
+  path: /docscout/{id}/cases/{case_id}
+  func: delete_case
+- name: run
+  kind: function.lua
+  source: file://run_handler.lua
+  method: run
+  modules:
+  - http
+  imports:
+    client: kickside.docscout:client
+    http_errors: kickside.contract:http_errors
+- name: run.endpoint
+  kind: http.endpoint
+  method: POST
+  path: /docscout/{id}/run
+  func: run
+- name: start_eval
+  kind: function.lua
+  source: file://handlers.lua
+  method: start_eval
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: start_eval.endpoint
+  kind: http.endpoint
+  method: POST
+  path: /docscout/{id}/evaluations
+  func: start_eval
+- name: list_evals
+  kind: function.lua
+  source: file://handlers.lua
+  method: list_evals
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: list_evals.endpoint
+  kind: http.endpoint
+  method: GET
+  path: /docscout/{id}/evaluations
+  func: list_evals
+- name: get_eval
+  kind: function.lua
+  source: file://handlers.lua
+  method: get_eval
+  modules:
+  - http
+  imports:
+    extractors: kickside.docscout:extractors
+    evals: kickside.docscout.evals:evals
+    http_errors: kickside.contract:http_errors
+- name: get_eval.endpoint
+  kind: http.endpoint
+  method: GET
+  path: /docscout/{id}/evaluations/{eval_id}
+  func: get_eval

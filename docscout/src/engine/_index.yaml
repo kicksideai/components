@@ -1,0 +1,114 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.engine
+entries:
+- name: ai
+  kind: library.lua
+  meta:
+    comment: Model calls with per-step token accounting, bounded by the run's deadline.
+  source: file://ai.lua
+  modules:
+  - json
+  - time
+  imports:
+    llm: wippy.llm:llm
+    prompt: wippy.llm:prompt
+- name: shapes
+  kind: library.lua
+  meta:
+    comment: Pure helpers for the evidence pool, model-facing text, extraction schemas and quote matching.
+  source: file://shapes.lua
+  modules: [json]
+- name: process
+  kind: library.lua
+  meta:
+    comment: Builds or reuses the processed copy of an upload.
+  source: file://process.lua
+  modules:
+  - hash
+  - text
+  - security
+  - contract
+  imports:
+    error_envelope: kickside.contract:error_envelope
+    doc2md: kickside.convert.doc2md:doc2md
+    canonical_json: kickside.contract:canonical_json
+    store: kickside.docscout.persist:store
+    ai: kickside.docscout.engine:ai
+    retention: kickside.docscout:retention
+    shapes: kickside.docscout.engine:shapes
+- name: doctools
+  kind: library.lua
+  meta:
+    comment: Search, section and outline reads over one processed document.
+  source: file://doctools.lua
+  imports:
+    store: kickside.docscout.persist:store
+    ai: kickside.docscout.engine:ai
+    shapes: kickside.docscout.engine:shapes
+- name: stages
+  kind: library.lua
+  meta:
+    comment: Map, prefetch, scout, deep analysis, extraction and verification.
+  source: file://stages.lua
+  modules:
+  - json
+  - channel
+  imports:
+    ai: kickside.docscout.engine:ai
+    store: kickside.docscout.persist:store
+    doctools: kickside.docscout.engine:doctools
+    user_agent: kickside.docscout.engine:user_agent
+    error_envelope: kickside.contract:error_envelope
+    process: kickside.docscout.engine:process
+    shapes: kickside.docscout.engine:shapes
+- name: run
+  kind: library.lua
+  meta:
+    comment: Runs one extraction and records it.
+  source: file://run.lua
+  modules:
+  - time
+  - security
+  imports:
+    extractors: kickside.docscout:extractors
+    repository: kickside.docscout.persist:repository
+    retention: kickside.docscout:retention
+    process: kickside.docscout.engine:process
+    stages: kickside.docscout.engine:stages
+    ai: kickside.docscout.engine:ai
+    shapes: kickside.docscout.engine:shapes
+    error_envelope: kickside.contract:error_envelope
+    execution_identity: kickside.execution:execution_identity
+
+- name: user_agent
+  kind: library.lua
+  source: file://user_agent.lua
+  modules: [json]
+  imports:
+    component: kickside.component:component
+    component_envelope: kickside.component:envelope
+    agent_types: kickside.agents:types
+    agent_ref: kickside.agents:agent_ref
+    compiler: userspace.dataflow.flow:compiler
+    flow_client: userspace.dataflow:client
+    data_reader: userspace.dataflow.persist:data_reader
+    doctools: kickside.docscout.engine:doctools
+    shapes: kickside.docscout.engine:shapes
+    error_envelope: kickside.contract:error_envelope
+- name: document_tool
+  kind: function.lua
+  meta:
+    type: tool
+    name: DocscoutDocument
+    description: Reads the current extraction document.
+    input_schema: '{"type":"object"}'
+  source: file://document_tool.lua
+  method: run
+  modules: [ctx, security, time, json]
+  imports:
+    store: kickside.docscout.persist:store
+    extractors: kickside.docscout:extractors
+    doctools: kickside.docscout.engine:doctools
+    ai: kickside.docscout.engine:ai
+    error_envelope: kickside.contract:error_envelope

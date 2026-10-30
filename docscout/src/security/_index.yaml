@@ -1,0 +1,149 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.security
+entries:
+- name: module_access
+  kind: security.policy
+  meta:
+    title: Docscout
+    surface: kickside.docscout
+    intent: module_access
+    includes:
+    - kickside.docscout.security:module_runtime
+    - kickside.docscout.security:member_endpoints
+    - kickside.docscout.security:notify_access
+  groups: []
+  policy:
+    resources:
+    - kickside.docscout:*
+    - kickside.docscout.api:*
+    - kickside.docscout.engine:*
+    - kickside.docscout.blocks:*
+    actions:
+    - registry.get
+    - registry.find
+    effect: allow
+- name: module_runtime
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.docscout:*
+    - kickside.docscout.api:*
+    - kickside.docscout.engine:*
+    - kickside.docscout.blocks:*
+    actions:
+    - contract.get
+    - contract.open
+    - contract.call
+    - contract.implementations
+    - contract.security
+    - funcs.call
+    - funcs.security
+    effect: allow
+- name: system_db_access
+  kind: security.policy
+  meta:
+    private: true
+    comment: Lets Docscout's system workers open the requirement-bound Docscout database.
+  groups: []
+  policy:
+    actions:
+    - db.get
+    effect: allow
+- name: eval_defer
+  kind: security.policy
+  meta:
+    private: true
+    comment: The evaluation case worker resolves the identity an evaluation recorded.
+  groups: []
+  policy:
+    resources:
+    - kickside.docscout.evals:case_worker
+    actions:
+    - kickside.execution.defer
+    effect: allow
+- name: eval_actor
+  kind: security.policy
+  meta:
+    private: true
+    comment: The evaluation case worker builds the live actor of the recorded principal.
+  groups: []
+  policy:
+    resources:
+    - '*'
+    actions:
+    - security.actor.create
+    effect: allow
+- name: member_endpoints
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.docscout.api:create.endpoint
+    - kickside.docscout.api:get.endpoint
+    - kickside.docscout.api:update.endpoint
+    - kickside.docscout.api:delete.endpoint
+    - kickside.docscout.api:list.endpoint
+    - kickside.docscout:create_view
+    - kickside.docscout:manage_view
+    - kickside.docscout:ui_static
+    - kickside.docscout.api:add_case.endpoint
+    - kickside.docscout.api:delete_case.endpoint
+    - kickside.docscout.api:run.endpoint
+    - kickside.docscout.api:start_eval.endpoint
+    - kickside.docscout.api:list_evals.endpoint
+    - kickside.docscout.api:get_eval.endpoint
+    - kickside.docscout:page_view
+    actions:
+    - access
+    effect: allow
+- name: user_security_scope
+  kind: ns.requirement
+  meta:
+    value_kind: security.scope
+    description: Application group with member access to Docscout.
+  default: kickside.security.groups:members
+  targets:
+  - entry: kickside.docscout.security:module_access
+    path: .groups +=
+  - entry: kickside.docscout.security:module_runtime
+    path: .groups +=
+  - entry: kickside.docscout.security:member_endpoints
+    path: .groups +=
+  - entry: kickside.docscout.security:notify_access
+    path: .groups +=
+
+- name: notify_access
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources: [kickside.component:notify_access]
+    actions: [funcs.call]
+    effect: allow
+
+- name: tool_access
+  kind: security.policy
+  meta:
+    title: Docscout tools
+    surface: kickside.docscout
+    intent: tool_access
+  groups: []
+  policy:
+    resources:
+    - kickside.docscout.traits:reader
+    - kickside.docscout.traits:configurator
+    - kickside.docscout.traits:list_tool
+    - kickside.docscout.traits:run_tool
+    - kickside.docscout.traits:get_tool
+    - kickside.docscout.traits:configure_tool
+    - kickside.docscout.traits:evaluate_tool
+    - kickside.docscout.traits:evaluation_tool
+    actions: [registry.get, registry.find, funcs.call, funcs.security]
+    effect: allow

@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.evals
+entries:
+- name: scoring
+  kind: library.lua
+  meta:
+    comment: Scores extracted values against expected ones by field type.
+  source: file://scoring.lua
+  imports:
+    shapes: kickside.docscout.engine:shapes
+- name: evals
+  kind: library.lua
+  meta:
+    comment: Starts evaluations, lists them and runs one case as a job.
+  source: file://evals.lua
+  modules: [json, funcs]
+  imports:
+    jobs: kickside.core.jobs:jobs
+    job_types: kickside.core.jobs:types
+    execution_identity: kickside.execution:execution_identity
+    repository: kickside.docscout.persist:repository
+    extractors: kickside.docscout:extractors
+    scoring: kickside.docscout.evals:scoring
+    config: kickside.docscout:config
+    component: kickside.component:component
+    error_envelope: kickside.contract:error_envelope
+- name: case_worker
+  kind: function.lua
+  meta:
+    comment: Job worker for one evaluation case; runs the extraction contract under the evaluation's recorded identity.
+  source: file://worker.lua
+  method: run
+  security:
+    actor:
+      id: system:kickside.docscout.evals
+    policies:
+    - kickside.docscout.security:system_db_access
+    - kickside.docscout.security:notify_access
+    - kickside.docscout.security:eval_defer
+    - kickside.docscout.security:eval_actor
+  imports:
+    evals: kickside.docscout.evals:evals
