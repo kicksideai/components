@@ -14,6 +14,12 @@ Provide these host bindings:
 | `kickside.docscout:ui_server` | The HTTP service serving the module assets |
 | `kickside.docscout.security:user_security_scope` | The group allowed to use Docscout; defaults to platform Members |
 
+Bind `target_db` to the same registry resource ID as Component and Jobs. The
+Component existence fence and Jobs transactional enqueue participate in Docscout's
+transaction; a separate database is not a supported placement. These owning APIs
+preserve deletion safety and atomic evaluation admission without cross-database
+coordination. Docscout does not rebind either dependency's database.
+
 The host also supplies the declared requirements of the component, settings, uploads, models, execution, Jobs and realtime dependencies. Uploads must expose full primary Markdown artifacts through `kickside.contract:content_provider`. Extraction models must support structured output; embedding models must produce 512 dimensions. Assign the separate `kickside.docscout.security:tool_access` policy to enable the optional agent tools.
 
 Caller scopes need the native contract capabilities `contract.security` on `security` and `contract.context` on `context` to bind the caller frame and upload identifier.

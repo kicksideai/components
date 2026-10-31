@@ -77,6 +77,7 @@ entries:
   kind: ns.requirement
   meta:
     value_kind: db.sql
+    description: The same SQL resource ID bound to Component and Jobs; required for deletion fencing and atomic evaluation enqueue.
   targets:
   - entry: kickside.docscout:db_config
     path: .meta.db_id
