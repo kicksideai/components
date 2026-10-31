@@ -63,6 +63,12 @@ entries:
   kind: ns.dependency
   component: kickside/execution
   version: '*'
+- name: dep.wippy.dataflow
+  kind: ns.dependency
+  component: wippy/dataflow
+  version: '*'
+  meta:
+    comment: Selected-agent scouting directly uses the native Flow compiler and history reader.
 - name: dep.wippy.llm
   kind: ns.dependency
   component: wippy/llm

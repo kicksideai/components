@@ -5,10 +5,11 @@ import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import { api } from '@wippy-fe/proxy'
+import { failedStorageRequest } from './response.js'
 
 interface Policy { mode: 'local' | 's3'; resource_id: string; prefix: string }
 interface Destination { id: string; title: string }
-interface Response { success: boolean; error?: string; saved?: boolean }
+interface Response { success: boolean; error?: string }
 interface DestinationsResponse extends Response { resources?: Destination[] }
 interface SettingsResponse extends Response { settings?: { key: string; value: Policy }[] }
 const policy = ref<Policy>({ mode: 'local', resource_id: '', prefix: 'uploads' })
@@ -44,7 +45,10 @@ async function load() {
     baseline = JSON.stringify(policy.value)
     loaded.value = true
     return true
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : String(cause); return false }
+  } catch (cause) {
+    error.value = failedStorageRequest(cause)
+    return false
+  }
   finally { loading.value = false }
 }
 
@@ -58,10 +62,12 @@ async function perform(operation: 'test' | 'save' | 'reset') {
       : await api.post<Response>(operation === 'test' ? '/api/v1/storage-s3/test' : '/api/v1/storage-s3', { ...policy.value })
     if (!response.data?.success) throw new Error(response.data?.error || 'Storage request failed')
     if (operation !== 'test' && !(await load())) return
-    notice.value = operation === 'test' ? 'Upload, download, content verification, and deletion succeeded.'
+    notice.value = operation === 'test' ? 'Upload, size verification, and deletion succeeded.'
       : operation === 'reset' ? 'Future file placement is disabled. Existing S3 files remain readable.'
-      : 'Storage policy saved and applied.'
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : String(cause) }
+      : 'Storage policy saved.'
+  } catch (cause) {
+    error.value = failedStorageRequest(cause)
+  }
   finally { busy.value = false }
 }
 onMounted(load)
@@ -84,7 +90,7 @@ onMounted(load)
         <label id="storage-s3-destination-label">Destination</label>
         <Select v-model="policy.resource_id" :options="destinations" option-label="title" option-value="id"
           placeholder="Select a configured destination" aria-labelledby="storage-s3-destination-label" :disabled="busy" />
-        <p v-if="!destinations.length">No destination is configured for this extension. Configure its S3 resource in System → Modules.</p>
+        <p v-if="!destinations.length">No S3 destination is declared by this host.</p>
         <label for="storage-s3-prefix">Folder prefix</label>
         <InputText id="storage-s3-prefix" v-model="policy.prefix" :disabled="busy" maxlength="256" aria-describedby="storage-s3-prefix-help" />
         <small id="storage-s3-prefix-help">Use a relative folder path, such as uploads or processed/files.</small>

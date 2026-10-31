@@ -36,12 +36,14 @@ profiles:
       app.storage_s3:restart_test:meta.type: test
   s3:
     override:
+      app.storage_s3:ingest_test:meta.type: test
+      app.storage_s3:member_relocated_read_test:meta.type: test
       app.storage_s3:live_tests:meta.type: test
+      app.storage_s3:restart_test:meta.type: test
+      app.storage_s3:reader_owner_test:meta.type: test
       app.storage_s3:s3:bucket: ${s3_bucket}
       app.storage_s3:s3:endpoint: ${s3_endpoint}
       app.storage_s3:prefix:default: ${s3_prefix}
-      kickside.storage_s3:config:meta.s3_id: app.storage_s3:s3
-      app.storage_s3:ingest_test:meta.type: test
   postgres:
     override:
       app:dedup_migration_db:kind: db.sql.postgres

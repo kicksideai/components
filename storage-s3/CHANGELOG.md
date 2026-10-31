@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.2.0](https://github.com/kicksideai/components/compare/storage-s3-v0.1.2...storage-s3-v0.2.0) (2026-10-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* **storage-s3:** packed Uploads paths replace the former unused S3 placement overlay. The owner confirmed there is no legacy placement data to migrate.
+
+### Features
+
+* **storage-s3:** relocate processed uploads through packed storage paths ([#17](https://github.com/kicksideai/components/issues/17)) ([9b18612](https://github.com/kicksideai/components/commit/9b186124b44e8122da96418103023445e2d18bbf))
+
+## [0.1.2](https://github.com/kicksideai/components/compare/storage-s3-v0.1.1...storage-s3-v0.1.2) (2026-10-30)
+
+
+### Bug Fixes
+
+* **storage-s3:** omit source maps from production bundles ([#27](https://github.com/kicksideai/components/issues/27)) ([3e75ccc](https://github.com/kicksideai/components/commit/3e75ccc0e57bcade24c7d1088e998a5b283f7e9b))
+
+## [0.1.1](https://github.com/kicksideai/components/compare/storage-s3-v0.1.0...storage-s3-v0.1.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **storage-s3:** strip log colors under any locale ([#24](https://github.com/kicksideai/components/issues/24)) ([3b7f6c9](https://github.com/kicksideai/components/commit/3b7f6c978fa54794177c46d6858f062c9235d046))
+
 ## 0.1.0 (2026-10-21)
 
 
