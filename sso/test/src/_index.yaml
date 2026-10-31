@@ -591,6 +591,36 @@ entries:
     method: GET
     func: oauth_fixture_emails
 
+  - name: oauth_fixture_jwks
+    kind: function.lua
+    source: file://oauth_provider_fixture.lua
+    method: jwks
+    security:
+      actor: {id: app:oauth_provider_fixture}
+      policies: [app:admin_scope]
+    modules: [http, store, json, crypto]
+
+  - name: oauth_fixture_jwks.endpoint
+    kind: http.endpoint
+    meta: {router: app:api.public}
+    path: /fixture/jwks
+    method: GET
+    func: oauth_fixture_jwks
+
+  - name: oidc_jwks_test
+    kind: function.lua
+    meta: {type: test, suite: kickside_sso}
+    source: file://oidc_jwks_test.lua
+    security:
+      actor: {id: app:test_runner}
+      policies: [app:admin_scope]
+    method: run
+    modules: [crypto, registry]
+    imports:
+      test: wippy.test:test
+      sso_oidc: kickside.sso.connectors:oidc
+      oauth_fixture: app:oauth_provider_fixture
+
   - name: oauth_fixture_landing
     kind: function.lua
     source: file://oauth_provider_fixture.lua
