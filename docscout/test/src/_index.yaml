@@ -283,7 +283,7 @@ entries:
   kind: function.lua
   source: file://probe.lua
   method: run
-  modules: [contract, security, json]
+  modules: [contract, security, json, funcs]
   imports:
     processing: kickside.docscout.engine:process
     retention: kickside.docscout:retention

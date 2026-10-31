@@ -65,6 +65,23 @@ return { run = test.run_cases(function()
             test.is_true(assert(registry.get("kickside.docscout.traits:run_tool")).meta.private)
             test.eq(assert(registry.get("kickside.docscout:nav_item")).meta.access, "kickside.docscout.api:list.endpoint")
         end)
+        test.it("keeps the discovered privileged maintenance callback out of member authority", function()
+            local entries = assert(registry.find({ ["meta.type"] = "kickside.retention.owner" }))
+            local owners = {}
+            for _, entry in ipairs(entries) do
+                if tostring(entry.id):find("^kickside%.docscout[%.:]") then owners[#owners + 1] = entry end
+            end
+            test.eq(#owners, 1)
+            local owner, actor, scope = owners[1], security.new_actor("member", {}), scope_of(MEMBER)
+            -- Invoke from the member's frame: an executor's custom scope is
+            -- propagated to its callee, not applied to the test administrator.
+            local value, err = funcs.new():with_actor(actor):with_scope(scope)
+                :call("app:probe", { op = "maintenance", id = owner.id })
+            test.is_nil(value, "member must not invoke privileged maintenance"); test.not_nil(err)
+            test.is_true(errors.is(err, errors.PERMISSION_DENIED), tostring(err))
+            test.eq(scope:evaluate(actor, "funcs.call", owner.id, {}), "undefined")
+            test.is_true(owner.meta.private)
+        end)
         test.it("refuses a restricted member's direct cleanup of another owner's component", function()
             local owner = "owner-" .. uuid.v4()
             local caller = funcs.new():with_actor(security.new_actor(owner, {})):with_scope(scope_of({ "app:user" }))
@@ -81,6 +98,7 @@ return { run = test.run_cases(function()
         test.it("keeps the evaluation worker and its identity capabilities from members", function()
             local scope, actor = scope_of(MEMBER), security.new_actor("member", {})
             test.eq(scope:evaluate(actor, "funcs.call", "kickside.docscout.evals:case_worker", {}), "undefined")
+            test.eq(scope:evaluate(actor, "funcs.call", "kickside.docscout.retention:owner", {}), "undefined")
             test.eq(scope:evaluate(actor, "kickside.execution.defer", "kickside.docscout.evals:case_worker", {}), "undefined")
             test.eq(scope:evaluate(actor, "security.actor.create", "*", {}), "undefined")
             test.eq(scope:evaluate(actor, "db.get", "app:db", {}), "undefined")

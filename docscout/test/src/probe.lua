@@ -9,8 +9,10 @@ local execution_identity = require("execution_identity")
 local jobs = require("jobs")
 local processing = require("processing")
 local retention = require("retention")
+local funcs = require("funcs")
 
 local OPS = {
+    maintenance = function(dto: any): (any?, error?) return funcs.call(dto.id, {}) end,
     retention = function(_dto: any): (any?, error?) return retention.window() end,
     content = function(dto: any): (any?, error?) return processing.content(dto.upload_id) end,
     contract_run = function(dto: any): (any?, error?)

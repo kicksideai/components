@@ -230,21 +230,6 @@ entries:
     - component_id
     methods:
       delete: kickside.docscout:teardown
-- name: retention_owner
-  kind: function.lua
-  meta:
-    type: kickside.retention.owner
-    comment: Removes processed documents and runs past the retention window.
-  source: file://retention_owner.lua
-  method: run
-  security:
-    actor:
-      id: system:kickside.docscout.retention
-    policies:
-    - kickside.docscout.security:system_db_access
-  imports:
-    store: kickside.docscout.persist:store
-    repository: kickside.docscout.persist:repository
 - name: setting.retention
   kind: registry.entry
   meta:

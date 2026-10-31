@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.retention
+entries:
+- name: owner
+  kind: function.lua
+  meta:
+    private: true
+    type: kickside.retention.owner
+    comment: Removes expired Docscout documents and runs under the maintenance identity.
+  source: file://owner.lua
+  method: run
+  security:
+    actor:
+      id: system:kickside.docscout.retention
+    policies:
+    - kickside.docscout.security:system_db_access
+  imports:
+    store: kickside.docscout.persist:store
+    repository: kickside.docscout.persist:repository
