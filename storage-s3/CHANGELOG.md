@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/kicksideai/components/compare/storage-s3-v0.1.2...storage-s3-v0.2.0) (2026-10-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* **storage-s3:** packed Uploads paths replace the former unused S3 placement overlay. The owner confirmed there is no legacy placement data to migrate.
+
+### Features
+
+* **storage-s3:** relocate processed uploads through packed storage paths ([#17](https://github.com/kicksideai/components/issues/17)) ([9b18612](https://github.com/kicksideai/components/commit/9b186124b44e8122da96418103023445e2d18bbf))
+
 ## [0.1.2](https://github.com/kicksideai/components/compare/storage-s3-v0.1.1...storage-s3-v0.1.2) (2026-10-30)
 
 
