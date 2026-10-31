@@ -21,6 +21,20 @@ local consts = require("sso_consts")
 local fixtures = {}
 local settings
 local saved_settings = {}
+local restore_registry_version
+
+-- Registry-backed fixtures can race startup reconcilers. Rebuild only stale
+-- plans; permission, validation, and infrastructure errors still fail the test.
+local function fixture_write(write)
+    local result, err
+    for _ = 1, 5 do
+        result, err = write()
+        if not errors.is(err, errors.CONFLICT) or err:retryable() ~= true then return result, err end
+        local details = err:details() or {}
+        if details.plan_version == nil or details.current_version == nil then return result, err end
+    end
+    return result, err
+end
 
 local function execute(query)
     local db = assert(sql.get("app:db"))
@@ -62,7 +76,7 @@ local function no_provider_group(id)
     end
 end
 
-local function complete_callback(id, mode, subject)
+local function complete_callback(id, mode, subject, before_callback)
     local code = oauth_fixture.issue({subject = subject, email = id .. "@allowed.com"})
     local state = assert(crypto.random.uuid())
     local stored, store_err = flows.put(state, {provider = "github", redirect_uri = "http://fixture/callback",
@@ -70,6 +84,7 @@ local function complete_callback(id, mode, subject)
         link_user_id = mode == "link" and id or nil})
     test.is_nil(store_err, tostring(store_err))
     test.is_true(stored)
+    if before_callback then before_callback() end
     local port = assert(tostring(assert(registry.get("app:gateway")).data.addr):match(":(%d+)$"))
     local response, err = http_client.get("http://127.0.0.1:" .. port
         .. "/api/public/sso/github/callback?state=" .. state .. "&code=" .. code, {
@@ -83,21 +98,24 @@ end
 
 local function bind_host_only()
     local original = assert(registry.current_version())
-    local changes = assert(registry.snapshot()):changes()
-    local entries = assert(registry.find({[".id"] = "kickside.contract:host_credential_eligibility"}))
-    local host = entries[1] or {id = "kickside.contract:host_credential_eligibility", kind = "registry.entry", meta = {}, data = {}}
-    host.meta.credential_eligibility = "kickside.users.binding:credential_eligibility"
-    if #entries == 0 then changes:create(host) else changes:update(host) end
-    local policies = assert(registry.find({[".id"] = "kickside.contract:host_credential_guard_call"}))
-    if #policies > 0 then
-        local policy = policies[1]
-        policy.data.policy.resources = {"kickside.users.binding:credential_eligibility"}
-        changes:update(policy)
-    end
-    local config = assert(registry.get("kickside.sso:credential_config"))
-    config.meta.credential_eligibility = ""
-    changes:update(config)
-    test.is_nil(select(2, changes:apply()))
+    local _, err = fixture_write(function()
+        local changes = assert(registry.snapshot()):changes()
+        local entries = assert(registry.find({[".id"] = "kickside.contract:host_credential_eligibility"}))
+        local host = entries[1] or {id = "kickside.contract:host_credential_eligibility", kind = "registry.entry", meta = {}, data = {}}
+        host.meta.credential_eligibility = "kickside.users.binding:credential_eligibility"
+        if #entries == 0 then changes:create(host) else changes:update(host) end
+        local policies = assert(registry.find({[".id"] = "kickside.contract:host_credential_guard_call"}))
+        if #policies > 0 then
+            local policy = policies[1]
+            policy.data.policy.resources = {"kickside.users.binding:credential_eligibility"}
+            changes:update(policy)
+        end
+        local config = assert(registry.get("kickside.sso:credential_config"))
+        config.meta.credential_eligibility = ""
+        changes:update(config)
+        return changes:apply()
+    end)
+    test.is_nil(err)
     return original
 end
 return {run = test.run_cases(function()
@@ -130,6 +148,10 @@ return {run = test.run_cases(function()
             end
         end)
         test.after_each(function()
+            if restore_registry_version then
+                test.is_nil(select(2, registry.apply_version(restore_registry_version)))
+                restore_registry_version = nil
+            end
             for _, id in ipairs(fixtures) do
                 execute(sql.builder.delete("app_user_identities"):where("user_id = ?", id))
                 execute(sql.builder.delete("app_user_bot_accounts"):where("user_id = ?", id))
@@ -138,6 +160,75 @@ return {run = test.run_cases(function()
                 test.not_nil(deleted)
             end
             fixtures = {}
+        end)
+        test.it("rebuilds a stale fixture plan while preserving a concurrent registry write", function()
+            local suffix = assert(crypto.random.uuid())
+            local own_id, other_id = "app:fixture_" .. suffix, "app:concurrent_" .. suffix
+            local attempts = 0
+            local _, err = fixture_write(function()
+                attempts = attempts + 1
+                local changes = assert(registry.snapshot()):changes()
+                changes:create({id = own_id, kind = "registry.entry", meta = {}, data = {}})
+                if attempts == 1 then
+                    local _, other_err = fixture_write(function()
+                        local concurrent = assert(registry.snapshot()):changes()
+                        concurrent:create({id = other_id, kind = "registry.entry", meta = {}, data = {}})
+                        return concurrent:apply()
+                    end)
+                    test.is_nil(other_err)
+                end
+                local result, apply_err = changes:apply()
+                if attempts == 1 then
+                    test.is_true(errors.is(apply_err, errors.CONFLICT), tostring(apply_err))
+                    test.is_true(apply_err:retryable())
+                    test.not_nil(apply_err:details().plan_version)
+                    test.not_nil(apply_err:details().current_version)
+                end
+                return result, apply_err
+            end)
+            local own, other = registry.get(own_id), registry.get(other_id)
+            local _, cleanup_err = fixture_write(function()
+                local changes = assert(registry.snapshot()):changes()
+                if own then changes:delete(own_id) end
+                if other then changes:delete(other_id) end
+                return changes:apply()
+            end)
+            test.is_nil(cleanup_err)
+            test.is_nil(err)
+            test.is_true(attempts >= 2)
+            test.is_true(attempts <= 5)
+            test.not_nil(own)
+            test.not_nil(other)
+        end)
+        test.it("preserves other fixture errors without retrying", function()
+            for _, failure in ipairs({
+                errors.new({kind = errors.PERMISSION_DENIED, message = "denied"}),
+                errors.new({kind = errors.UNAVAILABLE, retryable = true, message = "offline"}),
+                errors.new({kind = errors.CONFLICT, retryable = false, message = "conflict",
+                    details = {plan_version = 1, current_version = 2}}),
+                errors.new({kind = errors.CONFLICT, retryable = true, message = "other conflict"}),
+            }) do
+                local attempts = 0
+                local result, err = fixture_write(function()
+                    attempts = attempts + 1
+                    return nil, failure
+                end)
+                test.is_nil(result)
+                test.eq(err, failure)
+                test.eq(attempts, 1)
+            end
+        end)
+        test.it("bounds fixture retries and preserves the final stale-plan error", function()
+            local failure = errors.new({kind = errors.CONFLICT, retryable = true, message = "stale plan",
+                details = {plan_version = 1, current_version = 2}})
+            local attempts = 0
+            local result, err = fixture_write(function()
+                attempts = attempts + 1
+                return nil, failure
+            end)
+            test.is_nil(result)
+            test.eq(err, failure)
+            test.eq(attempts, 5)
         end)
         test.it("RA-H51 sso refuses an admin-group bot through the host with an empty local guard", function()
             local original = bind_host_only()
@@ -181,6 +272,47 @@ return {run = test.run_cases(function()
             test.is_nil(err)
             test.not_nil(scope)
             test.eq(actor:id(), id)
+            test.eq(identities.count_by_user(id), 1)
+            test.eq(assert(users.get(id)).password_hash, "!sso:no-password")
+        end)
+        test.it("upgrading the callback sandbox preserves existing sessions and an in-flight provider login", function()
+            local id = fixture(false, true)
+            local existing, mint_err = session.mint({user_id = id}, {sso_provider = "github"})
+            test.is_nil(mint_err, tostring(mint_err))
+            test.not_nil(existing.token)
+            restore_registry_version = assert(registry.current_version())
+            local _, apply_err = fixture_write(function()
+                local changes = assert(registry.snapshot()):changes()
+                local legacy = assert(registry.get("kickside.sso.api:callback"))
+                local policies = {}
+                for _, policy in ipairs(legacy.data.security.policies) do
+                    if policy ~= "kickside.users.security:resolve_scope_groups" then
+                        policies[#policies + 1] = policy
+                    end
+                end
+                legacy.data.security.policies = policies
+                changes:update(legacy)
+                return changes:apply()
+            end)
+            test.is_nil(apply_err)
+
+            -- Store the provider flow under the old callback declaration, then
+            -- apply the corrected declaration before completing the same flow.
+            local location = complete_callback(id, "email", assert(crypto.random.uuid()), function()
+                test.is_nil(select(2, registry.apply_version(restore_registry_version)))
+                restore_registry_version = nil
+            end)
+            local encoded = location:match("#sso_token=(.+)$")
+            test.not_nil(encoded, location)
+            local minted = assert(http_client.decode_uri(encoded))
+            local tokens = assert(security.token_store("kickside.users.security:tokens"))
+            for _, token in ipairs({existing.token, minted}) do
+                local actor, scope, validate_err = tokens:validate(token)
+                test.is_nil(validate_err, tostring(validate_err))
+                test.not_nil(scope)
+                test.eq(actor:id(), id)
+            end
+            tokens:close()
             test.eq(identities.count_by_user(id), 1)
             test.eq(assert(users.get(id)).password_hash, "!sso:no-password")
         end)

@@ -25,7 +25,7 @@ run_cases() {
   local name=$1
   shift
   "$storage_test_bin" test "$@" --set "vars.kickside_root=$kickside_source_root" 2>&1 | tee "$storage_test_dir/$name.log"
-  sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' "$storage_test_dir/$name.log" > "$storage_test_dir/$name.clean.log"
+  LC_ALL=C sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' "$storage_test_dir/$name.log" > "$storage_test_dir/$name.clean.log"
   awk '/No tests found|No tests match filter/ { empty=1 } /^[[:space:]]*FAILED([[:space:]]|$)/ { failed=1 }
     /^[[:space:]]*PASSED([[:space:]]|$)/ { passed=1 }
     END { exit(empty || failed || !passed) }' "$storage_test_dir/$name.clean.log"

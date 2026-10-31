@@ -9,12 +9,12 @@ modules:
     - name: kickside/core
       version: 0.0.0
     - name: kickside/doc2md
-      version: 0.8.14
-      hash: 76754d9e6c3255d7a46feba23d38c3e086bbb836de41e7f02d197f04c4202a6c
+      version: 0.8.15
+      hash: bb4f0f7f0bd1b4e693ae5242722eebb4b41388f03448a497048278f0e0d7e73a
     - name: kickside/execution
-      version: 0.0.0
+      version: 0.2.7
     - name: kickside/jobs
-      version: 0.0.0
+      version: 0.1.64
     - name: kickside/knowledge
       version: 0.0.0
     - name: kickside/models
@@ -26,7 +26,7 @@ modules:
     - name: kickside/realtime-dispatch
       version: 0.0.0
     - name: kickside/security
-      version: 0.0.0
+      version: 0.2.16
     - name: kickside/settings
       version: 0.2.0
     - name: kickside/storage-s3
@@ -48,8 +48,8 @@ modules:
       version: 0.5.8
       hash: 5c6b10c51a5657c25d989286eda12ce68684d11575c46940160c5c726c5260f7
     - name: wippy/migration
-      version: 0.3.23
-      hash: 1666a62a870fa2692e560eda7cb7438fba027931d1fb88a2c5c713d660a10412
+      version: 0.3.26
+      hash: cf4848ad3f8ba8d31d944b2f3a7274bc2b7cf2888dd80f0db63b2c71a85f89c1
     - name: wippy/relay
       version: 0.3.17
       hash: 3bc0461104725386eb3cb7ebaf7c3edc5896c134a4cc7d69f136609a21a5a2ac
