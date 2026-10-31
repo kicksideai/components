@@ -19,6 +19,7 @@ entries:
     - kickside.docscout.api:*
     - kickside.docscout.engine:*
     - kickside.docscout.blocks:*
+    - kickside.docscout.evals:case_worker
     actions:
     - registry.get
     - registry.find
