@@ -1,10 +1,10 @@
 -- JWT/JWKS helpers for OIDC id_token validation.
 --
--- The runtime's crypto.jwt.verify accepts an RS256 PEM public key but there is no
--- built-in JWK→PEM conversion, so this builds the SubjectPublicKeyInfo DER from a
--- JWK's (n, e) and wraps it as a "PUBLIC KEY" PEM. DER encoding of an RSA public
--- key is standard and deterministic, so it is unit-tested against a known vector
--- (see test/connectors_test.lua).
+-- The runtime's crypto.jwt.verify accepts an RS256 or ES256 PEM public key but there
+-- is no built-in JWK→PEM conversion, so this builds the SubjectPublicKeyInfo DER from
+-- an RSA JWK's (n, e) or an EC P-256 JWK's (x, y) and wraps it as a "PUBLIC KEY" PEM.
+-- DER encoding of a public key is standard and deterministic, so it is unit-tested
+-- against known vectors (see test/suites/connectors/jwk_test.lua).
 
 local base64 = require("base64")
 local json = require("json")
@@ -19,6 +19,16 @@ local RSA_ALG_ID = string.char(
     0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01,
     0x05, 0x00
 )
+
+local EC_P256_ALG_ID = string.char(
+    0x30, 0x13,
+    0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01,
+    0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07
+)
+
+local P256_COORD_LEN = 32
+
+local ALG_BY_KEY_TYPE = { RSA = "RS256", EC = "ES256" }
 
 local function der_length(n)
     if n < 0x80 then
@@ -48,9 +58,8 @@ local function der_uint(bytes)
     return der_tlv(0x02, bytes)
 end
 
--- to_pem converts an RSA JWK ({ n, e } base64url) into a SPKI "PUBLIC KEY" PEM.
-function M.to_pem(jwk)
-    if type(jwk) ~= "table" or type(jwk.n) ~= "string" or type(jwk.e) ~= "string" then
+local function rsa_spki(jwk)
+    if type(jwk.n) ~= "string" or type(jwk.e) ~= "string" then
         return nil, "jwk missing n/e"
     end
 
@@ -62,7 +71,44 @@ function M.to_pem(jwk)
 
     local rsa_pubkey = der_tlv(0x30, der_uint(n) .. der_uint(e))
     local bit_string = der_tlv(0x03, string.char(0) .. rsa_pubkey)
-    local spki = der_tlv(0x30, RSA_ALG_ID .. bit_string)
+    return der_tlv(0x30, RSA_ALG_ID .. bit_string)
+end
+
+local function ec_spki(jwk)
+    if jwk.crv ~= "P-256" then
+        return nil, "unsupported jwk crv"
+    end
+    if type(jwk.x) ~= "string" or type(jwk.y) ~= "string" then
+        return nil, "jwk missing x/y"
+    end
+
+    local x = util.base64url_decode(jwk.x)
+    local y = util.base64url_decode(jwk.y)
+    if not x or not y or #x ~= P256_COORD_LEN or #y ~= P256_COORD_LEN then
+        return nil, "invalid jwk x/y"
+    end
+
+    local uncompressed_point = string.char(0x04) .. x .. y
+    local bit_string = der_tlv(0x03, string.char(0) .. uncompressed_point)
+    return der_tlv(0x30, EC_P256_ALG_ID .. bit_string)
+end
+
+-- to_pem converts an RSA JWK ({ n, e }) or an EC P-256 JWK ({ crv, x, y }), all
+-- base64url, into a SPKI "PUBLIC KEY" PEM.
+function M.to_pem(jwk)
+    if type(jwk) ~= "table" then
+        return nil, "jwk missing n/e"
+    end
+
+    local spki, serr
+    if jwk.kty == "EC" then
+        spki, serr = ec_spki(jwk)
+    else
+        spki, serr = rsa_spki(jwk)
+    end
+    if not spki then
+        return nil, serr
+    end
 
     local b64, err = base64.encode(spki)
     if err or not b64 then
@@ -102,7 +148,9 @@ function M.payload(jwt)
 end
 
 -- pem_for_token fetches the JWKS and returns the PEM whose kid matches the token
--- header (or the first RSA key when the token carries no kid).
+-- header and prefers its signing algorithm, together with that algorithm as the
+-- third value. Retain the first kid candidate when no algorithm matches, so the
+-- verifier rejects the mismatch instead of entering claims-only validation.
 function M.pem_for_token(jwks_uri, jwt)
     if type(jwks_uri) ~= "string" or jwks_uri == "" then
         return nil, "no jwks_uri"
@@ -111,6 +159,7 @@ function M.pem_for_token(jwks_uri, jwt)
     local hdr, herr = M.header(jwt)
     if herr then return nil, herr end
     local kid = type(hdr) == "table" and hdr.kid or nil
+    local token_alg = type(hdr) == "table" and hdr.alg or nil
 
     local resp, err = http_client.get(jwks_uri, { headers = { ["Accept"] = "application/json" } })
     if err then return nil, "jwks fetch failed: " .. err end
@@ -124,10 +173,21 @@ function M.pem_for_token(jwks_uri, jwt)
         return nil, "jwks has no keys"
     end
 
+    local selected, selected_alg
     for _, k in ipairs(data.keys) do
-        if type(k) == "table" and k.kty == "RSA" and (kid == nil or k.kid == kid) then
-            return M.to_pem(k)
+        local alg = type(k) == "table" and ALG_BY_KEY_TYPE[k.kty] or nil
+        local supported = alg ~= nil and (k.kty ~= "EC" or k.crv == "P-256")
+        if supported and (kid == nil or k.kid == kid) then
+            if not selected or alg == token_alg then
+                selected, selected_alg = k, alg
+            end
+            if alg == token_alg then break end
         end
+    end
+    if selected then
+        local pem, err = M.to_pem(selected)
+        if not pem then return nil, err end
+        return pem, nil, selected_alg
     end
     return nil, "no matching jwk"
 end

@@ -77,4 +77,20 @@ function M.emails()
     return respond(200, {{email = identity.email, primary = true, verified = true}})
 end
 
+function M.set_jwks(keys)
+    local s = storage()
+    local ok, err = s:set("jwks", assert(json.encode({keys = keys})), 60)
+    s:release()
+    assert(ok, tostring(err))
+end
+
+function M.jwks()
+    local s = storage()
+    local raw, err = s:get("jwks")
+    s:release()
+    assert(not err, tostring(err))
+    if not raw then return respond(404, {error = "no_jwks"}) end
+    return respond(200, assert(json.decode(raw)))
+end
+
 return M

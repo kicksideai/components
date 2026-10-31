@@ -35,6 +35,21 @@ yRFcSrnL3d3IDakZ+nPQ+Q8dOkN4aDGsdm7itTSpghSvr3pnspRK
 
 local N = "tScB7idg2HV7z8lzxgUkVC7krsc6spvTfby2y1pLbB_GROiXFMX_ZrTiCfy69h7PhP-uXbzw7-aDnK5SyQ8gwvWnxQt3vUQ1cTLqZmgSzsjxjfM3BjnNfZaFd1oXIp0cPsJJBzLj7Kzohm_vW_Vf5DrfoUU1HvFDwyvnK6_6eVJhUbQafrtMNsyRfSgRyNr6pMc0y9xkRCao-NnesVunjEs021ZOWXAM09ZJo8tB-f75DXTR9RdosiiZecqrsp4R9FYQfpcemb8ruTFnta4OaHq0HCy1zsTN2XeVn67FB2bm3lAIk2ijhiPiGN5-9J1ps2YfKO8ktaeNOYDgeWizFQ"
 
+local EC_PRIVATE_PEM = [[-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIAZNv7BhvuFSSI7R50MsqxpAVzRxU4C2Hu8WXTuy3+G9oAoGCCqGSM49
+AwEHoUQDQgAEH803eBvJF2q3yY057KtNp2xyZMZvz8mZGxDQrgZDsa1k3j9bRIlJ
+pQygPwcVqHsKumi+M5KsjU5l1k/3ze+kOw==
+-----END EC PRIVATE KEY-----]]
+
+local EC_PUBLIC_PEM = [[-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEH803eBvJF2q3yY057KtNp2xyZMZv
+z8mZGxDQrgZDsa1k3j9bRIlJpQygPwcVqHsKumi+M5KsjU5l1k/3ze+kOw==
+-----END PUBLIC KEY-----
+]]
+
+local EC_X = "H803eBvJF2q3yY057KtNp2xyZMZvz8mZGxDQrgZDsa0"
+local EC_Y = "ZN4_W0SJSaUMoD8HFah7CrpovjOSrI1OZdZP983vpDs"
+
 local function define_tests()
     describe("jwk to_pem (RS256 round-trip)", function()
         it("derives a SPKI PEM that verifies a JWT signed by the matching key", function()
@@ -68,6 +83,54 @@ local function define_tests()
 
         it("rejects a jwk missing modulus/exponent", function()
             local pem, err = jwk.to_pem({ kty = "RSA" })
+            test.is_nil(pem)
+            test.is_true(type(err) == "string")
+        end)
+    end)
+
+    describe("jwk to_pem (ES256 round-trip)", function()
+        it("derives the same SPKI PEM as openssl for a P-256 key", function()
+            local pem, perr = jwk.to_pem({ kty = "EC", crv = "P-256", x = EC_X, y = EC_Y })
+            test.is_nil(perr)
+            test.eq(pem, EC_PUBLIC_PEM)
+        end)
+
+        it("derives a PEM that verifies a JWT signed by the matching key", function()
+            local token, eerr = crypto.jwt.encode(
+                { sub = "user-456", aud = "client-xyz", iss = "https://issuer.test" },
+                EC_PRIVATE_PEM, "ES256"
+            )
+            test.is_nil(eerr)
+
+            local pem = jwk.to_pem({ kty = "EC", crv = "P-256", x = EC_X, y = EC_Y })
+            assert(pem, "to_pem returned no key")
+            local claims, verr = crypto.jwt.verify(token, pem, "ES256", false)
+            test.is_nil(verr)
+            test.eq(claims.sub, "user-456")
+        end)
+
+        it("rejects a token tampered after signing", function()
+            local token = crypto.jwt.encode({ sub = "x" }, EC_PRIVATE_PEM, "ES256")
+            local pem = jwk.to_pem({ kty = "EC", crv = "P-256", x = EC_X, y = EC_Y })
+            assert(pem, "to_pem returned no key")
+            local claims = crypto.jwt.verify(token .. "x", pem, "ES256", false)
+            test.is_nil(claims)
+        end)
+
+        it("rejects a curve other than P-256", function()
+            local pem, err = jwk.to_pem({ kty = "EC", crv = "P-384", x = EC_X, y = EC_Y })
+            test.is_nil(pem)
+            test.is_true(type(err) == "string")
+        end)
+
+        it("rejects coordinates that are not 32 bytes", function()
+            local pem, err = jwk.to_pem({ kty = "EC", crv = "P-256", x = EC_X:sub(1, 20), y = EC_Y })
+            test.is_nil(pem)
+            test.is_true(type(err) == "string")
+        end)
+
+        it("rejects a jwk missing coordinates", function()
+            local pem, err = jwk.to_pem({ kty = "EC", crv = "P-256" })
             test.is_nil(pem)
             test.is_true(type(err) == "string")
         end)
