@@ -12,11 +12,6 @@ storage-aware delivery. The dependency minimum prevents an update from retaining
 an older incompatible Uploads package. Qualify the exact module combination
 before use.
 
-Do not upgrade an installation containing storage-s3 0.1.0 placements with this
-implementation: it neither reads nor migrates them. Keeping their tables does
-not keep their content readable. An existing-install migration or read-compatible
-upgrade path remains required before releasing this replacement.
-
 ## Configuration
 
 The installation plan binds these host requirements:
@@ -40,7 +35,7 @@ deletes it. Placement defaults to local and applies to future processing.
 ## Processing and reads
 
 The universal stage runs at the lowest priority (`-100`) after other processors.
-It copies local originals and derived blobs, verifies native object metadata,
+It copies local originals and derived blobs, verifies source and ETag-pinned readback SHA-256 with bounded memory,
 and returns their packed `s3://<resource-id>/<key>` paths. Uploads validates target
 metadata, commits the locations together, then removes unreferenced old bytes.
 An original already in S3 keeps its path while local derived blobs still relocate.
@@ -60,13 +55,9 @@ Disabling placement leaves existing packed locations readable. Keep every
 referenced native entry, its credentials and runtime grant available. Removing
 the module or a destination does not restore bytes to local storage.
 
-**BREAKING:** placements written by storage-s3 0.1.0 are unsupported by this
-packed-path implementation. Their placement tables and generated destinations
-are not migrated or read. Existing placement data is not dropped.
-
 ## Development
 
-Use Node.js 22 and Wippy 0.3.54a with the KickSide source checkout:
+Use Node.js 22 and Wippy 0.3.56a with the KickSide source checkout:
 
 ```sh
 make setup KICKSIDE_SOURCE_ROOT=/path/to/kickside

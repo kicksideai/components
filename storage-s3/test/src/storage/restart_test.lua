@@ -45,6 +45,8 @@ return { run = test.run_cases(function()
                 return
             end
             test.eq(#rows, 1)
+            local disabled = settings():unset({ namespace = "kickside.storage_s3", key = "policy" })
+            test.is_true(disabled.success, tostring(disabled.error))
             local upload = rows[1]
             local storage = assert(resources.get_storage(upload.storage_id))
             local bytes, read_err = storage:readfile(upload.storage_path)

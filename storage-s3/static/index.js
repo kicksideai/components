@@ -8258,4 +8258,3 @@ class Iu extends oi {
   }
 }
 Pr(import.meta.url, Iu);
-//# sourceMappingURL=index.js.map
