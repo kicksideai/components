@@ -62,7 +62,7 @@ button,input,textarea,select{font:inherit}h1,h2,h3,p{margin:0}h1{font-size:24px;
 .resizer{position:absolute;top:0;bottom:0;left:-4px;width:8px;cursor:col-resize;z-index:2;touch-action:none}.resizer::after{content:'';position:absolute;top:0;bottom:0;left:3px;width:2px;background:transparent;transition:background .12s}.resizer:hover::after,.resizer.active::after,.resizer:focus-visible::after{background:var(--p-primary-color)}.builder.resizing{cursor:col-resize;user-select:none}
 .field-error,.field-note{display:flex;align-items:flex-start;gap:6px;font-size:12px;margin-top:-6px}.field-error{color:var(--p-danger-color)}.field-note{color:var(--p-text-muted-color)}.field-error svg,.field-note svg{flex-shrink:0;margin-top:2px}
 .mono-input{font-family:var(--p-font-mono-family);font-size:13px}input[aria-invalid=true]{border-color:var(--p-danger-color)}
-.row-warn{display:inline-block;color:var(--p-danger-color);margin-left:6px;vertical-align:-2px}.row-desc.missing{font-style:italic;opacity:.75}
+.row-warn{display:inline-block;color:var(--p-danger-color);margin-left:6px;vertical-align:-2px}.row-desc.missing{font-style:italic}
 .inspector-form>.kx-btn{align-self:flex-start}
 .invalid{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--p-danger-color);max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.invalid svg{flex-shrink:0}
 @container docscout (max-width:760px){.invalid{max-width:140px}}
