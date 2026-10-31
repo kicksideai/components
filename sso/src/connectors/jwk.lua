@@ -148,8 +148,9 @@ function M.payload(jwt)
 end
 
 -- pem_for_token fetches the JWKS and returns the PEM whose kid matches the token
--- header (or the first supported key when the token carries no kid), together with
--- the signing algorithm of that key as the third value.
+-- header and prefers its signing algorithm, together with that algorithm as the
+-- third value. Retain the first kid candidate when no algorithm matches, so the
+-- verifier rejects the mismatch instead of entering claims-only validation.
 function M.pem_for_token(jwks_uri, jwt)
     if type(jwks_uri) ~= "string" or jwks_uri == "" then
         return nil, "no jwks_uri"
@@ -158,6 +159,7 @@ function M.pem_for_token(jwks_uri, jwt)
     local hdr, herr = M.header(jwt)
     if herr then return nil, herr end
     local kid = type(hdr) == "table" and hdr.kid or nil
+    local token_alg = type(hdr) == "table" and hdr.alg or nil
 
     local resp, err = http_client.get(jwks_uri, { headers = { ["Accept"] = "application/json" } })
     if err then return nil, "jwks fetch failed: " .. err end
@@ -171,14 +173,21 @@ function M.pem_for_token(jwks_uri, jwt)
         return nil, "jwks has no keys"
     end
 
+    local selected, selected_alg
     for _, k in ipairs(data.keys) do
         local alg = type(k) == "table" and ALG_BY_KEY_TYPE[k.kty] or nil
         local supported = alg ~= nil and (k.kty ~= "EC" or k.crv == "P-256")
         if supported and (kid == nil or k.kid == kid) then
-            local pem, err = M.to_pem(k)
-            if not pem then return nil, err end
-            return pem, nil, alg
+            if not selected or alg == token_alg then
+                selected, selected_alg = k, alg
+            end
+            if alg == token_alg then break end
         end
+    end
+    if selected then
+        local pem, err = M.to_pem(selected)
+        if not pem then return nil, err end
+        return pem, nil, selected_alg
     end
     return nil, "no matching jwk"
 end
