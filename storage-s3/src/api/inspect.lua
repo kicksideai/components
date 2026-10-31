@@ -1,13 +1,10 @@
 local http = require("http")
 local security = require("security")
-local registry = require("registry")
 local cloudstorage = require("cloudstorage")
 local uuid = require("uuid")
-local backend = require("backend")
 local contract = require("contract")
-local funcs = require("funcs")
 local policy = require("policy")
-local resources = require("uploads_resources")
+local resources = require("resources")
 local M = {}
 
 function M.configure(): any
@@ -35,12 +32,8 @@ function M.configure(): any
     if reset then saved, save_err = settings:unset(args) else saved, save_err = settings:set(args) end
     if save_err or not saved or saved.success ~= true then
         res:set_status(http.STATUS.BAD_REQUEST)
-        return res:write_json({ success = false, error = "Storage settings could not be saved" })
-    end
-    local applied, apply_err = funcs.call("kickside.storage_s3.service:request", {})
-    if apply_err or not applied or applied.success ~= true then
-        res:set_status(503)
-        return res:write_json({ success = false, saved = true, error = "Settings were saved, but the storage service could not apply them yet" })
+        return res:write_json({ success = false, saved = saved and saved.success == true,
+            error = (saved and saved.error) or tostring(save_err or "Storage settings could not be saved") })
     end
     return res:write_json({ success = true })
 end
@@ -54,10 +47,7 @@ function M.handle(): any
         return res:write_json({ success = false, error = "Settings administrator access required" })
     end
     if req:method() == "GET" then
-        local configured = resources.get_s3_id()
-        local entry, find_err
-        if configured and configured ~= "" then entry, find_err = registry.get(configured) end
-        local entries = entry and entry.kind == "cloudstorage.s3" and { entry } or {}
+        local entries, find_err = resources.s3_entries()
         if find_err then
             res:set_status(http.STATUS.INTERNAL_ERROR)
             return res:write_json({ success = false, error = "Could not discover storage resources" })
@@ -83,30 +73,15 @@ function M.handle(): any
     local key = body.prefix .. "/.connection-test-" .. uuid.v4()
     local content = "Kickside private storage check " .. uuid.v4()
     local _, upload_err = cloud:upload_object(key, content, { content_type = "text/plain" })
-    local staging, path, staging_err = backend.staging(resources.get_storage_id())
-    local file, file_err
-    if staging then file, file_err = staging:open(path, "wx") end
-    local test_err = upload_err or staging_err or file_err
-    if not test_err and file then
-        local _, download_err = cloud:download_object(key, file)
-        local _, close_err = file:close()
-        file = nil
-        local actual, read_err = staging:readfile(path)
-        test_err = download_err or close_err or read_err or (actual ~= content and "Content verification failed" or nil)
-    end
-    if file then
-        local _, close_err = file:close()
-        test_err = test_err or close_err
-    end
-    if staging and path then
-        local _, remove_err = staging:remove(path)
-        if remove_err and not errors.is(remove_err, errors.NOT_FOUND) then test_err = test_err or remove_err end
-    end
+    local head, head_err
+    if not upload_err then head, head_err = cloud:head_object(key) end
+    local test_err = upload_err or head_err or (not head and "Storage object was not created")
+        or (head.size ~= #content and "Storage object size does not match")
     local _, delete_err = cloud:delete_objects({ key })
     cloud:release()
     if test_err or delete_err then
         res:set_status(http.STATUS.BAD_REQUEST)
-        return res:write_json({ success = false, error = delete_err and "Storage cleanup failed; check bucket delete permissions" or "Storage upload/download verification failed" })
+        return res:write_json({ success = false, error = delete_err and "Storage cleanup failed; check bucket delete permissions" or "Storage upload verification failed" })
     end
     return res:write_json({ success = true })
 end

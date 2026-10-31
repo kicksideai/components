@@ -30,10 +30,13 @@ function M.get(_id: string): any
     function storage:head_object(key: string): (any?, any?)
         local content = objects[key]
         if content == nil then return nil, errors.new({ message = "not found", kind = errors.NOT_FOUND }) end
+        if mode == "head_mismatch" then return { size = #content + 1, etag = '"fake-etag"' }, nil end
         return { size = #content, etag = '"fake-etag"' }, nil
     end
     function storage:download_object(key: string, writer: any, options: any): (any?, any?)
         if options.if_match ~= '"fake-etag"' then return nil, "unpinned download" end
+        if mode == "download_error" then return nil, errors.new({ message = "verification interrupted", kind = errors.UNAVAILABLE, retryable = true }) end
+        if objects[key] == "" then return true, nil end
         local _, err = writer:write(objects[key])
         return err == nil, err
     end

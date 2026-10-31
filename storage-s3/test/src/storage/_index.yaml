@@ -5,80 +5,158 @@ entries:
   kind: function.lua
   meta:
     type: test
-    suite: upload_storage
-  source: file://unit_tests.lua
+    suite: packed_storage
+  source: file://packed_storage_test.lua
   method: run
   modules:
-  - fs
-  - sql
-  - uuid
   - registry
-  - funcs
-  - security
   imports:
     test: wippy.test:test
-    policy: kickside.storage_s3.policy:policy
-    locations: kickside.storage_s3.persist:locations
+- name: member_read_policy_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: storage_s3_member_policy
+  source: file://member_read_policy_test.lua
+  method: run
+  modules: [security, funcs, cloudstorage, uuid]
+  imports:
+    test: wippy.test:test
+- name: member_relocated_read_test
+  kind: function.lua
+  meta: {type: test_support, suite: storage_s3_member_policy}
+  source: file://member_read_policy_test.lua
+  method: relocated
+  modules: [security, funcs, cloudstorage, uuid]
+  imports:
+    test: wippy.test:test
+- name: member_read_probe
+  kind: function.lua
+  source: file://member_read_probe.lua
+  method: run
+  imports:
+    adapter: kickside.uploads.binding:storage_adapter_default
+- name: member_read_runtime
+  kind: security.policy
+  policy:
+    resources: [app.storage_s3:member_read_probe, app:uploads]
+    actions: [funcs.call, fs.get]
+    effect: allow
+- name: architecture_test
+  kind: function.lua
+  meta: {type: test, suite: storage_s3_architecture}
+  source: file://unit_tests.lua
+  method: run
+  modules: [registry]
+  imports: {test: wippy.test:test}
+- name: ingest_test
+  kind: function.lua
+  meta: {type: test_support, suite: storage_s3_ingest}
+  source: file://ingest_test.lua
+  method: run
+  modules: [sql, uuid, fs, funcs, security, contract, json, env]
+  imports:
+    test: wippy.test:test
     records: kickside.uploads.persist:upload_record_repo
+    artifacts: kickside.uploads.persist:artifact_content_repo
+    cleanup: kickside.uploads.persist:artifact_cleanup_repo
+    pipeline: kickside.uploads:pipeline
+    fixture_cleanup: app:fixture_cleanup
+- name: restart_test
+  kind: function.lua
+  meta: {type: test_support, suite: storage_s3_restart}
+  source: file://restart_test.lua
+  method: run
+  modules: [sql, fs, contract, funcs, env]
+  imports:
+    test: wippy.test:test
+    records: kickside.uploads.persist:upload_record_repo
+    pipeline: kickside.uploads:pipeline
     resources: kickside.uploads.binding:uploads_resources
-    offload: app.storage_s3:offload_fixture
-    cloud: app.storage_s3:fake_cloud
-    backend: app.storage_s3:backend_fixture
-    racing_fs: app.storage_s3:racing_fs
-    legacy_import: kickside.storage_s3.persist:legacy_import
+- name: reader_owner_test
+  kind: function.lua
+  meta: {type: test_support, suite: storage_s3_reader_owner}
+  source: file://read_probe.lua
+  method: run
+  modules: [cloudstorage, uuid]
+  imports:
+    test: wippy.test:test
+    resources: kickside.uploads.binding:uploads_resources
+- name: settings_test
+  kind: function.lua
+  meta: {type: test, suite: storage_s3_settings}
+  source: file://settings_probe.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    resources: kickside.storage_s3:resources
+    policy: kickside.storage_s3.policy:policy
 - name: fake_cloud
   kind: library.lua
   source: file://fake_cloud.lua
-- name: racing_fs
-  kind: library.lua
-  source: file://racing_fs.lua
-  modules:
-  - fs
-- name: backend_fixture
-  kind: library.lua
-  source: file://../fixtures/storage_backend.lua
-  modules:
-  - uuid
-  - registry
-  imports:
-    fs: app.storage_s3:racing_fs
-    cloudstorage: app.storage_s3:fake_cloud
-    locations: kickside.storage_s3.persist:locations
-- name: settings_probe
+- name: copy_failure_test
   kind: function.lua
-  source: file://settings_probe.lua
+  meta: {type: test, suite: storage_s3_copy}
+  source: file://copy_failure_test.lua
   method: run
-  modules:
-  - ctx
+  modules: [fs]
   imports:
-    inspect: app.storage_s3:inspect_fixture
-    probe: app:upload_http_probe
-- name: inspect_fixture
+    test: wippy.test:test
+    cloud_factory: app.storage_s3:fake_cloud
+    copier: kickside.storage_s3.storage:copy
+- name: settings_http
   kind: library.lua
-  source: file://../fixtures/storage_inspect.lua
-  modules:
-  - security
-  - registry
-  - cloudstorage
-  - uuid
-  - env
-  - contract
-  - funcs
+  source: file://../upload_http_probe.lua
+  modules: [ctx]
+- name: settings_handlers
+  kind: library.lua
+  source: file://../fixtures/storage_settings.lua
+  modules: [security, cloudstorage, uuid, contract]
   imports:
-    http: app:upload_http_probe
-    backend: kickside.storage_s3.storage:backend
+    http: app.storage_s3:settings_http
     policy: kickside.storage_s3.policy:policy
-    uploads_resources: kickside.storage_s3:resources
-- name: offload_fixture
-  kind: library.lua
-  source: file://../fixtures/storage_offload.lua
-  modules:
-  - fs
-  - hash
-  - time
+    resources: kickside.storage_s3:resources
+- name: settings_member_probe
+  kind: function.lua
+  source: file://settings_member_probe.lua
+  method: run
   imports:
-    storage_types: kickside.storage_s3.storage:types
-    cloudstorage: app.storage_s3:fake_cloud
-    backend: kickside.storage_s3.storage:backend
-    locations: kickside.storage_s3.persist:locations
-    uploads_resources: kickside.storage_s3:resources
+    http: app.storage_s3:settings_http
+    handlers: app.storage_s3:settings_handlers
+- name: settings_member_runtime
+  kind: security.policy
+  policy:
+    resources: [app.storage_s3:settings_member_probe]
+    actions: [funcs.call]
+    effect: allow
+- name: settings_member_test
+  kind: function.lua
+  meta: {type: test, suite: storage_s3_settings}
+  source: file://settings_member_test.lua
+  method: run
+  modules: [security, funcs]
+  imports:
+    test: wippy.test:test
+
+- name: settings_failure
+  kind: library.lua
+  source: file://settings_failure.lua
+- name: stage_fixture
+  kind: library.lua
+  source: file://../fixtures/storage_stage.lua
+  modules: [cloudstorage]
+  imports:
+    contract: app.storage_s3:settings_failure
+    uploads_resources: kickside.uploads.binding:uploads_resources
+    artifacts: kickside.uploads.persist:artifact_parts_repo
+    policy: kickside.storage_s3.policy:policy
+    copier: kickside.storage_s3.storage:copy
+- name: stage_failure_test
+  kind: function.lua
+  meta: {type: test, suite: storage_s3_stage}
+  source: file://stage_failure_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    stage: app.storage_s3:stage_fixture
+    settings: app.storage_s3:settings_failure

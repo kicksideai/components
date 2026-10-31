@@ -8,15 +8,12 @@ entries:
   modules:
   - http
   - security
-  - registry
   - cloudstorage
   - uuid
   - contract
-  - funcs
   imports:
-    backend: kickside.storage_s3.storage:backend
     policy: kickside.storage_s3.policy:policy
-    uploads_resources: kickside.storage_s3:resources
+    resources: kickside.storage_s3:resources
 - name: inspect.endpoint
   kind: http.endpoint
   method: GET
@@ -34,15 +31,12 @@ entries:
   modules:
   - http
   - security
-  - registry
   - cloudstorage
   - uuid
   - contract
-  - funcs
   imports:
-    backend: kickside.storage_s3.storage:backend
     policy: kickside.storage_s3.policy:policy
-    uploads_resources: kickside.storage_s3:resources
+    resources: kickside.storage_s3:resources
 - name: configure.endpoint
   kind: http.endpoint
   method: POST

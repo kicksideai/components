@@ -4,19 +4,11 @@ entries:
 - name: policy
   kind: library.lua
   source: file://policy.lua
-  modules:
-  - contract
-  - registry
   imports:
-    storage_types: kickside.storage_s3.storage:types
     resources_config: kickside.storage_s3:resources
 - name: validate_policy
   kind: function.lua
   source: file://policy.lua
   method: validate
-  modules:
-  - contract
-  - registry
   imports:
-    storage_types: kickside.storage_s3.storage:types
     resources_config: kickside.storage_s3:resources

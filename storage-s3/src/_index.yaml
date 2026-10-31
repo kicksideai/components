@@ -5,30 +5,17 @@ entries:
   kind: ns.definition
   meta:
     title: S3 storage
-    description: Optional S3 placement for processed file content. Owns its policy, settings component, jobs, resource
-      overlay, and placement records.
+    description: Optional packed S3 storage for processed upload content.
 - name: dep.kickside.uploads
   kind: ns.dependency
   component: kickside/uploads
-  version: '>=0.2.0'
+  version: '>=0.3.2'
   parameters:
-  - name: kickside.uploads:storage_adapter
-    value: kickside.storage_s3.storage:backend
-  - name: kickside.uploads:processing_hooks
-    value: kickside.storage_s3.uploads:hooks
   - name: kickside.uploads:storage_runtime_policy
     value: kickside.storage_s3.security:runtime
 - name: dep.kickside.settings
   kind: ns.dependency
   component: kickside/settings
-  version: '>=0.2.0'
-- name: dep.wippy.bootloader
-  kind: ns.dependency
-  component: wippy/bootloader
-  version: '*'
-- name: dep.wippy.migration
-  kind: ns.dependency
-  component: wippy/migration
   version: '*'
 - name: ui_fs
   kind: fs.directory
@@ -48,8 +35,7 @@ entries:
   meta:
     type: view.component
     title: S3 storage
-    description: 'Administers optional post-processing S3 storage: choose a configured native destination, test
-      upload/download/delete, save the policy, or disable future placement.'
+    description: Administers optional post-processing S3 storage.
     announced: true
     auto_register: true
     tag_name: kickside-storage-s3
@@ -66,9 +52,6 @@ entries:
   order: 65
   namespace: kickside.storage_s3
   component_tag: kickside-storage-s3
-- name: config
-  kind: registry.entry
-  meta: {}
 - name: setting.policy
   kind: registry.entry
   meta:
@@ -81,8 +64,7 @@ entries:
     resource_id: ''
     prefix: uploads
   title: Processed file storage
-  description: Keep processed files locally or move their original and derived content to a configured private S3
-    resource. Applies to newly processed uploads.
+  description: Keep processed files locally or move their original and derived content to a configured private S3 resource.
   scope: global
   editable: true
   visible: true
@@ -105,42 +87,6 @@ entries:
       prefix:
         type: string
         maxLength: 256
-- name: target_db
-  kind: ns.requirement
-  meta:
-    value_kind: db.sql
-    description: Host-supplied target db for the optional S3 extension.
-  targets:
-  - entry: kickside.storage_s3:config
-    path: .meta.db_id
-  - entry: kickside.storage_s3.migrations:01_locations
-    path: .meta.target_db
-  - entry: kickside.storage_s3.migrations:02_import_legacy_placements
-    path: .meta.target_db
-- name: staging_storage
-  kind: ns.requirement
-  meta:
-    value_kind: fs.directory
-    description: Host-supplied staging storage for the optional S3 extension.
-  targets:
-  - entry: kickside.storage_s3:config
-    path: .meta.staging_id
-  - entry: kickside.storage_s3.security:filesystem
-    path: .policy.resources
-  - entry: kickside.storage_s3.security:runtime
-    path: .policy.resources +=
-- name: s3_resource
-  kind: ns.requirement
-  meta:
-    value_kind: cloudstorage.s3
-    description: Host-supplied s3 resource for the optional S3 extension.
-  targets:
-  - entry: kickside.storage_s3:config
-    path: .meta.s3_id
-  - entry: kickside.storage_s3.security:cloud
-    path: .policy.resources +=
-  - entry: kickside.storage_s3.security:runtime
-    path: .policy.resources +=
 - name: api_router
   kind: ns.requirement
   meta:
@@ -168,5 +114,19 @@ entries:
   source: file://config.lua
   modules:
   - registry
-  imports:
-    uploads_resources: kickside.uploads.binding:uploads_resources
+- name: stage
+  kind: registry.entry
+  meta:
+    type: upload.stage
+    title: Pack processed uploads into S3
+  scope: universal
+  priority: -100
+  func: kickside.storage_s3.storage:stage
+- name: s3_resource
+  kind: ns.requirement
+  meta:
+    value_kind: cloudstorage.s3
+    description: Host S3 destination available to upload processing and reads.
+  targets:
+  - entry: kickside.storage_s3.security:runtime
+    path: .policy.resources +=

@@ -1,29 +1,19 @@
 version: '1.0'
 namespace: kickside.storage_s3.storage
 entries:
-- name: types
+- name: copy
   kind: library.lua
-  source: file://types.lua
-- name: backend
-  kind: library.lua
-  source: file://backend.lua
+  source: file://copy.lua
+  modules: [hash, uuid]
+- name: stage
+  kind: function.lua
+  source: file://stage.lua
+  method: process
   modules:
-  - fs
   - cloudstorage
-  - uuid
-  - registry
+  - contract
   imports:
-    locations: kickside.storage_s3.persist:locations
-- name: offload
-  kind: library.lua
-  source: file://offload.lua
-  modules:
-  - fs
-  - cloudstorage
-  - hash
-  - time
-  imports:
-    storage_types: kickside.storage_s3.storage:types
-    locations: kickside.storage_s3.persist:locations
-    backend: kickside.storage_s3.storage:backend
-    uploads_resources: kickside.storage_s3:resources
+    uploads_resources: kickside.uploads.binding:uploads_resources
+    artifacts: kickside.uploads.persist:artifact_parts_repo
+    policy: kickside.storage_s3.policy:policy
+    copier: kickside.storage_s3.storage:copy
