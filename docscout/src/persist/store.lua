@@ -7,6 +7,8 @@ local persisted_json = require("persisted_json")
 local canonical_json = require("canonical_json")
 local index = require("index")
 local uuid = require("uuid")
+local notify = require("notify")
+local committed_error = require("committed_error")
 
 local M = {}
 
@@ -71,7 +73,8 @@ end
 -- and returns its id. A fresh copy saved meanwhile by another run under the
 -- same key is kept and its id returned; an expired copy is replaced.
 function M.save(doc: any, chunks: { any }): (string?, error?)
-    return database.transaction(doc.component_id, function(tx: any, db: any): (any?, error?)
+    local created_document = false
+    local document_id, err = database.transaction(doc.component_id, function(tx: any, db: any): (any?, error?)
         local sqlite, type_err = index.is_sqlite(db)
         if type_err then return nil, type_err end
         local function abort(message: string, cause: error): (nil, error)
@@ -125,8 +128,15 @@ function M.save(doc: any, chunks: { any }): (string?, error?)
         if rows_err then return abort("chunks could not be stored", rows_err) end
         local vec_err = index.insert_rows_tx(tx, "kickside_docscout_chunk_vectors", { "chunk_id", "document_id", "embedding" }, vectors)
         if vec_err then return abort("chunk vectors could not be stored", vec_err) end
+        created_document = true
         return id, nil
     end)
+    if err then return nil, err end
+    if created_document then
+        local _, notify_err = notify.retention()
+        if notify_err then return nil, committed_error.new(notify_err) end
+    end
+    return document_id, nil
 end
 
 function M.remove_tx(tx: any, sqlite: boolean, document_ids: { string }): error?

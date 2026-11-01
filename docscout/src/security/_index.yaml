@@ -125,7 +125,7 @@ entries:
     private: true
   groups: []
   policy:
-    resources: [kickside.component:notify_access]
+    resources: [kickside.component:notify_access, kickside.core.retention:notify]
     actions: [funcs.call]
     effect: allow
 

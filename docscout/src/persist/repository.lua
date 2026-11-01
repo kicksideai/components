@@ -10,6 +10,7 @@ local database = require("database")
 local store = require("store")
 local notify = require("notify")
 local committed_error = require("committed_error")
+local time = require("time")
 
 local M = {}
 
@@ -118,6 +119,8 @@ function M.add_run(component_id: string, row: any): (string?, error?)
         return id, nil
     end)
     if err then return nil, err end
+    local _, retention_err = notify.retention()
+    if retention_err then return nil, committed_error.new(retention_err) end
     local _, notify_err = notify.run(component_id, row.user_id, run_id :: string)
     if notify_err then return nil, committed_error.new(notify_err) end
     return run_id, nil
@@ -129,6 +132,24 @@ function M.expire_runs(limit: integer): (integer?, error?)
             (SELECT id FROM kickside_docscout_runs WHERE expires_at <= $1 ORDER BY expires_at, id LIMIT $2)]], { now(), limit })
         if err then return nil, err end
         return result.rows_affected, nil
+    end)
+end
+
+-- Both MIN queries use the existing expiry indexes. Always report the global
+-- deadline, including when Core invokes the owner with a scoped change hint.
+function M.next_deadline_ms(): (integer?, error?)
+    return with_db(function(db: any): (any?, error?)
+        local rows, err = db:query([[SELECT MIN(expires_at) AS expires_at FROM (
+            SELECT MIN(expires_at) AS expires_at FROM kickside_docscout_documents
+            UNION ALL
+            SELECT MIN(expires_at) AS expires_at FROM kickside_docscout_runs
+        ) AS deadlines]])
+        if err then return nil, failed("retention deadline could not be read", err) end
+        local expiry = rows[1] and rows[1].expires_at
+        if expiry == nil then return nil, nil end
+        local instant, parse_err = time.parse(time.RFC3339, expiry)
+        if parse_err then return nil, failed("retention deadline is invalid", parse_err) end
+        return math.floor(instant:unix_nano() / 1000000) :: integer, nil
     end)
 end
 

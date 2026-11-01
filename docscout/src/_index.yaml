@@ -23,6 +23,12 @@ entries:
   kind: ns.dependency
   component: kickside/contract
   version: '*'
+- name: dep.kickside.core
+  kind: ns.dependency
+  component: kickside/core
+  version: '>=0.3.8'
+  meta:
+    comment: Retention owners contribute their next expiry to Core's existing scheduler.
 - name: dep.kickside.settings
   kind: ns.dependency
   component: kickside/settings
@@ -332,3 +338,4 @@ entries:
   modules: [contract, security]
   imports:
     component: kickside.component:component
+    retention_notifier: kickside.core.retention:notifier

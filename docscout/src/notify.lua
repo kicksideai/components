@@ -2,7 +2,11 @@
 local contract = require("contract")
 local security = require("security")
 local component = require("component")
+local retention_notifier = require("retention_notifier")
 local M = {}
+function M.retention(): (boolean?, error?)
+    return retention_notifier.notify({ kind = "docscout_expiry" })
+end
 function M.shared(component_id: string): (any?, error?)
     return component.notify_access(component_id, nil, { component_id = component_id })
 end

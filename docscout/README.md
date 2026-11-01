@@ -59,6 +59,8 @@ Listings accept `filter`, `limit` and `cursor`; `next_cursor` continues a stable
 
 Every run records its outcome and trace, including failed steps. Documents and runs expire after `kickside.docscout.retention` (default `2h`). Component teardown removes its documents, search-index rows, cases, runs and evaluations.
 
+Docscout requires Core >=0.3.8. Committed document and run writes wake Core's existing retention service. The maintenance callback removes bounded batches and reports the global earliest remaining expiry through the existing expiry indexes, so an idle application schedules its next cleanup without periodic polling.
+
 ## Field groups and declared shapes
 
 A field's `group` is empty for a top-level value or a dotted snake_case path such as `parties.borrower`. Its identity is the group plus its name (`parties.borrower.name`); names can repeat in different groups. A field path cannot also serve as a group path. Each extraction response includes `values` nested by group and `fields[]` entries with the leaf `name`, full `path`, value and evidence. The extraction contract, Block and agent tool use this same shape.
@@ -90,7 +92,7 @@ Admission snapshots the config revision, configuration, case upload references a
 
 Committed config, case and evaluation writes wake the effective READ audience on `component.<id>`. Runs wake their maker on `docscout.runs.<id>`. Docscout wakeup payloads contain identifiers. Readers subscribe before loading and refetch committed state after wakeups and host visibility changes.
 
-On the final Jobs attempt, returned evaluation-read and status-write failures settle the case and evaluation totals together while preserving the native worker failure. Crashes, timeouts and failures that prevent settlement from committing still need an owner lifecycle hook in the platform Jobs API; that integration remains blocked in the supplied platform source.
+On the final Jobs attempt, returned evaluation-read and status-write failures settle the case and evaluation totals together while preserving the native worker failure. Crashes, timeouts and failures that prevent settlement from committing are not yet reconciled with Jobs' durable terminal state; they can leave an evaluation active after its worker is dead. That recovery remains a release blocker.
 
 ## Development
 

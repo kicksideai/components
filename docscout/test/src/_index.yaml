@@ -309,6 +309,21 @@ entries:
   imports:
     test: wippy.test:test
     data: app:fixture_data
+- name: expiry_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: docscout_expiry
+    group: Docscout
+  source: file://expiry_test.lua
+  method: run
+  modules: [time, sql, process, channel, funcs, uuid]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    store: kickside.docscout.persist:store
+    repository: kickside.docscout.persist:repository
+    runner: kickside.core.retention.service:runner
 - name: lifecycle_test
   kind: function.lua
   meta:

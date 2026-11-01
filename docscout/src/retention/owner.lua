@@ -11,8 +11,11 @@ local function run(_input: any): any
     if documents_err then return { success = false, error = documents_err } end
     local runs, runs_err = repository.expire_runs(BATCH)
     if runs_err then return { success = false, error = runs_err } end
+    local deadline, deadline_err = repository.next_deadline_ms()
+    if deadline_err then return { success = false, error = deadline_err } end
     local removed_documents, removed_runs = documents :: integer, runs :: integer
-    return { success = true, deleted = removed_documents + removed_runs, needs_continue = removed_documents == BATCH or removed_runs == BATCH }
+    return { success = true, deleted = removed_documents + removed_runs, deadline_ms = deadline,
+        needs_continue = removed_documents == BATCH or removed_runs == BATCH }
 end
 
 return { run = run }

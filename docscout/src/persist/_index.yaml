@@ -8,6 +8,7 @@ entries:
   modules:
   - sql
   - uuid
+  - time
   imports:
     persisted_json: kickside.contract:persisted_json
     canonical_json: kickside.contract:canonical_json
@@ -28,6 +29,8 @@ entries:
     index: kickside.search_index:index
     persisted_json: kickside.contract:persisted_json
     database: kickside.docscout.persist:database
+    notify: kickside.docscout:notify
+    committed_error: kickside.contract:committed_error
 
 - name: database
   kind: library.lua
