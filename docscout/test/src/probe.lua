@@ -6,10 +6,10 @@ local contract = require("contract")
 local security = require("security")
 local json = require("json")
 local execution_identity = require("execution_identity")
-local jobs = require("jobs")
 local processing = require("processing")
 local retention = require("retention")
 local funcs = require("funcs")
+local data = require("data")
 
 local OPS = {
     maintenance = function(dto: any): (any?, error?) return funcs.call(dto.id, {}) end,
@@ -41,15 +41,13 @@ local OPS = {
         local row, row_err = execution_identity.to_row(identity)
         if row_err then return nil, row_err end
         row.config_revision, row.fields, row.config_snapshot = snapshot.expected_revision, assert(json.encode(snapshot.config.fields)), assert(json.encode(snapshot.config))
-        return repository.add_eval(dto.id, row, dto.cases, function(tx: any, dbtype: string, eval_id: string): error?
+        return repository.add_eval(dto.id, row, dto.cases, function(tx: any, dbtype: string, eval_id: string): (error?, {[string]: string}?)
+            local receipts, admit_err = data.admit_eval_jobs(tx, dbtype, dto.id, eval_id, dto.cases)
+            if admit_err then return admit_err end
             if dto.refuse then
-                local _, enqueue_err = jobs.enqueue_tx(tx, dbtype, { namespace = "docscout", scope = dto.id, key = "test:" .. eval_id,
-                    owner_locator = { kind = "component", id = dto.id }, job_type = "kickside.docscout.evals:case_worker",
-                    immutable_payload = { component_id = dto.id, eval_id = eval_id, case_id = dto.cases[1].id } })
-                if enqueue_err then return enqueue_err end
                 return errors.new({ kind = errors.UNAVAILABLE, retryable = false, message = "admission refused", details = { code = "admission_refused" } })
             end
-            return nil
+            return nil, receipts
         end)
     end,
 }

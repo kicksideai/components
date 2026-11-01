@@ -16,6 +16,7 @@ entries:
     store: kickside.docscout.persist:store
     notify: kickside.docscout:notify
     committed_error: kickside.contract:committed_error
+    recovery_policy: kickside.docscout.retention:policy
 - name: store
   kind: library.lua
   meta:

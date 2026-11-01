@@ -288,10 +288,10 @@ entries:
     processing: kickside.docscout.engine:process
     retention: kickside.docscout:retention
     execution_identity: kickside.execution:execution_identity
-    jobs: kickside.core.jobs:jobs
     extractors: kickside.docscout:extractors
     evals: kickside.docscout.evals:evals
     repository: kickside.docscout.persist:repository
+    data: app:fixture_data
 - name: fixture_settings_get
   kind: function.lua
   source: file://fixture_settings.lua
@@ -678,6 +678,7 @@ entries:
     uploads: kickside.uploads.persist:upload_record_repo
     artifacts: kickside.uploads.persist:artifact_content_repo
     upload_types: kickside.uploads:types
+    jobs: kickside.core.jobs:jobs
 
 - name: runtime_members
   kind: security.scope
@@ -792,3 +793,34 @@ entries:
   method: run
   imports:
     component: kickside.component:component
+- name: recovery_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_recovery, group: Docscout}
+  source: file://recovery_test.lua
+  method: run
+  modules: [sql, uuid, time, channel]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    repository: kickside.docscout.persist:repository
+    recovery: kickside.docscout.retention:recovery
+    jobs: kickside.core.jobs:jobs
+    teardown: kickside.component.persist:teardown
+- name: recovery_jobs
+  kind: library.lua
+  source: file://recovery_jobs.lua
+  imports:
+    jobs: kickside.core.jobs:jobs
+- name: recovery_pool_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_recovery_pool, group: Docscout}
+  source: file://recovery_pool_test.lua
+  method: run
+  modules: [registry, json, uuid, sql, time, process, channel]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    jobs: kickside.core.jobs:jobs
+    repository: kickside.docscout.persist:repository
+    recovery: kickside.docscout.retention:recovery
+    teardown: kickside.component.persist:teardown

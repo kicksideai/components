@@ -45,7 +45,10 @@ local SQLITE = {
     [=[CREATE TABLE kickside_docscout_eval_results (
         eval_id TEXT NOT NULL, case_id TEXT NOT NULL, upload_name TEXT NOT NULL, upload_id TEXT NOT NULL, expected_values TEXT NOT NULL, status TEXT NOT NULL,
         run_id TEXT, scores TEXT, tokens BIGINT NOT NULL DEFAULT 0, duration_ms BIGINT NOT NULL DEFAULT 0,
-        error TEXT, finished_at TEXT, PRIMARY KEY (eval_id, case_id))]=],
+        error TEXT, finished_at TEXT, job_id TEXT NOT NULL, next_check_at TEXT NOT NULL,
+        PRIMARY KEY (eval_id, case_id))]=],
+    [=[CREATE UNIQUE INDEX kickside_docscout_eval_jobs ON kickside_docscout_eval_results(job_id)]=],
+    [=[CREATE INDEX kickside_docscout_eval_pending ON kickside_docscout_eval_results(next_check_at,eval_id,case_id) WHERE status='queued']=],
 }
 local POSTGRES = {
     [=[CREATE EXTENSION IF NOT EXISTS vector]=],
@@ -90,7 +93,10 @@ local POSTGRES = {
     [=[CREATE TABLE kickside_docscout_eval_results (
         eval_id TEXT NOT NULL, case_id TEXT NOT NULL, upload_name TEXT NOT NULL, upload_id TEXT NOT NULL, expected_values TEXT NOT NULL, status TEXT NOT NULL,
         run_id TEXT, scores TEXT, tokens BIGINT NOT NULL DEFAULT 0, duration_ms BIGINT NOT NULL DEFAULT 0,
-        error TEXT, finished_at TEXT, PRIMARY KEY (eval_id, case_id))]=],
+        error TEXT, finished_at TEXT, job_id TEXT NOT NULL, next_check_at TEXT NOT NULL,
+        PRIMARY KEY (eval_id, case_id))]=],
+    [=[CREATE UNIQUE INDEX kickside_docscout_eval_jobs ON kickside_docscout_eval_results(job_id)]=],
+    [=[CREATE INDEX kickside_docscout_eval_pending ON kickside_docscout_eval_results(next_check_at,eval_id,case_id) WHERE status='queued']=],
 }
 return require("migration").define(function()
     migration("Create Docscout documents, runs and evaluations", function()

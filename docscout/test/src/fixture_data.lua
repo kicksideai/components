@@ -10,6 +10,7 @@ local uploads = require("uploads")
 local artifacts = require("artifacts")
 local contract = require("contract")
 local upload_types = require("upload_types")
+local jobs = require("jobs")
 local M = {}
 
 function M.caller(owner: string): any
@@ -60,6 +61,22 @@ function M.execute(statement: string, params: any?): any
     local _, release_err = db:release()
     assert(err == nil, tostring(err)); assert(release_err == nil, tostring(release_err))
     return result
+end
+
+-- Manual-worker cases still enroll real Jobs receipts atomically. Parked jobs
+-- do not execute behind the test's back; tests call the worker explicitly.
+function M.admit_eval_jobs(tx: any, dbtype: string, component_id: string, eval_id: string,
+        cases: {any}): ({[string]: string}?, error?)
+    local receipts: {[string]: string} = {}
+    for _, case in ipairs(cases) do
+        local queued, err = jobs.enqueue_tx(tx, dbtype, {namespace = "docscout", scope = component_id,
+            key = "eval:" .. eval_id .. ":" .. case.id, parked = true,
+            owner_locator = {kind = "component", id = component_id}, job_type = "kickside.docscout.evals:case_worker",
+            immutable_payload = {component_id = component_id, eval_id = eval_id, case_id = case.id}})
+        if err then return nil, err end
+        receipts[case.id] = queued.id
+    end
+    return receipts, nil
 end
 
 return M

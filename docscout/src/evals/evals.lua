@@ -4,7 +4,6 @@
 -- evaluation, resolved again when the job runs. The last case to finish writes
 -- the per-field accuracy.
 local json = require("json")
-local funcs = require("funcs")
 local jobs = require("jobs")
 local job_types = require("job_types")
 local execution_identity = require("execution_identity")
@@ -14,6 +13,8 @@ local scoring = require("scoring")
 local config = require("config")
 local error_envelope = require("error_envelope")
 local component = require("component")
+local notify = require("notify")
+local committed_error = require("committed_error")
 
 local M = {}
 
@@ -25,6 +26,14 @@ local HISTORY = 20
 
 local function invalid(message: string): error return errors.new({ kind = errors.INVALID, message = message }) end
 
+local function wake(): error?
+    local _, notify_err = notify.retention()
+    if notify_err then return committed_error.new(notify_err) end
+    local _, nudge_err = jobs.nudge_workers()
+    if nudge_err then return committed_error.new(nudge_err) end
+    return nil
+end
+
 -- Starts every case at the admitted configuration and inputs.
 function M.start(id: string): (any?, error?)
     local snapshot, err = extractors.get(id)
@@ -33,6 +42,8 @@ function M.start(id: string): (any?, error?)
     local active, active_err = repository.active_eval(id)
     if active_err then return nil, active_err end
     if active then
+        local wake_err = wake()
+        if wake_err then return nil, wake_err end
         return { success = true, eval_id = active.id, existing = true }, nil
     end
     if #snapshot.cases == 0 then return nil, invalid("Add an evaluation case first") end
@@ -51,21 +62,26 @@ function M.start(id: string): (any?, error?)
     if snapshot_err then return nil, snapshot_err end
     local eval_id, add_err = repository.add_eval(id, {
         config_snapshot = admitted, config_revision = snapshot.expected_revision, actor_id = row.actor_id, actor_context = row.actor_context, fields = fields,
-    }, snapshot.cases, function(tx: any, dbtype: string, admitted_id: string): error?
+    }, snapshot.cases, function(tx: any, dbtype: string, admitted_id: string): (error?, { [string]: string }?)
+        local receipts: { [string]: string } = {}
         for _, case in ipairs(snapshot.cases) do
-            local _, enqueue_err = jobs.enqueue_tx(tx, dbtype, {
+            local queued, enqueue_err = jobs.enqueue_tx(tx, dbtype, {
                 namespace = "docscout", scope = id, key = "eval:" .. admitted_id .. ":" .. case.id,
                 owner_locator = { kind = "component", id = id }, job_type = WORKER, max_attempts = ATTEMPTS,
                 immutable_payload = { component_id = id, eval_id = admitted_id, case_id = case.id },
             })
             if enqueue_err then return enqueue_err end
+            if type(queued) ~= "table" or type(queued.id) ~= "string" then
+                return errors.new({kind = errors.INTERNAL, retryable = false, message = "case admission returned no job id"})
+            end
+            receipts[case.id] = queued.id
         end
-        return nil
+        return nil, receipts
     end)
     if add_err then return nil, add_err end
     local queued = eval_id :: string
-    local _, notify_err = funcs.call("kickside.core.jobs.persist:pool_nudge")
-    if notify_err then return nil, notify_err end
+    local _, nudge_err = jobs.nudge_workers()
+    if nudge_err then return nil, committed_error.new(nudge_err) end
     return { success = true, eval_id = queued }, nil
 end
 

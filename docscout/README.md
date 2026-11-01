@@ -59,7 +59,7 @@ Listings accept `filter`, `limit` and `cursor`; `next_cursor` continues a stable
 
 Every run records its outcome and trace, including failed steps. Documents and runs expire after `kickside.docscout.retention` (default `2h`). Component teardown removes its documents, search-index rows, cases, runs and evaluations.
 
-Docscout requires Core >=0.3.8. Committed document and run writes wake Core's existing retention service. The maintenance callback removes bounded batches and reports the global earliest remaining expiry through the existing expiry indexes, so an idle application schedules its next cleanup without periodic polling.
+Docscout requires Core >=0.3.9 and Jobs >=0.1.67. Committed document, run and evaluation admissions wake Core's existing retention service. The maintenance callback removes bounded expiry batches and checks up to 16 outstanding worker receipts. It reports the global next expiry or worker-check deadline through the existing Core timer; no separate service or periodic HTTP polling is used.
 
 ## Field groups and declared shapes
 
@@ -92,7 +92,9 @@ Admission snapshots the config revision, configuration, case upload references a
 
 Committed config, case and evaluation writes wake the effective READ audience on `component.<id>`. Runs wake their maker on `docscout.runs.<id>`. Docscout wakeup payloads contain identifiers. Readers subscribe before loading and refetch committed state after wakeups and host visibility changes.
 
-On the final Jobs attempt, returned evaluation-read and status-write failures settle the case and evaluation totals together while preserving the native worker failure. Crashes, timeouts and failures that prevent settlement from committing are not yet reconciled with Jobs' durable terminal state; they can leave an evaluation active after its worker is dead. That recovery remains a release blocker.
+On the final Jobs attempt, returned evaluation-read and status-write failures settle the case and evaluation totals together while preserving the native worker failure. Every admitted case stores its real Job ID in the admission transaction. Jobs release hints trigger prompt reconciliation; a private 30-second check deadline provides recovery after a missed hint or restart. Pending/running workers keep their cases active. A terminal or retained-out Job without a stored case outcome settles that case as failed, preserving the available worker error. This never invents successful extraction scores or unrecorded usage.
+
+Recovery advances only its own scheduling metadata before checking Jobs. All outcomes and metrics still pass the Component existence fence. A deletion race remains blocked until the next deadline; abandoning deletion can recover without an additional hint. Completed extractor cleanup removes its receipts, so it leaves no recovery timer. Retrying an already active `start` republishes retention and pool wakeups after a post-commit delivery failure.
 
 ## Development
 
@@ -106,3 +108,5 @@ make postgres-down
 ```
 
 `test` uses SQLite and allocates a temporary HTTP port for endpoint tests. It requires local socket access. `verify` also typechecks, tests and builds the UI. The PostgreSQL target uses the harness profile; the compose targets manage its disposable database. Dependency refresh requires registry access. Release Please owns release metadata.
+
+Manual-worker fixtures enroll real Jobs with the public `parked=true` enqueue option: the job has no scheduled execution until explicitly woken. This keeps receipt validation real while tests invoke the worker themselves.

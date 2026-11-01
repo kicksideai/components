@@ -11,15 +11,20 @@ local store = require("store")
 local notify = require("notify")
 local committed_error = require("committed_error")
 local time = require("time")
+local recovery_policy = require("recovery_policy")
 
 local M = {}
 
 local now, failed = database.now, database.failed
 
 local with_db = database.with_db
-local function fenced(component_id: string, fn: (any, any) -> (any?, error?)): (any?, error?)
+local function fenced(component_id: string, fn: (any, any) -> (any?, error?), eligibility_changed: boolean?): (any?, error?)
     local value, err = database.transaction(component_id, fn)
     if err then return nil, err end
+    if eligibility_changed then
+        local _, retention_err = notify.retention()
+        if retention_err then return nil, committed_error.new(retention_err) end
+    end
     local _, notify_err = notify.shared(component_id)
     if notify_err then return nil, committed_error.new(notify_err) end
     return value, nil
@@ -135,21 +140,28 @@ function M.expire_runs(limit: integer): (integer?, error?)
     end)
 end
 
--- Both MIN queries use the existing expiry indexes. Always report the global
+-- The MIN queries use the expiry and queued-recovery indexes. Report the global
 -- deadline, including when Core invokes the owner with a scoped change hint.
 function M.next_deadline_ms(): (integer?, error?)
     return with_db(function(db: any): (any?, error?)
-        local rows, err = db:query([[SELECT MIN(expires_at) AS expires_at FROM (
-            SELECT MIN(expires_at) AS expires_at FROM kickside_docscout_documents
-            UNION ALL
-            SELECT MIN(expires_at) AS expires_at FROM kickside_docscout_runs
-        ) AS deadlines]])
+        local rows, err = db:query([[SELECT
+            (SELECT MIN(expires_at) FROM kickside_docscout_documents) AS document_expiry,
+            (SELECT MIN(expires_at) FROM kickside_docscout_runs) AS run_expiry,
+            (SELECT MIN(r.next_check_at) FROM kickside_docscout_eval_results r
+                JOIN kickside_docscout_evals e ON e.id=r.eval_id
+                WHERE r.status='queued' AND e.status IN ('queued','running')) AS recovery_check]])
         if err then return nil, failed("retention deadline could not be read", err) end
-        local expiry = rows[1] and rows[1].expires_at
-        if expiry == nil then return nil, nil end
-        local instant, parse_err = time.parse(time.RFC3339, expiry)
-        if parse_err then return nil, failed("retention deadline is invalid", parse_err) end
-        return math.floor(instant:unix_nano() / 1000000) :: integer, nil
+        local deadline: integer? = nil
+        for _, field in ipairs({ "document_expiry", "run_expiry", "recovery_check" }) do
+            local expiry = rows[1] and rows[1][field]
+            if expiry ~= nil then
+                local instant, parse_err = time.parse(time.RFC3339, expiry)
+                if parse_err then return nil, failed("retention deadline is invalid", parse_err) end
+                local ms = math.floor(instant:unix_nano() / 1000000) :: integer
+                deadline = deadline == nil and ms or math.min(deadline, ms)
+            end
+        end
+        return deadline, nil
     end)
 end
 
@@ -163,7 +175,8 @@ local ACTIVE = "SELECT id FROM kickside_docscout_evals WHERE component_id=$1 AND
 
 -- Records a queued evaluation with one pending result per case. A unique index
 -- admits one active evaluation per extractor.
-function M.add_eval(component_id: string, row: any, cases: { any }, admit: (any, string, string) -> error?): (string?, error?)
+function M.add_eval(component_id: string, row: any, cases: { any },
+        admit: (any, string, string) -> (error?, { [string]: string }?)): (string?, error?)
     return fenced(component_id, function(tx: any, db: any): (any?, error?)
         local running, running_err = tx:query(ACTIVE, { component_id })
         if running_err then return nil, failed("evaluations could not be read", running_err) end
@@ -173,19 +186,71 @@ function M.add_eval(component_id: string, row: any, cases: { any }, admit: (any,
             (id, component_id, config_revision, fields, config_snapshot, status, actor_id, actor_context, case_count, created_at)
             VALUES ($1,$2,$3,$4,$5,'queued',$6,$7,$8,$9)]], { id, component_id, row.config_revision, row.fields, row.config_snapshot, row.actor_id, row.actor_context, #cases, now() })
         if err then return nil, failed("evaluation could not be stored", err) end
-        for _, case in ipairs(cases) do
-            local expected, expected_err = encoded(case.expected)
-            if expected_err then return nil, expected_err end
-            local _, result_err = tx:execute([[INSERT INTO kickside_docscout_eval_results (eval_id, case_id, upload_name, upload_id, expected_values, status)
-                VALUES ($1,$2,$3,$4,$5,'queued')]], { id, case.id, case.upload_name, case.upload_id, expected })
-            if result_err then return nil, failed("evaluation case could not be queued", result_err) end
-        end
         local dbtype, type_err = db:type()
         if type_err then return nil, type_err end
-        local admit_err = admit(tx, dbtype, id)
+        local admit_err, receipts = admit(tx, dbtype, id)
         if admit_err then return nil, admit_err end
+        local expected, seen = {}, {}
+        for _, case in ipairs(cases) do expected[case.id] = true end
+        if type(receipts) ~= "table" then
+            return nil, errors.new({kind = errors.INTERNAL, retryable = false, message = "evaluation admission returned no job receipts"})
+        end
+        for case_id, job_id in pairs(receipts) do
+            if not expected[case_id] or type(job_id) ~= "string" or not uuid.validate(job_id) or seen[job_id] then
+                return nil, errors.new({kind = errors.INTERNAL, retryable = false, message = "evaluation admission returned an invalid job receipt"})
+            end
+            seen[job_id] = true
+        end
+        local _, next_check = recovery_policy.window()
+        for _, case in ipairs(cases) do
+            local job_id = receipts[case.id]
+            if not job_id then
+                return nil, errors.new({kind = errors.INTERNAL, retryable = false, message = "evaluation admission omitted a case job receipt"})
+            end
+            local expected, expected_err = encoded(case.expected)
+            if expected_err then return nil, expected_err end
+            local _, result_err = tx:execute([[INSERT INTO kickside_docscout_eval_results
+                (eval_id, case_id, job_id, next_check_at, upload_name, upload_id, expected_values, status)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,'queued')]],
+                { id, case.id, job_id, next_check, case.upload_name, case.upload_id, expected })
+            if result_err then return nil, failed("evaluation case could not be queued", result_err) end
+        end
         return id, nil
+    end, true)
+end
+
+-- This changes only private recovery scheduling metadata on existing queued
+-- rows. Result/status/metric writes still use the Component fence in finish_case.
+-- A concurrent settlement or teardown makes the conditional update a no-op.
+function M.claim_eval_checks(job_id: string?): (table[]?, error?, boolean?)
+    local current, next_check = recovery_policy.window()
+    local claimed, err = database.transaction(nil, function(tx: any): (any?, error?)
+        local predicate = job_id and "r.job_id=$1" or "r.next_check_at <= $1"
+        local rows, read_err = tx:query([[SELECT r.eval_id,r.case_id,r.job_id,r.next_check_at,e.component_id
+            FROM kickside_docscout_eval_results r JOIN kickside_docscout_evals e ON e.id=r.eval_id
+            WHERE r.status='queued' AND e.status IN ('queued','running') AND ]] .. predicate
+            .. " ORDER BY r.next_check_at,r.eval_id,r.case_id LIMIT $2", { job_id or current, job_id and 1 or recovery_policy.BATCH })
+        if read_err then return nil, failed("pending evaluation receipts could not be read", read_err) end
+        local selected = {}
+        for _, row in ipairs(rows) do
+            local changed, update_err = tx:execute([[UPDATE kickside_docscout_eval_results SET next_check_at=$1
+                WHERE eval_id=$2 AND case_id=$3 AND job_id=$4 AND status='queued' AND next_check_at=$5]],
+                { next_check, row.eval_id, row.case_id, row.job_id, row.next_check_at })
+            if update_err then return nil, failed("evaluation recovery check could not be claimed", update_err) end
+            if changed.rows_affected == 1 then selected[#selected + 1] = row end
+        end
+        return selected, nil
     end)
+    if err then return nil, err end
+    local more, more_err = with_db(function(db: any): (any?, error?)
+        local rows, read_err = db:query([[SELECT r.job_id FROM kickside_docscout_eval_results r
+            JOIN kickside_docscout_evals e ON e.id=r.eval_id
+            WHERE r.status='queued' AND e.status IN ('queued','running') AND r.next_check_at <= $1 LIMIT 1]], { current })
+        if read_err then return nil, failed("pending evaluation receipts could not be read", read_err) end
+        return #rows > 0, nil
+    end)
+    if more_err then return nil, more_err end
+    return claimed, nil, more == true
 end
 
 -- The active evaluation of an extractor with its queued cases, or nil.

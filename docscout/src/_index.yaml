@@ -26,7 +26,7 @@ entries:
 - name: dep.kickside.core
   kind: ns.dependency
   component: kickside/core
-  version: '>=0.3.8'
+  version: '>=0.3.9'
   meta:
     comment: Retention owners contribute their next expiry to Core's existing scheduler.
 - name: dep.kickside.settings
@@ -64,7 +64,7 @@ entries:
 - name: dep.kickside.jobs
   kind: ns.dependency
   component: kickside/jobs
-  version: '*'
+  version: '>=0.1.67'
 - name: dep.kickside.execution
   kind: ns.dependency
   component: kickside/execution

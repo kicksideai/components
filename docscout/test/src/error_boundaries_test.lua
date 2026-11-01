@@ -16,7 +16,11 @@ local function evaluation(component_id: string): string
     return assert(repository.add_eval(component_id, { actor_id = uuid.v4(), actor_context = "{}", config_revision = 0,
         fields = '[{"name":"total","type":"number"}]', config_snapshot = '{"fields":[]}' },
         { { id = "case", upload_id = "upload", upload_name = "invoice.pdf", expected = { total = 1250 } } },
-        function(_tx: any, _dialect: string, _id: string): error? return nil end))
+        function(tx: any, dialect: string, id: string): (error?, {[string]: string}?)
+            local receipts, err = data.admit_eval_jobs(tx, dialect, component_id, id,
+                {{id = "case", upload_id = "upload", upload_name = "invoice.pdf", expected = {total = 1250}}})
+            return err, receipts
+        end))
 end
 
 return { run = test.run_cases(function()
