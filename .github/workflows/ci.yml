@@ -275,6 +275,7 @@ jobs:
             set -euo pipefail
             export TMPDIR="$PWD/.scratch"
             mkdir -p "$TMPDIR"
+            python3 docscout/test/check-package-bindings.py
             make -C docscout lockrefresh ui-install build typecheck test-ui lint test
         - module: docscout
           engine: postgres
@@ -282,6 +283,7 @@ jobs:
             set -euo pipefail
             export TMPDIR="$PWD/.scratch"
             mkdir -p "$TMPDIR"
+            python3 docscout/test/check-package-bindings.py
             make -C docscout lockrefresh ui-install build typecheck test-ui lint
             database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_docscout"
             createdb "$database"
