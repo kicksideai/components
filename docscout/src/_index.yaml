@@ -1,0 +1,341 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: Docscout
+    description: Configure document extractors and inspect evidence, evaluations,
+      and runs.
+  readme: file://README.md
+- name: config_schema
+  kind: registry.entry
+  schema_json: file://config.schema.json
+- name: db_config
+  kind: registry.entry
+  meta: {}
+- name: dep.kickside.component
+  kind: ns.dependency
+  component: kickside/component
+  version: '*'
+- name: dep.kickside.contract
+  kind: ns.dependency
+  component: kickside/contract
+  version: '*'
+- name: dep.kickside.core
+  kind: ns.dependency
+  component: kickside/core
+  version: '>=0.3.9'
+  meta:
+    comment: Retention owners contribute their next expiry to Core's existing scheduler.
+- name: dep.kickside.settings
+  kind: ns.dependency
+  component: kickside/settings
+  version: '*'
+- name: dep.kickside.blocks
+  kind: ns.dependency
+  component: kickside/blocks
+  version: '*'
+- name: dep.kickside.agents
+  kind: ns.dependency
+  component: kickside/agents
+  version: '*'
+- name: dep.kickside.widgets
+  kind: ns.dependency
+  component: kickside/widgets
+  version: '*'
+- name: dep.kickside.uploads
+  kind: ns.dependency
+  component: kickside/uploads
+  version: '*'
+- name: dep.kickside.search_index
+  kind: ns.dependency
+  component: kickside/search-index
+  version: '*'
+  meta:
+    comment: Keyword, vector and hybrid search over processed document chunks.
+- name: dep.kickside.doc2md
+  kind: ns.dependency
+  component: kickside/doc2md
+  version: '>=0.8.15'
+  meta:
+    comment: Reads the page and slide markers in converted Markdown.
+- name: dep.kickside.jobs
+  kind: ns.dependency
+  component: kickside/jobs
+  version: '>=0.1.67'
+- name: dep.kickside.execution
+  kind: ns.dependency
+  component: kickside/execution
+  version: '*'
+- name: dep.wippy.dataflow
+  kind: ns.dependency
+  component: wippy/dataflow
+  version: '*'
+  meta:
+    comment: Selected-agent scouting directly uses the native Flow compiler and history reader.
+- name: dep.wippy.llm
+  kind: ns.dependency
+  component: wippy/llm
+  version: '*'
+  meta:
+    comment: Generation, structured output and embeddings.
+- name: dep.wippy.migration
+  kind: ns.dependency
+  component: wippy/migration
+  version: '*'
+- name: target_db
+  kind: ns.requirement
+  meta:
+    value_kind: db.sql
+    description: The same SQL resource ID bound to Component and Jobs; required for deletion fencing and atomic evaluation enqueue.
+  targets:
+  - entry: kickside.docscout:db_config
+    path: .meta.db_id
+  - entry: kickside.docscout.migrations:01_docscout
+    path: .meta.target_db
+  - entry: kickside.docscout.security:system_db_access
+    path: .policy.resources
+- name: api_router
+  kind: ns.requirement
+  meta:
+    value_kind: http.router
+  targets:
+  - entry: kickside.docscout.api:create.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:get.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:update.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:delete.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:list.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:add_case.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:delete_case.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:run.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:start_eval.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:list_evals.endpoint
+    path: .meta.router
+  - entry: kickside.docscout.api:get_eval.endpoint
+    path: .meta.router
+- name: ui_server
+  kind: ns.requirement
+  meta:
+    value_kind: http.service
+  targets:
+  - entry: kickside.docscout:ui_static
+    path: .meta.server
+- name: config
+  kind: library.lua
+  source: file://config.lua
+  modules:
+  - json
+  - registry
+  imports:
+    user_agent: kickside.docscout.engine:user_agent
+    shapes: kickside.docscout.engine:shapes
+- name: extractors
+  kind: library.lua
+  source: file://extractors.lua
+  modules:
+  - security
+  imports:
+    component: kickside.component:component
+    config: kickside.docscout:config
+    repository: kickside.docscout.persist:repository
+    retention: kickside.docscout:retention
+    process: kickside.docscout.engine:process
+    notify: kickside.docscout:notify
+    committed_error: kickside.contract:committed_error
+    keyset: kickside.contract:keyset
+    access_policy: kickside.component:access_policy
+- name: extraction
+  kind: contract.definition
+  meta:
+    title: Docscout extraction
+    comment: Runs an extractor on an upload under the caller's identity and returns field values with evidence.
+  methods:
+  - name: run
+    description: Run an extractor the caller can read on an upload the caller can read.
+    input_schemas:
+    - format: application/schema+json
+      definition: |
+        {"type": "object", "additionalProperties": false, "required": ["extractor_id", "upload_id"],
+         "properties": {"extractor_id": {"type": "string", "minLength": 1}, "upload_id": {"type": "string", "minLength": 1},
+                        "caller": {"type": "string", "enum": ["ui", "agent", "workflow", "eval"]},
+                        "evaluation_id": {"type": "string", "minLength": 1}, "case_id": {"type": "string", "minLength": 1}, "deadline": {"type": "string", "format": "date-time"}}}
+    output_schemas:
+    - format: application/schema+json
+      definition: |
+        {"type": "object", "required": ["run_id", "fields", "trace", "config_revision", "status", "duration_ms", "tokens", "pages", "upload_id", "values"], "properties": {"run_id": {"type": "string"}, "upload_id": {"type": "string"}, "config_revision": {"type": "integer", "minimum": 0}, "status": {"type": "string", "enum": ["completed", "partial", "failed"]}, "duration_ms": {"type": "integer", "minimum": 0}, "tokens": {"type": "integer", "minimum": 0}, "pages": {"type": "integer", "minimum": 0}, "fields": {"type": "array", "items": {"type": "object", "required": ["name", "confidence", "verified", "missing", "evidence", "path", "failed"], "properties": {"name": {"type": "string"}, "value": {"description": "Extracted value. Optional and absent when failed=true or missing=true; check failed and error before interpreting an absent value."}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "verified": {"type": "boolean"}, "missing": {"type": "boolean", "description": "True only when the document does not supply the value; false for extraction errors."}, "reason": {"type": "string"}, "evidence": {"type": "array", "items": {"type": "object", "required": ["quote", "section", "chunk_id"], "properties": {"quote": {"type": "string"}, "section": {"type": "string"}, "chunk_id": {"type": "string"}, "page": {"type": "integer", "minimum": 0}, "page_start": {"type": "integer", "minimum": 0}, "page_end": {"type": "integer", "minimum": 0}, "found": {"type": "boolean"}}}}, "path": {"type": "string", "description": "Full dotted field path."}, "failed": {"type": "boolean", "description": "True for an extraction error. The value is absent or null, missing is false, and error contains the cause."}, "error": {"type": "object", "required": ["kind", "message", "retryable"], "properties": {"kind": {"type": "string"}, "message": {"type": "string"}, "retryable": {"type": "boolean"}, "details": {}}}}, "allOf": [{"if": {"required": ["failed"], "properties": {"failed": {"const": true}}}, "then": {"required": ["error", "missing", "verified"], "properties": {"value": {"type": "null"}, "missing": {"const": false}, "verified": {"const": false}}}}]}}, "trace": {"type": "array", "items": {"type": "object", "required": ["kind", "status", "scope", "duration_ms", "input_tokens", "output_tokens"], "properties": {"kind": {"type": "string"}, "status": {"type": "string", "enum": ["completed", "partial", "failed"]}, "scope": {"type": "string"}, "model": {"type": "string"}, "duration_ms": {"type": "integer", "minimum": 0}, "input_tokens": {"type": "integer", "minimum": 0}, "output_tokens": {"type": "integer", "minimum": 0}, "queries": {"type": "array", "items": {"type": "string"}}, "message": {"type": "string"}, "agent_id": {"type": "string"}, "dataflow_id": {"type": "string"}, "tool_calls": {"type": "array", "items": {"type": "object"}}}}}, "values": {"type": "object", "description": "Successfully extracted values nested by group path; failed and missing fields are absent."}}}
+- name: engine
+  kind: contract.binding
+  meta:
+    comment: The Docscout engine behind the extraction contract.
+  contracts:
+  - contract: kickside.docscout:extraction
+    methods:
+      run: kickside.docscout:extraction_run
+- name: extraction_run
+  kind: function.lua
+  meta:
+    comment: The extraction contract's run method.
+  source: file://extraction.lua
+  method: run
+  imports:
+    engine: kickside.docscout.engine:run
+- name: retention
+  kind: library.lua
+  meta:
+    comment: The one retention window for processed documents and run history.
+  source: file://retention.lua
+  modules:
+  - contract
+  - security
+  - time
+  imports:
+    error_envelope: kickside.contract:error_envelope
+- name: status
+  kind: function.lua
+  source: file://binding.lua
+  method: status
+- name: teardown
+  kind: function.lua
+  source: file://teardown.lua
+  method: delete
+  modules:
+  - ctx
+  - security
+  imports:
+    component: kickside.component:component
+    repository: kickside.docscout.persist:repository
+- name: extractor
+  kind: contract.binding
+  meta:
+    title: Docscout
+    icon: tabler:file-search
+    class:
+    - kickside.docscout
+    component:
+      create:
+        view: kickside.docscout:create_view
+      manage:
+        view: kickside.docscout:manage_view
+  contracts:
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.docscout:status
+  - contract: kickside.contract:deletable
+    context_required:
+    - component_id
+    methods:
+      delete: kickside.docscout:teardown
+- name: setting.retention
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.docscout
+  key: retention
+  value_type: duration
+  default: 2h
+  title: Document and run retention
+  description: How long processed documents and run history remain available.
+  scope: global
+  editable: true
+  visible: true
+- name: settings_block
+  kind: registry.entry
+  meta:
+    type: kickside.settings:block
+  key: docscout
+  title: Docscout
+  namespace: kickside.docscout
+  group: Content
+  icon: tabler:file-search
+- name: ui_fs
+  kind: fs.directory
+  directory: ./static
+- name: ui_static
+  kind: http.static
+  path: /kickside-docscout
+  fs: kickside.docscout:ui_fs
+  options:
+    cache: no-cache
+- name: create_view
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Docscout
+    announced: true
+    auto_register: false
+    tag_name: kickside-docscout-create
+    base_path: kickside-docscout
+    entry_point: create.js
+    icon: tabler:file-search
+- name: page_view
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Docscout
+    comment: Docscout product page. Lists extractors and opens one in place.
+    announced: true
+    auto_register: true
+    tag_name: kickside-docscout-page
+    base_path: kickside-docscout
+    entry_point: page.js
+    icon: tabler:file-search
+  props:
+    type: object
+    properties:
+      route:
+        type: string
+        description: Sub-path under /docscout; empty for the list, an extractor id to open it.
+- name: nav_item
+  kind: registry.entry
+  meta:
+    type: ui.nav_item
+    access: kickside.docscout.api:list.endpoint
+    section: ""
+    path: /docscout
+    route_name: docscout
+    title: Docscout
+    comment: Extractors that pull typed fields from documents.
+    icon: tabler:file-search
+    order: 45
+    render: component
+    component_tag: kickside-docscout-page
+- name: manage_view
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Docscout
+    announced: true
+    auto_register: false
+    tag_name: kickside-docscout
+    base_path: kickside-docscout
+    entry_point: index.js
+    icon: tabler:file-search
+
+- name: client
+  kind: library.lua
+  source: file://client.lua
+  modules: [contract, security]
+- name: invoke
+  kind: function.lua
+  source: file://client.lua
+  method: run
+  modules: [contract, security]
+
+- name: notify
+  kind: library.lua
+  source: file://notify.lua
+  modules: [contract, security]
+  imports:
+    component: kickside.component:component
+    retention_notifier: kickside.core.retention:notifier

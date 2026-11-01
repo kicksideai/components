@@ -5,7 +5,7 @@
 
 # KickSide components
 
-Four independently installable modules for the KickSide application:
+Five independently installable modules for the KickSide application:
 
 | Directory | Package | Behavior |
 | --- | --- | --- |
@@ -13,6 +13,7 @@ Four independently installable modules for the KickSide application:
 | [research](research) | `kickside/research` | Runs agent research tasks and presents their progress and results. |
 | [agent-onboarding](agent-onboarding) | `kickside/agent-onboarding` | Creates a user's first agent and selects its capabilities. |
 | [sso](sso) | `kickside/sso` | Provides OAuth2/OIDC sign-in, account linking, and provisioning. |
+| [docscout](docscout) | `kickside/docscout` | Extracts verified, cited fields from uploaded documents for people, agents, evaluations and Workflows. |
 
 Install a package through **System → Modules** in KickSide. The [module installation guide](https://github.com/kicksideai/docs/blob/main/getting-started/first-module.md) explains requirements and bindings.
 

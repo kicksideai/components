@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+workspace:
+  replacements:
+    kickside/docscout: ..
+    kickside/execution: ${kickside_root}/core/execution
+    kickside/jobs: ${kickside_root}/core/jobs
+    kickside/contract: ${kickside_root}/core/contract
+    kickside/core: ${kickside_root}/core/core
+    kickside/component: ${kickside_root}/core/component
+    kickside/realtime-dispatch: ${kickside_root}/core/realtime-dispatch
+    kickside/settings: ${kickside_root}/platform/settings
+    kickside/users: ${kickside_root}/platform/users
+    kickside/transform: ${kickside_root}/platform/transform
+    kickside/ui: ${kickside_root}/platform/ui
+    kickside/self-reflection: ${kickside_root}/platform/self-reflection
+    kickside/uploads: ${kickside_root}/platform/uploads
+    kickside/sessions: ${kickside_root}/platform/sessions
+    kickside/blocks: ${kickside_root}/platform/blocks
+    kickside/security: ${kickside_root}/platform/security
+    kickside/webhooks: ${kickside_root}/platform/webhooks
+    kickside/channel: ${kickside_root}/platform/channel
+    kickside/realtime: ${kickside_root}/platform/realtime
+    kickside/dm: ${kickside_root}/platform/dm
+    kickside/mcp: ${kickside_root}/platform/mcp
+    kickside/identity: ${kickside_root}/platform/identity
+    kickside/inbox: ${kickside_root}/platform/inbox
+    kickside/oauth: ${kickside_root}/platform/oauth
+    kickside/agents: ${kickside_root}/platform/agents
+    kickside/sync: ${kickside_root}/platform/sync
+    kickside/skills: ${kickside_root}/platform/skills
+    kickside/widgets: ${kickside_root}/platform/widgets
+    kickside/transfer: ${kickside_root}/platform/transfer
+    kickside/renderers: ${kickside_root}/platform/renderers
+    kickside/ui-kit: ${kickside_root}/platform/ui-kit
+    kickside/knowledge: ${kickside_root}/platform/knowledge
+    kickside/connection: ${kickside_root}/platform/connection
+    kickside/automation: ${kickside_root}/platform/automation
+    kickside/hub: ${kickside_root}/platform/hub
+    kickside/models: ${kickside_root}/platform/models
+    kickside/workflows: ${kickside_root}/platform/workflows
+vars:
+  http_address: :0
+  kickside_root: ../../../kickside
+  pg_database: docscout_test
+  pg_host: 127.0.0.1
+  pg_port: 5433
+  pg_username: kickside
+  pg_password: kickside
+override:
+  # The suite runs retention explicitly and asserts the rows consumed by that tick.
+  kickside.core.retention.service:sweeper.service:lifecycle.auto_start: false
+  app:gateway:addr: ${http_address}
+  kickside.docscout.security:tool_access:groups: [app:docscout_tools]
+profiles:
+  postgres:
+    override:
+      app:db:kind: db.sql.postgres
+      app:db:host: ${pg_host}
+      app:db:port: ${pg_port}
+      app:db:database: ${pg_database}
+      app:db:username: ${pg_username}
+      app:db:password: ${pg_password}
+      app:db:options.sslmode: disable
+      app:db:pool.max_open: 16
+      app:db:pool.max_idle: 8
+      app:migration_db:kind: db.sql.postgres
+      app:migration_db:host: ${pg_host}
+      app:migration_db:port: ${pg_port}
+      app:migration_db:database: ${pg_database}
+      app:migration_db:username: ${pg_username}
+      app:migration_db:password: ${pg_password}
+      app:migration_db:options.sslmode: disable
+      app:migration_db:options.search_path: docscout_migration_fixture,public
+registry:
+  dispatch_internal_kinds:
+  - registry.entry
+  - ns.requirement
+  - ns.dependency
+  - ns.definition
+  - security.scope

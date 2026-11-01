@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.retention
+entries:
+- name: policy
+  kind: library.lua
+  meta:
+    private: true
+    comment: Bounded worker-recovery scheduling and its canonical timestamp format.
+  source: file://policy.lua
+  modules: [time]
+- name: recovery
+  kind: library.lua
+  meta:
+    private: true
+    comment: Reconciles admitted worker receipts through the owning Jobs APIs.
+  source: file://recovery.lua
+  imports:
+    jobs: kickside.core.jobs:jobs
+    job_types: kickside.core.jobs:types
+    repository: kickside.docscout.persist:repository
+    evals: kickside.docscout.evals:evals
+    error_envelope: kickside.contract:error_envelope
+- name: owner
+  kind: function.lua
+  meta:
+    private: true
+    type: kickside.retention.owner
+    comment: Removes expired Docscout documents and runs under the maintenance identity.
+  source: file://owner.lua
+  method: run
+  security:
+    actor:
+      id: system:kickside.docscout.retention
+    policies:
+    - kickside.docscout.security:system_db_access
+    - kickside.docscout.security:notify_access
+  imports:
+    store: kickside.docscout.persist:store
+    repository: kickside.docscout.persist:repository
+    recovery: kickside.docscout.retention:recovery

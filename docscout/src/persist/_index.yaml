@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.persist
+entries:
+- name: repository
+  kind: library.lua
+  source: file://repository.lua
+  modules:
+  - sql
+  - uuid
+  - time
+  imports:
+    persisted_json: kickside.contract:persisted_json
+    canonical_json: kickside.contract:canonical_json
+    database: kickside.docscout.persist:database
+    store: kickside.docscout.persist:store
+    notify: kickside.docscout:notify
+    committed_error: kickside.contract:committed_error
+    recovery_policy: kickside.docscout.retention:policy
+- name: store
+  kind: library.lua
+  meta:
+    comment: Processed documents, their chunks and keyword and vector search.
+  source: file://store.lua
+  modules:
+  - sql
+  - uuid
+  imports:
+    canonical_json: kickside.contract:canonical_json
+    index: kickside.search_index:index
+    persisted_json: kickside.contract:persisted_json
+    database: kickside.docscout.persist:database
+    notify: kickside.docscout:notify
+    committed_error: kickside.contract:committed_error
+
+- name: database
+  kind: library.lua
+  source: file://database.lua
+  modules: [sql, registry, time]
+  imports:
+    component: kickside.component:component
+    error_envelope: kickside.contract:error_envelope

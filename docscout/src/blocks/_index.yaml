@@ -1,0 +1,73 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.blocks
+entries:
+- name: extract_run
+  kind: function.lua
+  meta:
+    comment: Execution target of the Extract document fields Block.
+  source: file://extract.lua
+  method: run
+  imports:
+    client: kickside.docscout:client
+    shapes: kickside.docscout.engine:shapes
+    error_envelope: kickside.contract:error_envelope
+- name: extract
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Extract document fields
+    description: Runs a Docscout extractor on an upload and returns its field values with evidence.
+  data:
+    block:
+      api_version: kickside.block/v1
+      input:
+        type: object
+        additionalProperties: true
+        required: [upload_id]
+        properties:
+          upload_id: { type: string, minLength: 1, title: Upload }
+      config:
+        type: object
+        additionalProperties: false
+        required: [extractor_id]
+        properties:
+          extractor_id: { type: string, title: Extractor, picker: wc-component-picker, class: kickside.docscout }
+      output: &extract_output
+        type: object
+        additionalProperties: false
+        required: [values, fields, verified, run_id, status]
+        properties:
+          values: { type: object, description: Successfully extracted values nested by group path; failed and missing fields are absent. }
+          fields: {"type": "array", "items": {"type": "object", "required": ["name", "confidence", "verified", "missing", "evidence", "path", "failed"], "properties": {"name": {"type": "string"}, "value": {"description": "Extracted value. Optional and absent when failed=true or missing=true; check failed and error before interpreting an absent value."}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "verified": {"type": "boolean"}, "missing": {"type": "boolean", "description": "True only when the document does not supply the value; false for extraction errors."}, "reason": {"type": "string"}, "evidence": {"type": "array", "items": {"type": "object", "required": ["quote", "section", "chunk_id"], "properties": {"quote": {"type": "string"}, "section": {"type": "string"}, "chunk_id": {"type": "string"}, "page": {"type": "integer", "minimum": 0}, "page_start": {"type": "integer", "minimum": 0}, "page_end": {"type": "integer", "minimum": 0}, "found": {"type": "boolean"}}}}, "path": {"type": "string", "description": "Full dotted field path."}, "failed": {"type": "boolean", "description": "True for an extraction error. The value is absent or null, missing is false, and error contains the cause."}, "error": {"type": "object", "required": ["kind", "message", "retryable"], "properties": {"kind": {"type": "string"}, "message": {"type": "string"}, "retryable": {"type": "boolean"}, "details": {}}}}, "allOf": [{"if": {"required": ["failed"], "properties": {"failed": {"const": true}}}, "then": {"required": ["error", "missing", "verified"], "properties": {"value": {"type": "null"}, "missing": {"const": false}, "verified": {"const": false}}}}]}}
+          verified: { type: boolean, description: True when every value passed verification. }
+          run_id: { type: string }
+          pages: { type: integer }
+          config_revision: {"type": "integer", "minimum": 0}
+          status: {"type": "string", "enum": ["completed", "partial", "failed"]}
+          duration_ms: {"type": "integer", "minimum": 0}
+          tokens: {"type": "integer", "minimum": 0}
+          trace: {"type": "array", "items": {"type": "object", "required": ["kind", "status", "scope", "duration_ms", "input_tokens", "output_tokens"], "properties": {"kind": {"type": "string"}, "status": {"type": "string", "enum": ["completed", "partial", "failed"]}, "scope": {"type": "string"}, "model": {"type": "string"}, "duration_ms": {"type": "integer", "minimum": 0}, "input_tokens": {"type": "integer", "minimum": 0}, "output_tokens": {"type": "integer", "minimum": 0}, "queries": {"type": "array", "items": {"type": "string"}}, "message": {"type": "string"}, "agent_id": {"type": "string"}, "dataflow_id": {"type": "string"}, "tool_calls": {"type": "array", "items": {"type": "object"}}}}}
+      error:
+        type: object
+        required: [code, message]
+        properties:
+          code: { type: string }
+          message: { type: string }
+          details:
+            type: object
+            properties:
+              result: *extract_output
+      ports:
+      - { id: result, label: Values, direction: out, condition: "output.status == 'completed'" }
+      - { id: partial, label: Partial, direction: out, condition: "output.status == 'partial'" }
+      - { id: failed, label: Failed, direction: out }
+      presentation:
+        category: Documents
+        icon: tabler:file-search
+        hue: violet
+        blurb: Pulls typed fields from a document, with quotes and pages for each value.
+      execution:
+        kind: function
+        function_id: kickside.docscout.blocks:extract_run

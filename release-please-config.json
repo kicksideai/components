@@ -41,6 +41,16 @@
         "storage-s3/ui/dist",
         "storage-s3/ui/node_modules"
       ]
+    },
+    "docscout": {
+      "component": "docscout",
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
+      "exclude-paths": [
+        "docscout/test",
+        "docscout/ui/dist",
+        "docscout/ui/node_modules"
+      ]
     }
   }
 }

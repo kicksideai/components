@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+ui/node_modules/
+ui/.wippy/
+test/.wippy/
+.wippy/
+build-inputs/.wippy/
+*.runtime.lock
