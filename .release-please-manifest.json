@@ -3,5 +3,6 @@
   "research": "0.1.23",
   "agent-onboarding": "0.1.7",
   "sso": "0.1.41",
-  "storage-s3": "0.2.0"
+  "storage-s3": "0.2.0",
+  "docscout": "0.1.0"
 }
