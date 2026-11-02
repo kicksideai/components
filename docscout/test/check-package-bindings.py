@@ -68,7 +68,9 @@ with tempfile.TemporaryDirectory(prefix='docscout-package-bindings-') as directo
     observed = {'source_selected': groups(True, True), 'package_default': groups(False, False),
                 'package_selected': groups(False, True)}
     print(json.dumps(observed, sort_keys=True), flush=True)
-    if observed['source_selected'] != [selected] or observed['package_selected'] != [selected]:
-        raise SystemExit('Packaged member authority must contain only the explicitly selected group')
-    if observed['package_default'] != ['kickside.security.groups:members']:
-        raise SystemExit('Packaging must preserve the declared default when no host group is selected')
+    expected = {'source_selected': [selected], 'package_default': ['kickside.security.groups:members'],
+                'package_selected': [selected]}
+    failures = [f'{case}: expected {json.dumps(groups)}, got {json.dumps(observed[case])}'
+                for case, groups in expected.items() if observed[case] != groups]
+    if failures:
+        raise SystemExit('\n'.join(failures))
