@@ -22,7 +22,7 @@ ui-kit:
 	$(WIPPY) artifacts materialize "build-inputs/.wippy/vendor/kickside/ui-kit-$$version.wapp" kickside.ui_kit:package_fs --root ui/.wippy
 ui-install: ui-kit
 	cd ui && npm ci --no-audit --no-fund
-build:
+build: ui-install
 	cd ui && npm run build
 typecheck:
 	cd ui && npm run type-check
