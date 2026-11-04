@@ -8,6 +8,7 @@
   "description": "Create a first personal agent with optional installed capabilities.",
   "scripts": {
     "build": "vite build",
+    "test": "vitest run",
     "dev": "vite"
   },
   "dependencies": {

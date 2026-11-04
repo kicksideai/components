@@ -114,6 +114,69 @@
           "test-ui"
         ]
       ]
+    },
+    "docscout": {
+      "path": "docscout",
+      "organization": "kickside",
+      "module": "docscout",
+      "type": "plugin",
+      "visibility": "public",
+      "embed": [
+        "kickside.docscout:ui_fs"
+      ],
+      "targets": [
+        "lockrefresh",
+        "lint",
+        "test",
+        "test-pg",
+        "ui-kit",
+        "ui-install",
+        "build",
+        "typecheck",
+        "test-ui",
+        "preview",
+        "setup",
+        "verify",
+        "postgres-up",
+        "postgres-down",
+        "test-sqlite"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "docscout_test",
+      "extra_tests": []
+    },
+    "storage-s3": {
+      "path": "storage-s3",
+      "organization": "kickside",
+      "module": "storage-s3",
+      "type": "plugin",
+      "visibility": "public",
+      "embed": [
+        "kickside.storage_s3:ui_fs"
+      ],
+      "targets": [
+        "setup",
+        "build",
+        "typecheck",
+        "test-ui",
+        "lockrefresh",
+        "lint",
+        "test",
+        "test-pg",
+        "test-s3",
+        "verify",
+        "release-check",
+        "publish"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "kickside_test_uploads",
+      "extra_tests": []
     }
   }
 }
