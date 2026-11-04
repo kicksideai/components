@@ -69,6 +69,6 @@ make test-s3 KICKSIDE_SOURCE_ROOT=/path/to/kickside
 
 Create a dedicated PostgreSQL database and drop it after testing. `verify` runs
 the UI build, typecheck, lint, UI tests and SQLite harness. `test-s3` uses disposable
-Docker storage to exercise relocation, member authority, Knowledge ingestion and
+Docker storage to exercise relocation, member authority and
 reads across separate runtime starts. Commit rebuilt tracked static assets.
 Release Please owns versions and changelogs.

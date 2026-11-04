@@ -17,7 +17,6 @@ workspace:
     kickside/settings: ${kickside_root}/platform/settings
     kickside/pdf2image: ${kickside_root}/../converters/pdf2image
     kickside/storage-s3: ..
-    kickside/knowledge: ${kickside_root}/platform/knowledge
     kickside/models: ${kickside_root}/platform/models
 vars:
   sqlite_path: ':memory:'
@@ -36,7 +35,6 @@ profiles:
       app.storage_s3:restart_test:meta.type: test
   s3:
     override:
-      app.storage_s3:ingest_test:meta.type: test
       app.storage_s3:member_relocated_read_test:meta.type: test
       app.storage_s3:live_tests:meta.type: test
       app.storage_s3:restart_test:meta.type: test

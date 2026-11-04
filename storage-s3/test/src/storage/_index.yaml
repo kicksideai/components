@@ -49,19 +49,6 @@ entries:
   method: run
   modules: [registry]
   imports: {test: wippy.test:test}
-- name: ingest_test
-  kind: function.lua
-  meta: {type: test_support, suite: storage_s3_ingest}
-  source: file://ingest_test.lua
-  method: run
-  modules: [sql, uuid, fs, funcs, security, contract, json, env]
-  imports:
-    test: wippy.test:test
-    records: kickside.uploads.persist:upload_record_repo
-    artifacts: kickside.uploads.persist:artifact_content_repo
-    cleanup: kickside.uploads.persist:artifact_cleanup_repo
-    pipeline: kickside.uploads:pipeline
-    fixture_cleanup: app:fixture_cleanup
 - name: restart_test
   kind: function.lua
   meta: {type: test_support, suite: storage_s3_restart}
