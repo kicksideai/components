@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.42](https://github.com/kicksideai/components/compare/sso-v0.1.41...sso-v0.1.42) (2026-11-06)
+
+
+### Bug Fixes
+
+* **docscout:** exclude host application and test support entries from the package ([346d872](https://github.com/kicksideai/components/commit/346d872445f3e8985a42d1d2bd3e5c34fcfa5596))
+
 ## [0.1.41](https://github.com/kicksideai/components/compare/sso-v0.1.40...sso-v0.1.41) (2026-10-28)
 
 

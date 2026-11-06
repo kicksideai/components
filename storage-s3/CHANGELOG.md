@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/kicksideai/components/compare/storage-s3-v0.2.0...storage-s3-v0.2.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **docscout:** exclude host application and test support entries from the package ([346d872](https://github.com/kicksideai/components/commit/346d872445f3e8985a42d1d2bd3e5c34fcfa5596))
+
 ## [0.2.0](https://github.com/kicksideai/components/compare/storage-s3-v0.1.2...storage-s3-v0.2.0) (2026-10-31)
 
 
