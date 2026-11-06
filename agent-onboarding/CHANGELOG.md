@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.7...agent-onboarding-v0.1.8) (2026-11-06)
+
+
+### Bug Fixes
+
+* **docscout:** exclude host application and test support entries from the package ([346d872](https://github.com/kicksideai/components/commit/346d872445f3e8985a42d1d2bd3e5c34fcfa5596))
+
 ## [0.1.7](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.6...agent-onboarding-v0.1.7) (2026-10-25)
 
 
