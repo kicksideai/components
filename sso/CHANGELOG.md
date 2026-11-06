@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.43](https://github.com/kicksideai/components/compare/sso-v0.1.42...sso-v0.1.43) (2026-11-06)
+
+
+### Features
+
+* **sso:** verify ES256 id_token signatures from EC P-256 JWKs ([#26](https://github.com/kicksideai/components/issues/26)) ([a0b837c](https://github.com/kicksideai/components/commit/a0b837c917dbd55e298acf8b2a43d171f0d748d1))
+
 ## [0.1.42](https://github.com/kicksideai/components/compare/sso-v0.1.41...sso-v0.1.42) (2026-11-06)
 
 
