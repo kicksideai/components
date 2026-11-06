@@ -33,6 +33,7 @@ return { run = test.run_cases(function()
             local eval_id = evaluation(id)
             test.not_nil((repository.mark_eval(id, eval_id, "running")))
             test.not_nil((data.caller(owner):call("app:probe", { op = "delete", id = id })))
+            data.await_delete(id)
 
             local document, document_err = store.save(doc, {})
             test.is_nil(document); test.not_nil(document_err)

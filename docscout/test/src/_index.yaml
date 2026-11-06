@@ -679,6 +679,17 @@ entries:
     artifacts: kickside.uploads.persist:artifact_content_repo
     upload_types: kickside.uploads:types
     jobs: kickside.core.jobs:jobs
+    deletion_worker: app:deletion_test_worker
+- name: deletion_test_worker
+  kind: library.lua
+  source: file://deletion_test_worker.lua
+  modules: [sql, time, json]
+  imports:
+    jobs: kickside.core.jobs:jobs
+- name: deletion_failure
+  kind: function.lua
+  source: file://deletion_failure.lua
+  method: delete
 
 - name: runtime_members
   kind: security.scope
@@ -805,7 +816,6 @@ entries:
     repository: kickside.docscout.persist:repository
     recovery: kickside.docscout.retention:recovery
     jobs: kickside.core.jobs:jobs
-    teardown: kickside.component.persist:teardown
 - name: recovery_jobs
   kind: library.lua
   source: file://recovery_jobs.lua
@@ -823,4 +833,3 @@ entries:
     jobs: kickside.core.jobs:jobs
     repository: kickside.docscout.persist:repository
     recovery: kickside.docscout.retention:recovery
-    teardown: kickside.component.persist:teardown
