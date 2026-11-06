@@ -1,11 +1,18 @@
 [extend]
 useDefault = true
 
-[[allowlists]]
-description = "Throwaway RSA key for the JWK encoder unit test"
+# Rule-scoped exceptions keep directory scanning enabled for the fixture files.
+[[rules]]
+id = "private-key"
+
+[[rules.allowlists]]
+description = "Throwaway RSA key for JWK encoder and OIDC signature tests"
 condition = "AND"
 regexTarget = "secret"
-paths = ['''(^|/)sso/test/suites/connectors/jwk_test\.lua$''']
+paths = [
+    '''(^|/)sso/test/suites/connectors/jwk_test\.lua$''',
+    '''(^|/)sso/test/src/oidc_jwks_test\.lua$''',
+]
 regexes = ['''^\-\-\-\-\-BEGIN\ RSA\ PRIVATE\ KEY\-\-\-\-\-\
 MIIEowIBAAKCAQEAtScB7idg2HV7z8lzxgUkVC7krsc6spvTfby2y1pLbB/GROiX\
 FMX/ZrTiCfy69h7PhP\+uXbzw7\+aDnK5SyQ8gwvWnxQt3vUQ1cTLqZmgSzsjxjfM3\
@@ -34,7 +41,24 @@ sJ85AaokrwY8XS3\+n5fZmikwDUMCo283\+UoJtPMlDjsWGTl/3TjfGzSZRbtjsQZ9\
 yRFcSrnL3d3IDakZ\+nPQ\+Q8dOkN4aDGsdm7itTSpghSvr3pnspRK\
 \-\-\-\-\-END\ RSA\ PRIVATE\ KEY\-\-\-\-\-$''']
 
-[[allowlists]]
+[[rules.allowlists]]
+description = "Throwaway EC P-256 key for JWK encoder and OIDC signature tests"
+condition = "AND"
+regexTarget = "secret"
+paths = [
+    '''(^|/)sso/test/suites/connectors/jwk_test\.lua$''',
+    '''(^|/)sso/test/src/oidc_jwks_test\.lua$''',
+]
+regexes = ['''^\-\-\-\-\-BEGIN\ EC\ PRIVATE\ KEY\-\-\-\-\-\
+MHcCAQEEIAZNv7BhvuFSSI7R50MsqxpAVzRxU4C2Hu8WXTuy3\+G9oAoGCCqGSM49\
+AwEHoUQDQgAEH803eBvJF2q3yY057KtNp2xyZMZvz8mZGxDQrgZDsa1k3j9bRIlJ\
+pQygPwcVqHsKumi\+M5KsjU5l1k/3ze\+kOw==\
+\-\-\-\-\-END\ EC\ PRIVATE\ KEY\-\-\-\-\-$''']
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
 description = "Owner-verified dummy token in the SSO unit harness"
 condition = "AND"
 regexTarget = "secret"

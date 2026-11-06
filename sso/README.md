@@ -75,10 +75,17 @@ existing System → Settings tab automatically.
 ## Security
 
 PKCE (S256), `state` CSRF cookie, OIDC `nonce`, `id_token` `iss`/`aud`/`exp` and
-signature validation (RS256 via JWKS where derivable; userinfo over TLS
-otherwise), `email_verified` required before any auto-provision or link unless
+signature validation (RS256 or ES256 when a JWKS key can be derived),
+`email_verified` required before any auto-provision or link unless
 the provider has an explicit email-trust setting, and a post-login redirect
 allowlist (open-redirect guard).
+
+ES256 verification supports EC P-256 JWKs and requires Runtime **v0.3.56a or
+later**. RSA keys continue to use RS256. In a mixed JWKS, key selection matches
+the token's algorithm and its `kid` when supplied; an incompatible key remains
+a signature-verification error. If no JWKS key can be obtained, the existing
+token-exchange path validates the TLS-delivered token's claims without verifying
+its signature.
 
 ## Supported protocols
 

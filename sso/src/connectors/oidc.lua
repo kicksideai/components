@@ -3,7 +3,7 @@
 --
 -- id_token trust: the token response is fetched directly from the provider's
 -- token endpoint over TLS, so the id_token is authentic in transit. On top of
--- that we verify the RS256 signature against the JWKS whenever a key is available
+-- that we verify the RS256 or ES256 signature against the JWKS whenever a key is available
 -- (the normal path) and always validate the iss/aud/exp/nonce claims. If the JWKS
 -- cannot be fetched, we fall back to claim validation of the TLS-delivered token
 -- and log it — never silently accepting an unvalidated token.
@@ -84,9 +84,9 @@ end
 function M.validate_id_token(d, id_token, nonce)
     local claims, signature_verified
 
-    local pem, perr = jwk.pem_for_token(d.endpoints.jwks, id_token)
+    local pem, perr, alg = jwk.pem_for_token(d.endpoints.jwks, id_token)
     if pem then
-        local c, verr = crypto.jwt.verify(id_token, pem, "RS256", true)
+        local c, verr = crypto.jwt.verify(id_token, pem, alg, true)
         if verr then
             return nil, "id_token signature invalid: " .. tostring(verr)
         end
