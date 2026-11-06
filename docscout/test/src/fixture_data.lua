@@ -11,6 +11,7 @@ local artifacts = require("artifacts")
 local contract = require("contract")
 local upload_types = require("upload_types")
 local jobs = require("jobs")
+local deletion_worker = require("deletion_worker")
 local M = {}
 
 function M.caller(owner: string): any
@@ -21,6 +22,36 @@ end
 function M.extractor(owner: string): string
     local config = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).default
     return assert(M.caller(owner):call("app:probe", { op = "create", input = { title = "Fixture reader", config = config } })).component_id
+end
+
+M.await_delete = deletion_worker.await
+
+function M.dead_delete(owner: string, id: string): any
+    local overlay = assert(registry.overlay("app:fixture_data"))
+    local entry = assert(registry.get("kickside.docscout:extractor"))
+    local replacement = assert(json.decode(assert(json.encode(entry.data))))
+    for _, binding in ipairs(replacement.contracts) do
+        if binding.contract == "kickside.contract:deletable" then
+            binding.methods.delete = "app:deletion_failure"
+        end
+    end
+    local changes = overlay:changes()
+    changes:update({id = entry.id, kind = entry.kind, meta = entry.meta, data = replacement})
+    local _, apply_err = changes:apply()
+    assert(apply_err == nil, tostring(apply_err))
+    local ok, accepted = pcall(function(): any
+        local result = assert(M.caller(owner):call("app:probe", {op = "delete", id = id}))
+        assert(result.in_progress and result.deleted == false)
+        local job = deletion_worker.await_job(result.job_id, "dead")
+        assert(job.last_error ~= nil)
+        return result
+    end)
+    local restore = assert(registry.overlay("app:fixture_data")):changes()
+    restore:delete(entry.id)
+    local _, restore_err = restore:apply()
+    assert(restore_err == nil, tostring(restore_err))
+    if not ok then error(accepted) end
+    return accepted
 end
 
 -- File-state fixtures may deliberately omit original bytes, but admission still
