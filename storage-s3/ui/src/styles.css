@@ -6,3 +6,6 @@
 .storage-s3 form { display: grid; gap: .75rem; margin-top: 1.25rem; }
 .storage-s3 label { font-weight: 600; }
 .storage-s3-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .5rem; }
+
+/* Reserved only while the implementation loads, so a loaded tag keeps its own size. */
+:host > div:empty, :host > div:has(> [role=status]) { min-height: 321px; }

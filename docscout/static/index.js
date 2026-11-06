@@ -1,14 +1,19 @@
-import { defineComponent as o, computed as r, openBlock as n, createBlock as p } from "vue";
+import { a as o } from "./wc-runtime-DUvG5Zds.js";
+import { P as e } from "./primevue-plugin-UREsRVxx.js";
+import { d as r } from "./element-5V4dxOhR.js";
+import { l as n } from "./lazy-Cqrjy7hv.js";
 import "@iconify/vue";
-import { define as s } from "@wippy-fe/proxy";
-import { u as a, d as m } from "./index-B7lywxOH.js";
-import { _ as c } from "./Extractor.vue_vue_type_script_setup_true_lang-5QDH4mhk.js";
+import { define as a } from "@wippy-fe/proxy";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
-const i = /* @__PURE__ */ o({
-  __name: "ManageRoot",
-  setup(u) {
-    const e = a(), t = r(() => e.value.entryId ?? "");
-    return (f, l) => (n(), p(c, { id: t.value }, null, 8, ["id"]));
-  }
-}), d = m(i, { type: "object", properties: { "entry-id": { type: "string", default: "", description: "Id of the extractor component to manage, supplied by the workspace. Empty shows a message instead of an extractor." } } });
-s(import.meta.url, d);
+const i = n(
+  () => import("./ManageRoot-rAbOv6Fu.js"),
+  { loading: "Loading the extractor…", failed: "Could not load the extractor. Reload the page to try again." },
+  o
+), t = r({ rootComponent: i, plugins: [e] }, { type: "object", properties: { "entry-id": { type: "string", default: "", description: "Id of the extractor component to manage, supplied by the workspace. Empty shows a message instead of an extractor." } } });
+async function f() {
+  return t;
+}
+a(import.meta.url, t);
+export {
+  f as webComponent
+};

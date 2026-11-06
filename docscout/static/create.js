@@ -1,35 +1,45 @@
-import { defineComponent as m, ref as s, computed as l, watch as u, openBlock as f, createBlock as d } from "vue";
+import { defineComponent as l, ref as s, computed as f, watch as m, openBlock as d, createBlock as v } from "vue";
 import "@iconify/vue";
-import { define as v } from "@wippy-fe/proxy";
-import { u as _, a as g, c as h, n as b, d as y } from "./index-B7lywxOH.js";
-import { _ as w } from "./CreateForm.vue_vue_type_script_setup_true_lang-DQ3gilnH.js";
+import { define as g } from "@wippy-fe/proxy";
+import "pinia";
+import { P as _ } from "./primevue-plugin-UREsRVxx.js";
+import { d as b } from "./element-5V4dxOhR.js";
+import { u as h, a as y } from "./wc-runtime-DUvG5Zds.js";
+import { c as w, n as C } from "./config-mzfyYps4.js";
+import { _ as k } from "./CreateForm.vue_vue_type_script_setup_true_lang-DwyhEedr.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
-const k = /* @__PURE__ */ m({
+const E = /* @__PURE__ */ l({
   __name: "CreateRoot",
-  setup(E) {
-    const i = _(), a = g(), r = s(!1), o = s(""), c = s(), n = l(() => i.value.parentId);
-    u(r, (t) => a("submit-state", { saving: t })), u(() => i.value.submitNonce, (t, e) => {
-      t && t !== e && c.value?.submit();
+  setup(P) {
+    const i = h(), n = y(), o = s(!1), r = s(""), p = s(), a = f(() => i.value.parentId);
+    m(o, (t) => n("submit-state", { saving: t })), m(() => i.value.submitNonce, (t, e) => {
+      t && t !== e && p.value?.submit();
     });
-    async function p(t) {
-      r.value = !0, o.value = "";
+    async function c(t) {
+      o.value = !0, r.value = "";
       try {
-        const e = await h.create({ ...t, config: b(), ...n.value ? { parent_id: n.value } : {} });
-        a("created", { id: e.component_id });
+        const e = await w.create({ ...t, config: C(), ...a.value ? { parent_id: a.value } : {} });
+        n("created", { id: e.component_id });
       } catch (e) {
-        o.value = e instanceof Error ? e.message : String(e), a("error", { message: o.value, error: e });
+        r.value = e instanceof Error ? e.message : String(e), n("error", { message: r.value, error: e });
       } finally {
-        r.value = !1;
+        o.value = !1;
       }
     }
-    return (t, e) => (f(), d(w, {
+    return (t, e) => (d(), v(k, {
       ref_key: "form",
-      ref: c,
-      saving: r.value,
-      error: o.value,
-      "in-popup": !!n.value,
-      onSubmit: p
+      ref: p,
+      saving: o.value,
+      error: r.value,
+      "in-popup": !!a.value,
+      onSubmit: c
     }, null, 8, ["saving", "error", "in-popup"]));
   }
-}), C = y(k, { type: "object", properties: { "parent-id": { type: "string", default: "", description: "Workspace folder the new extractor is placed in; empty places it at the root." }, "submit-nonce": { type: "string", default: "", description: "Changing value the host sets to submit the form from its own button." } } });
-v(import.meta.url, C);
+}), u = b({ rootComponent: E, plugins: [_] }, { type: "object", properties: { "parent-id": { type: "string", default: "", description: "Workspace folder the new extractor is placed in; empty places it at the root." }, "submit-nonce": { type: "string", default: "", description: "Changing value the host sets to submit the form from its own button." } } });
+async function $() {
+  return u;
+}
+g(import.meta.url, u);
+export {
+  $ as webComponent
+};
