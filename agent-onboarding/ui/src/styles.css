@@ -1,4 +1,8 @@
 :host { display:block; min-width:0; color:var(--p-text-color); }
+/* The wrapper's loader takes the viewport height as an only child, so it is held to this
+   surface. A reconnect during a pending import can leave a second loader until the mount. */
+wippy-loading, wippy-error { height: 100%; }
+wippy-loading ~ wippy-loading { display: none; }
 .onboarding { box-sizing:border-box; width:100%; }
 .onboarding-intro { margin-bottom:16px; }
 .onboarding-intro p { margin:0; }
