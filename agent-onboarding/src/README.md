@@ -49,9 +49,11 @@ blocked until model discovery confirms a generation model for the selected model
 or the platform default `class:fast`; without a default, the user chooses a
 configured model.
 
-When model discovery finds no generation model, the dialog shows a dedicated
-model setup view instead of the agent form: one message, **Cancel**, and
-**Set up a model**. Set up a model opens the existing Models onboarding component
+The create step declares no title, so the component owns the dialog heading.
+When model discovery finds no generation model, the dialog is a model setup
+popup with its own icon, the **Set up a model** title, one message, **Cancel**,
+and **Set up a model**; the agent title and form appear only once a generation
+model exists. Set up a model opens the existing Models onboarding component
 (`kickside-onboard-models`). Its `back` event returns to the setup view; its
 `done` event rechecks persisted configuration and opens the agent form once a
 generation model exists. Users without model settings access ask an

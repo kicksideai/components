@@ -2,6 +2,7 @@
 import {computed, onMounted, ref} from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import {Icon} from '@iconify/vue'
 import {api, loadByTagName} from '@wippy-fe/proxy'
 import {useEvents} from '@wippy-fe/webcomponent-vue'
 interface CapabilityValue {traits:string[]; trait_contexts:Record<string, unknown>}
@@ -107,8 +108,11 @@ onMounted(load)
     </div>
 
     <section v-else-if="view === 'model-setup'" class="model-setup" aria-labelledby="model-setup-title">
-      <h2 id="model-setup-title" class="model-setup-title">Set up a model first</h2>
-      <p class="model-setup-text">Your agent needs a language model to respond, and this workspace has no model set up yet. Connect a model provider to continue, or ask an administrator if you do not manage models.</p>
+      <header class="head">
+        <span class="head-icon" aria-hidden="true"><Icon icon="tabler:cpu" /></span>
+        <h2 id="model-setup-title" class="title">Set up a model</h2>
+      </header>
+      <p class="text">Agents need a language model to respond, and none is connected to this workspace yet. Connect a model provider to continue, or ask an administrator if you do not manage models.</p>
       <p v-if="error" class="error" role="alert">{{error}}</p>
       <div class="actions">
         <Button type="button" data-dismiss label="Cancel" severity="secondary" @click="dismiss" />
@@ -116,9 +120,16 @@ onMounted(load)
       </div>
     </section>
 
-    <component v-else-if="view === 'configuring'" :is="'kickside-onboard-models'" class="model-config" @done.stop="modelSetupDone" @back.stop="configuring=false" />
+    <section v-else-if="view === 'configuring'" class="stack" aria-labelledby="model-config-title">
+      <header class="head">
+        <span class="head-icon" aria-hidden="true"><Icon icon="tabler:cpu" /></span>
+        <h2 id="model-config-title" class="title">Set up a model</h2>
+      </header>
+      <component :is="'kickside-onboard-models'" class="model-config" @done.stop="modelSetupDone" @back.stop="configuring=false" />
+    </section>
 
-    <form v-else class="stack" @submit.prevent="create">
+    <form v-else class="stack" aria-labelledby="create-agent-title" @submit.prevent="create">
+      <h2 id="create-agent-title" class="title">Create your first agent</h2>
       <p class="intro">Your assistant starts with every installed capability. Rename it or adjust its capabilities, or remove them all for a general-purpose agent.</p>
       <fieldset :disabled="busy || !!createdId">
         <div class="field-row">

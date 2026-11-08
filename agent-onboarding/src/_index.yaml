@@ -95,6 +95,5 @@ entries:
     type: ui.splash.step
     splash: first_agent
     id: create
-    title: Create your first agent
     order: 10
     component_tag: kickside-agent-onboarding
