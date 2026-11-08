@@ -144,6 +144,8 @@ entries:
     value: app:db
   - name: kickside.blocks:api_router
     value: app:api
+  - name: kickside.blocks:process_host
+    value: app:processes
   - name: kickside.models:target_db
     value: app:db
   - name: kickside.models:api_router
