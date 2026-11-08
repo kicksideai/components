@@ -2,9 +2,11 @@
 import {computed, onMounted, ref} from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import {Icon} from '@iconify/vue'
 import {api, loadByTagName} from '@wippy-fe/proxy'
 import {useEvents} from '@wippy-fe/webcomponent-vue'
 interface CapabilityValue {traits:string[]; trait_contexts:Record<string, unknown>}
+type View='loading'|'failed'|'model-setup'|'configuring'|'create'
 const emit=useEvents<{done:{status:'skipped'}; navigate:{path:string;startToken:string}}>()
 const DEFAULT_TITLE='My Assistant'
 const DEFAULT_TRAITS=['kickside.agents.traits:trait_master','kickside.agents.traits:artifacts','kickside.uploads.traits:file_manager']
@@ -19,9 +21,16 @@ const createdId=ref('')
 const modelNames=ref<string[]>([])
 const modelClasses=ref<string[]>([])
 const defaultConfigured=computed(()=>modelClasses.value.includes('class:fast'))
+const modelConfigured=computed(()=>modelNames.value.length>0)
 const configuring=ref(false)
 const hasModel=computed(()=>model.value?modelNames.value.includes(model.value)||modelClasses.value.includes(model.value):defaultConfigured.value)
 const canCreate=computed(()=>ready.value&&!loading.value&&!busy.value&&!!title.value.trim()&&hasModel.value)
+const view=computed<View>(()=>{
+  if(loading.value) return 'loading'
+  if(!ready.value) return 'failed'
+  if(configuring.value) return 'configuring'
+  return modelConfigured.value?'create':'model-setup'
+})
 function message(cause:unknown):string {
   const e=cause as {response?:{data?:{error?:string}};message?:string}
   return e?.response?.data?.error||e?.message||String(cause)
@@ -30,6 +39,7 @@ function capabilityChange(event:Event) {
   const value=(event as CustomEvent<CapabilityValue>).detail
   capabilities.value={traits:[...value.traits],trait_contexts:{...value.trait_contexts}}
 }
+function dismiss() {emit('done',{status:'skipped'})}
 async function load() {
   loading.value=true;ready.value=false;error.value=''
   try {
@@ -87,31 +97,57 @@ onMounted(load)
 
 <template>
   <div class="onboarding">
-    <div class="onboarding-intro"><p>Your assistant starts with every installed capability. Rename it or adjust its capabilities, or remove them all for a general-purpose agent.</p></div>
-    <p v-if="loading" role="status">Loading your choices…</p>
-    <form v-else class="onboarding-form" @submit.prevent="create">
-      <section v-if="!hasModel" aria-label="Configure a model">
-        <h3>Configure a model</h3>
-        <p>Connect a generation model before creating your agent. Ask an administrator to configure one if you do not have model settings access.</p>
-        <Button type="button" label="Configure a model" @click="configureModel" />
-        <Button type="button" label="Check model configuration" @click="load" />
-        <component v-if="configuring" :is="'kickside-onboard-models'" @done="modelSetupDone" @back="configuring=false" />
-      </section>
-      <fieldset :disabled="busy || !!createdId || !ready">
-        <label for="first-agent-title">Agent name</label>
-        <InputText id="first-agent-title" v-model="title" name="title" autocomplete="off" maxlength="120" />
-        <div class="capabilities">
-          <wc-agent-trait-picker :value="JSON.stringify(capabilities)" aria-label="Agent capabilities" @change="capabilityChange" />
+    <p v-if="view === 'loading'" class="status" role="status">Loading your choices…</p>
+
+    <div v-else-if="view === 'failed'" class="stack">
+      <p class="error" role="alert">{{error}}</p>
+      <div class="actions">
+        <Button type="button" data-dismiss label="Skip for now" severity="secondary" @click="dismiss" />
+        <Button type="button" label="Retry" @click="load" />
+      </div>
+    </div>
+
+    <section v-else-if="view === 'model-setup'" class="model-setup" aria-labelledby="model-setup-title">
+      <header class="head">
+        <span class="head-icon" aria-hidden="true"><Icon icon="tabler:cpu" /></span>
+        <h2 id="model-setup-title" class="title">Set up a model</h2>
+      </header>
+      <p class="text">Agents need a language model to respond, and none is connected to this workspace yet. Connect a model provider to continue, or ask an administrator if you do not manage models.</p>
+      <p v-if="error" class="error" role="alert">{{error}}</p>
+      <div class="actions">
+        <Button type="button" data-dismiss label="Cancel" severity="secondary" @click="dismiss" />
+        <Button type="button" label="Set up a model" @click="configureModel" />
+      </div>
+    </section>
+
+    <section v-else-if="view === 'configuring'" class="stack" aria-labelledby="model-config-title">
+      <header class="head">
+        <span class="head-icon" aria-hidden="true"><Icon icon="tabler:cpu" /></span>
+        <h2 id="model-config-title" class="title">Set up a model</h2>
+      </header>
+      <component :is="'kickside-onboard-models'" class="model-config" @done.stop="modelSetupDone" @back.stop="configuring=false" />
+    </section>
+
+    <form v-else class="stack" aria-labelledby="create-agent-title" @submit.prevent="create">
+      <h2 id="create-agent-title" class="title">Create your first agent</h2>
+      <p class="intro">Your assistant starts with every installed capability. Rename it or adjust its capabilities, or remove them all for a general-purpose agent.</p>
+      <fieldset :disabled="busy || !!createdId">
+        <div class="field-row">
+          <div class="field">
+            <label for="first-agent-title">Agent name</label>
+            <InputText id="first-agent-title" v-model="title" name="title" autocomplete="off" maxlength="120" fluid />
+          </div>
+          <div class="field">
+            <span id="first-agent-model" class="label">Model</span>
+            <wc-model-picker :value="model" capability="generate" aria-labelledby="first-agent-model" @select="model = $event.detail" />
+            <p v-if="!defaultConfigured" class="hint">This workspace has no default model; choose one.</p>
+          </div>
         </div>
-        <details :open="!defaultConfigured"><summary>Choose a model <span v-if="defaultConfigured" class="hint">(optional)</span></summary>
-          <p class="hint">Choose a configured model, or use the platform default when one is available.</p>
-          <wc-model-picker :value="model" capability="generate" aria-label="Agent model" @select="model = $event.detail" />
-        </details>
+        <wc-agent-trait-picker :value="JSON.stringify(capabilities)" aria-label="Agent capabilities" @change="capabilityChange" />
       </fieldset>
       <p v-if="error" class="error" role="alert">{{error}}</p>
-      <Button v-if="!ready" type="button" label="Retry loading choices" @click="load" />
       <div class="actions">
-        <Button type="button" data-dismiss label="Skip for now" severity="secondary" :disabled="busy" @click="emit('done',{status:'skipped'})" />
+        <Button type="button" data-dismiss label="Skip for now" severity="secondary" :disabled="busy" @click="dismiss" />
         <Button type="submit" :label="busy?'Creating…':createdId?'Open agent chat':'Create agent'" :disabled="!canCreate" />
       </div>
     </form>

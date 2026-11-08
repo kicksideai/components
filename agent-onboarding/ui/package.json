@@ -46,6 +46,7 @@
   },
   "peerDependencies": {
     "vue": "*",
-    "@wippy-fe/proxy": "*"
+    "@wippy-fe/proxy": "*",
+    "@iconify/vue": "*"
   }
 }
