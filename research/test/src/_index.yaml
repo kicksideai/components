@@ -7,6 +7,17 @@ namespace: app
 # against the real modules they compose.
 
 entries:
+  - name: teardown_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_research }
+    source: file://teardown_test.lua
+    method: run
+    modules: [crypto, funcs, sql, time]
+    imports:
+      test: wippy.test:test
+      repo: kickside.research:repo
+      signals: kickside.research:block_signal_repo
+
   - name: host_bindings_test
     kind: function.lua
     meta: { type: test, suite: kickside_research }
