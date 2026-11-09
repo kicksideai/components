@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.24](https://github.com/kicksideai/components/compare/research-v0.1.23...research-v0.1.24) (2026-11-09)
+
+
+### Bug Fixes
+
+* **research:** delete signal correlations with their component ([#41](https://github.com/kicksideai/components/issues/41)) ([10296a1](https://github.com/kicksideai/components/commit/10296a1a36ff3b121e1a830decc164444db9f045))
+
 ## 0.1.23 (2026-10-17)
 
 - Declare registry entry requirements with value_kind and default bindings.
