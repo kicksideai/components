@@ -1,7 +1,7 @@
 import { W as $, u as _ } from "./wc-runtime-eQeq_mpT.js";
-import H from "primevue/config";
-import V from "primevue/contextmenu";
-import z from "primevue/menu";
+import z from "primevue/config";
+import H from "primevue/contextmenu";
+import V from "primevue/menu";
 import W from "primevue/portal";
 import { renderSlot as g, createCommentVNode as F, h as a, Teleport as I, defineAsyncComponent as q, defineComponent as B, onMounted as Y } from "vue";
 import { Icon as w } from "@iconify/vue";
@@ -52,12 +52,12 @@ function J(t) {
   const e = t && typeof t.getRootNode == "function" ? t.getRootNode() : null;
   return e instanceof ShadowRoot ? e : null;
 }
-function d(t) {
+function u(t) {
   t.style.top = "0px", t.style.left = "0px";
   const e = t.getBoundingClientRect();
   t.style.top = `${-window.scrollY - e.top}px`, t.style.left = `${-window.scrollX - e.left}px`;
 }
-const u = /* @__PURE__ */ new Set(), y = /* @__PURE__ */ new WeakMap();
+const d = /* @__PURE__ */ new Set(), y = /* @__PURE__ */ new WeakMap();
 let C = !1, h = !1;
 const v = ["w-theme-dark", "w-theme-light"], l = "data-wippy-theme-root", f = /* @__PURE__ */ new WeakMap();
 function Q(t) {
@@ -93,14 +93,14 @@ function M(t) {
 }
 function tt() {
   h = !1;
-  for (const t of u) {
+  for (const t of d) {
     if (!t.isConnected) {
       for (const e of Array.from(t.children))
         e instanceof HTMLElement && m(e);
-      u.delete(t), y.get(t)?.disconnect(), M(t);
+      d.delete(t), y.get(t)?.disconnect(), M(t);
       continue;
     }
-    t.childElementCount > 0 && d(t);
+    t.childElementCount > 0 && u(t);
   }
 }
 function x() {
@@ -117,7 +117,7 @@ function et(t) {
     }
     e.matches(":popover-open") || (e.removeAttribute("popover"), e.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;");
   }
-  d(e);
+  u(e);
   const r = new MutationObserver((n) => {
     const c = e.__wippyAnchorName;
     for (const s of n) {
@@ -127,9 +127,9 @@ function et(t) {
       for (const i of Array.from(s.removedNodes))
         i instanceof HTMLElement && m(i);
     }
-    e.isConnected && e.childElementCount > 0 && d(e);
+    e.isConnected && e.childElementCount > 0 && u(e);
   });
-  return r.observe(e, { childList: !0 }), y.set(e, r), u.add(e), C || (C = !0, window.addEventListener("scroll", x, { capture: !0, passive: !0 }), window.addEventListener("resize", x, { passive: !0 })), e;
+  return r.observe(e, { childList: !0 }), y.set(e, r), d.add(e), C || (C = !0, window.addEventListener("scroll", x, { capture: !0, passive: !0 }), window.addEventListener("resize", x, { passive: !0 })), e;
 }
 function L(t) {
   if (!(!t.hostRoot || t.layer) && (t.layer = et(t.hostRoot), Z(t.layer, t.$el, t.hostRoot), U())) {
@@ -141,14 +141,14 @@ function T(t) {
   if (t.anchorTrigger && (t.anchorTrigger.style.removeProperty("anchor-name"), t.anchorTrigger = null), t.anchorName = null, t.layer) {
     for (const e of Array.from(t.layer.children))
       e instanceof HTMLElement && m(e);
-    u.delete(t.layer), y.get(t.layer)?.disconnect(), M(t.layer), t.layer.remove(), t.layer = null;
+    d.delete(t.layer), y.get(t.layer)?.disconnect(), M(t.layer), t.layer.remove(), t.layer = null;
   }
 }
 let S = !1;
 function ot() {
   if (S)
     return;
-  const t = z;
+  const t = V;
   !t.methods || typeof t.methods.bindOutsideClickListener != "function" || (t.methods.bindOutsideClickListener = function() {
     this.outsideClickListener || (this.outsideClickListener = (e) => {
       const o = e.composedPath(), r = this.container && !o.includes(this.container), n = !(this.target && o.includes(this.target));
@@ -160,7 +160,7 @@ let k = !1;
 function nt() {
   if (k)
     return;
-  const t = V;
+  const t = H;
   !t.methods || typeof t.methods.bindOutsideClickListener != "function" || (t.methods.bindOutsideClickListener = function() {
     this.outsideClickListener || (this.outsideClickListener = (e) => {
       const o = e.composedPath(), r = this.container && !o.includes(this.container), n = this.visible ? !(this.target && o.includes(this.target)) : !0;
@@ -194,7 +194,7 @@ function rt() {
 }
 const it = {
   install: (t) => {
-    ot(), nt(), rt(), t.use(H, { theme: "none" });
+    ot(), nt(), rt(), t.use(z, { theme: "none" });
   }
 }, st = 3e4, O = "display:flex;align-items:center;justify-content:center;min-height:2rem;font-size:.875rem;", at = "position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;";
 function ct(t) {
@@ -210,6 +210,7 @@ function pt(t, e, o) {
     loadingComponent: {
       render: () => a("span", {
         role: "status",
+        "data-lazy-state": "loading",
         "aria-label": e.loading,
         style: `${O}color:var(--p-text-muted-color);`
       }, a("span", { style: "display:inline-flex;", onVnodeMounted: ct }, a(w, { icon: "tabler:loader-2", "aria-hidden": "true" })))
@@ -219,17 +220,18 @@ function pt(t, e, o) {
       setup(r) {
         return lt(e.failed, r.error, o), () => a("span", {
           role: "alert",
+          "data-lazy-state": "failed",
           title: e.iconOnly ? e.failed : void 0,
           style: `${O}color:var(--p-danger-500);`
         }, e.iconOnly ? [a(w, { icon: "tabler:alert-circle", "aria-hidden": "true" }), a("span", { style: at }, e.failed)] : e.failed);
       }
     }),
-    delay: 200,
+    delay: e.immediate ? 0 : 200,
     timeout: st,
     suspensible: !1
   });
 }
-const ut = ":host{display:block;height:100%;min-height:0;color:var(--p-text-color)}.storage-s3{box-sizing:border-box;height:100%;overflow:auto;padding:1.5rem;background:var(--p-content-background)}.storage-s3 header,.storage-s3 form{max-width:48rem}.storage-s3 h2{margin:0 0 .75rem;font-size:1.25rem}.storage-s3 p,.storage-s3 small{color:var(--p-text-muted-color);line-height:1.5}.storage-s3 form{display:grid;gap:.75rem;margin-top:1.25rem}.storage-s3 label{font-weight:600}.storage-s3-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:.5rem}:host>div:empty,:host>div:has(>[role=status]){min-height:321px}", dt = pt(
+const dt = ":host{display:block;height:100%;min-height:0;color:var(--p-text-color)}.storage-s3{box-sizing:border-box;height:100%;overflow:auto;padding:1.5rem;background:var(--p-content-background)}.storage-s3 header,.storage-s3 form{max-width:48rem}.storage-s3 h2{margin:0 0 .75rem;font-size:1.25rem}.storage-s3 p,.storage-s3 small{color:var(--p-text-muted-color);line-height:1.5}.storage-s3 form{display:grid;gap:.75rem;margin-top:1.25rem}.storage-s3:has(>p[role=status]){min-height:329px}.storage-s3 label{font-weight:600}.storage-s3-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:.5rem}:host>div:empty,:host>div:has(>[data-lazy-state]){min-height:329px}", ut = pt(
   () => import("./storage-DwQdL1M2.js"),
   { loading: "Loading the S3 storage settings…", failed: "Could not load the S3 storage settings. Reload the page to try again." },
   _
@@ -239,11 +241,11 @@ class R extends $ {
     return {
       propsSchema: { type: "object", properties: {} },
       hostCssKeys: ["themeConfigUrl", "primeVueCssUrl"],
-      inlineCss: ut
+      inlineCss: dt
     };
   }
   static get vueConfig() {
-    return { rootComponent: dt, plugins: [it] };
+    return { rootComponent: ut, plugins: [it] };
   }
 }
 async function vt() {

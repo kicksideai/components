@@ -1059,7 +1059,7 @@ const Tl = { class: "shape-editor" }, Dl = { key: 0 }, Pl = ["aria-label", "aria
 }, sn = {
   key: 3,
   role: "status",
-  class: "muted"
+  class: "muted picker-pending picker-pending--list"
 }, on = /* @__PURE__ */ z({
   __name: "AgentPicker",
   props: {
@@ -1100,7 +1100,7 @@ const Tl = { class: "shape-editor" }, Dl = { key: 0 }, Pl = ["aria-label", "aria
   role: "alert"
 }, rn = {
   key: 2,
-  class: "dz-muted",
+  class: "dz-muted picker-pending",
   role: "status"
 }, ce = /* @__PURE__ */ z({
   __name: "ModelPicker",
@@ -2633,7 +2633,7 @@ const Tl = { class: "shape-editor" }, Dl = { key: 0 }, Pl = ["aria-label", "aria
   role: "alert"
 }, Bo = {
   key: 2,
-  class: "muted"
+  class: "muted picker-pending picker-pending--list"
 }, Nt = /* @__PURE__ */ z({
   __name: "UploadPicker",
   props: {

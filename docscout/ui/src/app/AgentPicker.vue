@@ -21,7 +21,7 @@ function change(event:Event){
   <p v-if="readonly" class="muted">{{value||'Built-in scout'}}</p>
   <wc-agent-picker v-else-if="ready" :config="JSON.stringify({agent_id:value||''})" aria-label="Scout agent" placeholder="Choose your agent…" @change="change"/>
   <p v-else-if="error" class="field-error" role="alert">Could not load agent picker: {{error}}</p>
-  <span v-else role="status" class="muted">Loading agents…</span>
+  <span v-else role="status" class="muted picker-pending picker-pending--list">Loading agents…</span>
   <small>Leave empty to use the built-in scout.</small>
  </div>
 </template>

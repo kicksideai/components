@@ -211,3 +211,5 @@ h1,h2,h3,h4{font-family:var(--kx-font-heading)}
  .row-overflow{display:flex}
  .group-name-button>svg{opacity:1}.group-heading{gap:var(--docscout-space)}
 }
+/* Pending pickers keep the picker height while the widget registers. */
+.picker-pending{display:flex;align-items:center;min-height:36px}.picker-pending--list{min-height:38px}

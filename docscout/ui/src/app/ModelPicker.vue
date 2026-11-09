@@ -19,5 +19,5 @@ function select(event: Event) {
 <template>
  <wc-model-picker v-if="ready" :value="value" :capability="capability" :aria-labelledby="labelledBy" @select="select" />
  <p v-else-if="error" class="dz-error" role="alert">Could not load model picker: {{ error }}</p>
- <span v-else class="dz-muted" role="status">Loading models…</span>
+ <span v-else class="dz-muted picker-pending" role="status">Loading models…</span>
 </template>

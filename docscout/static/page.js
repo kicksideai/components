@@ -1,12 +1,12 @@
 import { a as e } from "./wc-runtime-DUvG5Zds.js";
-import { d as r } from "./element-5V4dxOhR.js";
-import { a as n } from "./lazy-Cqrjy7hv.js";
+import { d as r } from "./element-BoklPMdW.js";
+import { a as n } from "./lazy-DyoS9hoz.js";
 import "@iconify/vue";
 import { define as a } from "@wippy-fe/proxy";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const t = r({
   lazyConfig: n(
-    () => import("./page-mount-D8n2XWF7.js").then((o) => o.mountConfig),
+    () => import("./page-mount-CmzkPiAh.js").then((o) => o.mountConfig),
     "Could not load Docscout. Reload the page to try again.",
     e
   )

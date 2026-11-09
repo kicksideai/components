@@ -5,7 +5,7 @@ import stylesText from './card.css?inline'
 
 const Root = lazyControl(
   () => import('./app/ProviderCard.vue'),
-  { loading: 'Loading provider settings…', failed: 'Could not load the provider settings. Reload the page to try again.' },
+  { immediate: true, loading: 'Loading provider settings…', failed: 'Could not load the provider settings. Reload the page to try again.' },
   useEvents,
 )
 

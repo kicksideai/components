@@ -3,7 +3,7 @@ import "@iconify/vue";
 import { define as g } from "@wippy-fe/proxy";
 import "pinia";
 import { P as _ } from "./primevue-plugin-UREsRVxx.js";
-import { d as b } from "./element-5V4dxOhR.js";
+import { d as b } from "./element-BoklPMdW.js";
 import { u as h, a as y } from "./wc-runtime-DUvG5Zds.js";
 import { c as w, n as C } from "./config-mzfyYps4.js";
 import { _ as k } from "./CreateForm.vue_vue_type_script_setup_true_lang-DwyhEedr.js";
