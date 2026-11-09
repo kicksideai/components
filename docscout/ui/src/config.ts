@@ -39,7 +39,7 @@ export interface Stages {
 }
 export type StageKey = keyof Stages
 export interface Retrieval {chunk_size:number;overlap:number;split_headings:boolean;keep_tables:boolean;search_mode:'keyword'|'semantic'|'hybrid';embedding_model:string;context:'none'|'headings'|'generated';context_model:string;highlighter:boolean;highlighter_model:string;section_budget:number}
-export interface Config {fields:Field[];stages:Stages;retrieval:Retrieval;tags:string[]}
+export interface Config {fields:Field[];stages:Stages;retrieval:Retrieval;tags:string[];retention?:string}
 
 export function newConfig():Config{
  const config=structuredClone(schema.default)

@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
--- The one retention window for processed documents and run history.
+-- Extractor retention inherits the global setting when absent.
 local contract = require("contract")
 local security = require("security")
 local time = require("time")
@@ -8,7 +8,7 @@ local error_envelope = require("error_envelope")
 local M = {}
 
 -- The configured window as its setting text, for example "2h".
-function M.window(): (string?, error?)
+function M.window(extractor_window: string?): (string?, error?)
     local actor, scope = security.actor(), security.scope()
     if not actor then
         return nil, errors.new({ kind = errors.UNAUTHENTICATED, retryable = false, message = "authentication required" })
@@ -16,6 +16,7 @@ function M.window(): (string?, error?)
     if not scope then
         return nil, errors.new({ kind = errors.PERMISSION_DENIED, retryable = false, message = "authorization scope required" })
     end
+    if extractor_window ~= nil then return extractor_window, nil end
     local definition, definition_err = contract.get("kickside.settings:settings")
     local wrapper, err = error_envelope.binding(definition, definition_err, "with_actor", "settings unavailable", "retention_settings_binding")
     if err then return nil, err end
@@ -39,8 +40,8 @@ function M.window(): (string?, error?)
 end
 
 -- The RFC3339 instant at which something created now expires.
-function M.expires_at(): (string?, error?)
-    local window, err = M.window()
+function M.expires_at(extractor_window: string?): (string?, error?)
+    local window, err = M.window(extractor_window)
     if err then return nil, err end
     local duration, parse_err = time.parse_duration(window :: string)
     if parse_err then

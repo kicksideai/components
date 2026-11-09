@@ -19,7 +19,7 @@ local function run(input: any): any
     local removed_documents, removed_runs = documents :: integer, runs :: integer
     return { success = true, deleted = removed_documents + removed_runs, deadline_ms = deadline,
         blocked = recovered.blocked,
-        needs_continue = removed_documents == BATCH or removed_runs == BATCH or recovered.needs_continue }
+        needs_continue = removed_documents > 0 or removed_runs > 0 or recovered.needs_continue }
 end
 
 return { run = run }

@@ -4,6 +4,12 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "retention": {
+      "type": "string",
+      "minLength": 1,
+      "title": "Retention window",
+      "description": "Positive duration for new processed documents and runs, for example 24h. Omit to use the global Docscout retention setting. Existing rows keep their expiry."
+    },
     "fields": {
       "type": "array",
       "default": [],

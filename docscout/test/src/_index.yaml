@@ -311,6 +311,20 @@ entries:
   imports:
     test: wippy.test:test
     data: app:fixture_data
+- name: extractor_retention_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: docscout_extractor_retention
+    group: Docscout
+  source: file://extractor_retention_test.lua
+  method: run
+  modules: [registry, json, sql, time, uuid, funcs]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    repository: kickside.docscout.persist:repository
+    store: kickside.docscout.persist:store
 - name: expiry_test
   kind: function.lua
   meta:
