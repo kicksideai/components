@@ -42,6 +42,7 @@ function M.run(input: any): (any?, error?)
     if not actor then return nil, errors.new({ kind = errors.UNAUTHENTICATED, message = "authentication required" }) end
     local extractor, access_err = extractors.for_run(input.id)
     if access_err then return nil, access_err end
+    local extractor_window = extractor.config.retention
     if caller == "eval" then
         if type(input.evaluation_id) ~= "string" or type(input.case_id) ~= "string" then return nil, invalid("Evaluation and case references are required") end
         local evaluation, eval_err = repository.get_eval(input.evaluation_id, true)
@@ -87,7 +88,7 @@ function M.run(input: any): (any?, error?)
 
     local s = config.stages
     local ok = step("read", "document", config.retrieval.embedding_model, function(record: any): error?
-        local document, err = process.ensure(input.id, actor:id(), input.upload_id, config.retrieval, record)
+        local document, err = process.ensure(input.id, actor:id(), input.upload_id, config.retrieval, record, extractor_window)
         if err then return err end
         run.document = document
         return nil
@@ -125,7 +126,7 @@ function M.run(input: any): (any?, error?)
         pages = run.document and run.document.page_count or 0,
     }
     result.values = shapes.values(result)
-    local expires_at, expiry_err = retention.expires_at()
+    local expires_at, expiry_err = retention.expires_at(extractor_window)
     if expiry_err then
         if failure then return nil, error_envelope.wrap_secondary(expiry_err, failure, "run retention failed") end
         return nil, expiry_err

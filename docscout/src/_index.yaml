@@ -137,6 +137,7 @@ entries:
   modules:
   - json
   - registry
+  - time
   imports:
     user_agent: kickside.docscout.engine:user_agent
     shapes: kickside.docscout.engine:shapes
@@ -193,7 +194,7 @@ entries:
 - name: retention
   kind: library.lua
   meta:
-    comment: The one retention window for processed documents and run history.
+    comment: Extractor retention with the global setting as its default.
   source: file://retention.lua
   modules:
   - contract

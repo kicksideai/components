@@ -57,7 +57,7 @@ The native Dataflow agent node resolves the selected agent through `wippy.agent:
 
 Listings accept `filter`, `limit` and `cursor`; `next_cursor` continues a stable component-ID order. The component service filters access and search text before paging.
 
-Every run records its outcome and trace, including failed steps. Documents and runs expire after `kickside.docscout.retention` (default `2h`). Component teardown removes its documents, search-index rows, cases, runs and evaluations.
+Every run records its outcome and trace, including failed steps. An extractor's optional `config.retention` duration, such as `24h`, sets the lifetime of its new processed documents and runs. Set it in the Builder's document settings or through the extractor configuration API. When absent, `kickside.docscout.retention` applies (default `2h`). Existing documents and runs keep their stored expiry when configuration changes or the module updates; reusing a processed copy keeps its original expiry. Component teardown removes its documents, search-index rows, cases, runs and evaluations.
 
 Docscout requires Core >=0.3.9 and Jobs >=0.1.67. Committed document, run and evaluation admissions wake Core's existing retention service. The maintenance callback removes bounded expiry batches and checks up to 16 outstanding worker receipts. It reports the global next expiry or worker-check deadline through the existing Core timer; no separate service or periodic HTTP polling is used.
 

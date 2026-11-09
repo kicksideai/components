@@ -69,7 +69,7 @@ function M.get(id)
     -- Each person sees the runs they made; others' runs name their uploads.
     local records, records_err = repository.snapshot(id, security.actor():id())
     if records_err then return nil, records_err end
-    local window,retention_err = retention.window()
+    local window,retention_err = retention.window(context.context.config.retention)
     if retention_err then return nil,retention_err end
     return {retention=window,success=true,id=id,title=row.meta.title,description=row.meta.description,field_count=tonumber(row.meta.field_count),status=row.meta.status,
         config=can_edit and context.context.config or nil,expected_revision=can_edit and context.context_revision or nil,

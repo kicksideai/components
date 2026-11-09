@@ -145,12 +145,12 @@ end
 function M.next_deadline_ms(): (integer?, error?)
     return with_db(function(db: any): (any?, error?)
         local rows, err = db:query([[SELECT
-            (SELECT MIN(expires_at) FROM kickside_docscout_documents) AS document_expiry,
-            (SELECT MIN(expires_at) FROM kickside_docscout_runs) AS run_expiry,
+            (SELECT MIN(expires_at) FROM kickside_docscout_documents WHERE expires_at > $1) AS document_expiry,
+            (SELECT MIN(expires_at) FROM kickside_docscout_runs WHERE expires_at > $1) AS run_expiry,
             (SELECT r.next_check_at FROM kickside_docscout_eval_results r
                 JOIN kickside_docscout_evals e ON e.id=r.eval_id
                 WHERE r.status='queued' AND e.status IN ('queued','running')
-                ORDER BY r.next_check_at,r.eval_id,r.case_id LIMIT 1) AS recovery_check]])
+                ORDER BY r.next_check_at,r.eval_id,r.case_id LIMIT 1) AS recovery_check]], { now() })
         if err then return nil, failed("retention deadline could not be read", err) end
         local deadline: integer? = nil
         for _, field in ipairs({ "document_expiry", "run_expiry", "recovery_check" }) do

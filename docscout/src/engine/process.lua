@@ -253,7 +253,7 @@ local function contexts(meter: any, retrieval: any, models: { [string]: string }
 end
 
 -- Builds or reuses the processed document and updates the read-step state.
-function M.ensure(component_id: string, owner_id: string, upload_id: string, retrieval: any, step: any): (any?, error?)
+function M.ensure(component_id: string, owner_id: string, upload_id: string, retrieval: any, step: any, extractor_window: string?): (any?, error?)
     local content, err = M.content(upload_id)
     if err then return nil, err end
     local models = {}
@@ -285,7 +285,7 @@ function M.ensure(component_id: string, owner_id: string, upload_id: string, ret
     local vectors, embed_err = ai.embed(step.meter, models.embedding, texts)
     if embed_err then return nil, embed_err end
     for i, c in ipairs(chunks) do c.vector = vectors[i] end
-    local expires_at, expiry_err = retention.expires_at()
+    local expires_at, expiry_err = retention.expires_at(extractor_window)
     if expiry_err then return nil, expiry_err end
     local tokens = 0
     for _, c in ipairs(chunks) do tokens = tokens + math.ceil(#c.content / M.CHARS_PER_TOKEN) end
