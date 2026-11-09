@@ -163,8 +163,7 @@ entries:
       - contract: kickside.contract:component
         methods:
           get_status: kickside.core.threads:thread_status
-      # Deleting a research run tears down its read-model row(s) so kickside_research_run
-      # never outlives its component (component_id == thread_id).
+      # Deletion removes the run projections and Block Signal correlations by thread.
       - contract: kickside.contract:deletable
         context_required:
           - component_id
@@ -173,7 +172,7 @@ entries:
 
   - name: delete_run
     kind: function.lua
-    meta: { comment: "kickside.contract:deletable.delete for a research run -- removes its kickside_research_run row(s)." }
+    meta: { comment: "kickside.contract:deletable.delete removes research run projections and Block Signal correlations." }
     source: file://delete_run.lua
     method: handle
     modules: [ctx]
