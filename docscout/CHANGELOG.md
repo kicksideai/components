@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/kicksideai/components/compare/docscout-v0.1.1...docscout-v0.1.2) (2026-11-10)
+
+
+### Bug Fixes
+
+* **docscout:** support extractor retention windows ([#43](https://github.com/kicksideai/components/issues/43)) ([bbb3b9b](https://github.com/kicksideai/components/commit/bbb3b9b4a0eae5fcbbbfcd401e2413145a6c4ea4))
+
 ## [0.1.1](https://github.com/kicksideai/components/compare/docscout-v0.1.0...docscout-v0.1.1) (2026-11-06)
 
 
