@@ -108,6 +108,41 @@ return { run = test.run_cases(function()
             run.values[1].value, run.values[1].reason = { amount = 12 }, nil
             test.is_nil(stages.verify(run, {})); test.is_true(run.values[1].verified)
         end)
+        test.it("reports a date that does not parse to its expected format as a verify reason", function()
+            local f = field("signed", "", "date"); f.expected_format = "YYYY-MM-DD"
+            local cfg = configuration({ f }); cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = false, false
+            for value, ok in pairs({ ["2026-02-28"] = true, ["2026-02-30"] = false, ["02/28/2026"] = false, ["2026-2-28"] = false }) do
+                local run = { config = cfg, values = { { name = "signed", path = "signed", value = value, missing = false, evidence = {} } } }
+                test.is_nil(stages.verify(run, {}))
+                test.eq(run.values[1].verified, ok, value)
+                if not ok then test.contains(run.values[1].reason, "YYYY-MM-DD", value) end
+            end
+        end)
+        test.it("checks dates against their pattern in any letter case and leaves prose formats to the model", function()
+            local cases = {
+                { "mm/dd/yyyy", "02/28/2026", true }, { "mm/dd/yyyy", "2026-02-28", false },
+                { "D MMMM YYYY", "8 March 2026", true }, { "D MMMM YYYY", "8 Marchember 2026", false },
+                { "MM/YY", "03/26", true }, { "an ISO date", "08.03.2026", true }, { "", "anything", true },
+            }
+            for _, c in ipairs(cases) do
+                local f = field("signed", "", "date"); f.expected_format = c[1]
+                local cfg = configuration({ f }); cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = false, false
+                local run = { config = cfg, values = { { name = "signed", path = "signed", value = c[2], missing = false, evidence = {} } } }
+                test.is_nil(stages.verify(run, {}))
+                test.eq(run.values[1].verified, c[3], c[1] .. " " .. c[2])
+            end
+        end)
+        test.it("checks date formats inside lists and objects", function()
+            local f = field("dates", "", "list")
+            local item = property("on", "date"); item.expected_format = "YYYY-MM-DD"
+            f.item = { type = "object", properties = { item } }
+            local cfg = configuration({ f }); cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = false, false
+            local run = { config = cfg, values = { { name = "dates", path = "dates", value = { { on = "2026-01-01" }, { on = "2026-13-01" } }, missing = false, evidence = {} } } }
+            test.is_nil(stages.verify(run, {})); test.is_false(run.values[1].verified)
+            test.contains(run.values[1].reason, "on")
+            run.values[1].value, run.values[1].reason = { { on = "2026-01-01" } }, nil
+            test.is_nil(stages.verify(run, {})); test.is_true(run.values[1].verified)
+        end)
         test.it("scores recursively by declared type with nested expectations and full path metrics", function()
             local f = field("terms", "parties.borrower", "list")
             f.item = { type = "object", properties = { property("amount", "number"), property("date", "date") } }

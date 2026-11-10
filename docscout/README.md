@@ -28,6 +28,10 @@ Caller scopes need the native contract capabilities `contract.security` on `secu
 
 Every caller opens `kickside.docscout:extraction`, binding `kickside.docscout:engine`, under its execution identity. The `run` input has `extractor_id`, `upload_id`, `caller` (`ui`, `agent`, `workflow`, `eval`) and an optional RFC3339 deadline. Evaluation calls additionally identify the admitted evaluation and case. The contract accepts saved configuration; chat tuning edits that configuration through the configurator trait.
 
+### One document per input
+
+An extractor reads each upload as one document: a single instance of the record its fields describe. An upload that bundles several such documents, such as several invoices scanned into one PDF, is outside this contract. Each field then takes a value from whichever document its evidence comes from, and the result does not say which; split such uploads before extraction. Rules that relate one field's value to another, such as one date following another, belong to the consumer of the result.
+
 The ordered stages read and process the document, map sections, prefetch evidence, scout, analyze deep fields, highlight, extract with structured output, and verify. Extract defaults to `class:fast`. Processed copies belong to extractor plus user, upload, checksum and processing settings. Chunks use `kickside/search-index` for keyword and vector retrieval. Exact page locations come from saved page spans; uncertain locations retain their range.
 
 Map, Scout, Extract and Verify accept optional stage-local `temperature` settings. Map and Verify also accept `max_tokens`; Extract uses `max_output_tokens`. Omitted settings retain the provider default. These are requested settings: providers can omit unsupported sampling options or adjust output limits. A selected Scout agent retains its own model and sampling settings.
@@ -82,7 +86,7 @@ Objects declare a non-empty `properties` array. Each property has `name`, `type`
 }
 ```
 
-Value shapes have at most **four levels**, counting the field as level one and each property or list item as another level. This admits the acceptance agreement's deepest shapes while bounding model schemas and the property editor. Group segments do not consume value levels. Objects are closed to undeclared properties; required properties and enum choices appear in extraction schemas and verification. `expected_format` describes the requested representation to the model.
+Value shapes have at most **four levels**, counting the field as level one and each property or list item as another level. This admits the acceptance agreement's deepest shapes while bounding model schemas and the property editor. Group segments do not consume value levels. Objects are closed to undeclared properties; required properties and enum choices appear in extraction schemas and verification. `expected_format` describes the requested representation to the model. For a `date` field whose `expected_format` is a date pattern, Verify also checks the value: the pattern uses the tokens `YYYY`, `YY`, `MMMM` (month name), `MMM` (abbreviated month name), `MM`, `M`, `DD` and `D` in any letter case, separated by spaces or `- / . ,`. A value that does not parse as a real date in that pattern stays unverified with the reason. A format written in prose, such as `an ISO date`, only guides the model.
 
 Extraction calls share a group path and selected region, then split at the fields-per-call limit. Evaluation cases use the same nested values. Scoring follows declared types recursively: printed numbers, date digits, text overlap, order-free list F1 and mean scores over declared object properties. A property omitted from the expectation scores as absent.
 
