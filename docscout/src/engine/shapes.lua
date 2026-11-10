@@ -89,6 +89,20 @@ function M.prune(pool: any, noise: { any }, evidence: { [string]: { any } }, sel
     return excluded
 end
 
+-- Ordinals of chunks, in their order.
+function M.ordinals(chunks: { any }): { integer }
+    local out = {}
+    for _, c in ipairs(chunks) do out[#out + 1] = c.ordinal end
+    return out
+end
+
+-- Paths of fields or values, in their order.
+function M.paths(items: { any }): { string }
+    local out = {}
+    for _, item in ipairs(items) do out[#out + 1] = M.path(item) end
+    return out
+end
+
 -- Whether a passage is visible to at least one of fields; every passage when fields is nil.
 local function visible_to(p: any, fields: { string }?): boolean
     if not fields then return true end

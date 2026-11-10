@@ -66,6 +66,12 @@ return { run = test.run_cases(function()
             local native = assert(flow_repo.get_by_user(scout.dataflow_id, owner))
             test.eq(native.actor_id, owner); test.eq(scout.model, "class:docscout-success")
             test.is_true(scout.input_tokens > 0); test.is_true(scout.output_tokens > 0)
+            local agent_calls, input_tokens = 0, 0
+            for _, call in ipairs(scout.calls) do
+                if call.stage == "scout" then agent_calls = agent_calls + 1 end
+                input_tokens = input_tokens + (call.prompt_tokens or 0)
+            end
+            test.is_true(agent_calls > 0); test.eq(input_tokens, scout.input_tokens)
             test.eq(scout.tool_calls[1].name, "keyword_search"); test.eq(scout.tool_calls[1].arguments.query, "total amount")
             local chunk = scout.tool_calls[1].result.chunks[1]
             test.eq(chunk.content, "# Invoice\nThe total amount is 1250."); test.eq(chunk.heading_path, "Invoice")

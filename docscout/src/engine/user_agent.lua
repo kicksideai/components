@@ -10,6 +10,7 @@ local data_reader = require("data_reader")
 local json = require("json")
 local doctools = require("doctools")
 local shapes = require("shapes")
+local ai = require("ai")
 local error_envelope = require("error_envelope")
 
 local M = {}
@@ -52,9 +53,7 @@ local function collect(run: any, step: any, flow_id: string): error?
         local meta = row.metadata or {}
         if row.type == "agent.action" then
             step.model = meta.model or step.model
-            local tokens = meta.tokens or {}
-            step.meter.input_tokens = step.meter.input_tokens + (tokens.prompt_tokens or 0)
-            step.meter.output_tokens = step.meter.output_tokens + (tokens.completion_tokens or 0) + (tokens.thinking_tokens or 0)
+            ai.add_call(step.meter, "scout", tostring(meta.model or step.model or ""), meta.tokens)
             for _, tc in ipairs(value.tool_calls or {}) do
                 calls[#calls + 1] = { id = tc.id, name = tc.name, registry_id = tc.registry_id, arguments = tc.arguments, iteration = meta.iteration }
             end
@@ -75,8 +74,10 @@ local function collect(run: any, step: any, flow_id: string): error?
             elseif call.registry_id == DOCUMENT_TOOL and type(result.value) == "table" then
                 local document = result.value.docscout
                 shapes.add(run.pool, result.value.chunks or {})
-                step.meter.input_tokens = step.meter.input_tokens + (document.input_tokens or 0)
-                step.meter.output_tokens = step.meter.output_tokens + (document.output_tokens or 0)
+                for _, c in ipairs(document.calls or {}) do
+                    local usage = c.prompt_tokens and { prompt_tokens = c.prompt_tokens, completion_tokens = c.completion_tokens } or nil
+                    ai.add_call(step.meter, c.stage, c.model, usage, c)
+                end
                 if document.error then call.error = document.error; failure = failure or errors.new(document.error) end
             end
         end

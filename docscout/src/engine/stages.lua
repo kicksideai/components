@@ -95,7 +95,9 @@ end
 
 function M.map(run: any, step: any): error?
     local cfg = run.config.stages.map
-    local sampling = { temperature = cfg.temperature, max_tokens = cfg.max_tokens }
+    local function sampling(stage: string, fields: { string }?): any
+        return { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = stage, fields = fields }
+    end
     local outline = run.document.outline
     -- A usable table of contents has at least three sections.
     local headed = #outline >= 3
@@ -108,7 +110,7 @@ function M.map(run: any, step: any): error?
             local carried = previous and ("The passages continue the section \"" .. previous .. "\" unless a new section starts at chunk " .. w.first .. ".\n\n") or ""
             local built, build_err = ai.structured(step.meter, cfg.model, outline_schema(w.first, w.last),
                 system("You divide a document into its logical sections. Give each section a short title and the chunk number where it starts, in order."),
-                carried .. w.preview, sampling)
+                carried .. w.preview, sampling("outline"))
             if build_err then return build_err end
             for _, s in ipairs(built.sections) do
                 local start = math.tointeger(s.first_chunk) :: integer
@@ -149,7 +151,7 @@ function M.map(run: any, step: any): error?
             listing[#listing + 1] = "## " .. s.id .. " " .. s.path .. "\n" .. table.concat(body, "\n"):sub(1, 1500)
         end
         local result, err = ai.structured(step.meter, cfg.model, M.summary_schema(run.document.outline),
-            system("Summarize each section in one sentence, naming what it covers. Return one summary per section id."), table.concat(listing, "\n\n"), sampling)
+            system("Summarize each section in one sentence, naming what it covers. Return one summary per section id."), table.concat(listing, "\n\n"), sampling("summaries"))
         if err then return err end
         for _, s in ipairs(run.document.outline) do
             local summary = trim(tostring(result[s.id] or ""))
@@ -165,7 +167,7 @@ function M.map(run: any, step: any): error?
         end
         local result, err = ai.structured(step.meter, cfg.model, select_schema(run.document.outline, scoped),
             system("You pick, for each field, the sections of the outline most likely to contain its value. Choose few but enough sections; include definitions or schedules a field depends on. Return section ordinals: the numbers after S in the outline labels, without the S."),
-            "Outline:\n" .. table.concat(listing, "\n") .. "\n\nFields:\n" .. field_lines(scoped), sampling)
+            "Outline:\n" .. table.concat(listing, "\n") .. "\n\nFields:\n" .. field_lines(scoped), sampling("select", shapes.paths(scoped)))
         if err then return err end
         local picked = {}
         for _, f in ipairs(scoped) do
@@ -249,18 +251,12 @@ local function scout_fields(run: any, fields: { any }): (string?, error?)
         (#limits > 0 and ("\n\nSome fields read only their own chunks; cite their evidence there:\n" .. table.concat(limits, "\n")) or "")
 end
 
-local function paths(fields: { any }): { string }
-    local out = {}
-    for _, f in ipairs(fields) do out[#out + 1] = shapes.path(f) end
-    return out
-end
-
 -- The structured scout's prompt: fields, earlier notes and the passages still visible to them.
 function M.scout_input(run: any, fields: { any }): (string?, error?)
     local fields_text, err = scout_fields(run, fields)
     if err then return nil, err end
     return fields_text .. (#run.notes > 0 and ("\n\nEarlier notes:\n" .. table.concat(note_lines(run.notes), "\n")) or "") ..
-        "\n\nEvidence:\n" .. render(ordered(run.pool, paths(fields)))
+        "\n\nEvidence:\n" .. render(ordered(run.pool, shapes.paths(fields)))
 end
 
 local SCOUT_SYSTEM = system([[You review evidence gathered from one document before values are extracted.
@@ -304,7 +300,7 @@ function M.scout(run: any, step: any): error?
                     if call_err then return nil, call_err end
                     add(run.pool, hits)
                     return text, nil
-                end, { max_tokens = cfg.max_tokens, temperature = cfg.temperature })
+                end, { max_tokens = cfg.max_tokens, temperature = cfg.temperature, stage = "scout", fields = shapes.paths(fields) })
         end
         found = run.pool.count - before
         if err then return err end
@@ -318,8 +314,10 @@ function M.scout(run: any, step: any): error?
         rounds = rounds + 1
         local scout_text, scout_err = M.scout_input(run, fields)
         if scout_err then return scout_err end
-        local result, err = ai.structured(step.meter, cfg.model, M.scout_schema(cfg, fields, ordered(run.pool, paths(fields))), SCOUT_SYSTEM,
-            scout_text :: string, { max_tokens = cfg.max_tokens, temperature = cfg.temperature })
+        local pool = ordered(run.pool, shapes.paths(fields))
+        local result, err = ai.structured(step.meter, cfg.model, M.scout_schema(cfg, fields, pool), SCOUT_SYSTEM,
+            scout_text :: string, { max_tokens = cfg.max_tokens, temperature = cfg.temperature, stage = "scout",
+                sources = shapes.ordinals(pool), fields = shapes.paths(fields) })
         if err then return err end
         run.confidence = tonumber(result.confidence) or 0
         if cfg.drop_noise then
@@ -373,7 +371,8 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
     if room > 0 then
         local generated, err = ai.structured(step.meter, cfg.query_model, queries_schema(room),
             system("Write up to " .. room .. " varied search queries that would find passages stating this field's value, including synonyms and related clauses."),
-            field_lines({ f }) .. (f.search_hints ~= "" and ("\nHints: " .. f.search_hints) or ""), { temperature = cfg.query_temperature })
+            field_lines({ f }) .. (f.search_hints ~= "" and ("\nHints: " .. f.search_hints) or ""),
+            { temperature = cfg.query_temperature, stage = "queries", fields = { shapes.path(f) } })
         if err then return err end
         for _, q in ipairs(generated.queries) do if #queries < cfg.max_queries then queries[#queries + 1] = q end end
     end
@@ -411,7 +410,8 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
     add(run.pool, found, shapes.path(f))
     local analysis, analysis_err = ai.generate(step.meter, cfg.model,
         system("You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it."),
-        field_lines({ f }) .. "\n\nPassages:\n" .. render(found), { temperature = cfg.analysis_temperature })
+        field_lines({ f }) .. "\n\nPassages:\n" .. render(found),
+        { temperature = cfg.analysis_temperature, stage = "analysis", sources = shapes.ordinals(found), fields = { shapes.path(f) } })
     if analysis_err then return analysis_err end
     run.analyses[shapes.path(f)] = analysis
     return nil
@@ -472,7 +472,8 @@ function M.highlight(run: any, step: any): error?
         for i = start, math.min(#chunks, start + HIGHLIGHT_BATCH - 1) do batch[#batch + 1] = chunks[i] end
         local result, err = ai.structured(step.meter, model, M.highlight_schema(batch),
             system("For each passage, keyed by its chunk number without the C, copy word for word the sentences that state or help determine any field's value. Return an empty list for passages that do not."),
-            "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch))
+            "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch),
+            { stage = "highlight", sources = shapes.ordinals(batch) })
         if err then return err end
         for _, c in ipairs(batch) do
             -- Only excerpts that occur in the passage replace it, each as its own paragraph.
@@ -497,8 +498,9 @@ end
 type Citation = { quote: string, chunk: integer?, section: string, page: integer?, chunk_id: string, found: boolean? }
 
 -- One field's extracted value and evidence status.
+-- codes name each cause of reason, for the run summary.
 type Value = { name: string, path: string, value: any?, confidence: number, evidence: { Citation }, verified: boolean, missing: boolean,
-    reason: string?, quotes_found: boolean? }
+    reason: string?, codes: { string }?, quotes_found: boolean? }
 
 -- Extraction: structured calls over the evidence pool, each for fields that share a group and a region.
 local EXTRACT_SYSTEM = system([[You extract field values from passages of one document. Use only what the passages state.
@@ -539,7 +541,7 @@ function M.extraction_calls(run: any): ({ any }?, error?)
                 batch[#batch + 1] = set.fields[i]; names[shapes.path(set.fields[i])] = true
             end
             local passages = {}
-            for _, c in ipairs(ordered(run.pool, paths(batch))) do
+            for _, c in ipairs(ordered(run.pool, shapes.paths(batch))) do
                 local allowed, err = visible(run, set.fields[1], c.ordinal)
                 if err then return nil, err end
                 if allowed then passages[#passages + 1] = c end
@@ -563,7 +565,8 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
         (#notes > 0 and ("\n\nScout notes:\n" .. table.concat(notes, "\n")) or "") ..
         (#context > 0 and ("\n\n" .. table.concat(context, "\n\n")) or "") ..
         "\n\nPassages:\n" .. evidence
-    local result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch, passages), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens, temperature = cfg.temperature })
+    local result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch, passages), EXTRACT_SYSTEM, user,
+        { max_tokens = cfg.max_output_tokens, temperature = cfg.temperature, stage = "extract", sources = shapes.ordinals(passages), fields = shapes.paths(batch) })
     if err then
         -- The llm module refuses a prompt larger than the model's window before calling it.
         if errors.is(err, errors.INVALID) and ((err :: any):details() or {}).error_type == "context_window" then
@@ -594,7 +597,7 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
             entry.confidence = item.confidence
             entry.evidence = cited
             entry.missing = false
-            if f.evidence_required and #cited == 0 then entry.reason = "No quote supports this value" end
+            if f.evidence_required and #cited == 0 then entry.reason, entry.codes = "No quote supports this value", { "no_quote" } end
         end
         entries[#entries + 1] = entry
     end
@@ -617,7 +620,8 @@ function M.extract(run: any, step: any): error?
             -- Empty passage sets produce missing fields.
             for _, f in ipairs(call.fields) do
                 run.values[#run.values + 1] = { name = f.name, path = shapes.path(f), confidence = 0, evidence = {}, verified = false, missing = true, failed = false,
-                    reason = f.search_within == "sections" and "No passage from its sections reached extraction" or "No passage reached extraction" }
+                    reason = f.search_within == "sections" and "No passage from its sections reached extraction" or "No passage reached extraction",
+                    codes = { "no_passage" } }
             end
         else
             local err = extract_call(run, step, cfg, call)
@@ -695,27 +699,30 @@ function M.verify(run: any, step: any): error?
         if #found > 0 then
             local result, err = ai.structured(step.meter, cfg.model, support_schema(found),
                 system("For each field, decide whether its quotes support its value exactly. Return one check per field."),
-                table.concat(lines_out, "\n"), { temperature = cfg.temperature, max_tokens = cfg.max_tokens })
+                table.concat(lines_out, "\n"), { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(found) })
             if err then return err end
             support = result
         end
     end
     local failed = 0
     for _, v in ipairs(run.values) do
-        local reasons = {}
+        local reasons, codes = {}, {}
+        local function reject(code: string, reason: string) reasons[#reasons + 1] = reason; codes[#codes + 1] = code end
         if v.reason then reasons[#reasons + 1] = v.reason end
+        for _, code in ipairs(v.codes or {}) do codes[#codes + 1] = code end
         if not v.missing and not v.failed then
             local valid, shape_err = json.validate(shapes.value_schema(fields[shapes.path(v)]), v.value)
-            if not valid then reasons[#reasons + 1] = "Value does not match its declared shape: " .. tostring(shape_err) end
+            if not valid then reject("shape_mismatch", "Value does not match its declared shape: " .. tostring(shape_err)) end
         end
-        if cfg.check_quotes and not v.missing and not v.failed and not v.quotes_found then reasons[#reasons + 1] = "A quote is not in the document" end
+        if cfg.check_quotes and not v.missing and not v.failed and not v.quotes_found then reject("quote_not_found", "A quote is not in the document") end
         if cfg.check_support and not v.missing and not v.failed then
             local check = support[shapes.path(v)]
-            if not check then reasons[#reasons + 1] = "The support check gave no verdict"
-            elseif not check.supported then reasons[#reasons + 1] = check.reason end
+            if not check then reject("support_no_verdict", "The support check gave no verdict")
+            elseif not check.supported then reject("support_rejected", check.reason) end
         end
         v.verified = not v.failed and #reasons == 0
         v.reason = #reasons > 0 and table.concat(reasons, "; ") or nil
+        v.codes = codes
         if not v.verified then failed = failed + 1 end
     end
     step.message = failed == 0 and "All values check out" or (failed .. (failed == 1 and " value needs" or " values need") .. " review")
