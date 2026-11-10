@@ -401,7 +401,7 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
     local analysis, analysis_err = ai.generate(step.meter, cfg.model,
         system("You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it."),
         field_lines({ f }) .. "\n\nPassages:\n" .. render(found),
-        { temperature = cfg.analysis_temperature, stage = "analysis", sources = shapes.ordinals(found), fields = { shapes.path(f) } })
+        { temperature = cfg.analysis_temperature, max_tokens = cfg.max_tokens, stage = "analysis", sources = shapes.ordinals(found), fields = { shapes.path(f) } })
     if analysis_err then return analysis_err end
     run.analyses[shapes.path(f)] = analysis
     return nil
@@ -452,7 +452,8 @@ end
 local HIGHLIGHT_BATCH = 12
 
 function M.highlight(run: any, step: any): error?
-    local model = run.config.retrieval.highlighter_model
+    local retrieval = run.config.retrieval
+    local model = retrieval.highlighter_model
     local chunks = ordered(run.pool)
     local kept, before = 0, #chunks
     for start = 1, #chunks, HIGHLIGHT_BATCH do
@@ -461,7 +462,7 @@ function M.highlight(run: any, step: any): error?
         local result, err = ai.structured(step.meter, model, M.highlight_schema(batch),
             system("For each passage, copy word for word the sentences that state or help determine any field's value. Return no excerpts for passages that do not."),
             "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch),
-            { stage = "highlight", sources = shapes.ordinals(batch) })
+            { temperature = retrieval.highlighter_temperature, max_tokens = retrieval.highlighter_max_tokens, stage = "highlight", sources = shapes.ordinals(batch) })
         if err then return err end
         local excerpts = {}
         for _, p in ipairs(result.passages) do excerpts[math.tointeger(tonumber(p.chunk)) or -1] = p.excerpts end
