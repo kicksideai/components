@@ -790,8 +790,8 @@ return { run = test.run_cases(function()
         local function document(): string
             return assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k", outline = {},
                 page_count = 0, tokens = 0, expires_at = far_future() }, {
-                { ordinal = 1, section_id = "s1", heading_path = "Payment", content = "The **total amount due** is USD 1,250.00.", page_start = 1, vector = unit(1) },
-                { ordinal = 2, section_id = "s2", heading_path = "Terms", content = "Payment within 30 days of receipt. Discount: -5%.", page_start = 2, vector = unit(2) },
+                { ordinal = 1, section_id = "s1", heading_path = "Payment", content = "The **total amount due** is USD 1,250.00.", page_start = 1, page_end = 1, vector = unit(1) },
+                { ordinal = 2, section_id = "s2", heading_path = "Terms", content = "Payment within 30 days of receipt. Discount: -5%.", page_start = 2, page_end = 2, vector = unit(2) },
             }))
         end
         local function field(name: string, over: any?): any
@@ -848,6 +848,16 @@ return { run = test.run_cases(function()
             test.is_true(run.values[1].reason:find("No quote supports this value", 1, true) ~= nil)
             test.is_true(run.values[2].verified)
             test.eq(step.message, "1 value needs review")
+        end)
+        test.it("accepts a quote that runs across adjacent chunks with the page range it spans", function()
+            local run = quotes_only({ field("terms") }, {
+                { name = "terms", value = "Net 30", missing = false, evidence = { { quote = "is USD 1,250.00. Payment within 30 days", chunk = 1 } } },
+            })
+            local step = { meter = { input_tokens = 0, output_tokens = 0 } }
+            test.is_nil(stages.verify(run, step))
+            test.is_true(run.values[1].verified, tostring(run.values[1].reason))
+            local e = run.values[1].evidence[1]
+            test.eq(e.chunk, 1); test.eq(e.page_start, 1); test.eq(e.page_end, 2); test.is_nil(e.page)
         end)
         test.it("only relocates a quote inside the field's selected sections", function()
             local run = quotes_only({ field("terms", { search_within = "sections" }) }, {
