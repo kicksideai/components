@@ -129,7 +129,7 @@ function M.run(input: any): (any?, error?)
         for _, e in ipairs(v.evidence) do
             evidence[#evidence + 1] = { quote = e.quote, section = e.section, page = e.page, page_start = e.page_start, page_end = e.page_end, chunk_id = e.chunk_id, found = e.found }
         end
-        fields[#fields + 1] = { name = v.name, path = v.path, value = v.value, failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, missing = v.missing, reason = v.reason, evidence = evidence }
+        fields[#fields + 1] = { name = v.name, path = v.path, value = v.value, failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, complete = v.complete, missing = v.missing, reason = v.reason, evidence = evidence }
     end
     local failed, extracted = 0, 0
     for _, f in ipairs(fields) do

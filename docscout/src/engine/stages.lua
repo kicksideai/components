@@ -798,26 +798,99 @@ function M.extract(run: any, step: any): error?
     return nil
 end
 
--- Verify: quotes must appear in the document; a model may also confirm each
--- quote supports its value. The reply holds one required verdict per field
--- path, so a constrained decoder cannot omit or repeat a field.
-local function support_schema(values: { any }): any
-    local paths = {}
-    for _, v in ipairs(values) do paths[#paths + 1] = shapes.path(v) end
-    return shapes.keyed(paths, { type = "object", additionalProperties = false, required = { "supported", "reason" },
-        properties = { supported = { type = "boolean" }, reason = { type = "string" } } })
+-- Verify: only a found value can be verified. Its quotes must appear in the
+-- document, and a model may also judge whether the cited text states the
+-- value for its field and, for text and lists, whether the value is complete.
+
+-- Field types whose value can be cut short, so the support check also judges completeness.
+local function completes(f: any): boolean return f.type == "text" or f.type == "list" end
+
+-- The support check's reply: one required verdict per field path, so a
+-- constrained decoder cannot omit or repeat a field; text and list fields
+-- also get a completeness verdict.
+function M.support_schema(values: { any }, fields: { [string]: any }): any
+    local properties, required = shapes.object(), {}
+    for _, v in ipairs(values) do
+        local path = shapes.path(v)
+        required[#required + 1] = path
+        local item = { type = "object", additionalProperties = false, required = { "verdict", "reason" }, properties = {
+            verdict = { type = "string", enum = { "supported", "not_supported", "insufficient_evidence" } }, reason = { type = "string" } } }
+        if completes(fields[path]) then
+            item.required = { "verdict", "complete", "reason" }
+            item.properties.complete = { type = "string", enum = { "complete", "incomplete", "insufficient_evidence" } }
+        end
+        properties[path] = item
+    end
+    return { type = "object", additionalProperties = false, required = required, properties = properties }
+end
+
+-- One value as the support check reads it: the field's path, type and
+-- description, the value, its quotes and, when given, the source text around them.
+function M.support_line(f: any, v: any, source: string?): string
+    local quotes = {}
+    for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" end
+    local t = f.type == "list" and ("list of " .. f.item.type) or f.type
+    return "- " .. shapes.path(v) .. " (" .. t .. "): " .. (f.description ~= "" and f.description or "no description") ..
+        "\n  value: " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | ") ..
+        (source and ("\n  source:\n  " .. source) or "")
+end
+
+-- The source text around a value's citations, for judging completeness: the
+-- whole section of each cited chunk when it fits the section budget, else the
+-- cited chunk and the one after it.
+local function source_region(run: any, v: any, by_ordinal: { [integer]: any }): string
+    local ordinals, seen = {}, {}
+    local function take(n: integer) if by_ordinal[n] and not seen[n] then seen[n] = true; ordinals[#ordinals + 1] = n end end
+    local budget = run.config.retrieval and run.config.retrieval.section_budget or 0
+    for _, e in ipairs(v.evidence) do
+        local n = math.tointeger(e.chunk)
+        if n then
+            local section = nil
+            for _, s in ipairs(run.document.outline or {}) do
+                if s.chunk_start and n >= s.chunk_start and n <= s.chunk_end then section = s end
+            end
+            if section and (section.tokens or 0) <= budget then
+                for k = section.chunk_start, section.chunk_end do take(k) end
+            else
+                take(n); take(n + 1)
+            end
+        end
+    end
+    table.sort(ordinals)
+    local texts = {}
+    for _, n in ipairs(ordinals) do texts[#texts + 1] = by_ordinal[n].content end
+    return table.concat(texts, "\n")
+end
+
+-- Chunks of an ordinal map in document order.
+local function store_order(by_ordinal: { [integer]: any }): { any }
+    local out = {}
+    for _, c in pairs(by_ordinal) do out[#out + 1] = c end
+    table.sort(out, function(a: any, b: any): boolean return a.ordinal < b.ordinal end)
+    return out
 end
 
 function M.verify(run: any, step: any): error?
     local cfg = run.config.stages.verify
     local fields = {}
     for _, f in ipairs(run.config.fields) do fields[shapes.path(f)] = f end
-    if cfg.check_quotes then
+    -- Chunks are read for quote checks and for the source region of text and list values.
+    local needs_source = false
+    if cfg.check_support then
+        for _, v in ipairs(run.values) do
+            if not v.missing and not v.failed and #v.evidence > 0 and completes(fields[shapes.path(v)]) then needs_source = true end
+        end
+    end
+    local by_ordinal = {}
+    if cfg.check_quotes or needs_source then
         local chunks, err = store.all_chunks(run.document.id)
         if err then return err end
-        local bodies, by_ordinal, order = {}, {}, {}
-        for _, c in ipairs(chunks) do
-            bodies[c.ordinal] = shapes.normalize(c.content); by_ordinal[c.ordinal] = c; order[#order + 1] = c.ordinal
+        for _, c in ipairs(chunks) do by_ordinal[c.ordinal] = c end
+    end
+    if cfg.check_quotes then
+        local bodies, order = {}, {}
+        for _, c in ipairs(store_order(by_ordinal)) do
+            bodies[c.ordinal] = shapes.normalize(c.content); order[#order + 1] = c.ordinal
         end
         for _, v in ipairs(run.values) do
             v.quotes_found = true
@@ -844,58 +917,76 @@ function M.verify(run: any, step: any): error?
     if cfg.check_support then
         local found, line = {}, {}
         for _, v in ipairs(run.values) do
-            if not v.missing and not v.failed then
+            if not v.missing and not v.failed and #v.evidence > 0 then
                 found[#found + 1] = v
-                local quotes = {}
-                for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" end
-                line[shapes.path(v)] = "- " .. shapes.path(v) .. " = " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | ")
+                local f = fields[shapes.path(v)]
+                line[shapes.path(v)] = M.support_line(f, v, completes(f) and source_region(run, v, by_ordinal) or nil)
             end
         end
         -- Values are checked in batches that fit the model's window; a value too large alone gets no check.
-        local support_system = system("For each field, decide whether its quotes support its value exactly. Return one check per field.")
+        local support_system = system([[For each field, decide whether its cited text states this value for this field, as the field's description defines it.
+Reformatting (dates, numbers, case, spacing) is allowed; a quote that states a different value or another role's value does not support it.
+For fields that also ask for completeness, judge from the source text whether the value is complete as printed or leaves part out.
+Answer insufficient_evidence when the cited text cannot settle it. Return one check per field.]])
         local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
         if fit_err then return fit_err end
         local function text(v: any): string return line[shapes.path(v)] end
         local function batch_fits(batch: { any }): boolean
             local lines_out = {}
             for _, v in ipairs(batch) do lines_out[#lines_out + 1] = text(v) end
-            return (fits :: any)(support_system, table.concat(lines_out, "\n"), support_schema(batch))
+            return (fits :: any)(support_system, table.concat(lines_out, "\n"), M.support_schema(batch, fields))
         end
         for _, batch in ipairs(shapes.batches(found, batch_fits)) do
             if #batch == 1 and not batch_fits(batch) then
-                support[shapes.path(batch[1])] = { supported = false, code = "budget_cut", reason = "The support check input exceeds the model's window" }
+                support[shapes.path(batch[1])] = { verdict = "not_checked", code = "budget_cut", reason = "The support check input exceeds the model's window" }
             else
                 local lines_out = {}
                 for _, v in ipairs(batch) do lines_out[#lines_out + 1] = text(v) end
-                local result, err = ai.structured(step.meter, cfg.model, support_schema(batch), support_system,
+                local result, err = ai.structured(step.meter, cfg.model, M.support_schema(batch, fields), support_system,
                     table.concat(lines_out, "\n"), { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(batch) })
                 if err then return err end
                 for _, v in ipairs(batch) do support[shapes.path(v)] = result[shapes.path(v)] end
             end
         end
     end
-    local failed = 0
+    local failed, missing = 0, 0
     for _, v in ipairs(run.values) do
         local reasons, codes = {}, {}
         local function reject(code: string, reason: string) reasons[#reasons + 1] = reason; codes[#codes + 1] = code end
+        local function has(code: string): boolean
+            for _, c in ipairs(codes) do if c == code then return true end end
+            return false
+        end
         if v.reason then reasons[#reasons + 1] = v.reason end
         for _, code in ipairs(v.codes or {}) do codes[#codes + 1] = code end
-        if not v.missing and not v.failed then
+        local found = not v.missing and not v.failed
+        if found then
             local valid, shape_err = json.validate(shapes.value_schema(fields[shapes.path(v)]), v.value)
             if not valid then reject("shape_mismatch", "Value does not match its declared shape: " .. tostring(shape_err)) end
+            if #v.evidence == 0 and not has("no_quote") then reject("no_quote", "No quote supports this value") end
         end
-        if cfg.check_quotes and not v.missing and not v.failed and not v.quotes_found then reject("quote_not_found", "A quote is not in the document") end
-        if cfg.check_support and not v.missing and not v.failed then
+        if cfg.check_quotes and found and not v.quotes_found then reject("quote_not_found", "A quote is not in the document") end
+        if cfg.check_support and found and #v.evidence > 0 then
             local check = support[shapes.path(v)]
             if not check then reject("support_no_verdict", "The support check gave no verdict")
-            elseif not check.supported then reject(check.code or "support_rejected", check.reason) end
+            elseif check.verdict == "not_supported" then reject("support_rejected", check.reason)
+            elseif check.verdict == "insufficient_evidence" then reject("support_insufficient", "The cited text cannot settle the value: " .. check.reason)
+            elseif check.verdict ~= "supported" then reject(check.code or "support_no_verdict", check.reason) end
+            if check and check.complete then
+                v.complete = check.complete == "complete"
+                if check.complete == "incomplete" then reject("incomplete", "The value leaves out part of the source: " .. check.reason)
+                elseif check.complete == "insufficient_evidence" then reject("support_insufficient", "The source cannot settle whether the value is complete: " .. check.reason) end
+            end
         end
-        v.verified = not v.failed and #reasons == 0
+        if v.missing and #codes == 0 then codes[1] = "missing" end
+        v.verified = found and #reasons == 0
         v.reason = #reasons > 0 and table.concat(reasons, "; ") or nil
         v.codes = codes
-        if not v.verified then failed = failed + 1 end
+        if found and not v.verified then failed = failed + 1 end
+        if v.missing then missing = missing + 1 end
     end
-    step.message = failed == 0 and "All values check out" or (failed .. (failed == 1 and " value needs" or " values need") .. " review")
+    local review = failed == 0 and "All found values check out" or (failed .. (failed == 1 and " value needs" or " values need") .. " review")
+    step.message = review .. (missing > 0 and (" · " .. missing .. " missing") or "")
     return nil
 end
 

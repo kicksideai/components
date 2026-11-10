@@ -23,6 +23,13 @@ local function extraction(schema: any): any
     for name, property in pairs(schema.properties) do
         out[name] = extraction(property)
         if name == "missing_reply" then out[name].found, out[name].evidence = false, {} end
+        -- Support verdicts follow the field's name: rejected, incomplete or insufficient.
+        local verdict = property.properties and property.properties.verdict
+        if verdict then
+            if name:find("rejected_value", 1, true) then out[name].verdict = verdict.enum[2] end
+            if name:find("insufficient_value", 1, true) then out[name].verdict = verdict.enum[3] end
+            if name:find("incomplete_value", 1, true) then out[name].complete = property.properties.complete.enum[2] end
+        end
     end
     return out
 end

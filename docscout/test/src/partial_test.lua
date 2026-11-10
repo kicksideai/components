@@ -102,7 +102,7 @@ return { run = test.run_cases(function()
             test.is_true(embeds > 0)
             local s = result.summary
             test.eq(s.fields, 3); test.eq(s.found, 1); test.eq(s.missing, 1); test.eq(s.failed, 1)
-            test.eq(json.encode(s.unverified), json.encode({ extraction_failed = 1 }))
+            test.eq(json.encode(s.unverified), json.encode({ extraction_failed = 1, missing = 1 }))
             local snapshot = assert(caller:call("app:probe", { op = "get", id = id }))
             test.eq(json.encode(snapshot.runs[1].result.summary), json.encode(s))
             local db = assert(sql.get("app:db"))

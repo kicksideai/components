@@ -429,12 +429,14 @@ return { run = test.run_cases(function()
                 values[n] = { name = "note_" .. n, path = "note_" .. n, value = "v", missing = false, failed = false,
                     evidence = { { quote = string.rep("q", 1600), chunk = 1 } } }
             end
-            local run = { regions = {}, values = values, config = { fields = fields,
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k",
+                outline = {}, page_count = 0, tokens = 0, expires_at = far_future() }, { { ordinal = 1, section_id = "s1", heading_path = "Notes", content = "note", vector = unit(1) } }))
+            local run = { document = { id = id, outline = {} }, regions = {}, values = values, config = { fields = fields,
                 stages = { verify = { enabled = true, model = BUDGET, check_quotes = false, check_support = true, max_tokens = 256 } } } }
             local step = { meter = ai.meter() }
             test.is_nil(stages.verify(run, step))
             test.is_true(#step.meter.calls > 1, tostring(#step.meter.calls))
-            for _, v in ipairs(run.values) do test.eq(v.reason, "Fixture") end
+            for _, v in ipairs(run.values) do test.is_true(v.verified, tostring(v.reason)) end
         end)
         test.it("windows section summaries and batches section choices to the model's window", function()
             local chunks, outline = {}, {}
@@ -615,8 +617,8 @@ return { run = test.run_cases(function()
             test.is_true(run.values[2].verified); test.eq(moved.chunk, 2); test.eq(moved.section, "Terms"); test.eq(moved.page, 2)
             test.is_true(moved.chunk_id ~= "wrong")
             test.is_false(run.values[3].verified); test.eq(run.values[3].reason, "A quote is not in the document")
-            test.is_true(run.values[4].verified)
-            test.eq(step.message, "1 value needs review")
+            test.is_false(run.values[4].verified); test.is_nil(run.values[4].reason); test.eq(json.encode(run.values[4].codes), '["missing"]')
+            test.eq(step.message, "1 value needs review · 1 missing")
         end)
         test.it("asks the support check for one verdict per found value", function()
             local run = { document = { id = document() }, regions = {}, values = {
@@ -628,14 +630,12 @@ return { run = test.run_cases(function()
                     stages = { verify = { enabled = true, check_quotes = true, check_support = true, model = "class:docscout-success" } } } }
             local step = { meter = ai.meter() }
             test.is_nil(stages.verify(run, step))
-            for i = 1, 3 do
-                test.is_false(run.values[i].verified, run.values[i].name)
-                test.eq(run.values[i].reason, "Fixture", run.values[i].name)
-            end
-            test.is_true(run.values[4].verified)
+            for i = 1, 3 do test.is_true(run.values[i].verified, run.values[i].name) end
+            test.is_true(run.values[2].complete); test.is_nil(run.values[1].complete)
+            test.is_false(run.values[4].verified)
             test.is_true(step.meter.input_tokens > 0)
         end)
-        test.it("fails a value without a quote when its field requires evidence", function()
+        test.it("fails a found value without a quote whether or not its field requires evidence", function()
             local run = quotes_only({ field("total", { type = "number" }), field("note", { evidence_required = false }) }, {
                 { name = "total", value = 1250, missing = false, reason = "No quote supports this value", evidence = {} },
                 { name = "note", value = "paid", missing = false, evidence = {} },
@@ -644,8 +644,36 @@ return { run = test.run_cases(function()
             test.is_nil(stages.verify(run, step))
             test.is_false(run.values[1].verified)
             test.is_true(run.values[1].reason:find("No quote supports this value", 1, true) ~= nil)
-            test.is_true(run.values[2].verified)
-            test.eq(step.message, "1 value needs review")
+            test.is_false(run.values[2].verified); test.eq(run.values[2].reason, "No quote supports this value")
+            test.eq(json.encode(run.values[1].codes), '["no_quote"]'); test.eq(json.encode(run.values[2].codes), '["no_quote"]')
+            test.eq(step.message, "2 values need review")
+        end)
+        test.it("asks the support check whether the cited text states each value for its field", function()
+            local f = field("terms", { description = "Payment terms of the invoice" })
+            local v = { name = "terms", path = "terms", value = "Net 30", missing = false, evidence = { { quote = "Payment within 30 days", chunk = 2 } } }
+            local line = stages.support_line(f, v, nil)
+            test.is_true(line:find("terms (text): Payment terms of the invoice", 1, true) ~= nil, line)
+            test.is_true(line:find('"Payment within 30 days"', 1, true) ~= nil, line)
+            local sourced = stages.support_line(f, v, "Payment within 30 days of receipt.")
+            test.is_true(sourced:find("source:\n  Payment within 30 days of receipt.", 1, true) ~= nil, sourced)
+            local schema = stages.support_schema({ v, { name = "total", path = "total" } }, { terms = f, total = field("total", { type = "number" }) })
+            test.is_true((json.validate(schema, json.decode('{"terms":{"verdict":"insufficient_evidence","complete":"incomplete","reason":"cut"},"total":{"verdict":"supported","reason":"ok"}}'))))
+            test.is_false((json.validate(schema, json.decode('{"terms":{"verdict":"supported","reason":"ok"},"total":{"verdict":"supported","reason":"ok"}}'))))
+            test.is_false((json.validate(schema, json.decode('{"terms":{"verdict":"supported","complete":"complete","reason":"ok"},"total":{"verdict":"supported","complete":"complete","reason":"ok"}}'))))
+        end)
+        test.it("fails values the support check rejects, finds incomplete or cannot settle", function()
+            local run = { document = { id = document(), outline = {} }, regions = {}, values = {
+                    { name = "rejected_value", value = 1250, missing = false, evidence = { { quote = "total amount due is USD 1,250.00", chunk = 1 } } },
+                    { name = "incomplete_value", value = "Net 30", missing = false, evidence = { { quote = "Payment within 30 days", chunk = 2 } } },
+                    { name = "insufficient_value", value = "Net 30", missing = false, evidence = { { quote = "Payment within 30 days", chunk = 2 } } } },
+                config = { fields = { field("rejected_value", { type = "number" }), field("incomplete_value"), field("insufficient_value") },
+                    retrieval = { section_budget = 6000 },
+                    stages = { verify = { enabled = true, check_quotes = true, check_support = true, model = "class:docscout-success" } } } }
+            test.is_nil(stages.verify(run, { meter = ai.meter() }))
+            local r, i, n = run.values[1], run.values[2], run.values[3]
+            test.is_false(r.verified); test.eq(r.reason, "Fixture"); test.eq(json.encode(r.codes), '["support_rejected"]')
+            test.is_false(i.verified); test.is_false(i.complete); test.eq(json.encode(i.codes), '["incomplete"]')
+            test.is_false(n.verified); test.eq(json.encode(n.codes), '["support_insufficient"]')
         end)
         test.it("only relocates a quote inside the field's selected sections", function()
             local run = quotes_only({ field("terms", { search_within = "sections" }) }, {
