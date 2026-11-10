@@ -70,8 +70,8 @@ return {run=test.run_cases(function()
             st.prefetch.queries={{name="Totals",query="Amount due",chunks=7},{name="Terms",query="Payment terms",chunks=5}}
             st.scout.max_rounds=2;st.scout.max_tokens=8192;st.scout.mode="agent";st.scout.share_notes=false
             st.deep.query_model="class:premium";st.deep.chunk_cap=120;st.deep.read="sections"
-            st.extract.max_fields_per_call=8
-            st.verify.enabled=true;st.verify.check_support=false
+            st.extract.max_fields_per_call=8;st.extract.temperature=0
+            st.verify.enabled=true;st.verify.check_support=false;st.verify.temperature=.1;st.verify.max_tokens=1024
             dto.config.retrieval.context="generated";dto.config.retrieval.context_model="class:nano";dto.config.retrieval.keep_tables=false
             dto.config.fields={{name="terms",type="text",description="",enum_values=assert(json.decode("[]")),required=false,search_hints="",validation_hints="",expected_format="",strategy="deep",search_within="sections",group="payment",evidence_required=true,chunks=5}}
             local created,err=call(who,{op="create",input=dto})
@@ -82,6 +82,8 @@ return {run=test.run_cases(function()
             test.eq(saved.stages.scout.mode,"agent");test.eq(saved.stages.scout.max_tokens,8192);test.eq(saved.stages.scout.share_notes,false)
             test.eq(saved.stages.deep.query_model,"class:premium");test.eq(saved.stages.deep.chunk_cap,120);test.eq(saved.stages.deep.read,"sections")
             test.eq(saved.stages.extract.max_fields_per_call,8);test.eq(saved.stages.verify.check_support,false)
+            test.eq(saved.stages.extract.temperature,0);test.eq(saved.stages.verify.temperature,.1);test.eq(saved.stages.verify.max_tokens,1024)
+            test.is_nil(saved.stages.map.temperature);test.is_nil(saved.stages.scout.temperature)
             test.eq(saved.retrieval.context,"generated");test.eq(saved.retrieval.context_model,"class:nano");test.eq(saved.retrieval.keep_tables,false)
             test.eq(saved.fields[1].search_within,"sections");test.eq(saved.fields[1].group,"payment")
             test.eq(#saved.stages.scout.tools,4)
@@ -89,6 +91,8 @@ return {run=test.run_cases(function()
                 function(c) c.stages.scout.max_rounds=-1 end,
                 function(c) c.stages.deep.min_similarity=1.1 end,
                 function(c) c.stages.deep.query_temperature=-.1 end,
+                function(c) c.stages.extract.temperature=2.1 end,
+                function(c) c.stages.map.max_tokens=0 end,
                 function(c) c.stages.prefetch.queries={{name="Q",query="",chunks=5}} end,
                 function(c) c.stages.scout.mode="swarm" end,
                 function(c) c.retrieval.context="summaries" end,

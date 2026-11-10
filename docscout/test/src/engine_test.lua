@@ -238,6 +238,89 @@ return { run = test.run_cases(function()
             test.eq(run.values[1].value, 1250)
         end)
     end)
+    test.describe("Stage sampling settings", function()
+        -- The sampling fixture reports prompt tokens of 1000 + temperature * 100 (0 when unset)
+        -- and completion tokens equal to the call's max_tokens.
+        local SAMPLING = "class:docscout-sampling"
+        local function field(over: any?): any
+            local f = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+            f.name, f.type = "total", "number"
+            for k, v in pairs(over or {}) do f[k] = v end
+            return f
+        end
+        local function pool(): any
+            local p = shapes.pool()
+            shapes.add(p, { { ordinal = 1, content = "The total amount is 1250.", heading_path = "Payment" } })
+            return p
+        end
+        local function usage(meter: any): string return meter.input_tokens .. "/" .. meter.output_tokens end
+
+        test.it("passes the map stage's temperature and output limit to the section choice", function()
+            local outline = {
+                { id = "s1", level = 1, title = "Parties", path = "Parties", chunk_start = 1, chunk_end = 1 },
+                { id = "s2", level = 1, title = "Payment", path = "Payment", chunk_start = 2, chunk_end = 2 },
+                { id = "s3", level = 1, title = "Term", path = "Term", chunk_start = 3, chunk_end = 3 },
+            }
+            local run = { document = { outline = outline }, regions = {}, config = { fields = { field({ search_within = "sections" }) },
+                stages = { map = { model = SAMPLING, outline = "find_or_build", section_summaries = false, temperature = 0.3, max_tokens = 512 } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.map(run, step))
+            test.eq(usage(step.meter), "1030/512")
+        end)
+        test.it("passes map sampling to outline building and section summaries", function()
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k",
+                outline = {}, page_count = 0, tokens = 0, expires_at = far_future() }, {
+                { ordinal = 1, section_id = "s1", heading_path = "Terms", content = "The total amount is 1250.", vector = unit(1) },
+            }))
+            for _, configured in ipairs({ true, false }) do
+                local cfg = { model = SAMPLING, outline = "build", section_summaries = true }
+                if configured then cfg.temperature, cfg.max_tokens = 0, 128 end
+                local run = { document = { id = id, outline = {} }, regions = {}, config = { fields = {}, stages = { map = cfg } } }
+                local step = { meter = ai.meter() }
+                test.is_nil(stages.map(run, step))
+                test.eq(usage(step.meter), configured and "2000/256" or "0/0")
+                test.eq(#run.document.outline, 1)
+                test.eq(run.document.outline[1].summary, "Fixture")
+            end
+        end)
+        test.it("passes the scout stage's temperature to the structured loop and the agent", function()
+            for _, mode in ipairs({ "loop", "agent" }) do
+                for _, configured in ipairs({ true, false }) do
+                    local run = { document = { outline = {} }, regions = {}, notes = {}, pool = pool(), confidence = 0,
+                        config = { fields = { field() }, retrieval = { search_mode = "keyword" }, stages = { deep = { enabled = false },
+                            scout = { model = SAMPLING, mode = mode, max_rounds = 1, max_extra_queries = 1, target_confidence = 0.7, max_tokens = 1024,
+                                drop_noise = false, share_notes = false, tools = { "keyword_search" }, temperature = 0 } } } }
+                    if not configured then run.config.stages.scout.temperature = nil end
+                    local step = { meter = ai.meter() }
+                    test.is_nil(stages.scout(run, step))
+                    test.eq(usage(step.meter), configured and "1000/1024" or "0/1024", mode)
+                end
+            end
+        end)
+        test.it("passes the extract stage's temperature with its output limit", function()
+            local run = { pool = pool(), regions = {}, notes = {}, analyses = {}, values = {}, config = { fields = { field() },
+                stages = { extract = { model = SAMPLING, max_fields_per_call = 5, max_output_tokens = 256, temperature = 0.2 } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.extract(run, step))
+            test.eq(usage(step.meter), "1020/256")
+        end)
+        test.it("passes the verify stage's temperature and output limit to the support check", function()
+            local run = { regions = {}, config = { fields = { field({ evidence_required = false }) },
+                    stages = { verify = { enabled = true, model = SAMPLING, check_quotes = false, check_support = true, temperature = 0.1, max_tokens = 768 } } },
+                values = { { name = "total", path = "total", value = 1250, missing = false, failed = false, evidence = { { quote = "The total amount is 1250.", chunk = 1 } } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.verify(run, step))
+            test.eq(usage(step.meter), "1010/768")
+        end)
+        test.it("leaves temperature and output limit to the provider when a stage sets none", function()
+            local run = { regions = {}, config = { fields = { field({ evidence_required = false }) },
+                    stages = { verify = { enabled = true, model = SAMPLING, check_quotes = false, check_support = true } } },
+                values = { { name = "total", path = "total", value = 1250, missing = false, failed = false, evidence = { { quote = "The total amount is 1250.", chunk = 1 } } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.verify(run, step))
+            test.eq(usage(step.meter), "0/0")
+        end)
+    end)
     test.describe("Extraction without passages", function()
         test.it("reports fields missing without a model call when their call has no passages", function()
             local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
