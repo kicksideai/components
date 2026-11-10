@@ -312,6 +312,26 @@ return { run = test.run_cases(function()
             test.is_nil(stages.verify(run, step))
             test.eq(usage(step.meter), "1010/768")
         end)
+        test.it("passes the deep stage's output limit to the analysis with its temperature", function()
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k",
+                outline = {}, page_count = 0, tokens = 0, expires_at = far_future() }, {
+                { ordinal = 1, section_id = "s1", heading_path = "Terms", content = "The total amount is 1250.", vector = unit(1) },
+            }))
+            local run = { document = { id = id, outline = {} }, regions = {}, notes = {}, analyses = {}, pool = pool(),
+                config = { fields = { field({ strategy = "deep" }) }, retrieval = { search_mode = "keyword", section_budget = 6000 }, stages = { deep = {
+                    model = SAMPLING, query_model = SAMPLING, read = "chunks", parallel_fields = 1, max_queries = 1, chunks_per_query = 5, chunk_cap = 10,
+                    min_similarity = 0, query_temperature = 0.2, analysis_temperature = 0.3, max_tokens = 640 } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.deep(run, step))
+            test.eq(step.status, "completed")
+            test.eq(usage(step.meter), "1030/640")
+        end)
+        test.it("passes the highlighter's temperature and output limit", function()
+            local run = { pool = pool(), config = { fields = { field() }, retrieval = { highlighter_model = SAMPLING, highlighter_temperature = 0.1, highlighter_max_tokens = 300 } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.highlight(run, step))
+            test.eq(usage(step.meter), "1010/300")
+        end)
         test.it("leaves temperature and output limit to the provider when a stage sets none", function()
             local run = { regions = {}, config = { fields = { field({ evidence_required = false }) },
                     stages = { verify = { enabled = true, model = SAMPLING, check_quotes = false, check_support = true } } },
