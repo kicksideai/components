@@ -147,7 +147,8 @@ function M.map(run: any, step: any): error?
         -- what built it; outline "build" builds it again.
         local card, card_err = ai.resolve(cfg.model)
         if card_err then return card_err end
-        local identity, identity_err = canonical_json.hash({ model = tostring(card.name), prompt = OUTLINE_PROMPT_VERSION, window = OUTLINE_WINDOW })
+        local identity, identity_err = canonical_json.hash({ model = card, requested_model = cfg.model, temperature = cfg.temperature,
+            max_tokens = cfg.max_tokens, prompt = OUTLINE_PROMPT_VERSION, window = OUTLINE_WINDOW, preview_chars = PREVIEW_CHARS })
         if identity_err then return identity_err end
         local kept: { any }? = nil
         if cfg.outline ~= "build" then
