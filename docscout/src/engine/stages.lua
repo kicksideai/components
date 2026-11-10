@@ -717,6 +717,78 @@ local function support_schema(values: { any }): any
         properties = { supported = { type = "boolean" }, reason = { type = "string" } } })
 end
 
+-- Verify: only a found value can be verified. Its quotes must appear in the
+-- document, and a model may also judge whether the cited text states the
+-- value for its field and, for text and lists, whether the value is complete.
+
+-- Field types whose value can be cut short, so the support check also judges completeness.
+local function completes(f: any): boolean return f.type == "text" or f.type == "list" end
+
+-- The support check's reply: one required verdict per field path, so a
+-- constrained decoder cannot omit or repeat a field; text and list fields
+-- also get a completeness verdict.
+function M.support_schema(values: { any }, fields: { [string]: any }): any
+    local properties, required = shapes.object(), {}
+    for _, v in ipairs(values) do
+        local path = shapes.path(v)
+        required[#required + 1] = path
+        local item = { type = "object", additionalProperties = false, required = { "verdict", "reason" }, properties = {
+            verdict = { type = "string", enum = { "supported", "not_supported", "insufficient_evidence" } }, reason = { type = "string" } } }
+        if completes(fields[path]) then
+            item.required = { "verdict", "complete", "reason" }
+            item.properties.complete = { type = "string", enum = { "complete", "incomplete", "insufficient_evidence" } }
+        end
+        properties[path] = item
+    end
+    return { type = "object", additionalProperties = false, required = required, properties = properties }
+end
+
+-- One value as the support check reads it: the field's path, type and
+-- description, the value, its quotes and, when given, the source text around them.
+function M.support_line(f: any, v: any, source: string?): string
+    local quotes = {}
+    for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" end
+    local t = f.type == "list" and ("list of " .. f.item.type) or f.type
+    return "- " .. shapes.path(v) .. " (" .. t .. "): " .. (f.description ~= "" and f.description or "no description") ..
+        "\n  value: " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | ") ..
+        (source and ("\n  source:\n  " .. source) or "")
+end
+
+-- The source text around a value's citations, for judging completeness: the
+-- whole section of each cited chunk when it fits the section budget, else the
+-- cited chunk and the one after it.
+local function source_region(run: any, v: any, by_ordinal: { [integer]: any }): string
+    local ordinals, seen = {}, {}
+    local function take(n: integer) if by_ordinal[n] and not seen[n] then seen[n] = true; ordinals[#ordinals + 1] = n end end
+    local budget = run.config.retrieval and run.config.retrieval.section_budget or 0
+    for _, e in ipairs(v.evidence) do
+        local n = math.tointeger(e.chunk)
+        if n then
+            local section = nil
+            for _, s in ipairs(run.document.outline or {}) do
+                if s.chunk_start and n >= s.chunk_start and n <= s.chunk_end then section = s end
+            end
+            if section and (section.tokens or 0) <= budget then
+                for k = section.chunk_start, section.chunk_end do take(k) end
+            else
+                take(n); take(n + 1)
+            end
+        end
+    end
+    table.sort(ordinals)
+    local texts = {}
+    for _, n in ipairs(ordinals) do texts[#texts + 1] = by_ordinal[n].content end
+    return table.concat(texts, "\n")
+end
+
+-- Chunks of an ordinal map in document order.
+local function store_order(by_ordinal: { [integer]: any }): { any }
+    local out = {}
+    for _, c in pairs(by_ordinal) do out[#out + 1] = c end
+    table.sort(out, function(a: any, b: any): boolean return a.ordinal < b.ordinal end)
+    return out
+end
+
 function M.verify(run: any, step: any): error?
     local cfg = run.config.stages.verify
     local fields = {}

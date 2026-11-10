@@ -136,3 +136,5 @@ make postgres-down
 `test` uses SQLite and allocates a temporary HTTP port for endpoint tests. It requires local socket access. `verify` also typechecks, tests and builds the UI. The PostgreSQL target uses the harness profile; the compose targets manage its disposable database. Dependency refresh requires registry access. Release Please owns release metadata.
 
 Manual-worker fixtures enroll real Jobs with the public `parked=true` enqueue option: the job has no scheduled execution until explicitly woken. This keeps receipt validation real while tests invoke the worker themselves.
+
+Completeness judgments are opt-in through `stages.verify.check_completeness` (default false). Earlier configurations retain their support request and verification behavior.
