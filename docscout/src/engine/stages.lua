@@ -79,14 +79,19 @@ local function summary_schema(outline: { any }): any
             properties = { section_id = { type = "string", enum = section_ids(outline) }, summary = { type = "string" } } } } } }
 end
 
--- Exactly one selection per field, each with at least one existing section.
+-- One required property per field path, each a list of at least one existing
+-- section. Keying the choice by field leaves a constrained decoder no way to
+-- name a field twice or leave one out; uniqueness across array items is not
+-- enforced by guided decoding.
 local function select_schema(outline: { any }, fields: { any }): any
-    local names = {}
-    for _, f in ipairs(fields) do names[#names + 1] = shapes.path(f) end
-    return { type = "object", additionalProperties = false, required = { "fields" }, properties = {
-        fields = { type = "array", minItems = #fields, maxItems = #fields, items = { type = "object", additionalProperties = false, required = { "field", "section_ids" },
-            properties = { field = { type = "string", enum = names },
-                section_ids = { type = "array", minItems = 1, maxItems = #outline, items = { type = "string", enum = section_ids(outline) } } } } } } }
+    local ids = section_ids(outline)
+    local required, properties = {}, {}
+    for _, f in ipairs(fields) do
+        local path = shapes.path(f)
+        required[#required + 1] = path
+        properties[path] = { type = "array", minItems = 1, maxItems = #outline, items = { type = "string", enum = ids } }
+    end
+    return { type = "object", additionalProperties = false, required = required, properties = properties }
 end
 
 function M.map(run: any, step: any): error?
@@ -157,17 +162,12 @@ function M.map(run: any, step: any): error?
             system("You pick, for each field, the sections of the outline most likely to contain its value. Choose few but enough sections; include definitions or schedules a field depends on."),
             "Outline:\n" .. doctools.outline_text(run.document.outline) .. "\n\nFields:\n" .. field_lines(scoped))
         if err then return err end
-        local seen = {}
-        for _, item in ipairs(result.fields) do
-            if seen[item.field] then
-                return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the section choice names " .. item.field .. " twice and leaves a field out" })
-            end
-            seen[item.field] = true
-        end
         local picked = {}
-        for _, item in ipairs(result.fields) do
-            run.regions[item.field] = shapes.ordinals_of(run.document.outline, item.section_ids)
-            picked[#picked + 1] = item.field .. " → " .. table.concat(item.section_ids, ", ")
+        for _, f in ipairs(scoped) do
+            local path = shapes.path(f)
+            local ids = result[path]
+            picked[#picked + 1] = path .. " → " .. table.concat(ids, ", ")
+            run.regions[path] = shapes.ordinals_of(run.document.outline, ids)
         end
         step.queries = picked
     end
