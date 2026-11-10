@@ -21,6 +21,12 @@ entries:
   parameters:
   - name: kickside.agent_onboarding:ui_server
     value: app:gateway
+  - name: kickside.memory:ui_server
+    value: app:gateway
+  - name: kickside.memory:api_router
+    value: app:api
+  - name: kickside.memory:target_db
+    value: app:db
   - name: kickside.ui:api_router
     value: app:api
   - name: kickside.ui:public_api_router
