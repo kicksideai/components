@@ -3,16 +3,25 @@ local test = require("test")
 local sql = require("sql")
 local funcs = require("funcs")
 
-local function migrate(direction: string)
-    local result, err = funcs.call("kickside.docscout.migrations:01_docscout", {
-        database_id = "app:migration_db", id = "docscout_roundtrip", direction = direction,
+local MIGRATIONS = { "01_docscout", "02_built_outline" }
+
+local function apply(name: string, direction: string)
+    local result, err = funcs.call("kickside.docscout.migrations:" .. name, {
+        database_id = "app:migration_db", id = "docscout_roundtrip_" .. name, direction = direction,
     })
     test.is_nil(err, tostring(err)); test.eq(result.failed, 0, tostring(result.error))
     test.eq(result.applied, 1)
 end
 
+-- Applies every shipped migration up in order, or down in reverse.
+local function migrate(direction: string)
+    local first, last, by = 1, #MIGRATIONS, 1
+    if direction == "down" then first, last, by = #MIGRATIONS, 1, -1 end
+    for i = first, last, by do apply(MIGRATIONS[i], direction) end
+end
+
 return { run = test.run_cases(function()
-    test.describe("Shipped Docscout migration", function()
+    test.describe("Shipped Docscout migrations", function()
         test.it("creates, drops and recreates all owned tables in the bound dialect", function()
             local source = assert(sql.get("app:db"))
             local dialect = assert(source:type())
@@ -28,6 +37,8 @@ return { run = test.run_cases(function()
                 test.is_true(present["kickside_docscout_" .. name])
             end
             if dialect == "sqlite" then test.is_true(present.kickside_docscout_chunks_fts) end
+            local _, column_err = db:query("SELECT built_outline, built_outline_identity FROM kickside_docscout_documents")
+            test.is_nil(column_err, tostring(column_err))
             db:release()
             migrate("down")
             db = assert(sql.get("app:migration_db"))

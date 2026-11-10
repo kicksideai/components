@@ -283,6 +283,31 @@ return { run = test.run_cases(function()
                 test.eq(run.document.outline[1].summary, "Fixture")
             end
         end)
+        test.it("reuses the built outline persisted on the processed copy for the same map model", function()
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k",
+                outline = {}, page_count = 0, tokens = 0, expires_at = far_future() }, {
+                { ordinal = 1, section_id = "s1", heading_path = "Terms", content = "The total amount is 1250.", vector = unit(1) },
+            }))
+            local function mapped(model: string, outline: string): (any, any)
+                local run = { document = { id = id, outline = {} }, regions = {}, config = { fields = {}, stages = { map = {
+                    model = model, outline = outline, section_summaries = false, temperature = 0, max_tokens = 128 } } } }
+                local step = { meter = ai.meter() }
+                test.is_nil(stages.map(run, step))
+                return run, step
+            end
+            local built, first = mapped(SAMPLING, "find_or_build")
+            test.eq(usage(first.meter), "1000/128")
+            local reused, second = mapped(SAMPLING, "find_or_build")
+            test.eq(usage(second.meter), "0/0")
+            test.eq(json.encode(reused.document.outline), json.encode(built.document.outline))
+            test.contains(second.message, "Reused")
+            local _, forced = mapped(SAMPLING, "build")
+            test.eq(usage(forced.meter), "1000/128", "outline: build always builds")
+            local _, other = mapped("class:docscout-sampling-other", "find_or_build")
+            test.eq(usage(other.meter), "1000/128", "another map model card builds its own outline")
+            local _, again = mapped("class:docscout-sampling-other", "find_or_build")
+            test.eq(usage(again.meter), "0/0")
+        end)
         test.it("passes the scout stage's temperature to the structured loop and the agent", function()
             for _, mode in ipairs({ "loop", "agent" }) do
                 for _, configured in ipairs({ true, false }) do

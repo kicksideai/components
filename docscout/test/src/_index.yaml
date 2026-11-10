@@ -686,6 +686,20 @@ entries:
   providers:
   - id: app:fixture_success_provider
     provider_model: docscout-sampling
+- name: fixture_sampling_other_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-sampling-other
+    title: Second fixture model that reports its sampling settings
+    capabilities: [generate, structured_output]
+    class: [docscout-sampling-other]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-sampling
 - name: success_test
   kind: function.lua
   meta:
