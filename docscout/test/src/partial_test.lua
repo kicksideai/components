@@ -2,6 +2,7 @@
 local test = require("test")
 local data = require("data")
 local json = require("json")
+local sql = require("sql")
 local registry = require("registry")
 local uuid = require("uuid")
 local time = require("time")
@@ -217,6 +218,73 @@ return { run = test.run_cases(function()
                 local snapshot = assert(caller:call("app:probe", { op = "get", id = id }))
                 test.eq(snapshot.runs[1].status, case.status)
                 test.eq(snapshot.runs[1].result.fields[1].failed, direct.fields[1].failed)
+            end)
+        end
+        for _, mode in ipairs({ "empty", "partial" }) do
+            test.it("rejects a " .. mode .. " support reply and persists the shared-stage failure", function()
+                local cfg = configuration({ "amount", "terms" })
+                cfg.stages.verify.enabled, cfg.stages.verify.check_support = true, true
+                cfg.stages.verify.check_quotes, cfg.stages.verify.model = false, "class:docscout-support-" .. mode
+                local run, step = context(cfg), { meter = ai.meter() }
+                run.values = {
+                    { name = "amount", value = 1250, missing = false, evidence = {} },
+                    { name = "terms", value = 1250, missing = false, evidence = {} },
+                }
+                local rejected = stages.verify(run, step)
+                test.not_nil(rejected); test.eq(rejected:details().code, "structured_reply_invalid")
+                test.is_true(rejected:retryable())
+                test.eq(step.meter.input_tokens, 12); test.eq(step.meter.output_tokens, 8)
+                test.is_nil(run.values[1].verified); test.is_nil(run.values[2].verified)
+                local owner = uuid.v4()
+                local caller = data.caller(owner)
+                local id = assert(caller:call("app:probe", { op = "create", input = { title = "Support reader", config = cfg } })).component_id
+                local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+                local result, err = caller:call("app:probe", { op = "contract_run", input = { extractor_id = id, upload_id = upload } })
+                test.is_nil(result); test.not_nil(err)
+                test.eq(err:details().code, "structured_reply_invalid"); test.is_true(err:retryable())
+                local snapshot = assert(caller:call("app:probe", { op = "get", id = id }))
+                local stored = snapshot.runs[1]
+                test.eq(stored.id, err:details().run_id); test.eq(stored.status, "failed")
+                test.eq(stored.result.error.details.code, "structured_reply_invalid")
+                local db = assert(sql.get("app:db"))
+                local rows, read_err = db:query("SELECT trace FROM kickside_docscout_runs WHERE id=$1", { stored.id })
+                db:release(); test.is_nil(read_err, tostring(read_err))
+                local trace = assert(json.decode(rows[1].trace))
+                test.eq(trace[#trace].kind, "verify"); test.eq(trace[#trace].status, "failed")
+                test.eq(trace[#trace].input_tokens, 12); test.eq(trace[#trace].output_tokens, 8)
+            end)
+        end
+        test.it("associates mixed support verdicts with their field paths", function()
+            local cfg = configuration({ "amount", "terms" })
+            cfg.stages.verify.check_support, cfg.stages.verify.check_quotes = true, false
+            cfg.stages.verify.model = "class:docscout-support-mixed"
+            local run = context(cfg)
+            run.values = {
+                { name = "terms", value = 1250, missing = false, evidence = {} },
+                { name = "amount", value = 1250, missing = false, evidence = {} },
+            }
+            test.is_nil(stages.verify(run, { meter = ai.meter() }))
+            test.is_false(run.values[1].verified); test.eq(run.values[1].reason, "Quote does not support the terms")
+            test.is_true(run.values[2].verified); test.is_nil(run.values[2].reason)
+        end)
+        for _, enabled in ipairs({false, true}) do
+            test.it("preserves a localized date with Verify enabled=" .. tostring(enabled), function()
+                local cfg = configuration({"signed"})
+                cfg.fields[1].type, cfg.fields[1].expected_format = "date", "D MMMM YYYY"
+                cfg.stages.extract.model, cfg.stages.verify.enabled = "class:docscout-date-result", enabled
+                cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = true, false
+                local owner = uuid.v4()
+                local caller = data.caller(owner)
+                local id = assert(caller:call("app:probe", {op="create", input={title="Date reader", config=cfg}})).component_id
+                local upload = data.upload(owner,"application/pdf","Original bytes","# Invoice\nThe total amount is 1250.")
+                local result, err = caller:call("app:probe", {op="contract_run", input={extractor_id=id,upload_id=upload}})
+                test.is_nil(err,tostring(err)); test.eq(result.status,"completed")
+                test.eq(result.values.signed,"8 mars 2026"); test.is_false(result.fields[1].verified)
+                if enabled then test.contains(result.fields[1].reason,"language is unspecified")
+                else test.is_nil(result.fields[1].reason) end
+                local saved = assert(caller:call("app:probe", {op="get",id=id})).runs[1]
+                test.eq(saved.status,"completed"); test.eq(saved.result.values.signed,"8 mars 2026")
+                test.eq(saved.result.fields[1].reason,result.fields[1].reason)
             end)
         end
         test.it("isolates deep analysis failures to their own fields", function()

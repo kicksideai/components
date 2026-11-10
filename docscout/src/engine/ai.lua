@@ -228,18 +228,22 @@ function M.embed(meter: Meter, model: string, texts: { string }): (any?, error?)
         local started = millis()
         local response, call_err = llm.embed(batch, options)
         local err = call_err and model_error("embedding (" .. model .. ")", call_err) or nil
+        local result = response and response.result
+        if not err then
+            if type(result) ~= "table" or #result ~= #batch then
+                err = model_error("embedding (" .. model .. ")", "returned " .. tostring(type(result) == "table" and #result or 0) .. " vectors for " .. #batch .. " texts")
+            else
+                for _, vector in ipairs(result) do
+                    if type(vector) ~= "table" or #vector ~= M.DIMENSIONS then
+                        err = model_error("embedding (" .. model .. ")", "returned a vector that is not " .. M.DIMENSIONS .. "-dimensional")
+                        break
+                    end
+                end
+            end
+        end
         record(meter, "embed", model, nil, started, response, err)
         if err then return nil, err end
-        local result = response and response.result
-        if type(result) ~= "table" or #result ~= #batch then
-            return nil, model_error("embedding (" .. model .. ")", "returned " .. tostring(type(result) == "table" and #result or 0) .. " vectors for " .. #batch .. " texts")
-        end
-        for _, vector in ipairs(result) do
-            if type(vector) ~= "table" or #vector ~= M.DIMENSIONS then
-                return nil, model_error("embedding (" .. model .. ")", "returned a vector that is not " .. M.DIMENSIONS .. "-dimensional")
-            end
-            vectors[#vectors + 1] = vector
-        end
+        for _, vector in ipairs(result) do vectors[#vectors + 1] = vector end
     end
     return vectors, nil
 end
