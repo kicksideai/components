@@ -661,6 +661,14 @@ return { run = test.run_cases(function()
             test.is_false((json.validate(schema, json.decode('{"terms":{"verdict":"supported","reason":"ok"},"total":{"verdict":"supported","reason":"ok"}}'))))
             test.is_false((json.validate(schema, json.decode('{"terms":{"verdict":"supported","complete":"complete","reason":"ok"},"total":{"verdict":"supported","complete":"complete","reason":"ok"}}'))))
         end)
+        test.it("names every verdict the support reply may give in the support prompt", function()
+            local schema = stages.support_schema({ { name = "terms", path = "terms" } }, { terms = field("terms") })
+            local prompt = stages.support_system()
+            local item = schema.properties.terms.properties
+            for _, enum in ipairs({ item.verdict.enum, item.complete.enum }) do
+                for _, label in ipairs(enum) do test.is_true(prompt:find("\"" .. label .. "\"", 1, true) ~= nil, label) end
+            end
+        end)
         test.it("fails values the support check rejects, finds incomplete or cannot settle", function()
             local run = { document = { id = document(), outline = {} }, regions = {}, values = {
                     { name = "rejected_value", value = 1250, missing = false, evidence = { { quote = "total amount due is USD 1,250.00", chunk = 1 } } },

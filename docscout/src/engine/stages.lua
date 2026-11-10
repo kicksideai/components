@@ -802,6 +802,20 @@ end
 -- document, and a model may also judge whether the cited text states the
 -- value for its field and, for text and lists, whether the value is complete.
 
+-- Verdicts a support reply gives. A constrained decoder only admits these
+-- strings, so the prompt names each one with its meaning.
+local VERDICT = { supported = "supported", not_supported = "not_supported", insufficient = "insufficient_evidence" }
+local COMPLETENESS = { complete = "complete", incomplete = "incomplete", insufficient = "insufficient_evidence" }
+
+function M.support_system(): string
+    return system("For each field, decide whether its cited text states this value for this field, as the field's description defines it.\n" ..
+        "Reformatting (dates, numbers, case, spacing) is allowed; a quote that states a different value or another role's value does not support it.\n" ..
+        "Give the verdict \"" .. VERDICT.supported .. "\" when the cited text states the value, \"" .. VERDICT.not_supported ..
+        "\" when it states a different value or none, and \"" .. VERDICT.insufficient .. "\" when it cannot settle it.\n" ..
+        "For fields that also ask for completeness, judge from the source text whether the value is complete as printed: \"" .. COMPLETENESS.complete ..
+        "\", \"" .. COMPLETENESS.incomplete .. "\" when it leaves part out, or \"" .. COMPLETENESS.insufficient .. "\".\nReturn one check per field.")
+end
+
 -- Field types whose value can be cut short, so the support check also judges completeness.
 local function completes(f: any): boolean return f.type == "text" or f.type == "list" end
 
@@ -814,10 +828,10 @@ function M.support_schema(values: { any }, fields: { [string]: any }): any
         local path = shapes.path(v)
         required[#required + 1] = path
         local item = { type = "object", additionalProperties = false, required = { "verdict", "reason" }, properties = {
-            verdict = { type = "string", enum = { "supported", "not_supported", "insufficient_evidence" } }, reason = { type = "string" } } }
+            verdict = { type = "string", enum = { VERDICT.supported, VERDICT.not_supported, VERDICT.insufficient } }, reason = { type = "string" } } }
         if completes(fields[path]) then
             item.required = { "verdict", "complete", "reason" }
-            item.properties.complete = { type = "string", enum = { "complete", "incomplete", "insufficient_evidence" } }
+            item.properties.complete = { type = "string", enum = { COMPLETENESS.complete, COMPLETENESS.incomplete, COMPLETENESS.insufficient } }
         end
         properties[path] = item
     end
@@ -924,10 +938,7 @@ function M.verify(run: any, step: any): error?
             end
         end
         -- Values are checked in batches that fit the model's window; a value too large alone gets no check.
-        local support_system = system([[For each field, decide whether its cited text states this value for this field, as the field's description defines it.
-Reformatting (dates, numbers, case, spacing) is allowed; a quote that states a different value or another role's value does not support it.
-For fields that also ask for completeness, judge from the source text whether the value is complete as printed or leaves part out.
-Answer insufficient_evidence when the cited text cannot settle it. Return one check per field.]])
+        local support_system = M.support_system()
         local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
         if fit_err then return fit_err end
         local function text(v: any): string return line[shapes.path(v)] end
@@ -969,13 +980,13 @@ Answer insufficient_evidence when the cited text cannot settle it. Return one ch
         if cfg.check_support and found and #v.evidence > 0 then
             local check = support[shapes.path(v)]
             if not check then reject("support_no_verdict", "The support check gave no verdict")
-            elseif check.verdict == "not_supported" then reject("support_rejected", check.reason)
-            elseif check.verdict == "insufficient_evidence" then reject("support_insufficient", "The cited text cannot settle the value: " .. check.reason)
-            elseif check.verdict ~= "supported" then reject(check.code or "support_no_verdict", check.reason) end
+            elseif check.verdict == VERDICT.not_supported then reject("support_rejected", check.reason)
+            elseif check.verdict == VERDICT.insufficient then reject("support_insufficient", "The cited text cannot settle the value: " .. check.reason)
+            elseif check.verdict ~= VERDICT.supported then reject(check.code or "support_no_verdict", check.reason) end
             if check and check.complete then
-                v.complete = check.complete == "complete"
-                if check.complete == "incomplete" then reject("incomplete", "The value leaves out part of the source: " .. check.reason)
-                elseif check.complete == "insufficient_evidence" then reject("support_insufficient", "The source cannot settle whether the value is complete: " .. check.reason) end
+                v.complete = check.complete == COMPLETENESS.complete
+                if check.complete == COMPLETENESS.incomplete then reject("incomplete", "The value leaves out part of the source: " .. check.reason)
+                elseif check.complete == COMPLETENESS.insufficient then reject("support_insufficient", "The source cannot settle whether the value is complete: " .. check.reason) end
             end
         end
         if v.missing and #codes == 0 then codes[1] = "missing" end
