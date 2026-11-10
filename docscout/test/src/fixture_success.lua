@@ -35,6 +35,21 @@ local function usage(args: any, prompt_tokens: integer, completion_tokens: integ
         completion_tokens = options.max_tokens or 0 }
 end
 function M.structured(args: any): (any?, error?)
+    if args.options and args.options.reply then
+        local reply = args.options.reply
+        local properties = args.schema.properties
+        if args.options.legacy_reply and (properties.summaries or properties.passages or (properties.evidence and properties.evidence.type == "array")) then
+            reply = args.options.legacy_reply
+        end
+        if args.schema.properties.checks then
+            local checks = {}
+            for field, verdict in pairs(reply) do
+                checks[#checks + 1] = { field = field, supported = verdict.supported, reason = verdict.reason }
+            end
+            reply = { checks = checks }
+        end
+        return { result = { data = reply }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
+    end
     if args.schema.properties.provider_failure then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Fixture provider unavailable", details = { code = "fixture_provider_failure" } })
     end

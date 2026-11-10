@@ -858,7 +858,7 @@ entries:
   meta: {type: test, suite: docscout_partial, group: Docscout}
   source: file://partial_test.lua
   method: run
-  modules: [json, registry, uuid, time, process, channel]
+  modules: [json, registry, uuid, time, process, channel, sql]
   imports:
     test: wippy.test:test
     data: app:fixture_data
@@ -994,3 +994,408 @@ entries:
   - id: app:fixture_constrained_provider
     provider_model: docscout-constrained
     options: {max_enum_entries: 0}
+
+- name: fixture_support_empty_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-support-empty
+    capabilities: [structured_output]
+    class: [docscout-support-empty]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-support-empty
+    options:
+      reply: {}
+
+- name: fixture_support_partial_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-support-partial
+    capabilities: [structured_output]
+    class: [docscout-support-partial]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-support-partial
+    options:
+      reply: {amount: {supported: true, reason: ''}}
+
+- name: fixture_support_mixed_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-support-mixed
+    capabilities: [structured_output]
+    class: [docscout-support-mixed]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-support-mixed
+    options:
+      reply: {amount: {supported: true, reason: ''}, terms: {supported: false, reason: 'Quote does not support the terms'}}
+
+- name: fixture_scout_missing_evidence_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-scout-missing-evidence
+    capabilities:
+    - structured_output
+    class:
+    - docscout-scout-missing-evidence
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-scout-missing-evidence
+    options:
+      reply:
+        confidence: 0.8
+        evidence:
+          fee: &id001 []
+        drop: []
+        queries: []
+        notes:
+          fee: '  fee note  '
+          terms.rate: "  \n "
+      legacy_reply:
+        confidence: 0.8
+        evidence:
+        - field: fee
+          chunks: *id001
+        drop: []
+        queries: []
+        notes:
+        - field: fee
+          note: '  fee note  '
+        - field: terms.rate
+          note: "  \n "
+
+- name: fixture_scout_missing_note_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-scout-missing-note
+    capabilities:
+    - structured_output
+    class:
+    - docscout-scout-missing-note
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-scout-missing-note
+    options:
+      reply:
+        confidence: 0.8
+        evidence:
+          fee: &id001 []
+          terms.rate: &id002 []
+        drop: []
+        queries: []
+        notes:
+          fee: '  fee note  '
+      legacy_reply:
+        confidence: 0.8
+        evidence:
+        - field: fee
+          chunks: *id001
+        - field: terms.rate
+          chunks: *id002
+        drop: []
+        queries: []
+        notes:
+        - field: fee
+          note: '  fee note  '
+
+- name: fixture_scout_empty_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-scout-empty
+    capabilities:
+    - structured_output
+    class:
+    - docscout-scout-empty
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-scout-empty
+    options:
+      reply:
+        confidence: 0.8
+        evidence:
+          fee: &id001 []
+          terms.rate: &id002 []
+        drop: []
+        queries: []
+        notes:
+          fee: '  fee note  '
+          terms.rate: "  \n "
+      legacy_reply:
+        confidence: 0.8
+        evidence:
+        - field: fee
+          chunks: *id001
+        - field: terms.rate
+          chunks: *id002
+        drop: []
+        queries: []
+        notes:
+        - field: fee
+          note: '  fee note  '
+        - field: terms.rate
+          note: "  \n "
+
+- name: fixture_scout_unknown_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-scout-unknown
+    capabilities:
+    - structured_output
+    class:
+    - docscout-scout-unknown
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-scout-unknown
+    options:
+      reply:
+        confidence: 0.8
+        evidence:
+          fee: &id001 []
+          terms.rate: &id002 []
+        drop: []
+        queries: []
+        notes:
+          fee: '  fee note  '
+          terms.rate: "  \n "
+          extra: unexpected
+      legacy_reply:
+        confidence: 0.8
+        evidence:
+        - field: fee
+          chunks: *id001
+        - field: terms.rate
+          chunks: *id002
+        drop: []
+        queries: []
+        notes:
+        - field: fee
+          note: '  fee note  '
+        - field: terms.rate
+          note: "  \n "
+        - field: extra
+          note: unexpected
+
+- name: fixture_summary_missing_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-summary-missing
+    capabilities:
+    - structured_output
+    class:
+    - docscout-summary-missing
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-summary-missing
+    options:
+      reply:
+        s1: Only one
+      legacy_reply:
+        summaries:
+        - section_id: s1
+          summary: Only one
+
+- name: fixture_summary_empty_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-summary-empty
+    capabilities:
+    - structured_output
+    class:
+    - docscout-summary-empty
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-summary-empty
+    options:
+      reply:
+        s1: '  '
+        s2: '
+
+          '
+        s3: '  Payment terms  '
+      legacy_reply:
+        summaries:
+        - section_id: s1
+          summary: '  '
+        - section_id: s2
+          summary: '
+
+            '
+        - section_id: s3
+          summary: '  Payment terms  '
+
+- name: fixture_summary_unknown_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-summary-unknown
+    capabilities:
+    - structured_output
+    class:
+    - docscout-summary-unknown
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-summary-unknown
+    options:
+      reply:
+        s1: a
+        s2: b
+        s3: c
+        s4: d
+      legacy_reply:
+        summaries:
+        - section_id: s1
+          summary: a
+        - section_id: s2
+          summary: b
+        - section_id: s3
+          summary: c
+        - section_id: s4
+          summary: d
+
+- name: fixture_highlight_missing_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-highlight-missing
+    capabilities:
+    - structured_output
+    class:
+    - docscout-highlight-missing
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-highlight-missing
+    options:
+      reply:
+        '1': &id001
+        - The total amount is 1250.
+      legacy_reply:
+        passages:
+        - chunk: 1
+          excerpts: *id001
+
+- name: fixture_highlight_empty_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-highlight-empty
+    capabilities:
+    - structured_output
+    class:
+    - docscout-highlight-empty
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-highlight-empty
+    options:
+      reply:
+        '1': &id001
+        - total amount
+        '2': &id002 []
+        '3': &id003
+        - invented passage
+        '4': &id004
+        - '  '
+      legacy_reply:
+        passages:
+        - chunk: 1
+          excerpts: *id001
+        - chunk: 2
+          excerpts: *id002
+        - chunk: 3
+          excerpts: *id003
+        - chunk: 4
+          excerpts: *id004
+
+- name: fixture_highlight_unknown_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-highlight-unknown
+    capabilities:
+    - structured_output
+    class:
+    - docscout-highlight-unknown
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-highlight-unknown
+    options:
+      reply:
+        '1': &id001 []
+        '2': &id002 []
+        '3': &id003 []
+        '4': &id004 []
+        '5': &id005 []
+      legacy_reply:
+        passages:
+        - chunk: 1
+          excerpts: *id001
+        - chunk: 2
+          excerpts: *id002
+        - chunk: 3
+          excerpts: *id003
+        - chunk: 4
+          excerpts: *id004
+        - chunk: 5
+          excerpts: *id005
+
+- name: coverage_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_coverage, group: Docscout}
+  source: file://coverage_test.lua
+  method: run
+  modules: [json, registry, uuid]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    ai: kickside.docscout.engine:ai
+    stages: kickside.docscout.engine:stages
+    shapes: kickside.docscout.engine:shapes
+    store: kickside.docscout.persist:store

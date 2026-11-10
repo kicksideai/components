@@ -49,6 +49,10 @@ The run status is `completed` when it extracts values without field failures, `p
 | Extract | Call: all fields sharing a failed call fail together; later calls continue. |
 | Verify | Run for native errors: document reads and support verdicts are shared. Unsupported values retain their value and fail verification. Failed extraction fields stay unverified. |
 
+Support verification requires one verdict for every found, nonfailed field. One missing verdict rejects the entire reply with retryable `structured_reply_invalid`, fails the run, and returns a native error; the failed run and paid token usage remain recorded. This follows the shared-stage policy for Verify errors: support verdicts settle together, so an incomplete response cannot become a successful verification. A negative verdict in a complete reply keeps the value and marks it unverified. Docscout does not retry internally; a caller retry repeats the run's earlier stages and can add model cost.
+
+Structured scouting requires evidence and note entries for every reviewed field; section summaries require every section; highlighting requires every supplied passage. Omitted or unknown entries reject the shared-stage response. Explicit empty evidence, blank notes and summaries, and empty highlight lists remain valid. Blank notes are suppressed, blank summaries remain absent, and passages with no genuine highlight are removed. The trace reports fields without cited evidence; completeness does not guarantee useful evidence.
+
 ### User-selected agents
 
 For Scout's `mode: "agent"`, set `stages.scout.agent_id` to an agent component's bare id. Omitting it uses the built-in document loop. Scout is the configuration's agent-loop option; structured scouting uses `mode: "loop"`.
