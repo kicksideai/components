@@ -28,9 +28,13 @@ Caller scopes need the native contract capabilities `contract.security` on `secu
 
 Every caller opens `kickside.docscout:extraction`, binding `kickside.docscout:engine`, under its execution identity. The `run` input has `extractor_id`, `upload_id`, `caller` (`ui`, `agent`, `workflow`, `eval`) and an optional RFC3339 deadline. Evaluation calls additionally identify the admitted evaluation and case. The contract accepts saved configuration; chat tuning edits that configuration through the configurator trait.
 
+### One document per input
+
+An extractor reads each upload as one document: a single instance of the record its fields describe. An upload that bundles several such documents, such as several invoices scanned into one PDF, is outside this contract. Each field then takes a value from whichever document its evidence comes from, and the result does not say which; split such uploads before extraction. Rules that relate one field's value to another, such as one date following another, belong to the consumer of the result.
+
 The ordered stages read and process the document, map sections, prefetch evidence, scout, analyze deep fields, highlight, extract with structured output, and verify. Extract defaults to `class:fast`. Processed copies belong to extractor plus user, upload, checksum and processing settings. Chunks use `kickside/search-index` for keyword and vector retrieval. Exact page locations come from saved page spans; uncertain locations retain their range.
 
-Map, Scout, Extract and Verify accept optional stage-local `temperature` settings. Map and Verify also accept `max_tokens`; Extract uses `max_output_tokens`. Omitted settings retain the provider default. These are requested settings: providers can omit unsupported sampling options or adjust output limits. A selected Scout agent retains its own model and sampling settings.
+Map, Scout, Extract and Verify accept optional stage-local `temperature` settings. Map, Verify and Deep also accept `max_tokens`; Extract uses `max_output_tokens`. The highlighter accepts `retrieval.highlighter_temperature` and `retrieval.highlighter_max_tokens`. A free-text reply (Deep analysis, built-in agent scout) cut at its output limit fails with `model_reply_truncated` instead of passing on incomplete text. Omitted settings retain the provider default. These are requested settings: providers can omit unsupported sampling options or adjust output limits. A selected Scout agent retains its own model and sampling settings.
 
 - UI: `POST /docscout/{id}/run`.
 - Block: `kickside.docscout.blocks:extract`, with `extractor_id` in config and `upload_id` in input. Its result contains values, fields with evidence, verification, run ID, pages, trace, revision, duration and tokens.
@@ -48,6 +52,12 @@ The run status is `completed` when it extracts values without field failures, `p
 | Highlight | Run: each batch rewrites passages shared across fields. |
 | Extract | Call: all fields sharing a failed call fail together; later calls continue. |
 | Verify | Run for native errors: document reads and support verdicts are shared. Unsupported values retain their value and fail verification. Failed extraction fields stay unverified. |
+
+Support verification requires one verdict for every found, nonfailed field. One missing verdict rejects the entire reply with retryable `structured_reply_invalid`, fails the run, and returns a native error; the failed run and paid token usage remain recorded. This follows the shared-stage policy for Verify errors: support verdicts settle together, so an incomplete response cannot become a successful verification. A negative verdict in a complete reply keeps the value and marks it unverified. Docscout does not retry internally; a caller retry repeats the run's earlier stages and can add model cost.
+
+Scout noise exclusions apply per field. A later citation or that field's own search readmits a passage; a later noise decision can exclude it again even when its historical provenance contains an earlier citation. Deep's own finds remain available to Deep's field. Extraction receives the union visible to its batch's fields within their selected regions; highlighting processes only passages usable by an extraction call. These decisions can change extracted values and prompt tokens for existing configurations. Provenance remains transient; stored runs keep their existing format.
+
+Structured scouting requires evidence and note entries for every reviewed field; section summaries require every section; highlighting requires every supplied passage. Omitted or unknown entries reject the shared-stage response. Explicit empty evidence, blank notes and summaries, and empty highlight lists remain valid. Blank notes are suppressed, blank summaries remain absent, and passages with no genuine highlight are removed. The trace reports fields without cited evidence; completeness does not guarantee useful evidence.
 
 ### User-selected agents
 
@@ -82,7 +92,7 @@ Objects declare a non-empty `properties` array. Each property has `name`, `type`
 }
 ```
 
-Value shapes have at most **four levels**, counting the field as level one and each property or list item as another level. This admits the acceptance agreement's deepest shapes while bounding model schemas and the property editor. Group segments do not consume value levels. Objects are closed to undeclared properties; required properties and enum choices appear in extraction schemas and verification. `expected_format` describes the requested representation to the model.
+Value shapes have at most **four levels**, counting the field as level one and each property or list item as another level. This admits the acceptance agreement's deepest shapes while bounding model schemas and the property editor. Group segments do not consume value levels. Objects are closed to undeclared properties; required properties and enum choices appear in extraction schemas and verification. `expected_format` describes the requested representation to the model. For a `date` field whose `expected_format` is a date pattern, Verify also checks the value: numeric patterns use the tokens `YYYY`, `YY`, `MM`, `M`, `DD` and `D` in any letter case, separated by spaces or `- / . ,`. A value that does not parse as a real date in that pattern stays unverified with the reason. Patterns using `MMMM` or `MMM` leave the date unverified with the reason that the month-name language is unspecified; this applies equally to localized and English names. A format written in prose, such as `an ISO date`, only guides the model. Existing Verify-enabled extractors now check numeric date patterns and report unspecified month-name languages; values remain unchanged. Verify-disabled extractors keep their prior behavior.
 
 Extraction calls share a group path and selected region, then split at the fields-per-call limit. Evaluation cases use the same nested values. Scoring follows declared types recursively: printed numbers, date digits, text overlap, order-free list F1 and mean scores over declared object properties. A property omitted from the expectation scores as absent.
 

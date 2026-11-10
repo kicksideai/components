@@ -19,6 +19,13 @@ local function model_error(what: string, err: any): error
     return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = what .. " failed: " .. tostring(err) })
 end
 
+-- A reply the provider stopped at the output limit; its text is incomplete,
+-- and the same call stops at the same limit again, so it is not retryable.
+local function truncated(model: string): error
+    return errors.new({ kind = errors.UNAVAILABLE, retryable = false,
+        message = "Model reply is truncated by its output limit", details = { code = "model_reply_truncated", model = model } })
+end
+
 local function messages(system: string, user: string): { any }
     return {
         { role = "system", content = { { type = "text", text = system } } },
@@ -153,6 +160,7 @@ function M.generate(meter: Meter, model: string, system: string, user: string, o
     local started = millis()
     local response, call_err = llm.generate(messages(system, user), options)
     local err = call_err and model_error("model call (" .. model .. ")", call_err) or nil
+    if not err and response.finish_reason == "length" then err = truncated(model) end
     record(meter, "generate", model, opts, started, response, err)
     if err then return nil, err end
     return tostring(response.result or ""), nil
@@ -174,6 +182,7 @@ function M.agent(meter: Meter, model: string, system: string, user: string, tool
         local started = millis()
         local response, call_err = llm.generate(conversation, options)
         local err = call_err and model_error("agent model call (" .. model .. ")", call_err) or nil
+        if not err and response.finish_reason == "length" then err = truncated(model) end
         record(meter, "agent", model, opts, started, response, err)
         if err then return nil, calls, err end
         local tool_calls = response.tool_calls
