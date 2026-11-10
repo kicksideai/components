@@ -186,7 +186,7 @@ function M.prefetch(run: any, step: any): error?
     local ctx = { document = run.document, retrieval = run.config.retrieval, meter = step.meter }
     local queries = {}
     for _, q in ipairs(run.config.stages.prefetch.queries) do
-        local hits, err = doctools.search(ctx, mode, q.query, q.chunks, nil)
+        local hits, err = doctools.search(ctx, mode, shapes.query(q.query), q.chunks, nil)
         if err then return err end
         add(run.pool, hits); queries[#queries + 1] = q.query
     end
@@ -197,7 +197,7 @@ function M.prefetch(run: any, step: any): error?
                 if region_err then return region_err end
                 local hits, err = doctools.search(ctx, mode, query, f.chunks, region)
                 if err then return err end
-                add(run.pool, hits); queries[#queries + 1] = query
+                add(run.pool, hits); queries[#queries + 1] = query.semantic
             end
         end
     end
@@ -260,7 +260,7 @@ local SCOUT_SYSTEM = system([[You review evidence gathered from one document bef
 Rate from 0 to 1 how confident you are that the passages contain every field's value. For each field, list the chunk numbers
 whose passages state or help determine its value. List chunk numbers that serve no field as noise. Propose focused search
 queries for fields whose evidence is missing or weak, and leave short notes about where each value is or what to watch for.
-Do not extract values. Chunk numbers are the numbers after C, without the C.]])
+Do not extract values. Chunk numbers are the numbers after C, without the C. ]] .. shapes.QUERY_RULE)
 
 -- Tool calls an agent scout may make: queries per round over its rounds.
 function M.agent_budget(cfg: any): integer
@@ -331,7 +331,7 @@ function M.scout(run: any, step: any): error?
             local field = by_name[q.field]
             local region, region_err = M.region(run, field)
             if region_err then return region_err end
-            local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q.query, field.chunks, region)
+            local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, shapes.prose_query(q.query), field.chunks, region)
             if search_err then return search_err end
             add(run.pool, hits); queries_run[#queries_run + 1] = q.query
         end
@@ -356,10 +356,10 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
     local room = cfg.max_queries - #queries
     if room > 0 then
         local generated, err = ai.structured(step.meter, cfg.query_model, queries_schema(room),
-            system("Write up to " .. room .. " varied search queries that would find passages stating this field's value, including synonyms and related clauses."),
+            system("Write up to " .. room .. " varied search queries that would find passages stating this field's value, including synonyms and related clauses. " .. shapes.QUERY_RULE),
             field_lines({ f }) .. (f.search_hints ~= "" and ("\nHints: " .. f.search_hints) or ""), { temperature = cfg.query_temperature })
         if err then return err end
-        for _, q in ipairs(generated.queries) do if #queries < cfg.max_queries then queries[#queries + 1] = q end end
+        for _, q in ipairs(generated.queries) do if #queries < cfg.max_queries then queries[#queries + 1] = shapes.prose_query(q) end end
     end
     local seen, found = {}, {}
     for _, q in ipairs(queries) do
@@ -368,7 +368,7 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
         local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q, cfg.chunks_per_query, region, cfg.min_similarity)
         if search_err then return search_err end
         for _, c in ipairs(hits) do if not seen[c.ordinal] and #found < cfg.chunk_cap then seen[c.ordinal] = true; found[#found + 1] = c end end
-        all_queries[#all_queries + 1] = q
+        all_queries[#all_queries + 1] = q.semantic
     end
     if cfg.read == "sections" then
         local sections, budget, wide = {}, run.config.retrieval.section_budget, {}

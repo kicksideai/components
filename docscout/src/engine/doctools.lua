@@ -30,15 +30,16 @@ M.TOOLS = {
     },
 }
 
--- ctx: { document, retrieval, meter }. region, when given, keeps results inside those chunk ordinals.
-function M.search(ctx: any, mode: string, query: string, limit: integer, region: { integer }?, min_similarity: number?): (any?, error?)
+-- ctx: { document, retrieval, meter }. query: { lexical, semantic } from shapes.
+-- region, when given, keeps results inside those chunk ordinals.
+function M.search(ctx: any, mode: string, query: { lexical: string, semantic: string }, limit: integer, region: { integer }?, min_similarity: number?): (any?, error?)
     local vector = nil
     if mode ~= "keyword" then
-        local vectors, err = ai.embed(ctx.meter, ctx.document.embedding_model, { query })
+        local vectors, err = ai.embed(ctx.meter, ctx.document.embedding_model, { query.semantic })
         if err then return nil, err end
         vector = vectors[1]
     end
-    return store.search(ctx.document.id, { mode = mode, text = query, vector = vector, limit = limit, ordinals = region, min_similarity = min_similarity })
+    return store.search(ctx.document.id, { mode = mode, text = query.lexical, vector = vector, limit = limit, ordinals = region, min_similarity = min_similarity })
 end
 
 function M.section(ctx: any, section_id: string): (any?, error?)
@@ -65,8 +66,8 @@ end
 function M.call(ctx: any, name: string, args: any): (any, string?, error?)
     local limit = math.tointeger(args.limit) or 5
     local hits, err
-    if name == "keyword_search" then hits, err = M.search(ctx, "keyword", tostring(args.query or ""), limit, nil)
-    elseif name == "semantic_search" then hits, err = M.search(ctx, "semantic", tostring(args.query or ""), limit, nil)
+    if name == "keyword_search" then hits, err = M.search(ctx, "keyword", shapes.query(tostring(args.query or "")), limit, nil)
+    elseif name == "semantic_search" then hits, err = M.search(ctx, "semantic", shapes.query(tostring(args.query or "")), limit, nil)
     elseif name == "read_section" then
         hits, err = M.section(ctx, tostring(args.section_id or ""))
         -- An unknown section id is the model's mistake; it can correct it from the outline.

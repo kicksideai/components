@@ -127,10 +127,44 @@ function M.field_lines(fields: { any }): string
     return table.concat(out, "\n")
 end
 
+-- A search: lexical text for keyword matching and semantic text for embedding.
+-- Keyword search requires every digit-bearing lexical word, so lexical text
+-- keeps digits only where they are meant to be matched exactly.
+type Query = { lexical: string, semantic: string }
+
+-- A query whose every word is meant to be matched: a hint or a configured query.
+function M.query(text: string): Query
+    return { lexical = text, semantic = text }
+end
+
+-- How a model writes a search query.
+M.QUERY_RULE = "Put an exact identifier a passage must contain, such as a reference number, in double quotes; other numbers, dates and amounts in a query guide its meaning only."
+
+local function words(text: string, digits: boolean, out: { string })
+    for word in text:gmatch("[%w\128-\255]+") do
+        if digits or not word:find("%d") then out[#out + 1] = word end
+    end
+end
+
+-- A query written as prose, such as a field description or a model's query:
+-- matched by its words and the identifiers it quotes, embedded whole.
+function M.prose_query(text: string): Query
+    local out, at = {}, 1
+    for open, quoted, close in text:gmatch('()"([^"]*)"()') do
+        words(text:sub(at, open - 1), false, out)
+        words(quoted, true, out)
+        at = close
+    end
+    words(text:sub(at), false, out)
+    return { lexical = table.concat(out, " "), semantic = text }
+end
+
 -- Searches a field runs on its own: its name and description, then each hint line.
-function M.field_queries(f: any): { string }
-    local queries = { M.trim(f.name:gsub("_", " ") .. (f.description ~= "" and (": " .. f.description) or "")) }
-    for _, hint in ipairs(M.lines(f.search_hints)) do queries[#queries + 1] = hint end
+function M.field_queries(f: any): { Query }
+    local name = M.trim((tostring(f.name):gsub("_", " ")))
+    local description = tostring(f.description)
+    local queries: { Query } = { M.prose_query(description ~= "" and (name .. ": " .. description) or name) }
+    for _, hint in ipairs(M.lines(f.search_hints)) do queries[#queries + 1] = M.query(hint) end
     return queries
 end
 

@@ -6,6 +6,7 @@ local uuid = require("uuid")
 local process = require("process")
 local store = require("store")
 local stages = require("stages")
+local doctools = require("doctools")
 local sql = require("sql")
 local funcs = require("funcs")
 local shapes = require("shapes")
@@ -399,6 +400,38 @@ return { run = test.run_cases(function()
             local ordinals = {}
             for _, c in ipairs(shapes.ordered(run.pool)) do ordinals[#ordinals + 1] = c.ordinal end
             test.eq((json.encode(ordinals)), (json.encode({ 2 })))
+        end)
+        test.it("prefetches a field by keyword when its description cites an example number", function()
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k", outline = {},
+                page_count = 0, tokens = 0, expires_at = far_future() }, {
+                { ordinal = 1, section_id = "s1", heading_path = "Fees", content = "The annual fee is USD 100.", vector = unit(1) },
+                { ordinal = 2, section_id = "s2", heading_path = "Term", content = "Renewal notice is ninety days.", vector = unit(2) },
+            }))
+            local field = { name = "notice_period", description = "Days of notice before renewal, for example 60", search_hints = "",
+                strategy = "standard", search_within = "document", chunks = 5 }
+            local run = { document = { id = id }, regions = {}, pool = shapes.pool(),
+                config = { fields = { field }, retrieval = { search_mode = "keyword" }, stages = { deep = { enabled = false }, prefetch = { queries = {} } } } }
+            test.is_nil(stages.prefetch(run, { meter = { input_tokens = 0, output_tokens = 0 } }))
+            local ordinals = {}
+            for _, c in ipairs(shapes.ordered(run.pool)) do ordinals[#ordinals + 1] = c.ordinal end
+            test.eq((json.encode(ordinals)), (json.encode({ 2 })))
+        end)
+        test.it("searches a model-written query by its words and requires only the identifiers it quotes", function()
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k", outline = {},
+                page_count = 0, tokens = 0, expires_at = far_future() }, {
+                { ordinal = 1, section_id = "s1", heading_path = "Invoices", content = "Invoice 7741 was paid in full.", vector = unit(1) },
+                { ordinal = 2, section_id = "s2", heading_path = "Terms", content = "Payment terms are net thirty days.", vector = unit(2) },
+            }))
+            local ctx = { document = { id = id } }
+            local function found(text: string): string
+                local hits = assert(doctools.search(ctx, "keyword", shapes.prose_query(text), 5, nil))
+                local ordinals = {}
+                for _, c in ipairs(hits) do ordinals[#ordinals + 1] = c.ordinal end
+                table.sort(ordinals)
+                return json.encode(ordinals)
+            end
+            test.eq(found("payment terms agreed on 4 May 2021"), json.encode({ 2 }))
+            test.eq(found('payment of invoice "7741"'), json.encode({ 1 }))
         end)
         test.it("gives each extraction call only passages every one of its fields may read", function()
             local pool = shapes.pool()
