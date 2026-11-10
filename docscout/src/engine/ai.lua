@@ -19,9 +19,10 @@ local function model_error(what: string, err: any): error
     return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = what .. " failed: " .. tostring(err) })
 end
 
--- A reply the provider stopped at the output limit; its text is incomplete.
+-- A reply the provider stopped at the output limit; its text is incomplete,
+-- and the same call stops at the same limit again, so it is not retryable.
 local function truncated(model: string): error
-    return errors.new({ kind = errors.UNAVAILABLE, retryable = true,
+    return errors.new({ kind = errors.UNAVAILABLE, retryable = false,
         message = "Model reply is truncated by its output limit", details = { code = "model_reply_truncated", model = model } })
 end
 
