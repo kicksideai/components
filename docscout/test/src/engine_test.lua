@@ -365,6 +365,26 @@ return { run = test.run_cases(function()
             test.is_nil(stages.verify(run, step))
             test.eq(usage(step.meter), "1010/768")
         end)
+        test.it("passes the deep stage's output limit to the analysis with its temperature", function()
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k",
+                outline = {}, page_count = 0, tokens = 0, expires_at = far_future() }, {
+                { ordinal = 1, section_id = "s1", heading_path = "Terms", content = "The total amount is 1250.", vector = unit(1) },
+            }))
+            local run = { document = { id = id, outline = {} }, regions = {}, notes = {}, analyses = {}, pool = pool(),
+                config = { fields = { field({ strategy = "deep" }) }, retrieval = { search_mode = "keyword", section_budget = 6000 }, stages = { deep = {
+                    model = SAMPLING, query_model = SAMPLING, read = "chunks", parallel_fields = 1, max_queries = 1, chunks_per_query = 5, chunk_cap = 10,
+                    min_similarity = 0, query_temperature = 0.2, analysis_temperature = 0.3, max_tokens = 640 } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.deep(run, step))
+            test.eq(step.status, "completed")
+            test.eq(usage(step.meter), "1030/640")
+        end)
+        test.it("passes the highlighter's temperature and output limit", function()
+            local run = { pool = pool(), regions = {}, notes = {}, config = { fields = { field() }, stages = { extract = { max_fields_per_call = 5 } }, retrieval = { highlighter_model = SAMPLING, highlighter_temperature = 0.1, highlighter_max_tokens = 300 } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.highlight(run, step))
+            test.eq(usage(step.meter), "1010/300")
+        end)
         test.it("leaves temperature and output limit to the provider when a stage sets none", function()
             local run = { regions = {}, config = { fields = { field({ evidence_required = false }) },
                     stages = { verify = { enabled = true, model = SAMPLING, check_quotes = false, check_support = true } } },
@@ -471,6 +491,20 @@ return { run = test.run_cases(function()
             test.eq(table.concat(shape, " | "),
                 "fee,total:1,2,3:fee: fee in C1;agent: Delaware law in C3 | notice,term:2: | law:3:law: law in C3 | party:1,2,3:agent: Delaware law in C3")
         end)
+        test.it("gives an extraction call the passages its own fields may still read after pruning", function()
+            local pool = shapes.pool()
+            shapes.add(pool, { { ordinal = 1, content = "fee" }, { ordinal = 2, content = "law" }, { ordinal = 3, content = "both" } })
+            shapes.prune(pool, { 1, 2 }, { fee = { 1 }, ["terms.law"] = { 2 } })
+            local run = { pool = pool, regions = {}, notes = {}, config = { stages = { extract = { max_fields_per_call = 5 } },
+                fields = { { name = "fee", search_within = "document", group = "" }, { name = "law", search_within = "document", group = "terms" } } } }
+            local shape = {}
+            for _, call in ipairs(stages.extraction_calls(run)) do
+                local ordinals = {}
+                for _, c in ipairs(call.passages) do ordinals[#ordinals + 1] = c.ordinal end
+                shape[#shape + 1] = call.fields[1].name .. ":" .. table.concat(ordinals, ",")
+            end
+            test.eq(table.concat(shape, " | "), "fee:1,3 | law:2,3")
+        end)
         test.it("tells the scout which chunks each sections field may read", function()
             local pool = shapes.pool()
             shapes.add(pool, { { ordinal = 1, content = "fee", heading_path = "Fees" }, { ordinal = 3, content = "law", heading_path = "Law" } })
@@ -485,11 +519,42 @@ return { run = test.run_cases(function()
             test.is_nil((text:find("fee reads only", 1, true)))
             test.is_true(text:find("[C3] Law", 1, true) ~= nil, text)
         end)
-        test.it("lets the highlighter name only the passages it is sent", function()
+        test.it("asks the highlighter for one entry per passage it is sent and no other", function()
             local schema = stages.highlight_schema({ { ordinal = 4 }, { ordinal = 5 } })
-            test.is_true((json.validate(schema, json.decode('{"passages":[{"chunk":4,"excerpts":["Total due"]}]}'))))
-            test.is_false((json.validate(schema, json.decode('{"passages":[{"chunk":-1,"excerpts":["Total due"]}]}'))))
-            test.is_false((json.validate(schema, json.decode('{"passages":[{"chunk":1,"excerpts":["Total due"]}]}'))))
+            test.is_true((json.validate(schema, json.decode('{"4":["Total due"],"5":[]}'))))
+            test.is_false((json.validate(schema, json.decode('{"4":["Total due"]}'))))
+            test.is_false((json.validate(schema, json.decode('{"4":[],"5":[],"1":["Total due"]}'))))
+        end)
+        test.it("asks the scout for evidence and a note for every field it scouts", function()
+            local fields = { { name = "fee", group = "" }, { name = "rate", group = "terms" } }
+            local schema = stages.scout_schema({ max_extra_queries = 2 }, fields, { { ordinal = 1 }, { ordinal = 2 } })
+            local reply = '{"confidence":0.5,"evidence":{"fee":[1],"terms.rate":[]},"drop":[2],"queries":[],"notes":{"fee":"C1 states it","terms.rate":""}}'
+            test.is_true((json.validate(schema, json.decode(reply))))
+            test.is_false((json.validate(schema, json.decode((reply:gsub(',"terms.rate":%[%]', ""))))))
+            test.is_false((json.validate(schema, json.decode((reply:gsub('"fee":"C1 states it",', ""))))))
+        end)
+        test.it("asks for a summary of every section", function()
+            local schema = stages.summary_schema({ { id = "s1" }, { id = "s2" } })
+            test.is_true((json.validate(schema, json.decode('{"s1":"Parties","s2":"Payment terms"}'))))
+            test.is_false((json.validate(schema, json.decode('{"s1":"Parties"}'))))
+        end)
+        test.it("keeps one scout note per field and retains cited passages", function()
+            local p = shapes.pool()
+            shapes.add(p, { { ordinal = 1, content = "The total amount is 1250.", heading_path = "Payment" }, { ordinal = 2, content = "Other", heading_path = "Other" } })
+            local f = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+            local fee, rate = {}, {}
+            for k, v in pairs(f) do fee[k] = v; rate[k] = v end
+            fee.name, rate.name, rate.group = "fee", "rate", "terms"
+            local run = { document = { outline = {} }, regions = {}, notes = {}, pool = p, confidence = 0,
+                config = { fields = { fee, rate }, retrieval = { search_mode = "keyword" }, stages = { deep = { enabled = false },
+                    scout = { model = "class:docscout-success", mode = "loop", max_rounds = 0, max_extra_queries = 1, target_confidence = 0.7, max_tokens = 1024,
+                        drop_noise = true, share_notes = true, tools = {} } } } }
+            test.is_nil(stages.scout(run, { meter = ai.meter() }))
+            local noted = {}
+            for _, n in ipairs(run.notes) do noted[#noted + 1] = n.field .. "=" .. n.text end
+            table.sort(noted)
+            test.eq(table.concat(noted, ","), "fee=Fixture,terms.rate=Fixture")
+            test.not_nil(run.pool.by_ordinal[1])
         end)
         test.it("splits a group with one region by the fields-per-call limit", function()
             local pool = shapes.pool()
@@ -536,6 +601,23 @@ return { run = test.run_cases(function()
             test.is_false(run.values[3].verified); test.eq(run.values[3].reason, "A quote is not in the document")
             test.is_true(run.values[4].verified)
             test.eq(step.message, "1 value needs review")
+        end)
+        test.it("asks the support check for one verdict per found value", function()
+            local run = { document = { id = document() }, regions = {}, values = {
+                    { name = "total", value = 1250, missing = false, evidence = { { quote = "total amount due is USD 1,250.00", chunk = 1 } } },
+                    { name = "terms", value = "Net 30", missing = false, evidence = { { quote = "Payment within 30 days", chunk = 2 } } },
+                    { name = "discount", group = "rates", value = 5, missing = false, evidence = { { quote = "Discount: -5%", chunk = 2 } } },
+                    { name = "absent", missing = true, evidence = {} } },
+                config = { fields = { field("total", { type = "number" }), field("terms"), field("discount", { type = "number", group = "rates" }), field("absent") },
+                    stages = { verify = { enabled = true, check_quotes = true, check_support = true, model = "class:docscout-success" } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.verify(run, step))
+            for i = 1, 3 do
+                test.is_false(run.values[i].verified, run.values[i].name)
+                test.eq(run.values[i].reason, "Fixture", run.values[i].name)
+            end
+            test.is_true(run.values[4].verified)
+            test.is_true(step.meter.input_tokens > 0)
         end)
         test.it("fails a value without a quote when its field requires evidence", function()
             local run = quotes_only({ field("total", { type = "number" }), field("note", { evidence_required = false }) }, {
