@@ -64,13 +64,17 @@ end
 -- fields that did not cite it; passages inside selected, the regions Map chose
 -- for sections fields, stay. Returns how many passages no reviewed field keeps.
 function M.prune(pool: any, noise: { any }, evidence: { [string]: { any } }, selected: { integer }?): integer
-    local reviewed, kept = {}, {}
+    local reviewed, kept, current = {}, {}, {}
     for path, chunks in pairs(evidence) do
         reviewed[#reviewed + 1] = path
         for _, n in ipairs(chunks) do
             local ordinal = math.tointeger(tonumber(n))
             local p = ordinal and pool.provenance[ordinal]
-            if p then p.cited[path] = true end
+            if p then
+                p.cited[path], p.excluded[path] = true, nil
+                current[ordinal] = current[ordinal] or {}
+                current[ordinal][path] = true
+            end
         end
     end
     for _, n in ipairs(selected or {}) do kept[n] = true end
@@ -81,7 +85,7 @@ function M.prune(pool: any, noise: { any }, evidence: { [string]: { any } }, sel
         if p and not kept[ordinal] then
             local remaining = false
             for _, path in ipairs(reviewed) do
-                if p.cited[path] then remaining = true else p.excluded[path] = true end
+                if current[ordinal] and current[ordinal][path] then remaining = true else p.excluded[path] = true end
             end
             if not remaining and #reviewed > 0 then excluded = excluded + 1 end
         end

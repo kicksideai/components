@@ -327,7 +327,7 @@ return { run = test.run_cases(function()
             test.eq(usage(step.meter), "1030/640")
         end)
         test.it("passes the highlighter's temperature and output limit", function()
-            local run = { pool = pool(), config = { fields = { field() }, retrieval = { highlighter_model = SAMPLING, highlighter_temperature = 0.1, highlighter_max_tokens = 300 } } }
+            local run = { pool = pool(), regions = {}, notes = {}, config = { fields = { field() }, stages = { extract = { max_fields_per_call = 5 } }, retrieval = { highlighter_model = SAMPLING, highlighter_temperature = 0.1, highlighter_max_tokens = 300 } } }
             local step = { meter = ai.meter() }
             test.is_nil(stages.highlight(run, step))
             test.eq(usage(step.meter), "1010/300")

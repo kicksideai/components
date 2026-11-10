@@ -466,7 +466,18 @@ local HIGHLIGHT_BATCH = 12
 function M.highlight(run: any, step: any): error?
     local retrieval = run.config.retrieval
     local model = retrieval.highlighter_model
-    local chunks = ordered(run.pool)
+    local calls, call_err = M.extraction_calls(run)
+    if call_err then return call_err end
+    local chunks, seen = {}, {}
+    for _, call in ipairs(calls) do
+        for _, c in ipairs(call.passages) do
+            if not seen[c.ordinal] then
+                seen[c.ordinal] = true
+                chunks[#chunks + 1] = c
+            end
+        end
+    end
+    table.sort(chunks, function(a: any, b: any): boolean return a.ordinal < b.ordinal end)
     local kept, before = 0, #chunks
     for start = 1, #chunks, HIGHLIGHT_BATCH do
         local batch = {}
