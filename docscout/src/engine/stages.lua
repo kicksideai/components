@@ -189,7 +189,7 @@ function M.prefetch(run: any, step: any): error?
     for _, q in ipairs(run.config.stages.prefetch.queries) do
         local hits, err = doctools.search(ctx, mode, q.query, q.chunks, nil)
         if err then return err end
-        add(run.pool, hits); queries[#queries + 1] = q.query
+        add(run.pool, hits, nil, q.query); queries[#queries + 1] = q.query
     end
     for _, f in ipairs(run.config.fields) do
         if f.strategy ~= "deep" or not run.config.stages.deep.enabled then
@@ -198,7 +198,7 @@ function M.prefetch(run: any, step: any): error?
                 if region_err then return region_err end
                 local hits, err = doctools.search(ctx, mode, query, f.chunks, region)
                 if err then return err end
-                add(run.pool, hits); queries[#queries + 1] = query
+                add(run.pool, hits, shapes.path(f), query); queries[#queries + 1] = query
             end
         end
     end
@@ -249,12 +249,18 @@ local function scout_fields(run: any, fields: { any }): (string?, error?)
         (#limits > 0 and ("\n\nSome fields read only their own chunks; cite their evidence there:\n" .. table.concat(limits, "\n")) or "")
 end
 
--- The structured scout's prompt: fields, earlier notes and the evidence pool.
+local function paths(fields: { any }): { string }
+    local out = {}
+    for _, f in ipairs(fields) do out[#out + 1] = shapes.path(f) end
+    return out
+end
+
+-- The structured scout's prompt: fields, earlier notes and the passages still visible to them.
 function M.scout_input(run: any, fields: { any }): (string?, error?)
     local fields_text, err = scout_fields(run, fields)
     if err then return nil, err end
     return fields_text .. (#run.notes > 0 and ("\n\nEarlier notes:\n" .. table.concat(note_lines(run.notes), "\n")) or "") ..
-        "\n\nEvidence:\n" .. render(ordered(run.pool))
+        "\n\nEvidence:\n" .. render(ordered(run.pool, paths(fields)))
 end
 
 local SCOUT_SYSTEM = system([[You review evidence gathered from one document before values are extracted.
@@ -312,7 +318,7 @@ function M.scout(run: any, step: any): error?
         rounds = rounds + 1
         local scout_text, scout_err = M.scout_input(run, fields)
         if scout_err then return scout_err end
-        local result, err = ai.structured(step.meter, cfg.model, M.scout_schema(cfg, fields, ordered(run.pool)), SCOUT_SYSTEM,
+        local result, err = ai.structured(step.meter, cfg.model, M.scout_schema(cfg, fields, ordered(run.pool, paths(fields))), SCOUT_SYSTEM,
             scout_text :: string, { max_tokens = cfg.max_tokens, temperature = cfg.temperature })
         if err then return err end
         run.confidence = tonumber(result.confidence) or 0
@@ -342,7 +348,7 @@ function M.scout(run: any, step: any): error?
             if region_err then return region_err end
             local hits, search_err = doctools.search(ctx, run.config.retrieval.search_mode, q.query, field.chunks, region)
             if search_err then return search_err end
-            add(run.pool, hits); queries_run[#queries_run + 1] = q.query
+            add(run.pool, hits, q.field, q.query); queries_run[#queries_run + 1] = q.query
         end
     end
     step.queries = queries_run
@@ -401,8 +407,8 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
         end
         table.sort(found, function(a: any, b: any): boolean return a.ordinal < b.ordinal end)
     end
-    -- Deep fields retain their own evidence through scout pruning.
-    shapes.admit(run.pool, found)
+    -- Deep fields keep their own evidence visible to themselves.
+    add(run.pool, found, shapes.path(f))
     local analysis, analysis_err = ai.generate(step.meter, cfg.model,
         system("You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it."),
         field_lines({ f }) .. "\n\nPassages:\n" .. render(found), { temperature = cfg.analysis_temperature })
@@ -500,8 +506,8 @@ For each field say whether the passages state it (found), give the value (any pl
 the chunk number and an exact quote copied character for character from that chunk.]])
 
 -- Extraction calls: fields grouped by their group, then by the region they read,
--- in at most "fields per call" per call. Every passage in a call is one each of
--- its fields may read; a call gets its own fields' notes, and document-wide
+-- in at most "fields per call" per call. Every passage in a call lies in the
+-- region its fields read and is still visible to at least one of them; a call gets its own fields' notes, and document-wide
 -- notes only when its fields read the whole document.
 function M.extraction_calls(run: any): ({ any }?, error?)
     local limit = run.config.stages.extract.max_fields_per_call
@@ -523,20 +529,20 @@ function M.extraction_calls(run: any): ({ any }?, error?)
         set.fields[#set.fields + 1] = f
         ::continue_field::
     end
-    local pool, calls = ordered(run.pool), {}
+    local calls = {}
     for _, key in ipairs(order) do
         local set = sets[key]
-        local passages = {}
-        for _, c in ipairs(pool) do
-            local allowed, err = visible(run, set.fields[1], c.ordinal)
-            if err then return nil, err end
-            if allowed then passages[#passages + 1] = c end
-        end
         for start = 1, #set.fields, limit do
             local batch = {}
             local names, notes = {}, {}
             for i = start, math.min(#set.fields, start + limit - 1) do
                 batch[#batch + 1] = set.fields[i]; names[shapes.path(set.fields[i])] = true
+            end
+            local passages = {}
+            for _, c in ipairs(ordered(run.pool, paths(batch))) do
+                local allowed, err = visible(run, set.fields[1], c.ordinal)
+                if err then return nil, err end
+                if allowed then passages[#passages + 1] = c end
             end
             for _, n in ipairs(run.notes) do
                 if (n.field and names[n.field]) or (not n.field and set.whole) then notes[#notes + 1] = n end
