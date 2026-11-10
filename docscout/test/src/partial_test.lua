@@ -36,6 +36,38 @@ local function context(cfg: any): any
 end
 return { run = test.run_cases(function()
     test.describe("Independent extraction calls", function()
+        for _, mode in ipairs({ "reported", "tokens", "finish", "absent" }) do
+            for _, method in ipairs({ "generate", "agent" }) do
+                test.it("preserves " .. method .. " failures and " .. mode .. " reply metadata", function()
+                    local meter, text, err, tool_calls = ai.meter(), nil, nil, 0
+                    local opts = { stage = "failure-test", sources = { 1 }, fields = { "amount" } }
+                    if method == "generate" then
+                        text, err = ai.generate(meter, "class:docscout-success", "Answer", "failure_metadata:" .. mode, opts)
+                    else
+                        local tools = { { name = "keyword_search", description = "Search", parameters = {
+                            type = "object", properties = { query = { type = "string" }, limit = { type = "integer" } } } } }
+                        text, tool_calls, err = ai.agent(meter, "class:docscout-success", "Search then answer", "failure_metadata:" .. mode,
+                            tools, 1, function(_name: string, _args: any): (string?, error?) return "The total amount is 1250.", nil end, opts)
+                        test.eq(tool_calls, 1)
+                        test.eq(meter.calls[1].prompt_tokens, 11); test.eq(meter.calls[1].completion_tokens, 7)
+                        test.is_nil(meter.calls[1].error_code)
+                    end
+                    test.is_nil(text); test.not_nil(err)
+                    test.eq(err:kind(), errors.INVALID); test.is_false(err:retryable())
+                    test.eq(err:details().code, "fixture_reported_failure"); test.eq(err:details().marker, "preserved")
+                    test.eq(#meter.calls, method == "agent" and 2 or 1)
+                    local call = meter.calls[#meter.calls]
+                    test.eq(call.error_code, "fixture_reported_failure"); test.eq(call.stage, "failure-test")
+                    test.eq(json.encode(call.sources), "[1]"); test.eq(json.encode(call.fields), '["amount"]')
+                    local reported = mode == "reported" or mode == "tokens"
+                    test.eq(call.prompt_tokens, reported and 17 or nil)
+                    test.eq(call.completion_tokens, reported and 18 or nil)
+                    test.eq(call.finish_reason, (mode == "reported" or mode == "finish") and "stop" or nil)
+                    test.eq(meter.input_tokens, (method == "agent" and 11 or 0) + (reported and 17 or 0))
+                    test.eq(meter.output_tokens, (method == "agent" and 7 or 0) + (reported and 18 or 0))
+                end)
+            end
+        end
         test.it("keeps successful calls before and after a failed call", function()
             local run = context(configuration({ "before", "provider_failure", "after" }))
             test.is_nil(stages.extract(run, { meter = ai.meter() }))

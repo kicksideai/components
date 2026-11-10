@@ -54,6 +54,26 @@ function M.structured(args: any): (any?, error?)
     return { result = { data = extraction(args.schema) }, tokens = usage(args, 12, 8) }, nil
 end
 function M.generate(args: any): (any?, error?)
+    local has_tool_result = false
+    for _, message in ipairs(args.messages) do
+        if message.role == "function_result" then has_tool_result = true end
+    end
+    for _, message in ipairs(args.messages) do
+        for _, part in ipairs(message.content or {}) do
+            if part.type == "text" then
+                local mode = part.text:match("failure_metadata:(%w+)")
+                if mode and (not args.tools or has_tool_result) then
+                    local details = { code = "fixture_reported_failure", marker = "preserved" }
+                    if mode == "reported" or mode == "tokens" then
+                        details.tokens = { prompt_tokens = 17, completion_tokens = 13, thinking_tokens = 5 }
+                    end
+                    if mode == "reported" or mode == "finish" then details.finish_reason = "stop" end
+                    return nil, errors.new({ kind = errors.INVALID, retryable = false,
+                        message = "Fixture rejected response", details = details })
+                end
+            end
+        end
+    end
     if args.model == "docscout-sampling" then return { result = { content = "Fixture notes" }, tokens = usage(args, 0, 0) }, nil end
     -- A prompt naming truncated_generation is cut by the output limit.
     for _, message in ipairs(args.messages) do
