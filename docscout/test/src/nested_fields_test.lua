@@ -121,7 +121,7 @@ return { run = test.run_cases(function()
         test.it("checks dates against their pattern in any letter case and leaves prose formats to the model", function()
             local cases = {
                 { "mm/dd/yyyy", "02/28/2026", true }, { "mm/dd/yyyy", "2026-02-28", false },
-                { "D MMMM YYYY", "8 March 2026", true }, { "D MMMM YYYY", "8 Marchember 2026", false },
+                { "D MMMM YYYY", "8 March 2026", false }, { "D MMMM YYYY", "8 Marchember 2026", false },
                 { "MM/YY", "03/26", true }, { "an ISO date", "08.03.2026", true }, { "", "anything", true },
             }
             for _, c in ipairs(cases) do
@@ -131,6 +131,23 @@ return { run = test.run_cases(function()
                 test.is_nil(stages.verify(run, {}))
                 test.eq(run.values[1].verified, c[3], c[1] .. " " .. c[2])
             end
+        end)
+        test.it("leaves month-name dates unverified without assuming a language", function()
+            for _, format in ipairs({"D MMMM YYYY", "D MMM YYYY", "d mmmm yyyy"}) do
+                for _, value in ipairs({"8 mars 2026", "8 März 2026", "8 marzo 2026", "8 March 2026", "8 Marchember 2026"}) do
+                    local f = field("signed", "", "date"); f.expected_format = format
+                    local cfg = configuration({f}); cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = false, false
+                    local run = {config=cfg, values={{name="signed", path="signed", value=value, missing=false, evidence={}}}}
+                    test.is_nil(stages.verify(run, {})); test.is_false(run.values[1].verified)
+                    test.contains(run.values[1].reason, "language is unspecified")
+                    test.is_nil((run.values[1].reason:find("not a date", 1, true)))
+                    test.eq(run.values[1].value, value)
+                end
+            end
+            local f = field("dates", "", "list")
+            local item = property("on", "date"); item.expected_format = "D MMMM YYYY"
+            f.item = {type="object", properties={item}}
+            test.contains(shapes.format_issue(f, {{on="8 mars 2026"}}), "on: Date format")
         end)
         test.it("checks date formats inside lists and objects", function()
             local f = field("dates", "", "list")

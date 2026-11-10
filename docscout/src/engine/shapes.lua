@@ -176,19 +176,21 @@ function M.value_schema(f: any): any
 end
 
 -- Date pattern tokens an expected format may use, longest first, with the
--- time layout element each stands for.
-local DATE_TOKENS = { { "YYYY", "2006" }, { "MMMM", "January" }, { "MMM", "Jan" }, { "MM", "01" },
+-- time layout element each numeric token stands for.
+local DATE_TOKENS = { { "YYYY", "2006" }, { "MMMM", "" }, { "MMM", "" }, { "MM", "01" },
     { "DD", "02" }, { "YY", "06" }, { "M", "1" }, { "D", "2" } }
 
 -- The time layout of an expected date format written only with date tokens
--- and separators, in any letter case, or nil for a format in prose.
-function M.date_layout(format: string): string?
-    local pattern, layout, i, tokens = format:upper(), {}, 1, 0
+-- and separators, in any letter case. Month names need an explicit language;
+-- prose formats remain model hints.
+function M.date_layout(format: string): (string?, string?)
+    local pattern, layout, i, tokens, month_name = format:upper(), {}, 1, 0, false
     while i <= #pattern do
         local matched = false
         for _, t in ipairs(DATE_TOKENS) do
             if pattern:sub(i, i + #t[1] - 1) == t[1] then
                 layout[#layout + 1], i, tokens, matched = t[2], i + #t[1], tokens + 1, true
+                if t[1] == "MMMM" or t[1] == "MMM" then month_name = true end
                 break
             end
         end
@@ -198,7 +200,8 @@ function M.date_layout(format: string): string?
             layout[#layout + 1], i = c, i + 1
         end
     end
-    return tokens > 0 and table.concat(layout) or nil
+    if month_name then return nil, "Date format uses a month name; its language is unspecified" end
+    return tokens > 0 and table.concat(layout) or nil, nil
 end
 
 -- Why a value breaks the format its field declares, or nil. A date whose
@@ -207,7 +210,8 @@ end
 function M.format_issue(f: any, value: any): string?
     if value == nil then return nil end
     if f.type == "date" and type(value) == "string" and f.expected_format and f.expected_format ~= "" then
-        local layout = M.date_layout(f.expected_format)
+        local layout, unsupported = M.date_layout(f.expected_format)
+        if unsupported then return unsupported end
         if layout then
             local _, err = time.parse(layout, value)
             if err then return "Value \"" .. value .. "\" is not a date in the format " .. f.expected_format end
