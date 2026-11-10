@@ -1399,3 +1399,19 @@ entries:
     stages: kickside.docscout.engine:stages
     shapes: kickside.docscout.engine:shapes
     store: kickside.docscout.persist:store
+
+- name: fixture_highlight_visible_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-highlight-visible
+    capabilities: [structured_output]
+    class: [docscout-highlight-visible]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-highlight-visible
+    options:
+      reply: {"1": ["total amount"]}
