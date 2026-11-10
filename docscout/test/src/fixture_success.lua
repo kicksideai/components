@@ -51,6 +51,14 @@ function M.structured(args: any): (any?, error?)
 end
 function M.generate(args: any): (any?, error?)
     if args.model == "docscout-sampling" then return { result = { content = "Fixture notes" }, tokens = usage(args, 0, 0) }, nil end
+    -- A prompt naming truncated_generation is cut by the output limit.
+    for _, message in ipairs(args.messages) do
+        for _, part in ipairs(message.content or {}) do
+            if part.type == "text" and part.text:find("truncated_generation", 1, true) then
+                return { result = { content = "The total is" }, finish_reason = "length", tokens = { prompt_tokens = 10, completion_tokens = 4 } }, nil
+            end
+        end
+    end
     for _, message in ipairs(args.messages) do
         for _, part in ipairs(message.content or {}) do
             if part.type == "text" and part.text:find("deep_failure", 1, true) then

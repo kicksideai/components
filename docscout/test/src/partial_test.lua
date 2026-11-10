@@ -139,6 +139,28 @@ return { run = test.run_cases(function()
             test.eq(result.status, "partial"); test.eq(result.values.before, 1250); test.eq(result.values.after, 1250)
             test.is_true(result.fields[2].failed); test.eq(result.fields[2].error.details.code, "fixture_deep_failure")
         end)
+        test.it("fails a deep field whose analysis is cut by the output limit", function()
+            local owner = uuid.v4()
+            local caller = data.caller(owner)
+            local cfg = configuration({ "before", "truncated_generation" })
+            cfg.fields[2].strategy = "deep"
+            cfg.stages.deep.enabled, cfg.stages.deep.max_queries, cfg.stages.deep.model = true, 1, "class:docscout-success"
+            local id = assert(caller:call("app:probe", { op = "create", input = { title = "Deep reader", config = cfg } })).component_id
+            local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+            local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
+            test.eq(result.status, "partial"); test.eq(result.values.before, 1250)
+            test.is_true(result.fields[2].failed); test.eq(result.fields[2].error.details.code, "model_reply_truncated")
+            test.is_false(result.fields[2].error.retryable)
+        end)
+        test.it("fails an agent scout whose reply is cut by the output limit", function()
+            local cfg = configuration({ "truncated_generation" })
+            cfg.stages.scout.enabled, cfg.stages.scout.mode, cfg.stages.scout.model = true, "agent", "class:docscout-success"
+            cfg.stages.scout.max_rounds, cfg.stages.scout.max_extra_queries = 1, 1
+            local run = context(cfg)
+            run.document = { outline = {} }
+            local err = stages.scout(run, { meter = ai.meter() })
+            test.not_nil(err); test.eq(err:details().code, "model_reply_truncated"); test.is_false(err:retryable())
+        end)
         test.it("publishes committed partial runs through the realtime topic", function()
             local owner = uuid.v4()
             local caller = data.caller(owner)
