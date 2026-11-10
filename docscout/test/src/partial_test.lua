@@ -11,6 +11,7 @@ local ai = require("ai")
 local stages = require("stages")
 local shapes = require("shapes")
 local scoring = require("scoring")
+local sql = require("sql")
 local function schema(): any
     return assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json))
 end
@@ -68,6 +69,53 @@ return { run = test.run_cases(function()
             test.is_true(run.values[2].failed); test.is_nil(run.values[2].value)
             test.eq(run.values[2].error.details.code, "structured_reply_truncated")
             test.eq(step.meter.input_tokens, 36); test.eq(step.meter.output_tokens, 24)
+        end)
+        test.it("records each extraction call with its usage, finish reason, error and the passages it read", function()
+            local run = context(configuration({ "before", "provider_failure", "truncated_reply" }))
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.extract(run, step))
+            local calls = step.meter.calls
+            test.eq(#calls, 3)
+            for i, name in ipairs({ "before", "provider_failure", "truncated_reply" }) do
+                test.eq(calls[i].stage, "extract"); test.eq(calls[i].model, "class:docscout-success")
+                test.eq(json.encode(calls[i].fields), json.encode({ name })); test.eq(json.encode(calls[i].sources), "[1]")
+                test.is_true(calls[i].latency_ms >= 0)
+            end
+            test.eq(calls[1].prompt_tokens, 12); test.eq(calls[1].completion_tokens, 8); test.is_nil(calls[1].error_code)
+            test.eq(calls[2].error_code, "fixture_provider_failure"); test.is_nil(calls[2].prompt_tokens); test.is_nil(calls[2].completion_tokens)
+            test.eq(calls[3].finish_reason, "length"); test.eq(calls[3].error_code, "structured_reply_truncated")
+            test.eq(calls[3].prompt_tokens, 12); test.eq(calls[3].completion_tokens, 8)
+        end)
+        test.it("returns and stores per-call records and a run summary of coverage and unverified reasons", function()
+            local owner = uuid.v4()
+            local caller = data.caller(owner)
+            local cfg = configuration({ "before", "provider_failure", "missing_reply" })
+            cfg.stages.verify.enabled = true
+            local id = assert(caller:call("app:probe", { op = "create", input = { title = "Traced reader", config = cfg } })).component_id
+            local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+            local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
+            local by_kind = {}
+            for _, step in ipairs(result.trace) do by_kind[step.kind] = step end
+            test.eq(#by_kind.extract.calls, 3)
+            local embeds = 0
+            for _, call in ipairs(by_kind.read.calls) do if call.stage == "embed" then embeds = embeds + 1 end end
+            test.is_true(embeds > 0)
+            local s = result.summary
+            test.eq(s.fields, 3); test.eq(s.found, 1); test.eq(s.missing, 1); test.eq(s.failed, 1)
+            test.eq(json.encode(s.unverified), json.encode({ extraction_failed = 1 }))
+            local snapshot = assert(caller:call("app:probe", { op = "get", id = id }))
+            test.eq(json.encode(snapshot.runs[1].result.summary), json.encode(s))
+            local db = assert(sql.get("app:db"))
+            local rows = assert(db:query("SELECT trace FROM kickside_docscout_runs WHERE id=$1", { result.run_id }))
+            db:release()
+            local stored = {}
+            for _, step in ipairs(assert(json.decode(rows[1].trace))) do stored[step.kind] = step end
+            test.eq(#stored.extract.calls, 3)
+            local contract_schema = assert(json.decode(assert(registry.get("kickside.docscout:extraction")).data.methods[1].output_schemas[1].definition))
+            local valid, err = json.validate_string(contract_schema, assert(json.encode(result)))
+            test.is_true(valid, tostring(err))
+            test.not_nil(contract_schema.properties.summary)
+            test.not_nil(contract_schema.properties.trace.items.properties.calls)
         end)
         test.it("fails all remaining calls after a deadline without marking fields missing", function()
             local run = context(configuration({ "one", "two" }))

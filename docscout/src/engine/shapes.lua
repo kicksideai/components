@@ -63,6 +63,20 @@ function M.prune(pool: any, noise: { any }, evidence: { any }, selected: { integ
     return dropped
 end
 
+-- Ordinals of chunks, in their order.
+function M.ordinals(chunks: { any }): { integer }
+    local out = {}
+    for _, c in ipairs(chunks) do out[#out + 1] = c.ordinal end
+    return out
+end
+
+-- Paths of fields or values, in their order.
+function M.paths(items: { any }): { string }
+    local out = {}
+    for _, item in ipairs(items) do out[#out + 1] = M.path(item) end
+    return out
+end
+
 -- Pool chunks in document order.
 function M.ordered(pool: any): { any }
     local out = {}

@@ -858,7 +858,7 @@ entries:
   meta: {type: test, suite: docscout_partial, group: Docscout}
   source: file://partial_test.lua
   method: run
-  modules: [json, registry, uuid, time, process, channel]
+  modules: [json, registry, uuid, time, process, channel, sql]
   imports:
     test: wippy.test:test
     data: app:fixture_data

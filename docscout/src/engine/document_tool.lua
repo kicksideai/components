@@ -38,7 +38,7 @@ return { run = function(args: any): (any?, error?)
     local hits, text, err = nil, nil, failure
     if not err then hits, text, err = doctools.call({ document = document, meter = meter }, context.tool, args) end
     return { text = text, chunks = hits or {}, docscout = {
-        input_tokens = meter.input_tokens, output_tokens = meter.output_tokens,
+        input_tokens = meter.input_tokens, output_tokens = meter.output_tokens, calls = meter.calls,
         error = err and error_envelope.encode(err) or nil,
     } }, nil
 end }

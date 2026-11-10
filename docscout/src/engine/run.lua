@@ -18,12 +18,29 @@ local M = {}
 
 local CALLERS = { ui = true, agent = true, eval = true, workflow = true }
 
--- One stage of a run as the trace records it.
+-- One stage of a run as the trace records it, with a record per model call.
 type TraceStep = { kind: string, status: string, scope: string, model: string?, duration_ms: integer,
-    input_tokens: number, output_tokens: number, queries: { string }?, message: string? }
+    input_tokens: number, output_tokens: number, queries: { string }?, calls: { any }?, message: string? }
 
 local function invalid(message: string): error return errors.new({ kind = errors.INVALID, message = message }) end
 local function millis(): integer return math.floor(time.now():unix_nano() / 1000000) end
+
+-- Field coverage of a run and, per cause, how many fields are not verified.
+-- A field without a recorded cause is unverified because no check ran.
+function M.summary(values: { any }): any
+    local unverified: { [string]: any } = shapes.object()
+    local out = { fields = #values, found = 0, missing = 0, failed = 0, verified = 0, unverified = unverified }
+    for _, v in ipairs(values) do
+        if v.failed then out.failed = out.failed + 1 elseif v.missing then out.missing = out.missing + 1 else out.found = out.found + 1 end
+        if v.verified then out.verified = out.verified + 1
+        else
+            local codes = v.failed and { "extraction_failed" } or v.codes or {}
+            if #codes == 0 then codes = { "unchecked" } end
+            for _, code in ipairs(codes) do unverified[code] = (tonumber(unverified[code]) or 0) + 1 end
+        end
+    end
+    return out
+end
 
 -- input: { id, upload_id, caller, deadline? } where deadline is an RFC3339
 -- instant the run must finish by.
@@ -80,7 +97,7 @@ function M.run(input: any): (any?, error?)
         trace[#trace + 1] = {
             kind = kind, status = err and "failed" or record.status or "completed", scope = scope, model = record.model,
             duration_ms = millis() - t0, input_tokens = record.meter.input_tokens, output_tokens = record.meter.output_tokens,
-            queries = record.queries, tool_calls = record.tool_calls, agent_id = record.agent_id, dataflow_id = record.dataflow_id, message = err and tostring(err) or record.message,
+            queries = record.queries, calls = #record.meter.calls > 0 and record.meter.calls or nil, tool_calls = record.tool_calls, agent_id = record.agent_id, dataflow_id = record.dataflow_id, message = err and tostring(err) or record.message,
         }
         if err then failure = err end
         return err == nil
@@ -123,7 +140,7 @@ function M.run(input: any): (any?, error?)
         upload_id = input.upload_id, config_revision = extractor.revision, fields = fields, trace = trace,
         duration_ms = millis() - started, tokens = tokens, status = status,
         error = failure and error_envelope.encode(failure) or nil,
-        pages = run.document and run.document.page_count or 0,
+        pages = run.document and run.document.page_count or 0, summary = M.summary(run.values),
     }
     result.values = shapes.values(result)
     local expires_at, expiry_err = retention.expires_at(extractor_window)
@@ -133,7 +150,7 @@ function M.run(input: any): (any?, error?)
     end
     local run_id, record_err = repository.add_run(input.id, {
         user_id = actor:id(), upload_id = input.upload_id, caller = caller, status = result.status,
-        config_revision = extractor.revision, result = { fields = fields, values = result.values, error = result.error }, trace = trace,
+        config_revision = extractor.revision, result = { fields = fields, values = result.values, error = result.error, summary = result.summary }, trace = trace,
         duration_ms = result.duration_ms, tokens = tokens, expires_at = expires_at,
     })
     if record_err then
