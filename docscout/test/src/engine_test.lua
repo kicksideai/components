@@ -432,11 +432,42 @@ return { run = test.run_cases(function()
             test.is_nil((text:find("fee reads only", 1, true)))
             test.is_true(text:find("[C3] Law", 1, true) ~= nil, text)
         end)
-        test.it("lets the highlighter name only the passages it is sent", function()
+        test.it("asks the highlighter for one entry per passage it is sent and no other", function()
             local schema = stages.highlight_schema({ { ordinal = 4 }, { ordinal = 5 } })
-            test.is_true((json.validate(schema, json.decode('{"passages":[{"chunk":4,"excerpts":["Total due"]}]}'))))
-            test.is_false((json.validate(schema, json.decode('{"passages":[{"chunk":-1,"excerpts":["Total due"]}]}'))))
-            test.is_false((json.validate(schema, json.decode('{"passages":[{"chunk":1,"excerpts":["Total due"]}]}'))))
+            test.is_true((json.validate(schema, json.decode('{"4":["Total due"],"5":[]}'))))
+            test.is_false((json.validate(schema, json.decode('{"4":["Total due"]}'))))
+            test.is_false((json.validate(schema, json.decode('{"4":[],"5":[],"1":["Total due"]}'))))
+        end)
+        test.it("asks the scout for evidence and a note for every field it scouts", function()
+            local fields = { { name = "fee", group = "" }, { name = "rate", group = "terms" } }
+            local schema = stages.scout_schema({ max_extra_queries = 2 }, fields, { { ordinal = 1 }, { ordinal = 2 } })
+            local reply = '{"confidence":0.5,"evidence":{"fee":[1],"terms.rate":[]},"drop":[2],"queries":[],"notes":{"fee":"C1 states it","terms.rate":""}}'
+            test.is_true((json.validate(schema, json.decode(reply))))
+            test.is_false((json.validate(schema, json.decode((reply:gsub(',"terms.rate":%[%]', ""))))))
+            test.is_false((json.validate(schema, json.decode((reply:gsub('"fee":"C1 states it",', ""))))))
+        end)
+        test.it("asks for a summary of every section", function()
+            local schema = stages.summary_schema({ { id = "s1" }, { id = "s2" } })
+            test.is_true((json.validate(schema, json.decode('{"s1":"Parties","s2":"Payment terms"}'))))
+            test.is_false((json.validate(schema, json.decode('{"s1":"Parties"}'))))
+        end)
+        test.it("keeps one scout note per field and retains cited passages", function()
+            local p = shapes.pool()
+            shapes.add(p, { { ordinal = 1, content = "The total amount is 1250.", heading_path = "Payment" }, { ordinal = 2, content = "Other", heading_path = "Other" } })
+            local f = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+            local fee, rate = {}, {}
+            for k, v in pairs(f) do fee[k] = v; rate[k] = v end
+            fee.name, rate.name, rate.group = "fee", "rate", "terms"
+            local run = { document = { outline = {} }, regions = {}, notes = {}, pool = p, confidence = 0,
+                config = { fields = { fee, rate }, retrieval = { search_mode = "keyword" }, stages = { deep = { enabled = false },
+                    scout = { model = "class:docscout-success", mode = "loop", max_rounds = 0, max_extra_queries = 1, target_confidence = 0.7, max_tokens = 1024,
+                        drop_noise = true, share_notes = true, tools = {} } } } }
+            test.is_nil(stages.scout(run, { meter = ai.meter() }))
+            local noted = {}
+            for _, n in ipairs(run.notes) do noted[#noted + 1] = n.field .. "=" .. n.text end
+            table.sort(noted)
+            test.eq(table.concat(noted, ","), "fee=Fixture,terms.rate=Fixture")
+            test.not_nil(run.pool.by_ordinal[1])
         end)
         test.it("splits a group with one region by the fields-per-call limit", function()
             local pool = shapes.pool()
