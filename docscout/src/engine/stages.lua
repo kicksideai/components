@@ -411,7 +411,7 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
     add(run.pool, found, shapes.path(f))
     local analysis, analysis_err = ai.generate(step.meter, cfg.model,
         system("You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it."),
-        field_lines({ f }) .. "\n\nPassages:\n" .. render(found), { temperature = cfg.analysis_temperature })
+        field_lines({ f }) .. "\n\nPassages:\n" .. render(found), { temperature = cfg.analysis_temperature, max_tokens = cfg.max_tokens })
     if analysis_err then return analysis_err end
     run.analyses[shapes.path(f)] = analysis
     return nil
@@ -464,7 +464,8 @@ end
 local HIGHLIGHT_BATCH = 12
 
 function M.highlight(run: any, step: any): error?
-    local model = run.config.retrieval.highlighter_model
+    local retrieval = run.config.retrieval
+    local model = retrieval.highlighter_model
     local chunks = ordered(run.pool)
     local kept, before = 0, #chunks
     for start = 1, #chunks, HIGHLIGHT_BATCH do
@@ -472,7 +473,8 @@ function M.highlight(run: any, step: any): error?
         for i = start, math.min(#chunks, start + HIGHLIGHT_BATCH - 1) do batch[#batch + 1] = chunks[i] end
         local result, err = ai.structured(step.meter, model, M.highlight_schema(batch),
             system("For each passage, keyed by its chunk number without the C, copy word for word the sentences that state or help determine any field's value. Return an empty list for passages that do not."),
-            "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch))
+            "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch),
+            { temperature = retrieval.highlighter_temperature, max_tokens = retrieval.highlighter_max_tokens })
         if err then return err end
         for _, c in ipairs(batch) do
             -- Only excerpts that occur in the passage replace it, each as its own paragraph.
