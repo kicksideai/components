@@ -84,12 +84,11 @@ end
 -- name a field twice or leave one out; uniqueness across array items is not
 -- enforced by guided decoding.
 local function select_schema(outline: { any }, fields: { any }): any
-    local ids = section_ids(outline)
     local required, properties = {}, {}
     for _, f in ipairs(fields) do
         local path = shapes.path(f)
         required[#required + 1] = path
-        properties[path] = { type = "array", minItems = 1, maxItems = #outline, items = { type = "string", enum = ids } }
+        properties[path] = { type = "array", minItems = 1, maxItems = #outline, items = { type = "integer", minimum = 1, maximum = #outline } }
     end
     return { type = "object", additionalProperties = false, required = required, properties = properties }
 end
@@ -158,14 +157,19 @@ function M.map(run: any, step: any): error?
     local scoped = {}
     for _, f in ipairs(run.config.fields) do if f.search_within == "sections" then scoped[#scoped + 1] = f end end
     if #scoped > 0 then
+        local listing = {}
+        for n, section in ipairs(run.document.outline) do
+            listing[#listing + 1] = "[S" .. n .. "] " .. doctools.outline_text({ section })
+        end
         local result, err = ai.structured(step.meter, cfg.model, select_schema(run.document.outline, scoped),
-            system("You pick, for each field, the sections of the outline most likely to contain its value. Choose few but enough sections; include definitions or schedules a field depends on."),
-            "Outline:\n" .. doctools.outline_text(run.document.outline) .. "\n\nFields:\n" .. field_lines(scoped))
+            system("You pick, for each field, the sections of the outline most likely to contain its value. Choose few but enough sections; include definitions or schedules a field depends on. Return section ordinals: the numbers after S in the outline labels, without the S."),
+            "Outline:\n" .. table.concat(listing, "\n") .. "\n\nFields:\n" .. field_lines(scoped))
         if err then return err end
         local picked = {}
         for _, f in ipairs(scoped) do
             local path = shapes.path(f)
-            local ids = result[path]
+            local ids = {}
+            for _, ordinal in ipairs(result[path]) do ids[#ids + 1] = run.document.outline[ordinal].id end
             picked[#picked + 1] = path .. " → " .. table.concat(ids, ", ")
             run.regions[path] = shapes.ordinals_of(run.document.outline, ids)
         end

@@ -43,6 +43,45 @@ return { run = test.run_cases(function()
             end
             test.eq(#step.queries, 3)
         end)
+        test.it("admits fifty fields and twenty-one sections without enums or schema references", function()
+            local names = {}
+            for n = 1, 50 do names[n] = "f" .. n end
+            local run = run_for(names)
+            run.config.stages.map.model = MODEL .. "-budget"
+            for n = 4, 21 do
+                run.document.outline[n] = { id = "s" .. n, title = "Section " .. n, level = 1,
+                    path = "Section " .. n, chunk_start = n + 2, chunk_end = n + 2, tokens = 20 }
+            end
+            local step = { meter = ai.meter() }
+            local err = stages.map(run, step)
+            test.is_nil(err, tostring(err))
+            test.eq(#step.queries, 50)
+            for _, name in ipairs(names) do test.eq(json.encode(run.regions[name]), "[1,2]") end
+        end)
+        test.it("maps section ordinals to their ids and chunk regions", function()
+            local run = run_for({ "terms.price" })
+            run.config.stages.map.model = MODEL .. "-maximum"
+            run.document.outline[1].id, run.document.outline[3].id = "appendix", "terms"
+            local step = { meter = ai.meter() }
+            local err = stages.map(run, step)
+            test.is_nil(err, tostring(err))
+            test.eq(json.encode(run.regions["terms.price"]), "[4,5]")
+            test.eq(step.queries[1], "terms.price → terms")
+        end)
+        for _, mode in ipairs({ "below", "above", "fractional" }) do
+            test.it("rejects a " .. mode .. " section ordinal without assigning regions", function()
+                local run = run_for({ "parties.buyer", "terms.price" })
+                run.config.stages.map.model = MODEL .. "-" .. mode
+                local step = { meter = ai.meter() }
+                local err = stages.map(run, step)
+                test.not_nil(err)
+                test.eq((err :: any):kind(), errors.UNAVAILABLE)
+                test.is_true((err :: any):retryable())
+                test.contains(tostring(err), "does not match its schema")
+                test.is_nil(next(run.regions))
+                test.is_nil(step.queries)
+            end)
+        end
         test.it("names the field a reply leaves without sections", function()
             local run = run_for({ "parties.buyer", "terms.unanswered" })
             local err = stages.map(run, { meter = ai.meter() })
