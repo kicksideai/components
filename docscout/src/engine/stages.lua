@@ -648,12 +648,14 @@ function M.verify(run: any, step: any): error?
                     if region_err then return region_err end
                     if allowed then candidates[#candidates + 1] = ordinal end
                 end
-                local at = shapes.locate(e.quote, e.chunk, bodies, candidates)
+                local at, last = shapes.locate(e.quote, e.chunk, bodies, candidates)
                 e.found = at ~= nil
                 if at then
                     local c = by_ordinal[at]
                     e.chunk, e.chunk_id, e.section = at, c.id, c.heading_path
                     local location = shapes.quote_location(c, e.quote)
+                    -- A quote across chunks spans from the first chunk's first page to the last chunk's last page.
+                    if last ~= at then location = { page_start = c.page_start, page_end = by_ordinal[last].page_end } end
                     e.page, e.page_start, e.page_end = location.page, location.page_start, location.page_end
                 end
                 if not e.found then v.quotes_found = false end

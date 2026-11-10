@@ -229,27 +229,56 @@ local EQUIVALENT = {
 }
 
 -- Text compared for quote matching: lower case, typographic characters made
--- plain, Markdown emphasis and table bars removed, whitespace collapsed. Signs,
--- decimal points and numeric punctuation remain significant.
+-- plain, Markdown emphasis, table bars and OCR math spacing removed, whitespace
+-- collapsed. Signs, decimal points and numeric punctuation remain significant.
 function M.normalize(s: string): string
     local out = {}
     for ch in s:gmatch("[%z\1-\127\194-\244][\128-\191]*") do out[#out + 1] = EQUIVALENT[ch] or ch end
     -- Normalization removes Markdown emphasis, code ticks and table bars.
     local plain = table.concat(out):gsub("([^%s%*])%*+", "%1 "):gsub("%*+([^%s%*])", " %1"):gsub("__+", " "):gsub("`+", " "):gsub("|", " ")
+    -- OCR writes horizontal space as LaTeX math such as $\quad$; a math span holding only spacing reads as a space.
+    plain = plain:gsub("\\hspace%*?%b{}", " "):gsub("\\q?quad", " "):gsub("\\[,;: ]", " "):gsub("%$%s*%$", " ")
     local folded = plain:lower():gsub("%s+", " ")
     return M.trim(folded)
 end
 
--- The chunk a quote comes from: the cited one when it holds the quote, else the
--- first chunk in document order that does. bodies maps ordinal to normalized text.
-function M.locate(quote: string, cited: integer?, bodies: { [integer]: string }, ordinals: { integer }): integer?
-    local q = M.normalize(quote)
-    if q == "" then return nil end
-    if cited and bodies[cited] and bodies[cited]:find(q, 1, true) then return cited end
-    for _, ordinal in ipairs(ordinals) do
-        if bodies[ordinal]:find(q, 1, true) then return ordinal end
+-- Two consecutive normalized chunk bodies as one text. Chunks may repeat the
+-- end of the previous chunk; the shared text appears once.
+local function join(a: string, b: string): string
+    local probe = b:sub(1, 32)
+    local at = a:find(probe, 1, true)
+    while at do
+        if b:sub(1, #a - at + 1) == a:sub(at) then return a:sub(1, at - 1) .. b end
+        at = a:find(probe, at + 1, true)
     end
-    return nil
+    return a .. " " .. b
+end
+
+-- The chunks a quote comes from, as first and last ordinal: the cited chunk
+-- when it holds the quote, else the first chunk in document order that does,
+-- else two adjacent chunks the quote runs across. bodies maps ordinal to
+-- normalized text; ordinals are the chunks the quote may come from.
+function M.locate(quote: string, cited: integer?, bodies: { [integer]: string }, ordinals: { integer }): (integer?, integer?)
+    local q = M.normalize(quote)
+    if q == "" then return nil, nil end
+    if cited and bodies[cited] and bodies[cited]:find(q, 1, true) then return cited, cited end
+    local allowed = {}
+    for _, ordinal in ipairs(ordinals) do
+        if bodies[ordinal]:find(q, 1, true) then return ordinal, ordinal end
+        allowed[ordinal] = true
+    end
+    local function spans(first: integer): boolean
+        return allowed[first] and allowed[first + 1] and join(bodies[first], bodies[first + 1]):find(q, 1, true) ~= nil or false
+    end
+    if cited then
+        local at: integer = cited
+        if spans(at - 1) then return at - 1, at end
+        if spans(at) then return at, at + 1 end
+    end
+    for _, ordinal in ipairs(ordinals) do
+        if spans(ordinal) then return ordinal, ordinal + 1 end
+    end
+    return nil, nil
 end
 
 -- Instruction every prompt carries: document text is data.
