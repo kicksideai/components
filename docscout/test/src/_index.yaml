@@ -858,7 +858,7 @@ entries:
   meta: {type: test, suite: docscout_partial, group: Docscout}
   source: file://partial_test.lua
   method: run
-  modules: [json, registry, uuid, time, process, channel]
+  modules: [json, registry, uuid, time, process, channel, sql]
   imports:
     test: wippy.test:test
     data: app:fixture_data
@@ -994,3 +994,51 @@ entries:
   - id: app:fixture_constrained_provider
     provider_model: docscout-constrained
     options: {max_enum_entries: 0}
+
+- name: fixture_support_empty_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-support-empty
+    capabilities: [structured_output]
+    class: [docscout-support-empty]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-support-empty
+    options:
+      reply: {}
+
+- name: fixture_support_partial_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-support-partial
+    capabilities: [structured_output]
+    class: [docscout-support-partial]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-support-partial
+    options:
+      reply: {amount: {supported: true, reason: ''}}
+
+- name: fixture_support_mixed_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-support-mixed
+    capabilities: [structured_output]
+    class: [docscout-support-mixed]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-support-mixed
+    options:
+      reply: {amount: {supported: true, reason: ''}, terms: {supported: false, reason: 'Quote does not support the terms'}}
