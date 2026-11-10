@@ -30,7 +30,7 @@ Every caller opens `kickside.docscout:extraction`, binding `kickside.docscout:en
 
 The ordered stages read and process the document, map sections, prefetch evidence, scout, analyze deep fields, highlight, extract with structured output, and verify. Extract defaults to `class:fast`. Processed copies belong to extractor plus user, upload, checksum and processing settings. Chunks use `kickside/search-index` for keyword and vector retrieval. Exact page locations come from saved page spans; uncertain locations retain their range.
 
-Map, Scout, Extract and Verify accept optional stage-local `temperature` settings. Map and Verify also accept `max_tokens`; Extract uses `max_output_tokens`. Omitted settings retain the provider default. These are requested settings: providers can omit unsupported sampling options or adjust output limits. A selected Scout agent retains its own model and sampling settings.
+Map, Scout, Extract and Verify accept optional stage-local `temperature` settings. Map and Verify also accept `max_tokens`; Extract uses `max_output_tokens`. Temperature defaults to 0 in new configurations; an omitted setting retains the provider default. These are requested settings: providers can omit unsupported sampling options or adjust output limits. A selected Scout agent retains its own model and sampling settings.
 
 - UI: `POST /docscout/{id}/run`.
 - Block: `kickside.docscout.blocks:extract`, with `extractor_id` in config and `upload_id` in input. Its result contains values, fields with evidence, verification, run ID, pages, trace, revision, duration and tokens.
