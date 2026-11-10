@@ -2,7 +2,7 @@
 local M = {}
 local function value(schema: any): any
     if schema.enum then return schema.enum[1] end
-    if schema.type == "number" then return 1250 end
+    if schema.type == "number" or schema.type == "integer" then return schema.maximum or 1250 end
     if schema.type == "boolean" then return false end
     if schema.type == "array" then return { value(schema.items) } end
     if schema.type == "object" then
@@ -26,6 +26,14 @@ local function extraction(schema: any): any
     end
     return out
 end
+-- The sampling model reports the call's settings as its token usage:
+-- prompt tokens are 1000 + temperature * 100 (0 when unset), completion tokens are max_tokens.
+local function usage(args: any, prompt_tokens: integer, completion_tokens: integer): any
+    if args.model ~= "docscout-sampling" then return { prompt_tokens = prompt_tokens, completion_tokens = completion_tokens } end
+    local options = args.options or {}
+    return { prompt_tokens = options.temperature ~= nil and 1000 + math.floor(options.temperature * 100 + 0.5) or 0,
+        completion_tokens = options.max_tokens or 0 }
+end
 function M.structured(args: any): (any?, error?)
     if args.schema.properties.provider_failure then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Fixture provider unavailable", details = { code = "fixture_provider_failure" } })
@@ -37,9 +45,13 @@ function M.structured(args: any): (any?, error?)
     if args.schema.properties.invalid_reply then
         return { result = { data = {} }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
     end
-    return { result = { data = extraction(args.schema) }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
+    if args.model == "docscout-sampling" then
+        return { result = { data = value(args.schema) }, tokens = usage(args, 12, 8) }, nil
+    end
+    return { result = { data = extraction(args.schema) }, tokens = usage(args, 12, 8) }, nil
 end
 function M.generate(args: any): (any?, error?)
+    if args.model == "docscout-sampling" then return { result = { content = "Fixture notes" }, tokens = usage(args, 0, 0) }, nil end
     for _, message in ipairs(args.messages) do
         for _, part in ipairs(message.content or {}) do
             if part.type == "text" and part.text:find("deep_failure", 1, true) then

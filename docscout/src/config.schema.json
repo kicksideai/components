@@ -207,6 +207,18 @@
             "section_summaries": {
               "type": "boolean",
               "default": false
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2,
+              "description": "Sampling temperature for this stage's model calls. Unset uses the provider default."
+            },
+            "max_tokens": {
+              "type": "integer",
+              "minimum": 256,
+              "maximum": 64000,
+              "description": "Output token limit for this stage's model calls. Unset uses the provider default."
             }
           },
           "required": [
@@ -361,6 +373,12 @@
               "description": "Agent component id readable by the saver and runner. Applies to agent mode; omit to use the built-in loop.",
               "picker": "wc-component-picker",
               "class": "agent"
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2,
+              "description": "Sampling temperature for the built-in loop and agent model calls; a selected agent uses its own settings. Unset uses the provider default."
             }
           },
           "required": [
@@ -512,6 +530,12 @@
               "default": 20,
               "minimum": 1,
               "maximum": 100
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2,
+              "description": "Sampling temperature for this stage's model calls. Unset uses the provider default."
             }
           },
           "required": [
@@ -546,6 +570,18 @@
             "check_support": {
               "type": "boolean",
               "default": true
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2,
+              "description": "Sampling temperature for this stage's model calls. Unset uses the provider default."
+            },
+            "max_tokens": {
+              "type": "integer",
+              "minimum": 256,
+              "maximum": 64000,
+              "description": "Output token limit for this stage's model calls. Unset uses the provider default."
             }
           },
           "required": [

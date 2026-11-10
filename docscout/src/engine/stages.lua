@@ -79,18 +79,23 @@ local function summary_schema(outline: { any }): any
             properties = { section_id = { type = "string", enum = section_ids(outline) }, summary = { type = "string" } } } } } }
 end
 
--- Exactly one selection per field, each with at least one existing section.
+-- One required property per field path, each a list of at least one existing
+-- section. Keying the choice by field leaves a constrained decoder no way to
+-- name a field twice or leave one out; uniqueness across array items is not
+-- enforced by guided decoding.
 local function select_schema(outline: { any }, fields: { any }): any
-    local names = {}
-    for _, f in ipairs(fields) do names[#names + 1] = shapes.path(f) end
-    return { type = "object", additionalProperties = false, required = { "fields" }, properties = {
-        fields = { type = "array", minItems = #fields, maxItems = #fields, items = { type = "object", additionalProperties = false, required = { "field", "section_ids" },
-            properties = { field = { type = "string", enum = names },
-                section_ids = { type = "array", minItems = 1, maxItems = #outline, items = { type = "string", enum = section_ids(outline) } } } } } } }
+    local required, properties = {}, {}
+    for _, f in ipairs(fields) do
+        local path = shapes.path(f)
+        required[#required + 1] = path
+        properties[path] = { type = "array", minItems = 1, maxItems = #outline, items = { type = "integer", minimum = 1, maximum = #outline } }
+    end
+    return { type = "object", additionalProperties = false, required = required, properties = properties }
 end
 
 function M.map(run: any, step: any): error?
     local cfg = run.config.stages.map
+    local sampling = { temperature = cfg.temperature, max_tokens = cfg.max_tokens }
     local outline = run.document.outline
     -- A usable table of contents has at least three sections.
     local headed = #outline >= 3
@@ -103,7 +108,7 @@ function M.map(run: any, step: any): error?
             local carried = previous and ("The passages continue the section \"" .. previous .. "\" unless a new section starts at chunk " .. w.first .. ".\n\n") or ""
             local built, build_err = ai.structured(step.meter, cfg.model, outline_schema(w.first, w.last),
                 system("You divide a document into its logical sections. Give each section a short title and the chunk number where it starts, in order."),
-                carried .. w.preview)
+                carried .. w.preview, sampling)
             if build_err then return build_err end
             for _, s in ipairs(built.sections) do
                 local start = math.tointeger(s.first_chunk) :: integer
@@ -144,7 +149,7 @@ function M.map(run: any, step: any): error?
             listing[#listing + 1] = "## " .. s.id .. " " .. s.path .. "\n" .. table.concat(body, "\n"):sub(1, 1500)
         end
         local result, err = ai.structured(step.meter, cfg.model, summary_schema(run.document.outline),
-            system("Summarize each section in one sentence, naming what it covers. Return one summary per section id."), table.concat(listing, "\n\n"))
+            system("Summarize each section in one sentence, naming what it covers. Return one summary per section id."), table.concat(listing, "\n\n"), sampling)
         if err then return err end
         for _, item in ipairs(result.summaries) do
             for _, s in ipairs(run.document.outline) do if s.id == item.section_id then s.summary = trim(item.summary) end end
@@ -153,21 +158,21 @@ function M.map(run: any, step: any): error?
     local scoped = {}
     for _, f in ipairs(run.config.fields) do if f.search_within == "sections" then scoped[#scoped + 1] = f end end
     if #scoped > 0 then
-        local result, err = ai.structured(step.meter, cfg.model, select_schema(run.document.outline, scoped),
-            system("You pick, for each field, the sections of the outline most likely to contain its value. Choose few but enough sections; include definitions or schedules a field depends on."),
-            "Outline:\n" .. doctools.outline_text(run.document.outline) .. "\n\nFields:\n" .. field_lines(scoped))
-        if err then return err end
-        local seen = {}
-        for _, item in ipairs(result.fields) do
-            if seen[item.field] then
-                return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "the section choice names " .. item.field .. " twice and leaves a field out" })
-            end
-            seen[item.field] = true
+        local listing = {}
+        for n, section in ipairs(run.document.outline) do
+            listing[#listing + 1] = "[S" .. n .. "] " .. doctools.outline_text({ section })
         end
+        local result, err = ai.structured(step.meter, cfg.model, select_schema(run.document.outline, scoped),
+            system("You pick, for each field, the sections of the outline most likely to contain its value. Choose few but enough sections; include definitions or schedules a field depends on. Return section ordinals: the numbers after S in the outline labels, without the S."),
+            "Outline:\n" .. table.concat(listing, "\n") .. "\n\nFields:\n" .. field_lines(scoped), sampling)
+        if err then return err end
         local picked = {}
-        for _, item in ipairs(result.fields) do
-            run.regions[item.field] = shapes.ordinals_of(run.document.outline, item.section_ids)
-            picked[#picked + 1] = item.field .. " → " .. table.concat(item.section_ids, ", ")
+        for _, f in ipairs(scoped) do
+            local path = shapes.path(f)
+            local ids = {}
+            for _, ordinal in ipairs(result[path]) do ids[#ids + 1] = run.document.outline[ordinal].id end
+            picked[#picked + 1] = path .. " → " .. table.concat(ids, ", ")
+            run.regions[path] = shapes.ordinals_of(run.document.outline, ids)
         end
         step.queries = picked
     end
@@ -291,7 +296,7 @@ function M.scout(run: any, step: any): error?
                     if call_err then return nil, call_err end
                     add(run.pool, hits)
                     return text, nil
-                end, { max_tokens = cfg.max_tokens })
+                end, { max_tokens = cfg.max_tokens, temperature = cfg.temperature })
         end
         found = run.pool.count - before
         if err then return err end
@@ -306,7 +311,7 @@ function M.scout(run: any, step: any): error?
         local scout_text, scout_err = M.scout_input(run, fields)
         if scout_err then return scout_err end
         local result, err = ai.structured(step.meter, cfg.model, scout_schema(cfg, fields, ordered(run.pool)), SCOUT_SYSTEM,
-            scout_text :: string, { max_tokens = cfg.max_tokens })
+            scout_text :: string, { max_tokens = cfg.max_tokens, temperature = cfg.temperature })
         if err then return err end
         run.confidence = tonumber(result.confidence) or 0
         if cfg.drop_noise then
@@ -542,7 +547,7 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
         (#notes > 0 and ("\n\nScout notes:\n" .. table.concat(notes, "\n")) or "") ..
         (#context > 0 and ("\n\n" .. table.concat(context, "\n\n")) or "") ..
         "\n\nPassages:\n" .. evidence
-    local result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch, passages), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens })
+    local result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch, passages), EXTRACT_SYSTEM, user, { max_tokens = cfg.max_output_tokens, temperature = cfg.temperature })
     if err then
         -- The llm module refuses a prompt larger than the model's window before calling it.
         if errors.is(err, errors.INVALID) and ((err :: any):details() or {}).error_type == "context_window" then
@@ -678,7 +683,7 @@ function M.verify(run: any, step: any): error?
         if #found > 0 then
             local result, err = ai.structured(step.meter, cfg.model, support_schema(found),
                 system("For each field, decide whether its quotes support its value exactly. Return one check per field."),
-                table.concat(lines_out, "\n"))
+                table.concat(lines_out, "\n"), { temperature = cfg.temperature, max_tokens = cfg.max_tokens })
             if err then return err end
             support = result
         end

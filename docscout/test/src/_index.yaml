@@ -566,6 +566,57 @@ entries:
   select:
     meta.surface: kickside.docscout
     meta.intent: module_access
+- name: fixture_constrained_structured
+  kind: function.lua
+  source: file://fixture_constrained.lua
+  method: structured
+  modules: [json]
+- name: fixture_constrained_status
+  kind: function.lua
+  source: file://fixture_constrained.lua
+  method: status
+- name: fixture_constrained_driver
+  kind: contract.binding
+  contracts:
+  - contract: wippy.llm:structured_output
+    methods:
+      structured_output: app:fixture_constrained_structured
+  - contract: wippy.llm:provider
+    methods:
+      status: app:fixture_constrained_status
+- name: fixture_constrained_provider
+  kind: registry.entry
+  meta:
+    type: llm.provider
+    name: docscout-constrained
+    title: Schema-constrained fixture provider
+  driver:
+    id: app:fixture_constrained_driver
+    options: {}
+- name: fixture_constrained_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-constrained
+    title: Schema-constrained fixture model
+    capabilities: [structured_output]
+    class: [docscout-constrained]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_constrained_provider
+    provider_model: docscout-constrained
+- name: section_choice_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_section_choice, group: Docscout}
+  source: file://section_choice_test.lua
+  method: run
+  modules: [json, registry]
+  imports:
+    test: wippy.test:test
+    ai: kickside.docscout.engine:ai
+    stages: kickside.docscout.engine:stages
 - name: fixture_success_generate
   kind: function.lua
   source: file://fixture_success.lua
@@ -621,6 +672,20 @@ entries:
   providers:
   - id: app:fixture_success_provider
     provider_model: docscout-success
+- name: fixture_sampling_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-sampling
+    title: Fixture model that reports its sampling settings
+    capabilities: [generate, structured_output]
+    class: [docscout-sampling]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-sampling
 - name: success_test
   kind: function.lua
   meta:
@@ -849,3 +914,83 @@ entries:
     jobs: kickside.core.jobs:jobs
     repository: kickside.docscout.persist:repository
     recovery: kickside.docscout.retention:recovery
+
+- name: fixture_constrained_maximum_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-constrained-maximum
+    title: Section ordinal maximum fixture
+    capabilities: [structured_output]
+    class: [docscout-constrained-maximum]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_constrained_provider
+    provider_model: docscout-constrained
+    options: {boundary: maximum, offset: 0}
+
+- name: fixture_constrained_below_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-constrained-below
+    title: Section ordinal below fixture
+    capabilities: [structured_output]
+    class: [docscout-constrained-below]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_constrained_provider
+    provider_model: docscout-constrained
+    options: {boundary: minimum, offset: -1}
+
+- name: fixture_constrained_above_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-constrained-above
+    title: Section ordinal above fixture
+    capabilities: [structured_output]
+    class: [docscout-constrained-above]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_constrained_provider
+    provider_model: docscout-constrained
+    options: {boundary: maximum, offset: 1}
+
+- name: fixture_constrained_fractional_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-constrained-fractional
+    title: Section ordinal fractional fixture
+    capabilities: [structured_output]
+    class: [docscout-constrained-fractional]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_constrained_provider
+    provider_model: docscout-constrained
+    options: {boundary: minimum, offset: 0.5}
+
+- name: fixture_constrained_budget_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-constrained-budget
+    title: Section selection schema budget fixture
+    capabilities: [structured_output]
+    class: [docscout-constrained-budget]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_constrained_provider
+    provider_model: docscout-constrained
+    options: {max_enum_entries: 0}
