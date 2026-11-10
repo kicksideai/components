@@ -357,7 +357,7 @@ return { run = test.run_cases(function()
             test.not_nil(err); test.is_true(errors.is(err, errors.INVALID), tostring(err))
             test.is_true(tostring(err):find("context window", 1, true) ~= nil, tostring(err))
         end)
-        test.it("says which extraction settings shrink a prompt the model cannot take", function()
+        test.it("leaves a passage out of an extraction call when it alone exceeds the model's window", function()
             local pool = shapes.pool()
             shapes.add(pool, { { ordinal = 1, content = big, heading_path = "Payment" } })
             local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
@@ -365,9 +365,98 @@ return { run = test.run_cases(function()
             local run = { pool = pool, regions = {}, notes = {}, analyses = {}, values = {},
                 config = { fields = { field },
                     stages = { extract = { model = "class:docscout-small", max_fields_per_call = 5, max_output_tokens = 50 } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.extract(run, step))
+            test.eq(#step.meter.calls, 0)
+            test.is_true(run.values[1].missing); test.is_false(run.values[1].failed)
+            test.eq(run.values[1].reason, "1 of 1 passages cut by budget")
+        end)
+    end)
+
+    test.describe("Call budgets", function()
+        local BUDGET = "class:docscout-budget"
+        local function schema_field(name: string, over: any?): any
+            local f = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+            f.name, f.type, f.description = name, "text", name
+            for k, v in pairs(over or {}) do f[k] = v end
+            return f
+        end
+        local function passage(n: integer): any
+            return { ordinal = n, heading_path = "Terms", content = string.rep(tostring(n % 10), 396) }
+        end
+        test.it("allocates each field its cited passages first, then its best-ranked, in turns", function()
+            local pool = shapes.pool()
+            shapes.add(pool, { passage(3), passage(4), passage(6) }, "fee", "fee")
+            shapes.add(pool, { passage(2), passage(1), passage(5) }, "law", "law")
+            shapes.prune(pool, {}, { fee = { 6 }, law = {} })
+            local kept, cut = stages.allocate(pool, shapes.ordered(pool), { "fee", "law" }, function(chunks: { any }): boolean return #chunks <= 3 end)
+            local ordinals = {}
+            for _, c in ipairs(kept) do ordinals[#ordinals + 1] = tostring(c.ordinal) end
+            test.eq(table.concat(ordinals, ","), "2,3,6")
+            test.eq(cut.fee, 3); test.eq(cut.law, 3)
+        end)
+        test.it("cuts extraction passages to the model's window and records the loss per field", function()
+            local pool = shapes.pool()
+            local all = {}
+            for n = 1, 12 do all[n] = passage(n) end
+            shapes.add(pool, all, "fee", "fee")
+            local run = { pool = pool, regions = {}, notes = {}, analyses = {}, values = {},
+                config = { fields = { schema_field("fee") }, stages = { extract = { model = BUDGET, max_fields_per_call = 5, max_output_tokens = 200 } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.extract(run, step))
+            local call = step.meter.calls[1]
+            test.is_true(#call.sources > 0 and #call.sources < 12, tostring(#call.sources))
+            test.eq(#call.excluded, 12 - #call.sources)
+            local v = run.values[1]
+            test.eq(v.reason, (12 - #call.sources) .. " of 12 passages cut by budget")
+            test.eq(json.encode(v.codes), '["budget_cut"]')
+        end)
+        test.it("fails a call whose fields alone exceed the model's window", function()
+            local fields = {}
+            for n = 1, 12 do fields[n] = schema_field("field_" .. n, { description = string.rep("words ", 60) }) end
+            local pool = shapes.pool()
+            shapes.add(pool, { passage(1) })
+            local run = { pool = pool, regions = {}, notes = {}, analyses = {}, values = {},
+                config = { fields = fields, stages = { extract = { model = BUDGET, max_fields_per_call = 20, max_output_tokens = 200 } } } }
             local err = stages.extract(run, { meter = ai.meter() })
             test.not_nil(err); test.is_true(errors.is(err, errors.INVALID), tostring(err))
             test.is_true(tostring(err):find("fields per call", 1, true) ~= nil, tostring(err))
+        end)
+        test.it("batches the support check to the model's window", function()
+            local values, fields = {}, {}
+            for n = 1, 4 do
+                fields[n] = schema_field("note_" .. n, { evidence_required = false })
+                values[n] = { name = "note_" .. n, path = "note_" .. n, value = "v", missing = false, failed = false,
+                    evidence = { { quote = string.rep("q", 1600), chunk = 1 } } }
+            end
+            local run = { regions = {}, values = values, config = { fields = fields,
+                stages = { verify = { enabled = true, model = BUDGET, check_quotes = false, check_support = true, max_tokens = 256 } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.verify(run, step))
+            test.is_true(#step.meter.calls > 1, tostring(#step.meter.calls))
+            for _, v in ipairs(run.values) do test.eq(v.reason, "Fixture") end
+        end)
+        test.it("windows section summaries and batches section choices to the model's window", function()
+            local chunks, outline = {}, {}
+            for n = 1, 6 do
+                chunks[n] = { ordinal = n, section_id = "s" .. n, heading_path = "Part " .. n, content = string.rep("x", 1400), vector = unit(1) }
+                outline[n] = { id = "s" .. n, level = 1, title = "Part " .. n, path = "Part " .. n, chunk_start = n, chunk_end = n, tokens = 350 }
+            end
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k",
+                outline = outline, page_count = 0, tokens = 0, expires_at = far_future() }, chunks))
+            local fields = {}
+            for n = 1, 10 do fields[n] = schema_field("pick_" .. n, { search_within = "sections", description = string.rep("words ", 60) }) end
+            local run = { document = { id = id, outline = outline }, regions = {}, config = { fields = fields,
+                stages = { map = { model = BUDGET, outline = "find_or_build", section_summaries = true, max_tokens = 256 } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.map(run, step))
+            local summaries, selects = 0, 0
+            for _, c in ipairs(step.meter.calls) do
+                if c.stage == "summaries" then summaries = summaries + 1 elseif c.stage == "select" then selects = selects + 1 end
+            end
+            test.is_true(summaries > 1, tostring(summaries)); test.is_true(selects > 1, tostring(selects))
+            for _, s in ipairs(run.document.outline) do test.not_nil(s.summary) end
+            for _, f in ipairs(fields) do test.not_nil(run.regions[f.name]) end
         end)
     end)
 

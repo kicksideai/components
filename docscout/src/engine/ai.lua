@@ -6,6 +6,7 @@ local time = require("time")
 local llm = require("llm")
 local prompt = require("prompt")
 local json = require("json")
+local shapes = require("shapes")
 
 local M = {}
 
@@ -30,13 +31,13 @@ end
 -- token counts are absent when the provider reported no usage; sources are the
 -- chunk ordinals the prompt carried and fields the field paths it served.
 type CallRecord = { stage: string, model: string, prompt_tokens: number?, completion_tokens: number?, latency_ms: integer?,
-    finish_reason: string?, error_code: string?, sources: { integer }?, fields: { string }? }
+    finish_reason: string?, error_code: string?, sources: { integer }?, excluded: { integer }?, fields: { string }? }
 
 -- Token usage and call records of one step, and the instant its model calls must end by.
 type Meter = { input_tokens: number, output_tokens: number, calls: { CallRecord }, deadline: any? }
 
 -- Per-call settings a stage may pass, and what the call record names.
-type CallOpts = { max_tokens: integer?, temperature: number?, stage: string?, sources: { integer }?, fields: { string }? }
+type CallOpts = { max_tokens: integer?, temperature: number?, stage: string?, sources: { integer }?, excluded: { integer }?, fields: { string }? }
 
 -- Options handed to the llm module for one call.
 type ModelOptions = { model: string, deadline_ms: integer?, max_tokens: integer?, temperature: number?,
@@ -63,7 +64,7 @@ function M.add_call(meter: Meter, stage: string, model: string, usage: any?, ext
     end
     if extra then
         entry.latency_ms, entry.finish_reason, entry.error_code = extra.latency_ms, extra.finish_reason, extra.error_code
-        entry.sources, entry.fields = extra.sources, extra.fields
+        entry.sources, entry.excluded, entry.fields = extra.sources, extra.excluded, extra.fields
     end
     meter.calls[#meter.calls + 1] = entry
 end
@@ -73,7 +74,7 @@ local function record(meter: Meter, stage: string, model: string, opts: CallOpts
     local finish = type(response) == "table" and response.finish_reason or nil
     M.add_call(meter, (opts and opts.stage) or stage, model, type(response) == "table" and response.tokens or nil, {
         latency_ms = millis() - started, finish_reason = finish and tostring(finish) or nil, error_code = err and error_code(err) or nil,
-        sources = opts and opts.sources, fields = opts and opts.fields })
+        sources = opts and opts.sources, excluded = opts and opts.excluded, fields = opts and opts.fields })
 end
 
 function M.meter(deadline: any?): Meter
@@ -134,6 +135,33 @@ local function structured_result(model: string, schema: any, response: any, err:
             details = { code = "structured_reply_invalid", model = model } })
     end
     return response.result, nil
+end
+
+-- Prompt tokens of a request as the llm module estimates them before it
+-- admits the request: its encoded messages and schema.
+function M.estimate(system: string, user: string, schema: any?): integer
+    local encoded = json.encode({ messages = messages(system, user), schema = schema })
+    return shapes.tokens(tostring(encoded or ""))
+end
+
+-- A request's fit within a model's window: fits(system, user, schema) holds
+-- when the estimated prompt and the reserved output (max_output, else the
+-- card's output limit) stay inside the context window. Without a declared
+-- window every request fits. Also returns the reserved output.
+function M.fitter(model: string, max_output: integer?): (((string, string, any?) -> boolean)?, integer?, error?)
+    local card, err = M.resolve(model)
+    if err then return nil, nil, err end
+    local output = max_output or math.tointeger(tonumber(card.output_tokens)) or 0
+    local window = math.tointeger(tonumber(card.max_tokens))
+    return function(system: string, user: string, schema: any?): boolean
+        return not window or window <= 0 or M.estimate(system, user, schema) + output <= window
+    end, output, nil
+end
+
+-- The error for a call whose fixed prompt alone leaves no room in the model's window.
+function M.over_budget(model: string, what: string, advice: string): error
+    return errors.new({ kind = errors.INVALID, retryable = false,
+        message = what .. " exceeds the context window of " .. model .. "; " .. advice, details = { code = "prompt_exceeds_budget", model = model } })
 end
 
 -- Structured output as a Lua table that matches schema.

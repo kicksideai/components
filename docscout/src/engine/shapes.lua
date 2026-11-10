@@ -5,6 +5,33 @@ local json = require("json")
 
 local M = {}
 
+-- Characters per token for estimating prompt sizes.
+M.CHARS_PER_TOKEN = 4
+
+-- Estimated tokens of a text.
+function M.tokens(text: string): integer
+    return math.ceil(#text / M.CHARS_PER_TOKEN)
+end
+
+-- Groups items into consecutive batches, at most limit items each, for which
+-- fits(batch) holds; an item that does not fit alone forms its own batch.
+function M.batches(items: { any }, fits: ({ any }) -> boolean, limit: integer?): { { any } }
+    local out, current = {}, {}
+    for _, item in ipairs(items) do
+        local trial = {}
+        for i, v in ipairs(current) do trial[i] = v end
+        trial[#trial + 1] = item
+        if #current > 0 and ((limit and #current >= limit) or not fits(trial)) then
+            out[#out + 1] = current
+            current = { item }
+        else
+            current = trial
+        end
+    end
+    if #current > 0 then out[#out + 1] = current end
+    return out
+end
+
 function M.trim(s: string): string
     local out = s:gsub("^%s+", ""):gsub("%s+$", "")
     return out

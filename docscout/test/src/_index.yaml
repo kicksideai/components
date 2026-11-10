@@ -672,6 +672,20 @@ entries:
   providers:
   - id: app:fixture_success_provider
     provider_model: docscout-success
+- name: fixture_budget_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-budget
+    title: Small-window fixture model that answers
+    capabilities: [generate, structured_output]
+    class: [docscout-budget]
+    priority: 100
+  max_tokens: 1200
+  output_tokens: 200
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-budget
 - name: fixture_sampling_model
   kind: registry.entry
   meta:

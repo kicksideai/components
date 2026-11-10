@@ -17,7 +17,6 @@ local trim = shapes.trim
 local M = {}
 
 -- The splitter measures characters; configuration speaks in tokens.
-M.CHARS_PER_TOKEN = 4
 local CONTEXT_BATCH = 8
 local PROVIDER_RESPONSE = "docscout_content_provider_response"
 
@@ -137,8 +136,8 @@ end
 local function split(input: string, retrieval: any): ({ string }?, error?)
     if trim(input) == "" then return {}, nil end
     local splitter, err = text.splitter.markdown({
-        chunk_size = retrieval.chunk_size * M.CHARS_PER_TOKEN,
-        chunk_overlap = retrieval.overlap * M.CHARS_PER_TOKEN,
+        chunk_size = retrieval.chunk_size * shapes.CHARS_PER_TOKEN,
+        chunk_overlap = retrieval.overlap * shapes.CHARS_PER_TOKEN,
         code_blocks = true,
         join_table_rows = retrieval.keep_tables,
     })
@@ -203,7 +202,7 @@ function M.chunk(markdown: string, retrieval: any): (any?, error?)
     local outline: { any } = {}
     local by_id: { [string]: any } = {}
     for _, s in ipairs(sections) do
-        local entry = { id = s.id, level = s.level, title = s.title, path = s.path, tokens = math.ceil(#s.text / M.CHARS_PER_TOKEN) }
+        local entry = { id = s.id, level = s.level, title = s.title, path = s.path, tokens = math.ceil(#s.text / shapes.CHARS_PER_TOKEN) }
         outline[#outline + 1] = entry
         by_id[s.id] = entry
     end
@@ -236,14 +235,22 @@ local function contexts(meter: any, retrieval: any, models: { [string]: string }
         for _, c in ipairs(chunks) do c.context = c.heading_path end
         return nil
     end
-    for start = 1, #chunks, CONTEXT_BATCH do
-        local batch, lines = {}, { "Document: " .. tostring(filename or "untitled") }
-        for i = start, math.min(#chunks, start + CONTEXT_BATCH - 1) do
-            batch[#batch + 1] = chunks[i]
-            lines[#lines + 1] = "\n## Passage " .. tostring(#batch) .. " (section: " .. chunks[i].heading_path .. ")\n" .. chunks[i].content
-        end
+    local heading = "Document: " .. tostring(filename or "untitled")
+    local function passage(n: integer, c: any): string return "\n## Passage " .. tostring(n) .. " (section: " .. c.heading_path .. ")\n" .. c.content end
+    -- Batches fit the context model's window; the reply is bounded by the model's output limit.
+    local fits, output, fit_err = ai.fitter(models.context :: string, nil)
+    if fit_err then return fit_err end
+    local function text(batch: { any }): string
+        local lines = { heading }
+        for i, c in ipairs(batch) do lines[#lines + 1] = passage(i, c) end
+        return table.concat(lines, "\n")
+    end
+    local function batch_fits(batch: { any }): boolean return (fits :: any)(CONTEXT_SYSTEM, text(batch), context_schema(#batch)) end
+    for _, batch in ipairs(shapes.batches(chunks, batch_fits, CONTEXT_BATCH)) do
+        local lines = { heading }
+        for i, c in ipairs(batch) do lines[#lines + 1] = passage(i, c) end
         local result, err = ai.structured(meter, models.context :: string, context_schema(#batch), CONTEXT_SYSTEM, table.concat(lines, "\n"),
-            { stage = "context", sources = shapes.ordinals(batch) })
+            { stage = "context", sources = shapes.ordinals(batch), max_tokens = output })
         if err then return err end
         if #result.contexts ~= #batch then
             return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "context model returned " .. #result.contexts .. " contexts for " .. #batch .. " passages" })
@@ -289,7 +296,7 @@ function M.ensure(component_id: string, owner_id: string, upload_id: string, ret
     local expires_at, expiry_err = retention.expires_at(extractor_window)
     if expiry_err then return nil, expiry_err end
     local tokens = 0
-    for _, c in ipairs(chunks) do tokens = tokens + math.ceil(#c.content / M.CHARS_PER_TOKEN) end
+    for _, c in ipairs(chunks) do tokens = tokens + math.ceil(#c.content / shapes.CHARS_PER_TOKEN) end
     local id, save_err = store.save({
         component_id = component_id, owner_id = owner_id, upload_id = upload_id, checksum = content.checksum, processing_key = key,
         outline = outline, page_count = pages, tokens = tokens, expires_at = expires_at,

@@ -13,6 +13,7 @@ entries:
   imports:
     llm: wippy.llm:llm
     prompt: wippy.llm:prompt
+    shapes: kickside.docscout.engine:shapes
 - name: shapes
   kind: library.lua
   meta:
