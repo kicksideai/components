@@ -267,15 +267,34 @@ return { run = test.run_cases(function()
             test.is_nil(stages.map(run, step))
             test.eq(usage(step.meter), "1030/512")
         end)
+        test.it("passes map sampling to outline building and section summaries", function()
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k",
+                outline = {}, page_count = 0, tokens = 0, expires_at = far_future() }, {
+                { ordinal = 1, section_id = "s1", heading_path = "Terms", content = "The total amount is 1250.", vector = unit(1) },
+            }))
+            for _, configured in ipairs({ true, false }) do
+                local cfg = { model = SAMPLING, outline = "build", section_summaries = true }
+                if configured then cfg.temperature, cfg.max_tokens = 0, 128 end
+                local run = { document = { id = id, outline = {} }, regions = {}, config = { fields = {}, stages = { map = cfg } } }
+                local step = { meter = ai.meter() }
+                test.is_nil(stages.map(run, step))
+                test.eq(usage(step.meter), configured and "2000/256" or "0/0")
+                test.eq(#run.document.outline, 1)
+                test.eq(run.document.outline[1].summary, "Fixture")
+            end
+        end)
         test.it("passes the scout stage's temperature to the structured loop and the agent", function()
             for _, mode in ipairs({ "loop", "agent" }) do
-                local run = { document = { outline = {} }, regions = {}, notes = {}, pool = pool(), confidence = 0,
-                    config = { fields = { field() }, retrieval = { search_mode = "keyword" }, stages = { deep = { enabled = false },
-                        scout = { model = SAMPLING, mode = mode, max_rounds = 1, max_extra_queries = 1, target_confidence = 0.7, max_tokens = 1024,
-                            drop_noise = false, share_notes = false, tools = { "keyword_search" }, temperature = 0 } } } }
-                local step = { meter = ai.meter() }
-                test.is_nil(stages.scout(run, step))
-                test.eq(usage(step.meter), "1000/1024", mode)
+                for _, configured in ipairs({ true, false }) do
+                    local run = { document = { outline = {} }, regions = {}, notes = {}, pool = pool(), confidence = 0,
+                        config = { fields = { field() }, retrieval = { search_mode = "keyword" }, stages = { deep = { enabled = false },
+                            scout = { model = SAMPLING, mode = mode, max_rounds = 1, max_extra_queries = 1, target_confidence = 0.7, max_tokens = 1024,
+                                drop_noise = false, share_notes = false, tools = { "keyword_search" }, temperature = 0 } } } }
+                    if not configured then run.config.stages.scout.temperature = nil end
+                    local step = { meter = ai.meter() }
+                    test.is_nil(stages.scout(run, step))
+                    test.eq(usage(step.meter), configured and "1000/1024" or "0/1024", mode)
+                end
             end
         end)
         test.it("passes the extract stage's temperature with its output limit", function()

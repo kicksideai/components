@@ -2,7 +2,7 @@
 local M = {}
 local function value(schema: any): any
     if schema.enum then return schema.enum[1] end
-    if schema.type == "number" then return schema.maximum or 1250 end
+    if schema.type == "number" or schema.type == "integer" then return schema.maximum or 1250 end
     if schema.type == "boolean" then return false end
     if schema.type == "array" then return { value(schema.items) } end
     if schema.type == "object" then
