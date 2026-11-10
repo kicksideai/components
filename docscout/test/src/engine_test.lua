@@ -328,7 +328,7 @@ return { run = test.run_cases(function()
             local pool = shapes.pool()
             shapes.add(pool, { { ordinal = 1, content = "The fee is USD 100.", heading_path = "Fees" } })
             local run = { pool = pool, regions = { governing_law = { 7 } }, notes = { { field = "governing_law", text = "Delaware" } }, analyses = {}, values = {},
-                config = { fields = { field }, stages = { extract = { model = "class:docscout-small", max_fields_per_call = 5, max_output_tokens = 50 } } } }
+                config = { fields = { field }, stages = { extract = { model = "class:docscout-small", max_fields_per_call = 5, max_output_tokens = 256 } } } }
             local step = { meter = ai.meter() }
             test.is_nil(stages.extract(run, step))
             test.eq(#run.values, 1)
@@ -364,7 +364,7 @@ return { run = test.run_cases(function()
             field.name, field.type, field.description = "total", "number", "Total due"
             local run = { pool = pool, regions = {}, notes = {}, analyses = {}, values = {},
                 config = { fields = { field },
-                    stages = { extract = { model = "class:docscout-small", max_fields_per_call = 5, max_output_tokens = 50 } } } }
+                    stages = { extract = { model = "class:docscout-small", max_fields_per_call = 5, max_output_tokens = 256 } } } }
             local err = stages.extract(run, { meter = ai.meter() })
             test.not_nil(err); test.is_true(errors.is(err, errors.INVALID), tostring(err))
             test.is_true(tostring(err):find("fields per call", 1, true) ~= nil, tostring(err))
@@ -382,7 +382,7 @@ return { run = test.run_cases(function()
             test.is_nil(selected_missing)
             test.not_nil(missing); test.is_true(errors.is(missing, errors.INTERNAL))
             local _, calls_err = stages.extraction_calls({ regions = {}, config = {
-                fields = { { name = "missing", search_within = "sections" } }, stages = { extract = { max_fields_per_call = 5 } } } })
+                fields = { { name = "missing", search_within = "sections" } }, stages = { extract = { max_fields_per_call = 5, max_output_tokens = 4096 } } } })
             test.not_nil(calls_err); test.is_true(errors.is(calls_err, errors.INTERNAL))
         end)
         test.it("prefetches a sections field only inside its region", function()
@@ -406,7 +406,7 @@ return { run = test.run_cases(function()
             local function f(name: string, within: string, group: string?): any return { name = name, search_within = within, group = group or "" } end
             local run = { pool = pool, regions = { notice = { 2 }, law = { 3 }, term = { 2 } },
                 notes = { { field = "fee", text = "fee in C1" }, { field = "law", text = "law in C3" }, { text = "Delaware law in C3" } },
-                config = { stages = { extract = { max_fields_per_call = 5 } },
+                config = { stages = { extract = { max_fields_per_call = 5, max_output_tokens = 4096 } },
                     fields = { f("fee", "document"), f("notice", "sections"), f("law", "sections"), f("term", "sections"), f("total", "document"), f("party", "document", "parties") } } }
             local shape = {}
             for _, call in ipairs(stages.extraction_calls(run)) do
@@ -422,7 +422,7 @@ return { run = test.run_cases(function()
             local pool = shapes.pool()
             shapes.add(pool, { { ordinal = 1, content = "fee" }, { ordinal = 2, content = "law" }, { ordinal = 3, content = "both" } })
             shapes.prune(pool, { 1, 2 }, { fee = { 1 }, ["terms.law"] = { 2 } })
-            local run = { pool = pool, regions = {}, notes = {}, config = { stages = { extract = { max_fields_per_call = 5 } },
+            local run = { pool = pool, regions = {}, notes = {}, config = { stages = { extract = { max_fields_per_call = 5, max_output_tokens = 4096 } },
                 fields = { { name = "fee", search_within = "document", group = "" }, { name = "law", search_within = "document", group = "terms" } } } }
             local shape = {}
             for _, call in ipairs(stages.extraction_calls(run)) do
@@ -483,10 +483,38 @@ return { run = test.run_cases(function()
             test.eq(table.concat(noted, ","), "fee=Fixture,terms.rate=Fixture")
             test.not_nil(run.pool.by_ordinal[1])
         end)
+        test.it("splits a group by the estimated output of its fields within the output limit", function()
+            local pool = shapes.pool()
+            shapes.add(pool, { { ordinal = 1, content = "a" } })
+            local function text(name: string): any return { name = name, type = "text", description = "", search_within = "document", group = "" } end
+            local fields = { text("a"), text("b"), text("c"), text("d") }
+            local per_field = shapes.output_estimate(fields[1])
+            local run = { pool = pool, regions = {}, notes = {}, config = { fields = fields,
+                stages = { extract = { max_fields_per_call = 20, max_output_tokens = 2 * per_field + 1 } } } }
+            local calls = assert(stages.extraction_calls(run))
+            test.eq(#calls, 2); test.eq(#calls[1].fields, 2); test.eq(calls[2].fields[1].name, "c")
+        end)
+        test.it("fails a field whose estimated output alone exceeds the output limit, naming the setting", function()
+            local item = { type = "object", properties = {} }
+            for n = 1, 12 do item.properties[n] = { name = "p" .. n, type = "text", required = true, description = "", enum_values = {}, expected_format = "" } end
+            local wide = { name = "rows", type = "list", item = item, description = "", search_within = "document", group = "", evidence_required = true }
+            local small = { name = "total", type = "number", description = "", search_within = "document", group = "", evidence_required = true }
+            local pool = shapes.pool()
+            shapes.add(pool, { { ordinal = 1, content = "The total amount is 1250.", heading_path = "Invoice" } })
+            local run = { pool = pool, regions = {}, notes = {}, analyses = {}, values = {}, config = { fields = { wide, small },
+                stages = { extract = { model = "class:docscout-success", max_fields_per_call = 20, max_output_tokens = 1024 } } } }
+            test.is_true(shapes.output_estimate(wide) > 1024)
+            test.is_nil(stages.extract(run, { meter = ai.meter() }))
+            local rows, total = run.values[1], run.values[2]
+            test.is_true(rows.failed); test.eq(rows.error.details.code, "field_output_exceeds_budget")
+            test.is_true(rows.error.message:find("max_output_tokens", 1, true) ~= nil, rows.error.message)
+            test.is_false(rows.error.retryable)
+            test.is_false(total.failed); test.eq(total.value, 1250)
+        end)
         test.it("splits a group with one region by the fields-per-call limit", function()
             local pool = shapes.pool()
             shapes.add(pool, { { ordinal = 1, content = "a" } })
-            local run = { pool = pool, regions = {}, notes = {}, config = { stages = { extract = { max_fields_per_call = 2 } },
+            local run = { pool = pool, regions = {}, notes = {}, config = { stages = { extract = { max_fields_per_call = 2, max_output_tokens = 4096 } },
                 fields = { { name = "a", search_within = "document", group = "" }, { name = "b", search_within = "document", group = "" }, { name = "c", search_within = "document", group = "" } } } }
             local calls = stages.extraction_calls(run)
             test.eq(#calls, 2)

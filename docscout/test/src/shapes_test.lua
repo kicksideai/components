@@ -53,6 +53,22 @@ return { run = test.run_cases(function()
         end)
     end)
 
+    test.describe("Output estimates", function()
+        test.it("estimates a field's reply from its value leaves and its quotes", function()
+            local function f(t: string, over: any?): any
+                local out = { name = "x", type = t, description = "" }
+                for k, v in pairs(over or {}) do out[k] = v end
+                return out
+            end
+            local number, text = shapes.output_estimate(f("number")), shapes.output_estimate(f("text"))
+            test.is_true(text > number)
+            local object = shapes.output_estimate(f("object", { properties = { f("text", { name = "a" }), f("number", { name = "b" }) } }))
+            test.is_true(object > text)
+            test.is_true(shapes.output_estimate(f("list", { item = f("text") })) > text)
+            test.is_true(number > shapes.EVIDENCE_LIMIT * 10)
+        end)
+    end)
+
     test.describe("Evidence pool", function()
         test.it("adds each chunk once, keeps dropped chunks out and orders by position", function()
             local pool = shapes.pool()
