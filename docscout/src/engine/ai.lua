@@ -126,7 +126,7 @@ function M.agent(meter: Meter, model: string, system: string, user: string, tool
     conversation:add_user(user)
     local calls = 0
     while true do
-        local options, late = options_for(meter, "an agent model call", model, { max_tokens = opts and opts.max_tokens })
+        local options, late = options_for(meter, "an agent model call", model, opts)
         if late then return nil, calls, late end
         options.tools, options.tool_choice = tools, calls < max_calls and "auto" or "none"
         local response, err = llm.generate(conversation, options)
