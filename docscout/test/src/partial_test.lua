@@ -175,6 +175,26 @@ return { run = test.run_cases(function()
             test.is_false(run.values[1].verified); test.eq(run.values[1].reason, "Quote does not support the terms")
             test.is_true(run.values[2].verified); test.is_nil(run.values[2].reason)
         end)
+        for _, enabled in ipairs({false, true}) do
+            test.it("preserves a localized date with Verify enabled=" .. tostring(enabled), function()
+                local cfg = configuration({"signed"})
+                cfg.fields[1].type, cfg.fields[1].expected_format = "date", "D MMMM YYYY"
+                cfg.stages.extract.model, cfg.stages.verify.enabled = "class:docscout-date-result", enabled
+                cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = true, false
+                local owner = uuid.v4()
+                local caller = data.caller(owner)
+                local id = assert(caller:call("app:probe", {op="create", input={title="Date reader", config=cfg}})).component_id
+                local upload = data.upload(owner,"application/pdf","Original bytes","# Invoice\nThe total amount is 1250.")
+                local result, err = caller:call("app:probe", {op="contract_run", input={extractor_id=id,upload_id=upload}})
+                test.is_nil(err,tostring(err)); test.eq(result.status,"completed")
+                test.eq(result.values.signed,"8 mars 2026"); test.is_false(result.fields[1].verified)
+                if enabled then test.contains(result.fields[1].reason,"language is unspecified")
+                else test.is_nil(result.fields[1].reason) end
+                local saved = assert(caller:call("app:probe", {op="get",id=id})).runs[1]
+                test.eq(saved.status,"completed"); test.eq(saved.result.values.signed,"8 mars 2026")
+                test.eq(saved.result.fields[1].reason,result.fields[1].reason)
+            end)
+        end
         test.it("isolates deep analysis failures to their own fields", function()
             local owner = uuid.v4()
             local caller = data.caller(owner)
