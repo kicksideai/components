@@ -34,7 +34,7 @@ An extractor reads each upload as one document: a single instance of the record 
 
 The ordered stages read and process the document, map sections, prefetch evidence, scout, analyze deep fields, highlight, extract with structured output, and verify. Extract defaults to `class:fast`. Processed copies belong to extractor plus user, upload, checksum and processing settings. Chunks use `kickside/search-index` for keyword and vector retrieval. Exact page locations come from saved page spans; uncertain locations retain their range.
 
-Map, Scout, Extract and Verify accept optional stage-local `temperature` settings. Map and Verify also accept `max_tokens`; Extract uses `max_output_tokens`. Omitted settings retain the provider default. These are requested settings: providers can omit unsupported sampling options or adjust output limits. A selected Scout agent retains its own model and sampling settings.
+Map, Scout, Extract and Verify accept optional stage-local `temperature` settings. Map, Verify and Deep also accept `max_tokens`; Extract uses `max_output_tokens`. The highlighter accepts `retrieval.highlighter_temperature` and `retrieval.highlighter_max_tokens`. A free-text reply (Deep analysis, built-in agent scout) cut at its output limit fails with `model_reply_truncated` instead of passing on incomplete text. Omitted settings retain the provider default. These are requested settings: providers can omit unsupported sampling options or adjust output limits. A selected Scout agent retains its own model and sampling settings.
 
 - UI: `POST /docscout/{id}/run`.
 - Block: `kickside.docscout.blocks:extract`, with `extractor_id` in config and `upload_id` in input. Its result contains values, fields with evidence, verification, run ID, pages, trace, revision, duration and tokens.
@@ -52,6 +52,12 @@ The run status is `completed` when it extracts values without field failures, `p
 | Highlight | Run: each batch rewrites passages shared across fields. |
 | Extract | Call: all fields sharing a failed call fail together; later calls continue. |
 | Verify | Run for native errors: document reads and support verdicts are shared. Unsupported values retain their value and fail verification. Failed extraction fields stay unverified. |
+
+Support verification requires one verdict for every found, nonfailed field. One missing verdict rejects the entire reply with retryable `structured_reply_invalid`, fails the run, and returns a native error; the failed run and paid token usage remain recorded. This follows the shared-stage policy for Verify errors: support verdicts settle together, so an incomplete response cannot become a successful verification. A negative verdict in a complete reply keeps the value and marks it unverified. Docscout does not retry internally; a caller retry repeats the run's earlier stages and can add model cost.
+
+Scout noise exclusions apply per field. A later citation or that field's own search readmits a passage; a later noise decision can exclude it again even when its historical provenance contains an earlier citation. Deep's own finds remain available to Deep's field. Extraction receives the union visible to its batch's fields within their selected regions; highlighting processes only passages usable by an extraction call. These decisions can change extracted values and prompt tokens for existing configurations. Provenance remains transient; stored runs keep their existing format.
+
+Structured scouting requires evidence and note entries for every reviewed field; section summaries require every section; highlighting requires every supplied passage. Omitted or unknown entries reject the shared-stage response. Explicit empty evidence, blank notes and summaries, and empty highlight lists remain valid. Blank notes are suppressed, blank summaries remain absent, and passages with no genuine highlight are removed. The trace reports fields without cited evidence; completeness does not guarantee useful evidence.
 
 ### User-selected agents
 

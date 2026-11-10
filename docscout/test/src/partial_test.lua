@@ -2,6 +2,7 @@
 local test = require("test")
 local data = require("data")
 local json = require("json")
+local sql = require("sql")
 local registry = require("registry")
 local uuid = require("uuid")
 local time = require("time")
@@ -127,6 +128,53 @@ return { run = test.run_cases(function()
                 test.eq(snapshot.runs[1].result.fields[1].failed, direct.fields[1].failed)
             end)
         end
+        for _, mode in ipairs({ "empty", "partial" }) do
+            test.it("rejects a " .. mode .. " support reply and persists the shared-stage failure", function()
+                local cfg = configuration({ "amount", "terms" })
+                cfg.stages.verify.enabled, cfg.stages.verify.check_support = true, true
+                cfg.stages.verify.check_quotes, cfg.stages.verify.model = false, "class:docscout-support-" .. mode
+                local run, step = context(cfg), { meter = ai.meter() }
+                run.values = {
+                    { name = "amount", value = 1250, missing = false, evidence = {} },
+                    { name = "terms", value = 1250, missing = false, evidence = {} },
+                }
+                local rejected = stages.verify(run, step)
+                test.not_nil(rejected); test.eq(rejected:details().code, "structured_reply_invalid")
+                test.is_true(rejected:retryable())
+                test.eq(step.meter.input_tokens, 12); test.eq(step.meter.output_tokens, 8)
+                test.is_nil(run.values[1].verified); test.is_nil(run.values[2].verified)
+                local owner = uuid.v4()
+                local caller = data.caller(owner)
+                local id = assert(caller:call("app:probe", { op = "create", input = { title = "Support reader", config = cfg } })).component_id
+                local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+                local result, err = caller:call("app:probe", { op = "contract_run", input = { extractor_id = id, upload_id = upload } })
+                test.is_nil(result); test.not_nil(err)
+                test.eq(err:details().code, "structured_reply_invalid"); test.is_true(err:retryable())
+                local snapshot = assert(caller:call("app:probe", { op = "get", id = id }))
+                local stored = snapshot.runs[1]
+                test.eq(stored.id, err:details().run_id); test.eq(stored.status, "failed")
+                test.eq(stored.result.error.details.code, "structured_reply_invalid")
+                local db = assert(sql.get("app:db"))
+                local rows, read_err = db:query("SELECT trace FROM kickside_docscout_runs WHERE id=$1", { stored.id })
+                db:release(); test.is_nil(read_err, tostring(read_err))
+                local trace = assert(json.decode(rows[1].trace))
+                test.eq(trace[#trace].kind, "verify"); test.eq(trace[#trace].status, "failed")
+                test.eq(trace[#trace].input_tokens, 12); test.eq(trace[#trace].output_tokens, 8)
+            end)
+        end
+        test.it("associates mixed support verdicts with their field paths", function()
+            local cfg = configuration({ "amount", "terms" })
+            cfg.stages.verify.check_support, cfg.stages.verify.check_quotes = true, false
+            cfg.stages.verify.model = "class:docscout-support-mixed"
+            local run = context(cfg)
+            run.values = {
+                { name = "terms", value = 1250, missing = false, evidence = {} },
+                { name = "amount", value = 1250, missing = false, evidence = {} },
+            }
+            test.is_nil(stages.verify(run, { meter = ai.meter() }))
+            test.is_false(run.values[1].verified); test.eq(run.values[1].reason, "Quote does not support the terms")
+            test.is_true(run.values[2].verified); test.is_nil(run.values[2].reason)
+        end)
         test.it("isolates deep analysis failures to their own fields", function()
             local owner = uuid.v4()
             local caller = data.caller(owner)
@@ -138,6 +186,28 @@ return { run = test.run_cases(function()
             local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
             test.eq(result.status, "partial"); test.eq(result.values.before, 1250); test.eq(result.values.after, 1250)
             test.is_true(result.fields[2].failed); test.eq(result.fields[2].error.details.code, "fixture_deep_failure")
+        end)
+        test.it("fails a deep field whose analysis is cut by the output limit", function()
+            local owner = uuid.v4()
+            local caller = data.caller(owner)
+            local cfg = configuration({ "before", "truncated_generation" })
+            cfg.fields[2].strategy = "deep"
+            cfg.stages.deep.enabled, cfg.stages.deep.max_queries, cfg.stages.deep.model = true, 1, "class:docscout-success"
+            local id = assert(caller:call("app:probe", { op = "create", input = { title = "Deep reader", config = cfg } })).component_id
+            local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+            local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
+            test.eq(result.status, "partial"); test.eq(result.values.before, 1250)
+            test.is_true(result.fields[2].failed); test.eq(result.fields[2].error.details.code, "model_reply_truncated")
+            test.is_false(result.fields[2].error.retryable)
+        end)
+        test.it("fails an agent scout whose reply is cut by the output limit", function()
+            local cfg = configuration({ "truncated_generation" })
+            cfg.stages.scout.enabled, cfg.stages.scout.mode, cfg.stages.scout.model = true, "agent", "class:docscout-success"
+            cfg.stages.scout.max_rounds, cfg.stages.scout.max_extra_queries = 1, 1
+            local run = context(cfg)
+            run.document = { outline = {} }
+            local err = stages.scout(run, { meter = ai.meter() })
+            test.not_nil(err); test.eq(err:details().code, "model_reply_truncated"); test.is_false(err:retryable())
         end)
         test.it("publishes committed partial runs through the realtime topic", function()
             local owner = uuid.v4()
