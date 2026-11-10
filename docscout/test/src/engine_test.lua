@@ -484,6 +484,23 @@ return { run = test.run_cases(function()
             test.is_true(run.values[4].verified)
             test.eq(step.message, "1 value needs review")
         end)
+        test.it("asks the support check for one verdict per found value", function()
+            local run = { document = { id = document() }, regions = {}, values = {
+                    { name = "total", value = 1250, missing = false, evidence = { { quote = "total amount due is USD 1,250.00", chunk = 1 } } },
+                    { name = "terms", value = "Net 30", missing = false, evidence = { { quote = "Payment within 30 days", chunk = 2 } } },
+                    { name = "discount", group = "rates", value = 5, missing = false, evidence = { { quote = "Discount: -5%", chunk = 2 } } },
+                    { name = "absent", missing = true, evidence = {} } },
+                config = { fields = { field("total", { type = "number" }), field("terms"), field("discount", { type = "number", group = "rates" }), field("absent") },
+                    stages = { verify = { enabled = true, check_quotes = true, check_support = true, model = "class:docscout-success" } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.verify(run, step))
+            for i = 1, 3 do
+                test.is_false(run.values[i].verified, run.values[i].name)
+                test.eq(run.values[i].reason, "Fixture", run.values[i].name)
+            end
+            test.is_true(run.values[4].verified)
+            test.is_true(step.meter.input_tokens > 0)
+        end)
         test.it("fails a value without a quote when its field requires evidence", function()
             local run = quotes_only({ field("total", { type = "number" }), field("note", { evidence_required = false }) }, {
                 { name = "total", value = 1250, missing = false, reason = "No quote supports this value", evidence = {} },

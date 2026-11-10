@@ -13,6 +13,7 @@ local function value(schema: any): any
     return "Fixture"
 end
 local function extraction(schema: any): any
+    if not schema.properties then return value(schema) end
     if schema.properties.found and schema.properties.found.type == "boolean" then
         local chunk = schema.properties.evidence.items.properties.chunk.enum[1]
         return { found = true, value = value(schema.properties.value), confidence = 1,

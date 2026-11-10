@@ -624,13 +624,17 @@ function M.extract(run: any, step: any): error?
 end
 
 -- Verify: quotes must appear in the document; a model may also confirm each
--- quote supports its value.
+-- quote supports its value. The reply holds one required verdict per field
+-- path, so a constrained decoder cannot omit or repeat a field.
 local function support_schema(values: { any }): any
-    local names = {}
-    for _, v in ipairs(values) do names[#names + 1] = shapes.path(v) end
-    return { type = "object", additionalProperties = false, required = { "checks" }, properties = {
-        checks = { type = "array", maxItems = #names, items = { type = "object", additionalProperties = false, required = { "field", "supported", "reason" },
-            properties = { field = { type = "string", enum = names }, supported = { type = "boolean" }, reason = { type = "string" } } } } } }
+    local properties, required = shapes.object(), {}
+    for _, v in ipairs(values) do
+        local path = shapes.path(v)
+        required[#required + 1] = path
+        properties[path] = { type = "object", additionalProperties = false, required = { "supported", "reason" },
+            properties = { supported = { type = "boolean" }, reason = { type = "string" } } }
+    end
+    return { type = "object", additionalProperties = false, required = required, properties = properties }
 end
 
 function M.verify(run: any, step: any): error?
@@ -681,7 +685,7 @@ function M.verify(run: any, step: any): error?
                 system("For each field, decide whether its quotes support its value exactly. Return one check per field."),
                 table.concat(lines_out, "\n"), { temperature = cfg.temperature, max_tokens = cfg.max_tokens })
             if err then return err end
-            for _, c in ipairs(result.checks) do support[c.field] = c end
+            support = result
         end
     end
     local failed = 0
