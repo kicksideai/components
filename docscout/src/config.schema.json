@@ -484,6 +484,12 @@
               "default": 0.2,
               "minimum": 0,
               "maximum": 2
+            },
+            "max_tokens": {
+              "type": "integer",
+              "minimum": 256,
+              "maximum": 64000,
+              "description": "Output token limit for the analysis. Unset uses the provider default; an analysis cut at the limit fails its field."
             }
           },
           "required": [
@@ -735,6 +741,18 @@
           "default": "class:fast",
           "minLength": 1,
           "maxLength": 200
+        },
+        "highlighter_temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Sampling temperature for the highlighter's model calls. Unset uses the provider default."
+        },
+        "highlighter_max_tokens": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 64000,
+          "description": "Output token limit for the highlighter's model calls. Unset uses the provider default."
         },
         "section_budget": {
           "type": "integer",
