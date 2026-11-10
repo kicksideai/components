@@ -56,13 +56,14 @@ local PREVIEW_CHARS = 160
 function M.outline_windows(chunks: { any }, size: integer): { any }
     local windows = {}
     for start = 1, #chunks, size do
-        local lines = {}
+        local lines, sources = {}, {}
         local last = math.min(#chunks, start + size - 1)
         for i = start, last do
             local c = chunks[i]
+            sources[#sources + 1] = c.ordinal
             lines[#lines + 1] = "[C" .. c.ordinal .. "] " .. c.content:sub(1, PREVIEW_CHARS):gsub("\n", " ")
         end
-        windows[#windows + 1] = { first = chunks[start].ordinal, last = chunks[last].ordinal, preview = table.concat(lines, "\n") }
+        windows[#windows + 1] = { first = chunks[start].ordinal, last = chunks[last].ordinal, sources = sources, preview = table.concat(lines, "\n") }
     end
     return windows
 end
@@ -95,8 +96,8 @@ end
 
 function M.map(run: any, step: any): error?
     local cfg = run.config.stages.map
-    local function sampling(stage: string, fields: { string }?): any
-        return { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = stage, fields = fields }
+    local function sampling(stage: string, fields: { string }?, sources: { integer }?): any
+        return { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = stage, fields = fields, sources = sources }
     end
     local outline = run.document.outline
     -- A usable table of contents has at least three sections.
@@ -110,7 +111,7 @@ function M.map(run: any, step: any): error?
             local carried = previous and ("The passages continue the section \"" .. previous .. "\" unless a new section starts at chunk " .. w.first .. ".\n\n") or ""
             local built, build_err = ai.structured(step.meter, cfg.model, outline_schema(w.first, w.last),
                 system("You divide a document into its logical sections. Give each section a short title and the chunk number where it starts, in order."),
-                carried .. w.preview, sampling("outline"))
+                carried .. w.preview, sampling("outline", shapes.paths(run.config.fields), w.sources))
             if build_err then return build_err end
             for _, s in ipairs(built.sections) do
                 local start = math.tointeger(s.first_chunk) :: integer
@@ -142,16 +143,22 @@ function M.map(run: any, step: any): error?
         step.message = "Used " .. #outline .. " sections from the document's headings"
     end
     if cfg.section_summaries then
-        local listing = {}
+        local listing, sources, seen = {}, {}, {}
         for _, s in ipairs(run.document.outline) do
             local chunks, err = doctools.section({ document = run.document }, s.id)
             if err then return err end
-            local body = {}
-            for _, c in ipairs(chunks) do body[#body + 1] = c.content end
+            local body, length = {}, 0
+            for _, c in ipairs(chunks) do
+                if length < 1500 and not seen[c.ordinal] then
+                    sources[#sources + 1], seen[c.ordinal] = c.ordinal, true
+                end
+                body[#body + 1] = c.content
+                length = length + #c.content + 1
+            end
             listing[#listing + 1] = "## " .. s.id .. " " .. s.path .. "\n" .. table.concat(body, "\n"):sub(1, 1500)
         end
         local result, err = ai.structured(step.meter, cfg.model, M.summary_schema(run.document.outline),
-            system("Summarize each section in one sentence, naming what it covers. Return one summary per section id."), table.concat(listing, "\n\n"), sampling("summaries"))
+            system("Summarize each section in one sentence, naming what it covers. Return one summary per section id."), table.concat(listing, "\n\n"), sampling("summaries", shapes.paths(run.config.fields), sources))
         if err then return err end
         for _, s in ipairs(run.document.outline) do
             local summary = trim(tostring(result[s.id] or ""))
@@ -491,7 +498,7 @@ function M.highlight(run: any, step: any): error?
         local result, err = ai.structured(step.meter, model, M.highlight_schema(batch),
             system("For each passage, keyed by its chunk number without the C, copy word for word the sentences that state or help determine any field's value. Return an empty list for passages that do not."),
             "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch),
-            { temperature = retrieval.highlighter_temperature, max_tokens = retrieval.highlighter_max_tokens, stage = "highlight", sources = shapes.ordinals(batch) })
+            { temperature = retrieval.highlighter_temperature, max_tokens = retrieval.highlighter_max_tokens, stage = "highlight", sources = shapes.ordinals(batch), fields = shapes.paths(run.config.fields) })
         if err then return err end
         for _, c in ipairs(batch) do
             -- Only excerpts that occur in the passage replace it, each as its own paragraph.
@@ -705,19 +712,23 @@ function M.verify(run: any, step: any): error?
     end
     local support = {}
     if cfg.check_support then
-        local found, lines_out = {}, {}
+        local found, lines_out, sources, seen = {}, {}, {}, {}
         for _, v in ipairs(run.values) do
             if not v.missing and not v.failed then
                 found[#found + 1] = v
                 local quotes = {}
-                for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" end
+                for _, e in ipairs(v.evidence) do
+                    quotes[#quotes + 1] = "\"" .. e.quote .. "\""
+                    if e.chunk and not seen[e.chunk] then sources[#sources + 1], seen[e.chunk] = e.chunk, true end
+                end
                 lines_out[#lines_out + 1] = "- " .. shapes.path(v) .. " = " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | ")
             end
         end
         if #found > 0 then
+            table.sort(sources)
             local result, err = ai.structured(step.meter, cfg.model, support_schema(found),
                 system("For each field, decide whether its quotes support its value exactly. Return one check per field."),
-                table.concat(lines_out, "\n"), { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(found) })
+                table.concat(lines_out, "\n"), { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(found), sources = sources })
             if err then return err end
             support = result
         end
