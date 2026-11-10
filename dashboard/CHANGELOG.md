@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.22](https://github.com/kicksideai/components/compare/dashboard-v0.1.21...dashboard-v0.1.22) (2026-11-10)
+
+
+### Bug Fixes
+
+* rebuild packages without baked default bindings ([#45](https://github.com/kicksideai/components/issues/45)) ([69e523b](https://github.com/kicksideai/components/commit/69e523b5870cc7abda558fc6d0a3a04f1c391310))
+
 ## [0.1.21](https://github.com/kicksideai/components/compare/dashboard-v0.1.20...dashboard-v0.1.21) (2026-11-06)
 
 
