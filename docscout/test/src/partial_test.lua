@@ -117,6 +117,18 @@ return { run = test.run_cases(function()
             test.not_nil(contract_schema.properties.summary)
             test.not_nil(contract_schema.properties.trace.items.properties.calls)
         end)
+        test.it("meters a provider failure's reported usage and reports a length cut as truncation", function()
+            local run = context(configuration({ "before", "cut_reply", "provider_failure" }))
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.extract(run, step))
+            local cut = run.values[2]
+            test.is_true(cut.failed); test.eq(cut.error.details.code, "structured_reply_truncated")
+            local call = step.meter.calls[2]
+            test.eq(call.prompt_tokens, 12); test.eq(call.completion_tokens, 4096); test.eq(call.finish_reason, "length")
+            test.eq(call.error_code, "structured_reply_truncated")
+            test.is_nil(step.meter.calls[3].prompt_tokens)
+            test.eq(step.meter.input_tokens, 24); test.eq(step.meter.output_tokens, 4104)
+        end)
         test.it("fails all remaining calls after a deadline without marking fields missing", function()
             local run = context(configuration({ "one", "two" }))
             local err = stages.extract(run, { meter = ai.meter(assert(time.parse(time.RFC3339, "2000-01-01T00:00:00Z"))) })

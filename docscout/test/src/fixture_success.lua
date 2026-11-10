@@ -37,6 +37,10 @@ function M.structured(args: any): (any?, error?)
     if args.schema.properties.provider_failure then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Fixture provider unavailable", details = { code = "fixture_provider_failure" } })
     end
+    if args.schema.properties.cut_reply then
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Model failed to return valid JSON: unexpected EOF",
+            details = { code = "fixture_cut_reply", tokens = { prompt_tokens = 12, completion_tokens = 4096 }, finish_reason = "length" } })
+    end
     if args.schema.properties.truncated_reply then
         return { result = { data = extraction(args.schema) }, finish_reason = "length",
             tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
