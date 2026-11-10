@@ -341,8 +341,19 @@ function M.mark_eval(component_id: string, eval_id: string, status: string, erro
     end)
 end
 
--- Stores one case's outcome once, while its evaluation is active. The
--- evaluation row is written first, so concurrent final cases queue on it and
+-- Adds the tokens and time of a case attempt that Jobs runs again to the
+-- queued case, so its settled result counts every attempt.
+function M.add_case_attempt(component_id: string, eval_id: string, case_id: string, tokens: number, duration_ms: number): (any?, error?)
+    return fenced(component_id, function(db: any): (any?, error?)
+        local _, err = db:execute([[UPDATE kickside_docscout_eval_results SET tokens=tokens+$1, duration_ms=duration_ms+$2
+            WHERE eval_id=$3 AND case_id=$4 AND status='queued']], { tokens, duration_ms, eval_id, case_id })
+        if err then return nil, failed("evaluation attempt could not be stored", err) end
+        return true, nil
+    end)
+end
+
+-- Stores one case's outcome once, while its evaluation is active, adding its
+-- tokens and time to those of earlier attempts. The evaluation row is written first, so concurrent final cases queue on it and
 -- exactly one of them sees every case settled and writes the totals.
 function M.finish_case(component_id: string, eval_id: string, case_id: string, outcome: any,
         summarize: ({ any }, { any }) -> any): (any?, error?)
@@ -355,7 +366,7 @@ function M.finish_case(component_id: string, eval_id: string, case_id: string, o
         if hold_err then return nil, failed("evaluation could not be locked", hold_err) end
         if held.rows_affected == 0 then return nil, nil end
         local _, err = tx:execute([[UPDATE kickside_docscout_eval_results
-            SET status=$1, run_id=$2, scores=$3, tokens=$4, duration_ms=$5, error=$6, finished_at=$7
+            SET status=$1, run_id=$2, scores=$3, tokens=tokens+$4, duration_ms=duration_ms+$5, error=$6, finished_at=$7
             WHERE eval_id=$8 AND case_id=$9 AND status='queued']],
             { outcome.status, outcome.run_id or sql.as.null(), scores, outcome.tokens or 0, outcome.duration_ms or 0,
               outcome.error and failure or sql.as.null(), now(), eval_id, case_id })

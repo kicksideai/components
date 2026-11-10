@@ -142,7 +142,38 @@ local function returned_failure(input: any, primary: error): (nil, error)
     return nil, primary
 end
 
--- Job worker for one case.
+-- A failure Jobs replays: retryable, and of a kind Jobs does not settle as deterministic.
+local function transient(kind: any, retryable: any): boolean
+    return retryable == true and not job_types.is_deterministic_kind(kind)
+end
+
+-- The failure of a result whose failed fields all carry transient errors, or nil.
+local function transient_fields(result: any): error?
+    local first = nil
+    for _, f in ipairs(result.fields) do
+        if f.failed then
+            local cause = f.error or {}
+            if not transient(cause.kind, cause.retryable) then return nil end
+            first = first or f
+        end
+    end
+    if not first then return nil end
+    local details = {}
+    for k, v in pairs(first.error.details or {}) do details[k] = v end
+    details.field, details.run_id = first.path, result.run_id
+    return errors.new({ kind = first.error.kind, retryable = true, message = first.path .. ": " .. tostring(first.error.message), details = details })
+end
+
+-- Returns a transient failure to Jobs for another attempt after adding the
+-- attempt's tokens and time to the case.
+local function replay(eval: any, case_id: string, primary: error, tokens: number, duration_ms: number): (nil, error)
+    local _, record_err = repository.add_case_attempt(eval.component_id, eval.id, case_id, tokens, duration_ms)
+    if record_err then return nil, error_envelope.wrap_secondary(record_err, primary, "evaluation attempt could not be recorded") end
+    return nil, primary
+end
+
+-- Job worker for one case. A transient failure before the final attempt goes
+-- back to Jobs; any other outcome settles the case.
 function M.run_case(input: any): (any?, error?)
     local payload = input.payload
     local eval, err = repository.get_eval(payload.eval_id, true)
@@ -156,6 +187,7 @@ function M.run_case(input: any): (any?, error?)
     local expected = case
     local stored, row_err = execution_identity.from_row(eval.identity.actor_id, eval.identity.actor_context)
     if row_err then return finish(eval, payload.case_id, { status = "failed", error = error_envelope.encode(row_err) }) end
+    local final = input.job and input.job.is_final_attempt == true
     local executor, bind_err = execution_identity.bind(stored, { deferred_owner = WORKER })
     if bind_err then return finish(eval, payload.case_id, { status = "failed", error = error_envelope.encode(bind_err) }) end
     local result, run_err = executor:call("kickside.docscout:invoke",
@@ -168,9 +200,12 @@ function M.run_case(input: any): (any?, error?)
             tokens = tokens + step.input_tokens + step.output_tokens
             duration = duration + step.duration_ms
         end
+        if not final and transient(run_err:kind(), run_err:retryable()) then return replay(eval, payload.case_id, run_err, tokens, duration) end
         return finish(eval, payload.case_id, { status = "failed", error = error_envelope.encode(run_err), run_id = details.run_id,
             tokens = tokens, duration_ms = duration })
     end
+    local retry = not final and transient_fields(result) or nil
+    if retry then return replay(eval, payload.case_id, retry, result.tokens, result.duration_ms) end
     local values = {}
     for _, f in ipairs(result.fields) do values[f.path] = f end
     return finish(eval, payload.case_id, {

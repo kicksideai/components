@@ -37,33 +37,56 @@ local function extractor(who: string): string
     return assert(call(who, { op = "create", input = { title = "Invoice reader", description = "", config = config } })).component_id
 end
 
+-- A queued single-case evaluation over a one-sentence upload whose fields are
+-- read by the success fixture; a field's name selects the fixture's reply.
+local function field_eval(who: string, names: { string }, expected: any, mutate: ((any) -> ())?, text: string?): (string, string, string)
+    local schema = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json))
+    local cfg = schema.default
+    cfg.fields = {}
+    for _, name in ipairs(names) do
+        local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+        field.name, field.type, field.description = name, "number", "Total amount"
+        cfg.fields[#cfg.fields + 1] = field
+    end
+    cfg.retrieval.embedding_model, cfg.retrieval.context, cfg.retrieval.search_mode = "class:docscout-success", "none", "keyword"
+    cfg.stages.map.enabled, cfg.stages.scout.enabled, cfg.stages.deep.enabled = false, false, false
+    cfg.stages.verify.check_support = false
+    cfg.stages.extract.model, cfg.stages.extract.max_fields_per_call = "class:docscout-success", 1
+    if mutate then mutate(cfg) end
+    local id = assert(call(who, { op = "create", input = { title = "Evaluated reader", config = cfg } })).component_id
+    local upload_id = data.upload(who, "application/pdf", "Original bytes", text or "# Invoice\nThe total amount is 1250.")
+    assert(call(who, { op = "add_case", id = id, input = { upload_id = upload_id, expected = expected } }))
+    local snapshot = assert(call(who, { op = "get", id = id }))
+    local eval_id = assert(call(who, { op = "queue_eval", id = id, cases = snapshot.cases }))
+    return id, eval_id, snapshot.cases[1].id
+end
+
+-- Recorded runs of an extractor and their summed tokens.
+local function run_tokens(id: string): (integer, number)
+    local db = assert(sql.get("app:db"))
+    local rows, err = db:query("SELECT tokens FROM kickside_docscout_runs WHERE component_id=$1", { id })
+    db:release()
+    assert(err == nil, tostring(err))
+    local total = 0
+    for _, r in ipairs(rows) do total = total + (tonumber(r.tokens) or 0) end
+    return #rows, total
+end
+
+-- Runs the case worker as Jobs runs attempt n of 3.
+local function attempt(id: string, eval_id: string, case_id: string, n: integer): (any?, error?)
+    return funcs.call("kickside.docscout.evals:case_worker", {
+        payload = { component_id = id, eval_id = eval_id, case_id = case_id },
+        job = { attempt_no = n, max_attempts = 3, is_final_attempt = n == 3 } })
+end
+
 return { run = test.run_cases(function()
     test.describe("Evaluations", function()
         for _, status in ipairs({ "partial", "failed" }) do
             test.it("persists failed-field scores and causes for " .. status .. " extraction", function()
                 local who = member()
-                local schema = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json))
-                local cfg = schema.default
-                local failed = schema.properties.fields.items.default
-                failed.name, failed.type, failed.description = "provider_failure", "number", "Total amount"
-                cfg.fields = { failed }
-                if status == "partial" then
-                    local good = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
-                    good.name, good.type, good.description = "total", "number", "Total amount"
-                    cfg.fields[2] = good
-                end
-                cfg.retrieval.embedding_model, cfg.retrieval.context, cfg.retrieval.search_mode = "class:docscout-success", "none", "keyword"
-                cfg.stages.map.enabled, cfg.stages.scout.enabled, cfg.stages.deep.enabled = false, false, false
-                cfg.stages.verify.check_support = false
-                cfg.stages.extract.model, cfg.stages.extract.max_fields_per_call = "class:docscout-success", 1
-                local id = assert(call(who, { op = "create", input = { title = "Evaluated partial reader", config = cfg } })).component_id
-                local upload_id = data.upload(who, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
-                assert(call(who, { op = "add_case", id = id, input = { upload_id = upload_id, expected = status == "partial" and { total = 1250 } or {} } }))
-                local snapshot = assert(call(who, { op = "get", id = id }))
-                local eval_id = assert(call(who, { op = "queue_eval", id = id, cases = snapshot.cases }))
-                local result, err = funcs.call("kickside.docscout.evals:case_worker", {
-                    payload = { component_id = id, eval_id = eval_id, case_id = snapshot.cases[1].id },
-                })
+                local id, eval_id, case_id = field_eval(who, status == "partial" and { "provider_failure", "total" } or { "provider_failure" },
+                    status == "partial" and { total = 1250 } or {})
+                local result, err = attempt(id, eval_id, case_id, 3)
                 test.is_nil(err, tostring(err)); test.not_nil(result)
                 local evaluation = assert(call(who, { op = "get_eval", id = id, eval_id = eval_id })).evaluation
                 test.eq(evaluation.results[1].status, status)
@@ -73,6 +96,64 @@ return { run = test.run_cases(function()
                 if status == "partial" then test.eq(evaluation.metrics[2].accuracy, 1) end
             end)
         end
+        test.it("returns a transient field failure to Jobs before the final attempt and records each attempt's tokens", function()
+            local who = member()
+            local id, eval_id, case_id = field_eval(who, { "provider_failure", "total" }, { total = 1250 })
+            local value, err = attempt(id, eval_id, case_id, 1)
+            test.is_nil(value); test.not_nil(err); test.is_true(err:retryable())
+            test.eq(err:details().code, "fixture_provider_failure")
+            local first = assert(call(who, { op = "get_eval", id = id, eval_id = eval_id })).evaluation
+            test.eq(first.results[1].status, "queued"); test.is_nil(first.finished_at)
+            local spent = first.results[1].tokens
+            test.is_true(spent > 0, "the first attempt's tokens are recorded")
+            local result, final_err = attempt(id, eval_id, case_id, 3)
+            test.is_nil(final_err, tostring(final_err)); test.not_nil(result)
+            local settled = assert(call(who, { op = "get_eval", id = id, eval_id = eval_id })).evaluation
+            test.eq(settled.results[1].status, "partial")
+            local runs, total = run_tokens(id)
+            test.eq(runs, 2); test.is_true(total > spent)
+            test.eq(settled.results[1].tokens, total)
+            test.eq(settled.tokens, total)
+        end)
+        test.it("settles a truncated field on its first attempt", function()
+            local who = member()
+            local id, eval_id, case_id = field_eval(who, { "truncated_reply", "total" }, { total = 1250 })
+            local result, err = attempt(id, eval_id, case_id, 1)
+            test.is_nil(err, tostring(err)); test.not_nil(result)
+            local evaluation = assert(call(who, { op = "get_eval", id = id, eval_id = eval_id })).evaluation
+            test.eq(evaluation.results[1].status, "partial")
+            test.eq(evaluation.results[1].scores[1].error.details.code, "structured_reply_truncated")
+            test.is_false(evaluation.results[1].scores[1].error.retryable)
+        end)
+        test.it("settles a field whose reply does not match its schema on its first attempt", function()
+            local who = member()
+            local id, eval_id, case_id = field_eval(who, { "invalid_reply", "total" }, { total = 1250 })
+            local result, err = attempt(id, eval_id, case_id, 1)
+            test.is_nil(err, tostring(err)); test.not_nil(result)
+            local evaluation = assert(call(who, { op = "get_eval", id = id, eval_id = eval_id })).evaluation
+            test.eq(evaluation.results[1].status, "partial")
+            test.eq(evaluation.results[1].scores[1].error.details.code, "structured_reply_invalid")
+        end)
+        test.it("returns a transient run failure to Jobs before the final attempt and settles it on the final one", function()
+            local who = member()
+            local id, eval_id, case_id = field_eval(who, { "provider_failure" }, {}, function(cfg: any)
+                cfg.stages.map.enabled, cfg.stages.map.model, cfg.stages.map.section_summaries = true, "class:docscout-success", false
+                cfg.fields[1].search_within = "sections"
+            end, "# Parties\nA buyer.\n# Terms\nThe total amount is 1250.\n# Schedule\nMonthly.")
+            local value, err = attempt(id, eval_id, case_id, 1)
+            test.is_nil(value); test.not_nil(err); test.is_true(err:retryable())
+            local first = assert(call(who, { op = "get_eval", id = id, eval_id = eval_id })).evaluation
+            test.eq(first.results[1].status, "queued")
+            local spent = first.results[1].tokens
+            local result, final_err = attempt(id, eval_id, case_id, 3)
+            test.is_nil(final_err, tostring(final_err)); test.not_nil(result)
+            local settled = assert(call(who, { op = "get_eval", id = id, eval_id = eval_id })).evaluation
+            test.eq(settled.results[1].status, "failed"); test.not_nil(settled.finished_at)
+            test.is_true(settled.results[1].error.retryable)
+            local runs, total = run_tokens(id)
+            test.eq(runs, 2); test.is_true(spent > 0, "the first attempt embeds the upload")
+            test.eq(settled.results[1].tokens, total)
+        end)
         test.it("refuses to start without cases or edit access", function()
             local who = "eval-owner-" .. uuid.v4()
             local id = extractor(who)

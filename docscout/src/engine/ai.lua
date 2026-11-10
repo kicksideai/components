@@ -13,7 +13,9 @@ M.DIMENSIONS = 512
 local EMBED_BATCH = 64
 
 -- The llm module reports provider failures as strings; those are transient.
--- A native error keeps its own kind and retryability.
+-- A native error keeps its own kind and retryability. A truncated reply or one
+-- that does not match its schema recurs on an unchanged call, so neither is
+-- retryable.
 local function model_error(what: string, err: any): error
     if type(err) == "userdata" then return errors.wrap(err, what .. " failed") end
     return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = what .. " failed: " .. tostring(err) })
@@ -90,7 +92,7 @@ function M.structured(meter: Meter, model: string, schema: any, system: string, 
     if err then return nil, model_error("structured model call (" .. model .. ")", err) end
     count(meter, response)
     if response.finish_reason == "length" then
-        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = false,
             message = "Structured model reply is truncated", details = { code = "structured_reply_truncated", model = model } })
     end
     if type(response.result) ~= "table" then
@@ -100,7 +102,7 @@ function M.structured(meter: Meter, model: string, schema: any, system: string, 
     if encode_err then return nil, model_error("structured reply encoding", encode_err) end
     local valid, validation_err = json.validate_string(schema, encoded)
     if not valid then
-        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = false,
             message = "Structured model reply does not match its schema: " .. tostring(validation_err),
             details = { code = "structured_reply_invalid", model = model } })
     end
