@@ -1759,3 +1759,24 @@ entries:
   - id: app:fixture_success_provider
     provider_model: docscout-success
     options: {capture_requests: verification-requests.json}
+- name: adjacent_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_adjacent, group: Docscout}
+  source: file://adjacent_test.lua
+  method: run
+  modules: [json, uuid, registry]
+  imports:
+    test: wippy.test:test
+    shapes: kickside.docscout.engine:shapes
+    process: kickside.docscout.engine:process
+    stages: kickside.docscout.engine:stages
+    store: kickside.docscout.persist:store
+    data: app:fixture_data
+- name: offset_migration_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_offset_migration, group: Docscout}
+  source: file://offset_migration_test.lua
+  method: run
+  modules: [sql, funcs, json]
+  imports:
+    test: wippy.test:test
