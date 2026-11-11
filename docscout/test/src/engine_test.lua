@@ -168,7 +168,7 @@ return { run = test.run_cases(function()
             test.eq(keyword[1].ordinal, 2); test.eq(keyword[1].page_start, 2)
             local semantic = assert(store.search(id, { mode = "semantic", vector = unit(1), limit = 1 }))
             test.eq(semantic[1].ordinal, 1)
-            local close = assert(store.search(id, { mode = "hybrid", text = "amount due", vector = unit(1), limit = 5, min_similarity = 0.5 }))
+            local close = assert(store.search(id, { mode = "hybrid", text = "amount due", vector = unit(1), limit = 5, min_similarity = 0.6 }))
             test.eq(#close, 1); test.eq(close[1].ordinal, 1); test.eq(type(close[1].similarity), "number")
             local scoped = assert(store.search(id, { mode = "semantic", vector = unit(1), limit = 5, ordinals = { 2 } }))
             test.eq(#scoped, 1); test.eq(scoped[1].ordinal, 2)
@@ -184,6 +184,26 @@ return { run = test.run_cases(function()
             test.is_true(replaced ~= expired)
             test.eq(#assert(store.all_chunks(expired)), 0)
             test.eq(assert(store.all_chunks(replaced))[1].content, chunks[2].content)
+        end)
+        test.it("applies a minimum similarity to each hit's vector similarity in semantic and hybrid search", function()
+            local chunks = {}
+            for n = 1, 6 do
+                chunks[n] = { ordinal = n, section_id = "s" .. n, heading_path = "Terms", vector = unit(1),
+                    content = n == 6 and "Renewal requires written notice" or ("Clause text number " .. string.rep("i", n)) }
+            end
+            chunks[7] = { ordinal = 7, section_id = "s7", heading_path = "Other", content = "Unrelated schedule of fees", vector = unit(2) }
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k",
+                outline = {}, page_count = 0, tokens = 0, expires_at = far_future() }, chunks))
+            local function kept(mode: string): string
+                local ordinals = {}
+                for _, hit in ipairs(assert(store.search(id, { mode = mode, text = "renewal", vector = unit(1), limit = 10, min_similarity = 0.6 }))) do
+                    ordinals[#ordinals + 1] = hit.ordinal
+                end
+                table.sort(ordinals)
+                return json.encode(ordinals)
+            end
+            test.eq(kept("semantic"), json.encode({ 1, 2, 3, 4, 5, 6 }))
+            test.eq(kept("hybrid"), json.encode({ 1, 2, 3, 4, 5, 6 }))
         end)
     end)
 

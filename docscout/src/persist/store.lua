@@ -208,9 +208,19 @@ function M.expire(limit: integer): (integer?, error?)
     end)
 end
 
+-- A hit's vector similarity to the query: fused hybrid rows carry it as
+-- vector_similarity, dense rows as similarity. Keyword rows and keyword
+-- matches outside the vector candidates have none.
+local function vector_similarity(row: any): number?
+    if row.hybrid_score ~= nil then return tonumber(row.vector_similarity) end
+    return tonumber(row.similarity)
+end
+
 -- Searches one processed document. mode is keyword, semantic or hybrid;
 -- ordinals, when given, keeps results inside that region of the document,
--- and an empty region produces an empty result.
+-- and an empty region produces an empty result. min_similarity, when given,
+-- keeps hits whose vector similarity reaches it, in every mode; a hit
+-- without a vector similarity is kept.
 function M.search(document_id: string, opts: any): (any?, error?)
     if opts.ordinals and #opts.ordinals == 0 then return {}, nil end
     return database.with_db(function(db: any): (any?, error?)
@@ -229,9 +239,10 @@ function M.search(document_id: string, opts: any): (any?, error?)
         if search_err then return nil, failed("document search failed", search_err) end
         local hits = {}
         for _, row in ipairs(rows or {}) do
+            local similarity = vector_similarity(row)
             local hit, decode_err = decode_chunk(row)
             if decode_err then return nil, decode_err end
-            if opts.min_similarity == nil or hit.similarity == nil or hit.similarity >= opts.min_similarity then hits[#hits + 1] = hit end
+            if opts.min_similarity == nil or similarity == nil or similarity >= opts.min_similarity then hits[#hits + 1] = hit end
         end
         return hits, nil
     end)
