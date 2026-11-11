@@ -334,7 +334,7 @@ entries:
     group: Docscout
   source: file://expiry_test.lua
   method: run
-  modules: [time, sql, process, channel, funcs, uuid]
+  modules: [time, sql, process, channel, funcs, uuid, registry]
   imports:
     test: wippy.test:test
     data: app:fixture_data
@@ -449,6 +449,8 @@ entries:
   - time
   - sql
   imports:
+    repository: kickside.docscout.persist:repository
+    database: kickside.docscout.persist:database
     data: app:fixture_data
     test: wippy.test:test
     user_repo: kickside.users.persist:user_repo
@@ -1568,3 +1570,31 @@ entries:
     options:
       absent: [Excluded]
       reply: {'1': ['The total amount is 1250.']}
+
+- name: fixture_call_error
+  kind: library.lua
+  source: file://fixture_call_error.lua
+- name: fixture_call_error_probe
+  kind: function.lua
+  source: file://fixture_call_error.lua
+  method: probe
+  imports:
+    ai: kickside.docscout.engine:ai
+- name: ai_error_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_call_errors, group: Docscout}
+  source: file://ai_error_test.lua
+  method: run
+  modules: [registry, funcs]
+  imports:
+    test: wippy.test:test
+
+- name: fixture_empty_sweep
+  kind: library.lua
+  source: file://fixture_empty_sweep.lua
+  imports:
+    repository: kickside.docscout.persist:repository
+- name: fixture_empty_store
+  kind: library.lua
+  source: |
+    return { expire = function(_limit: integer): (integer?, error?) return 0, nil end }

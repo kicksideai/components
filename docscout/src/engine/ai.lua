@@ -12,15 +12,14 @@ local M = {}
 M.DIMENSIONS = 512
 local EMBED_BATCH = 64
 
--- The llm module reports provider failures as strings; those are transient.
--- A native error keeps its own kind and retryability.
-local function model_error(what: string, err: any): error
+-- Native errors retain their retry classification. Structured reply checks
+-- supply their existing retry policy; an unclassified string defaults to false.
+local function model_error(what: string, err: any, retryable: boolean?): error
     if type(err) == "userdata" then return errors.wrap(err, what .. " failed") end
-    return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = what .. " failed: " .. tostring(err) })
+    return errors.new({ kind = errors.UNAVAILABLE, retryable = retryable == true, message = what .. " failed: " .. tostring(err) })
 end
 
--- A reply the provider stopped at the output limit; its text is incomplete,
--- and the same call stops at the same limit again, so it is not retryable.
+-- A free-text reply stopped at the output limit is incomplete.
 local function truncated(model: string): error
     return errors.new({ kind = errors.UNAVAILABLE, retryable = false,
         message = "Model reply is truncated by its output limit", details = { code = "model_reply_truncated", model = model } })
@@ -142,10 +141,10 @@ local function structured_result(model: string, schema: any, response: any, err:
             message = "Structured model reply is truncated", details = { code = "structured_reply_truncated", model = model } })
     end
     if type(response.result) ~= "table" then
-        return nil, model_error("structured model call (" .. model .. ")", "no structured result")
+        return nil, model_error("structured model call (" .. model .. ")", "no structured result", true)
     end
     local encoded, encode_err = json.encode(response.result)
-    if encode_err then return nil, model_error("structured reply encoding", encode_err) end
+    if encode_err then return nil, model_error("structured reply encoding", encode_err, true) end
     local valid, validation_err = json.validate_string(schema, encoded)
     if not valid then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,

@@ -99,6 +99,8 @@ entries:
     path: .meta.target_db
   - entry: kickside.docscout.migrations:03_page_ranges
     path: .meta.target_db
+  - entry: kickside.docscout.migrations:04_evaluation_runs
+    path: .meta.target_db
   - entry: kickside.docscout.security:system_db_access
     path: .policy.resources
 - name: api_router

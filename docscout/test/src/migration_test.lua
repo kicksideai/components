@@ -8,7 +8,7 @@ local ai = require("ai")
 local stages = require("stages")
 local store = require("store")
 
-local MIGRATIONS = { "01_docscout", "02_built_outline", "03_page_ranges" }
+local MIGRATIONS = { "01_docscout", "02_built_outline", "03_page_ranges", "04_evaluation_runs" }
 
 local function apply(name: string, direction: string, expected: integer?)
     local result, err = funcs.call("kickside.docscout.migrations:" .. name, {
@@ -98,7 +98,7 @@ return { run = test.run_cases(function()
             end)
             local restore=assert(registry.overlay("app:migration_test")):changes();restore:delete(entry.id)
             local _,restore_err=restore:apply();test.is_nil(restore_err,tostring(restore_err))
-            apply("03_page_ranges", "up")
+            apply("03_page_ranges", "up"); apply("04_evaluation_runs", "up")
             migrate("down")
             if dialect=="postgres" then
                 source=assert(sql.get("app:db"));assert(source:execute("DROP SCHEMA docscout_migration_fixture CASCADE"));source:release()
@@ -141,11 +141,40 @@ return { run = test.run_cases(function()
                 end
                 db:release()
             end
-            apply("03_page_ranges", "up")
+            apply("03_page_ranges", "up"); apply("04_evaluation_runs", "up")
             migrate("down")
             if dialect == "postgres" then
                 source = assert(sql.get("app:db"))
                 assert(source:execute("DROP SCHEMA docscout_migration_fixture CASCADE")); source:release()
+            end
+        end)
+        test.it("adds nullable evaluation run references without changing earlier data", function()
+            local source = assert(sql.get("app:db"))
+            local dialect = assert(source:type())
+            if dialect == "postgres" then assert(source:execute("CREATE SCHEMA docscout_migration_fixture")) end
+            source:release()
+            for _, name in ipairs({ "01_docscout", "02_built_outline", "03_page_ranges" }) do apply(name, "up") end
+            local db = assert(sql.get("app:migration_db"))
+            assert(db:execute([[INSERT INTO kickside_docscout_runs
+                (id,component_id,user_id,upload_id,caller,status,config_revision,result,trace,duration_ms,tokens,created_at,expires_at)
+                VALUES ('earlier','extractor','user','upload','eval','failed',1,'{}','[]',20,17,'2026-01-01','2999-01-01')]]))
+            db:release()
+            for _ = 1, 2 do
+                apply("04_evaluation_runs", "up"); apply("04_evaluation_runs", "up", 0)
+                db = assert(sql.get("app:migration_db"))
+                local row = assert(db:query("SELECT * FROM kickside_docscout_runs WHERE id='earlier'"))[1]
+                test.eq(row.tokens, 17); test.eq(row.duration_ms, 20); test.eq(row.result, "{}")
+                test.is_nil(row.evaluation_id); test.is_nil(row.case_id)
+                assert(db:execute("UPDATE kickside_docscout_runs SET evaluation_id='evaluation',case_id='case' WHERE id='earlier'"))
+                db:release()
+                apply("04_evaluation_runs", "down")
+                db = assert(sql.get("app:migration_db"))
+                test.eq(assert(db:query("SELECT tokens FROM kickside_docscout_runs WHERE id='earlier'"))[1].tokens, 17)
+                db:release()
+            end
+            for _, name in ipairs({ "03_page_ranges", "02_built_outline", "01_docscout" }) do apply(name, "down") end
+            if dialect == "postgres" then
+                source = assert(sql.get("app:db")); assert(source:execute("DROP SCHEMA docscout_migration_fixture CASCADE")); source:release()
             end
         end)
         test.it("creates, drops and recreates all owned tables in the bound dialect", function()

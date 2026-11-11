@@ -13,6 +13,12 @@ local data = require("data")
 local ai = require("ai")
 
 local OPS = {
+    record_run = function(dto: any): (any?, error?) return repository.add_run(dto.id, dto.row) end,
+    finish_case = function(dto: any): (any?, error?)
+        return repository.finish_case(dto.id, dto.eval_id, dto.case_id, dto.outcome,
+            function(finished: { any }, fields: { any }): any return evals.summarize(fields, finished) end)
+    end,
+    expire_runs = function(_dto: any): (any?, error?) return repository.expire_runs(200) end,
     maintenance = function(dto: any): (any?, error?) return funcs.call(dto.id, {}) end,
     retention = function(_dto: any): (any?, error?) return retention.window() end,
     content = function(dto: any): (any?, error?) return processing.content(dto.upload_id) end,

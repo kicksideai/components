@@ -71,6 +71,11 @@ function M.structured(args: any): (any?, error?)
         end
         return { result = { data = reply }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
     end
+    if args.schema.properties.terminal_failure or args.schema.properties.deterministic_failure then
+        return nil, errors.new({ kind = args.schema.properties.deterministic_failure and errors.INVALID or errors.UNAVAILABLE,
+            retryable = args.schema.properties.deterministic_failure ~= nil,
+            message = "Fixture terminal failure", details = { code = "fixture_terminal_failure" } })
+    end
     if args.schema.properties.provider_failure then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Fixture provider unavailable", details = { code = "fixture_provider_failure" } })
     end
