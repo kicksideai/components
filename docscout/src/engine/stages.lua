@@ -771,7 +771,7 @@ function M.support_line(f: any, v: any, source: string?): string
 end
 
 -- Candidate source chunks stay inside the field's selected region. The
--- request adds a complete region only when it fits, sharing chunks across fields.
+-- request shares chunks across fields and requires every selected region to fit.
 local function source_region(run: any, f: any, v: any, by_ordinal: { [integer]: any }): ({ any }?, error?)
     local ordinals, seen = {}, {}
     local failure: error? = nil
@@ -904,16 +904,16 @@ function M.verify(run: any, step: any): error?
                             local region, region_err = source_region(run, f, v, by_ordinal)
                             if region_err then field_aware = false; break end
                             if #(region :: { any }) > 0 then
-                                local previous, added, refs = lines[path], {}, {}
+                                local refs = {}
                                 for _, chunk in ipairs(region :: { any }) do
                                     refs[#refs + 1] = "C" .. chunk.ordinal
-                                    if not context[chunk.ordinal] then context[chunk.ordinal] = chunk; added[#added + 1] = chunk.ordinal end
+                                    context[chunk.ordinal] = chunk
                                 end
                                 lines[path] = M.support_line(f, v, table.concat(refs, ", "))
                                 complete_fields[path] = true
                                 if not (fits :: any)(support_system, body(), reply_schema()) then
-                                    lines[path], complete_fields[path] = previous, nil
-                                    for _, ordinal in ipairs(added) do context[ordinal] = nil end
+                                    field_aware = false
+                                    break
                                 end
                             end
                         end

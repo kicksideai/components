@@ -50,12 +50,17 @@ local function legacy_identity(run: any)
     local _, err = storage:writefile("completeness-requests.json", "[]")
     test.is_nil(err)
     local legacy_step = { meter = ai.meter() }
-    test.is_nil(stages.verify(legacy, legacy_step))
+    test.is_nil(stages.verify(legacy, legacy_step)); test.eq(#legacy_step.meter.calls, 1)
+    test.is_nil(step.meter.calls[1].error_code)
     local legacy_request = assert(json.decode(assert(storage:readfile("completeness-requests.json"))))[1]
     test.eq(json.encode(enhanced_request), json.encode(legacy_request))
     test.eq(step.meter.input_tokens, legacy_step.meter.input_tokens)
     test.eq(step.meter.output_tokens, legacy_step.meter.output_tokens)
-    test.is_nil(run.values[1].complete); test.is_true(run.values[1].verified)
+    test.eq(step.message, legacy_step.message)
+    for _, v in ipairs(run.values) do
+        test.is_nil(v.complete); test.is_true(v.verified)
+        test.is_nil(v.reason); test.eq(#v.codes, 0)
+    end
 end
 return { run = test.run_cases(function()
     test.describe("Optional completeness", function()
@@ -109,10 +114,7 @@ return { run = test.run_cases(function()
         end)
         test.it("performs viable quote support when optional source context cannot fit", function()
             local run = context(field(), "small", true, string.rep("Other source text. ", 800))
-            local step = { meter = ai.meter() }
-            test.is_nil(stages.verify(run, step)); test.eq(#step.meter.calls, 1)
-            test.is_nil(step.meter.calls[1].error_code)
-            test.is_nil(run.values[1].complete)
+            legacy_identity(run)
         end)
         test.it("shares source chunks across fields and preserves all citation references", function()
             local run = context(field(), "shared", true, "Shared context marker.")
@@ -125,17 +127,20 @@ return { run = test.run_cases(function()
             test.is_true(run.values[1].complete); test.is_true(run.values[2].complete)
             test.eq(json.encode(step.meter.calls[1].sources), '[1,2]')
         end)
-        test.it("keeps a smaller selected source after another field's oversized source", function()
-            local run = context(field(), "small", true, string.rep("Other source text. ", 800))
-            local other = field(); other.name, other.search_within = "other", "sections"
-            run.config.fields[2], run.regions.other = other, { 1 }
-            run.values[2] = { name = "other", path = "other", value = "2025-01-01", missing = false, failed = false,
-                evidence = { { chunk = 1, quote = "The total amount is 1250." }, { chunk = 1, quote = "amount is 1250" } } }
-            local step = { meter = ai.meter() }
-            test.is_nil(stages.verify(run, step)); test.eq(#step.meter.calls, 1)
-            test.is_nil(run.values[1].complete); test.is_true(run.values[2].complete)
-            test.eq(json.encode(step.meter.calls[1].sources), '[1]')
-        end)
+        for _, smaller_first in ipairs({ false, true }) do
+            test.it("preserves the legacy request when the oversized source comes " .. (smaller_first and "last" or "first"), function()
+                local run = context(field(), "small", true, string.rep("Other source text. ", 800))
+                local other = field(); other.name, other.search_within = "other", "sections"
+                run.config.fields[2], run.regions.other = other, { 1 }
+                run.values[2] = { name = "other", path = "other", value = "2025-01-01", missing = false, failed = false,
+                    evidence = { { chunk = 1, quote = "The total amount is 1250." }, { chunk = 1, quote = "amount is 1250" } } }
+                if smaller_first then
+                    run.config.fields[1], run.config.fields[2] = run.config.fields[2], run.config.fields[1]
+                    run.values[1], run.values[2] = run.values[2], run.values[1]
+                end
+                legacy_identity(run)
+            end)
+        end
         test.it("accepts an earlier configuration without a completeness policy", function()
             local config = schema().default
             test.is_true(config.stages.verify.check_completeness == nil or config.stages.verify.check_completeness == false)
