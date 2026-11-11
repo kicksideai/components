@@ -1685,7 +1685,7 @@ entries:
   providers:
   - id: app:fixture_success_provider
     provider_model: docscout-success
-    options: {"support_fixture": {"require_completeness": true, "completeness": "insufficient_evidence"}}
+    options: {"support_fixture": {"require_completeness": true, "completeness": "insufficient_evidence", "verdict": "insufficient_evidence"}}
 - name: fixture_completeness_incomplete_model
   kind: registry.entry
   meta:
@@ -1716,3 +1716,19 @@ entries:
   - id: app:fixture_success_provider
     provider_model: docscout-success
     options: {"support_fixture": {}}
+
+- name: fixture_completeness_shared_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-completeness-shared
+    title: Shared source fixture
+    capabilities: [generate, structured_output]
+    class: [docscout-completeness-shared]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {support_fixture: {require_completeness: true, occurrences: {'Shared context marker.': 1}}}

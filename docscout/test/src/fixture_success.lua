@@ -64,12 +64,23 @@ function M.structured(args: any): (any?, error?)
                 return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Missing field contract: " .. text })
             end
         end
+        for text, expected in pairs(options.occurrences or {}) do
+            local count, at = 0, 1
+            while true do
+                local first, last = request:find(text, at, true)
+                if not first then break end
+                count, at = count + 1, last + 1
+            end
+            if count ~= expected then
+                return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Source occurrence mismatch: " .. count })
+            end
+        end
         local reply = {}
         for path, schema in pairs(args.schema.properties) do
             assert(path ~= "absent" and path ~= "failed", "An unextracted field reaches support")
             local props = schema.properties
             local check = { reason = "Fixture judgment" }
-            if props.verdict then check.verdict = "supported" else check.supported = true end
+            if props.verdict then check.verdict = options.verdict or "supported" else check.supported = true end
             if props.complete then check.complete = options.completeness or "complete" end
             if options.require_completeness and not props.complete then
                 return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Completeness is not requested" })

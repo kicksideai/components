@@ -121,6 +121,29 @@ function M.resolve(model: string): (any?, error?)
     return card, nil
 end
 
+-- The serialized request estimate matches the LLM admission contract. It is
+-- a scheduling estimate; provider tokenization can differ.
+function M.estimate(system: string, user: string, schema: any?): integer
+    local encoded = assert(json.encode({ messages = messages(system, user), schema = schema }))
+    return math.ceil(#encoded / 4)
+end
+
+function M.fitter(model: string, max_output: integer?): (((string, string, any?) -> boolean)?, integer?, error?)
+    local card, err = M.resolve(model)
+    if err then return nil, nil, err end
+    local output = max_output or math.tointeger(tonumber(card.output_tokens))
+    local window = math.tointeger(tonumber(card.max_tokens))
+    return function(system: string, user: string, schema: any?): boolean
+        return not window or window <= 0 or M.estimate(system, user, schema) + (output or 0) <= window
+    end, output, nil
+end
+
+function M.over_budget(model: string, what: string, advice: string): error
+    return errors.new({ kind = errors.INVALID, retryable = false,
+        message = what .. " exceeds the context window of " .. model .. "; " .. advice,
+        details = { code = "prompt_exceeds_budget", model = model } })
+end
+
 -- The reply a provider failure reports: the llm module carries a failed
 -- reply's usage and finish reason in the error details. nil when the failure
 -- came before any reply.

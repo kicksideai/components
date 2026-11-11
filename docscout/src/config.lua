@@ -64,6 +64,7 @@ function M.validate(value: any): error?
             return invalid("Agent scouting needs at least one round and one query per round")
         end
     end
+    if stages.verify.check_completeness and not stages.verify.check_support then return invalid("Completeness requires quote support") end
     if stages.verify.enabled and not (stages.verify.check_quotes or stages.verify.check_support) then return invalid("Verify needs at least one check") end
     if value.retrieval.overlap >= value.retrieval.chunk_size then return invalid("Overlap must be smaller than chunk size") end
     return nil

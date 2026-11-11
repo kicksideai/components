@@ -137,4 +137,8 @@ make postgres-down
 
 Manual-worker fixtures enroll real Jobs with the public `parked=true` enqueue option: the job has no scheduled execution until explicitly woken. This keeps receipt validation real while tests invoke the worker themselves.
 
-Completeness judgments are opt-in through `stages.verify.check_completeness` (default false). Earlier configurations retain their support request and verification behavior.
+With `stages.verify.check_completeness: true`, Verify checks found, quoted values against each field's full output contract, including nested shapes, formatting and validation hints. It judges completeness for text and lists relative to the requested output, so a requested summary or filtered list need not repeat the entire source. This policy requires quote support and is off by default; earlier configurations and an explicit false retain the existing support prompt, schema, call count and verification behavior. Missing and failed values are excluded from verification requests.
+
+The optional policy adds candidate source regions around citations while keeping each request within the resolved model card's estimated input allowance after reserving output. Shared source chunks appear once. When an optional region does not fit, quote support still runs and completeness remains unknown. These estimates follow the LLM admission contract; provider tokenization can differ. Opting in adds input tokens and can change verification outcomes. It adds no separate completeness call or retry.
+
+Public, agent, Block and stored field results include optional `complete`: true for complete, false for established incompleteness, and absent for unknown or unrequested completeness. Unknown completeness does not become false. Under the optional policy, missing, quote-less, incomplete and unknown values remain unverified; a reason identifies the limitation. Older stored results remain valid without `complete` and are not rewritten.

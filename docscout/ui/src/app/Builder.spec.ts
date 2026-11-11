@@ -1,12 +1,25 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import {describe,it,expect,vi,beforeEach} from 'vitest'
 import {mount} from '@vue/test-utils'
+vi.mock('@iconify/vue',()=>({Icon:{template:'<svg aria-hidden="true"/>'}}))
 vi.mock('@wippy-fe/proxy',()=>({loadByTagName:async()=>{}}))
 import Builder from './Builder.vue'
 import {newConfig,newField} from '../config'
 function build(){const config=newConfig();config.fields=[{...newField(),name:'total',type:'number'}];return mount(Builder,{props:{config,retention:'2h',result:null,title:'Invoice reader',description:''},attachTo:document.body})}
 beforeEach(()=>localStorage.clear())
 describe('Builder panel',()=>{
+ it('keeps completeness optional and clears it when quote support is disabled',async()=>{
+  const w=build()
+  await w.get('.node[aria-label="Verify"]').trigger('click')
+  const toggle=w.get('[role=switch][aria-label="Check completeness"]')
+  expect(toggle.attributes('aria-checked')).toBe('false')
+  await toggle.trigger('click')
+  expect(w.props('config').stages.verify.check_completeness).toBe(true)
+  await w.get('[role=switch][aria-label="Quotes support values"]').trigger('click')
+  expect(w.props('config').stages.verify.check_completeness).toBe(false)
+  expect(w.find('[role=switch][aria-label="Check completeness"]').exists()).toBe(false)
+  w.unmount()
+ })
  it('offers extraction limits with structured output as the only mode',async()=>{
   const w=build()
   await w.get('[aria-label="Extract"]').trigger('click')

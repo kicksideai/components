@@ -58,7 +58,7 @@ return { run = test.run_cases(function()
             local run = context(field(), "unknown", true)
             test.is_nil(stages.verify(run, { meter = ai.meter() }))
             test.is_nil(run.values[1].complete); test.is_false(run.values[1].verified)
-            test.eq(run.values[1].codes[1], "support_insufficient")
+            test.eq(run.values[1].codes[1], "support_insufficient"); test.eq(#run.values[1].codes, 1)
         end)
         test.it("distinguishes established incompleteness from unknown", function()
             local run = context(field(), "incomplete", true)
@@ -71,6 +71,28 @@ return { run = test.run_cases(function()
             test.is_nil(stages.verify(run, step)); test.eq(#step.meter.calls, 1)
             test.is_nil(step.meter.calls[1].error_code)
             test.is_nil(run.values[1].complete)
+        end)
+        test.it("shares source chunks across fields and preserves all citation references", function()
+            local run = context(field(), "shared", true, "Shared context marker.")
+            local other = field(); other.name = "other"
+            run.config.fields[2] = other
+            run.values[2] = { name = "other", path = "other", value = "2025-01-01", missing = false, failed = false,
+                evidence = { { chunk = 1, quote = "The total amount is 1250." } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.verify(run, step)); test.eq(#step.meter.calls, 1)
+            test.is_true(run.values[1].complete); test.is_true(run.values[2].complete)
+            test.eq(json.encode(step.meter.calls[1].sources), '[1,2]')
+        end)
+        test.it("keeps a smaller selected source after another field's oversized source", function()
+            local run = context(field(), "small", true, string.rep("Other source text. ", 800))
+            local other = field(); other.name, other.search_within = "other", "sections"
+            run.config.fields[2], run.regions.other = other, { 1 }
+            run.values[2] = { name = "other", path = "other", value = "2025-01-01", missing = false, failed = false,
+                evidence = { { chunk = 1, quote = "The total amount is 1250." }, { chunk = 1, quote = "amount is 1250" } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.verify(run, step)); test.eq(#step.meter.calls, 1)
+            test.is_nil(run.values[1].complete); test.is_true(run.values[2].complete)
+            test.eq(json.encode(step.meter.calls[1].sources), '[1]')
         end)
         test.it("never sends missing or failed fields to the support model", function()
             local run = context(field(), "default", nil)
@@ -86,6 +108,8 @@ return { run = test.run_cases(function()
         test.it("accepts an earlier configuration without a completeness policy", function()
             local config = schema().default
             test.is_true(config.stages.verify.check_completeness == nil or config.stages.verify.check_completeness == false)
+            config.stages.verify.check_completeness = nil
+            test.is_true(assert(json.validate(schema(), config)))
             local property = schema().properties.stages.properties.verify.properties.check_completeness
             test.not_nil(property); test.is_false(property.default)
         end)
