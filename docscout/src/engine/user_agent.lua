@@ -10,6 +10,7 @@ local data_reader = require("data_reader")
 local json = require("json")
 local doctools = require("doctools")
 local shapes = require("shapes")
+local ai = require("ai")
 local error_envelope = require("error_envelope")
 
 local M = {}
@@ -43,18 +44,21 @@ end
 
 -- Native action and observation records supply tool history, evidence and usage.
 local function collect(run: any, step: any, flow_id: string): error?
-    local rows, err = data_reader.with_dataflow(flow_id):with_data_types("agent.action", "agent.observation"):all()
+    local rows, err = data_reader.with_dataflow(flow_id):with_data_types("agent.action", "agent.observation", "agent.error"):all()
     if err then return runtime_error("Agent trace lookup", err) end
-    local calls, observed = {}, {}
+    local calls, observed, fields = {}, {}, {}
+    for _, field in ipairs(run.config.fields) do
+        if field.strategy ~= "deep" or not run.config.stages.deep.enabled then fields[#fields + 1] = shapes.path(field) end
+    end
     for _, row in ipairs(rows) do
         local value, decode_err = content(row)
         if decode_err then return decode_err end
         local meta = row.metadata or {}
-        if row.type == "agent.action" then
+        if row.type == "agent.action" or row.type == "agent.error" then
             step.model = meta.model or step.model
-            local tokens = meta.tokens or {}
-            step.meter.input_tokens = step.meter.input_tokens + (tokens.prompt_tokens or 0)
-            step.meter.output_tokens = step.meter.output_tokens + (tokens.completion_tokens or 0) + (tokens.thinking_tokens or 0)
+            ai.add_call(step.meter, "scout", tostring(meta.model or step.model or ""), meta.tokens,
+                {finish_reason=meta.finish_reason, latency_ms=meta.latency_ms, error_code=meta.error_code,
+                    sources=meta.sources, fields=meta.fields or fields})
             for _, tc in ipairs(value.tool_calls or {}) do
                 calls[#calls + 1] = { id = tc.id, name = tc.name, registry_id = tc.registry_id, arguments = tc.arguments, iteration = meta.iteration }
             end
@@ -75,8 +79,10 @@ local function collect(run: any, step: any, flow_id: string): error?
             elseif call.registry_id == DOCUMENT_TOOL and type(result.value) == "table" then
                 local document = result.value.docscout
                 shapes.add(run.pool, result.value.chunks or {})
-                step.meter.input_tokens = step.meter.input_tokens + (document.input_tokens or 0)
-                step.meter.output_tokens = step.meter.output_tokens + (document.output_tokens or 0)
+                for _, c in ipairs(document.calls or {}) do
+                    local usage = c.prompt_tokens and { prompt_tokens = c.prompt_tokens, completion_tokens = c.completion_tokens } or nil
+                    ai.add_call(step.meter, c.stage, c.model, usage, c)
+                end
                 if document.error then call.error = document.error; failure = failure or errors.new(document.error) end
             end
         end

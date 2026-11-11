@@ -9,16 +9,16 @@ local shapes = require("shapes")
 local tool_result = require("tool_result")
 
 local function tool_run(args: any): (any?, error?)
-    local result, err = client.run({ extractor_id = args.extractor_id, upload_id = args.upload_id, caller = "agent" })
+    local result, err = client.run({ extractor_id = args.extractor_id, upload_id = args.upload_id, pages = args.pages, caller = "agent" })
     if err then return nil, err end
     local fields = {}
     for _, f in ipairs(result.fields) do
         local quote = f.evidence[1]
-        fields[#fields + 1] = { name = f.name, path = f.path, value = f.value, found = not f.missing and not f.failed, failed = f.failed, error = f.error, verified = f.verified, confidence = f.confidence,
-            evidence = f.evidence, missing = f.missing, reason = f.reason, quote = quote and quote.quote or nil, section = quote and quote.section or nil, page = quote and quote.page or nil }
+        fields[#fields + 1] = { name = f.name, path = f.path, value = f.value, found = not f.missing and not f.failed, failed = f.failed, error = f.error, verified = f.verified, complete = f.complete, confidence = f.confidence,
+            evidence = f.evidence, missing = f.missing, reason = f.reason, codes = f.codes, quote = quote and quote.quote or nil, section = quote and quote.section or nil, page = quote and quote.page or nil }
     end
     return { success = true, run_id = result.run_id, verified = shapes.verified(result), values = result.values, fields = fields,
-        config_revision = result.config_revision, status = result.status, duration_ms = result.duration_ms, tokens = result.tokens, trace = result.trace, pages = result.pages }
+        config_revision = result.config_revision, status = result.status, duration_ms = result.duration_ms, tokens = result.tokens, trace = result.trace, pages = result.pages, page_range = result.page_range }
 end
 
 local function tool_list(args: any): (any?, error?)

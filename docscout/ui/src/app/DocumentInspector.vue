@@ -9,6 +9,7 @@ import ChunkDiagram from './ChunkDiagram.vue'
 import {retrievalBounds,type Config} from '../config'
 const props=defineProps<{config:Config;retention:string;readonly?:boolean}>()
 const r=computed(()=>props.config.retrieval)
+const retentionWindow=computed({get:()=>props.config.retention??'',set:(value:string)=>{if(value.trim())props.config.retention=value.trim();else delete props.config.retention}})
 const modes=[{value:'keyword',label:'Keyword',note:'Exact words and numbers'},{value:'semantic',label:'Semantic',note:'Meaning, even with other wording'},{value:'hybrid',label:'Hybrid',note:'Both, merged by rank'}] as const
 const contexts=[{value:'none',label:'None',note:'Chunks are embedded as they are.'},{value:'headings',label:'Headings',note:'Each chunk is embedded with its heading path, for example "Article 2 › Purchase price". No model call.'},{value:'generated',label:'Generated',note:'A model writes one or two sentences placing each chunk in the document before it is embedded. One call per eight chunks, kept with the processed document.'}] as const
 const size=retrievalBounds('chunk_size'),overlap=retrievalBounds('overlap'),budget=retrievalBounds('section_budget')
@@ -17,6 +18,7 @@ const overlapMax=computed(()=>Math.min(overlap.max,r.value.chunk_size-50))
 <template>
  <fieldset class="inspector-form" :disabled="readonly">
   <p class="muted">The upload's text is split into chunks and indexed once per document and settings; processed copies expire after {{retention}}.</p>
+  <label>Retention window<input v-model="retentionWindow" aria-label="Retention window" placeholder="Global setting"/><small>Duration for new processed documents and runs, for example 24h. Leave empty to use the global Docscout setting. Existing records keep their expiry.</small></label>
   <h4>Chunks</h4>
   <ChunkDiagram :size="r.chunk_size" :overlap="r.overlap"/>
   <Slider v-model="r.chunk_size" label="Chunk size" :min="size.min" :max="size.max" :step="50" log unit="tokens" :hints="['Precise','More context']" :disabled="readonly"/>

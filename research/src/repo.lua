@@ -211,20 +211,32 @@ function M.apply(thread_id: string, event: any): error?
     return err
 end
 
--- delete_by_thread tears down a run's row(s) for a thread. The deletable contract
--- calls this when the research component is deleted, so no row outlives its component.
+-- Each DELETE commits one indexed page, bounding the transaction even for large owners.
+local function delete_owned_rows(db: any, table_name: string, thread_id: string): (number, error?)
+    local deleted = 0
+    while true do
+        local res, err = db:execute("DELETE FROM " .. table_name ..
+            " WHERE thread_id = $1 AND research_id IN (SELECT research_id FROM " .. table_name ..
+            " WHERE thread_id = $1 LIMIT 500)", { thread_id })
+        if err then return deleted, errors.wrap(err, "delete research rows from " .. table_name) end
+        local affected = (res :: any).rows_affected :: number
+        deleted = deleted + affected
+        if affected < 500 then return deleted, nil end
+    end
+end
+
+-- Teardown removes correlations before run projections and returns the run count.
 function M.delete_by_thread(thread_id: string): (number, error?)
     thread_id = trim(thread_id)
     if thread_id == "" then return 0, invalid("thread_id is required") end
     local db, derr = open()
     if not db then return 0, derr end
-    local res, eerr = sql.builder.delete("kickside_research_run")
-        :where(sql.builder.eq({ thread_id = thread_id }))
-        :run_with(db):exec()
+    local _, signal_err = delete_owned_rows(db, "kickside_research_block_signal", thread_id)
+    if signal_err then db:release(); return 0, signal_err end
+    local deleted, eerr = delete_owned_rows(db, "kickside_research_run", thread_id)
     db:release()
-    if eerr then return 0, errors.wrap(eerr, "delete research run") end
-    local affected = type(res) == "table" and tonumber((res :: any).rows_affected) or 0
-    return affected or 0, nil
+    if eerr then return 0, eerr end
+    return deleted, nil
 end
 
 return M

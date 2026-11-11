@@ -15,7 +15,7 @@ The module adds no persistence table.
 ## Installation
 
 Declare an `ns.dependency` on `kickside/agent-onboarding` with `version: '*'`.
-The module depends on agents, component, UI, users, settings, and widgets at `'*'`.
+The module depends on agents, component, UI, users, settings, widgets, memory, knowledge, and contract at `'*'`.
 Bind `ui_server` to the host gateway, as shown in `../host-parameters.json`.
 The host supplies the agents and widgets API/router/security bindings.
 
@@ -46,14 +46,31 @@ agents module's creation defaults.
 capabilities and their contexts, and `wc-model-picker` for an optional model
 override. The user supplies a name and optionally selects capabilities. Creation stays
 blocked until model discovery confirms a generation model for the selected model
-or the platform default `class:fast`. With no model, a Configure a model step
-opens the existing Models onboarding component; completion rechecks persisted
-configuration. Users without model settings access ask an administrator.
-The component uses `--p-*` theme tokens, native details controls, and
+or the platform default `class:fast`; without a default, the user chooses a
+configured model.
+
+The create step declares no title, so the component owns the dialog heading.
+When model discovery finds no generation model, the dialog is a model setup
+popup with its own icon, the **Set up a model** title, one message, **Cancel**,
+and **Set up a model**; the agent title and form appear only once a generation
+model exists. Set up a model opens the existing Models onboarding component
+(`kickside-onboard-models`). Its `back` event returns to the setup view; its
+`done` event rechecks persisted configuration and opens the agent form once a
+generation model exists. Users without model settings access ask an
+administrator. The component uses `--p-*` and `--kx-*` theme tokens and
 PrimeVue inline controls.
 
-Creation calls the agents owner's `POST /api/v1/user-agents` under the current
-user's identity. The request omits `model` unless the user chooses one. The agents
+Personal memory is on by default. The shared checkbox lets a user opt out, with
+no memory provisioning when it is off. When on, the creation service finds the
+oldest memory owned by the current user or creates **My Memory** through the
+Knowledge registry's public creation contract, using the memory engine defaults
+and `class:embed`. Shared memories owned by other users are not selected.
+
+Creation calls `POST /api/v1/agent-onboarding/agents` under the current user's
+identity. The service provisions memory first, then calls the agents owner's
+creation library once with the memory trait and its `memory_id` context.
+A memory failure creates no agent. An agent failure stays visible; the personal
+memory remains and the next attempt reuses it. The request omits `model` unless the user chooses one. The agents
 owner applies its default model, assigns ownership, and checks trait access.
 After creation, `GET /api/v1/agents/list` supplies the agent's canonical
 `start_token`. The component emits the `navigate` CustomEvent with

@@ -11,3 +11,36 @@ entries:
   imports:
     migration: wippy.migration:migration
   method: migrate
+- name: 02_built_outline
+  kind: function.lua
+  meta:
+    type: migration
+    timestamp: '2026-11-10T12:00:00Z'
+    depends_on:
+    - kickside.docscout.migrations:01_docscout
+  source: file://02_built_outline.lua
+  imports:
+    migration: wippy.migration:migration
+  method: migrate
+- name: 03_page_ranges
+  kind: function.lua
+  meta:
+    type: migration
+    timestamp: '2026-11-11T12:00:00Z'
+    depends_on:
+    - kickside.docscout.migrations:02_built_outline
+  source: file://03_page_ranges.lua
+  imports:
+    migration: wippy.migration:migration
+  method: migrate
+- name: 04_evaluation_runs
+  kind: function.lua
+  meta:
+    type: migration
+    timestamp: '2026-11-11T13:00:00Z'
+    depends_on:
+    - kickside.docscout.migrations:03_page_ranges
+  source: file://04_evaluation_runs.lua
+  imports:
+    migration: wippy.migration:migration
+  method: migrate

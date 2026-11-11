@@ -9,6 +9,7 @@ local function define_tests()
             test.is_nil(declaration_err)
             test.not_nil(declaration)
             local expected = {
+                ["kickside.agent_onboarding:create_agent.endpoint"] = true,
             }
             local runtime, runtime_err = registry.get(declaration.meta.includes[1])
             test.is_nil(runtime_err)
@@ -37,7 +38,7 @@ local function define_tests()
                         runtime_policy:evaluate(actor, action, tostring(entry.id)), tostring(entry.id))
                 end
             end
-            local policy, policy_err = security.policy(policy_id)
+            local policy, policy_err = security.policy("kickside.agent_onboarding.security:member_endpoints")
             test.is_nil(policy_err)
             local actor = security.new_actor("listed-endpoint-member", {})
             local endpoints, find_err = registry.find({[".kind"] = "http.endpoint"})
@@ -51,12 +52,12 @@ local function define_tests()
             end
         end)
         test.it("admits owned member endpoints and rejects other modules", function()
-            local policy, err = security.policy("kickside.agent_onboarding.security:module_access")
+            local policy, err = security.policy("kickside.agent_onboarding.security:member_endpoints")
             test.is_nil(err)
             test.not_nil(policy)
             local actor = security.new_actor("module-member", {})
             for _, id in ipairs({
-
+                "kickside.agent_onboarding:create_agent.endpoint",
             }) do
                 test.not_nil(registry.get(id), id)
                 test.eq(policy:evaluate(actor, "access", id), "allow", id)

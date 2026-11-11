@@ -30,21 +30,19 @@ export function groupTree(paths:string[]):GroupNode{
 }
 export interface PrefetchQuery { name:string; query:string; chunks:number }
 export interface Stages {
- map:{enabled:boolean;model:string;outline:'find_or_build'|'build';section_summaries:boolean}
+ map:{enabled:boolean;model:string;outline:'find_or_build'|'build';section_summaries:boolean;temperature?:number;max_tokens?:number}
  prefetch:{enabled:boolean;queries:PrefetchQuery[]}
- scout:{enabled:boolean;mode:'loop'|'agent';agent_id?:string;model:string;max_rounds:number;target_confidence:number;max_extra_queries:number;max_tokens:number;drop_noise:boolean;share_notes:boolean;tools:string[]}
- deep:{enabled:boolean;model:string;query_model:string;read:'chunks'|'sections';parallel_fields:number;max_queries:number;chunks_per_query:number;chunk_cap:number;min_similarity:number;query_temperature:number;analysis_temperature:number}
- extract:{model:string;max_output_tokens:number;max_fields_per_call:number}
- verify:{enabled:boolean;model:string;check_quotes:boolean;check_support:boolean}
+ scout:{enabled:boolean;mode:'loop'|'agent';agent_id?:string;model:string;max_rounds:number;target_confidence:number;max_extra_queries:number;max_tokens:number;drop_noise:boolean;share_notes:boolean;tools:string[];temperature?:number}
+ deep:{enabled:boolean;model:string;query_model:string;read:'chunks'|'sections';parallel_fields:number;max_queries:number;chunks_per_query:number;chunk_cap:number;min_similarity:number;query_temperature:number;analysis_temperature:number;max_tokens?:number}
+ extract:{model:string;max_output_tokens:number;max_fields_per_call:number;temperature?:number}
+ verify:{enabled:boolean;model:string;check_quotes:boolean;check_support:boolean;check_completeness?:boolean;temperature?:number;max_tokens?:number}
 }
 export type StageKey = keyof Stages
-export interface Retrieval {chunk_size:number;overlap:number;split_headings:boolean;keep_tables:boolean;search_mode:'keyword'|'semantic'|'hybrid';embedding_model:string;context:'none'|'headings'|'generated';context_model:string;highlighter:boolean;highlighter_model:string;section_budget:number}
-export interface Config {fields:Field[];stages:Stages;retrieval:Retrieval;tags:string[]}
+export interface Retrieval {chunk_size:number;overlap:number;split_headings:boolean;keep_tables:boolean;search_mode:'keyword'|'semantic'|'hybrid';embedding_model:string;context:'none'|'headings'|'generated';context_model:string;highlighter:boolean;highlighter_model:string;highlighter_temperature?:number;highlighter_max_tokens?:number;section_budget:number}
+export interface Config {fields:Field[];stages:Stages;retrieval:Retrieval;tags:string[];retention?:string}
 
 export function newConfig():Config{
- const config=structuredClone(schema.default)
- const {max_output_tokens,max_fields_per_call}=config.stages.extract
- return {...config,stages:{...config.stages,extract:{model:'class:fast',max_output_tokens,max_fields_per_call}}} as Config
+ return structuredClone(schema.default) as Config
 }
 export const newField=():Field=>structuredClone(schema.properties.fields.items.default) as Field
 export const newQuery=():PrefetchQuery=>({name:'',query:'',chunks:5})
@@ -155,6 +153,7 @@ export function configError(config:Config):string {
  if(unread)return `Turn on Prefetch or Scout so extraction has passages to read for ${unread.name}.`
  if(s.scout.enabled&&s.scout.mode==='agent'&&!s.scout.tools.length)return 'Agent scouting needs at least one tool.'
  if(s.scout.enabled&&s.scout.mode==='agent'&&(!s.scout.max_rounds||!s.scout.max_extra_queries))return 'Agent scouting needs at least one round and one tool call per round.'
+ if(s.verify.check_completeness&&!s.verify.check_support)return 'Completeness requires quote support.'
  if(s.verify.enabled&&!s.verify.check_quotes&&!s.verify.check_support)return 'Verify needs at least one check.'
  if(config.retrieval.overlap>=config.retrieval.chunk_size)return 'Overlap must be smaller than chunk size.'
  return ''

@@ -1,18 +1,43 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local json = require("json")
+local fs = require("fs")
+local hash = require("hash")
+local canonical_json = require("canonical_json")
 local M = {}
-local function value(schema: any): any
+local function inspect(args: any)
+    local options = args.options or {}
+    if options.capture_requests then
+        local storage = assert(fs.get("app:uploads"))
+        local requests = assert(json.decode(assert(storage:readfile(options.capture_requests))))
+        requests[#requests + 1] = args
+        local _, err = storage:writefile(options.capture_requests, assert(canonical_json.encode(requests)))
+        assert(err == nil, tostring(err))
+    end
+    local request = assert(json.encode(args.messages or args.input or {}))
+    for _, text in ipairs(options.absent or {}) do
+        assert(not request:find(text, 1, true), "Forbidden document text reaches the model: " .. text)
+    end
+end
+local function value(schema: any, text: string?): any
     if schema.enum then return schema.enum[1] end
-    if schema.type == "number" then return 1250 end
+    if schema.type == "number" or schema.type == "integer" then return schema.maximum or 1250 end
     if schema.type == "boolean" then return false end
-    if schema.type == "array" then return { value(schema.items) } end
+    if schema.type == "array" then return { value(schema.items, text) } end
     if schema.type == "object" then
         local out = {}
-        for name, property in pairs(schema.properties) do out[name] = value(property) end
+        for name, property in pairs(schema.properties) do out[name] = value(property, text) end
         return out
     end
-    return "Fixture"
+    return text or "Fixture"
+end
+local function system_prompt(messages: { any }): string
+    for _, message in ipairs(messages) do
+        if message.role == "system" then return message.content[1].text end
+    end
+    return ""
 end
 local function extraction(schema: any): any
+    if not schema.properties then return value(schema) end
     if schema.properties.found and schema.properties.found.type == "boolean" then
         local chunk = schema.properties.evidence.items.properties.chunk.enum[1]
         return { found = true, value = value(schema.properties.value), confidence = 1,
@@ -25,9 +50,94 @@ local function extraction(schema: any): any
     end
     return out
 end
+-- The sampling model reports the call's settings as its token usage:
+-- prompt tokens are 1000 + temperature * 100 (0 when unset), completion tokens are max_tokens.
+local function usage(args: any, prompt_tokens: integer, completion_tokens: integer): any
+    if args.options and args.options.capture_requests then
+        return { prompt_tokens = math.ceil(#assert(canonical_json.encode(args)) / 4), completion_tokens = completion_tokens }
+    end
+    if args.options and args.options.request_fingerprint then
+        local encoded = assert(canonical_json.encode(args))
+        return { prompt_tokens = tonumber(hash.sha256(encoded):sub(1, 12), 16), completion_tokens = completion_tokens }
+    end
+    if args.model ~= "docscout-sampling" then return { prompt_tokens = prompt_tokens, completion_tokens = completion_tokens } end
+    local options = args.options or {}
+    return { prompt_tokens = options.temperature ~= nil and 1000 + math.floor(options.temperature * 100 + 0.5) or 0,
+        completion_tokens = options.max_tokens or 0 }
+end
 function M.structured(args: any): (any?, error?)
+    inspect(args)
+    if args.options and args.options.support_fixture then
+        local options = args.options.support_fixture
+        local request = assert(json.encode(args.messages))
+        for _, text in ipairs(options.required_text or {}) do
+            if not request:find(text, 1, true) then
+                return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Missing field contract: " .. text })
+            end
+        end
+        for text, expected in pairs(options.occurrences or {}) do
+            local count, at = 0, 1
+            while true do
+                local first, last = request:find(text, at, true)
+                if not first then break end
+                count, at = count + 1, last + 1
+            end
+            if count ~= expected then
+                return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Source occurrence mismatch: " .. count })
+            end
+        end
+        local reply = {}
+        for path, schema in pairs(args.schema.properties) do
+            assert(path ~= "absent" and path ~= "failed", "An unextracted field reaches support")
+            local props = schema.properties
+            local check = { reason = "Fixture judgment" }
+            if props.verdict then check.verdict = options.verdict or "supported" else check.supported = true end
+            if props.complete then check.complete = options.completeness or "complete" end
+            if options.require_completeness and not props.complete then
+                return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Completeness is not requested" })
+            end
+            reply[path] = check
+        end
+        return { result = { data = reply }, tokens = { prompt_tokens = math.ceil(#assert(canonical_json.encode(args)) / 4), completion_tokens = math.ceil(#assert(canonical_json.encode(reply)) / 4) } }, nil
+    end
+    if args.options and args.options.reply_tokens_per_field then
+        local count = 0
+        for _ in pairs(args.schema.properties) do count = count + 1 end
+        if count * args.options.reply_tokens_per_field > args.options.max_tokens then
+            return { result = { data = {} }, finish_reason = "length",
+                tokens = { prompt_tokens = 12, completion_tokens = args.options.max_tokens } }, nil
+        end
+    end
+    if args.options and args.options.reply then
+        local reply = args.options.reply
+        local properties = args.schema.properties
+        if args.options.legacy_reply and (properties.summaries or properties.passages or (properties.evidence and properties.evidence.type == "array")) then
+            reply = args.options.legacy_reply
+        end
+        if args.schema.properties.checks then
+            local checks = {}
+            for field, verdict in pairs(reply) do
+                checks[#checks + 1] = { field = field, supported = verdict.supported, reason = verdict.reason }
+            end
+            reply = { checks = checks }
+        end
+        return { result = { data = reply }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
+    end
+    if args.options and args.options.capture_requests and args.schema.properties.accepted and args.schema.properties.accepted.properties.supported then
+        local reply = { accepted = { supported = true, reason = "Supported" }, rejected = { supported = false, reason = "Different value" } }
+        return { result = { data = reply }, tokens = usage(args, 0, math.ceil(#assert(canonical_json.encode(reply)) / 4)) }, nil
+    end
+    if args.schema.properties.terminal_failure or args.schema.properties.deterministic_failure then
+        return nil, errors.new({ kind = args.schema.properties.deterministic_failure and errors.INVALID or errors.UNAVAILABLE,
+            retryable = args.schema.properties.deterministic_failure ~= nil,
+            message = "Fixture terminal failure", details = { code = "fixture_terminal_failure" } })
+    end
     if args.schema.properties.provider_failure then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Fixture provider unavailable", details = { code = "fixture_provider_failure" } })
+    end
+    if args.schema.properties.cut_reply then
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Model failed to return valid JSON: unexpected EOF",
+            details = { code = "fixture_cut_reply", tokens = { prompt_tokens = 12, completion_tokens = 4096 }, finish_reason = "length" } })
     end
     if args.schema.properties.truncated_reply then
         return { result = { data = extraction(args.schema) }, finish_reason = "length",
@@ -36,9 +146,50 @@ function M.structured(args: any): (any?, error?)
     if args.schema.properties.invalid_reply then
         return { result = { data = {} }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
     end
-    return { result = { data = extraction(args.schema) }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
+    if args.model == "docscout-sampling" then
+        return { result = { data = value(args.schema) }, tokens = usage(args, 12, 8) }, nil
+    end
+    -- The echo model answers with its system prompt as every string value.
+    if args.model == "docscout-echo" then
+        return { result = { data = value(args.schema, system_prompt(args.messages)) }, tokens = usage(args, 12, 8) }, nil
+    end
+    local reply = extraction(args.schema)
+    return { result = { data = reply }, tokens = usage(args, 12, args.options and args.options.capture_requests and math.ceil(#assert(canonical_json.encode(reply)) / 4) or 8) }, nil
 end
 function M.generate(args: any): (any?, error?)
+    inspect(args)
+    if args.model == "docscout-echo" then
+        return { result = { content = system_prompt(args.messages) }, tokens = usage(args, 12, 8) }, nil
+    end
+    local has_tool_result = false
+    for _, message in ipairs(args.messages) do
+        if message.role == "function_result" then has_tool_result = true end
+    end
+    for _, message in ipairs(args.messages) do
+        for _, part in ipairs(message.content or {}) do
+            if part.type == "text" then
+                local mode = part.text:match("failure_metadata:(%w+)")
+                if mode and (not args.tools or has_tool_result) then
+                    local details = { code = "fixture_reported_failure", marker = "preserved" }
+                    if mode == "reported" or mode == "tokens" then
+                        details.tokens = { prompt_tokens = 17, completion_tokens = 13, thinking_tokens = 5 }
+                    end
+                    if mode == "reported" or mode == "finish" then details.finish_reason = "stop" end
+                    return nil, errors.new({ kind = errors.INVALID, retryable = false,
+                        message = "Fixture rejected response", details = details })
+                end
+            end
+        end
+    end
+    if args.model == "docscout-sampling" then return { result = { content = "Fixture notes" }, tokens = usage(args, 0, 0) }, nil end
+    -- A prompt naming truncated_generation is cut by the output limit.
+    for _, message in ipairs(args.messages) do
+        for _, part in ipairs(message.content or {}) do
+            if part.type == "text" and part.text:find("truncated_generation", 1, true) then
+                return { result = { content = "The total is" }, finish_reason = "length", tokens = { prompt_tokens = 10, completion_tokens = 4 } }, nil
+            end
+        end
+    end
     for _, message in ipairs(args.messages) do
         for _, part in ipairs(message.content or {}) do
             if part.type == "text" and part.text:find("deep_failure", 1, true) then
@@ -57,13 +208,17 @@ function M.generate(args: any): (any?, error?)
     } }, tokens = { prompt_tokens = 11, completion_tokens = 7 } }, nil
 end
 function M.embed(args: any): (any?, error?)
+    inspect(args)
+    if args.options and args.options.embeddings then
+        return {result={embeddings=args.options.embeddings},tokens={prompt_tokens=7,completion_tokens=0}},nil
+    end
     local vectors = {}
     for i = 1, #args.input do
         local vector = {}
         for n = 1, 512 do vector[n] = n == 1 and 1.0 or 0.0 end
         vectors[i] = vector
     end
-    return { result = { embeddings = vectors }, tokens = { prompt_tokens = #args.input, completion_tokens = 0 } }, nil
+    return { result = { embeddings = vectors }, tokens = usage(args, #args.input, 0) }, nil
 end
 function M.status(_args: any): (any?, error?) return { status = "ready" }, nil end
 return M

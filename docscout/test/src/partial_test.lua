@@ -2,6 +2,7 @@
 local test = require("test")
 local data = require("data")
 local json = require("json")
+local sql = require("sql")
 local registry = require("registry")
 local uuid = require("uuid")
 local time = require("time")
@@ -11,6 +12,8 @@ local ai = require("ai")
 local stages = require("stages")
 local shapes = require("shapes")
 local scoring = require("scoring")
+local runner = require("runner")
+local sql = require("sql")
 local function schema(): any
     return assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json))
 end
@@ -35,6 +38,38 @@ local function context(cfg: any): any
 end
 return { run = test.run_cases(function()
     test.describe("Independent extraction calls", function()
+        for _, mode in ipairs({ "reported", "tokens", "finish", "absent" }) do
+            for _, method in ipairs({ "generate", "agent" }) do
+                test.it("preserves " .. method .. " failures and " .. mode .. " reply metadata", function()
+                    local meter, text, err, tool_calls = ai.meter(), nil, nil, 0
+                    local opts = { stage = "failure-test", sources = { 1 }, fields = { "amount" } }
+                    if method == "generate" then
+                        text, err = ai.generate(meter, "class:docscout-success", "Answer", "failure_metadata:" .. mode, opts)
+                    else
+                        local tools = { { name = "keyword_search", description = "Search", parameters = {
+                            type = "object", properties = { query = { type = "string" }, limit = { type = "integer" } } } } }
+                        text, tool_calls, err = ai.agent(meter, "class:docscout-success", "Search then answer", "failure_metadata:" .. mode,
+                            tools, 1, function(_name: string, _args: any): (string?, error?) return "The total amount is 1250.", nil end, opts)
+                        test.eq(tool_calls, 1)
+                        test.eq(meter.calls[1].prompt_tokens, 11); test.eq(meter.calls[1].completion_tokens, 7)
+                        test.is_nil(meter.calls[1].error_code)
+                    end
+                    test.is_nil(text); test.not_nil(err)
+                    test.eq(err:kind(), errors.INVALID); test.is_false(err:retryable())
+                    test.eq(err:details().code, "fixture_reported_failure"); test.eq(err:details().marker, "preserved")
+                    test.eq(#meter.calls, method == "agent" and 2 or 1)
+                    local call = meter.calls[#meter.calls]
+                    test.eq(call.error_code, "fixture_reported_failure"); test.eq(call.stage, "failure-test")
+                    test.eq(json.encode(call.sources), "[1]"); test.eq(json.encode(call.fields), '["amount"]')
+                    local reported = mode == "reported" or mode == "tokens"
+                    test.eq(call.prompt_tokens, reported and 17 or nil)
+                    test.eq(call.completion_tokens, reported and 18 or nil)
+                    test.eq(call.finish_reason, (mode == "reported" or mode == "finish") and "stop" or nil)
+                    test.eq(meter.input_tokens, (method == "agent" and 11 or 0) + (reported and 17 or 0))
+                    test.eq(meter.output_tokens, (method == "agent" and 7 or 0) + (reported and 18 or 0))
+                end)
+            end
+        end
         test.it("keeps successful calls before and after a failed call", function()
             local run = context(configuration({ "before", "provider_failure", "after" }))
             test.is_nil(stages.extract(run, { meter = ai.meter() }))
@@ -68,6 +103,111 @@ return { run = test.run_cases(function()
             test.is_true(run.values[2].failed); test.is_nil(run.values[2].value)
             test.eq(run.values[2].error.details.code, "structured_reply_truncated")
             test.eq(step.meter.input_tokens, 36); test.eq(step.meter.output_tokens, 24)
+        end)
+        test.it("records each extraction call with its usage, finish reason, error and the passages it read", function()
+            local run = context(configuration({ "before", "provider_failure", "truncated_reply" }))
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.extract(run, step))
+            local calls = step.meter.calls
+            test.eq(#calls, 3)
+            for i, name in ipairs({ "before", "provider_failure", "truncated_reply" }) do
+                test.eq(calls[i].stage, "extract"); test.eq(calls[i].model, "class:docscout-success")
+                test.eq(json.encode(calls[i].fields), json.encode({ name })); test.eq(json.encode(calls[i].sources), "[1]")
+                test.is_true(calls[i].latency_ms >= 0)
+            end
+            test.eq(calls[1].prompt_tokens, 12); test.eq(calls[1].completion_tokens, 8); test.is_nil(calls[1].error_code)
+            test.eq(calls[2].error_code, "fixture_provider_failure"); test.is_nil(calls[2].prompt_tokens); test.is_nil(calls[2].completion_tokens)
+            test.eq(calls[3].finish_reason, "length"); test.eq(calls[3].error_code, "structured_reply_truncated")
+            test.eq(calls[3].prompt_tokens, 12); test.eq(calls[3].completion_tokens, 8)
+        end)
+        test.it("returns and stores per-call records and a run summary of coverage and unverified reasons", function()
+            local owner = uuid.v4()
+            local caller = data.caller(owner)
+            local cfg = configuration({ "before", "provider_failure", "missing_reply" })
+            cfg.stages.verify.enabled = true
+            local id = assert(caller:call("app:probe", { op = "create", input = { title = "Traced reader", config = cfg } })).component_id
+            local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+            local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
+            local by_kind = {}
+            for _, step in ipairs(result.trace) do by_kind[step.kind] = step end
+            test.eq(#by_kind.extract.calls, 3)
+            local embeds = 0
+            for _, call in ipairs(by_kind.read.calls) do if call.stage == "embed" then embeds = embeds + 1 end end
+            test.is_true(embeds > 0)
+            local s = result.summary
+            test.eq(s.fields, 3); test.eq(s.found, 1); test.eq(s.missing, 1); test.eq(s.failed, 1)
+            test.eq(json.encode(s.unverified), json.encode({ extraction_failed = 1 }))
+            local snapshot = assert(caller:call("app:probe", { op = "get", id = id }))
+            test.eq(json.encode(snapshot.runs[1].result.summary), json.encode(s))
+            local db = assert(sql.get("app:db"))
+            local rows = assert(db:query("SELECT trace FROM kickside_docscout_runs WHERE id=$1", { result.run_id }))
+            db:release()
+            local stored = {}
+            for _, step in ipairs(assert(json.decode(rows[1].trace))) do stored[step.kind] = step end
+            test.eq(#stored.extract.calls, 3)
+            local contract_schema = assert(json.decode(assert(registry.get("kickside.docscout:extraction")).data.methods[1].output_schemas[1].definition))
+            local valid, err = json.validate_string(contract_schema, assert(json.encode(result)))
+            test.is_true(valid, tostring(err))
+            test.not_nil(contract_schema.properties.summary)
+            test.not_nil(contract_schema.properties.trace.items.properties.calls)
+        end)
+        for _, enabled in ipairs({ false, true }) do
+            test.it("returns and stores scoped missing causes with Verify enabled=" .. tostring(enabled), function()
+                local owner = uuid.v4()
+                local caller = data.caller(owner)
+                local cfg = configuration({ "missing_reply" })
+                cfg.fields[1].group, cfg.fields[1].search_within = "scoped", "sections"
+                cfg.stages.map.enabled, cfg.stages.map.model = true, "class:docscout-success"
+                cfg.stages.verify.enabled = enabled
+                local id = assert(caller:call("app:probe", { op = "create", input = { title = "Scoped reader", config = cfg } })).component_id
+                local upload = data.upload(owner, "application/pdf", "Original bytes",
+                    "# Invoice\nThe total amount is 1250.\n# Fees\nThe total amount is 1250.\n# Terms\nThe total amount is 1250.")
+                local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
+                local f = result.fields[1]
+                test.is_true(f.missing); test.is_false(f.failed); test.is_nil(f.value)
+                test.eq(json.encode(f.codes), '["missing_in_sections"]')
+                test.is_nil(f.reason)
+                test.eq(f.verified, enabled)
+                local expected = { fields = 1, found = 0, missing = 1, failed = 0, verified = enabled and 1 or 0,
+                    unverified = enabled and shapes.object() or { unchecked = 1 } }
+                test.eq(json.encode(result.summary), json.encode(expected))
+                test.eq(result.status, "failed")
+                for _, step in ipairs(result.trace) do
+                    if step.kind == "verify" then test.eq(step.message, "All values check out") end
+                end
+                local saved = assert(caller:call("app:probe", { op = "get", id = id })).runs[1].result
+                test.eq(json.encode(saved.fields[1]), json.encode(f))
+                test.eq(json.encode(saved.summary), json.encode(expected))
+                local schema = assert(json.decode(assert(registry.get("kickside.docscout:extraction")).data.methods[1].output_schemas[1].definition))
+                test.not_nil(schema.properties.fields.items.properties.codes)
+                local tool = assert(caller:call("kickside.docscout.traits:run_tool", { extractor_id = id, upload_id = upload }))
+                test.eq(json.encode(tool.fields[1].codes), '["missing_in_sections"]')
+                local tool_schema = assert(json.decode(assert(registry.get("kickside.docscout.traits:run_tool")).meta.output_schema))
+                test.not_nil(tool_schema.properties.fields.items.properties.codes)
+                local block, block_err = caller:call("kickside.docscout.blocks:extract_run", { config = { extractor_id = id }, input = { upload_id = upload } })
+                test.is_nil(block); test.not_nil(block_err)
+                test.eq(json.encode(block_err:details().result.fields[1].codes), '["missing_in_sections"]')
+                test.is_true(assert(json.validate_string(schema, assert(json.encode(result)))))
+            end)
+        end
+        test.it("counts each unverified field once under each cause", function()
+            local summary = runner.summary({ { missing = true, verified = false,
+                reason = "No quote supports this value", codes = { "no_quote", "no_quote", "support_rejected", "support_rejected" } },
+                { missing = false, verified = false, reason = "Unsupported value", codes = { "support_rejected" } } })
+            test.eq(summary.unverified.no_quote, 1)
+            test.eq(summary.unverified.support_rejected, 2)
+        end)
+        test.it("meters a provider failure's reported usage and reports a length cut as truncation", function()
+            local run = context(configuration({ "before", "cut_reply", "provider_failure" }))
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.extract(run, step))
+            local cut = run.values[2]
+            test.is_true(cut.failed); test.eq(cut.error.details.code, "structured_reply_truncated")
+            local call = step.meter.calls[2]
+            test.eq(call.prompt_tokens, 12); test.eq(call.completion_tokens, 4096); test.eq(call.finish_reason, "length")
+            test.eq(call.error_code, "structured_reply_truncated")
+            test.is_nil(step.meter.calls[3].prompt_tokens)
+            test.eq(step.meter.input_tokens, 24); test.eq(step.meter.output_tokens, 4104)
         end)
         test.it("fails all remaining calls after a deadline without marking fields missing", function()
             local run = context(configuration({ "one", "two" }))
@@ -127,6 +267,104 @@ return { run = test.run_cases(function()
                 test.eq(snapshot.runs[1].result.fields[1].failed, direct.fields[1].failed)
             end)
         end
+        for _, mode in ipairs({ "empty", "partial" }) do
+            test.it("rejects a " .. mode .. " support reply and persists the shared-stage failure", function()
+                local cfg = configuration({ "amount", "terms" })
+                cfg.stages.verify.enabled, cfg.stages.verify.check_support = true, true
+                cfg.stages.verify.check_quotes, cfg.stages.verify.model = false, "class:docscout-support-" .. mode
+                local run, step = context(cfg), { meter = ai.meter() }
+                run.values = {
+                    { name = "amount", value = 1250, missing = false, evidence = {} },
+                    { name = "terms", value = 1250, missing = false, evidence = {} },
+                }
+                local rejected = stages.verify(run, step)
+                test.not_nil(rejected); test.eq(rejected:details().code, "structured_reply_invalid")
+                test.is_true(rejected:retryable())
+                test.eq(step.meter.input_tokens, 12); test.eq(step.meter.output_tokens, 8)
+                for _, field in ipairs(run.values) do
+                    test.is_false(field.verified); test.eq(field.value, 1250)
+                    test.is_true(field.reason:find("does not match its schema", 1, true) ~= nil)
+                    test.eq(json.encode(field.codes), '["support_no_verdict"]')
+                end
+                local owner = uuid.v4()
+                local caller = data.caller(owner)
+                local id = assert(caller:call("app:probe", { op = "create", input = { title = "Support reader", config = cfg } })).component_id
+                local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+                local result, err = caller:call("app:probe", { op = "contract_run", input = { extractor_id = id, upload_id = upload } })
+                test.is_nil(result); test.not_nil(err)
+                test.eq(err:details().code, "structured_reply_invalid"); test.is_true(err:retryable())
+                local snapshot = assert(caller:call("app:probe", { op = "get", id = id }))
+                local stored = snapshot.runs[1]
+                test.eq(stored.id, err:details().run_id); test.eq(stored.status, "failed")
+                test.eq(stored.result.error.details.code, "structured_reply_invalid")
+                test.eq(stored.result.summary.unverified.support_no_verdict, 2)
+                test.is_nil(stored.result.summary.unverified.unchecked)
+                for _, field in ipairs(stored.result.fields) do
+                    test.is_false(field.verified); test.eq(field.value, 1250)
+                    test.is_true(field.reason:find("does not match its schema", 1, true) ~= nil)
+                end
+                local db = assert(sql.get("app:db"))
+                local rows, read_err = db:query("SELECT trace FROM kickside_docscout_runs WHERE id=$1", { stored.id })
+                db:release(); test.is_nil(read_err, tostring(read_err))
+                local trace = assert(json.decode(rows[1].trace))
+                test.eq(trace[#trace].kind, "verify"); test.eq(trace[#trace].status, "failed")
+                test.eq(trace[#trace].input_tokens, 12); test.eq(trace[#trace].output_tokens, 8)
+            end)
+        end
+        test.it("keeps local verification reasons when the shared support check fails", function()
+            local cfg = configuration({ "amount", "terms", "missing_reply", "provider_failure" })
+            cfg.stages.verify.check_support, cfg.stages.verify.check_quotes = true, false
+            cfg.stages.verify.model = "class:docscout-support-empty"
+            local run = context(cfg)
+            run.values = {
+                { name = "amount", value = "invalid number", missing = false, evidence = {}, reason = "No quote supports this value" },
+                { name = "terms", value = 1250, missing = false, evidence = {} },
+                { name = "missing_reply", missing = true, evidence = {} },
+                { name = "provider_failure", failed = true, missing = false, evidence = {} },
+            }
+            local err = stages.verify(run, { meter = ai.meter() })
+            test.not_nil(err); test.eq(err:details().code, "structured_reply_invalid")
+            test.is_false(run.values[1].verified)
+            test.is_true(run.values[1].reason:find("No quote supports this value", 1, true) ~= nil)
+            test.is_true(run.values[1].reason:find("Value does not match its declared shape", 1, true) ~= nil)
+            for i = 1, 2 do
+                test.is_true(run.values[i].reason:find("does not match its schema", 1, true) ~= nil)
+            end
+            test.is_nil(run.values[3].reason); test.is_nil(run.values[4].reason)
+        end)
+        test.it("associates mixed support verdicts with their field paths", function()
+            local cfg = configuration({ "amount", "terms" })
+            cfg.stages.verify.check_support, cfg.stages.verify.check_quotes = true, false
+            cfg.stages.verify.model = "class:docscout-support-mixed"
+            local run = context(cfg)
+            run.values = {
+                { name = "terms", value = 1250, missing = false, evidence = {} },
+                { name = "amount", value = 1250, missing = false, evidence = {} },
+            }
+            test.is_nil(stages.verify(run, { meter = ai.meter() }))
+            test.is_false(run.values[1].verified); test.eq(run.values[1].reason, "Quote does not support the terms")
+            test.is_true(run.values[2].verified); test.is_nil(run.values[2].reason)
+        end)
+        for _, enabled in ipairs({false, true}) do
+            test.it("preserves a localized date with Verify enabled=" .. tostring(enabled), function()
+                local cfg = configuration({"signed"})
+                cfg.fields[1].type, cfg.fields[1].expected_format = "date", "D MMMM YYYY"
+                cfg.stages.extract.model, cfg.stages.verify.enabled = "class:docscout-date-result", enabled
+                cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = true, false
+                local owner = uuid.v4()
+                local caller = data.caller(owner)
+                local id = assert(caller:call("app:probe", {op="create", input={title="Date reader", config=cfg}})).component_id
+                local upload = data.upload(owner,"application/pdf","Original bytes","# Invoice\nThe total amount is 1250.")
+                local result, err = caller:call("app:probe", {op="contract_run", input={extractor_id=id,upload_id=upload}})
+                test.is_nil(err,tostring(err)); test.eq(result.status,"completed")
+                test.eq(result.values.signed,"8 mars 2026"); test.is_false(result.fields[1].verified)
+                if enabled then test.contains(result.fields[1].reason,"language is unspecified")
+                else test.is_nil(result.fields[1].reason) end
+                local saved = assert(caller:call("app:probe", {op="get",id=id})).runs[1]
+                test.eq(saved.status,"completed"); test.eq(saved.result.values.signed,"8 mars 2026")
+                test.eq(saved.result.fields[1].reason,result.fields[1].reason)
+            end)
+        end
         test.it("isolates deep analysis failures to their own fields", function()
             local owner = uuid.v4()
             local caller = data.caller(owner)
@@ -138,6 +376,28 @@ return { run = test.run_cases(function()
             local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
             test.eq(result.status, "partial"); test.eq(result.values.before, 1250); test.eq(result.values.after, 1250)
             test.is_true(result.fields[2].failed); test.eq(result.fields[2].error.details.code, "fixture_deep_failure")
+        end)
+        test.it("fails a deep field whose analysis is cut by the output limit", function()
+            local owner = uuid.v4()
+            local caller = data.caller(owner)
+            local cfg = configuration({ "before", "truncated_generation" })
+            cfg.fields[2].strategy = "deep"
+            cfg.stages.deep.enabled, cfg.stages.deep.max_queries, cfg.stages.deep.model = true, 1, "class:docscout-success"
+            local id = assert(caller:call("app:probe", { op = "create", input = { title = "Deep reader", config = cfg } })).component_id
+            local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+            local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
+            test.eq(result.status, "partial"); test.eq(result.values.before, 1250)
+            test.is_true(result.fields[2].failed); test.eq(result.fields[2].error.details.code, "model_reply_truncated")
+            test.is_false(result.fields[2].error.retryable)
+        end)
+        test.it("fails an agent scout whose reply is cut by the output limit", function()
+            local cfg = configuration({ "truncated_generation" })
+            cfg.stages.scout.enabled, cfg.stages.scout.mode, cfg.stages.scout.model = true, "agent", "class:docscout-success"
+            cfg.stages.scout.max_rounds, cfg.stages.scout.max_extra_queries = 1, 1
+            local run = context(cfg)
+            run.document = { outline = {} }
+            local err = stages.scout(run, { meter = ai.meter() })
+            test.not_nil(err); test.eq(err:details().code, "model_reply_truncated"); test.is_false(err:retryable())
         end)
         test.it("publishes committed partial runs through the realtime topic", function()
             local owner = uuid.v4()
@@ -201,6 +461,15 @@ return { run = test.run_cases(function()
             test.is_true(valid, tostring(err)); test.not_nil(score_schema.properties.value.description)
             score.score = 1
             test.is_false((json.validate_string(score_schema, assert(json.encode(score)))))
+        end)
+        test.it("defaults Map, Scout, Extract and Verify to temperature 0 in every configuration default", function()
+            local s = schema()
+            for _, stage in ipairs({ "map", "scout", "extract", "verify" }) do
+                test.eq(s.default.stages[stage].temperature, 0, stage)
+                test.eq(s.properties.stages.default[stage].temperature, 0, stage)
+                test.eq(s.properties.stages.properties[stage].default.temperature, 0, stage)
+                test.eq(s.properties.stages.properties[stage].properties.temperature.default, 0, stage)
+            end
         end)
         test.it("defaults every Extract configuration to class:fast", function()
             local s = schema()

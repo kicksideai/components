@@ -28,8 +28,8 @@ const icon=(kind:string)=>extra[kind]?.icon??stageIcons[kind as StageKey]??'tabl
   <p v-if="result?.status==='partial'" class="eval-warning" role="status"><Icon icon="tabler:alert-triangle"/>Partial result · Some fields failed. Successful values are available below.</p>
   <div v-if="result" class="test-grid">
    <section class="block">
-    <header class="block-head"><h2 class="block-title">Values</h2><span class="muted push">{{result.tokens.toLocaleString()}} tokens · {{seconds(result.duration_ms)}}<template v-if="result.pages"> · {{result.pages}} pages</template></span></header>
-    <ResultFields :fields="result.fields"/>
+    <header class="block-head"><h2 class="block-title">Values</h2><span class="muted push">{{result.tokens.toLocaleString()}} tokens · {{seconds(result.duration_ms)}}<template v-if="result.page_range"> · Pages {{result.page_range.first}}–{{result.page_range.last}}</template><template v-else-if="result.pages"> · {{result.pages}} pages</template></span></header>
+    <ResultFields :fields="result.fields" :page-range="result.page_range"/>
    </section>
    <section class="block">
     <header class="block-head"><h2 class="block-title">Steps</h2></header>
@@ -39,7 +39,7 @@ const icon=(kind:string)=>extra[kind]?.icon??stageIcons[kind as StageKey]??'tabl
       <div class="tl-main">
        <div class="tl-head"><strong>{{label(step.kind)}}</strong><span class="muted push">{{seconds(step.duration_ms)}}</span></div>
        <span class="tl-bar"><span :style="{width:`${Math.max(4,step.duration_ms/longest*100)}%`}"/></span>
-       <p class="muted">{{step.scope}}<template v-if="step.model"> · {{step.model}}</template> · {{(step.input_tokens+step.output_tokens).toLocaleString()}} tokens</p>
+       <p class="muted">{{step.scope}}<template v-if="step.pages"> · Pages {{step.pages.first}}–{{step.pages.last}}</template><template v-if="step.model"> · {{step.model}}</template> · {{(step.input_tokens+step.output_tokens).toLocaleString()}} tokens</p>
        <p v-if="step.message" class="tl-msg">{{step.message}}</p>
        <div v-if="step.queries?.length" class="chips"><span v-for="q in step.queries" :key="q" class="chip">{{q}}</span></div>
       </div>

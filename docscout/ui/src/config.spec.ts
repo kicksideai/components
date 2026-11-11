@@ -31,6 +31,14 @@ describe('Extractor configuration',()=>{
   expect(configError(c)).toContain('Turn on Prefetch or Scout')
   c.fields=[{...newField(),name:'terms',strategy:'deep'}];expect(configError(c)).toBe('')
  })
+ it('accepts an earlier verification config and requires support for completeness',()=>{
+  const c=newConfig();c.fields=[{...newField(),name:'terms'}]
+  expect(c.stages.verify.check_completeness).toBe(false)
+  delete c.stages.verify.check_completeness
+  expect(configError(c)).toBe('')
+  c.stages.verify.check_completeness=true;c.stages.verify.check_support=false
+  expect(configError(c)).toBe('Completeness requires quote support.')
+ })
  it('suggests an expected format that matches the value type',()=>{
   expect(formatPlaceholder({...newField(),type:'date'})).toContain('YYYY-MM-DD')
   expect(formatPlaceholder({...newField(),type:'list',item:{type:'number'}})).toContain('decimal')
@@ -45,7 +53,8 @@ describe('Complete flow configuration',()=>{
   expect(c.tags).toEqual([])
   expect(newField()).toMatchObject({chunks:5,search_within:'document',group:''})
   expect(c.stages.scout).toMatchObject({mode:'loop',max_rounds:0,target_confidence:.7,max_extra_queries:3,max_tokens:4096,share_notes:true})
-  expect(c.stages.extract).toEqual({model:'class:fast',max_output_tokens:4096,max_fields_per_call:20})
+  expect(c.stages.extract).toEqual({model:'class:fast',max_output_tokens:4096,max_fields_per_call:20,temperature:0})
+  for(const stage of ['map','scout','extract','verify'] as const)expect(c.stages[stage].temperature).toBe(0)
   expect(c.stages.deep).toMatchObject({query_model:'class:fast',max_queries:5,chunks_per_query:50,chunk_cap:100,min_similarity:.2,query_temperature:.2,analysis_temperature:.2})
   expect(c.stages.scout.tools).toEqual(['keyword_search','semantic_search','read_section','read_outline'])
   expect(c.retrieval).toMatchObject({context:'headings',keep_tables:true})

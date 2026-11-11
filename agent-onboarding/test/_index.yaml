@@ -21,6 +21,12 @@ entries:
   parameters:
   - name: kickside.agent_onboarding:ui_server
     value: app:gateway
+  - name: kickside.memory:ui_server
+    value: app:gateway
+  - name: kickside.memory:api_router
+    value: app:api
+  - name: kickside.memory:target_db
+    value: app:db
   - name: kickside.ui:api_router
     value: app:api
   - name: kickside.ui:public_api_router
@@ -77,6 +83,8 @@ entries:
   - registry
   - funcs
   imports:
+    onboarding: kickside.agent_onboarding:creation
+    component_types: kickside.component:types
     splash: kickside.ui:splash
     agents: kickside.agents.binding:user_agents_func
     component: kickside.component:component
@@ -100,7 +108,7 @@ entries:
   kind: security.policy
   policy:
     actions: access
-    resources: kickside.agents.api:create_user_agent.endpoint
+    resources: kickside.agent_onboarding:create_agent.endpoint
     effect: deny
 
 - name: no_model_list
@@ -116,3 +124,11 @@ entries:
     actions: access
     resources: kickside.models.api:list_model_classes.endpoint
     effect: deny
+
+- name: dep.knowledge
+  kind: ns.dependency
+  component: kickside/knowledge
+  version: '*'
+  parameters:
+  - {name: kickside.knowledge:api_router, value: app:api}
+  - {name: kickside.knowledge:ui_server, value: app:gateway}

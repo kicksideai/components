@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
--- Model calls for the engine. Every call adds its token usage to the step
--- meter it is given, so the run trace reports cost per step, and ends by the
--- run's deadline when the meter carries one.
+-- Model calls for the engine. Every call adds its token usage and a call
+-- record to the step meter it is given, so the run trace reports cost per step
+-- and per call, and ends by the run's deadline when the meter carries one.
 local time = require("time")
 local llm = require("llm")
 local prompt = require("prompt")
@@ -12,11 +12,17 @@ local M = {}
 M.DIMENSIONS = 512
 local EMBED_BATCH = 64
 
--- The llm module reports provider failures as strings; those are transient.
--- A native error keeps its own kind and retryability.
-local function model_error(what: string, err: any): error
+-- Native errors retain their retry classification. Structured reply checks
+-- supply their existing retry policy; an unclassified string defaults to false.
+local function model_error(what: string, err: any, retryable: boolean?): error
     if type(err) == "userdata" then return errors.wrap(err, what .. " failed") end
-    return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = what .. " failed: " .. tostring(err) })
+    return errors.new({ kind = errors.UNAVAILABLE, retryable = retryable == true, message = what .. " failed: " .. tostring(err) })
+end
+
+-- A free-text reply stopped at the output limit is incomplete.
+local function truncated(model: string): error
+    return errors.new({ kind = errors.UNAVAILABLE, retryable = false,
+        message = "Model reply is truncated by its output limit", details = { code = "model_reply_truncated", model = model } })
 end
 
 local function messages(system: string, user: string): { any }
@@ -26,25 +32,58 @@ local function messages(system: string, user: string): { any }
     }
 end
 
--- Token usage of one step, and the instant its model calls must end by.
-type Meter = { input_tokens: number, output_tokens: number, deadline: any? }
+-- One model request as the trace records it. stage names what the call does;
+-- token counts are absent when the provider reported no usage; sources are the
+-- chunk ordinals the prompt carried and fields the field paths it served.
+type CallRecord = { stage: string, model: string, prompt_tokens: number?, completion_tokens: number?, latency_ms: integer?,
+    finish_reason: string?, error_code: string?, sources: { integer }?, fields: { string }? }
 
--- Per-call settings a stage may pass.
-type CallOpts = { max_tokens: integer?, temperature: number? }
+-- Token usage and call records of one step, and the instant its model calls must end by.
+type Meter = { input_tokens: number, output_tokens: number, calls: { CallRecord }, deadline: any? }
+
+-- Per-call settings a stage may pass, and what the call record names.
+type CallOpts = { max_tokens: integer?, temperature: number?, stage: string?, sources: { integer }?, fields: { string }? }
 
 -- Options handed to the llm module for one call.
 type ModelOptions = { model: string, deadline_ms: integer?, max_tokens: integer?, temperature: number?,
     tools: { any }?, tool_choice: string?, dimensions: integer? }
 
-local function count(meter: Meter, response: any)
-    local tokens = response and response.tokens
-    if type(tokens) ~= "table" then return end
-    meter.input_tokens = meter.input_tokens + (tonumber(tokens.prompt_tokens) or 0)
-    meter.output_tokens = meter.output_tokens + (tonumber(tokens.completion_tokens) or 0) + (tonumber(tokens.thinking_tokens) or 0)
+local function millis(): integer return math.floor(time.now():unix_nano() / 1000000) end
+
+-- The code a call record names for a failure: the error's details code, else its kind.
+local function error_code(err: error): string
+    local details = (err :: any):details()
+    if type(details) == "table" and type(details.code) == "string" then return details.code end
+    return tostring((err :: any):kind())
+end
+
+-- Adds one model call to the meter: its usage to the step totals and its record to the step's calls.
+-- usage holds the provider's token counts, or nil when it reported none.
+function M.add_call(meter: Meter, stage: string, model: string, usage: any?, extra: any?)
+    local entry: CallRecord = { stage = stage, model = model }
+    if type(usage) == "table" then
+        entry.prompt_tokens = tonumber(usage.prompt_tokens) or 0
+        entry.completion_tokens = (tonumber(usage.completion_tokens) or 0) + (tonumber(usage.thinking_tokens) or 0)
+        meter.input_tokens = meter.input_tokens + entry.prompt_tokens
+        meter.output_tokens = meter.output_tokens + entry.completion_tokens
+    end
+    if extra then
+        entry.latency_ms, entry.finish_reason, entry.error_code = extra.latency_ms, extra.finish_reason, extra.error_code
+        entry.sources, entry.fields = extra.sources, extra.fields
+    end
+    meter.calls[#meter.calls + 1] = entry
+end
+
+-- Records a request made at started (milliseconds) with its response and outcome.
+local function record(meter: Meter, stage: string, model: string, opts: CallOpts?, started: integer, response: any?, err: error?)
+    local finish = type(response) == "table" and response.finish_reason or nil
+    M.add_call(meter, (opts and opts.stage) or stage, model, type(response) == "table" and response.tokens or nil, {
+        latency_ms = millis() - started, finish_reason = finish and tostring(finish) or nil, error_code = err and error_code(err) or nil,
+        sources = opts and opts.sources, fields = opts and opts.fields })
 end
 
 function M.meter(deadline: any?): Meter
-    return { input_tokens = 0, output_tokens = 0, deadline = deadline }
+    return { input_tokens = 0, output_tokens = 0, calls = {}, deadline = deadline }
 end
 
 -- Milliseconds left before the meter's deadline, or nil without one.
@@ -82,22 +121,53 @@ function M.resolve(model: string): (any?, error?)
     return card, nil
 end
 
--- Structured output as a Lua table that matches schema.
-function M.structured(meter: Meter, model: string, schema: any, system: string, user: string, opts: CallOpts?): (any?, error?)
-    local options, late = options_for(meter, "a structured model call", model, opts)
-    if late then return nil, late end
-    local response, err = llm.structured_output(schema, messages(system, user), options)
-    if err then return nil, model_error("structured model call (" .. model .. ")", err) end
-    count(meter, response)
-    if response.finish_reason == "length" then
+-- The serialized request estimate matches the LLM admission contract. It is
+-- a scheduling estimate; provider tokenization can differ.
+function M.estimate(system: string, user: string, schema: any?): integer
+    local encoded = assert(json.encode({ messages = messages(system, user), schema = schema }))
+    return math.ceil(#encoded / 4)
+end
+
+function M.fitter(model: string, max_output: integer?): (((string, string, any?) -> boolean)?, integer?, error?)
+    local card, err = M.resolve(model)
+    if err then return nil, nil, err end
+    local output = max_output or math.tointeger(tonumber(card.output_tokens))
+    local window = math.tointeger(tonumber(card.max_tokens))
+    return function(system: string, user: string, schema: any?): boolean
+        return not window or window <= 0 or M.estimate(system, user, schema) + (output or 0) <= window
+    end, output, nil
+end
+
+function M.over_budget(model: string, what: string, advice: string): error
+    return errors.new({ kind = errors.INVALID, retryable = false,
+        message = what .. " exceeds the context window of " .. model .. "; " .. advice,
+        details = { code = "prompt_exceeds_budget", model = model } })
+end
+
+-- The reply a provider failure reports: the llm module carries a failed
+-- reply's usage and finish reason in the error details. nil when the failure
+-- came before any reply.
+local function failed_reply(err: any): any?
+    if type(err) ~= "userdata" then return nil end
+    local details = (err :: any):details()
+    if type(details) ~= "table" or (details.tokens == nil and details.finish_reason == nil) then return nil end
+    return { tokens = details.tokens, finish_reason = details.finish_reason }
+end
+
+-- The structured result of a response, or why the response is unusable. A
+-- failed reply that stopped at the output limit is a truncation.
+local function structured_result(model: string, schema: any, response: any, err: any): (any?, error?)
+    local reply = err and failed_reply(err) or response
+    if err and not (reply and reply.finish_reason == "length") then return nil, model_error("structured model call (" .. model .. ")", err) end
+    if reply.finish_reason == "length" then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
             message = "Structured model reply is truncated", details = { code = "structured_reply_truncated", model = model } })
     end
     if type(response.result) ~= "table" then
-        return nil, model_error("structured model call (" .. model .. ")", "no structured result")
+        return nil, model_error("structured model call (" .. model .. ")", "no structured result", true)
     end
     local encoded, encode_err = json.encode(response.result)
-    if encode_err then return nil, model_error("structured reply encoding", encode_err) end
+    if encode_err then return nil, model_error("structured reply encoding", encode_err, true) end
     local valid, validation_err = json.validate_string(schema, encoded)
     if not valid then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
@@ -107,12 +177,26 @@ function M.structured(meter: Meter, model: string, schema: any, system: string, 
     return response.result, nil
 end
 
+-- Structured output as a Lua table that matches schema.
+function M.structured(meter: Meter, model: string, schema: any, system: string, user: string, opts: CallOpts?): (any?, error?)
+    local options, late = options_for(meter, "a structured model call", model, opts)
+    if late then return nil, late end
+    local started = millis()
+    local response, call_err = llm.structured_output(schema, messages(system, user), options)
+    local result, err = structured_result(model, schema, response, call_err)
+    record(meter, "structured", model, opts, started, response or failed_reply(call_err), err)
+    return result, err
+end
+
 function M.generate(meter: Meter, model: string, system: string, user: string, opts: CallOpts?): (string?, error?)
     local options, late = options_for(meter, "a model call", model, opts)
     if late then return nil, late end
-    local response, err = llm.generate(messages(system, user), options)
-    if err then return nil, model_error("model call (" .. model .. ")", err) end
-    count(meter, response)
+    local started = millis()
+    local response, call_err = llm.generate(messages(system, user), options)
+    local err = call_err and model_error("model call (" .. model .. ")", call_err) or nil
+    if not err and response.finish_reason == "length" then err = truncated(model) end
+    record(meter, "generate", model, opts, started, response or failed_reply(call_err), err)
+    if err then return nil, err end
     return tostring(response.result or ""), nil
 end
 
@@ -126,12 +210,15 @@ function M.agent(meter: Meter, model: string, system: string, user: string, tool
     conversation:add_user(user)
     local calls = 0
     while true do
-        local options, late = options_for(meter, "an agent model call", model, { max_tokens = opts and opts.max_tokens })
+        local options, late = options_for(meter, "an agent model call", model, opts)
         if late then return nil, calls, late end
         options.tools, options.tool_choice = tools, calls < max_calls and "auto" or "none"
-        local response, err = llm.generate(conversation, options)
-        if err then return nil, calls, model_error("agent model call (" .. model .. ")", err) end
-        count(meter, response)
+        local started = millis()
+        local response, call_err = llm.generate(conversation, options)
+        local err = call_err and model_error("agent model call (" .. model .. ")", call_err) or nil
+        if not err and response.finish_reason == "length" then err = truncated(model) end
+        record(meter, "agent", model, opts, started, response or failed_reply(call_err), err)
+        if err then return nil, calls, err end
         local tool_calls = response.tool_calls
         if not tool_calls or #tool_calls == 0 or calls >= max_calls then return tostring(response.result or ""), calls, nil end
         for _, tc in ipairs(tool_calls) do
@@ -160,19 +247,25 @@ function M.embed(meter: Meter, model: string, texts: { string }): (any?, error?)
         local options, late = options_for(meter, "embedding", model)
         if late then return nil, late end
         options.dimensions = M.DIMENSIONS
-        local response, err = llm.embed(batch, options)
-        if err then return nil, model_error("embedding (" .. model .. ")", err) end
-        count(meter, response)
+        local started = millis()
+        local response, call_err = llm.embed(batch, options)
+        local err = call_err and model_error("embedding (" .. model .. ")", call_err) or nil
         local result = response and response.result
-        if type(result) ~= "table" or #result ~= #batch then
-            return nil, model_error("embedding (" .. model .. ")", "returned " .. tostring(type(result) == "table" and #result or 0) .. " vectors for " .. #batch .. " texts")
-        end
-        for _, vector in ipairs(result) do
-            if type(vector) ~= "table" or #vector ~= M.DIMENSIONS then
-                return nil, model_error("embedding (" .. model .. ")", "returned a vector that is not " .. M.DIMENSIONS .. "-dimensional")
+        if not err then
+            if type(result) ~= "table" or #result ~= #batch then
+                err = model_error("embedding (" .. model .. ")", "returned " .. tostring(type(result) == "table" and #result or 0) .. " vectors for " .. #batch .. " texts")
+            else
+                for _, vector in ipairs(result) do
+                    if type(vector) ~= "table" or #vector ~= M.DIMENSIONS then
+                        err = model_error("embedding (" .. model .. ")", "returned a vector that is not " .. M.DIMENSIONS .. "-dimensional")
+                        break
+                    end
+                end
             end
-            vectors[#vectors + 1] = vector
         end
+        record(meter, "embed", model, nil, started, response, err)
+        if err then return nil, err end
+        for _, vector in ipairs(result) do vectors[#vectors + 1] = vector end
     end
     return vectors, nil
 end

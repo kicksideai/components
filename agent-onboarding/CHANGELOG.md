@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.10](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.9...agent-onboarding-v0.1.10) (2026-11-11)
+
+
+### Features
+
+* **agent-onboarding:** create personal memory with the first agent ([#46](https://github.com/kicksideai/components/issues/46)) ([cddad18](https://github.com/kicksideai/components/commit/cddad183a8ab2142e4779a512092b40c8d9275d7))
+
+## [0.1.9](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.8...agent-onboarding-v0.1.9) (2026-11-08)
+
+
+### Bug Fixes
+
+* **agent-onboarding:** give model setup its own view and size the agent dialog to its fields ([#37](https://github.com/kicksideai/components/issues/37)) ([8b0abe5](https://github.com/kicksideai/components/commit/8b0abe584689d826b3dc078f09654f5906a3ea1e))
+
 ## [0.1.8](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.7...agent-onboarding-v0.1.8) (2026-11-06)
 
 

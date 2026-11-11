@@ -18,18 +18,43 @@ local M = {}
 
 local CALLERS = { ui = true, agent = true, eval = true, workflow = true }
 
--- One stage of a run as the trace records it.
+-- One stage of a run as the trace records it, with a record per model call.
 type TraceStep = { kind: string, status: string, scope: string, model: string?, duration_ms: integer,
-    input_tokens: number, output_tokens: number, queries: { string }?, message: string? }
+    input_tokens: number, output_tokens: number, queries: { string }?, calls: { any }?, message: string?, pages: any? }
 
 local function invalid(message: string): error return errors.new({ kind = errors.INVALID, message = message }) end
 local function millis(): integer return math.floor(time.now():unix_nano() / 1000000) end
 
--- input: { id, upload_id, caller, deadline? } where deadline is an RFC3339
+-- Field coverage of a run and, per cause, how many fields are not verified.
+-- Informational codes do not reject a field; only reasons describe failed checks.
+function M.summary(values: { any }): any
+    local unverified: { [string]: any } = shapes.object()
+    local out = { fields = #values, found = 0, missing = 0, failed = 0, verified = 0, unverified = unverified }
+    for _, v in ipairs(values) do
+        if v.failed then out.failed = out.failed + 1 elseif v.missing then out.missing = out.missing + 1 else out.found = out.found + 1 end
+        if v.verified then out.verified = out.verified + 1
+        else
+            local codes = v.failed and { "extraction_failed" } or (v.reason and v.codes) or {}
+            if #codes == 0 then codes = { "unchecked" } end
+            local counted = {}
+            for _, code in ipairs(codes) do
+                if not counted[code] then
+                    unverified[code] = (tonumber(unverified[code]) or 0) + 1
+                    counted[code] = true
+                end
+            end
+        end
+    end
+    return out
+end
+
+-- input: { id, upload_id, caller, pages?, deadline? } where deadline is an RFC3339
 -- instant the run must finish by.
 function M.run(input: any): (any?, error?)
     if type(input) ~= "table" or type(input.id) ~= "string" or input.id == "" then return nil, invalid("Choose an extractor") end
     if type(input.upload_id) ~= "string" or input.upload_id == "" then return nil, invalid("Choose an upload") end
+    local validation_err = process.validate_pages(input.pages)
+    if validation_err then return nil, validation_err end
     local caller = input.caller or "ui"
     if not CALLERS[caller] then return nil, invalid("Unknown caller " .. tostring(caller)) end
     local deadline = nil
@@ -42,6 +67,7 @@ function M.run(input: any): (any?, error?)
     if not actor then return nil, errors.new({ kind = errors.UNAUTHENTICATED, message = "authentication required" }) end
     local extractor, access_err = extractors.for_run(input.id)
     if access_err then return nil, access_err end
+    local extractor_window = extractor.config.retention
     if caller == "eval" then
         if type(input.evaluation_id) ~= "string" or type(input.case_id) ~= "string" then return nil, invalid("Evaluation and case references are required") end
         local evaluation, eval_err = repository.get_eval(input.evaluation_id, true)
@@ -56,6 +82,10 @@ function M.run(input: any): (any?, error?)
         local admitted = nil
         for _, case in ipairs(evaluation.results) do if case.case_id == input.case_id then admitted = case end end
         if not admitted or admitted.upload_id ~= input.upload_id then return nil, invalid("Upload does not match the admitted case") end
+        if (input.pages == nil) ~= (admitted.pages == nil) or
+            (input.pages and (input.pages.first ~= admitted.pages.first or input.pages.last ~= admitted.pages.last)) then
+            return nil, invalid("Page range does not match the admitted case")
+        end
         extractor = { config = evaluation.config_snapshot, revision = evaluation.config_revision }
     elseif input.evaluation_id ~= nil or input.case_id ~= nil then
         return nil, invalid("Snapshot references require an evaluation caller")
@@ -79,7 +109,7 @@ function M.run(input: any): (any?, error?)
         trace[#trace + 1] = {
             kind = kind, status = err and "failed" or record.status or "completed", scope = scope, model = record.model,
             duration_ms = millis() - t0, input_tokens = record.meter.input_tokens, output_tokens = record.meter.output_tokens,
-            queries = record.queries, tool_calls = record.tool_calls, agent_id = record.agent_id, dataflow_id = record.dataflow_id, message = err and tostring(err) or record.message,
+            pages = input.pages, queries = record.queries, calls = #record.meter.calls > 0 and record.meter.calls or nil, tool_calls = record.tool_calls, agent_id = record.agent_id, dataflow_id = record.dataflow_id, message = err and tostring(err) or record.message,
         }
         if err then failure = err end
         return err == nil
@@ -87,7 +117,7 @@ function M.run(input: any): (any?, error?)
 
     local s = config.stages
     local ok = step("read", "document", config.retrieval.embedding_model, function(record: any): error?
-        local document, err = process.ensure(input.id, actor:id(), input.upload_id, config.retrieval, record)
+        local document, err = process.ensure(input.id, actor:id(), input.upload_id, config.retrieval, record, extractor_window, input.pages)
         if err then return err end
         run.document = document
         return nil
@@ -111,7 +141,7 @@ function M.run(input: any): (any?, error?)
         for _, e in ipairs(v.evidence) do
             evidence[#evidence + 1] = { quote = e.quote, section = e.section, page = e.page, page_start = e.page_start, page_end = e.page_end, chunk_id = e.chunk_id, found = e.found }
         end
-        fields[#fields + 1] = { name = v.name, path = v.path, value = v.value, failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, missing = v.missing, reason = v.reason, evidence = evidence }
+        fields[#fields + 1] = { name = v.name, path = v.path, value = v.value, failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, complete = v.complete, missing = v.missing, reason = v.reason, codes = v.codes, evidence = evidence }
     end
     local failed, extracted = 0, 0
     for _, f in ipairs(fields) do
@@ -122,17 +152,18 @@ function M.run(input: any): (any?, error?)
         upload_id = input.upload_id, config_revision = extractor.revision, fields = fields, trace = trace,
         duration_ms = millis() - started, tokens = tokens, status = status,
         error = failure and error_envelope.encode(failure) or nil,
-        pages = run.document and run.document.page_count or 0,
+        pages = run.document and run.document.page_count or 0, page_range = input.pages, summary = M.summary(run.values),
     }
     result.values = shapes.values(result)
-    local expires_at, expiry_err = retention.expires_at()
+    local expires_at, expiry_err = retention.expires_at(extractor_window)
     if expiry_err then
         if failure then return nil, error_envelope.wrap_secondary(expiry_err, failure, "run retention failed") end
         return nil, expiry_err
     end
     local run_id, record_err = repository.add_run(input.id, {
         user_id = actor:id(), upload_id = input.upload_id, caller = caller, status = result.status,
-        config_revision = extractor.revision, result = { fields = fields, values = result.values, error = result.error }, trace = trace,
+        evaluation_id = input.evaluation_id, case_id = input.case_id,
+        config_revision = extractor.revision, result = { fields = fields, values = result.values, error = result.error, page_range = input.pages, summary = result.summary }, trace = trace,
         duration_ms = result.duration_ms, tokens = tokens, expires_at = expires_at,
     })
     if record_err then

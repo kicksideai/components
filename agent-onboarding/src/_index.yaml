@@ -30,6 +30,49 @@ entries:
   kind: ns.dependency
   component: kickside/widgets
   version: '*'
+- name: dep.memory
+  kind: ns.dependency
+  component: kickside/memory
+  version: '*'
+- name: dep.knowledge
+  kind: ns.dependency
+  component: kickside/knowledge
+  version: '*'
+- name: dep.contract
+  kind: ns.dependency
+  component: kickside/contract
+  version: '*'
+- name: creation
+  kind: library.lua
+  source: file://creation.lua
+  modules: [security, contract]
+  imports:
+    component: kickside.component:component
+    component_types: kickside.component:types
+    agents: kickside.agents.binding:user_agents_func
+    agent_types: kickside.agents:types
+- name: create_agent
+  kind: function.lua
+  source: file://create_agent.lua
+  method: handler
+  modules: [http, json]
+  imports:
+    creation: kickside.agent_onboarding:creation
+    http_errors: kickside.contract:http_errors
+- name: create_agent.endpoint
+  kind: http.endpoint
+  meta: {}
+  method: POST
+  path: /agent-onboarding/agents
+  func: create_agent
+- name: api_router
+  kind: ns.requirement
+  default: app:api
+  meta:
+    value_kind: http.router
+  targets:
+  - entry: kickside.agent_onboarding:create_agent.endpoint
+    path: .meta.router
 - name: eligibility
   kind: function.lua
   source: file://eligibility.lua
@@ -86,7 +129,7 @@ entries:
     priority: 50
     eligibility: kickside.agent_onboarding:eligibility
     required_access:
-    - kickside.agents.api:create_user_agent.endpoint
+    - kickside.agent_onboarding:create_agent.endpoint
     - kickside.models.api:list_models.endpoint
     - kickside.models.api:list_model_classes.endpoint
 - name: splash.first_agent.step.create
@@ -95,6 +138,5 @@ entries:
     type: ui.splash.step
     splash: first_agent
     id: create
-    title: Create your first agent
     order: 10
     component_tag: kickside-agent-onboarding

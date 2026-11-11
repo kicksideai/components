@@ -27,9 +27,9 @@ local function config(agent_id: string): any
     cfg.retrieval.embedding_model, cfg.retrieval.context, cfg.retrieval.search_mode = "class:docscout-success", "none", "keyword"
     return cfg
 end
-local function create(caller: any): string
+local function create(caller: any, prompt: string?): string
     return assert(caller:call("kickside.agents.registry:a_create", {
-        name = "Document researcher", model = "class:docscout-success", prompt = "Find the total amount using keyword_search, then report the supporting passage.",
+        name = "Document researcher", model = "class:docscout-success", prompt = prompt or "Find the total amount using keyword_search, then report the supporting passage.",
     })).component_id
 end
 return { run = test.run_cases(function()
@@ -66,6 +66,13 @@ return { run = test.run_cases(function()
             local native = assert(flow_repo.get_by_user(scout.dataflow_id, owner))
             test.eq(native.actor_id, owner); test.eq(scout.model, "class:docscout-success")
             test.is_true(scout.input_tokens > 0); test.is_true(scout.output_tokens > 0)
+            local agent_calls, input_tokens, output_tokens = 0, 0, 0
+            for _, call in ipairs(scout.calls) do
+                if call.stage == "scout" then agent_calls = agent_calls + 1 end
+                input_tokens = input_tokens + (call.prompt_tokens or 0)
+                output_tokens = output_tokens + (call.completion_tokens or 0)
+            end
+            test.is_true(agent_calls > 0); test.eq(input_tokens, scout.input_tokens); test.eq(output_tokens, scout.output_tokens)
             test.eq(scout.tool_calls[1].name, "keyword_search"); test.eq(scout.tool_calls[1].arguments.query, "total amount")
             local chunk = scout.tool_calls[1].result.chunks[1]
             test.eq(chunk.content, "# Invoice\nThe total amount is 1250."); test.eq(chunk.heading_path, "Invoice")
@@ -74,6 +81,31 @@ return { run = test.run_cases(function()
             test.eq(field.evidence[1].quote, "The total amount is 1250.")
             test.eq(field.evidence[1].section, "Invoice"); test.eq(field.evidence[1].chunk_id, chunk.id)
         end)
+        for _, mode in ipairs({"truncated_generation", "deep_failure"}) do
+            test.it("retains native call outcomes for " .. mode, function()
+                local owner=member()
+                local caller=data.caller(owner)
+                local agent_id=create(caller, mode)
+                local id=assert(caller:call("app:probe",{op="create",input={title="Outcome reader",config=config(agent_id)}})).component_id
+                local upload=data.upload(owner,"application/pdf","Original bytes","# Invoice\nThe total amount is 1250.")
+                local result,err=caller:call("kickside.docscout:invoke",{extractor_id=id,upload_id=upload})
+                local trace=result and result.trace or err:details().trace
+                local scout
+                for _,step in ipairs(trace) do if step.kind=="scout" then scout=step end end
+                test.not_nil(scout);test.not_nil(scout.calls)
+                local matched=false
+                for _,call in ipairs(scout.calls) do
+                    if call.stage=="scout" then
+                        if mode=="truncated_generation" then test.eq(call.finish_reason,"length")
+                        else test.eq(call.error_code,"AGENT_EXEC_FAILED") end
+                        test.not_nil(call.latency_ms);test.is_true(call.latency_ms>=0)
+                        test.eq(json.encode(call.fields),'["total"]')
+                        matched=true
+                    end
+                end
+                test.is_true(matched)
+            end)
+        end
         test.it("returns a typed error when a saved agent becomes unreadable at run time", function()
             local owner, reader = uuid.v4(), uuid.v4()
             local caller = data.caller(owner)
@@ -105,6 +137,7 @@ return { run = test.run_cases(function()
             local id = assert(caller:call("app:probe", { op = "create", input = { title = "Deleted scout", config = config(agent_id) } })).component_id
             assert(caller:call("kickside.agents.registry:a_delete", { component_id = agent_id }))
             local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+            data.await_delete(agent_id)
             local result, err = caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload })
             test.is_nil(result); test.not_nil(err)
             test.is_true(errors.is(err, errors.NOT_FOUND) or errors.is(err, errors.PERMISSION_DENIED))

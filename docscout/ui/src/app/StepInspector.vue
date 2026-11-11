@@ -16,6 +16,7 @@ const tools=documentTools()
 const deepCount=computed(()=>props.config.fields.filter(f=>f.strategy==='deep').length)
 const sectionFields=computed(()=>props.config.fields.filter(f=>f.search_within==='sections').map(f=>f.name||'New field'))
 const groups=computed(()=>fieldGroups(props.config))
+function supportChanged(value:boolean){s.value.verify.check_support=value;if(!value)s.value.verify.check_completeness=false}
 function selectAgent(id:string){if(id)s.value.scout.agent_id=id;else delete s.value.scout.agent_id}
 function setTool(id:string,on:boolean){
  const list=s.value.scout.tools.filter(t=>t!==id)
@@ -101,8 +102,9 @@ function setTool(id:string,on:boolean){
   <template v-if="stage==='verify'">
    <div class="toggle-row"><span>Stage enabled</span><Toggle v-model="s.verify.enabled" label="Enable step" :disabled="readonly"/></div>
    <div class="toggle-row"><span>Quotes exist<small>Each quote is matched against the document text. No model call.</small></span><Toggle v-model="s.verify.check_quotes" label="Quotes exist" :disabled="readonly"/></div>
-   <div class="toggle-row"><span>Quotes support values<small>A model confirms each quote supports its value.</small></span><Toggle v-model="s.verify.check_support" label="Quotes support values" :disabled="readonly"/></div>
+   <div class="toggle-row"><span>Quotes support values<small>A model confirms each quote supports its value.</small></span><Toggle :model-value="s.verify.check_support" @update:model-value="supportChanged" label="Quotes support values" :disabled="readonly"/></div>
    <template v-if="s.verify.check_support">
+    <div class="toggle-row"><span>Check completeness<small>Check the requested text and lists against additional source passages. Adds input tokens; completeness can remain unknown.</small></span><Toggle :model-value="s.verify.check_completeness===true" @update:model-value="s.verify.check_completeness=$event" label="Check completeness" :disabled="readonly"/></div>
     <h4>Models</h4>
     <div id="model-verify" class="model-role"><span>Checker</span><ModelPicker :value="s.verify.model" capability="generate" labelled-by="model-verify" @select="s.verify.model=$event"/></div>
    </template>

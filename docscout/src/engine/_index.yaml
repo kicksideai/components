@@ -18,7 +18,7 @@ entries:
   meta:
     comment: Pure helpers for the evidence pool, model-facing text, extraction schemas and quote matching.
   source: file://shapes.lua
-  modules: [json]
+  modules: [json, time]
 - name: process
   kind: library.lua
   meta:
@@ -59,6 +59,7 @@ entries:
     store: kickside.docscout.persist:store
     doctools: kickside.docscout.engine:doctools
     user_agent: kickside.docscout.engine:user_agent
+    canonical_json: kickside.contract:canonical_json
     error_envelope: kickside.contract:error_envelope
     process: kickside.docscout.engine:process
     shapes: kickside.docscout.engine:shapes
@@ -95,6 +96,7 @@ entries:
     data_reader: userspace.dataflow.persist:data_reader
     doctools: kickside.docscout.engine:doctools
     shapes: kickside.docscout.engine:shapes
+    ai: kickside.docscout.engine:ai
     error_envelope: kickside.contract:error_envelope
 - name: document_tool
   kind: function.lua

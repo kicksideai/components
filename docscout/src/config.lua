@@ -5,6 +5,7 @@ local json = require("json")
 local registry = require("registry")
 local shapes = require("shapes")
 local user_agent = require("user_agent")
+local time = require("time")
 
 local M = {}
 
@@ -23,6 +24,10 @@ function M.validate(value: any): error?
     if schema_err then return schema_err end
     local valid, validation_err = json.validate(schema, value)
     if not valid then return invalid("Invalid configuration: " .. tostring(validation_err)) end
+    if value.retention ~= nil then
+        local duration, err = time.parse_duration(value.retention)
+        if err or duration:seconds() <= 0 then return invalid("Retention must be a positive duration") end
+    end
     local names, sections = {}, false
     for _, field in ipairs(value.fields) do
         local path = shapes.path(field)
@@ -59,6 +64,7 @@ function M.validate(value: any): error?
             return invalid("Agent scouting needs at least one round and one query per round")
         end
     end
+    if stages.verify.check_completeness and not stages.verify.check_support then return invalid("Completeness requires quote support") end
     if stages.verify.enabled and not (stages.verify.check_quotes or stages.verify.check_support) then return invalid("Verify needs at least one check") end
     if value.retrieval.overlap >= value.retrieval.chunk_size then return invalid("Overlap must be smaller than chunk size") end
     return nil

@@ -4,6 +4,12 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "retention": {
+      "type": "string",
+      "minLength": 1,
+      "title": "Retention window",
+      "description": "Positive duration for new processed documents and runs, for example 24h. Omit to use the global Docscout retention setting. Existing rows keep their expiry."
+    },
     "fields": {
       "type": "array",
       "default": [],
@@ -201,6 +207,19 @@
             "section_summaries": {
               "type": "boolean",
               "default": false
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2,
+              "default": 0,
+              "description": "Sampling temperature for this stage's model calls. Defaults to 0; unset uses the provider default."
+            },
+            "max_tokens": {
+              "type": "integer",
+              "minimum": 256,
+              "maximum": 64000,
+              "description": "Output token limit for this stage's model calls. Unset uses the provider default."
             }
           },
           "required": [
@@ -213,7 +232,8 @@
             "enabled": true,
             "model": "class:fast",
             "outline": "find_or_build",
-            "section_summaries": false
+            "section_summaries": false,
+            "temperature": 0
           }
         },
         "prefetch": {
@@ -355,6 +375,13 @@
               "description": "Agent component id readable by the saver and runner. Applies to agent mode; omit to use the built-in loop.",
               "picker": "wc-component-picker",
               "class": "agent"
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2,
+              "default": 0,
+              "description": "Sampling temperature for the built-in loop and agent model calls; a selected agent uses its own settings. Defaults to 0; unset uses the provider default."
             }
           },
           "required": [
@@ -384,7 +411,8 @@
               "semantic_search",
               "read_section",
               "read_outline"
-            ]
+            ],
+            "temperature": 0
           }
         },
         "deep": {
@@ -456,6 +484,12 @@
               "default": 0.2,
               "minimum": 0,
               "maximum": 2
+            },
+            "max_tokens": {
+              "type": "integer",
+              "minimum": 256,
+              "maximum": 64000,
+              "description": "Output token limit for the analysis. Unset uses the provider default; an analysis cut at the limit fails its field."
             }
           },
           "required": [
@@ -506,6 +540,13 @@
               "default": 20,
               "minimum": 1,
               "maximum": 100
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2,
+              "default": 0,
+              "description": "Sampling temperature for this stage's model calls. Defaults to 0; unset uses the provider default."
             }
           },
           "required": [
@@ -516,7 +557,8 @@
           "default": {
             "model": "class:fast",
             "max_output_tokens": 4096,
-            "max_fields_per_call": 20
+            "max_fields_per_call": 20,
+            "temperature": 0
           }
         },
         "verify": {
@@ -540,6 +582,24 @@
             "check_support": {
               "type": "boolean",
               "default": true
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2,
+              "default": 0,
+              "description": "Sampling temperature for this stage's model calls. Defaults to 0; unset uses the provider default."
+            },
+            "max_tokens": {
+              "type": "integer",
+              "minimum": 256,
+              "maximum": 64000,
+              "description": "Output token limit for this stage's model calls. Unset uses the provider default."
+            },
+            "check_completeness": {
+              "type": "boolean",
+              "default": false,
+              "description": "Opt in to field-aware support and completeness of requested text and list values. Requires quote support; adds source input tokens. An unknown judgment remains absent from complete."
             }
           },
           "required": [
@@ -552,7 +612,9 @@
             "enabled": false,
             "model": "class:fast",
             "check_quotes": true,
-            "check_support": true
+            "check_support": true,
+            "temperature": 0,
+            "check_completeness": false
           }
         }
       },
@@ -569,7 +631,8 @@
           "enabled": true,
           "model": "class:fast",
           "outline": "find_or_build",
-          "section_summaries": false
+          "section_summaries": false,
+          "temperature": 0
         },
         "prefetch": {
           "enabled": true,
@@ -590,7 +653,8 @@
             "semantic_search",
             "read_section",
             "read_outline"
-          ]
+          ],
+          "temperature": 0
         },
         "deep": {
           "enabled": true,
@@ -608,13 +672,16 @@
         "extract": {
           "model": "class:fast",
           "max_output_tokens": 4096,
-          "max_fields_per_call": 20
+          "max_fields_per_call": 20,
+          "temperature": 0
         },
         "verify": {
           "enabled": false,
           "model": "class:fast",
           "check_quotes": true,
-          "check_support": true
+          "check_support": true,
+          "temperature": 0,
+          "check_completeness": false
         }
       }
     },
@@ -682,6 +749,18 @@
           "minLength": 1,
           "maxLength": 200
         },
+        "highlighter_temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Sampling temperature for the highlighter's model calls. Unset uses the provider default."
+        },
+        "highlighter_max_tokens": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 64000,
+          "description": "Output token limit for the highlighter's model calls. Unset uses the provider default."
+        },
         "section_budget": {
           "type": "integer",
           "default": 6000,
@@ -741,7 +820,8 @@
         "enabled": true,
         "model": "class:fast",
         "outline": "find_or_build",
-        "section_summaries": false
+        "section_summaries": false,
+        "temperature": 0
       },
       "prefetch": {
         "enabled": true,
@@ -762,7 +842,8 @@
           "semantic_search",
           "read_section",
           "read_outline"
-        ]
+        ],
+        "temperature": 0
       },
       "deep": {
         "enabled": true,
@@ -780,13 +861,16 @@
       "extract": {
         "model": "class:fast",
         "max_output_tokens": 4096,
-        "max_fields_per_call": 20
+        "max_fields_per_call": 20,
+        "temperature": 0
       },
       "verify": {
         "enabled": false,
         "model": "class:fast",
         "check_quotes": true,
-        "check_support": true
+        "check_support": true,
+        "temperature": 0,
+        "check_completeness": false
       }
     },
     "retrieval": {

@@ -43,7 +43,7 @@ jobs:
         node-version: '22'
     - uses: kicksideai/.github/actions/setup-wippy@5401fa65bed7d8648125957520e94206ed1ffd0b
       with:
-        version: 0.3.56a
+        version: 0.3.59a
         hub-url: https://hub.wippy.ai
     - name: Materialize locked Docscout UI Kit for license provenance
       run: |
@@ -275,6 +275,7 @@ jobs:
             set -euo pipefail
             export TMPDIR="$PWD/.scratch"
             mkdir -p "$TMPDIR"
+            python3 docscout/test/check-package-bindings.py
             make -C docscout lockrefresh ui-install build typecheck test-ui lint test
         - module: docscout
           engine: postgres
@@ -282,6 +283,7 @@ jobs:
             set -euo pipefail
             export TMPDIR="$PWD/.scratch"
             mkdir -p "$TMPDIR"
+            python3 docscout/test/check-package-bindings.py
             make -C docscout lockrefresh ui-install build typecheck test-ui lint
             database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_docscout"
             createdb "$database"
@@ -309,7 +311,7 @@ jobs:
         node-version: '22'
     - uses: kicksideai/.github/actions/setup-wippy@5401fa65bed7d8648125957520e94206ed1ffd0b
       with:
-        version: 0.3.56a
+        version: 0.3.59a
         hub-url: https://hub.wippy.ai
     - name: Check out converters module sources
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

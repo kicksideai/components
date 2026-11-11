@@ -56,6 +56,32 @@ function M.find(component_id: string, owner_id: string, upload_id: string, check
     end)
 end
 
+-- The outline built for a processed document under identity, or nil.
+function M.built_outline(document_id: string, identity: string): ({ any }?, error?)
+    return database.with_db(function(db: any): (any?, error?)
+        local rows, query_err = db:query([[SELECT built_outline FROM kickside_docscout_documents
+            WHERE id=$1 AND built_outline_identity=$2]], { document_id, identity })
+        if query_err then return nil, failed("built outline lookup failed", query_err) end
+        local row = rows and rows[1]
+        if not row then return nil, nil end
+        return persisted_json.decode_table(row.built_outline, "built outline")
+    end)
+end
+
+-- Keeps the outline built for a processed document under identity in place
+-- of an earlier one.
+function M.keep_built_outline(document_id: string, identity: string, outline: { any }): error?
+    local encoded, encode_err = canonical_json.encode(outline)
+    if encode_err then return errors.wrap(encode_err, "built outline could not be encoded") end
+    local _, err = database.with_db(function(db: any): (any?, error?)
+        local _, update_err = db:execute([[UPDATE kickside_docscout_documents SET built_outline=$1, built_outline_identity=$2 WHERE id=$3]],
+            { encoded, identity, document_id })
+        if update_err then return nil, failed("built outline could not be stored", update_err) end
+        return true, nil
+    end)
+    return err
+end
+
 -- A live processed document scoped to the current extraction owner.
 function M.for_agent(component_id: string, owner_id: string, document_id: string): (any?, error?)
     return database.with_db(function(db: any): (any?, error?)
@@ -182,9 +208,19 @@ function M.expire(limit: integer): (integer?, error?)
     end)
 end
 
+-- A hit's vector similarity to the query: fused hybrid rows carry it as
+-- vector_similarity, dense rows as similarity. Keyword rows and keyword
+-- matches outside the vector candidates have none.
+local function vector_similarity(row: any): number?
+    if row.hybrid_score ~= nil then return tonumber(row.vector_similarity) end
+    return tonumber(row.similarity)
+end
+
 -- Searches one processed document. mode is keyword, semantic or hybrid;
 -- ordinals, when given, keeps results inside that region of the document,
--- and an empty region produces an empty result.
+-- and an empty region produces an empty result. min_similarity, when given,
+-- keeps hits whose vector similarity reaches it, in every mode; a hit
+-- without a vector similarity is kept.
 function M.search(document_id: string, opts: any): (any?, error?)
     if opts.ordinals and #opts.ordinals == 0 then return {}, nil end
     return database.with_db(function(db: any): (any?, error?)
@@ -203,9 +239,10 @@ function M.search(document_id: string, opts: any): (any?, error?)
         if search_err then return nil, failed("document search failed", search_err) end
         local hits = {}
         for _, row in ipairs(rows or {}) do
+            local similarity = vector_similarity(row)
             local hit, decode_err = decode_chunk(row)
             if decode_err then return nil, decode_err end
-            if opts.min_similarity == nil or hit.similarity == nil or hit.similarity >= opts.min_similarity then hits[#hits + 1] = hit end
+            if opts.min_similarity == nil or similarity == nil or similarity >= opts.min_similarity then hits[#hits + 1] = hit end
         end
         return hits, nil
     end)

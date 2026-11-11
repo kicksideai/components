@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/kicksideai/components/compare/storage-s3-v0.2.1...storage-s3-v0.2.2) (2026-11-10)
+
+
+### Bug Fixes
+
+* rebuild packages without baked default bindings ([#45](https://github.com/kicksideai/components/issues/45)) ([69e523b](https://github.com/kicksideai/components/commit/69e523b5870cc7abda558fc6d0a3a04f1c391310))
+
 ## [0.2.1](https://github.com/kicksideai/components/compare/storage-s3-v0.2.0...storage-s3-v0.2.1) (2026-11-06)
 
 
