@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.4](https://github.com/kicksideai/components/compare/docscout-v0.1.3...docscout-v0.1.4) (2026-11-11)
+
+
+### Features
+
+* **docscout:** record model call outcomes and run summaries ([#53](https://github.com/kicksideai/components/issues/53)) ([8619ee8](https://github.com/kicksideai/components/commit/8619ee8076ce9549eeec04e22fbf9598268899e8))
+* **docscout:** scope extraction runs to document pages ([#67](https://github.com/kicksideai/components/issues/67)) ([312cf25](https://github.com/kicksideai/components/commit/312cf25d91049b91c238db633fcea4c639280b5d))
+
+
+### Bug Fixes
+
+* **docscout:** meter failed replies and report length cuts as truncation ([#69](https://github.com/kicksideai/components/issues/69)) ([55bca58](https://github.com/kicksideai/components/commit/55bca58fc297729d2f965d5b860eebf1e445b504))
+* **docscout:** retain reasons for unverified saved values ([#66](https://github.com/kicksideai/components/issues/66)) ([62dce75](https://github.com/kicksideai/components/commit/62dce75f732ef4d228315496b14a7679ee004c84))
+
 ## [0.1.3](https://github.com/kicksideai/components/compare/docscout-v0.1.2...docscout-v0.1.3) (2026-11-11)
 
 
