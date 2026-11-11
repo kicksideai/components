@@ -912,6 +912,7 @@ entries:
     stages: kickside.docscout.engine:stages
     shapes: kickside.docscout.engine:shapes
     scoring: kickside.docscout.evals:scoring
+    runner: kickside.docscout.engine:run
 
 - name: user_agent_test
   kind: function.lua
