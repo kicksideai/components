@@ -2,6 +2,7 @@
 -- Pure helpers shared by the stages: the evidence pool, how passages and
 -- fields are shown to models, extraction schemas and quote normalisation.
 local json = require("json")
+local time = require("time")
 
 local M = {}
 
@@ -209,6 +210,61 @@ function M.value_schema(f: any): any
         schema.description = (schema.description and (schema.description .. "\n") or "") .. "Format: " .. f.expected_format
     end
     return schema
+end
+
+-- Date pattern tokens an expected format may use, longest first, with the
+-- time layout element each numeric token stands for.
+local DATE_TOKENS = { { "YYYY", "2006" }, { "MMMM", "" }, { "MMM", "" }, { "MM", "01" },
+    { "DD", "02" }, { "YY", "06" }, { "M", "1" }, { "D", "2" } }
+
+-- The time layout of an expected date format written only with date tokens
+-- and separators, in any letter case. Month names need an explicit language;
+-- prose formats remain model hints.
+function M.date_layout(format: string): (string?, string?)
+    local pattern, layout, i, tokens, month_name = format:upper(), {}, 1, 0, false
+    while i <= #pattern do
+        local matched = false
+        for _, t in ipairs(DATE_TOKENS) do
+            if pattern:sub(i, i + #t[1] - 1) == t[1] then
+                layout[#layout + 1], i, tokens, matched = t[2], i + #t[1], tokens + 1, true
+                if t[1] == "MMMM" or t[1] == "MMM" then month_name = true end
+                break
+            end
+        end
+        if not matched then
+            local c = pattern:sub(i, i)
+            if not c:match("[%s%-/.,]") then return nil end
+            layout[#layout + 1], i = c, i + 1
+        end
+    end
+    if month_name then return nil, "Date format uses a month name; its language is unspecified" end
+    return tokens > 0 and table.concat(layout) or nil, nil
+end
+
+-- Why a value breaks the format its field declares, or nil. A date whose
+-- expected format is a date pattern must parse as that pattern; lists and
+-- objects check their items and properties.
+function M.format_issue(f: any, value: any): string?
+    if value == nil then return nil end
+    if f.type == "date" and type(value) == "string" and f.expected_format and f.expected_format ~= "" then
+        local layout, unsupported = M.date_layout(f.expected_format)
+        if unsupported then return unsupported end
+        if layout then
+            local _, err = time.parse(layout, value)
+            if err then return "Value \"" .. value .. "\" is not a date in the format " .. f.expected_format end
+        end
+    elseif f.type == "list" and type(value) == "table" then
+        for _, item in ipairs(value) do
+            local issue = M.format_issue(f.item, item)
+            if issue then return issue end
+        end
+    elseif f.type == "object" and type(value) == "table" then
+        for _, p in ipairs(f.properties) do
+            local issue = M.format_issue(p, value[p.name])
+            if issue then return p.name .. ": " .. issue end
+        end
+    end
+    return nil
 end
 
 -- Adds a field schema beneath its group nodes.

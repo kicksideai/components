@@ -719,7 +719,11 @@ function M.verify(run: any, step: any): error?
         if v.reason then reasons[#reasons + 1] = v.reason end
         if not v.missing and not v.failed then
             local valid, shape_err = json.validate(shapes.value_schema(fields[shapes.path(v)]), v.value)
-            if not valid then reasons[#reasons + 1] = "Value does not match its declared shape: " .. tostring(shape_err) end
+            if not valid then reasons[#reasons + 1] = "Value does not match its declared shape: " .. tostring(shape_err)
+            else
+                local issue = shapes.format_issue(fields[shapes.path(v)], v.value)
+                if issue then reasons[#reasons + 1] = issue end
+            end
         end
         if cfg.check_quotes and not v.missing and not v.failed and not v.quotes_found then reasons[#reasons + 1] = "A quote is not in the document" end
         if cfg.check_support and not v.missing and not v.failed then

@@ -1415,3 +1415,24 @@ entries:
     provider_model: docscout-highlight-visible
     options:
       reply: {"1": ["total amount"]}
+
+- name: fixture_date_result_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-date-result
+    capabilities: [structured_output]
+    class: [docscout-date-result]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-date-result
+    options:
+      reply:
+        signed:
+          found: true
+          value: 8 mars 2026
+          confidence: 1
+          evidence: [{chunk: 1, quote: 'The total amount is 1250.'}]
