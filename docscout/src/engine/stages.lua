@@ -573,14 +573,6 @@ function M.extraction_calls(run: any): ({ any }?, error?)
     local sets, order = {}, {}
     for _, f in ipairs(run.config.fields) do
         if run.field_errors and run.field_errors[shapes.path(f)] then goto continue_field end
-        if shapes.output_estimate(f) > output then
-            -- A field whose reply alone is expected to exceed the output limit fails before any call.
-            run.field_errors = run.field_errors or {}
-            run.field_errors[shapes.path(f)] = errors.new({ kind = errors.INVALID, retryable = false,
-                message = "The expected reply of " .. shapes.path(f) .. " (about " .. shapes.output_estimate(f) .. " tokens) exceeds stages.extract.max_output_tokens (" .. output .. "); raise it",
-                details = { code = "field_output_exceeds_budget", field = shapes.path(f), estimate = shapes.output_estimate(f), max_output_tokens = output } })
-            goto continue_field
-        end
         local region, region_err = M.region(run, f)
         if region_err then return nil, region_err end
         local reads = "*"

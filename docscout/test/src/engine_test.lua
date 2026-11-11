@@ -726,7 +726,7 @@ return { run = test.run_cases(function()
             local calls = assert(stages.extraction_calls(run))
             test.eq(#calls, 2); test.eq(#calls[1].fields, 2); test.eq(calls[2].fields[1].name, "c")
         end)
-        test.it("fails a field whose estimated output alone exceeds the output limit, naming the setting", function()
+        test.it("extracts a field whose estimated output exceeds the output limit in its own call", function()
             local item = { type = "object", properties = {} }
             for n = 1, 12 do item.properties[n] = { name = "p" .. n, type = "text", required = true, description = "", enum_values = {}, expected_format = "" } end
             local wide = { name = "rows", type = "list", item = item, description = "", search_within = "document", group = "", evidence_required = true }
@@ -738,9 +738,8 @@ return { run = test.run_cases(function()
             test.is_true(shapes.output_estimate(wide) > 1024)
             test.is_nil(stages.extract(run, { meter = ai.meter() }))
             local rows, total = run.values[1], run.values[2]
-            test.is_true(rows.failed); test.eq(rows.error.details.code, "field_output_exceeds_budget")
-            test.is_true(rows.error.message:find("max_output_tokens", 1, true) ~= nil, rows.error.message)
-            test.is_false(rows.error.retryable)
+            test.is_false(rows.failed); test.eq(rows.value[1].p12, "Fixture")
+            test.is_nil(rows.error)
             test.is_false(total.failed); test.eq(total.value, 1250)
         end)
         test.it("splits a group with one region by the fields-per-call limit", function()

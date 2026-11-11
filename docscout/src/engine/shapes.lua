@@ -201,11 +201,8 @@ end
 -- Quotes a value may cite.
 M.EVIDENCE_LIMIT = 5
 
--- Reply tokens an extraction call is expected to spend per field, set from
--- measured replies (a text field's reply runs about 65 tokens at the median
--- and 165 at the 90th percentile): the found, confidence and evidence
--- envelope, each quote the field may give, and its value's leaves, a list
--- counted at LIST_ITEMS items.
+-- Scheduling weights for the reply envelope, quotes and value leaves. Lists
+-- assume five items. These heuristic weights do not bound actual model output.
 local REPLY_ENVELOPE, REPLY_QUOTE, REPLY_TEXT, REPLY_SCALAR, LIST_ITEMS = 30, 20, 40, 8, 5
 
 local function value_estimate(f: any): integer
