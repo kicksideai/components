@@ -17,28 +17,28 @@ function Pe(e) {
   }, Pe(e);
 }
 function wt(e, s) {
-  var l = Object.keys(e);
+  var a = Object.keys(e);
   if (Object.getOwnPropertySymbols) {
     var u = Object.getOwnPropertySymbols(e);
     s && (u = u.filter(function(d) {
       return Object.getOwnPropertyDescriptor(e, d).enumerable;
-    })), l.push.apply(l, u);
+    })), a.push.apply(a, u);
   }
-  return l;
+  return a;
 }
 function St(e) {
   for (var s = 1; s < arguments.length; s++) {
-    var l = arguments[s] != null ? arguments[s] : {};
-    s % 2 ? wt(Object(l), !0).forEach(function(u) {
-      Al(e, u, l[u]);
-    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(l)) : wt(Object(l)).forEach(function(u) {
-      Object.defineProperty(e, u, Object.getOwnPropertyDescriptor(l, u));
+    var a = arguments[s] != null ? arguments[s] : {};
+    s % 2 ? wt(Object(a), !0).forEach(function(u) {
+      Al(e, u, a[u]);
+    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(a)) : wt(Object(a)).forEach(function(u) {
+      Object.defineProperty(e, u, Object.getOwnPropertyDescriptor(a, u));
     });
   }
   return e;
 }
-function Al(e, s, l) {
-  return (s = Rl(s)) in e ? Object.defineProperty(e, s, { value: l, enumerable: !0, configurable: !0, writable: !0 }) : e[s] = l, e;
+function Al(e, s, a) {
+  return (s = Rl(s)) in e ? Object.defineProperty(e, s, { value: a, enumerable: !0, configurable: !0, writable: !0 }) : e[s] = a, e;
 }
 function Rl(e) {
   var s = Bl(e, "string");
@@ -46,21 +46,21 @@ function Rl(e) {
 }
 function Bl(e, s) {
   if (Pe(e) != "object" || !e) return e;
-  var l = e[Symbol.toPrimitive];
-  if (l !== void 0) {
-    var u = l.call(e, s);
+  var a = e[Symbol.toPrimitive];
+  if (a !== void 0) {
+    var u = a.call(e, s);
     if (Pe(u) != "object") return u;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (s === "string" ? String : Number)(e);
 }
 var Ll = Ml.extend("focustrap", {
-  mounted: function(s, l) {
-    var u = l.value || {}, d = u.disabled;
-    d || (this.createHiddenFocusableElements(s, l), this.bind(s, l), this.autoElementFocus(s, l)), s.setAttribute("data-pd-focustrap", !0), this.$el = s;
+  mounted: function(s, a) {
+    var u = a.value || {}, d = u.disabled;
+    d || (this.createHiddenFocusableElements(s, a), this.bind(s, a), this.autoElementFocus(s, a)), s.setAttribute("data-pd-focustrap", !0), this.$el = s;
   },
-  updated: function(s, l) {
-    var u = l.value || {}, d = u.disabled;
+  updated: function(s, a) {
+    var u = a.value || {}, d = u.disabled;
     d && this.unbind(s);
   },
   unmounted: function(s) {
@@ -70,14 +70,14 @@ var Ll = Ml.extend("focustrap", {
     getComputedSelector: function(s) {
       return ':not(.p-hidden-focusable):not([data-p-hidden-focusable="true"])'.concat(s ?? "");
     },
-    bind: function(s, l) {
-      var u = this, d = l.value || {}, m = d.onFocusIn, g = d.onFocusOut;
+    bind: function(s, a) {
+      var u = this, d = a.value || {}, m = d.onFocusIn, g = d.onFocusOut;
       s.$_pfocustrap_mutationobserver = new MutationObserver(function(r) {
         r.forEach(function(h) {
           if (h.type === "childList" && !s.contains(document.activeElement)) {
-            var w = function(a) {
-              var i = gt(a) ? gt(a, u.getComputedSelector(s.$_pfocustrap_focusableselector)) ? a : Me(s, u.getComputedSelector(s.$_pfocustrap_focusableselector)) : Me(a);
-              return pl(i) ? i : a.nextSibling && w(a.nextSibling);
+            var w = function(l) {
+              var i = gt(l) ? gt(l, u.getComputedSelector(s.$_pfocustrap_focusableselector)) ? l : Me(s, u.getComputedSelector(s.$_pfocustrap_focusableselector)) : Me(l);
+              return pl(i) ? i : l.nextSibling && w(l.nextSibling);
             };
             ze(w(h.nextSibling));
           }
@@ -100,20 +100,20 @@ var Ll = Ml.extend("focustrap", {
         })
       });
     },
-    autoElementFocus: function(s, l) {
-      var u = l.value || {}, d = u.autoFocusSelector, m = d === void 0 ? "" : d, g = u.firstFocusableSelector, r = g === void 0 ? "" : g, h = u.autoFocus, w = h === void 0 ? !1 : h, x = Me(s, "[autofocus]".concat(this.getComputedSelector(m)));
+    autoElementFocus: function(s, a) {
+      var u = a.value || {}, d = u.autoFocusSelector, m = d === void 0 ? "" : d, g = u.firstFocusableSelector, r = g === void 0 ? "" : g, h = u.autoFocus, w = h === void 0 ? !1 : h, x = Me(s, "[autofocus]".concat(this.getComputedSelector(m)));
       w && !x && (x = Me(s, this.getComputedSelector(r))), ze(x);
     },
     onFirstHiddenElementFocus: function(s) {
-      var l, u = s.currentTarget, d = s.relatedTarget, m = d === u.$_pfocustrap_lasthiddenfocusableelement || !((l = this.$el) !== null && l !== void 0 && l.contains(d)) ? Me(u.parentElement, this.getComputedSelector(u.$_pfocustrap_focusableselector)) : u.$_pfocustrap_lasthiddenfocusableelement;
+      var a, u = s.currentTarget, d = s.relatedTarget, m = d === u.$_pfocustrap_lasthiddenfocusableelement || !((a = this.$el) !== null && a !== void 0 && a.contains(d)) ? Me(u.parentElement, this.getComputedSelector(u.$_pfocustrap_focusableselector)) : u.$_pfocustrap_lasthiddenfocusableelement;
       ze(m);
     },
     onLastHiddenElementFocus: function(s) {
-      var l, u = s.currentTarget, d = s.relatedTarget, m = d === u.$_pfocustrap_firsthiddenfocusableelement || !((l = this.$el) !== null && l !== void 0 && l.contains(d)) ? cl(u.parentElement, this.getComputedSelector(u.$_pfocustrap_focusableselector)) : u.$_pfocustrap_firsthiddenfocusableelement;
+      var a, u = s.currentTarget, d = s.relatedTarget, m = d === u.$_pfocustrap_firsthiddenfocusableelement || !((a = this.$el) !== null && a !== void 0 && a.contains(d)) ? cl(u.parentElement, this.getComputedSelector(u.$_pfocustrap_focusableselector)) : u.$_pfocustrap_firsthiddenfocusableelement;
       ze(m);
     },
-    createHiddenFocusableElements: function(s, l) {
-      var u = this, d = l.value || {}, m = d.tabIndex, g = m === void 0 ? 0 : m, r = d.firstFocusableSelector, h = r === void 0 ? "" : r, w = d.lastFocusableSelector, x = w === void 0 ? "" : w, a = function(C) {
+    createHiddenFocusableElements: function(s, a) {
+      var u = this, d = a.value || {}, m = d.tabIndex, g = m === void 0 ? 0 : m, r = d.firstFocusableSelector, h = r === void 0 ? "" : r, w = d.lastFocusableSelector, x = w === void 0 ? "" : w, l = function(C) {
         return ml("span", {
           class: "p-hidden-accessible p-hidden-focusable",
           tabIndex: g,
@@ -123,7 +123,7 @@ var Ll = Ml.extend("focustrap", {
           "data-p-hidden-focusable": !0,
           onFocus: C?.bind(u)
         });
-      }, i = a(this.onFirstHiddenElementFocus), L = a(this.onLastHiddenElementFocus);
+      }, i = l(this.onFirstHiddenElementFocus), L = l(this.onLastHiddenElementFocus);
       i.$_pfocustrap_lasthiddenfocusableelement = L, i.$_pfocustrap_focusableselector = h, i.setAttribute("data-pc-section", "firstfocusableelement"), L.$_pfocustrap_firsthiddenfocusableelement = i, L.$_pfocustrap_focusableselector = x, L.setAttribute("data-pc-section", "lastfocusableelement"), s.prepend(i), s.append(L);
     }
   }
@@ -140,7 +140,7 @@ const Ol = ["aria-checked", "aria-label", "disabled"], ee = /* @__PURE__ */ W({
   emits: ["update:modelValue"],
   setup(e) {
     const s = Le(e, "modelValue");
-    return (l, u) => (n(), o("button", {
+    return (a, u) => (n(), o("button", {
       type: "button",
       role: "switch",
       class: "switch",
@@ -172,21 +172,21 @@ const Ol = ["aria-checked", "aria-label", "disabled"], ee = /* @__PURE__ */ W({
   },
   emits: ["select"],
   setup(e, { emit: s }) {
-    const l = e, u = s, d = F(() => Qe(l.config, l.stage)), m = F(() => l.config.stages[l.stage].model), g = F({ get: () => d.value, set: (w) => {
-      l.config.stages[l.stage].enabled = w;
+    const a = e, u = s, d = F(() => Qe(a.config, a.stage)), m = F(() => a.config.stages[a.stage].model), g = F({ get: () => d.value, set: (w) => {
+      a.config.stages[a.stage].enabled = w;
     } }), r = F(() => {
-      const w = l.config, x = w.stages;
-      switch (l.stage) {
+      const w = a.config, x = w.stages;
+      switch (a.stage) {
         case "map":
-          return w.fields.filter((a) => a.search_within === "sections").map((a) => ({ text: a.name || "New field", tone: "primary" }));
+          return w.fields.filter((l) => l.search_within === "sections").map((l) => ({ text: l.name || "New field", tone: "primary" }));
         case "prefetch":
-          return [...x.prefetch.queries.map((a) => ({ text: a.name || "Untitled query", tone: "" })), ...w.fields.filter((a) => a.search_hints.trim()).map((a) => ({ text: a.name, tone: "hint" }))];
+          return [...x.prefetch.queries.map((l) => ({ text: l.name || "Untitled query", tone: "" })), ...w.fields.filter((l) => l.search_hints.trim()).map((l) => ({ text: l.name, tone: "hint" }))];
         case "scout":
-          return x.scout.mode === "agent" ? x.scout.tools.map((a) => ({ text: lt(a).toLowerCase(), tone: "" })) : [];
+          return x.scout.mode === "agent" ? x.scout.tools.map((l) => ({ text: lt(l).toLowerCase(), tone: "" })) : [];
         case "deep":
-          return w.fields.filter((a) => a.strategy === "deep").map((a) => ({ text: a.name || "New field", tone: "primary" }));
+          return w.fields.filter((l) => l.strategy === "deep").map((l) => ({ text: l.name || "New field", tone: "primary" }));
         case "extract":
-          return Et(w).map((a) => ({ text: `${a.name} · ${a.fields.length}`, tone: "" }));
+          return Et(w).map((l) => ({ text: `${l.name} · ${l.fields.length}`, tone: "" }));
         default:
           return [];
       }
@@ -196,10 +196,10 @@ const Ol = ["aria-checked", "aria-label", "disabled"], ee = /* @__PURE__ */ W({
       role: "button",
       tabindex: "0",
       "aria-label": p(ke)[e.stage],
-      onClick: x[1] || (x[1] = (a) => u("select")),
+      onClick: x[1] || (x[1] = (l) => u("select")),
       onKeydown: [
-        x[2] || (x[2] = Ee((a) => u("select"), ["enter"])),
-        x[3] || (x[3] = Ee(ve((a) => u("select"), ["prevent"]), ["space"]))
+        x[2] || (x[2] = Ee((l) => u("select"), ["enter"])),
+        x[3] || (x[3] = Ee(ve((l) => u("select"), ["prevent"]), ["space"]))
       ]
     }, [
       t("span", Tl, [
@@ -211,10 +211,10 @@ const Ol = ["aria-checked", "aria-label", "disabled"], ee = /* @__PURE__ */ W({
         t("span", Il, c(p(ke)[e.stage]), 1),
         t("span", jl, c(d.value ? p(fl)(e.stage, e.config) : "Off"), 1),
         d.value && r.value.length ? (n(), o("span", zl, [
-          (n(!0), o(N, null, I(r.value, (a) => (n(), o("span", {
-            key: a.text,
-            class: Q(["chip", { primary: a.tone === "primary", "muted-chip": a.tone === "hint" }])
-          }, c(a.text), 3))), 128))
+          (n(!0), o(N, null, I(r.value, (l) => (n(), o("span", {
+            key: l.text,
+            class: Q(["chip", { primary: l.tone === "primary", "muted-chip": l.tone === "hint" }])
+          }, c(l.text), 3))), 128))
         ])) : k("", !0),
         e.trace ? (n(), o("span", Wl, [
           f(p(M), {
@@ -228,7 +228,7 @@ const Ol = ["aria-checked", "aria-label", "disabled"], ee = /* @__PURE__ */ W({
         e.stage !== "extract" && !e.readonly ? (n(), J(ee, {
           key: 1,
           modelValue: g.value,
-          "onUpdate:modelValue": x[0] || (x[0] = (a) => g.value = a),
+          "onUpdate:modelValue": x[0] || (x[0] = (l) => g.value = l),
           label: `Enable ${p(ke)[e.stage]}`
         }, null, 8, ["modelValue", "label"])) : k("", !0)
       ])
@@ -247,13 +247,13 @@ const Ol = ["aria-checked", "aria-label", "disabled"], ee = /* @__PURE__ */ W({
   }),
   emits: ["update:modelValue"],
   setup(e) {
-    const s = e, l = Le(e, "modelValue"), u = U([]);
+    const s = e, a = Le(e, "modelValue"), u = U([]);
     function d(m, g) {
       const r = s.options.length - 1, h = { ArrowRight: g + 1, ArrowDown: g + 1, ArrowLeft: g - 1, ArrowUp: g - 1, Home: 0, End: r }[m.key];
       if (h === void 0) return;
       m.preventDefault();
       const w = (h + s.options.length) % s.options.length;
-      l.value = s.options[w].value, u.value[w]?.focus();
+      a.value = s.options[w].value, u.value[w]?.focus();
     }
     return (m, g) => (n(), o("div", {
       class: "segmented",
@@ -269,10 +269,10 @@ const Ol = ["aria-checked", "aria-label", "disabled"], ee = /* @__PURE__ */ W({
         class: "kx-btn kx-btn-ghost kx-focus-halo",
         role: "radio",
         "aria-label": e.name ? `${e.name}: ${r.label}` : void 0,
-        "aria-checked": l.value === r.value,
-        tabindex: l.value === r.value ? 0 : -1,
+        "aria-checked": a.value === r.value,
+        tabindex: a.value === r.value ? 0 : -1,
         disabled: e.disabled,
-        onClick: (w) => l.value = r.value,
+        onClick: (w) => a.value = r.value,
         onKeydown: (w) => d(w, h)
       }, [
         r.icon ? (n(), J(p(M), {
@@ -295,34 +295,34 @@ const Ol = ["aria-checked", "aria-label", "disabled"], ee = /* @__PURE__ */ W({
 ], Jl = (e) => At.find((s) => s.value === e).icon;
 function Je(e) {
   const s = [];
-  function l(u, d, m, g) {
-    s.push({ field: d, trail: m, shape: u, path: g, depth: m.length + 1, key: ie(d, m) }), u.properties?.forEach((r, h) => l(r, d, [...m, h], `${g}.${r.name || "New property"}`)), u.item && l(u.item, d, [...m, "item"], `${g}[]`);
+  function a(u, d, m, g) {
+    s.push({ field: d, trail: m, shape: u, path: g, depth: m.length + 1, key: ie(d, m) }), u.properties?.forEach((r, h) => a(r, d, [...m, h], `${g}.${r.name || "New property"}`)), u.item && a(u.item, d, [...m, "item"], `${g}[]`);
   }
-  return e.forEach((u, d) => l(u, d, [], G(u) || "New field")), s;
+  return e.forEach((u, d) => a(u, d, [], G(u) || "New field")), s;
 }
 function nt(e) {
   return 1 + Math.max(0, ...(e.properties ?? []).map(nt), e.item ? nt(e.item) : 0);
 }
 function Yl(e, s) {
-  return Je(e).filter((l) => l.shape.type === "object" && ((l.shape.properties?.length ?? 0) < 100 || l.field === s.field && ie(l.field, l.trail) === ie(s.field, s.trail.slice(0, -1))) && l.depth + nt(s.shape) <= Ae && !(l.field === s.field && s.trail.every((u, d) => l.trail[d] === u)));
+  return Je(e).filter((a) => a.shape.type === "object" && ((a.shape.properties?.length ?? 0) < 100 || a.field === s.field && ie(a.field, a.trail) === ie(s.field, s.trail.slice(0, -1))) && a.depth + nt(s.shape) <= Ae && !(a.field === s.field && s.trail.every((u, d) => a.trail[d] === u)));
 }
-function Xl(e, s, l) {
+function Xl(e, s, a) {
   const u = { ...Nt(), ...s.shape, name: s.shape.name };
   s.trail.length ? Je(e).find((g) => g.key === ie(s.field, s.trail.slice(0, -1))).shape.properties.splice(s.trail.at(-1), 1) : e.splice(s.field, 1);
   let d;
-  if (l) {
-    const { name: m, type: g, description: r, enum_values: h, expected_format: w, required: x, properties: a, item: i } = u;
-    d = { name: m, type: g, description: r, enum_values: h, expected_format: w, required: x, ...a ? { properties: a } : {}, ...i ? { item: i } : {} }, l.shape.properties.push(d), d = l.shape.properties.at(-1);
+  if (a) {
+    const { name: m, type: g, description: r, enum_values: h, expected_format: w, required: x, properties: l, item: i } = u;
+    d = { name: m, type: g, description: r, enum_values: h, expected_format: w, required: x, ...l ? { properties: l } : {}, ...i ? { item: i } : {} }, a.shape.properties.push(d), d = a.shape.properties.at(-1);
   } else
     d = { ...at(), ...u, group: "" }, e.push(d), d = e.at(-1);
   return Je(e).find((m) => m.shape === d);
 }
 function Vt(e, s = !1) {
-  function l(d) {
-    return d.type === "object" ? Object.fromEntries((d.properties ?? []).map((m) => [m.name || "unnamed", l(m)])) : d.type === "list" ? d.item ? [l(d.item)] : [] : s ? d.enum_values?.length ? d.enum_values[0] : { text: "Example value", number: 42, boolean: !0, date: "2026-01-15", enum: null }[d.type] : d.type === "enum" ? d.enum_values?.join(" | ") || "enum" : d.type;
+  function a(d) {
+    return d.type === "object" ? Object.fromEntries((d.properties ?? []).map((m) => [m.name || "unnamed", a(m)])) : d.type === "list" ? d.item ? [a(d.item)] : [] : s ? d.enum_values?.length ? d.enum_values[0] : { text: "Example value", number: 42, boolean: !0, date: "2026-01-15", enum: null }[d.type] : d.type === "enum" ? d.enum_values?.join(" | ") || "enum" : d.type;
   }
   const u = {};
-  return e.forEach((d) => Ft(u, G(d) || "unnamed", l(d))), u;
+  return e.forEach((d) => Ft(u, G(d) || "unnamed", a(d))), u;
 }
 const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria-invalid", "aria-describedby"], ta = { class: "label-block" }, la = ["id"], aa = { key: 0 }, na = ["id"], sa = {
   key: 2,
@@ -350,28 +350,28 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   },
   emits: ["add", "selectItem"],
   setup(e, { emit: s }) {
-    const l = e, u = s, d = F(() => l.shape), m = F(() => l.named ? l.depth === 1 ? "Field type" : "Property type" : "Item type"), g = F(() => At.filter((A) => l.depth < Ae || !["object", "list"].includes(A.value))), r = F({ get: () => l.shape.type, set: (A) => {
-      l.shape.type = A, delete l.shape.properties, delete l.shape.item, l.shape.enum_values = [], A === "object" && (l.shape.properties = []), A === "list" && (l.shape.item = bl());
-    } }), h = pe(), w = pe(), x = U(""), a = U("");
-    fe(() => l.shape, () => {
-      x.value = "", a.value = "";
+    const a = e, u = s, d = F(() => a.shape), m = F(() => a.named ? a.depth === 1 ? "Field type" : "Property type" : "Item type"), g = F(() => At.filter((A) => a.depth < Ae || !["object", "list"].includes(A.value))), r = F({ get: () => a.shape.type, set: (A) => {
+      a.shape.type = A, delete a.shape.properties, delete a.shape.item, a.shape.enum_values = [], A === "object" && (a.shape.properties = []), A === "list" && (a.shape.item = bl());
+    } }), h = pe(), w = pe(), x = U(""), l = U("");
+    fe(() => a.shape, () => {
+      x.value = "", l.value = "";
     });
-    const i = F(() => l.validationError || (l.named ? hl(d.value.name, l.siblingNames) : "") || gl(l.shape, l.depth));
+    const i = F(() => a.validationError || (a.named ? hl(d.value.name, a.siblingNames) : "") || gl(a.shape, a.depth));
     function L() {
-      const A = x.value.trim(), C = l.shape.enum_values ?? [];
+      const A = x.value.trim(), C = a.shape.enum_values ?? [];
       if (!A || A.length > 200) {
-        a.value = "Enter 1 to 200 characters.";
+        l.value = "Enter 1 to 200 characters.";
         return;
       }
       if (C.includes(A)) {
-        a.value = "This value already exists.";
+        l.value = "This value already exists.";
         return;
       }
       if (C.length >= 100) {
-        a.value = "Use at most 100 allowed values.";
+        l.value = "Use at most 100 allowed values.";
         return;
       }
-      l.shape.enum_values = [...C, A], x.value = "", a.value = "";
+      a.shape.enum_values = [...C, A], x.value = "", l.value = "";
     }
     return (A, C) => (n(), o("div", Zl, [
       e.named ? (n(), o("label", _l, [
@@ -447,7 +447,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
             onClick: L
           }, "Add")
         ])),
-        a.value ? (n(), o("p", ra, c(a.value), 1)) : k("", !0)
+        l.value ? (n(), o("p", ra, c(l.value), 1)) : k("", !0)
       ])) : k("", !0),
       t("label", null, [
         C[9] || (C[9] = E("Description", -1)),
@@ -525,7 +525,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   },
   emits: ["remove", "add", "selectItem"],
   setup(e, { emit: s }) {
-    const l = e, u = s, d = F(() => !l.depth || l.depth === 1), m = F(() => Ut(l.field, l.otherNames));
+    const a = e, u = s, d = F(() => !a.depth || a.depth === 1), m = F(() => Ut(a.field, a.otherNames));
     return (g, r) => (n(), o("fieldset", {
       class: "inspector-form",
       disabled: e.readonly
@@ -686,7 +686,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
     node: {}
   },
   setup(e) {
-    const s = U(/* @__PURE__ */ new Set()), l = pe();
+    const s = U(/* @__PURE__ */ new Set()), a = pe();
     function u(m) {
       s.value.has(m) ? s.value.delete(m) : s.value.add(m);
     }
@@ -710,7 +710,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
               class: "tree-toggle kx-iconbtn kx-focus-outline",
               "aria-label": `${s.value.has(h.path) ? "Expand" : "Collapse"} group ${h.path}`,
               "aria-expanded": !s.value.has(h.path),
-              "aria-controls": `${p(l)}-${h.path}`,
+              "aria-controls": `${p(a)}-${h.path}`,
               onClick: (x) => u(h.path)
             }, [
               f(p(M), {
@@ -728,7 +728,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
             ])
           ]),
           z(t("div", {
-            id: `${p(l)}-${h.path}`,
+            id: `${p(a)}-${h.path}`,
             class: "group-content"
           }, [
             f(r, { node: h }, {
@@ -760,7 +760,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   },
   emits: ["save", "cancel"],
   setup(e, { emit: s }) {
-    const l = e, u = s, d = U(l.initialValue), m = U(""), g = U(), r = pe();
+    const a = e, u = s, d = U(a.initialValue), m = U(""), g = U(), r = pe();
     Fe(() => {
       g.value.focus(), g.value.select();
     });
@@ -770,7 +770,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
         m.value = "Use a dotted path of snake_case group names.";
         return;
       }
-      if (w.length > l.maxLength) {
+      if (w.length > a.maxLength) {
         m.value = "The group and its nested paths must fit within 320 characters.";
         return;
       }
@@ -783,7 +783,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
       z(t("input", {
         ref_key: "input",
         ref: g,
-        "onUpdate:modelValue": x[0] || (x[0] = (a) => d.value = a),
+        "onUpdate:modelValue": x[0] || (x[0] = (l) => d.value = l),
         "aria-label": e.inputLabel,
         maxlength: e.maxLength,
         "aria-invalid": !!m.value,
@@ -794,7 +794,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
         placeholder: "parties.borrower",
         onKeydown: [
           Ee(ve(h, ["prevent"]), ["enter"]),
-          x[1] || (x[1] = Ee(ve((a) => u("cancel"), ["stop", "prevent"]), ["esc"]))
+          x[1] || (x[1] = Ee(ve((l) => u("cancel"), ["stop", "prevent"]), ["esc"]))
         ]
       }, null, 40, Oa), [
         [Z, d.value]
@@ -812,7 +812,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
         class: "kx-iconbtn kx-focus-outline",
         "aria-label": e.cancelLabel,
         title: e.cancelLabel,
-        onClick: x[2] || (x[2] = (a) => u("cancel"))
+        onClick: x[2] || (x[2] = (l) => u("cancel"))
       }, [
         f(p(M), { icon: "tabler:x" })
       ], 8, Ta),
@@ -841,13 +841,13 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   },
   emits: ["rename", "add", "reorder", "remove"],
   setup(e, { emit: s }) {
-    const l = e, u = s, d = U(!1), m = U(!1), g = U(), r = U(), h = U(), w = pe(), x = F(() => [
-      { label: "Move up", disabled: l.first, command: () => u("reorder", -1) },
-      { label: "Move down", disabled: l.last, command: () => u("reorder", 1) },
+    const a = e, u = s, d = U(!1), m = U(!1), g = U(), r = U(), h = U(), w = pe(), x = F(() => [
+      { label: "Move up", disabled: a.first, command: () => u("reorder", -1) },
+      { label: "Move down", disabled: a.last, command: () => u("reorder", 1) },
       { separator: !0 },
       { label: "Delete group and its fields", command: () => u("remove") }
     ]);
-    function a() {
+    function l() {
       d.value = !0;
     }
     async function i() {
@@ -885,7 +885,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           "aria-label": `Rename group ${e.path}`,
           "data-group-rename": e.path,
           title: e.path,
-          onClick: a
+          onClick: l
         }, [
           t("span", null, c(e.name), 1),
           f(p(M), {
@@ -981,15 +981,15 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   },
   emits: ["select", "add", "reorder"],
   setup(e, { emit: s }) {
-    const l = e, u = s, d = pe(), m = pe(), g = U(), r = U(!1), h = F(() => [
-      { label: "Move up", disabled: l.first, command: () => u("reorder", l.field, l.trail, -1) },
-      { label: "Move down", disabled: l.last, command: () => u("reorder", l.field, l.trail, 1) }
+    const a = e, u = s, d = pe(), m = pe(), g = U(), r = U(!1), h = F(() => [
+      { label: "Move up", disabled: a.first, command: () => u("reorder", a.field, a.trail, -1) },
+      { label: "Move down", disabled: a.last, command: () => u("reorder", a.field, a.trail, 1) }
     ]), w = U(!0);
-    fe(() => l.selected, (C) => {
-      const q = ie(l.field, l.trail);
-      C !== q && C.startsWith(q + (l.trail.length ? "/" : "")) && (w.value = !0);
+    fe(() => a.selected, (C) => {
+      const q = ie(a.field, a.trail);
+      C !== q && C.startsWith(q + (a.trail.length ? "/" : "")) && (w.value = !0);
     });
-    const x = F(() => l.trail.at(-1) !== "item"), a = F(() => x.value ? l.shape.name || "New field" : "Each item"), i = F(() => l.trail.length ? void 0 : l.shape), L = F(() => l.shape.type === "object" || l.shape.type === "list");
+    const x = F(() => a.trail.at(-1) !== "item"), l = F(() => x.value ? a.shape.name || "New field" : "Each item"), i = F(() => a.trail.length ? void 0 : a.shape), L = F(() => a.shape.type === "object" || a.shape.type === "list");
     function A(C) {
       C.key === "ArrowRight" && L.value && (w.value = !0, C.preventDefault(), C.stopPropagation()), C.key === "ArrowLeft" && L.value && (w.value = !1, C.preventDefault(), C.stopPropagation());
     }
@@ -1030,8 +1030,8 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
                 }, null, 8, ["icon"]),
                 t("span", {
                   class: "row-label",
-                  title: a.value
-                }, c(a.value), 9, _a),
+                  title: l.value
+                }, c(l.value), 9, _a),
                 e.error ? (n(), J(p(M), {
                   key: 0,
                   icon: "tabler:alert-circle",
@@ -1189,7 +1189,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   },
   emits: ["select"],
   setup(e, { emit: s }) {
-    const l = s, u = U(!!customElements.get("wc-agent-picker")), d = U("");
+    const a = s, u = U(!!customElements.get("wc-agent-picker")), d = U("");
     Fe(async () => {
       if (!u.value)
         try {
@@ -1201,7 +1201,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
     function m(g) {
       if (g.composedPath()[0] !== g.currentTarget) return;
       const r = g.detail;
-      l("select", r.agent_id);
+      a("select", r.agent_id);
     }
     return (g, r) => (n(), o("div", gn, [
       r[0] || (r[0] = t("span", null, "Scout agent", -1)),
@@ -1232,7 +1232,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   },
   emits: ["select"],
   setup(e, { emit: s }) {
-    const l = s, u = U(!!customElements.get("wc-model-picker")), d = U("");
+    const a = s, u = U(!!customElements.get("wc-model-picker")), d = U("");
     Fe(async () => {
       if (!u.value)
         try {
@@ -1243,7 +1243,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
     });
     function m(g) {
       const r = g.detail;
-      typeof r == "string" && l("select", r);
+      typeof r == "string" && a("select", r);
     }
     return (g, r) => u.value ? (n(), o("wc-model-picker", {
       key: 0,
@@ -1275,13 +1275,13 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   }),
   emits: ["update:modelValue"],
   setup(e) {
-    const s = e, l = Le(e, "modelValue"), u = F(() => s.percent ? `${Math.round(l.value * 100)}%` : `${l.value.toLocaleString()}${s.unit ? ` ${s.unit}` : ""}`), d = (r) => s.log ? Math.log(r / s.min) / Math.log(s.max / s.min) * Se : (r - s.min) / (s.max - s.min) * Se;
+    const s = e, a = Le(e, "modelValue"), u = F(() => s.percent ? `${Math.round(a.value * 100)}%` : `${a.value.toLocaleString()}${s.unit ? ` ${s.unit}` : ""}`), d = (r) => s.log ? Math.log(r / s.min) / Math.log(s.max / s.min) * Se : (r - s.min) / (s.max - s.min) * Se;
     function m(r) {
       const h = s.log ? s.min * Math.pow(s.max / s.min, r / Se) : s.min + (s.max - s.min) * r / Se, w = Math.round(h / s.step) * s.step;
       return Math.min(s.max, Math.max(s.min, Number(w.toFixed(4))));
     }
-    const g = F({ get: () => Math.round(d(l.value)), set: (r) => {
-      l.value = m(r);
+    const g = F({ get: () => Math.round(d(a.value)), set: (r) => {
+      a.value = m(r);
     } });
     return (r, h) => (n(), o("div", En, [
       t("div", qn, [
@@ -1325,7 +1325,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   },
   setup(e) {
     const s = e;
-    return (l, u) => (n(), o("figure", An, [
+    return (a, u) => (n(), o("figure", An, [
       t("div", Rn, [
         u[2] || (u[2] = t("span", { class: "fd-node solid" }, "Pass", -1)),
         (n(!0), o(N, null, I(Math.min(s.rounds, 8), (d) => (n(), o(N, { key: d }, [
@@ -1360,7 +1360,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
     cap: {}
   },
   setup(e) {
-    const s = e, l = F(() => Math.min(s.queries * s.perQuery, s.cap));
+    const s = e, a = F(() => Math.min(s.queries * s.perQuery, s.cap));
     return (u, d) => (n(), o("figure", Dn, [
       t("div", In, [
         t("span", jn, [
@@ -1379,12 +1379,12 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           d[3] || (d[3] = t("small", null, "per query", -1))
         ]),
         t("span", Hn, [
-          t("b", null, c(l.value), 1),
+          t("b", null, c(a.value), 1),
           d[4] || (d[4] = E(" chunks", -1)),
           t("small", null, c(e.queries * e.perQuery > e.cap ? `capped at ${e.cap}` : "read per field"), 1)
         ])
       ]),
-      t("figcaption", null, "Each deep field gets its own queries; up to " + c(l.value) + " chunks are read for it before analysis.", 1)
+      t("figcaption", null, "Each deep field gets its own queries; up to " + c(a.value) + " chunks are read for it before analysis.", 1)
     ]));
   }
 }), Kn = ["disabled"], Qn = { class: "muted" }, Jn = { class: "toggle-row" }, Yn = { class: "label-block" }, Xn = { class: "toggle-row" }, Zn = {
@@ -1431,62 +1431,62 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
     readonly: { type: Boolean }
   },
   setup(e) {
-    const s = e, l = F(() => s.config.stages), u = (x) => Vl(s.stage, x), d = xl(), m = F(() => s.config.fields.filter((x) => x.strategy === "deep").length), g = F(() => s.config.fields.filter((x) => x.search_within === "sections").map((x) => x.name || "New field")), r = F(() => Et(s.config));
+    const s = e, a = F(() => s.config.stages), u = (x) => Vl(s.stage, x), d = xl(), m = F(() => s.config.fields.filter((x) => x.strategy === "deep").length), g = F(() => s.config.fields.filter((x) => x.search_within === "sections").map((x) => x.name || "New field")), r = F(() => Et(s.config));
     function h(x) {
-      x ? l.value.scout.agent_id = x : delete l.value.scout.agent_id;
+      x ? a.value.scout.agent_id = x : delete a.value.scout.agent_id;
     }
-    function w(x, a) {
-      const i = l.value.scout.tools.filter((L) => L !== x);
-      l.value.scout.tools = a ? [...i, x] : i;
+    function w(x, l) {
+      const i = a.value.scout.tools.filter((L) => L !== x);
+      a.value.scout.tools = l ? [...i, x] : i;
     }
-    return (x, a) => (n(), o("fieldset", {
+    return (x, l) => (n(), o("fieldset", {
       class: "inspector-form",
       disabled: e.readonly
     }, [
       t("p", Qn, c(p(wl)[e.stage]), 1),
       e.stage === "map" ? (n(), o(N, { key: 0 }, [
         t("div", Jn, [
-          a[33] || (a[33] = t("span", null, "Stage enabled", -1)),
+          l[33] || (l[33] = t("span", null, "Stage enabled", -1)),
           f(ee, {
-            modelValue: l.value.map.enabled,
-            "onUpdate:modelValue": a[0] || (a[0] = (i) => l.value.map.enabled = i),
+            modelValue: a.value.map.enabled,
+            "onUpdate:modelValue": l[0] || (l[0] = (i) => a.value.map.enabled = i),
             label: "Enable step",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
         t("div", Yn, [
-          a[34] || (a[34] = t("span", { id: "outline-label" }, "Outline", -1)),
+          l[34] || (l[34] = t("span", { id: "outline-label" }, "Outline", -1)),
           f($e, {
-            modelValue: l.value.map.outline,
-            "onUpdate:modelValue": a[1] || (a[1] = (i) => l.value.map.outline = i),
+            modelValue: a.value.map.outline,
+            "onUpdate:modelValue": l[1] || (l[1] = (i) => a.value.map.outline = i),
             "labelled-by": "outline-label",
             options: [{ value: "find_or_build", label: "Use contents first" }, { value: "build", label: "Always build" }]
           }, null, 8, ["modelValue"]),
-          a[35] || (a[35] = t("small", null, "The document's own headings are used when it has them; otherwise the model builds an outline.", -1))
+          l[35] || (l[35] = t("small", null, "The document's own headings are used when it has them; otherwise the model builds an outline.", -1))
         ]),
         t("div", Xn, [
-          a[36] || (a[36] = t("span", null, [
+          l[36] || (l[36] = t("span", null, [
             E("Section summaries"),
             t("small", null, "A short summary per section helps pick the right sections in long documents.")
           ], -1)),
           f(ee, {
-            modelValue: l.value.map.section_summaries,
-            "onUpdate:modelValue": a[2] || (a[2] = (i) => l.value.map.section_summaries = i),
+            modelValue: a.value.map.section_summaries,
+            "onUpdate:modelValue": l[2] || (l[2] = (i) => a.value.map.section_summaries = i),
             label: "Section summaries",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        a[38] || (a[38] = t("h4", null, "Models", -1)),
+        l[38] || (l[38] = t("h4", null, "Models", -1)),
         t("div", Zn, [
-          a[37] || (a[37] = t("span", null, "Outliner", -1)),
+          l[37] || (l[37] = t("span", null, "Outliner", -1)),
           f(ce, {
-            value: l.value.map.model,
+            value: a.value.map.model,
             capability: "generate",
             "labelled-by": "model-map",
-            onSelect: a[3] || (a[3] = (i) => l.value.map.model = i)
+            onSelect: l[3] || (l[3] = (i) => a.value.map.model = i)
           }, null, 8, ["value"])
         ]),
-        a[39] || (a[39] = t("h4", null, "Fields that read sections", -1)),
+        l[39] || (l[39] = t("h4", null, "Fields that read sections", -1)),
         g.value.length ? (n(), o("p", _n, [
           (n(!0), o(N, null, I(g.value, (i) => (n(), o("span", {
             key: i,
@@ -1496,22 +1496,22 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
       ], 64)) : k("", !0),
       e.stage === "prefetch" ? (n(), o(N, { key: 1 }, [
         t("div", ts, [
-          a[40] || (a[40] = t("span", null, "Stage enabled", -1)),
+          l[40] || (l[40] = t("span", null, "Stage enabled", -1)),
           f(ee, {
-            modelValue: l.value.prefetch.enabled,
-            "onUpdate:modelValue": a[4] || (a[4] = (i) => l.value.prefetch.enabled = i),
+            modelValue: a.value.prefetch.enabled,
+            "onUpdate:modelValue": l[4] || (l[4] = (i) => a.value.prefetch.enabled = i),
             label: "Enable step",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        a[44] || (a[44] = t("h4", null, "Queries", -1)),
-        (n(!0), o(N, null, I(l.value.prefetch.queries, (i, L) => (n(), o("div", {
+        l[44] || (l[44] = t("h4", null, "Queries", -1)),
+        (n(!0), o(N, null, I(a.value.prefetch.queries, (i, L) => (n(), o("div", {
           key: L,
           class: "query-row"
         }, [
           t("div", ls, [
             t("label", null, [
-              a[41] || (a[41] = E("Name", -1)),
+              l[41] || (l[41] = E("Name", -1)),
               z(t("input", {
                 "onUpdate:modelValue": (A) => i.name = A,
                 placeholder: "Parties"
@@ -1520,7 +1520,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
               ])
             ]),
             t("label", null, [
-              a[42] || (a[42] = E("Chunks", -1)),
+              l[42] || (l[42] = E("Chunks", -1)),
               z(t("input", {
                 "onUpdate:modelValue": (A) => i.chunks = A,
                 type: "number",
@@ -1537,7 +1537,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
             ])
           ]),
           t("label", null, [
-            a[43] || (a[43] = E("Query", -1)),
+            l[43] || (l[43] = E("Query", -1)),
             z(t("textarea", {
               "onUpdate:modelValue": (A) => i.query = A,
               rows: "2",
@@ -1550,73 +1550,73 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
             key: 0,
             type: "button",
             class: "kx-btn kx-btn-ghost kx-focus-halo sm",
-            onClick: (A) => l.value.prefetch.queries.splice(L, 1)
+            onClick: (A) => a.value.prefetch.queries.splice(L, 1)
           }, "Remove query", 8, os))
         ]))), 128)),
-        l.value.prefetch.queries.length ? k("", !0) : (n(), o("p", is, "No fixed queries. Field search hints still run.")),
+        a.value.prefetch.queries.length ? k("", !0) : (n(), o("p", is, "No fixed queries. Field search hints still run.")),
         e.readonly ? k("", !0) : (n(), o("button", {
           key: 1,
           type: "button",
           class: "kx-btn kx-btn-ghost kx-focus-halo",
-          onClick: a[5] || (a[5] = (i) => l.value.prefetch.queries.push(p(Sl)()))
+          onClick: l[5] || (l[5] = (i) => a.value.prefetch.queries.push(p(Sl)()))
         }, "Add query"))
       ], 64)) : k("", !0),
       e.stage === "scout" ? (n(), o(N, { key: 2 }, [
         t("div", us, [
-          a[45] || (a[45] = t("span", null, "Stage enabled", -1)),
+          l[45] || (l[45] = t("span", null, "Stage enabled", -1)),
           f(ee, {
-            modelValue: l.value.scout.enabled,
-            "onUpdate:modelValue": a[6] || (a[6] = (i) => l.value.scout.enabled = i),
+            modelValue: a.value.scout.enabled,
+            "onUpdate:modelValue": l[6] || (l[6] = (i) => a.value.scout.enabled = i),
             label: "Enable step",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
         t("div", ds, [
-          a[46] || (a[46] = t("span", { id: "mode-label" }, "Mode", -1)),
+          l[46] || (l[46] = t("span", { id: "mode-label" }, "Mode", -1)),
           f($e, {
-            modelValue: l.value.scout.mode,
-            "onUpdate:modelValue": a[7] || (a[7] = (i) => l.value.scout.mode = i),
+            modelValue: a.value.scout.mode,
+            "onUpdate:modelValue": l[7] || (l[7] = (i) => a.value.scout.mode = i),
             "labelled-by": "mode-label",
             options: [{ value: "loop", label: "Structured loop" }, { value: "agent", label: "Agent" }]
           }, null, 8, ["modelValue"]),
-          t("small", null, c(l.value.scout.mode === "loop" ? "Each round the model rates the evidence, drops noise and proposes queries; the engine runs them." : "The model reads the document itself with the tools below, following references until confident."), 1)
+          t("small", null, c(a.value.scout.mode === "loop" ? "Each round the model rates the evidence, drops noise and proposes queries; the engine runs them." : "The model reads the document itself with the tools below, following references until confident."), 1)
         ]),
-        l.value.scout.mode === "agent" ? (n(), J(wn, {
+        a.value.scout.mode === "agent" ? (n(), J(wn, {
           key: 0,
-          value: l.value.scout.agent_id,
+          value: a.value.scout.agent_id,
           readonly: e.readonly,
           onSelect: h
         }, null, 8, ["value", "readonly"])) : k("", !0),
-        l.value.scout.mode === "loop" ? (n(), J(Tn, {
+        a.value.scout.mode === "loop" ? (n(), J(Tn, {
           key: 1,
-          rounds: l.value.scout.max_rounds,
-          confidence: l.value.scout.target_confidence,
-          extra: l.value.scout.max_extra_queries
+          rounds: a.value.scout.max_rounds,
+          confidence: a.value.scout.target_confidence,
+          extra: a.value.scout.max_extra_queries
         }, null, 8, ["rounds", "confidence", "extra"])) : k("", !0),
-        a[51] || (a[51] = t("h4", null, "Models", -1)),
+        l[51] || (l[51] = t("h4", null, "Models", -1)),
         t("div", rs, [
-          a[47] || (a[47] = t("span", null, "Scout", -1)),
+          l[47] || (l[47] = t("span", null, "Scout", -1)),
           f(ce, {
-            value: l.value.scout.model,
+            value: a.value.scout.model,
             capability: "generate",
             "labelled-by": "model-scout",
-            onSelect: a[8] || (a[8] = (i) => l.value.scout.model = i)
+            onSelect: l[8] || (l[8] = (i) => a.value.scout.model = i)
           }, null, 8, ["value"])
         ]),
-        a[52] || (a[52] = t("h4", null, "Loop", -1)),
+        l[52] || (l[52] = t("h4", null, "Loop", -1)),
         f(le, {
-          modelValue: l.value.scout.max_rounds,
-          "onUpdate:modelValue": a[9] || (a[9] = (i) => l.value.scout.max_rounds = i),
-          label: l.value.scout.mode === "agent" ? "Rounds" : "Follow-up rounds",
+          modelValue: a.value.scout.max_rounds,
+          "onUpdate:modelValue": l[9] || (l[9] = (i) => a.value.scout.max_rounds = i),
+          label: a.value.scout.mode === "agent" ? "Rounds" : "Follow-up rounds",
           min: u("max_rounds").min,
           max: u("max_rounds").max,
           hints: ["Single pass", "Thorough"],
           disabled: e.readonly
         }, null, 8, ["modelValue", "label", "min", "max", "disabled"]),
-        l.value.scout.mode === "loop" ? (n(), J(le, {
+        a.value.scout.mode === "loop" ? (n(), J(le, {
           key: 2,
-          modelValue: l.value.scout.target_confidence,
-          "onUpdate:modelValue": a[10] || (a[10] = (i) => l.value.scout.target_confidence = i),
+          modelValue: a.value.scout.target_confidence,
+          "onUpdate:modelValue": l[10] || (l[10] = (i) => a.value.scout.target_confidence = i),
           label: "Stop at confidence",
           min: u("target_confidence").min,
           max: u("target_confidence").max,
@@ -1626,16 +1626,16 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           disabled: e.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"])) : k("", !0),
         f(le, {
-          modelValue: l.value.scout.max_extra_queries,
-          "onUpdate:modelValue": a[11] || (a[11] = (i) => l.value.scout.max_extra_queries = i),
-          label: l.value.scout.mode === "agent" ? "Tool calls per round" : "New queries per round",
+          modelValue: a.value.scout.max_extra_queries,
+          "onUpdate:modelValue": l[11] || (l[11] = (i) => a.value.scout.max_extra_queries = i),
+          label: a.value.scout.mode === "agent" ? "Tool calls per round" : "New queries per round",
           min: u("max_extra_queries").min,
           max: u("max_extra_queries").max,
           disabled: e.readonly
         }, null, 8, ["modelValue", "label", "min", "max", "disabled"]),
         f(le, {
-          modelValue: l.value.scout.max_tokens,
-          "onUpdate:modelValue": a[12] || (a[12] = (i) => l.value.scout.max_tokens = i),
+          modelValue: a.value.scout.max_tokens,
+          "onUpdate:modelValue": l[12] || (l[12] = (i) => a.value.scout.max_tokens = i),
           label: "Scout output limit",
           min: u("max_tokens").min,
           max: u("max_tokens").max,
@@ -1644,40 +1644,40 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           unit: "tokens",
           disabled: e.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"]),
-        l.value.scout.mode === "agent" ? (n(), o("p", cs, "Tool budget: " + c(l.value.scout.max_rounds * l.value.scout.max_extra_queries) + " calls.", 1)) : k("", !0),
-        l.value.scout.mode === "loop" ? (n(), o("div", vs, [
-          a[48] || (a[48] = t("span", null, [
+        a.value.scout.mode === "agent" ? (n(), o("p", cs, "Tool budget: " + c(a.value.scout.max_rounds * a.value.scout.max_extra_queries) + " calls.", 1)) : k("", !0),
+        a.value.scout.mode === "loop" ? (n(), o("div", vs, [
+          l[48] || (l[48] = t("span", null, [
             E("Drop noisy chunks"),
             t("small", null, "Chunks no field needs leave the evidence pool; chunks cited for a field always stay.")
           ], -1)),
           f(ee, {
-            modelValue: l.value.scout.drop_noise,
-            "onUpdate:modelValue": a[13] || (a[13] = (i) => l.value.scout.drop_noise = i),
+            modelValue: a.value.scout.drop_noise,
+            "onUpdate:modelValue": l[13] || (l[13] = (i) => a.value.scout.drop_noise = i),
             label: "Drop noisy chunks",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
         ])) : k("", !0),
         t("div", ms, [
-          a[49] || (a[49] = t("span", null, [
+          l[49] || (l[49] = t("span", null, [
             E("Share scout notes with extraction"),
             t("small", null, "Extraction sees what the scout learned.")
           ], -1)),
           f(ee, {
-            modelValue: l.value.scout.share_notes,
-            "onUpdate:modelValue": a[14] || (a[14] = (i) => l.value.scout.share_notes = i),
+            modelValue: a.value.scout.share_notes,
+            "onUpdate:modelValue": l[14] || (l[14] = (i) => a.value.scout.share_notes = i),
             label: "Share scout notes with extraction",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        l.value.scout.mode === "agent" ? (n(), o(N, { key: 5 }, [
-          a[50] || (a[50] = t("h4", null, "Agent tools", -1)),
+        a.value.scout.mode === "agent" ? (n(), o(N, { key: 5 }, [
+          l[50] || (l[50] = t("h4", null, "Agent tools", -1)),
           (n(!0), o(N, null, I(p(d), (i) => (n(), o("div", {
             key: i,
             class: "toggle-row"
           }, [
             t("span", null, c(p(lt)(i)), 1),
             f(ee, {
-              "model-value": l.value.scout.tools.includes(i),
+              "model-value": a.value.scout.tools.includes(i),
               label: p(lt)(i),
               disabled: e.readonly,
               "onUpdate:modelValue": (L) => w(i, L)
@@ -1687,62 +1687,62 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
       ], 64)) : k("", !0),
       e.stage === "deep" ? (n(), o(N, { key: 3 }, [
         t("div", ps, [
-          a[53] || (a[53] = t("span", null, "Stage enabled", -1)),
+          l[53] || (l[53] = t("span", null, "Stage enabled", -1)),
           f(ee, {
-            modelValue: l.value.deep.enabled,
-            "onUpdate:modelValue": a[15] || (a[15] = (i) => l.value.deep.enabled = i),
+            modelValue: a.value.deep.enabled,
+            "onUpdate:modelValue": l[15] || (l[15] = (i) => a.value.deep.enabled = i),
             label: "Enable step",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
         f(Gn, {
           fields: m.value,
-          parallel: l.value.deep.parallel_fields,
-          queries: l.value.deep.max_queries,
-          "per-query": l.value.deep.chunks_per_query,
-          cap: l.value.deep.chunk_cap
+          parallel: a.value.deep.parallel_fields,
+          queries: a.value.deep.max_queries,
+          "per-query": a.value.deep.chunks_per_query,
+          cap: a.value.deep.chunk_cap
         }, null, 8, ["fields", "parallel", "queries", "per-query", "cap"]),
         t("div", fs, [
-          a[54] || (a[54] = t("span", { id: "read-label" }, "Reads", -1)),
+          l[54] || (l[54] = t("span", { id: "read-label" }, "Reads", -1)),
           f($e, {
-            modelValue: l.value.deep.read,
-            "onUpdate:modelValue": a[16] || (a[16] = (i) => l.value.deep.read = i),
+            modelValue: a.value.deep.read,
+            "onUpdate:modelValue": l[16] || (l[16] = (i) => a.value.deep.read = i),
             "labelled-by": "read-label",
             options: [{ value: "chunks", label: "Retrieved chunks" }, { value: "sections", label: "Whole sections" }]
           }, null, 8, ["modelValue"]),
-          a[55] || (a[55] = t("small", null, "Whole sections suit clauses that span many passages; long sections fall back to chunks.", -1))
+          l[55] || (l[55] = t("small", null, "Whole sections suit clauses that span many passages; long sections fall back to chunks.", -1))
         ]),
-        a[58] || (a[58] = t("h4", null, "Models", -1)),
+        l[58] || (l[58] = t("h4", null, "Models", -1)),
         t("div", bs, [
-          a[56] || (a[56] = t("span", null, "Analysis", -1)),
+          l[56] || (l[56] = t("span", null, "Analysis", -1)),
           f(ce, {
-            value: l.value.deep.model,
+            value: a.value.deep.model,
             capability: "generate",
             "labelled-by": "model-deep",
-            onSelect: a[17] || (a[17] = (i) => l.value.deep.model = i)
+            onSelect: l[17] || (l[17] = (i) => a.value.deep.model = i)
           }, null, 8, ["value"])
         ]),
         t("div", hs, [
-          a[57] || (a[57] = t("span", null, "Query writer", -1)),
+          l[57] || (l[57] = t("span", null, "Query writer", -1)),
           f(ce, {
-            value: l.value.deep.query_model,
+            value: a.value.deep.query_model,
             capability: "generate",
             "labelled-by": "model-deep-query",
-            onSelect: a[18] || (a[18] = (i) => l.value.deep.query_model = i)
+            onSelect: l[18] || (l[18] = (i) => a.value.deep.query_model = i)
           }, null, 8, ["value"])
         ]),
-        a[59] || (a[59] = t("h4", null, "Reach", -1)),
+        l[59] || (l[59] = t("h4", null, "Reach", -1)),
         f(le, {
-          modelValue: l.value.deep.parallel_fields,
-          "onUpdate:modelValue": a[19] || (a[19] = (i) => l.value.deep.parallel_fields = i),
+          modelValue: a.value.deep.parallel_fields,
+          "onUpdate:modelValue": l[19] || (l[19] = (i) => a.value.deep.parallel_fields = i),
           label: "Fields at a time",
           min: u("parallel_fields").min,
           max: u("parallel_fields").max,
           disabled: e.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"]),
         f(le, {
-          modelValue: l.value.deep.max_queries,
-          "onUpdate:modelValue": a[20] || (a[20] = (i) => l.value.deep.max_queries = i),
+          modelValue: a.value.deep.max_queries,
+          "onUpdate:modelValue": l[20] || (l[20] = (i) => a.value.deep.max_queries = i),
           label: "Queries per field",
           min: u("max_queries").min,
           max: u("max_queries").max,
@@ -1750,8 +1750,8 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           disabled: e.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"]),
         f(le, {
-          modelValue: l.value.deep.chunks_per_query,
-          "onUpdate:modelValue": a[21] || (a[21] = (i) => l.value.deep.chunks_per_query = i),
+          modelValue: a.value.deep.chunks_per_query,
+          "onUpdate:modelValue": l[21] || (l[21] = (i) => a.value.deep.chunks_per_query = i),
           label: "Chunks per query",
           min: u("chunks_per_query").min,
           max: u("chunks_per_query").max,
@@ -1759,8 +1759,8 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           disabled: e.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"]),
         f(le, {
-          modelValue: l.value.deep.chunk_cap,
-          "onUpdate:modelValue": a[22] || (a[22] = (i) => l.value.deep.chunk_cap = i),
+          modelValue: a.value.deep.chunk_cap,
+          "onUpdate:modelValue": l[22] || (l[22] = (i) => a.value.deep.chunk_cap = i),
           label: "Chunk cap per field",
           min: u("chunk_cap").min,
           max: u("chunk_cap").max,
@@ -1768,8 +1768,8 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           disabled: e.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"]),
         f(le, {
-          modelValue: l.value.deep.min_similarity,
-          "onUpdate:modelValue": a[23] || (a[23] = (i) => l.value.deep.min_similarity = i),
+          modelValue: a.value.deep.min_similarity,
+          "onUpdate:modelValue": l[23] || (l[23] = (i) => a.value.deep.min_similarity = i),
           label: "Minimum similarity",
           min: u("min_similarity").min,
           max: u("min_similarity").max,
@@ -1779,10 +1779,10 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           note: "Chunks less similar than this are skipped.",
           disabled: e.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"]),
-        a[60] || (a[60] = t("h4", null, "Temperature", -1)),
+        l[60] || (l[60] = t("h4", null, "Temperature", -1)),
         f(le, {
-          modelValue: l.value.deep.query_temperature,
-          "onUpdate:modelValue": a[24] || (a[24] = (i) => l.value.deep.query_temperature = i),
+          modelValue: a.value.deep.query_temperature,
+          "onUpdate:modelValue": l[24] || (l[24] = (i) => a.value.deep.query_temperature = i),
           label: "Query writing",
           min: u("query_temperature").min,
           max: u("query_temperature").max,
@@ -1791,8 +1791,8 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           disabled: e.readonly
         }, null, 8, ["modelValue", "min", "max", "disabled"]),
         f(le, {
-          modelValue: l.value.deep.analysis_temperature,
-          "onUpdate:modelValue": a[25] || (a[25] = (i) => l.value.deep.analysis_temperature = i),
+          modelValue: a.value.deep.analysis_temperature,
+          "onUpdate:modelValue": l[25] || (l[25] = (i) => a.value.deep.analysis_temperature = i),
           label: "Analysis",
           min: u("analysis_temperature").min,
           max: u("analysis_temperature").max,
@@ -1802,17 +1802,17 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
         }, null, 8, ["modelValue", "min", "max", "disabled"])
       ], 64)) : k("", !0),
       e.stage === "extract" ? (n(), o(N, { key: 4 }, [
-        a[62] || (a[62] = t("h4", null, "Models", -1)),
+        l[62] || (l[62] = t("h4", null, "Models", -1)),
         t("div", gs, [
-          a[61] || (a[61] = t("span", null, "Extraction", -1)),
+          l[61] || (l[61] = t("span", null, "Extraction", -1)),
           f(ce, {
-            value: l.value.extract.model,
+            value: a.value.extract.model,
             capability: "generate",
             "labelled-by": "model-extract",
-            onSelect: a[26] || (a[26] = (i) => l.value.extract.model = i)
+            onSelect: l[26] || (l[26] = (i) => a.value.extract.model = i)
           }, null, 8, ["value"])
         ]),
-        a[63] || (a[63] = t("h4", null, "Field groups", -1)),
+        l[63] || (l[63] = t("h4", null, "Field groups", -1)),
         t("ul", ys, [
           (n(!0), o(N, null, I(r.value, (i) => (n(), o("li", {
             key: i.name
@@ -1823,8 +1823,8 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
         ]),
         r.value.length ? k("", !0) : (n(), o("p", $s, "No fields yet.")),
         f(le, {
-          modelValue: l.value.extract.max_fields_per_call,
-          "onUpdate:modelValue": a[27] || (a[27] = (i) => l.value.extract.max_fields_per_call = i),
+          modelValue: a.value.extract.max_fields_per_call,
+          "onUpdate:modelValue": l[27] || (l[27] = (i) => a.value.extract.max_fields_per_call = i),
           label: "Fields per call",
           min: u("max_fields_per_call").min,
           max: u("max_fields_per_call").max,
@@ -1832,8 +1832,8 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           note: `${p(yt)(e.config)} extraction call${p(yt)(e.config) === 1 ? "" : "s"} per document. Groups larger than this are split.`
         }, null, 8, ["modelValue", "min", "max", "disabled", "note"]),
         f(le, {
-          modelValue: l.value.extract.max_output_tokens,
-          "onUpdate:modelValue": a[28] || (a[28] = (i) => l.value.extract.max_output_tokens = i),
+          modelValue: a.value.extract.max_output_tokens,
+          "onUpdate:modelValue": l[28] || (l[28] = (i) => a.value.extract.max_output_tokens = i),
           label: "Output limit",
           min: u("max_output_tokens").min,
           max: u("max_output_tokens").max,
@@ -1845,47 +1845,47 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
       ], 64)) : k("", !0),
       e.stage === "verify" ? (n(), o(N, { key: 5 }, [
         t("div", xs, [
-          a[64] || (a[64] = t("span", null, "Stage enabled", -1)),
+          l[64] || (l[64] = t("span", null, "Stage enabled", -1)),
           f(ee, {
-            modelValue: l.value.verify.enabled,
-            "onUpdate:modelValue": a[29] || (a[29] = (i) => l.value.verify.enabled = i),
+            modelValue: a.value.verify.enabled,
+            "onUpdate:modelValue": l[29] || (l[29] = (i) => a.value.verify.enabled = i),
             label: "Enable step",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
         t("div", ws, [
-          a[65] || (a[65] = t("span", null, [
+          l[65] || (l[65] = t("span", null, [
             E("Quotes exist"),
             t("small", null, "Each quote is matched against the document text. No model call.")
           ], -1)),
           f(ee, {
-            modelValue: l.value.verify.check_quotes,
-            "onUpdate:modelValue": a[30] || (a[30] = (i) => l.value.verify.check_quotes = i),
+            modelValue: a.value.verify.check_quotes,
+            "onUpdate:modelValue": l[30] || (l[30] = (i) => a.value.verify.check_quotes = i),
             label: "Quotes exist",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
         t("div", Ss, [
-          a[66] || (a[66] = t("span", null, [
+          l[66] || (l[66] = t("span", null, [
             E("Quotes support values"),
             t("small", null, "A model confirms each quote supports its value.")
           ], -1)),
           f(ee, {
-            modelValue: l.value.verify.check_support,
-            "onUpdate:modelValue": a[31] || (a[31] = (i) => l.value.verify.check_support = i),
+            modelValue: a.value.verify.check_support,
+            "onUpdate:modelValue": l[31] || (l[31] = (i) => a.value.verify.check_support = i),
             label: "Quotes support values",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        l.value.verify.check_support ? (n(), o(N, { key: 0 }, [
-          a[68] || (a[68] = t("h4", null, "Models", -1)),
+        a.value.verify.check_support ? (n(), o(N, { key: 0 }, [
+          l[68] || (l[68] = t("h4", null, "Models", -1)),
           t("div", Vs, [
-            a[67] || (a[67] = t("span", null, "Checker", -1)),
+            l[67] || (l[67] = t("span", null, "Checker", -1)),
             f(ce, {
-              value: l.value.verify.model,
+              value: a.value.verify.model,
               capability: "generate",
               "labelled-by": "model-verify",
-              onSelect: a[32] || (a[32] = (i) => l.value.verify.model = i)
+              onSelect: l[32] || (l[32] = (i) => a.value.verify.model = i)
             }, null, 8, ["value"])
           ])
         ], 64)) : k("", !0)
@@ -1905,9 +1905,9 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
     overlap: {}
   },
   setup(e) {
-    const s = e, l = F(() => Math.min(0.9, Math.max(0, s.overlap / s.size))), u = F(() => {
-      const d = 100 / (3 - 2 * l.value);
-      return [0, 1, 2].map((m) => ({ x: m * d * (1 - l.value), w: d }));
+    const s = e, a = F(() => Math.min(0.9, Math.max(0, s.overlap / s.size))), u = F(() => {
+      const d = 100 / (3 - 2 * a.value);
+      return [0, 1, 2].map((m) => ({ x: m * d * (1 - a.value), w: d }));
     });
     return (d, m) => (n(), o("figure", Es, [
       (n(), o("svg", qs, [
@@ -1929,7 +1929,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           class: "shared"
         }, null, 8, Ns)), 64))
       ])),
-      t("figcaption", null, c(e.size.toLocaleString()) + " tokens per chunk · " + c(e.overlap.toLocaleString()) + " shared with the next (" + c(Math.round(l.value * 100)) + "%)", 1)
+      t("figcaption", null, c(e.size.toLocaleString()) + " tokens per chunk · " + c(e.overlap.toLocaleString()) + " shared with the next (" + c(Math.round(a.value * 100)) + "%)", 1)
     ]));
   }
 }), Ms = ["disabled"], As = { class: "muted" }, Rs = { class: "toggle-row" }, Bs = { class: "toggle-row" }, Ls = { class: "label-block" }, Os = {
@@ -1951,33 +1951,33 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
     readonly: { type: Boolean }
   },
   setup(e) {
-    const s = e, l = F(() => s.config.retrieval), u = F({ get: () => s.config.retention ?? "", set: (x) => {
+    const s = e, a = F(() => s.config.retrieval), u = F({ get: () => s.config.retention ?? "", set: (x) => {
       x.trim() ? s.config.retention = x.trim() : delete s.config.retention;
-    } }), d = [{ value: "keyword", label: "Keyword", note: "Exact words and numbers" }, { value: "semantic", label: "Semantic", note: "Meaning, even with other wording" }, { value: "hybrid", label: "Hybrid", note: "Both, merged by rank" }], m = [{ value: "none", label: "None", note: "Chunks are embedded as they are." }, { value: "headings", label: "Headings", note: 'Each chunk is embedded with its heading path, for example "Article 2 › Purchase price". No model call.' }, { value: "generated", label: "Generated", note: "A model writes one or two sentences placing each chunk in the document before it is embedded. One call per eight chunks, kept with the processed document." }], g = et("chunk_size"), r = et("overlap"), h = et("section_budget"), w = F(() => Math.min(r.max, l.value.chunk_size - 50));
-    return (x, a) => (n(), o("fieldset", {
+    } }), d = [{ value: "keyword", label: "Keyword", note: "Exact words and numbers" }, { value: "semantic", label: "Semantic", note: "Meaning, even with other wording" }, { value: "hybrid", label: "Hybrid", note: "Both, merged by rank" }], m = [{ value: "none", label: "None", note: "Chunks are embedded as they are." }, { value: "headings", label: "Headings", note: 'Each chunk is embedded with its heading path, for example "Article 2 › Purchase price". No model call.' }, { value: "generated", label: "Generated", note: "A model writes one or two sentences placing each chunk in the document before it is embedded. One call per eight chunks, kept with the processed document." }], g = et("chunk_size"), r = et("overlap"), h = et("section_budget"), w = F(() => Math.min(r.max, a.value.chunk_size - 50));
+    return (x, l) => (n(), o("fieldset", {
       class: "inspector-form",
       disabled: e.readonly
     }, [
       t("p", As, "The upload's text is split into chunks and indexed once per document and settings; processed copies expire after " + c(e.retention) + ".", 1),
       t("label", null, [
-        a[12] || (a[12] = E("Retention window", -1)),
+        l[12] || (l[12] = E("Retention window", -1)),
         z(t("input", {
-          "onUpdate:modelValue": a[0] || (a[0] = (i) => u.value = i),
+          "onUpdate:modelValue": l[0] || (l[0] = (i) => u.value = i),
           "aria-label": "Retention window",
           placeholder: "Global setting"
         }, null, 512), [
           [Z, u.value]
         ]),
-        a[13] || (a[13] = t("small", null, "Duration for new processed documents and runs, for example 24h. Leave empty to use the global Docscout setting. Existing records keep their expiry.", -1))
+        l[13] || (l[13] = t("small", null, "Duration for new processed documents and runs, for example 24h. Leave empty to use the global Docscout setting. Existing records keep their expiry.", -1))
       ]),
-      a[22] || (a[22] = t("h4", null, "Chunks", -1)),
+      l[22] || (l[22] = t("h4", null, "Chunks", -1)),
       f(Us, {
-        size: l.value.chunk_size,
-        overlap: l.value.overlap
+        size: a.value.chunk_size,
+        overlap: a.value.overlap
       }, null, 8, ["size", "overlap"]),
       f(le, {
-        modelValue: l.value.chunk_size,
-        "onUpdate:modelValue": a[1] || (a[1] = (i) => l.value.chunk_size = i),
+        modelValue: a.value.chunk_size,
+        "onUpdate:modelValue": l[1] || (l[1] = (i) => a.value.chunk_size = i),
         label: "Chunk size",
         min: p(g).min,
         max: p(g).max,
@@ -1988,8 +1988,8 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
         disabled: e.readonly
       }, null, 8, ["modelValue", "min", "max", "disabled"]),
       f(le, {
-        modelValue: l.value.overlap,
-        "onUpdate:modelValue": a[2] || (a[2] = (i) => l.value.overlap = i),
+        modelValue: a.value.overlap,
+        "onUpdate:modelValue": l[2] || (l[2] = (i) => a.value.overlap = i),
         label: "Overlap",
         min: p(r).min,
         max: w.value,
@@ -1998,32 +1998,32 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
         disabled: e.readonly
       }, null, 8, ["modelValue", "min", "max", "disabled"]),
       t("div", Rs, [
-        a[14] || (a[14] = t("span", null, [
+        l[14] || (l[14] = t("span", null, [
           E("Split by headings"),
           t("small", null, "A chunk never crosses a heading.")
         ], -1)),
         f(ee, {
-          modelValue: l.value.split_headings,
-          "onUpdate:modelValue": a[3] || (a[3] = (i) => l.value.split_headings = i),
+          modelValue: a.value.split_headings,
+          "onUpdate:modelValue": l[3] || (l[3] = (i) => a.value.split_headings = i),
           label: "Split by headings",
           disabled: e.readonly
         }, null, 8, ["modelValue", "disabled"])
       ]),
       t("div", Bs, [
-        a[15] || (a[15] = t("span", null, [
+        l[15] || (l[15] = t("span", null, [
           E("Keep tables whole"),
           t("small", null, "Table rows stay together in one chunk up to the chunk size.")
         ], -1)),
         f(ee, {
-          modelValue: l.value.keep_tables,
-          "onUpdate:modelValue": a[4] || (a[4] = (i) => l.value.keep_tables = i),
+          modelValue: a.value.keep_tables,
+          "onUpdate:modelValue": l[4] || (l[4] = (i) => a.value.keep_tables = i),
           label: "Keep tables whole",
           disabled: e.readonly
         }, null, 8, ["modelValue", "disabled"])
       ]),
       f(le, {
-        modelValue: l.value.section_budget,
-        "onUpdate:modelValue": a[5] || (a[5] = (i) => l.value.section_budget = i),
+        modelValue: a.value.section_budget,
+        "onUpdate:modelValue": l[5] || (l[5] = (i) => a.value.section_budget = i),
         label: "Section budget",
         min: p(h).min,
         max: p(h).max,
@@ -2033,66 +2033,66 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
         note: "Sections longer than this are read as chunks instead.",
         disabled: e.readonly
       }, null, 8, ["modelValue", "min", "max", "disabled"]),
-      a[23] || (a[23] = t("h4", null, "Context", -1)),
+      l[23] || (l[23] = t("h4", null, "Context", -1)),
       t("div", Ls, [
-        a[16] || (a[16] = t("span", { id: "context-label" }, "Chunk context", -1)),
+        l[16] || (l[16] = t("span", { id: "context-label" }, "Chunk context", -1)),
         f($e, {
-          modelValue: l.value.context,
-          "onUpdate:modelValue": a[6] || (a[6] = (i) => l.value.context = i),
+          modelValue: a.value.context,
+          "onUpdate:modelValue": l[6] || (l[6] = (i) => a.value.context = i),
           "labelled-by": "context-label",
           options: m
         }, null, 8, ["modelValue"]),
-        t("small", null, c(m.find((i) => i.value === l.value.context)?.note), 1)
+        t("small", null, c(m.find((i) => i.value === a.value.context)?.note), 1)
       ]),
-      l.value.context === "generated" ? (n(), o("div", Os, [
-        a[17] || (a[17] = t("span", null, "Context writer", -1)),
+      a.value.context === "generated" ? (n(), o("div", Os, [
+        l[17] || (l[17] = t("span", null, "Context writer", -1)),
         f(ce, {
-          value: l.value.context_model,
+          value: a.value.context_model,
           capability: "generate",
           "labelled-by": "context-model",
-          onSelect: a[7] || (a[7] = (i) => l.value.context_model = i)
+          onSelect: l[7] || (l[7] = (i) => a.value.context_model = i)
         }, null, 8, ["value"])
       ])) : k("", !0),
-      a[24] || (a[24] = t("h4", null, "Search", -1)),
+      l[24] || (l[24] = t("h4", null, "Search", -1)),
       t("div", Ps, [
-        a[18] || (a[18] = t("span", { id: "mode-label" }, "Search mode", -1)),
+        l[18] || (l[18] = t("span", { id: "mode-label" }, "Search mode", -1)),
         f($e, {
-          modelValue: l.value.search_mode,
-          "onUpdate:modelValue": a[8] || (a[8] = (i) => l.value.search_mode = i),
+          modelValue: a.value.search_mode,
+          "onUpdate:modelValue": l[8] || (l[8] = (i) => a.value.search_mode = i),
           "labelled-by": "mode-label",
           options: d
         }, null, 8, ["modelValue"]),
-        t("small", null, c(d.find((i) => i.value === l.value.search_mode)?.note), 1)
+        t("small", null, c(d.find((i) => i.value === a.value.search_mode)?.note), 1)
       ]),
-      a[25] || (a[25] = t("h4", null, "Models", -1)),
+      l[25] || (l[25] = t("h4", null, "Models", -1)),
       t("div", Ts, [
-        a[19] || (a[19] = t("span", null, "Embedding", -1)),
+        l[19] || (l[19] = t("span", null, "Embedding", -1)),
         f(ce, {
-          value: l.value.embedding_model,
+          value: a.value.embedding_model,
           capability: "embed",
           "labelled-by": "embedding-model",
-          onSelect: a[9] || (a[9] = (i) => l.value.embedding_model = i)
+          onSelect: l[9] || (l[9] = (i) => a.value.embedding_model = i)
         }, null, 8, ["value"])
       ]),
       t("div", Ds, [
-        a[20] || (a[20] = t("span", null, [
+        l[20] || (l[20] = t("span", null, [
           E("Highlighter"),
           t("small", null, "A small model marks what each field needs before extraction.")
         ], -1)),
         f(ee, {
-          modelValue: l.value.highlighter,
-          "onUpdate:modelValue": a[10] || (a[10] = (i) => l.value.highlighter = i),
+          modelValue: a.value.highlighter,
+          "onUpdate:modelValue": l[10] || (l[10] = (i) => a.value.highlighter = i),
           label: "Highlighter",
           disabled: e.readonly
         }, null, 8, ["modelValue", "disabled"])
       ]),
-      l.value.highlighter ? (n(), o("div", Is, [
-        a[21] || (a[21] = t("span", null, "Highlighter", -1)),
+      a.value.highlighter ? (n(), o("div", Is, [
+        l[21] || (l[21] = t("span", null, "Highlighter", -1)),
         f(ce, {
-          value: l.value.highlighter_model,
+          value: a.value.highlighter_model,
           capability: "generate",
           "labelled-by": "highlighter-model",
-          onSelect: a[11] || (a[11] = (i) => l.value.highlighter_model = i)
+          onSelect: l[11] || (l[11] = (i) => a.value.highlighter_model = i)
         }, null, 8, ["value"])
       ])) : k("", !0)
     ], 8, Ms));
@@ -2164,7 +2164,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   }),
   emits: ["update:title", "update:description"],
   setup(e) {
-    const s = e, l = Le(e, "title"), u = Le(e, "description"), d = U({ kind: "document" });
+    const s = e, a = Le(e, "title"), u = Le(e, "description"), d = U({ kind: "document" });
     function m(y, v) {
       try {
         const V = localStorage.getItem(`docscout.${y}`);
@@ -2188,28 +2188,28 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
         return tt;
       }
     }
-    const a = U(x()), i = () => {
+    const l = U(x()), i = () => {
       const y = O.value?.clientWidth;
       return y ? Math.max(We, y - 420) : Number.POSITIVE_INFINITY;
     };
     function L(y, v = !0) {
-      if (a.value = Math.round(Math.min(i(), Math.max(We, y))), v)
+      if (l.value = Math.round(Math.min(i(), Math.max(We, y))), v)
         try {
-          localStorage.setItem("docscout.panelWidth", String(a.value));
+          localStorage.setItem("docscout.panelWidth", String(l.value));
         } catch {
         }
     }
     const A = U(!1);
     function C(y) {
-      const v = y.currentTarget, V = y.clientX, Y = a.value;
+      const v = y.currentTarget, V = y.clientX, Y = l.value;
       v.setPointerCapture(y.pointerId), A.value = !0;
       const X = (_) => L(Y + (V - _.clientX), !1), ae = () => {
-        A.value = !1, L(a.value), v.removeEventListener("pointermove", X), v.removeEventListener("pointerup", ae);
+        A.value = !1, L(l.value), v.removeEventListener("pointermove", X), v.removeEventListener("pointerup", ae);
       };
       v.addEventListener("pointermove", X), v.addEventListener("pointerup", ae);
     }
     function q(y) {
-      y.key === "ArrowLeft" ? (L(a.value + 24), y.preventDefault()) : y.key === "ArrowRight" && (L(a.value - 24), y.preventDefault());
+      y.key === "ArrowLeft" ? (L(l.value + 24), y.preventDefault()) : y.key === "ArrowRight" && (L(l.value - 24), y.preventDefault());
     }
     let K = null;
     const D = U(), j = pe();
@@ -2605,7 +2605,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
         "aria-labelledby": p(j),
         role: R.value ? "dialog" : void 0,
         "aria-modal": R.value ? "true" : void 0,
-        style: qe(R.value ? void 0 : { width: `${a.value}px` }),
+        style: qe(R.value ? void 0 : { width: `${l.value}px` }),
         onKeydown: v[21] || (v[21] = Ee((V) => R.value && H(!1), ["esc"]))
       }, [
         R.value ? k("", !0) : (n(), o("div", {
@@ -2615,7 +2615,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           "aria-orientation": "vertical",
           "aria-label": "Resize panel",
           tabindex: "0",
-          "aria-valuenow": a.value,
+          "aria-valuenow": l.value,
           "aria-valuemin": We,
           onPointerdown: ve(C, ["prevent"]),
           onKeydown: q,
@@ -2703,10 +2703,10 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
             t("label", null, [
               v[43] || (v[43] = E("Name", -1)),
               z(t("input", {
-                "onUpdate:modelValue": v[18] || (v[18] = (V) => l.value = V),
+                "onUpdate:modelValue": v[18] || (v[18] = (V) => a.value = V),
                 "aria-label": "Extractor name"
               }, null, 512), [
-                [Z, l.value]
+                [Z, a.value]
               ])
             ]),
             t("label", null, [
@@ -2775,7 +2775,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   },
   emits: ["select"],
   setup(e, { emit: s }) {
-    const l = s, u = U(!1), d = U("");
+    const a = s, u = U(!1), d = U("");
     Fe(async () => {
       try {
         await Ze("wc-multiselect", { timeoutMs: 8e3 }), u.value = !0;
@@ -2785,7 +2785,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
     });
     function m(g) {
       const r = g.detail;
-      l("select", r.selected[0] || "", r.labels?.[0] || "");
+      a("select", r.selected[0] || "", r.labels?.[0] || "");
     }
     return (g, r) => u.value ? (n(), o("wc-multiselect", {
       key: 0,
@@ -2805,7 +2805,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
     error: {}
   },
   setup(e) {
-    return (s, l) => (n(), o("div", {
+    return (s, a) => (n(), o("div", {
       class: "field-failure",
       "data-error-kind": e.error?.kind,
       role: "note",
@@ -2817,7 +2817,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
       ]),
       t("small", null, c(e.error?.retryable ? "Retryable" : "Not retryable"), 1),
       e.error?.details ? (n(), o("details", Xo, [
-        l[0] || (l[0] = t("summary", { class: "kx-focus-outline" }, "Error details", -1)),
+        a[0] || (a[0] = t("summary", { class: "kx-focus-outline" }, "Error details", -1)),
         t("pre", null, c(JSON.stringify(e.error.details, null, 2)), 1)
       ])) : k("", !0)
     ], 8, Yo));
@@ -2831,7 +2831,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
     value: {}
   },
   setup(e) {
-    const s = e, l = F(() => s.value !== null && typeof s.value == "object" && !Array.isArray(s.value) ? s.value : null);
+    const s = e, a = F(() => s.value !== null && typeof s.value == "object" && !Array.isArray(s.value) ? s.value : null);
     return (u, d) => {
       const m = st("NestedValue", !0);
       return n(), o("div", Zo, [
@@ -2840,8 +2840,8 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
             f(m, { value: g }, null, 8, ["value"])
           ]))), 128)),
           e.value.length ? k("", !0) : (n(), o("li", ei, "Empty list"))
-        ])) : l.value ? (n(), o("dl", ti, [
-          (n(!0), o(N, null, I(l.value, (g, r) => (n(), o(N, { key: r }, [
+        ])) : a.value ? (n(), o("dl", ti, [
+          (n(!0), o(N, null, I(a.value, (g, r) => (n(), o(N, { key: r }, [
             t("dt", null, c(r), 1),
             t("dd", null, [
               f(m, { value: g }, null, 8, ["value"])
@@ -2863,66 +2863,66 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
     fields: {}
   },
   setup(e) {
-    const s = e, l = F(() => Oe(s.fields.map((h) => h.path))), u = U(), d = (h) => `${Math.round(h * 100)}%`, m = (h) => h !== null && typeof h == "object", g = (h) => Array.isArray(h) ? `${h.length} items` : m(h) ? `${Object.keys(h).length} properties` : h == null ? "—" : String(h), r = (h) => h >= 0.9 ? "high" : h >= 0.7 ? "mid" : "low";
+    const s = e, a = F(() => Oe(s.fields.map((h) => h.path))), u = U(), d = (h) => `${Math.round(h * 100)}%`, m = (h) => h !== null && typeof h == "object", g = (h) => Array.isArray(h) ? `${h.length} items` : m(h) ? `${Object.keys(h).length} properties` : h == null ? "—" : String(h), r = (h) => h >= 0.9 ? "high" : h >= 0.7 ? "mid" : "low";
     return (h, w) => (n(), o("div", ai, [
-      f(Re, { node: l.value }, {
+      f(Re, { node: a.value }, {
         default: me(({ index: x }) => [
-          (n(!0), o(N, null, I([e.fields[x]], (a) => (n(), o("div", {
-            key: a.path,
+          (n(!0), o(N, null, I([e.fields[x]], (l) => (n(), o("div", {
+            key: l.path,
             class: "value-row"
           }, [
             t("button", {
               type: "button",
               class: "value-main",
-              "aria-expanded": u.value === a.path,
-              onClick: (i) => u.value = u.value === a.path ? void 0 : a.path
+              "aria-expanded": u.value === l.path,
+              onClick: (i) => u.value = u.value === l.path ? void 0 : l.path
             }, [
-              t("span", si, c(a.name), 1),
+              t("span", si, c(l.name), 1),
               t("span", {
-                class: Q(["value-text", { missing: a.missing }])
-              }, c(a.failed ? "Failed" : a.missing ? "Not in the document" : g(a.value)), 3),
-              a.failed ? k("", !0) : (n(), o("span", {
+                class: Q(["value-text", { missing: l.missing }])
+              }, c(l.failed ? "Failed" : l.missing ? "Not in the document" : g(l.value)), 3),
+              l.failed ? k("", !0) : (n(), o("span", {
                 key: 0,
-                class: Q(["confidence", r(a.confidence)])
+                class: Q(["confidence", r(l.confidence)])
               }, [
                 t("span", oi, [
                   t("span", {
-                    style: qe({ width: d(a.confidence) })
+                    style: qe({ width: d(l.confidence) })
                   }, null, 4)
                 ]),
-                E(c(d(a.confidence)), 1),
+                E(c(d(l.confidence)), 1),
                 w[0] || (w[0] = t("span", { class: "conf-word" }, " confidence", -1))
               ], 2)),
-              a.failed ? k("", !0) : (n(), o("span", {
+              l.failed ? k("", !0) : (n(), o("span", {
                 key: 1,
-                class: Q(["chip", a.verified ? "primary" : "warn"]),
-                title: a.reason
+                class: Q(["chip", l.verified ? "primary" : "warn"]),
+                title: l.reason
               }, [
                 f(p(M), {
-                  icon: a.verified ? "tabler:shield-check" : "tabler:shield-question"
+                  icon: l.verified ? "tabler:shield-check" : "tabler:shield-question"
                 }, null, 8, ["icon"]),
-                E(c(a.verified ? "Verified" : "Check"), 1)
+                E(c(l.verified ? "Verified" : "Check"), 1)
               ], 10, ii)),
               f(p(M), {
-                icon: u.value === a.path ? "tabler:chevron-up" : "tabler:chevron-down",
+                icon: u.value === l.path ? "tabler:chevron-up" : "tabler:chevron-down",
                 class: "value-caret"
               }, null, 8, ["icon"])
             ], 8, ni),
-            !a.failed && !a.missing && m(a.value) ? (n(), J(Be, {
+            !l.failed && !l.missing && m(l.value) ? (n(), J(Be, {
               key: 0,
               class: "structured-value",
-              value: a.value
+              value: l.value
             }, null, 8, ["value"])) : k("", !0),
-            a.failed ? (n(), J(Lt, {
+            l.failed ? (n(), J(Lt, {
               key: 1,
-              error: a.error
+              error: l.error
             }, null, 8, ["error"])) : k("", !0),
             z(t("div", ui, [
-              !a.failed && !a.missing && !m(a.value) ? (n(), J(Be, {
+              !l.failed && !l.missing && !m(l.value) ? (n(), J(Be, {
                 key: 0,
-                value: a.value
+                value: l.value
               }, null, 8, ["value"])) : k("", !0),
-              (n(!0), o(N, null, I(a.evidence, (i, L) => (n(), o("blockquote", {
+              (n(!0), o(N, null, I(l.evidence, (i, L) => (n(), o("blockquote", {
                 key: L,
                 class: Q({ unfound: i.found === !1 })
               }, [
@@ -2937,10 +2937,10 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
                   ], 64)) : k("", !0)
                 ])
               ], 2))), 128)),
-              a.evidence.length ? k("", !0) : (n(), o("p", di, "No evidence.")),
-              a.reason ? (n(), o("p", ri, c(a.reason), 1)) : k("", !0)
+              l.evidence.length ? k("", !0) : (n(), o("p", di, "No evidence.")),
+              l.reason || !l.verified && !l.failed ? (n(), o("p", ri, c(l.reason || "No reason recorded"), 1)) : k("", !0)
             ], 512), [
-              [Ke, u.value === a.path && !a.failed]
+              [Ke, u.value === l.path && !l.failed]
             ])
           ]))), 128))
         ]),
@@ -2978,20 +2978,20 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
   },
   emits: ["run"],
   setup(e, { emit: s }) {
-    const l = e, u = s, d = U(""), m = (x) => `${(x / 1e3).toFixed(1)}s`, g = F(() => Math.max(1, ...l.result?.trace.map((x) => x.duration_ms) ?? [1])), r = { read: { label: "Read document", icon: "tabler:file-text" }, highlight: { label: "Highlighter", icon: "tabler:highlight" } }, h = (x) => r[x]?.label ?? ke[x] ?? x, w = (x) => r[x]?.icon ?? ot[x] ?? "tabler:point";
-    return (x, a) => (n(), o("div", ci, [
+    const a = e, u = s, d = U(""), m = (x) => `${(x / 1e3).toFixed(1)}s`, g = F(() => Math.max(1, ...a.result?.trace.map((x) => x.duration_ms) ?? [1])), r = { read: { label: "Read document", icon: "tabler:file-text" }, highlight: { label: "Highlighter", icon: "tabler:highlight" } }, h = (x) => r[x]?.label ?? ke[x] ?? x, w = (x) => r[x]?.icon ?? ot[x] ?? "tabler:point";
+    return (x, l) => (n(), o("div", ci, [
       t("section", vi, [
         t("div", mi, [
           f(Bt, {
             value: d.value,
-            onSelect: a[0] || (a[0] = (i) => d.value = i)
+            onSelect: l[0] || (l[0] = (i) => d.value = i)
           }, null, 8, ["value"])
         ]),
         f(p(de), {
           label: e.running ? "Extracting…" : "Run extraction",
           loading: e.running,
           disabled: !d.value || e.running || !e.canRun,
-          onClick: a[1] || (a[1] = (i) => u("run", d.value))
+          onClick: l[1] || (l[1] = (i) => u("run", d.value))
         }, null, 8, ["label", "loading", "disabled"]),
         t("p", pi, c(e.canRun ? "" : "Add fields in the Builder first. ") + "Processed documents and runs expire after " + c(e.retention) + ".", 1)
       ]),
@@ -3002,12 +3002,12 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
       ])) : k("", !0),
       e.result?.status === "partial" ? (n(), o("p", hi, [
         f(p(M), { icon: "tabler:alert-triangle" }),
-        a[2] || (a[2] = E("Partial result · Some fields failed. Successful values are available below.", -1))
+        l[2] || (l[2] = E("Partial result · Some fields failed. Successful values are available below.", -1))
       ])) : k("", !0),
       e.result ? (n(), o("div", gi, [
         t("section", yi, [
           t("header", ki, [
-            a[3] || (a[3] = t("h2", { class: "block-title" }, "Values", -1)),
+            l[3] || (l[3] = t("h2", { class: "block-title" }, "Values", -1)),
             t("span", $i, [
               E(c(e.result.tokens.toLocaleString()) + " tokens · " + c(m(e.result.duration_ms)), 1),
               e.result.page_range ? (n(), o(N, { key: 0 }, [
@@ -3022,7 +3022,7 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
           }, null, 8, ["fields"])
         ]),
         t("section", xi, [
-          a[4] || (a[4] = t("header", { class: "block-head" }, [
+          l[4] || (l[4] = t("header", { class: "block-head" }, [
             t("h2", { class: "block-title" }, "Steps")
           ], -1)),
           t("ol", wi, [
@@ -3069,10 +3069,10 @@ const Zl = { class: "shape-editor" }, _l = { key: 0 }, ea = ["aria-label", "aria
       ])) : k("", !0)
     ]));
   }
-}), He = (e) => e.status === "completed" || e.status === "partial" || e.status === "failed", Ve = (e) => e.metrics.length ? e.metrics.reduce((s, l) => s + l.accuracy, 0) / e.metrics.length : 0;
+}), He = (e) => e.status === "completed" || e.status === "partial" || e.status === "failed", Ve = (e) => e.metrics.length ? e.metrics.reduce((s, a) => s + a.accuracy, 0) / e.metrics.length : 0;
 function Ye(e, s = /* @__PURE__ */ new Date()) {
-  const l = new Date(e);
-  return l.toDateString() === s.toDateString() ? l.toLocaleTimeString(void 0, { hour: "numeric", minute: "2-digit" }) : l.getFullYear() === s.getFullYear() ? l.toLocaleString(void 0, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : l.toLocaleDateString(void 0, { year: "numeric", month: "short", day: "numeric" });
+  const a = new Date(e);
+  return a.toDateString() === s.toDateString() ? a.toLocaleTimeString(void 0, { hour: "numeric", minute: "2-digit" }) : a.getFullYear() === s.getFullYear() ? a.toLocaleString(void 0, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : a.toLocaleDateString(void 0, { year: "numeric", month: "short", day: "numeric" });
 }
 const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "eval-run-main" }, Li = { class: "block-title" }, Oi = {
   key: 0,
@@ -3149,8 +3149,8 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
   },
   emits: ["add-case", "delete-case", "evaluate", "open"],
   setup(e, { emit: s }) {
-    const l = e, u = s, d = U(!1), m = U(""), g = U({}), r = U("");
-    fe(() => l.addedCaseId, () => {
+    const a = e, u = s, d = U(!1), m = U(""), g = U({}), r = U("");
+    fe(() => a.addedCaseId, () => {
       d.value = !1, m.value = "", g.value = {};
     });
     function h(S, b) {
@@ -3160,7 +3160,7 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
       r.value = "";
       const S = {};
       try {
-        for (const b of l.fields) {
+        for (const b of a.fields) {
           const $ = String(g.value[G(b)] ?? "").trim();
           $ && Ft(S, G(b), h(b, $));
         }
@@ -3170,16 +3170,16 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
       }
       u("add-case", { upload_id: m.value, expected: S });
     }
-    const x = F(() => l.evaluations.find((S) => !He(S))), a = F(() => l.evaluations.filter(He)), i = F(() => l.evaluation), L = F(() => ({ done: (i.value?.results ?? []).filter((b) => b.status !== "queued").length, total: i.value?.case_count ?? 0 })), A = U();
+    const x = F(() => a.evaluations.find((S) => !He(S))), l = F(() => a.evaluations.filter(He)), i = F(() => a.evaluation), L = F(() => ({ done: (i.value?.results ?? []).filter((b) => b.status !== "queued").length, total: i.value?.case_count ?? 0 })), A = U();
     fe(() => i.value?.id, () => {
       A.value = void 0;
     });
     const C = F(() => {
       if (!i.value) return;
-      if (A.value) return a.value.find((b) => b.id === A.value);
-      const S = a.value.findIndex((b) => b.id === i.value.id);
-      return S >= 0 ? a.value[S + 1] : a.value[0];
-    }), q = F(() => (i.value?.metrics ?? []).map((S) => ({ ...S, before: C.value?.metrics.find((b) => b.field === S.field) }))), K = F(() => (i.value?.fields ?? []).map(G)), D = F(() => Oe(l.fields.map(G))), j = (S, b) => S.scores.find(($) => $.field === b), H = U(), P = (S) => `${Math.round(S * 100)}%`, O = (S) => {
+      if (A.value) return l.value.find((b) => b.id === A.value);
+      const S = l.value.findIndex((b) => b.id === i.value.id);
+      return S >= 0 ? l.value[S + 1] : l.value[0];
+    }), q = F(() => (i.value?.metrics ?? []).map((S) => ({ ...S, before: C.value?.metrics.find((b) => b.field === S.field) }))), K = F(() => (i.value?.fields ?? []).map(G)), D = F(() => Oe(a.fields.map(G))), j = (S, b) => S.scores.find(($) => $.field === b), H = U(), P = (S) => `${Math.round(S * 100)}%`, O = (S) => {
       const b = Math.round(S * 100);
       return `${b > 0 ? "+" : b < 0 ? "−" : "±"}${Math.abs(b)} pts`;
     }, R = (S) => Math.round(S * 100) > 0 ? "up" : Math.round(S * 100) < 0 ? "down" : "flat", ue = (S) => S >= 6e4 ? `${Math.floor(S / 6e4)}m ${Math.round(S % 6e4 / 1e3)}s` : `${(S / 1e3).toFixed(1)}s`, ye = (S) => S == null || S === "" ? "—" : typeof S == "string" ? S : Array.isArray(S) && S.every((b) => typeof b != "object") ? S.join(", ") : JSON.stringify(S), te = (S) => S ? S.failed ? "fail" : S.score >= 0.999 ? "pass" : S.score > 0 ? "partial" : "fail" : "none", oe = (S) => (S.results ?? []).filter((b) => b.status === "completed").length, be = { queued: "Queued", running: "Running", completed: "Completed", partial: "Partial", failed: "Failed" };
@@ -3250,14 +3250,14 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
         t("section", eu, [
           t("header", tu, [
             b[11] || (b[11] = t("h2", { class: "block-title" }, "Field accuracy", -1)),
-            a.value.length > 1 ? (n(), o("label", lu, [
+            l.value.length > 1 ? (n(), o("label", lu, [
               b[10] || (b[10] = t("span", { class: "muted" }, "Compare with", -1)),
               t("select", {
                 value: C.value?.id,
                 "aria-label": "Baseline evaluation",
                 onChange: b[1] || (b[1] = ($) => A.value = $.target.value)
               }, [
-                (n(!0), o(N, null, I(a.value.filter(($) => $.id !== i.value.id), ($) => (n(), o("option", {
+                (n(!0), o(N, null, I(l.value.filter(($) => $.id !== i.value.id), ($) => (n(), o("option", {
                   key: $.id,
                   value: $.id
                 }, "Revision " + c($.config_revision) + " · " + c(p(Ye)($.created_at)), 9, nu))), 128))
@@ -3634,7 +3634,7 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
     retention: {}
   },
   setup(e) {
-    const s = U(), l = { ui: { label: "Test tab", icon: "tabler:player-play" }, agent: { label: "Agent", icon: "tabler:robot" }, eval: { label: "Evaluation", icon: "tabler:chart-bar" }, workflow: { label: "Workflow", icon: "tabler:route" } };
+    const s = U(), a = { ui: { label: "Test tab", icon: "tabler:player-play" }, agent: { label: "Agent", icon: "tabler:robot" }, eval: { label: "Evaluation", icon: "tabler:chart-bar" }, workflow: { label: "Workflow", icon: "tabler:route" } };
     return (u, d) => (n(), o(N, null, [
       t("div", id, [
         d[0] || (d[0] = t("h2", null, "Recent runs", -1)),
@@ -3674,9 +3674,9 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
                 t("td", null, [
                   t("span", md, [
                     f(p(M), {
-                      icon: l[m.caller].icon
+                      icon: a[m.caller].icon
                     }, null, 8, ["icon"]),
-                    E(c(l[m.caller].label), 1)
+                    E(c(a[m.caller].label), 1)
                   ]),
                   m.result.page_range ? (n(), o("span", pd, " · Pages " + c(m.result.page_range.first) + "–" + c(m.result.page_range.last), 1)) : k("", !0)
                 ]),
@@ -3715,7 +3715,7 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
   },
   emits: ["close"],
   setup(e, { emit: s }) {
-    const l = e, u = s, d = U(), m = U("");
+    const a = e, u = s, d = U(), m = U("");
     return Fe(async () => {
       try {
         await Ze("kickside-share", { timeoutMs: 8e3 });
@@ -3723,8 +3723,8 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
         m.value = `Sharing is unavailable: ${h instanceof Error ? h.message : String(h)}`;
         return;
       }
-      const g = document.createElement("kickside-share"), r = encodeURIComponent(l.id);
-      g.setAttribute("config", JSON.stringify({ resource_id: l.id, title: l.title, access_url: `/api/v1/component-access/grants/${r}`, share_url: `/api/v1/component-access/share/${r}` })), g.style.display = "block", g.addEventListener("close", () => u("close")), d.value?.appendChild(g);
+      const g = document.createElement("kickside-share"), r = encodeURIComponent(a.id);
+      g.setAttribute("config", JSON.stringify({ resource_id: a.id, title: a.title, access_url: `/api/v1/component-access/grants/${r}`, share_url: `/api/v1/component-access/share/${r}` })), g.style.display = "block", g.addEventListener("close", () => u("close")), d.value?.appendChild(g);
     }), (g, r) => (n(), o("div", {
       ref_key: "host",
       ref: d
@@ -3769,24 +3769,24 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
   },
   emits: ["save", "add-case", "delete-case", "back", "run", "evaluate", "open-evaluation"],
   setup(e, { emit: s }) {
-    const l = e, u = s, d = U(), m = U(!1), g = U("Builder"), r = U($t()), h = U(""), w = U(""), x = F(() => l.snapshot.can_edit ? ["Builder", "Test", "Evals", "Runs"] : ["Test", "Runs"]);
+    const a = e, u = s, d = U(), m = U(!1), g = U("Builder"), r = U($t()), h = U(""), w = U(""), x = F(() => a.snapshot.can_edit ? ["Builder", "Test", "Evals", "Runs"] : ["Test", "Runs"]);
     fe(g, () => {
       d.value && (d.value.scrollTop = 0);
     }, { flush: "post" });
-    const a = U(), i = U(), L = F(() => l.snapshot.can_edit && a.value !== l.snapshot.expected_revision), A = F(() => L.value && i.value !== l.snapshot.expected_revision);
+    const l = U(), i = U(), L = F(() => a.snapshot.can_edit && l.value !== a.snapshot.expected_revision), A = F(() => L.value && i.value !== a.snapshot.expected_revision);
     function C(P) {
       return h.value === P.title && w.value === (P.description ?? "") && Fl(r.value, P.config);
     }
     function q() {
-      const P = l.snapshot;
-      r.value = structuredClone(ht(P.config ?? $t())), h.value = P.title, w.value = P.description ?? "", a.value = P.expected_revision, i.value = void 0;
+      const P = a.snapshot;
+      r.value = structuredClone(ht(P.config ?? $t())), h.value = P.title, w.value = P.description ?? "", l.value = P.expected_revision, i.value = void 0;
     }
-    fe(() => l.snapshot, (P, O) => {
+    fe(() => a.snapshot, (P, O) => {
       x.value.includes(g.value) || (g.value = x.value[0]), !(O && P.id === O.id && P.can_edit && O.can_edit && !C(O) && !C(P)) && q();
     }, { immediate: !0 });
-    const K = F(() => l.snapshot.can_edit && !C(l.snapshot)), D = F(() => ql(r.value)), j = F(() => Object.keys(ke).filter((P) => Qe(r.value, P)).length);
+    const K = F(() => a.snapshot.can_edit && !C(a.snapshot)), D = F(() => ql(r.value)), j = F(() => Object.keys(ke).filter((P) => Qe(r.value, P)).length);
     function H() {
-      u("save", { title: h.value, description: w.value, config: structuredClone(ht(r.value)), expected_revision: a.value });
+      u("save", { title: h.value, description: w.value, config: structuredClone(ht(r.value)), expected_revision: l.value });
     }
     return (P, O) => (n(), o("main", Sd, [
       t("div", Vd, [
@@ -3959,7 +3959,7 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
   },
   emits: ["back"],
   setup(e, { emit: s }) {
-    const l = e, u = s, d = U(), m = U(""), g = U(!1), r = U(!1), h = U(!1), w = U(), x = U(null), a = U([]), i = U();
+    const a = e, u = s, d = U(), m = U(""), g = U(!1), r = U(!1), h = U(!1), w = U(), x = U(null), l = U([]), i = U();
     let L = [], A = 0, C = 0, q = 0, K;
     const D = (S) => S instanceof Error ? S.message : String(S), j = (S) => S === A;
     async function H(S, b) {
@@ -3967,9 +3967,9 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
       b && (K = b);
       const B = () => j(S) && $ === q;
       try {
-        const T = l.id, Ne = await ge.evaluations(T);
+        const T = a.id, Ne = await ge.evaluations(T);
         if (!B()) return;
-        a.value = Ne;
+        l.value = Ne;
         const he = K ?? Ne[0]?.id;
         if (he) {
           const Te = await ge.evaluation(T, he);
@@ -3982,22 +3982,22 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
     }
     async function P(S) {
       const b = ++C, $ = () => j(S) && b === C;
-      if (!l.id) {
+      if (!a.id) {
         m.value = "No extractor selected.";
         return;
       }
       try {
-        const B = await ge.get(l.id);
+        const B = await ge.get(a.id);
         if (!$()) return;
         d.value = B, m.value = "", B.can_edit && await H(S);
       } catch (B) {
         $() && (m.value = D(B));
       }
     }
-    fe(() => l.id, (S, b) => {
-      A++, K = void 0, L.forEach((B) => B()), L = [], w.value = void 0, d.value = void 0, x.value = null, a.value = [], i.value = void 0, m.value = "";
+    fe(() => a.id, (S, b) => {
+      A++, K = void 0, L.forEach((B) => B()), L = [], w.value = void 0, d.value = void 0, x.value = null, l.value = [], i.value = void 0, m.value = "";
       const $ = A;
-      l.id && (L = [xt(`component.${l.id}`, () => P($)), xt(`docscout.runs.${l.id}`, () => P($))]), b !== void 0 && P($);
+      a.id && (L = [xt(`component.${a.id}`, () => P($)), xt(`docscout.runs.${a.id}`, () => P($))]), b !== void 0 && P($);
     }, { immediate: !0 }), Nl(() => P(A)), Ct(() => {
       A++, L.forEach((S) => S());
     });
@@ -4014,17 +4014,17 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
         g.value = !1;
       }
     }
-    const R = (S) => O(() => ge.update(l.id, S));
+    const R = (S) => O(() => ge.update(a.id, S));
     async function ue(S) {
-      const b = A, $ = await O(() => ge.addCase(l.id, S));
+      const b = A, $ = await O(() => ge.addCase(a.id, S));
       $ && j(b) && (w.value = $.id);
     }
-    const ye = (S) => O(() => ge.deleteCase(l.id, S));
+    const ye = (S) => O(() => ge.deleteCase(a.id, S));
     async function te(S) {
       const b = A;
       r.value = !0, m.value = "";
       try {
-        const $ = await ge.run(l.id, S);
+        const $ = await ge.run(a.id, S);
         j(b) && (x.value = $, await P(b));
       } catch ($) {
         j(b) && (m.value = D($));
@@ -4036,7 +4036,7 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
       const S = A;
       h.value = !0, m.value = "";
       try {
-        const { eval_id: b } = await ge.evaluate(l.id);
+        const { eval_id: b } = await ge.evaluate(a.id);
         j(S) && await H(S, b);
       } catch (b) {
         j(S) && (m.value = D(b));
@@ -4055,7 +4055,7 @@ const Ai = { class: "evals" }, Ri = { class: "block eval-run" }, Bi = { class: "
       running: r.value,
       starting: h.value,
       result: x.value,
-      evaluations: a.value,
+      evaluations: l.value,
       evaluation: i.value,
       error: m.value,
       back: e.back,

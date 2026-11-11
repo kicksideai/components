@@ -294,6 +294,7 @@ entries:
     evals: kickside.docscout.evals:evals
     repository: kickside.docscout.persist:repository
     data: app:fixture_data
+    ai: kickside.docscout.engine:ai
 - name: fixture_settings_get
   kind: function.lua
   source: file://fixture_settings.lua
@@ -828,7 +829,7 @@ entries:
     comment: Host access to the fixture model catalog and provider binding.
   groups: [app:runtime_members]
   policy:
-    resources: ['app:fixture_success_*', 'app:fixture_llm_*', app:fixture_small_model, app:fixture_refusal_model, app:fixture_range_model]
+    resources: ['app:fixture_success_*', 'app:fixture_llm_*', 'app:fixture_support_*', app:fixture_small_model, app:fixture_refusal_model, app:fixture_range_model, app:fixture_range_highlight_model]
     actions: [registry.get, registry.find, contract.open, funcs.call]
     effect: allow
 - name: runtime_methods
@@ -1512,3 +1513,44 @@ entries:
   - id: app:fixture_success_provider
     provider_model: docscout-success
     options: {request_fingerprint: true}
+
+- name: fixture_embed_cardinality_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-embed-cardinality, capabilities: [embed], class: [docscout-embed-cardinality], priority: 100}
+  dimensions: 512
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-embed-cardinality
+    options:
+      embeddings: []
+
+- name: fixture_embed_dimensions_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-embed-dimensions, capabilities: [embed], class: [docscout-embed-dimensions], priority: 100}
+  dimensions: 512
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-embed-dimensions
+    options:
+      embeddings: [[1]]
+
+- name: fixture_range_highlight_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-range-highlight
+    capabilities: [generate, structured_output]
+    class: [docscout-range-highlight]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options:
+      absent: [Excluded]
+      reply: {'1': ['The total amount is 1250.']}

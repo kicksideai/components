@@ -12,6 +12,7 @@ local ai = require("ai")
 local stages = require("stages")
 local shapes = require("shapes")
 local scoring = require("scoring")
+local sql = require("sql")
 local function schema(): any
     return assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json))
 end
@@ -69,6 +70,53 @@ return { run = test.run_cases(function()
             test.is_true(run.values[2].failed); test.is_nil(run.values[2].value)
             test.eq(run.values[2].error.details.code, "structured_reply_truncated")
             test.eq(step.meter.input_tokens, 36); test.eq(step.meter.output_tokens, 24)
+        end)
+        test.it("records each extraction call with its usage, finish reason, error and the passages it read", function()
+            local run = context(configuration({ "before", "provider_failure", "truncated_reply" }))
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.extract(run, step))
+            local calls = step.meter.calls
+            test.eq(#calls, 3)
+            for i, name in ipairs({ "before", "provider_failure", "truncated_reply" }) do
+                test.eq(calls[i].stage, "extract"); test.eq(calls[i].model, "class:docscout-success")
+                test.eq(json.encode(calls[i].fields), json.encode({ name })); test.eq(json.encode(calls[i].sources), "[1]")
+                test.is_true(calls[i].latency_ms >= 0)
+            end
+            test.eq(calls[1].prompt_tokens, 12); test.eq(calls[1].completion_tokens, 8); test.is_nil(calls[1].error_code)
+            test.eq(calls[2].error_code, "fixture_provider_failure"); test.is_nil(calls[2].prompt_tokens); test.is_nil(calls[2].completion_tokens)
+            test.eq(calls[3].finish_reason, "length"); test.eq(calls[3].error_code, "structured_reply_truncated")
+            test.eq(calls[3].prompt_tokens, 12); test.eq(calls[3].completion_tokens, 8)
+        end)
+        test.it("returns and stores per-call records and a run summary of coverage and unverified reasons", function()
+            local owner = uuid.v4()
+            local caller = data.caller(owner)
+            local cfg = configuration({ "before", "provider_failure", "missing_reply" })
+            cfg.stages.verify.enabled = true
+            local id = assert(caller:call("app:probe", { op = "create", input = { title = "Traced reader", config = cfg } })).component_id
+            local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+            local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
+            local by_kind = {}
+            for _, step in ipairs(result.trace) do by_kind[step.kind] = step end
+            test.eq(#by_kind.extract.calls, 3)
+            local embeds = 0
+            for _, call in ipairs(by_kind.read.calls) do if call.stage == "embed" then embeds = embeds + 1 end end
+            test.is_true(embeds > 0)
+            local s = result.summary
+            test.eq(s.fields, 3); test.eq(s.found, 1); test.eq(s.missing, 1); test.eq(s.failed, 1)
+            test.eq(json.encode(s.unverified), json.encode({ extraction_failed = 1 }))
+            local snapshot = assert(caller:call("app:probe", { op = "get", id = id }))
+            test.eq(json.encode(snapshot.runs[1].result.summary), json.encode(s))
+            local db = assert(sql.get("app:db"))
+            local rows = assert(db:query("SELECT trace FROM kickside_docscout_runs WHERE id=$1", { result.run_id }))
+            db:release()
+            local stored = {}
+            for _, step in ipairs(assert(json.decode(rows[1].trace))) do stored[step.kind] = step end
+            test.eq(#stored.extract.calls, 3)
+            local contract_schema = assert(json.decode(assert(registry.get("kickside.docscout:extraction")).data.methods[1].output_schemas[1].definition))
+            local valid, err = json.validate_string(contract_schema, assert(json.encode(result)))
+            test.is_true(valid, tostring(err))
+            test.not_nil(contract_schema.properties.summary)
+            test.not_nil(contract_schema.properties.trace.items.properties.calls)
         end)
         test.it("fails all remaining calls after a deadline without marking fields missing", function()
             local run = context(configuration({ "one", "two" }))
@@ -142,7 +190,11 @@ return { run = test.run_cases(function()
                 test.not_nil(rejected); test.eq(rejected:details().code, "structured_reply_invalid")
                 test.is_true(rejected:retryable())
                 test.eq(step.meter.input_tokens, 12); test.eq(step.meter.output_tokens, 8)
-                test.is_nil(run.values[1].verified); test.is_nil(run.values[2].verified)
+                for _, field in ipairs(run.values) do
+                    test.is_false(field.verified); test.eq(field.value, 1250)
+                    test.is_true(field.reason:find("does not match its schema", 1, true) ~= nil)
+                    test.eq(json.encode(field.codes), '["support_no_verdict"]')
+                end
                 local owner = uuid.v4()
                 local caller = data.caller(owner)
                 local id = assert(caller:call("app:probe", { op = "create", input = { title = "Support reader", config = cfg } })).component_id
@@ -154,6 +206,12 @@ return { run = test.run_cases(function()
                 local stored = snapshot.runs[1]
                 test.eq(stored.id, err:details().run_id); test.eq(stored.status, "failed")
                 test.eq(stored.result.error.details.code, "structured_reply_invalid")
+                test.eq(stored.result.summary.unverified.support_no_verdict, 2)
+                test.is_nil(stored.result.summary.unverified.unchecked)
+                for _, field in ipairs(stored.result.fields) do
+                    test.is_false(field.verified); test.eq(field.value, 1250)
+                    test.is_true(field.reason:find("does not match its schema", 1, true) ~= nil)
+                end
                 local db = assert(sql.get("app:db"))
                 local rows, read_err = db:query("SELECT trace FROM kickside_docscout_runs WHERE id=$1", { stored.id })
                 db:release(); test.is_nil(read_err, tostring(read_err))
@@ -162,6 +220,27 @@ return { run = test.run_cases(function()
                 test.eq(trace[#trace].input_tokens, 12); test.eq(trace[#trace].output_tokens, 8)
             end)
         end
+        test.it("keeps local verification reasons when the shared support check fails", function()
+            local cfg = configuration({ "amount", "terms", "missing_reply", "provider_failure" })
+            cfg.stages.verify.check_support, cfg.stages.verify.check_quotes = true, false
+            cfg.stages.verify.model = "class:docscout-support-empty"
+            local run = context(cfg)
+            run.values = {
+                { name = "amount", value = "invalid number", missing = false, evidence = {}, reason = "No quote supports this value" },
+                { name = "terms", value = 1250, missing = false, evidence = {} },
+                { name = "missing_reply", missing = true, evidence = {} },
+                { name = "provider_failure", failed = true, missing = false, evidence = {} },
+            }
+            local err = stages.verify(run, { meter = ai.meter() })
+            test.not_nil(err); test.eq(err:details().code, "structured_reply_invalid")
+            test.is_false(run.values[1].verified)
+            test.is_true(run.values[1].reason:find("No quote supports this value", 1, true) ~= nil)
+            test.is_true(run.values[1].reason:find("Value does not match its declared shape", 1, true) ~= nil)
+            for i = 1, 2 do
+                test.is_true(run.values[i].reason:find("does not match its schema", 1, true) ~= nil)
+            end
+            test.is_nil(run.values[3].reason); test.is_nil(run.values[4].reason)
+        end)
         test.it("associates mixed support verdicts with their field paths", function()
             local cfg = configuration({ "amount", "terms" })
             cfg.stages.verify.check_support, cfg.stages.verify.check_quotes = true, false

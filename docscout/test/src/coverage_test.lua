@@ -120,6 +120,45 @@ return {run=test.run_cases(function()
             local calls = assert(stages.extraction_calls(run))
             test.eq(#calls[1].passages, 0); test.eq(calls[2].passages[1].ordinal,1)
         end)
+        test.it("attributes outline, summary, highlight and support calls to known sources and fields", function()
+            local run, step = context(), {meter=ai.meter()}
+            save(run)
+            run.config.stages.map.model, run.config.stages.map.outline = "class:docscout-success", "build"
+            test.is_nil(stages.map(run, step))
+            test.eq(step.meter.calls[1].stage,"outline")
+            test.eq(json.encode(step.meter.calls[1].sources),"[1,2,3,4]")
+            test.eq(json.encode(step.meter.calls[1].fields),'["fee","terms.rate"]')
+            run, step = context(), {meter=ai.meter()}
+            save(run)
+            run.config.stages.map.model, run.config.stages.map.section_summaries = "class:docscout-summary-empty", true
+            test.is_nil(stages.map(run,step))
+            test.eq(step.meter.calls[1].stage,"summaries")
+            test.eq(json.encode(step.meter.calls[1].sources),"[1,2,3,4]")
+            test.eq(json.encode(step.meter.calls[1].fields),'["fee","terms.rate"]')
+            run, step = context(), {meter=ai.meter()}
+            run.config.retrieval.highlighter_model="class:docscout-highlight-empty"
+            test.is_nil(stages.highlight(run,step))
+            test.eq(json.encode(step.meter.calls[1].sources),"[1,2,3,4]")
+            test.eq(json.encode(step.meter.calls[1].fields),'["fee","terms.rate"]')
+            run, step = context(), {meter=ai.meter()}
+            run.config.stages.verify.check_quotes, run.config.stages.verify.check_support = false,true
+            run.config.stages.verify.model="class:docscout-success"
+            run.values={{name="fee",value="fee",missing=false,evidence={{chunk=3,quote="fee"},{chunk=1,quote="fee"},{chunk=3,quote="fee"}}},
+                {name="rate",path="terms.rate",value="rate",missing=false,evidence={{chunk=4,quote="rate"}}}}
+            test.is_nil(stages.verify(run,step))
+            test.eq(step.meter.calls[1].stage,"support")
+            test.eq(json.encode(step.meter.calls[1].sources),"[1,3,4]")
+            test.eq(json.encode(step.meter.calls[1].fields),'["fee","terms.rate"]')
+        end)
+        for _, mode in ipairs({"cardinality", "dimensions"}) do
+            test.it("records rejection of an embedding response with invalid " .. mode, function()
+                local meter=ai.meter()
+                local vectors,err=ai.embed(meter,"class:docscout-embed-" .. mode,{"text"})
+                test.is_nil(vectors);test.not_nil(err)
+                test.eq(#meter.calls,1);test.eq(meter.calls[1].error_code,tostring(errors.UNAVAILABLE))
+                test.eq(meter.calls[1].prompt_tokens,7);test.eq(meter.input_tokens,7)
+            end)
+        end
         test.it("keeps genuine excerpts and removes empty, blank and invented highlights", function()
             local run, step = context(), {meter=ai.meter()}
             run.config.retrieval.highlighter_model = "class:docscout-highlight-empty"

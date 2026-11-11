@@ -110,6 +110,9 @@ function M.generate(args: any): (any?, error?)
 end
 function M.embed(args: any): (any?, error?)
     inspect(args)
+    if args.options and args.options.embeddings then
+        return {result={embeddings=args.options.embeddings},tokens={prompt_tokens=7,completion_tokens=0}},nil
+    end
     local vectors = {}
     for i = 1, #args.input do
         local vector = {}

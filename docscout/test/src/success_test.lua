@@ -244,6 +244,42 @@ return { run = test.run_cases(function()
             local bad = request("POST", "/api/docscout/" .. id .. "/run", token, { upload_id = upload_id, pages = { first = 2, last = 4 } })
             test.eq(bad.status_code, 400, bad.body)
         end)
+        test.it("returns saved verification reasons through the HTTP API without losing values", function()
+            local owner, _, token = member(true)
+            for _, case in ipairs({
+                { kind = "missing support", model = "class:docscout-support-empty", status = 500, reason = "does not match its schema" },
+                { kind = "negative support", model = "class:docscout-support-mixed", status = 200, reason = "Quote does not support the terms" },
+                { kind = "quote", status = 200, reason = "A quote is not in the document" },
+            }) do
+                local cfg = configuration()
+                cfg.stages.verify.enabled, cfg.stages.verify.check_quotes = true, case.kind == "quote"
+                cfg.stages.verify.check_support = case.model ~= nil
+                if case.model then cfg.stages.verify.model = case.model end
+                local target = 1
+                if case.kind == "negative support" then
+                    cfg.fields[1].name = "amount"
+                    local second = configuration().fields[1]
+                    second.name = "terms"; cfg.fields[2] = second; target = 2
+                end
+                local created = request("POST", "/api/docscout", token, { title = "Verification reader", config = cfg })
+                test.eq(created.status_code, 201, created.body)
+                local id = assert(json.decode(created.body)).component_id
+                local upload_id = data.upload_record(owner, "application/pdf", "invoice.pdf", 20)
+                assert(artifacts.create_artifact({ upload_id = upload_id, kind = "markdown", role = "primary", mime_type = "text/markdown",
+                    content = case.kind == "quote" and "# Invoice\nThe total amount equals 1250." or "# Invoice\nThe total amount is 1250.", storage_id = "app:uploads" }))
+                local response = request("POST", "/api/docscout/" .. id .. "/run", token, { upload_id = upload_id })
+                test.eq(response.status_code, case.status, response.body)
+                local loaded = request("GET", "/api/docscout/" .. id, token)
+                test.eq(loaded.status_code, 200, loaded.body)
+                local saved = assert(json.decode(loaded.body)).runs[1].result.fields[target]
+                test.eq(saved.value, 1250, case.kind .. ": " .. tostring(json.encode(saved))); test.is_false(saved.verified)
+                test.is_true(saved.reason:find(case.reason, 1, true) ~= nil, tostring(saved.reason))
+                if case.status == 200 then
+                    local returned = assert(json.decode(response.body)).fields[target]
+                    test.eq(returned.value, saved.value); test.eq(returned.reason, saved.reason)
+                end
+            end
+        end)
         test.it("runs the real contract from UI, tool, Block and evaluation with persisted evidence and trace", function()
             local owner, caller, token = member(true)
             local created_response = request("POST", "/api/docscout", token, { title = "Invoice", config = configuration() })

@@ -132,6 +132,26 @@ return { run = test.run_cases(function()
                 in_range(shapes.ordered(run.pool))
             end
         end)
+        test.it("highlights only selected passages and preserves their real-page evidence", function()
+            local run = run_for()
+            run.config.retrieval.highlighter_model = "class:docscout-range-highlight"
+            test.is_nil(stages.prefetch(run, { meter = ai.meter() }))
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.highlight(run, step))
+            local highlighted = shapes.ordered(run.pool)
+            in_range(highlighted);test.eq(#highlighted, 1)
+            test.eq(highlighted[1].content, "The total amount is 1250.")
+            test.eq(step.message, "Kept 1 of 1 passages")
+            test.eq(#step.meter.calls, 1);test.eq(step.meter.calls[1].stage, "highlight")
+            test.eq(json.encode(step.meter.calls[1].sources), "[1]")
+            run.config.stages.extract.model = "class:docscout-success"
+            test.is_nil(stages.extract(run, { meter = ai.meter() }))
+            run.config.stages.verify.check_support = false
+            test.is_nil(stages.verify(run, { meter = ai.meter() }))
+            test.eq(run.values[1].value, 1250);test.is_true(run.values[1].verified)
+            test.eq(run.values[1].evidence[1].quote, "The total amount is 1250.")
+            test.eq(run.values[1].evidence[1].page, 2)
+        end)
         test.it("limits extraction and rejects quotes that exist only outside the range", function()
             local run = run_for()
             test.is_nil(stages.prefetch(run, { meter = ai.meter() }))
