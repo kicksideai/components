@@ -201,6 +201,27 @@ end
 -- Quotes a value may cite.
 M.EVIDENCE_LIMIT = 5
 
+-- Scheduling weights for the reply envelope, quotes and value leaves. Lists
+-- assume five items. These heuristic weights do not bound actual model output.
+local REPLY_ENVELOPE, REPLY_QUOTE, REPLY_TEXT, REPLY_SCALAR, LIST_ITEMS = 30, 20, 40, 8, 5
+
+local function value_estimate(f: any): integer
+    if f.type == "text" then return REPLY_TEXT end
+    if f.type == "list" then return LIST_ITEMS * value_estimate(f.item) end
+    if f.type == "object" then
+        local n = 0
+        for _, p in ipairs(f.properties) do n = n + value_estimate(p) end
+        return n
+    end
+    return REPLY_SCALAR
+end
+
+-- Expected reply tokens of one field in an extraction call. A heuristic for
+-- batching: a long verbatim value can still exceed it.
+function M.output_estimate(f: any): integer
+    return REPLY_ENVELOPE + M.EVIDENCE_LIMIT * REPLY_QUOTE + value_estimate(f)
+end
+
 local JSON_TYPES = { text = "string", number = "number", boolean = "boolean", date = "string", enum = "string", object = "object" }
 
 -- The JSON Schema of a field's value; "found" says whether it is present.

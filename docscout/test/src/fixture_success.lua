@@ -56,6 +56,14 @@ local function usage(args: any, prompt_tokens: integer, completion_tokens: integ
 end
 function M.structured(args: any): (any?, error?)
     inspect(args)
+    if args.options and args.options.reply_tokens_per_field then
+        local count = 0
+        for _ in pairs(args.schema.properties) do count = count + 1 end
+        if count * args.options.reply_tokens_per_field > args.options.max_tokens then
+            return { result = { data = {} }, finish_reason = "length",
+                tokens = { prompt_tokens = 12, completion_tokens = args.options.max_tokens } }, nil
+        end
+    end
     if args.options and args.options.reply then
         local reply = args.options.reply
         local properties = args.schema.properties
