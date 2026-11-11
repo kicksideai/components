@@ -328,7 +328,7 @@ function M.scout(run: any, step: any): error?
         local fields_text, fields_err = scout_fields(run, fields)
         if fields_err then return fields_err end
         local before = run.pool.count
-        local instruction = system("You read one document with the tools to find evidence for the fields below. Follow references to definitions and schedules. When you have enough, reply with short notes per field saying where each value is.")
+        local instruction = system("You read one document with the tools to find evidence for the fields below. Follow references to definitions and schedules. When you have enough, reply with short notes per field saying where each value is. " .. shapes.QUERY_RULE)
         local input = fields_text .. "\n\nEvidence so far:\n" .. render(ordered(run.pool))
         local answer, calls, err
         if cfg.agent_id then

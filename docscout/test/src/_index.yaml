@@ -722,7 +722,7 @@ entries:
     type: llm.model
     name: docscout-echo
     title: Fixture model that answers with its system prompt
-    capabilities: [structured_output]
+    capabilities: [generate, structured_output]
     class: [docscout-echo]
     priority: 100
   max_tokens: 16000

@@ -617,6 +617,21 @@ return { run = test.run_cases(function()
                 test.is_true(prompt:find(statement, 1, true) ~= nil, statement)
             end
         end)
+        for _, mode in ipairs({ "loop", "agent" }) do
+            test.it("tells the " .. mode .. " scout to write plain-text search queries", function()
+                local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+                field.name, field.description = "amount", "Invoice amount"
+                local run = { document = { id = "unused", outline = {} }, regions = {}, pool = shapes.pool(), notes = {},
+                    config = { fields = { field }, stages = { scout = { model = "class:docscout-echo", mode = mode,
+                        max_rounds = 0, max_extra_queries = 1, target_confidence = 0.7, max_tokens = 4096, tools = {}, share_notes = true } } } }
+                shapes.add(run.pool, { { ordinal = 1, heading_path = "Invoice", content = "The total amount is 1250." } })
+                test.is_nil(stages.scout(run, { meter = ai.meter() }))
+                local prompt = run.notes[1].text
+                for _, statement in ipairs({ "natural-language phrase", "matched by its words and by its meaning", "regular expressions", "boolean operators" }) do
+                    test.is_true(prompt:find(statement, 1, true) ~= nil, mode .. ": " .. statement)
+                end
+            end)
+        end
         test.it("gives each extraction call only passages every one of its fields may read", function()
             local pool = shapes.pool()
             shapes.add(pool, { { ordinal = 1, content = "fee" }, { ordinal = 2, content = "notice" }, { ordinal = 3, content = "law" } })
