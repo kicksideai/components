@@ -44,13 +44,16 @@ function M.snapshot(component_id: string, user_id: string): (any?, error?)
             if err then return nil, err end
             run.result = result
         end
-        local cases, case_err = db:query([[SELECT id, upload_id, upload_name, expected_values
+        local cases, case_err = db:query([[SELECT id, upload_id, upload_name, expected_values, pages
             FROM kickside_docscout_cases WHERE component_id=$1 ORDER BY created_at, id]], { component_id })
         if case_err then return nil, failed("evaluation cases could not be read", case_err) end
         for _, case in ipairs(cases) do
             local expected, err = decoded(case.expected_values, "expected values")
             if err then return nil, err end
             case.expected, case.expected_values = expected, nil
+            local pages, pages_err = decoded(case.pages, "case page range", true)
+            if pages_err then return nil, pages_err end
+            case.pages = pages
         end
         return { runs = runs, cases = cases }, nil
     end)
@@ -77,10 +80,12 @@ end
 function M.add_case(component_id: string, dto: any): (any?, error?)
     local expected, encode_err = encoded(dto.expected)
     if encode_err then return nil, encode_err end
+    local pages, pages_err = encoded(dto.pages)
+    if pages_err then return nil, pages_err end
     return fenced(component_id, function(tx: any): (any?, error?)
         local id = uuid.v7()
-        local _, err = tx:execute([[INSERT INTO kickside_docscout_cases (id, component_id, upload_id, upload_name, expected_values, created_at)
-            VALUES ($1,$2,$3,$4,$5,$6)]], { id, component_id, dto.upload_id, dto.upload_name, expected, now() })
+        local _, err = tx:execute([[INSERT INTO kickside_docscout_cases (id, component_id, upload_id, upload_name, expected_values, created_at, pages)
+            VALUES ($1,$2,$3,$4,$5,$6,$7)]], { id, component_id, dto.upload_id, dto.upload_name, expected, now(), dto.pages and pages or sql.as.null() })
         if err then return nil, failed("evaluation case could not be stored", err) end
         return { success = true, id = id }, nil
     end)
@@ -88,7 +93,7 @@ end
 
 function M.get_case(component_id: string, case_id: string): (any?, error?)
     return with_db(function(db: any): (any?, error?)
-        local rows, err = db:query("SELECT id, upload_id, upload_name, expected_values FROM kickside_docscout_cases WHERE component_id=$1 AND id=$2",
+        local rows, err = db:query("SELECT id, upload_id, upload_name, expected_values, pages FROM kickside_docscout_cases WHERE component_id=$1 AND id=$2",
             { component_id, case_id })
         if err then return nil, failed("evaluation case could not be read", err) end
         local row = rows[1]
@@ -96,6 +101,9 @@ function M.get_case(component_id: string, case_id: string): (any?, error?)
         local expected, decode_err = decoded(row.expected_values, "expected values")
         if decode_err then return nil, decode_err end
         row.expected, row.expected_values = expected, nil
+        local pages, pages_err = decoded(row.pages, "case page range", true)
+        if pages_err then return nil, pages_err end
+        row.pages = pages
         return row, nil
     end)
 end
@@ -210,10 +218,12 @@ function M.add_eval(component_id: string, row: any, cases: { any },
             end
             local expected, expected_err = encoded(case.expected)
             if expected_err then return nil, expected_err end
+            local pages, pages_err = encoded(case.pages)
+            if pages_err then return nil, pages_err end
             local _, result_err = tx:execute([[INSERT INTO kickside_docscout_eval_results
-                (eval_id, case_id, job_id, next_check_at, upload_name, upload_id, expected_values, status)
-                VALUES ($1,$2,$3,$4,$5,$6,$7,'queued')]],
-                { id, case.id, job_id, next_check, case.upload_name, case.upload_id, expected })
+                (eval_id, case_id, job_id, next_check_at, upload_name, upload_id, expected_values, status, pages)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,'queued',$8)]],
+                { id, case.id, job_id, next_check, case.upload_name, case.upload_id, expected, case.pages and pages or sql.as.null() })
             if result_err then return nil, failed("evaluation case could not be queued", result_err) end
         end
         return id, nil
@@ -312,7 +322,7 @@ function M.get_eval(eval_id: string, with_identity: boolean?): (any?, error?)
         else
             item.config_snapshot = nil
         end
-        local results, results_err = db:query([[SELECT case_id, upload_name, upload_id, expected_values, status, run_id, scores, tokens, duration_ms, error, finished_at
+        local results, results_err = db:query([[SELECT case_id, upload_name, upload_id, expected_values, pages, status, run_id, scores, tokens, duration_ms, error, finished_at
             FROM kickside_docscout_eval_results WHERE eval_id=$1 ORDER BY upload_name, case_id]], { eval_id })
         if results_err then return nil, failed("evaluation results could not be read", results_err) end
         for _, r in ipairs(results) do
@@ -322,6 +332,9 @@ function M.get_eval(eval_id: string, with_identity: boolean?): (any?, error?)
             local expected, expected_err = decoded(r.expected_values, "admitted expected values")
             if expected_err then return nil, expected_err end
             r.expected, r.expected_values = expected, nil
+            local pages, pages_err = decoded(r.pages, "admitted page range", true)
+            if pages_err then return nil, pages_err end
+            r.pages = pages
             local failure, error_err = decoded(r.error, "case error", true)
             if error_err then return nil, error_err end
             r.error = failure

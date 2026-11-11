@@ -34,6 +34,7 @@ entries:
         required: [extractor_id]
         properties:
           extractor_id: { type: string, title: Extractor, picker: wc-component-picker, class: kickside.docscout }
+          pages: {"type": "object", "additionalProperties": false, "required": ["first", "last"], "properties": {"first": {"type": "integer", "minimum": 1}, "last": {"type": "integer", "minimum": 1}}}
       output: &extract_output
         type: object
         additionalProperties: false
@@ -44,6 +45,7 @@ entries:
           verified: { type: boolean, description: True when every value passed verification. }
           run_id: { type: string }
           pages: { type: integer }
+          page_range: {"type": "object", "additionalProperties": false, "required": ["first", "last"], "properties": {"first": {"type": "integer", "minimum": 1}, "last": {"type": "integer", "minimum": 1}}}
           config_revision: {"type": "integer", "minimum": 0}
           status: {"type": "string", "enum": ["completed", "partial", "failed"]}
           duration_ms: {"type": "integer", "minimum": 0}

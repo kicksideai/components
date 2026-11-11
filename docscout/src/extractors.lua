@@ -124,13 +124,21 @@ function M.add_case(id,dto)
     local context,err=M.access(id,component.ACCESS.WRITE,true)
     if err then return nil,err end
     if type(dto)~="table" or type(dto.upload_id)~="string" or dto.upload_id=="" then return nil,invalid("Choose an upload") end
-    for key in pairs(dto) do if key~="upload_id" and key~="expected" then return nil,invalid("Unknown case field: "..tostring(key)) end end
+    for key in pairs(dto) do if key~="upload_id" and key~="expected" and key~="pages" then return nil,invalid("Unknown case field: "..tostring(key)) end end
     local validation_err=config.validate_expected(context.context.config.fields,dto.expected)
     if validation_err then return nil,validation_err end
+    local pages_err = process.validate_pages(dto.pages)
+    if pages_err then return nil,pages_err end
+    if dto.pages ~= nil then
+        local content,content_err=process.content(dto.upload_id)
+        if content_err then return nil,content_err end
+        local range_err=process.validate_document_pages(content.markdown,dto.pages)
+        if range_err then return nil,range_err end
+    end
     -- A case names an upload its author can read, by the upload's own file name.
     local upload,upload_err=process.info(dto.upload_id)
     if upload_err then return nil,upload_err end
-    return repository.add_case(id,{upload_id=dto.upload_id,upload_name=upload.filename,expected=dto.expected})
+    return repository.add_case(id,{upload_id=dto.upload_id,upload_name=upload.filename,expected=dto.expected,pages=dto.pages})
 end
 function M.delete_case(id,case_id)
     local _,err=M.access(id,component.ACCESS.WRITE,false)

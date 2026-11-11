@@ -22,3 +22,14 @@ entries:
   imports:
     migration: wippy.migration:migration
   method: migrate
+- name: 03_page_ranges
+  kind: function.lua
+  meta:
+    type: migration
+    timestamp: '2026-11-11T12:00:00Z'
+    depends_on:
+    - kickside.docscout.migrations:02_built_outline
+  source: file://03_page_ranges.lua
+  imports:
+    migration: wippy.migration:migration
+  method: migrate

@@ -20,7 +20,7 @@ local CALLERS = { ui = true, agent = true, eval = true, workflow = true }
 
 -- One stage of a run as the trace records it, with a record per model call.
 type TraceStep = { kind: string, status: string, scope: string, model: string?, duration_ms: integer,
-    input_tokens: number, output_tokens: number, queries: { string }?, calls: { any }?, message: string? }
+    input_tokens: number, output_tokens: number, queries: { string }?, calls: { any }?, message: string?, pages: any? }
 
 local function invalid(message: string): error return errors.new({ kind = errors.INVALID, message = message }) end
 local function millis(): integer return math.floor(time.now():unix_nano() / 1000000) end
@@ -42,11 +42,13 @@ function M.summary(values: { any }): any
     return out
 end
 
--- input: { id, upload_id, caller, deadline? } where deadline is an RFC3339
+-- input: { id, upload_id, caller, pages?, deadline? } where deadline is an RFC3339
 -- instant the run must finish by.
 function M.run(input: any): (any?, error?)
     if type(input) ~= "table" or type(input.id) ~= "string" or input.id == "" then return nil, invalid("Choose an extractor") end
     if type(input.upload_id) ~= "string" or input.upload_id == "" then return nil, invalid("Choose an upload") end
+    local validation_err = process.validate_pages(input.pages)
+    if validation_err then return nil, validation_err end
     local caller = input.caller or "ui"
     if not CALLERS[caller] then return nil, invalid("Unknown caller " .. tostring(caller)) end
     local deadline = nil
@@ -74,6 +76,10 @@ function M.run(input: any): (any?, error?)
         local admitted = nil
         for _, case in ipairs(evaluation.results) do if case.case_id == input.case_id then admitted = case end end
         if not admitted or admitted.upload_id ~= input.upload_id then return nil, invalid("Upload does not match the admitted case") end
+        if (input.pages == nil) ~= (admitted.pages == nil) or
+            (input.pages and (input.pages.first ~= admitted.pages.first or input.pages.last ~= admitted.pages.last)) then
+            return nil, invalid("Page range does not match the admitted case")
+        end
         extractor = { config = evaluation.config_snapshot, revision = evaluation.config_revision }
     elseif input.evaluation_id ~= nil or input.case_id ~= nil then
         return nil, invalid("Snapshot references require an evaluation caller")
@@ -97,7 +103,7 @@ function M.run(input: any): (any?, error?)
         trace[#trace + 1] = {
             kind = kind, status = err and "failed" or record.status or "completed", scope = scope, model = record.model,
             duration_ms = millis() - t0, input_tokens = record.meter.input_tokens, output_tokens = record.meter.output_tokens,
-            queries = record.queries, calls = #record.meter.calls > 0 and record.meter.calls or nil, tool_calls = record.tool_calls, agent_id = record.agent_id, dataflow_id = record.dataflow_id, message = err and tostring(err) or record.message,
+            pages = input.pages, queries = record.queries, calls = #record.meter.calls > 0 and record.meter.calls or nil, tool_calls = record.tool_calls, agent_id = record.agent_id, dataflow_id = record.dataflow_id, message = err and tostring(err) or record.message,
         }
         if err then failure = err end
         return err == nil
@@ -105,7 +111,7 @@ function M.run(input: any): (any?, error?)
 
     local s = config.stages
     local ok = step("read", "document", config.retrieval.embedding_model, function(record: any): error?
-        local document, err = process.ensure(input.id, actor:id(), input.upload_id, config.retrieval, record, extractor_window)
+        local document, err = process.ensure(input.id, actor:id(), input.upload_id, config.retrieval, record, extractor_window, input.pages)
         if err then return err end
         run.document = document
         return nil
@@ -140,7 +146,7 @@ function M.run(input: any): (any?, error?)
         upload_id = input.upload_id, config_revision = extractor.revision, fields = fields, trace = trace,
         duration_ms = millis() - started, tokens = tokens, status = status,
         error = failure and error_envelope.encode(failure) or nil,
-        pages = run.document and run.document.page_count or 0, summary = M.summary(run.values),
+        pages = run.document and run.document.page_count or 0, page_range = input.pages, summary = M.summary(run.values),
     }
     result.values = shapes.values(result)
     local expires_at, expiry_err = retention.expires_at(extractor_window)
@@ -150,7 +156,7 @@ function M.run(input: any): (any?, error?)
     end
     local run_id, record_err = repository.add_run(input.id, {
         user_id = actor:id(), upload_id = input.upload_id, caller = caller, status = result.status,
-        config_revision = extractor.revision, result = { fields = fields, values = result.values, error = result.error, summary = result.summary }, trace = trace,
+        config_revision = extractor.revision, result = { fields = fields, values = result.values, error = result.error, page_range = input.pages, summary = result.summary }, trace = trace,
         duration_ms = result.duration_ms, tokens = tokens, expires_at = expires_at,
     })
     if record_err then

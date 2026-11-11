@@ -10,11 +10,18 @@ local processing = require("processing")
 local retention = require("retention")
 local funcs = require("funcs")
 local data = require("data")
+local ai = require("ai")
 
 local OPS = {
     maintenance = function(dto: any): (any?, error?) return funcs.call(dto.id, {}) end,
     retention = function(_dto: any): (any?, error?) return retention.window() end,
     content = function(dto: any): (any?, error?) return processing.content(dto.upload_id) end,
+    processed = function(dto: any): (any?, error?)
+        local step = { meter = ai.meter() }
+        local document, err = processing.ensure(dto.id, security.actor():id(), dto.upload_id, dto.retrieval, step, nil, dto.pages)
+        if err then return nil, err end
+        return { document = document, step = step }, nil
+    end,
     contract_run = function(dto: any): (any?, error?)
         local definition, err = contract.get("kickside.docscout:extraction")
         if err then return nil, err end
