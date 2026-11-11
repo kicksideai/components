@@ -1,5 +1,15 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local json = require("json")
+local hash = require("hash")
+local canonical_json = require("canonical_json")
 local M = {}
+local function inspect(args: any)
+    local options = args.options or {}
+    local request = assert(json.encode(args.messages or args.input or {}))
+    for _, text in ipairs(options.absent or {}) do
+        assert(not request:find(text, 1, true), "Forbidden document text reaches the model: " .. text)
+    end
+end
 local function value(schema: any): any
     if schema.enum then return schema.enum[1] end
     if schema.type == "number" or schema.type == "integer" then return schema.maximum or 1250 end
@@ -29,12 +39,17 @@ end
 -- The sampling model reports the call's settings as its token usage:
 -- prompt tokens are 1000 + temperature * 100 (0 when unset), completion tokens are max_tokens.
 local function usage(args: any, prompt_tokens: integer, completion_tokens: integer): any
+    if args.options and args.options.request_fingerprint then
+        local encoded = assert(canonical_json.encode(args))
+        return { prompt_tokens = tonumber(hash.sha256(encoded):sub(1, 12), 16), completion_tokens = completion_tokens }
+    end
     if args.model ~= "docscout-sampling" then return { prompt_tokens = prompt_tokens, completion_tokens = completion_tokens } end
     local options = args.options or {}
     return { prompt_tokens = options.temperature ~= nil and 1000 + math.floor(options.temperature * 100 + 0.5) or 0,
         completion_tokens = options.max_tokens or 0 }
 end
 function M.structured(args: any): (any?, error?)
+    inspect(args)
     if args.options and args.options.reply then
         local reply = args.options.reply
         local properties = args.schema.properties
@@ -66,6 +81,7 @@ function M.structured(args: any): (any?, error?)
     return { result = { data = extraction(args.schema) }, tokens = usage(args, 12, 8) }, nil
 end
 function M.generate(args: any): (any?, error?)
+    inspect(args)
     if args.model == "docscout-sampling" then return { result = { content = "Fixture notes" }, tokens = usage(args, 0, 0) }, nil end
     -- A prompt naming truncated_generation is cut by the output limit.
     for _, message in ipairs(args.messages) do
@@ -93,13 +109,14 @@ function M.generate(args: any): (any?, error?)
     } }, tokens = { prompt_tokens = 11, completion_tokens = 7 } }, nil
 end
 function M.embed(args: any): (any?, error?)
+    inspect(args)
     local vectors = {}
     for i = 1, #args.input do
         local vector = {}
         for n = 1, 512 do vector[n] = n == 1 and 1.0 or 0.0 end
         vectors[i] = vector
     end
-    return { result = { embeddings = vectors }, tokens = { prompt_tokens = #args.input, completion_tokens = 0 } }, nil
+    return { result = { embeddings = vectors }, tokens = usage(args, #args.input, 0) }, nil
 end
 function M.status(_args: any): (any?, error?) return { status = "ready" }, nil end
 return M

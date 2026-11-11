@@ -3866,13 +3866,15 @@ const Ki = (e) => e.response?.data, Is = {
     q((await U.delete(J(e) + "/cases/" + encodeURIComponent(t))).data);
   },
   // A run that stops partway still answers with its run id and step trace.
-  async run(e, t) {
+  async run(e, t, r) {
+    const n = { upload_id: t };
+    r !== void 0 && (n.pages = r);
     try {
-      return q((await U.post(J(e) + "/run", { upload_id: t })).data);
-    } catch (r) {
-      const n = Ki(r), o = n?.details?.trace;
-      if (!o) throw r;
-      return { run_id: n?.details?.run_id ?? "", upload_id: t, config_revision: 0, values: {}, fields: [], trace: o, duration_ms: o.reduce((a, s) => a + s.duration_ms, 0), tokens: o.reduce((a, s) => a + s.input_tokens + s.output_tokens, 0), status: "failed", error: n?.error };
+      return q((await U.post(J(e) + "/run", n)).data);
+    } catch (o) {
+      const a = Ki(o), s = a?.details?.trace;
+      if (!s) throw o;
+      return { run_id: a?.details?.run_id ?? "", upload_id: t, config_revision: 0, values: {}, fields: [], trace: s, duration_ms: s.reduce((l, i) => l + i.duration_ms, 0), tokens: s.reduce((l, i) => l + i.input_tokens + i.output_tokens, 0), status: "failed", error: a?.error };
     }
   },
   async evaluate(e) {

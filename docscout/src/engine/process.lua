@@ -26,6 +26,33 @@ local function invalid(message: string): error
 end
 
 
+function M.validate_pages(pages: any, page_count: integer?): error?
+    if pages == nil then return nil end
+    if type(pages) ~= "table" then return invalid("pages must be an object with integer first and last pages") end
+    for key in pairs(pages) do
+        if key ~= "first" and key ~= "last" then return invalid("Unknown pages field: " .. tostring(key)) end
+    end
+    if type(pages.first) ~= "number" or math.tointeger(pages.first) == nil or pages.first < 1 then
+        return invalid("pages.first must be an integer >= 1")
+    end
+    if type(pages.last) ~= "number" or math.tointeger(pages.last) == nil or pages.last < pages.first then
+        return invalid("pages.last must be an integer >= pages.first")
+    end
+    if page_count ~= nil then
+        if page_count == 0 then return invalid("The document has no page information; pages requires a paginated document") end
+        if pages.last > page_count then return invalid("pages.last exceeds the document's page count (" .. page_count .. ")") end
+    end
+    return nil
+end
+
+
+function M.validate_document_pages(markdown: string, pages: any): error?
+    if pages == nil then return nil end
+    local count = 0
+    for _, marker in ipairs(doc2md.markers(markdown)) do count = math.max(count, marker.number) end
+    return M.validate_pages(pages, count)
+end
+
 -- The uploads content provider for one upload, opened as the caller.
 local function provider_for(upload_id: string): (any?, error?)
     local actor, scope = security.actor(), security.scope()
@@ -89,13 +116,14 @@ end
 -- Settings that change the processed copy; reading settings stay out. Models
 -- are named by the card a reference resolves to, so reassigning a class makes
 -- a new copy.
-function M.processing_key(retrieval: any, models: { [string]: string }): (string?, error?)
+function M.processing_key(retrieval: any, models: { [string]: string }, pages: any?): (string?, error?)
     local parts = {
         chunk_size = retrieval.chunk_size, overlap = retrieval.overlap,
         split_headings = retrieval.split_headings, keep_tables = retrieval.keep_tables,
         context = retrieval.context, embedding_model = models.embedding,
         context_model = retrieval.context == "generated" and models.context or "",
     }
+    if pages ~= nil then parts.pages = pages end
     return canonical_json.hash(parts)
 end
 
@@ -151,7 +179,9 @@ local function split(input: string, retrieval: any): ({ string }?, error?)
 end
 
 -- Chunks with section, heading path and page or slide range, markers removed.
-function M.chunk(markdown: string, retrieval: any): (any?, error?)
+function M.chunk(markdown: string, retrieval: any, pages: any?): (any?, error?)
+    local validation_err = M.validate_document_pages(markdown, pages)
+    if validation_err then return nil, validation_err end
     local sections = M.sections(markdown)
     local pieces: { any } = {}
     if retrieval.split_headings then
@@ -174,7 +204,7 @@ function M.chunk(markdown: string, retrieval: any): (any?, error?)
     end
     local chunks: { any } = {}
     local current: any = nil
-    local pages = 0
+    local page_count = 0
     for _, piece in ipairs(pieces) do
         local found = doc2md.markers(piece.text)
         local spans, offset, page = {}, 1, current and current.number or nil
@@ -190,7 +220,7 @@ function M.chunk(markdown: string, retrieval: any): (any?, error?)
             if first == nil or trim(piece.text:sub(1, found[1].start - 1)) == "" then first = found[1] end
             last = found[#found]
             current = last
-            for _, m in ipairs(found) do if m.number > pages then pages = m.number end end
+            for _, m in ipairs(found) do if m.number > page_count then page_count = m.number end end
         end
         local content = trim(doc2md.strip_markers(piece.text))
         if content ~= "" then
@@ -199,6 +229,43 @@ function M.chunk(markdown: string, retrieval: any): (any?, error?)
                 page_start = first and first.number or nil, page_end = last and last.number or nil,
             }
         end
+    end
+    local range_err = M.validate_pages(pages, page_count)
+    if range_err then return nil, range_err end
+    if pages ~= nil then
+        -- Include overlapping chunks with only their marked in-range spans.
+        -- Derive headings from selected text so removed headings cannot leak.
+        local selected, selected_sections, by_section = {}, {}, {}
+        for _, chunk in ipairs(chunks) do
+            local spans, body = {}, {}
+            for _, span in ipairs(chunk.page_spans) do
+                if span.page and span.page >= pages.first and span.page <= pages.last then
+                    spans[#spans + 1] = span
+                    body[#body + 1] = span.text
+                end
+            end
+            if #spans > 0 then
+                chunk.content, chunk.page_spans = table.concat(body, "\n"), spans
+                chunk.page_start, chunk.page_end = spans[1].page, spans[#spans].page
+                chunk.ordinal = #selected + 1
+                selected[#selected + 1] = chunk
+                local section = by_section[chunk.section_id]
+                if not section then
+                    section = { id = chunk.section_id, body = {} }
+                    by_section[chunk.section_id] = section
+                    selected_sections[#selected_sections + 1] = section
+                end
+                section.body[#section.body + 1] = chunk.content
+            end
+        end
+        for _, section in ipairs(selected_sections) do
+            section.text = table.concat(section.body, "\n")
+            local heading = M.sections(section.text)[1]
+            section.title, section.path, section.level = heading.title, heading.path, heading.level
+            section.body = nil
+        end
+        for _, chunk in ipairs(selected) do chunk.heading_path = by_section[chunk.section_id].path end
+        chunks, sections = selected, selected_sections
     end
     local outline: { any } = {}
     local by_id: { [string]: any } = {}
@@ -216,7 +283,7 @@ function M.chunk(markdown: string, retrieval: any): (any?, error?)
     end
     local kept = {}
     for _, entry in ipairs(outline) do if entry.chunk_start then kept[#kept + 1] = entry end end
-    return { chunks = chunks, outline = kept, page_count = pages }, nil
+    return { chunks = chunks, outline = kept, page_count = page_count }, nil
 end
 
 local function context_schema(count: integer): any
@@ -253,7 +320,9 @@ local function contexts(meter: any, retrieval: any, models: { [string]: string }
 end
 
 -- Builds or reuses the processed document and updates the read-step state.
-function M.ensure(component_id: string, owner_id: string, upload_id: string, retrieval: any, step: any, extractor_window: string?): (any?, error?)
+function M.ensure(component_id: string, owner_id: string, upload_id: string, retrieval: any, step: any, extractor_window: string?, pages: any?): (any?, error?)
+    local validation_err = M.validate_pages(pages)
+    if validation_err then return nil, validation_err end
     local content, err = M.content(upload_id)
     if err then return nil, err end
     local models = {}
@@ -265,18 +334,20 @@ function M.ensure(component_id: string, owner_id: string, upload_id: string, ret
         if context_lookup_err then return nil, context_lookup_err end
         models.context = tostring(writer.name)
     end
-    local key, key_err = M.processing_key(retrieval, models)
+    local key, key_err = M.processing_key(retrieval, models, pages)
     if key_err then return nil, key_err end
     local existing, find_err = store.find(component_id, owner_id, upload_id, content.checksum, key :: string)
     if find_err then return nil, find_err end
     if existing then
+        local range_err = M.validate_pages(pages, existing.page_count)
+        if range_err then return nil, range_err end
         step.message = "Reused the processed copy (" .. existing.chunk_count .. " chunks)"
         existing.embedding_model = models.embedding
         return existing, nil
     end
-    local chunked, chunk_err = M.chunk(content.markdown, retrieval)
+    local chunked, chunk_err = M.chunk(content.markdown, retrieval, pages)
     if chunk_err then return nil, chunk_err end
-    local chunks, outline, pages = chunked.chunks, chunked.outline, chunked.page_count
+    local chunks, outline, page_count = chunked.chunks, chunked.outline, chunked.page_count
     if #chunks == 0 then return nil, invalid("the upload has no text to read") end
     local context_err = contexts(step.meter, retrieval, models, chunks, content.filename)
     if context_err then return nil, context_err end
@@ -291,11 +362,11 @@ function M.ensure(component_id: string, owner_id: string, upload_id: string, ret
     for _, c in ipairs(chunks) do tokens = tokens + math.ceil(#c.content / M.CHARS_PER_TOKEN) end
     local id, save_err = store.save({
         component_id = component_id, owner_id = owner_id, upload_id = upload_id, checksum = content.checksum, processing_key = key,
-        outline = outline, page_count = pages, tokens = tokens, expires_at = expires_at,
+        outline = outline, page_count = page_count, tokens = tokens, expires_at = expires_at,
     }, chunks)
     if save_err then return nil, save_err end
-    step.message = "Processed " .. #chunks .. " chunks in " .. #outline .. " sections" .. (pages > 0 and (" over " .. pages .. " pages") or "")
-    return { id = id, outline = outline, page_count = pages, chunk_count = #chunks, tokens = tokens, embedding_model = models.embedding }, nil
+    step.message = "Processed " .. #chunks .. " chunks in " .. #outline .. " sections" .. (page_count > 0 and (" over " .. page_count .. " pages") or "")
+    return { id = id, outline = outline, page_count = page_count, chunk_count = #chunks, tokens = tokens, embedding_model = models.embedding }, nil
 end
 
 return M

@@ -17,7 +17,7 @@ const callers:Record<Run['caller'],{label:string;icon:string}>={ui:{label:'Test 
    <thead><tr><th>Started</th><th>From</th><th>Status</th><th class="num">Time</th><th class="num">Tokens</th><th>Expires</th></tr></thead>
    <tbody><template v-for="run in runs" :key="run.id"><tr>
     <td><button type="button" class="case-toggle" :aria-label="`Show values for run ${run.id}`" :aria-expanded="open===run.id" @click="open=open===run.id?undefined:run.id"><Icon :icon="open===run.id?'tabler:chevron-down':'tabler:chevron-right'"/>{{when(run.created_at)}}</button></td>
-    <td><span class="caller"><Icon :icon="callers[run.caller].icon"/>{{callers[run.caller].label}}</span></td>
+    <td><span class="caller"><Icon :icon="callers[run.caller].icon"/>{{callers[run.caller].label}}</span><span v-if="run.result.page_range" class="muted"> · Pages {{run.result.page_range.first}}–{{run.result.page_range.last}}</span></td>
     <td><span class="badge" :data-status="run.status">{{run.status==='completed'?'Completed':run.status==='partial'?'Partial':'Failed'}}</span></td>
     <td class="num" data-label="Time">{{(run.duration_ms/1000).toFixed(1)}}s</td>
     <td class="num" data-label="Tokens">{{Number(run.tokens).toLocaleString()}}</td>

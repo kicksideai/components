@@ -52,6 +52,52 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Document processing", function()
+        test.it("clips boundary chunks and outline to inclusive real pages before indexing", function()
+            local markdown = "<!-- page 1 -->\n# Outside\nExcluded first\n<!-- page 2 -->\n# Selected\nIncluded second\n<!-- page 3 -->\nIncluded third\n<!-- page 4 -->\n# Outside end\nExcluded fourth"
+            for _, headings in ipairs({ true, false }) do
+                local doc = assert(process.chunk(markdown, retrieval({ split_headings = headings }), { first = 2, last = 3 }))
+                test.eq(doc.page_count, 4)
+                local body = {}
+                for _, c in ipairs(doc.chunks) do
+                    test.is_true(c.page_start >= 2); test.is_true(c.page_end <= 3)
+                    test.eq(c.ordinal, #body + 1)
+                    body[#body + 1] = c.content
+                    for _, span in ipairs(c.page_spans) do test.is_true(span.page >= 2 and span.page <= 3) end
+                end
+                local joined = table.concat(body, "\n")
+                test.is_nil(joined:find("Excluded", 1, true))
+                test.is_true(joined:find("Included second", 1, true) ~= nil)
+                test.is_true(joined:find("Included third", 1, true) ~= nil)
+                for _, section in ipairs(doc.outline) do
+                    test.is_true(section.page_start >= 2); test.is_true(section.page_end <= 3)
+                    test.is_nil(section.title:find("Outside", 1, true))
+                end
+            end
+            local single = assert(process.chunk(markdown, retrieval({ split_headings = false }), { first = 3, last = 3 }))
+            test.eq(#single.chunks, 1); test.eq(single.chunks[1].content, "Included third")
+            test.eq(shapes.quote_location(single.chunks[1], "Included third").page, 3)
+        end)
+        test.it("rejects invalid ranges and documents without page information", function()
+            for _, pages in ipairs({ false, "2-3", {}, { first = 0, last = 1 }, { first = 2, last = 1 },
+                { first = 1.5, last = 2 }, { first = 1, last = 2.5 }, { first = "1", last = 2 },
+                { first = 1, last = 5 }, { first = 1, last = 1, extra = true } }) do
+                local doc, err = process.chunk("<!-- page 1 -->\nPage one\n<!-- page 2 -->\nPage two", retrieval(), pages)
+                test.is_nil(doc); test.not_nil(err); test.is_true(errors.is(err, errors.INVALID), tostring(err))
+            end
+            local doc, err = process.chunk("# Plain text\nNo page markers", retrieval(), { first = 1, last = 1 })
+            test.is_nil(doc); test.is_true(errors.is(err, errors.INVALID))
+            test.is_true(tostring(err):find("page information", 1, true) ~= nil, tostring(err))
+        end)
+        test.it("keeps the omitted-range document and processing key identical", function()
+            local full = assert(process.chunk(MARKDOWN, retrieval()))
+            test.eq(json.encode(full), json.encode(assert(process.chunk(MARKDOWN, retrieval(), nil))))
+            local models = { embedding = "fixture/embedder" }
+            local base = assert(process.processing_key(retrieval(), models))
+            test.eq(base, assert(process.processing_key(retrieval(), models, nil)))
+            local range = assert(process.processing_key(retrieval(), models, { first = 1, last = 1 }))
+            test.is_true(range ~= base)
+            test.is_true(range ~= assert(process.processing_key(retrieval(), models, { first = 2, last = 2 })))
+        end)
         test.it("builds sections from headings outside code fences with nested paths", function()
             local sections = process.sections(MARKDOWN)
             local titles = {}

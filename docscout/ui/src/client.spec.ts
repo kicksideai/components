@@ -5,6 +5,14 @@ import {newConfig} from './config'
 const api=vi.hoisted(()=>({get:vi.fn(),post:vi.fn(),put:vi.fn(),delete:vi.fn()}))
 vi.mock('@wippy-fe/proxy',()=>({api}))
 describe('Docscout client',()=>{
+ it('passes an optional page range and keeps omitted-range request bodies unchanged',async()=>{
+  api.post.mockResolvedValue({data:{run_id:'r'}})
+  const pages={first:2,last:4}
+  await client.run('reader','upload',pages)
+  expect(api.post).toHaveBeenLastCalledWith('/api/v1/docscout/reader/run',{upload_id:'upload',pages})
+  await client.run('reader','upload')
+  expect(api.post).toHaveBeenLastCalledWith('/api/v1/docscout/reader/run',{upload_id:'upload'})
+ })
  it('passes filters and opaque cursors to the registered list endpoint',async()=>{
   const params={filter:'invoice totals',cursor:'opaque/+==',limit:25}
   const page={success:true,items:[],next_cursor:'next/+=='}

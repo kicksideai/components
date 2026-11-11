@@ -8,7 +8,7 @@ local ai = require("ai")
 local stages = require("stages")
 local store = require("store")
 
-local MIGRATIONS = { "01_docscout", "02_built_outline" }
+local MIGRATIONS = { "01_docscout", "02_built_outline", "03_page_ranges" }
 
 local function apply(name: string, direction: string, expected: integer?)
     local result, err = funcs.call("kickside.docscout.migrations:" .. name, {
@@ -98,11 +98,55 @@ return { run = test.run_cases(function()
             end)
             local restore=assert(registry.overlay("app:migration_test")):changes();restore:delete(entry.id)
             local _,restore_err=restore:apply();test.is_nil(restore_err,tostring(restore_err))
+            apply("03_page_ranges", "up")
             migrate("down")
             if dialect=="postgres" then
                 source=assert(sql.get("app:db"));assert(source:execute("DROP SCHEMA docscout_migration_fixture CASCADE"));source:release()
             end
             if not ok then error(failure) end
+        end)
+        test.it("preserves populated runs, cases and snapshots through the range migration and rollback", function()
+            local source = assert(sql.get("app:db"))
+            local dialect = assert(source:type())
+            if dialect == "postgres" then assert(source:execute("CREATE SCHEMA docscout_migration_fixture")) end
+            source:release()
+            apply("01_docscout", "up");apply("02_built_outline", "up")
+            local db
+            db = assert(sql.get("app:migration_db"))
+            assert(db:execute([[INSERT INTO kickside_docscout_runs
+                (id,component_id,user_id,upload_id,caller,status,config_revision,result,trace,duration_ms,tokens,created_at,expires_at)
+                VALUES ('run','extractor','user','upload','ui','completed',1,'{"values":{"total":42}}','[]',1,2,'2026-01-01','2026-01-02')]]))
+            assert(db:execute([[INSERT INTO kickside_docscout_cases (id,component_id,upload_id,upload_name,expected_values,created_at)
+                VALUES ('case','extractor','upload','invoice.pdf','{"total":42}','2026-01-01')]]))
+            assert(db:execute([[INSERT INTO kickside_docscout_eval_results
+                (eval_id,case_id,upload_name,upload_id,expected_values,status,job_id,next_check_at)
+                VALUES ('evaluation','case','invoice.pdf','upload','{"total":42}','queued','job','2026-01-01')]]))
+            db:release()
+            for _ = 1, 2 do
+                apply("03_page_ranges", "up")
+                apply("03_page_ranges", "up", 0)
+                db = assert(sql.get("app:migration_db"))
+                for _, name in ipairs({"cases", "eval_results"}) do
+                    local rows = assert(db:query("SELECT expected_values,pages FROM kickside_docscout_" .. name))
+                    test.eq(#rows, 1);test.eq(rows[1].expected_values, '{"total":42}');test.is_nil(rows[1].pages)
+                    assert(db:execute("UPDATE kickside_docscout_" .. name .. [[ SET pages='{"first":2,"last":3}']]))
+                    test.eq(assert(db:query("SELECT pages FROM kickside_docscout_" .. name))[1].pages, '{"first":2,"last":3}')
+                end
+                test.eq(assert(db:query("SELECT result FROM kickside_docscout_runs"))[1].result, '{"values":{"total":42}}')
+                db:release()
+                apply("03_page_ranges", "down")
+                db = assert(sql.get("app:migration_db"))
+                for _, name in ipairs({"cases", "eval_results"}) do
+                    test.eq(assert(db:query("SELECT expected_values FROM kickside_docscout_" .. name))[1].expected_values, '{"total":42}')
+                end
+                db:release()
+            end
+            apply("03_page_ranges", "up")
+            migrate("down")
+            if dialect == "postgres" then
+                source = assert(sql.get("app:db"))
+                assert(source:execute("DROP SCHEMA docscout_migration_fixture CASCADE")); source:release()
+            end
         end)
         test.it("creates, drops and recreates all owned tables in the bound dialect", function()
             local source = assert(sql.get("app:db"))

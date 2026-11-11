@@ -622,18 +622,30 @@ entries:
     stages: kickside.docscout.engine:stages
 - name: fixture_success_generate
   kind: function.lua
+  modules: [json, hash]
+  imports:
+    canonical_json: kickside.contract:canonical_json
   source: file://fixture_success.lua
   method: generate
 - name: fixture_success_structured
   kind: function.lua
+  modules: [json, hash]
+  imports:
+    canonical_json: kickside.contract:canonical_json
   source: file://fixture_success.lua
   method: structured
 - name: fixture_success_embed
   kind: function.lua
+  modules: [json, hash]
+  imports:
+    canonical_json: kickside.contract:canonical_json
   source: file://fixture_success.lua
   method: embed
 - name: fixture_success_status
   kind: function.lua
+  modules: [json, hash]
+  imports:
+    canonical_json: kickside.contract:canonical_json
   source: file://fixture_success.lua
   method: status
 - name: fixture_success_driver
@@ -816,7 +828,7 @@ entries:
     comment: Host access to the fixture model catalog and provider binding.
   groups: [app:runtime_members]
   policy:
-    resources: ['app:fixture_success_*', 'app:fixture_llm_*', app:fixture_small_model, app:fixture_refusal_model]
+    resources: ['app:fixture_success_*', 'app:fixture_llm_*', app:fixture_small_model, app:fixture_refusal_model, app:fixture_range_model]
     actions: [registry.get, registry.find, contract.open, funcs.call]
     effect: allow
 - name: runtime_methods
@@ -1453,3 +1465,50 @@ entries:
           value: 8 mars 2026
           confidence: 1
           evidence: [{chunk: 1, quote: 'The total amount is 1250.'}]
+
+- name: fixture_range_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-range
+    capabilities: [generate, structured_output, embed]
+    class: [docscout-range]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  dimensions: 512
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-sampling
+    options: {absent: [Excluded]}
+- name: page_range_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_page_range, group: Docscout}
+  source: file://page_range_test.lua
+  method: run
+  modules: [json, uuid, registry]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    process: kickside.docscout.engine:process
+    store: kickside.docscout.persist:store
+    stages: kickside.docscout.engine:stages
+    shapes: kickside.docscout.engine:shapes
+    doctools: kickside.docscout.engine:doctools
+    ai: kickside.docscout.engine:ai
+
+- name: fixture_success_identity_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-identity
+    capabilities: [generate, structured_output, embed]
+    class: [docscout-identity]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  dimensions: 512
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {request_fingerprint: true}
