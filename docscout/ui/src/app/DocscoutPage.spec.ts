@@ -29,6 +29,17 @@ describe('Docscout manage surface',()=>{
   expect(wrapper.emitted('save')?.at(-1)?.[0]).toMatchObject({title:'Next draft',expected_revision:8})
   wrapper.unmount()
  })
+ it('saves existing configurations without adding omitted temperatures',async()=>{
+  const legacy=snapshot()
+  for(const stage of ['map','scout','extract','verify'] as const)delete legacy.config!.stages[stage].temperature
+  const original=structuredClone(legacy.config)
+  const wrapper=mount(DocscoutPage,{props:{snapshot:legacy}})
+  await details(wrapper);await nameInput(wrapper).setValue('Renamed reader')
+  await saveButton(wrapper).trigger('click')
+  expect((wrapper.emitted('save')?.[0][0] as {config:unknown}).config).toEqual(original)
+  expect(legacy.config).toEqual(original)
+  wrapper.unmount()
+ })
  it('saves all edited configuration with its loaded revision',async()=>{
   const wrapper=mount(DocscoutPage,{props:{snapshot:snapshot()}})
   await details(wrapper)

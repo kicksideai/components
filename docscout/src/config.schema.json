@@ -212,7 +212,8 @@
               "type": "number",
               "minimum": 0,
               "maximum": 2,
-              "description": "Sampling temperature for this stage's model calls. Unset uses the provider default."
+              "default": 0,
+              "description": "Sampling temperature for this stage's model calls. Defaults to 0; unset uses the provider default."
             },
             "max_tokens": {
               "type": "integer",
@@ -231,7 +232,8 @@
             "enabled": true,
             "model": "class:fast",
             "outline": "find_or_build",
-            "section_summaries": false
+            "section_summaries": false,
+            "temperature": 0
           }
         },
         "prefetch": {
@@ -378,7 +380,8 @@
               "type": "number",
               "minimum": 0,
               "maximum": 2,
-              "description": "Sampling temperature for the built-in loop and agent model calls; a selected agent uses its own settings. Unset uses the provider default."
+              "default": 0,
+              "description": "Sampling temperature for the built-in loop and agent model calls; a selected agent uses its own settings. Defaults to 0; unset uses the provider default."
             }
           },
           "required": [
@@ -408,7 +411,8 @@
               "semantic_search",
               "read_section",
               "read_outline"
-            ]
+            ],
+            "temperature": 0
           }
         },
         "deep": {
@@ -541,7 +545,8 @@
               "type": "number",
               "minimum": 0,
               "maximum": 2,
-              "description": "Sampling temperature for this stage's model calls. Unset uses the provider default."
+              "default": 0,
+              "description": "Sampling temperature for this stage's model calls. Defaults to 0; unset uses the provider default."
             }
           },
           "required": [
@@ -552,7 +557,8 @@
           "default": {
             "model": "class:fast",
             "max_output_tokens": 4096,
-            "max_fields_per_call": 20
+            "max_fields_per_call": 20,
+            "temperature": 0
           }
         },
         "verify": {
@@ -581,7 +587,8 @@
               "type": "number",
               "minimum": 0,
               "maximum": 2,
-              "description": "Sampling temperature for this stage's model calls. Unset uses the provider default."
+              "default": 0,
+              "description": "Sampling temperature for this stage's model calls. Defaults to 0; unset uses the provider default."
             },
             "max_tokens": {
               "type": "integer",
@@ -600,7 +607,8 @@
             "enabled": false,
             "model": "class:fast",
             "check_quotes": true,
-            "check_support": true
+            "check_support": true,
+            "temperature": 0
           }
         }
       },
@@ -617,7 +625,8 @@
           "enabled": true,
           "model": "class:fast",
           "outline": "find_or_build",
-          "section_summaries": false
+          "section_summaries": false,
+          "temperature": 0
         },
         "prefetch": {
           "enabled": true,
@@ -638,7 +647,8 @@
             "semantic_search",
             "read_section",
             "read_outline"
-          ]
+          ],
+          "temperature": 0
         },
         "deep": {
           "enabled": true,
@@ -656,13 +666,15 @@
         "extract": {
           "model": "class:fast",
           "max_output_tokens": 4096,
-          "max_fields_per_call": 20
+          "max_fields_per_call": 20,
+          "temperature": 0
         },
         "verify": {
           "enabled": false,
           "model": "class:fast",
           "check_quotes": true,
-          "check_support": true
+          "check_support": true,
+          "temperature": 0
         }
       }
     },
@@ -801,7 +813,8 @@
         "enabled": true,
         "model": "class:fast",
         "outline": "find_or_build",
-        "section_summaries": false
+        "section_summaries": false,
+        "temperature": 0
       },
       "prefetch": {
         "enabled": true,
@@ -822,7 +835,8 @@
           "semantic_search",
           "read_section",
           "read_outline"
-        ]
+        ],
+        "temperature": 0
       },
       "deep": {
         "enabled": true,
@@ -840,13 +854,15 @@
       "extract": {
         "model": "class:fast",
         "max_output_tokens": 4096,
-        "max_fields_per_call": 20
+        "max_fields_per_call": 20,
+        "temperature": 0
       },
       "verify": {
         "enabled": false,
         "model": "class:fast",
         "check_quotes": true,
-        "check_support": true
+        "check_support": true,
+        "temperature": 0
       }
     },
     "retrieval": {

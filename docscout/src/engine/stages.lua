@@ -3,6 +3,7 @@
 -- returns what the next stages need. Evidence is a pool of chunks keyed by
 -- ordinal; the model sees chunks as [C<ordinal>].
 local json = require("json")
+local canonical_json = require("canonical_json")
 local ai = require("ai")
 local store = require("store")
 local doctools = require("doctools")
@@ -51,6 +52,9 @@ end
 -- Chunks per outlining call, so a long document is outlined in several prompts.
 local OUTLINE_WINDOW = 150
 local PREVIEW_CHARS = 160
+-- Version of the outlining prompt, schema and previews; a change to any of
+-- them increments it, so outlines built before are built again.
+local OUTLINE_PROMPT_VERSION = 1
 
 -- Consecutive windows of chunk previews, each with its first and last ordinal.
 function M.outline_windows(chunks: { any }, size: integer): { any }
@@ -94,6 +98,45 @@ local function select_schema(outline: { any }, fields: { any }): any
     return { type = "object", additionalProperties = false, required = required, properties = properties }
 end
 
+-- Sections the map model finds in a processed document, window by window.
+local function build_outline(run: any, step: any, cfg: any, sampling: (string, { string }?, { integer }?) -> any): ({ any }?, error?)
+    local chunks, err = store.all_chunks(run.document.id)
+    if err then return nil, err end
+    -- One section per start chunk, in order; chunks before the first start form their own section.
+    local by_start, previous = {}, nil
+    for _, w in ipairs(M.outline_windows(chunks, OUTLINE_WINDOW)) do
+        local carried = previous and ("The passages continue the section \"" .. previous .. "\" unless a new section starts at chunk " .. w.first .. ".\n\n") or ""
+        local built, build_err = ai.structured(step.meter, cfg.model, outline_schema(w.first, w.last),
+            system("You divide a document into its logical sections. Give each section a short title and the chunk number where it starts, in order."),
+            carried .. w.preview, sampling("outline", shapes.paths(run.config.fields), w.sources))
+        if build_err then return nil, build_err end
+        for _, s in ipairs(built.sections) do
+            local start = math.tointeger(s.first_chunk) :: integer
+            if not by_start[start] then by_start[start] = trim(s.title) end
+        end
+        for n = w.last, w.first, -1 do if by_start[n] then previous = by_start[n]; break end end
+    end
+    if not by_start[1] then by_start[1] = "Start of document" end
+    local sections = {}
+    for start = 1, #chunks do
+        if by_start[start] then
+            sections[#sections + 1] = { id = "g" .. (#sections + 1), level = 1, title = by_start[start], path = by_start[start], chunk_start = start, tokens = 0 }
+        end
+    end
+    for i, s in ipairs(sections) do
+        s.chunk_end = (sections[i + 1] and sections[i + 1].chunk_start - 1) or #chunks
+        for n = s.chunk_start, s.chunk_end do
+            local c = chunks[n]
+            if c then
+                s.tokens = s.tokens + math.ceil(#c.content / process.CHARS_PER_TOKEN)
+                if c.page_start and not s.page_start then s.page_start = c.page_start end
+                if c.page_end then s.page_end = c.page_end end
+            end
+        end
+    end
+    return sections, nil
+end
+
 function M.map(run: any, step: any): error?
     local cfg = run.config.stages.map
     local function sampling(stage: string, fields: { string }?, sources: { integer }?): any
@@ -103,42 +146,30 @@ function M.map(run: any, step: any): error?
     -- A usable table of contents has at least three sections.
     local headed = #outline >= 3
     if cfg.outline == "build" or not headed then
-        local chunks, err = store.all_chunks(run.document.id)
-        if err then return err end
-        -- One section per start chunk, in order; chunks before the first start form their own section.
-        local by_start, previous = {}, nil
-        for _, w in ipairs(M.outline_windows(chunks, OUTLINE_WINDOW)) do
-            local carried = previous and ("The passages continue the section \"" .. previous .. "\" unless a new section starts at chunk " .. w.first .. ".\n\n") or ""
-            local built, build_err = ai.structured(step.meter, cfg.model, outline_schema(w.first, w.last),
-                system("You divide a document into its logical sections. Give each section a short title and the chunk number where it starts, in order."),
-                carried .. w.preview, sampling("outline", shapes.paths(run.config.fields), w.sources))
+        -- A built outline is kept on the processed copy under the identity of
+        -- what built it; outline "build" builds it again.
+        local card, card_err = ai.resolve(cfg.model)
+        if card_err then return card_err end
+        local identity, identity_err = canonical_json.hash({ model = card, requested_model = cfg.model, temperature = cfg.temperature,
+            max_tokens = cfg.max_tokens, prompt = OUTLINE_PROMPT_VERSION, window = OUTLINE_WINDOW, preview_chars = PREVIEW_CHARS })
+        if identity_err then return identity_err end
+        local kept: { any }? = nil
+        if cfg.outline ~= "build" then
+            local found, kept_err = store.built_outline(run.document.id, identity :: string)
+            if kept_err then return kept_err end
+            kept = found
+        end
+        if kept then
+            run.document.outline = kept
+            step.message = "Reused the outline of " .. #kept .. " sections built for this copy"
+        else
+            local sections, build_err = build_outline(run, step, cfg, sampling)
             if build_err then return build_err end
-            for _, s in ipairs(built.sections) do
-                local start = math.tointeger(s.first_chunk) :: integer
-                if not by_start[start] then by_start[start] = trim(s.title) end
-            end
-            for n = w.last, w.first, -1 do if by_start[n] then previous = by_start[n]; break end end
+            local keep_err = store.keep_built_outline(run.document.id, identity :: string, sections :: { any })
+            if keep_err then return keep_err end
+            run.document.outline = sections
+            step.message = "Built an outline of " .. #(sections :: { any }) .. " sections"
         end
-        if not by_start[1] then by_start[1] = "Start of document" end
-        local sections = {}
-        for start = 1, #chunks do
-            if by_start[start] then
-                sections[#sections + 1] = { id = "g" .. (#sections + 1), level = 1, title = by_start[start], path = by_start[start], chunk_start = start, tokens = 0 }
-            end
-        end
-        for i, s in ipairs(sections) do
-            s.chunk_end = (sections[i + 1] and sections[i + 1].chunk_start - 1) or #chunks
-            for n = s.chunk_start, s.chunk_end do
-                local c = chunks[n]
-                if c then
-                    s.tokens = s.tokens + math.ceil(#c.content / process.CHARS_PER_TOKEN)
-                    if c.page_start and not s.page_start then s.page_start = c.page_start end
-                    if c.page_end then s.page_end = c.page_end end
-                end
-            end
-        end
-        run.document.outline = sections
-        step.message = "Built an outline of " .. #sections .. " sections"
     else
         step.message = "Used " .. #outline .. " sections from the document's headings"
     end
@@ -711,6 +742,7 @@ function M.verify(run: any, step: any): error?
         end
     end
     local support = {}
+    local support_error: error? = nil
     if cfg.check_support then
         local found, lines_out, sources, seen = {}, {}, {}, {}
         for _, v in ipairs(run.values) do
@@ -729,8 +761,7 @@ function M.verify(run: any, step: any): error?
             local result, err = ai.structured(step.meter, cfg.model, support_schema(found),
                 system("For each field, decide whether its quotes support its value exactly. Return one check per field."),
                 table.concat(lines_out, "\n"), { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(found), sources = sources })
-            if err then return err end
-            support = result
+            if err then support_error = err else support = result end
         end
     end
     local failed = 0
@@ -750,7 +781,8 @@ function M.verify(run: any, step: any): error?
         if cfg.check_quotes and not v.missing and not v.failed and not v.quotes_found then reject("quote_not_found", "A quote is not in the document") end
         if cfg.check_support and not v.missing and not v.failed then
             local check = support[shapes.path(v)]
-            if not check then reject("support_no_verdict", "The support check gave no verdict")
+            if support_error then reject("support_no_verdict", "The support check gave no verdict: " .. tostring(support_error))
+            elseif not check then reject("support_no_verdict", "The support check gave no verdict")
             elseif not check.supported then reject("support_rejected", check.reason) end
         end
         v.verified = not v.failed and #reasons == 0
@@ -759,7 +791,7 @@ function M.verify(run: any, step: any): error?
         if not v.verified then failed = failed + 1 end
     end
     step.message = failed == 0 and "All values check out" or (failed .. (failed == 1 and " value needs" or " values need") .. " review")
-    return nil
+    return support_error
 end
 
 return M
