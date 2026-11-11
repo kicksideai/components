@@ -73,10 +73,10 @@ local function section_ids(outline: { any }): { string }
     return ids
 end
 
-local function summary_schema(outline: { any }): any
-    return { type = "object", additionalProperties = false, required = { "summaries" }, properties = {
-        summaries = { type = "array", maxItems = #outline, items = { type = "object", additionalProperties = false, required = { "section_id", "summary" },
-            properties = { section_id = { type = "string", enum = section_ids(outline) }, summary = { type = "string" } } } } } }
+
+-- One required summary per section id, so a constrained decoder cannot leave a section out.
+function M.summary_schema(outline: { any }): any
+    return shapes.keyed(section_ids(outline), { type = "string" })
 end
 
 -- One required property per field path, each a list of at least one existing
@@ -148,11 +148,12 @@ function M.map(run: any, step: any): error?
             for _, c in ipairs(chunks) do body[#body + 1] = c.content end
             listing[#listing + 1] = "## " .. s.id .. " " .. s.path .. "\n" .. table.concat(body, "\n"):sub(1, 1500)
         end
-        local result, err = ai.structured(step.meter, cfg.model, summary_schema(run.document.outline),
+        local result, err = ai.structured(step.meter, cfg.model, M.summary_schema(run.document.outline),
             system("Summarize each section in one sentence, naming what it covers. Return one summary per section id."), table.concat(listing, "\n\n"), sampling)
         if err then return err end
-        for _, item in ipairs(result.summaries) do
-            for _, s in ipairs(run.document.outline) do if s.id == item.section_id then s.summary = trim(item.summary) end end
+        for _, s in ipairs(run.document.outline) do
+            local summary = trim(tostring(result[s.id] or ""))
+            s.summary = summary ~= "" and summary or nil
         end
     end
     local scoped = {}
@@ -207,20 +208,20 @@ function M.prefetch(run: any, step: any): error?
 end
 
 -- The scout names, per field, the passages holding its evidence; the engine
--- retains passages cited by a field.
-local function scout_schema(cfg: any, fields: { any }, pool: { any }): any
+-- retains passages cited by a field. Evidence and notes hold one required
+-- entry per field, so a constrained decoder cannot leave a field out; an
+-- empty list or note says the scout found none for that field.
+function M.scout_schema(cfg: any, fields: { any }, pool: { any }): any
     local names = {}
     for _, f in ipairs(fields) do names[#names + 1] = shapes.path(f) end
     local chunk = shapes.passage_ref(pool)
     return { type = "object", additionalProperties = false, required = { "confidence", "evidence", "drop", "queries", "notes" }, properties = {
         confidence = { type = "number", minimum = 0, maximum = 1 },
-        evidence = { type = "array", maxItems = #fields, items = { type = "object", additionalProperties = false, required = { "field", "chunks" },
-            properties = { field = { type = "string", enum = names }, chunks = { type = "array", maxItems = #pool, items = chunk } } } },
+        evidence = shapes.keyed(names, { type = "array", maxItems = #pool, items = chunk }),
         drop = { type = "array", maxItems = #pool, items = chunk },
         queries = { type = "array", maxItems = cfg.max_extra_queries, items = { type = "object", additionalProperties = false, required = { "field", "query" },
             properties = { field = { type = "string", enum = names }, query = { type = "string" } } } },
-        notes = { type = "array", maxItems = #fields, items = { type = "object", additionalProperties = false, required = { "field", "note" },
-            properties = { field = { type = "string", enum = names }, note = { type = "string" } } } } } }
+        notes = shapes.keyed(names, { type = "string" }) } }
 end
 
 -- Notes as prompt lines. A note names its field, or covers the document as a
@@ -258,8 +259,9 @@ end
 
 local SCOUT_SYSTEM = system([[You review evidence gathered from one document before values are extracted.
 Rate from 0 to 1 how confident you are that the passages contain every field's value. For each field, list the chunk numbers
-whose passages state or help determine its value. List chunk numbers that serve no field as noise. Propose focused search
-queries for fields whose evidence is missing or weak, and leave short notes about where each value is or what to watch for.
+whose passages state or help determine its value. List chunk numbers that serve no field as noise. Give every field an entry, empty
+when no passage serves it. Propose focused search queries for fields whose evidence is missing or weak, and leave a short note per field
+about where its value is or what to watch for (empty when there is nothing to note).
 Do not extract values. Chunk numbers are the numbers after C, without the C.]])
 
 -- Tool calls an agent scout may make: queries per round over its rounds.
@@ -310,7 +312,7 @@ function M.scout(run: any, step: any): error?
         rounds = rounds + 1
         local scout_text, scout_err = M.scout_input(run, fields)
         if scout_err then return scout_err end
-        local result, err = ai.structured(step.meter, cfg.model, scout_schema(cfg, fields, ordered(run.pool)), SCOUT_SYSTEM,
+        local result, err = ai.structured(step.meter, cfg.model, M.scout_schema(cfg, fields, ordered(run.pool)), SCOUT_SYSTEM,
             scout_text :: string, { max_tokens = cfg.max_tokens, temperature = cfg.temperature })
         if err then return err end
         run.confidence = tonumber(result.confidence) or 0
@@ -323,7 +325,14 @@ function M.scout(run: any, step: any): error?
             end
             shapes.prune(run.pool, result.drop, result.evidence, selected)
         end
-        if cfg.share_notes then for _, note in ipairs(result.notes) do run.notes[#run.notes + 1] = { field = note.field, text = note.note } end end
+        local uncited = 0
+        for _, f in ipairs(fields) do
+            local path = shapes.path(f)
+            if #result.evidence[path] == 0 then uncited = uncited + 1 end
+            local note = trim(tostring(result.notes[path]))
+            if cfg.share_notes and note ~= "" then run.notes[#run.notes + 1] = { field = path, text = note } end
+        end
+        step.uncited = uncited
         if rounds > cfg.max_rounds or run.confidence >= cfg.target_confidence or #result.queries == 0 then break end
         for i, q in ipairs(result.queries) do
             if i > cfg.max_extra_queries then break end
@@ -337,7 +346,8 @@ function M.scout(run: any, step: any): error?
         end
     end
     step.queries = queries_run
-    step.message = rounds .. (rounds == 1 and " round" or " rounds") .. " · confidence " .. math.floor(run.confidence * 100 + 0.5) .. "% · " .. run.pool.count .. " passages"
+    step.message = rounds .. (rounds == 1 and " round" or " rounds") .. " · confidence " .. math.floor(run.confidence * 100 + 0.5) .. "% · " .. run.pool.count .. " passages" ..
+        ((step.uncited or 0) > 0 and (" · " .. step.uncited .. (step.uncited == 1 and " field" or " fields") .. " without cited evidence") or "")
     return nil
 end
 
@@ -438,10 +448,12 @@ end
 -- the fields, so extraction reads less and cites tighter quotes.
 local HIGHLIGHT_EXCERPTS = 4
 
+-- One required entry per passage, keyed by its chunk number; an empty list
+-- says the passage holds nothing for the fields.
 function M.highlight_schema(batch: { any }): any
-    return { type = "object", additionalProperties = false, required = { "passages" }, properties = {
-        passages = { type = "array", maxItems = #batch, items = { type = "object", additionalProperties = false, required = { "chunk", "excerpts" },
-            properties = { chunk = shapes.passage_ref(batch), excerpts = { type = "array", maxItems = HIGHLIGHT_EXCERPTS, items = { type = "string" } } } } } } }
+    local keys = {}
+    for _, c in ipairs(batch) do keys[#keys + 1] = tostring(c.ordinal) end
+    return shapes.keyed(keys, { type = "array", maxItems = HIGHLIGHT_EXCERPTS, items = { type = "string" } })
 end
 local HIGHLIGHT_BATCH = 12
 
@@ -454,16 +466,14 @@ function M.highlight(run: any, step: any): error?
         local batch = {}
         for i = start, math.min(#chunks, start + HIGHLIGHT_BATCH - 1) do batch[#batch + 1] = chunks[i] end
         local result, err = ai.structured(step.meter, model, M.highlight_schema(batch),
-            system("For each passage, copy word for word the sentences that state or help determine any field's value. Return no excerpts for passages that do not."),
+            system("For each passage, keyed by its chunk number without the C, copy word for word the sentences that state or help determine any field's value. Return an empty list for passages that do not."),
             "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch),
             { temperature = retrieval.highlighter_temperature, max_tokens = retrieval.highlighter_max_tokens })
         if err then return err end
-        local excerpts = {}
-        for _, p in ipairs(result.passages) do excerpts[math.tointeger(tonumber(p.chunk)) or -1] = p.excerpts end
         for _, c in ipairs(batch) do
             -- Only excerpts that occur in the passage replace it, each as its own paragraph.
             local source, genuine = shapes.normalize(c.content), {}
-            for _, excerpt in ipairs(excerpts[c.ordinal] or {}) do
+            for _, excerpt in ipairs(result[tostring(c.ordinal)]) do
                 local q = shapes.normalize(excerpt)
                 if q ~= "" and source:find(q, 1, true) then genuine[#genuine + 1] = trim(excerpt) end
             end
@@ -629,14 +639,10 @@ end
 -- quote supports its value. The reply holds one required verdict per field
 -- path, so a constrained decoder cannot omit or repeat a field.
 local function support_schema(values: { any }): any
-    local properties, required = shapes.object(), {}
-    for _, v in ipairs(values) do
-        local path = shapes.path(v)
-        required[#required + 1] = path
-        properties[path] = { type = "object", additionalProperties = false, required = { "supported", "reason" },
-            properties = { supported = { type = "boolean" }, reason = { type = "string" } } }
-    end
-    return { type = "object", additionalProperties = false, required = required, properties = properties }
+    local paths = {}
+    for _, v in ipairs(values) do paths[#paths + 1] = shapes.path(v) end
+    return shapes.keyed(paths, { type = "object", additionalProperties = false, required = { "supported", "reason" },
+        properties = { supported = { type = "boolean" }, reason = { type = "string" } } })
 end
 
 function M.verify(run: any, step: any): error?

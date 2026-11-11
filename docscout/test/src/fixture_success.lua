@@ -37,6 +37,10 @@ end
 function M.structured(args: any): (any?, error?)
     if args.options and args.options.reply then
         local reply = args.options.reply
+        local properties = args.schema.properties
+        if args.options.legacy_reply and (properties.summaries or properties.passages or (properties.evidence and properties.evidence.type == "array")) then
+            reply = args.options.legacy_reply
+        end
         if args.schema.properties.checks then
             local checks = {}
             for field, verdict in pairs(reply) do
