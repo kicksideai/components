@@ -137,8 +137,9 @@ function M.query(text: string): Query
     return { lexical = text, semantic = text }
 end
 
--- How a model writes a search query.
-M.QUERY_RULE = "Put an exact identifier a passage must contain, such as a reference number, in double quotes; other numbers, dates and amounts in a query guide its meaning only."
+-- How a model writes a search query: retrieval matches its words and embeds
+-- its text, so a query is plain text.
+M.QUERY_RULE = "Write each query as a short natural-language phrase or a few key terms; a query is matched by its words and by its meaning, so regular expressions, wildcards, boolean operators and field descriptions copied whole only add noise. Put an exact identifier a passage must contain, such as a reference number, in double quotes; other numbers, dates and amounts in a query guide its meaning only."
 
 local function words(text: string, digits: boolean, out: { string })
     for word in text:gmatch("[%w\128-\255]+") do
