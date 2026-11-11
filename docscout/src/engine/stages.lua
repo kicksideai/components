@@ -569,6 +569,7 @@ the chunk number and an exact quote copied character for character from that chu
 -- notes only when its fields read the whole document.
 function M.extraction_calls(run: any): ({ any }?, error?)
     local limit = run.config.stages.extract.max_fields_per_call
+    local output = run.config.stages.extract.max_output_tokens
     local sets, order = {}, {}
     for _, f in ipairs(run.config.fields) do
         if run.field_errors and run.field_errors[shapes.path(f)] then goto continue_field end
@@ -590,12 +591,19 @@ function M.extraction_calls(run: any): ({ any }?, error?)
     local calls = {}
     for _, key in ipairs(order) do
         local set = sets[key]
-        for start = 1, #set.fields, limit do
-            local batch = {}
-            local names, notes = {}, {}
-            for i = start, math.min(#set.fields, start + limit - 1) do
-                batch[#batch + 1] = set.fields[i]; names[shapes.path(set.fields[i])] = true
+        -- Fields fill a call up to "fields per call" and while their expected replies fit the output limit.
+        local batches, current, expected = {}, {}, 0
+        for _, f in ipairs(set.fields) do
+            local cost = shapes.output_estimate(f)
+            if #current > 0 and (#current >= limit or expected + cost > output) then
+                batches[#batches + 1] = current; current, expected = {}, 0
             end
+            current[#current + 1] = f; expected = expected + cost
+        end
+        if #current > 0 then batches[#batches + 1] = current end
+        for _, batch in ipairs(batches) do
+            local names, notes = {}, {}
+            for _, f in ipairs(batch) do names[shapes.path(f)] = true end
             local passages = {}
             for _, c in ipairs(ordered(run.pool, paths(batch))) do
                 local allowed, err = visible(run, set.fields[1], c.ordinal)
