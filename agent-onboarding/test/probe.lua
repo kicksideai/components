@@ -4,7 +4,29 @@ local registry = require("registry")
 local agents = require("agents")
 local component = require("component")
 local security = require("security")
+local onboarding = require("onboarding")
+local component_types = require("component_types")
 local function run(op: string, input: any): any
+    if op == "onboard_memory_failure" then
+        local failing=onboarding.new({contract={get=function()
+            return {open=function()
+                return {create=function()
+                    return nil, errors.new({kind=errors.INTERNAL, message="memory service unavailable"})
+                end}
+            end}
+        end}})
+        local result, err=failing.create(input)
+        return {result=result, error=err and tostring(err), kind=err and err:kind()}
+    end
+    if op == "onboard" then
+        local result, err = onboarding.create(input)
+        return { result = result, error = err and tostring(err), kind = err and err:kind() }
+    end
+    if op == "memories" then
+        local rows, err = component.query({impl_ids={"kickside.memory:memory_store"}, meta={[component_types.OWNER_META_KEY]=security.actor():id()}, include={meta=true}, limit=100})
+        if err then error(tostring(err)) end
+        return rows
+    end
     if op == "resolve" then return { splash = splash.resolve() } end
     if op == "dismiss" then local ok, err = splash.mark_seen("first_agent"); return { ok = ok, error = err } end
     if op == "reopen" then local ok, err = splash.mark_unseen("first_agent"); return { ok = ok, error = err } end

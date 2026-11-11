@@ -21,3 +21,5 @@ wc-agent-trait-picker { display:block; min-width:0; }
 .model-config { display:block; min-width:0; }
 .error { color:var(--p-danger-600, var(--p-danger-500)); background:color-mix(in srgb,var(--p-danger-600, var(--p-danger-500)) 8%,transparent); border-radius:var(--kx-radius-10); padding:12px; }
 .actions { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; }
+
+.memory-choice { display:flex; align-items:center; gap:8px; }
