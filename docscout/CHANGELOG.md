@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/kicksideai/components/compare/docscout-v0.1.6...docscout-v0.1.7) (2026-11-11)
+
+
+### Bug Fixes
+
+* **docscout:** verify adjacent quotes with source provenance ([#80](https://github.com/kicksideai/components/issues/80)) ([ae89ae1](https://github.com/kicksideai/components/commit/ae89ae1e42b6454124c55530ff2b2ef02e600f53))
+
 ## [0.1.6](https://github.com/kicksideai/components/compare/docscout-v0.1.5...docscout-v0.1.6) (2026-11-11)
 
 
