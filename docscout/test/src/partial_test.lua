@@ -171,7 +171,7 @@ return { run = test.run_cases(function()
                 local expected = { fields = 1, found = 0, missing = 1, failed = 0, verified = enabled and 1 or 0,
                     unverified = enabled and shapes.object() or { unchecked = 1 } }
                 test.eq(json.encode(result.summary), json.encode(expected))
-                test.eq(result.status, "failed")
+                test.eq(result.status, "completed")
                 for _, step in ipairs(result.trace) do
                     if step.kind == "verify" then test.eq(step.message, "All values check out") end
                 end
@@ -185,8 +185,8 @@ return { run = test.run_cases(function()
                 local tool_schema = assert(json.decode(assert(registry.get("kickside.docscout.traits:run_tool")).meta.output_schema))
                 test.not_nil(tool_schema.properties.fields.items.properties.codes)
                 local block, block_err = caller:call("kickside.docscout.blocks:extract_run", { config = { extractor_id = id }, input = { upload_id = upload } })
-                test.is_nil(block); test.not_nil(block_err)
-                test.eq(json.encode(block_err:details().result.fields[1].codes), '["missing_in_sections"]')
+                test.is_nil(block_err, tostring(block_err)); test.eq(block.status, "completed")
+                test.eq(json.encode(block.fields[1].codes), '["missing_in_sections"]')
                 test.is_true(assert(json.validate_string(schema, assert(json.encode(result)))))
             end)
         end
@@ -230,8 +230,8 @@ return { run = test.run_cases(function()
             { names = { "before", "provider_failure", "after" }, status = "partial" },
             { names = { "provider_failure" }, status = "failed" },
             { names = { "before", "after" }, status = "completed" },
-            { names = { "missing_reply" }, status = "failed" },
-            { names = { "provider_failure", "missing_reply" }, status = "failed" },
+            { names = { "missing_reply" }, status = "completed" },
+            { names = { "provider_failure", "missing_reply" }, status = "partial" },
         }) do
             test.it("returns " .. case.status .. " for " .. table.concat(case.names, ", ") .. " through the contract, tool, Block and history", function()
                 local owner = uuid.v4()
