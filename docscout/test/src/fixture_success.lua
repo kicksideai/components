@@ -56,6 +56,28 @@ local function usage(args: any, prompt_tokens: integer, completion_tokens: integ
 end
 function M.structured(args: any): (any?, error?)
     inspect(args)
+    if args.options and args.options.support_fixture then
+        local options = args.options.support_fixture
+        local request = assert(json.encode(args.messages))
+        for _, text in ipairs(options.required_text or {}) do
+            if not request:find(text, 1, true) then
+                return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Missing field contract: " .. text })
+            end
+        end
+        local reply = {}
+        for path, schema in pairs(args.schema.properties) do
+            assert(path ~= "absent" and path ~= "failed", "An unextracted field reaches support")
+            local props = schema.properties
+            local check = { reason = "Fixture judgment" }
+            if props.verdict then check.verdict = "supported" else check.supported = true end
+            if props.complete then check.complete = options.completeness or "complete" end
+            if options.require_completeness and not props.complete then
+                return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Completeness is not requested" })
+            end
+            reply[path] = check
+        end
+        return { result = { data = reply }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
+    end
     if args.options and args.options.reply_tokens_per_field then
         local count = 0
         for _ in pairs(args.schema.properties) do count = count + 1 end

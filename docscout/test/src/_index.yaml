@@ -1627,3 +1627,92 @@ entries:
   - id: app:fixture_success_provider
     provider_model: docscout-success
     options: {reply_tokens_per_field: 160}
+
+- name: completeness_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_completeness, group: Docscout}
+  source: file://completeness_test.lua
+  method: run
+  modules: [json, registry, uuid]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    stages: kickside.docscout.engine:stages
+    ai: kickside.docscout.engine:ai
+    shapes: kickside.docscout.engine:shapes
+    store: kickside.docscout.persist:store
+- name: fixture_completeness_default_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-completeness-default
+    title: Completeness fixture
+    capabilities: [generate, structured_output]
+    class: [docscout-completeness-default]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {"absent": ["source:", "completeness"], "support_fixture": {}}
+- name: fixture_completeness_complete_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-completeness-complete
+    title: Completeness fixture
+    capabilities: [generate, structured_output]
+    class: [docscout-completeness-complete]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {"support_fixture": {"require_completeness": true, "required_text": ["Payment terms", "YYYY-MM-DD", "requested summary", "properties", "source:"]}}
+- name: fixture_completeness_unknown_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-completeness-unknown
+    title: Completeness fixture
+    capabilities: [generate, structured_output]
+    class: [docscout-completeness-unknown]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {"support_fixture": {"require_completeness": true, "completeness": "insufficient_evidence"}}
+- name: fixture_completeness_incomplete_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-completeness-incomplete
+    title: Completeness fixture
+    capabilities: [generate, structured_output]
+    class: [docscout-completeness-incomplete]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {"support_fixture": {"require_completeness": true, "completeness": "incomplete"}}
+- name: fixture_completeness_small_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-completeness-small
+    title: Completeness fixture
+    capabilities: [generate, structured_output]
+    class: [docscout-completeness-small]
+    priority: 100
+  max_tokens: 1600
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {"support_fixture": {}}
