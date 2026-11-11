@@ -38,6 +38,8 @@ The ordered stages read and process the document, map sections, prefetch evidenc
 
 Map, Scout, Extract and Verify accept optional stage-local `temperature` settings. Map, Verify and Deep also accept `max_tokens`; Extract uses `max_output_tokens`. The highlighter accepts `retrieval.highlighter_temperature` and `retrieval.highlighter_max_tokens`. A free-text reply (Deep analysis, built-in agent scout) cut at its output limit fails with `model_reply_truncated` instead of passing on incomplete text. Map, Scout, Extract and Verify default to temperature 0 in new configurations, including UI creation payloads. Existing saved configurations keep their settings, and an omitted setting retains the provider default. These are requested settings: providers can omit unsupported sampling options or adjust output limits. A selected Scout agent retains its own model and sampling settings.
 
+Deep `min_similarity` is a vector similarity threshold: a search hit is kept when its embedding similarity to the query reaches it, in semantic and hybrid search alike. Hybrid fusion ranks do not enter it, and a keyword match without a vector similarity is kept.
+
 - UI: `POST /docscout/{id}/run`.
 - Block: `kickside.docscout.blocks:extract`, with `extractor_id` and optional `pages` in config and `upload_id` in input. Its result contains values, fields with evidence, verification, run ID, pages, trace, revision, duration and tokens.
 - Traits: `kickside.docscout.traits:reader` and `:configurator`, exposing DocscoutList, DocscoutExtract, DocscoutGet, DocscoutConfigure, DocscoutEvaluate and DocscoutEvaluation. Typed tool failures use `nil, err`.
