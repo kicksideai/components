@@ -726,6 +726,7 @@ function M.verify(run: any, step: any): error?
         end
     end
     local support = {}
+    local support_error: error? = nil
     if cfg.check_support then
         local found, lines_out = {}, {}
         for _, v in ipairs(run.values) do
@@ -740,8 +741,7 @@ function M.verify(run: any, step: any): error?
             local result, err = ai.structured(step.meter, cfg.model, support_schema(found),
                 system("For each field, decide whether its quotes support its value exactly. Return one check per field."),
                 table.concat(lines_out, "\n"), { temperature = cfg.temperature, max_tokens = cfg.max_tokens })
-            if err then return err end
-            support = result
+            if err then support_error = err else support = result end
         end
     end
     local failed = 0
@@ -759,7 +759,8 @@ function M.verify(run: any, step: any): error?
         if cfg.check_quotes and not v.missing and not v.failed and not v.quotes_found then reasons[#reasons + 1] = "A quote is not in the document" end
         if cfg.check_support and not v.missing and not v.failed then
             local check = support[shapes.path(v)]
-            if not check then reasons[#reasons + 1] = "The support check gave no verdict"
+            if support_error then reasons[#reasons + 1] = "The support check gave no verdict: " .. tostring(support_error)
+            elseif not check then reasons[#reasons + 1] = "The support check gave no verdict"
             elseif not check.supported then reasons[#reasons + 1] = check.reason end
         end
         v.verified = not v.failed and #reasons == 0
@@ -767,7 +768,7 @@ function M.verify(run: any, step: any): error?
         if not v.verified then failed = failed + 1 end
     end
     step.message = failed == 0 and "All values check out" or (failed .. (failed == 1 and " value needs" or " values need") .. " review")
-    return nil
+    return support_error
 end
 
 return M

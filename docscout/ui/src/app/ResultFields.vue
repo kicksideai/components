@@ -30,7 +30,7 @@ const tone=(c:number)=>c>=.9?'high':c>=.7?'mid':'low'
        <NestedValue v-if="!field.failed&&!field.missing&&!complex(field.value)" :value="field.value"/>
        <blockquote v-for="(e,i) in field.evidence" :key="i" :class="{unfound:e.found===false}"><p>“{{e.quote}}”</p><cite>{{e.section}}<template v-if="e.page!==undefined&&e.page!==null"> · Page {{e.page}}</template><template v-if="e.found===false"> · not found word for word in the document</template></cite></blockquote>
        <p v-if="!field.evidence.length" class="muted">No evidence.</p>
-       <p v-if="field.reason" class="muted">{{field.reason}}</p>
+       <p v-if="field.reason||(!field.verified&&!field.failed)" class="muted">{{field.reason||'No reason recorded'}}</p>
       </div>
     </div></template></template></FieldGroups></div>
 </template>

@@ -142,7 +142,10 @@ return { run = test.run_cases(function()
                 test.not_nil(rejected); test.eq(rejected:details().code, "structured_reply_invalid")
                 test.is_true(rejected:retryable())
                 test.eq(step.meter.input_tokens, 12); test.eq(step.meter.output_tokens, 8)
-                test.is_nil(run.values[1].verified); test.is_nil(run.values[2].verified)
+                for _, field in ipairs(run.values) do
+                    test.is_false(field.verified); test.eq(field.value, 1250)
+                    test.is_true(field.reason:find("does not match its schema", 1, true) ~= nil)
+                end
                 local owner = uuid.v4()
                 local caller = data.caller(owner)
                 local id = assert(caller:call("app:probe", { op = "create", input = { title = "Support reader", config = cfg } })).component_id
@@ -154,6 +157,10 @@ return { run = test.run_cases(function()
                 local stored = snapshot.runs[1]
                 test.eq(stored.id, err:details().run_id); test.eq(stored.status, "failed")
                 test.eq(stored.result.error.details.code, "structured_reply_invalid")
+                for _, field in ipairs(stored.result.fields) do
+                    test.is_false(field.verified); test.eq(field.value, 1250)
+                    test.is_true(field.reason:find("does not match its schema", 1, true) ~= nil)
+                end
                 local db = assert(sql.get("app:db"))
                 local rows, read_err = db:query("SELECT trace FROM kickside_docscout_runs WHERE id=$1", { stored.id })
                 db:release(); test.is_nil(read_err, tostring(read_err))
@@ -162,6 +169,27 @@ return { run = test.run_cases(function()
                 test.eq(trace[#trace].input_tokens, 12); test.eq(trace[#trace].output_tokens, 8)
             end)
         end
+        test.it("keeps local verification reasons when the shared support check fails", function()
+            local cfg = configuration({ "amount", "terms", "missing_reply", "provider_failure" })
+            cfg.stages.verify.check_support, cfg.stages.verify.check_quotes = true, false
+            cfg.stages.verify.model = "class:docscout-support-empty"
+            local run = context(cfg)
+            run.values = {
+                { name = "amount", value = "invalid number", missing = false, evidence = {}, reason = "No quote supports this value" },
+                { name = "terms", value = 1250, missing = false, evidence = {} },
+                { name = "missing_reply", missing = true, evidence = {} },
+                { name = "provider_failure", failed = true, missing = false, evidence = {} },
+            }
+            local err = stages.verify(run, { meter = ai.meter() })
+            test.not_nil(err); test.eq(err:details().code, "structured_reply_invalid")
+            test.is_false(run.values[1].verified)
+            test.is_true(run.values[1].reason:find("No quote supports this value", 1, true) ~= nil)
+            test.is_true(run.values[1].reason:find("Value does not match its declared shape", 1, true) ~= nil)
+            for i = 1, 2 do
+                test.is_true(run.values[i].reason:find("does not match its schema", 1, true) ~= nil)
+            end
+            test.is_nil(run.values[3].reason); test.is_nil(run.values[4].reason)
+        end)
         test.it("associates mixed support verdicts with their field paths", function()
             local cfg = configuration({ "amount", "terms" })
             cfg.stages.verify.check_support, cfg.stages.verify.check_quotes = true, false

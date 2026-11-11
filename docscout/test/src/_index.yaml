@@ -816,7 +816,7 @@ entries:
     comment: Host access to the fixture model catalog and provider binding.
   groups: [app:runtime_members]
   policy:
-    resources: ['app:fixture_success_*', 'app:fixture_llm_*', app:fixture_small_model, app:fixture_refusal_model]
+    resources: ['app:fixture_success_*', 'app:fixture_llm_*', 'app:fixture_support_*', app:fixture_small_model, app:fixture_refusal_model]
     actions: [registry.get, registry.find, contract.open, funcs.call]
     effect: allow
 - name: runtime_methods
