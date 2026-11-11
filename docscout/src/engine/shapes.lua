@@ -179,6 +179,8 @@ function M.field_lines(fields: { any }): string
     return table.concat(out, "\n")
 end
 
+M.QUERY_RULE = "Write each query as a short natural-language phrase or a few key terms; a query is matched by its words and by its meaning, so regular expressions, wildcards, boolean operators and field descriptions copied whole only add noise."
+
 -- Searches a field runs on its own: its name and description, then each hint line.
 function M.field_queries(f: any): { string }
     local queries = { M.trim(f.name:gsub("_", " ") .. (f.description ~= "" and (": " .. f.description) or "")) }

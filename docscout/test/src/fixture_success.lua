@@ -10,17 +10,23 @@ local function inspect(args: any)
         assert(not request:find(text, 1, true), "Forbidden document text reaches the model: " .. text)
     end
 end
-local function value(schema: any): any
+local function value(schema: any, text: string?): any
     if schema.enum then return schema.enum[1] end
     if schema.type == "number" or schema.type == "integer" then return schema.maximum or 1250 end
     if schema.type == "boolean" then return false end
-    if schema.type == "array" then return { value(schema.items) } end
+    if schema.type == "array" then return { value(schema.items, text) } end
     if schema.type == "object" then
         local out = {}
-        for name, property in pairs(schema.properties) do out[name] = value(property) end
+        for name, property in pairs(schema.properties) do out[name] = value(property, text) end
         return out
     end
-    return "Fixture"
+    return text or "Fixture"
+end
+local function system_prompt(messages: { any }): string
+    for _, message in ipairs(messages) do
+        if message.role == "system" then return message.content[1].text end
+    end
+    return ""
 end
 local function extraction(schema: any): any
     if not schema.properties then return value(schema) end
@@ -82,10 +88,17 @@ function M.structured(args: any): (any?, error?)
     if args.model == "docscout-sampling" then
         return { result = { data = value(args.schema) }, tokens = usage(args, 12, 8) }, nil
     end
+    -- The echo model answers with its system prompt as every string value.
+    if args.model == "docscout-echo" then
+        return { result = { data = value(args.schema, system_prompt(args.messages)) }, tokens = usage(args, 12, 8) }, nil
+    end
     return { result = { data = extraction(args.schema) }, tokens = usage(args, 12, 8) }, nil
 end
 function M.generate(args: any): (any?, error?)
     inspect(args)
+    if args.model == "docscout-echo" then
+        return { result = { content = system_prompt(args.messages) }, tokens = usage(args, 12, 8) }, nil
+    end
     local has_tool_result = false
     for _, message in ipairs(args.messages) do
         if message.role == "function_result" then has_tool_result = true end

@@ -716,6 +716,20 @@ entries:
   providers:
   - id: app:fixture_success_provider
     provider_model: docscout-sampling
+- name: fixture_echo_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-echo
+    title: Fixture model that answers with its system prompt
+    capabilities: [generate, structured_output]
+    class: [docscout-echo]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-echo
 - name: success_test
   kind: function.lua
   meta:
