@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.6](https://github.com/kicksideai/components/compare/docscout-v0.1.5...docscout-v0.1.6) (2026-11-11)
+
+
+### Bug Fixes
+
+* **docscout:** batch extraction by estimated reply size ([#77](https://github.com/kicksideai/components/issues/77)) ([fb8ffb4](https://github.com/kicksideai/components/commit/fb8ffb454799d02419f5a9d7379bb1f59c42ac9f))
+* **docscout:** expose scoped missing causes per field ([#78](https://github.com/kicksideai/components/issues/78)) ([97fbc67](https://github.com/kicksideai/components/commit/97fbc67423bc547cc67c9f63046c8ab75890889c))
+* **docscout:** guide generated queries with plain phrases and key terms ([#74](https://github.com/kicksideai/components/issues/74)) ([ac1187f](https://github.com/kicksideai/components/commit/ac1187f1fa7f6fec58552210c64986b8aba4dd80))
+* **docscout:** make completeness judgments opt-in per extractor ([#79](https://github.com/kicksideai/components/issues/79)) ([a1cfbc9](https://github.com/kicksideai/components/commit/a1cfbc970a92c4fa7e7ec3410b997b01225d65e0))
+* **docscout:** retry native transient evaluation failures and retain usage ([#76](https://github.com/kicksideai/components/issues/76)) ([7475c46](https://github.com/kicksideai/components/commit/7475c46a25b561d186aa309f4b60c33db64c1236))
+
 ## [0.1.5](https://github.com/kicksideai/components/compare/docscout-v0.1.4...docscout-v0.1.5) (2026-11-11)
 
 
