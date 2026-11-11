@@ -533,9 +533,9 @@ function M.highlight(run: any, step: any): error?
         if err then return err end
         for _, c in ipairs(batch) do
             -- Only excerpts that occur in the passage replace it, each as its own paragraph.
-            local source, genuine = shapes.normalize(c.content), {}
+            local source, genuine = shapes.normalize_literal(c.content), {}
             for _, excerpt in ipairs(result[tostring(c.ordinal)]) do
-                local q = shapes.normalize(excerpt)
+                local q = shapes.normalize_literal(excerpt)
                 if q ~= "" and source:find(q, 1, true) then genuine[#genuine + 1] = trim(excerpt) end
             end
             if #genuine > 0 then
@@ -836,6 +836,7 @@ function M.verify(run: any, step: any): error?
         for _, c in ipairs(store_order(by_ordinal)) do
             bodies[c.ordinal] = shapes.normalize(c.content); order[#order + 1] = c.ordinal
         end
+        local quote_context = shapes.quote_context(store_order(by_ordinal), run.document.source)
         for _, v in ipairs(run.values) do
             if not v.missing and not v.failed then
                 v.quotes_found = true
@@ -846,12 +847,13 @@ function M.verify(run: any, step: any): error?
                         if region_err then return region_err end
                         if allowed then candidates[#candidates + 1] = ordinal end
                     end
-                    local at = shapes.locate(e.quote, e.chunk, bodies, candidates)
+                    local at, last = shapes.locate(e.quote, e.chunk, bodies, candidates, quote_context)
                     e.found = at ~= nil
                     if at then
                         local c = by_ordinal[at]
                         e.chunk, e.chunk_id, e.section = at, c.id, c.heading_path
                         local location = shapes.quote_location(c, e.quote)
+                        if last ~= at then location = { page_start = c.page_start, page_end = by_ordinal[last].page_end or by_ordinal[last].page_start } end
                         e.page, e.page_start, e.page_end = location.page, location.page_start, location.page_end
                     end
                     if not e.found then v.quotes_found = false end

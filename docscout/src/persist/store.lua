@@ -12,7 +12,7 @@ local committed_error = require("committed_error")
 
 local M = {}
 
-local COLUMNS = { "ordinal", "section_id", "heading_path", "page_start", "page_end", "content", "context", "page_spans" }
+local COLUMNS = { "ordinal", "section_id", "heading_path", "page_start", "page_end", "content", "context", "page_spans", "source_start", "source_end" }
 local SPEC = {
     vectors = "kickside_docscout_chunk_vectors",
     vector_key = "chunk_id",
@@ -30,6 +30,8 @@ local now, failed = database.now, database.failed
 local function decode_chunk(row: any): (any?, error?)
     row.ordinal = math.tointeger(tonumber(row.ordinal)) or 0
     row.page_start = row.page_start and math.tointeger(tonumber(row.page_start)) or nil
+    row.source_start = row.source_start and math.tointeger(tonumber(row.source_start)) or nil
+    row.source_end = row.source_end and math.tointeger(tonumber(row.source_end)) or nil
     row.page_end = row.page_end and math.tointeger(tonumber(row.page_end)) or nil
     local spans, spans_err = persisted_json.decode_table(row.page_spans, "chunk page spans")
     if spans_err then return nil, spans_err end
@@ -141,7 +143,7 @@ function M.save(doc: any, chunks: { any }): (string?, error?)
             local spans, spans_err = canonical_json.encode(chunk.page_spans or {})
             if spans_err then return nil, spans_err end
             rows[#rows + 1] = { chunk_id, id, chunk.ordinal, chunk.section_id, chunk.heading_path,
-                chunk.page_start or sql.as.null(), chunk.page_end or sql.as.null(), chunk.content, context, spans }
+                chunk.page_start or sql.as.null(), chunk.page_end or sql.as.null(), chunk.content, context, spans, chunk.source_start or sql.as.null(), chunk.source_end or sql.as.null() }
             vectors[#vectors + 1] = { chunk_id, id, index.vector_literal(chunk.vector) }
             if sqlite then
                 local _, fts_err = tx:execute("INSERT INTO kickside_docscout_chunks_fts (chunk_id, content) VALUES ($1, $2)",
@@ -150,7 +152,7 @@ function M.save(doc: any, chunks: { any }): (string?, error?)
             end
         end
         local rows_err = index.insert_rows_tx(tx, "kickside_docscout_chunks",
-            { "id", "document_id", "ordinal", "section_id", "heading_path", "page_start", "page_end", "content", "context", "page_spans" }, rows)
+            { "id", "document_id", "ordinal", "section_id", "heading_path", "page_start", "page_end", "content", "context", "page_spans", "source_start", "source_end" }, rows)
         if rows_err then return abort("chunks could not be stored", rows_err) end
         local vec_err = index.insert_rows_tx(tx, "kickside_docscout_chunk_vectors", { "chunk_id", "document_id", "embedding" }, vectors)
         if vec_err then return abort("chunk vectors could not be stored", vec_err) end

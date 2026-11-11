@@ -101,6 +101,8 @@ entries:
     path: .meta.target_db
   - entry: kickside.docscout.migrations:04_evaluation_runs
     path: .meta.target_db
+  - entry: kickside.docscout.migrations:05_chunk_offsets
+    path: .meta.target_db
   - entry: kickside.docscout.security:system_db_access
     path: .policy.resources
 - name: api_router
