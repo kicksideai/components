@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/kicksideai/components/compare/docscout-v0.1.4...docscout-v0.1.5) (2026-11-11)
+
+
+### Bug Fixes
+
+* **docscout:** apply min_similarity to each hit's vector similarity ([#72](https://github.com/kicksideai/components/issues/72)) ([e5c2b98](https://github.com/kicksideai/components/commit/e5c2b98b48d6bffe65416614a9100a36966161dd))
+
 ## [0.1.4](https://github.com/kicksideai/components/compare/docscout-v0.1.3...docscout-v0.1.4) (2026-11-11)
 
 
