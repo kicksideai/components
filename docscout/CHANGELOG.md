@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/kicksideai/components/compare/docscout-v0.1.7...docscout-v0.1.8) (2026-11-11)
+
+
+### Bug Fixes
+
+* **docscout:** assemble requests within model context budgets ([#83](https://github.com/kicksideai/components/issues/83)) ([238060e](https://github.com/kicksideai/components/commit/238060e63db8b7d7a8b6a0c3485967ec1aeacceb))
+
 ## [0.1.7](https://github.com/kicksideai/components/compare/docscout-v0.1.6...docscout-v0.1.7) (2026-11-11)
 
 
