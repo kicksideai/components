@@ -292,6 +292,15 @@ return { run = test.run_cases(function()
             score.score = 1
             test.is_false((json.validate_string(score_schema, assert(json.encode(score)))))
         end)
+        test.it("defaults Map, Scout, Extract and Verify to temperature 0 in every configuration default", function()
+            local s = schema()
+            for _, stage in ipairs({ "map", "scout", "extract", "verify" }) do
+                test.eq(s.default.stages[stage].temperature, 0, stage)
+                test.eq(s.properties.stages.default[stage].temperature, 0, stage)
+                test.eq(s.properties.stages.properties[stage].default.temperature, 0, stage)
+                test.eq(s.properties.stages.properties[stage].properties.temperature.default, 0, stage)
+            end
+        end)
         test.it("defaults every Extract configuration to class:fast", function()
             local s = schema()
             test.eq(s.default.stages.extract.model, "class:fast")

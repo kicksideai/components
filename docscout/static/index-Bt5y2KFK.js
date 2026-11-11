@@ -1,9 +1,9 @@
-import { hasInjectionContext as An, inject as st, effectScope as En, ref as X, markRaw as jn, createApp as zn, onMounted as Sr, onUnmounted as In, watch as $e, readonly as Nn, getCurrentInstance as Vt, nextTick as Rn, reactive as Vn, renderSlot as D, openBlock as $, createBlock as ee, Teleport as $r, createCommentVNode as V, useId as Mn, mergeProps as S, resolveDirective as Pr, createElementBlock as A, createElementVNode as et, withDirectives as Or, resolveDynamicComponent as ht, normalizeClass as gt, toDisplayString as lt, resolveComponent as tt, withCtx as bt, createVNode as Dn, Transition as Un, Fragment as Oe, renderList as Mt, createTextVNode as Cr, h as Bn } from "vue";
+import { hasInjectionContext as An, inject as st, effectScope as En, ref as X, markRaw as jn, createApp as zn, onMounted as Sr, onUnmounted as In, watch as $e, readonly as Nn, getCurrentInstance as Vt, nextTick as Rn, reactive as Vn, renderSlot as D, openBlock as $, createBlock as ee, Teleport as $r, createCommentVNode as V, useId as Mn, mergeProps as S, resolveDirective as Pr, createElementBlock as A, createElementVNode as et, withDirectives as Or, resolveDynamicComponent as ht, normalizeClass as gt, toDisplayString as lt, resolveComponent as tt, withCtx as bt, createVNode as Dn, Transition as Bn, Fragment as Oe, renderList as Mt, createTextVNode as Cr, h as Un } from "vue";
 import { addCollection as qn } from "@iconify/vue";
-import { config as Dt, addIcons as Hn, on as Wn, applyThemeMode as Fe, host as Fn, hostCss as Kn, loadCss as Yn, api as U } from "@wippy-fe/proxy";
+import { config as Dt, addIcons as Hn, on as Wn, applyThemeMode as Fe, host as Fn, hostCss as Kn, loadCss as Yn, api as B } from "@wippy-fe/proxy";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 var vt = "data-wippy-visible";
-function Ut(e) {
+function Bt(e) {
   const t = e.getAttribute(vt);
   return t === "true" ? !0 : t === "false" ? !1 : null;
 }
@@ -17,7 +17,7 @@ var Gn = Object.defineProperty, Zn = (e, t, r) => t in e ? Gn(e, t, { enumerable
   ":where([data-wippy-theme-root]).w-theme-dark"
 ].join(`,
 `);
-function Bt(e) {
+function Ut(e) {
   const t = e.startsWith("--") ? e : `--${e}`;
   return /^--[-\w\u0080-\uFFFF]+$/.test(t) ? t : null;
 }
@@ -28,12 +28,12 @@ function Xn(...e) {
       for (const [n, o] of Object.entries(r)) {
         if ((n === "@light" || n === "@dark") && o && typeof o == "object") {
           for (const [s, l] of Object.entries(o)) {
-            const i = typeof l == "string" ? Bt(s) : null;
+            const i = typeof l == "string" ? Ut(s) : null;
             i && t.add(i);
           }
           continue;
         }
-        const a = typeof o == "string" ? Bt(n) : null;
+        const a = typeof o == "string" ? Ut(n) : null;
         a && t.add(a);
       }
   return [...t].sort();
@@ -226,7 +226,7 @@ var so = class {
   }
 }, lo = class extends HTMLElement {
   constructor() {
-    super(), L(this, "_internals"), L(this, "_contentObserver", null), L(this, "_initialized", !1), L(this, "_container", null), L(this, "_reactive", null), L(this, "_lastProps", null), L(this, "_lastErrors", []), L(this, "_lastContent", null), L(this, "_themeUnsub", null), L(this, "_hostVisible", null), this._internals = this.attachInternals(), this._hostVisible = Ut(this);
+    super(), L(this, "_internals"), L(this, "_contentObserver", null), L(this, "_initialized", !1), L(this, "_container", null), L(this, "_reactive", null), L(this, "_lastProps", null), L(this, "_lastErrors", []), L(this, "_lastContent", null), L(this, "_themeUnsub", null), L(this, "_hostVisible", null), this._internals = this.attachInternals(), this._hostVisible = Bt(this);
   }
   /**
    * Override to provide the component's configuration.
@@ -390,7 +390,7 @@ var so = class {
     if (t === r)
       return;
     if (e === vt) {
-      const l = this._hostVisible, i = Ut(this);
+      const l = this._hostVisible, i = Bt(this);
       if (i === l)
         return;
       this._hostVisible = i, this.isConnected && this._initialized && (this._reactive?.notifyHostVisibility(i, l), this.onHostVisibilityChanged(i, l));
@@ -783,7 +783,7 @@ function rt(e, t = {}) {
     });
   }
 }
-function Uo(e, t = {}, ...r) {
+function Bo(e, t = {}, ...r) {
   {
     let n = document.createElement(e);
     return rt(n, t), n.append(...r), n;
@@ -798,13 +798,13 @@ function nt(e, t) {
 function Ke(e, t) {
   e && document.activeElement !== e && e.focus(t);
 }
-function Bo(e, t) {
+function Uo(e, t) {
   if (be(e)) {
     let r = e.getAttribute(t);
     return isNaN(r) ? r === "true" || r === "false" ? r === "true" : r : +r;
   }
 }
-function Ur(e, t = "") {
+function Br(e, t = "") {
   let r = Te(e, `button:not([tabindex = "-1"]):not([disabled]):not([style*="display:none"]):not([hidden])${t},
             [href]:not([tabindex = "-1"]):not([style*="display:none"]):not([hidden])${t},
             input:not([tabindex = "-1"]):not([disabled]):not([style*="display:none"]):not([hidden])${t},
@@ -816,7 +816,7 @@ function Ur(e, t = "") {
   return n;
 }
 function As(e, t) {
-  let r = Ur(e, t);
+  let r = Br(e, t);
   return r.length > 0 ? r[0] : null;
 }
 function Ft(e) {
@@ -827,7 +827,7 @@ function Ft(e) {
   return 0;
 }
 function Es(e, t) {
-  let r = Ur(e, t);
+  let r = Br(e, t);
   return r.length > 0 ? r[r.length - 1] : null;
 }
 function qo(e) {
@@ -840,14 +840,14 @@ function qo(e) {
 function Ho(e, t) {
   return e ? e.offsetHeight : 0;
 }
-function Br(e, t = []) {
+function Ur(e, t = []) {
   let r = Dr(e);
-  return r === null ? t : Br(r, t.concat([r]));
+  return r === null ? t : Ur(r, t.concat([r]));
 }
 function Wo(e) {
   let t = [];
   if (e) {
-    let r = Br(e), n = /(auto|scroll)/, o = (a) => {
+    let r = Ur(e), n = /(auto|scroll)/, o = (a) => {
       try {
         let s = window.getComputedStyle(a, null);
         return n.test(s.getPropertyValue("overflow")) || n.test(s.getPropertyValue("overflowX")) || n.test(s.getPropertyValue("overflowY"));
@@ -1029,7 +1029,7 @@ function aa(e, t = {}) {
   let d = l.join("");
   return { value: l, tokens: s, declarations: d, css: _e(o, d) };
 }
-var B = { regex: { rules: { class: { pattern: /^\.([a-zA-Z][\w-]*)$/, resolve(e) {
+var U = { regex: { rules: { class: { pattern: /^\.([a-zA-Z][\w-]*)$/, resolve(e) {
   return { type: "class", selector: e, matched: this.pattern.test(e.trim()) };
 } }, attr: { pattern: /^\[(.*)\]$/, resolve(e) {
   return { type: "attr", selector: `:root${e},:host${e}`, matched: this.pattern.test(e.trim()) };
@@ -1151,7 +1151,7 @@ var B = { regex: { rules: { class: { pattern: /^\.([a-zA-Z][\w-]*)$/, resolve(e)
   return "";
 } }, P = { defaults: { variable: { prefix: "p", selector: ":root,:host", excludedKeyRegex: /^(primitive|semantic|components|directives|variables|colorscheme|light|dark|common|root|states|extend|css)$/gi }, options: { prefix: "p", darkModeSelector: "system", cssLayer: !1 } }, _theme: void 0, _layerNames: /* @__PURE__ */ new Set(), _loadedStyleNames: /* @__PURE__ */ new Set(), _loadingStyles: /* @__PURE__ */ new Set(), _tokens: {}, update(e = {}) {
   let { theme: t } = e;
-  t && (this._theme = mt(H({}, t), { options: H(H({}, this.defaults.options), t.options) }), this._tokens = B.createTokens(this.preset, this.defaults), this.clearLoadedStyleNames());
+  t && (this._theme = mt(H({}, t), { options: H(H({}, this.defaults.options), t.options) }), this._tokens = U.createTokens(this.preset, this.defaults), this.clearLoadedStyleNames());
 }, get theme() {
   return this._theme;
 }, get preset() {
@@ -1169,7 +1169,7 @@ var B = { regex: { rules: { class: { pattern: /^\.([a-zA-Z][\w-]*)$/, resolve(e)
 }, getPreset() {
   return this.preset;
 }, setPreset(e) {
-  this._theme = mt(H({}, this.theme), { preset: e }), this._tokens = B.createTokens(e, this.defaults), this.clearLoadedStyleNames(), j.emit("preset:change", e), j.emit("theme:change", this.theme);
+  this._theme = mt(H({}, this.theme), { preset: e }), this._tokens = U.createTokens(e, this.defaults), this.clearLoadedStyleNames(), j.emit("preset:change", e), j.emit("theme:change", this.theme);
 }, getOptions() {
   return this.options;
 }, setOptions(e) {
@@ -1189,26 +1189,26 @@ var B = { regex: { rules: { class: { pattern: /^\.([a-zA-Z][\w-]*)$/, resolve(e)
 }, clearLoadedStyleNames() {
   this._loadedStyleNames.clear();
 }, getTokenValue(e) {
-  return B.getTokenValue(this.tokens, e, this.defaults);
+  return U.getTokenValue(this.tokens, e, this.defaults);
 }, getCommon(e = "", t) {
-  return B.getCommon({ name: e, theme: this.theme, params: t, defaults: this.defaults, set: { layerNames: this.setLayerNames.bind(this) } });
+  return U.getCommon({ name: e, theme: this.theme, params: t, defaults: this.defaults, set: { layerNames: this.setLayerNames.bind(this) } });
 }, getComponent(e = "", t) {
   let r = { name: e, theme: this.theme, params: t, defaults: this.defaults, set: { layerNames: this.setLayerNames.bind(this) } };
-  return B.getPresetC(r);
+  return U.getPresetC(r);
 }, getDirective(e = "", t) {
   let r = { name: e, theme: this.theme, params: t, defaults: this.defaults, set: { layerNames: this.setLayerNames.bind(this) } };
-  return B.getPresetD(r);
+  return U.getPresetD(r);
 }, getCustomPreset(e = "", t, r, n) {
   let o = { name: e, preset: t, options: this.options, selector: r, params: n, defaults: this.defaults, set: { layerNames: this.setLayerNames.bind(this) } };
-  return B.getPreset(o);
+  return U.getPreset(o);
 }, getLayerOrderCSS(e = "") {
-  return B.getLayerOrder(e, this.options, { names: this.getLayerNames() }, this.defaults);
+  return U.getLayerOrder(e, this.options, { names: this.getLayerNames() }, this.defaults);
 }, transformCSS(e = "", t, r = "style", n) {
-  return B.transformCSS(e, t, n, r, this.options, { layerNames: this.setLayerNames.bind(this) }, this.defaults);
+  return U.transformCSS(e, t, n, r, this.options, { layerNames: this.setLayerNames.bind(this) }, this.defaults);
 }, getCommonStyleSheet(e = "", t, r = {}) {
-  return B.getCommonStyleSheet({ name: e, theme: this.theme, params: t, props: r, defaults: this.defaults, set: { layerNames: this.setLayerNames.bind(this) } });
+  return U.getCommonStyleSheet({ name: e, theme: this.theme, params: t, props: r, defaults: this.defaults, set: { layerNames: this.setLayerNames.bind(this) } });
 }, getStyleSheet(e, t, r = {}) {
-  return B.getStyleSheet({ name: e, theme: this.theme, params: t, props: r, defaults: this.defaults, set: { layerNames: this.setLayerNames.bind(this) } });
+  return U.getStyleSheet({ name: e, theme: this.theme, params: t, props: r, defaults: this.defaults, set: { layerNames: this.setLayerNames.bind(this) } });
 }, onStyleMounted(e) {
   this._loadingStyles.add(e);
 }, onStyleUpdated(e) {
@@ -2442,17 +2442,17 @@ function dr(e) {
   for (var t = 1; t < arguments.length; t++) {
     var r = arguments[t] != null ? arguments[t] : {};
     t % 2 ? lr(Object(r), !0).forEach(function(n) {
-      Ua(e, n, r[n]);
+      Ba(e, n, r[n]);
     }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(r)) : lr(Object(r)).forEach(function(n) {
       Object.defineProperty(e, n, Object.getOwnPropertyDescriptor(r, n));
     });
   }
   return e;
 }
-function Ua(e, t, r) {
-  return (t = Ba(t)) in e ? Object.defineProperty(e, t, { value: r, enumerable: !0, configurable: !0, writable: !0 }) : e[t] = r, e;
+function Ba(e, t, r) {
+  return (t = Ua(t)) in e ? Object.defineProperty(e, t, { value: r, enumerable: !0, configurable: !0, writable: !0 }) : e[t] = r, e;
 }
-function Ba(e) {
+function Ua(e) {
   var t = qa(e, "string");
   return Re(t) == "symbol" ? t : t + "";
 }
@@ -2936,7 +2936,7 @@ var en = ei.extend("ripple", {
     },
     createRipple: function(t) {
       var r = this.getInk(t);
-      r || (r = Uo("span", mr(mr({
+      r || (r = Bo("span", mr(mr({
         role: "presentation",
         "aria-hidden": !0,
         "data-p-ink": !0,
@@ -2967,7 +2967,7 @@ var en = ei.extend("ripple", {
     },
     getInk: function(t) {
       return t && t.children ? ti(t.children).find(function(r) {
-        return Bo(r, "data-pc-name") === "ripple";
+        return Uo(r, "data-pc-name") === "ripple";
       }) : void 0;
     }
   }
@@ -3547,7 +3547,7 @@ function Ei(e, t, r, n, o, a) {
     disabled: !e.popup
   }, {
     default: bt(function() {
-      return [Dn(Un, S({
+      return [Dn(Bn, S({
         name: "p-anchored-overlay",
         onEnter: a.onEnter,
         onLeave: a.onLeave,
@@ -3737,7 +3737,7 @@ function Di(e, t, r) {
 function an(e) {
   Ot.get(e)?.disconnect(), Ot.delete(e);
 }
-function Ui() {
+function Bi() {
   Pt = !1;
   for (const e of it) {
     if (!e.isConnected) {
@@ -3750,9 +3750,9 @@ function Ui() {
   }
 }
 function vr() {
-  Pt || (Pt = !0, requestAnimationFrame(Ui));
+  Pt || (Pt = !0, requestAnimationFrame(Bi));
 }
-function Bi(e) {
+function Ui(e) {
   const t = document.createElement("div");
   t.setAttribute(ji, "");
   const r = on();
@@ -3778,7 +3778,7 @@ function Bi(e) {
   return n.observe(t, { childList: !0 }), It.set(t, n), it.add(t), gr || (gr = !0, window.addEventListener("scroll", vr, { capture: !0, passive: !0 }), window.addEventListener("resize", vr, { passive: !0 })), t;
 }
 function yr(e) {
-  if (!(!e.hostRoot || e.layer) && (e.layer = Bi(e.hostRoot), Di(e.layer, e.$el, e.hostRoot), zi())) {
+  if (!(!e.hostRoot || e.layer) && (e.layer = Ui(e.hostRoot), Di(e.layer, e.$el, e.hostRoot), zi())) {
     const t = e.$el ? e.$el.parentElement : null;
     t && (e.anchorName = `--wippy-a-${++Ni}`, e.anchorTrigger = t, t.style.setProperty("anchor-name", e.anchorName), e.layer.__wippyAnchorName = e.anchorName);
   }
@@ -3819,7 +3819,7 @@ function Hi() {
       t ? xr(this) : yr(this);
     })));
   }, e.render = function() {
-    return this.inline ? D(this.$slots, "default", { key: 0 }) : this.mounted ? Bn($r, { key: 1, to: this.resolvedTarget || document.body }, [
+    return this.inline ? D(this.$slots, "default", { key: 0 }) : this.mounted ? Un($r, { key: 1, to: this.resolvedTarget || document.body }, [
       D(this.$slots, "default")
     ]) : V("", !0);
   }, e.unmounted = function() {
@@ -3848,27 +3848,27 @@ function q(e) {
 }
 const Ki = (e) => e.response?.data, Is = {
   async list(e = {}) {
-    return q((await U.get("/api/v1/docscout", { params: e })).data);
+    return q((await B.get("/api/v1/docscout", { params: e })).data);
   },
   async get(e) {
-    return q((await U.get(J(e))).data);
+    return q((await B.get(J(e))).data);
   },
   async create(e) {
-    return q((await U.post("/api/v1/docscout", e)).data);
+    return q((await B.post("/api/v1/docscout", e)).data);
   },
   async update(e, t) {
-    return q((await U.put(J(e), t)).data);
+    return q((await B.put(J(e), t)).data);
   },
   async addCase(e, t) {
-    return q((await U.post(J(e) + "/cases", t)).data);
+    return q((await B.post(J(e) + "/cases", t)).data);
   },
   async deleteCase(e, t) {
-    q((await U.delete(J(e) + "/cases/" + encodeURIComponent(t))).data);
+    q((await B.delete(J(e) + "/cases/" + encodeURIComponent(t))).data);
   },
   // A run that stops partway still answers with its run id and step trace.
   async run(e, t) {
     try {
-      return q((await U.post(J(e) + "/run", { upload_id: t })).data);
+      return q((await B.post(J(e) + "/run", { upload_id: t })).data);
     } catch (r) {
       const n = Ki(r), o = n?.details?.trace;
       if (!o) throw r;
@@ -3876,20 +3876,20 @@ const Ki = (e) => e.response?.data, Is = {
     }
   },
   async evaluate(e) {
-    return q((await U.post(J(e) + "/evaluations", {})).data);
+    return q((await B.post(J(e) + "/evaluations", {})).data);
   },
   async evaluations(e) {
-    return q((await U.get(J(e) + "/evaluations")).data).items;
+    return q((await B.get(J(e) + "/evaluations")).data).items;
   },
   async evaluation(e, t) {
-    return q((await U.get(J(e) + "/evaluations/" + encodeURIComponent(t))).data).evaluation;
+    return q((await B.get(J(e) + "/evaluations/" + encodeURIComponent(t))).data).evaluation;
   },
   async remove(e) {
-    q((await U.delete(J(e))).data);
+    q((await B.delete(J(e))).data);
   }
-}, Yi = /* @__PURE__ */ JSON.parse(`{"retention":{"type":"string","minLength":1,"title":"Retention window","description":"Positive duration for new processed documents and runs, for example 24h. Omit to use the global Docscout retention setting. Existing rows keep their expiry."},"fields":{"type":"array","default":[],"items":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string","default":"","maxLength":80,"pattern":"^[A-Za-z][A-Za-z0-9_]*$"},"type":{"type":"string","default":"text","enum":["text","number","boolean","date","enum","list","object"]},"description":{"type":"string","default":"","maxLength":4000},"enum_values":{"type":"array","default":[],"items":{"type":"string","minLength":1,"maxLength":200},"uniqueItems":true,"maxItems":100},"required":{"type":"boolean","default":false},"search_hints":{"type":"string","default":"","maxLength":4000},"validation_hints":{"type":"string","default":"","maxLength":4000},"expected_format":{"type":"string","default":"","maxLength":400},"strategy":{"type":"string","default":"standard","enum":["standard","deep"]},"search_within":{"type":"string","default":"document","enum":["document","sections"]},"group":{"type":"string","default":"","maxLength":320,"pattern":"^(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)*(?:\\\\.[a-z][a-z0-9]*(?:_[a-z0-9]+)*)*)?$"},"evidence_required":{"type":"boolean","default":true},"chunks":{"type":"integer","default":5,"minimum":1,"maximum":1000},"properties":{"type":"array","minItems":1,"maxItems":100,"items":{"$ref":"#/$defs/property2"}},"item":{"$ref":"#/$defs/shape2"}},"required":["name","type","description","enum_values","required","search_hints","validation_hints","expected_format","strategy","search_within","group","evidence_required","chunks"],"default":{"name":"","type":"text","description":"","enum_values":[],"required":false,"search_hints":"","validation_hints":"","expected_format":"","strategy":"standard","search_within":"document","group":"","evidence_required":true,"chunks":5},"allOf":[{"if":{"properties":{"type":{"const":"object"}}},"then":{"required":["properties"]}},{"if":{"properties":{"type":{"const":"list"}}},"then":{"required":["item"]}}]},"maxItems":100},"stages":{"type":"object","additionalProperties":false,"properties":{"map":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean","default":true},"model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"outline":{"type":"string","default":"find_or_build","enum":["find_or_build","build"]},"section_summaries":{"type":"boolean","default":false},"temperature":{"type":"number","minimum":0,"maximum":2,"description":"Sampling temperature for this stage's model calls. Unset uses the provider default."},"max_tokens":{"type":"integer","minimum":256,"maximum":64000,"description":"Output token limit for this stage's model calls. Unset uses the provider default."}},"required":["enabled","model","outline","section_summaries"],"default":{"enabled":true,"model":"class:fast","outline":"find_or_build","section_summaries":false}},"prefetch":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean","default":true},"queries":{"type":"array","default":[],"items":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string","minLength":1,"maxLength":200,"default":""},"query":{"type":"string","minLength":1,"maxLength":4000,"default":""},"chunks":{"type":"integer","default":5,"minimum":1,"maximum":1000}},"required":["name","query","chunks"],"default":{"name":"","query":"","chunks":5}},"maxItems":100}},"required":["enabled","queries"],"default":{"enabled":true,"queries":[]}},"scout":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean","default":true},"mode":{"type":"string","default":"loop","enum":["loop","agent"]},"model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"max_rounds":{"type":"integer","default":0,"minimum":0,"maximum":30,"description":"Extra search rounds for structured scouting. Agent mode requires at least one round, including when a user agent is selected."},"target_confidence":{"type":"number","default":0.7,"minimum":0,"maximum":1},"max_extra_queries":{"type":"integer","default":3,"minimum":0,"maximum":20,"description":"Search budget per round. Agent mode requires a positive value; selected agents use max_rounds * max_extra_queries + 1 native iterations, including the final answer."},"max_tokens":{"type":"integer","default":4096,"minimum":256,"maximum":64000},"drop_noise":{"type":"boolean","default":true},"share_notes":{"type":"boolean","default":true},"tools":{"type":"array","default":["keyword_search","semantic_search","read_section","read_outline"],"items":{"type":"string","enum":["keyword_search","semantic_search","read_section","read_outline"]},"uniqueItems":true},"agent_id":{"type":"string","minLength":1,"title":"Scouting agent","description":"Agent component id readable by the saver and runner. Applies to agent mode; omit to use the built-in loop.","picker":"wc-component-picker","class":"agent"},"temperature":{"type":"number","minimum":0,"maximum":2,"description":"Sampling temperature for the built-in loop and agent model calls; a selected agent uses its own settings. Unset uses the provider default."}},"required":["enabled","mode","model","max_rounds","target_confidence","max_extra_queries","max_tokens","drop_noise","share_notes","tools"],"default":{"enabled":true,"mode":"loop","model":"class:fast","max_rounds":0,"target_confidence":0.7,"max_extra_queries":3,"max_tokens":4096,"drop_noise":true,"share_notes":true,"tools":["keyword_search","semantic_search","read_section","read_outline"]}},"deep":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean","default":true},"model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"query_model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"read":{"type":"string","default":"chunks","enum":["chunks","sections"]},"parallel_fields":{"type":"integer","default":4,"minimum":1,"maximum":20},"max_queries":{"type":"integer","default":5,"minimum":1,"maximum":100},"chunks_per_query":{"type":"integer","default":50,"minimum":1,"maximum":1000},"chunk_cap":{"type":"integer","default":100,"minimum":1,"maximum":10000},"min_similarity":{"type":"number","default":0.2,"minimum":0,"maximum":1},"query_temperature":{"type":"number","default":0.2,"minimum":0,"maximum":2},"analysis_temperature":{"type":"number","default":0.2,"minimum":0,"maximum":2},"max_tokens":{"type":"integer","minimum":256,"maximum":64000,"description":"Output token limit for the analysis. Unset uses the provider default; an analysis cut at the limit fails its field."}},"required":["enabled","model","query_model","read","parallel_fields","max_queries","chunks_per_query","chunk_cap","min_similarity","query_temperature","analysis_temperature"],"default":{"enabled":true,"model":"class:fast","query_model":"class:fast","read":"chunks","parallel_fields":4,"max_queries":5,"chunks_per_query":50,"chunk_cap":100,"min_similarity":0.2,"query_temperature":0.2,"analysis_temperature":0.2}},"extract":{"type":"object","additionalProperties":false,"properties":{"model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"max_output_tokens":{"type":"integer","default":4096,"minimum":256,"maximum":64000},"max_fields_per_call":{"type":"integer","default":20,"minimum":1,"maximum":100},"temperature":{"type":"number","minimum":0,"maximum":2,"description":"Sampling temperature for this stage's model calls. Unset uses the provider default."}},"required":["model","max_output_tokens","max_fields_per_call"],"default":{"model":"class:fast","max_output_tokens":4096,"max_fields_per_call":20}},"verify":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean","default":false},"model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"check_quotes":{"type":"boolean","default":true},"check_support":{"type":"boolean","default":true},"temperature":{"type":"number","minimum":0,"maximum":2,"description":"Sampling temperature for this stage's model calls. Unset uses the provider default."},"max_tokens":{"type":"integer","minimum":256,"maximum":64000,"description":"Output token limit for this stage's model calls. Unset uses the provider default."}},"required":["enabled","model","check_quotes","check_support"],"default":{"enabled":false,"model":"class:fast","check_quotes":true,"check_support":true}}},"required":["map","prefetch","scout","deep","extract","verify"],"default":{"map":{"enabled":true,"model":"class:fast","outline":"find_or_build","section_summaries":false},"prefetch":{"enabled":true,"queries":[]},"scout":{"enabled":true,"mode":"loop","model":"class:fast","max_rounds":0,"target_confidence":0.7,"max_extra_queries":3,"max_tokens":4096,"drop_noise":true,"share_notes":true,"tools":["keyword_search","semantic_search","read_section","read_outline"]},"deep":{"enabled":true,"model":"class:fast","query_model":"class:fast","read":"chunks","parallel_fields":4,"max_queries":5,"chunks_per_query":50,"chunk_cap":100,"min_similarity":0.2,"query_temperature":0.2,"analysis_temperature":0.2},"extract":{"model":"class:fast","max_output_tokens":4096,"max_fields_per_call":20},"verify":{"enabled":false,"model":"class:fast","check_quotes":true,"check_support":true}}},"retrieval":{"type":"object","additionalProperties":false,"properties":{"chunk_size":{"type":"integer","default":1200,"minimum":100,"maximum":16000},"overlap":{"type":"integer","default":150,"minimum":0,"maximum":4000},"split_headings":{"type":"boolean","default":true},"keep_tables":{"type":"boolean","default":true},"search_mode":{"type":"string","default":"hybrid","enum":["keyword","semantic","hybrid"]},"embedding_model":{"type":"string","default":"class:embed","minLength":1,"maxLength":200},"context":{"type":"string","default":"headings","enum":["none","headings","generated"]},"context_model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"highlighter":{"type":"boolean","default":false},"highlighter_model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"highlighter_temperature":{"type":"number","minimum":0,"maximum":2,"description":"Sampling temperature for the highlighter's model calls. Unset uses the provider default."},"highlighter_max_tokens":{"type":"integer","minimum":256,"maximum":64000,"description":"Output token limit for the highlighter's model calls. Unset uses the provider default."},"section_budget":{"type":"integer","default":6000,"minimum":500,"maximum":64000}},"required":["chunk_size","overlap","split_headings","keep_tables","search_mode","embedding_model","context","context_model","highlighter","highlighter_model","section_budget"],"default":{"chunk_size":1200,"overlap":150,"split_headings":true,"keep_tables":true,"search_mode":"hybrid","embedding_model":"class:embed","context":"headings","context_model":"class:fast","highlighter":false,"highlighter_model":"class:fast","section_budget":6000}},"tags":{"type":"array","default":[],"items":{"type":"string","minLength":1,"maxLength":80},"uniqueItems":true,"maxItems":50}}`), dt = {
+}, Yi = /* @__PURE__ */ JSON.parse(`{"retention":{"type":"string","minLength":1,"title":"Retention window","description":"Positive duration for new processed documents and runs, for example 24h. Omit to use the global Docscout retention setting. Existing rows keep their expiry."},"fields":{"type":"array","default":[],"items":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string","default":"","maxLength":80,"pattern":"^[A-Za-z][A-Za-z0-9_]*$"},"type":{"type":"string","default":"text","enum":["text","number","boolean","date","enum","list","object"]},"description":{"type":"string","default":"","maxLength":4000},"enum_values":{"type":"array","default":[],"items":{"type":"string","minLength":1,"maxLength":200},"uniqueItems":true,"maxItems":100},"required":{"type":"boolean","default":false},"search_hints":{"type":"string","default":"","maxLength":4000},"validation_hints":{"type":"string","default":"","maxLength":4000},"expected_format":{"type":"string","default":"","maxLength":400},"strategy":{"type":"string","default":"standard","enum":["standard","deep"]},"search_within":{"type":"string","default":"document","enum":["document","sections"]},"group":{"type":"string","default":"","maxLength":320,"pattern":"^(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)*(?:\\\\.[a-z][a-z0-9]*(?:_[a-z0-9]+)*)*)?$"},"evidence_required":{"type":"boolean","default":true},"chunks":{"type":"integer","default":5,"minimum":1,"maximum":1000},"properties":{"type":"array","minItems":1,"maxItems":100,"items":{"$ref":"#/$defs/property2"}},"item":{"$ref":"#/$defs/shape2"}},"required":["name","type","description","enum_values","required","search_hints","validation_hints","expected_format","strategy","search_within","group","evidence_required","chunks"],"default":{"name":"","type":"text","description":"","enum_values":[],"required":false,"search_hints":"","validation_hints":"","expected_format":"","strategy":"standard","search_within":"document","group":"","evidence_required":true,"chunks":5},"allOf":[{"if":{"properties":{"type":{"const":"object"}}},"then":{"required":["properties"]}},{"if":{"properties":{"type":{"const":"list"}}},"then":{"required":["item"]}}]},"maxItems":100},"stages":{"type":"object","additionalProperties":false,"properties":{"map":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean","default":true},"model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"outline":{"type":"string","default":"find_or_build","enum":["find_or_build","build"]},"section_summaries":{"type":"boolean","default":false},"temperature":{"type":"number","minimum":0,"maximum":2,"default":0,"description":"Sampling temperature for this stage's model calls. Defaults to 0; unset uses the provider default."},"max_tokens":{"type":"integer","minimum":256,"maximum":64000,"description":"Output token limit for this stage's model calls. Unset uses the provider default."}},"required":["enabled","model","outline","section_summaries"],"default":{"enabled":true,"model":"class:fast","outline":"find_or_build","section_summaries":false,"temperature":0}},"prefetch":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean","default":true},"queries":{"type":"array","default":[],"items":{"type":"object","additionalProperties":false,"properties":{"name":{"type":"string","minLength":1,"maxLength":200,"default":""},"query":{"type":"string","minLength":1,"maxLength":4000,"default":""},"chunks":{"type":"integer","default":5,"minimum":1,"maximum":1000}},"required":["name","query","chunks"],"default":{"name":"","query":"","chunks":5}},"maxItems":100}},"required":["enabled","queries"],"default":{"enabled":true,"queries":[]}},"scout":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean","default":true},"mode":{"type":"string","default":"loop","enum":["loop","agent"]},"model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"max_rounds":{"type":"integer","default":0,"minimum":0,"maximum":30,"description":"Extra search rounds for structured scouting. Agent mode requires at least one round, including when a user agent is selected."},"target_confidence":{"type":"number","default":0.7,"minimum":0,"maximum":1},"max_extra_queries":{"type":"integer","default":3,"minimum":0,"maximum":20,"description":"Search budget per round. Agent mode requires a positive value; selected agents use max_rounds * max_extra_queries + 1 native iterations, including the final answer."},"max_tokens":{"type":"integer","default":4096,"minimum":256,"maximum":64000},"drop_noise":{"type":"boolean","default":true},"share_notes":{"type":"boolean","default":true},"tools":{"type":"array","default":["keyword_search","semantic_search","read_section","read_outline"],"items":{"type":"string","enum":["keyword_search","semantic_search","read_section","read_outline"]},"uniqueItems":true},"agent_id":{"type":"string","minLength":1,"title":"Scouting agent","description":"Agent component id readable by the saver and runner. Applies to agent mode; omit to use the built-in loop.","picker":"wc-component-picker","class":"agent"},"temperature":{"type":"number","minimum":0,"maximum":2,"default":0,"description":"Sampling temperature for the built-in loop and agent model calls; a selected agent uses its own settings. Defaults to 0; unset uses the provider default."}},"required":["enabled","mode","model","max_rounds","target_confidence","max_extra_queries","max_tokens","drop_noise","share_notes","tools"],"default":{"enabled":true,"mode":"loop","model":"class:fast","max_rounds":0,"target_confidence":0.7,"max_extra_queries":3,"max_tokens":4096,"drop_noise":true,"share_notes":true,"tools":["keyword_search","semantic_search","read_section","read_outline"],"temperature":0}},"deep":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean","default":true},"model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"query_model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"read":{"type":"string","default":"chunks","enum":["chunks","sections"]},"parallel_fields":{"type":"integer","default":4,"minimum":1,"maximum":20},"max_queries":{"type":"integer","default":5,"minimum":1,"maximum":100},"chunks_per_query":{"type":"integer","default":50,"minimum":1,"maximum":1000},"chunk_cap":{"type":"integer","default":100,"minimum":1,"maximum":10000},"min_similarity":{"type":"number","default":0.2,"minimum":0,"maximum":1},"query_temperature":{"type":"number","default":0.2,"minimum":0,"maximum":2},"analysis_temperature":{"type":"number","default":0.2,"minimum":0,"maximum":2},"max_tokens":{"type":"integer","minimum":256,"maximum":64000,"description":"Output token limit for the analysis. Unset uses the provider default; an analysis cut at the limit fails its field."}},"required":["enabled","model","query_model","read","parallel_fields","max_queries","chunks_per_query","chunk_cap","min_similarity","query_temperature","analysis_temperature"],"default":{"enabled":true,"model":"class:fast","query_model":"class:fast","read":"chunks","parallel_fields":4,"max_queries":5,"chunks_per_query":50,"chunk_cap":100,"min_similarity":0.2,"query_temperature":0.2,"analysis_temperature":0.2}},"extract":{"type":"object","additionalProperties":false,"properties":{"model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"max_output_tokens":{"type":"integer","default":4096,"minimum":256,"maximum":64000},"max_fields_per_call":{"type":"integer","default":20,"minimum":1,"maximum":100},"temperature":{"type":"number","minimum":0,"maximum":2,"default":0,"description":"Sampling temperature for this stage's model calls. Defaults to 0; unset uses the provider default."}},"required":["model","max_output_tokens","max_fields_per_call"],"default":{"model":"class:fast","max_output_tokens":4096,"max_fields_per_call":20,"temperature":0}},"verify":{"type":"object","additionalProperties":false,"properties":{"enabled":{"type":"boolean","default":false},"model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"check_quotes":{"type":"boolean","default":true},"check_support":{"type":"boolean","default":true},"temperature":{"type":"number","minimum":0,"maximum":2,"default":0,"description":"Sampling temperature for this stage's model calls. Defaults to 0; unset uses the provider default."},"max_tokens":{"type":"integer","minimum":256,"maximum":64000,"description":"Output token limit for this stage's model calls. Unset uses the provider default."}},"required":["enabled","model","check_quotes","check_support"],"default":{"enabled":false,"model":"class:fast","check_quotes":true,"check_support":true,"temperature":0}}},"required":["map","prefetch","scout","deep","extract","verify"],"default":{"map":{"enabled":true,"model":"class:fast","outline":"find_or_build","section_summaries":false,"temperature":0},"prefetch":{"enabled":true,"queries":[]},"scout":{"enabled":true,"mode":"loop","model":"class:fast","max_rounds":0,"target_confidence":0.7,"max_extra_queries":3,"max_tokens":4096,"drop_noise":true,"share_notes":true,"tools":["keyword_search","semantic_search","read_section","read_outline"],"temperature":0},"deep":{"enabled":true,"model":"class:fast","query_model":"class:fast","read":"chunks","parallel_fields":4,"max_queries":5,"chunks_per_query":50,"chunk_cap":100,"min_similarity":0.2,"query_temperature":0.2,"analysis_temperature":0.2},"extract":{"model":"class:fast","max_output_tokens":4096,"max_fields_per_call":20,"temperature":0},"verify":{"enabled":false,"model":"class:fast","check_quotes":true,"check_support":true,"temperature":0}}},"retrieval":{"type":"object","additionalProperties":false,"properties":{"chunk_size":{"type":"integer","default":1200,"minimum":100,"maximum":16000},"overlap":{"type":"integer","default":150,"minimum":0,"maximum":4000},"split_headings":{"type":"boolean","default":true},"keep_tables":{"type":"boolean","default":true},"search_mode":{"type":"string","default":"hybrid","enum":["keyword","semantic","hybrid"]},"embedding_model":{"type":"string","default":"class:embed","minLength":1,"maxLength":200},"context":{"type":"string","default":"headings","enum":["none","headings","generated"]},"context_model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"highlighter":{"type":"boolean","default":false},"highlighter_model":{"type":"string","default":"class:fast","minLength":1,"maxLength":200},"highlighter_temperature":{"type":"number","minimum":0,"maximum":2,"description":"Sampling temperature for the highlighter's model calls. Unset uses the provider default."},"highlighter_max_tokens":{"type":"integer","minimum":256,"maximum":64000,"description":"Output token limit for the highlighter's model calls. Unset uses the provider default."},"section_budget":{"type":"integer","default":6000,"minimum":500,"maximum":64000}},"required":["chunk_size","overlap","split_headings","keep_tables","search_mode","embedding_model","context","context_model","highlighter","highlighter_model","section_budget"],"default":{"chunk_size":1200,"overlap":150,"split_headings":true,"keep_tables":true,"search_mode":"hybrid","embedding_model":"class:embed","context":"headings","context_model":"class:fast","highlighter":false,"highlighter_model":"class:fast","section_budget":6000}},"tags":{"type":"array","default":[],"items":{"type":"string","minLength":1,"maxLength":80},"uniqueItems":true,"maxItems":50}}`), dt = {
   properties: Yi,
-  default: { fields: [], stages: { map: { enabled: !0, model: "class:fast", outline: "find_or_build", section_summaries: !1 }, prefetch: { enabled: !0, queries: [] }, scout: { enabled: !0, mode: "loop", model: "class:fast", max_rounds: 0, target_confidence: 0.7, max_extra_queries: 3, max_tokens: 4096, drop_noise: !0, share_notes: !0, tools: ["keyword_search", "semantic_search", "read_section", "read_outline"] }, deep: { enabled: !0, model: "class:fast", query_model: "class:fast", read: "chunks", parallel_fields: 4, max_queries: 5, chunks_per_query: 50, chunk_cap: 100, min_similarity: 0.2, query_temperature: 0.2, analysis_temperature: 0.2 }, extract: { model: "class:fast", max_output_tokens: 4096, max_fields_per_call: 20 }, verify: { enabled: !1, model: "class:fast", check_quotes: !0, check_support: !0 } }, retrieval: { chunk_size: 1200, overlap: 150, split_headings: !0, keep_tables: !0, search_mode: "hybrid", embedding_model: "class:embed", context: "headings", context_model: "class:fast", highlighter: !1, highlighter_model: "class:fast", section_budget: 6e3 }, tags: [] }
+  default: { fields: [], stages: { map: { enabled: !0, model: "class:fast", outline: "find_or_build", section_summaries: !1, temperature: 0 }, prefetch: { enabled: !0, queries: [] }, scout: { enabled: !0, mode: "loop", model: "class:fast", max_rounds: 0, target_confidence: 0.7, max_extra_queries: 3, max_tokens: 4096, drop_noise: !0, share_notes: !0, tools: ["keyword_search", "semantic_search", "read_section", "read_outline"], temperature: 0 }, deep: { enabled: !0, model: "class:fast", query_model: "class:fast", read: "chunks", parallel_fields: 4, max_queries: 5, chunks_per_query: 50, chunk_cap: 100, min_similarity: 0.2, query_temperature: 0.2, analysis_temperature: 0.2 }, extract: { model: "class:fast", max_output_tokens: 4096, max_fields_per_call: 20, temperature: 0 }, verify: { enabled: !1, model: "class:fast", check_quotes: !0, check_support: !0, temperature: 0 } }, retrieval: { chunk_size: 1200, overlap: 150, split_headings: !0, keep_tables: !0, search_mode: "hybrid", embedding_model: "class:embed", context: "headings", context_model: "class:fast", highlighter: !1, highlighter_model: "class:fast", section_budget: 6e3 }, tags: [] }
 }, Gi = 4, Ns = () => ({ name: "", type: "text", description: "", enum_values: [], expected_format: "", required: !1 }), Rs = () => ({ type: "text", description: "", enum_values: [], expected_format: "" }), Se = (e) => e.group ? `${e.group}.${e.name}` : e.name, Zi = /^(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)*(?:\.[a-z][a-z0-9]*(?:_[a-z0-9]+)*)*)?$/;
 function Vs(e) {
   return e.find((t) => e.some((r) => r !== t && r.startsWith(t + ".")));
@@ -3909,7 +3909,7 @@ function Ds(e, t, r) {
     Object.hasOwn(o, a) || (o[a] = {}), o = o[a];
   Object.defineProperty(o, n.at(-1), { value: r, writable: !0, enumerable: !0, configurable: !0 });
 }
-function Us(e) {
+function Bs(e) {
   const t = { name: "", path: "", indices: [], children: [] };
   return e.forEach((r, n) => {
     let o = t;
@@ -3920,9 +3920,8 @@ function Us(e) {
     o.indices.push(n);
   }), t;
 }
-function Bs() {
-  const e = structuredClone(dt.default), { max_output_tokens: t, max_fields_per_call: r } = e.stages.extract;
-  return { ...e, stages: { ...e.stages, extract: { model: "class:fast", max_output_tokens: t, max_fields_per_call: r } } };
+function Us() {
+  return structuredClone(dt.default);
 }
 const qs = () => structuredClone(dt.properties.fields.items.default), Hs = () => ({ name: "", query: "", chunks: 5 }), Ws = () => [...dt.properties.stages.properties.scout.properties.tools.default], sn = dt, ln = (e) => ({ min: e?.minimum ?? 0, max: e?.maximum ?? 100 }), Fs = (e, t) => ln(sn.properties.stages.properties[e]?.properties[t]), Ks = (e) => ln(sn.properties.retrieval.properties[e]), Ys = { map: "Map the document", prefetch: "Prefetch", scout: "Scout loop", deep: "Deep analysis", extract: "Extract", verify: "Verify" }, Gs = { map: "tabler:list-tree", prefetch: "tabler:search", scout: "tabler:radar-2", deep: "tabler:microscope", extract: "tabler:table-export", verify: "tabler:shield-check" }, Zs = {
   map: "Find the table of contents or build an outline, then pick the sections each field should read.",
@@ -4190,27 +4189,27 @@ var as = `
     };
   }
 };
-function Ue(e) {
+function Be(e) {
   "@babel/helpers - typeof";
-  return Ue = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(t) {
+  return Be = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(t) {
     return typeof t;
   } : function(t) {
     return t && typeof Symbol == "function" && t.constructor === Symbol && t !== Symbol.prototype ? "symbol" : typeof t;
-  }, Ue(e);
+  }, Be(e);
 }
 function _r(e, t, r) {
   return (t = ds(t)) in e ? Object.defineProperty(e, t, { value: r, enumerable: !0, configurable: !0, writable: !0 }) : e[t] = r, e;
 }
 function ds(e) {
   var t = cs(e, "string");
-  return Ue(t) == "symbol" ? t : t + "";
+  return Be(t) == "symbol" ? t : t + "";
 }
 function cs(e, t) {
-  if (Ue(e) != "object" || !e) return e;
+  if (Be(e) != "object" || !e) return e;
   var r = e[Symbol.toPrimitive];
   if (r !== void 0) {
     var n = r.call(e, t);
-    if (Ue(n) != "object") return n;
+    if (Be(n) != "object") return n;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (t === "string" ? String : Number)(e);
@@ -4888,27 +4887,27 @@ var ms = `
         color: dt('button.link.active.color');
     }
 `;
-function Be(e) {
+function Ue(e) {
   "@babel/helpers - typeof";
-  return Be = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(t) {
+  return Ue = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(t) {
     return typeof t;
   } : function(t) {
     return t && typeof Symbol == "function" && t.constructor === Symbol && t !== Symbol.prototype ? "symbol" : typeof t;
-  }, Be(e);
+  }, Ue(e);
 }
 function F(e, t, r) {
   return (t = fs(t)) in e ? Object.defineProperty(e, t, { value: r, enumerable: !0, configurable: !0, writable: !0 }) : e[t] = r, e;
 }
 function fs(e) {
   var t = hs(e, "string");
-  return Be(t) == "symbol" ? t : t + "";
+  return Ue(t) == "symbol" ? t : t + "";
 }
 function hs(e, t) {
-  if (Be(e) != "object" || !e) return e;
+  if (Ue(e) != "object" || !e) return e;
   var r = e[Symbol.toPrimitive];
   if (r !== void 0) {
     var n = r.call(e, t);
-    if (Be(n) != "object") return n;
+    if (Ue(n) != "object") return n;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (t === "string" ? String : Number)(e);
@@ -5193,10 +5192,10 @@ export {
   Fs as O,
   Ks as P,
   Vs as Q,
-  Us as R,
+  Bs as R,
   Xs as S,
   Ms as T,
-  Uo as U,
+  Bo as U,
   ol as V,
   al as W,
   Ts as a,
@@ -5212,7 +5211,7 @@ export {
   y as k,
   dn as l,
   el as m,
-  Bs as n,
+  Us as n,
   Gs as o,
   Qs as p,
   Se as q,
