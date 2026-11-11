@@ -654,6 +654,9 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
             entry.evidence = cited
             entry.missing = false
             if f.evidence_required and #cited == 0 then entry.reason, entry.codes = "No quote supports this value", { "no_quote" } end
+        elseif f.search_within == "sections" then
+            -- The passages read come only from the field's sections; the rest of the document is unread.
+            entry.reason, entry.codes = "Not stated in its selected sections", { "missing_in_sections" }
         end
         entries[#entries + 1] = entry
     end
