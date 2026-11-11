@@ -122,10 +122,22 @@ function M.resolve(model: string): (any?, error?)
     return card, nil
 end
 
--- The structured result of a response, or why the response is unusable.
+-- The reply a provider failure reports: the llm module carries a failed
+-- reply's usage and finish reason in the error details. nil when the failure
+-- came before any reply.
+local function failed_reply(err: any): any?
+    if type(err) ~= "userdata" then return nil end
+    local details = (err :: any):details()
+    if type(details) ~= "table" or (details.tokens == nil and details.finish_reason == nil) then return nil end
+    return { tokens = details.tokens, finish_reason = details.finish_reason }
+end
+
+-- The structured result of a response, or why the response is unusable. A
+-- failed reply that stopped at the output limit is a truncation.
 local function structured_result(model: string, schema: any, response: any, err: any): (any?, error?)
-    if err then return nil, model_error("structured model call (" .. model .. ")", err) end
-    if response.finish_reason == "length" then
+    local reply = err and failed_reply(err) or response
+    if err and not (reply and reply.finish_reason == "length") then return nil, model_error("structured model call (" .. model .. ")", err) end
+    if reply.finish_reason == "length" then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
             message = "Structured model reply is truncated", details = { code = "structured_reply_truncated", model = model } })
     end
@@ -150,7 +162,7 @@ function M.structured(meter: Meter, model: string, schema: any, system: string, 
     local started = millis()
     local response, call_err = llm.structured_output(schema, messages(system, user), options)
     local result, err = structured_result(model, schema, response, call_err)
-    record(meter, "structured", model, opts, started, response, err)
+    record(meter, "structured", model, opts, started, response or failed_reply(call_err), err)
     return result, err
 end
 
@@ -161,7 +173,7 @@ function M.generate(meter: Meter, model: string, system: string, user: string, o
     local response, call_err = llm.generate(messages(system, user), options)
     local err = call_err and model_error("model call (" .. model .. ")", call_err) or nil
     if not err and response.finish_reason == "length" then err = truncated(model) end
-    record(meter, "generate", model, opts, started, response, err)
+    record(meter, "generate", model, opts, started, response or failed_reply(call_err), err)
     if err then return nil, err end
     return tostring(response.result or ""), nil
 end
@@ -183,7 +195,7 @@ function M.agent(meter: Meter, model: string, system: string, user: string, tool
         local response, call_err = llm.generate(conversation, options)
         local err = call_err and model_error("agent model call (" .. model .. ")", call_err) or nil
         if not err and response.finish_reason == "length" then err = truncated(model) end
-        record(meter, "agent", model, opts, started, response, err)
+        record(meter, "agent", model, opts, started, response or failed_reply(call_err), err)
         if err then return nil, calls, err end
         local tool_calls = response.tool_calls
         if not tool_calls or #tool_calls == 0 or calls >= max_calls then return tostring(response.result or ""), calls, nil end
