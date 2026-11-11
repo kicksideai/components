@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.9...agent-onboarding-v0.1.10) (2026-11-11)
+
+
+### Features
+
+* **agent-onboarding:** create personal memory with the first agent ([#46](https://github.com/kicksideai/components/issues/46)) ([cddad18](https://github.com/kicksideai/components/commit/cddad183a8ab2142e4779a512092b40c8d9275d7))
+
 ## [0.1.9](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.8...agent-onboarding-v0.1.9) (2026-11-08)
 
 
