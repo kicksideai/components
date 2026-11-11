@@ -11,9 +11,9 @@ local function run(request: any): (any?, error?)
     local cfg, input = request and request.config or {}, request and request.input or {}
     if type(cfg.extractor_id) ~= "string" or cfg.extractor_id == "" then return nil, invalid("Choose an extractor") end
     if type(input.upload_id) ~= "string" or input.upload_id == "" then return nil, invalid("The input needs an upload_id") end
-    local result, err = client.run({ extractor_id = cfg.extractor_id, upload_id = input.upload_id, caller = "workflow" })
+    local result, err = client.run({ extractor_id = cfg.extractor_id, upload_id = input.upload_id, pages = cfg.pages, caller = "workflow" })
     if err then return nil, err end
-    local output = { values = result.values, fields = result.fields, verified = shapes.verified(result), run_id = result.run_id, pages = result.pages,
+    local output = { values = result.values, fields = result.fields, verified = shapes.verified(result), run_id = result.run_id, pages = result.pages, page_range = result.page_range,
         config_revision = result.config_revision, status = result.status, duration_ms = result.duration_ms, tokens = result.tokens, trace = result.trace }
     if result.status == "failed" then
         local cause = result.error

@@ -2,7 +2,7 @@
 import {api} from '@wippy-fe/proxy'
 import type {Config} from './config'
 export type {Snapshot,Extraction,EvalCase,Run,Evaluation,CaseResult,FieldMetric,FieldScore,EvalStatus} from './models'
-import type {Snapshot,Extraction,Evaluation,TraceStep} from './models'
+import type {Snapshot,Extraction,Evaluation,TraceStep,PageRange} from './models'
 export interface ExtractorItem {component_id:string;updated_at:string;access_level?:number;meta:{title:string;description?:string;field_count?:string;status?:string;owner?:string}}
 export interface ExtractorPage {success:true;items:ExtractorItem[];next_cursor?:string}
 export interface ListParams {filter?:string;cursor?:string;limit?:number}
@@ -15,11 +15,13 @@ export const client={
  async get(id:string):Promise<Snapshot>{return checked((await api.get(path(id))).data)},
  async create(input:{title:string;description:string;config:Config;parent_id?:string}):Promise<{component_id:string}>{return checked((await api.post('/api/v1/docscout',input)).data)},
  async update(id:string,input:{title:string;description:string;config:Config;expected_revision:number}):Promise<{context_revision:number}>{return checked((await api.put(path(id),input)).data)},
- async addCase(id:string,input:{upload_id:string;expected:Record<string,unknown>}):Promise<{id:string}>{return checked((await api.post(path(id)+'/cases',input)).data)},
+ async addCase(id:string,input:{upload_id:string;expected:Record<string,unknown>;pages?:PageRange}):Promise<{id:string}>{return checked((await api.post(path(id)+'/cases',input)).data)},
  async deleteCase(id:string,case_id:string):Promise<void>{checked((await api.delete(path(id)+'/cases/'+encodeURIComponent(case_id))).data)},
  // A run that stops partway still answers with its run id and step trace.
- async run(id:string,upload_id:string):Promise<Extraction>{
-  try{return checked((await api.post(path(id)+'/run',{upload_id})).data)}
+ async run(id:string,upload_id:string,pages?:PageRange):Promise<Extraction>{
+  const input:{upload_id:string;pages?:PageRange}={upload_id}
+  if(pages!==undefined)input.pages=pages
+  try{return checked((await api.post(path(id)+'/run',input)).data)}
   catch(e){
    const data=failure(e),trace=data?.details?.trace
    if(!trace)throw e

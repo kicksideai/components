@@ -11,7 +11,7 @@ local function run(input: any): (any?, error?)
     if type(input) ~= "table" then return nil, invalid("Request must be an object") end
     local caller = input.caller or "agent"
     if not CALLERS[caller] then return nil, invalid("caller must be ui, agent, workflow or eval") end
-    return engine.run({ id = input.extractor_id, upload_id = input.upload_id, caller = caller, deadline = input.deadline, evaluation_id = input.evaluation_id, case_id = input.case_id })
+    return engine.run({ id = input.extractor_id, upload_id = input.upload_id, caller = caller, pages = input.pages, deadline = input.deadline, evaluation_id = input.evaluation_id, case_id = input.case_id })
 end
 
 return { run = run }

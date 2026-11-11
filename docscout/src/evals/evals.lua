@@ -159,7 +159,7 @@ function M.run_case(input: any): (any?, error?)
     local executor, bind_err = execution_identity.bind(stored, { deferred_owner = WORKER })
     if bind_err then return finish(eval, payload.case_id, { status = "failed", error = error_envelope.encode(bind_err) }) end
     local result, run_err = executor:call("kickside.docscout:invoke",
-        { extractor_id = eval.component_id, upload_id = expected.upload_id, caller = "eval", evaluation_id = eval.id, case_id = payload.case_id, deadline = input.job and input.job.deadline })
+        { extractor_id = eval.component_id, upload_id = expected.upload_id, pages = expected.pages, caller = "eval", evaluation_id = eval.id, case_id = payload.case_id, deadline = input.job and input.job.deadline })
     if run_err then
         -- A run that stopped partway still spent time and tokens; its trace says how much.
         local details = (run_err :: any):details() or {}
