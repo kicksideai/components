@@ -63,6 +63,60 @@ return { run = test.run_cases(function()
                 test.is_true(shapes.normalize(pair[1]) ~= shapes.normalize(pair[2]), pair[1])
             end
         end)
+        test.it("rejects empty math matches while retaining content around math spacing", function()
+            local chunks = { { ordinal = 1, content = "alpha" } }
+            local bodies = { [1] = shapes.normalize("alpha") }
+            local ctx = shapes.quote_context(chunks, "alpha")
+            for _, quote in ipairs({ "$\\quad$", "$\\!$", "\\[\\hspace{2em}\\]" }) do
+                test.eq(shapes.normalize(quote), "")
+                test.is_nil((shapes.locate(quote, 1, bodies, { 1 })))
+                test.is_nil((shapes.locate(quote, 1, bodies, { 1 }, ctx)))
+            end
+            test.eq(shapes.locate("al$\\quad$pha", 1, { [1] = "al pha" }, { 1 }), 1)
+            local pair = context("alpha omega", "alpha", "omega", 7)
+            test.eq((located("alpha$\\quad$omega", pair)), 1)
+        end)
+        test.it("bounds unmatched offset searches linearly in source length", function()
+            for _, size in ipairs({ 512, 1024, 2048 }) do
+                local comparisons, calls = 0, 0
+                -- A string double counts each byte comparison in literal searches,
+                -- including searches on slices, without relying on elapsed time.
+                local function measured(text: string): any
+                    return setmetatable({
+                        find = function(_: any, needle: string, first: integer?, plain: boolean?): (integer?, integer?)
+                            test.is_true(plain)
+                            calls = calls + 1
+                            for at = first or 1, #text - #needle + 1 do
+                                local equal = true
+                                for i = 1, #needle do
+                                    comparisons = comparisons + 1
+                                    if text:sub(at + i - 1, at + i - 1) ~= needle:sub(i, i) then equal = false; break end
+                                end
+                                if equal then return at, at + #needle - 1 end
+                            end
+                            return nil, nil
+                        end,
+                        sub = function(_: any, first: integer, last: integer?): any return measured(text:sub(first, last)) end,
+                        gsub = function(_: any, pattern: string, replacement: string): string return (text:gsub(pattern, replacement)) end,
+                    }, { __len = function(): integer return #text end })
+                end
+                local chunks = {}
+                for i = 1, size // 8 do chunks[i] = { ordinal = i, content = "aaaaaaab" } end
+                local positions, covered = shapes.source_positions(chunks, measured(string.rep("a", size)))
+                test.is_nil(next(positions)); test.is_false(covered)
+                test.is_true(comparisons <= 8 * size, "comparisons: " .. comparisons)
+                test.is_true(calls <= size // 16, "search calls: " .. calls)
+            end
+        end)
+        test.it("advances past missed windows and leaves distant or empty chunks without offsets", function()
+            local positions = shapes.source_positions({ { ordinal = 1, content = "tail" } }, string.rep("a", 16) .. "tail")
+            test.is_nil(positions[1])
+            local chunks = { { ordinal = 1, content = "missing!" }, { ordinal = 2, content = "tail" }, { ordinal = 3, content = "" } }
+            local covered
+            positions, covered = shapes.source_positions(chunks, string.rep("a", 16) .. "tail")
+            test.is_nil(positions[1]); test.is_nil(positions[3]); test.is_false(covered)
+            test.eq(positions[2].first, 17); test.eq(positions[2].last, 20)
+        end)
         test.it("keeps math commands literal inside code fences", function()
             local slash = string.char(92)
             for _, fence in ipairs({ "```", "~~~" }) do

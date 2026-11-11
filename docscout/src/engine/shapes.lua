@@ -483,19 +483,29 @@ function M.normalize(text: string): string return fold(normalize_math(text)) end
 
 -- Literal byte positions in marker-free Markdown. Both starts and ends advance,
 -- so repeated text wholly inside the previous chunk cannot stand for the next.
+-- Search at most twice the chunk length; a miss consumes that entire window.
 -- covered proves that these chunks account for the whole source except whitespace.
 function M.source_positions(chunks: { any }, source: string): ({ [integer]: any }, boolean)
     local positions = {}
     local cursor, last_end, covered_end, covered = 1, 0, 0, true
     for _, chunk in ipairs(chunks) do
-        local first, last = source:find(chunk.content, cursor, true)
-        while first and (last :: integer) <= last_end do first, last = source:find(chunk.content, first + 1, true) end
+        local length = #chunk.content
+        local start = math.max(cursor, last_end - length + 2)
+        local finish = math.min(#source, start + 2 * length - 1)
+        local first: integer?, last: integer? = nil, nil
+        if length > 0 and start <= finish then
+            first, last = source:sub(start, finish):find(chunk.content, 1, true)
+            if first then first, last = first + start - 1, (last :: integer) + start - 1 end
+        end
         if first then
             positions[chunk.ordinal] = { first = first, last = last }
             if first > covered_end + 1 and M.trim(source:sub(covered_end + 1, first - 1)) ~= "" then covered = false end
             cursor, last_end = first + 1, last :: integer
             covered_end = math.max(covered_end, last :: integer)
-        else covered = false end
+        else
+            covered = false
+            if length > 0 then cursor = finish + 1 end
+        end
     end
     if M.trim(source:sub(covered_end + 1)) ~= "" then covered = false end
     return positions, covered
@@ -540,6 +550,7 @@ function M.quote_context(chunks: { any }, source: string?): any
 end
 
 local function matches(texts: { string }?, quote: string): boolean
+    if quote == "" then return false end
     for _, text in ipairs(texts or {}) do if text:find(quote, 1, true) then return true end end
     return false
 end
@@ -575,7 +586,7 @@ function M.locate(quote: string, cited: integer?, bodies: { [integer]: string },
         if context and context.literal_bodies then
             return context.literal_bodies[n] and (context.literal_bodies[n]:find(literal, 1, true) ~= nil or matches(context.math_bodies[n], math_quote)) or false
         end
-        return bodies[n] and bodies[n]:find(math_quote, 1, true) ~= nil or false
+        return math_quote ~= "" and bodies[n] and bodies[n]:find(math_quote, 1, true) ~= nil or false
     end
     if cited and single(cited) then return cited, cited end
     for _, ordinal in ipairs(ordinals) do if single(ordinal) then return ordinal, ordinal end end
