@@ -358,56 +358,243 @@ local EQUIVALENT = {
     ["…"] = "...", [" "] = " ", [" "] = " ", [" "] = " ", [" "] = " ", ["﻿"] = "",
 }
 
--- Text compared for quote matching: lower case, typographic characters made
--- plain, Markdown emphasis, table bars and OCR math spacing removed, whitespace
--- collapsed. Signs, decimal points and numeric punctuation remain significant.
-function M.normalize(s: string): string
+-- Only parsed math spans interpret LaTeX spacing. Code and literal backslashes
+-- retain their text, and a spacing-only math span contributes one space.
+local function math_spacing(text: string): string
+    local out, i = {}, 1
+    while i <= #text do
+        local ch, next_ch = text:sub(i, i), text:sub(i + 1, i + 1)
+        if ch == "\\" then
+            if next_ch == "\\" then out[#out + 1] = "\\"; i = i + 2
+            elseif next_ch:match("[,;: ]") then out[#out + 1] = " "; i = i + 2
+            elseif next_ch == "!" then i = i + 2
+            else
+                local command = text:match("^(%a+)", i + 1)
+                if command == "quad" or command == "qquad" or command == "enspace" or command == "thinspace" or command == "medspace" or command == "thickspace" then
+                    out[#out + 1] = " "; i = i + #command + 1
+                elseif command == "hspace" then
+                    local at = i + #command + 1
+                    if text:sub(at, at) == "*" then at = at + 1 end
+                    while at <= #text and text:sub(at, at):match("%s") do at = at + 1 end
+                    local first, last = text:find("%b{}", at)
+                    if first == at and last > first + 1 then out[#out + 1] = " "; i = last + 1
+                    else out[#out + 1] = ch; i = i + 1 end
+                else out[#out + 1] = ch; i = i + 1 end
+            end
+        else out[#out + 1] = ch; i = i + 1 end
+    end
+    return table.concat(out)
+end
+
+local function unescaped(text: string, at: integer): boolean
+    local slashes, i = 0, at - 1
+    while i > 0 and text:sub(i, i) == "\\" do slashes, i = slashes + 1, i - 1 end
+    return slashes % 2 == 0
+end
+
+local function code_spans(text: string): { any }
+    local spans, i, line_start = {}, 1, 1
+    while i <= #text do
+        local symbol = text:sub(i, i)
+        local count = 0
+        if symbol == "`" or symbol == "~" then
+            while text:sub(i + count, i + count) == symbol do count = count + 1 end
+        end
+        local fenced = count >= 3 and text:sub(line_start, i - 1):match("^[ \t]*$") ~= nil
+        local finish = nil
+        if fenced then
+            local newline = text:find("\n", i + count, true)
+            while newline do
+                local next_line = text:find("\n", newline + 1, true) or #text + 1
+                local closing = text:sub(newline + 1, next_line - 1):match("^[ \t]*(" .. symbol .. "+)[ \t]*$")
+                if closing and #closing >= count then finish = next_line - 1; break end
+                newline = next_line <= #text and next_line or nil
+            end
+            finish = finish or #text
+        elseif symbol == "`" then
+            local at = i + count
+            while true do
+                local found = text:find("`", at, true)
+                if not found then break end
+                local length = 1
+                while text:sub(found + length, found + length) == "`" do length = length + 1 end
+                if length == count then finish = found + length - 1; break end
+                at = found + length
+            end
+        end
+        if finish then
+            spans[#spans + 1] = { first = i, last = finish }
+            local last_line = text:sub(i, finish):match(".*\n()")
+            if last_line then line_start = i + last_line - 1 end
+            i = finish + 1
+        else
+            if symbol == "\n" then line_start = i + 1 end
+            i = i + math.max(1, count)
+        end
+    end
+    return spans
+end
+
+local function normalize_math(text: string): string
+    local out, i, code_at = {}, 1, 1
+    local codes = code_spans(text)
+    while i <= #text do
+        local ch = text:sub(i, i)
+        local code = codes[code_at]
+        if code and i == code.first then
+            out[#out + 1] = text:sub(i, code.last); i = code.last + 1; code_at = code_at + 1
+        else
+            local opening, closing = nil, nil
+            if ch == "$" and unescaped(text, i) then
+                opening = text:sub(i, i + 1) == "$$" and "$$" or "$"; closing = opening
+            elseif ch == "\\" and unescaped(text, i) and (text:sub(i + 1, i + 1) == "(" or text:sub(i + 1, i + 1) == "[") then
+                opening = text:sub(i, i + 1); closing = opening == "\\(" and "\\)" or "\\]"
+            end
+            local first, last = nil, nil
+            if opening then
+                first, last = text:find(closing :: string, i + #opening, true)
+                while first and not unescaped(text, first) do first, last = text:find(closing :: string, (last :: integer) + 1, true) end
+            end
+            local content = first and text:sub(i + #(opening :: string), first - 1) or ""
+            local valid = first ~= nil and M.trim(content) ~= ""
+            if code and first and code.first <= first then valid = false end
+            if opening == "$" and (content:match("^%s") or content:match("%s$") or text:sub((last or 0) + 1, (last or 0) + 1):match("%d")) then valid = false end
+            if valid then
+                local normalized = math_spacing(content)
+                out[#out + 1] = M.trim(normalized) == "" and " " or ((opening :: string) .. normalized .. (closing :: string))
+                i = (last :: integer) + 1
+            else out[#out + 1] = ch; i = i + 1 end
+        end
+    end
+    return table.concat(out)
+end
+
+local function fold(s: string): string
     local out = {}
     for ch in s:gmatch("[%z\1-\127\194-\244][\128-\191]*") do out[#out + 1] = EQUIVALENT[ch] or ch end
     -- Normalization removes Markdown emphasis, code ticks and table bars.
     local plain = table.concat(out):gsub("([^%s%*])%*+", "%1 "):gsub("%*+([^%s%*])", " %1"):gsub("__+", " "):gsub("`+", " "):gsub("|", " ")
-    -- OCR writes horizontal space as LaTeX math such as $\quad$; a math span holding only spacing reads as a space.
-    plain = plain:gsub("\\hspace%*?%b{}", " "):gsub("\\q?quad", " "):gsub("\\[,;: ]", " "):gsub("%$%s*%$", " ")
     local folded = plain:lower():gsub("%s+", " ")
     return M.trim(folded)
 end
 
--- Two consecutive normalized chunk bodies as one text. Chunks may repeat the
--- end of the previous chunk; the shared text appears once.
-local function join(a: string, b: string): string
-    local probe = b:sub(1, 32)
-    local at = a:find(probe, 1, true)
-    while at do
-        if b:sub(1, #a - at + 1) == a:sub(at) then return a:sub(1, at - 1) .. b end
-        at = a:find(probe, at + 1, true)
+function M.normalize_literal(text: string): string return fold(text) end
+function M.normalize(text: string): string return fold(normalize_math(text)) end
+
+-- Literal byte positions in marker-free Markdown. Both starts and ends advance,
+-- so repeated text wholly inside the previous chunk cannot stand for the next.
+-- covered proves that these chunks account for the whole source except whitespace.
+function M.source_positions(chunks: { any }, source: string): ({ [integer]: any }, boolean)
+    local positions = {}
+    local cursor, last_end, covered_end, covered = 1, 0, 0, true
+    for _, chunk in ipairs(chunks) do
+        local first, last = source:find(chunk.content, cursor, true)
+        while first and (last :: integer) <= last_end do first, last = source:find(chunk.content, first + 1, true) end
+        if first then
+            positions[chunk.ordinal] = { first = first, last = last }
+            if first > covered_end + 1 and M.trim(source:sub(covered_end + 1, first - 1)) ~= "" then covered = false end
+            cursor, last_end = first + 1, last :: integer
+            covered_end = math.max(covered_end, last :: integer)
+        else covered = false end
     end
-    return a .. " " .. b
+    if M.trim(source:sub(covered_end + 1)) ~= "" then covered = false end
+    return positions, covered
 end
 
--- The chunks a quote comes from, as first and last ordinal: the cited chunk
--- when it holds the quote, else the first chunk in document order that does,
--- else two adjacent chunks the quote runs across. bodies maps ordinal to
--- normalized text; ordinals are the chunks the quote may come from.
-function M.locate(quote: string, cited: integer?, bodies: { [integer]: string }, ordinals: { integer }): (integer?, integer?)
-    local q = M.normalize(quote)
-    if q == "" then return nil, nil end
-    if cited and bodies[cited] and bodies[cited]:find(q, 1, true) then return cited, cited end
-    local allowed = {}
-    for _, ordinal in ipairs(ordinals) do
-        if bodies[ordinal]:find(q, 1, true) then return ordinal, ordinal end
-        allowed[ordinal] = true
+-- Canonical text outside code spans supports math spacing equivalence. Literal
+-- matching remains available for quotes copied from code or unknown provenance.
+local function math_segments(source: string, first: integer, last: integer, codes: { any }): { string }
+    local out, cursor = {}, first
+    for _, code in ipairs(codes) do
+        if code.last >= first and code.first <= last then
+            if code.first > cursor then out[#out + 1] = M.normalize(source:sub(cursor, code.first - 1)) end
+            cursor = math.max(cursor, code.last + 1)
+        end
+        if code.first > last then break end
     end
+    if cursor <= last then out[#out + 1] = M.normalize(source:sub(cursor, last)) end
+    return out
+end
+
+function M.quote_context(chunks: { any }, source: string?): any
+    local context: any = { source = source, chunks = {}, literal_bodies = {}, math_bodies = {} }
+    local positions, covered = {}, false
+    if source then positions, covered = M.source_positions(chunks, source); context.codes = code_spans(source) end
+    if covered then context.legacy_positions = positions end
+    for _, chunk in ipairs(chunks) do
+        local n = chunk.ordinal
+        context.chunks[n], context.literal_bodies[n] = chunk, fold(chunk.content)
+        if source then
+            local first, last = tonumber(chunk.source_start), tonumber(chunk.source_end)
+            if not first or not last then
+                local position = covered and positions[n]
+                if position then first, last = position.first, position.last end
+            end
+            if first and last and first >= 1 and last <= #source and fold(source:sub(first, last)) == context.literal_bodies[n] then
+                context.math_bodies[n] = math_segments(source, first, last, context.codes)
+            end
+        end
+    end
+    return context
+end
+
+local function matches(texts: { string }?, quote: string): boolean
+    for _, text in ipairs(texts or {}) do if text:find(quote, 1, true) then return true end end
+    return false
+end
+
+local function pair_body(first: integer, context: any): (string?, { string }?, boolean?)
+    local a, b = context.chunks[first], context.chunks[first + 1]
+    if not a or not b or not context.source then return nil end
+    local start_a, end_a = tonumber(a.source_start), tonumber(a.source_end)
+    local start_b, end_b = tonumber(b.source_start), tonumber(b.source_end)
+    local recorded = start_a ~= nil and end_a ~= nil and start_b ~= nil and end_b ~= nil
+    if not recorded then
+        local positions = context.legacy_positions
+        local pa, pb = positions and positions[first], positions and positions[first + 1]
+        if not pa or not pb then return nil end
+        start_a, end_a, start_b, end_b = pa.first, pa.last, pb.first, pb.last
+    end
+    local source = context.source
+    if start_a < 1 or start_b <= start_a or end_b <= end_a or end_a < start_a or end_b < start_b or end_b > #source then return nil end
+    if fold(source:sub(start_a, end_a)) ~= context.literal_bodies[first] or fold(source:sub(start_b, end_b)) ~= context.literal_bodies[first + 1] then return nil end
+    if start_b > end_a + 1 and M.trim(source:sub(end_a + 1, start_b - 1)) ~= "" then return nil end
+    return fold(source:sub(start_a, end_b)), math_segments(source, start_a, end_b, context.codes), recorded
+end
+
+function M.locate(quote: string, cited: integer?, bodies: { [integer]: string }, ordinals: { integer }, context: any?): (integer?, integer?)
+    local literal, math_quote = fold(quote), M.normalize(quote)
+    if literal == "" then return nil, nil end
+    local allowed = {}
+    for _, ordinal in ipairs(ordinals) do allowed[ordinal] = true end
+    local function single(n: integer): boolean
+        if not allowed[n] then return false end
+        if context and context.literal_bodies then
+            return context.literal_bodies[n] and (context.literal_bodies[n]:find(literal, 1, true) ~= nil or matches(context.math_bodies[n], math_quote)) or false
+        end
+        return bodies[n] and bodies[n]:find(math_quote, 1, true) ~= nil or false
+    end
+    if cited and single(cited) then return cited, cited end
+    for _, ordinal in ipairs(ordinals) do if single(ordinal) then return ordinal, ordinal end end
     local function spans(first: integer): boolean
-        return allowed[first] and allowed[first + 1] and join(bodies[first], bodies[first + 1]):find(q, 1, true) ~= nil or false
+        if not context or not allowed[first] or not allowed[first + 1] then return false end
+        local joined, math_texts, recorded = pair_body(first, context)
+        if not joined then return false end
+        local literal_found, math_found = joined:find(literal, 1, true) ~= nil, matches(math_texts, math_quote)
+        if recorded then return literal_found or math_found end
+        -- A legacy candidate retains all repeated text and must also be true in
+        -- the actual source window. It never infers overlap from equal text.
+        local a, b = context.chunks[first], context.chunks[first + 1]
+        local candidate = a.content .. " " .. b.content
+        if literal_found and fold(candidate):find(literal, 1, true) then return true end
+        if math_found and #math_texts == 1 and M.normalize(candidate):find(math_quote, 1, true) then return true end
+        return false
     end
     if cited then
-        local at: integer = cited
-        if spans(at - 1) then return at - 1, at end
-        if spans(at) then return at, at + 1 end
+        if spans(cited - 1) then return cited - 1, cited end
+        if spans(cited) then return cited, cited + 1 end
     end
-    for _, ordinal in ipairs(ordinals) do
-        if spans(ordinal) then return ordinal, ordinal + 1 end
-    end
+    for _, ordinal in ipairs(ordinals) do if spans(ordinal) then return ordinal, ordinal + 1 end end
     return nil, nil
 end
 

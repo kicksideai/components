@@ -43,7 +43,7 @@ return { run = test.run_cases(function()
             test.eq(shapes.normalize("Item A$\\qquad$Item B"), plain)
             test.eq(shapes.normalize("Item A $\\hspace{2em}$ Item B"), plain)
             test.eq(shapes.normalize("Item A $\\, \\;$ Item B"), plain)
-            test.eq(shapes.normalize("Item A $ $ Item B"), plain)
+            test.eq(shapes.normalize("Item A $ $ Item B"), "item a $ $ item b")
             test.eq(shapes.normalize("Pay $5 and $6"), "pay $5 and $6")
             test.eq(shapes.normalize("cost $5 then $\\quad$ more"), "cost $5 then more")
             test.eq(shapes.normalize("$x^2$ grows"), "$x^2$ grows")
@@ -60,7 +60,13 @@ return { run = test.run_cases(function()
         test.it("locates a quote that runs across two adjacent chunks the field may read", function()
             local bodies = { [1] = shapes.normalize("Intro text. The first part ends"), [2] = shapes.normalize("here and the second part follows."),
                 [3] = shapes.normalize("Closing words."), [4] = shapes.normalize("Final page.") }
-            local first, last = shapes.locate("the first part ends here and", nil, bodies, { 1, 2, 3, 4 })
+            local raw = { [1] = { ordinal = 1, content = "Intro text. The first part ends" }, [2] = { ordinal = 2, content = "here and the second part follows." },
+                [3] = { ordinal = 3, content = "Closing words." }, [4] = { ordinal = 4, content = "Final page." } }
+            local source = table.concat({ raw[1].content, raw[2].content, raw[3].content, raw[4].content }, " ")
+            local positions = shapes.source_positions({ raw[1], raw[2], raw[3], raw[4] }, source)
+            for i, chunk in pairs(raw) do chunk.source_start, chunk.source_end = positions[i].first, positions[i].last end
+            local ctx = shapes.quote_context({ raw[1], raw[2], raw[3], raw[4] }, source)
+            local first, last = shapes.locate("the first part ends here and", nil, bodies, { 1, 2, 3, 4 }, ctx)
             test.eq(first, 1); test.eq(last, 2)
             first, last = shapes.locate("Intro text.", 1, bodies, { 1, 2, 3, 4 })
             test.eq(first, 1); test.eq(last, 1)
@@ -70,7 +76,11 @@ return { run = test.run_cases(function()
         test.it("joins overlapping adjacent chunks once at their shared text", function()
             local shared = "the shared overlap text repeated at the end of one chunk and the start of the next"
             local bodies = { [1] = shapes.normalize("Opening words, " .. shared), [2] = shapes.normalize(shared .. " and closing words.") }
-            local first, last = shapes.locate("opening words, " .. shared .. " and closing", nil, bodies, { 1, 2 })
+            local raw = { { ordinal = 1, content = "Opening words, " .. shared }, { ordinal = 2, content = shared .. " and closing words." } }
+            local source = "Opening words, " .. shared .. " and closing words."
+            local positions = shapes.source_positions(raw, source)
+            for i, chunk in ipairs(raw) do chunk.source_start, chunk.source_end = positions[i].first, positions[i].last end
+            local first, last = shapes.locate("opening words, " .. shared .. " and closing", nil, bodies, { 1, 2 }, shapes.quote_context(raw, source))
             test.eq(first, 1); test.eq(last, 2)
         end)
         test.it("builds an empty table that encodes as a JSON object", function()

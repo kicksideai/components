@@ -15,7 +15,7 @@ local function context(source: string, a: string, b: string, second: integer, le
         chunks[1].source_start, chunks[1].source_end = 1, #a
         chunks[2].source_start, chunks[2].source_end = second, second + #b - 1
     end
-    return { source = source, chunks = chunks, legacy_positions = { [1] = { first = 1, last = #a }, [2] = { first = second, last = second + #b - 1 } } }
+    return shapes.quote_context({ chunks[1], chunks[2] }, source)
 end
 local function located(quote: string, ctx: any, ordinals: { integer }?): (integer?, integer?)
     return shapes.locate(quote, 1, { [1] = shapes.normalize(ctx.chunks[1].content), [2] = shapes.normalize(ctx.chunks[2].content) }, ordinals or { 1, 2 }, ctx)
@@ -55,12 +55,20 @@ return { run = test.run_cases(function()
             test.is_nil((shapes.locate("omega", 2, { [1] = "alpha", [2] = "omega" }, { 1 }, ctx)))
         end)
         test.it("normalizes LaTeX spacing only inside math spans and respects command names", function()
-            test.eq(shapes.normalize("Value $x\\quad y$ units"), shapes.normalize("Value x y units"))
-            test.eq(shapes.normalize("\\[x\\hspace{1em}y\\]"), shapes.normalize("x y"))
-            test.eq(shapes.normalize("\\(x\\,y\\)"), shapes.normalize("x y"))
+            test.eq(shapes.normalize("Value $x\\quad y$ units"), "value $x y$ units")
+            test.eq(shapes.normalize("\\[x\\hspace{1em}y\\]"), string.char(92) .. "[x y" .. string.char(92) .. "]")
+            test.eq(shapes.normalize("\\(x\\,y\\)"), string.char(92) .. "(x y" .. string.char(92) .. ")")
             for _, pair in ipairs({ { "path\\ name", "path name" }, { "1\\,000", "1 000" }, { "Prices: $ $ 5", "Prices: 5" },
                 { "$\\quadratic$", "ratic" }, { "`$x\\quad y$`", "x y" }, { "Literal \\$x\\quad y\\$", "Literal x y" } }) do
                 test.is_true(shapes.normalize(pair[1]) ~= shapes.normalize(pair[2]), pair[1])
+            end
+        end)
+        test.it("keeps math commands literal inside code fences", function()
+            local slash = string.char(92)
+            for _, fence in ipairs({ "```", "~~~" }) do
+                local source = fence .. "\ntext ``` $x" .. slash .. "quad y$\n" .. fence
+                local changed = fence .. "\ntext ``` $x y$\n" .. fence
+                test.is_true(shapes.normalize(source) ~= shapes.normalize(changed))
             end
         end)
         test.it("records literal source offsets sequentially without a splitter option", function()

@@ -800,7 +800,7 @@ return { run = test.run_cases(function()
             return f
         end
         local function quotes_only(fields: { any }, values: { any }): any
-            return { document = { id = document() }, regions = {}, values = values,
+            return { document = { id = document(), source = "The **total amount due** is USD 1,250.00. Payment within 30 days of receipt. Discount: -5%." }, regions = {}, values = values,
                 config = { fields = fields, stages = { verify = { enabled = true, check_quotes = true, check_support = false, model = "class:fast" } } } }
         end
         test.it("accepts quotes in the document, relocates misattributed ones with all their locators and rejects changed signs", function()
