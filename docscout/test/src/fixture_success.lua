@@ -13,6 +13,7 @@ local function value(schema: any): any
     return "Fixture"
 end
 local function extraction(schema: any): any
+    if not schema.properties then return value(schema) end
     if schema.properties.found and schema.properties.found.type == "boolean" then
         local chunk = schema.properties.evidence.items.properties.chunk.enum[1]
         return { found = true, value = value(schema.properties.value), confidence = 1,
@@ -34,6 +35,17 @@ local function usage(args: any, prompt_tokens: integer, completion_tokens: integ
         completion_tokens = options.max_tokens or 0 }
 end
 function M.structured(args: any): (any?, error?)
+    if args.options and args.options.reply then
+        local reply = args.options.reply
+        if args.schema.properties.checks then
+            local checks = {}
+            for field, verdict in pairs(reply) do
+                checks[#checks + 1] = { field = field, supported = verdict.supported, reason = verdict.reason }
+            end
+            reply = { checks = checks }
+        end
+        return { result = { data = reply }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
+    end
     if args.schema.properties.provider_failure then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Fixture provider unavailable", details = { code = "fixture_provider_failure" } })
     end
