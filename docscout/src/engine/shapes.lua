@@ -424,7 +424,7 @@ local function code_spans(text: string): { any }
         end
         if finish then
             spans[#spans + 1] = { first = i, last = finish }
-            local last_line = text:sub(i, finish):match(".*\n()")
+            local last_line = text:sub(i, finish):match(".*\n()") :: integer?
             if last_line then line_start = i + last_line - 1 end
             i = finish + 1
         else
@@ -525,7 +525,8 @@ function M.quote_context(chunks: { any }, source: string?): any
         local n = chunk.ordinal
         context.chunks[n], context.literal_bodies[n] = chunk, fold(chunk.content)
         if source then
-            local first, last = tonumber(chunk.source_start), tonumber(chunk.source_end)
+            local first: integer? = chunk.source_start
+            local last: integer? = chunk.source_end
             if not first or not last then
                 local position = covered and positions[n]
                 if position then first, last = position.first, position.last end
@@ -546,8 +547,10 @@ end
 local function pair_body(first: integer, context: any): (string?, { string }?, boolean?)
     local a, b = context.chunks[first], context.chunks[first + 1]
     if not a or not b or not context.source then return nil end
-    local start_a, end_a = tonumber(a.source_start), tonumber(a.source_end)
-    local start_b, end_b = tonumber(b.source_start), tonumber(b.source_end)
+    local start_a: integer? = a.source_start
+    local end_a: integer? = a.source_end
+    local start_b: integer? = b.source_start
+    local end_b: integer? = b.source_end
     local recorded = start_a ~= nil and end_a ~= nil and start_b ~= nil and end_b ~= nil
     if not recorded then
         local positions = context.legacy_positions
