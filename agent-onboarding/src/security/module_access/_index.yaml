@@ -9,6 +9,7 @@ entries:
     intent: module_access
     includes:
     - kickside.agent_onboarding.security:module_runtime
+    - kickside.agent_onboarding.security:member_endpoints
   groups: []
   policy:
     resources:
@@ -45,3 +46,26 @@ entries:
     - funcs.call
     - funcs.security
     effect: allow
+
+- name: member_endpoints
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.agent_onboarding:create_agent.endpoint
+    actions: access
+    effect: allow
+- name: user_security_scope
+  kind: ns.requirement
+  default: kickside.security.groups:members
+  meta:
+    value_kind: security.scope
+  targets:
+  - entry: kickside.agent_onboarding.security:module_access
+    path: .groups +=
+  - entry: kickside.agent_onboarding.security:module_runtime
+    path: .groups +=
+  - entry: kickside.agent_onboarding.security:member_endpoints
+    path: .groups +=
