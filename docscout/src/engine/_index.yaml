@@ -96,6 +96,7 @@ entries:
     data_reader: userspace.dataflow.persist:data_reader
     doctools: kickside.docscout.engine:doctools
     shapes: kickside.docscout.engine:shapes
+    ai: kickside.docscout.engine:ai
     error_envelope: kickside.contract:error_envelope
 - name: document_tool
   kind: function.lua

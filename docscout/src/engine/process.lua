@@ -242,7 +242,8 @@ local function contexts(meter: any, retrieval: any, models: { [string]: string }
             batch[#batch + 1] = chunks[i]
             lines[#lines + 1] = "\n## Passage " .. tostring(#batch) .. " (section: " .. chunks[i].heading_path .. ")\n" .. chunks[i].content
         end
-        local result, err = ai.structured(meter, models.context :: string, context_schema(#batch), CONTEXT_SYSTEM, table.concat(lines, "\n"))
+        local result, err = ai.structured(meter, models.context :: string, context_schema(#batch), CONTEXT_SYSTEM, table.concat(lines, "\n"),
+            { stage = "context", sources = shapes.ordinals(batch) })
         if err then return err end
         if #result.contexts ~= #batch then
             return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "context model returned " .. #result.contexts .. " contexts for " .. #batch .. " passages" })

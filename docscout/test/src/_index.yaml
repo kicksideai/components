@@ -1453,3 +1453,27 @@ entries:
           value: 8 mars 2026
           confidence: 1
           evidence: [{chunk: 1, quote: 'The total amount is 1250.'}]
+
+- name: fixture_embed_cardinality_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-embed-cardinality, capabilities: [embed], class: [docscout-embed-cardinality], priority: 100}
+  dimensions: 512
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-embed-cardinality
+    options:
+      embeddings: []
+
+- name: fixture_embed_dimensions_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-embed-dimensions, capabilities: [embed], class: [docscout-embed-dimensions], priority: 100}
+  dimensions: 512
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-embed-dimensions
+    options:
+      embeddings: [[1]]
