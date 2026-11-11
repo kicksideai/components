@@ -10,6 +10,7 @@ entries:
   modules:
   - json
   - time
+  - base64
   imports:
     llm: wippy.llm:llm
     prompt: wippy.llm:prompt
@@ -38,6 +39,15 @@ entries:
     ai: kickside.docscout.engine:ai
     retention: kickside.docscout:retention
     shapes: kickside.docscout.engine:shapes
+- name: pages
+  kind: library.lua
+  meta:
+    comment: The page images of an upload that extraction reads in pages mode, and which pages a call reads.
+  source: file://pages.lua
+  imports:
+    page_images: kickside.uploads.rasterize:page_images
+    trusted_reader: kickside.uploads:trusted_reader
+    shapes: kickside.docscout.engine:shapes
 - name: doctools
   kind: library.lua
   meta:
@@ -62,6 +72,7 @@ entries:
     user_agent: kickside.docscout.engine:user_agent
     error_envelope: kickside.contract:error_envelope
     process: kickside.docscout.engine:process
+    pages: kickside.docscout.engine:pages
     shapes: kickside.docscout.engine:shapes
 - name: run
   kind: library.lua
@@ -77,6 +88,7 @@ entries:
     retention: kickside.docscout:retention
     process: kickside.docscout.engine:process
     stages: kickside.docscout.engine:stages
+    pages: kickside.docscout.engine:pages
     ai: kickside.docscout.engine:ai
     shapes: kickside.docscout.engine:shapes
     error_envelope: kickside.contract:error_envelope

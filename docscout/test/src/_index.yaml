@@ -617,6 +617,77 @@ entries:
     test: wippy.test:test
     ai: kickside.docscout.engine:ai
     stages: kickside.docscout.engine:stages
+- name: png
+  kind: library.lua
+  meta:
+    comment: Synthetic page images whose printed text a fixture vision model reads.
+  source: file://fixture_png.lua
+  modules: [compress]
+- name: fixture_success_library
+  kind: library.lua
+  source: file://fixture_success.lua
+- name: fixture_vision_structured
+  kind: function.lua
+  source: file://fixture_vision.lua
+  method: structured
+  modules: [base64, json]
+  imports:
+    png: app:png
+    success: app:fixture_success_library
+- name: fixture_vision_driver
+  kind: contract.binding
+  contracts:
+  - contract: wippy.llm:generator
+    methods:
+      generate: app:fixture_success_generate
+  - contract: wippy.llm:structured_output
+    methods:
+      structured_output: app:fixture_vision_structured
+  - contract: wippy.llm:embedder
+    methods:
+      embed: app:fixture_success_embed
+  - contract: wippy.llm:provider
+    methods:
+      status: app:fixture_success_status
+- name: fixture_vision_provider
+  kind: registry.entry
+  meta:
+    type: llm.provider
+    name: docscout-vision
+    title: Vision fixture provider
+  driver:
+    id: app:fixture_vision_driver
+    options: {}
+- name: fixture_vision_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-vision
+    title: Fixture model that reads synthetic page images
+    capabilities: [generate, structured_output, embed]
+    class: [docscout-vision]
+    priority: 100
+  dimensions: 512
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_vision_provider
+    provider_model: docscout-vision
+- name: pages_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_pages, group: Docscout}
+  source: file://pages_test.lua
+  method: run
+  modules: [json, uuid, registry]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    png: app:png
+    pages: kickside.docscout.engine:pages
+    process: kickside.docscout.engine:process
+    stages: kickside.docscout.engine:stages
+    store: kickside.docscout.persist:store
+    shapes: kickside.docscout.engine:shapes
 - name: fixture_success_generate
   kind: function.lua
   source: file://fixture_success.lua

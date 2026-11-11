@@ -536,6 +536,19 @@
               "minimum": 0,
               "maximum": 2,
               "description": "Sampling temperature for this stage's model calls. Unset uses the provider default."
+            },
+            "reads": {
+              "type": "string",
+              "enum": ["text", "pages"],
+              "default": "text",
+              "description": "What extraction reads values from: the processed text passages, or the upload's page images. With pages, the text stages only choose which pages are read and verification checks values against the page images. Unset reads text."
+            },
+            "max_pages": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32,
+              "default": 8,
+              "description": "Page images per extraction or verification call when extraction reads pages. A document with no more eligible pages than this is read whole."
             }
           },
           "required": [
@@ -543,6 +556,13 @@
             "max_output_tokens",
             "max_fields_per_call"
           ],
+          "if": {
+            "required": ["reads"],
+            "properties": { "reads": { "const": "pages" } }
+          },
+          "then": {
+            "required": ["max_pages"]
+          },
           "default": {
             "model": "class:fast",
             "max_output_tokens": 4096,

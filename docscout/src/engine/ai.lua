@@ -7,6 +7,7 @@ local llm = require("llm")
 local prompt = require("prompt")
 local json = require("json")
 local shapes = require("shapes")
+local base64 = require("base64")
 
 local M = {}
 
@@ -20,24 +21,41 @@ local function model_error(what: string, err: any): error
     return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = what .. " failed: " .. tostring(err) })
 end
 
-local function messages(system: string, user: string): { any }
+-- A user message is text, or content parts (text and images) in order.
+type UserContent = string | { any }
+
+local function messages(system: string, user: UserContent): { any }
+    local content = type(user) == "string" and { { type = "text", text = user } } or user
     return {
         { role = "system", content = { { type = "text", text = system } } },
-        { role = "user", content = { { type = "text", text = user } } },
+        { role = "user", content = content },
     }
+end
+
+-- A text content part of a user message.
+function M.text_part(text: string): any
+    return prompt.text(text)
+end
+
+-- An image content part of a user message from its bytes.
+function M.image_part(mime_type: string, bytes: string): any
+    return prompt.image_base64(mime_type, base64.encode(bytes))
 end
 
 -- One model request as the trace records it. stage names what the call does;
 -- token counts are absent when the provider reported no usage; sources are the
--- chunk ordinals the prompt carried and fields the field paths it served.
+-- chunk ordinals the prompt carried and fields the field paths it served;
+-- pages are the page images it carried and excluded_pages those cut by the page budget.
 type CallRecord = { stage: string, model: string, prompt_tokens: number?, completion_tokens: number?, latency_ms: integer?,
-    finish_reason: string?, error_code: string?, sources: { integer }?, excluded: { integer }?, fields: { string }? }
+    finish_reason: string?, error_code: string?, sources: { integer }?, excluded: { integer }?, fields: { string }?,
+    pages: { integer }?, excluded_pages: { integer }? }
 
 -- Token usage and call records of one step, and the instant its model calls must end by.
 type Meter = { input_tokens: number, output_tokens: number, calls: { CallRecord }, deadline: any? }
 
 -- Per-call settings a stage may pass, and what the call record names.
-type CallOpts = { max_tokens: integer?, temperature: number?, stage: string?, sources: { integer }?, excluded: { integer }?, fields: { string }? }
+type CallOpts = { max_tokens: integer?, temperature: number?, stage: string?, sources: { integer }?, excluded: { integer }?, fields: { string }?,
+    pages: { integer }?, excluded_pages: { integer }? }
 
 -- Options handed to the llm module for one call.
 type ModelOptions = { model: string, deadline_ms: integer?, max_tokens: integer?, temperature: number?,
@@ -65,6 +83,7 @@ function M.add_call(meter: Meter, stage: string, model: string, usage: any?, ext
     if extra then
         entry.latency_ms, entry.finish_reason, entry.error_code = extra.latency_ms, extra.finish_reason, extra.error_code
         entry.sources, entry.excluded, entry.fields = extra.sources, extra.excluded, extra.fields
+        entry.pages, entry.excluded_pages = extra.pages, extra.excluded_pages
     end
     meter.calls[#meter.calls + 1] = entry
 end
@@ -74,7 +93,8 @@ local function record(meter: Meter, stage: string, model: string, opts: CallOpts
     local finish = type(response) == "table" and response.finish_reason or nil
     M.add_call(meter, (opts and opts.stage) or stage, model, type(response) == "table" and response.tokens or nil, {
         latency_ms = millis() - started, finish_reason = finish and tostring(finish) or nil, error_code = err and error_code(err) or nil,
-        sources = opts and opts.sources, excluded = opts and opts.excluded, fields = opts and opts.fields })
+        sources = opts and opts.sources, excluded = opts and opts.excluded, fields = opts and opts.fields,
+        pages = opts and opts.pages, excluded_pages = opts and opts.excluded_pages })
 end
 
 function M.meter(deadline: any?): Meter
@@ -138,7 +158,9 @@ local function structured_result(model: string, schema: any, response: any, err:
 end
 
 -- Prompt tokens of a request as the llm module estimates them before it
--- admits the request: its encoded messages and schema.
+-- admits the request: its encoded messages and schema. Image parts are not
+-- estimated, by the llm module either; their cost is model dependent, so
+-- callers bound images by count and pass the text of a request here.
 function M.estimate(system: string, user: string, schema: any?): integer
     local encoded = json.encode({ messages = messages(system, user), schema = schema })
     return shapes.tokens(tostring(encoded or ""))
@@ -165,7 +187,7 @@ function M.over_budget(model: string, what: string, advice: string): error
 end
 
 -- Structured output as a Lua table that matches schema.
-function M.structured(meter: Meter, model: string, schema: any, system: string, user: string, opts: CallOpts?): (any?, error?)
+function M.structured(meter: Meter, model: string, schema: any, system: string, user: UserContent, opts: CallOpts?): (any?, error?)
     local options, late = options_for(meter, "a structured model call", model, opts)
     if late then return nil, late end
     local started = millis()

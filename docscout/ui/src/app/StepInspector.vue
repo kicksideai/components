@@ -8,7 +8,7 @@ import Segmented from './Segmented.vue'
 import Slider from './Slider.vue'
 import ScoutDiagram from './ScoutDiagram.vue'
 import DeepDiagram from './DeepDiagram.vue'
-import {documentTools,extractCalls,fieldGroups,newQuery,stageBounds,stagePurpose,toolLabel,type Config,type StageKey} from '../config'
+import {defaultMaxPages,documentTools,extractCalls,fieldGroups,newQuery,stageBounds,stagePurpose,toolLabel,type Config,type StageKey} from '../config'
 const props=defineProps<{stage:StageKey;config:Config;readonly?:boolean}>()
 const s=computed(()=>props.config.stages)
 const b=(key:string)=>stageBounds(props.stage,key)
@@ -17,6 +17,10 @@ const deepCount=computed(()=>props.config.fields.filter(f=>f.strategy==='deep').
 const sectionFields=computed(()=>props.config.fields.filter(f=>f.search_within==='sections').map(f=>f.name||'New field'))
 const groups=computed(()=>fieldGroups(props.config))
 function selectAgent(id:string){if(id)s.value.scout.agent_id=id;else delete s.value.scout.agent_id}
+function setReads(reads:'text'|'pages'){
+ s.value.extract.reads=reads
+ if(reads==='pages'&&s.value.extract.max_pages===undefined)s.value.extract.max_pages=defaultMaxPages()
+}
 function setTool(id:string,on:boolean){
  const list=s.value.scout.tools.filter(t=>t!==id)
  s.value.scout.tools=on?[...list,id]:list
@@ -96,6 +100,8 @@ function setTool(id:string,on:boolean){
    <p v-if="!groups.length" class="muted">No fields yet.</p>
    <Slider v-model="s.extract.max_fields_per_call" label="Fields per call" :min="b('max_fields_per_call').min" :max="b('max_fields_per_call').max" :disabled="readonly" :note="`${extractCalls(config)} extraction call${extractCalls(config)===1?'':'s'} per document. Groups larger than this are split.`"/>
    <Slider v-model="s.extract.max_output_tokens" label="Output limit" :min="b('max_output_tokens').min" :max="b('max_output_tokens').max" log :step="64" unit="tokens" :disabled="readonly"/>
+   <div class="label-block"><span id="reads-label">Reads</span><Segmented :model-value="s.extract.reads??'text'" labelled-by="reads-label" :options="[{value:'text',label:'Document text'},{value:'pages',label:'Page images'}]" @update:model-value="setReads($event)"/><small>{{s.extract.reads==='pages'?'Values are read from the page images; the earlier steps only choose which pages. Verify checks values against the pages.':'Values are read from the passages the earlier steps gathered.'}}</small></div>
+   <Slider v-if="s.extract.reads==='pages'" :model-value="s.extract.max_pages??defaultMaxPages()" label="Pages per call" :min="b('max_pages').min" :max="b('max_pages').max" :disabled="readonly" note="A document with no more pages than this is read whole; longer ones are read on the pages their passages lie on." @update:model-value="s.extract.max_pages=$event"/>
   </template>
 
   <template v-if="stage==='verify'">

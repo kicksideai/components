@@ -86,6 +86,19 @@ function M.upload(owner: string, mime: string, body: string, markdown: string?):
     return id
 end
 
+-- Stores an image of one page of an upload as the rasterizer does.
+function M.page_image(upload_id: string, page: integer, bytes: string, mime: string?)
+    assert(artifacts.create_artifact({ upload_id = upload_id, kind = "image", role = "rendered-page", mime_type = mime or "image/png",
+        label = "page_" .. page .. ".png", ordinal = 2000 + page, content = bytes, storage_id = "app:uploads",
+        metadata = { source = "rasterize", page = page, mime_type = mime or "image/png" } }))
+end
+
+-- Stores the original image of an image upload.
+function M.source_image(upload_id: string, bytes: string)
+    assert(artifacts.create_artifact({ upload_id = upload_id, kind = "image", role = "source", mime_type = "image/png",
+        label = "original.png", content = bytes, storage_id = "app:uploads", metadata = { mime_type = "image/png" } }))
+end
+
 function M.execute(statement: string, params: any?): any
     local db = assert(sql.get("app:db"))
     local result, err = db:execute(statement, params or {})

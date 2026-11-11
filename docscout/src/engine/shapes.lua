@@ -276,22 +276,35 @@ function M.passage_ref(chunks: { any }): any
     return { type = "integer", enum = ordinals }
 end
 
--- One structured-output schema for a group of fields and its evidence passages.
-function M.group_schema(fields: { any }, passages: { any }): any
+-- One structured-output schema for a group of fields whose evidence names
+-- where each quote is: locator is the evidence property ("chunk" or "page")
+-- and where its schema.
+local function extraction_schema(fields: { any }, locator: string, where: any): any
     local root = { type = "object", additionalProperties = false, required = {}, properties = M.object() }
-    local chunk = M.passage_ref(passages)
     local members = { "found", "value", "confidence", "evidence" }
     for _, f in ipairs(fields) do
+        local item = { type = "object", additionalProperties = false, required = { locator, "quote" },
+            properties = { [locator] = where, quote = { type = "string" } } }
         local value = { type = "object", additionalProperties = false, required = members, properties = {
             found = { type = "boolean" },
             value = M.value_schema(f),
             confidence = { type = "number", minimum = 0, maximum = 1 },
-            evidence = { type = "array", maxItems = M.EVIDENCE_LIMIT, items = { type = "object", additionalProperties = false, required = { "chunk", "quote" },
-                properties = { chunk = chunk, quote = { type = "string" } } } },
+            evidence = { type = "array", maxItems = M.EVIDENCE_LIMIT, items = item },
         } }
         M.schema_field(root, f, value, true)
     end
     return root
+end
+
+-- The extraction schema over evidence passages: a quote cites one of them.
+function M.group_schema(fields: { any }, passages: { any }): any
+    return extraction_schema(fields, "chunk", M.passage_ref(passages))
+end
+
+-- The extraction schema over page images: a quote cites one of the sent pages
+-- and transcribes its printed words.
+function M.page_group_schema(fields: { any }, pages: { integer }): any
+    return extraction_schema(fields, "page", { type = "integer", enum = pages })
 end
 
 -- Typographic characters that PDFs and models swap for plain ones.

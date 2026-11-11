@@ -9,6 +9,7 @@ local repository = require("repository")
 local retention = require("retention")
 local process = require("process")
 local stages = require("stages")
+local pages = require("pages")
 local ai = require("ai")
 local shapes = require("shapes")
 local error_envelope = require("error_envelope")
@@ -108,6 +109,13 @@ function M.run(input: any): (any?, error?)
         local document, err = process.ensure(input.id, actor:id(), input.upload_id, config.retrieval, record, extractor_window)
         if err then return err end
         run.document = document
+        -- The content provider admitted the caller to this upload above, so its page images may be read.
+        if s.extract.reads == "pages" then
+            local manifest, manifest_err = pages.manifest(input.upload_id, math.tointeger(document.page_count) or 0)
+            if manifest_err then return manifest_err end
+            run.page_images = manifest
+            record.message = record.message .. " · page images for " .. #manifest.available .. " of " .. manifest.count .. " pages"
+        end
         return nil
     end)
     if ok and s.map.enabled then ok = step("map", "outline", s.map.model, function(r: any): error? return stages.map(run, r) end) end
@@ -127,7 +135,8 @@ function M.run(input: any): (any?, error?)
     for _, v in ipairs(run.values) do
         local evidence = {}
         for _, e in ipairs(v.evidence) do
-            evidence[#evidence + 1] = { quote = e.quote, section = e.section, page = e.page, page_start = e.page_start, page_end = e.page_end, chunk_id = e.chunk_id, found = e.found }
+            evidence[#evidence + 1] = { quote = e.quote, section = e.section, page = e.page, page_start = e.page_start, page_end = e.page_end, chunk_id = e.chunk_id,
+                found = e.found, text_agreement = e.text_agreement }
         end
         fields[#fields + 1] = { name = v.name, path = v.path, value = v.value, failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, complete = v.complete, missing = v.missing, reason = v.reason, evidence = evidence }
     end
@@ -140,7 +149,7 @@ function M.run(input: any): (any?, error?)
         upload_id = input.upload_id, config_revision = extractor.revision, fields = fields, trace = trace,
         duration_ms = millis() - started, tokens = tokens, status = status,
         error = failure and error_envelope.encode(failure) or nil,
-        pages = run.document and run.document.page_count or 0, summary = M.summary(run.values),
+        pages = run.page_images and run.page_images.count or (run.document and run.document.page_count or 0), summary = M.summary(run.values),
     }
     result.values = shapes.values(result)
     local expires_at, expiry_err = retention.expires_at(extractor_window)

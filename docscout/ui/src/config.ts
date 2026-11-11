@@ -34,7 +34,7 @@ export interface Stages {
  prefetch:{enabled:boolean;queries:PrefetchQuery[]}
  scout:{enabled:boolean;mode:'loop'|'agent';agent_id?:string;model:string;max_rounds:number;target_confidence:number;max_extra_queries:number;max_tokens:number;drop_noise:boolean;share_notes:boolean;tools:string[];temperature?:number}
  deep:{enabled:boolean;model:string;query_model:string;read:'chunks'|'sections';parallel_fields:number;max_queries:number;chunks_per_query:number;chunk_cap:number;min_similarity:number;query_temperature:number;analysis_temperature:number}
- extract:{model:string;max_output_tokens:number;max_fields_per_call:number;temperature?:number}
+ extract:{model:string;max_output_tokens:number;max_fields_per_call:number;temperature?:number;reads?:'text'|'pages';max_pages?:number}
  verify:{enabled:boolean;model:string;check_quotes:boolean;check_support:boolean;temperature?:number;max_tokens?:number}
 }
 export type StageKey = keyof Stages
@@ -46,6 +46,7 @@ export function newConfig():Config{
  const {max_output_tokens,max_fields_per_call}=config.stages.extract
  return {...config,stages:{...config.stages,extract:{model:'class:fast',max_output_tokens,max_fields_per_call}}} as Config
 }
+export const defaultMaxPages=():number=>(schema.properties.stages.properties.extract.properties as unknown as {max_pages:{default:number}}).max_pages.default
 export const newField=():Field=>structuredClone(schema.properties.fields.items.default) as Field
 export const newQuery=():PrefetchQuery=>({name:'',query:'',chunks:5})
 export const documentTools=():string[]=>[...schema.properties.stages.properties.scout.properties.tools.default]

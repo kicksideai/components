@@ -7,6 +7,7 @@ local ai = require("ai")
 local store = require("store")
 local doctools = require("doctools")
 local process = require("process")
+local pages = require("pages")
 local shapes = require("shapes")
 local error_envelope = require("error_envelope")
 local user_agent = require("user_agent")
@@ -39,6 +40,28 @@ local function visible(run: any, field: any, ordinal: integer?): (boolean?, erro
 end
 
 local function system(text: string): string return text .. "\n" .. shapes.DATA_RULE end
+
+-- Whether extraction reads page images; the text stages then only choose
+-- pages. The read step loads the page images exactly when the extractor reads pages.
+local function reads_pages(run: any): boolean return run.page_images ~= nil end
+
+-- The processed copy's chunks by ordinal, read once per run.
+local function document_chunks(run: any): ({ [integer]: any }?, error?)
+    if run.chunks then return run.chunks, nil end
+    local chunks, err = store.all_chunks(run.document.id)
+    if err then return nil, err end
+    local by_ordinal = {}
+    for _, c in ipairs(chunks) do by_ordinal[c.ordinal] = c end
+    run.chunks = by_ordinal
+    return by_ordinal, nil
+end
+
+-- The pages chunks lie on. In a one-page document every chunk lies on page 1,
+-- with or without a page marker.
+local function pages_of(run: any, chunks: { any }): { integer }
+    if run.page_images.count == 1 then return #chunks > 0 and { 1 } or {} end
+    return pages.of_chunks(chunks)
+end
 
 -- Passages for fields that fit a request. Each field ranks the passages still
 -- visible to it: those it cited first, then those its own searches found,
@@ -508,6 +531,8 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
     end
     -- Deep fields keep their own evidence visible to themselves.
     add(run.pool, found, shapes.path(f))
+    -- Extraction that reads pages reads no analysis; the passages only choose its pages.
+    if reads_pages(run) then return nil end
     -- The analysis reads the passages, in the order they were found, that fit the model's window.
     local analysis_system = system("You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it.")
     local fixed = field_lines({ f }) .. "\n\nPassages:\n"
@@ -670,14 +695,27 @@ function M.extraction_calls(run: any): ({ any }?, error?)
     return calls
 end
 
+-- Records on a value why part of what its field could read did not reach extraction.
+local function coverage_loss(entry: any, code: string, text: string)
+    entry.reason = entry.reason and (entry.reason .. "; " .. text) or text
+    entry.codes = entry.codes or {}
+    entry.codes[#entry.codes + 1] = code
+end
+
 -- One extraction call: prompt, model reply and a value per field.
 -- Records on a value that some passages its field could read were cut by the budget.
 local function budget_loss(entry: any, cut: integer?, total: integer?)
     if not cut or cut == 0 then return end
-    local text = cut .. " of " .. tostring(total) .. " passages cut by budget"
-    entry.reason = entry.reason and (entry.reason .. "; " .. text) or text
-    entry.codes = entry.codes or {}
-    entry.codes[#entry.codes + 1] = "budget_cut"
+    coverage_loss(entry, "budget_cut", cut .. " of " .. tostring(total) .. " passages cut by budget")
+end
+
+-- The llm module refuses a prompt larger than the model's window before
+-- calling it; the error then names the settings that shrink the prompt.
+local function refused_prompt(err: error, advice: string): error
+    if errors.is(err, errors.INVALID) and ((err :: any):details() or {}).error_type == "context_window" then
+        return errors.new({ kind = errors.INVALID, details = (err :: any):details(), message = tostring(err) .. "; " .. advice })
+    end
+    return err
 end
 
 local function extract_call(run: any, step: any, cfg: any, call: any): error?
@@ -721,14 +759,7 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
     local result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch, passages), EXTRACT_SYSTEM, user,
         { max_tokens = cfg.max_output_tokens, temperature = cfg.temperature, stage = "extract", sources = shapes.ordinals(passages),
             excluded = excluded(candidates, passages), fields = paths })
-    if err then
-        -- The llm module refuses a prompt larger than the model's window before calling it.
-        if errors.is(err, errors.INVALID) and ((err :: any):details() or {}).error_type == "context_window" then
-            return errors.new({ kind = errors.INVALID, details = (err :: any):details(),
-                message = tostring(err) .. "; lower passages per field, Deep chunk cap or fields per call" })
-        end
-        return err
-    end
+    if err then return refused_prompt(err, "lower passages per field, Deep chunk cap or fields per call") end
     local entries = {}
     for _, f in ipairs(batch) do
         local item = shapes.get(result, shapes.path(f))
@@ -760,6 +791,191 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
     return nil
 end
 
+-- Extraction that reads pages: each call reads page images and no document
+-- text. Text stages decide which pages a call reads, never what it reads.
+local PAGES_EXTRACT_SYSTEM = system([[You extract field values from the page images of one document. Use only what the pages show.
+For each field say whether the pages state it (found), give the value (any placeholder of the right type when not found), your confidence from 0 to 1, and evidence:
+the page number given in the label before its image, and a quote that transcribes, character for character, the printed words stating the value on that page.]])
+
+-- The pages a field may read: those holding a chunk of its region, or every
+-- page of the document when it reads the whole document.
+local function eligible_pages(run: any, field: any): ({ integer }?, error?)
+    local region, err = M.region(run, field)
+    if err then return nil, err end
+    if not region then
+        local all = {}
+        for n = 1, run.page_images.count do all[n] = n end
+        return all, nil
+    end
+    local by_ordinal, chunks_err = document_chunks(run)
+    if chunks_err then return nil, chunks_err end
+    local chunks = {}
+    for _, n in ipairs(region) do if (by_ordinal :: any)[n] then chunks[#chunks + 1] = (by_ordinal :: any)[n] end end
+    return pages_of(run, chunks), nil
+end
+
+-- The pages one extraction call reads, all of the same region. When its
+-- fields' eligible pages with an image fit the page budget, the call reads
+-- them all, passages or not. Otherwise each field ranks the passages visible
+-- to it (cited, then found by its own searches, then by search rank) and
+-- fields take passages in turns while their pages fit the budget.
+-- Returns { pages, excluded, unavailable[path], cut[path] }: the pages sent,
+-- the eligible pages with an image left out, per field the pages it needed
+-- that have no image, and per field the count of its own pages when the
+-- budget left out every one of them.
+function M.call_pages(run: any, call: any, max_pages: integer): (any?, error?)
+    local by_page = run.page_images.by_page
+    local eligible, err = eligible_pages(run, call.fields[1])
+    if err then return nil, err end
+    local available, missing = {}, {}
+    for _, n in ipairs(eligible :: { integer }) do
+        if by_page[n] then available[#available + 1] = n else missing[#missing + 1] = n end
+    end
+    local paths = shapes.paths(call.fields)
+    local out = { pages = {}, excluded = {}, unavailable = {}, cut = {} }
+    if #available <= max_pages then
+        out.pages = available
+        for _, path in ipairs(paths) do out.unavailable[path] = missing end
+        return out, nil
+    end
+    local function imaged(c: any): { integer }
+        local list = {}
+        for _, n in ipairs(pages_of(run, { c })) do if by_page[n] then list[#list + 1] = n end end
+        return list
+    end
+    local function page_set(passages: { any }): ({ [integer]: boolean }, integer)
+        local set, count = {}, 0
+        for _, c in ipairs(passages) do
+            for _, n in ipairs(imaged(c)) do if not set[n] then set[n] = true; count = count + 1 end end
+        end
+        return set, count
+    end
+    local candidates = {}
+    for _, c in ipairs(call.passages) do if #imaged(c) > 0 then candidates[#candidates + 1] = c end end
+    local kept = M.allocate(run.pool, candidates, paths, function(passages: { any }): boolean
+        local _, count = page_set(passages)
+        return count <= max_pages
+    end)
+    local sent = page_set(kept)
+    for _, n in ipairs(available) do
+        if sent[n] then out.pages[#out.pages + 1] = n else out.excluded[#out.excluded + 1] = n end
+    end
+    for _, path in ipairs(paths) do
+        local own = {}
+        for _, c in ipairs(call.passages) do
+            local p = run.pool.provenance[c.ordinal]
+            if p and not p.excluded[path] and (p.cited[path] or p.fields[path]) then
+                for _, n in ipairs(pages_of(run, { c })) do own[n] = true end
+            end
+        end
+        local gone, imaged_count, reached = {}, 0, 0
+        for n in pairs(own) do
+            if not by_page[n] then gone[#gone + 1] = n
+            else
+                imaged_count = imaged_count + 1
+                if sent[n] then reached = reached + 1 end
+            end
+        end
+        table.sort(gone)
+        out.unavailable[path] = gone
+        if imaged_count > 0 and reached == 0 then out.cut[path] = imaged_count end
+    end
+    return out, nil
+end
+
+-- Records on a value the pages its field needed that extraction could not
+-- read: pages without an image make a missing value uncertain, and a field
+-- none of whose own pages fit the page budget was not read at all.
+local function page_loss(entry: any, selection: any, max_pages: integer)
+    local gone = selection.unavailable[entry.path]
+    if entry.missing and gone and #gone > 0 then
+        coverage_loss(entry, "page_image_unavailable", pages.phrase(gone) .. (#gone == 1 and " has" or " have") .. " no page image")
+    end
+    local cut = selection.cut[entry.path]
+    if cut then coverage_loss(entry, "page_budget_cut", "pages exceed the page budget: none of its " .. cut .. " pages fit in " .. max_pages) end
+end
+
+-- The heading path of the first chunk on each page.
+local function page_sections(run: any): ({ [integer]: string }?, error?)
+    if run.page_sections then return run.page_sections, nil end
+    local by_ordinal, err = document_chunks(run)
+    if err then return nil, err end
+    local out, ordinals = {}, {}
+    for n in pairs(by_ordinal :: any) do ordinals[#ordinals + 1] = n end
+    table.sort(ordinals)
+    for _, n in ipairs(ordinals) do
+        local c = (by_ordinal :: any)[n]
+        for _, page in ipairs(pages_of(run, { c })) do if not out[page] then out[page] = c.heading_path end end
+    end
+    run.page_sections = out
+    return out, nil
+end
+
+-- Content parts for pages: each page's label, then its image, in page order.
+local function page_parts(run: any, numbers: { integer }): ({ any }?, error?)
+    local parts = {}
+    for _, n in ipairs(numbers) do
+        local bytes, mime, err = pages.image(run.page_images, n)
+        if err then return nil, err end
+        parts[#parts + 1] = ai.text_part("[Page " .. n .. "]")
+        parts[#parts + 1] = ai.image_part(mime :: string, bytes :: string)
+    end
+    return parts, nil
+end
+
+-- One extraction call over page images. Returns whether a model call was made.
+local function extract_pages_call(run: any, step: any, cfg: any, call: any): (boolean, error?)
+    local batch = call.fields
+    local selection, select_err = M.call_pages(run, call, cfg.max_pages)
+    if select_err then return false, select_err end
+    local function entry_for(f: any): Value
+        return { name = f.name, path = shapes.path(f), confidence = 0, evidence = {}, verified = false, missing = true, failed = false }
+    end
+    if #selection.pages == 0 then
+        for _, f in ipairs(batch) do
+            local entry = entry_for(f)
+            page_loss(entry, selection, cfg.max_pages)
+            if not entry.codes then
+                entry.reason = f.search_within == "sections" and "No page from its sections reached extraction" or "No page reached extraction"
+                entry.codes = { "no_passage" }
+            end
+            run.values[#run.values + 1] = entry
+        end
+        return false, nil
+    end
+    local fields_text = "Fields:\n" .. field_lines(batch)
+    local schema = shapes.page_group_schema(batch, selection.pages)
+    local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_output_tokens)
+    if fit_err then return false, fit_err end
+    if not (fits :: any)(PAGES_EXTRACT_SYSTEM, fields_text, schema) then
+        return false, ai.over_budget(cfg.model, "The extraction prompt", "lower fields per call")
+    end
+    local sections, sections_err = page_sections(run)
+    if sections_err then return false, sections_err end
+    local parts, parts_err = page_parts(run, selection.pages)
+    if parts_err then return false, parts_err end
+    (parts :: { any })[#parts + 1] = ai.text_part(fields_text)
+    local result, err = ai.structured(step.meter, cfg.model, schema, PAGES_EXTRACT_SYSTEM, parts :: { any },
+        { max_tokens = cfg.max_output_tokens, temperature = cfg.temperature, stage = "extract", pages = selection.pages,
+            excluded_pages = #selection.excluded > 0 and selection.excluded or nil, fields = shapes.paths(batch) })
+    if err then return true, refused_prompt(err, "lower page images per call or fields per call") end
+    for _, f in ipairs(batch) do
+        local item = shapes.get(result, shapes.path(f))
+        local entry = entry_for(f)
+        if item.found then
+            entry.value, entry.confidence, entry.missing = item.value, item.confidence, false
+            for _, e in ipairs(item.evidence) do
+                local page = math.tointeger(e.page)
+                entry.evidence[#entry.evidence + 1] = { quote = e.quote, page = page, section = page and (sections :: any)[page] or "", chunk_id = "" }
+            end
+            if f.evidence_required and #entry.evidence == 0 then entry.reason, entry.codes = "No quote supports this value", { "no_quote" } end
+        end
+        page_loss(entry, selection, cfg.max_pages)
+        run.values[#run.values + 1] = entry
+    end
+    return true, nil
+end
+
 function M.extract(run: any, step: any): error?
     local cfg = run.config.stages.extract
     local calls, successes = 0, 0
@@ -770,8 +986,17 @@ function M.extract(run: any, step: any): error?
         local err = run.field_errors and run.field_errors[shapes.path(f)]
         if err then failed_field(run, f, err); failure = failure or err end
     end
+    local by_pages = reads_pages(run)
     for _, call in ipairs(extraction_calls) do
-        if #call.passages == 0 then
+        if by_pages then
+            -- A call that reads pages reads them with or without passages.
+            local called, err = extract_pages_call(run, step, cfg, call)
+            if err then
+                failure = failure or err
+                for _, f in ipairs(call.fields) do failed_field(run, f, err) end
+            elseif called then successes = successes + 1 end
+            if called then calls = calls + 1 end
+        elseif #call.passages == 0 then
             -- Empty passage sets produce missing fields.
             for _, f in ipairs(call.fields) do
                 run.values[#run.values + 1] = { name = f.name, path = shapes.path(f), confidence = 0, evidence = {}, verified = false, missing = true, failed = false,
@@ -839,10 +1064,13 @@ function M.support_schema(values: { any }, fields: { [string]: any }): any
 end
 
 -- One value as the support check reads it: the field's path, type and
--- description, the value, its quotes and, when given, the source text around them.
-function M.support_line(f: any, v: any, source: string?): string
+-- description, the value, its quotes (with their cited pages when
+-- cited_pages) and, when given, the source text around them.
+function M.support_line(f: any, v: any, source: string?, cited_pages: boolean?): string
     local quotes = {}
-    for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" end
+    for _, e in ipairs(v.evidence) do
+        quotes[#quotes + 1] = "\"" .. e.quote .. "\"" .. ((cited_pages and e.page) and (" (page " .. e.page .. ")") or "")
+    end
     local t = f.type == "list" and ("list of " .. f.item.type) or f.type
     return "- " .. shapes.path(v) .. " (" .. t .. "): " .. (f.description ~= "" and f.description or "no description") ..
         "\n  value: " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | ") ..
@@ -884,10 +1112,176 @@ local function store_order(by_ordinal: { [integer]: any }): { any }
     return out
 end
 
-function M.verify(run: any, step: any): error?
-    local cfg = run.config.stages.verify
-    local fields = {}
-    for _, f in ipairs(run.config.fields) do fields[shapes.path(f)] = f end
+-- Verification of values read from pages. The visual support check gates
+-- verified: the verifier sees each value's cited pages (and the following
+-- page for text and list values) with the field, value, quotes and pages.
+-- Text agreement compares each quote with the processed text of its page; it
+-- is recorded on the evidence and never gates verified.
+local PAGE_CHECK = { yes = "yes", no = "no", unreadable = "unreadable" }
+
+function M.page_support_system(): string
+    return system("You check values read from the page images of one document. For each field, look at the pages its quotes cite.\n" ..
+        "quote_on_page: \"" .. PAGE_CHECK.yes .. "\" when the quote's words are printed on its cited page, \"" .. PAGE_CHECK.no ..
+        "\" when they are not, \"" .. PAGE_CHECK.unreadable .. "\" when that part of the page cannot be read.\n" ..
+        "states_value: \"" .. PAGE_CHECK.yes .. "\" when the printed words state this value for this field, as the field's description defines it; \"" ..
+        PAGE_CHECK.no .. "\" when they state a different value, another role's value or none; \"" .. PAGE_CHECK.unreadable .. "\" when the page cannot settle it.\n" ..
+        "Reformatting (dates, numbers, case, spacing) is allowed.\n" ..
+        "For fields that also ask for completeness, judge from the pages, reading on into the following page when it is shown, whether the value is complete as printed: \"" ..
+        COMPLETENESS.complete .. "\", \"" .. COMPLETENESS.incomplete .. "\" when it leaves part out, or \"" .. COMPLETENESS.insufficient .. "\".\nReturn one check per field.")
+end
+
+-- The visual support check's reply: one required check per field path.
+function M.page_support_schema(values: { any }, fields: { [string]: any }): any
+    local properties, required = shapes.object(), {}
+    local answer = { type = "string", enum = { PAGE_CHECK.yes, PAGE_CHECK.no, PAGE_CHECK.unreadable } }
+    for _, v in ipairs(values) do
+        local path = shapes.path(v)
+        required[#required + 1] = path
+        local item = { type = "object", additionalProperties = false, required = { "quote_on_page", "states_value", "reason" },
+            properties = { quote_on_page = answer, states_value = answer, reason = { type = "string" } } }
+        if completes(fields[path]) then
+            item.required = { "quote_on_page", "states_value", "complete", "reason" }
+            item.properties.complete = { type = "string", enum = { COMPLETENESS.complete, COMPLETENESS.incomplete, COMPLETENESS.insufficient } }
+        end
+        properties[path] = item
+    end
+    return { type = "object", additionalProperties = false, required = required, properties = properties }
+end
+
+-- A visual check as a support verdict: verified needs the quote on its page
+-- and the quote stating the value.
+function M.page_verdict(check: any): any
+    local out: any = { complete = check.complete }
+    if check.quote_on_page == PAGE_CHECK.unreadable or check.states_value == PAGE_CHECK.unreadable then
+        out.verdict, out.code, out.reason = "unreadable", "support_unreadable", "The page cannot be read for this value: " .. tostring(check.reason)
+    elseif check.quote_on_page ~= PAGE_CHECK.yes then
+        out.verdict, out.code, out.reason = "quote_not_on_page", "quote_not_on_page", "The quote is not on its cited page: " .. tostring(check.reason)
+    elseif check.states_value ~= PAGE_CHECK.yes then
+        out.verdict, out.reason = VERDICT.not_supported, check.reason
+    else
+        out.verdict, out.reason = VERDICT.supported, check.reason
+    end
+    return out
+end
+
+-- Normalized processed text per page.
+local function page_texts(run: any, by_ordinal: { [integer]: any }): { [integer]: string }
+    local parts: { [integer]: { string } } = {}
+    local function put(page: integer?, text: string)
+        if not page then return end
+        parts[page] = parts[page] or {}
+        parts[page][#parts[page] + 1] = text
+    end
+    for _, c in ipairs(store_order(by_ordinal)) do
+        if c.page_spans and #c.page_spans > 0 then
+            for _, span in ipairs(c.page_spans) do put(span.page or (run.page_images.count == 1 and 1 or nil), span.text) end
+        else
+            local on = pages_of(run, { c })
+            if #on == 1 then put(on[1], c.content) end
+        end
+    end
+    local out = {}
+    for page, texts in pairs(parts) do out[page] = shapes.normalize(table.concat(texts, "\n")) end
+    return out
+end
+
+-- Records whether each quote agrees with the processed text of its page.
+local function text_agreement(run: any): error?
+    local by_ordinal, err = document_chunks(run)
+    if err then return err end
+    local texts = page_texts(run, by_ordinal :: any)
+    for _, v in ipairs(run.values) do
+        for _, e in ipairs(v.evidence) do
+            local text = e.page and texts[e.page] or nil
+            if not text or text == "" then e.text_agreement = "no_text"
+            else
+                local q = shapes.normalize(e.quote)
+                e.text_agreement = (q ~= "" and text:find(q, 1, true)) and "agrees" or "differs"
+            end
+        end
+    end
+    return nil
+end
+
+-- The pages a value's check reads: its cited pages, then for text and list
+-- values the page after each that has an image, within max_pages. Nil when its
+-- cited pages alone exceed max_pages.
+local function check_pages(run: any, f: any, v: any, max_pages: integer): { integer }?
+    local seen, cited, extra = {}, {}, {}
+    for _, e in ipairs(v.evidence) do
+        if e.page and not seen[e.page] then seen[e.page] = true; cited[#cited + 1] = e.page end
+    end
+    if #cited > max_pages then return nil end
+    if completes(f) then
+        for _, n in ipairs(cited) do
+            local next_page = n + 1
+            if not seen[next_page] and run.page_images.by_page[next_page] then seen[next_page] = true; extra[#extra + 1] = next_page end
+        end
+    end
+    table.sort(extra)
+    for _, n in ipairs(extra) do if #cited < max_pages then cited[#cited + 1] = n end end
+    table.sort(cited)
+    return cited
+end
+
+-- The visual support check, batched so each call carries at most max_pages
+-- page images and fits the model's window. Fills support by field path.
+local function page_support(run: any, step: any, cfg: any, fields: { [string]: any }, support: { [string]: any }): error?
+    local max_pages = run.config.stages.extract.max_pages
+    local found, line, needs = {}, {}, {}
+    for _, v in ipairs(run.values) do
+        if not v.missing and not v.failed and #v.evidence > 0 then
+            local path = shapes.path(v)
+            local f = fields[path]
+            local numbers = check_pages(run, f, v, max_pages)
+            if not numbers then
+                support[path] = { verdict = "not_checked", code = "page_budget_cut", reason = "The cited pages exceed the page budget of " .. max_pages }
+            else
+                found[#found + 1] = v
+                needs[path] = numbers
+                line[path] = M.support_line(f, v, nil, true)
+            end
+        end
+    end
+    local support_system = M.page_support_system()
+    local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
+    if fit_err then return fit_err end
+    local function batch_pages(batch: { any }): { integer }
+        local set, out = {}, {}
+        for _, v in ipairs(batch) do
+            for _, n in ipairs(needs[shapes.path(v)]) do if not set[n] then set[n] = true; out[#out + 1] = n end end
+        end
+        table.sort(out)
+        return out
+    end
+    local function text(batch: { any }): string
+        local lines_out = {}
+        for _, v in ipairs(batch) do lines_out[#lines_out + 1] = line[shapes.path(v)] end
+        return "Fields:\n" .. table.concat(lines_out, "\n")
+    end
+    local function batch_fits(batch: { any }): boolean
+        return #batch_pages(batch) <= max_pages and (fits :: any)(support_system, text(batch), M.page_support_schema(batch, fields))
+    end
+    for _, batch in ipairs(shapes.batches(found, batch_fits)) do
+        if #batch == 1 and not batch_fits(batch) then
+            support[shapes.path(batch[1])] = { verdict = "not_checked", code = "budget_cut", reason = "The support check input exceeds the model's window" }
+        else
+            local numbers = batch_pages(batch)
+            local parts, parts_err = page_parts(run, numbers)
+            if parts_err then return parts_err end
+            (parts :: { any })[#parts + 1] = ai.text_part(text(batch))
+            local result, err = ai.structured(step.meter, cfg.model, M.page_support_schema(batch, fields), support_system, parts :: { any },
+                { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(batch), pages = numbers })
+            if err then return err end
+            for _, v in ipairs(batch) do support[shapes.path(v)] = M.page_verdict(result[shapes.path(v)]) end
+        end
+    end
+    return nil
+end
+
+-- Verification of values read from text: quotes must appear in the
+-- document, and the support check judges the cited text. Fills support by field path.
+local function text_checks(run: any, step: any, cfg: any, fields: { [string]: any }, support: { [string]: any }): error?
     -- Chunks are read for quote checks and for the source region of text and list values.
     local needs_source = false
     if cfg.check_support then
@@ -927,7 +1321,6 @@ function M.verify(run: any, step: any): error?
             end
         end
     end
-    local support = {}
     if cfg.check_support then
         local found, line = {}, {}
         for _, v in ipairs(run.values) do
@@ -960,6 +1353,28 @@ function M.verify(run: any, step: any): error?
             end
         end
     end
+    return nil
+end
+
+function M.verify(run: any, step: any): error?
+    local cfg = run.config.stages.verify
+    local fields = {}
+    for _, f in ipairs(run.config.fields) do fields[shapes.path(f)] = f end
+    local by_pages = reads_pages(run)
+    local support = {}
+    if by_pages then
+        if cfg.check_quotes then
+            local err = text_agreement(run)
+            if err then return err end
+        end
+        if cfg.check_support then
+            local err = page_support(run, step, cfg, fields, support)
+            if err then return err end
+        end
+    else
+        local err = text_checks(run, step, cfg, fields, support)
+        if err then return err end
+    end
     local failed, missing = 0, 0
     for _, v in ipairs(run.values) do
         local reasons, codes = {}, {}
@@ -976,7 +1391,9 @@ function M.verify(run: any, step: any): error?
             if not valid then reject("shape_mismatch", "Value does not match its declared shape: " .. tostring(shape_err)) end
             if #v.evidence == 0 and not has("no_quote") then reject("no_quote", "No quote supports this value") end
         end
-        if cfg.check_quotes and found and not v.quotes_found then reject("quote_not_found", "A quote is not in the document") end
+        -- Read from pages, a value is verified only by the visual support check.
+        if by_pages and found and not cfg.check_support then reject("unchecked", "No visual support check ran") end
+        if cfg.check_quotes and not by_pages and found and not v.quotes_found then reject("quote_not_found", "A quote is not in the document") end
         if cfg.check_support and found and #v.evidence > 0 then
             local check = support[shapes.path(v)]
             if not check then reject("support_no_verdict", "The support check gave no verdict")
