@@ -178,6 +178,39 @@ return { run = test.run_cases(function()
             test.eq(snapshot.runs[1].result.values.total, 1250);test.is_nil(snapshot.runs[1].result.page_range)
             test.is_nil(snapshot.runs[1].result.error)
         end)
+        test.it("keeps one identical extraction request and results when multiple fields fit the reply estimate", function()
+            local owner, caller = member(true, "22222222-2222-4222-8222-222222222222")
+            local cfg = configuration()
+            local other = assert(json.decode(assert(json.encode(cfg.fields[1]))))
+            other.name, other.description = "subtotal", "Subtotal amount"
+            cfg.fields[2] = other
+            cfg.retrieval.embedding_model, cfg.stages.extract.model = "class:docscout-identity", "class:docscout-identity"
+            cfg.stages.extract.max_fields_per_call, cfg.stages.extract.max_output_tokens = 20, 1024
+            cfg.stages.verify.enabled = true
+            local id = assert(caller:call("app:probe", { op = "create", input = { title = "Multiple field reader", config = cfg } })).component_id
+            local upload_id = data.upload(owner, "application/pdf", "Original bytes", "<!-- page 1 -->\n# Invoice\nThe total amount is 1250.")
+            local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload_id }))
+            test.eq(#result.trace, 4)
+            local extract = result.trace[3]
+            test.eq(#extract.calls, 1)
+            test.eq(json.encode(extract.calls[1].fields), '["total","subtotal"]')
+            test.eq(extract.input_tokens, 72087653205976, "pre-batching request fingerprint")
+            test.eq(extract.output_tokens, 8)
+            test.eq(json.encode(result.values), '{"subtotal":1250,"total":1250}')
+            test.eq(#result.fields, 2)
+            for index, name in ipairs({ "total", "subtotal" }) do
+                local value = result.fields[index]
+                test.eq(value.name, name); test.eq(value.value, 1250)
+                test.is_false(value.missing); test.is_false(value.failed); test.is_true(value.verified)
+                test.eq(#value.evidence, 1)
+                test.eq(value.evidence[1].quote, "The total amount is 1250.")
+                test.eq(value.evidence[1].page, 1); test.is_true(value.evidence[1].found)
+            end
+            local snapshot = assert(caller:call("app:probe", { op = "get", id = id }))
+            test.eq(json.encode(snapshot.runs[1].result.fields), json.encode(result.fields))
+            test.eq(json.encode(snapshot.runs[1].result.values), json.encode(result.values))
+            test.is_nil(snapshot.runs[1].result.error)
+        end)
         test.it("admits and runs the immutable page range after the source case is removed", function()
             local owner, caller = member(true)
             local cfg = configuration()
