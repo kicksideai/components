@@ -203,6 +203,7 @@ M.EVIDENCE_LIMIT = 5
 
 -- Scheduling weights for the reply envelope, quotes and value leaves. Lists
 -- assume five items. These heuristic weights do not bound actual model output.
+-- Seed weights come from completion-size samples reported in https://github.com/kicksideai/components/pull/63.
 local REPLY_ENVELOPE, REPLY_QUOTE, REPLY_TEXT, REPLY_SCALAR, LIST_ITEMS = 30, 20, 40, 8, 5
 
 local function value_estimate(f: any): integer
