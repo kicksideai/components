@@ -547,12 +547,15 @@ entries:
 
 - name: migration_test
   kind: function.lua
-  modules: [sql, funcs]
+  modules: [sql, funcs, json, registry]
   meta: {type: test, suite: docscout_migration}
   source: file://migration_test.lua
   method: run
   imports:
     test: wippy.test:test
+    ai: kickside.docscout.engine:ai
+    stages: kickside.docscout.engine:stages
+    store: kickside.docscout.persist:store
 
 - name: docscout_members
   kind: security.scope
@@ -680,6 +683,20 @@ entries:
     title: Fixture model that reports its sampling settings
     capabilities: [generate, structured_output]
     class: [docscout-sampling]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-sampling
+- name: fixture_sampling_other_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-sampling-other
+    title: Second fixture model that reports its sampling settings
+    capabilities: [generate, structured_output]
+    class: [docscout-sampling-other]
     priority: 100
   max_tokens: 16000
   output_tokens: 4096
@@ -1399,3 +1416,40 @@ entries:
     stages: kickside.docscout.engine:stages
     shapes: kickside.docscout.engine:shapes
     store: kickside.docscout.persist:store
+
+- name: fixture_highlight_visible_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-highlight-visible
+    capabilities: [structured_output]
+    class: [docscout-highlight-visible]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-highlight-visible
+    options:
+      reply: {"1": ["total amount"]}
+
+- name: fixture_date_result_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-date-result
+    capabilities: [structured_output]
+    class: [docscout-date-result]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-date-result
+    options:
+      reply:
+        signed:
+          found: true
+          value: 8 mars 2026
+          confidence: 1
+          evidence: [{chunk: 1, quote: 'The total amount is 1250.'}]

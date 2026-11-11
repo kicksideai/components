@@ -56,6 +56,32 @@ function M.find(component_id: string, owner_id: string, upload_id: string, check
     end)
 end
 
+-- The outline built for a processed document under identity, or nil.
+function M.built_outline(document_id: string, identity: string): ({ any }?, error?)
+    return database.with_db(function(db: any): (any?, error?)
+        local rows, query_err = db:query([[SELECT built_outline FROM kickside_docscout_documents
+            WHERE id=$1 AND built_outline_identity=$2]], { document_id, identity })
+        if query_err then return nil, failed("built outline lookup failed", query_err) end
+        local row = rows and rows[1]
+        if not row then return nil, nil end
+        return persisted_json.decode_table(row.built_outline, "built outline")
+    end)
+end
+
+-- Keeps the outline built for a processed document under identity in place
+-- of an earlier one.
+function M.keep_built_outline(document_id: string, identity: string, outline: { any }): error?
+    local encoded, encode_err = canonical_json.encode(outline)
+    if encode_err then return errors.wrap(encode_err, "built outline could not be encoded") end
+    local _, err = database.with_db(function(db: any): (any?, error?)
+        local _, update_err = db:execute([[UPDATE kickside_docscout_documents SET built_outline=$1, built_outline_identity=$2 WHERE id=$3]],
+            { encoded, identity, document_id })
+        if update_err then return nil, failed("built outline could not be stored", update_err) end
+        return true, nil
+    end)
+    return err
+end
+
 -- A live processed document scoped to the current extraction owner.
 function M.for_agent(component_id: string, owner_id: string, document_id: string): (any?, error?)
     return database.with_db(function(db: any): (any?, error?)

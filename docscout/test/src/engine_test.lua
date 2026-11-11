@@ -283,6 +283,59 @@ return { run = test.run_cases(function()
                 test.eq(run.document.outline[1].summary, "Fixture")
             end
         end)
+        test.it("reuses the built outline persisted on the processed copy for the same map model", function()
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k",
+                outline = {}, page_count = 0, tokens = 0, expires_at = far_future() }, {
+                { ordinal = 1, section_id = "s1", heading_path = "Terms", content = "The total amount is 1250.", vector = unit(1) },
+            }))
+            local function mapped(model: string, outline: string): (any, any)
+                local run = { document = { id = id, outline = {} }, regions = {}, config = { fields = {}, stages = { map = {
+                    model = model, outline = outline, section_summaries = false, temperature = 0, max_tokens = 128 } } } }
+                local step = { meter = ai.meter() }
+                test.is_nil(stages.map(run, step))
+                return run, step
+            end
+            local built, first = mapped(SAMPLING, "find_or_build")
+            test.eq(usage(first.meter), "1000/128")
+            local reused, second = mapped(SAMPLING, "find_or_build")
+            test.eq(usage(second.meter), "0/0")
+            test.eq(json.encode(reused.document.outline), json.encode(built.document.outline))
+            test.contains(second.message, "Reused")
+            local _, forced = mapped(SAMPLING, "build")
+            test.eq(usage(forced.meter), "1000/128", "outline: build always builds")
+            local _, other = mapped("class:docscout-sampling-other", "find_or_build")
+            test.eq(usage(other.meter), "1000/128", "another map model card builds its own outline")
+            local _, again = mapped("class:docscout-sampling-other", "find_or_build")
+            test.eq(usage(again.meter), "0/0")
+        end)
+        test.it("invalidates the outline cache for every sampling input and model-card revision", function()
+            local id = assert(save({owner_id="owner-" .. uuid.v4(),upload_id=uuid.v4(),checksum="cache",processing_key="cache",outline={},page_count=0,tokens=0,expires_at=far_future()}, {
+                {ordinal=1,section_id="s1",heading_path="Terms",content="The total amount is 1250.",vector=unit(1)},
+            }))
+            local function mapped(options: any): any
+                local cfg={model=SAMPLING,outline="find_or_build",section_summaries=false}
+                for k,v in pairs(options) do cfg[k]=v end
+                local run={document={id=id,outline={}},regions={},config={fields={},stages={map=cfg}}}
+                local step={meter=ai.meter()}
+                test.is_nil(stages.map(run,step)); return step
+            end
+            for _, options in ipairs({{}, {temperature=0}, {temperature=0.2}, {temperature=0.2,max_tokens=128}, {temperature=0.2,max_tokens=256}, {max_tokens=256}}) do
+                test.contains(mapped(options).message,"Built")
+                test.contains(mapped(options).message,"Reused")
+            end
+            local overlay=assert(registry.overlay("app:engine_test"))
+            local entry=assert(registry.get("app:fixture_sampling_model"))
+            entry.data.output_tokens=2048
+            local changes=overlay:changes();changes:update(entry)
+            local _,apply_err=changes:apply();test.is_nil(apply_err,tostring(apply_err))
+            local ok,err=pcall(function()
+                test.contains(mapped({max_tokens=256}).message,"Built")
+                test.contains(mapped({max_tokens=256}).message,"Reused")
+            end)
+            local restore=assert(registry.overlay("app:engine_test")):changes();restore:delete(entry.id)
+            local _,restore_err=restore:apply();test.is_nil(restore_err,tostring(restore_err))
+            if not ok then error(err) end
+        end)
         test.it("passes the scout stage's temperature to the structured loop and the agent", function()
             for _, mode in ipairs({ "loop", "agent" }) do
                 for _, configured in ipairs({ true, false }) do
@@ -327,7 +380,7 @@ return { run = test.run_cases(function()
             test.eq(usage(step.meter), "1030/640")
         end)
         test.it("passes the highlighter's temperature and output limit", function()
-            local run = { pool = pool(), config = { fields = { field() }, retrieval = { highlighter_model = SAMPLING, highlighter_temperature = 0.1, highlighter_max_tokens = 300 } } }
+            local run = { pool = pool(), regions = {}, notes = {}, config = { fields = { field() }, stages = { extract = { max_fields_per_call = 5 } }, retrieval = { highlighter_model = SAMPLING, highlighter_temperature = 0.1, highlighter_max_tokens = 300 } } }
             local step = { meter = ai.meter() }
             test.is_nil(stages.highlight(run, step))
             test.eq(usage(step.meter), "1010/300")
@@ -437,6 +490,20 @@ return { run = test.run_cases(function()
             end
             test.eq(table.concat(shape, " | "),
                 "fee,total:1,2,3:fee: fee in C1;agent: Delaware law in C3 | notice,term:2: | law:3:law: law in C3 | party:1,2,3:agent: Delaware law in C3")
+        end)
+        test.it("gives an extraction call the passages its own fields may still read after pruning", function()
+            local pool = shapes.pool()
+            shapes.add(pool, { { ordinal = 1, content = "fee" }, { ordinal = 2, content = "law" }, { ordinal = 3, content = "both" } })
+            shapes.prune(pool, { 1, 2 }, { fee = { 1 }, ["terms.law"] = { 2 } })
+            local run = { pool = pool, regions = {}, notes = {}, config = { stages = { extract = { max_fields_per_call = 5 } },
+                fields = { { name = "fee", search_within = "document", group = "" }, { name = "law", search_within = "document", group = "terms" } } } }
+            local shape = {}
+            for _, call in ipairs(stages.extraction_calls(run)) do
+                local ordinals = {}
+                for _, c in ipairs(call.passages) do ordinals[#ordinals + 1] = c.ordinal end
+                shape[#shape + 1] = call.fields[1].name .. ":" .. table.concat(ordinals, ",")
+            end
+            test.eq(table.concat(shape, " | "), "fee:1,3 | law:2,3")
         end)
         test.it("tells the scout which chunks each sections field may read", function()
             local pool = shapes.pool()
