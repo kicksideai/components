@@ -18,9 +18,7 @@ local function run(request: any): (any?, error?)
     if result.status == "failed" then
         local cause = result.error
         for _, field in ipairs(result.fields) do if field.failed and not cause then cause = field.error end end
-        local failure = cause and errors.new(cause) or errors.new({ kind = errors.NOT_FOUND, retryable = false,
-            message = "No document fields were extracted", details = { code = "docscout_no_values" } })
-        return nil, error_envelope.wrap(failure, "Document extraction failed", { result = output })
+        return nil, error_envelope.wrap(errors.new(cause), "Document extraction failed", { result = output })
     end
     return output, nil
 end

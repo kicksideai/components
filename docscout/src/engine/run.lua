@@ -143,11 +143,9 @@ function M.run(input: any): (any?, error?)
         end
         fields[#fields + 1] = { name = v.name, path = v.path, value = v.value, failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, complete = v.complete, missing = v.missing, reason = v.reason, codes = v.codes, evidence = evidence }
     end
-    local failed, extracted = 0, 0
-    for _, f in ipairs(fields) do
-        if f.failed then failed = failed + 1 elseif not f.missing then extracted = extracted + 1 end
-    end
-    local status = (failure or extracted == 0) and "failed" or (failed > 0 and "partial" or "completed")
+    local failed = 0
+    for _, f in ipairs(fields) do if f.failed then failed = failed + 1 end end
+    local status = (failure or failed == #fields) and "failed" or (failed > 0 and "partial" or "completed")
     local result = {
         upload_id = input.upload_id, config_revision = extractor.revision, fields = fields, trace = trace,
         duration_ms = millis() - started, tokens = tokens, status = status,
