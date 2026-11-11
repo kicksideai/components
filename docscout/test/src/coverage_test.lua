@@ -82,6 +82,44 @@ return {run=test.run_cases(function()
                 test.eq(run.pool.count, 4); test.eq(run.pool.by_ordinal[1].content, "The total amount is 1250.")
             end)
         end
+        for _, mode in ipairs({"excluded", "outside-regions", "failed-field"}) do
+            test.it("highlights only usable passages after " .. mode, function()
+                local run, step = context(), {meter=ai.meter()}
+                local chunks, noise = {}, {}
+                for n=5,25 do chunks[#chunks + 1] = {ordinal=n, content="Other passage", heading_path="Other"} end
+                shapes.add(run.pool, chunks)
+                for n=2,25 do noise[#noise + 1] = n end
+                if mode == "excluded" then
+                    shapes.prune(run.pool, noise, {fee={1}, ["terms.rate"]={}})
+                else
+                    for _, field in ipairs(run.config.fields) do
+                        field.search_within = "sections"
+                        run.regions[shapes.path(field)] = {1}
+                    end
+                    if mode == "failed-field" then
+                        run.config.fields[1].search_within = "document"
+                        run.field_errors = {fee={kind=errors.UNAVAILABLE}}
+                    end
+                end
+                run.config.retrieval.highlighter_model = "class:docscout-highlight-visible"
+                test.is_nil(stages.highlight(run, step))
+                test.eq(step.meter.input_tokens, 12); test.eq(step.meter.output_tokens, 8)
+                test.eq(run.pool.count, 25); test.eq(run.pool.by_ordinal[1].content, "total amount")
+                test.eq(run.pool.by_ordinal[25].content, "Other passage")
+                test.eq(step.message, "Kept 1 of 1 passages")
+            end)
+        end
+        test.it("keeps Deep's own evidence available to highlighting and its extraction call", function()
+            local run, step = context(), {meter=ai.meter()}
+            shapes.prune(run.pool, {1,2,3,4}, {fee={}, ["terms.rate"]={}})
+            run.config.fields[2].strategy, run.config.stages.deep.enabled = "deep", true
+            shapes.add(run.pool, {run.chunks[1]}, "terms.rate", "detail")
+            for _, c in ipairs({run.chunks[2],run.chunks[3],run.chunks[4]}) do shapes.drop(run.pool,c.ordinal) end
+            run.config.retrieval.highlighter_model = "class:docscout-highlight-visible"
+            test.is_nil(stages.highlight(run, step)); test.eq(step.meter.input_tokens,12)
+            local calls = assert(stages.extraction_calls(run))
+            test.eq(#calls[1].passages, 0); test.eq(calls[2].passages[1].ordinal,1)
+        end)
         test.it("keeps genuine excerpts and removes empty, blank and invented highlights", function()
             local run, step = context(), {meter=ai.meter()}
             run.config.retrieval.highlighter_model = "class:docscout-highlight-empty"

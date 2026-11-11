@@ -17,56 +17,93 @@ function M.lines(s: string): { string }
     return out
 end
 
+-- The evidence pool: retrieved chunks by ordinal, and per ordinal its
+-- provenance: the fields and queries that found it, its best rank in a
+-- search, the fields a review cited it for, and the fields it is excluded for.
+-- dropped holds passages removed for every field.
 function M.pool(): any
-    return { by_ordinal = {}, dropped = {}, count = 0 }
+    return { by_ordinal = {}, provenance = {}, dropped = {}, count = 0 }
 end
 
--- Adds newly retained chunks to the pool.
-function M.add(pool: any, chunks: { any }?)
-    for _, c in ipairs(chunks or {}) do
-        if not pool.dropped[c.ordinal] and not pool.by_ordinal[c.ordinal] then
-            pool.by_ordinal[c.ordinal] = c
-            pool.count = pool.count + 1
+-- Adds retrieved chunks in rank order, recording the field and query that
+-- found them. A chunk a field's own search finds is visible to that field
+-- again even where a review excluded it.
+function M.add(pool: any, chunks: { any }?, field: string?, query: string?)
+    for rank, c in ipairs(chunks or {}) do
+        local n = c.ordinal
+        if not pool.dropped[n] then
+            if not pool.by_ordinal[n] then
+                pool.by_ordinal[n] = c
+                pool.count = pool.count + 1
+                pool.provenance[n] = { fields = {}, queries = {}, cited = {}, excluded = {} }
+            end
+            local p = pool.provenance[n]
+            if not p.rank or rank < p.rank then p.rank = rank end
+            if field then p.fields[field], p.excluded[field] = true, nil end
+            if query then
+                local known = false
+                for _, q in ipairs(p.queries) do if q == query then known = true end end
+                if not known then p.queries[#p.queries + 1] = query end
+            end
         end
     end
 end
 
--- Adds chunks a stage found for its own fields, including ones another stage
--- dropped as noise for the fields it reviewed.
-function M.admit(pool: any, chunks: { any })
-    for _, c in ipairs(chunks) do pool.dropped[c.ordinal] = nil end
-    M.add(pool, chunks)
-end
-
+-- Removes a passage for every field.
 function M.drop(pool: any, ordinal: integer): boolean
     if not pool.by_ordinal[ordinal] then return false end
     pool.by_ordinal[ordinal] = nil
+    pool.provenance[ordinal] = nil
     pool.dropped[ordinal] = true
     pool.count = pool.count - 1
     return true
 end
 
--- Drops the passages a reviewer marked as noise, except any it cites as a
--- field's evidence (field path to chunk numbers) and any inside selected, the
--- regions Map chose for sections fields. Returns how many were dropped.
+-- Applies a review: evidence maps every reviewed field's path to the chunk
+-- numbers it cited. Each passage marked as noise is excluded for the reviewed
+-- fields that did not cite it; passages inside selected, the regions Map chose
+-- for sections fields, stay. Returns how many passages no reviewed field keeps.
 function M.prune(pool: any, noise: { any }, evidence: { [string]: { any } }, selected: { integer }?): integer
-    local cited = {}
-    for _, chunks in pairs(evidence) do
-        for _, n in ipairs(chunks) do cited[math.tointeger(tonumber(n)) or -1] = true end
+    local reviewed, kept, current = {}, {}, {}
+    for path, chunks in pairs(evidence) do
+        reviewed[#reviewed + 1] = path
+        for _, n in ipairs(chunks) do
+            local ordinal = math.tointeger(tonumber(n))
+            local p = ordinal and pool.provenance[ordinal]
+            if p then
+                p.cited[path], p.excluded[path] = true, nil
+                current[ordinal] = current[ordinal] or {}
+                current[ordinal][path] = true
+            end
+        end
     end
-    for _, n in ipairs(selected or {}) do cited[n] = true end
-    local dropped = 0
+    for _, n in ipairs(selected or {}) do kept[n] = true end
+    local excluded = 0
     for _, n in ipairs(noise) do
         local ordinal = math.tointeger(tonumber(n))
-        if ordinal and not cited[ordinal] and M.drop(pool, ordinal) then dropped = dropped + 1 end
+        local p = ordinal and pool.provenance[ordinal]
+        if p and not kept[ordinal] then
+            local remaining = false
+            for _, path in ipairs(reviewed) do
+                if current[ordinal] and current[ordinal][path] then remaining = true else p.excluded[path] = true end
+            end
+            if not remaining and #reviewed > 0 then excluded = excluded + 1 end
+        end
     end
-    return dropped
+    return excluded
 end
 
--- Pool chunks in document order.
-function M.ordered(pool: any): { any }
+-- Whether a passage is visible to at least one of fields; every passage when fields is nil.
+local function visible_to(p: any, fields: { string }?): boolean
+    if not fields then return true end
+    for _, path in ipairs(fields) do if not p.excluded[path] then return true end end
+    return false
+end
+
+-- Pool chunks in document order, limited to those visible to at least one of fields when given.
+function M.ordered(pool: any, fields: { string }?): { any }
     local out = {}
-    for _, c in pairs(pool.by_ordinal) do out[#out + 1] = c end
+    for n, c in pairs(pool.by_ordinal) do if visible_to(pool.provenance[n], fields) then out[#out + 1] = c end end
     table.sort(out, function(a: any, b: any): boolean return a.ordinal < b.ordinal end)
     return out
 end

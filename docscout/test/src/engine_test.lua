@@ -327,7 +327,7 @@ return { run = test.run_cases(function()
             test.eq(usage(step.meter), "1030/640")
         end)
         test.it("passes the highlighter's temperature and output limit", function()
-            local run = { pool = pool(), config = { fields = { field() }, retrieval = { highlighter_model = SAMPLING, highlighter_temperature = 0.1, highlighter_max_tokens = 300 } } }
+            local run = { pool = pool(), regions = {}, notes = {}, config = { fields = { field() }, stages = { extract = { max_fields_per_call = 5 } }, retrieval = { highlighter_model = SAMPLING, highlighter_temperature = 0.1, highlighter_max_tokens = 300 } } }
             local step = { meter = ai.meter() }
             test.is_nil(stages.highlight(run, step))
             test.eq(usage(step.meter), "1010/300")
@@ -437,6 +437,20 @@ return { run = test.run_cases(function()
             end
             test.eq(table.concat(shape, " | "),
                 "fee,total:1,2,3:fee: fee in C1;agent: Delaware law in C3 | notice,term:2: | law:3:law: law in C3 | party:1,2,3:agent: Delaware law in C3")
+        end)
+        test.it("gives an extraction call the passages its own fields may still read after pruning", function()
+            local pool = shapes.pool()
+            shapes.add(pool, { { ordinal = 1, content = "fee" }, { ordinal = 2, content = "law" }, { ordinal = 3, content = "both" } })
+            shapes.prune(pool, { 1, 2 }, { fee = { 1 }, ["terms.law"] = { 2 } })
+            local run = { pool = pool, regions = {}, notes = {}, config = { stages = { extract = { max_fields_per_call = 5 } },
+                fields = { { name = "fee", search_within = "document", group = "" }, { name = "law", search_within = "document", group = "terms" } } } }
+            local shape = {}
+            for _, call in ipairs(stages.extraction_calls(run)) do
+                local ordinals = {}
+                for _, c in ipairs(call.passages) do ordinals[#ordinals + 1] = c.ordinal end
+                shape[#shape + 1] = call.fields[1].name .. ":" .. table.concat(ordinals, ",")
+            end
+            test.eq(table.concat(shape, " | "), "fee:1,3 | law:2,3")
         end)
         test.it("tells the scout which chunks each sections field may read", function()
             local pool = shapes.pool()
