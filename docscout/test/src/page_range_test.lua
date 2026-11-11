@@ -70,6 +70,19 @@ return { run = test.run_cases(function()
             test.is_true(full.document.id ~= ranged.document.id)
             test.is_true(#assert(store.all_chunks(full.document.id)) > #assert(store.all_chunks(ranged.document.id)))
             in_range(assert(store.all_chunks(ranged.document.id)))
+            cfg.fields = {}
+            cfg.stages.map.temperature = 0
+            cfg.stages.map.model, cfg.stages.map.outline, cfg.stages.map.section_summaries = "class:docscout-sampling", "build", false
+            local full_run = { document = full.document, config = cfg, regions = {} }
+            local full_step = { meter = ai.meter() }
+            test.is_nil(stages.map(full_run, full_step));test.is_true(full_step.meter.input_tokens > 0, full_step.message)
+            cfg.stages.map.outline = "find_or_build"
+            local selected_run = { document = ranged.document, config = cfg, regions = {} }
+            local selected_step = { meter = ai.meter() }
+            test.is_nil(stages.map(selected_run, selected_step));test.is_true(selected_step.meter.input_tokens > 0, selected_step.message)
+            test.eq(selected_run.document.outline[1].page_start, 2);test.eq(selected_run.document.outline[1].page_end, 2)
+            local reused_step = { meter = ai.meter() }
+            test.is_nil(stages.map(selected_run, reused_step));test.eq(reused_step.meter.input_tokens, 0)
         end)
         test.it("limits keyword, semantic, hybrid, section and native-agent document tools", function()
             local run = run_for()

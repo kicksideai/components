@@ -29,3 +29,9 @@ page count; `page_range` carries the optional selection in the result and stored
 run, and trace steps carry `pages`. The Workflow Block accepts `pages` in its
 configuration, and the contract, HTTP endpoint and agent tool accept it in the
 run input.
+
+Evaluation cases accept the same optional `pages` alongside `upload_id` and
+`expected`. Admission copies the range into each evaluation result's immutable
+inputs, so deleting or replacing the case does not change the queued run. A
+nullable `pages` column in cases and evaluation results preserves older rows;
+runs keep their selection in their existing result JSON.

@@ -25,7 +25,6 @@ local function invalid(message: string): error
     return errors.new({ kind = errors.INVALID, message = message })
 end
 
-
 function M.validate_pages(pages: any, page_count: integer?): error?
     if pages == nil then return nil end
     if type(pages) ~= "table" then return invalid("pages must be an object with integer first and last pages") end

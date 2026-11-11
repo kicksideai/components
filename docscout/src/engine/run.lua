@@ -20,12 +20,12 @@ local CALLERS = { ui = true, agent = true, eval = true, workflow = true }
 
 -- One stage of a run as the trace records it.
 type TraceStep = { kind: string, status: string, scope: string, model: string?, duration_ms: integer,
-    input_tokens: number, output_tokens: number, queries: { string }?, message: string? }
+    input_tokens: number, output_tokens: number, queries: { string }?, message: string?, pages: any? }
 
 local function invalid(message: string): error return errors.new({ kind = errors.INVALID, message = message }) end
 local function millis(): integer return math.floor(time.now():unix_nano() / 1000000) end
 
--- input: { id, upload_id, caller, deadline? } where deadline is an RFC3339
+-- input: { id, upload_id, caller, pages?, deadline? } where deadline is an RFC3339
 -- instant the run must finish by.
 function M.run(input: any): (any?, error?)
     if type(input) ~= "table" or type(input.id) ~= "string" or input.id == "" then return nil, invalid("Choose an extractor") end

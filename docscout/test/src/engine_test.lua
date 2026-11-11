@@ -77,6 +77,19 @@ return { run = test.run_cases(function()
             test.eq(#single.chunks, 1); test.eq(single.chunks[1].content, "Included third")
             test.eq(shapes.quote_location(single.chunks[1], "Included third").page, 3)
         end)
+        test.it("keeps overlapped text on its source page when a boundary repeats in adjacent chunks", function()
+            local markdown = "<!-- page 1 -->\n" .. string.rep("Excluded before. ", 50) .. "\n<!-- page 2 -->\n" .. string.rep("Selected text. ", 50) .. "\n<!-- page 3 -->\n" .. string.rep("Excluded after. ", 50)
+            for _, headings in ipairs({ true, false }) do
+                for _, overlap in ipairs({ 0, 20, 60 }) do
+                    local doc = assert(process.chunk(markdown, retrieval({ split_headings = headings, chunk_size = 100, overlap = overlap }), { first = 2, last = 2 }))
+                    test.is_true(#doc.chunks > 1)
+                    for _, chunk in ipairs(doc.chunks) do
+                        test.is_nil(chunk.content:find("Excluded", 1, true), chunk.content)
+                        test.eq(chunk.page_start, 2);test.eq(chunk.page_end, 2)
+                    end
+                end
+            end
+        end)
         test.it("rejects invalid ranges and documents without page information", function()
             for _, pages in ipairs({ false, "2-3", {}, { first = 0, last = 1 }, { first = 2, last = 1 },
                 { first = 1.5, last = 2 }, { first = 1, last = 2.5 }, { first = "1", last = 2 },

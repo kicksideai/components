@@ -272,10 +272,15 @@ return { run = test.run_cases(function()
                 time.sleep("100ms")
             end
             test.eq(evaluation.status, "completed"); test.eq(evaluation.metrics[1].accuracy, 1)
+            test.is_nil(evaluation.results[1].pages)
+            local cases = assert(caller:call("app:probe", { op = "get", id = id })).cases
+            test.is_nil(cases[1].pages)
             for _, result in ipairs({ ui, tool, block }) do
                 test.eq(result.fields[1].value, 1250); test.eq(result.fields[1].evidence[1].page, 1)
                 test.eq(result.fields[1].evidence[1].quote, "The total amount is 1250.")
                 test.is_true(#result.trace >= 3); test.not_nil(result.run_id)
+                test.is_nil(result.page_range)
+                for _, step in ipairs(result.trace) do test.is_nil(step.pages) end
             end
             local db = assert(sql.get("app:db"))
             local runs = assert(db:query("SELECT caller, status FROM kickside_docscout_runs WHERE component_id=$1 ORDER BY caller", { id }))
