@@ -2,6 +2,7 @@
 import {computed, onMounted, ref} from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import Checkbox from 'primevue/checkbox'
 import {Icon} from '@iconify/vue'
 import {api, loadByTagName} from '@wippy-fe/proxy'
 import {useEvents} from '@wippy-fe/webcomponent-vue'
@@ -12,6 +13,7 @@ const DEFAULT_TITLE='My Assistant'
 const DEFAULT_TRAITS=['kickside.agents.traits:trait_master','kickside.agents.traits:artifacts','kickside.uploads.traits:file_manager']
 const title=ref(DEFAULT_TITLE)
 const model=ref('')
+const memory=ref(true)
 const capabilities=ref<CapabilityValue>({traits:[...DEFAULT_TRAITS],trait_contexts:{'kickside.agents.traits:trait_master':{inject_trait_catalog:true}}})
 const loading=ref(true)
 const ready=ref(false)
@@ -75,13 +77,13 @@ async function create() {
   busy.value=true;error.value=''
   try {
     if(!createdId.value) {
-      const input:{title:string;model?:string;traits?:string[];trait_contexts?:Record<string,unknown>}={title:title.value.trim()}
+      const input:{memory:boolean;title:string;model?:string;traits?:string[];trait_contexts?:Record<string,unknown>}={title:title.value.trim(),memory:memory.value}
       if(model.value) input.model=model.value
       if(capabilities.value.traits.length) {
         input.traits=[...capabilities.value.traits]
         input.trait_contexts={...capabilities.value.trait_contexts}
       }
-      const {data}=await api.post('/api/v1/user-agents',input)
+      const {data}=await api.post('/api/v1/agent-onboarding/agents',input)
       if(data?.success!==true||!data.component_id) throw new Error(data?.error||'Could not create your agent.')
       createdId.value=data.component_id
     }
@@ -142,6 +144,13 @@ onMounted(load)
             <wc-model-picker :value="model" capability="generate" aria-labelledby="first-agent-model" @select="model = $event.detail" />
             <p v-if="!defaultConfigured" class="hint">This workspace has no default model; choose one.</p>
           </div>
+        </div>
+        <div class="field">
+          <div class="memory-choice">
+            <Checkbox v-model="memory" input-id="first-agent-memory" binary />
+            <label for="first-agent-memory">Personal memory</label>
+          </div>
+          <p class="hint">Remember your preferences and useful details across conversations.</p>
         </div>
         <wc-agent-trait-picker :value="JSON.stringify(capabilities)" aria-label="Agent capabilities" @change="capabilityChange" />
       </fieldset>
