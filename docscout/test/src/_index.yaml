@@ -547,12 +547,15 @@ entries:
 
 - name: migration_test
   kind: function.lua
-  modules: [sql, funcs]
+  modules: [sql, funcs, json, registry]
   meta: {type: test, suite: docscout_migration}
   source: file://migration_test.lua
   method: run
   imports:
     test: wippy.test:test
+    ai: kickside.docscout.engine:ai
+    stages: kickside.docscout.engine:stages
+    store: kickside.docscout.persist:store
 
 - name: docscout_members
   kind: security.scope
@@ -686,6 +689,20 @@ entries:
   providers:
   - id: app:fixture_success_provider
     provider_model: docscout-sampling
+- name: fixture_sampling_other_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-sampling-other
+    title: Second fixture model that reports its sampling settings
+    capabilities: [generate, structured_output]
+    class: [docscout-sampling-other]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-sampling
 - name: success_test
   kind: function.lua
   meta:
@@ -799,7 +816,7 @@ entries:
     comment: Host access to the fixture model catalog and provider binding.
   groups: [app:runtime_members]
   policy:
-    resources: ['app:fixture_success_*', 'app:fixture_llm_*', app:fixture_small_model, app:fixture_refusal_model]
+    resources: ['app:fixture_success_*', 'app:fixture_llm_*', 'app:fixture_support_*', app:fixture_small_model, app:fixture_refusal_model]
     actions: [registry.get, registry.find, contract.open, funcs.call]
     effect: allow
 - name: runtime_methods

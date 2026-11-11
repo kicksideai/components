@@ -283,6 +283,59 @@ return { run = test.run_cases(function()
                 test.eq(run.document.outline[1].summary, "Fixture")
             end
         end)
+        test.it("reuses the built outline persisted on the processed copy for the same map model", function()
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k",
+                outline = {}, page_count = 0, tokens = 0, expires_at = far_future() }, {
+                { ordinal = 1, section_id = "s1", heading_path = "Terms", content = "The total amount is 1250.", vector = unit(1) },
+            }))
+            local function mapped(model: string, outline: string): (any, any)
+                local run = { document = { id = id, outline = {} }, regions = {}, config = { fields = {}, stages = { map = {
+                    model = model, outline = outline, section_summaries = false, temperature = 0, max_tokens = 128 } } } }
+                local step = { meter = ai.meter() }
+                test.is_nil(stages.map(run, step))
+                return run, step
+            end
+            local built, first = mapped(SAMPLING, "find_or_build")
+            test.eq(usage(first.meter), "1000/128")
+            local reused, second = mapped(SAMPLING, "find_or_build")
+            test.eq(usage(second.meter), "0/0")
+            test.eq(json.encode(reused.document.outline), json.encode(built.document.outline))
+            test.contains(second.message, "Reused")
+            local _, forced = mapped(SAMPLING, "build")
+            test.eq(usage(forced.meter), "1000/128", "outline: build always builds")
+            local _, other = mapped("class:docscout-sampling-other", "find_or_build")
+            test.eq(usage(other.meter), "1000/128", "another map model card builds its own outline")
+            local _, again = mapped("class:docscout-sampling-other", "find_or_build")
+            test.eq(usage(again.meter), "0/0")
+        end)
+        test.it("invalidates the outline cache for every sampling input and model-card revision", function()
+            local id = assert(save({owner_id="owner-" .. uuid.v4(),upload_id=uuid.v4(),checksum="cache",processing_key="cache",outline={},page_count=0,tokens=0,expires_at=far_future()}, {
+                {ordinal=1,section_id="s1",heading_path="Terms",content="The total amount is 1250.",vector=unit(1)},
+            }))
+            local function mapped(options: any): any
+                local cfg={model=SAMPLING,outline="find_or_build",section_summaries=false}
+                for k,v in pairs(options) do cfg[k]=v end
+                local run={document={id=id,outline={}},regions={},config={fields={},stages={map=cfg}}}
+                local step={meter=ai.meter()}
+                test.is_nil(stages.map(run,step)); return step
+            end
+            for _, options in ipairs({{}, {temperature=0}, {temperature=0.2}, {temperature=0.2,max_tokens=128}, {temperature=0.2,max_tokens=256}, {max_tokens=256}}) do
+                test.contains(mapped(options).message,"Built")
+                test.contains(mapped(options).message,"Reused")
+            end
+            local overlay=assert(registry.overlay("app:engine_test"))
+            local entry=assert(registry.get("app:fixture_sampling_model"))
+            entry.data.output_tokens=2048
+            local changes=overlay:changes();changes:update(entry)
+            local _,apply_err=changes:apply();test.is_nil(apply_err,tostring(apply_err))
+            local ok,err=pcall(function()
+                test.contains(mapped({max_tokens=256}).message,"Built")
+                test.contains(mapped({max_tokens=256}).message,"Reused")
+            end)
+            local restore=assert(registry.overlay("app:engine_test")):changes();restore:delete(entry.id)
+            local _,restore_err=restore:apply();test.is_nil(restore_err,tostring(restore_err))
+            if not ok then error(err) end
+        end)
         test.it("passes the scout stage's temperature to the structured loop and the agent", function()
             for _, mode in ipairs({ "loop", "agent" }) do
                 for _, configured in ipairs({ true, false }) do

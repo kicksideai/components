@@ -42,9 +42,7 @@ export interface Retrieval {chunk_size:number;overlap:number;split_headings:bool
 export interface Config {fields:Field[];stages:Stages;retrieval:Retrieval;tags:string[];retention?:string}
 
 export function newConfig():Config{
- const config=structuredClone(schema.default)
- const {max_output_tokens,max_fields_per_call}=config.stages.extract
- return {...config,stages:{...config.stages,extract:{model:'class:fast',max_output_tokens,max_fields_per_call}}} as Config
+ return structuredClone(schema.default) as Config
 }
 export const newField=():Field=>structuredClone(schema.properties.fields.items.default) as Field
 export const newQuery=():PrefetchQuery=>({name:'',query:'',chunks:5})

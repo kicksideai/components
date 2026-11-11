@@ -59,6 +59,7 @@ entries:
     store: kickside.docscout.persist:store
     doctools: kickside.docscout.engine:doctools
     user_agent: kickside.docscout.engine:user_agent
+    canonical_json: kickside.contract:canonical_json
     error_envelope: kickside.contract:error_envelope
     process: kickside.docscout.engine:process
     shapes: kickside.docscout.engine:shapes

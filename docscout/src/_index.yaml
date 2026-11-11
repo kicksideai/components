@@ -95,6 +95,8 @@ entries:
     path: .meta.db_id
   - entry: kickside.docscout.migrations:01_docscout
     path: .meta.target_db
+  - entry: kickside.docscout.migrations:02_built_outline
+    path: .meta.target_db
   - entry: kickside.docscout.security:system_db_access
     path: .policy.resources
 - name: api_router

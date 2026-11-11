@@ -104,6 +104,7 @@ describe('Docscout page list',()=>{
   await wrapper.get('form.create-pane').trigger('submit')
   await flushPromises()
   expect(create).toHaveBeenCalledWith(expect.objectContaining({title:'Contract reader',config:expect.objectContaining({stages:expect.any(Object)})}))
+  expect(create.mock.calls.at(-1)?.[0].config.stages.extract.temperature).toBe(0)
   expect(wrapper.emitted('open')?.[0]).toEqual(['new-id'])
  })
 })
