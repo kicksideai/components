@@ -308,7 +308,7 @@ Rate from 0 to 1 how confident you are that the passages contain every field's v
 whose passages state or help determine its value. List chunk numbers that serve no field as noise. Give every field an entry, empty
 when no passage serves it. Propose focused search queries for fields whose evidence is missing or weak, and leave a short note per field
 about where its value is or what to watch for (empty when there is nothing to note).
-Do not extract values. Chunk numbers are the numbers after C, without the C.]])
+Do not extract values. Chunk numbers are the numbers after C, without the C.]] .. "\n" .. shapes.QUERY_RULE)
 
 -- Tool calls an agent scout may make: queries per round over its rounds.
 function M.agent_budget(cfg: any): integer
@@ -414,7 +414,7 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
     local room = cfg.max_queries - #queries
     if room > 0 then
         local generated, err = ai.structured(step.meter, cfg.query_model, queries_schema(room),
-            system("Write up to " .. room .. " varied search queries that would find passages stating this field's value, including synonyms and related clauses."),
+            system("Write up to " .. room .. " varied search queries that would find passages stating this field's value, including synonyms and related clauses. " .. shapes.QUERY_RULE),
             field_lines({ f }) .. (f.search_hints ~= "" and ("\nHints: " .. f.search_hints) or ""),
             { temperature = cfg.query_temperature, stage = "queries", fields = { shapes.path(f) } })
         if err then return err end

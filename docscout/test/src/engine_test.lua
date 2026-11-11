@@ -598,6 +598,25 @@ return { run = test.run_cases(function()
             for _, c in ipairs(shapes.ordered(run.pool)) do ordinals[#ordinals + 1] = c.ordinal end
             test.eq((json.encode(ordinals)), (json.encode({ 2 })))
         end)
+        test.it("tells the deep query model the plain-text form its queries are searched in", function()
+            local id = assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k", outline = {},
+                page_count = 0, tokens = 0, expires_at = far_future() }, {
+                { ordinal = 1, section_id = "s1", heading_path = "Term", content = "Renewal notice is ninety days.", vector = unit(1) },
+            }))
+            local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+            field.name, field.description, field.strategy = "notice_period", "Days of notice before renewal", "deep"
+            local run = { document = { id = id, outline = {} }, regions = {}, pool = shapes.pool(), analyses = {},
+                config = { fields = { field }, retrieval = { search_mode = "keyword" }, stages = { deep = { enabled = true,
+                    model = "class:docscout-sampling", query_model = "class:docscout-echo", read = "chunks", parallel_fields = 1,
+                    max_queries = 2, chunks_per_query = 5, chunk_cap = 10, min_similarity = 0, query_temperature = 0, analysis_temperature = 0 } } } }
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.deep(run, step))
+            test.eq(#step.queries, 2)
+            local prompt = step.queries[2]
+            for _, statement in ipairs({ "natural-language phrase", "matched by its words and by its meaning", "regular expressions", "boolean operators" }) do
+                test.is_true(prompt:find(statement, 1, true) ~= nil, statement)
+            end
+        end)
         test.it("gives each extraction call only passages every one of its fields may read", function()
             local pool = shapes.pool()
             shapes.add(pool, { { ordinal = 1, content = "fee" }, { ordinal = 2, content = "notice" }, { ordinal = 3, content = "law" } })
