@@ -1780,3 +1780,154 @@ entries:
   modules: [sql, funcs, json]
   imports:
     test: wippy.test:test
+
+- name: context_budget_agent_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_context_budget_agent, group: Docscout}
+  source: file://context_budget_agent_test.lua
+  method: run
+  modules: [registry, json, uuid, fs]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    users: kickside.users.persist:user_repo
+    groups: kickside.users.persist:user_groups_repo
+    store: kickside.docscout.persist:store
+    shapes: kickside.docscout.engine:shapes
+    ai: kickside.docscout.engine:ai
+    user_agent: kickside.docscout.engine:user_agent
+- name: fixture_success_budget_agent_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-budget-agent
+    capabilities: [generate, structured_output]
+    class: [docscout-budget-agent]
+    priority: 100
+  max_tokens: 6000
+  output_tokens: 512
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {capture_requests: budget-agent-requests.json, reject_context_for: provider_context_rejection}
+
+- name: context_budget_agent_probe
+  kind: function.lua
+  source: file://context_budget_agent_test.lua
+  method: scout
+  modules: [registry, json, uuid, fs]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    users: kickside.users.persist:user_repo
+    groups: kickside.users.persist:user_groups_repo
+    store: kickside.docscout.persist:store
+    shapes: kickside.docscout.engine:shapes
+    ai: kickside.docscout.engine:ai
+    user_agent: kickside.docscout.engine:user_agent
+
+- name: context_budget_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_context_budget, group: Docscout}
+  source: file://context_budget_test.lua
+  method: run
+  modules: [json, fs, registry, funcs, uuid]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    canonical_json: kickside.contract:canonical_json
+    baseline: app:verification_baseline
+    ai: kickside.docscout.engine:ai
+    shapes: kickside.docscout.engine:shapes
+    stages: kickside.docscout.engine:stages
+    store: kickside.docscout.persist:store
+
+- name: fixture_context_budget_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-context-budget, capabilities: [generate, structured_output], class: [docscout-context-budget], priority: 100}
+  max_tokens: 2400
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {capture_requests: context-extract-requests.json}
+
+- name: fixture_context_embed_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-context-embed, capabilities: [embed], class: [docscout-context-embed], priority: 100}
+  dimensions: 512
+  max_tokens: 2400
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {capture_requests: context-embed-requests.json}
+
+- name: fixture_context_length
+  kind: library.lua
+  source: file://fixture_context_length.lua
+
+- name: fixture_context_generated_structured
+  kind: function.lua
+  source: file://fixture_context_generated.lua
+  method: structured
+  modules: [json, fs]
+  imports:
+    canonical_json: kickside.contract:canonical_json
+
+- name: fixture_context_generated_status
+  kind: function.lua
+  source: file://fixture_context_generated.lua
+  method: status
+
+- name: fixture_context_generated_driver
+  kind: contract.binding
+  contracts:
+  - contract: wippy.llm:structured_output
+    methods:
+      structured_output: app:fixture_context_generated_structured
+  - contract: wippy.llm:provider
+    methods:
+      status: app:fixture_context_generated_status
+
+- name: fixture_context_generated_provider
+  kind: registry.entry
+  meta: {type: llm.provider, name: docscout-context-generated}
+  driver: {id: app:fixture_context_generated_driver, options: {}}
+
+- name: fixture_context_generated_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-context-generated, capabilities: [structured_output], class: [docscout-context-generated], priority: 100}
+  max_tokens: 2400
+  output_tokens: 256
+  providers:
+  - id: app:fixture_context_generated_provider
+    provider_model: docscout-context-generated
+    options: {capture_requests: context-generated-requests.json}
+
+- name: context_budget_length_probe
+  kind: function.lua
+  source: file://fixture_context_length.lua
+  method: probe
+  imports:
+    ai: kickside.docscout.engine:ai
+
+- name: fixture_context_unknown_window_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-context-unknown-window, capabilities: [structured_output], class: [docscout-context-unknown-window], priority: 100}
+  max_tokens: 0
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {capture_requests: context-unknown-window.json}
+
+- name: fixture_context_unknown_output_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-context-unknown-output, capabilities: [structured_output], class: [docscout-context-unknown-output], priority: 100}
+  max_tokens: 2400
+  output_tokens: 0
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {capture_requests: context-unknown-output.json}

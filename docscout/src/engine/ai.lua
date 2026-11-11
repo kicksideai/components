@@ -6,6 +6,7 @@ local time = require("time")
 local llm = require("llm")
 local prompt = require("prompt")
 local json = require("json")
+local shapes = require("shapes")
 
 local M = {}
 
@@ -121,27 +122,85 @@ function M.resolve(model: string): (any?, error?)
     return card, nil
 end
 
--- The serialized request estimate matches the LLM admission contract. It is
--- a scheduling estimate; provider tokenization can differ.
-function M.estimate(system: string, user: string, schema: any?): integer
-    local encoded = assert(json.encode({ messages = messages(system, user), schema = schema }))
-    return math.ceil(#encoded / 4)
+-- Prompt sizes are estimates: encoded UTF-8 bytes at four per token,
+-- plus a 25% safety margin. Include schemas, tools and message framing in the
+-- same estimate everywhere; provider tokenization can still differ.
+function M.estimate_value(value: any): integer
+    return math.ceil(#assert(json.encode(value)) * 1.25 / 4)
 end
 
-function M.fitter(model: string, max_output: integer?): (((string, string, any?) -> boolean)?, integer?, error?)
+function M.estimate(system: string, user: string, schema: any?): integer
+    return M.estimate_value({ messages = messages(system, user), schema = schema })
+end
+
+-- Input allowance from the resolved card, shared by text, tool and embedding
+-- requests. Unknown card limits do not create an allowance or output option.
+function M.input_budget(model: string, max_output: integer?): (integer?, integer?, error?)
     local card, err = M.resolve(model)
     if err then return nil, nil, err end
-    local output = max_output or math.tointeger(tonumber(card.output_tokens))
-    local window = math.tointeger(tonumber(card.max_tokens))
-    return function(system: string, user: string, schema: any?): boolean
-        return not window or window <= 0 or M.estimate(system, user, schema) + (output or 0) <= window
-    end, output, nil
+    local output, window = tonumber(card.output_tokens), tonumber(card.max_tokens)
+    if not output or output <= 0 or not window or window <= 0 then return nil, nil, nil end
+    local reserved = math.floor(math.min(max_output and max_output > 0 and max_output or output, output))
+    return math.floor(window - reserved), reserved, nil
+end
+
+function M.fitter(model: string, max_output: integer?): (any?, integer?, error?)
+    local available, reserved, err = M.input_budget(model, max_output)
+    if err then return nil, nil, err end
+    return function(system: string, user: string, schema: any?): (boolean, integer, integer?)
+        local estimated = M.estimate(system, user, schema)
+        return available == nil or estimated <= available, estimated, available
+    end, reserved, nil
 end
 
 function M.over_budget(model: string, what: string, advice: string): error
     return errors.new({ kind = errors.INVALID, retryable = false,
         message = what .. " exceeds the context window of " .. model .. "; " .. advice,
         details = { code = "prompt_exceeds_budget", model = model } })
+end
+
+function M.budget_error(model: string, estimated: integer?, available: integer?): error
+    return errors.new({ kind = errors.INVALID, retryable = false,
+        message = "Document context exceeds the model budget" ..
+            (estimated and (" (estimated " .. estimated .. " tokens" .. (available and (", available " .. available) or "") .. ")") or ""),
+        details = { code = "context_budget_exceeded", model = model, estimated_tokens = estimated, available_tokens = available } })
+end
+
+-- The LLM and native agent errors preserve structured causes. Inspect those
+-- details, never provider-specific message text, to distinguish input rejection
+-- from an output reply stopped at length.
+function M.context_error(model: string, err: any): error?
+    local function find(value: any): any?
+        if type(value) == "userdata" then return find(value:details()) end
+        if type(value) ~= "table" then return nil end
+        if value.error_type == "context_window" or value.error_type == "context_length_exceeded" then return value end
+        for _, child in pairs(value) do
+            if type(child) == "table" or type(child) == "userdata" then
+                local found = find(child)
+                if found then return found end
+            end
+        end
+        return nil
+    end
+    local source = find(err)
+    if not source then return nil end
+    local estimated = tonumber(source.estimated_prompt_tokens)
+    local available = tonumber(source.context_window)
+    if available then available = available - (tonumber(source.requested_output_tokens) or 0) end
+    local details = {}
+    for key, value in pairs(source) do details[key] = value end
+    details.code, details.model = "context_budget_exceeded", source.model or model
+    details.estimated_tokens, details.available_tokens = estimated, available
+    return errors.new({ kind = errors.INVALID, retryable = false,
+        message = "Document context exceeds the model budget: " .. tostring(err), details = details })
+end
+
+local function admission(model: string, system: string, user: string, schema: any?, opts: CallOpts?): error?
+    local fits, _, err = M.fitter(model, opts and opts.max_tokens)
+    if err then return err end
+    local ok, estimated, available = fits(system, user, schema)
+    if not ok then return M.budget_error(model, estimated, available) end
+    return nil
 end
 
 -- The reply a provider failure reports: the llm module carries a failed
@@ -158,6 +217,10 @@ end
 -- failed reply that stopped at the output limit is a truncation.
 local function structured_result(model: string, schema: any, response: any, err: any): (any?, error?)
     local reply = err and failed_reply(err) or response
+    if err then
+        local budget = M.context_error(model, err)
+        if budget then return nil, budget end
+    end
     if err and not (reply and reply.finish_reason == "length") then return nil, model_error("structured model call (" .. model .. ")", err) end
     if reply.finish_reason == "length" then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
@@ -181,6 +244,8 @@ end
 function M.structured(meter: Meter, model: string, schema: any, system: string, user: string, opts: CallOpts?): (any?, error?)
     local options, late = options_for(meter, "a structured model call", model, opts)
     if late then return nil, late end
+    local budget = admission(model, system, user, schema, opts)
+    if budget then return nil, budget end
     local started = millis()
     local response, call_err = llm.structured_output(schema, messages(system, user), options)
     local result, err = structured_result(model, schema, response, call_err)
@@ -191,9 +256,11 @@ end
 function M.generate(meter: Meter, model: string, system: string, user: string, opts: CallOpts?): (string?, error?)
     local options, late = options_for(meter, "a model call", model, opts)
     if late then return nil, late end
+    local budget = admission(model, system, user, nil, opts)
+    if budget then return nil, budget end
     local started = millis()
     local response, call_err = llm.generate(messages(system, user), options)
-    local err = call_err and model_error("model call (" .. model .. ")", call_err) or nil
+    local err = call_err and (M.context_error(model, call_err) or model_error("model call (" .. model .. ")", call_err)) or nil
     if not err and response.finish_reason == "length" then err = truncated(model) end
     record(meter, "generate", model, opts, started, response or failed_reply(call_err), err)
     if err then return nil, err end
@@ -204,18 +271,47 @@ end
 -- Stops when the model answers without tools, after max_calls tool calls, or
 -- when a tool fails.
 function M.agent(meter: Meter, model: string, system: string, user: string, tools: { any }, max_calls: integer,
-        call: (string, any) -> (string?, error?), opts: CallOpts?): (string?, integer, error?)
+        call: (string, any, string?) -> (string?, error?), opts: CallOpts?, reduce: any?): (string?, integer, error?)
     local conversation = prompt.new()
     conversation:add_system(system)
     conversation:add_user(user)
     local calls = 0
+    local fits, _, fit_err = M.fitter(model, opts and opts.max_tokens)
+    if fit_err then return nil, calls, fit_err end
+    local _, _, available = (fits :: any)("", "", nil)
+    -- The fitted message array replaces the prompt builder only when it is
+    -- necessary. That keeps unknown-limit and fitting requests byte-for-byte
+    -- on the established prompt path.
+    local function request(): (any?, error?)
+        if not available then return conversation, nil end
+        local original = conversation:get_messages()
+        local function accepts(candidate: { any }): (boolean, integer, integer)
+            local estimated = M.estimate_value({ messages = candidate, tools = tools })
+            return estimated <= (available :: integer), estimated, available :: integer
+        end
+        if accepts(original) then return conversation, nil end
+        if not reduce then
+            return nil, M.budget_error(model, M.estimate_value({ messages = original, tools = tools }), available)
+        end
+        local reduced, reduce_err = reduce(original, accepts)
+        if reduce_err then return nil, reduce_err end
+        if type(reduced) ~= "table" then
+            return nil, M.budget_error(model, M.estimate_value({ messages = original, tools = tools }), available)
+        end
+        if not accepts(reduced) then
+            return nil, M.budget_error(model, M.estimate_value({ messages = reduced, tools = tools }), available)
+        end
+        return reduced, nil
+    end
     while true do
         local options, late = options_for(meter, "an agent model call", model, opts)
         if late then return nil, calls, late end
+        local input, budget_err = request()
+        if budget_err then return nil, calls, budget_err end
         options.tools, options.tool_choice = tools, calls < max_calls and "auto" or "none"
         local started = millis()
-        local response, call_err = llm.generate(conversation, options)
-        local err = call_err and model_error("agent model call (" .. model .. ")", call_err) or nil
+        local response, call_err = llm.generate(input, options)
+        local err = call_err and (M.context_error(model, call_err) or model_error("agent model call (" .. model .. ")", call_err)) or nil
         if not err and response.finish_reason == "length" then err = truncated(model) end
         record(meter, "agent", model, opts, started, response or failed_reply(call_err), err)
         if err then return nil, calls, err end
@@ -228,7 +324,7 @@ function M.agent(meter: Meter, model: string, system: string, user: string, tool
             conversation:add_function_call(tc.name, args, tc.id)
             local result = "Tool budget used; answer now."
             if calls <= max_calls then
-                local text, call_err = call(tc.name, tc.arguments or {})
+                local text, call_err = call(tc.name, tc.arguments or {}, tc.id)
                 if call_err then return nil, calls, call_err end
                 result = text :: string
             end
@@ -240,16 +336,21 @@ end
 
 -- Embeds texts in batches; one 512-dimensional vector per text, in order.
 function M.embed(meter: Meter, model: string, texts: { string }): (any?, error?)
+    if #texts == 0 then return {}, nil end
+    local late = M.check_deadline(meter, "embedding")
+    if late then return nil, late end
+    local available, _, fit_err = M.input_budget(model)
+    if fit_err then return nil, fit_err end
+    local function estimate(batch: { any }): integer return M.estimate_value({ input = batch }) end
+    local batches, rejected = shapes.batches(texts, function(batch: { any }): boolean return available == nil or estimate(batch) <= available end, EMBED_BATCH)
     local vectors: { any } = {}
-    for start = 1, #texts, EMBED_BATCH do
-        local batch = {}
-        for i = start, math.min(#texts, start + EMBED_BATCH - 1) do batch[#batch + 1] = texts[i] end
+    for _, batch in ipairs(batches) do
         local options, late = options_for(meter, "embedding", model)
         if late then return nil, late end
         options.dimensions = M.DIMENSIONS
         local started = millis()
         local response, call_err = llm.embed(batch, options)
-        local err = call_err and model_error("embedding (" .. model .. ")", call_err) or nil
+        local err = call_err and (M.context_error(model, call_err) or model_error("embedding (" .. model .. ")", call_err)) or nil
         local result = response and response.result
         if not err then
             if type(result) ~= "table" or #result ~= #batch then
@@ -263,10 +364,11 @@ function M.embed(meter: Meter, model: string, texts: { string }): (any?, error?)
                 end
             end
         end
-        record(meter, "embed", model, nil, started, response, err)
+        record(meter, "embed", model, nil, started, response or failed_reply(call_err), err)
         if err then return nil, err end
         for _, vector in ipairs(result) do vectors[#vectors + 1] = vector end
     end
+    if #rejected > 0 then return nil, M.budget_error(model, estimate({ rejected[1] }), available) end
     return vectors, nil
 end
 

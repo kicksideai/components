@@ -6,6 +6,38 @@ local time = require("time")
 
 local M = {}
 
+-- Consecutive fitting batches. A singleton that cannot fit is rejected,
+-- never emitted; later smaller items still fill the current batch.
+function M.batches(items: { any }, fits: ({ any }) -> boolean, limit: integer?): ({ { any } }, { any })
+    local out, current, rejected = {}, {}, {}
+    for _, item in ipairs(items) do
+        local trial = {}
+        for i, v in ipairs(current) do trial[i] = v end
+        trial[#trial + 1] = item
+        if (not limit or #trial <= limit) and fits(trial) then current = trial
+        elseif fits({ item }) then
+            if #current > 0 then out[#out + 1] = current end
+            current = { item }
+        else rejected[#rejected + 1] = item end
+    end
+    if #current > 0 then out[#out + 1] = current end
+    return out, rejected
+end
+
+-- Select in rank order while retaining the input unchanged when it fits.
+function M.select(items: { any }, fits: ({ any }) -> boolean): ({ any }, { any })
+    if fits(items) then return items, {} end
+    local kept, rejected = {}, {}
+    for _, item in ipairs(items) do
+        kept[#kept + 1] = item
+        if not fits(kept) then
+            kept[#kept] = nil
+            rejected[#rejected + 1] = item
+        end
+    end
+    return kept, rejected
+end
+
 function M.trim(s: string): string
     local out = s:gsub("^%s+", ""):gsub("%s+$", "")
     return out

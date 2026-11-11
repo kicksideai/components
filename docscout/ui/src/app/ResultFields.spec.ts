@@ -46,6 +46,22 @@ describe('Missing value scope',()=>{
  }
 })
 
+describe('Context budget outcomes',()=>{
+ it('labels a budget-exhausted field separately from a missing value',()=>{
+  const budget={...field,path:'budget',failed:true,missing:false,error:{kind:'INVALID',message:'Extraction exceeds the available context',retryable:false,details:{code:'context_budget_exceeded',estimated_tokens:900,available_tokens:400}}}
+  const w=mount(ResultFields,{props:{fields:[budget]}})
+  expect(w.get('.value-text').text()).toBe('Context budget exceeded')
+  expect(w.get('[data-error-code="context_budget_exceeded"]').text()).toContain('Context budget exceeded')
+  expect(w.text()).not.toContain('Not in the document')
+ })
+ it('shows partial context without changing a verified value into a check',()=>{
+  const w=mount(ResultFields,{props:{fields:[{...field,verified:true,codes:['context_budget_partial']}]}})
+  expect(w.get('[aria-label="Context"]').text()).toBe('Partial context')
+  expect(w.get('.value-checks .primary').text()).toBe('Verified')
+  expect(w.get('.value-main').attributes('title')).toBeUndefined()
+ })
+})
+
 describe('Completeness judgments',()=>{
  for(const [complete,label] of [[true,'Complete'],[false,'Incomplete'],[undefined,'Completeness unknown']] as const){
   it(`shows ${label} distinctly`,()=>{

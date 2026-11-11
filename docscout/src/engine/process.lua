@@ -313,19 +313,26 @@ local function contexts(meter: any, retrieval: any, models: { [string]: string }
         for _, c in ipairs(chunks) do c.context = c.heading_path end
         return nil
     end
-    for start = 1, #chunks, CONTEXT_BATCH do
-        local batch, lines = {}, { "Document: " .. tostring(filename or "untitled") }
-        for i = start, math.min(#chunks, start + CONTEXT_BATCH - 1) do
-            batch[#batch + 1] = chunks[i]
-            lines[#lines + 1] = "\n## Passage " .. tostring(#batch) .. " (section: " .. chunks[i].heading_path .. ")\n" .. chunks[i].content
-        end
-        local result, err = ai.structured(meter, models.context :: string, context_schema(#batch), CONTEXT_SYSTEM, table.concat(lines, "\n"),
+    local function body(batch: { any }): string
+        local lines = { "Document: " .. tostring(filename or "untitled") }
+        for i, chunk in ipairs(batch) do lines[#lines + 1] = "\n## Passage " .. i .. " (section: " .. chunk.heading_path .. ")\n" .. chunk.content end
+        return table.concat(lines, "\n")
+    end
+    local fits, _, fit_err = ai.fitter(models.context :: string)
+    if fit_err then return fit_err end
+    local batches, rejected = shapes.batches(chunks, function(batch: { any }): boolean return fits(CONTEXT_SYSTEM, body(batch), context_schema(#batch)) end, CONTEXT_BATCH)
+    for _, batch in ipairs(batches) do
+        local result, err = ai.structured(meter, models.context :: string, context_schema(#batch), CONTEXT_SYSTEM, body(batch),
             { stage = "context", sources = shapes.ordinals(batch) })
         if err then return err end
         if #result.contexts ~= #batch then
             return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "context model returned " .. #result.contexts .. " contexts for " .. #batch .. " passages" })
         end
         for i, c in ipairs(batch) do c.context = c.heading_path .. " — " .. trim(tostring(result.contexts[i])) end
+    end
+    if #rejected > 0 then
+        local _, estimated, available = fits(CONTEXT_SYSTEM, body({ rejected[1] }), context_schema(1))
+        return ai.budget_error(models.context :: string, estimated, available)
     end
     return nil
 end
