@@ -65,11 +65,58 @@ Scout noise exclusions apply per field. A later citation or that field's own sea
 
 Structured scouting requires evidence and note entries for every reviewed field; section summaries require every section; highlighting requires every supplied passage. Omitted or unknown entries reject the shared-stage response. Explicit empty evidence, blank notes and summaries, and empty highlight lists remain valid. Blank notes are suppressed, blank summaries remain absent, and passages with no genuine highlight are removed. The trace reports fields without cited evidence; completeness does not guarantee useful evidence.
 
+### Model context budgets
+
+Docscout budgets every model request it assembles: outline construction, section
+summaries and selection, generated passage contexts, structured and built-in
+agent scouting, Deep analysis, highlights, extraction, support verification and embedding batches.
+The resolved model card supplies `max_tokens` (context length) and `output_tokens`
+(output limit). Both must be positive; an absent or zero limit means unknown and
+leaves request assembly unchanged. There are no budget settings. A request
+reserves the smaller of its requested output and the card's output limit, or the
+card's output limit when no output preference is set. Budgeting does not change
+sent sampling options or supply an absent output preference.
+
+Prompt sizes are estimates: the encoded UTF-8 request bytes, including
+message framing, schemas and tools, divided by four, with a 25% safety margin.
+All budgeting uses this same estimator. Provider tokenization can differ; this
+is not a tokenizer or a guarantee that a provider accepts a request.
+
+Requests that already fit retain their prompts, call count and outcomes.
+Otherwise stages batch fields, sections or passages and select evidence in rank
+order. Evidence ranks field citations, that field's search hits, retrieval rank,
+then document order. An oversized item does not block later smaller evidence.
+A partial outline is used only for its current run and is rebuilt on the next
+run instead of being cached as complete. Splitting requests repeats instructions
+and output reservations, so it can add calls, cost and latency. Selection can omit relevant evidence and change values.
+A field whose context is reduced records `codes: ["context_budget_partial"]`
+(alongside any other codes), without adding a `reason` or changing verification.
+The UI displays this code separately from a missing value or failed check.
+
+When no usable required item fits, the field or shared stage fails with
+non-retryable `context_budget_exceeded`, with `estimated_tokens` and
+`available_tokens` in its error details. An extraction budget error has
+`failed: true` and `missing: false`; it does not mean the document lacks a value.
+Provider input-length rejections use the same code and retain the structured
+failure details supplied by the LLM module. Docscout does not retry a rejected
+request. Output truncation keeps its existing classification.
+
 ### User-selected agents
 
 For Scout's `mode: "agent"`, set `stages.scout.agent_id` to an agent component's bare id. Omitting it uses the built-in document loop. Scout is the configuration's agent-loop option; structured scouting uses `mode: "loop"`.
 
 Save and update require READ access to the selected agent and reject components of another kind. Each run checks the runner's READ access again. Missing or unreadable agents return native typed errors with code `docscout_agent_access`. Sharing an extractor does not grant access to its selected agent.
+
+For a selected agent, the agent engine owns its follow-up requests and context
+management. Docscout passes its instruction and user message intact. If their
+combined estimated size exceeds the model's available input after reserving the
+selected agent's output, the run returns `context_budget_exceeded` before agent
+execution. Only document-tool results are reduced: each receives one quarter of
+that available input. The same estimator measures each complete tool result,
+including chunks and metadata; reduced results carry an explicit truncation
+marker. Unknown limits disable budgeting and leave all handoffs unchanged. A
+length rejection returned by the selected agent maps to
+`context_budget_exceeded`; Docscout does not budget or retry the agent's turns.
 
 The native Dataflow agent node resolves the selected agent through `wippy.agent:resolver` under the caller's execution identity. The agent retains its model, prompt, tools and traits, with Docscout's configured document tools added for that run. Those tools read only the caller's processed document under the extractor's READ grant. Both agent modes require positive `max_rounds` and `max_extra_queries`; switching from the structured scout's zero-round default requires setting a positive budget. Selected-agent runs use a native iteration limit of `max_rounds * max_extra_queries + 1`; the extra iteration permits final notes after tool use. Agents must complete synchronously without waiting. Trace steps include `agent_id`, `dataflow_id`, reported model reference, native tool calls and results, model tokens and document-tool embedding tokens. The built-in loop records its document tool calls too.
 
@@ -143,6 +190,6 @@ Manual-worker fixtures enroll real Jobs with the public `parked=true` enqueue op
 
 With `stages.verify.check_completeness: true`, Verify checks found, quoted values against each field's full output contract, including nested shapes, formatting and validation hints. It judges completeness for text and lists relative to the requested output, so a requested summary or filtered list need not repeat the entire source. This policy requires quote support and is off by default; earlier configurations and an explicit false retain the existing support prompt, schema, call count and verification behavior.
 
-The optional policy adds candidate source regions around citations while keeping each request within the resolved model card's estimated input allowance after reserving output. Shared source chunks appear once. If any source region, field contract, prompt or verdict schema cannot fit, or optional source acquisition fails, Verify uses the existing support request for all fields in that call and leaves completeness unknown. These estimates follow the LLM admission contract; provider tokenization can differ. Opting in adds input tokens and can change verification outcomes. It adds no separate completeness call or retry.
+The optional policy adds candidate source regions around citations while keeping each request within the resolved model card's estimated input allowance after reserving output. Shared source chunks appear once. If any source region, field contract, prompt or verdict schema cannot fit, or optional source acquisition fails, Verify uses the existing support request for all fields in that call and leaves completeness unknown. These estimates use the context-budget estimator described above; provider tokenization can differ. Opting in adds input tokens and can change verification outcomes. It adds no separate completeness call or retry.
 
 Public, agent, Block and stored field results include optional `complete`: true for complete, false for established incompleteness, and absent for unknown or unrequested completeness. Unknown completeness does not become false. Under the optional policy, missing and quote-less values remain unverified. A model verdict of incomplete or insufficient evidence also requires review with a reason. When optional input cannot be acquired or admitted, the existing support judgment determines verification while completeness remains unknown. Older stored results remain valid without `complete` and are not rewritten.

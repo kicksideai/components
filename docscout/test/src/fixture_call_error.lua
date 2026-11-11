@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local M = {}
+function M.resolve_model(model: string): (any?, error?) return { name = model }, nil end
 function M.generate(_messages: any, options: any): (any?, any?)
     if options.model == "plain" then return nil, "Authentication is rejected" end
     return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = options.model == "transient", message = "Fixture failure" })

@@ -35,14 +35,14 @@ function M.summary(values: { any }): any
         if v.verified then out.verified = out.verified + 1
         else
             local codes = v.failed and { "extraction_failed" } or (v.reason and v.codes) or {}
-            if #codes == 0 then codes = { "unchecked" } end
             local counted = {}
             for _, code in ipairs(codes) do
-                if not counted[code] then
+                if code ~= "missing_in_sections" and code ~= "context_budget_partial" and not counted[code] then
                     unverified[code] = (tonumber(unverified[code]) or 0) + 1
                     counted[code] = true
                 end
             end
+            if not next(counted) then unverified.unchecked = (tonumber(unverified.unchecked) or 0) + 1 end
         end
     end
     return out

@@ -15,26 +15,56 @@ local error_envelope = require("error_envelope")
 
 local M = {}
 local DOCUMENT_TOOL = "kickside.docscout.engine:document_tool"
+-- Each document-tool result gets one quarter of the available model input.
+-- The selected agent owns its prompt and subsequent conversation assembly.
+local TOOL_RESULT_SHARE = 4
 local function runtime_error(operation: string, err: any): error
     if type(err) == "userdata" then return errors.wrap(err, operation) end
     return errors.new({ kind = errors.INTERNAL, message = operation .. ": " .. tostring(err), retryable = false,
         details = { code = "docscout_agent_runtime" } })
 end
 
-function M.validate(id: string): error?
+local function access(id: string, include_context: boolean): (any?, error?)
     local service, err = component.get_service()
-    if err then return err end
-    if not service then return errors.new({ kind = errors.INTERNAL, message = "Agent component service is unavailable" }) end
-    local access, access_err = service:get_access_context({ component_id = id, access_mask = component.ACCESS.READ, include_context = false })
-    local failure = access_err or component_envelope.error_of(access, "Agent access")
+    if err then return nil, err end
+    if not service then return nil, errors.new({ kind = errors.INTERNAL, message = "Agent component service is unavailable" }) end
+    local result, access_err = service:get_access_context({ component_id = id, access_mask = component.ACCESS.READ, include_context = include_context })
+    local failure = access_err or component_envelope.error_of(result, "Agent access")
     if failure then
-        return error_envelope.wrap(failure, "Selected agent is unavailable", { code = "docscout_agent_access", agent_id = id })
+        return nil, error_envelope.wrap(failure, "Selected agent is unavailable", { code = "docscout_agent_access", agent_id = id })
     end
-    if access.impl_id ~= agent_types.USER_AGENT_IMPL then
-        return errors.new({ kind = errors.INVALID, message = "Selected component is not an agent", retryable = false,
+    if result.impl_id ~= agent_types.USER_AGENT_IMPL then
+        return nil, errors.new({ kind = errors.INVALID, message = "Selected component is not an agent", retryable = false,
             details = { code = "docscout_agent_type", agent_id = id } })
     end
-    return nil
+    return result, nil
+end
+
+function M.validate(id: string): error?
+    local _, err = access(id, false)
+    return err
+end
+
+local function positive(value: any): integer?
+    local n = math.tointeger(tonumber(value))
+    return n and n > 0 and n or nil
+end
+
+-- A zero or absent card limit is unknown, so this leaves the existing handoff
+-- untouched. The selected agent's configured output never exceeds its card.
+local function handoff_budget(agent: any): (any?, error?)
+    local context = agent.context
+    local model = type(context) == "table" and context.model or nil
+    if type(model) ~= "string" or model == "" then return nil end
+    local available, _, budget_err = ai.input_budget(model, positive(context.max_tokens))
+    if budget_err then return nil, budget_err end
+    if not available then return nil end
+    return { model = model, available = available, share = math.floor(available / TOOL_RESULT_SHARE) }, nil
+end
+
+local function mark_budget_dropped(run: any, fields: { string }?)
+    run.budget_dropped = run.budget_dropped or {}
+    for _, path in ipairs(fields or {}) do run.budget_dropped[path] = true end
 end
 
 local function content(row: any): (any?, error?)
@@ -79,6 +109,9 @@ local function collect(run: any, step: any, flow_id: string): error?
             elseif call.registry_id == DOCUMENT_TOOL and type(result.value) == "table" then
                 local document = result.value.docscout
                 shapes.add(run.pool, result.value.chunks or {})
+                for _, code in ipairs(document.codes or {}) do
+                    if code == "context_budget_partial" then mark_budget_dropped(run, fields) end
+                end
                 for _, c in ipairs(document.calls or {}) do
                     local usage = c.prompt_tokens and { prompt_tokens = c.prompt_tokens, completion_tokens = c.completion_tokens } or nil
                     ai.add_call(step.meter, c.stage, c.model, usage, c)
@@ -93,18 +126,30 @@ end
 
 function M.run(run: any, step: any, system: string, user: string): (string?, integer, error?)
     local cfg = run.config.stages.scout
-    local access_err = M.validate(cfg.agent_id)
+    local agent, access_err = access(cfg.agent_id, true)
     if access_err then return nil, 0, access_err end
+    local agent_model = type(agent.context) == "table" and agent.context.model or nil
+    local budget, budget_err = handoff_budget(agent)
+    if budget_err then return nil, 0, budget_err end
+    local message = system .. "\n\n" .. user
+    if budget then
+        local estimated = ai.estimate_value({ message = message })
+        if estimated > budget.available then
+            return nil, 0, ai.budget_error(budget.model, estimated, budget.available)
+        end
+    end
     local tools = {}
     for _, name in ipairs(cfg.tools) do
         local definition = doctools.TOOLS[name]
         tools[#tools + 1] = { id = DOCUMENT_TOOL, alias = name,
             schema = definition.schema, description = definition.description,
             context = { docscout = { component_id = run.component_id, document_id = run.document.id,
-                tool = name, outline = run.document.outline, embedding_model = run.document.embedding_model, deadline = run.deadline } } }
+                tool = name, outline = run.document.outline, embedding_model = run.document.embedding_model, deadline = run.deadline,
+                fields = shapes.paths(run.config.fields),
+                context_budget = budget } } }
     end
     local compiled, compile_err = compiler.compile({
-        { type = compiler.OP_TYPES.WITH_INPUT, config = { data = { message = system .. "\n\n" .. user } } },
+        { type = compiler.OP_TYPES.WITH_INPUT, config = { data = { message = message } } },
         { type = compiler.OP_TYPES.AGENT, config = { agent_id = agent_ref.user(cfg.agent_id),
             arena = { tools = tools, max_iterations = cfg.max_rounds * cfg.max_extra_queries + 1, tool_calling = "auto" },
             show_tool_calls = false } },
@@ -118,7 +163,11 @@ function M.run(run: any, step: any, system: string, user: string): (string?, int
     local result, run_err = executor:execute(flow_id)
     local trace_err = collect(run, step, flow_id)
     if trace_err then return nil, #(step.tool_calls or {}), trace_err end
-    if run_err then return nil, #(step.tool_calls or {}), runtime_error("Selected agent execution", run_err) end
+    if run_err then
+        local context_err = ai.context_error(agent_model, run_err)
+        if context_err then return nil, #(step.tool_calls or {}), context_err end
+        return nil, #(step.tool_calls or {}), runtime_error("Selected agent execution", run_err)
+    end
     if result.pending or result.passivated then
         return nil, #(step.tool_calls or {}), errors.new({ kind = errors.INVALID, retryable = false,
             message = "Document scouting requires an agent that completes without waiting", details = { code = "docscout_agent_pending", dataflow_id = flow_id } })
