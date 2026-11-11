@@ -719,83 +719,255 @@ local function support_schema(values: { any }): any
         properties = { supported = { type = "boolean" }, reason = { type = "string" } } })
 end
 
+-- The optional policy judges support for the requested field and completeness
+-- of text and lists. The default policy keeps its existing support contract.
+
+-- Verdicts a support reply gives. A constrained decoder only admits these
+-- strings, so the prompt names each one with its meaning.
+local VERDICT = { supported = "supported", not_supported = "not_supported", insufficient = "insufficient_evidence" }
+local COMPLETENESS = { complete = "complete", incomplete = "incomplete", insufficient = "insufficient_evidence" }
+
+function M.support_system(): string
+    return system("For each field, decide whether its cited text states this value for this field, as the field's description defines it.\n" ..
+        "Reformatting (dates, numbers, case, spacing) is allowed; a quote that states a different value or another role's value does not support it.\n" ..
+        "Give the verdict \"" .. VERDICT.supported .. "\" when the cited text states the value, \"" .. VERDICT.not_supported ..
+        "\" when it states a different value or none, and \"" .. VERDICT.insufficient .. "\" when it cannot settle it.\n" ..
+        "For fields that also ask for completeness, judge from the source text whether the value is complete for the requested output, including its format, filtering or summary instructions: \"" .. COMPLETENESS.complete ..
+        "\", \"" .. COMPLETENESS.incomplete .. "\" when it leaves part out, or \"" .. COMPLETENESS.insufficient .. "\".\nReturn one check per field.")
+end
+
+-- Field types whose value can be cut short, so the support check also judges completeness.
+local function completes(f: any): boolean return f.type == "text" or f.type == "list" end
+
+-- The support check's reply: one required verdict per field path, so a
+-- constrained decoder cannot omit or repeat a field; text and list fields
+-- also get a completeness verdict.
+function M.support_schema(values: { any }, complete_fields: { [string]: boolean }): any
+    local properties, required = shapes.object(), {}
+    for _, v in ipairs(values) do
+        local path = shapes.path(v)
+        required[#required + 1] = path
+        local item = { type = "object", additionalProperties = false, required = { "verdict", "reason" }, properties = {
+            verdict = { type = "string", enum = { VERDICT.supported, VERDICT.not_supported, VERDICT.insufficient } }, reason = { type = "string" } } }
+        if complete_fields[path] then
+            item.required = { "verdict", "complete", "reason" }
+            item.properties.complete = { type = "string", enum = { COMPLETENESS.complete, COMPLETENESS.incomplete, COMPLETENESS.insufficient } }
+        end
+        properties[path] = item
+    end
+    return { type = "object", additionalProperties = false, required = required, properties = properties }
+end
+
+-- One value as the support check reads it: the field's path, type and
+-- description, the value, its quotes and, when given, the source text around them.
+function M.support_line(f: any, v: any, source: string?): string
+    local quotes = {}
+    for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" end
+    local t = f.type == "list" and ("list of " .. f.item.type) or f.type
+    return "- " .. shapes.path(v) .. " (" .. t .. "): " .. (f.description ~= "" and f.description or "no description") ..
+        "\n  contract: " .. json.encode(shapes.value_schema(f)) .. "\n  validation hints: " .. (f.validation_hints or "") ..
+        "\n  value: " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | ") ..
+        (source and ("\n  source:\n  " .. source) or "")
+end
+
+-- Candidate source chunks stay inside the field's selected region. The
+-- request shares chunks across fields and requires every selected region to fit.
+local function source_region(run: any, f: any, v: any, by_ordinal: { [integer]: any }): ({ any }?, error?)
+    local ordinals, seen = {}, {}
+    local failure: error? = nil
+    local function take(n: integer)
+        if not by_ordinal[n] or seen[n] then return end
+        local allowed, err = visible(run, f, n)
+        if err then failure = failure or err; return end
+        if allowed then seen[n] = true; ordinals[#ordinals + 1] = n end
+    end
+    local budget = run.config.retrieval and run.config.retrieval.section_budget or 0
+    for _, e in ipairs(v.evidence) do
+        local n = math.tointeger(e.chunk)
+        if n then
+            local section = nil
+            for _, region in ipairs(run.document.outline or {}) do
+                if region.chunk_start and n >= region.chunk_start and n <= region.chunk_end then section = region end
+            end
+            if section and (section.tokens or 0) <= budget then
+                for k = section.chunk_start, section.chunk_end do take(k) end
+            else take(n); take(n + 1) end
+        end
+    end
+    if failure then return nil, failure end
+    table.sort(ordinals)
+    local chunks = {}
+    for _, n in ipairs(ordinals) do chunks[#chunks + 1] = by_ordinal[n] end
+    return chunks, nil
+end
+
+-- Chunks of an ordinal map in document order.
+local function store_order(by_ordinal: { [integer]: any }): { any }
+    local out = {}
+    for _, c in pairs(by_ordinal) do out[#out + 1] = c end
+    table.sort(out, function(a: any, b: any): boolean return a.ordinal < b.ordinal end)
+    return out
+end
+
 function M.verify(run: any, step: any): error?
     local cfg = run.config.stages.verify
+    local enhanced = cfg.check_completeness == true
+    local field_aware = enhanced
     local fields = {}
     for _, f in ipairs(run.config.fields) do fields[shapes.path(f)] = f end
-    if cfg.check_quotes then
+    local by_ordinal = {}
+    local needs_source = false
+    if enhanced and cfg.check_support then
+        for _, v in ipairs(run.values) do
+            if not v.missing and not v.failed and #v.evidence > 0 and completes(fields[shapes.path(v)]) then needs_source = true end
+        end
+    end
+    if cfg.check_quotes or needs_source then
         local chunks, err = store.all_chunks(run.document.id)
-        if err then return err end
-        local bodies, by_ordinal, order = {}, {}, {}
-        for _, c in ipairs(chunks) do
-            bodies[c.ordinal] = shapes.normalize(c.content); by_ordinal[c.ordinal] = c; order[#order + 1] = c.ordinal
+        if err then
+            if cfg.check_quotes then return err end
+            field_aware = false
+        else
+            for _, c in ipairs(chunks) do by_ordinal[c.ordinal] = c end
+        end
+    end
+    if cfg.check_quotes then
+        local bodies, order = {}, {}
+        for _, c in ipairs(store_order(by_ordinal)) do
+            bodies[c.ordinal] = shapes.normalize(c.content); order[#order + 1] = c.ordinal
         end
         for _, v in ipairs(run.values) do
-            v.quotes_found = true
-            for _, e in ipairs(v.evidence) do
-                local candidates = {}
-                for _, ordinal in ipairs(order) do
-                    local allowed, region_err = visible(run, fields[shapes.path(v)], ordinal)
-                    if region_err then return region_err end
-                    if allowed then candidates[#candidates + 1] = ordinal end
+            if not v.missing and not v.failed then
+                v.quotes_found = true
+                for _, e in ipairs(v.evidence) do
+                    local candidates = {}
+                    for _, ordinal in ipairs(order) do
+                        local allowed, region_err = visible(run, fields[shapes.path(v)], ordinal)
+                        if region_err then return region_err end
+                        if allowed then candidates[#candidates + 1] = ordinal end
+                    end
+                    local at = shapes.locate(e.quote, e.chunk, bodies, candidates)
+                    e.found = at ~= nil
+                    if at then
+                        local c = by_ordinal[at]
+                        e.chunk, e.chunk_id, e.section = at, c.id, c.heading_path
+                        local location = shapes.quote_location(c, e.quote)
+                        e.page, e.page_start, e.page_end = location.page, location.page_start, location.page_end
+                    end
+                    if not e.found then v.quotes_found = false end
                 end
-                local at = shapes.locate(e.quote, e.chunk, bodies, candidates)
-                e.found = at ~= nil
-                if at then
-                    local c = by_ordinal[at]
-                    e.chunk, e.chunk_id, e.section = at, c.id, c.heading_path
-                    local location = shapes.quote_location(c, e.quote)
-                    e.page, e.page_start, e.page_end = location.page, location.page_start, location.page_end
-                end
-                if not e.found then v.quotes_found = false end
             end
         end
     end
-    local support = {}
+    local support, complete_fields = {}, {}
     local support_error: error? = nil
     if cfg.check_support then
-        local found, lines_out, sources, seen = {}, {}, {}, {}
-        for _, v in ipairs(run.values) do
-            if not v.missing and not v.failed then
-                found[#found + 1] = v
-                local quotes = {}
-                for _, e in ipairs(v.evidence) do
-                    quotes[#quotes + 1] = "\"" .. e.quote .. "\""
-                    if e.chunk and not seen[e.chunk] then sources[#sources + 1], seen[e.chunk] = e.chunk, true end
+        local found, lines, seen = {}, {}, {}
+        local sources: { integer } = {}
+        local context: { [integer]: any } = {}
+        local support_system = ""
+        local function prepare()
+            found, lines, seen, sources, context, complete_fields = {}, {}, {}, {}, {}, {}
+            for _, v in ipairs(run.values) do
+                if not v.missing and not v.failed then
+                    found[#found + 1] = v
+                    local quotes = {}
+                    for _, e in ipairs(v.evidence) do
+                        quotes[#quotes + 1] = "\"" .. e.quote .. "\""
+                        if e.chunk and not seen[e.chunk] then sources[#sources + 1], seen[e.chunk] = e.chunk, true end
+                    end
+                    lines[shapes.path(v)] = field_aware and M.support_line(fields[shapes.path(v)], v) or
+                        ("- " .. shapes.path(v) .. " = " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | "))
                 end
-                lines_out[#lines_out + 1] = "- " .. shapes.path(v) .. " = " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | ")
             end
+            support_system = field_aware and M.support_system() or system("For each field, decide whether its quotes support its value exactly. Return one check per field.")
+        end
+        prepare()
+        local function body(): string
+            local out = {}
+            for _, v in ipairs(found) do out[#out + 1] = lines[shapes.path(v)] end
+            if next(context) then out[#out + 1] = "Source passages:\n" .. render(store_order(context)) end
+            return table.concat(out, "\n")
+        end
+        local function reply_schema(): any
+            return field_aware and M.support_schema(found, complete_fields) or support_schema(found)
         end
         if #found > 0 then
+            if field_aware then
+                local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
+                if fit_err or not (fits :: any)(support_system, body(), reply_schema()) then
+                    field_aware = false
+                else
+                    for _, v in ipairs(found) do
+                        local path, f = shapes.path(v), fields[shapes.path(v)]
+                        if completes(f) then
+                            local region, region_err = source_region(run, f, v, by_ordinal)
+                            if region_err then field_aware = false; break end
+                            if #(region :: { any }) > 0 then
+                                local refs = {}
+                                for _, chunk in ipairs(region :: { any }) do
+                                    refs[#refs + 1] = "C" .. chunk.ordinal
+                                    context[chunk.ordinal] = chunk
+                                end
+                                lines[path] = M.support_line(f, v, table.concat(refs, ", "))
+                                complete_fields[path] = true
+                                if not (fits :: any)(support_system, body(), reply_schema()) then
+                                    field_aware = false
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            if not field_aware then prepare() end
+            for ordinal in pairs(context) do
+                if not seen[ordinal] then sources[#sources + 1], seen[ordinal] = ordinal, true end
+            end
             table.sort(sources)
-            local result, err = ai.structured(step.meter, cfg.model, support_schema(found),
-                system("For each field, decide whether its quotes support its value exactly. Return one check per field."),
-                table.concat(lines_out, "\n"), { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(found), sources = sources })
+            local result, err = ai.structured(step.meter, cfg.model, reply_schema(), support_system, body(),
+                { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(found), sources = sources })
             if err then support_error = err else support = result end
         end
     end
     local failed = 0
     for _, v in ipairs(run.values) do
-        local reasons, codes = {}, {}
-        local function reject(code: string, reason: string) reasons[#reasons + 1] = reason; codes[#codes + 1] = code end
+        local reasons, codes, recorded = {}, {}, {}
+        local function code(value: string) if not recorded[value] then codes[#codes + 1], recorded[value] = value, true end end
+        local function reject(value: string, reason: string) reasons[#reasons + 1] = reason; code(value) end
         if v.reason then reasons[#reasons + 1] = v.reason end
-        for _, code in ipairs(v.codes or {}) do codes[#codes + 1] = code end
-        if not v.missing and not v.failed then
+        for _, value in ipairs(v.codes or {}) do code(value) end
+        local found = not v.missing and not v.failed
+        if found then
             local valid, shape_err = json.validate(shapes.value_schema(fields[shapes.path(v)]), v.value)
             if not valid then reject("shape_mismatch", "Value does not match its declared shape: " .. tostring(shape_err))
             else
                 local issue = shapes.format_issue(fields[shapes.path(v)], v.value)
                 if issue then reject("format_unverified", issue) end
             end
+            if enhanced and #v.evidence == 0 and not recorded.no_quote then reject("no_quote", "No quote supports this value") end
         end
-        if cfg.check_quotes and not v.missing and not v.failed and not v.quotes_found then reject("quote_not_found", "A quote is not in the document") end
-        if cfg.check_support and not v.missing and not v.failed then
+        if cfg.check_quotes and found and not v.quotes_found then reject("quote_not_found", "A quote is not in the document") end
+        if cfg.check_support and found and (not enhanced or #v.evidence > 0) then
             local check = support[shapes.path(v)]
             if support_error then reject("support_no_verdict", "The support check gave no verdict: " .. tostring(support_error))
             elseif not check then reject("support_no_verdict", "The support check gave no verdict")
+            elseif field_aware then
+                if check.verdict == VERDICT.not_supported then reject("support_rejected", check.reason)
+                elseif check.verdict == VERDICT.insufficient then reject("support_insufficient", "The cited text cannot settle the value: " .. check.reason) end
+                v.complete = nil
+                if completes(fields[shapes.path(v)]) then
+                    if check.complete == COMPLETENESS.complete then v.complete = true
+                    elseif check.complete == COMPLETENESS.incomplete then
+                        v.complete = false; reject("incomplete", "The value leaves out part of its requested output: " .. check.reason)
+                    elseif check.complete == COMPLETENESS.insufficient then
+                        reject("support_insufficient", "The source cannot settle whether the value is complete: " .. check.reason)
+                    else reject("support_insufficient", "The value's completeness is unknown because its source context does not fit") end
+                end
             elseif not check.supported then reject("support_rejected", check.reason) end
         end
-        v.verified = not v.failed and #reasons == 0
+        if enhanced and v.missing and #codes == 0 then code("missing") end
+        v.verified = not v.failed and (not enhanced or found) and #reasons == 0
         v.reason = #reasons > 0 and table.concat(reasons, "; ") or nil
         v.codes = codes
         if not v.verified then failed = failed + 1 end

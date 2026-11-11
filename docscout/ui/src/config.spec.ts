@@ -31,6 +31,14 @@ describe('Extractor configuration',()=>{
   expect(configError(c)).toContain('Turn on Prefetch or Scout')
   c.fields=[{...newField(),name:'terms',strategy:'deep'}];expect(configError(c)).toBe('')
  })
+ it('accepts an earlier verification config and requires support for completeness',()=>{
+  const c=newConfig();c.fields=[{...newField(),name:'terms'}]
+  expect(c.stages.verify.check_completeness).toBe(false)
+  delete c.stages.verify.check_completeness
+  expect(configError(c)).toBe('')
+  c.stages.verify.check_completeness=true;c.stages.verify.check_support=false
+  expect(configError(c)).toBe('Completeness requires quote support.')
+ })
  it('suggests an expected format that matches the value type',()=>{
   expect(formatPlaceholder({...newField(),type:'date'})).toContain('YYYY-MM-DD')
   expect(formatPlaceholder({...newField(),type:'list',item:{type:'number'}})).toContain('decimal')

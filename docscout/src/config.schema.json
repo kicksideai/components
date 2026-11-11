@@ -595,6 +595,11 @@
               "minimum": 256,
               "maximum": 64000,
               "description": "Output token limit for this stage's model calls. Unset uses the provider default."
+            },
+            "check_completeness": {
+              "type": "boolean",
+              "default": false,
+              "description": "Opt in to field-aware support and completeness of requested text and list values. Requires quote support; adds source input tokens. An unknown judgment remains absent from complete."
             }
           },
           "required": [
@@ -608,7 +613,8 @@
             "model": "class:fast",
             "check_quotes": true,
             "check_support": true,
-            "temperature": 0
+            "temperature": 0,
+            "check_completeness": false
           }
         }
       },
@@ -674,7 +680,8 @@
           "model": "class:fast",
           "check_quotes": true,
           "check_support": true,
-          "temperature": 0
+          "temperature": 0,
+          "check_completeness": false
         }
       }
     },
@@ -862,7 +869,8 @@
         "model": "class:fast",
         "check_quotes": true,
         "check_support": true,
-        "temperature": 0
+        "temperature": 0,
+        "check_completeness": false
       }
     },
     "retrieval": {

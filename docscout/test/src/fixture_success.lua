@@ -1,10 +1,18 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local json = require("json")
+local fs = require("fs")
 local hash = require("hash")
 local canonical_json = require("canonical_json")
 local M = {}
 local function inspect(args: any)
     local options = args.options or {}
+    if options.capture_requests then
+        local storage = assert(fs.get("app:uploads"))
+        local requests = assert(json.decode(assert(storage:readfile(options.capture_requests))))
+        requests[#requests + 1] = args
+        local _, err = storage:writefile(options.capture_requests, assert(canonical_json.encode(requests)))
+        assert(err == nil, tostring(err))
+    end
     local request = assert(json.encode(args.messages or args.input or {}))
     for _, text in ipairs(options.absent or {}) do
         assert(not request:find(text, 1, true), "Forbidden document text reaches the model: " .. text)
@@ -45,6 +53,9 @@ end
 -- The sampling model reports the call's settings as its token usage:
 -- prompt tokens are 1000 + temperature * 100 (0 when unset), completion tokens are max_tokens.
 local function usage(args: any, prompt_tokens: integer, completion_tokens: integer): any
+    if args.options and args.options.capture_requests then
+        return { prompt_tokens = math.ceil(#assert(canonical_json.encode(args)) / 4), completion_tokens = completion_tokens }
+    end
     if args.options and args.options.request_fingerprint then
         local encoded = assert(canonical_json.encode(args))
         return { prompt_tokens = tonumber(hash.sha256(encoded):sub(1, 12), 16), completion_tokens = completion_tokens }
@@ -56,6 +67,39 @@ local function usage(args: any, prompt_tokens: integer, completion_tokens: integ
 end
 function M.structured(args: any): (any?, error?)
     inspect(args)
+    if args.options and args.options.support_fixture then
+        local options = args.options.support_fixture
+        local request = assert(json.encode(args.messages))
+        for _, text in ipairs(options.required_text or {}) do
+            if not request:find(text, 1, true) then
+                return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Missing field contract: " .. text })
+            end
+        end
+        for text, expected in pairs(options.occurrences or {}) do
+            local count, at = 0, 1
+            while true do
+                local first, last = request:find(text, at, true)
+                if not first then break end
+                count, at = count + 1, last + 1
+            end
+            if count ~= expected then
+                return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Source occurrence mismatch: " .. count })
+            end
+        end
+        local reply = {}
+        for path, schema in pairs(args.schema.properties) do
+            assert(path ~= "absent" and path ~= "failed", "An unextracted field reaches support")
+            local props = schema.properties
+            local check = { reason = "Fixture judgment" }
+            if props.verdict then check.verdict = options.verdict or "supported" else check.supported = true end
+            if props.complete then check.complete = options.completeness or "complete" end
+            if options.require_completeness and not props.complete then
+                return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Completeness is not requested" })
+            end
+            reply[path] = check
+        end
+        return { result = { data = reply }, tokens = { prompt_tokens = math.ceil(#assert(canonical_json.encode(args)) / 4), completion_tokens = math.ceil(#assert(canonical_json.encode(reply)) / 4) } }, nil
+    end
     if args.options and args.options.reply_tokens_per_field then
         local count = 0
         for _ in pairs(args.schema.properties) do count = count + 1 end
@@ -78,6 +122,10 @@ function M.structured(args: any): (any?, error?)
             reply = { checks = checks }
         end
         return { result = { data = reply }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
+    end
+    if args.options and args.options.capture_requests and args.schema.properties.accepted and args.schema.properties.accepted.properties.supported then
+        local reply = { accepted = { supported = true, reason = "Supported" }, rejected = { supported = false, reason = "Different value" } }
+        return { result = { data = reply }, tokens = usage(args, 0, math.ceil(#assert(canonical_json.encode(reply)) / 4)) }, nil
     end
     if args.schema.properties.terminal_failure or args.schema.properties.deterministic_failure then
         return nil, errors.new({ kind = args.schema.properties.deterministic_failure and errors.INVALID or errors.UNAVAILABLE,
@@ -105,7 +153,8 @@ function M.structured(args: any): (any?, error?)
     if args.model == "docscout-echo" then
         return { result = { data = value(args.schema, system_prompt(args.messages)) }, tokens = usage(args, 12, 8) }, nil
     end
-    return { result = { data = extraction(args.schema) }, tokens = usage(args, 12, 8) }, nil
+    local reply = extraction(args.schema)
+    return { result = { data = reply }, tokens = usage(args, 12, args.options and args.options.capture_requests and math.ceil(#assert(canonical_json.encode(reply)) / 4) or 8) }, nil
 end
 function M.generate(args: any): (any?, error?)
     inspect(args)
