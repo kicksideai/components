@@ -33,6 +33,13 @@ end
 local decoded = persisted_json.decode_table
 local encoded = canonical_json.encode
 
+local function lock_evaluations(tx: any, predicate: string, args: { any }): (any?, error?)
+    local dialect, dialect_err = tx:db_type()
+    if dialect_err then return nil, dialect_err end
+    return tx:query("SELECT id,component_id,status FROM kickside_docscout_evals WHERE " .. predicate ..
+        " ORDER BY id" .. (dialect == "postgres" and " FOR UPDATE" or ""), args)
+end
+
 -- Runs and evaluation cases shown with an extractor.
 function M.snapshot(component_id: string, user_id: string): (any?, error?)
     return with_db(function(db: any): (any?, error?)
@@ -62,6 +69,8 @@ end
 -- Removes everything the extractor owns; called by component teardown.
 function M.delete(component_id: string): (any?, error?)
     return database.transaction(nil, function(tx: any, db: any): (any?, error?)
+        local _, lock_err = lock_evaluations(tx, "component_id=$1", { component_id })
+        if lock_err then return nil, lock_err end
         local documents_err = store.remove_component_tx(tx, db, component_id)
         if documents_err then return nil, documents_err end
         for _, statement in ipairs({
@@ -124,10 +133,11 @@ function M.add_run(component_id: string, row: any): (string?, error?)
     local run_id, err = database.transaction(component_id, function(tx: any): (any?, error?)
         local id = uuid.v7()
         local _, err = tx:execute([[INSERT INTO kickside_docscout_runs
-            (id, component_id, user_id, upload_id, caller, status, config_revision, result, trace, duration_ms, tokens, created_at, expires_at)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)]],
+            (id, component_id, user_id, upload_id, caller, status, config_revision, result, trace, duration_ms, tokens, created_at, expires_at, evaluation_id, case_id)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)]],
             { id, component_id, row.user_id, row.upload_id, row.caller, row.status, row.config_revision, result, trace,
-              row.duration_ms, row.tokens, now(), row.expires_at })
+              row.duration_ms, row.tokens, now(), row.expires_at,
+              row.caller == "eval" and row.evaluation_id or sql.as.null(), row.caller == "eval" and row.case_id or sql.as.null() })
         if err then return nil, failed("run could not be stored", err) end
         return id, nil
     end)
@@ -140,25 +150,56 @@ function M.add_run(component_id: string, row: any): (string?, error?)
 end
 
 function M.expire_runs(limit: integer): (integer?, error?)
-    return with_db(function(db: any): (any?, error?)
-        local result, err = db:execute([[DELETE FROM kickside_docscout_runs WHERE id IN
-            (SELECT id FROM kickside_docscout_runs WHERE expires_at <= $1 ORDER BY expires_at, id LIMIT $2)]], { now(), limit })
-        if err then return nil, err end
-        return result.rows_affected, nil
+    return database.transaction(nil, function(tx: any): (any?, error?)
+        local rows, read_err = tx:query([[SELECT id,component_id,evaluation_id,case_id,tokens,duration_ms
+            FROM kickside_docscout_runs WHERE expires_at <= $1 ORDER BY expires_at,id LIMIT $2]], { now(), limit })
+        if read_err then return nil, read_err end
+        local ids, placeholders, seen = {}, {}, {}
+        for _, row in ipairs(rows) do
+            if row.evaluation_id and row.case_id and not seen[row.evaluation_id] then
+                ids[#ids + 1] = row.evaluation_id; seen[row.evaluation_id] = true
+                placeholders[#placeholders + 1] = "$" .. #ids
+            end
+        end
+        local evaluations = {}
+        if #ids > 0 then
+            local locked, lock_err = lock_evaluations(tx, "id IN (" .. table.concat(placeholders, ",") .. ")", ids)
+            if lock_err then return nil, lock_err end
+            for _, evaluation in ipairs(locked) do evaluations[evaluation.id] = evaluation end
+        end
+        local deleted = 0
+        for _, row in ipairs(rows) do
+            local evaluation = row.evaluation_id and evaluations[row.evaluation_id] or nil
+            local active = evaluation and evaluation.component_id == row.component_id and
+                (evaluation.status == "queued" or evaluation.status == "running")
+            local removed, remove_err = tx:execute("DELETE FROM kickside_docscout_runs WHERE id=$1", { row.id })
+            if remove_err then return nil, remove_err end
+            if active and removed.rows_affected > 0 then
+                local _, usage_err = tx:execute([[UPDATE kickside_docscout_eval_results
+                    SET tokens=tokens+$1,duration_ms=duration_ms+$2 WHERE eval_id=$3 AND case_id=$4 AND status='queued']],
+                    { row.tokens, row.duration_ms, row.evaluation_id, row.case_id })
+                if usage_err then return nil, usage_err end
+            end
+            deleted = deleted + removed.rows_affected
+        end
+        return deleted, nil
     end)
 end
 
 -- Deadline lookups use the expiry and queued-recovery indexes. Report the global
 -- deadline, including when Core invokes the owner with a scoped change hint.
-function M.next_deadline_ms(): (integer?, error?)
-    return with_db(function(db: any): (any?, error?)
+function M.next_deadline_ms(): (integer?, error?, boolean?)
+    local state, state_err = with_db(function(db: any): (any?, error?)
         local rows, err = db:query([[SELECT
             (SELECT MIN(expires_at) FROM kickside_docscout_documents WHERE expires_at > $1) AS document_expiry,
             (SELECT MIN(expires_at) FROM kickside_docscout_runs WHERE expires_at > $1) AS run_expiry,
             (SELECT r.next_check_at FROM kickside_docscout_eval_results r
                 JOIN kickside_docscout_evals e ON e.id=r.eval_id
                 WHERE r.status='queued' AND e.status IN ('queued','running')
-                ORDER BY r.next_check_at,r.eval_id,r.case_id LIMIT 1) AS recovery_check]], { now() })
+                ORDER BY r.next_check_at,r.eval_id,r.case_id LIMIT 1) AS recovery_check,
+            CASE WHEN EXISTS (SELECT 1 FROM kickside_docscout_documents WHERE expires_at <= $1)
+                OR EXISTS (SELECT 1 FROM kickside_docscout_runs WHERE expires_at <= $1)
+                THEN 1 ELSE 0 END AS expired]], { now() })
         if err then return nil, failed("retention deadline could not be read", err) end
         local deadline: integer? = nil
         for _, field in ipairs({ "document_expiry", "run_expiry", "recovery_check" }) do
@@ -170,8 +211,10 @@ function M.next_deadline_ms(): (integer?, error?)
                 deadline = deadline == nil and ms or math.min(deadline, ms)
             end
         end
-        return deadline, nil
+        return { deadline = deadline, expired = tonumber(rows[1].expired) == 1 }, nil
     end)
+    if state_err then return nil, state_err end
+    return state.deadline, nil, state.expired
 end
 
 -- Evaluations ---------------------------------------------------------------
@@ -304,6 +347,18 @@ function M.list_evals(component_id: string, limit: integer): (any?, error?)
     end)
 end
 
+-- Queued totals combine retained attempts with usage already rolled up by retention.
+local function case_results(db: any, component_id: string, eval_id: string): (any?, error?)
+    return db:query([[SELECT r.case_id,r.upload_name,r.upload_id,r.expected_values,r.pages,r.status,r.run_id,r.scores,
+        CASE WHEN r.status='queued' THEN r.tokens+COALESCE(a.tokens,0) ELSE r.tokens END AS tokens,
+        CASE WHEN r.status='queued' THEN r.duration_ms+COALESCE(a.duration_ms,0) ELSE r.duration_ms END AS duration_ms,
+        r.error,r.finished_at,COALESCE(a.attempts,0) AS attempts
+        FROM kickside_docscout_eval_results r LEFT JOIN (
+            SELECT case_id,CAST(SUM(tokens) AS BIGINT) AS tokens,CAST(SUM(duration_ms) AS BIGINT) AS duration_ms,COUNT(*) AS attempts
+            FROM kickside_docscout_runs WHERE component_id=$1 AND evaluation_id=$2 GROUP BY case_id
+        ) a ON a.case_id=r.case_id WHERE r.eval_id=$2 ORDER BY r.upload_name,r.case_id]], { component_id, eval_id })
+end
+
 -- One evaluation with its per-case results; identity columns only when asked for.
 function M.get_eval(eval_id: string, with_identity: boolean?): (any?, error?)
     return with_db(function(db: any): (any?, error?)
@@ -322,10 +377,10 @@ function M.get_eval(eval_id: string, with_identity: boolean?): (any?, error?)
         else
             item.config_snapshot = nil
         end
-        local results, results_err = db:query([[SELECT case_id, upload_name, upload_id, expected_values, pages, status, run_id, scores, tokens, duration_ms, error, finished_at
-            FROM kickside_docscout_eval_results WHERE eval_id=$1 ORDER BY upload_name, case_id]], { eval_id })
+        local results, results_err = case_results(db, item.component_id, eval_id)
         if results_err then return nil, failed("evaluation results could not be read", results_err) end
         for _, r in ipairs(results) do
+            r.attempts = nil
             local scores, scores_err = decoded(r.scores, "case scores", true)
             if scores_err then return nil, scores_err end
             r.scores = scores or {}
@@ -367,10 +422,18 @@ function M.finish_case(component_id: string, eval_id: string, case_id: string, o
         local held, hold_err = tx:execute("UPDATE kickside_docscout_evals SET status='running' WHERE id=$1 AND component_id=$2 AND status IN ('queued','running')", { eval_id, component_id })
         if hold_err then return nil, failed("evaluation could not be locked", hold_err) end
         if held.rows_affected == 0 then return nil, nil end
+        local attempts, attempts_err = case_results(tx, component_id, eval_id)
+        if attempts_err then return nil, failed("evaluation usage could not be read", attempts_err) end
+        local tokens, duration = outcome.tokens or 0, outcome.duration_ms or 0
+        for _, attempt in ipairs(attempts) do
+            if attempt.case_id == case_id and (tonumber(attempt.attempts) > 0 or tonumber(attempt.tokens) > 0 or tonumber(attempt.duration_ms) > 0) then
+                tokens, duration = attempt.tokens, attempt.duration_ms
+            end
+        end
         local _, err = tx:execute([[UPDATE kickside_docscout_eval_results
             SET status=$1, run_id=$2, scores=$3, tokens=$4, duration_ms=$5, error=$6, finished_at=$7
             WHERE eval_id=$8 AND case_id=$9 AND status='queued']],
-            { outcome.status, outcome.run_id or sql.as.null(), scores, outcome.tokens or 0, outcome.duration_ms or 0,
+            { outcome.status, outcome.run_id or sql.as.null(), scores, tokens, duration,
               outcome.error and failure or sql.as.null(), now(), eval_id, case_id })
         if err then return nil, failed("case result could not be stored", err) end
         local rows, rows_err = tx:query("SELECT status, scores, tokens, duration_ms FROM kickside_docscout_eval_results WHERE eval_id=$1", { eval_id })

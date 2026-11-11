@@ -156,6 +156,7 @@ function M.run(input: any): (any?, error?)
     end
     local run_id, record_err = repository.add_run(input.id, {
         user_id = actor:id(), upload_id = input.upload_id, caller = caller, status = result.status,
+        evaluation_id = input.evaluation_id, case_id = input.case_id,
         config_revision = extractor.revision, result = { fields = fields, values = result.values, error = result.error, page_range = input.pages, summary = result.summary }, trace = trace,
         duration_ms = result.duration_ms, tokens = tokens, expires_at = expires_at,
     })

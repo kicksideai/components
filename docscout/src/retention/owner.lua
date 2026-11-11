@@ -14,12 +14,12 @@ local function run(input: any): any
     if runs_err then return { success = false, error = runs_err } end
     local recovered, recovery_err = recovery.run(type(input) == "table" and input.change or nil)
     if recovery_err then return { success = false, error = recovery_err } end
-    local deadline, deadline_err = repository.next_deadline_ms()
+    local deadline, deadline_err, expired = repository.next_deadline_ms()
     if deadline_err then return { success = false, error = deadline_err } end
     local removed_documents, removed_runs = documents :: integer, runs :: integer
     return { success = true, deleted = removed_documents + removed_runs, deadline_ms = deadline,
         blocked = recovered.blocked,
-        needs_continue = removed_documents > 0 or removed_runs > 0 or recovered.needs_continue }
+        needs_continue = removed_documents > 0 or removed_runs > 0 or expired == true or recovered.needs_continue }
 end
 
 return { run = run }
