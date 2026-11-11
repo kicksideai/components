@@ -51,6 +51,27 @@ local function in_range(chunks: any)
 end
 return { run = test.run_cases(function()
     test.describe("Page range stage isolation", function()
+        test.it("marks absence only within selected sections of the searched pages", function()
+            local cfg = configuration()
+            cfg.fields[1].name, cfg.fields[1].search_within = "missing_reply", "sections"
+            cfg.stages.extract.model = "class:docscout-success"
+            local markdown = "<!-- page 1 -->\n# Invoice\nPayment terms apply.\n<!-- page 2 -->\nThe total amount is 1250."
+            local full = assert(process.chunk(markdown, cfg.retrieval))
+            test.eq(full.outline[1].page_start, 1); test.eq(full.outline[1].page_end, 2)
+            local selected = assert(process.chunk(markdown, cfg.retrieval, { first = 1, last = 1 }))
+            local pool = shapes.pool()
+            shapes.add(pool, selected.chunks)
+            for _, chunk in ipairs(selected.chunks) do
+                test.eq(chunk.page_start, 1); test.eq(chunk.page_end, 1)
+                test.is_nil(chunk.content:find("1250", 1, true))
+            end
+            local run = { config = cfg, document = selected, pool = pool, regions = { missing_reply = shapes.ordinals_of(selected.outline, { selected.outline[1].id }) },
+                notes = {}, analyses = {}, values = {} }
+            test.is_nil(stages.extract(run, { meter = ai.meter() }))
+            test.eq(#run.values, 1); test.is_true(run.values[1].missing)
+            test.eq(json.encode(run.values[1].codes), '["missing_in_sections"]')
+            test.is_nil(run.values[1].reason)
+        end)
         test.it("clips generated context and embeddings and isolates reusable processed copies by range", function()
             local owner, cfg = uuid.v4(), configuration()
             local component_id = data.extractor(owner)

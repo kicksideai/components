@@ -662,6 +662,8 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
             entry.evidence = cited
             entry.missing = false
             if f.evidence_required and #cited == 0 then entry.reason, entry.codes = "No quote supports this value", { "no_quote" } end
+        elseif f.search_within == "sections" then
+            entry.codes = { "missing_in_sections" }
         end
         entries[#entries + 1] = entry
     end
@@ -810,6 +812,7 @@ end
 function M.verify(run: any, step: any): error?
     local cfg = run.config.stages.verify
     local enhanced = cfg.check_completeness == true
+    local field_aware = enhanced
     local fields = {}
     for _, f in ipairs(run.config.fields) do fields[shapes.path(f)] = f end
     local by_ordinal = {}
@@ -821,8 +824,12 @@ function M.verify(run: any, step: any): error?
     end
     if cfg.check_quotes or needs_source then
         local chunks, err = store.all_chunks(run.document.id)
-        if err then return err end
-        for _, c in ipairs(chunks) do by_ordinal[c.ordinal] = c end
+        if err then
+            if cfg.check_quotes then return err end
+            field_aware = false
+        else
+            for _, c in ipairs(chunks) do by_ordinal[c.ordinal] = c end
+        end
     end
     if cfg.check_quotes then
         local bodies, order = {}, {}
@@ -858,19 +865,24 @@ function M.verify(run: any, step: any): error?
         local found, lines, seen = {}, {}, {}
         local sources: { integer } = {}
         local context: { [integer]: any } = {}
-        for _, v in ipairs(run.values) do
-            if not v.missing and not v.failed and (not enhanced or #v.evidence > 0) then
-                found[#found + 1] = v
-                local quotes = {}
-                for _, e in ipairs(v.evidence) do
-                    quotes[#quotes + 1] = "\"" .. e.quote .. "\""
-                    if e.chunk and not seen[e.chunk] then sources[#sources + 1], seen[e.chunk] = e.chunk, true end
+        local support_system = ""
+        local function prepare()
+            found, lines, seen, sources, context, complete_fields = {}, {}, {}, {}, {}, {}
+            for _, v in ipairs(run.values) do
+                if not v.missing and not v.failed then
+                    found[#found + 1] = v
+                    local quotes = {}
+                    for _, e in ipairs(v.evidence) do
+                        quotes[#quotes + 1] = "\"" .. e.quote .. "\""
+                        if e.chunk and not seen[e.chunk] then sources[#sources + 1], seen[e.chunk] = e.chunk, true end
+                    end
+                    lines[shapes.path(v)] = field_aware and M.support_line(fields[shapes.path(v)], v) or
+                        ("- " .. shapes.path(v) .. " = " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | "))
                 end
-                lines[shapes.path(v)] = enhanced and M.support_line(fields[shapes.path(v)], v) or
-                    ("- " .. shapes.path(v) .. " = " .. json.encode(v.value) .. "\n  quotes: " .. table.concat(quotes, " | "))
             end
+            support_system = field_aware and M.support_system() or system("For each field, decide whether its quotes support its value exactly. Return one check per field.")
         end
-        local support_system = enhanced and M.support_system() or system("For each field, decide whether its quotes support its value exactly. Return one check per field.")
+        prepare()
         local function body(): string
             local out = {}
             for _, v in ipairs(found) do out[#out + 1] = lines[shapes.path(v)] end
@@ -878,20 +890,19 @@ function M.verify(run: any, step: any): error?
             return table.concat(out, "\n")
         end
         local function reply_schema(): any
-            return enhanced and M.support_schema(found, complete_fields) or support_schema(found)
+            return field_aware and M.support_schema(found, complete_fields) or support_schema(found)
         end
         if #found > 0 then
-            if enhanced then
+            if field_aware then
                 local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
-                if fit_err then support_error = fit_err
-                elseif not (fits :: any)(support_system, body(), reply_schema()) then
-                    support_error = ai.over_budget(cfg.model, "The support request", "use a larger context window or reduce the configured fields or extracted value sizes")
+                if fit_err or not (fits :: any)(support_system, body(), reply_schema()) then
+                    field_aware = false
                 else
                     for _, v in ipairs(found) do
                         local path, f = shapes.path(v), fields[shapes.path(v)]
                         if completes(f) then
                             local region, region_err = source_region(run, f, v, by_ordinal)
-                            if region_err then support_error = region_err; break end
+                            if region_err then field_aware = false; break end
                             if #(region :: { any }) > 0 then
                                 local previous, added, refs = lines[path], {}, {}
                                 for _, chunk in ipairs(region :: { any }) do
@@ -909,15 +920,14 @@ function M.verify(run: any, step: any): error?
                     end
                 end
             end
-            if not support_error then
-                for ordinal in pairs(context) do
-                    if not seen[ordinal] then sources[#sources + 1], seen[ordinal] = ordinal, true end
-                end
-                table.sort(sources)
-                local result, err = ai.structured(step.meter, cfg.model, reply_schema(), support_system, body(),
-                    { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(found), sources = sources })
-                if err then support_error = err else support = result end
+            if not field_aware then prepare() end
+            for ordinal in pairs(context) do
+                if not seen[ordinal] then sources[#sources + 1], seen[ordinal] = ordinal, true end
             end
+            table.sort(sources)
+            local result, err = ai.structured(step.meter, cfg.model, reply_schema(), support_system, body(),
+                { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(found), sources = sources })
+            if err then support_error = err else support = result end
         end
     end
     local failed = 0
@@ -942,7 +952,7 @@ function M.verify(run: any, step: any): error?
             local check = support[shapes.path(v)]
             if support_error then reject("support_no_verdict", "The support check gave no verdict: " .. tostring(support_error))
             elseif not check then reject("support_no_verdict", "The support check gave no verdict")
-            elseif enhanced then
+            elseif field_aware then
                 if check.verdict == VERDICT.not_supported then reject("support_rejected", check.reason)
                 elseif check.verdict == VERDICT.insufficient then reject("support_insufficient", "The cited text cannot settle the value: " .. check.reason) end
                 v.complete = nil

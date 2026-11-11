@@ -22,7 +22,7 @@ const callers:Record<Run['caller'],{label:string;icon:string}>={ui:{label:'Test 
     <td class="num" data-label="Time">{{(run.duration_ms/1000).toFixed(1)}}s</td>
     <td class="num" data-label="Tokens">{{Number(run.tokens).toLocaleString()}}</td>
     <td class="muted" data-label="Expires">{{when(run.expires_at)}}</td>
-   </tr><tr v-if="open===run.id" class="result-detail"><td colspan="6"><ResultFields :fields="run.result.fields"/></td></tr></template></tbody>
+   </tr><tr v-if="open===run.id" class="result-detail"><td colspan="6"><ResultFields :fields="run.result.fields" :page-range="run.result.page_range"/></td></tr></template></tbody>
   </table>
  </div>
 </template>

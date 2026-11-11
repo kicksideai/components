@@ -30,3 +30,31 @@ describe('Verification reasons',()=>{
   }
  })
 })
+
+describe('Missing value scope',()=>{
+ for(const pageRange of [undefined,{first:1,last:1}]){
+  it(`labels selected sections with page range ${JSON.stringify(pageRange)}`,()=>{
+   const w=mount(ResultFields,{props:{fields:[{...field,value:undefined,missing:true,codes:['missing_in_sections']}],pageRange}})
+   expect(w.get('.value-text').text()).toBe('Not in the selected sections'+(pageRange?' of the searched pages':''))
+  })
+  for(const codes of [undefined,[],['no_passage']]){
+   it(`keeps the missing label without the scoped code ${JSON.stringify(codes)} and range ${JSON.stringify(pageRange)}`,()=>{
+    const w=mount(ResultFields,{props:{fields:[{...field,value:undefined,missing:true,codes}],pageRange}})
+    expect(w.get('.value-text').text()).toBe('Not in the document')
+   })
+  }
+ }
+})
+
+describe('Completeness judgments',()=>{
+ for(const [complete,label] of [[true,'Complete'],[false,'Incomplete'],[undefined,'Completeness unknown']] as const){
+  it(`shows ${label} distinctly`,()=>{
+   const w=mount(ResultFields,{props:{fields:[{...field,complete}]}})
+   expect(w.get('[aria-label="Completeness"]').text()).toBe(label)
+  })
+ }
+ it('omits completeness for missing and failed fields',()=>{
+  const w=mount(ResultFields,{props:{fields:[{...field,missing:true},{...field,path:'failed',failed:true}]}})
+  expect(w.find('[aria-label="Completeness"]').exists()).toBe(false)
+ })
+})

@@ -625,28 +625,28 @@ entries:
     stages: kickside.docscout.engine:stages
 - name: fixture_success_generate
   kind: function.lua
-  modules: [json, hash]
+  modules: [json, hash, fs]
   imports:
     canonical_json: kickside.contract:canonical_json
   source: file://fixture_success.lua
   method: generate
 - name: fixture_success_structured
   kind: function.lua
-  modules: [json, hash]
+  modules: [json, hash, fs]
   imports:
     canonical_json: kickside.contract:canonical_json
   source: file://fixture_success.lua
   method: structured
 - name: fixture_success_embed
   kind: function.lua
-  modules: [json, hash]
+  modules: [json, hash, fs]
   imports:
     canonical_json: kickside.contract:canonical_json
   source: file://fixture_success.lua
   method: embed
 - name: fixture_success_status
   kind: function.lua
-  modules: [json, hash]
+  modules: [json, hash, fs]
   imports:
     canonical_json: kickside.contract:canonical_json
   source: file://fixture_success.lua
@@ -912,6 +912,7 @@ entries:
     stages: kickside.docscout.engine:stages
     shapes: kickside.docscout.engine:shapes
     scoring: kickside.docscout.evals:scoring
+    runner: kickside.docscout.engine:run
 
 - name: user_agent_test
   kind: function.lua
@@ -1633,7 +1634,7 @@ entries:
   meta: {type: test, suite: docscout_completeness, group: Docscout}
   source: file://completeness_test.lua
   method: run
-  modules: [json, registry, uuid]
+  modules: [json, registry, uuid, fs]
   imports:
     test: wippy.test:test
     data: app:fixture_data
@@ -1655,7 +1656,7 @@ entries:
   providers:
   - id: app:fixture_success_provider
     provider_model: docscout-success
-    options: {"absent": ["source:", "completeness"], "support_fixture": {}}
+    options: {"absent": ["source:", "completeness"], "support_fixture": {}, "capture_requests": "completeness-requests.json"}
 - name: fixture_completeness_complete_model
   kind: registry.entry
   meta:
@@ -1715,7 +1716,7 @@ entries:
   providers:
   - id: app:fixture_success_provider
     provider_model: docscout-success
-    options: {"support_fixture": {}}
+    options: {"support_fixture": {}, "capture_requests": "completeness-requests.json"}
 
 - name: fixture_completeness_shared_model
   kind: registry.entry
@@ -1732,3 +1733,29 @@ entries:
   - id: app:fixture_success_provider
     provider_model: docscout-success
     options: {support_fixture: {require_completeness: true, occurrences: {'Shared context marker.': 1}}}
+
+- name: verification_identity_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_verification_identity, group: Docscout}
+  source: file://verification_identity_test.lua
+  method: run
+  modules: [json, registry, fs]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    canonical_json: kickside.contract:canonical_json
+    baseline: app:verification_baseline
+- name: verification_baseline
+  kind: library.lua
+  source: file://verification_baseline.lua
+  modules: [json]
+- name: fixture_verification_identity_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-verification-identity, capabilities: [generate, structured_output, embed], class: [docscout-verification-identity], priority: 100}
+  max_tokens: 16000
+  output_tokens: 4096
+  dimensions: 512
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {capture_requests: verification-requests.json}

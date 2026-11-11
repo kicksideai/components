@@ -2,7 +2,7 @@
 import type {Config,Field} from './config'
 export interface PageRange {first:number;last:number}
 export interface Evidence {quote:string;section:string;page?:number;chunk_id:string;found?:boolean}
-export interface Value {name:string;path:string;value:unknown;confidence:number;evidence:Evidence[];verified:boolean;missing?:boolean;reason?:string;complete?:boolean;failed?:boolean;error?:CaseError|null}
+export interface Value {name:string;path:string;value:unknown;confidence:number;evidence:Evidence[];verified:boolean;missing?:boolean;reason?:string;codes?:string[];complete?:boolean;failed?:boolean;error?:CaseError|null}
 export interface TraceStep {kind:string;status:'completed'|'failed';scope?:string;model?:string;duration_ms:number;input_tokens:number;output_tokens:number;queries?:string[];message?:string;pages?:PageRange}
 export interface Extraction {run_id:string;upload_id:string;config_revision:number;values:Record<string,unknown>;fields:Value[];trace:TraceStep[];duration_ms:number;tokens:number;status?:'completed'|'partial'|'failed';error?:string;pages?:number;page_range?:PageRange}
 export interface Run {id:string;caller:'ui'|'agent'|'eval'|'workflow';status:'completed'|'partial'|'failed';upload_id:string;duration_ms:number;tokens:number;created_at:string;expires_at:string;result:{fields:Value[];values:Record<string,unknown>;page_range?:PageRange};config_revision:number}

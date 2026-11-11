@@ -535,6 +535,38 @@ return { run = test.run_cases(function()
             test.eq(step.meter.input_tokens, 0)
         end)
     end)
+    test.describe("Missing values", function()
+        test.it("tells a value missing from a field's sections apart from one missing from the document", function()
+            local function missing_field(group: string, search_within: string): any
+                local f = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
+                f.name, f.group, f.search_within = "missing_reply", group, search_within
+                return f
+            end
+            local pool = shapes.pool()
+            shapes.add(pool, { { ordinal = 1, content = "The fee is USD 100.", heading_path = "Fees" },
+                { ordinal = 2, content = "Either party may terminate with notice.", heading_path = "Termination" } })
+            local run = { pool = pool, regions = { ["scoped.missing_reply"] = { 1 } }, notes = {}, analyses = {}, values = {},
+                config = { fields = { missing_field("scoped", "sections"), missing_field("whole", "document") },
+                    stages = { extract = { model = "class:docscout-success", max_fields_per_call = 5, max_output_tokens = 256 },
+                        verify = { enabled = true, check_quotes = false, check_support = false } } } }
+            test.is_nil(stages.extract(run, { meter = ai.meter() }))
+            local step = { meter = ai.meter() }
+            test.is_nil(stages.verify(run, step))
+            local by_path = {}
+            for _, v in ipairs(run.values) do by_path[v.path] = v end
+            local scoped, whole = by_path["scoped.missing_reply"], by_path["whole.missing_reply"]
+            test.is_true(scoped.missing); test.is_true(scoped.verified)
+            test.eq(json.encode(scoped.codes), '["missing_in_sections"]')
+            test.is_nil(scoped.reason)
+            test.eq(step.message, "All values check out")
+            test.is_true(whole.missing); test.is_true(whole.verified)
+            test.eq(#whole.codes, 0)
+            test.is_nil(whole.reason)
+            scoped.codes, whole.codes = nil, nil
+            scoped.path = whole.path
+            test.eq(json.encode(scoped), json.encode(whole))
+        end)
+    end)
 
     test.describe("Outlines", function()
         test.it("previews chunks for outlining in windows that cover the document once, in order", function()
