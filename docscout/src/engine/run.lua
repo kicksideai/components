@@ -26,7 +26,7 @@ local function invalid(message: string): error return errors.new({ kind = errors
 local function millis(): integer return math.floor(time.now():unix_nano() / 1000000) end
 
 -- Field coverage of a run and, per cause, how many fields are not verified.
--- A field without a recorded cause is unverified because no check ran.
+-- Informational codes do not reject a field; only reasons describe failed checks.
 function M.summary(values: { any }): any
     local unverified: { [string]: any } = shapes.object()
     local out = { fields = #values, found = 0, missing = 0, failed = 0, verified = 0, unverified = unverified }
@@ -34,9 +34,15 @@ function M.summary(values: { any }): any
         if v.failed then out.failed = out.failed + 1 elseif v.missing then out.missing = out.missing + 1 else out.found = out.found + 1 end
         if v.verified then out.verified = out.verified + 1
         else
-            local codes = v.failed and { "extraction_failed" } or v.codes or {}
+            local codes = v.failed and { "extraction_failed" } or (v.reason and v.codes) or {}
             if #codes == 0 then codes = { "unchecked" } end
-            for _, code in ipairs(codes) do unverified[code] = (tonumber(unverified[code]) or 0) + 1 end
+            local counted = {}
+            for _, code in ipairs(codes) do
+                if not counted[code] then
+                    unverified[code] = (tonumber(unverified[code]) or 0) + 1
+                    counted[code] = true
+                end
+            end
         end
     end
     return out
@@ -135,7 +141,7 @@ function M.run(input: any): (any?, error?)
         for _, e in ipairs(v.evidence) do
             evidence[#evidence + 1] = { quote = e.quote, section = e.section, page = e.page, page_start = e.page_start, page_end = e.page_end, chunk_id = e.chunk_id, found = e.found }
         end
-        fields[#fields + 1] = { name = v.name, path = v.path, value = v.value, failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, missing = v.missing, reason = v.reason, evidence = evidence }
+        fields[#fields + 1] = { name = v.name, path = v.path, value = v.value, failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, missing = v.missing, reason = v.reason, codes = v.codes, evidence = evidence }
     end
     local failed, extracted = 0, 0
     for _, f in ipairs(fields) do

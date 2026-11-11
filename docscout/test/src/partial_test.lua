@@ -12,6 +12,7 @@ local ai = require("ai")
 local stages = require("stages")
 local shapes = require("shapes")
 local scoring = require("scoring")
+local runner = require("runner")
 local sql = require("sql")
 local function schema(): any
     return assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json))
@@ -149,6 +150,52 @@ return { run = test.run_cases(function()
             test.is_true(valid, tostring(err))
             test.not_nil(contract_schema.properties.summary)
             test.not_nil(contract_schema.properties.trace.items.properties.calls)
+        end)
+        for _, enabled in ipairs({ false, true }) do
+            test.it("returns and stores scoped missing causes with Verify enabled=" .. tostring(enabled), function()
+                local owner = uuid.v4()
+                local caller = data.caller(owner)
+                local cfg = configuration({ "missing_reply" })
+                cfg.fields[1].group, cfg.fields[1].search_within = "scoped", "sections"
+                cfg.stages.map.enabled, cfg.stages.map.model = true, "class:docscout-success"
+                cfg.stages.verify.enabled = enabled
+                local id = assert(caller:call("app:probe", { op = "create", input = { title = "Scoped reader", config = cfg } })).component_id
+                local upload = data.upload(owner, "application/pdf", "Original bytes",
+                    "# Invoice\nThe total amount is 1250.\n# Fees\nThe total amount is 1250.\n# Terms\nThe total amount is 1250.")
+                local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
+                local f = result.fields[1]
+                test.is_true(f.missing); test.is_false(f.failed); test.is_nil(f.value)
+                test.eq(json.encode(f.codes), '["missing_in_sections"]')
+                test.is_nil(f.reason)
+                test.eq(f.verified, enabled)
+                local expected = { fields = 1, found = 0, missing = 1, failed = 0, verified = enabled and 1 or 0,
+                    unverified = enabled and shapes.object() or { unchecked = 1 } }
+                test.eq(json.encode(result.summary), json.encode(expected))
+                test.eq(result.status, "failed")
+                for _, step in ipairs(result.trace) do
+                    if step.kind == "verify" then test.eq(step.message, "All values check out") end
+                end
+                local saved = assert(caller:call("app:probe", { op = "get", id = id })).runs[1].result
+                test.eq(json.encode(saved.fields[1]), json.encode(f))
+                test.eq(json.encode(saved.summary), json.encode(expected))
+                local schema = assert(json.decode(assert(registry.get("kickside.docscout:extraction")).data.methods[1].output_schemas[1].definition))
+                test.not_nil(schema.properties.fields.items.properties.codes)
+                local tool = assert(caller:call("kickside.docscout.traits:run_tool", { extractor_id = id, upload_id = upload }))
+                test.eq(json.encode(tool.fields[1].codes), '["missing_in_sections"]')
+                local tool_schema = assert(json.decode(assert(registry.get("kickside.docscout.traits:run_tool")).meta.output_schema))
+                test.not_nil(tool_schema.properties.fields.items.properties.codes)
+                local block, block_err = caller:call("kickside.docscout.blocks:extract_run", { config = { extractor_id = id }, input = { upload_id = upload } })
+                test.is_nil(block); test.not_nil(block_err)
+                test.eq(json.encode(block_err:details().result.fields[1].codes), '["missing_in_sections"]')
+                test.is_true(assert(json.validate_string(schema, assert(json.encode(result)))))
+            end)
+        end
+        test.it("counts each unverified field once under each cause", function()
+            local summary = runner.summary({ { missing = true, verified = false,
+                reason = "No quote supports this value", codes = { "no_quote", "no_quote", "support_rejected", "support_rejected" } },
+                { missing = false, verified = false, reason = "Unsupported value", codes = { "support_rejected" } } })
+            test.eq(summary.unverified.no_quote, 1)
+            test.eq(summary.unverified.support_rejected, 2)
         end)
         test.it("meters a provider failure's reported usage and reports a length cut as truncation", function()
             local run = context(configuration({ "before", "cut_reply", "provider_failure" }))

@@ -29,7 +29,7 @@ const icon=(kind:string)=>extra[kind]?.icon??stageIcons[kind as StageKey]??'tabl
   <div v-if="result" class="test-grid">
    <section class="block">
     <header class="block-head"><h2 class="block-title">Values</h2><span class="muted push">{{result.tokens.toLocaleString()}} tokens · {{seconds(result.duration_ms)}}<template v-if="result.page_range"> · Pages {{result.page_range.first}}–{{result.page_range.last}}</template><template v-else-if="result.pages"> · {{result.pages}} pages</template></span></header>
-    <ResultFields :fields="result.fields"/>
+    <ResultFields :fields="result.fields" :page-range="result.page_range"/>
    </section>
    <section class="block">
     <header class="block-head"><h2 class="block-title">Steps</h2></header>

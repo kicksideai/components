@@ -912,6 +912,7 @@ entries:
     stages: kickside.docscout.engine:stages
     shapes: kickside.docscout.engine:shapes
     scoring: kickside.docscout.evals:scoring
+    runner: kickside.docscout.engine:run
 
 - name: user_agent_test
   kind: function.lua
@@ -1108,7 +1109,7 @@ entries:
       reply:
         confidence: 0.8
         evidence:
-          fee: &id001 []
+          fee: &id001_2 []
         drop: []
         queries: []
         notes:
@@ -1118,7 +1119,7 @@ entries:
         confidence: 0.8
         evidence:
         - field: fee
-          chunks: *id001
+          chunks: *id001_2
         drop: []
         queries: []
         notes:
@@ -1146,8 +1147,8 @@ entries:
       reply:
         confidence: 0.8
         evidence:
-          fee: &id001 []
-          terms.rate: &id002 []
+          fee: &id001_3 []
+          terms.rate: &id002_2 []
         drop: []
         queries: []
         notes:
@@ -1156,9 +1157,9 @@ entries:
         confidence: 0.8
         evidence:
         - field: fee
-          chunks: *id001
+          chunks: *id001_3
         - field: terms.rate
-          chunks: *id002
+          chunks: *id002_2
         drop: []
         queries: []
         notes:
@@ -1184,8 +1185,8 @@ entries:
       reply:
         confidence: 0.8
         evidence:
-          fee: &id001 []
-          terms.rate: &id002 []
+          fee: &id001_4 []
+          terms.rate: &id002_3 []
         drop: []
         queries: []
         notes:
@@ -1195,9 +1196,9 @@ entries:
         confidence: 0.8
         evidence:
         - field: fee
-          chunks: *id001
+          chunks: *id001_4
         - field: terms.rate
-          chunks: *id002
+          chunks: *id002_3
         drop: []
         queries: []
         notes:
@@ -1225,8 +1226,8 @@ entries:
       reply:
         confidence: 0.8
         evidence:
-          fee: &id001 []
-          terms.rate: &id002 []
+          fee: &id001_5 []
+          terms.rate: &id002_4 []
         drop: []
         queries: []
         notes:
@@ -1237,9 +1238,9 @@ entries:
         confidence: 0.8
         evidence:
         - field: fee
-          chunks: *id001
+          chunks: *id001_5
         - field: terms.rate
-          chunks: *id002
+          chunks: *id002_4
         drop: []
         queries: []
         notes:
@@ -1355,12 +1356,12 @@ entries:
     provider_model: docscout-highlight-missing
     options:
       reply:
-        '1': &id001
+        '1': &id001_6
         - The total amount is 1250.
       legacy_reply:
         passages:
         - chunk: 1
-          excerpts: *id001
+          excerpts: *id001_6
 
 - name: fixture_highlight_empty_model
   kind: registry.entry
@@ -1379,9 +1380,9 @@ entries:
     provider_model: docscout-highlight-empty
     options:
       reply:
-        '1': &id001
+        '1': &id001_7
         - total amount
-        '2': &id002 []
+        '2': &id002_5 []
         '3': &id003
         - invented passage
         '4': &id004
@@ -1389,9 +1390,9 @@ entries:
       legacy_reply:
         passages:
         - chunk: 1
-          excerpts: *id001
+          excerpts: *id001_7
         - chunk: 2
-          excerpts: *id002
+          excerpts: *id002_5
         - chunk: 3
           excerpts: *id003
         - chunk: 4
@@ -1414,21 +1415,21 @@ entries:
     provider_model: docscout-highlight-unknown
     options:
       reply:
-        '1': &id001 []
-        '2': &id002 []
-        '3': &id003 []
-        '4': &id004 []
+        '1': &id001_8 []
+        '2': &id002_6 []
+        '3': &id003_2 []
+        '4': &id004_2 []
         '5': &id005 []
       legacy_reply:
         passages:
         - chunk: 1
-          excerpts: *id001
+          excerpts: *id001_8
         - chunk: 2
-          excerpts: *id002
+          excerpts: *id002_6
         - chunk: 3
-          excerpts: *id003
+          excerpts: *id003_2
         - chunk: 4
-          excerpts: *id004
+          excerpts: *id004_2
         - chunk: 5
           excerpts: *id005
 
