@@ -28,3 +28,32 @@ entries:
     title: Private fixture capability
     public: true
     private: true
+
+- name: test-fast
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: test-fast
+    title: Test fast
+    capabilities: [generate, structured_output, tool_use]
+    class: [default, fast]
+    priority: 100
+  max_tokens: 100000
+  output_tokens: 32768
+  providers:
+    - id: app.llm:provider
+      provider_model: test-fast
+
+- name: test-embed
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: test-embed
+    title: Test embed
+    capabilities: [embed]
+    class: [embed]
+    priority: 100
+  dimensions: 512
+  providers:
+    - id: app.llm:provider
+      provider_model: test-embed
