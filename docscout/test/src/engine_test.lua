@@ -555,12 +555,16 @@ return { run = test.run_cases(function()
             local by_path = {}
             for _, v in ipairs(run.values) do by_path[v.path] = v end
             local scoped, whole = by_path["scoped.missing_reply"], by_path["whole.missing_reply"]
-            test.is_true(scoped.missing); test.is_false(scoped.verified)
+            test.is_true(scoped.missing); test.is_true(scoped.verified)
             test.eq(json.encode(scoped.codes), '["missing_in_sections"]')
-            test.eq(scoped.reason, "Not stated in its selected sections")
+            test.is_nil(scoped.reason)
+            test.eq(step.message, "All values check out")
             test.is_true(whole.missing); test.is_true(whole.verified)
             test.eq(#whole.codes, 0)
             test.is_nil(whole.reason)
+            scoped.codes, whole.codes = nil, nil
+            scoped.path = whole.path
+            test.eq(json.encode(scoped), json.encode(whole))
         end)
     end)
 

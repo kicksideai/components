@@ -166,11 +166,18 @@ return { run = test.run_cases(function()
                 local f = result.fields[1]
                 test.is_true(f.missing); test.is_false(f.failed); test.is_nil(f.value)
                 test.eq(json.encode(f.codes), '["missing_in_sections"]')
-                test.eq(f.reason, "Not stated in its selected sections")
-                test.eq(result.summary.unverified.missing_in_sections, 1)
+                test.is_nil(f.reason)
+                test.eq(f.verified, enabled)
+                local expected = { fields = 1, found = 0, missing = 1, failed = 0, verified = enabled and 1 or 0,
+                    unverified = enabled and shapes.object() or { unchecked = 1 } }
+                test.eq(json.encode(result.summary), json.encode(expected))
+                test.eq(result.status, "failed")
+                for _, step in ipairs(result.trace) do
+                    if step.kind == "verify" then test.eq(step.message, "All values check out") end
+                end
                 local saved = assert(caller:call("app:probe", { op = "get", id = id })).runs[1].result
                 test.eq(json.encode(saved.fields[1]), json.encode(f))
-                test.eq(saved.summary.unverified.missing_in_sections, 1)
+                test.eq(json.encode(saved.summary), json.encode(expected))
                 local schema = assert(json.decode(assert(registry.get("kickside.docscout:extraction")).data.methods[1].output_schemas[1].definition))
                 test.not_nil(schema.properties.fields.items.properties.codes)
                 local tool = assert(caller:call("kickside.docscout.traits:run_tool", { extractor_id = id, upload_id = upload }))
@@ -185,10 +192,10 @@ return { run = test.run_cases(function()
         end
         test.it("counts each unverified field once under each cause", function()
             local summary = runner.summary({ { missing = true, verified = false,
-                codes = { "missing_in_sections", "missing_in_sections", "support_insufficient", "support_insufficient" } },
-                { missing = false, verified = false, codes = { "support_insufficient" } } })
-            test.eq(summary.unverified.missing_in_sections, 1)
-            test.eq(summary.unverified.support_insufficient, 2)
+                reason = "No quote supports this value", codes = { "no_quote", "no_quote", "support_rejected", "support_rejected" } },
+                { missing = false, verified = false, reason = "Unsupported value", codes = { "support_rejected" } } })
+            test.eq(summary.unverified.no_quote, 1)
+            test.eq(summary.unverified.support_rejected, 2)
         end)
         test.it("meters a provider failure's reported usage and reports a length cut as truncation", function()
             local run = context(configuration({ "before", "cut_reply", "provider_failure" }))

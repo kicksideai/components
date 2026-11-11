@@ -26,7 +26,7 @@ local function invalid(message: string): error return errors.new({ kind = errors
 local function millis(): integer return math.floor(time.now():unix_nano() / 1000000) end
 
 -- Field coverage of a run and, per cause, how many fields are not verified.
--- A field without a recorded cause is unverified because no check ran.
+-- Informational codes do not reject a field; only reasons describe failed checks.
 function M.summary(values: { any }): any
     local unverified: { [string]: any } = shapes.object()
     local out = { fields = #values, found = 0, missing = 0, failed = 0, verified = 0, unverified = unverified }
@@ -34,7 +34,7 @@ function M.summary(values: { any }): any
         if v.failed then out.failed = out.failed + 1 elseif v.missing then out.missing = out.missing + 1 else out.found = out.found + 1 end
         if v.verified then out.verified = out.verified + 1
         else
-            local codes = v.failed and { "extraction_failed" } or v.codes or {}
+            local codes = v.failed and { "extraction_failed" } or (v.reason and v.codes) or {}
             if #codes == 0 then codes = { "unchecked" } end
             local counted = {}
             for _, code in ipairs(codes) do
