@@ -151,7 +151,7 @@ local function select_schema(outline: { any }, fields: { any }): any
 end
 
 -- Sections the map model finds in a processed document, window by window.
-local function build_outline(run: any, step: any, cfg: any, sampling: (string, { string }?, { integer }?) -> any): ({ any }?, error?)
+local function build_outline(run: any, step: any, cfg: any, sampling: (string, { string }?, { integer }?) -> any): ({ any }?, error?, boolean?)
     local chunks, err = store.all_chunks(run.document.id)
     if err then return nil, err end
     -- One section per start chunk, in order; chunks before the first start form their own section.
@@ -159,7 +159,7 @@ local function build_outline(run: any, step: any, cfg: any, sampling: (string, {
     local outline_system = system("You divide a document into its logical sections. Give each section a short title and the chunk number where it starts, in order.")
     local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
     if fit_err then return nil, fit_err end
-    local remaining = chunks
+    local remaining, partial = chunks, false
     while #remaining > 0 do
         local function request(batch: { any }): (any, string)
             local w = M.outline_windows(batch, #batch)[1]
@@ -187,7 +187,10 @@ local function build_outline(run: any, step: any, cfg: any, sampling: (string, {
         local consumed, next_chunks = {}, {}
         for _, chunk in ipairs(batch) do consumed[chunk.ordinal] = true end
         for _, chunk in ipairs(rejected) do consumed[chunk.ordinal] = true end
-        if #rejected > 0 then budget_cut(run, run.config.fields) end
+        if #rejected > 0 then
+            partial = true
+            budget_cut(run, run.config.fields)
+        end
         for _, chunk in ipairs(remaining) do if not consumed[chunk.ordinal] then next_chunks[#next_chunks + 1] = chunk end end
         remaining = next_chunks
     end
@@ -209,7 +212,7 @@ local function build_outline(run: any, step: any, cfg: any, sampling: (string, {
             end
         end
     end
-    return sections, nil
+    return sections, nil, partial
 end
 
 function M.map(run: any, step: any): error?
@@ -238,10 +241,12 @@ function M.map(run: any, step: any): error?
             run.document.outline = kept
             step.message = "Reused the outline of " .. #kept .. " sections built for this copy"
         else
-            local sections, build_err = build_outline(run, step, cfg, sampling)
+            local sections, build_err, partial = build_outline(run, step, cfg, sampling)
             if build_err then return build_err end
-            local keep_err = store.keep_built_outline(run.document.id, identity :: string, sections :: { any })
-            if keep_err then return keep_err end
+            if not partial then
+                local keep_err = store.keep_built_outline(run.document.id, identity :: string, sections :: { any })
+                if keep_err then return keep_err end
+            end
             run.document.outline = sections
             step.message = "Built an outline of " .. #(sections :: { any }) .. " sections"
         end
@@ -1114,7 +1119,7 @@ function M.verify(run: any, step: any): error?
             end
         end
     end
-    local support, complete_fields = {}, {}
+    local support, support_errors, complete_fields = {}, {}, {}
     local support_error: error? = nil
     if cfg.check_support then
         local found, lines, seen = {}, {}, {}
@@ -1192,7 +1197,11 @@ function M.verify(run: any, step: any): error?
                 return field_aware and M.support_schema(batch, complete_fields) or support_schema(batch)
             end
             local batches, rejected = shapes.batches(found, function(batch: { any }): boolean return fits(support_system, batch_body(batch), batch_schema(batch)) end)
-            if #rejected > 0 then support_error = budget_failure(cfg.model, fits, support_system, batch_body({ rejected[1] }), batch_schema({ rejected[1] })) end
+            for _, v in ipairs(rejected) do
+                local err = budget_failure(cfg.model, fits, support_system, batch_body({ v }), batch_schema({ v }))
+                support_errors[shapes.path(v)] = err
+                support_error = support_error or err
+            end
             for _, batch in ipairs(batches) do
                 local batch_sources = sources
                 if #batches > 1 or #rejected > 0 then
@@ -1206,7 +1215,9 @@ function M.verify(run: any, step: any): error?
                 end
                 local result, err = ai.structured(step.meter, cfg.model, batch_schema(batch), support_system, batch_body(batch),
                     { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(batch), sources = batch_sources })
-                if err then support_error = support_error or err
+                if err then
+                    support_error = support_error or err
+                    for _, v in ipairs(batch) do support_errors[shapes.path(v)] = err end
                 else for path, verdict in pairs(result) do support[path] = verdict end end
             end
         end
@@ -1232,7 +1243,8 @@ function M.verify(run: any, step: any): error?
         if cfg.check_quotes and found and not v.quotes_found then reject("quote_not_found", "A quote is not in the document") end
         if cfg.check_support and found and (not enhanced or #v.evidence > 0) then
             local check = support[shapes.path(v)]
-            if support_error then reject("support_no_verdict", "The support check gave no verdict: " .. tostring(support_error))
+            local check_error = support_errors[shapes.path(v)]
+            if check_error then reject("support_no_verdict", "The support check gave no verdict: " .. tostring(check_error))
             elseif not check then reject("support_no_verdict", "The support check gave no verdict")
             elseif field_aware then
                 if check.verdict == VERDICT.not_supported then reject("support_rejected", check.reason)

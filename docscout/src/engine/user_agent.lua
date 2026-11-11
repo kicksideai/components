@@ -15,12 +15,9 @@ local error_envelope = require("error_envelope")
 
 local M = {}
 local DOCUMENT_TOOL = "kickside.docscout.engine:document_tool"
--- Docscout owns only the message and document-tool observations it gives a
--- selected agent. The agent engine owns the later conversation it assembles.
--- A known model gives each handoff one quarter of the available input budget,
--- leaving the rest for the selected agent's prompt and conversation.
-local HANDOFF_SHARE = 4
-local TRUNCATED = "\n\n[Docscout context truncated to fit the model's context budget.]"
+-- Each document-tool result gets one quarter of the available model input.
+-- The selected agent owns its prompt and subsequent conversation assembly.
+local TOOL_RESULT_SHARE = 4
 local function runtime_error(operation: string, err: any): error
     if type(err) == "userdata" then return errors.wrap(err, operation) end
     return errors.new({ kind = errors.INTERNAL, message = operation .. ": " .. tostring(err), retryable = false,
@@ -62,25 +59,7 @@ local function handoff_budget(agent: any): (any?, error?)
     local available, _, budget_err = ai.input_budget(model, positive(context.max_tokens))
     if budget_err then return nil, budget_err end
     if not available then return nil end
-    if available <= 0 then return nil, ai.budget_error(model, ai.estimate_value({ message = "" }), available) end
-    return { model = model, share = math.floor(available / HANDOFF_SHARE) }, nil
-end
-
-local function bounded_message(text: string, budget: any): (string?, boolean?, error?)
-    local estimate = ai.estimate_value({ message = text })
-    if estimate <= budget.share then return text, false, nil end
-    if ai.estimate_value({ message = TRUNCATED }) > budget.share then
-        return nil, false, ai.budget_error(budget.model, estimate, budget.share)
-    end
-    local low, high, kept = 0, #text, ""
-    while low <= high do
-        local middle = math.floor((low + high) / 2)
-        local candidate = text:sub(1, middle) .. TRUNCATED
-        if ai.estimate_value({ message = candidate }) <= budget.share then
-            kept, low = candidate, middle + 1
-        else high = middle - 1 end
-    end
-    return kept, true, nil
+    return { model = model, available = available, share = math.floor(available / TOOL_RESULT_SHARE) }, nil
 end
 
 local function mark_budget_dropped(run: any, fields: { string }?)
@@ -154,15 +133,9 @@ function M.run(run: any, step: any, system: string, user: string): (string?, int
     if budget_err then return nil, 0, budget_err end
     local message = system .. "\n\n" .. user
     if budget then
-        local truncated
-        message, truncated, budget_err = bounded_message(message, budget)
-        if budget_err then return nil, 0, budget_err end
-        if truncated then
-            local fields = {}
-            for _, field in ipairs(run.config.fields) do
-                if field.strategy ~= "deep" or not run.config.stages.deep.enabled then fields[#fields + 1] = shapes.path(field) end
-            end
-            mark_budget_dropped(run, fields)
+        local estimated = ai.estimate_value({ message = message })
+        if estimated > budget.available then
+            return nil, 0, ai.budget_error(budget.model, estimated, budget.available)
         end
     end
     local tools = {}

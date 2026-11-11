@@ -15,6 +15,7 @@ local store = require("store")
 local ai = require("ai")
 local shapes = require("shapes")
 local stages = require("stages")
+local runner = require("runner")
 
 local MODEL = "class:docscout-context-budget"
 local GENERATED_MODEL = "class:docscout-context-generated"
@@ -113,7 +114,7 @@ end
 local function with_card_limits(limits: any?, work: () -> any)
     if not limits then return work() end
     local overlay = assert(registry.overlay("app:context_budget_test"))
-    local entry = assert(registry.get("app:fixture_verification_identity_model"))
+    local entry = assert(registry.get(limits.card or "app:fixture_verification_identity_model"))
     if limits.max_tokens == false then entry.data.max_tokens = nil else entry.data.max_tokens = limits.max_tokens end
     if limits.output_tokens == false then entry.data.output_tokens = nil else entry.data.output_tokens = limits.output_tokens end
     local changes = overlay:changes(); changes:update(entry); assert(changes:apply())
@@ -151,6 +152,22 @@ return { run = test.run_cases(function()
                 test.eq(assert(canonical_json.encode(actual)), assert(canonical_json.encode(baseline.get()["true"])))
             end)
         end
+
+        test.it("counts rejection causes without informational partial or section codes", function()
+            local summary = runner.summary({
+                { missing = false, verified = false, reason = "A quote is not in the document",
+                    codes = { "context_budget_partial", "quote_not_found", "quote_not_found", "missing_in_sections" } },
+                { missing = false, verified = true, codes = { "context_budget_partial" } },
+                { missing = false, failed = true, verified = false, reason = "Cannot extract",
+                    codes = { "context_budget_partial" } },
+            })
+            test.eq(summary.unverified.quote_not_found, 1)
+            test.eq(summary.unverified.extraction_failed, 1)
+            test.is_nil(summary.unverified.context_budget_partial)
+            test.is_nil(summary.unverified.missing_in_sections)
+            test.is_nil(summary.unverified.unchecked)
+            test.eq(summary.verified, 1)
+        end)
 
         test.it("treats either absent model limit as unknown and preserves direct request bodies", function()
             local reply_schema = { type = "object", additionalProperties = false, required = { "answer" },
@@ -380,6 +397,37 @@ return { run = test.run_cases(function()
             assert_fits(captured, 2144)
         end)
 
+        for _, partial in ipairs({ true, false }) do
+            test.it(partial and "rebuilds a partial outline instead of caching incomplete context" or "reuses a complete outline", function()
+                with_card_limits({ card = "app:fixture_context_budget_model", max_tokens = 600, output_tokens = 256 }, function()
+                    local capture = "context-extract-requests.json"
+                    write_capture(capture)
+                    local chunks = {
+                        { ordinal = 1, section_id = "s1", content = partial and string.rep(string.char(1), 160) or "The total amount is 1250.",
+                            vector = vector(), heading_path = "Invoice" },
+                        { ordinal = 2, section_id = "s2", content = "Payment terms.", vector = vector(), heading_path = "Terms" },
+                    }
+                    local id = saved_document(chunks, {})
+                    local function mapped(): any
+                        local run = { document = { id = id, outline = {} }, regions = {}, config = {
+                            fields = { field("total") }, stages = { map = { model = MODEL, outline = "find_or_build",
+                                section_summaries = false, max_tokens = 256 } } } }
+                        local step = { meter = ai.meter() }
+                        test.is_nil(stages.map(run, step))
+                        return { run = run, step = step }
+                    end
+                    local first = mapped()
+                    test.eq(first.run.budget_dropped and first.run.budget_dropped.total or false, partial)
+                    local before = #requests(capture)
+                    test.is_true(before > 0)
+                    local second = mapped()
+                    test.eq(second.run.budget_dropped and second.run.budget_dropped.total or false, partial)
+                    test.eq(#requests(capture), partial and before * 2 or before)
+                    test.contains(second.step.message, partial and "Built an outline" or "Reused the outline")
+                end)
+            end)
+        end
+
         test.it("rejects an unfit generated-context passage before sending it", function()
             local capture = "context-generated-requests.json"
             write_capture(capture)
@@ -434,6 +482,31 @@ return { run = test.run_cases(function()
             test.is_true(#captured > 1)
             assert_fits(captured, 2144)
         end)
+
+        for _, failure in ipairs({ "oversized", "provider_failure" }) do
+            test.it("keeps successful support verdicts when another batch is " .. failure, function()
+                local capture = "context-extract-requests.json"
+                write_capture(capture)
+                local fields, values = {}, {}
+                for n, name in ipairs({ "rejected", failure }) do
+                    fields[n] = field(name)
+                    fields[n].evidence_required = false
+                    values[n] = { name = name, path = name, value = n, missing = false, failed = false,
+                        evidence = { { quote = string.rep("Support source. ", failure == "oversized" and n == 2 and 2000 or 220), chunk = n } } }
+                end
+                local run = { regions = {}, config = { fields = fields, stages = { verify = {
+                    model = MODEL, check_quotes = false, check_support = true, max_tokens = 256,
+                } } }, values = values }
+                local err = stages.verify(run, { meter = ai.meter() })
+                test.not_nil(err)
+                if failure == "oversized" then test.eq(err:details().code, "context_budget_exceeded") end
+                test.eq(json.encode(values[1].codes), '["support_rejected"]')
+                test.eq(json.encode(values[2].codes), '["support_no_verdict"]')
+                local captured = requests(capture)
+                test.eq(#captured, failure == "oversized" and 1 or 2)
+                assert_fits(captured, 2144)
+            end)
+        end
 
         test.it("keeps a later deep-analysis passage after an oversized earlier match", function()
             local capture = "context-extract-requests.json"

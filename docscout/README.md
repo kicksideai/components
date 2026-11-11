@@ -86,8 +86,9 @@ Requests that already fit retain their prompts, call count and outcomes.
 Otherwise stages batch fields, sections or passages and select evidence in rank
 order. Evidence ranks field citations, that field's search hits, retrieval rank,
 then document order. An oversized item does not block later smaller evidence.
-Splitting requests repeats instructions and output reservations, so it can add
-calls, cost and latency. Selection can omit relevant evidence and change values.
+A partial outline is used only for its current run and is rebuilt on the next
+run instead of being cached as complete. Splitting requests repeats instructions
+and output reservations, so it can add calls, cost and latency. Selection can omit relevant evidence and change values.
 A field whose context is reduced records `codes: ["context_budget_partial"]`
 (alongside any other codes), without adding a `reason` or changing verification.
 The UI displays this code separately from a missing value or failed check.
@@ -107,12 +108,14 @@ For Scout's `mode: "agent"`, set `stages.scout.agent_id` to an agent component's
 Save and update require READ access to the selected agent and reject components of another kind. Each run checks the runner's READ access again. Missing or unreadable agents return native typed errors with code `docscout_agent_access`. Sharing an extractor does not grant access to its selected agent.
 
 For a selected agent, the agent engine owns its follow-up requests and context
-management. Docscout bounds only its initial instruction and document-tool
-results. With known limits, each handoff receives one quarter of the model's
-available input after reserving the selected agent's output. The same estimator
-measures the entire handoff, including tool chunks and metadata. Reduced
-handoffs carry an explicit truncation marker. Unknown limits leave handoffs
-unchanged. A length rejection returned by the selected agent maps to
+management. Docscout passes its instruction and user message intact. If their
+combined estimated size exceeds the model's available input after reserving the
+selected agent's output, the run returns `context_budget_exceeded` before agent
+execution. Only document-tool results are reduced: each receives one quarter of
+that available input. The same estimator measures each complete tool result,
+including chunks and metadata; reduced results carry an explicit truncation
+marker. Unknown limits disable budgeting and leave all handoffs unchanged. A
+length rejection returned by the selected agent maps to
 `context_budget_exceeded`; Docscout does not budget or retry the agent's turns.
 
 The native Dataflow agent node resolves the selected agent through `wippy.agent:resolver` under the caller's execution identity. The agent retains its model, prompt, tools and traits, with Docscout's configured document tools added for that run. Those tools read only the caller's processed document under the extractor's READ grant. Both agent modes require positive `max_rounds` and `max_extra_queries`; switching from the structured scout's zero-round default requires setting a positive budget. Selected-agent runs use a native iteration limit of `max_rounds * max_extra_queries + 1`; the extra iteration permits final notes after tool use. Agents must complete synchronously without waiting. Trace steps include `agent_id`, `dataflow_id`, reported model reference, native tool calls and results, model tokens and document-tool embedding tokens. The built-in loop records its document tool calls too.

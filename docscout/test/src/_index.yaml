@@ -1840,6 +1840,7 @@ entries:
     ai: kickside.docscout.engine:ai
     shapes: kickside.docscout.engine:shapes
     stages: kickside.docscout.engine:stages
+    runner: kickside.docscout.engine:run
     store: kickside.docscout.persist:store
 
 - name: fixture_context_budget_model
