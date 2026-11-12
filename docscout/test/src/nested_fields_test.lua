@@ -24,6 +24,73 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Nested typed fields", function()
+        test.it("maps a wire null member to the existing absent-key representation", function()
+            local reply = assert(json.decode('{"book":null,"page":"7"}'))
+            test.is_nil(reply.book); test.eq(json.encode(reply), '{"page":"7"}')
+        end)
+        test.it("accepts nullable bounded strings throughout recursive shapes", function()
+            local f = field("references", "", "list")
+            local book = property("book", "text"); book.nullable, book.max_length = true, 24
+            f.item = { type = "object", properties = { book, property("page", "text") } }
+            test.is_nil(config.validate(configuration({ f })))
+            local schema = shapes.value_schema(f).items
+            test.eq(json.encode(schema.properties.book.type), '["string","null"]')
+            test.eq(schema.properties.book.maxLength, 24)
+            test.eq(#schema.required, 2)
+            test.is_true((json.validate_string(schema, '{"book":null,"page":"7"}')))
+        end)
+        test.it("validates member options without changing scalar field or item definitions", function()
+            local f = field("reference", "", "object")
+            local member = property("book", "text"); f.properties = { member }
+            for _, options in ipairs({ { nullable = true }, { nullable = false }, { max_length = 1 }, { max_length = 24, nullable = true } }) do
+                member.nullable, member.max_length = options.nullable, options.max_length
+                test.is_nil(config.validate(configuration({ f })))
+            end
+            for _, options in ipairs({ { nullable = "true" }, { max_length = 0 }, { max_length = -1 }, { max_length = 1.5 }, { max_length = "24" } }) do
+                member.nullable, member.max_length = options.nullable, options.max_length
+                test.not_nil(config.validate(configuration({ f })))
+            end
+            member.nullable, member.max_length, member.type = nil, 24, "number"
+            test.not_nil(config.validate(configuration({ f })))
+            member.type = "boolean"; test.not_nil(config.validate(configuration({ f })))
+            f = field("scalar"); f.nullable = true
+            test.not_nil(config.validate(configuration({ f })))
+            f = field("items", "", "list"); f.item = { type = "text", max_length = 24 }
+            test.not_nil(config.validate(configuration({ f })))
+        end)
+        test.it("derives decoded receipt constraints without mutating the wire schema", function()
+            local f = field("rows", "", "list")
+            local member = property("book", "text"); member.nullable, member.max_length, member.required = true, 3, false
+            f.item = { type = "object", properties = { member, property("page", "text") } }
+            local wire = shapes.value_schema(f)
+            local before = assert(json.encode(wire))
+            local receipt = shapes.receipt_schema(wire)
+            test.eq(assert(json.encode(wire)), before)
+            test.eq(#wire.items.required, 2)
+            test.eq(json.encode(receipt.items.required), '["page"]')
+            test.eq(receipt.items.properties.book.type, "string")
+            test.eq(receipt.items.properties.book.maxLength, 3)
+            for _, raw in ipairs({ '[{"book":null,"page":"7"}]', '[{"book":"123","page":"7"}]' }) do
+                test.is_true((json.validate_string(wire, raw)))
+                test.is_true((json.validate(receipt, assert(json.decode(raw)))))
+                test.is_nil(config.validate_expected({ f }, { rows = assert(json.decode(raw)) }))
+            end
+            for _, raw in ipairs({ '[{"book":"1234","page":"7"}]', '[{"page":null}]', '[{"book":12,"page":"7"}]' }) do
+                test.is_false((json.validate(receipt, assert(json.decode(raw)))))
+            end
+        end)
+        test.it("verifies nullable missing members without changing field summaries or values", function()
+            local f = field("reference", "", "object")
+            local member = property("book", "text"); member.nullable, member.max_length = true, 24
+            f.properties = { member, property("page", "text") }
+            local cfg = configuration({ f }); cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = false, false
+            local run = { config = cfg, values = { { name = f.name, path = f.name, value = assert(json.decode('{"book":null,"page":"7"}')), missing = false, evidence = {} } } }
+            test.is_nil(stages.verify(run, {})); test.is_true(run.values[1].verified)
+            test.eq(json.encode(shapes.values({ fields = run.values })), '{"reference":{"page":"7"}}')
+            member.nullable = false
+            run.values[1].reason, run.values[1].codes = nil, nil
+            test.is_nil(stages.verify(run, {})); test.is_false(run.values[1].verified)
+        end)
         test.it("identifies duplicate names by full path and rejects path collisions and free text groups", function()
             test.is_nil(config.validate(configuration({ field("name", "parties.borrower"), field("name", "parties.agent") })))
             for _, fields in ipairs({

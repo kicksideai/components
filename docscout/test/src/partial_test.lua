@@ -13,7 +13,9 @@ local stages = require("stages")
 local shapes = require("shapes")
 local scoring = require("scoring")
 local runner = require("runner")
-local sql = require("sql")
+local fs = require("fs")
+local canonical_json = require("canonical_json")
+local baseline = require("member_baseline")
 local function schema(): any
     return assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json))
 end
@@ -38,6 +40,91 @@ local function context(cfg: any): any
 end
 return { run = test.run_cases(function()
     test.describe("Independent extraction calls", function()
+        test.it("accepts a required nullable member before mapping null to absence", function()
+            local schema = { type = "object", additionalProperties = false, required = { "reference" }, properties = {
+                reference = { type = "object", additionalProperties = false, required = { "book", "page" }, properties = {
+                    book = { type = { "string", "null" }, maxLength = 24 }, page = { type = "string" },
+                } },
+            } }
+            local raw = '{"reference":{"book":null,"page":"7"}}'
+            test.is_true((json.validate_string(schema, raw)))
+            local entry = assert(registry.get("app:fixture_success_model"))
+            entry.data.providers[1].options = { reply = assert(json.decode(raw)) }
+            local changes = assert(registry.overlay("app:partial_test")):changes()
+            changes:update(entry); assert(changes:apply())
+            local ok, failure = pcall(function()
+                local reply, err = ai.structured(ai.meter(), "class:docscout-success", schema, "Read the reference", "Page 7; book absent")
+                test.is_nil(err, tostring(err))
+                test.is_nil(reply.reference.book)
+                test.eq(reply.reference.page, "7")
+            end)
+            local restore = assert(registry.overlay("app:partial_test")):changes()
+            restore:delete(entry.id); assert(restore:apply())
+            if not ok then error(failure) end
+        end)
+        test.it("rejects a wire null for a non-nullable member", function()
+            local reply_schema = { type = "object", required = { "book" }, properties = { book = { type = "string" } } }
+            local entry = assert(registry.get("app:fixture_success_model"))
+            entry.data.providers[1].options = { reply = assert(json.decode('{"book":null}')) }
+            local changes = assert(registry.overlay("app:partial_test")):changes(); changes:update(entry); assert(changes:apply())
+            local ok, failure = pcall(function()
+                local reply, err = ai.structured(ai.meter(), "class:docscout-success", reply_schema, "Read", "Book absent")
+                test.is_nil(reply); test.not_nil(err); test.eq(err:details().code, "structured_reply_invalid")
+            end)
+            local restore = assert(registry.overlay("app:partial_test")):changes(); restore:delete(entry.id); assert(restore:apply())
+            if not ok then error(failure) end
+        end)
+        for _, character in ipairs({ "x", "界", "😀" }) do
+            test.it("returns a typed field error for an over-long member using " .. character, function()
+                local cfg = configuration({ "reference" })
+                cfg.fields[1].type = "object"
+                cfg.fields[1].properties = { { name = "book", type = "text", description = "", enum_values = {}, expected_format = "", required = true, max_length = 3 } }
+                local original = string.rep(character, 4)
+                local entry = assert(registry.get("app:fixture_success_model"))
+                entry.data.providers[1].options = { reply = { reference = { found = true, value = { book = original }, confidence = 1, evidence = {} } } }
+                local changes = assert(registry.overlay("app:partial_test")):changes(); changes:update(entry); assert(changes:apply())
+                local ok, failure = pcall(function()
+                    local run = context(cfg)
+                    test.not_nil(stages.extract(run, { meter = ai.meter() }))
+                    local value = run.values[1]
+                    test.is_true(value.failed); test.is_false(value.missing); test.is_nil(value.value)
+                    test.eq(value.error.kind, errors.INVALID); test.is_false(value.error.retryable)
+                    test.eq(value.error.details.code, "value_max_length_exceeded")
+                    test.eq(value.error.details.limit, 3); test.eq(value.error.details.length, 4)
+                    test.eq(value.error.details.path, "reference.value.book")
+                    test.eq(entry.data.providers[1].options.reply.reference.value.book, original)
+                end)
+                local restore = assert(registry.overlay("app:partial_test")):changes(); restore:delete(entry.id); assert(restore:apply())
+                if not ok then error(failure) end
+            end)
+        end
+        test.it("matches captured compound requests and stored results without member options", function()
+            local cfg = configuration({ "reference", "rows" })
+            local properties = { { name = "book", type = "text", description = "", enum_values = assert(json.decode("[]")), expected_format = "", required = true },
+                { name = "page", type = "text", description = "", enum_values = assert(json.decode("[]")), expected_format = "", required = false } }
+            cfg.fields[1].type, cfg.fields[1].properties = "object", properties
+            cfg.fields[2].type, cfg.fields[2].item = "list", { type = "object", properties = properties }
+            local entry = assert(registry.get("app:fixture_success_model"))
+            entry.data.providers[1].options = { capture_requests = "member-requests.json" }
+            local storage = assert(fs.get("app:uploads")); assert(storage:writefile("member-requests.json", "[]"))
+            local changes = assert(registry.overlay("app:partial_test")):changes(); changes:update(entry); assert(changes:apply())
+            local ok, failure = pcall(function()
+                local owner = "22222222-2222-4222-8222-222222222222"; local caller = data.caller(owner)
+                local id = assert(caller:call("app:probe", { op = "create", input = { title = "Compound reader", config = cfg } })).component_id
+                local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+                local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
+                local stored = assert(caller:call("app:probe", { op = "get", id = id })).runs[1].result
+                for _, fields in ipairs({ result.fields, stored.fields }) do
+                    for _, f in ipairs(fields) do for _, evidence in ipairs(f.evidence) do evidence.chunk_id = nil end end
+                end
+                local actual = assert(canonical_json.encode({ requests = assert(json.decode(assert(storage:readfile("member-requests.json")))),
+                    fields = result.fields, values = result.values, summary = result.summary, stored = stored }))
+                assert(storage:writefile("member-identity.json", actual))
+                test.eq(actual, assert(canonical_json.encode(baseline.get())))
+            end)
+            local restore = assert(registry.overlay("app:partial_test")):changes(); restore:delete(entry.id); assert(restore:apply())
+            if not ok then error(failure) end
+        end)
         for _, mode in ipairs({ "reported", "tokens", "finish", "absent" }) do
             for _, method in ipairs({ "generate", "agent" }) do
                 test.it("preserves " .. method .. " failures and " .. mode .. " reply metadata", function()
