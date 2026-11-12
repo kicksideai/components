@@ -4,7 +4,7 @@ export interface PageRange {first:number;last:number}
 export interface Evidence {quote:string;section:string;page?:number;chunk_id?:string;image_checksum?:string;source_revision?:string;found?:boolean}
 export type CheckStatus='passed'|'failed'|'not_run'|'unavailable'
 export interface Verification {kind:'page_image';status:CheckStatus;checks:Record<string,CheckStatus>}
-export interface ValueSchema {type:string|string[];properties?:Record<string,ValueSchema>;items?:ValueSchema;maxLength?:number}
+export interface ValueSchema {type:string|string[];properties?:Record<string,ValueSchema>;required?:string[];items?:ValueSchema;maxLength?:number}
 export interface Value {value_schema?:ValueSchema;extraction_kind?:'page_image';source_revision?:string;verification?:Verification;name:string;path:string;value:unknown;confidence:number;evidence:Evidence[];verified:boolean;missing?:boolean;reason?:string;codes?:string[];complete?:boolean;failed?:boolean;error?:CaseError|null}
 export interface TraceStep {kind:string;status:'completed'|'failed';scope?:string;model?:string;duration_ms:number;input_tokens:number;output_tokens:number;queries?:string[];message?:string;pages?:PageRange}
 export interface Extraction {run_id:string;upload_id:string;config_revision:number;values:Record<string,unknown>;fields:Value[];trace:TraceStep[];duration_ms:number;tokens:number;status?:'completed'|'partial'|'failed';error?:string;pages?:number;page_range?:PageRange}

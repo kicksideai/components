@@ -89,25 +89,30 @@ return { run = test.run_cases(function()
             if not ok then error(failure) end
         end)
         test.it("finds and verifies a present sibling of an all-absent required child", function()
-            local cfg = configuration({ "reference" })
-            cfg.fields[1].type, cfg.fields[1].properties = "object", {
-                { name = "child", type = "object", required = true, properties = {
-                    { name = "book", type = "text", required = true, nullable = true },
-                } }, { name = "page", type = "text", required = true },
-            }
-            cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = false, false
-            local entry = assert(registry.get("app:fixture_success_model"))
-            entry.data.providers[1].options = { reply = assert(json.decode('{"reference":{"found":true,"value":{"child":{"book":null},"page":"7"},"confidence":1,"evidence":[{"chunk":1,"quote":"The total amount is 1250."}]}}')) }
-            local changes = assert(registry.overlay("app:partial_test")):changes(); changes:update(entry); assert(changes:apply())
-            local ok, failure = pcall(function()
-                local run = context(cfg)
-                test.is_nil(stages.extract(run, { meter = ai.meter() }))
-                test.is_false(run.values[1].missing); test.is_false(run.values[1].failed)
-                test.eq(json.encode(run.values[1].value), '{"page":"7"}')
-                test.is_nil(stages.verify(run, {})); test.is_true(run.values[1].verified, run.values[1].reason)
-            end)
-            local restore = assert(registry.overlay("app:partial_test")):changes(); restore:delete(entry.id); assert(restore:apply())
-            if not ok then error(failure) end
+            for _, optional_note in ipairs({ false, true }) do
+                local cfg = configuration({ "reference" })
+                cfg.fields[1].type, cfg.fields[1].properties = "object", {
+                    { name = "child", type = "object", required = true, properties = {
+                        { name = "book", type = "text", required = true, nullable = true },
+                    } }, { name = "page", type = "text", required = true },
+                }
+                if optional_note then
+                    table.insert(cfg.fields[1].properties[1].properties, { name = "note", type = "text", required = false })
+                end
+                cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = false, false
+                local entry = assert(registry.get("app:fixture_success_model"))
+                entry.data.providers[1].options = { reply = assert(json.decode('{"reference":{"found":true,"value":{"child":{"book":null},"page":"7"},"confidence":1,"evidence":[{"chunk":1,"quote":"The total amount is 1250."}]}}')) }
+                local changes = assert(registry.overlay("app:partial_test")):changes(); changes:update(entry); assert(changes:apply())
+                local ok, failure = pcall(function()
+                    local run = context(cfg)
+                    test.is_nil(stages.extract(run, { meter = ai.meter() }))
+                    test.is_false(run.values[1].missing); test.is_false(run.values[1].failed)
+                    test.eq(json.encode(run.values[1].value), '{"page":"7"}')
+                    test.is_nil(stages.verify(run, {})); test.is_true(run.values[1].verified, run.values[1].reason)
+                end)
+                local restore = assert(registry.overlay("app:partial_test")):changes(); restore:delete(entry.id); assert(restore:apply())
+                if not ok then error(failure) end
+            end
         end)
         test.it("keeps only present nullable rows at every compound depth without changing legacy empties", function()
             local row = { type = "object", properties = { { name = "book", type = "text", nullable = true },

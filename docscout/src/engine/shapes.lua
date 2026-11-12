@@ -326,7 +326,7 @@ end
 local function can_be_absent(schema: any): boolean
     if nullable(schema) then return true end
     if schema.properties and next(schema.properties) ~= nil then
-        for _, property in pairs(schema.properties) do if not can_be_absent(property) then return false end end
+        for _, name in ipairs(schema.required or {}) do if not can_be_absent(schema.properties[name]) then return false end end
         return true
     end
     return schema.items ~= nil and can_be_absent(schema.items)

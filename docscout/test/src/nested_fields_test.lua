@@ -94,6 +94,22 @@ return { run = test.run_cases(function()
             leaf.nullable = nil
             test.eq(json.encode(shapes.receipt_schema(shapes.value_schema(f)).required), '["branch","rows","page"]')
         end)
+        test.it("allows required compounds with nullable and optional members to be absent on receipt", function()
+            local book = property("book", "text"); book.nullable = true
+            local note = property("note", "text"); note.required = false
+            local child = property("child", "object"); child.properties = { book, note }
+            local f = field("reference", "", "object"); f.properties = { child, property("page", "text") }
+            local wire = shapes.value_schema(f)
+            test.eq(json.encode(wire.required), '["child","page"]')
+            test.eq(json.encode(wire.properties.child.required), '["book"]')
+            local value = shapes.extracted_value(f, assert(json.decode('{"child":{"book":null},"page":"7"}')))
+            test.eq(json.encode(value), '{"page":"7"}')
+            local receipt = shapes.receipt_schema(wire)
+            test.eq(json.encode(receipt.required), '["page"]')
+            test.is_true((json.validate(receipt, value)))
+            note.required = true
+            test.eq(json.encode(shapes.receipt_schema(shapes.value_schema(f)).required), '["child","page"]')
+        end)
         test.it("retains enum and typed member constraints alongside nullable absence", function()
             for _, kind in ipairs({ "text", "date", "enum", "number", "boolean", "object", "list" }) do
                 local member = property("member", kind); member.nullable = true

@@ -73,13 +73,13 @@ var Ol = Al.extend("focustrap", {
     bind: function(s, l) {
       var u = this, i = l.value || {}, p = i.onFocusIn, g = i.onFocusOut;
       s.$_pfocustrap_mutationobserver = new MutationObserver(function(r) {
-        r.forEach(function(x) {
-          if (x.type === "childList" && !s.contains(document.activeElement)) {
+        r.forEach(function($) {
+          if ($.type === "childList" && !s.contains(document.activeElement)) {
             var C = function(v) {
               var w = yt(v) ? yt(v, u.getComputedSelector(s.$_pfocustrap_focusableselector)) ? v : Me(s, u.getComputedSelector(s.$_pfocustrap_focusableselector)) : Me(v);
               return bl(w) ? w : v.nextSibling && C(v.nextSibling);
             };
-            ze(C(x.nextSibling));
+            ze(C($.nextSibling));
           }
         });
       }), s.$_pfocustrap_mutationobserver.disconnect(), s.$_pfocustrap_mutationobserver.observe(s, {
@@ -101,7 +101,7 @@ var Ol = Al.extend("focustrap", {
       });
     },
     autoElementFocus: function(s, l) {
-      var u = l.value || {}, i = u.autoFocusSelector, p = i === void 0 ? "" : i, g = u.firstFocusableSelector, r = g === void 0 ? "" : g, x = u.autoFocus, C = x === void 0 ? !1 : x, S = Me(s, "[autofocus]".concat(this.getComputedSelector(p)));
+      var u = l.value || {}, i = u.autoFocusSelector, p = i === void 0 ? "" : i, g = u.firstFocusableSelector, r = g === void 0 ? "" : g, $ = u.autoFocus, C = $ === void 0 ? !1 : $, S = Me(s, "[autofocus]".concat(this.getComputedSelector(p)));
       C && !S && (S = Me(s, this.getComputedSelector(r))), ze(S);
     },
     onFirstHiddenElementFocus: function(s) {
@@ -113,7 +113,7 @@ var Ol = Al.extend("focustrap", {
       ze(p);
     },
     createHiddenFocusableElements: function(s, l) {
-      var u = this, i = l.value || {}, p = i.tabIndex, g = p === void 0 ? 0 : p, r = i.firstFocusableSelector, x = r === void 0 ? "" : r, C = i.lastFocusableSelector, S = C === void 0 ? "" : C, v = function(m) {
+      var u = this, i = l.value || {}, p = i.tabIndex, g = p === void 0 ? 0 : p, r = i.firstFocusableSelector, $ = r === void 0 ? "" : r, C = i.lastFocusableSelector, S = C === void 0 ? "" : C, v = function(m) {
         return pl("span", {
           class: "p-hidden-accessible p-hidden-focusable",
           tabIndex: g,
@@ -124,7 +124,7 @@ var Ol = Al.extend("focustrap", {
           onFocus: m?.bind(u)
         });
       }, w = v(this.onFirstHiddenElementFocus), V = v(this.onLastHiddenElementFocus);
-      w.$_pfocustrap_lasthiddenfocusableelement = V, w.$_pfocustrap_focusableselector = x, w.setAttribute("data-pc-section", "firstfocusableelement"), V.$_pfocustrap_firsthiddenfocusableelement = w, V.$_pfocustrap_focusableselector = S, V.setAttribute("data-pc-section", "lastfocusableelement"), s.prepend(w), s.append(V);
+      w.$_pfocustrap_lasthiddenfocusableelement = V, w.$_pfocustrap_focusableselector = $, w.setAttribute("data-pc-section", "firstfocusableelement"), V.$_pfocustrap_firsthiddenfocusableelement = w, V.$_pfocustrap_focusableselector = S, V.setAttribute("data-pc-section", "lastfocusableelement"), s.prepend(w), s.append(V);
     }
   }
 });
@@ -190,7 +190,7 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
         default:
           return [];
       }
-    }), x = (C) => [`${(C.duration_ms / 1e3).toFixed(1)}s`, `${(C.input_tokens + C.output_tokens).toLocaleString()} tokens`, C.queries?.length ? `${C.queries.length} queries` : "", C.message ?? ""].filter(Boolean).join(" · ");
+    }), $ = (C) => [`${(C.duration_ms / 1e3).toFixed(1)}s`, `${(C.input_tokens + C.output_tokens).toLocaleString()} tokens`, C.queries?.length ? `${C.queries.length} queries` : "", C.message ?? ""].filter(Boolean).join(" · ");
     return (C, S) => (a(), n("div", {
       class: Q(["node kx-focus-halo", { active: e.active, off: !i.value, fixed: e.stage === "extract" }]),
       role: "button",
@@ -220,7 +220,7 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
           f(b(L), {
             icon: e.trace.status === "failed" ? "tabler:alert-circle" : "tabler:circle-check"
           }, null, 8, ["icon"]),
-          F(d(x(e.trace)), 1)
+          F(d($(e.trace)), 1)
         ])) : h("", !0)
       ]),
       t("span", Gl, [
@@ -249,10 +249,10 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
   setup(e) {
     const s = e, l = Be(e, "modelValue"), u = R([]);
     function i(p, g) {
-      const r = s.options.length - 1, x = { ArrowRight: g + 1, ArrowDown: g + 1, ArrowLeft: g - 1, ArrowUp: g - 1, Home: 0, End: r }[p.key];
-      if (x === void 0) return;
+      const r = s.options.length - 1, $ = { ArrowRight: g + 1, ArrowDown: g + 1, ArrowLeft: g - 1, ArrowUp: g - 1, Home: 0, End: r }[p.key];
+      if ($ === void 0) return;
       p.preventDefault();
-      const C = (x + s.options.length) % s.options.length;
+      const C = ($ + s.options.length) % s.options.length;
       l.value = s.options[C].value, u.value[C]?.focus();
     }
     return (p, g) => (a(), n("div", {
@@ -260,7 +260,7 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
       role: "radiogroup",
       "aria-labelledby": e.labelledBy
     }, [
-      (a(!0), n(M, null, z(e.options, (r, x) => (a(), n("button", {
+      (a(!0), n(M, null, z(e.options, (r, $) => (a(), n("button", {
         key: r.value,
         ref_for: !0,
         ref_key: "buttons",
@@ -273,7 +273,7 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
         tabindex: l.value === r.value ? 0 : -1,
         disabled: e.disabled,
         onClick: (C) => l.value = r.value,
-        onKeydown: (C) => i(C, x)
+        onKeydown: (C) => i(C, $)
       }, [
         r.icon ? (a(), J(b(L), {
           key: 0,
@@ -296,7 +296,7 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
 function Je(e) {
   const s = [];
   function l(u, i, p, g) {
-    s.push({ field: i, trail: p, shape: u, path: g, depth: p.length + 1, key: ie(i, p) }), u.properties?.forEach((r, x) => l(r, i, [...p, x], `${g}.${r.name || "New property"}`)), u.item && l(u.item, i, [...p, "item"], `${g}[]`);
+    s.push({ field: i, trail: p, shape: u, path: g, depth: p.length + 1, key: ie(i, p) }), u.properties?.forEach((r, $) => l(r, i, [...p, $], `${g}.${r.name || "New property"}`)), u.item && l(u.item, i, [...p, "item"], `${g}[]`);
   }
   return e.forEach((u, i) => l(u, i, [], K(u) || "New field")), s;
 }
@@ -311,8 +311,8 @@ function Zl(e, s, l) {
   s.trail.length ? Je(e).find((g) => g.key === ie(s.field, s.trail.slice(0, -1))).shape.properties.splice(s.trail.at(-1), 1) : e.splice(s.field, 1);
   let i;
   if (l) {
-    const { name: p, type: g, description: r, enum_values: x, expected_format: C, required: S, properties: v, item: w, nullable: V, max_length: o } = u;
-    i = { name: p, type: g, description: r, enum_values: x, expected_format: C, required: S, ...v ? { properties: v } : {}, ...w ? { item: w } : {}, ...V !== void 0 ? { nullable: V } : {}, ...o !== void 0 ? { max_length: o } : {} }, l.shape.properties.push(i), i = l.shape.properties.at(-1);
+    const { name: p, type: g, description: r, enum_values: $, expected_format: C, required: S, properties: v, item: w, nullable: V, max_length: o } = u;
+    i = { name: p, type: g, description: r, enum_values: $, expected_format: C, required: S, ...v ? { properties: v } : {}, ...w ? { item: w } : {}, ...V !== void 0 ? { nullable: V } : {}, ...o !== void 0 ? { max_length: o } : {} }, l.shape.properties.push(i), i = l.shape.properties.at(-1);
   } else {
     const { nullable: p, max_length: g, ...r } = u;
     i = { ...nt(), ...r, group: "" }, e.push(i), i = e.at(-1);
@@ -354,7 +354,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   setup(e, { emit: s }) {
     const l = e, u = s, i = N(() => l.shape), p = N(() => l.named ? l.depth === 1 ? "Field type" : "Property type" : "Item type"), g = N(() => At.filter((T) => l.depth < Ae || !["object", "list"].includes(T.value))), r = N({ get: () => l.shape.type, set: (T) => {
       l.shape.type = T, delete l.shape.properties, delete l.shape.item, l.shape.enum_values = [], ["text", "date", "enum"].includes(T) || delete i.value.max_length, T === "object" && (l.shape.properties = []), T === "list" && (l.shape.item = gl());
-    } }), x = N(() => l.named && l.depth > 1), C = N({ get: () => i.value.nullable === !0, set: (T) => {
+    } }), $ = N(() => l.named && l.depth > 1), C = N({ get: () => i.value.nullable === !0, set: (T) => {
       T ? i.value.nullable = !0 : delete i.value.nullable;
     } }), S = N({ get: () => i.value.max_length ?? "", set: (T) => {
       T === "" ? delete i.value.max_length : i.value.max_length = Number(T);
@@ -485,7 +485,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           disabled: e.readonly
         }, null, 8, ["modelValue", "disabled"])
       ])) : h("", !0),
-      x.value ? (a(), n(M, { key: 5 }, [
+      $.value ? (a(), n(M, { key: 5 }, [
         t("div", ba, [
           U[14] || (U[14] = t("span", null, [
             F("May be absent"),
@@ -571,15 +571,15 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         "sibling-names": e.siblingNames,
         "validation-error": i.value ? p.value : void 0,
         readonly: e.readonly,
-        onAdd: r[0] || (r[0] = (x) => u("add")),
-        onSelectItem: r[1] || (r[1] = (x) => u("selectItem"))
+        onAdd: r[0] || (r[0] = ($) => u("add")),
+        onSelectItem: r[1] || (r[1] = ($) => u("selectItem"))
       }, null, 8, ["shape", "depth", "label", "named", "sibling-names", "validation-error", "readonly"]),
       i.value ? (a(), n(M, { key: 0 }, [
         r[25] || (r[25] = t("h4", null, "Finding it", -1)),
         t("label", null, [
           r[12] || (r[12] = F("Search hints", -1)),
           W(t("textarea", {
-            "onUpdate:modelValue": r[2] || (r[2] = (x) => e.field.search_hints = x),
+            "onUpdate:modelValue": r[2] || (r[2] = ($) => e.field.search_hints = $),
             rows: "2",
             maxlength: "4000",
             placeholder: "One query per line"
@@ -592,7 +592,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           t("label", null, [
             r[15] || (r[15] = F("Strategy", -1)),
             W(t("select", {
-              "onUpdate:modelValue": r[3] || (r[3] = (x) => e.field.strategy = x)
+              "onUpdate:modelValue": r[3] || (r[3] = ($) => e.field.strategy = $)
             }, [...r[14] || (r[14] = [
               t("option", { value: "standard" }, "Standard", -1),
               t("option", { value: "deep" }, "Deep analysis", -1)
@@ -604,7 +604,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
             r[16] || (r[16] = F("Chunks to read", -1)),
             t("span", xa, [
               W(t("input", {
-                "onUpdate:modelValue": r[4] || (r[4] = (x) => e.field.chunks = x),
+                "onUpdate:modelValue": r[4] || (r[4] = ($) => e.field.chunks = $),
                 type: "number",
                 min: "1",
                 max: "1000",
@@ -622,14 +622,14 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                 class: "kx-btn kx-btn-ghost kx-focus-halo",
                 "aria-label": "Decrease chunks to read",
                 disabled: e.field.chunks <= 1 || e.readonly,
-                onClick: r[5] || (r[5] = (x) => e.field.chunks--)
+                onClick: r[5] || (r[5] = ($) => e.field.chunks--)
               }, "−", 8, wa),
               t("button", {
                 type: "button",
                 class: "kx-btn kx-btn-ghost kx-focus-halo",
                 "aria-label": "Increase chunks to read",
                 disabled: e.field.chunks >= 1e3 || e.readonly,
-                onClick: r[6] || (r[6] = (x) => e.field.chunks++)
+                onClick: r[6] || (r[6] = ($) => e.field.chunks++)
               }, "+", 8, Va)
             ]),
             r[17] || (r[17] = t("small", null, "Per search hint", -1))
@@ -643,7 +643,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           r[19] || (r[19] = t("span", { id: "within-label" }, "Search within", -1)),
           f(ye, {
             modelValue: e.field.search_within,
-            "onUpdate:modelValue": r[7] || (r[7] = (x) => e.field.search_within = x),
+            "onUpdate:modelValue": r[7] || (r[7] = ($) => e.field.search_within = $),
             "labelled-by": "within-label",
             options: [{ value: "document", label: "Whole document" }, { value: "sections", label: "Map's sections" }]
           }, null, 8, ["modelValue"]),
@@ -656,7 +656,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         t("label", null, [
           r[21] || (r[21] = F("Group", -1)),
           W(t("input", {
-            "onUpdate:modelValue": r[8] || (r[8] = (x) => e.field.group = x),
+            "onUpdate:modelValue": r[8] || (r[8] = ($) => e.field.group = $),
             list: "docscout-groups",
             placeholder: "parties.borrower",
             "aria-label": "Field group",
@@ -670,9 +670,9 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
             ]
           ]),
           t("datalist", qa, [
-            (a(!0), n(M, null, z(e.groups, (x) => (a(), n("option", {
-              key: x,
-              value: x
+            (a(!0), n(M, null, z(e.groups, ($) => (a(), n("option", {
+              key: $,
+              value: $
             }, null, 8, Ua))), 128))
           ]),
           r[22] || (r[22] = t("small", null, "Use dotted snake_case names. Values nest under this path.", -1))
@@ -681,7 +681,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         t("label", null, [
           r[23] || (r[23] = F("Validation hints", -1)),
           W(t("textarea", {
-            "onUpdate:modelValue": r[9] || (r[9] = (x) => e.field.validation_hints = x),
+            "onUpdate:modelValue": r[9] || (r[9] = ($) => e.field.validation_hints = $),
             rows: "2",
             maxlength: "4000",
             placeholder: "Rules the value must satisfy"
@@ -696,7 +696,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           ], -1)),
           f(Z, {
             modelValue: e.field.evidence_required,
-            "onUpdate:modelValue": r[10] || (r[10] = (x) => e.field.evidence_required = x),
+            "onUpdate:modelValue": r[10] || (r[10] = ($) => e.field.evidence_required = $),
             label: "Evidence required",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
@@ -706,7 +706,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         key: 1,
         type: "button",
         class: "kx-btn kx-btn-danger kx-focus-halo",
-        onClick: r[11] || (r[11] = (x) => u("remove"))
+        onClick: r[11] || (r[11] = ($) => u("remove"))
       }, d(i.value ? "Remove field" : "Remove property"), 1)) : h("", !0)
     ], 8, ka));
   }
@@ -728,43 +728,43 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       const r = it("FieldGroups", !0);
       return a(), n("div", Ma, [
         e.node.indices.length ? (a(), n("ul", Aa, [
-          (a(!0), n(M, null, z(e.node.indices, (x) => (a(), n("li", { key: x }, [
-            Ie(p.$slots, "default", { index: x })
+          (a(!0), n(M, null, z(e.node.indices, ($) => (a(), n("li", { key: $ }, [
+            Ie(p.$slots, "default", { index: $ })
           ]))), 128))
         ])) : h("", !0),
-        (a(!0), n(M, null, z(e.node.children, (x, C) => (a(), n("section", {
-          key: x.path,
+        (a(!0), n(M, null, z(e.node.children, ($, C) => (a(), n("section", {
+          key: $.path,
           class: "field-group",
-          "aria-label": `Group ${x.path}`
+          "aria-label": `Group ${$.path}`
         }, [
           t("header", La, [
             t("button", {
               type: "button",
               class: "tree-toggle kx-iconbtn kx-focus-outline",
-              "aria-label": `${s.value.has(x.path) ? "Expand" : "Collapse"} group ${x.path}`,
-              "aria-expanded": !s.value.has(x.path),
-              "aria-controls": `${b(l)}-${x.path}`,
-              onClick: (S) => u(x.path)
+              "aria-label": `${s.value.has($.path) ? "Expand" : "Collapse"} group ${$.path}`,
+              "aria-expanded": !s.value.has($.path),
+              "aria-controls": `${b(l)}-${$.path}`,
+              onClick: (S) => u($.path)
             }, [
               f(b(L), {
-                icon: s.value.has(x.path) ? "tabler:chevron-right" : "tabler:chevron-down"
+                icon: s.value.has($.path) ? "tabler:chevron-right" : "tabler:chevron-down"
               }, null, 8, ["icon"])
             ], 8, Ba),
             Ie(p.$slots, "header", {
-              path: x.path,
-              label: x.name,
-              count: i(x),
+              path: $.path,
+              label: $.name,
+              count: i($),
               first: C === 0,
               last: C === e.node.children.length - 1
             }, () => [
-              t("span", Oa, d(x.name), 1)
+              t("span", Oa, d($.name), 1)
             ])
           ]),
           W(t("div", {
-            id: `${b(l)}-${x.path}`,
+            id: `${b(l)}-${$.path}`,
             class: "group-content"
           }, [
-            f(r, { node: x }, {
+            f(r, { node: $ }, {
               default: me((S) => [
                 Ie(p.$slots, "default", ht({ ref_for: !0 }, S))
               ]),
@@ -776,7 +776,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               _: 3
             }, 8, ["node"])
           ], 8, Pa), [
-            [Ke, !s.value.has(x.path)]
+            [Ke, !s.value.has($.path)]
           ])
         ], 8, Ra))), 128))
       ]);
@@ -797,7 +797,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     Ue(() => {
       g.value.focus(), g.value.select();
     });
-    function x() {
+    function $() {
       const C = i.value.trim();
       if (!C || !xl.test(C)) {
         p.value = "Use a dotted path of snake_case group names.";
@@ -811,7 +811,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     }
     return (C, S) => (a(), n("form", {
       class: "group-path-editor",
-      onSubmit: ve(x, ["prevent"])
+      onSubmit: ve($, ["prevent"])
     }, [
       W(t("input", {
         ref_key: "input",
@@ -826,7 +826,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         spellcheck: "false",
         placeholder: "parties.borrower",
         onKeydown: [
-          Ee(ve(x, ["prevent"]), ["enter"]),
+          Ee(ve($, ["prevent"]), ["enter"]),
           S[1] || (S[1] = Ee(ve((v) => u("cancel"), ["stop", "prevent"]), ["esc"]))
         ]
       }, null, 40, Da), [
@@ -874,7 +874,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   },
   emits: ["rename", "add", "reorder", "remove"],
   setup(e, { emit: s }) {
-    const l = e, u = s, i = R(!1), p = R(!1), g = R(), r = R(), x = R(), C = pe(), S = N(() => [
+    const l = e, u = s, i = R(!1), p = R(!1), g = R(), r = R(), $ = R(), C = pe(), S = N(() => [
       { label: "Move up", disabled: l.first, command: () => u("reorder", -1) },
       { label: "Move down", disabled: l.last, command: () => u("reorder", 1) },
       { separator: !0 },
@@ -948,14 +948,14 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
             "aria-haspopup": "menu",
             "aria-expanded": p.value,
             "aria-controls": b(C),
-            onClick: m[1] || (m[1] = (A) => x.value.toggle(A))
+            onClick: m[1] || (m[1] = (A) => $.value.toggle(A))
           }, [
             f(b(L), { icon: "tabler:dots" })
           ], 8, Ja),
           f(b(Mt), {
             id: b(C),
             ref_key: "menu",
-            ref: x,
+            ref: $,
             model: S.value,
             popup: "",
             "append-to": "self",
@@ -1014,7 +1014,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   },
   emits: ["select", "add", "reorder"],
   setup(e, { emit: s }) {
-    const l = e, u = s, i = pe(), p = pe(), g = R(), r = R(!1), x = N(() => [
+    const l = e, u = s, i = pe(), p = pe(), g = R(), r = R(!1), $ = N(() => [
       { label: "Move up", disabled: l.first, command: () => u("reorder", l.field, l.trail, -1) },
       { label: "Move down", disabled: l.last, command: () => u("reorder", l.field, l.trail, 1) }
     ]), C = R(!0);
@@ -1150,7 +1150,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               id: b(p),
               ref_key: "menu",
               ref: g,
-              model: x.value,
+              model: $.value,
               popup: "",
               "append-to": "self",
               onShow: A[5] || (A[5] = (U) => r.value = !0),
@@ -1310,19 +1310,19 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   setup(e) {
     const s = e, l = Be(e, "modelValue"), u = N(() => s.percent ? `${Math.round(l.value * 100)}%` : `${l.value.toLocaleString()}${s.unit ? ` ${s.unit}` : ""}`), i = (r) => s.log ? Math.log(r / s.min) / Math.log(s.max / s.min) * Ve : (r - s.min) / (s.max - s.min) * Ve;
     function p(r) {
-      const x = s.log ? s.min * Math.pow(s.max / s.min, r / Ve) : s.min + (s.max - s.min) * r / Ve, C = Math.round(x / s.step) * s.step;
+      const $ = s.log ? s.min * Math.pow(s.max / s.min, r / Ve) : s.min + (s.max - s.min) * r / Ve, C = Math.round($ / s.step) * s.step;
       return Math.min(s.max, Math.max(s.min, Number(C.toFixed(4))));
     }
     const g = N({ get: () => Math.round(i(l.value)), set: (r) => {
       l.value = p(r);
     } });
-    return (r, x) => (a(), n("div", Nn, [
+    return (r, $) => (a(), n("div", Nn, [
       t("div", Fn, [
         t("span", null, d(e.label), 1),
         t("output", Mn, d(u.value), 1)
       ]),
       W(t("input", {
-        "onUpdate:modelValue": x[0] || (x[0] = (C) => g.value = C),
+        "onUpdate:modelValue": $[0] || ($[0] = (C) => g.value = C),
         type: "range",
         min: "0",
         max: Ve,
@@ -1464,7 +1464,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     readonly: { type: Boolean }
   },
   setup(e) {
-    const s = e, l = N(() => s.config.stages), u = (V) => Cl(s.stage, V), i = wl(), p = N(() => s.config.fields.filter((V) => V.strategy === "deep").length), g = N(() => s.config.fields.filter((V) => V.search_within === "sections").map((V) => V.name || "New field")), r = N(() => Et(s.config)), x = N({ get: () => l.value.extract.reads ?? "text", set: (V) => {
+    const s = e, l = N(() => s.config.stages), u = (V) => Cl(s.stage, V), i = wl(), p = N(() => s.config.fields.filter((V) => V.strategy === "deep").length), g = N(() => s.config.fields.filter((V) => V.search_within === "sections").map((V) => V.name || "New field")), r = N(() => Et(s.config)), $ = N({ get: () => l.value.extract.reads ?? "text", set: (V) => {
       l.value.extract.reads = V, V === "pages" && l.value.extract.max_pages === void 0 && (l.value.extract.max_pages = 8);
     } }), C = N({ get: () => l.value.extract.max_pages ?? 8, set: (V) => {
       l.value.extract.max_pages = V;
@@ -1845,15 +1845,15 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         t("div", $s, [
           o[63] || (o[63] = t("span", { id: "extract-reads-label" }, "Read values from", -1)),
           f(ye, {
-            modelValue: x.value,
-            "onUpdate:modelValue": o[26] || (o[26] = (m) => x.value = m),
+            modelValue: $.value,
+            "onUpdate:modelValue": o[26] || (o[26] = (m) => $.value = m),
             "labelled-by": "extract-reads-label",
             name: "Read values from",
             options: [{ value: "text", label: "Text" }, { value: "pages", label: "Page images" }],
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        x.value === "pages" ? (a(), n(M, { key: 0 }, [
+        $.value === "pages" ? (a(), n(M, { key: 0 }, [
           o[64] || (o[64] = t("p", { class: "muted" }, "Extraction and visual support need models with vision. Text retrieval selects pages; section boundaries that share a page are unsupported.", -1)),
           f(te, {
             modelValue: C.value,
@@ -1919,7 +1919,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         t("div", Es, [
           t("span", null, [
             o[69] || (o[69] = F("Quotes exist", -1)),
-            t("small", null, d(x.value === "pages" ? "Text agreement is informational; visual support determines verification." : "Each quote is matched against the document text. No model call."), 1)
+            t("small", null, d($.value === "pages" ? "Text agreement is informational; visual support determines verification." : "Each quote is matched against the document text. No model call."), 1)
           ]),
           f(Z, {
             modelValue: l.value.verify.check_quotes,
@@ -1931,7 +1931,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         t("div", qs, [
           t("span", null, [
             o[70] || (o[70] = F("Quotes support values", -1)),
-            t("small", null, d(x.value === "pages" ? "A vision model checks the quote and value against physical page images." : "A model confirms each quote supports its value."), 1)
+            t("small", null, d($.value === "pages" ? "A vision model checks the quote and value against physical page images." : "A model confirms each quote supports its value."), 1)
           ]),
           f(Z, {
             "model-value": l.value.verify.check_support,
@@ -2028,7 +2028,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   setup(e) {
     const s = e, l = N(() => s.config.retrieval), u = N({ get: () => s.config.retention ?? "", set: (S) => {
       S.trim() ? s.config.retention = S.trim() : delete s.config.retention;
-    } }), i = [{ value: "keyword", label: "Keyword", note: "Exact words and numbers" }, { value: "semantic", label: "Semantic", note: "Meaning, even with other wording" }, { value: "hybrid", label: "Hybrid", note: "Both, merged by rank" }], p = [{ value: "none", label: "None", note: "Chunks are embedded as they are." }, { value: "headings", label: "Headings", note: 'Each chunk is embedded with its heading path, for example "Article 2 › Purchase price". No model call.' }, { value: "generated", label: "Generated", note: "A model writes one or two sentences placing each chunk in the document before it is embedded. One call per eight chunks, kept with the processed document." }], g = et("chunk_size"), r = et("overlap"), x = et("section_budget"), C = N(() => Math.min(r.max, l.value.chunk_size - 50));
+    } }), i = [{ value: "keyword", label: "Keyword", note: "Exact words and numbers" }, { value: "semantic", label: "Semantic", note: "Meaning, even with other wording" }, { value: "hybrid", label: "Hybrid", note: "Both, merged by rank" }], p = [{ value: "none", label: "None", note: "Chunks are embedded as they are." }, { value: "headings", label: "Headings", note: 'Each chunk is embedded with its heading path, for example "Article 2 › Purchase price". No model call.' }, { value: "generated", label: "Generated", note: "A model writes one or two sentences placing each chunk in the document before it is embedded. One call per eight chunks, kept with the processed document." }], g = et("chunk_size"), r = et("overlap"), $ = et("section_budget"), C = N(() => Math.min(r.max, l.value.chunk_size - 50));
     return (S, v) => (a(), n("fieldset", {
       class: "inspector-form",
       disabled: e.readonly
@@ -2100,8 +2100,8 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         modelValue: l.value.section_budget,
         "onUpdate:modelValue": v[5] || (v[5] = (w) => l.value.section_budget = w),
         label: "Section budget",
-        min: b(x).min,
-        max: b(x).max,
+        min: b($).min,
+        max: b($).max,
         step: 100,
         log: "",
         unit: "tokens",
@@ -2254,7 +2254,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       } catch {
       }
     }
-    const r = R(p("panel", !0)), x = R(p("fields", !0)), C = R(p("flow", !0));
+    const r = R(p("panel", !0)), $ = R(p("fields", !0)), C = R(p("flow", !0));
     function S() {
       try {
         const k = Number(localStorage.getItem("docscout.panelWidth"));
@@ -2299,7 +2299,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       }
     }
     function j(k) {
-      const c = k === "fields" ? x : C;
+      const c = k === "fields" ? $ : C;
       c.value = !c.value, g(k, c.value);
     }
     const D = R(), P = R(!1);
@@ -2317,11 +2317,11 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     async function le(k) {
       P.value && !r.value && (T = D.value?.getRootNode()?.activeElement), i.value = k, r.value = !0, P.value && (await Ce(), U.value?.focus());
     }
-    const oe = (k) => JSON.stringify(k) === JSON.stringify(i.value), fe = N(() => i.value.kind === "field" ? s.config.fields[i.value.index] : void 0), E = N(() => Je(s.config.fields)), y = N(() => i.value.kind === "field" ? E.value.find((k) => k.key === ie(i.value.index, i.value.trail ?? [])) : void 0), $ = N(() => y.value?.key ?? ""), O = N(() => {
+    const oe = (k) => JSON.stringify(k) === JSON.stringify(i.value), fe = N(() => i.value.kind === "field" ? s.config.fields[i.value.index] : void 0), E = N(() => Je(s.config.fields)), y = N(() => i.value.kind === "field" ? E.value.find((k) => k.key === ie(i.value.index, i.value.trail ?? [])) : void 0), x = N(() => y.value?.key ?? ""), O = N(() => {
       const k = y.value;
       return !k || k.trail.at(-1) === "item" || !k.trail.length ? void 0 : E.value.find((q) => q.key === ie(k.field, k.trail.slice(0, -1))).shape.properties.filter((q) => q !== k.shape).map((q) => q.name);
     }), I = R("");
-    be($, () => {
+    be(x, () => {
       I.value = "";
     });
     const Ne = N(() => y.value ? Xl(s.config.fields, y.value) : []), ge = N(() => {
@@ -2339,7 +2339,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     }
     const Gt = (k) => 320 - Math.max(0, ...s.config.fields.filter((c) => c.group === k || c.group.startsWith(k + ".")).map((c) => c.group.length - k.length));
     function Kt() {
-      x.value = !0, De.value = !0;
+      $.value = !0, De.value = !0;
     }
     async function vt() {
       De.value = !1, await Ce(), rt.value.focus();
@@ -2349,7 +2349,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     }
     const Jt = N(() => [...new Set(s.config.fields.map((k) => k.group.trim()).filter(Boolean))]), Yt = (k) => Ft(s.config.fields[k], s.config.fields.filter((c, q) => q !== k).map(K)), mt = ["map", "prefetch", "scout", "deep", "extract", "verify"], Xt = N(() => mt.filter((k) => Qe(s.config, k)).map((k) => $e[k]).join(" · ")), Zt = N(() => s.config.fields.map((k) => k.name || "New field").join(", ")), _t = N(() => mt.filter((k) => Qe(s.config, k)).length), xe = (k) => s.result?.trace.find((c) => c.kind === k);
     function pt(k = "") {
-      s.config.fields.push({ ...nt(), group: k }), x.value = !0, le({ kind: "field", index: s.config.fields.length - 1 });
+      s.config.fields.push({ ...nt(), group: k }), $.value = !0, le({ kind: "field", index: s.config.fields.length - 1 });
     }
     function el(k) {
       s.config.fields.splice(k, 1), i.value = { kind: "document" };
@@ -2423,17 +2423,17 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               t("button", {
                 type: "button",
                 class: "collapse",
-                "aria-expanded": x.value,
+                "aria-expanded": $.value,
                 "aria-controls": "fields-body",
                 onClick: c[0] || (c[0] = (q) => j("fields"))
               }, [
                 f(b(L), {
-                  icon: x.value ? "tabler:chevron-down" : "tabler:chevron-right"
+                  icon: $.value ? "tabler:chevron-down" : "tabler:chevron-right"
                 }, null, 8, ["icon"]),
                 c[23] || (c[23] = t("h2", { id: "fields-head" }, "Fields", -1)),
                 t("span", _s, d(e.config.fields.length), 1)
               ], 8, Zs),
-              !x.value && e.config.fields.length ? (a(), n("span", eo, d(Zt.value), 1)) : h("", !0),
+              !$.value && e.config.fields.length ? (a(), n("span", eo, d(Zt.value), 1)) : h("", !0),
               e.readonly ? h("", !0) : (a(), n("div", to, [
                 t("button", {
                   ref_key: "addGroupButton",
@@ -2502,7 +2502,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                       field: q,
                       trail: [],
                       path: b(K)(e.config.fields[q]) || "New field",
-                      selected: $.value,
+                      selected: x.value,
                       readonly: e.readonly,
                       error: Yt(q),
                       first: !e.config.fields.slice(0, q).some((Y) => Y.group === e.config.fields[q].group),
@@ -2533,7 +2533,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                 c[29] || (c[29] = t("small", null, "Example values illustrate the shape; extracted values come from your document.", -1))
               ])
             ], 512), [
-              [Ke, x.value]
+              [Ke, $.value]
             ])
           ]),
           t("section", fo, [
@@ -2916,16 +2916,16 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     function i(g) {
       if (!g) return !1;
       if (Array.isArray(g.type) && g.type.includes("null")) return !0;
-      const r = Object.values(g.properties ?? {});
-      return r.length ? r.every(i) : !!g.items && i(g.items);
+      const r = Object.entries(g.properties ?? {});
+      return r.length ? r.every(([$, C]) => !g.required?.includes($) || i(C)) : !!g.items && i(g.items);
     }
     const p = N(() => i(s.schema) ? "Missing" : "—");
     return (g, r) => {
-      const x = it("NestedValue", !0);
+      const $ = it("NestedValue", !0);
       return a(), n("div", ai, [
         Array.isArray(e.value) ? (a(), n("ol", ni, [
           (a(!0), n(M, null, z(e.value, (C, S) => (a(), n("li", { key: S }, [
-            f(x, {
+            f($, {
               value: C,
               schema: e.schema?.items
             }, null, 8, ["value", "schema"])
@@ -2935,7 +2935,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           (a(!0), n(M, null, z(u.value, (C) => (a(), n(M, { key: C }, [
             t("dt", null, d(C), 1),
             t("dd", null, [
-              f(x, {
+              f($, {
                 value: b(st)(l.value, C),
                 schema: e.schema?.properties?.[C]
               }, null, 8, ["value", "schema"])
@@ -2973,7 +2973,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     pageRange: {}
   },
   setup(e) {
-    const s = e, l = N(() => Oe(s.fields.map((S) => S.path))), u = R(), i = (S) => `${Math.round(S * 100)}%`, p = (S) => S !== null && typeof S == "object", g = (S) => Array.isArray(S) ? `${S.length} items` : p(S) ? `${Object.keys(S).length} properties` : S == null ? "—" : String(S), r = (S) => S >= 0.9 ? "high" : S >= 0.7 ? "mid" : "low", x = (S) => S.codes?.includes("missing_in_sections") ? "Not in the selected sections" + (s.pageRange ? " of the searched pages" : "") : "Not in the document", C = (S) => {
+    const s = e, l = N(() => Oe(s.fields.map((S) => S.path))), u = R(), i = (S) => `${Math.round(S * 100)}%`, p = (S) => S !== null && typeof S == "object", g = (S) => Array.isArray(S) ? `${S.length} items` : p(S) ? `${Object.keys(S).length} properties` : S == null ? "—" : String(S), r = (S) => S >= 0.9 ? "high" : S >= 0.7 ? "mid" : "low", $ = (S) => S.codes?.includes("missing_in_sections") ? "Not in the selected sections" + (s.pageRange ? " of the searched pages" : "") : "Not in the document", C = (S) => {
       const v = S.error?.details;
       return !!v && typeof v == "object" && "code" in v && v.code === "context_budget_exceeded";
     };
@@ -2993,7 +2993,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               t("span", ri, d(V.name), 1),
               t("span", {
                 class: Q(["value-text", { missing: V.missing }])
-              }, d(V.failed ? C(V) ? "Context budget exceeded" : "Failed" : V.missing ? x(V) : g(V.value)), 3),
+              }, d(V.failed ? C(V) ? "Context budget exceeded" : "Failed" : V.missing ? $(V) : g(V.value)), 3),
               V.failed ? h("", !0) : (a(), n("span", {
                 key: 0,
                 class: Q(["confidence", r(V.confidence)])
@@ -3097,7 +3097,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   },
   emits: ["run"],
   setup(e, { emit: s }) {
-    const l = e, u = s, i = R(""), p = (S) => `${(S / 1e3).toFixed(1)}s`, g = N(() => Math.max(1, ...l.result?.trace.map((S) => S.duration_ms) ?? [1])), r = { read: { label: "Read document", icon: "tabler:file-text" }, highlight: { label: "Highlighter", icon: "tabler:highlight" } }, x = (S) => r[S]?.label ?? $e[S] ?? S, C = (S) => r[S]?.icon ?? ut[S] ?? "tabler:point";
+    const l = e, u = s, i = R(""), p = (S) => `${(S / 1e3).toFixed(1)}s`, g = N(() => Math.max(1, ...l.result?.trace.map((S) => S.duration_ms) ?? [1])), r = { read: { label: "Read document", icon: "tabler:file-text" }, highlight: { label: "Highlighter", icon: "tabler:highlight" } }, $ = (S) => r[S]?.label ?? $e[S] ?? S, C = (S) => r[S]?.icon ?? ut[S] ?? "tabler:point";
     return (S, v) => (a(), n("div", ki, [
       t("section", $i, [
         t("div", xi, [
@@ -3157,7 +3157,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               ]),
               t("div", Ri, [
                 t("div", Li, [
-                  t("strong", null, d(x(w.kind)), 1),
+                  t("strong", null, d($(w.kind)), 1),
                   t("span", Bi, d(p(w.duration_ms)), 1)
                 ]),
                 t("span", Oi, [
@@ -3280,7 +3280,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
     be(() => l.addedCaseId, () => {
       i.value = !1, p.value = "", g.value = {};
     });
-    function x(E, y) {
+    function $(E, y) {
       return E.type === "number" ? Number(y) : E.type === "boolean" ? y === "true" : E.type === "list" || E.type === "object" ? JSON.parse(y) : y;
     }
     function C() {
@@ -3288,8 +3288,8 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       const E = {};
       try {
         for (const y of l.fields) {
-          const $ = String(g.value[K(y)] ?? "").trim();
-          $ && Ut(E, K(y), x(y, $));
+          const x = String(g.value[K(y)] ?? "").trim();
+          x && Ut(E, K(y), $(y, x));
         }
       } catch {
         r.value = 'Lists and objects need valid JSON, for example ["a","b"] or {"city":"Hamburg"}.';
@@ -3306,7 +3306,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       if (o.value) return v.value.find((y) => y.id === o.value);
       const E = v.value.findIndex((y) => y.id === w.value.id);
       return E >= 0 ? v.value[E + 1] : v.value[0];
-    }), A = N(() => (w.value?.metrics ?? []).map((E) => ({ ...E, before: m.value?.metrics.find((y) => y.field === E.field) }))), T = N(() => (w.value?.fields ?? []).map(K)), U = N(() => Oe(l.fields.map(K))), B = (E, y) => E.scores.find(($) => $.field === y), G = R(), j = (E) => `${Math.round(E * 100)}%`, D = (E) => {
+    }), A = N(() => (w.value?.metrics ?? []).map((E) => ({ ...E, before: m.value?.metrics.find((y) => y.field === E.field) }))), T = N(() => (w.value?.fields ?? []).map(K)), U = N(() => Oe(l.fields.map(K))), B = (E, y) => E.scores.find((x) => x.field === y), G = R(), j = (E) => `${Math.round(E * 100)}%`, D = (E) => {
       const y = Math.round(E * 100);
       return `${y > 0 ? "+" : y < 0 ? "−" : "±"}${Math.abs(y)} pts`;
     }, P = (E) => Math.round(E * 100) > 0 ? "up" : Math.round(E * 100) < 0 ? "down" : "flat", ue = (E) => E >= 6e4 ? `${Math.floor(E / 6e4)}m ${Math.round(E % 6e4 / 1e3)}s` : `${(E / 1e3).toFixed(1)}s`, ke = (E) => E == null || E === "" ? "—" : typeof E == "string" ? E : Array.isArray(E) && E.every((y) => typeof y != "object") ? E.join(", ") : JSON.stringify(E), le = (E) => E ? E.failed ? "fail" : E.score >= 0.999 ? "pass" : E.score > 0 ? "partial" : "fail" : "none", oe = (E) => (E.results ?? []).filter((y) => y.status === "completed").length, fe = { queued: "Queued", running: "Running", completed: "Completed", partial: "Partial", failed: "Failed" };
@@ -3325,7 +3325,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
             label: S.value ? "Evaluating…" : "Run all cases",
             loading: e.starting || !!S.value,
             disabled: !e.cases.length || !e.fields.length || !!S.value || e.starting,
-            onClick: y[0] || (y[0] = ($) => u("evaluate"))
+            onClick: y[0] || (y[0] = (x) => u("evaluate"))
           }, null, 8, ["label", "loading", "disabled"])
         ]),
         w.value && !b(He)(w.value) ? (a(), n("div", Ki, [
@@ -3361,7 +3361,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
               F(d(oe(w.value)), 1),
               t("small", null, " / " + d(w.value.case_count), 1)
             ]),
-            t("span", lu, d((w.value.results ?? []).filter(($) => $.status === "partial").length) + " partial · " + d((w.value.results ?? []).filter(($) => $.status === "failed").length) + " failed", 1)
+            t("span", lu, d((w.value.results ?? []).filter((x) => x.status === "partial").length) + " partial · " + d((w.value.results ?? []).filter((x) => x.status === "failed").length) + " failed", 1)
           ]),
           t("div", au, [
             y[8] || (y[8] = t("span", { class: "stat-label" }, "Tokens", -1)),
@@ -3382,12 +3382,12 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
               t("select", {
                 value: m.value?.id,
                 "aria-label": "Baseline evaluation",
-                onChange: y[1] || (y[1] = ($) => o.value = $.target.value)
+                onChange: y[1] || (y[1] = (x) => o.value = x.target.value)
               }, [
-                (a(!0), n(M, null, z(v.value.filter(($) => $.id !== w.value.id), ($) => (a(), n("option", {
-                  key: $.id,
-                  value: $.id
-                }, "Revision " + d($.config_revision) + " · " + d(b(Ye)($.created_at)), 9, mu))), 128))
+                (a(!0), n(M, null, z(v.value.filter((x) => x.id !== w.value.id), (x) => (a(), n("option", {
+                  key: x.id,
+                  value: x.id
+                }, "Revision " + d(x.config_revision) + " · " + d(b(Ye)(x.created_at)), 9, mu))), 128))
               ], 40, vu)
             ])) : h("", !0)
           ]),
@@ -3405,31 +3405,31 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                 ])
               ]),
               t("tbody", null, [
-                (a(!0), n(M, null, z(A.value, ($) => (a(), n("tr", {
-                  key: $.field
+                (a(!0), n(M, null, z(A.value, (x) => (a(), n("tr", {
+                  key: x.field
                 }, [
-                  t("td", hu, d($.field), 1),
+                  t("td", hu, d(x.field), 1),
                   t("td", null, [
                     t("span", yu, [
                       t("span", ku, [
                         t("span", {
-                          style: qe({ width: j($.accuracy) })
+                          style: qe({ width: j(x.accuracy) })
                         }, null, 4)
                       ]),
-                      F(d(j($.accuracy)), 1)
+                      F(d(j(x.accuracy)), 1)
                     ])
                   ]),
-                  t("td", $u, d(j($.verified)), 1),
-                  m.value ? (a(), n("td", xu, d($.before ? j($.before.accuracy) : "—"), 1)) : h("", !0),
+                  t("td", $u, d(j(x.verified)), 1),
+                  m.value ? (a(), n("td", xu, d(x.before ? j(x.before.accuracy) : "—"), 1)) : h("", !0),
                   m.value ? (a(), n("td", wu, [
-                    $.before ? (a(), n("span", {
+                    x.before ? (a(), n("span", {
                       key: 0,
-                      class: Q(["trend", P($.accuracy - $.before.accuracy)])
+                      class: Q(["trend", P(x.accuracy - x.before.accuracy)])
                     }, [
                       f(b(L), {
-                        icon: P($.accuracy - $.before.accuracy) === "up" ? "tabler:trending-up" : P($.accuracy - $.before.accuracy) === "down" ? "tabler:trending-down" : "tabler:minus"
+                        icon: P(x.accuracy - x.before.accuracy) === "up" ? "tabler:trending-up" : P(x.accuracy - x.before.accuracy) === "down" ? "tabler:trending-down" : "tabler:minus"
                       }, null, 8, ["icon"]),
-                      F(d(D($.accuracy - $.before.accuracy)), 1)
+                      F(d(D(x.accuracy - x.before.accuracy)), 1)
                     ], 2)) : (a(), n("span", Vu, "New field"))
                   ])) : h("", !0)
                 ]))), 128))
@@ -3448,39 +3448,39 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
             t("thead", null, [
               t("tr", null, [
                 y[15] || (y[15] = t("th", null, "Document", -1)),
-                (a(!0), n(M, null, z(T.value, ($) => (a(), n("th", {
-                  key: $,
+                (a(!0), n(M, null, z(T.value, (x) => (a(), n("th", {
+                  key: x,
                   class: "mono"
-                }, d($), 1))), 128))
+                }, d(x), 1))), 128))
               ])
             ]),
             t("tbody", null, [
-              (a(!0), n(M, null, z(w.value.results, ($) => (a(), n(M, {
-                key: $.case_id
+              (a(!0), n(M, null, z(w.value.results, (x) => (a(), n(M, {
+                key: x.case_id
               }, [
                 t("tr", {
-                  class: Q(["result-row", { active: G.value === $.case_id }])
+                  class: Q(["result-row", { active: G.value === x.case_id }])
                 }, [
                   t("td", null, [
                     t("button", {
                       type: "button",
                       class: "case-toggle",
-                      "aria-expanded": G.value === $.case_id,
-                      onClick: (O) => G.value = G.value === $.case_id ? void 0 : $.case_id
+                      "aria-expanded": G.value === x.case_id,
+                      onClick: (O) => G.value = G.value === x.case_id ? void 0 : x.case_id
                     }, [
                       f(b(L), {
-                        icon: G.value === $.case_id ? "tabler:chevron-down" : "tabler:chevron-right"
+                        icon: G.value === x.case_id ? "tabler:chevron-down" : "tabler:chevron-right"
                       }, null, 8, ["icon"]),
-                      F(d($.upload_name), 1)
+                      F(d(x.upload_name), 1)
                     ], 8, qu),
-                    $.status === "partial" ? (a(), n("span", Uu, "Partial")) : h("", !0)
+                    x.status === "partial" ? (a(), n("span", Uu, "Partial")) : h("", !0)
                   ]),
-                  $.status === "queued" || $.status === "failed" ? (a(), n("td", {
+                  x.status === "queued" || x.status === "failed" ? (a(), n("td", {
                     key: 0,
                     colspan: T.value.length,
                     class: "muted"
                   }, [
-                    $.status === "queued" ? (a(), n("span", Fu, [
+                    x.status === "queued" ? (a(), n("span", Fu, [
                       f(b(L), {
                         icon: "tabler:loader-2",
                         class: "spin"
@@ -3489,37 +3489,37 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                     ])) : (a(), n("span", {
                       key: 1,
                       class: "cell-state fail",
-                      "data-error-kind": $.error?.kind,
-                      title: $.error?.kind
+                      "data-error-kind": x.error?.kind,
+                      title: x.error?.kind
                     }, [
                       f(b(L), { icon: "tabler:alert-triangle" }),
-                      F(d($.error?.message), 1)
+                      F(d(x.error?.message), 1)
                     ], 8, Mu))
                   ], 8, Nu)) : (a(!0), n(M, { key: 1 }, z(T.value, (O) => (a(), n("td", {
                     key: O,
                     "data-label": O
                   }, [
                     t("span", {
-                      class: Q(["cell", le(B($, O))]),
-                      title: ke(B($, O)?.value)
-                    }, d(B($, O)?.failed ? "Failed" : B($, O) ? j(B($, O).score) : "—"), 11, Ru)
+                      class: Q(["cell", le(B(x, O))]),
+                      title: ke(B(x, O)?.value)
+                    }, d(B(x, O)?.failed ? "Failed" : B(x, O) ? j(B(x, O).score) : "—"), 11, Ru)
                   ], 8, Au))), 128))
                 ], 2),
-                G.value === $.case_id ? (a(), n("tr", Lu, [
+                G.value === x.case_id ? (a(), n("tr", Lu, [
                   t("td", {
                     colspan: T.value.length + 1
                   }, [
-                    $.error ? (a(), n("p", {
+                    x.error ? (a(), n("p", {
                       key: 0,
                       class: "muted",
-                      "data-error-kind": $.error.kind,
-                      title: $.error.kind
-                    }, d($.error.message), 9, Ou)) : h("", !0),
+                      "data-error-kind": x.error.kind,
+                      title: x.error.kind
+                    }, d(x.error.message), 9, Ou)) : h("", !0),
                     f(Re, {
-                      node: b(Oe)($.scores.map((O) => O.field))
+                      node: b(Oe)(x.scores.map((O) => O.field))
                     }, {
                       default: me(({ index: O }) => [
-                        (a(!0), n(M, null, z([$.scores[O]], (I) => (a(), n("dl", {
+                        (a(!0), n(M, null, z([x.scores[O]], (I) => (a(), n("dl", {
                           key: I.field,
                           class: "compare"
                         }, [
@@ -3561,7 +3561,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                       ]),
                       _: 2
                     }, 1032, ["node"]),
-                    t("p", zu, d($.tokens.toLocaleString()) + " tokens · " + d(ue($.duration_ms)), 1)
+                    t("p", zu, d(x.tokens.toLocaleString()) + " tokens · " + d(ue(x.duration_ms)), 1)
                   ], 8, Bu)
                 ])) : h("", !0)
               ], 64))), 128))
@@ -3579,7 +3579,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
             severity: "secondary",
             class: "push",
             disabled: !e.fields.length,
-            onClick: y[2] || (y[2] = ($) => i.value = !i.value)
+            onClick: y[2] || (y[2] = (x) => i.value = !i.value)
           }, null, 8, ["disabled"])
         ]),
         i.value ? (a(), n("form", {
@@ -3591,15 +3591,15 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
             y[21] || (y[21] = F("Document", -1)),
             f(Lt, {
               value: p.value,
-              onSelect: y[3] || (y[3] = ($) => {
-                p.value = $;
+              onSelect: y[3] || (y[3] = (x) => {
+                p.value = x;
               })
             }, null, 8, ["value"])
           ]),
           y[24] || (y[24] = t("p", { class: "muted" }, "Enter what the document states. Leave a field blank when the document does not state it; the case then expects Docscout to report it missing.", -1)),
           f(Re, { node: U.value }, {
-            default: me(({ index: $ }) => [
-              (a(!0), n(M, null, z([e.fields[$]], (O) => (a(), n("label", {
+            default: me(({ index: x }) => [
+              (a(!0), n(M, null, z([e.fields[x]], (O) => (a(), n("label", {
                 key: b(K)(O)
               }, [
                 t("span", Ku, d(O.name), 1),
@@ -3653,7 +3653,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
               size: "small",
               severity: "secondary",
               text: "",
-              onClick: y[4] || (y[4] = ($) => i.value = !1)
+              onClick: y[4] || (y[4] = (x) => i.value = !1)
             })
           ])
         ], 32)) : h("", !0),
@@ -3667,24 +3667,24 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
               ])
             ], -1)),
             t("tbody", null, [
-              (a(!0), n(M, null, z(e.cases, ($) => (a(), n("tr", {
-                key: $.id
+              (a(!0), n(M, null, z(e.cases, (x) => (a(), n("tr", {
+                key: x.id
               }, [
                 t("td", null, [
                   f(b(L), {
                     icon: "tabler:file-text",
                     class: "muted"
                   }),
-                  F(" " + d($.upload_name), 1)
+                  F(" " + d(x.upload_name), 1)
                 ]),
                 t("td", null, [
                   f(Re, { node: U.value }, {
                     default: me(({ index: O }) => [
                       t("div", nd, [
                         t("strong", null, d(e.fields[O].name), 1),
-                        b(st)($.expected, b(K)(e.fields[O])) !== void 0 ? (a(), J(Le, {
+                        b(st)(x.expected, b(K)(e.fields[O])) !== void 0 ? (a(), J(Le, {
                           key: 0,
-                          value: b(st)($.expected, b(K)(e.fields[O]))
+                          value: b(st)(x.expected, b(K)(e.fields[O]))
                         }, null, 8, ["value"])) : (a(), n("span", sd, "Not stated"))
                       ])
                     ]),
@@ -3695,9 +3695,9 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                   t("button", {
                     type: "button",
                     class: "kx-iconbtn kx-focus-outline",
-                    "aria-label": `Remove case ${$.upload_name}`,
+                    "aria-label": `Remove case ${x.upload_name}`,
                     disabled: e.saving,
-                    onClick: (O) => u("delete-case", $.id)
+                    onClick: (O) => u("delete-case", x.id)
                   }, [
                     f(b(L), { icon: "tabler:trash" })
                   ], 8, id)
@@ -3713,22 +3713,22 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
           t("span", rd, d(e.evaluations.length), 1)
         ]),
         t("ul", cd, [
-          (a(!0), n(M, null, z(e.evaluations, ($) => (a(), n("li", {
-            key: $.id
+          (a(!0), n(M, null, z(e.evaluations, (x) => (a(), n("li", {
+            key: x.id
           }, [
             t("button", {
               type: "button",
-              class: Q({ active: w.value?.id === $.id }),
-              "aria-current": w.value?.id === $.id,
-              onClick: (O) => u("open", $.id)
+              class: Q({ active: w.value?.id === x.id }),
+              "aria-current": w.value?.id === x.id,
+              onClick: (O) => u("open", x.id)
             }, [
               t("span", {
                 class: "badge",
-                "data-status": $.status
-              }, d(fe[$.status]), 9, md),
-              t("span", null, "Revision " + d($.config_revision), 1),
-              t("span", pd, d(b(Ye)($.created_at)), 1),
-              t("strong", bd, d($.status === "completed" || $.status === "partial" ? j(b(Se)($)) : "—"), 1)
+                "data-status": x.status
+              }, d(fe[x.status]), 9, md),
+              t("span", null, "Revision " + d(x.config_revision), 1),
+              t("span", pd, d(b(Ye)(x.created_at)), 1),
+              t("strong", bd, d(x.status === "completed" || x.status === "partial" ? j(b(Se)(x)) : "—"), 1)
             ], 10, vd)
           ]))), 128))
         ])
@@ -3849,8 +3849,8 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
     return Ue(async () => {
       try {
         await Ze("kickside-share", { timeoutMs: 8e3 });
-      } catch (x) {
-        p.value = `Sharing is unavailable: ${x instanceof Error ? x.message : String(x)}`;
+      } catch ($) {
+        p.value = `Sharing is unavailable: ${$ instanceof Error ? $.message : String($)}`;
         return;
       }
       const g = document.createElement("kickside-share"), r = encodeURIComponent(l.id);
@@ -3899,24 +3899,24 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
   },
   emits: ["save", "add-case", "delete-case", "back", "run", "evaluate", "open-evaluation"],
   setup(e, { emit: s }) {
-    const l = e, u = s, i = R(), p = R(!1), g = R("Builder"), r = R($t()), x = R(""), C = R(""), S = N(() => l.snapshot.can_edit ? ["Builder", "Test", "Evals", "Runs"] : ["Test", "Runs"]);
+    const l = e, u = s, i = R(), p = R(!1), g = R("Builder"), r = R($t()), $ = R(""), C = R(""), S = N(() => l.snapshot.can_edit ? ["Builder", "Test", "Evals", "Runs"] : ["Test", "Runs"]);
     be(g, () => {
       i.value && (i.value.scrollTop = 0);
     }, { flush: "post" });
     const v = R(), w = R(), V = N(() => l.snapshot.can_edit && v.value !== l.snapshot.expected_revision), o = N(() => V.value && w.value !== l.snapshot.expected_revision);
     function m(j) {
-      return x.value === j.title && C.value === (j.description ?? "") && Nl(r.value, j.config);
+      return $.value === j.title && C.value === (j.description ?? "") && Nl(r.value, j.config);
     }
     function A() {
       const j = l.snapshot;
-      r.value = structuredClone(lt(j.config ?? $t())), x.value = j.title, C.value = j.description ?? "", v.value = j.expected_revision, w.value = void 0;
+      r.value = structuredClone(lt(j.config ?? $t())), $.value = j.title, C.value = j.description ?? "", v.value = j.expected_revision, w.value = void 0;
     }
     be(() => l.snapshot, (j, D) => {
       S.value.includes(g.value) || (g.value = S.value[0]), !(D && j.id === D.id && j.can_edit && D.can_edit && !m(D) && !m(j)) && A();
     }, { immediate: !0 });
     const T = N(() => l.snapshot.can_edit && !m(l.snapshot)), U = N(() => Ul(r.value)), B = N(() => Object.keys($e).filter((j) => Qe(r.value, j)).length);
     function G() {
-      u("save", { title: x.value, description: C.value, config: structuredClone(lt(r.value)), expected_revision: v.value });
+      u("save", { title: $.value, description: C.value, config: structuredClone(lt(r.value)), expected_revision: v.value });
     }
     return (j, D) => (a(), n("main", Rd, [
       t("div", Ld, [
@@ -3989,7 +3989,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
               label: "Save",
               size: "small",
               loading: e.saving,
-              disabled: !T.value || !!U.value || !x.value.trim(),
+              disabled: !T.value || !!U.value || !$.value.trim(),
               onClick: G
             }, null, 8, ["loading", "disabled"])
           ], 64)) : h("", !0)
@@ -4020,8 +4020,8 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       }, null, 8, ["id", "title"])) : h("", !0),
       g.value === "Builder" && e.snapshot.can_edit ? (a(), n("div", Kd, [
         f(Xo, {
-          title: x.value,
-          "onUpdate:title": D[4] || (D[4] = (P) => x.value = P),
+          title: $.value,
+          "onUpdate:title": D[4] || (D[4] = (P) => $.value = P),
           description: C.value,
           "onUpdate:description": D[5] || (D[5] = (P) => C.value = P),
           config: r.value,
@@ -4089,13 +4089,13 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
   },
   emits: ["back"],
   setup(e, { emit: s }) {
-    const l = e, u = s, i = R(), p = R(""), g = R(!1), r = R(!1), x = R(!1), C = R(), S = R(null), v = R([]), w = R();
+    const l = e, u = s, i = R(), p = R(""), g = R(!1), r = R(!1), $ = R(!1), C = R(), S = R(null), v = R([]), w = R();
     let V = [], o = 0, m = 0, A = 0, T;
     const U = (E) => E instanceof Error ? E.message : String(E), B = (E) => E === o;
     async function G(E, y) {
-      const $ = ++A;
+      const x = ++A;
       y && (T = y);
-      const O = () => B(E) && $ === A;
+      const O = () => B(E) && x === A;
       try {
         const I = l.id, Ne = await he.evaluations(I);
         if (!O()) return;
@@ -4111,23 +4111,23 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       }
     }
     async function j(E) {
-      const y = ++m, $ = () => B(E) && y === m;
+      const y = ++m, x = () => B(E) && y === m;
       if (!l.id) {
         p.value = "No extractor selected.";
         return;
       }
       try {
         const O = await he.get(l.id);
-        if (!$()) return;
+        if (!x()) return;
         i.value = O, p.value = "", O.can_edit && await G(E);
       } catch (O) {
-        $() && (p.value = U(O));
+        x() && (p.value = U(O));
       }
     }
     be(() => l.id, (E, y) => {
       o++, T = void 0, V.forEach((O) => O()), V = [], C.value = void 0, i.value = void 0, S.value = null, v.value = [], w.value = void 0, p.value = "";
-      const $ = o;
-      l.id && (V = [xt(`component.${l.id}`, () => j($)), xt(`docscout.runs.${l.id}`, () => j($))]), y !== void 0 && j($);
+      const x = o;
+      l.id && (V = [xt(`component.${l.id}`, () => j(x)), xt(`docscout.runs.${l.id}`, () => j(x))]), y !== void 0 && j(x);
     }, { immediate: !0 }), Fl(() => j(o)), Ct(() => {
       o++, V.forEach((E) => E());
     });
@@ -4135,31 +4135,31 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       const y = o;
       g.value = !0, p.value = "";
       try {
-        const $ = await E();
+        const x = await E();
         if (B(y))
-          return await j(y), $;
-      } catch ($) {
-        B(y) && (p.value = U($));
+          return await j(y), x;
+      } catch (x) {
+        B(y) && (p.value = U(x));
       } finally {
         g.value = !1;
       }
     }
     const P = (E) => D(() => he.update(l.id, E));
     async function ue(E) {
-      const y = o, $ = await D(() => he.addCase(l.id, E));
-      $ && B(y) && (C.value = $.id);
+      const y = o, x = await D(() => he.addCase(l.id, E));
+      x && B(y) && (C.value = x.id);
     }
     const ke = (E) => D(() => he.deleteCase(l.id, E));
     async function le(E) {
       const y = o;
       r.value = !0, p.value = "";
       try {
-        const $ = await he.run(l.id, E);
-        B(y) && (S.value = $, await j(y));
-      } catch ($) {
+        const x = await he.run(l.id, E);
+        B(y) && (S.value = x, await j(y));
+      } catch (x) {
         if (B(y)) {
-          const O = $?.response?.data?.error;
-          p.value = i.value?.config?.stages.extract.reads === "pages" && O ? O : U($);
+          const O = x?.response?.data?.error;
+          p.value = i.value?.config?.stages.extract.reads === "pages" && O ? O : U(x);
         }
       } finally {
         r.value = !1;
@@ -4167,14 +4167,14 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
     }
     async function oe() {
       const E = o;
-      x.value = !0, p.value = "";
+      $.value = !0, p.value = "";
       try {
         const { eval_id: y } = await he.evaluate(l.id);
         B(E) && await G(E, y);
       } catch (y) {
         B(E) && (p.value = U(y));
       } finally {
-        x.value = !1;
+        $.value = !1;
       }
     }
     function fe(E) {
@@ -4186,13 +4186,13 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       "added-case-id": C.value,
       saving: g.value,
       running: r.value,
-      starting: x.value,
+      starting: $.value,
       result: S.value,
       evaluations: v.value,
       evaluation: w.value,
       error: p.value,
       back: e.back,
-      onBack: y[0] || (y[0] = ($) => u("back")),
+      onBack: y[0] || (y[0] = (x) => u("back")),
       onRun: le,
       onSave: P,
       onAddCase: ue,

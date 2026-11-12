@@ -9,8 +9,8 @@ const keys=computed(()=>[...new Set([...Object.keys(props.schema?.properties??{}
 function canBeAbsent(schema?:ValueSchema):boolean{
  if(!schema)return false
  if(Array.isArray(schema.type)&&schema.type.includes('null'))return true
- const members=Object.values(schema.properties??{})
- if(members.length)return members.every(canBeAbsent)
+ const members=Object.entries(schema.properties??{})
+ if(members.length)return members.every(([name,member])=>!schema.required?.includes(name)||canBeAbsent(member))
  return !!schema.items&&canBeAbsent(schema.items)
 }
 const absentLabel=computed(()=>canBeAbsent(props.schema)?'Missing':'—')

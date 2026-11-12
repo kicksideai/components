@@ -41,9 +41,9 @@ describe('Nested field editor and results',()=>{
   w.unmount()
  })
  it('renders absent compounds with recursively nullable descendants as missing',()=>{
-  const child={type:'object',properties:{book:{type:['string','null']}}}
-  const branch={type:'object',properties:{child}}
-  const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',properties:{child,branch,rows:{type:'array',items:branch},legacy:{type:'object',properties:{book:{type:'string'}}},page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
+  const child={type:'object',required:['book'],properties:{book:{type:['string','null']}}}
+  const branch={type:'object',required:['child'],properties:{child}}
+  const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',properties:{child,branch,rows:{type:'array',items:branch},legacy:{type:'object',required:['book'],properties:{book:{type:'string'}}},page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
   const w=mount(ResultFields,{props:{fields}})
   expect(w.findAll('dt').map(e=>e.text())).toEqual(['child','branch','rows','legacy','page'])
   expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing','Missing','Missing','—','7'])
@@ -54,6 +54,14 @@ describe('Nested field editor and results',()=>{
   const w=mount(ResultFields,{props:{fields}})
   expect(w.findAll('dt').map(e=>e.text())).toEqual(['constructor','toString','page'])
   expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing','Missing','7'])
+  w.unmount()
+ })
+ it('renders a required compound with nullable and optional members as missing',()=>{
+  const child={type:'object',required:['book'],properties:{book:{type:['string','null']},note:{type:'string'}}}
+  const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',required:['child','page'],properties:{child,page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
+  const w=mount(ResultFields,{props:{fields}})
+  expect(w.findAll('dt').map(e=>e.text())).toEqual(['child','page'])
+  expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing','7'])
   w.unmount()
  })
  it('renders nested collapsible groups, renames a subtree and moves a field',async()=>{

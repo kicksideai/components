@@ -47,8 +47,8 @@ for a text property, with `maxLength: 24` when configured. Null means absent:
 Docscout's decoder omits that key, and values and saved results use the existing
 missing-member representation. Receipt validation derives optional nullable
 members from that same schema; present members still satisfy their declared
-type and bound. A nested compound whose members can all be absent (nullable,
-recursively) is also optional after normalization; other non-nullable required
+type and bound. A nested compound whose members can all be absent (nullable or
+optional, recursively) is also optional after normalization; other non-nullable required
 members stay required. Verification
 and summaries treat an object with only absent nullable members as missing.
 Lists of objects with nullable members keep rows with at least one present member; a list with no such
