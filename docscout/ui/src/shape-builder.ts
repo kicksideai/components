@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+import {toRaw} from 'vue'
 import {fieldPath,newField,newProperty,setValue,MAX_SHAPE_DEPTH,type Field,type Shape,type Property,type FieldType} from './config'
 export type Trail=(number|'item')[]
 export interface ShapeNode {field:number;trail:Trail;shape:Shape;path:string;depth:number;key:string}
@@ -26,7 +27,7 @@ export function moveTargets(fields:Field[],source:ShapeNode):ShapeNode[]{
  !(n.field===source.field&&source.trail.every((segment,i)=>n.trail[i]===segment)))
 }
 export function moveShape(fields:Field[],source:ShapeNode,target?:ShapeNode):ShapeNode{
- const property:Property={...newProperty(),...source.shape,name:(source.shape as Property).name}
+ const property:Property={...newProperty(),...structuredClone(toRaw(source.shape)),name:(source.shape as Property).name}
  if(!source.trail.length)fields.splice(source.field,1)
  else{
   const parent=shapeNodes(fields).find(n=>n.key===shapeKey(source.field,source.trail.slice(0,-1)))!
@@ -35,10 +36,10 @@ export function moveShape(fields:Field[],source:ShapeNode,target?:ShapeNode):Sha
  let moved:Shape
  if(target){
   // Properties carry only the recursive schema's shape and naming fields.
-  const {name,type,description,enum_values,expected_format,required,properties,item}=property
-  moved={name,type,description,enum_values,expected_format,required,...(properties?{properties}:{}),...(item?{item}:{})} as Property
+  const {name,type,description,enum_values,expected_format,required,properties,item,nullable,max_length}=property
+  moved={name,type,description,enum_values,expected_format,required,...(properties?{properties}:{}),...(item?{item}:{}),...(nullable!==undefined?{nullable}:{}),...(max_length!==undefined?{max_length}:{})} as Property
   target.shape.properties!.push(moved as Property);moved=target.shape.properties!.at(-1)!
- }else{moved={...newField(),...property,group:''} as Field;fields.push(moved as Field);moved=fields.at(-1)!}
+ }else{const {nullable,max_length,...field}=property;moved={...newField(),...field,group:''} as Field;fields.push(moved as Field);moved=fields.at(-1)!}
  return shapeNodes(fields).find(n=>n.shape===moved)!
 }
 export function outputPreview(fields:Field[],example=false):Record<string,unknown>{

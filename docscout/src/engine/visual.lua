@@ -85,6 +85,8 @@ function M.extract(run: types.PageRun, step: types.PageStep, calls: {types.PageC
                 for _, candidate in ipairs(prepared.kept) do images[candidate.ordinal] = candidate.image end
                 for _, field in ipairs(batch) do
                     local item = shapes.get(result, shapes.path(field))
+                    local extracted = shapes.extracted_value(field, item.value)
+                    local found = item.found and extracted ~= nil
                     local evidence = {}
                     for _, quote in ipairs(item.evidence) do
                         local image = images[quote.page]
@@ -92,17 +94,17 @@ function M.extract(run: types.PageRun, step: types.PageStep, calls: {types.PageC
                             image_checksum = image.image_checksum, source_revision = image.revision} end
                     end
                     local value: types.PageValue = {name = field.name, path = shapes.path(field),
-                        confidence = item.found and item.confidence or 0, evidence = item.found and evidence or {},
-                        verified = false, missing = not item.found, failed = false,
+                        confidence = found and item.confidence or 0, evidence = found and evidence or {},
+                        verified = false, missing = not found, failed = false,
                         extraction_kind = "page_image", source_revision = run.page_images.revision,
                         verification = {kind = "page_image", status = "not_run", checks = {}}}
-                    if item.found then value.value = item.value end
-                    if not item.found and field.search_within == "sections" then value.codes = {"missing_in_sections"} end
+                    if found then value.value = extracted end
+                    if not found and field.search_within == "sections" then value.codes = {"missing_in_sections"} end
                     if #prepared.kept < #allowed or (run.budget_dropped and run.budget_dropped[shapes.path(field)]) then
                         value.codes = value.codes or {}
                         value.codes[#value.codes + 1] = "context_budget_partial"
                     end
-                    if item.found and field.evidence_required and #evidence == 0 then
+                    if found and field.evidence_required and #evidence == 0 then
                         value.reason, value.codes = "No quote supports this value", value.codes or {}
                         value.codes[#value.codes + 1] = "no_quote"
                     end

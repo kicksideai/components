@@ -24,6 +24,122 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Nested typed fields", function()
+        test.it("maps a wire null member to the existing absent-key representation", function()
+            local reply = assert(json.decode('{"book":null,"page":"7"}'))
+            test.is_nil(reply.book); test.eq(json.encode(reply), '{"page":"7"}')
+        end)
+        test.it("accepts nullable bounded strings throughout recursive shapes", function()
+            local f = field("references", "", "list")
+            local book = property("book", "text"); book.nullable, book.max_length = true, 24
+            f.item = { type = "object", properties = { book, property("page", "text") } }
+            test.is_nil(config.validate(configuration({ f })))
+            local schema = shapes.value_schema(f).items
+            test.eq(json.encode(schema.properties.book.type), '["string","null"]')
+            test.eq(schema.properties.book.maxLength, 24)
+            test.eq(#schema.required, 2)
+            test.is_true((json.validate_string(schema, '{"book":null,"page":"7"}')))
+        end)
+        test.it("validates member options without changing scalar field or item definitions", function()
+            local f = field("reference", "", "object")
+            local member = property("book", "text"); f.properties = { member }
+            for _, options in ipairs({ { nullable = true }, { nullable = false }, { max_length = 1 }, { max_length = 24, nullable = true } }) do
+                member.nullable, member.max_length = options.nullable, options.max_length
+                test.is_nil(config.validate(configuration({ f })))
+            end
+            for _, options in ipairs({ { nullable = "true" }, { max_length = 0 }, { max_length = -1 }, { max_length = 1.5 }, { max_length = "24" } }) do
+                member.nullable, member.max_length = options.nullable, options.max_length
+                test.not_nil(config.validate(configuration({ f })))
+            end
+            member.nullable, member.max_length, member.type = nil, 24, "number"
+            test.not_nil(config.validate(configuration({ f })))
+            member.type = "boolean"; test.not_nil(config.validate(configuration({ f })))
+            f = field("scalar"); f.nullable = true
+            test.not_nil(config.validate(configuration({ f })))
+            f = field("items", "", "list"); f.item = { type = "text", max_length = 24 }
+            test.not_nil(config.validate(configuration({ f })))
+        end)
+        test.it("derives decoded receipt constraints without mutating the wire schema", function()
+            local f = field("rows", "", "list")
+            local member = property("book", "text"); member.nullable, member.max_length, member.required = true, 3, false
+            f.item = { type = "object", properties = { member, property("page", "text") } }
+            local wire = shapes.value_schema(f)
+            local before = assert(json.encode(wire))
+            local receipt = shapes.receipt_schema(wire)
+            test.eq(assert(json.encode(wire)), before)
+            test.eq(#wire.items.required, 2)
+            test.eq(json.encode(receipt.items.required), '["page"]')
+            test.eq(receipt.items.properties.book.type, "string")
+            test.eq(receipt.items.properties.book.maxLength, 3)
+            for _, raw in ipairs({ '[{"book":null,"page":"7"}]', '[{"book":"123","page":"7"}]' }) do
+                test.is_true((json.validate_string(wire, raw)))
+                test.is_true((json.validate(receipt, assert(json.decode(raw)))))
+                test.is_nil(config.validate_expected({ f }, { rows = assert(json.decode(raw)) }))
+            end
+            for _, raw in ipairs({ '[{"book":"1234","page":"7"}]', '[{"page":null}]', '[{"book":12,"page":"7"}]' }) do
+                test.is_false((json.validate(receipt, assert(json.decode(raw)))))
+            end
+        end)
+        test.it("makes recursively all-nullable compounds optional only on receipt", function()
+            local leaf = property("book", "text"); leaf.nullable = true
+            local child = property("child", "object"); child.properties = { leaf }
+            local branch = property("branch", "object"); branch.properties = { child }
+            local rows = property("rows", "list"); rows.item = { type = "object", properties = { branch } }
+            local f = field("reference", "", "object"); f.properties = { branch, rows, property("page", "text") }
+            local wire = shapes.value_schema(f)
+            test.eq(json.encode(wire.required), '["branch","rows","page"]')
+            local receipt = shapes.receipt_schema(wire)
+            test.eq(json.encode(receipt.required), '["page"]')
+            test.is_true((json.validate(receipt, { page = "7" })))
+            test.is_false((json.validate(receipt, shapes.object())))
+            leaf.nullable = nil
+            test.eq(json.encode(shapes.receipt_schema(shapes.value_schema(f)).required), '["branch","rows","page"]')
+        end)
+        test.it("allows required compounds with nullable and optional members to be absent on receipt", function()
+            local book = property("book", "text"); book.nullable = true
+            local note = property("note", "text"); note.required = false
+            local child = property("child", "object"); child.properties = { book, note }
+            local f = field("reference", "", "object"); f.properties = { child, property("page", "text") }
+            local wire = shapes.value_schema(f)
+            test.eq(json.encode(wire.required), '["child","page"]')
+            test.eq(json.encode(wire.properties.child.required), '["book"]')
+            local value = shapes.extracted_value(f, assert(json.decode('{"child":{"book":null},"page":"7"}')))
+            test.eq(json.encode(value), '{"page":"7"}')
+            local receipt = shapes.receipt_schema(wire)
+            test.eq(json.encode(receipt.required), '["page"]')
+            test.is_true((json.validate(receipt, value)))
+            note.required = true
+            test.eq(json.encode(shapes.receipt_schema(shapes.value_schema(f)).required), '["child","page"]')
+        end)
+        test.it("retains enum and typed member constraints alongside nullable absence", function()
+            for _, kind in ipairs({ "text", "date", "enum", "number", "boolean", "object", "list" }) do
+                local member = property("member", kind); member.nullable = true
+                if kind == "enum" then member.enum_values = { "a", "b" } end
+                if kind == "object" then member.properties = { property("child", "text") } end
+                if kind == "list" then member.item = { type = "text" } end
+                local f = field("reference", "", "object"); f.properties = { member }
+                local wire = shapes.value_schema(f)
+                test.is_true((json.validate_string(wire, '{"member":null}')), kind)
+                local receipt = shapes.receipt_schema(wire)
+                test.is_true((json.validate(receipt, assert(json.decode('{"member":null}')))), kind)
+                if kind == "enum" then
+                    test.is_true((json.validate_string(wire, '{"member":"a"}')))
+                    test.is_false((json.validate_string(wire, '{"member":"c"}')))
+                    test.is_false((json.validate(receipt, { member = "c" })))
+                end
+            end
+        end)
+        test.it("verifies nullable missing members without changing field summaries or values", function()
+            local f = field("reference", "", "object")
+            local member = property("book", "text"); member.nullable, member.max_length = true, 24
+            f.properties = { member, property("page", "text") }
+            local cfg = configuration({ f }); cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = false, false
+            local run = { config = cfg, values = { { name = f.name, path = f.name, value = assert(json.decode('{"book":null,"page":"7"}')), missing = false, evidence = {} } } }
+            test.is_nil(stages.verify(run, {})); test.is_true(run.values[1].verified)
+            test.eq(json.encode(shapes.values({ fields = run.values })), '{"reference":{"page":"7"}}')
+            member.nullable = false
+            run.values[1].reason, run.values[1].codes = nil, nil
+            test.is_nil(stages.verify(run, {})); test.is_false(run.values[1].verified)
+        end)
         test.it("identifies duplicate names by full path and rejects path collisions and free text groups", function()
             test.is_nil(config.validate(configuration({ field("name", "parties.borrower"), field("name", "parties.agent") })))
             for _, fields in ipairs({

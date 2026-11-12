@@ -3982,21 +3982,23 @@ function tl(e) {
 const rl = (e, t = !0) => e.type === "enum" || !t && e.type === "text";
 function Ct(e, t = 1) {
   if (t > Gi) return "Shapes support at most four levels.";
+  const r = e;
+  if (r.max_length !== void 0 && (!["text", "date", "enum"].includes(e.type) || !Number.isInteger(r.max_length) || r.max_length < 1)) return "Maximum characters must be a positive integer for text, date or enum members.";
   if ((e.description?.length ?? 0) > 4e3) return "Use at most 4000 characters for the description.";
   if ((e.expected_format?.length ?? 0) > 400) return "Use at most 400 characters for the expected format.";
   if ((e.enum_values?.length ?? 0) > 100) return "Use at most 100 allowed values.";
-  if (e.enum_values?.some((r) => !r.length || r.length > 200)) return "Allowed values need 1 to 200 characters.";
+  if (e.enum_values?.some((n) => !n.length || n.length > 200)) return "Allowed values need 1 to 200 characters.";
   if (new Set(e.enum_values).size !== (e.enum_values?.length ?? 0)) return "Allowed values must be unique.";
   if (e.type === "enum" && !e.enum_values?.length) return "Add at least one allowed value.";
   if (e.enum_values?.length && e.type !== "enum" && e.type !== "text") return "Allowed values apply to enum fields and text items.";
   if (e.type === "object") {
     if (!e.properties?.length) return "Add at least one declared property.";
     if (e.properties.length > 100) return "Use at most 100 properties.";
-    const r = /* @__PURE__ */ new Set();
-    for (const n of e.properties) {
-      const o = cn(n.name, [...r]) || Ct(n, t + 1);
-      if (o) return `${n.name || "New property"}: ${o}`;
-      r.add(n.name);
+    const n = /* @__PURE__ */ new Set();
+    for (const o of e.properties) {
+      const a = cn(o.name, [...n]) || Ct(o, t + 1);
+      if (a) return `${o.name || "New property"}: ${a}`;
+      n.add(o.name);
     }
   } else if (e.properties) return "Properties apply to object shapes.";
   return e.type === "list" ? e.item ? Ct(e.item, t + 1) : "Declare the item shape." : e.item ? "Item shapes apply to lists." : "";
