@@ -54,7 +54,7 @@ return { run = test.run_cases(function()
         test.it("treats all-absent nullable visual values as missing and filters empty rows", function()
             local owner, cfg = uuid.v4(), configuration()
             cfg.fields[1].name, cfg.fields[1].type = "reference", "object"
-            cfg.fields[1].properties = {{name = "book", type = "text", description = "", enum_values = {}, expected_format = "", required = true, nullable = true}}
+            cfg.fields[1].properties = {{name = "book", type = "text", description = "", enum_values = assert(json.decode("[]")), expected_format = "", required = true, nullable = true}}
             local rows = assert(json.decode(assert(json.encode(cfg.fields[1]))))
             rows.name, rows.type, rows.item = "rows", "list", {type = "object", properties = rows.properties}
             rows.properties = nil

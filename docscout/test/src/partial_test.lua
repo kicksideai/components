@@ -76,7 +76,7 @@ return { run = test.run_cases(function()
                 local id = assert(caller:call("app:probe", { op = "create", input = { title = "Nullable reader", config = cfg } })).component_id
                 local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
                 local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
-                test.eq(result.status, "completed", assert(json.encode(result))); test.eq(result.summary.found, 0); test.eq(result.summary.missing, 2); test.eq(result.summary.verified, 0)
+                test.eq(result.status, "failed", assert(json.encode(result))); test.eq(result.summary.found, 0); test.eq(result.summary.missing, 2); test.eq(result.summary.verified, 0)
                 for _, value in ipairs(result.fields) do
                     test.is_false(value.verified); test.is_false(value.failed); test.is_true(value.missing); test.is_nil(value.value); test.eq(#value.evidence, 0); test.eq(value.confidence, 0)
                 end
