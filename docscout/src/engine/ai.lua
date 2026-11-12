@@ -251,6 +251,7 @@ local function structured_result(model: string, schema: any, response: any, err:
     if type(response.result) ~= "table" then
         return nil, model_error("structured model call (" .. model .. ")", "no structured result", true)
     end
+    response.result = shapes.normalize_comments(schema, response.result)
     local encoded, encode_err = json.encode(response.result)
     if encode_err then return nil, model_error("structured reply encoding", encode_err, true) end
     local valid, validation_err = json.validate_string(schema, encoded)

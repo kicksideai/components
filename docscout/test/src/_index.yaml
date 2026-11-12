@@ -376,6 +376,7 @@ entries:
   - time
   - registry
   - security
+  - fs
   imports:
     data: app:fixture_data
     test: wippy.test:test
@@ -384,6 +385,7 @@ entries:
     store: kickside.docscout.persist:store
     stages: kickside.docscout.engine:stages
     shapes: kickside.docscout.engine:shapes
+    visual_verify: kickside.docscout.engine:visual_verify
 - name: shapes_test
   kind: function.lua
   meta:
@@ -732,6 +734,21 @@ entries:
   providers:
   - id: app:fixture_success_provider
     provider_model: docscout-echo
+- name: fixture_echo_capture_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-echo-capture
+    title: Fixture model that answers with its system prompt and records its requests
+    capabilities: [generate, structured_output]
+    class: [docscout-echo-capture]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-echo
+    options: {capture_requests: scout-echo-requests.json}
 - name: success_test
   kind: function.lua
   meta:

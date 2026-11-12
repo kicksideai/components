@@ -149,7 +149,7 @@ function M.structured(args: any): (any?, error?)
     if args.model == "docscout-sampling" then
         return { result = { data = value(args.schema) }, tokens = usage(args, 12, 8) }, nil
     end
-    -- The echo model answers with its system prompt as every string value.
+    -- The echo model returns its system prompt as strings without enforcing schema constraints.
     if args.model == "docscout-echo" then
         return { result = { data = value(args.schema, system_prompt(args.messages)) }, tokens = usage(args, 12, 8) }, nil
     end

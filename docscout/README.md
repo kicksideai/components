@@ -28,6 +28,8 @@ Caller scopes need the native contract capabilities `contract.security` on `secu
 
 Every caller opens `kickside.docscout:extraction`, binding `kickside.docscout:engine`, under its execution identity. The `run` input has `extractor_id`, `upload_id`, `caller` (`ui`, `agent`, `workflow`, `eval`) an optional `pages: { first, last }`, and an optional RFC3339 deadline. Evaluation calls additionally identify the admitted evaluation and case. The contract accepts saved configuration; chat tuning edits that configuration through the configurator trait.
 
+Structured comment fields (scout notes, support and page-check reasons, completeness explanations, section summaries and generated search contexts) are bounded to 300 Unicode characters. Providers with constrained decoding enforce this bound during generation; other providers’ comments are cut to the bound on receipt before validation. A provider that rejects `maxLength` in strict mode surfaces its own invalid-request error. Extracted values, evidence quotes and verdicts are unchanged.
+
 ### Page images
 
 Set `stages.extract.reads = "pages"` and `max_pages` (1–32) to read values from physical page images. Extract and enabled visual Verify models require the `vision` capability. The uploads `page_images` contract supplies authorized, revision-bound pages; unbound text, unavailable mappings and image errors remain typed run failures. Existing paginated Markdown is required for retrieval. Child uploads are unsupported.

@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
--- Captured from main (97fbc67); request bodies retain every model option.
+-- Captured from main (97fbc67) with support reasons bounded to their comment length; request bodies retain every model option.
 local json = require("json")
 return { get = function(): any return assert(json.decode([=[
 {
@@ -65,7 +65,7 @@ return { get = function(): any return assert(json.decode([=[
           "rejected"
         ],
         "model": "class:docscout-verification-identity",
-        "prompt_tokens": 286,
+        "prompt_tokens": 294,
         "sources": [
           1
         ],
@@ -541,6 +541,7 @@ return { get = function(): any return assert(json.decode([=[
               "additionalProperties": false,
               "properties": {
                 "reason": {
+                  "maxLength": 300,
                   "type": "string"
                 },
                 "supported": {
@@ -557,6 +558,7 @@ return { get = function(): any return assert(json.decode([=[
               "additionalProperties": false,
               "properties": {
                 "reason": {
+                  "maxLength": 300,
                   "type": "string"
                 },
                 "supported": {
@@ -602,7 +604,7 @@ return { get = function(): any return assert(json.decode([=[
         "status": "partial"
       },
       {
-        "input_tokens": 286,
+        "input_tokens": 294,
         "kind": "verify",
         "message": "2 values need review",
         "output_tokens": 28,
@@ -695,7 +697,7 @@ return { get = function(): any return assert(json.decode([=[
         }
       },
       "status": "partial",
-      "tokens": 1600
+      "tokens": 1608
     },
     "summary": {
       "failed": 1,
@@ -708,7 +710,7 @@ return { get = function(): any return assert(json.decode([=[
       },
       "verified": 2
     },
-    "tokens": 1600,
+    "tokens": 1608,
     "values": {
       "accepted": 1250,
       "rejected": 1250
