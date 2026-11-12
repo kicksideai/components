@@ -56,7 +56,7 @@ function M.allowed(run: types.PageRun, field: types.Field, chunks: {types.Chunk}
     if field.search_within == "sections" and (not region or not run.config.retrieval.split_headings) then
         return nil, M.error("section_image_boundary_unavailable", "Physical page membership cannot isolate the selected sections")
     end
-    local selected, pages, foreign = {}, {}, {}
+    local selected, pages, foreign, sections = {}, {}, {}, {}
     for _, ordinal in ipairs(region or {}) do selected[ordinal] = true end
     for _, chunk in ipairs(chunks) do
         for _, span in ipairs(chunk.page_spans) do
@@ -64,7 +64,22 @@ function M.allowed(run: types.PageRun, field: types.Field, chunks: {types.Chunk}
                 return nil, M.error("section_image_boundary_unavailable", "A section has no proven physical page membership")
             end
             if span.page then
-                if selected[chunk.ordinal] then pages[span.page] = true else foreign[span.page] = true end
+                if selected[chunk.ordinal] then
+                    pages[span.page] = true
+                    local coverage = sections[chunk.section_id]
+                    if not coverage then coverage = {first = span.page, last = span.page, pages = {}}; sections[chunk.section_id] = coverage end
+                    coverage.first, coverage.last = math.min(coverage.first, span.page), math.max(coverage.last, span.page)
+                    coverage.pages[span.page] = true
+                else foreign[span.page] = true end
+            end
+        end
+    end
+    for _, coverage in pairs(sections) do
+        local first = run.page_range and math.max(coverage.first, run.page_range.first) or coverage.first
+        local last = run.page_range and math.min(coverage.last, run.page_range.last) or coverage.last
+        for page = first, last do
+            if not coverage.pages[page] then
+                return nil, M.error("section_image_boundary_unavailable", "Section membership is unproven for a physical page")
             end
         end
     end

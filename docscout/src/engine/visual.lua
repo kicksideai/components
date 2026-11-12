@@ -98,7 +98,7 @@ function M.extract(run: types.PageRun, step: types.PageStep, calls: {types.PageC
                         verification = {kind = "page_image", status = "not_run", checks = {}}}
                     if item.found then value.value = item.value end
                     if not item.found and field.search_within == "sections" then value.codes = {"missing_in_sections"} end
-                    if #prepared.kept < #allowed then
+                    if #prepared.kept < #allowed or (run.budget_dropped and run.budget_dropped[shapes.path(field)]) then
                         value.codes = value.codes or {}
                         value.codes[#value.codes + 1] = "context_budget_partial"
                     end
