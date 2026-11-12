@@ -21,7 +21,18 @@ function M.render(req)
 end
 function M.read(input)
     local source = assert(reader.discover(input.upload_id))
+    if input.replace then
+        -- Model an entry stored after the initial miss and before insertion.
+        setmetatable(source.images.entries, {__index = function(entries, page)
+            rawset(entries, page, {image = {bytes = "old"}, used = 0})
+            source.images.bytes = 3
+            setmetatable(entries, nil)
+            return nil
+        end})
+    end
     for _, page in ipairs(input.sequence) do assert(reader.read(source, page)) end
-    return true
+    local retained_bytes = 0
+    for _, entry in pairs(source.images.entries) do retained_bytes = retained_bytes + #entry.image.bytes end
+    return {bytes = source.images.bytes, retained_bytes = retained_bytes}
 end
 return M
