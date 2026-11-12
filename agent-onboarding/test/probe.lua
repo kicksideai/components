@@ -7,6 +7,10 @@ local security = require("security")
 local onboarding = require("onboarding")
 local component_types = require("component_types")
 local function run(op: string, input: any): any
+    if op == "knowledge_create" then
+        local result, err = funcs.call("kickside.knowledge.registry:kb_create", input)
+        return {result=result, error=err and tostring(err), kind=err and err:kind()}
+    end
     if op == "onboard_memory_failure" then
         local failing=onboarding.new({contract={get=function()
             return {open=function()

@@ -1,8 +1,9 @@
 local test = require("test")
 local registry = require("registry")
 local security = require("security")
+local funcs = require("funcs")
 
-local function module_access_scope()
+local function module_access_scope(member)
     local policies, seen = {}, {}
     local function include(id)
         if seen[id] then return end
@@ -15,7 +16,16 @@ local function module_access_scope()
         policies[#policies + 1] = policy
         for _, child in ipairs(entry.meta.includes or {}) do include(child) end
     end
-    include("kickside.agent_onboarding.security:module_access")
+    if member then
+        include("agent_onboarding_test:member_probe")
+        local entries, err = registry.find({["meta.intent"]="module_access"})
+        test.is_nil(err)
+        for _, entry in ipairs(entries) do
+            if entry.meta.surface ~= "kickside.knowledge" then include(tostring(entry.id)) end
+        end
+    else
+        include("kickside.agent_onboarding.security:module_access")
+    end
     local scope, scope_err = security.new_scope(policies)
     test.is_nil(scope_err)
     return scope
@@ -88,7 +98,7 @@ local function define_tests()
                 test.eq(policy:evaluate(actor, "access", id), "undefined", id)
             end
         end)
-        test.it("permits only the knowledge registry path for personal memory", function()
+        test.it("keeps knowledge creation capabilities on the onboarding function", function()
             local scope = module_access_scope()
             local actor = security.new_actor("personal-memory-member", {})
             local expected = {
@@ -98,8 +108,18 @@ local function define_tests()
                 { "funcs.call", "kickside.knowledge.registry:kb_create" },
                 { "contract.get", "kickside.knowledge:kb_store_lifecycle" },
             }
+            local entry, entry_err = registry.get("kickside.agent_onboarding:create_agent")
+            test.is_nil(entry_err)
+            local attached = entry.data.security and entry.data.security.policies or {}
+            local policies = {}
+            for _, id in ipairs(attached) do
+                policies[#policies + 1] = assert(security.policy(id))
+            end
+            local function_scope = assert(security.new_scope(policies))
             for _, pair in ipairs(expected) do
-                test.eq(scope:evaluate(actor, pair[1], pair[2]), "allow", pair[1] .. ": " .. pair[2])
+                local label = pair[1] .. ": " .. pair[2]
+                test.eq(scope:evaluate(actor, pair[1], pair[2]), "undefined", label)
+                test.eq(function_scope:evaluate(actor, pair[1], pair[2]), "allow", label)
             end
             for _, id in ipairs({
                 "kickside.knowledge.api:create_kb.endpoint",
@@ -108,8 +128,20 @@ local function define_tests()
                 "kickside.knowledge.retrieval:kb_search",
             }) do
                 test.eq(scope:evaluate(actor, "access", id), "undefined", id)
-                test.eq(scope:evaluate(actor, "contract.call", id), "undefined", id)
+                test.eq(scope:evaluate(actor, "funcs.call", id), "undefined", id)
+                test.eq(function_scope:evaluate(actor, "funcs.call", id), "undefined", id)
             end
+        end)
+        test.it("refuses direct Knowledge creation by an onboarding member", function()
+            local actor = security.new_actor("personal-memory-member", {})
+            local result, err = funcs.new():with_actor(actor):with_scope(module_access_scope(true))
+                :call("agent_onboarding_test:probe", "knowledge_create", {
+                    name="Additional memory", kb_type="memory", embedding_model="class:embed",
+                })
+            test.is_nil(err, tostring(err))
+            test.is_nil(result.result)
+            test.not_nil(result.error)
+            test.eq(result.kind, errors.PERMISSION_DENIED, result.error)
         end)
         test.it("includes module discovery without an application blanket grant", function()
             local scope = module_access_scope()

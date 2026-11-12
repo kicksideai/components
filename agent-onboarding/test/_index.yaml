@@ -132,3 +132,10 @@ entries:
   parameters:
   - {name: kickside.knowledge:api_router, value: app:api}
   - {name: kickside.knowledge:ui_server, value: app:gateway}
+
+- name: member_probe
+  kind: security.policy
+  policy:
+    resources: agent_onboarding_test:probe
+    actions: funcs.call
+    effect: allow

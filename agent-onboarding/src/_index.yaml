@@ -53,6 +53,13 @@ entries:
     agent_types: kickside.agents:types
 - name: create_agent
   kind: function.lua
+  security:
+    policies:
+    - kickside.agent_onboarding.security:knowledge_contract
+    - kickside.agent_onboarding.security:knowledge_binding
+    - kickside.agent_onboarding.security:knowledge_create
+    - kickside.agent_onboarding.security:knowledge_create_function
+    - kickside.agent_onboarding.security:knowledge_store_contract
   source: file://create_agent.lua
   method: handler
   modules: [http, json]
