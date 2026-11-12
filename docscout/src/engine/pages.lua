@@ -7,6 +7,7 @@ local M = {}
 
 -- Each discovered source belongs to one run and revision. Only the holder retains
 -- reused image bytes; its 16 MiB cap excludes images in active model requests.
+-- Run stages access this holder sequentially.
 local IMAGE_BYTES = 16 * 1024 * 1024
 
 function M.error(code: string, message: string): error
@@ -56,6 +57,11 @@ function M.read(source: types.PageSet, page: integer): (types.PageImage?, error?
     if err then return nil, err end
     local image, read_err = reader:read_image({upload_id = source.upload_id, revision = source.revision, page = page})
     if read_err then return nil, read_err end
+    local replaced = holder.entries[page]
+    if replaced then
+        holder.bytes = holder.bytes - #replaced.image.bytes
+        holder.entries[page] = nil
+    end
     -- The uploads contract caps each image at 4 MiB.
     while holder.bytes + #image.bytes > IMAGE_BYTES do
         local oldest, used = nil, math.huge
