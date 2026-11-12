@@ -40,6 +40,15 @@ describe('Nested field editor and results',()=>{
   expect(fields[0].value).toEqual({page:'7'})
   w.unmount()
  })
+ it('renders absent compounds with recursively nullable descendants as missing',()=>{
+  const child={type:'object',properties:{book:{type:['string','null']}}}
+  const branch={type:'object',properties:{child}}
+  const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',properties:{child,branch,rows:{type:'array',items:branch},legacy:{type:'object',properties:{book:{type:'string'}}},page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
+  const w=mount(ResultFields,{props:{fields}})
+  expect(w.findAll('dt').map(e=>e.text())).toEqual(['child','branch','rows','legacy','page'])
+  expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing','Missing','Missing','—','7'])
+  w.unmount()
+ })
  it('treats omitted declared members as missing even when names occur on the object prototype',()=>{
   const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',properties:{constructor:{type:['string','null']},toString:{type:['string','null']},page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
   const w=mount(ResultFields,{props:{fields}})

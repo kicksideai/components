@@ -79,6 +79,21 @@ return { run = test.run_cases(function()
                 test.is_false((json.validate(receipt, assert(json.decode(raw)))))
             end
         end)
+        test.it("makes recursively all-nullable compounds optional only on receipt", function()
+            local leaf = property("book", "text"); leaf.nullable = true
+            local child = property("child", "object"); child.properties = { leaf }
+            local branch = property("branch", "object"); branch.properties = { child }
+            local rows = property("rows", "list"); rows.item = { type = "object", properties = { branch } }
+            local f = field("reference", "", "object"); f.properties = { branch, rows, property("page", "text") }
+            local wire = shapes.value_schema(f)
+            test.eq(json.encode(wire.required), '["branch","rows","page"]')
+            local receipt = shapes.receipt_schema(wire)
+            test.eq(json.encode(receipt.required), '["page"]')
+            test.is_true((json.validate(receipt, { page = "7" })))
+            test.is_false((json.validate(receipt, shapes.object())))
+            leaf.nullable = nil
+            test.eq(json.encode(shapes.receipt_schema(shapes.value_schema(f)).required), '["branch","rows","page"]')
+        end)
         test.it("retains enum and typed member constraints alongside nullable absence", function()
             for _, kind in ipairs({ "text", "date", "enum", "number", "boolean", "object", "list" }) do
                 local member = property("member", kind); member.nullable = true

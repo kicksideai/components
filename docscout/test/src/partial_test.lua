@@ -78,12 +78,33 @@ return { run = test.run_cases(function()
                 local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
                 test.eq(result.status, "failed", assert(json.encode(result))); test.eq(result.summary.found, 0); test.eq(result.summary.missing, 2); test.eq(result.summary.verified, 0)
                 for _, value in ipairs(result.fields) do
-                    test.is_false(value.verified); test.is_false(value.failed); test.is_true(value.missing); test.is_nil(value.value); test.eq(#value.evidence, 0); test.eq(value.confidence, 0)
+                    test.is_false(value.verified); test.is_false(value.failed); test.is_true(value.missing); test.is_nil(value.value); test.is_nil(value.value_schema); test.eq(#value.evidence, 0); test.eq(value.confidence, 0)
                 end
                 test.eq(json.encode(result.values), "{}")
                 local stored = assert(caller:call("app:probe", { op = "get", id = id })).runs[1].result
                 test.eq(json.encode(stored.values), json.encode(result.values))
                 test.eq(json.encode(stored.fields), json.encode(result.fields))
+            end)
+            local restore = assert(registry.overlay("app:partial_test")):changes(); restore:delete(entry.id); assert(restore:apply())
+            if not ok then error(failure) end
+        end)
+        test.it("finds and verifies a present sibling of an all-absent required child", function()
+            local cfg = configuration({ "reference" })
+            cfg.fields[1].type, cfg.fields[1].properties = "object", {
+                { name = "child", type = "object", required = true, properties = {
+                    { name = "book", type = "text", required = true, nullable = true },
+                } }, { name = "page", type = "text", required = true },
+            }
+            cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = false, false
+            local entry = assert(registry.get("app:fixture_success_model"))
+            entry.data.providers[1].options = { reply = assert(json.decode('{"reference":{"found":true,"value":{"child":{"book":null},"page":"7"},"confidence":1,"evidence":[]}}')) }
+            local changes = assert(registry.overlay("app:partial_test")):changes(); changes:update(entry); assert(changes:apply())
+            local ok, failure = pcall(function()
+                local run = context(cfg)
+                test.is_nil(stages.extract(run, { meter = ai.meter() }))
+                test.is_false(run.values[1].missing); test.is_false(run.values[1].failed)
+                test.eq(json.encode(run.values[1].value), '{"page":"7"}')
+                test.is_nil(stages.verify(run, {})); test.is_true(run.values[1].verified)
             end)
             local restore = assert(registry.overlay("app:partial_test")):changes(); restore:delete(entry.id); assert(restore:apply())
             if not ok then error(failure) end
