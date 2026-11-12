@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11](https://github.com/kicksideai/components/compare/docscout-v0.1.10...docscout-v0.1.11) (2026-11-12)
+
+
+### Bug Fixes
+
+* **docscout:** support nullable bounded compound members ([#94](https://github.com/kicksideai/components/issues/94)) ([becc455](https://github.com/kicksideai/components/commit/becc45584fc7115f962261dd5f0e04d8e25de5f2))
+
 ## [0.1.10](https://github.com/kicksideai/components/compare/docscout-v0.1.9...docscout-v0.1.10) (2026-11-12)
 
 
