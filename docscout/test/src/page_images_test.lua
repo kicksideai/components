@@ -103,6 +103,31 @@ return { run = test.run_cases(function()
         end)
     end)
     test.describe("Image boundaries and failures", function()
+        test.it("keeps completeness unknown when Map drops section context", function()
+            local owner, cfg = uuid.v4(), configuration()
+            cfg.fields[1].type, cfg.fields[1].search_within = "text", "sections"
+            cfg.stages.map.enabled, cfg.stages.map.model, cfg.stages.map.section_summaries = true, "class:docscout-constrained-budget", false
+            cfg.stages.verify.check_completeness = true
+            local markdown, images = {}, {}
+            for page = 1, 100 do
+                markdown[#markdown + 1] = "<!-- page " .. page .. " -->\n# Section " .. page .. " " .. string.rep("heading ", 80) .. "\n" ..
+                    (page == 1 and "amount: first part" or "Other section text")
+                images[page] = page == 1 and "amount: first part" or "Other section text"
+            end
+            local result = invoke(owner, cfg, upload(owner, images, table.concat(markdown, "\n")))
+            test.is_false(result.fields[1].verified)
+            test.eq(result.fields[1].verification.checks.completeness, "unavailable")
+            test.is_nil(result.fields[1].complete)
+        end)
+        test.it("refuses section page membership with unproven gaps", function()
+            local cfg = configuration()
+            cfg.fields[1].search_within = "sections"
+            local run = {config = cfg, regions = {amount = {1}}, page_images = {count = 3}}
+            local selected, err = pages_module.allowed(run, cfg.fields[1], {
+                {ordinal = 1, section_id = "terms", page_spans = {{page = 1, text = "Terms"}, {page = 3, text = "More terms"}}}})
+            test.is_nil(selected)
+            test.eq(err:details().code, "section_image_boundary_unavailable")
+        end)
         test.it("keeps visual continuation within a selected section before a conflicting annex", function()
             local owner, cfg = uuid.v4(), configuration()
             cfg.fields[1].search_within = "sections"
@@ -149,8 +174,8 @@ return { run = test.run_cases(function()
             cfg.fields[1].search_within = "sections"
             local run = {config = cfg, regions = {amount = {1}}, page_images = {count = 3}}
             local selected, err = pages_module.allowed(run, cfg.fields[1], {
-                {ordinal = 1, page_spans = {{page = 2, text = "Terms"}}},
-                {ordinal = 2, page_spans = {{page = 2, text = "Annex"}}}})
+                {ordinal = 1, section_id = "terms", page_spans = {{page = 2, text = "Terms"}}},
+                {ordinal = 2, section_id = "annex", page_spans = {{page = 2, text = "Annex"}}}})
             test.is_nil(selected)
             test.eq(err:details().code, "section_image_boundary_unavailable")
         end)
@@ -159,8 +184,8 @@ return { run = test.run_cases(function()
             cfg.fields[1].search_within = "sections"
             local run = {config = cfg, regions = {amount = {1}}, page_images = {count = 4}, page_range = {first = 2, last = 3}}
             local selected = assert(pages_module.allowed(run, cfg.fields[1], {
-                {ordinal = 1, page_spans = {{page = 1, text = "Terms"}, {page = 2, text = "Terms"}, {page = 3, text = "Terms"}}},
-                {ordinal = 2, page_spans = {{page = 4, text = "Annex"}}}}))
+                {ordinal = 1, section_id = "terms", page_spans = {{page = 1, text = "Terms"}, {page = 2, text = "Terms"}, {page = 3, text = "Terms"}}},
+                {ordinal = 2, section_id = "annex", page_spans = {{page = 4, text = "Annex"}}}}))
             test.eq(assert(json.encode(selected)), "[2,3]")
         end)
         test.it("reports an oversized image as a context failure instead of document absence", function()
