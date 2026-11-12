@@ -107,11 +107,15 @@ function M.verify(run: types.PageRun, step: types.PageStep, support_line: types.
         local verdict = shapes.get(result, value.path)
         checks.visual_quote, checks.value_support = status(verdict.quote_on_page), status(verdict.states_value)
         if complete then
-            local partial = cut
+            local partial = cut or #selected < #allowed
             for _, code in ipairs(value.codes or {}) do if code == "context_budget_partial" then partial = true end end
             checks.completeness = (partial or verdict.complete == "insufficient_evidence") and "unavailable" or
                 (verdict.complete == "complete" and "passed" or "failed")
-            if checks.completeness ~= "unavailable" then value.complete = checks.completeness == "passed" end
+            value.complete = nil
+            if checks.completeness == "unavailable" then
+                value.codes = value.codes or {}
+                value.codes[#value.codes + 1] = "visual_completeness_unavailable"
+            else value.complete = checks.completeness == "passed" end
         end
         local passed, unavailable = true, false
         for name, check in pairs(checks) do
