@@ -299,7 +299,7 @@ end
 local function context_schema(count: integer): any
     return {
         type = "object", additionalProperties = false, required = { "contexts" },
-        properties = { contexts = { type = "array", minItems = count, maxItems = count, items = shapes.comment() } },
+        properties = { contexts = { type = "array", minItems = count, maxItems = count, items = { type = "string" } } },
     }
 end
 local CONTEXT_SYSTEM = [[You place passages of one document in context for search.
