@@ -104,7 +104,7 @@ function M.verify(run: types.PageRun, step: types.PageStep, support_line: types.
             {max_tokens = cfg.max_tokens, temperature = cfg.temperature, stage = "support", fields = {value.path}, pages = page_calls.numbers(selected),
                 image_bytes = page_calls.bytes(selected), estimated_input_tokens = estimated})
         if err then value.verification.status = "unavailable"; return err end
-        local verdict = shapes.get(result, value.path)
+        local verdict = result[value.path]
         checks.visual_quote, checks.value_support = status(verdict.quote_on_page), status(verdict.states_value)
         if complete then
             local partial = cut or #selected < #allowed

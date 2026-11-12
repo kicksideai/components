@@ -86,6 +86,21 @@ return { run = test.run_cases(function()
             test.eq(saved.verification.status, "passed")
             test.eq(saved.evidence[1].image_checksum, value.evidence[1].image_checksum)
         end)
+        test.it("verifies a grouped field against its page images", function()
+            local owner, cfg = uuid.v4(), configuration()
+            cfg.fields[1].group, cfg.fields[1].name, cfg.fields[1].type = "parties.borrower", "name", "text"
+            local caller = data.caller(owner)
+            local extractor = assert(caller:call("app:probe", {op = "create", input = {title = "Grouped reader", config = cfg}})).component_id
+            local result, err = caller:call("kickside.docscout:invoke", {extractor_id = extractor, upload_id = upload(owner, {"name: Sample Borrower"})})
+            test.is_nil(err, tostring(err))
+            test.eq(result.status, "completed", assert(json.encode(result)))
+            local value = result.fields[1]
+            test.eq(value.value, "Sample Borrower")
+            test.is_true(value.verified)
+            test.eq(value.verification.status, "passed")
+            test.eq(value.verification.checks.visual_quote, "passed")
+            test.eq(value.verification.checks.value_support, "passed")
+        end)
         test.it("reads shared pages once across extraction groups and field checks in one run", function()
             local owner, cfg = uuid.v4(), configuration()
             local storage, record = assert(fs.get("app:uploads")), uuid.v4() .. ".json"
