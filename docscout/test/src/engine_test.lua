@@ -9,10 +9,12 @@ local stages = require("stages")
 local sql = require("sql")
 local funcs = require("funcs")
 local shapes = require("shapes")
+local visual_verify = require("visual_verify")
 local ai = require("ai")
 local time = require("time")
 local registry = require("registry")
 local security = require("security")
+local fs = require("fs")
 
 local MARKDOWN = table.concat({
     "<!-- page 1 -->", "", "Preamble before any heading.", "",
@@ -661,11 +663,15 @@ return { run = test.run_cases(function()
                 local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
                 field.name, field.description = "amount", "Invoice amount"
                 local run = { document = { id = "unused", outline = {} }, regions = {}, pool = shapes.pool(), notes = {},
-                    config = { fields = { field }, stages = { scout = { model = "class:docscout-echo", mode = mode,
+                    config = { fields = { field }, stages = { scout = { model = "class:docscout-echo-capture", mode = mode,
                         max_rounds = 0, max_extra_queries = 1, target_confidence = 0.7, max_tokens = 4096, tools = {}, share_notes = true } } } }
                 shapes.add(run.pool, { { ordinal = 1, heading_path = "Invoice", content = "The total amount is 1250." } })
+                local storage = assert(fs.get("app:uploads"))
+                local _, write_err = storage:writefile("scout-echo-requests.json", "[]")
+                test.is_nil(write_err)
                 test.is_nil(stages.scout(run, { meter = ai.meter() }))
-                local prompt = run.notes[1].text
+                local request = assert(json.decode(assert(storage:readfile("scout-echo-requests.json"))))[1]
+                local prompt = request.messages[1].content[1].text
                 for _, statement in ipairs({ "natural-language phrase", "matched by its words and by its meaning", "regular expressions", "boolean operators" }) do
                     test.is_true(prompt:find(statement, 1, true) ~= nil, mode .. ": " .. statement)
                 end
@@ -730,6 +736,32 @@ return { run = test.run_cases(function()
             test.is_true((json.validate(schema, json.decode(reply))))
             test.is_false((json.validate(schema, json.decode((reply:gsub(',"terms.rate":%[%]', ""))))))
             test.is_false((json.validate(schema, json.decode((reply:gsub('"fee":"C1 states it",', ""))))))
+        end)
+        test.it("bounds each scout note so a constrained decoder ends a run-on note within its reply", function()
+            local schema = stages.scout_schema({ max_extra_queries = 0 }, { { name = "fee", group = "" } }, { { ordinal = 1 } })
+            local function reply(note: string): any
+                return json.decode('{"confidence":0.5,"evidence":{"fee":[1]},"drop":[],"queries":[],"notes":{"fee":"' .. note .. '"}}')
+            end
+            test.is_true((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS)))))
+            test.is_false((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS + 1)))))
+        end)
+        test.it("bounds each support reason so a constrained decoder ends a run-on reason within its reply", function()
+            local values = { { name = "total" }, { name = "terms" } }
+            local schema = stages.support_schema(values, { terms = true })
+            local function reply(reason: string): any
+                return { total = { verdict = "supported", reason = "C1 states it" },
+                    terms = { verdict = "supported", complete = "complete", reason = reason } }
+            end
+            test.is_true((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS)))))
+            test.is_false((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS + 1)))))
+        end)
+        test.it("bounds each page check reason so a constrained decoder ends a run-on reason within its reply", function()
+            local schema = visual_verify.check_schema({ path = "total" }, true)
+            local function reply(reason: string): any
+                return { total = { quote_on_page = "yes", states_value = "yes", complete = "complete", reason = reason } }
+            end
+            test.is_true((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS)))))
+            test.is_false((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS + 1)))))
         end)
         test.it("asks for a summary of every section", function()
             local schema = stages.summary_schema({ { id = "s1" }, { id = "s2" } })

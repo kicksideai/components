@@ -28,7 +28,8 @@ local function value(schema: any, text: string?): any
         for name, property in pairs(schema.properties) do out[name] = value(property, text) end
         return out
     end
-    return text or "Fixture"
+    local out = text or "Fixture"
+    return schema.maxLength and out:sub(1, schema.maxLength) or out
 end
 local function system_prompt(messages: { any }): string
     for _, message in ipairs(messages) do
@@ -149,7 +150,7 @@ function M.structured(args: any): (any?, error?)
     if args.model == "docscout-sampling" then
         return { result = { data = value(args.schema) }, tokens = usage(args, 12, 8) }, nil
     end
-    -- The echo model answers with its system prompt as every string value.
+    -- The echo model answers with its system prompt as every string value, cut to the string's maxLength as a constrained decoder cuts it.
     if args.model == "docscout-echo" then
         return { result = { data = value(args.schema, system_prompt(args.messages)) }, tokens = usage(args, 12, 8) }, nil
     end

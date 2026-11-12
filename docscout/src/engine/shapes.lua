@@ -233,6 +233,13 @@ end
 -- Quotes a value may cite.
 M.EVIDENCE_LIMIT = 5
 
+-- Characters a model's free-text comment (a support reason, a scout note) may
+-- hold. A schema-constrained decoder ends the string at this bound, so a
+-- degenerate repetition inside it stops before it exhausts the output budget
+-- shared by every field of the reply.
+M.COMMENT_CHARS = 300
+function M.comment(): any return { type = "string", maxLength = M.COMMENT_CHARS } end
+
 -- Scheduling weights for the reply envelope, quotes and value leaves. Lists
 -- assume five items. These heuristic weights do not bound actual model output.
 -- Seed weights come from completion-size samples reported in https://github.com/kicksideai/components/pull/63.

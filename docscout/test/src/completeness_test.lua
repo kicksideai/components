@@ -141,6 +141,15 @@ return { run = test.run_cases(function()
                 legacy_identity(run)
             end)
         end
+        test.it("bounds each legacy support reason so a constrained decoder ends a run-on reason within its reply", function()
+            local run = context(field(), "default", false)
+            test.is_nil(stages.verify(run, { meter = ai.meter() }))
+            local storage = assert(fs.get("app:uploads"))
+            local request = assert(json.decode(assert(storage:readfile("completeness-requests.json"))))[1]
+            local function reply(reason: string): any return { terms = { supported = true, reason = reason } } end
+            test.is_true((json.validate(request.schema, reply(string.rep("a", shapes.COMMENT_CHARS)))))
+            test.is_false((json.validate(request.schema, reply(string.rep("a", shapes.COMMENT_CHARS + 1)))))
+        end)
         test.it("accepts an earlier configuration without a completeness policy", function()
             local config = schema().default
             test.is_true(config.stages.verify.check_completeness == nil or config.stages.verify.check_completeness == false)

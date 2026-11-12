@@ -379,7 +379,7 @@ function M.scout_schema(cfg: any, fields: { any }, pool: { any }): any
         drop = { type = "array", maxItems = #pool, items = chunk },
         queries = { type = "array", maxItems = cfg.max_extra_queries, items = { type = "object", additionalProperties = false, required = { "field", "query" },
             properties = { field = { type = "string", enum = names }, query = { type = "string" } } } },
-        notes = shapes.keyed(names, { type = "string" }) } }
+        notes = shapes.keyed(names, shapes.comment()) } }
 end
 
 -- Notes as prompt lines. A note names its field, or covers the document as a
@@ -978,7 +978,7 @@ local function support_schema(values: { any }): any
     local paths = {}
     for _, v in ipairs(values) do paths[#paths + 1] = shapes.path(v) end
     return shapes.keyed(paths, { type = "object", additionalProperties = false, required = { "supported", "reason" },
-        properties = { supported = { type = "boolean" }, reason = { type = "string" } } })
+        properties = { supported = { type = "boolean" }, reason = shapes.comment() } })
 end
 
 -- The optional policy judges support for the requested field and completeness
@@ -1010,7 +1010,7 @@ function M.support_schema(values: { any }, complete_fields: { [string]: boolean 
         local path = shapes.path(v)
         required[#required + 1] = path
         local item = { type = "object", additionalProperties = false, required = { "verdict", "reason" }, properties = {
-            verdict = { type = "string", enum = { VERDICT.supported, VERDICT.not_supported, VERDICT.insufficient } }, reason = { type = "string" } } }
+            verdict = { type = "string", enum = { VERDICT.supported, VERDICT.not_supported, VERDICT.insufficient } }, reason = shapes.comment() } }
         if complete_fields[path] then
             item.required = { "verdict", "complete", "reason" }
             item.properties.complete = { type = "string", enum = { COMPLETENESS.complete, COMPLETENESS.incomplete, COMPLETENESS.insufficient } }
