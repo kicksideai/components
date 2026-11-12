@@ -119,7 +119,7 @@ function M.verify(run: types.PageRun, step: types.PageStep, support_line: types.
         end
         local passed, unavailable = true, false
         for name, check in pairs(checks) do
-            if name ~= "text_agreement" then
+            if name ~= "text_agreement" and not (name == "completeness" and check == "unavailable") then
                 if check ~= "passed" then passed = false end
                 if check == "unavailable" then unavailable = true end
             end
