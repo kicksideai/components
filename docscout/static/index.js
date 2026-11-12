@@ -2,7 +2,7 @@ import { defineComponent as o, computed as r, openBlock as n, createBlock as p }
 import "@iconify/vue";
 import { define as s } from "@wippy-fe/proxy";
 import { u as a, d as m } from "./index-CrYiACP3.js";
-import { _ as c } from "./Extractor.vue_vue_type_script_setup_true_lang-BqNbzfrK.js";
+import { _ as c } from "./Extractor.vue_vue_type_script_setup_true_lang-B8kL6R_u.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const i = /* @__PURE__ */ o({
   __name: "ManageRoot",

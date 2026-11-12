@@ -40,6 +40,13 @@ describe('Nested field editor and results',()=>{
   expect(fields[0].value).toEqual({page:'7'})
   w.unmount()
  })
+ it('treats omitted declared members as missing even when names occur on the object prototype',()=>{
+  const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',properties:{constructor:{type:['string','null']},toString:{type:['string','null']},page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
+  const w=mount(ResultFields,{props:{fields}})
+  expect(w.findAll('dt').map(e=>e.text())).toEqual(['constructor','toString','page'])
+  expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing','Missing','7'])
+  w.unmount()
+ })
  it('renders nested collapsible groups, renames a subtree and moves a field',async()=>{
   const c=newConfig();c.fields=[{...newField(),name:'name',group:'parties.borrower'},{...newField(),name:'name',group:'parties.agent'}]
   const w=mount(Builder,{props:{config:c,retention:'2h',result:null,title:'Reader',description:''}})
