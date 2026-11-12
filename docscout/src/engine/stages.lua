@@ -135,7 +135,7 @@ end
 
 -- One required summary per section id, so a constrained decoder cannot leave a section out.
 function M.summary_schema(outline: { any }): any
-    return shapes.keyed(section_ids(outline), { type = "string" })
+    return shapes.keyed(section_ids(outline), shapes.comment())
 end
 
 -- One required property per field path, each a list of at least one existing

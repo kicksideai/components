@@ -233,12 +233,31 @@ end
 -- Quotes a value may cite.
 M.EVIDENCE_LIMIT = 5
 
--- Characters a model's free-text comment (a support reason, a scout note) may
--- hold. A schema-constrained decoder ends the string at this bound, so a
--- degenerate repetition inside it stops before it exhausts the output budget
--- shared by every field of the reply.
+-- Informational comments share their generation and stored-character bound.
 M.COMMENT_CHARS = 300
-function M.comment(): any return { type = "string", maxLength = M.COMMENT_CHARS } end
+local COMMENT_SCHEMA = { type = "string", maxLength = M.COMMENT_CHARS }
+function M.comment(): any return COMMENT_SCHEMA end
+
+-- Only leaves declared with comment() are shortened; values and quotes retain
+-- their own validation. Match complete UTF-8 code points, not bytes.
+function M.normalize_comments(schema: any, value: any): any
+    if schema == COMMENT_SCHEMA and type(value) == "string" then
+        local count = 0
+        for position in value:gmatch("()[%z\1-\127\194-\244][\128-\191]*") do
+            count = count + 1
+            if count > COMMENT_SCHEMA.maxLength then return value:sub(1, position - 1) end
+        end
+    elseif type(value) == "table" then
+        if schema.type == "object" then
+            for key, property in pairs(schema.properties or {}) do
+                if value[key] ~= nil then value[key] = M.normalize_comments(property, value[key]) end
+            end
+        elseif schema.type == "array" then
+            for index, item in ipairs(value) do value[index] = M.normalize_comments(schema.items, item) end
+        end
+    end
+    return value
+end
 
 -- Scheduling weights for the reply envelope, quotes and value leaves. Lists
 -- assume five items. These heuristic weights do not bound actual model output.

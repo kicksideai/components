@@ -181,6 +181,32 @@ return { run = test.run_cases(function()
             test.eq(termination.title, "Termination"); test.eq(termination.page_start, 2)
             test.eq(chunks[#chunks].section_id, termination.id)
         end)
+        test.it("bounds generated search-context annotations without changing source passages", function()
+            local storage = assert(fs.get("app:uploads"))
+            assert(storage:writefile("context-comment-requests.json", "[]"))
+            local entry = assert(registry.get("app:fixture_success_model"))
+            entry.data.providers[1].options = { reply = { contexts = { string.rep("界", 301) } }, capture_requests = "context-comment-requests.json" }
+            local changes = assert(registry.overlay("app:engine_test")):changes()
+            changes:update(entry); assert(changes:apply())
+            local ok, failure = pcall(function()
+                local owner = uuid.v4()
+                local upload = data.upload(owner, "application/pdf", "Original bytes", "# Context\nThe total amount is 1250.")
+                local settings = retrieval({ context = "generated", context_model = "class:docscout-success", embedding_model = "class:docscout-success" })
+                local result = assert(data.caller(owner):call("app:probe", { op = "processed", id = data.extractor(owner), upload_id = upload, retrieval = settings }))
+                local chunks = assert(store.all_chunks(result.document.id))
+                test.eq(#chunks, 1)
+                test.eq(chunks[1].context, "Context — " .. string.rep("界", 300))
+                test.contains(chunks[1].content, "The total amount is 1250.")
+                test.is_nil(chunks[1].content:find("界", 1, true))
+                local request = assert(json.decode(assert(storage:readfile("context-comment-requests.json"))))[1]
+                test.eq(request.schema.properties.contexts.items.maxLength, 300)
+                test.eq(#result.step.meter.calls, 2)
+                test.eq(result.step.meter.calls[1].stage, "context")
+            end)
+            local restore = assert(registry.overlay("app:engine_test")):changes()
+            restore:delete(entry.id); assert(restore:apply())
+            if not ok then error(failure) end
+        end)
         test.it("requires a full Markdown artifact and preserves full content", function()
             local owner = uuid.v4()
             for _, original in ipairs({ "text/markdown", "text/html" }) do
@@ -737,6 +763,52 @@ return { run = test.run_cases(function()
             test.is_false((json.validate(schema, json.decode((reply:gsub(',"terms.rate":%[%]', ""))))))
             test.is_false((json.validate(schema, json.decode((reply:gsub('"fee":"C1 states it",', ""))))))
         end)
+        for _, character in ipairs({ "a", "é", "界", "😀" }) do
+            for _, length in ipairs({ 0, 299, 300, 301 }) do
+                test.it("accepts and bounds " .. length .. " character comments using " .. character, function()
+                    local text = string.rep(character, length)
+                    local schemas = {
+                        stages.scout_schema({ max_extra_queries = 1 }, { { name = "fee", group = "" } }, { { ordinal = 1 } }),
+                        stages.support_schema({ { name = "fee" } }, { fee = true }),
+                        visual_verify.check_schema({ path = "fee" }, true),
+                        stages.summary_schema({ { id = "fee" } }),
+                        { type = "object", required = { "checks", "value", "quote" }, properties = {
+                            checks = { type = "array", items = { type = "object", required = { "comment", "verdict" },
+                                properties = { comment = shapes.comment(), verdict = { type = "string", enum = { "supported" } } } } },
+                            value = { type = "string", maxLength = 301 }, quote = { type = "string" } } },
+                    }
+                    for index, schema in ipairs(schemas) do
+                        local meter = ai.meter()
+                        local reply, err = ai.structured(meter, "class:docscout-echo", schema, text, "user")
+                        test.is_nil(err, tostring(err)); test.not_nil(reply)
+                        local expected = string.rep(character, math.min(length, 300))
+                        if index == 1 then
+                            test.eq(reply.notes.fee, expected); test.eq(reply.evidence.fee[1], 1)
+                            test.eq(reply.queries[1].query, text)
+                        elseif index == 2 then
+                            test.eq(reply.fee.reason, expected); test.eq(reply.fee.verdict, "supported"); test.eq(reply.fee.complete, "complete")
+                        elseif index == 3 then
+                            test.eq(reply.fee.reason, expected); test.eq(reply.fee.quote_on_page, "yes")
+                            test.eq(reply.fee.states_value, "yes"); test.eq(reply.fee.complete, "complete")
+                        elseif index == 4 then test.eq(reply.fee, expected)
+                        else
+                            test.eq(reply.checks[1].comment, expected); test.eq(reply.checks[1].verdict, "supported")
+                            test.eq(reply.value, text); test.eq(reply.quote, text)
+                        end
+                        test.eq(#meter.calls, 1); test.is_nil(meter.calls[1].error_code)
+                    end
+                end)
+            end
+        end
+        test.it("retains validation of bounded content with the same shape as a comment", function()
+            local schema = { type = "object", required = { "comment", "value" }, properties = {
+                comment = shapes.comment(), value = { type = "string", maxLength = 300 } } }
+            local meter = ai.meter()
+            local reply, err = ai.structured(meter, "class:docscout-echo", schema, string.rep("界", 301), "user")
+            test.is_nil(reply); test.not_nil(err)
+            test.eq(err:details().code, "structured_reply_invalid")
+            test.eq(meter.calls[1].error_code, "structured_reply_invalid")
+        end)
         test.it("bounds each scout note so a constrained decoder ends a run-on note within its reply", function()
             local schema = stages.scout_schema({ max_extra_queries = 0 }, { { name = "fee", group = "" } }, { { ordinal = 1 } })
             local function reply(note: string): any
@@ -767,6 +839,8 @@ return { run = test.run_cases(function()
             local schema = stages.summary_schema({ { id = "s1" }, { id = "s2" } })
             test.is_true((json.validate(schema, json.decode('{"s1":"Parties","s2":"Payment terms"}'))))
             test.is_false((json.validate(schema, json.decode('{"s1":"Parties"}'))))
+            test.is_true((json.validate(schema, { s1 = string.rep("界", 300), s2 = "" })))
+            test.is_false((json.validate(schema, { s1 = string.rep("界", 301), s2 = "" })))
         end)
         test.it("keeps one scout note per field and retains cited passages", function()
             local p = shapes.pool()
