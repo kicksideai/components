@@ -47,7 +47,9 @@ for a text property, with `maxLength: 24` when configured. Null means absent:
 Docscout's decoder omits that key, and values and saved results use the existing
 missing-member representation. Receipt validation derives optional nullable
 members from that same schema; present members still satisfy their declared
-type and bound, and non-nullable required members stay required. Verification
+type and bound. A nested compound whose members can all be absent (nullable,
+recursively) is also optional after normalization; other non-nullable required
+members stay required. Verification
 and summaries treat an object with only absent nullable members as missing.
 Lists of objects with nullable members keep rows with at least one present member; a list with no such
 rows is missing. This applies recursively, before verification, to text and page
@@ -57,7 +59,7 @@ A provider that ignores `maxLength` returns a typed field error
 `value_max_length_exceeded` with `path`, `limit` and actual `length`; values are
 never cut. As with comment bounds, a provider that rejects `maxLength` in strict
 mode surfaces its own invalid-request error. Omitted options preserve existing
-schemas, requests and behavior. Results with nullable members include an optional
+schemas, requests and behavior. Found results with nullable members include an optional
 `value_schema` so result views can show omitted members as Missing, including
 saved runs, without adding another representation of absence to their values.
 

@@ -323,9 +323,19 @@ local function nullable(schema: any): boolean
     return false
 end
 
+local function can_be_absent(schema: any): boolean
+    if nullable(schema) then return true end
+    if schema.properties and next(schema.properties) ~= nil then
+        for _, property in pairs(schema.properties) do if not can_be_absent(property) then return false end end
+        return true
+    end
+    return schema.items ~= nil and can_be_absent(schema.items)
+end
+
 -- Wire null means absent. The decoder omits null object keys, so derive
 -- optional nullable members for receipt validation from the same wire definition.
--- Non-nullable required members and every present-value constraint stay intact.
+-- Compounds whose members can all be absent are optional after normalization;
+-- other required members and every present-value constraint stay intact.
 function M.receipt_schema(schema: any): any
     local receipt = {}
     for key, value in pairs(schema) do receipt[key] = value end
@@ -340,7 +350,7 @@ function M.receipt_schema(schema: any): any
         if schema.required then
             receipt.required = {}
             for _, name in ipairs(schema.required) do
-                if not nullable(schema.properties[name]) then receipt.required[#receipt.required + 1] = name end
+                if not can_be_absent(schema.properties[name]) then receipt.required[#receipt.required + 1] = name end
             end
         end
     end

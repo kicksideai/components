@@ -6,7 +6,14 @@ import {getValue} from '../config'
 const props=defineProps<{value:unknown;schema?:ValueSchema}>()
 const object=computed(()=>props.value!==null&&typeof props.value==='object'&&!Array.isArray(props.value)?props.value as Record<string,unknown>:null)
 const keys=computed(()=>[...new Set([...Object.keys(props.schema?.properties??{}),...Object.keys(object.value??{})])])
-const absentLabel=computed(()=>Array.isArray(props.schema?.type)&&props.schema.type.includes('null')?'Missing':'—')
+function canBeAbsent(schema?:ValueSchema):boolean{
+ if(!schema)return false
+ if(Array.isArray(schema.type)&&schema.type.includes('null'))return true
+ const members=Object.values(schema.properties??{})
+ if(members.length)return members.every(canBeAbsent)
+ return !!schema.items&&canBeAbsent(schema.items)
+}
+const absentLabel=computed(()=>canBeAbsent(props.schema)?'Missing':'—')
 </script>
 <template>
  <div class="nested-value">
