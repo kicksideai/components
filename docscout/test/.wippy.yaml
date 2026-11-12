@@ -14,7 +14,6 @@ workspace:
     kickside/transform: ${kickside_root}/platform/transform
     kickside/ui: ${kickside_root}/platform/ui
     kickside/self-reflection: ${kickside_root}/platform/self-reflection
-    kickside/uploads: ${kickside_root}/platform/uploads
     kickside/sessions: ${kickside_root}/platform/sessions
     kickside/blocks: ${kickside_root}/platform/blocks
     kickside/security: ${kickside_root}/platform/security
@@ -44,7 +43,7 @@ vars:
   kickside_root: ../../../kickside
   pg_database: docscout_test
   pg_host: 127.0.0.1
-  pg_port: 5433
+  pg_port: 5547
   pg_username: kickside
   pg_password: kickside
 override:

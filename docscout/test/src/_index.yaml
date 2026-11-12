@@ -1932,3 +1932,13 @@ entries:
   - id: app:fixture_success_provider
     provider_model: docscout-success
     options: {capture_requests: context-unknown-output.json}
+
+- name: page_images_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_page_images, group: Docscout}
+  source: file://page_images_test.lua
+  method: run
+  modules: [registry, json, uuid]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
