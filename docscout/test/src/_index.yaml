@@ -921,7 +921,7 @@ entries:
   meta: {type: test, suite: docscout_partial, group: Docscout}
   source: file://partial_test.lua
   method: run
-  modules: [json, registry, uuid, time, process, channel, sql]
+  modules: [json, registry, uuid, time, process, channel, sql, fs]
   imports:
     test: wippy.test:test
     data: app:fixture_data
@@ -930,6 +930,13 @@ entries:
     shapes: kickside.docscout.engine:shapes
     scoring: kickside.docscout.evals:scoring
     runner: kickside.docscout.engine:run
+    canonical_json: kickside.contract:canonical_json
+    member_baseline: app:member_baseline
+
+- name: member_baseline
+  kind: library.lua
+  source: file://member_baseline.lua
+  modules: [json]
 
 - name: user_agent_test
   kind: function.lua

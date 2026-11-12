@@ -292,7 +292,7 @@ function M.value_schema(f: any): any
         local properties, required = M.object(), {}
         for _, p in ipairs(f.properties) do
             properties[p.name] = M.value_schema(p)
-            if p.required then required[#required + 1] = p.name end
+            if p.required or p.nullable then required[#required + 1] = p.name end
         end
         schema = { type = "object", additionalProperties = false, properties = properties, required = required }
     elseif f.type == "enum" then
@@ -301,11 +301,122 @@ function M.value_schema(f: any): any
         schema = { type = JSON_TYPES[f.type] }
         if f.type == "text" and #(f.enum_values or {}) > 0 then schema.enum = f.enum_values end
     end
+    if f.max_length ~= nil then schema.maxLength = f.max_length end
+    if f.nullable then
+        schema.type = { schema.type, "null" }
+        if schema.enum then
+            schema.anyOf = { { enum = schema.enum }, { type = "null" } }
+            schema.enum = nil
+        end
+    end
     if f.description and f.description ~= "" then schema.description = f.description end
     if f.expected_format and f.expected_format ~= "" then
         schema.description = (schema.description and (schema.description .. "\n") or "") .. "Format: " .. f.expected_format
     end
     return schema
+end
+
+local function nullable(schema: any): boolean
+    if schema and type(schema.type) == "table" then
+        for _, kind in ipairs(schema.type) do if kind == "null" then return true end end
+    end
+    return false
+end
+
+local function can_be_absent(schema: any): boolean
+    if nullable(schema) then return true end
+    if schema.properties and next(schema.properties) ~= nil then
+        for _, name in ipairs(schema.required or {}) do if not can_be_absent(schema.properties[name]) then return false end end
+        return true
+    end
+    return schema.items ~= nil and can_be_absent(schema.items)
+end
+
+-- Wire null means absent. The decoder omits null object keys, so derive
+-- optional nullable members for receipt validation from the same wire definition.
+-- Compounds whose members can all be absent are optional after normalization;
+-- other required members and every present-value constraint stay intact.
+function M.receipt_schema(schema: any): any
+    local receipt = {}
+    for key, value in pairs(schema) do receipt[key] = value end
+    if nullable(schema) then
+        local kinds = {}
+        for _, kind in ipairs(schema.type) do if kind ~= "null" then kinds[#kinds + 1] = kind end end
+        receipt.type = #kinds == 1 and kinds[1] or kinds
+    end
+    if schema.properties then
+        receipt.properties = M.object()
+        for name, property in pairs(schema.properties) do receipt.properties[name] = M.receipt_schema(property) end
+        if schema.required then
+            receipt.required = {}
+            for _, name in ipairs(schema.required) do
+                if not can_be_absent(schema.properties[name]) then receipt.required[#receipt.required + 1] = name end
+            end
+        end
+    end
+    if schema.items then receipt.items = M.receipt_schema(schema.items) end
+    return receipt
+end
+
+-- Validate bounds without changing values, including when a provider ignores
+-- the generation schema. JSON Schema lengths count Unicode code points.
+function M.length_issue(schema: any, value: any, path: string?): any?
+    local location = path or ""
+    if schema.maxLength and type(value) == "string" then
+        local length = 0
+        for _ in value:gmatch("[%z\1-\127\194-\244][\128-\191]*") do length = length + 1 end
+        if length > schema.maxLength then return { path = location, limit = schema.maxLength, length = length } end
+    elseif type(value) == "table" then
+        if schema.properties then
+            for name, property in pairs(schema.properties) do
+                local issue = M.length_issue(property, value[name], location == "" and name or (location .. "." .. name))
+                if issue then return issue end
+            end
+        elseif schema.items then
+            for index, item in ipairs(value) do
+                local issue = M.length_issue(schema.items, item, location .. "[" .. index .. "]")
+                if issue then return issue end
+            end
+        end
+    end
+    return nil
+end
+
+local function contains_nullable(node: any): boolean
+    if nullable(node) then return true end
+    for _, property in pairs(node.properties or {}) do if contains_nullable(property) then return true end end
+    return node.items ~= nil and contains_nullable(node.items)
+end
+
+-- The declared schema lets result views show omitted members without storing
+-- another representation of absence. Older, unconfigured results stay unchanged.
+function M.nullable_schema(field: any): any?
+    local schema = M.value_schema(field)
+    return contains_nullable(schema) and schema or nil
+end
+
+-- Apply null-means-absent before field coverage and verification. Empty legacy
+-- compounds keep their meaning; nullable compounds report only present members.
+function M.extracted_value(field: any, value: any): any
+    local function present(schema: any, item: any): any
+        if type(item) ~= "table" or not contains_nullable(schema) then return item end
+        if schema.properties then
+            local object = M.object()
+            for name, property in pairs(schema.properties) do object[name] = present(property, item[name]) end
+            if next(object) ~= nil then return object end
+        elseif schema.items then
+            local rows = {}
+            for _, row in ipairs(item) do
+                local kept = present(schema.items, row)
+                if kept ~= nil then rows[#rows + 1] = kept end
+            end
+            if #rows > 0 then return rows end
+        else
+            return item
+        end
+        return nil
+    end
+    return present(M.value_schema(field), value)
 end
 
 -- Date pattern tokens an expected format may use, longest first, with the

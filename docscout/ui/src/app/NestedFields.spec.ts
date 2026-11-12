@@ -4,12 +4,66 @@ import {mount,config} from '@vue/test-utils'
 import {PrimeVuePlugin} from '@wippy-fe/theme/primevue-plugin'
 import {newConfig,newField} from '../config'
 import Builder from './Builder.vue'
+import ShapeEditor from './ShapeEditor.vue'
+import ResultFields from './ResultFields.vue'
 import TestPanel from './TestPanel.vue'
 import EvalsPanel from './EvalsPanel.vue'
 vi.mock('@wippy-fe/proxy',()=>({loadByTagName:async()=>{},api:{get:vi.fn()}}))
 config.global.plugins=[PrimeVuePlugin]
 beforeAll(()=>{vi.stubGlobal('ResizeObserver',class{observe(){}disconnect(){}})})
 describe('Nested field editor and results',()=>{
+ it('edits and clears member bounds without adding defaults or changing scalar fields',async()=>{
+  const shape={name:'book',type:'text' as const,description:'',enum_values:[],expected_format:'',required:true}
+  const w=mount(ShapeEditor,{props:{shape,depth:2,named:true}})
+  expect(shape).not.toHaveProperty('nullable');expect(shape).not.toHaveProperty('max_length')
+  await w.get('[role="switch"][aria-label="May be absent"]').trigger('click')
+  await w.get('input[aria-label="Maximum characters"]').setValue('24')
+  expect(shape).toMatchObject({nullable:true,max_length:24})
+  await w.get('input[aria-label="Maximum characters"]').setValue('0')
+  expect(w.get('[role="alert"]').text()).toContain('positive integer')
+  await w.get('input[aria-label="Maximum characters"]').setValue('')
+  await w.get('[role="switch"][aria-label="May be absent"]').trigger('click')
+  expect(shape).not.toHaveProperty('nullable');expect(shape).not.toHaveProperty('max_length')
+  await w.setProps({depth:1})
+  expect(w.find('[aria-label="May be absent"]').exists()).toBe(false)
+  expect(w.find('[aria-label="Maximum characters"]').exists()).toBe(false)
+  w.unmount()
+ })
+ it('renders omitted nullable members as missing in objects and list rows',()=>{
+  const row={type:'object',properties:{book:{type:['string','null'],maxLength:24},page:{type:'string'}}}
+  const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:row,confidence:1,verified:true,evidence:[]},
+   {name:'rows',path:'rows',value:[{page:'8'}],value_schema:{type:'array',items:row},confidence:1,verified:true,evidence:[]}]
+  const w=mount(ResultFields,{props:{fields}})
+  expect(w.findAll('dt').map(e=>e.text())).toEqual(['book','page','book','page'])
+  expect(w.findAll('dd').filter(e=>e.text()==='Missing')).toHaveLength(2)
+  expect(w.text()).toContain('7');expect(w.text()).toContain('8')
+  expect(fields[0].value).toEqual({page:'7'})
+  w.unmount()
+ })
+ it('renders absent compounds with recursively nullable descendants as missing',()=>{
+  const child={type:'object',required:['book'],properties:{book:{type:['string','null']}}}
+  const branch={type:'object',required:['child'],properties:{child}}
+  const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',properties:{child,branch,rows:{type:'array',items:branch},legacy:{type:'object',required:['book'],properties:{book:{type:'string'}}},page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
+  const w=mount(ResultFields,{props:{fields}})
+  expect(w.findAll('dt').map(e=>e.text())).toEqual(['child','branch','rows','legacy','page'])
+  expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing','Missing','Missing','—','7'])
+  w.unmount()
+ })
+ it('treats omitted declared members as missing even when names occur on the object prototype',()=>{
+  const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',properties:{constructor:{type:['string','null']},toString:{type:['string','null']},page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
+  const w=mount(ResultFields,{props:{fields}})
+  expect(w.findAll('dt').map(e=>e.text())).toEqual(['constructor','toString','page'])
+  expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing','Missing','7'])
+  w.unmount()
+ })
+ it('renders a required compound with nullable and optional members as missing',()=>{
+  const child={type:'object',required:['book'],properties:{book:{type:['string','null']},note:{type:'string'}}}
+  const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',required:['child','page'],properties:{child,page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
+  const w=mount(ResultFields,{props:{fields}})
+  expect(w.findAll('dt').map(e=>e.text())).toEqual(['child','page'])
+  expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing','7'])
+  w.unmount()
+ })
  it('renders nested collapsible groups, renames a subtree and moves a field',async()=>{
   const c=newConfig();c.fields=[{...newField(),name:'name',group:'parties.borrower'},{...newField(),name:'name',group:'parties.agent'}]
   const w=mount(Builder,{props:{config:c,retention:'2h',result:null,title:'Reader',description:''}})

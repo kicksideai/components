@@ -52,6 +52,24 @@ local function recovery_deadline(): number
     return earliest
 end
 
+-- Other suites retain their own fixtures in the same database. Their future
+-- expiries also participate in the owner's global deadline.
+local function other_expiry(ids: {string}): number
+    local own = {}
+    for _, id in ipairs(ids) do own[id] = true end
+    local db = assert(sql.get("app:db"))
+    local rows, err = db:query([[SELECT component_id, expires_at FROM kickside_docscout_documents
+        UNION ALL SELECT component_id, expires_at FROM kickside_docscout_runs]])
+    db:release()
+    assert(rows, tostring(err))
+    local earliest, now = math.huge, time.now():unix_nano()
+    for _, row in ipairs(rows) do
+        local expiry = instant(row.expires_at)
+        if not own[row.component_id] and expiry > now then earliest = math.min(earliest, expiry) end
+    end
+    return earliest
+end
+
 return { run = test.run_cases(function()
     test.describe("Extractor retention", function()
         test.it("expires documents and runs by their extractor and reports the earliest remaining deadline", function()
@@ -78,7 +96,7 @@ return { run = test.run_cases(function()
             end
             local earliest = math.huge
             for _, group in ipairs(saved) do for _, row in ipairs(group) do earliest = math.min(earliest, instant(row.expires_at)) end end
-            test.eq(sweep().deadline_ms, math.floor(earliest / 1000000))
+            test.eq(sweep().deadline_ms, math.floor(math.min(earliest, other_expiry(ids), recovery_deadline()) / 1000000))
             for i = 1, 2 do
                 local last = 0
                 for _, row in ipairs(saved[i]) do last = math.max(last, instant(row.expires_at)) end
@@ -89,7 +107,7 @@ return { run = test.run_cases(function()
                 for j = i + 1, 3 do test.eq(#rows(ids[j]), 2, "later window expires early") end
                 local next_expiry = math.huge
                 for j = i + 1, 3 do for _, row in ipairs(saved[j]) do next_expiry = math.min(next_expiry, instant(row.expires_at)) end end
-                test.eq(result.deadline_ms, math.floor(math.min(next_expiry, recovery_deadline()) / 1000000))
+                test.eq(result.deadline_ms, math.floor(math.min(next_expiry, other_expiry(ids), recovery_deadline()) / 1000000))
             end
             local before = assert(json.encode(saved[3]))
             local snapshot = assert(caller:call("app:probe", { op = "get", id = ids[3] }))
@@ -116,7 +134,7 @@ return { run = test.run_cases(function()
                 expires_at = future }, {}))
             local first = sweep()
             test.eq(first.deleted, 400); test.is_true(first.needs_continue); test.eq(#rows(id), 3)
-            test.eq(first.deadline_ms, math.floor(math.min(instant(future), recovery_deadline()) / 1000000),
+            test.eq(first.deadline_ms, math.floor(math.min(instant(future), other_expiry({id}), recovery_deadline()) / 1000000),
                 "an expired backlog hides the first future expiry")
             local second = sweep()
             test.eq(second.deleted, 2); test.is_true(second.needs_continue); test.eq(#rows(id), 1)

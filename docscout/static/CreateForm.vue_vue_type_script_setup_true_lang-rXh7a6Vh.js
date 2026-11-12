@@ -2,7 +2,7 @@ import { defineComponent as O, ref as m, openBlock as p, createElementBlock as f
 import T from "primevue/button";
 import U from "primevue/inputtext";
 import c from "primevue/textarea";
-import { n as j, s as V, i as D, m as F } from "./config-uWC4TI7Z.js";
+import { n as j, s as V, i as D, m as F } from "./config-Y09Qqq2I.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const I = { class: "create-summary" }, L = {
   key: 0,

@@ -13,9 +13,13 @@ const typeLabel=computed(()=>props.named?(props.depth===1?'Field type':'Property
 const allowed=computed(()=>typeOptions.filter(t=>props.depth<MAX_SHAPE_DEPTH||!['object','list'].includes(t.value)))
 const type=computed({get:()=>props.shape.type,set:(type:FieldType)=>{
  props.shape.type=type;delete props.shape.properties;delete props.shape.item;props.shape.enum_values=[]
+ if(!['text','date','enum'].includes(type))delete property.value.max_length
  if(type==='object')props.shape.properties=[]
  if(type==='list')props.shape.item=newItem()
 }})
+const member=computed(()=>props.named&&props.depth>1)
+const nullable=computed({get:()=>property.value.nullable===true,set:(value:boolean)=>{if(value)property.value.nullable=true;else delete property.value.nullable}})
+const maxLength=computed({get:()=>property.value.max_length??'',set:(value:string|number)=>{if(value==='')delete property.value.max_length;else property.value.max_length=Number(value)}})
 const typeId=useId(),errorId=useId(),choice=ref(''),choiceError=ref('')
 watch(()=>props.shape,()=>{choice.value='';choiceError.value=''})
 const error=computed(()=>props.validationError||(props.named?nameError(property.value.name,props.siblingNames):'')||shapeError(props.shape,props.depth))
@@ -41,6 +45,10 @@ function addChoice(){
   <label>Description<textarea v-model="shape.description" rows="3" maxlength="4000" placeholder="What this value means in the document"/></label>
   <label v-if="!['boolean','enum'].includes(shape.type)">Expected format<input v-model="shape.expected_format" maxlength="400" :placeholder="formatPlaceholder(shape)"/></label>
   <div v-if="named" class="toggle-row"><span>Required</span><Toggle v-model="property.required" label="Required" :disabled="readonly"/></div>
+  <template v-if="member">
+   <div class="toggle-row"><span>May be absent<small>A missing member has no value.</small></span><Toggle v-model="nullable" label="May be absent" :disabled="readonly"/></div>
+   <label v-if="['text','date','enum'].includes(shape.type)">Maximum characters<input v-model="maxLength" type="number" min="1" step="1" aria-label="Maximum characters"/><small>Optional. Longer values fail extraction.</small></label>
+  </template>
   <template v-if="shape.type==='object'">
    <p class="muted">{{shape.properties?.length??0}} properties · Select a property in the tree to edit it.</p>
    <button v-if="!readonly&&depth<MAX_SHAPE_DEPTH" type="button" class="kx-btn kx-btn-ghost kx-focus-halo" :aria-label="`Add property to ${label}`" :disabled="(shape.properties?.length??0)>=100" @click="emit('add')"><Icon icon="tabler:plus"/>Add property</button>

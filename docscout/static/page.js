@@ -6,7 +6,7 @@ import { define as a } from "@wippy-fe/proxy";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const t = r({
   lazyConfig: n(
-    () => import("./page-mount-Xb80FcE9.js").then((o) => o.mountConfig),
+    () => import("./page-mount-CGf2t6S7.js").then((o) => o.mountConfig),
     "Could not load Docscout. Reload the page to try again.",
     e
   )
