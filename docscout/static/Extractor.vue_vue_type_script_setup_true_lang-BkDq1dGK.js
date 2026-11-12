@@ -311,10 +311,12 @@ function Zl(e, n, l) {
   n.trail.length ? Je(e).find((y) => y.key === ie(n.field, n.trail.slice(0, -1))).shape.properties.splice(n.trail.at(-1), 1) : e.splice(n.field, 1);
   let i;
   if (l) {
-    const { name: p, type: y, description: r, enum_values: $, expected_format: C, required: S, properties: v, item: w } = u;
-    i = { name: p, type: y, description: r, enum_values: $, expected_format: C, required: S, ...v ? { properties: v } : {}, ...w ? { item: w } : {} }, l.shape.properties.push(i), i = l.shape.properties.at(-1);
-  } else
-    i = { ...at(), ...u, group: "" }, e.push(i), i = e.at(-1);
+    const { name: p, type: y, description: r, enum_values: $, expected_format: C, required: S, properties: v, item: w, nullable: V, max_length: o } = u;
+    i = { name: p, type: y, description: r, enum_values: $, expected_format: C, required: S, ...v ? { properties: v } : {}, ...w ? { item: w } : {}, ...V !== void 0 ? { nullable: V } : {}, ...o !== void 0 ? { max_length: o } : {} }, l.shape.properties.push(i), i = l.shape.properties.at(-1);
+  } else {
+    const { nullable: p, max_length: y, ...r } = u;
+    i = { ...at(), ...r, group: "" }, e.push(i), i = e.at(-1);
+  }
   return Je(e).find((p) => p.shape === i);
 }
 function St(e, n = !1) {
