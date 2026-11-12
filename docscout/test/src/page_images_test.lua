@@ -71,6 +71,37 @@ return { run = test.run_cases(function()
             test.eq(saved.verification.status, "passed")
             test.eq(saved.evidence[1].image_checksum, value.evidence[1].image_checksum)
         end)
+        test.it("reads shared pages once across extraction groups and field checks in one run", function()
+            local owner, cfg = uuid.v4(), configuration()
+            local storage, record = assert(fs.get("app:uploads")), uuid.v4() .. ".json"
+            assert(storage:writefile(record, "{}"))
+            local field = assert(json.decode(assert(json.encode(cfg.fields[1]))))
+            field.name = "tax"
+            cfg.fields[2], cfg.stages.extract.max_fields_per_call = field, 1
+            local id = upload(owner, {{text = "amount: 1250\ntax: 50", record = record}, {text = "Notes", record = record}})
+            local result, caller, extractor = invoke(owner, cfg, id)
+            test.eq(#result.fields, 2)
+            for _, value in ipairs(result.fields) do test.is_true(value.verified) end
+            local reads = assert(json.decode(assert(storage:readfile(record))))
+            test.eq(reads["1"], 1)
+            test.eq(reads["2"], 1)
+            assert(caller:call("kickside.docscout:invoke", {extractor_id = extractor, upload_id = id}))
+            reads = assert(json.decode(assert(storage:readfile(record))))
+            test.eq(reads["1"], 2)
+            test.eq(reads["2"], 2)
+        end)
+        test.it("evicts the least recently used page beyond the run's 16 MiB image cap", function()
+            local owner, storage, record = uuid.v4(), assert(fs.get("app:uploads")), uuid.v4() .. ".json"
+            assert(storage:writefile(record, "{}"))
+            local images = {}
+            for page = 1, 5 do images[page] = {text = string.rep("x", 3584 * 1024), record = record} end
+            local id = upload(owner, images)
+            assert(data.caller(owner):call("app:fixture_page_reads", {upload_id = id, sequence = {1,2,3,4,1,5,1,2}}))
+            local reads = assert(json.decode(assert(storage:readfile(record))))
+            test.eq(reads["1"], 1)
+            test.eq(reads["2"], 2)
+            for page = 3, 5 do test.eq(reads[tostring(page)], 1) end
+        end)
         test.it("leaves values visually unchecked when support is disabled", function()
             local owner, cfg = uuid.v4(), configuration()
             cfg.stages.verify.check_support = false
@@ -103,6 +134,36 @@ return { run = test.run_cases(function()
         end)
     end)
     test.describe("Image boundaries and failures", function()
+        test.it("keeps completeness unavailable when verification omits eligible pages", function()
+            local owner, cfg = uuid.v4(), configuration()
+            cfg.fields[1].type = "text"
+            cfg.stages.verify.check_completeness = true
+            local result, caller, extractor = invoke(owner, cfg, upload(owner,
+                {"amount: first part", "continued", "more", "last"},
+                "<!-- page 1 -->\n# Amount\namount: first part\n<!-- page 2 -->\ncontinued\n<!-- page 3 -->\nmore\n<!-- page 4 -->\nlast"))
+            for _, step in ipairs(result.trace) do
+                if step.kind == "extract" then test.eq(assert(json.encode(step.calls[1].pages)), "[1,2,3,4]") end
+                if step.kind == "verify" then test.eq(assert(json.encode(step.calls[1].pages)), "[1,2]") end
+            end
+            local value = result.fields[1]
+            test.is_nil(value.complete)
+            test.eq(value.verification.checks.completeness, "unavailable")
+            test.is_false(value.verified)
+            test.is_true(table.concat(value.codes, ","):find("visual_completeness_unavailable", 1, true) ~= nil)
+            local saved = assert(caller:call("app:probe", {op = "get", id = extractor})).runs[1].result.fields[1]
+            test.is_nil(saved.complete)
+            test.eq(saved.verification.checks.completeness, "unavailable")
+        end)
+        test.it("accepts completeness when every eligible page reaches verification", function()
+            local owner, cfg = uuid.v4(), configuration()
+            cfg.fields[1].type = "text"
+            cfg.stages.verify.check_completeness = true
+            local result = invoke(owner, cfg, upload(owner, {"outside", "amount: all", "continued", "outside"},
+                "<!-- page 1 -->\n# Amount\noutside\n<!-- page 2 -->\namount: all\n<!-- page 3 -->\ncontinued\n<!-- page 4 -->\noutside"), {first = 2, last = 3})
+            test.is_true(result.fields[1].complete)
+            test.is_true(result.fields[1].verified)
+            test.eq(result.fields[1].verification.checks.completeness, "passed")
+        end)
         test.it("keeps completeness unknown when Map drops section context", function()
             local owner, cfg = uuid.v4(), configuration()
             cfg.fields[1].type, cfg.fields[1].search_within = "text", "sections"

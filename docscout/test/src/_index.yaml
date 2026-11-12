@@ -1954,9 +1954,10 @@ entries:
   kind: function.lua
   source: file://fixture_pages.lua
   method: render
-  modules: [json]
+  modules: [json, fs]
   imports:
     png: app:fixture_page_png
+    pages: kickside.docscout.engine:pages
 - name: fixture_page_rasterizer
   kind: registry.entry
   meta: {type: convert.rasterizer}
@@ -2020,3 +2021,12 @@ entries:
 - name: fixture_page_types
   kind: library.lua
   source: file://fixture_page_types.lua
+
+- name: fixture_page_reads
+  kind: function.lua
+  source: file://fixture_pages.lua
+  method: read
+  modules: [json, fs]
+  imports:
+    png: app:fixture_page_png
+    pages: kickside.docscout.engine:pages
