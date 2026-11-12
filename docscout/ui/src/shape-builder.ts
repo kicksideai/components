@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+import {toRaw} from 'vue'
 import {fieldPath,newField,newProperty,setValue,MAX_SHAPE_DEPTH,type Field,type Shape,type Property,type FieldType} from './config'
 export type Trail=(number|'item')[]
 export interface ShapeNode {field:number;trail:Trail;shape:Shape;path:string;depth:number;key:string}
@@ -26,7 +27,7 @@ export function moveTargets(fields:Field[],source:ShapeNode):ShapeNode[]{
  !(n.field===source.field&&source.trail.every((segment,i)=>n.trail[i]===segment)))
 }
 export function moveShape(fields:Field[],source:ShapeNode,target?:ShapeNode):ShapeNode{
- const property:Property={...newProperty(),...source.shape,name:(source.shape as Property).name}
+ const property:Property={...newProperty(),...structuredClone(toRaw(source.shape)),name:(source.shape as Property).name}
  if(!source.trail.length)fields.splice(source.field,1)
  else{
   const parent=shapeNodes(fields).find(n=>n.key===shapeKey(source.field,source.trail.slice(0,-1)))!
