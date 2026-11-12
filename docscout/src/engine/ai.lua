@@ -252,9 +252,16 @@ local function structured_result(model: string, schema: any, response: any, err:
         return nil, model_error("structured model call (" .. model .. ")", "no structured result", true)
     end
     response.result = shapes.normalize_comments(schema, response.result)
+    local issue = shapes.length_issue(schema, response.result)
+    if issue then
+        issue.code, issue.model = "value_max_length_exceeded", model
+        return nil, errors.new({ kind = errors.INVALID, retryable = false,
+            message = "Value at " .. issue.path .. " has " .. issue.length .. " characters; maximum is " .. issue.limit,
+            details = issue })
+    end
     local encoded, encode_err = json.encode(response.result)
     if encode_err then return nil, model_error("structured reply encoding", encode_err, true) end
-    local valid, validation_err = json.validate_string(schema, encoded)
+    local valid, validation_err = json.validate_string(shapes.receipt_schema(schema), encoded)
     if not valid then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
             message = "Structured model reply does not match its schema: " .. tostring(validation_err),

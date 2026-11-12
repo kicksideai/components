@@ -1237,7 +1237,7 @@ function M.verify(run: any, step: any): error?
         if run.budget_dropped and run.budget_dropped[shapes.path(v)] then code("context_budget_partial") end
         local found = not v.missing and not v.failed
         if found then
-            local valid, shape_err = json.validate(shapes.value_schema(fields[shapes.path(v)]), v.value)
+            local valid, shape_err = json.validate(shapes.receipt_schema(shapes.value_schema(fields[shapes.path(v)])), v.value)
             if not valid then reject("shape_mismatch", "Value does not match its declared shape: " .. tostring(shape_err))
             else
                 local issue = shapes.format_issue(fields[shapes.path(v)], v.value)

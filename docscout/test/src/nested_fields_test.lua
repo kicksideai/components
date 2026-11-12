@@ -79,6 +79,24 @@ return { run = test.run_cases(function()
                 test.is_false((json.validate(receipt, assert(json.decode(raw)))))
             end
         end)
+        test.it("retains enum and typed member constraints alongside nullable absence", function()
+            for _, kind in ipairs({ "text", "date", "enum", "number", "boolean", "object", "list" }) do
+                local member = property("member", kind); member.nullable = true
+                if kind == "enum" then member.enum_values = { "a", "b" } end
+                if kind == "object" then member.properties = { property("child", "text") } end
+                if kind == "list" then member.item = { type = "text" } end
+                local f = field("reference", "", "object"); f.properties = { member }
+                local wire = shapes.value_schema(f)
+                test.is_true((json.validate_string(wire, '{"member":null}')), kind)
+                local receipt = shapes.receipt_schema(wire)
+                test.is_true((json.validate(receipt, assert(json.decode('{"member":null}')))), kind)
+                if kind == "enum" then
+                    test.is_true((json.validate_string(wire, '{"member":"a"}')))
+                    test.is_false((json.validate_string(wire, '{"member":"c"}')))
+                    test.is_false((json.validate(receipt, { member = "c" })))
+                end
+            end
+        end)
         test.it("verifies nullable missing members without changing field summaries or values", function()
             local f = field("reference", "", "object")
             local member = property("book", "text"); member.nullable, member.max_length = true, 24

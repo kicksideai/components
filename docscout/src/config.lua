@@ -78,6 +78,9 @@ function M.validate_shape(field: any, depth: integer): error?
     if #enums > 0 and field.type ~= "enum" and field.type ~= "text" then
         return invalid("Allowed values apply to enum fields and text items")
     end
+    if field.max_length ~= nil and field.type ~= "text" and field.type ~= "date" and field.type ~= "enum" then
+        return invalid("Maximum length applies to text, date and enum members")
+    end
     if field.type == "object" then
         if not field.properties or #field.properties == 0 then return invalid("Object fields need a declared property") end
         local names = {}
@@ -98,7 +101,7 @@ end
 
 -- Expected values share the extraction's nested group and typed value shape.
 function M.validate_expected(fields: { any }, value: any): error?
-    local valid, err = json.validate(shapes.expected_schema(fields), value)
+    local valid, err = json.validate(shapes.receipt_schema(shapes.expected_schema(fields)), value)
     if not valid then return invalid("Expected values do not match the fields: " .. tostring(err)) end
     return nil
 end

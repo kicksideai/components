@@ -62,6 +62,32 @@ return { run = test.run_cases(function()
             restore:delete(entry.id); assert(restore:apply())
             if not ok then error(failure) end
         end)
+        test.it("stores and verifies decoded missing members, including an entirely absent object", function()
+            local cfg = configuration({ "reference", "rows" })
+            local member = { name = "book", type = "text", description = "", enum_values = assert(json.decode("[]")), expected_format = "", required = true, nullable = true, max_length = 24 }
+            cfg.fields[1].type, cfg.fields[1].properties = "object", { member }
+            cfg.fields[2].type, cfg.fields[2].item = "list", { type = "object", properties = { member } }
+            cfg.stages.verify.enabled, cfg.stages.extract.max_fields_per_call = true, 2
+            local entry = assert(registry.get("app:fixture_success_model"))
+            entry.data.providers[1].options = { reply = assert(json.decode('{"reference":{"found":true,"value":{"book":null},"confidence":1,"evidence":[{"chunk":1,"quote":"The total amount is 1250."}]},"rows":{"found":true,"value":[{"book":null}],"confidence":1,"evidence":[{"chunk":1,"quote":"The total amount is 1250."}]}}')) }
+            local changes = assert(registry.overlay("app:partial_test")):changes(); changes:update(entry); assert(changes:apply())
+            local ok, failure = pcall(function()
+                local owner = uuid.v4(); local caller = data.caller(owner)
+                local id = assert(caller:call("app:probe", { op = "create", input = { title = "Nullable reader", config = cfg } })).component_id
+                local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
+                local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
+                test.eq(result.status, "completed", assert(json.encode(result))); test.eq(result.summary.found, 2); test.eq(result.summary.missing, 0); test.eq(result.summary.verified, 2)
+                for _, value in ipairs(result.fields) do
+                    test.is_true(value.verified); test.is_false(value.failed); test.is_false(value.missing); test.not_nil(value.value_schema)
+                end
+                test.eq(json.encode(result.values), '{"reference":{},"rows":[{}]}')
+                local stored = assert(caller:call("app:probe", { op = "get", id = id })).runs[1].result
+                test.eq(json.encode(stored.values), json.encode(result.values))
+                test.eq(json.encode(stored.fields), json.encode(result.fields))
+            end)
+            local restore = assert(registry.overlay("app:partial_test")):changes(); restore:delete(entry.id); assert(restore:apply())
+            if not ok then error(failure) end
+        end)
         test.it("rejects a wire null for a non-nullable member", function()
             local reply_schema = { type = "object", required = { "book" }, properties = { book = { type = "string" } } }
             local entry = assert(registry.get("app:fixture_success_model"))

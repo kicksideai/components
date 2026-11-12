@@ -988,6 +988,15 @@
         "required": {
           "type": "boolean",
           "default": false
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "Allow a missing member. The provider returns null; decoded and stored values omit the member."
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum Unicode characters for a text, date or enum member. Longer values fail extraction without truncation."
         }
       },
       "required": [
@@ -1141,6 +1150,15 @@
         "required": {
           "type": "boolean",
           "default": false
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "Allow a missing member. The provider returns null; decoded and stored values omit the member."
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum Unicode characters for a text, date or enum member. Longer values fail extraction without truncation."
         }
       },
       "required": [
@@ -1324,6 +1342,15 @@
         "required": {
           "type": "boolean",
           "default": false
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "Allow a missing member. The provider returns null; decoded and stored values omit the member."
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum Unicode characters for a text, date or enum member. Longer values fail extraction without truncation."
         }
       },
       "required": [
@@ -1507,6 +1534,15 @@
         "required": {
           "type": "boolean",
           "default": false
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "Allow a missing member. The provider returns null; decoded and stored values omit the member."
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum Unicode characters for a text, date or enum member. Longer values fail extraction without truncation."
         }
       },
       "required": [

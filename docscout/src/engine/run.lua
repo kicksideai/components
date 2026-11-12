@@ -153,13 +153,14 @@ function M.run(input: any): (any?, error?)
 
     local tokens = 0
     for _, t in ipairs(trace) do tokens = tokens + t.input_tokens + t.output_tokens end
-    local fields = {}
+    local fields, definitions = {}, {}
+    for _, f in ipairs(config.fields) do definitions[shapes.path(f)] = f end
     for _, v in ipairs(run.values) do
         local evidence = {}
         for _, e in ipairs(v.evidence) do
             evidence[#evidence + 1] = { quote = e.quote, section = e.section, page = e.page, page_start = e.page_start, page_end = e.page_end, chunk_id = e.chunk_id, found = e.found, image_checksum = e.image_checksum, source_revision = e.source_revision }
         end
-        fields[#fields + 1] = { name = v.name, path = v.path, extraction_kind = v.extraction_kind, verification = v.verification, source_revision = v.source_revision, value = v.value, failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, complete = v.complete, missing = v.missing, reason = v.reason, codes = v.codes, evidence = evidence }
+        fields[#fields + 1] = { name = v.name, path = v.path, extraction_kind = v.extraction_kind, verification = v.verification, source_revision = v.source_revision, value = v.value, value_schema = shapes.nullable_schema(definitions[shapes.path(v)]), failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, complete = v.complete, missing = v.missing, reason = v.reason, codes = v.codes, evidence = evidence }
     end
     local failed, extracted = 0, 0
     for _, f in ipairs(fields) do

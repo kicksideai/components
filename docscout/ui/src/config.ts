@@ -2,7 +2,7 @@
 import schema from '../../src/config.schema.json'
 export type FieldType = 'text' | 'number' | 'boolean' | 'date' | 'enum' | 'list' | 'object'
 export interface Shape {type:FieldType;description?:string;enum_values?:string[];expected_format?:string;properties?:Property[];item?:Shape}
-export interface Property extends Shape {name:string;description:string;enum_values:string[];expected_format:string;required:boolean}
+export interface Property extends Shape {nullable?:boolean;max_length?:number;name:string;description:string;enum_values:string[];expected_format:string;required:boolean}
 export interface Field extends Property {search_hints:string;validation_hints:string;strategy:'standard'|'deep';search_within:'document'|'sections';group:string;evidence_required:boolean;chunks:number}
 export const MAX_SHAPE_DEPTH=4
 export const newProperty=():Property=>({name:'',type:'text',description:'',enum_values:[],expected_format:'',required:false})
@@ -104,6 +104,8 @@ export function toolLabel(id:string):string{
 export const takesChoices=(f:Shape,named=true)=>f.type==='enum'||(!named&&f.type==='text')
 export function shapeError(f:Shape,depth=1):string{
  if(depth>MAX_SHAPE_DEPTH)return 'Shapes support at most four levels.'
+ const member=f as Property
+ if(member.max_length!==undefined&&(!['text','date','enum'].includes(f.type)||!Number.isInteger(member.max_length)||member.max_length<1))return 'Maximum characters must be a positive integer for text, date or enum members.'
  if((f.description?.length??0)>4000)return 'Use at most 4000 characters for the description.'
  if((f.expected_format?.length??0)>400)return 'Use at most 400 characters for the expected format.'
  if((f.enum_values?.length??0)>100)return 'Use at most 100 allowed values.'

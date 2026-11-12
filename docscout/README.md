@@ -30,6 +30,34 @@ Every caller opens `kickside.docscout:extraction`, binding `kickside.docscout:en
 
 Structured comment fields (scout notes, support and page-check reasons, completeness explanations, section summaries and generated search contexts) are bounded to 300 Unicode characters. Providers with constrained decoding enforce this bound during generation; other providers’ comments are cut to the bound on receipt before validation. A provider that rejects `maxLength` in strict mode surfaces its own invalid-request error. Extracted values, evidence quotes and verdicts are unchanged.
 
+### Compound members
+
+Declared object properties accept optional `nullable` (boolean) and
+`max_length` (positive integer, in Unicode characters). This applies recursively
+inside objects and list rows. `max_length` applies to text, date and enum
+properties. Top-level fields and unnamed list items keep their existing options.
+For example, an object property can be configured as:
+
+```json
+{"name":"book","type":"text","description":"Book identifier","enum_values":[],"expected_format":"","required":true,"nullable":true,"max_length":24}
+```
+
+The provider schema requires a nullable member and uses `type: ["string", "null"]`
+for a text property, with `maxLength: 24` when configured. Null means absent:
+Docscout's decoder omits that key, and values and saved results use the existing
+missing-member representation. Receipt validation derives optional nullable
+members from that same schema; present members still satisfy their declared
+type and bound, and non-nullable required members stay required. Verification
+and summaries keep the existing field-level missing semantics.
+
+A provider that ignores `maxLength` returns a typed field error
+`value_max_length_exceeded` with `path`, `limit` and actual `length`; values are
+never cut. As with comment bounds, a provider that rejects `maxLength` in strict
+mode surfaces its own invalid-request error. Omitted options preserve existing
+schemas, requests and behavior. Results with nullable members include an optional
+`value_schema` so result views can show omitted members as Missing, including
+saved runs, without adding another representation of absence to their values.
+
 ### Page images
 
 Set `stages.extract.reads = "pages"` and `max_pages` (1–32) to read values from physical page images. Extract and enabled visual Verify models require the `vision` capability. The uploads `page_images` contract supplies authorized, revision-bound pages; unbound text, unavailable mappings and image errors remain typed run failures. Existing paginated Markdown is required for retrieval. Child uploads are unsupported.

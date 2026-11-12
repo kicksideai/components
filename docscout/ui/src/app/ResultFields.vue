@@ -32,10 +32,10 @@ const budgetExceeded=(field:Value)=>{
        <span v-if="!field.missing" class="chip" aria-label="Completeness">{{field.complete===true?'Complete':field.complete===false?'Incomplete':'Completeness unknown'}}</span></span>
        <Icon :icon="open===field.path?'tabler:chevron-up':'tabler:chevron-down'" class="value-caret"/>
       </button>
-      <NestedValue v-if="!field.failed&&!field.missing&&complex(field.value)" class="structured-value" :value="field.value"/>
+      <NestedValue v-if="!field.failed&&!field.missing&&complex(field.value)" class="structured-value" :value="field.value" :schema="field.value_schema"/>
       <FieldFailure v-if="field.failed" :error="field.error"/>
       <div v-show="open===field.path&&!field.failed" class="evidence">
-       <NestedValue v-if="!field.failed&&!field.missing&&!complex(field.value)" :value="field.value"/>
+       <NestedValue v-if="!field.failed&&!field.missing&&!complex(field.value)" :value="field.value" :schema="field.value_schema"/>
        <blockquote v-for="(e,i) in field.evidence" :key="i" :class="{unfound:e.found===false}"><p>“{{e.quote}}”</p><cite>{{e.section}}<template v-if="e.page!==undefined&&e.page!==null"> · Page {{e.page}}</template><template v-if="e.found===false"> · not found word for word in the document</template></cite></blockquote>
        <p v-if="!field.evidence.length" class="muted">No evidence.</p>
        <p v-if="field.reason||(!field.verified&&!field.failed)" class="muted">{{field.reason||'No reason recorded'}}</p>
