@@ -11,6 +11,8 @@ local process = require("process")
 local shapes = require("shapes")
 local error_envelope = require("error_envelope")
 local user_agent = require("user_agent")
+local visual = require("visual")
+local visual_verify = require("visual_verify")
 
 local trim, add, ordered, render, field_lines = shapes.trim, shapes.add, shapes.ordered, shapes.render, shapes.field_lines
 
@@ -650,6 +652,7 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
     end
     -- Deep fields keep their own evidence visible to themselves.
     add(run.pool, found, shapes.path(f))
+    if run.page_images then return nil end
     local analysis_system = system("You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it.")
     local function body(chunks: { any }): string return field_lines({ f }) .. "\n\nPassages:\n" .. render(chunks) end
     local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
@@ -883,6 +886,7 @@ function M.extract(run: any, step: any): error?
     local failure: error? = nil
     local extraction_calls, calls_err = M.extraction_calls(run)
     if calls_err then return calls_err end
+    if run.page_images then return visual.extract(run, step, assert(extraction_calls), M.allocate) end
     for _, f in ipairs(run.config.fields) do
         local err = run.field_errors and run.field_errors[shapes.path(f)]
         if err then failed_field(run, f, err); failure = failure or err end
@@ -1020,7 +1024,7 @@ end
 -- description, the value, its quotes and, when given, the source text around them.
 function M.support_line(f: any, v: any, source: string?): string
     local quotes = {}
-    for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" end
+    for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" .. (e.image_checksum and (" (page " .. e.page .. ")") or "") end
     local t = f.type == "list" and ("list of " .. f.item.type) or f.type
     return "- " .. shapes.path(v) .. " (" .. t .. "): " .. (f.description ~= "" and f.description or "no description") ..
         "\n  contract: " .. json.encode(shapes.value_schema(f)) .. "\n  validation hints: " .. (f.validation_hints or "") ..
@@ -1068,6 +1072,7 @@ local function store_order(by_ordinal: { [integer]: any }): { any }
 end
 
 function M.verify(run: any, step: any): error?
+    if run.page_images then return visual_verify.verify(run, step, M.support_line) end
     local cfg = run.config.stages.verify
     local enhanced = cfg.check_completeness == true
     local field_aware = enhanced

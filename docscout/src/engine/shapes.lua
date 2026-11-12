@@ -366,17 +366,18 @@ function M.passage_ref(chunks: { any }): any
 end
 
 -- One structured-output schema for a group of fields and its evidence passages.
-function M.group_schema(fields: { any }, passages: { any }): any
+function M.group_schema(fields: { any }, passages: { any }, image_pages: { integer }?): any
     local root = { type = "object", additionalProperties = false, required = {}, properties = M.object() }
-    local chunk = M.passage_ref(passages)
+    local chunk = image_pages and {type = "integer", enum = image_pages} or M.passage_ref(passages)
+    local ref = image_pages and "page" or "chunk"
     local members = { "found", "value", "confidence", "evidence" }
     for _, f in ipairs(fields) do
         local value = { type = "object", additionalProperties = false, required = members, properties = {
             found = { type = "boolean" },
             value = M.value_schema(f),
             confidence = { type = "number", minimum = 0, maximum = 1 },
-            evidence = { type = "array", maxItems = M.EVIDENCE_LIMIT, items = { type = "object", additionalProperties = false, required = { "chunk", "quote" },
-                properties = { chunk = chunk, quote = { type = "string" } } } },
+            evidence = { type = "array", maxItems = M.EVIDENCE_LIMIT, items = { type = "object", additionalProperties = false, required = { ref, "quote" },
+                properties = { [ref] = chunk, quote = { type = "string" } } } },
         } }
         M.schema_field(root, f, value, true)
     end

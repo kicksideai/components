@@ -7,6 +7,8 @@ local llm = require("llm")
 local prompt = require("prompt")
 local json = require("json")
 local shapes = require("shapes")
+local base64 = require("base64")
+local types = require("types")
 
 local M = {}
 
@@ -26,10 +28,10 @@ local function truncated(model: string): error
         message = "Model reply is truncated by its output limit", details = { code = "model_reply_truncated", model = model } })
 end
 
-local function messages(system: string, user: string): { any }
+local function messages(system: string, user: types.UserContent): { any }
     return {
         { role = "system", content = { { type = "text", text = system } } },
-        { role = "user", content = { { type = "text", text = user } } },
+        { role = "user", content = type(user) == "string" and { { type = "text", text = user } } or user },
     }
 end
 
@@ -37,13 +39,13 @@ end
 -- token counts are absent when the provider reported no usage; sources are the
 -- chunk ordinals the prompt carried and fields the field paths it served.
 type CallRecord = { stage: string, model: string, prompt_tokens: number?, completion_tokens: number?, latency_ms: integer?,
-    finish_reason: string?, error_code: string?, sources: { integer }?, fields: { string }? }
+    pages: {integer}?, image_bytes: integer?, estimated_input_tokens: integer?, finish_reason: string?, error_code: string?, sources: { integer }?, fields: { string }? }
 
 -- Token usage and call records of one step, and the instant its model calls must end by.
 type Meter = { input_tokens: number, output_tokens: number, calls: { CallRecord }, deadline: any? }
 
 -- Per-call settings a stage may pass, and what the call record names.
-type CallOpts = { max_tokens: integer?, temperature: number?, stage: string?, sources: { integer }?, fields: { string }? }
+type CallOpts = { pages: {integer}?, image_bytes: integer?, estimated_input_tokens: integer?, max_tokens: integer?, temperature: number?, stage: string?, sources: { integer }?, fields: { string }? }
 
 -- Options handed to the llm module for one call.
 type ModelOptions = { model: string, deadline_ms: integer?, max_tokens: integer?, temperature: number?,
@@ -71,6 +73,7 @@ function M.add_call(meter: Meter, stage: string, model: string, usage: any?, ext
     if extra then
         entry.latency_ms, entry.finish_reason, entry.error_code = extra.latency_ms, extra.finish_reason, extra.error_code
         entry.sources, entry.fields = extra.sources, extra.fields
+        entry.pages, entry.image_bytes, entry.estimated_input_tokens = extra.pages, extra.image_bytes, extra.estimated_input_tokens
     end
     meter.calls[#meter.calls + 1] = entry
 end
@@ -80,7 +83,8 @@ local function record(meter: Meter, stage: string, model: string, opts: CallOpts
     local finish = type(response) == "table" and response.finish_reason or nil
     M.add_call(meter, (opts and opts.stage) or stage, model, type(response) == "table" and response.tokens or nil, {
         latency_ms = millis() - started, finish_reason = finish and tostring(finish) or nil, error_code = err and error_code(err) or nil,
-        sources = opts and opts.sources, fields = opts and opts.fields })
+        sources = opts and opts.sources, fields = opts and opts.fields, pages = opts and opts.pages,
+        image_bytes = opts and opts.image_bytes, estimated_input_tokens = opts and opts.estimated_input_tokens })
 end
 
 function M.meter(deadline: any?): Meter
@@ -122,6 +126,24 @@ function M.resolve(model: string): (any?, error?)
     return card, nil
 end
 
+function M.text_part(text: string): types.TextPart
+    return prompt.text(text) :: types.TextPart
+end
+
+function M.image_part(mime_type: string, bytes: string): types.ImagePart
+    return prompt.image_base64(mime_type, base64.encode(bytes)) :: types.ImagePart
+end
+
+function M.require_vision(model: string): error?
+    local card, err = M.resolve(model)
+    if err then return err end
+    for _, capability in ipairs(card.capabilities or {}) do
+        if capability == "vision" then return nil end
+    end
+    return errors.new({kind = errors.INVALID, retryable = false,
+        message = "The model does not support page images", details = {code = "model_vision_unsupported", model = model}})
+end
+
 -- Prompt sizes are estimates: encoded UTF-8 bytes at four per token,
 -- plus a 25% safety margin. Include schemas, tools and message framing in the
 -- same estimate everywhere; provider tokenization can still differ.
@@ -129,7 +151,7 @@ function M.estimate_value(value: any): integer
     return math.ceil(#assert(json.encode(value)) * 1.25 / 4)
 end
 
-function M.estimate(system: string, user: string, schema: any?): integer
+function M.estimate(system: string, user: types.UserContent, schema: any?): integer
     return M.estimate_value({ messages = messages(system, user), schema = schema })
 end
 
@@ -147,7 +169,7 @@ end
 function M.fitter(model: string, max_output: integer?): (any?, integer?, error?)
     local available, reserved, err = M.input_budget(model, max_output)
     if err then return nil, nil, err end
-    return function(system: string, user: string, schema: any?): (boolean, integer, integer?)
+    return function(system: string, user: types.UserContent, schema: any?): (boolean, integer, integer?)
         local estimated = M.estimate(system, user, schema)
         return available == nil or estimated <= available, estimated, available
     end, reserved, nil
@@ -195,7 +217,7 @@ function M.context_error(model: string, err: any): error?
         message = "Document context exceeds the model budget: " .. tostring(err), details = details })
 end
 
-local function admission(model: string, system: string, user: string, schema: any?, opts: CallOpts?): error?
+local function admission(model: string, system: string, user: types.UserContent, schema: any?, opts: CallOpts?): error?
     local fits, _, err = M.fitter(model, opts and opts.max_tokens)
     if err then return err end
     local ok, estimated, available = fits(system, user, schema)
@@ -241,7 +263,7 @@ local function structured_result(model: string, schema: any, response: any, err:
 end
 
 -- Structured output as a Lua table that matches schema.
-function M.structured(meter: Meter, model: string, schema: any, system: string, user: string, opts: CallOpts?): (any?, error?)
+function M.structured(meter: Meter, model: string, schema: any, system: string, user: types.UserContent, opts: CallOpts?): (any?, error?)
     local options, late = options_for(meter, "a structured model call", model, opts)
     if late then return nil, late end
     local budget = admission(model, system, user, schema, opts)

@@ -16,11 +16,13 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Verification opt-out identity", function()
+        for _, reads in ipairs({"absent", "text"}) do
         for _, enabled in ipairs({ true, false }) do
             for _, policy in ipairs({ "absent", "false" }) do
-                test.it("matches baseline requests and stored results with Verify " .. tostring(enabled) .. " and policy " .. policy, function()
+                test.it("matches baseline requests and stored results with Verify " .. tostring(enabled) .. " and policy " .. policy .. " and reads " .. reads, function()
                     local config_schema = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json))
                     local cfg = config_schema.default
+                    cfg.stages.extract.reads = reads == "text" and "text" or nil
                     cfg.fields = {}
                     for _, name in ipairs({ "accepted", "rejected", "missing_reply", "provider_failure" }) do
                         local f = assert(json.decode(assert(json.encode(config_schema.properties.fields.items.default))))
@@ -61,6 +63,7 @@ return { run = test.run_cases(function()
                     test.eq(assert(canonical_json.encode(actual)), assert(canonical_json.encode(expected)))
                 end)
             end
+        end
         end
     end)
 end) }

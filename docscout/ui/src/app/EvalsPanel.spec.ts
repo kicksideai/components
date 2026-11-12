@@ -21,6 +21,14 @@ function evaluation(over:Partial<Evaluation>={}):Evaluation{
 const before:Evaluation={...evaluation({id:'e1',config_revision:3,created_at:'2026-10-27T10:00:00Z',metrics:[{field:'total',accuracy:.5,verified:.5},{field:'paid',accuracy:.5,verified:.5}]}),results:undefined}
 const mountPanel=(props:Record<string,unknown>={})=>mount(EvalsPanel,{props:{cases,fields,evaluations:[],revision:4,...props}})
 describe('Docscout evaluations',()=>{
+ it('displays persisted visual verification for a scored case',async()=>{
+  const current=evaluation()
+  Object.assign(current.results![0].scores[0],{extraction_kind:'page_image',source_revision:'revision',verification:{kind:'page_image',status:'passed',checks:{value_support:'passed'}}})
+  const w=mountPanel({evaluation:current,evaluations:[current]})
+  await w.findAll('button').find(b=>b.text()==='invoice.pdf')!.trigger('click')
+  expect(w.get('[aria-label="Verification method"]').text()).toBe('Visual · passed')
+  w.unmount()
+ })
  it('preserves case inputs across wakeups and clears them only after its addition succeeds',async()=>{
   const w=mountPanel()
   await w.findAll('button').find(b=>b.text()==='Add case')!.trigger('click')
