@@ -5,6 +5,10 @@ local types = require("types")
 local shapes = require("shapes")
 local M = {}
 
+-- Each discovered source belongs to one run and revision. Only the holder retains
+-- reused image bytes; its 16 MiB cap excludes images in active model requests.
+local IMAGE_BYTES = 16 * 1024 * 1024
+
 function M.error(code: string, message: string): error
     return errors.new({kind = errors.INVALID, retryable = false, message = message, details = {code = code}})
 end
@@ -30,7 +34,7 @@ function M.discover(upload_id: string): (types.PageSet?, error?)
     if info.state ~= "paged" then return nil, M.error(info.state, "The upload has no readable physical page mapping") end
     if info.text_bound ~= true then return nil, M.error("page_text_revision_unbound", "Text is not bound to the page source revision") end
     local out: types.PageSet = {upload_id = upload_id, revision = info.revision, checksum = info.text.checksum,
-        count = info.page_count, states = {}}
+        count = info.page_count, states = {}, images = {bytes = 0, clock = 0, entries = {}}}
     while true do
         for _, page in ipairs(info.pages) do out.states[page.page] = page.state end
         if not info.next_cursor then break end
@@ -44,9 +48,27 @@ function M.read(source: types.PageSet, page: integer): (types.PageImage?, error?
     if source.states[page] ~= "available" and source.states[page] ~= "renderable" then
         return nil, M.error("page_image_unavailable", "The requested physical page is unavailable")
     end
+    local holder = source.images
+    holder.clock = holder.clock + 1
+    local cached = holder.entries[page]
+    if cached then cached.used = holder.clock; return cached.image, nil end
     local reader, err = open()
     if err then return nil, err end
-    return reader:read_image({upload_id = source.upload_id, revision = source.revision, page = page})
+    local image, read_err = reader:read_image({upload_id = source.upload_id, revision = source.revision, page = page})
+    if read_err then return nil, read_err end
+    -- The uploads contract caps each image at 4 MiB.
+    while holder.bytes + #image.bytes > IMAGE_BYTES do
+        local oldest, used = nil, math.huge
+        for number, entry in pairs(holder.entries) do
+            if entry.used < used then oldest, used = number, entry.used end
+        end
+        local removed = holder.entries[assert(oldest)]
+        holder.bytes = holder.bytes - #removed.image.bytes
+        holder.entries[oldest] = nil
+    end
+    holder.entries[page] = {image = image, used = holder.clock}
+    holder.bytes = holder.bytes + #image.bytes
+    return image, nil
 end
 
 -- Every chunk touching a scoped page must belong to the selected region. A

@@ -6,8 +6,9 @@ type ImagePart = {type: string, source: {type: string, mime_type: string, data: 
 type UserContent = string | {TextPart | ImagePart}
 
 type PageRange = {first: integer, last: integer}
-type PageSet = {upload_id: string, revision: string, checksum: string, count: integer, states: {[integer]: string}}
+type PageSet = {upload_id: string, revision: string, checksum: string, count: integer, states: {[integer]: string}, images: PageImageHolder}
 type PageImage = {page: integer, revision: string, image_checksum: string, bytes: string, mime_type: string, size: integer}
+type PageImageHolder = {bytes: integer, clock: integer, entries: {[integer]: {image: PageImage, used: integer}}}
 type PageSpan = {page: integer?, text: string}
 type Chunk = {id: string?, ordinal: integer, section_id: string, heading_path: string, content: string,
     page_start: integer?, page_end: integer?, page_spans: {PageSpan}}
