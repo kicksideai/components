@@ -1,6 +1,26 @@
 local test = require("test")
 local registry = require("registry")
 local security = require("security")
+
+local function module_access_scope()
+    local policies, seen = {}, {}
+    local function include(id)
+        if seen[id] then return end
+        seen[id] = true
+        local entry, entry_err = registry.get(id)
+        test.is_nil(entry_err, id)
+        test.not_nil(entry, id)
+        local policy, policy_err = security.policy(id)
+        test.is_nil(policy_err, id)
+        policies[#policies + 1] = policy
+        for _, child in ipairs(entry.meta.includes or {}) do include(child) end
+    end
+    include("kickside.agent_onboarding.security:module_access")
+    local scope, scope_err = security.new_scope(policies)
+    test.is_nil(scope_err)
+    return scope
+end
+
 local function define_tests()
     test.describe("Module access composition", function()
         test.it("admits exactly the listed endpoint identities", function()
@@ -68,27 +88,36 @@ local function define_tests()
                 test.eq(policy:evaluate(actor, "access", id), "undefined", id)
             end
         end)
-        test.it("includes module discovery without an application blanket grant", function()
-            local policies, seen = {}, {}
-            local function include(id)
-                if seen[id] then return end
-                seen[id] = true
-                local entry, entry_err = registry.get(id)
-                test.is_nil(entry_err, id)
-                test.not_nil(entry, id)
-                local policy, policy_err = security.policy(id)
-                test.is_nil(policy_err, id)
-                policies[#policies + 1] = policy
-                for _, child in ipairs(entry.meta.includes or {}) do include(child) end
+        test.it("permits only the knowledge registry path for personal memory", function()
+            local scope = module_access_scope()
+            local actor = security.new_actor("personal-memory-member", {})
+            local expected = {
+                { "contract.get", "kickside.knowledge:knowledge_bases" },
+                { "contract.open", "kickside.knowledge.registry:knowledge_bases_registry" },
+                { "contract.call", "create" },
+                { "funcs.call", "kickside.knowledge.registry:kb_create" },
+                { "contract.get", "kickside.knowledge:kb_store_lifecycle" },
+            }
+            for _, pair in ipairs(expected) do
+                test.eq(scope:evaluate(actor, pair[1], pair[2]), "allow", pair[1] .. ": " .. pair[2])
             end
-            include("kickside.agent_onboarding.security:module_access")
+            for _, id in ipairs({
+                "kickside.knowledge.api:create_kb.endpoint",
+                "kickside.knowledge.api:list_kb.endpoint",
+                "kickside.knowledge.registry:kb_delete",
+                "kickside.knowledge.retrieval:kb_search",
+            }) do
+                test.eq(scope:evaluate(actor, "access", id), "undefined", id)
+                test.eq(scope:evaluate(actor, "contract.call", id), "undefined", id)
+            end
+        end)
+        test.it("includes module discovery without an application blanket grant", function()
+            local scope = module_access_scope()
             local declaration = registry.get("kickside.agent_onboarding.security:module_access")
             test.is_true(type(declaration.meta.title) == "string" and declaration.meta.title ~= "")
             test.eq(declaration.meta.intent, "module_access")
             test.eq(declaration.meta.surface, "kickside.agent_onboarding")
             test.is_true(declaration.meta.private ~= true)
-            local scope, scope_err = security.new_scope(policies)
-            test.is_nil(scope_err)
             local actor = security.new_actor("module-member", {})
             test.eq(scope:evaluate(actor, "registry.get", "kickside.agent_onboarding:eligibility"), "allow")
             for _, action in ipairs({ "access", "registry.get", "funcs.call" }) do
