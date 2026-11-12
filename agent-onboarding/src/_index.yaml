@@ -9,7 +9,7 @@ entries:
 - name: dep.agents
   kind: ns.dependency
   component: kickside/agents
-  version: '*'
+  version: '>=0.2.3'
 - name: dep.component
   kind: ns.dependency
   component: kickside/component
@@ -33,15 +33,15 @@ entries:
 - name: dep.memory
   kind: ns.dependency
   component: kickside/memory
-  version: '*'
+  version: '>=0.1.16'
 - name: dep.knowledge
   kind: ns.dependency
   component: kickside/knowledge
-  version: '*'
+  version: '>=0.1.65'
 - name: dep.contract
   kind: ns.dependency
   component: kickside/contract
-  version: '*'
+  version: '>=0.3.1'
 - name: creation
   kind: library.lua
   source: file://creation.lua
