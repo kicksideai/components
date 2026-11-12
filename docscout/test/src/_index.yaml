@@ -377,6 +377,7 @@ entries:
   - registry
   - security
   imports:
+    canonical_json: kickside.contract:canonical_json
     data: app:fixture_data
     test: wippy.test:test
     ai: kickside.docscout.engine:ai
@@ -2037,3 +2038,16 @@ entries:
   imports:
     png: app:fixture_page_png
     pages: kickside.docscout.engine:pages
+- name: document_scale_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: docscout_document_scale
+    group: Docscout
+  source: file://document_scale_test.lua
+  method: run
+  modules: [time]
+  imports:
+    test: wippy.test:test
+    process: kickside.docscout.engine:process
+    shapes: kickside.docscout.engine:shapes

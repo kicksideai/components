@@ -13,6 +13,7 @@ local ai = require("ai")
 local time = require("time")
 local registry = require("registry")
 local security = require("security")
+local canonical_json = require("canonical_json")
 
 local MARKDOWN = table.concat({
     "<!-- page 1 -->", "", "Preamble before any heading.", "",
@@ -52,6 +53,17 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Document processing", function()
+        test.it("preserves fixture sections, chunks and normalized results", function()
+            local snapshots = { sections = process.sections(MARKDOWN), chunks = {}, results = {} }
+            for _, headings in ipairs({ true, false }) do
+                for _, overlap in ipairs({ 0, 20 }) do
+                    snapshots.chunks[#snapshots.chunks + 1] = assert(process.chunk(MARKDOWN,
+                        retrieval({ split_headings = headings, chunk_size = 100, overlap = overlap })))
+                end
+            end
+            for _, section in ipairs(snapshots.sections) do snapshots.results[#snapshots.results + 1] = shapes.normalize(section.text) end
+            test.eq(assert(canonical_json.hash(snapshots)), "ce03d9902e156933bdb3ed1d4862f1ee5e5d3d9156d3644a94b0eac7cd128bbb")
+        end)
         test.it("clips boundary chunks and outline to inclusive real pages before indexing", function()
             local markdown = "<!-- page 1 -->\n# Outside\nExcluded first\n<!-- page 2 -->\n# Selected\nIncluded second\n<!-- page 3 -->\nIncluded third\n<!-- page 4 -->\n# Outside end\nExcluded fourth"
             for _, headings in ipairs({ true, false }) do
