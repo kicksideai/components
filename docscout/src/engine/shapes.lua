@@ -671,23 +671,11 @@ local function normalize_math(text: string): string
 end
 
 local function fold(s: string): string
-    local out, start, finish = {}, 1, 1
-    for at, ch in s:gmatch("()([%z\1-\127\194-\244][\128-\191]*)") do
-        if at > finish then
-            out[#out + 1] = s:sub(start, finish - 1)
-            start = at
-        end
-        finish = at + #ch
-        local replacement = EQUIVALENT[ch]
-        if replacement then
-            out[#out + 1] = s:sub(start, at - 1)
-            out[#out + 1] = replacement
-            start = finish
-        end
-    end
-    out[#out + 1] = s:sub(start, finish - 1)
+    -- Preserve the byte scanner's treatment of incomplete UTF-8 sequences.
+    local mapped = s:gsub("[\192\193\245-\255][\128-\191]*", ""):gsub("^[\128-\191]+", "")
+    mapped = mapped:gsub("[\194-\244][\128-\191]*", EQUIVALENT)
     -- Normalization removes Markdown emphasis, code ticks and table bars.
-    local plain = emphasis_end:replace_all_string(table.concat(out), "${1} ")
+    local plain = emphasis_end:replace_all_string(mapped, "${1} ")
     plain = emphasis_start:replace_all_string(plain, " ${1}")
     plain = underscores:replace_all_string(plain, " ")
     plain = ticks:replace_all_string(plain, " "):gsub("|", " ")
