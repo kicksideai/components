@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.9](https://github.com/kicksideai/components/compare/docscout-v0.1.8...docscout-v0.1.9) (2026-11-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **docscout:** page-image evidence uses page, image_checksum and source_revision instead of chunk_id. Text-mode requests, results and saved configurations keep their existing shape.
+
+### Features
+
+* **docscout:** read and verify extraction values from page images ([#86](https://github.com/kicksideai/components/issues/86)) ([0cc372d](https://github.com/kicksideai/components/commit/0cc372db42b430fd94d4c07614e5b449d9dedda4))
+
 ## [0.1.8](https://github.com/kicksideai/components/compare/docscout-v0.1.7...docscout-v0.1.8) (2026-11-11)
 
 
