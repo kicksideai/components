@@ -13,6 +13,9 @@ local shapes = require("shapes")
 local error_envelope = require("error_envelope")
 
 local trim = shapes.trim
+local SPACE = "[ \t\n\v\f\r]"
+local fence = assert(text.regexp.compile("^" .. SPACE .. "*(?:```|~~~)"))
+local heading = assert(text.regexp.compile("^(#+)" .. SPACE .. "+(.*?)" .. SPACE .. "*#*" .. SPACE .. "*$"))
 
 local M = {}
 
@@ -139,10 +142,13 @@ function M.sections(markdown: string): { any }
     local stack: { any } = {}
     local current: any = { id = "s0", level = 0, title = "Start of document", path = "Start of document", lines = {} }
     local fenced = false
-    for line in (markdown .. "\n"):gmatch("(.-)\n") do
-        if line:match("^%s*```") or line:match("^%s*~~~") then fenced = not fenced end
+    for line in shapes.each_line(markdown) do
+        if fence:match_string(line) then fenced = not fenced end
         local hashes, title = nil, nil
-        if not fenced then hashes, title = line:match("^(#+)%s+(.-)%s*#*%s*$") end
+        if not fenced then
+            local found = heading:find_string_submatch(line)
+            if found then hashes, title = found[2], found[3] end
+        end
         if hashes and #hashes <= 6 and title ~= "" then
             if keep(current) then sections[#sections + 1] = current end
             local level = #hashes

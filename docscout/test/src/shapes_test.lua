@@ -19,6 +19,12 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Text helpers", function()
+        test.it("counts long extracted Unicode values without truncation", function()
+            local value = string.rep("界", 120000)
+            local issue = shapes.length_issue({ type = "string", maxLength = 20 }, value)
+            test.eq(issue.length, 120000)
+            test.eq(issue.limit, 20)
+        end)
         test.it("trims and splits non-empty lines", function()
             test.eq(shapes.trim("  a b \n"), "a b")
             test.eq(shapes.trim(""), "")

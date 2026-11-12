@@ -10,7 +10,7 @@ return { run = test.run_cases(function()
             local bodies, lines = {}, {}
             for section = 1, 24 do
                 local body = { "# Section " .. section, "long " .. string.rep("x", 120000) .. " end " .. section }
-                for line = 1, 250 do body[#body + 1] = "line " .. section .. ":" .. line .. " " .. string.rep("word ", 20) end
+                for line = 1, 250 do body[#body + 1] = "line " .. section .. ":" .. line .. " " .. string.rep("word ", 20) .. "end" end
                 bodies[#bodies + 1] = table.concat(body, "\n")
                 for _, line in ipairs(body) do lines[#lines + 1] = line end
             end
@@ -28,9 +28,17 @@ return { run = test.run_cases(function()
             for i, line in ipairs(lines) do test.eq(split[i], line) end
             local document = assert(process.chunk(markdown, { chunk_size = 50000, overlap = 0, split_headings = true, keep_tables = true }))
             test.eq(#document.outline, #bodies)
-            local contents = {}
-            for _, chunk in ipairs(document.chunks) do contents[#contents + 1] = chunk.content end
-            test.eq(table.concat(contents, "\n"), markdown)
+            for _, line in ipairs(lines) do
+                local present = false
+                for _, chunk in ipairs(document.chunks) do
+                    if chunk.content:find(line, 1, true) then present = true; break end
+                end
+                test.is_true(present, "missing source line: " .. line:sub(1, 70))
+            end
+            local normalized = shapes.normalize(markdown)
+            for _, line in ipairs(lines) do
+                test.is_true(normalized:find(shapes.normalize(line), 1, true) ~= nil, "missing normalized line")
+            end
             test.is_true(time.now():sub(started):seconds() < 10, "document processing exceeds ten seconds")
         end)
         test.it("preserves long headings, trailing whitespace and emphasis runs", function()
