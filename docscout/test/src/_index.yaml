@@ -1945,6 +1945,7 @@ entries:
     artifacts: kickside.uploads.persist:artifact_content_repo
     ai: kickside.docscout.engine:ai
     pages: kickside.docscout.engine:pages
+    scoring: kickside.docscout.evals:scoring
 - name: fixture_page_png
   kind: library.lua
   source: file://fixture_png.lua

@@ -9,6 +9,7 @@ local hash = require("hash")
 local ai = require("ai")
 local fs = require("fs")
 local pages_module = require("pages")
+local scoring = require("scoring")
 
 local function configuration()
     local schema = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json))
@@ -41,6 +42,15 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Page image extraction", function()
+        test.it("retains visual check semantics in evaluation scores", function()
+            local value = {value = 1250, missing = false, verified = true, extraction_kind = "page_image", source_revision = "revision",
+                verification = {kind = "page_image", status = "passed", checks = {value_support = "passed"}}}
+            local scores = scoring.case({{name = "amount", group = "", type = "number"}}, {amount = 1250}, {amount = value})
+            local stored = assert(json.decode(assert(json.encode(scores))))[1]
+            test.eq(stored.extraction_kind, "page_image")
+            test.eq(stored.source_revision, "revision")
+            test.eq(stored.verification.status, "passed")
+        end)
         test.it("stores explicit visual checks and image identities, independent of text agreement", function()
             local owner = uuid.v4()
             local result, caller, extractor = invoke(owner, configuration(), upload(owner, {"amount: 1250"}))
