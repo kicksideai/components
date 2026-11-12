@@ -28,17 +28,16 @@ return { run = test.run_cases(function()
             for i, line in ipairs(lines) do test.eq(split[i], line) end
             local document = assert(process.chunk(markdown, { chunk_size = 50000, overlap = 0, split_headings = true, keep_tables = true }))
             test.eq(#document.outline, #bodies)
-            for _, line in ipairs(lines) do
-                local present = false
-                for _, chunk in ipairs(document.chunks) do
-                    if chunk.content:find(line, 1, true) then present = true; break end
-                end
-                test.is_true(present, "missing source line: " .. line:sub(1, 70))
+            local present = {}
+            for _, chunk in ipairs(document.chunks) do
+                for line in shapes.each_line(chunk.content) do present[line] = true end
             end
-            local normalized = shapes.normalize(markdown)
+            local normalized = {}
             for _, line in ipairs(lines) do
-                test.is_true(normalized:find(shapes.normalize(line), 1, true) ~= nil, "missing normalized line")
+                test.is_true(present[line], "missing source line: " .. line:sub(1, 70))
+                normalized[#normalized + 1] = shapes.normalize(line)
             end
+            test.eq(shapes.normalize(markdown), table.concat(normalized, " "))
             test.is_true(time.now():sub(started):seconds() < 10, "document processing exceeds ten seconds")
         end)
         test.it("preserves long headings, trailing whitespace and emphasis runs", function()
@@ -50,6 +49,12 @@ return { run = test.run_cases(function()
             test.eq(shapes.trim("text" .. spaces), "text")
             test.eq(shapes.normalize_literal("text" .. string.rep("*", 120000) .. " end"), "text end")
             test.eq(shapes.normalize_literal(string.rep("*", 120000)), string.rep("*", 120000))
+        end)
+        test.it("normalizes a multi-megabyte math span within ten seconds", function()
+            local body = string.rep("x", 3 * 1024 * 1024)
+            local started = time.now()
+            test.eq(shapes.normalize("$" .. body .. "\\quad end$"), "$" .. body .. " end$")
+            test.is_true(time.now():sub(started):seconds() < 10, "math normalization exceeds ten seconds")
         end)
         test.it("retains literal math in code after a long code span", function()
             local literal = string.rep("x", 120000)

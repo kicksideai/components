@@ -25,6 +25,17 @@ return { run = test.run_cases(function()
             test.eq(issue.length, 120000)
             test.eq(issue.limit, 20)
         end)
+        test.it("retains the byte scan semantics for incomplete UTF-8 sequences", function()
+            local function scanned(value: string): string
+                local characters = {}
+                for ch in value:gmatch("[%z\1-\127\194-\244][\128-\191]*") do characters[#characters + 1] = ch end
+                return table.concat(characters):lower()
+            end
+            local value = "\128a\128\192\128b\245\191"
+            test.eq(shapes.normalize_literal(value), scanned(value))
+            value = "a\194\128b\226\128"
+            test.eq(shapes.normalize_literal(value), scanned(value))
+        end)
         test.it("trims and splits non-empty lines", function()
             test.eq(shapes.trim("  a b \n"), "a b")
             test.eq(shapes.trim(""), "")

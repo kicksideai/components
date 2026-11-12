@@ -96,7 +96,11 @@ return { run = test.run_cases(function()
                             end
                             return nil, nil
                         end,
-                        sub = function(_: any, first: integer, last: integer?): any return measured(text:sub(first, last)) end,
+                        sub = function(_: any, first: integer, last: integer?): any
+                            -- Bounded search slices retain the comparison counter;
+                            -- the final tail goes directly to native text normalization.
+                            return last and measured(text:sub(first, last)) or text:sub(first)
+                        end,
                         gsub = function(_: any, pattern: string, replacement: string): string return (text:gsub(pattern, replacement)) end,
                     }, { __len = function(): integer return #text end })
                 end
