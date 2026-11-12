@@ -34,6 +34,10 @@ Set `stages.extract.reads = "pages"` and `max_pages` (1–32) to read values fro
 
 `max_pages` bounds each extraction or verification call. The context estimator includes the complete base64 image payload and can admit fewer pages; exhausted requests return `context_budget_exceeded`. Images stay inside the run range and each field's selected section. A section sharing a physical page with another section returns `section_image_boundary_unavailable`.
 
+A run stays pinned to the source revision discovered at its start. Extraction and verification reuse images from that revision in a run-local 16 MiB holder, reading each page at most once while retained; least recently used images are evicted beyond the cap. A source replaced during the run returns `revision_mismatch` on the next uncached read. The holder ends with the run and is never persisted. Stages access it sequentially.
+
+Completeness requires every eligible page in the field's section intersected with the run's page range. Otherwise `complete` is absent, the check is `unavailable`, and `visual_completeness_unavailable` records the cause. Unavailable completeness preserves successful support verification; unavailable visual quote or value support still leaves the value unverified.
+
 Page-derived fields store `extraction_kind`, `source_revision`, image evidence identities and `verification = {kind = "page_image", status, checks}`. Visual support determines `verified`; text agreement is informational. Without visual support, verification is `not_run`. Absent metadata retains existing text semantics. Omitting `reads`, or setting it to `"text"`, preserves the text requests and stored results.
 
 ### One document per input
