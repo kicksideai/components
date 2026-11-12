@@ -4,7 +4,7 @@ import {mount,config,flushPromises} from '@vue/test-utils'
 import {PrimeVuePlugin} from '@wippy-fe/theme/primevue-plugin'
 config.global.plugins=[PrimeVuePlugin]
 import DocscoutPage from './DocscoutPage.vue'
-import {newConfig,newField} from '../config'
+import {newConfig,newField,newProperty} from '../config'
 import type {Snapshot,Extraction} from '../models'
 vi.mock('@wippy-fe/proxy',()=>({loadByTagName:async()=>{}}))
 const nameInput=(w:ReturnType<typeof mount>)=>w.get('input[aria-label="Extractor name"]')
@@ -27,6 +27,29 @@ describe('Docscout manage surface',()=>{
   expect(saveButton(wrapper).attributes('disabled')).toBeDefined()
   await nameInput(wrapper).setValue('Next draft');await saveButton(wrapper).trigger('click')
   expect(wrapper.emitted('save')?.at(-1)?.[0]).toMatchObject({title:'Next draft',expected_revision:8})
+  wrapper.unmount()
+ })
+ it('saves a moved member and its promotion without reactive values in the payload',async()=>{
+  const initial=snapshot()
+  initial.config!.fields=[{...newField(),name:'reference',type:'object',properties:[{...newProperty(),name:'book',nullable:true,max_length:24},{...newProperty(),name:'page'}]},
+   {...newField(),name:'other',type:'object',properties:[{...newProperty(),name:'note'}]}]
+  initial.field_count=2
+  const wrapper=mount(DocscoutPage,{props:{snapshot:initial}})
+  await wrapper.get('button[aria-label="Edit reference.book"]').trigger('click')
+  await wrapper.get('select[aria-label="Move to parent"]').setValue('1:')
+  await wrapper.get('button[aria-label="Move selected node"]').trigger('click')
+  expect(saveButton(wrapper).attributes('disabled')).toBeUndefined()
+  await saveButton(wrapper).trigger('click')
+  const moved=wrapper.emitted('save')?.at(-1)?.[0] as {config:ReturnType<typeof newConfig>}
+  expect(moved.config.fields[1].properties![1]).toMatchObject({name:'book',nullable:true,max_length:24})
+  expect(()=>structuredClone(moved)).not.toThrow()
+  await wrapper.get('select[aria-label="Move to parent"]').setValue('')
+  await wrapper.get('button[aria-label="Move selected node"]').trigger('click')
+  await saveButton(wrapper).trigger('click')
+  const promoted=wrapper.emitted('save')?.at(-1)?.[0] as {config:ReturnType<typeof newConfig>}
+  expect(promoted.config.fields[2]).not.toHaveProperty('nullable')
+  expect(promoted.config.fields[2]).not.toHaveProperty('max_length')
+  expect(()=>structuredClone(promoted)).not.toThrow()
   wrapper.unmount()
  })
  it('saves existing configurations without adding omitted temperatures',async()=>{
