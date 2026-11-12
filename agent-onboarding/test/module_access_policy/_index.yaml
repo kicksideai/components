@@ -12,5 +12,11 @@ entries:
   - registry
   - security
   - funcs
+  - http_client
+  - json
+  - system
+  - uuid
   imports:
     test: wippy.test:test
+    memory_stores: kickside.memory.persist:stores
+    memory_config: kickside.memory:config
