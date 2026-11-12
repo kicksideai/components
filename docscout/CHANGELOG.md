@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.10](https://github.com/kicksideai/components/compare/docscout-v0.1.9...docscout-v0.1.10) (2026-11-12)
+
+
+### Bug Fixes
+
+* **agent-onboarding:** scope personal memory creation authority ([#91](https://github.com/kicksideai/components/issues/91)) ([82cad37](https://github.com/kicksideai/components/commit/82cad37909f263d94f476bff10dbcdc0d185eed4))
+* **docscout:** bound free-text comments in model reply schemas ([#90](https://github.com/kicksideai/components/issues/90)) ([3f75cbc](https://github.com/kicksideai/components/commit/3f75cbc707ec91d967ee650d1489ee6870469bbc))
+
 ## [0.1.9](https://github.com/kicksideai/components/compare/docscout-v0.1.8...docscout-v0.1.9) (2026-11-12)
 
 

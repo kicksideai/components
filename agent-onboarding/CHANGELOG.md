@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.10...agent-onboarding-v0.1.11) (2026-11-12)
+
+
+### Bug Fixes
+
+* **agent-onboarding:** scope personal memory creation authority ([#91](https://github.com/kicksideai/components/issues/91)) ([82cad37](https://github.com/kicksideai/components/commit/82cad37909f263d94f476bff10dbcdc0d185eed4))
+
 ## [0.1.10](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.9...agent-onboarding-v0.1.10) (2026-11-11)
 
 
