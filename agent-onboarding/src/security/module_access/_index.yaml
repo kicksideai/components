@@ -10,6 +10,11 @@ entries:
     includes:
     - kickside.agent_onboarding.security:module_runtime
     - kickside.agent_onboarding.security:member_endpoints
+    - kickside.agent_onboarding.security:knowledge_contract
+    - kickside.agent_onboarding.security:knowledge_binding
+    - kickside.agent_onboarding.security:knowledge_create
+    - kickside.agent_onboarding.security:knowledge_create_function
+    - kickside.agent_onboarding.security:knowledge_store_contract
   groups: []
   policy:
     resources:
@@ -57,6 +62,62 @@ entries:
     - kickside.agent_onboarding:create_agent.endpoint
     actions: access
     effect: allow
+
+- name: knowledge_contract
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.knowledge:knowledge_bases
+    actions: contract.get
+    effect: allow
+
+- name: knowledge_binding
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.knowledge.registry:knowledge_bases_registry
+    actions: contract.open
+    effect: allow
+
+- name: knowledge_create
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - create
+    actions: contract.call
+    effect: allow
+
+- name: knowledge_create_function
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.knowledge.registry:kb_create
+    actions: funcs.call
+    effect: allow
+
+- name: knowledge_store_contract
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.knowledge:kb_store_lifecycle
+    actions: contract.get
+    effect: allow
+
 - name: user_security_scope
   kind: ns.requirement
   default: kickside.security.groups:members
