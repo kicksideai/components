@@ -48,7 +48,10 @@ Docscout's decoder omits that key, and values and saved results use the existing
 missing-member representation. Receipt validation derives optional nullable
 members from that same schema; present members still satisfy their declared
 type and bound, and non-nullable required members stay required. Verification
-and summaries keep the existing field-level missing semantics.
+and summaries treat an object with only absent nullable members as missing.
+Lists of objects with nullable members keep rows with at least one present member; a list with no such
+rows is missing. This applies recursively, before verification, to text and page
+image extraction. Compounds without nullable members keep their existing behavior.
 
 A provider that ignores `maxLength` returns a typed field error
 `value_max_length_exceeded` with `path`, `limit` and actual `length`; values are

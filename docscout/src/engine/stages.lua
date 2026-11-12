@@ -861,8 +861,9 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
             end
         end
         local entry: Value = { name = f.name, path = shapes.path(f), confidence = 0, evidence = {}, verified = false, missing = true, failed = false }
-        if item.found then
-            entry.value = item.value
+        local value = shapes.extracted_value(f, item.value)
+        if item.found and value ~= nil then
+            entry.value = value
             entry.confidence = item.confidence
             entry.evidence = cited
             entry.missing = false
@@ -1266,7 +1267,7 @@ function M.verify(run: any, step: any): error?
             elseif not check.supported then reject("support_rejected", check.reason) end
         end
         if enhanced and v.missing and #codes == 0 then code("missing") end
-        v.verified = not v.failed and (not enhanced or found) and #reasons == 0
+        v.verified = not v.failed and (found or (not enhanced and not shapes.nullable_schema(fields[shapes.path(v)]))) and #reasons == 0
         v.reason = #reasons > 0 and table.concat(reasons, "; ") or nil
         v.codes = codes
         if not v.verified then failed = failed + 1 end

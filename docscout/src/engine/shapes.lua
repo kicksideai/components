@@ -372,16 +372,41 @@ function M.length_issue(schema: any, value: any, path: string?): any?
     return nil
 end
 
+local function contains_nullable(node: any): boolean
+    if nullable(node) then return true end
+    for _, property in pairs(node.properties or {}) do if contains_nullable(property) then return true end end
+    return node.items ~= nil and contains_nullable(node.items)
+end
+
 -- The declared schema lets result views show omitted members without storing
 -- another representation of absence. Older, unconfigured results stay unchanged.
 function M.nullable_schema(field: any): any?
     local schema = M.value_schema(field)
-    local function contains(node: any): boolean
-        if nullable(node) then return true end
-        for _, property in pairs(node.properties or {}) do if contains(property) then return true end end
-        return node.items ~= nil and contains(node.items)
+    return contains_nullable(schema) and schema or nil
+end
+
+-- Apply null-means-absent before field coverage and verification. Empty legacy
+-- compounds keep their meaning; nullable compounds report only present members.
+function M.extracted_value(field: any, value: any): any
+    local function present(schema: any, item: any): any
+        if type(item) ~= "table" or not contains_nullable(schema) then return item end
+        if schema.properties then
+            local object = M.object()
+            for name, property in pairs(schema.properties) do object[name] = present(property, item[name]) end
+            if next(object) ~= nil then return object end
+        elseif schema.items then
+            local rows = {}
+            for _, row in ipairs(item) do
+                local kept = present(schema.items, row)
+                if kept ~= nil then rows[#rows + 1] = kept end
+            end
+            if #rows > 0 then return rows end
+        else
+            return item
+        end
+        return nil
     end
-    return contains(schema) and schema or nil
+    return present(M.value_schema(field), value)
 end
 
 -- Date pattern tokens an expected format may use, longest first, with the

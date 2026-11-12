@@ -35,10 +35,10 @@ export function moveShape(fields:Field[],source:ShapeNode,target?:ShapeNode):Sha
  let moved:Shape
  if(target){
   // Properties carry only the recursive schema's shape and naming fields.
-  const {name,type,description,enum_values,expected_format,required,properties,item}=property
-  moved={name,type,description,enum_values,expected_format,required,...(properties?{properties}:{}),...(item?{item}:{})} as Property
+  const {name,type,description,enum_values,expected_format,required,properties,item,nullable,max_length}=property
+  moved={name,type,description,enum_values,expected_format,required,...(properties?{properties}:{}),...(item?{item}:{}),...(nullable!==undefined?{nullable}:{}),...(max_length!==undefined?{max_length}:{})} as Property
   target.shape.properties!.push(moved as Property);moved=target.shape.properties!.at(-1)!
- }else{moved={...newField(),...property,group:''} as Field;fields.push(moved as Field);moved=fields.at(-1)!}
+ }else{const {nullable,max_length,...field}=property;moved={...newField(),...field,group:''} as Field;fields.push(moved as Field);moved=fields.at(-1)!}
  return shapeNodes(fields).find(n=>n.shape===moved)!
 }
 export function outputPreview(fields:Field[],example=false):Record<string,unknown>{
