@@ -376,6 +376,7 @@ entries:
   - time
   - registry
   - security
+  - fs
   imports:
     data: app:fixture_data
     test: wippy.test:test
@@ -384,6 +385,7 @@ entries:
     store: kickside.docscout.persist:store
     stages: kickside.docscout.engine:stages
     shapes: kickside.docscout.engine:shapes
+    visual_verify: kickside.docscout.engine:visual_verify
 - name: shapes_test
   kind: function.lua
   meta:
@@ -732,6 +734,21 @@ entries:
   providers:
   - id: app:fixture_success_provider
     provider_model: docscout-echo
+- name: fixture_echo_capture_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-echo-capture
+    title: Fixture model that answers with its system prompt and records its requests
+    capabilities: [generate, structured_output]
+    class: [docscout-echo-capture]
+    priority: 100
+  max_tokens: 16000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-echo
+    options: {capture_requests: scout-echo-requests.json}
 - name: success_test
   kind: function.lua
   meta:
@@ -845,7 +862,7 @@ entries:
     comment: Host access to the fixture model catalog and provider binding.
   groups: [app:runtime_members]
   policy:
-    resources: ['app:fixture_success_*', 'app:fixture_llm_*', 'app:fixture_support_*', app:fixture_small_model, app:fixture_refusal_model, app:fixture_range_model, app:fixture_range_highlight_model]
+    resources: ['app:fixture_page_*', 'app:fixture_success_*', 'app:fixture_llm_*', 'app:fixture_support_*', app:fixture_small_model, app:fixture_refusal_model, app:fixture_range_model, app:fixture_range_highlight_model]
     actions: [registry.get, registry.find, contract.open, funcs.call]
     effect: allow
 - name: runtime_methods
@@ -1759,3 +1776,274 @@ entries:
   - id: app:fixture_success_provider
     provider_model: docscout-success
     options: {capture_requests: verification-requests.json}
+- name: adjacent_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_adjacent, group: Docscout}
+  source: file://adjacent_test.lua
+  method: run
+  modules: [json, uuid, registry]
+  imports:
+    test: wippy.test:test
+    shapes: kickside.docscout.engine:shapes
+    process: kickside.docscout.engine:process
+    stages: kickside.docscout.engine:stages
+    store: kickside.docscout.persist:store
+    data: app:fixture_data
+- name: offset_migration_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_offset_migration, group: Docscout}
+  source: file://offset_migration_test.lua
+  method: run
+  modules: [sql, funcs, json]
+  imports:
+    test: wippy.test:test
+
+- name: context_budget_agent_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_context_budget_agent, group: Docscout}
+  source: file://context_budget_agent_test.lua
+  method: run
+  modules: [registry, json, uuid, fs]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    users: kickside.users.persist:user_repo
+    groups: kickside.users.persist:user_groups_repo
+    store: kickside.docscout.persist:store
+    shapes: kickside.docscout.engine:shapes
+    ai: kickside.docscout.engine:ai
+    user_agent: kickside.docscout.engine:user_agent
+- name: fixture_success_budget_agent_model
+  kind: registry.entry
+  meta:
+    type: llm.model
+    name: docscout-budget-agent
+    capabilities: [generate, structured_output]
+    class: [docscout-budget-agent]
+    priority: 100
+  max_tokens: 6000
+  output_tokens: 512
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {capture_requests: budget-agent-requests.json, reject_context_for: provider_context_rejection}
+
+- name: context_budget_agent_probe
+  kind: function.lua
+  source: file://context_budget_agent_test.lua
+  method: scout
+  modules: [registry, json, uuid, fs]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    users: kickside.users.persist:user_repo
+    groups: kickside.users.persist:user_groups_repo
+    store: kickside.docscout.persist:store
+    shapes: kickside.docscout.engine:shapes
+    ai: kickside.docscout.engine:ai
+    user_agent: kickside.docscout.engine:user_agent
+
+- name: context_budget_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_context_budget, group: Docscout}
+  source: file://context_budget_test.lua
+  method: run
+  modules: [json, fs, registry, funcs, uuid]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    canonical_json: kickside.contract:canonical_json
+    baseline: app:verification_baseline
+    ai: kickside.docscout.engine:ai
+    shapes: kickside.docscout.engine:shapes
+    stages: kickside.docscout.engine:stages
+    runner: kickside.docscout.engine:run
+    store: kickside.docscout.persist:store
+
+- name: fixture_context_budget_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-context-budget, capabilities: [generate, structured_output], class: [docscout-context-budget], priority: 100}
+  max_tokens: 2400
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {capture_requests: context-extract-requests.json}
+
+- name: fixture_context_embed_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-context-embed, capabilities: [embed], class: [docscout-context-embed], priority: 100}
+  dimensions: 512
+  max_tokens: 2400
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {capture_requests: context-embed-requests.json}
+
+- name: fixture_context_length
+  kind: library.lua
+  source: file://fixture_context_length.lua
+
+- name: fixture_context_generated_structured
+  kind: function.lua
+  source: file://fixture_context_generated.lua
+  method: structured
+  modules: [json, fs]
+  imports:
+    canonical_json: kickside.contract:canonical_json
+
+- name: fixture_context_generated_status
+  kind: function.lua
+  source: file://fixture_context_generated.lua
+  method: status
+
+- name: fixture_context_generated_driver
+  kind: contract.binding
+  contracts:
+  - contract: wippy.llm:structured_output
+    methods:
+      structured_output: app:fixture_context_generated_structured
+  - contract: wippy.llm:provider
+    methods:
+      status: app:fixture_context_generated_status
+
+- name: fixture_context_generated_provider
+  kind: registry.entry
+  meta: {type: llm.provider, name: docscout-context-generated}
+  driver: {id: app:fixture_context_generated_driver, options: {}}
+
+- name: fixture_context_generated_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-context-generated, capabilities: [structured_output], class: [docscout-context-generated], priority: 100}
+  max_tokens: 2400
+  output_tokens: 256
+  providers:
+  - id: app:fixture_context_generated_provider
+    provider_model: docscout-context-generated
+    options: {capture_requests: context-generated-requests.json}
+
+- name: context_budget_length_probe
+  kind: function.lua
+  source: file://fixture_context_length.lua
+  method: probe
+  imports:
+    ai: kickside.docscout.engine:ai
+
+- name: fixture_context_unknown_window_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-context-unknown-window, capabilities: [structured_output], class: [docscout-context-unknown-window], priority: 100}
+  max_tokens: 0
+  output_tokens: 256
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {capture_requests: context-unknown-window.json}
+
+- name: fixture_context_unknown_output_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-context-unknown-output, capabilities: [structured_output], class: [docscout-context-unknown-output], priority: 100}
+  max_tokens: 2400
+  output_tokens: 0
+  providers:
+  - id: app:fixture_success_provider
+    provider_model: docscout-success
+    options: {capture_requests: context-unknown-output.json}
+
+- name: page_images_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_page_images, group: Docscout}
+  source: file://page_images_test.lua
+  method: run
+  modules: [registry, json, uuid, hash, fs]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    artifacts: kickside.uploads.persist:artifact_content_repo
+    ai: kickside.docscout.engine:ai
+    pages: kickside.docscout.engine:pages
+    scoring: kickside.docscout.evals:scoring
+- name: fixture_page_png
+  kind: library.lua
+  source: file://fixture_png.lua
+  modules: [compress]
+- name: fixture_page_renderer
+  kind: function.lua
+  source: file://fixture_pages.lua
+  method: render
+  modules: [json, fs]
+  imports:
+    png: app:fixture_page_png
+    pages: kickside.docscout.engine:pages
+- name: fixture_page_rasterizer
+  kind: registry.entry
+  meta: {type: convert.rasterizer}
+  input_mime_types: [application/x-page-fixture]
+  processor_func: app:fixture_page_renderer
+  priority: 100
+- name: fixture_page_structured
+  kind: function.lua
+  source: file://fixture_vision.lua
+  method: structured
+  modules: [base64, json, fs]
+  imports:
+    png: app:fixture_page_png
+    success: app:fixture_page_success
+    types: app:fixture_page_types
+- name: fixture_page_driver
+  kind: contract.binding
+  contracts:
+  - contract: wippy.llm:structured_output
+    methods: {structured_output: app:fixture_page_structured}
+- name: fixture_page_provider
+  kind: registry.entry
+  meta: {type: llm.provider, name: docscout-pages}
+  driver: {id: app:fixture_page_driver, options: {}}
+- name: fixture_page_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-pages, capabilities: [structured_output, vision], class: [docscout-pages], priority: 100}
+  max_tokens: 128000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_page_provider
+    provider_model: docscout-pages
+
+- name: fixture_page_success
+  kind: library.lua
+  source: file://fixture_success.lua
+  modules: [json, fs, hash]
+  imports:
+    canonical_json: kickside.contract:canonical_json
+
+- name: fixture_page_budget_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-pages-budget, capabilities: [structured_output, vision], class: [docscout-pages-budget], priority: 100}
+  max_tokens: 2400
+  output_tokens: 256
+  providers:
+  - id: app:fixture_page_provider
+    provider_model: docscout-pages
+    options: {}
+
+- name: fixture_page_refusal_model
+  kind: registry.entry
+  meta: {type: llm.model, name: docscout-pages-refusal, capabilities: [structured_output, vision], class: [docscout-pages-refusal], priority: 100}
+  max_tokens: 128000
+  output_tokens: 256
+  providers:
+  - id: app:fixture_page_provider
+    provider_model: docscout-pages
+    options: {reject_image: true}
+
+- name: fixture_page_types
+  kind: library.lua
+  source: file://fixture_page_types.lua
+
+- name: fixture_page_reads
+  kind: function.lua
+  source: file://fixture_pages.lua
+  method: read
+  modules: [json, fs]
+  imports:
+    png: app:fixture_page_png
+    pages: kickside.docscout.engine:pages

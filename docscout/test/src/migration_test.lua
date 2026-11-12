@@ -8,7 +8,7 @@ local ai = require("ai")
 local stages = require("stages")
 local store = require("store")
 
-local MIGRATIONS = { "01_docscout", "02_built_outline", "03_page_ranges", "04_evaluation_runs" }
+local MIGRATIONS = { "01_docscout", "02_built_outline", "03_page_ranges", "04_evaluation_runs", "05_chunk_offsets" }
 
 local function apply(name: string, direction: string, expected: integer?)
     local result, err = funcs.call("kickside.docscout.migrations:" .. name, {
@@ -73,6 +73,8 @@ return { run = test.run_cases(function()
             test.eq(snapshot(),before)
             apply("02_built_outline","up",0)
             test.eq(snapshot(),before)
+            apply("03_page_ranges", "up"); apply("04_evaluation_runs", "up"); apply("05_chunk_offsets", "up")
+            test.eq(snapshot(),before)
             local overlay=assert(registry.overlay("app:migration_test"))
             local entry=assert(registry.get("kickside.docscout:db_config"))
             entry.meta.db_id="app:migration_db"
@@ -98,7 +100,6 @@ return { run = test.run_cases(function()
             end)
             local restore=assert(registry.overlay("app:migration_test")):changes();restore:delete(entry.id)
             local _,restore_err=restore:apply();test.is_nil(restore_err,tostring(restore_err))
-            apply("03_page_ranges", "up"); apply("04_evaluation_runs", "up")
             migrate("down")
             if dialect=="postgres" then
                 source=assert(sql.get("app:db"));assert(source:execute("DROP SCHEMA docscout_migration_fixture CASCADE"));source:release()
@@ -141,7 +142,7 @@ return { run = test.run_cases(function()
                 end
                 db:release()
             end
-            apply("03_page_ranges", "up"); apply("04_evaluation_runs", "up")
+            apply("03_page_ranges", "up"); apply("04_evaluation_runs", "up"); apply("05_chunk_offsets", "up")
             migrate("down")
             if dialect == "postgres" then
                 source = assert(sql.get("app:db"))

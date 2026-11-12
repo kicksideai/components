@@ -68,7 +68,10 @@ async function extract(uploadId:string){
  const g=generation
  running.value=true;error.value=''
  try{const value=await client.run(props.id,uploadId);if(live(g)){result.value=value;await load(g)}}
- catch(e){if(live(g))error.value=message(e)}
+ catch(e){if(live(g)){
+  const detail=(e as {response?:{data?:{error?:string}}})?.response?.data?.error
+  error.value=snapshot.value?.config?.stages.extract.reads==='pages'&&detail?detail:message(e)
+ }}
  finally{running.value=false}
 }
 async function evaluate(){

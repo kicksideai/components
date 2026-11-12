@@ -149,7 +149,7 @@ function M.structured(args: any): (any?, error?)
     if args.model == "docscout-sampling" then
         return { result = { data = value(args.schema) }, tokens = usage(args, 12, 8) }, nil
     end
-    -- The echo model answers with its system prompt as every string value.
+    -- The echo model returns its system prompt as strings without enforcing schema constraints.
     if args.model == "docscout-echo" then
         return { result = { data = value(args.schema, system_prompt(args.messages)) }, tokens = usage(args, 12, 8) }, nil
     end
@@ -158,6 +158,14 @@ function M.structured(args: any): (any?, error?)
 end
 function M.generate(args: any): (any?, error?)
     inspect(args)
+    local rejected = args.options and args.options.reject_context_for
+    if rejected then
+        local encoded = assert(json.encode(args.messages or {}))
+        if encoded:find(rejected, 1, true) then
+            return nil, errors.new({ kind = errors.INVALID, retryable = false, message = "Fixture context window rejection",
+                details = { error_type = "context_window", code = "context_length_exceeded" } })
+        end
+    end
     if args.model == "docscout-echo" then
         return { result = { content = system_prompt(args.messages) }, tokens = usage(args, 12, 8) }, nil
     end

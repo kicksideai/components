@@ -82,6 +82,7 @@ entries:
   - security
   - registry
   - funcs
+  - contract
   imports:
     onboarding: kickside.agent_onboarding:creation
     component_types: kickside.component:types
@@ -132,3 +133,62 @@ entries:
   parameters:
   - {name: kickside.knowledge:api_router, value: app:api}
   - {name: kickside.knowledge:ui_server, value: app:gateway}
+
+- name: member_probe
+  kind: security.policy
+  policy:
+    resources: agent_onboarding_test:probe
+    actions: funcs.call
+    effect: allow
+
+- name: member_tokens
+  kind: security.token_store
+  store: kickside.users.security:token_storage
+  default_expiration: 5m
+  token_length: 32
+
+- name: member_runtime_security
+  kind: security.policy
+  meta:
+    comment: Host primitives from the application's user.runtime_contracts policy.
+  policy:
+    resources: security
+    actions: [contract.security, funcs.security]
+    effect: allow
+
+- name: member_runtime_context
+  kind: security.policy
+  policy:
+    resources: context
+    actions: [contract.context, funcs.context]
+    effect: allow
+
+- name: member_contract_methods
+  kind: security.policy
+  meta:
+    comment: Application user.unrestricted_runtime_actions permits contract methods; definitions and bindings remain module-owned gates.
+  policy:
+    resources: '*'
+    actions: contract.call
+    effect: allow
+
+- name: member_database
+  kind: security.policy
+  policy:
+    resources: app:db
+    actions: db.get
+    effect: allow
+
+- name: member_environment
+  kind: security.policy
+  policy:
+    resources: [KICKSIDE_COMPONENT_DB_ID, KICKSIDE_THREADS_DB_ID, KICKSIDE_CORE_JOB_DB_ID]
+    actions: env.get
+    effect: allow
+
+- name: member_fixture_catalog
+  kind: security.policy
+  policy:
+    resources: kickside.onboarding_fixture:*
+    actions: [registry.get, registry.find]
+    effect: allow

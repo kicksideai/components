@@ -9,10 +9,12 @@ local stages = require("stages")
 local sql = require("sql")
 local funcs = require("funcs")
 local shapes = require("shapes")
+local visual_verify = require("visual_verify")
 local ai = require("ai")
 local time = require("time")
 local registry = require("registry")
 local security = require("security")
+local fs = require("fs")
 
 local MARKDOWN = table.concat({
     "<!-- page 1 -->", "", "Preamble before any heading.", "",
@@ -178,6 +180,32 @@ return { run = test.run_cases(function()
             local termination = outline[#outline]
             test.eq(termination.title, "Termination"); test.eq(termination.page_start, 2)
             test.eq(chunks[#chunks].section_id, termination.id)
+        end)
+        test.it("bounds generated search-context annotations without changing source passages", function()
+            local storage = assert(fs.get("app:uploads"))
+            assert(storage:writefile("context-comment-requests.json", "[]"))
+            local entry = assert(registry.get("app:fixture_success_model"))
+            entry.data.providers[1].options = { reply = { contexts = { string.rep("界", 301) } }, capture_requests = "context-comment-requests.json" }
+            local changes = assert(registry.overlay("app:engine_test")):changes()
+            changes:update(entry); assert(changes:apply())
+            local ok, failure = pcall(function()
+                local owner = uuid.v4()
+                local upload = data.upload(owner, "application/pdf", "Original bytes", "# Context\nThe total amount is 1250.")
+                local settings = retrieval({ context = "generated", context_model = "class:docscout-success", embedding_model = "class:docscout-success" })
+                local result = assert(data.caller(owner):call("app:probe", { op = "processed", id = data.extractor(owner), upload_id = upload, retrieval = settings }))
+                local chunks = assert(store.all_chunks(result.document.id))
+                test.eq(#chunks, 1)
+                test.eq(chunks[1].context, "Context — " .. string.rep("界", 300))
+                test.contains(chunks[1].content, "The total amount is 1250.")
+                test.is_nil(chunks[1].content:find("界", 1, true))
+                local request = assert(json.decode(assert(storage:readfile("context-comment-requests.json"))))[1]
+                test.eq(request.schema.properties.contexts.items.maxLength, 300)
+                test.eq(#result.step.meter.calls, 2)
+                test.eq(result.step.meter.calls[1].stage, "context")
+            end)
+            local restore = assert(registry.overlay("app:engine_test")):changes()
+            restore:delete(entry.id); assert(restore:apply())
+            if not ok then error(failure) end
         end)
         test.it("requires a full Markdown artifact and preserves full content", function()
             local owner = uuid.v4()
@@ -585,9 +613,11 @@ return { run = test.run_cases(function()
         test.it("refuses a prompt larger than the model's window before calling it", function()
             local _, err = ai.generate(ai.meter(), "class:docscout-small", "system", big)
             test.not_nil(err); test.is_true(errors.is(err, errors.INVALID), tostring(err))
-            test.is_true(tostring(err):find("context window", 1, true) ~= nil, tostring(err))
+            test.eq(err:details().code, "context_budget_exceeded")
+            test.is_false(err:retryable())
+            test.is_true(err:details().estimated_tokens > err:details().available_tokens)
         end)
-        test.it("says which extraction settings shrink a prompt the model cannot take", function()
+        test.it("reports required context sizes when extraction cannot fit a passage", function()
             local pool = shapes.pool()
             shapes.add(pool, { { ordinal = 1, content = big, heading_path = "Payment" } })
             local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
@@ -597,7 +627,12 @@ return { run = test.run_cases(function()
                     stages = { extract = { model = "class:docscout-small", max_fields_per_call = 5, max_output_tokens = 256 } } } }
             local err = stages.extract(run, { meter = ai.meter() })
             test.not_nil(err); test.is_true(errors.is(err, errors.INVALID), tostring(err))
-            test.is_true(tostring(err):find("fields per call", 1, true) ~= nil, tostring(err))
+            test.eq(err:details().code, "context_budget_exceeded")
+            test.is_false(err:retryable())
+            test.is_true(err:details().estimated_tokens > err:details().available_tokens)
+            test.is_true(run.values[1].failed)
+            test.is_false(run.values[1].missing)
+            test.eq(run.values[1].error.details.code, "context_budget_exceeded")
         end)
     end)
 
@@ -654,11 +689,15 @@ return { run = test.run_cases(function()
                 local field = assert(json.decode(assert(registry.get("kickside.docscout:config_schema")).data.schema_json)).properties.fields.items.default
                 field.name, field.description = "amount", "Invoice amount"
                 local run = { document = { id = "unused", outline = {} }, regions = {}, pool = shapes.pool(), notes = {},
-                    config = { fields = { field }, stages = { scout = { model = "class:docscout-echo", mode = mode,
+                    config = { fields = { field }, stages = { scout = { model = "class:docscout-echo-capture", mode = mode,
                         max_rounds = 0, max_extra_queries = 1, target_confidence = 0.7, max_tokens = 4096, tools = {}, share_notes = true } } } }
                 shapes.add(run.pool, { { ordinal = 1, heading_path = "Invoice", content = "The total amount is 1250." } })
+                local storage = assert(fs.get("app:uploads"))
+                local _, write_err = storage:writefile("scout-echo-requests.json", "[]")
+                test.is_nil(write_err)
                 test.is_nil(stages.scout(run, { meter = ai.meter() }))
-                local prompt = run.notes[1].text
+                local request = assert(json.decode(assert(storage:readfile("scout-echo-requests.json"))))[1]
+                local prompt = request.messages[1].content[1].text
                 for _, statement in ipairs({ "natural-language phrase", "matched by its words and by its meaning", "regular expressions", "boolean operators" }) do
                     test.is_true(prompt:find(statement, 1, true) ~= nil, mode .. ": " .. statement)
                 end
@@ -724,10 +763,84 @@ return { run = test.run_cases(function()
             test.is_false((json.validate(schema, json.decode((reply:gsub(',"terms.rate":%[%]', ""))))))
             test.is_false((json.validate(schema, json.decode((reply:gsub('"fee":"C1 states it",', ""))))))
         end)
+        for _, character in ipairs({ "a", "é", "界", "😀" }) do
+            for _, length in ipairs({ 0, 299, 300, 301 }) do
+                test.it("accepts and bounds " .. length .. " character comments using " .. character, function()
+                    local text = string.rep(character, length)
+                    local schemas = {
+                        stages.scout_schema({ max_extra_queries = 1 }, { { name = "fee", group = "" } }, { { ordinal = 1 } }),
+                        stages.support_schema({ { name = "fee" } }, { fee = true }),
+                        visual_verify.check_schema({ path = "fee" }, true),
+                        stages.summary_schema({ { id = "fee" } }),
+                        { type = "object", required = { "checks", "value", "quote" }, properties = {
+                            checks = { type = "array", items = { type = "object", required = { "comment", "verdict" },
+                                properties = { comment = shapes.comment(), verdict = { type = "string", enum = { "supported" } } } } },
+                            value = { type = "string", maxLength = 301 }, quote = { type = "string" } } },
+                    }
+                    for index, schema in ipairs(schemas) do
+                        local meter = ai.meter()
+                        local reply, err = ai.structured(meter, "class:docscout-echo", schema, text, "user")
+                        test.is_nil(err, tostring(err)); test.not_nil(reply)
+                        local expected = string.rep(character, math.min(length, 300))
+                        if index == 1 then
+                            test.eq(reply.notes.fee, expected); test.eq(reply.evidence.fee[1], 1)
+                            test.eq(reply.queries[1].query, text)
+                        elseif index == 2 then
+                            test.eq(reply.fee.reason, expected); test.eq(reply.fee.verdict, "supported"); test.eq(reply.fee.complete, "complete")
+                        elseif index == 3 then
+                            test.eq(reply.fee.reason, expected); test.eq(reply.fee.quote_on_page, "yes")
+                            test.eq(reply.fee.states_value, "yes"); test.eq(reply.fee.complete, "complete")
+                        elseif index == 4 then test.eq(reply.fee, expected)
+                        else
+                            test.eq(reply.checks[1].comment, expected); test.eq(reply.checks[1].verdict, "supported")
+                            test.eq(reply.value, text); test.eq(reply.quote, text)
+                        end
+                        test.eq(#meter.calls, 1); test.is_nil(meter.calls[1].error_code)
+                    end
+                end)
+            end
+        end
+        test.it("retains validation of bounded content with the same shape as a comment", function()
+            local schema = { type = "object", required = { "comment", "value" }, properties = {
+                comment = shapes.comment(), value = { type = "string", maxLength = 300 } } }
+            local meter = ai.meter()
+            local reply, err = ai.structured(meter, "class:docscout-echo", schema, string.rep("界", 301), "user")
+            test.is_nil(reply); test.not_nil(err)
+            test.eq(err:details().code, "structured_reply_invalid")
+            test.eq(meter.calls[1].error_code, "structured_reply_invalid")
+        end)
+        test.it("bounds each scout note so a constrained decoder ends a run-on note within its reply", function()
+            local schema = stages.scout_schema({ max_extra_queries = 0 }, { { name = "fee", group = "" } }, { { ordinal = 1 } })
+            local function reply(note: string): any
+                return json.decode('{"confidence":0.5,"evidence":{"fee":[1]},"drop":[],"queries":[],"notes":{"fee":"' .. note .. '"}}')
+            end
+            test.is_true((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS)))))
+            test.is_false((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS + 1)))))
+        end)
+        test.it("bounds each support reason so a constrained decoder ends a run-on reason within its reply", function()
+            local values = { { name = "total" }, { name = "terms" } }
+            local schema = stages.support_schema(values, { terms = true })
+            local function reply(reason: string): any
+                return { total = { verdict = "supported", reason = "C1 states it" },
+                    terms = { verdict = "supported", complete = "complete", reason = reason } }
+            end
+            test.is_true((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS)))))
+            test.is_false((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS + 1)))))
+        end)
+        test.it("bounds each page check reason so a constrained decoder ends a run-on reason within its reply", function()
+            local schema = visual_verify.check_schema({ path = "total" }, true)
+            local function reply(reason: string): any
+                return { total = { quote_on_page = "yes", states_value = "yes", complete = "complete", reason = reason } }
+            end
+            test.is_true((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS)))))
+            test.is_false((json.validate(schema, reply(string.rep("a", shapes.COMMENT_CHARS + 1)))))
+        end)
         test.it("asks for a summary of every section", function()
             local schema = stages.summary_schema({ { id = "s1" }, { id = "s2" } })
             test.is_true((json.validate(schema, json.decode('{"s1":"Parties","s2":"Payment terms"}'))))
             test.is_false((json.validate(schema, json.decode('{"s1":"Parties"}'))))
+            test.is_true((json.validate(schema, { s1 = string.rep("界", 300), s2 = "" })))
+            test.is_false((json.validate(schema, { s1 = string.rep("界", 301), s2 = "" })))
         end)
         test.it("keeps one scout note per field and retains cited passages", function()
             local p = shapes.pool()
@@ -790,8 +903,8 @@ return { run = test.run_cases(function()
         local function document(): string
             return assert(save({ owner_id = "owner-" .. uuid.v4(), upload_id = "upload-" .. uuid.v4(), checksum = "c", processing_key = "k", outline = {},
                 page_count = 0, tokens = 0, expires_at = far_future() }, {
-                { ordinal = 1, section_id = "s1", heading_path = "Payment", content = "The **total amount due** is USD 1,250.00.", page_start = 1, vector = unit(1) },
-                { ordinal = 2, section_id = "s2", heading_path = "Terms", content = "Payment within 30 days of receipt. Discount: -5%.", page_start = 2, vector = unit(2) },
+                { ordinal = 1, section_id = "s1", heading_path = "Payment", content = "The **total amount due** is USD 1,250.00.", page_start = 1, page_end = 1, vector = unit(1) },
+                { ordinal = 2, section_id = "s2", heading_path = "Terms", content = "Payment within 30 days of receipt. Discount: -5%.", page_start = 2, page_end = 2, vector = unit(2) },
             }))
         end
         local function field(name: string, over: any?): any
@@ -800,7 +913,7 @@ return { run = test.run_cases(function()
             return f
         end
         local function quotes_only(fields: { any }, values: { any }): any
-            return { document = { id = document() }, regions = {}, values = values,
+            return { document = { id = document(), source = "The **total amount due** is USD 1,250.00. Payment within 30 days of receipt. Discount: -5%." }, regions = {}, values = values,
                 config = { fields = fields, stages = { verify = { enabled = true, check_quotes = true, check_support = false, model = "class:fast" } } } }
         end
         test.it("accepts quotes in the document, relocates misattributed ones with all their locators and rejects changed signs", function()
@@ -848,6 +961,16 @@ return { run = test.run_cases(function()
             test.is_true(run.values[1].reason:find("No quote supports this value", 1, true) ~= nil)
             test.is_true(run.values[2].verified)
             test.eq(step.message, "1 value needs review")
+        end)
+        test.it("accepts a quote that runs across adjacent chunks with the page range it spans", function()
+            local run = quotes_only({ field("terms") }, {
+                { name = "terms", value = "Net 30", missing = false, evidence = { { quote = "is USD 1,250.00. Payment within 30 days", chunk = 1 } } },
+            })
+            local step = { meter = { input_tokens = 0, output_tokens = 0 } }
+            test.is_nil(stages.verify(run, step))
+            test.is_true(run.values[1].verified, tostring(run.values[1].reason))
+            local e = run.values[1].evidence[1]
+            test.eq(e.chunk, 1); test.eq(e.page_start, 1); test.eq(e.page_end, 2); test.is_nil(e.page)
         end)
         test.it("only relocates a quote inside the field's selected sections", function()
             local run = quotes_only({ field("terms", { search_within = "sections" }) }, {

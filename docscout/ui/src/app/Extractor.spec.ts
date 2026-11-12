@@ -6,10 +6,10 @@ import {HOST_VISIBILITY_PROVIDER} from '@wippy-fe/webcomponent-vue'
 import {PrimeVuePlugin} from '@wippy-fe/theme/primevue-plugin'
 config.global.plugins=[PrimeVuePlugin]
 config.global.provide={[HOST_VISIBILITY_PROVIDER as symbol]:ref(null)}
-const state=vi.hoisted(()=>({pending:new Map<string,(v:unknown)=>void>(),evaluations:[] as unknown[],get:null as null|((id:string)=>Promise<unknown>),listCalls:0,listGet:null as null|(()=>Promise<unknown[]>),addCase:vi.fn(),handlers:new Map<string,()=>void>(),disposed:vi.fn()}))
+const state=vi.hoisted(()=>({pending:new Map<string,(v:unknown)=>void>(),evaluations:[] as unknown[],get:null as null|((id:string)=>Promise<unknown>),listCalls:0,listGet:null as null|(()=>Promise<unknown[]>),addCase:vi.fn(),run:vi.fn(),handlers:new Map<string,()=>void>(),disposed:vi.fn()}))
 vi.mock('@wippy-fe/proxy',()=>({on:(topic:string,handler:()=>void)=>{state.handlers.set(topic,handler);return ()=>{state.handlers.delete(topic);state.disposed(topic)}},loadByTagName:async()=>{},api:{}}))
 vi.mock('../client',()=>({client:{
- addCase:state.addCase,
+ addCase:state.addCase,run:state.run,
  get:(id:string)=>state.get?state.get(id):new Promise(resolve=>state.pending.set(id,resolve)),
  evaluations:async()=>{state.listCalls++;return state.listGet?state.listGet():state.evaluations},
  evaluation:async(_id:string,eval_id:string)=>state.evaluations.find(e=>(e as {id:string}).id===eval_id),
@@ -18,8 +18,24 @@ import Extractor from './Extractor.vue'
 import {newConfig} from '../config'
 const snapshot=(id:string,title:string,can_edit=false)=>({id,title,field_count:1,status:'configured',can_edit,can_share:can_edit,retention:'2h',runs:[],...(can_edit?{expected_revision:1,config:newConfig(),cases:[]}:{})})
 const evaluation=(id:string,status:string)=>({id,status,config_revision:1,fields:[],case_count:1,metrics:[],tokens:0,duration_ms:0,created_at:'2026-10-28T00:00:00Z',results:[]})
-afterEach(()=>{vi.useRealTimers();state.get=null;state.listCalls=0;state.evaluations=[];state.listGet=null;state.pending.clear();state.handlers.clear();state.disposed.mockClear();state.addCase.mockReset()})
+afterEach(()=>{vi.useRealTimers();state.get=null;state.listCalls=0;state.evaluations=[];state.listGet=null;state.pending.clear();state.handlers.clear();state.disposed.mockClear();state.addCase.mockReset();state.run.mockReset()})
 describe('Extractor page',()=>{
+ for(const reads of [undefined,'text','pages'] as const){
+  it(`shows the API admission message only in page mode (${reads})`,async()=>{
+   const saved=snapshot('x','Reader',true)
+   saved.config!.stages.extract.reads=reads
+   state.get=async()=>saved
+   const cause=Object.assign(new Error('Request failed with status code 400'),{response:{data:{error:'The model does not support page images'}}})
+   state.run.mockRejectedValueOnce(cause)
+   const w=mount(Extractor,{props:{id:'x'}})
+   await flushPromises()
+   const page=w.findComponent({name:'DocscoutPage'})
+   page.vm.$emit('run','upload');await flushPromises()
+   expect(page.props('error')).toBe(reads==='pages'?'The model does not support page images':cause.message)
+   w.unmount()
+  })
+ }
+
  it('reports the admitted case id to the editor after a successful add',async()=>{
   state.get=async()=>snapshot('x','Reader',true)
   state.addCase.mockResolvedValue({id:'saved-case'})

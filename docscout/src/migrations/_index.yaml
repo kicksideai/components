@@ -44,3 +44,14 @@ entries:
   imports:
     migration: wippy.migration:migration
   method: migrate
+- name: 05_chunk_offsets
+  kind: function.lua
+  meta:
+    type: migration
+    timestamp: '2026-11-11T14:00:00Z'
+    depends_on:
+    - kickside.docscout.migrations:04_evaluation_runs
+  source: file://05_chunk_offsets.lua
+  imports:
+    migration: wippy.migration:migration
+  method: migrate

@@ -10,6 +10,43 @@ local doctools = require("doctools")
 local ai = require("ai")
 local error_envelope = require("error_envelope")
 
+local TRUNCATED = "[Docscout context truncated to fit the model's context budget.]"
+
+-- The model receives the full returned value, so selection measures that value
+-- rather than a second copy of the passages. Continue after a non-fitting
+-- passage to retain lower-ranked smaller evidence.
+local function bounded_result(result: any, budget: any): (any?, error?)
+    if not budget then return result, nil end
+    local estimate = ai.estimate_value(result)
+    if estimate <= budget.share then return result, nil end
+    local docscout = {}
+    for key, value in pairs(result.docscout) do docscout[key] = value end
+    docscout.codes = { "context_budget_partial" }
+    local bounded = { text = TRUNCATED, chunks = {}, docscout = docscout }
+    if ai.estimate_value(bounded) > budget.share then
+        return nil, ai.budget_error(budget.model, estimate, budget.share)
+    end
+    for _, chunk in ipairs(result.chunks or {}) do
+        local candidate = { text = TRUNCATED, chunks = {}, docscout = docscout }
+        for _, kept in ipairs(bounded.chunks) do candidate.chunks[#candidate.chunks + 1] = kept end
+        candidate.chunks[#candidate.chunks + 1] = chunk
+        if ai.estimate_value(candidate) <= budget.share then bounded.chunks[#bounded.chunks + 1] = chunk end
+    end
+    if #bounded.chunks == 0 and type(result.text) == "string" then
+        local low, high, kept = 0, #result.text, TRUNCATED
+        while low <= high do
+            local middle = math.floor((low + high) / 2)
+            local candidate = result.text:sub(1, middle) .. "\n\n" .. TRUNCATED
+            local probe = { text = candidate, chunks = {}, docscout = docscout }
+            if ai.estimate_value(probe) <= budget.share then
+                kept, low = candidate, middle + 1
+            else high = middle - 1 end
+        end
+        bounded.text = kept
+    end
+    return bounded, nil
+end
+
 return { run = function(args: any): (any?, error?)
     local context, context_err = ctx.get("docscout")
     if context_err then return nil, context_err end
@@ -37,8 +74,11 @@ return { run = function(args: any): (any?, error?)
     local failure = ai.check_deadline(meter, "a document tool call")
     local hits, text, err = nil, nil, failure
     if not err then hits, text, err = doctools.call({ document = document, meter = meter }, context.tool, args) end
-    return { text = text, chunks = hits or {}, docscout = {
+    local result = { text = text, chunks = hits or {}, docscout = {
         input_tokens = meter.input_tokens, output_tokens = meter.output_tokens, calls = meter.calls,
         error = err and error_envelope.encode(err) or nil,
-    } }, nil
+    } }
+    local bounded, budget_err = bounded_result(result, context.context_budget)
+    if budget_err then return nil, budget_err end
+    return bounded, nil
 end }

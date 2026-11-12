@@ -6,7 +6,20 @@ local component = require("component")
 local security = require("security")
 local onboarding = require("onboarding")
 local component_types = require("component_types")
+local contract = require("contract")
 local function run(op: string, input: any): any
+    if op == "knowledge_contract_create" then
+        local definition, err = contract.get("kickside.knowledge:knowledge_bases")
+        if err then return {stage="get", error=tostring(err), kind=err:kind()} end
+        local binding, open_err = definition:open("kickside.knowledge.registry:knowledge_bases_registry")
+        if open_err then return {stage="open", error=tostring(open_err), kind=open_err:kind()} end
+        local result, call_err = binding:create(input)
+        return {stage="create", result=result, error=call_err and tostring(call_err), kind=call_err and call_err:kind()}
+    end
+    if op == "knowledge_create" then
+        local result, err = funcs.call("kickside.knowledge.registry:kb_create", input)
+        return {result=result, error=err and tostring(err), kind=err and err:kind()}
+    end
     if op == "onboard_memory_failure" then
         local failing=onboarding.new({contract={get=function()
             return {open=function()
@@ -24,6 +37,11 @@ local function run(op: string, input: any): any
     end
     if op == "memories" then
         local rows, err = component.query({impl_ids={"kickside.memory:memory_store"}, meta={[component_types.OWNER_META_KEY]=security.actor():id()}, include={meta=true}, limit=100})
+        if err then error(tostring(err)) end
+        return rows
+    end
+    if op == "knowledge" then
+        local rows, err = component.query({meta={class="knowledge_base", [component_types.OWNER_META_KEY]=security.actor():id()}, include={meta=true, placement=true}, limit=100})
         if err then error(tostring(err)) end
         return rows
     end

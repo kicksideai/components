@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.1.10](https://github.com/kicksideai/components/compare/docscout-v0.1.9...docscout-v0.1.10) (2026-11-12)
+
+
+### Bug Fixes
+
+* **agent-onboarding:** scope personal memory creation authority ([#91](https://github.com/kicksideai/components/issues/91)) ([82cad37](https://github.com/kicksideai/components/commit/82cad37909f263d94f476bff10dbcdc0d185eed4))
+* **docscout:** bound free-text comments in model reply schemas ([#90](https://github.com/kicksideai/components/issues/90)) ([3f75cbc](https://github.com/kicksideai/components/commit/3f75cbc707ec91d967ee650d1489ee6870469bbc))
+
+## [0.1.9](https://github.com/kicksideai/components/compare/docscout-v0.1.8...docscout-v0.1.9) (2026-11-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **docscout:** page-image evidence uses page, image_checksum and source_revision instead of chunk_id. Text-mode requests, results and saved configurations keep their existing shape.
+
+### Features
+
+* **docscout:** read and verify extraction values from page images ([#86](https://github.com/kicksideai/components/issues/86)) ([0cc372d](https://github.com/kicksideai/components/commit/0cc372db42b430fd94d4c07614e5b449d9dedda4))
+
+## [0.1.8](https://github.com/kicksideai/components/compare/docscout-v0.1.7...docscout-v0.1.8) (2026-11-11)
+
+
+### Bug Fixes
+
+* **docscout:** assemble requests within model context budgets ([#83](https://github.com/kicksideai/components/issues/83)) ([238060e](https://github.com/kicksideai/components/commit/238060e63db8b7d7a8b6a0c3485967ec1aeacceb))
+
+## [0.1.7](https://github.com/kicksideai/components/compare/docscout-v0.1.6...docscout-v0.1.7) (2026-11-11)
+
+
+### Bug Fixes
+
+* **docscout:** verify adjacent quotes with source provenance ([#80](https://github.com/kicksideai/components/issues/80)) ([ae89ae1](https://github.com/kicksideai/components/commit/ae89ae1e42b6454124c55530ff2b2ef02e600f53))
+
+## [0.1.6](https://github.com/kicksideai/components/compare/docscout-v0.1.5...docscout-v0.1.6) (2026-11-11)
+
+
+### Bug Fixes
+
+* **docscout:** batch extraction by estimated reply size ([#77](https://github.com/kicksideai/components/issues/77)) ([fb8ffb4](https://github.com/kicksideai/components/commit/fb8ffb454799d02419f5a9d7379bb1f59c42ac9f))
+* **docscout:** expose scoped missing causes per field ([#78](https://github.com/kicksideai/components/issues/78)) ([97fbc67](https://github.com/kicksideai/components/commit/97fbc67423bc547cc67c9f63046c8ab75890889c))
+* **docscout:** guide generated queries with plain phrases and key terms ([#74](https://github.com/kicksideai/components/issues/74)) ([ac1187f](https://github.com/kicksideai/components/commit/ac1187f1fa7f6fec58552210c64986b8aba4dd80))
+* **docscout:** make completeness judgments opt-in per extractor ([#79](https://github.com/kicksideai/components/issues/79)) ([a1cfbc9](https://github.com/kicksideai/components/commit/a1cfbc970a92c4fa7e7ec3410b997b01225d65e0))
+* **docscout:** retry native transient evaluation failures and retain usage ([#76](https://github.com/kicksideai/components/issues/76)) ([7475c46](https://github.com/kicksideai/components/commit/7475c46a25b561d186aa309f4b60c33db64c1236))
+
 ## [0.1.5](https://github.com/kicksideai/components/compare/docscout-v0.1.4...docscout-v0.1.5) (2026-11-11)
 
 

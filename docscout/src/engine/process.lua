@@ -229,6 +229,12 @@ function M.chunk(markdown: string, retrieval: any, pages: any?): (any?, error?)
             }
         end
     end
+    local source = doc2md.strip_markers(markdown)
+    local positions = shapes.source_positions(chunks, source)
+    for _, chunk in ipairs(chunks) do
+        local position = positions[chunk.ordinal]
+        if position then chunk.source_start, chunk.source_end = position.first, position.last end
+    end
     local range_err = M.validate_pages(pages, page_count)
     if range_err then return nil, range_err end
     if pages ~= nil then
@@ -245,6 +251,11 @@ function M.chunk(markdown: string, retrieval: any, pages: any?): (any?, error?)
             end
             if #spans > 0 then
                 chunk.content, chunk.page_spans = table.concat(body, "\n"), spans
+                if chunk.source_start then
+                    local first, last = source:find(chunk.content, chunk.source_start, true)
+                    if first and (last :: integer) <= chunk.source_end then chunk.source_start, chunk.source_end = first, last
+                    else chunk.source_start, chunk.source_end = nil, nil end
+                end
                 chunk.page_start, chunk.page_end = spans[1].page, spans[#spans].page
                 chunk.ordinal = #selected + 1
                 selected[#selected + 1] = chunk
@@ -288,7 +299,7 @@ end
 local function context_schema(count: integer): any
     return {
         type = "object", additionalProperties = false, required = { "contexts" },
-        properties = { contexts = { type = "array", minItems = count, maxItems = count, items = { type = "string" } } },
+        properties = { contexts = { type = "array", minItems = count, maxItems = count, items = shapes.comment() } },
     }
 end
 local CONTEXT_SYSTEM = [[You place passages of one document in context for search.
@@ -302,19 +313,26 @@ local function contexts(meter: any, retrieval: any, models: { [string]: string }
         for _, c in ipairs(chunks) do c.context = c.heading_path end
         return nil
     end
-    for start = 1, #chunks, CONTEXT_BATCH do
-        local batch, lines = {}, { "Document: " .. tostring(filename or "untitled") }
-        for i = start, math.min(#chunks, start + CONTEXT_BATCH - 1) do
-            batch[#batch + 1] = chunks[i]
-            lines[#lines + 1] = "\n## Passage " .. tostring(#batch) .. " (section: " .. chunks[i].heading_path .. ")\n" .. chunks[i].content
-        end
-        local result, err = ai.structured(meter, models.context :: string, context_schema(#batch), CONTEXT_SYSTEM, table.concat(lines, "\n"),
+    local function body(batch: { any }): string
+        local lines = { "Document: " .. tostring(filename or "untitled") }
+        for i, chunk in ipairs(batch) do lines[#lines + 1] = "\n## Passage " .. i .. " (section: " .. chunk.heading_path .. ")\n" .. chunk.content end
+        return table.concat(lines, "\n")
+    end
+    local fits, _, fit_err = ai.fitter(models.context :: string)
+    if fit_err then return fit_err end
+    local batches, rejected = shapes.batches(chunks, function(batch: { any }): boolean return fits(CONTEXT_SYSTEM, body(batch), context_schema(#batch)) end, CONTEXT_BATCH)
+    for _, batch in ipairs(batches) do
+        local result, err = ai.structured(meter, models.context :: string, context_schema(#batch), CONTEXT_SYSTEM, body(batch),
             { stage = "context", sources = shapes.ordinals(batch) })
         if err then return err end
         if #result.contexts ~= #batch then
             return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "context model returned " .. #result.contexts .. " contexts for " .. #batch .. " passages" })
         end
         for i, c in ipairs(batch) do c.context = c.heading_path .. " — " .. trim(tostring(result.contexts[i])) end
+    end
+    if #rejected > 0 then
+        local _, estimated, available = fits(CONTEXT_SYSTEM, body({ rejected[1] }), context_schema(1))
+        return ai.budget_error(models.context :: string, estimated, available)
     end
     return nil
 end
@@ -342,6 +360,8 @@ function M.ensure(component_id: string, owner_id: string, upload_id: string, ret
         local range_err = M.validate_pages(pages, existing.page_count)
         if range_err then return nil, range_err end
         step.message = "Reused the processed copy (" .. existing.chunk_count .. " chunks)"
+        existing.checksum = content.checksum
+        existing.source = doc2md.strip_markers(content.markdown)
         existing.embedding_model = models.embedding
         return existing, nil
     end
@@ -366,7 +386,8 @@ function M.ensure(component_id: string, owner_id: string, upload_id: string, ret
     }, chunks)
     if save_err then return nil, save_err end
     step.message = "Processed " .. #chunks .. " chunks in " .. #outline .. " sections" .. (page_count > 0 and (" over " .. page_count .. " pages") or "")
-    return { id = id, outline = outline, page_count = page_count, chunk_count = #chunks, tokens = tokens, embedding_model = models.embedding }, nil
+    return { id = id, outline = outline, page_count = page_count, chunk_count = #chunks, tokens = tokens, embedding_model = models.embedding,
+        source = doc2md.strip_markers(content.markdown), checksum = content.checksum }, nil
 end
 
 return M

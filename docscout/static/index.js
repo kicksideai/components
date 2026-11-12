@@ -6,7 +6,7 @@ import "@iconify/vue";
 import { define as a } from "@wippy-fe/proxy";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const i = n(
-  () => import("./ManageRoot-C_kATzmN.js"),
+  () => import("./ManageRoot-Dko_Kdxb.js"),
   { loading: "Loading the extractor…", failed: "Could not load the extractor. Reload the page to try again." },
   o
 ), t = r({ rootComponent: i, plugins: [e] }, { type: "object", properties: { "entry-id": { type: "string", default: "", description: "Id of the extractor component to manage, supplied by the workspace. Empty shows a message instead of an extractor." } } });

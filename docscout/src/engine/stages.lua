@@ -11,6 +11,8 @@ local process = require("process")
 local shapes = require("shapes")
 local error_envelope = require("error_envelope")
 local user_agent = require("user_agent")
+local visual = require("visual")
+local visual_verify = require("visual_verify")
 
 local trim, add, ordered, render, field_lines = shapes.trim, shapes.add, shapes.ordered, shapes.render, shapes.field_lines
 
@@ -40,6 +42,58 @@ local function visible(run: any, field: any, ordinal: integer?): (boolean?, erro
 end
 
 local function system(text: string): string return text .. "\n" .. shapes.DATA_RULE end
+
+-- Budget reductions are informational. They never add a rejection reason.
+local function budget_cut(run: any, fields: { any })
+    run.budget_dropped = run.budget_dropped or {}
+    for _, f in ipairs(fields) do run.budget_dropped[shapes.path(f)] = true end
+end
+
+local function budget_failure(model: string, fits: any, system_text: string, user: string, schema: any?): error
+    local _, estimated, available = fits(system_text, user, schema)
+    return ai.budget_error(model, estimated, available)
+end
+
+-- Field citations, own searches, best retrieval rank, then document position.
+-- Fields take passages in turns; a rejected passage never closes a queue.
+function M.allocate(pool: any, passages: { any }, fields: { string }, fits: ({ any }) -> boolean): ({ any }, { [string]: integer })
+    local kept, queues, lost = {}, {}, {}
+    local function ordered_kept(extra: any?): { any }
+        local out = {}
+        for _, c in ipairs(passages) do if kept[c.ordinal] or c == extra then out[#out + 1] = c end end
+        return out
+    end
+    if fits(passages) then return passages, lost end
+    for i, path in ipairs(fields) do
+        local list = {}
+        for _, c in ipairs(passages) do
+            if not pool.provenance[c.ordinal].excluded[path] then list[#list + 1] = c end
+        end
+        table.sort(list, function(a: any, b: any): boolean
+            local pa, pb = pool.provenance[a.ordinal], pool.provenance[b.ordinal]
+            if not not pa.cited[path] ~= not not pb.cited[path] then return pa.cited[path] == true end
+            if not not pa.fields[path] ~= not not pb.fields[path] then return pa.fields[path] == true end
+            if (pa.rank or math.huge) ~= (pb.rank or math.huge) then return (pa.rank or math.huge) < (pb.rank or math.huge) end
+            return a.ordinal < b.ordinal
+        end)
+        queues[i] = { list = list, at = 1 }
+    end
+    local remaining = true
+    while remaining do
+        remaining = false
+        for _, q in ipairs(queues) do
+            while q.at <= #q.list do
+                local c = q.list[q.at]
+                q.at = q.at + 1
+                if not kept[c.ordinal] and fits(ordered_kept(c)) then kept[c.ordinal] = true; remaining = true; break end
+            end
+        end
+    end
+    for i, path in ipairs(fields) do
+        for _, c in ipairs(queues[i].list) do if not kept[c.ordinal] then lost[path] = (lost[path] or 0) + 1 end end
+    end
+    return ordered_kept(nil), lost
+end
 
 -- Map: outline from headings, or built by the model; then the sections each
 -- "search within sections" field should read.
@@ -81,7 +135,7 @@ end
 
 -- One required summary per section id, so a constrained decoder cannot leave a section out.
 function M.summary_schema(outline: { any }): any
-    return shapes.keyed(section_ids(outline), { type = "string" })
+    return shapes.keyed(section_ids(outline), shapes.comment())
 end
 
 -- One required property per field path, each a list of at least one existing
@@ -99,22 +153,48 @@ local function select_schema(outline: { any }, fields: { any }): any
 end
 
 -- Sections the map model finds in a processed document, window by window.
-local function build_outline(run: any, step: any, cfg: any, sampling: (string, { string }?, { integer }?) -> any): ({ any }?, error?)
+local function build_outline(run: any, step: any, cfg: any, sampling: (string, { string }?, { integer }?) -> any): ({ any }?, error?, boolean?)
     local chunks, err = store.all_chunks(run.document.id)
     if err then return nil, err end
     -- One section per start chunk, in order; chunks before the first start form their own section.
     local by_start, previous = {}, nil
-    for _, w in ipairs(M.outline_windows(chunks, OUTLINE_WINDOW)) do
-        local carried = previous and ("The passages continue the section \"" .. previous .. "\" unless a new section starts at chunk " .. w.first .. ".\n\n") or ""
-        local built, build_err = ai.structured(step.meter, cfg.model, outline_schema(w.first, w.last),
-            system("You divide a document into its logical sections. Give each section a short title and the chunk number where it starts, in order."),
-            carried .. w.preview, sampling("outline", shapes.paths(run.config.fields), w.sources))
+    local outline_system = system("You divide a document into its logical sections. Give each section a short title and the chunk number where it starts, in order.")
+    local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
+    if fit_err then return nil, fit_err end
+    local remaining, partial = chunks, false
+    while #remaining > 0 do
+        local function request(batch: { any }): (any, string)
+            local w = M.outline_windows(batch, #batch)[1]
+            local carried = previous and ("The passages continue the section \"" .. previous .. "\" unless a new section starts at chunk " .. w.first .. ".\n\n") or ""
+            return w, carried .. w.preview
+        end
+        local batches, rejected = shapes.batches(remaining, function(batch: { any }): boolean
+            local w, body = request(batch)
+            return fits(outline_system, body, outline_schema(w.first, w.last))
+        end, OUTLINE_WINDOW)
+        if #batches == 0 then
+            local w, body = request({ remaining[1] })
+            return nil, budget_failure(cfg.model, fits, outline_system, body, outline_schema(w.first, w.last))
+        end
+        local batch = batches[1]
+        local w, body = request(batch)
+        local built, build_err = ai.structured(step.meter, cfg.model, outline_schema(w.first, w.last), outline_system,
+            body, sampling("outline", shapes.paths(run.config.fields), w.sources))
         if build_err then return nil, build_err end
-        for _, s in ipairs(built.sections) do
-            local start = math.tointeger(s.first_chunk) :: integer
-            if not by_start[start] then by_start[start] = trim(s.title) end
+        for _, section in ipairs(built.sections) do
+            local first = math.tointeger(section.first_chunk) :: integer
+            if not by_start[first] then by_start[first] = trim(section.title) end
         end
         for n = w.last, w.first, -1 do if by_start[n] then previous = by_start[n]; break end end
+        local consumed, next_chunks = {}, {}
+        for _, chunk in ipairs(batch) do consumed[chunk.ordinal] = true end
+        for _, chunk in ipairs(rejected) do consumed[chunk.ordinal] = true end
+        if #rejected > 0 then
+            partial = true
+            budget_cut(run, run.config.fields)
+        end
+        for _, chunk in ipairs(remaining) do if not consumed[chunk.ordinal] then next_chunks[#next_chunks + 1] = chunk end end
+        remaining = next_chunks
     end
     if not by_start[1] then by_start[1] = "Start of document" end
     local sections = {}
@@ -134,7 +214,7 @@ local function build_outline(run: any, step: any, cfg: any, sampling: (string, {
             end
         end
     end
-    return sections, nil
+    return sections, nil, partial
 end
 
 function M.map(run: any, step: any): error?
@@ -163,10 +243,12 @@ function M.map(run: any, step: any): error?
             run.document.outline = kept
             step.message = "Reused the outline of " .. #kept .. " sections built for this copy"
         else
-            local sections, build_err = build_outline(run, step, cfg, sampling)
+            local sections, build_err, partial = build_outline(run, step, cfg, sampling)
             if build_err then return build_err end
-            local keep_err = store.keep_built_outline(run.document.id, identity :: string, sections :: { any })
-            if keep_err then return keep_err end
+            if not partial then
+                local keep_err = store.keep_built_outline(run.document.id, identity :: string, sections :: { any })
+                if keep_err then return keep_err end
+            end
             run.document.outline = sections
             step.message = "Built an outline of " .. #(sections :: { any }) .. " sections"
         end
@@ -188,34 +270,70 @@ function M.map(run: any, step: any): error?
             end
             listing[#listing + 1] = "## " .. s.id .. " " .. s.path .. "\n" .. table.concat(body, "\n"):sub(1, 1500)
         end
-        local result, err = ai.structured(step.meter, cfg.model, M.summary_schema(run.document.outline),
-            system("Summarize each section in one sentence, naming what it covers. Return one summary per section id."), table.concat(listing, "\n\n"), sampling("summaries", shapes.paths(run.config.fields), sources))
-        if err then return err end
-        for _, s in ipairs(run.document.outline) do
-            local summary = trim(tostring(result[s.id] or ""))
-            s.summary = summary ~= "" and summary or nil
+        local summary_system = system("Summarize each section in one sentence, naming what it covers. Return one summary per section id.")
+        local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
+        if fit_err then return fit_err end
+        local by_id = {}
+        for i, section in ipairs(run.document.outline) do by_id[section.id] = listing[i] end
+        local function body(batch: { any }): string
+            local lines = {}
+            for _, section in ipairs(batch) do lines[#lines + 1] = by_id[section.id] end
+            return table.concat(lines, "\n\n")
+        end
+        local batches, rejected = shapes.batches(run.document.outline, function(batch: { any }): boolean return fits(summary_system, body(batch), M.summary_schema(batch)) end)
+        if #rejected > 0 then budget_cut(run, run.config.fields) end
+        if #batches == 0 and #rejected > 0 then return budget_failure(cfg.model, fits, summary_system, body({ rejected[1] }), M.summary_schema({ rejected[1] })) end
+        for _, batch in ipairs(batches) do
+            local batch_sources = {}
+            for _, n in ipairs(sources) do
+                for _, section in ipairs(batch) do
+                    if n >= section.chunk_start and n <= section.chunk_end then batch_sources[#batch_sources + 1] = n; break end
+                end
+            end
+            local result, err = ai.structured(step.meter, cfg.model, M.summary_schema(batch), summary_system, body(batch), sampling("summaries", shapes.paths(run.config.fields), batch_sources))
+            if err then return err end
+            for _, section in ipairs(batch) do
+                local summary = trim(tostring(result[section.id] or ""))
+                section.summary = summary ~= "" and summary or nil
+            end
         end
     end
     local scoped = {}
     for _, f in ipairs(run.config.fields) do if f.search_within == "sections" then scoped[#scoped + 1] = f end end
     if #scoped > 0 then
-        local listing = {}
-        for n, section in ipairs(run.document.outline) do
-            listing[#listing + 1] = "[S" .. n .. "] " .. doctools.outline_text({ section })
+        local select_system = system("You pick, for each field, the sections of the outline most likely to contain its value. Choose few but enough sections; include definitions or schedules a field depends on. Return section ordinals: the numbers after S in the outline labels, without the S.")
+        local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
+        if fit_err then return fit_err end
+        local function body(fields: { any }, sections: { any }): string
+            local listing = {}
+            for n, section in ipairs(sections) do listing[#listing + 1] = "[S" .. n .. "] " .. doctools.outline_text({ section }) end
+            return "Outline:\n" .. table.concat(listing, "\n") .. "\n\nFields:\n" .. field_lines(fields)
         end
-        local result, err = ai.structured(step.meter, cfg.model, select_schema(run.document.outline, scoped),
-            system("You pick, for each field, the sections of the outline most likely to contain its value. Choose few but enough sections; include definitions or schedules a field depends on. Return section ordinals: the numbers after S in the outline labels, without the S."),
-            "Outline:\n" .. table.concat(listing, "\n") .. "\n\nFields:\n" .. field_lines(scoped), sampling("select", shapes.paths(scoped)))
-        if err then return err end
+        local function plan(fields: { any }): any
+            local sections, lost = shapes.select(run.document.outline, function(batch: { any }): boolean return fits(select_system, body(fields, batch), select_schema(batch, fields)) end)
+            return { sections = sections, lost = lost }
+        end
+        local batches, rejected = shapes.batches(scoped, function(fields: { any }): boolean return #plan(fields).sections > 0 end)
+        local failure: error? = nil
+        for _, f in ipairs(rejected) do
+            failure = failure or budget_failure(cfg.model, fits, select_system, body({ f }, run.document.outline), select_schema(run.document.outline, { f }))
+        end
         local picked = {}
-        for _, f in ipairs(scoped) do
-            local path = shapes.path(f)
-            local ids = {}
-            for _, ordinal in ipairs(result[path]) do ids[#ids + 1] = run.document.outline[ordinal].id end
-            picked[#picked + 1] = path .. " → " .. table.concat(ids, ", ")
-            run.regions[path] = shapes.ordinals_of(run.document.outline, ids)
+        for _, batch in ipairs(batches) do
+            local selected = plan(batch)
+            if #selected.lost > 0 then budget_cut(run, batch) end
+            local result, err = ai.structured(step.meter, cfg.model, select_schema(selected.sections, batch), select_system,
+                body(batch, selected.sections), sampling("select", shapes.paths(batch)))
+            if err then return err end
+            for _, f in ipairs(batch) do
+                local path, ids = shapes.path(f), {}
+                for _, ordinal in ipairs(result[path]) do ids[#ids + 1] = selected.sections[ordinal].id end
+                picked[#picked + 1] = path .. " → " .. table.concat(ids, ", ")
+                run.regions[path] = shapes.ordinals_of(selected.sections, ids)
+            end
         end
         step.queries = picked
+        if failure then return failure end
     end
     return nil
 end
@@ -261,7 +379,7 @@ function M.scout_schema(cfg: any, fields: { any }, pool: { any }): any
         drop = { type = "array", maxItems = #pool, items = chunk },
         queries = { type = "array", maxItems = cfg.max_extra_queries, items = { type = "object", additionalProperties = false, required = { "field", "query" },
             properties = { field = { type = "string", enum = names }, query = { type = "string" } } } },
-        notes = shapes.keyed(names, { type = "string" }) } }
+        notes = shapes.keyed(names, shapes.comment()) } }
 end
 
 -- Notes as prompt lines. A note names its field, or covers the document as a
@@ -296,11 +414,11 @@ local function paths(fields: { any }): { string }
 end
 
 -- The structured scout's prompt: fields, earlier notes and the passages still visible to them.
-function M.scout_input(run: any, fields: { any }): (string?, error?)
+function M.scout_input(run: any, fields: { any }, passages: { any }?): (string?, error?)
     local fields_text, err = scout_fields(run, fields)
     if err then return nil, err end
     return fields_text .. (#run.notes > 0 and ("\n\nEarlier notes:\n" .. table.concat(note_lines(run.notes), "\n")) or "") ..
-        "\n\nEvidence:\n" .. render(ordered(run.pool, paths(fields)))
+        "\n\nEvidence:\n" .. render(passages or ordered(run.pool, paths(fields)))
 end
 
 local SCOUT_SYSTEM = system([[You review evidence gathered from one document before values are extracted.
@@ -309,6 +427,59 @@ whose passages state or help determine its value. List chunk numbers that serve 
 when no passage serves it. Propose focused search queries for fields whose evidence is missing or weak, and leave a short note per field
 about where its value is or what to watch for (empty when there is nothing to note).
 Do not extract values. Chunk numbers are the numbers after C, without the C.]] .. "\n" .. shapes.QUERY_RULE)
+
+-- The built-in scout owns this conversation. Reassemble document-bearing
+-- slots from their passage/section units while preserving tool call pairs.
+local function scout_conversation(run: any, fields: { any }, initial: { any }, observations: any, base: string): any
+    return function(messages: { any }, accepts: any): (any?, error?)
+        local reduced = assert(json.decode(assert(json.encode(messages))))
+        local slots = {}
+        local marker = "[Docscout context truncated to fit the model's context budget.]"
+        for _, message in ipairs(reduced) do
+            if message.role == "user" then
+                slots[#slots + 1] = { message = message, items = initial, initial = true, kept = {} }
+                message.content = { { type = "text", text = base } }
+            elseif message.role == "function_result" then
+                local observation = observations[message.function_call_id]
+                if observation and #observation.items > 0 then
+                    slots[#slots + 1] = { message = message, items = observation.items, outline = observation.outline, kept = {} }
+                    message.content = { { type = "text", text = assert(json.encode(marker)) } }
+                end
+            end
+        end
+        local function set(slot: any, items: { any })
+            local text = slot.outline and doctools.outline_text(items) or render(items)
+            if slot.initial then text = base .. text
+            else text = assert(json.encode(text .. "\n\n" .. marker)) end
+            slot.message.content = { { type = "text", text = text } }
+        end
+        local ok, estimated, available = accepts(reduced)
+        if not ok then return nil, ai.budget_error(run.config.stages.scout.model, estimated, available) end
+        local total, usable = 0, 0
+        for _, slot in ipairs(slots) do
+            total = total + #slot.items
+            local function fits(items: { any }): boolean
+                set(slot, items)
+                return accepts(reduced)
+            end
+            local kept, rejected
+            if slot.initial then
+                local lost
+                kept, lost = M.allocate(run.pool, slot.items, shapes.paths(fields), fits)
+                rejected = {}
+                for _, n in pairs(lost) do if n > 0 then rejected[1] = true end end
+            else kept, rejected = shapes.select(slot.items, fits) end
+            set(slot, kept)
+            usable = usable + #kept
+            if #rejected > 0 then budget_cut(run, fields) end
+        end
+        if total > 0 and usable == 0 then
+            local _, estimated, available = accepts(messages)
+            return nil, ai.budget_error(run.config.stages.scout.model, estimated, available)
+        end
+        return reduced, nil
+    end
+end
 
 -- Tool calls an agent scout may make: queries per round over its rounds.
 function M.agent_budget(cfg: any): integer
@@ -329,22 +500,27 @@ function M.scout(run: any, step: any): error?
         if fields_err then return fields_err end
         local before = run.pool.count
         local instruction = system("You read one document with the tools to find evidence for the fields below. Follow references to definitions and schedules. When you have enough, reply with short notes per field saying where each value is. " .. shapes.QUERY_RULE)
-        local input = fields_text .. "\n\nEvidence so far:\n" .. render(ordered(run.pool))
+        local initial = ordered(run.pool)
+        local base = fields_text .. "\n\nEvidence so far:\n"
+        local input = base .. render(initial)
+        local observations = {}
         local answer, calls, err
         if cfg.agent_id then
             answer, calls, err = user_agent.run(run, step, instruction, input)
         else
             answer, calls, err = ai.agent(step.meter, cfg.model, instruction, input,
                 tools, M.agent_budget(cfg),
-                function(name: string, args: any): (string?, error?)
+                function(name: string, args: any, id: string?): (string?, error?)
                     local hits, text, call_err = doctools.call(ctx, name, args)
                     step.tool_calls = step.tool_calls or {}
                     step.tool_calls[#step.tool_calls + 1] = { name = name, arguments = args,
                         result = { text = text, chunks = hits }, error = call_err and error_envelope.encode(call_err) or nil }
                     if call_err then return nil, call_err end
                     add(run.pool, hits)
+                    if id then observations[id] = { items = name == "read_outline" and run.document.outline or hits, outline = name == "read_outline" } end
                     return text, nil
-                end, { max_tokens = cfg.max_tokens, temperature = cfg.temperature, stage = "scout", fields = shapes.paths(fields) })
+                end, { max_tokens = cfg.max_tokens, temperature = cfg.temperature, stage = "scout", fields = shapes.paths(fields) },
+                scout_conversation(run, fields, initial, observations, base))
         end
         found = run.pool.count - before
         if err then return err end
@@ -356,23 +532,47 @@ function M.scout(run: any, step: any): error?
     for _, f in ipairs(fields) do by_name[shapes.path(f)] = f end
     while true do
         rounds = rounds + 1
-        local scout_text, scout_err = M.scout_input(run, fields)
-        if scout_err then return scout_err end
-        local pool = ordered(run.pool, paths(fields))
-        local result, err = ai.structured(step.meter, cfg.model, M.scout_schema(cfg, fields, pool), SCOUT_SYSTEM,
-            scout_text :: string, { max_tokens = cfg.max_tokens, temperature = cfg.temperature, stage = "scout",
-                sources = shapes.ordinals(pool), fields = shapes.paths(fields) })
-        if err then return err end
-        run.confidence = tonumber(result.confidence) or 0
-        if cfg.drop_noise then
-            local selected = {}
-            for _, f in ipairs(fields) do
-                local region, region_err = M.region(run, f)
-                if region_err then return region_err end
-                for _, n in ipairs(region or {}) do selected[#selected + 1] = n end
+        local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
+        if fit_err then return fit_err end
+        local function plan(batch: { any }): any
+            local pool = ordered(run.pool, shapes.paths(batch))
+            local function accepts(chunks: { any }): boolean
+                return fits(SCOUT_SYSTEM, assert(M.scout_input(run, batch, chunks)), M.scout_schema(cfg, batch, chunks))
             end
-            shapes.prune(run.pool, result.drop, result.evidence, selected)
+            local selected, lost = M.allocate(run.pool, pool, shapes.paths(batch), accepts)
+            return { pool = selected, lost = lost, usable = (#pool == 0 or #selected > 0) and accepts(selected) }
         end
+        local batches, rejected = shapes.batches(fields, function(batch: { any }): boolean return plan(batch).usable end)
+        local result = { confidence = 1, evidence = {}, notes = {}, queries = {} }
+        local failure: error? = nil
+        for _, f in ipairs(rejected) do
+            local pool = ordered(run.pool, { shapes.path(f) })
+            failure = failure or budget_failure(cfg.model, fits, SCOUT_SYSTEM, assert(M.scout_input(run, { f }, pool)), M.scout_schema(cfg, { f }, pool))
+        end
+        for _, batch in ipairs(batches) do
+            local prepared = plan(batch)
+            local pool = prepared.pool
+            for _, f in ipairs(batch) do if (prepared.lost[shapes.path(f)] or 0) > 0 then budget_cut(run, { f }) end end
+            local reply, err = ai.structured(step.meter, cfg.model, M.scout_schema(cfg, batch, pool), SCOUT_SYSTEM,
+                assert(M.scout_input(run, batch, pool)), { max_tokens = cfg.max_tokens, temperature = cfg.temperature, stage = "scout",
+                    sources = shapes.ordinals(pool), fields = shapes.paths(batch) })
+            if err then return err end
+            result.confidence = math.min(result.confidence, tonumber(reply.confidence) or 0)
+            for path, evidence in pairs(reply.evidence) do result.evidence[path] = evidence end
+            for path, note in pairs(reply.notes) do result.notes[path] = note end
+            for _, query in ipairs(reply.queries) do result.queries[#result.queries + 1] = query end
+            if cfg.drop_noise then
+                local selected = {}
+                for _, f in ipairs(batch) do
+                    local region, region_err = M.region(run, f)
+                    if region_err then return region_err end
+                    for _, n in ipairs(region or {}) do selected[#selected + 1] = n end
+                end
+                shapes.prune(run.pool, reply.drop, reply.evidence, selected)
+            end
+        end
+        if failure then return failure end
+        run.confidence = result.confidence
         local uncited = 0
         for _, f in ipairs(fields) do
             local path = shapes.path(f)
@@ -452,10 +652,16 @@ local function analyse(run: any, step: any, ctx: any, f: any, all_queries: { str
     end
     -- Deep fields keep their own evidence visible to themselves.
     add(run.pool, found, shapes.path(f))
-    local analysis, analysis_err = ai.generate(step.meter, cfg.model,
-        system("You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it."),
-        field_lines({ f }) .. "\n\nPassages:\n" .. render(found),
-        { temperature = cfg.analysis_temperature, max_tokens = cfg.max_tokens, stage = "analysis", sources = shapes.ordinals(found), fields = { shapes.path(f) } })
+    if run.page_images then return nil end
+    local analysis_system = system("You analyse passages of one document for a single field and explain what its value is, quoting the decisive wording and citing chunk numbers. Say plainly when the passages do not settle it.")
+    local function body(chunks: { any }): string return field_lines({ f }) .. "\n\nPassages:\n" .. render(chunks) end
+    local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
+    if fit_err then return fit_err end
+    local kept, rejected = shapes.select(found, function(chunks: { any }): boolean return fits(analysis_system, body(chunks)) end)
+    if #rejected > 0 then budget_cut(run, { f }) end
+    if #found > 0 and #kept == 0 then return budget_failure(cfg.model, fits, analysis_system, body({ found[1] })) end
+    local analysis, analysis_err = ai.generate(step.meter, cfg.model, analysis_system, body(kept),
+        { temperature = cfg.analysis_temperature, max_tokens = cfg.max_tokens, stage = "analysis", sources = shapes.ordinals(kept), fields = { shapes.path(f) } })
     if analysis_err then return analysis_err end
     run.analyses[shapes.path(f)] = analysis
     return nil
@@ -523,19 +729,22 @@ function M.highlight(run: any, step: any): error?
     end
     table.sort(chunks, function(a: any, b: any): boolean return a.ordinal < b.ordinal end)
     local kept, before = 0, #chunks
-    for start = 1, #chunks, HIGHLIGHT_BATCH do
-        local batch = {}
-        for i = start, math.min(#chunks, start + HIGHLIGHT_BATCH - 1) do batch[#batch + 1] = chunks[i] end
-        local result, err = ai.structured(step.meter, model, M.highlight_schema(batch),
-            system("For each passage, keyed by its chunk number without the C, copy word for word the sentences that state or help determine any field's value. Return an empty list for passages that do not."),
-            "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch),
+    local highlight_system = system("For each passage, keyed by its chunk number without the C, copy word for word the sentences that state or help determine any field's value. Return an empty list for passages that do not.")
+    local function body(batch: { any }): string return "Fields:\n" .. field_lines(run.config.fields) .. "\n\nPassages:\n" .. render(batch) end
+    local fits, _, fit_err = ai.fitter(model, retrieval.highlighter_max_tokens)
+    if fit_err then return fit_err end
+    local batches, rejected = shapes.batches(chunks, function(batch: { any }): boolean return fits(highlight_system, body(batch), M.highlight_schema(batch)) end, HIGHLIGHT_BATCH)
+    if #rejected > 0 then budget_cut(run, run.config.fields) end
+    if #chunks > 0 and #batches == 0 then return budget_failure(model, fits, highlight_system, body({ chunks[1] }), M.highlight_schema({ chunks[1] })) end
+    for _, batch in ipairs(batches) do
+        local result, err = ai.structured(step.meter, model, M.highlight_schema(batch), highlight_system, body(batch),
             { temperature = retrieval.highlighter_temperature, max_tokens = retrieval.highlighter_max_tokens, stage = "highlight", sources = shapes.ordinals(batch), fields = shapes.paths(run.config.fields) })
         if err then return err end
         for _, c in ipairs(batch) do
             -- Only excerpts that occur in the passage replace it, each as its own paragraph.
-            local source, genuine = shapes.normalize(c.content), {}
+            local source, genuine = shapes.normalize_literal(c.content), {}
             for _, excerpt in ipairs(result[tostring(c.ordinal)]) do
-                local q = shapes.normalize(excerpt)
+                local q = shapes.normalize_literal(excerpt)
                 if q ~= "" and source:find(q, 1, true) then genuine[#genuine + 1] = trim(excerpt) end
             end
             if #genuine > 0 then
@@ -619,26 +828,22 @@ function M.extraction_calls(run: any): ({ any }?, error?)
     return calls
 end
 
--- One extraction call: prompt, model reply and a value per field.
-local function extract_call(run: any, step: any, cfg: any, call: any): error?
-    local batch, passages, notes = call.fields, call.passages, call.notes
+-- Build the same request for planning and dispatch.
+local function extraction_input(run: any, batch: { any }, passages: { any }, notes: { string }): string
     local context = {}
     for _, f in ipairs(batch) do if run.analyses[shapes.path(f)] then context[#context + 1] = "Analysis of " .. shapes.path(f) .. ":\n" .. run.analyses[shapes.path(f)] end end
-    local evidence = render(passages)
-    local user = "Fields:\n" .. field_lines(batch) ..
+    return "Fields:\n" .. field_lines(batch) ..
         (#notes > 0 and ("\n\nScout notes:\n" .. table.concat(notes, "\n")) or "") ..
         (#context > 0 and ("\n\n" .. table.concat(context, "\n\n")) or "") ..
-        "\n\nPassages:\n" .. evidence
-    local result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch, passages), EXTRACT_SYSTEM, user,
+        "\n\nPassages:\n" .. render(passages)
+end
+
+local function extract_call(run: any, step: any, cfg: any, call: any): error?
+    local batch, passages, notes = call.fields, call.passages, call.notes
+    local result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch, passages), EXTRACT_SYSTEM,
+        extraction_input(run, batch, passages, notes),
         { max_tokens = cfg.max_output_tokens, temperature = cfg.temperature, stage = "extract", sources = shapes.ordinals(passages), fields = shapes.paths(batch) })
-    if err then
-        -- The llm module refuses a prompt larger than the model's window before calling it.
-        if errors.is(err, errors.INVALID) and ((err :: any):details() or {}).error_type == "context_window" then
-            return errors.new({ kind = errors.INVALID, details = (err :: any):details(),
-                message = tostring(err) .. "; lower passages per field, Deep chunk cap or fields per call" })
-        end
-        return err
-    end
+    if err then return err end
     local entries = {}
     for _, f in ipairs(batch) do
         local item = shapes.get(result, shapes.path(f))
@@ -665,6 +870,10 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
         elseif f.search_within == "sections" then
             entry.codes = { "missing_in_sections" }
         end
+        if run.budget_dropped and run.budget_dropped[shapes.path(f)] then
+            entry.codes = entry.codes or {}
+            entry.codes[#entry.codes + 1] = "context_budget_partial"
+        end
         entries[#entries + 1] = entry
     end
     for _, entry in ipairs(entries) do run.values[#run.values + 1] = entry end
@@ -677,10 +886,63 @@ function M.extract(run: any, step: any): error?
     local failure: error? = nil
     local extraction_calls, calls_err = M.extraction_calls(run)
     if calls_err then return calls_err end
+    if run.page_images then return visual.extract(run, step, assert(extraction_calls), M.allocate) end
     for _, f in ipairs(run.config.fields) do
         local err = run.field_errors and run.field_errors[shapes.path(f)]
         if err then failed_field(run, f, err); failure = failure or err end
     end
+    local fits: any = nil
+    local planned = {}
+    for _, call in ipairs(extraction_calls) do
+        if #call.passages == 0 then planned[#planned + 1] = call
+        else
+            if not fits then
+                local fit_err
+                fits, _, fit_err = ai.fitter(cfg.model, cfg.max_output_tokens)
+                if fit_err then return fit_err end
+            end
+            local function plan(batch: { any }): any
+                local names, notes = {}, {}
+                for _, f in ipairs(batch) do names[shapes.path(f)] = true end
+                local whole = batch[1].search_within ~= "sections"
+                for _, n in ipairs(run.notes) do
+                    if (n.field and names[n.field]) or (not n.field and whole) then notes[#notes + 1] = n end
+                end
+                local lines = note_lines(notes)
+                local candidates = {}
+                for _, c in ipairs(call.passages) do
+                    for _, f in ipairs(batch) do
+                        if not run.pool.provenance[c.ordinal].excluded[shapes.path(f)] then candidates[#candidates + 1] = c; break end
+                    end
+                end
+                local function accepts(chunks: { any }): boolean
+                    return fits(EXTRACT_SYSTEM, extraction_input(run, batch, chunks, lines), shapes.group_schema(batch, chunks))
+                end
+                local kept, lost = M.allocate(run.pool, candidates, shapes.paths(batch), accepts)
+                local usable = #kept > 0
+                for _, f in ipairs(batch) do
+                    local has, needed = false, false
+                    for _, c in ipairs(candidates) do if not run.pool.provenance[c.ordinal].excluded[shapes.path(f)] then needed = true end end
+                    for _, c in ipairs(kept) do if not run.pool.provenance[c.ordinal].excluded[shapes.path(f)] then has = true end end
+                    if needed and not has then usable = false end
+                end
+                return { fields = batch, passages = kept, notes = lines, lost = lost, usable = usable,
+                    error = not usable and budget_failure(cfg.model, fits, EXTRACT_SYSTEM,
+                        extraction_input(run, batch, candidates, lines), shapes.group_schema(batch, candidates)) or nil }
+            end
+            local batches, rejected = shapes.batches(call.fields, function(batch: { any }): boolean return plan(batch).usable end)
+            for _, batch in ipairs(batches) do
+                local prepared = plan(batch)
+                for _, f in ipairs(batch) do if (prepared.lost[shapes.path(f)] or 0) > 0 then budget_cut(run, { f }) end end
+                planned[#planned + 1] = prepared
+            end
+            for _, f in ipairs(rejected) do
+                local err = plan({ f }).error
+                failed_field(run, f, err); failure = failure or err
+            end
+        end
+    end
+    extraction_calls = planned
     for _, call in ipairs(extraction_calls) do
         if #call.passages == 0 then
             -- Empty passage sets produce missing fields.
@@ -716,7 +978,7 @@ local function support_schema(values: { any }): any
     local paths = {}
     for _, v in ipairs(values) do paths[#paths + 1] = shapes.path(v) end
     return shapes.keyed(paths, { type = "object", additionalProperties = false, required = { "supported", "reason" },
-        properties = { supported = { type = "boolean" }, reason = { type = "string" } } })
+        properties = { supported = { type = "boolean" }, reason = shapes.comment() } })
 end
 
 -- The optional policy judges support for the requested field and completeness
@@ -748,7 +1010,7 @@ function M.support_schema(values: { any }, complete_fields: { [string]: boolean 
         local path = shapes.path(v)
         required[#required + 1] = path
         local item = { type = "object", additionalProperties = false, required = { "verdict", "reason" }, properties = {
-            verdict = { type = "string", enum = { VERDICT.supported, VERDICT.not_supported, VERDICT.insufficient } }, reason = { type = "string" } } }
+            verdict = { type = "string", enum = { VERDICT.supported, VERDICT.not_supported, VERDICT.insufficient } }, reason = shapes.comment() } }
         if complete_fields[path] then
             item.required = { "verdict", "complete", "reason" }
             item.properties.complete = { type = "string", enum = { COMPLETENESS.complete, COMPLETENESS.incomplete, COMPLETENESS.insufficient } }
@@ -762,7 +1024,7 @@ end
 -- description, the value, its quotes and, when given, the source text around them.
 function M.support_line(f: any, v: any, source: string?): string
     local quotes = {}
-    for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" end
+    for _, e in ipairs(v.evidence) do quotes[#quotes + 1] = "\"" .. e.quote .. "\"" .. (e.image_checksum and (" (page " .. e.page .. ")") or "") end
     local t = f.type == "list" and ("list of " .. f.item.type) or f.type
     return "- " .. shapes.path(v) .. " (" .. t .. "): " .. (f.description ~= "" and f.description or "no description") ..
         "\n  contract: " .. json.encode(shapes.value_schema(f)) .. "\n  validation hints: " .. (f.validation_hints or "") ..
@@ -810,6 +1072,7 @@ local function store_order(by_ordinal: { [integer]: any }): { any }
 end
 
 function M.verify(run: any, step: any): error?
+    if run.page_images then return visual_verify.verify(run, step, M.support_line) end
     local cfg = run.config.stages.verify
     local enhanced = cfg.check_completeness == true
     local field_aware = enhanced
@@ -836,6 +1099,7 @@ function M.verify(run: any, step: any): error?
         for _, c in ipairs(store_order(by_ordinal)) do
             bodies[c.ordinal] = shapes.normalize(c.content); order[#order + 1] = c.ordinal
         end
+        local quote_context = shapes.quote_context(store_order(by_ordinal), run.document.source)
         for _, v in ipairs(run.values) do
             if not v.missing and not v.failed then
                 v.quotes_found = true
@@ -846,12 +1110,13 @@ function M.verify(run: any, step: any): error?
                         if region_err then return region_err end
                         if allowed then candidates[#candidates + 1] = ordinal end
                     end
-                    local at = shapes.locate(e.quote, e.chunk, bodies, candidates)
+                    local at, last = shapes.locate(e.quote, e.chunk, bodies, candidates, quote_context)
                     e.found = at ~= nil
                     if at then
                         local c = by_ordinal[at]
                         e.chunk, e.chunk_id, e.section = at, c.id, c.heading_path
                         local location = shapes.quote_location(c, e.quote)
+                        if last ~= at then location = { page_start = c.page_start, page_end = by_ordinal[last].page_end or by_ordinal[last].page_start } end
                         e.page, e.page_start, e.page_end = location.page, location.page_start, location.page_end
                     end
                     if not e.found then v.quotes_found = false end
@@ -859,7 +1124,7 @@ function M.verify(run: any, step: any): error?
             end
         end
     end
-    local support, complete_fields = {}, {}
+    local support, support_errors, complete_fields = {}, {}, {}
     local support_error: error? = nil
     if cfg.check_support then
         local found, lines, seen = {}, {}, {}
@@ -925,9 +1190,41 @@ function M.verify(run: any, step: any): error?
                 if not seen[ordinal] then sources[#sources + 1], seen[ordinal] = ordinal, true end
             end
             table.sort(sources)
-            local result, err = ai.structured(step.meter, cfg.model, reply_schema(), support_system, body(),
-                { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(found), sources = sources })
-            if err then support_error = err else support = result end
+            local fits, _, fit_err = ai.fitter(cfg.model, cfg.max_tokens)
+            if fit_err then return fit_err end
+            local function batch_body(batch: { any }): string
+                local out = {}
+                for _, v in ipairs(batch) do out[#out + 1] = lines[shapes.path(v)] end
+                if next(context) then out[#out + 1] = "Source passages:\n" .. render(store_order(context)) end
+                return table.concat(out, "\n")
+            end
+            local function batch_schema(batch: { any }): any
+                return field_aware and M.support_schema(batch, complete_fields) or support_schema(batch)
+            end
+            local batches, rejected = shapes.batches(found, function(batch: { any }): boolean return fits(support_system, batch_body(batch), batch_schema(batch)) end)
+            for _, v in ipairs(rejected) do
+                local err = budget_failure(cfg.model, fits, support_system, batch_body({ v }), batch_schema({ v }))
+                support_errors[shapes.path(v)] = err
+                support_error = support_error or err
+            end
+            for _, batch in ipairs(batches) do
+                local batch_sources = sources
+                if #batches > 1 or #rejected > 0 then
+                    batch_sources = {}
+                    local used = {}
+                    for _, v in ipairs(batch) do
+                        for _, e in ipairs(v.evidence) do if e.chunk and not used[e.chunk] then used[e.chunk] = true; batch_sources[#batch_sources + 1] = e.chunk end end
+                    end
+                    for ordinal in pairs(context) do if not used[ordinal] then batch_sources[#batch_sources + 1] = ordinal end end
+                    table.sort(batch_sources)
+                end
+                local result, err = ai.structured(step.meter, cfg.model, batch_schema(batch), support_system, batch_body(batch),
+                    { temperature = cfg.temperature, max_tokens = cfg.max_tokens, stage = "support", fields = shapes.paths(batch), sources = batch_sources })
+                if err then
+                    support_error = support_error or err
+                    for _, v in ipairs(batch) do support_errors[shapes.path(v)] = err end
+                else for path, verdict in pairs(result) do support[path] = verdict end end
+            end
         end
     end
     local failed = 0
@@ -937,6 +1234,7 @@ function M.verify(run: any, step: any): error?
         local function reject(value: string, reason: string) reasons[#reasons + 1] = reason; code(value) end
         if v.reason then reasons[#reasons + 1] = v.reason end
         for _, value in ipairs(v.codes or {}) do code(value) end
+        if run.budget_dropped and run.budget_dropped[shapes.path(v)] then code("context_budget_partial") end
         local found = not v.missing and not v.failed
         if found then
             local valid, shape_err = json.validate(shapes.value_schema(fields[shapes.path(v)]), v.value)
@@ -950,7 +1248,8 @@ function M.verify(run: any, step: any): error?
         if cfg.check_quotes and found and not v.quotes_found then reject("quote_not_found", "A quote is not in the document") end
         if cfg.check_support and found and (not enhanced or #v.evidence > 0) then
             local check = support[shapes.path(v)]
-            if support_error then reject("support_no_verdict", "The support check gave no verdict: " .. tostring(support_error))
+            local check_error = support_errors[shapes.path(v)]
+            if check_error then reject("support_no_verdict", "The support check gave no verdict: " .. tostring(check_error))
             elseif not check then reject("support_no_verdict", "The support check gave no verdict")
             elseif field_aware then
                 if check.verdict == VERDICT.not_supported then reject("support_rejected", check.reason)

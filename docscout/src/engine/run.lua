@@ -13,6 +13,7 @@ local ai = require("ai")
 local shapes = require("shapes")
 local error_envelope = require("error_envelope")
 local execution_identity = require("execution_identity")
+local pages = require("pages")
 
 local M = {}
 
@@ -35,14 +36,14 @@ function M.summary(values: { any }): any
         if v.verified then out.verified = out.verified + 1
         else
             local codes = v.failed and { "extraction_failed" } or (v.reason and v.codes) or {}
-            if #codes == 0 then codes = { "unchecked" } end
             local counted = {}
             for _, code in ipairs(codes) do
-                if not counted[code] then
+                if code ~= "missing_in_sections" and code ~= "context_budget_partial" and not counted[code] then
                     unverified[code] = (tonumber(unverified[code]) or 0) + 1
                     counted[code] = true
                 end
             end
+            if not next(counted) then unverified.unchecked = (tonumber(unverified.unchecked) or 0) + 1 end
         end
     end
     return out
@@ -93,6 +94,15 @@ function M.run(input: any): (any?, error?)
     local config = extractor.config
     if #config.fields == 0 then return nil, invalid("Add at least one field before running") end
 
+    if config.stages.extract.reads == "pages" then
+        local vision_err = ai.require_vision(config.stages.extract.model)
+        if vision_err then return nil, vision_err end
+        if config.stages.verify.enabled and config.stages.verify.check_support then
+            vision_err = ai.require_vision(config.stages.verify.model)
+            if vision_err then return nil, vision_err end
+        end
+    end
+
     local run: any = {
         component_id = input.id, deadline = input.deadline, config = config, regions = {}, notes = {}, analyses = {}, values = {}, confidence = 0,
         pool = shapes.pool(),
@@ -117,8 +127,16 @@ function M.run(input: any): (any?, error?)
 
     local s = config.stages
     local ok = step("read", "document", config.retrieval.embedding_model, function(record: any): error?
+        if s.extract.reads == "pages" then
+            local source, source_err = pages.discover(input.upload_id)
+            if source_err then return source_err end
+            run.page_images, run.page_range = source, input.pages
+        end
         local document, err = process.ensure(input.id, actor:id(), input.upload_id, config.retrieval, record, extractor_window, input.pages)
         if err then return err end
+        if run.page_images and run.page_images.checksum ~= document.checksum then
+            return pages.error("revision_mismatch", "Processed text and page images have different revisions")
+        end
         run.document = document
         return nil
     end)
@@ -139,9 +157,9 @@ function M.run(input: any): (any?, error?)
     for _, v in ipairs(run.values) do
         local evidence = {}
         for _, e in ipairs(v.evidence) do
-            evidence[#evidence + 1] = { quote = e.quote, section = e.section, page = e.page, page_start = e.page_start, page_end = e.page_end, chunk_id = e.chunk_id, found = e.found }
+            evidence[#evidence + 1] = { quote = e.quote, section = e.section, page = e.page, page_start = e.page_start, page_end = e.page_end, chunk_id = e.chunk_id, found = e.found, image_checksum = e.image_checksum, source_revision = e.source_revision }
         end
-        fields[#fields + 1] = { name = v.name, path = v.path, value = v.value, failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, complete = v.complete, missing = v.missing, reason = v.reason, codes = v.codes, evidence = evidence }
+        fields[#fields + 1] = { name = v.name, path = v.path, extraction_kind = v.extraction_kind, verification = v.verification, source_revision = v.source_revision, value = v.value, failed = v.failed == true, error = v.error, confidence = v.confidence, verified = v.verified, complete = v.complete, missing = v.missing, reason = v.reason, codes = v.codes, evidence = evidence }
     end
     local failed, extracted = 0, 0
     for _, f in ipairs(fields) do
@@ -152,7 +170,7 @@ function M.run(input: any): (any?, error?)
         upload_id = input.upload_id, config_revision = extractor.revision, fields = fields, trace = trace,
         duration_ms = millis() - started, tokens = tokens, status = status,
         error = failure and error_envelope.encode(failure) or nil,
-        pages = run.document and run.document.page_count or 0, page_range = input.pages, summary = M.summary(run.values),
+        pages = run.page_images and run.page_images.count or (run.document and run.document.page_count or 0), page_range = input.pages, summary = M.summary(run.values),
     }
     result.values = shapes.values(result)
     local expires_at, expiry_err = retention.expires_at(extractor_window)

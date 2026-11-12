@@ -34,7 +34,7 @@ export interface Stages {
  prefetch:{enabled:boolean;queries:PrefetchQuery[]}
  scout:{enabled:boolean;mode:'loop'|'agent';agent_id?:string;model:string;max_rounds:number;target_confidence:number;max_extra_queries:number;max_tokens:number;drop_noise:boolean;share_notes:boolean;tools:string[];temperature?:number}
  deep:{enabled:boolean;model:string;query_model:string;read:'chunks'|'sections';parallel_fields:number;max_queries:number;chunks_per_query:number;chunk_cap:number;min_similarity:number;query_temperature:number;analysis_temperature:number;max_tokens?:number}
- extract:{model:string;max_output_tokens:number;max_fields_per_call:number;temperature?:number}
+ extract:{reads?:'text'|'pages';max_pages?:number;model:string;max_output_tokens:number;max_fields_per_call:number;temperature?:number}
  verify:{enabled:boolean;model:string;check_quotes:boolean;check_support:boolean;check_completeness?:boolean;temperature?:number;max_tokens?:number}
 }
 export type StageKey = keyof Stages
@@ -153,6 +153,7 @@ export function configError(config:Config):string {
  if(unread)return `Turn on Prefetch or Scout so extraction has passages to read for ${unread.name}.`
  if(s.scout.enabled&&s.scout.mode==='agent'&&!s.scout.tools.length)return 'Agent scouting needs at least one tool.'
  if(s.scout.enabled&&s.scout.mode==='agent'&&(!s.scout.max_rounds||!s.scout.max_extra_queries))return 'Agent scouting needs at least one round and one tool call per round.'
+ if(s.extract.reads==='pages'&&(!Number.isInteger(s.extract.max_pages)||s.extract.max_pages!<1||s.extract.max_pages!>32))return 'Page images per call must be an integer from 1 to 32.'
  if(s.verify.check_completeness&&!s.verify.check_support)return 'Completeness requires quote support.'
  if(s.verify.enabled&&!s.verify.check_quotes&&!s.verify.check_support)return 'Verify needs at least one check.'
  if(config.retrieval.overlap>=config.retrieval.chunk_size)return 'Overlap must be smaller than chunk size.'

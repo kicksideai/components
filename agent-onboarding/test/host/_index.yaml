@@ -20,11 +20,16 @@ entries:
 - name: gateway
   kind: http.service
   addr: :${http_port}
+  lifecycle:
+    auto_start: true
 - name: api
   kind: http.router
   meta:
     server: gateway
   prefix: /api
+  middleware: [token_auth]
+  options:
+    token_store: agent_onboarding_test:member_tokens
 - name: api_public
   kind: http.router
   meta:

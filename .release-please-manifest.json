@@ -1,8 +1,8 @@
 {
   "dashboard": "0.1.22",
   "research": "0.1.25",
-  "agent-onboarding": "0.1.10",
+  "agent-onboarding": "0.1.11",
   "sso": "0.1.43",
   "storage-s3": "0.2.2",
-  "docscout": "0.1.5"
+  "docscout": "0.1.10"
 }
