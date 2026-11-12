@@ -1,5 +1,5 @@
-import { defineComponent as H, useModel as Be, openBlock as a, createElementBlock as s, withModifiers as ve, createElementVNode as t, mergeModels as Xe, computed as N, withKeys as Ee, unref as b, normalizeClass as Q, createVNode as f, toDisplayString as d, Fragment as M, renderList as z, createCommentVNode as g, createTextVNode as F, createBlock as J, ref as R, useId as pe, watch as be, withDirectives as W, vModelText as _, vModelSelect as Ge, resolveComponent as ot, renderSlot as Ie, withCtx as me, mergeProps as gt, vShow as Ke, onMounted as Ue, nextTick as Ce, normalizeStyle as qe, onBeforeUnmount as Ct, vModelDynamic as rl, toRaw as ht } from "vue";
-import { B as cl, L as vl, j as ze, v as Me, k as ml, U as pl, I as yt, f as bl, i as Qe, l as Et, t as lt, h as $e, o as it, p as fl, m as qt, q as K, M as Ae, r as Ut, w as Nt, x as at, y as gl, z as hl, A as yl, C as kl, D as $l, E as Ft, F as xl, G as Mt, H as wl, J as Vl, K as Sl, N as kt, O as Cl, P as et, Q as El, R as Oe, S as ql, T as nt, s as de, n as $t, V as Ul, W as Nl, b as Fl, c as he } from "./index-CrYiACP3.js";
+import { defineComponent as H, useModel as Be, openBlock as a, createElementBlock as s, withModifiers as ve, createElementVNode as t, mergeModels as Xe, computed as N, withKeys as Ee, unref as b, normalizeClass as Q, createVNode as f, toDisplayString as d, Fragment as M, renderList as z, createCommentVNode as g, createTextVNode as F, createBlock as J, ref as R, toRaw as lt, useId as pe, watch as be, withDirectives as W, vModelText as _, vModelSelect as Ge, resolveComponent as it, renderSlot as Ie, withCtx as me, mergeProps as ht, vShow as Ke, onMounted as Ue, nextTick as Ce, normalizeStyle as qe, onBeforeUnmount as Ct, vModelDynamic as rl } from "vue";
+import { B as cl, L as vl, j as ze, v as Me, k as ml, U as pl, I as yt, f as bl, i as Qe, l as Et, t as at, h as $e, o as ut, p as fl, m as qt, q as K, M as Ae, r as Ut, w as Nt, x as nt, y as gl, z as hl, A as yl, C as kl, D as $l, E as Ft, F as xl, G as Mt, H as wl, J as Vl, K as Sl, N as kt, O as Cl, P as et, Q as El, R as Oe, S as ql, T as st, s as de, n as $t, V as Ul, W as Nl, b as Fl, c as he } from "./index-CrYiACP3.js";
 import { loadByTagName as Ze, on as xt } from "@wippy-fe/proxy";
 import { Icon as L } from "@iconify/vue";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
@@ -182,7 +182,7 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
         case "prefetch":
           return [...S.prefetch.queries.map((v) => ({ text: v.name || "Untitled query", tone: "" })), ...C.fields.filter((v) => v.search_hints.trim()).map((v) => ({ text: v.name, tone: "hint" }))];
         case "scout":
-          return S.scout.mode === "agent" ? S.scout.tools.map((v) => ({ text: lt(v).toLowerCase(), tone: "" })) : [];
+          return S.scout.mode === "agent" ? S.scout.tools.map((v) => ({ text: at(v).toLowerCase(), tone: "" })) : [];
         case "deep":
           return C.fields.filter((v) => v.strategy === "deep").map((v) => ({ text: v.name || "New field", tone: "primary" }));
         case "extract":
@@ -204,7 +204,7 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
     }, [
       t("span", Dl, [
         f(b(L), {
-          icon: b(it)[e.stage]
+          icon: b(ut)[e.stage]
         }, null, 8, ["icon"])
       ]),
       t("span", jl, [
@@ -300,14 +300,14 @@ function Je(e) {
   }
   return e.forEach((u, i) => l(u, i, [], K(u) || "New field")), n;
 }
-function st(e) {
-  return 1 + Math.max(0, ...(e.properties ?? []).map(st), e.item ? st(e.item) : 0);
+function ot(e) {
+  return 1 + Math.max(0, ...(e.properties ?? []).map(ot), e.item ? ot(e.item) : 0);
 }
 function Xl(e, n) {
-  return Je(e).filter((l) => l.shape.type === "object" && ((l.shape.properties?.length ?? 0) < 100 || l.field === n.field && ie(l.field, l.trail) === ie(n.field, n.trail.slice(0, -1))) && l.depth + st(n.shape) <= Ae && !(l.field === n.field && n.trail.every((u, i) => l.trail[i] === u)));
+  return Je(e).filter((l) => l.shape.type === "object" && ((l.shape.properties?.length ?? 0) < 100 || l.field === n.field && ie(l.field, l.trail) === ie(n.field, n.trail.slice(0, -1))) && l.depth + ot(n.shape) <= Ae && !(l.field === n.field && n.trail.every((u, i) => l.trail[i] === u)));
 }
 function Zl(e, n, l) {
-  const u = { ...Nt(), ...n.shape, name: n.shape.name };
+  const u = { ...Nt(), ...structuredClone(lt(n.shape)), name: n.shape.name };
   n.trail.length ? Je(e).find((y) => y.key === ie(n.field, n.trail.slice(0, -1))).shape.properties.splice(n.trail.at(-1), 1) : e.splice(n.field, 1);
   let i;
   if (l) {
@@ -315,7 +315,7 @@ function Zl(e, n, l) {
     i = { name: p, type: y, description: r, enum_values: $, expected_format: C, required: S, ...v ? { properties: v } : {}, ...w ? { item: w } : {}, ...V !== void 0 ? { nullable: V } : {}, ...o !== void 0 ? { max_length: o } : {} }, l.shape.properties.push(i), i = l.shape.properties.at(-1);
   } else {
     const { nullable: p, max_length: y, ...r } = u;
-    i = { ...at(), ...r, group: "" }, e.push(i), i = e.at(-1);
+    i = { ...nt(), ...r, group: "" }, e.push(i), i = e.at(-1);
   }
   return Je(e).find((p) => p.shape === i);
 }
@@ -725,7 +725,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     }
     const i = (p) => p.indices.length + p.children.reduce((y, r) => y + i(r), 0);
     return (p, y) => {
-      const r = ot("FieldGroups", !0);
+      const r = it("FieldGroups", !0);
       return a(), s("div", Ma, [
         e.node.indices.length ? (a(), s("ul", Aa, [
           (a(!0), s(M, null, z(e.node.indices, ($) => (a(), s("li", { key: $ }, [
@@ -766,10 +766,10 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           }, [
             f(r, { node: $ }, {
               default: me((S) => [
-                Ie(p.$slots, "default", gt({ ref_for: !0 }, S))
+                Ie(p.$slots, "default", ht({ ref_for: !0 }, S))
               ]),
               header: me((S) => [
-                Ie(p.$slots, "header", gt({ ref_for: !0 }, S), () => [
+                Ie(p.$slots, "header", ht({ ref_for: !0 }, S), () => [
                   t("span", Ta, d(S.label), 1)
                 ])
               ]),
@@ -1027,7 +1027,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       m.key === "ArrowRight" && V.value && (C.value = !0, m.preventDefault(), m.stopPropagation()), m.key === "ArrowLeft" && V.value && (C.value = !1, m.preventDefault(), m.stopPropagation());
     }
     return (m, A) => {
-      const T = ot("ShapeTree", !0);
+      const T = it("ShapeTree", !0);
       return a(), s("div", {
         class: "shape-tree-node",
         onKeydown: o
@@ -1715,10 +1715,10 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
             key: m,
             class: "toggle-row"
           }, [
-            t("span", null, d(b(lt)(m)), 1),
+            t("span", null, d(b(at)(m)), 1),
             f(Z, {
               "model-value": l.value.scout.tools.includes(m),
-              label: b(lt)(m),
+              label: b(at)(m),
               disabled: e.readonly,
               "onUpdate:modelValue": (A) => w(m, A)
             }, null, 8, ["model-value", "label", "disabled", "onUpdate:modelValue"])
@@ -2327,13 +2327,13 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     const Ne = N(() => h.value ? Xl(n.config.fields, h.value) : []), ge = N(() => {
       const k = El(n.config.fields.map(K));
       return k ? `Group path collides with field ${k}.` : "";
-    }), Te = N(() => ge.value ? null : St(n.config.fields)), Tt = N(() => ge.value ? null : St(n.config.fields, !0)), ut = N(() => {
+    }), Te = N(() => ge.value ? null : St(n.config.fields)), Tt = N(() => ge.value ? null : St(n.config.fields, !0)), dt = N(() => {
       const k = i.value;
       return k.kind === "stage" ? $e[k.stage] : k.kind === "field" ? h.value?.trail.length ? h.value.path : fe.value?.name || "New field" : k.kind === "document" ? "Read document" : k.kind === "output" ? "Output" : "Details";
     }), Dt = N(() => {
       const k = i.value;
-      return k.kind === "stage" ? it[k.stage] : k.kind === "field" ? "tabler:forms" : k.kind === "document" ? "tabler:file-text" : k.kind === "output" ? "tabler:braces" : "tabler:info-circle";
-    }), jt = N(() => n.config.fields.filter((k, c) => !(i.value.kind === "field" && i.value.index === c)).map(K)), It = N(() => n.config.stages.deep.enabled), zt = N(() => n.config.stages.map.enabled), Wt = N(() => Oe(n.config.fields.map(K))), De = R(!1), dt = R(), rt = pe();
+      return k.kind === "stage" ? ut[k.stage] : k.kind === "field" ? "tabler:forms" : k.kind === "document" ? "tabler:file-text" : k.kind === "output" ? "tabler:braces" : "tabler:info-circle";
+    }), jt = N(() => n.config.fields.filter((k, c) => !(i.value.kind === "field" && i.value.index === c)).map(K)), It = N(() => n.config.stages.deep.enabled), zt = N(() => n.config.stages.map.enabled), Wt = N(() => Oe(n.config.fields.map(K))), De = R(!1), rt = R(), ct = pe();
     function Ht(k, c) {
       for (const q of n.config.fields) (q.group === k || q.group.startsWith(k + ".")) && (q.group = c + q.group.slice(k.length));
     }
@@ -2341,15 +2341,15 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     function Kt() {
       $.value = !0, De.value = !0;
     }
-    async function ct() {
-      De.value = !1, await Ce(), dt.value.focus();
+    async function vt() {
+      De.value = !1, await Ce(), rt.value.focus();
     }
     function Qt(k) {
-      n.config.fields.push({ ...at(), group: k }), ct();
+      n.config.fields.push({ ...nt(), group: k }), vt();
     }
-    const Jt = N(() => [...new Set(n.config.fields.map((k) => k.group.trim()).filter(Boolean))]), Yt = (k) => Ft(n.config.fields[k], n.config.fields.filter((c, q) => q !== k).map(K)), vt = ["map", "prefetch", "scout", "deep", "extract", "verify"], Xt = N(() => vt.filter((k) => Qe(n.config, k)).map((k) => $e[k]).join(" · ")), Zt = N(() => n.config.fields.map((k) => k.name || "New field").join(", ")), _t = N(() => vt.filter((k) => Qe(n.config, k)).length), xe = (k) => n.result?.trace.find((c) => c.kind === k);
-    function mt(k = "") {
-      n.config.fields.push({ ...at(), group: k }), $.value = !0, le({ kind: "field", index: n.config.fields.length - 1 });
+    const Jt = N(() => [...new Set(n.config.fields.map((k) => k.group.trim()).filter(Boolean))]), Yt = (k) => Ft(n.config.fields[k], n.config.fields.filter((c, q) => q !== k).map(K)), mt = ["map", "prefetch", "scout", "deep", "extract", "verify"], Xt = N(() => mt.filter((k) => Qe(n.config, k)).map((k) => $e[k]).join(" · ")), Zt = N(() => n.config.fields.map((k) => k.name || "New field").join(", ")), _t = N(() => mt.filter((k) => Qe(n.config, k)).length), xe = (k) => n.result?.trace.find((c) => c.kind === k);
+    function pt(k = "") {
+      n.config.fields.push({ ...nt(), group: k }), $.value = !0, le({ kind: "field", index: n.config.fields.length - 1 });
     }
     function el(k) {
       n.config.fields.splice(k, 1), i.value = { kind: "document" };
@@ -2357,7 +2357,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     function re(k, c = []) {
       le({ kind: "field", index: k, ...c.length ? { trail: c } : {} });
     }
-    function pt(k, c) {
+    function bt(k, c) {
       const q = E.value.find((Y) => Y.key === ie(k, c));
       q.shape.properties.push(Nt()), re(k, [...c, q.shape.properties.length - 1]);
     }
@@ -2398,14 +2398,14 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       for (const se of q.split(".").filter(Boolean)) X = X.children.find((dl) => dl.name === se);
       const ae = X.children.findIndex((se) => se.path === k), ee = X.children[ae + c]?.path;
       if (!ee) return;
-      const ne = n.config.fields.filter((se) => se.group === k || se.group.startsWith(k + ".")), je = n.config.fields.filter((se) => se.group === ee || se.group.startsWith(ee + ".")), Fe = n.config.fields, il = Math.min(Fe.indexOf(ne[0]), Fe.indexOf(je[0])), ft = Fe.filter((se) => !ne.includes(se) && !je.includes(se));
-      ft.splice(il, 0, ...c > 0 ? [...je, ...ne] : [...ne, ...je]);
+      const ne = n.config.fields.filter((se) => se.group === k || se.group.startsWith(k + ".")), je = n.config.fields.filter((se) => se.group === ee || se.group.startsWith(ee + ".")), Fe = n.config.fields, il = Math.min(Fe.indexOf(ne[0]), Fe.indexOf(je[0])), gt = Fe.filter((se) => !ne.includes(se) && !je.includes(se));
+      gt.splice(il, 0, ...c > 0 ? [...je, ...ne] : [...ne, ...je]);
       const ul = h.value?.shape;
-      Fe.splice(0, Fe.length, ...ft);
+      Fe.splice(0, Fe.length, ...gt);
       const _e = E.value.find((se) => se.shape === ul);
       _e && re(_e.field, _e.trail);
     }
-    const ol = (k) => k.type === "list" ? `list of ${k.item?.type}` : k.type, bt = N({ get: () => n.config.tags.join(", "), set: (k) => {
+    const ol = (k) => k.type === "list" ? `list of ${k.item?.type}` : k.type, ft = N({ get: () => n.config.tags.join(", "), set: (k) => {
       n.config.tags = [...new Set(k.split(",").map((c) => c.trim()).filter(Boolean))];
     } });
     return (k, c) => (a(), s("div", {
@@ -2437,12 +2437,12 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               e.readonly ? g("", !0) : (a(), s("div", to, [
                 t("button", {
                   ref_key: "addGroupButton",
-                  ref: dt,
+                  ref: rt,
                   type: "button",
                   class: "kx-btn kx-btn-ghost kx-focus-halo sm",
                   "aria-label": "Add group",
                   "aria-expanded": De.value,
-                  "aria-controls": b(rt),
+                  "aria-controls": b(ct),
                   disabled: e.config.fields.length >= 100,
                   onClick: Kt
                 }, [
@@ -2453,7 +2453,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                   type: "button",
                   class: "kx-btn kx-btn-ghost kx-focus-halo sm",
                   disabled: e.config.fields.length >= 100,
-                  onClick: c[1] || (c[1] = (q) => mt())
+                  onClick: c[1] || (c[1] = (q) => pt())
                 }, [
                   f(b(L), { icon: "tabler:plus" }),
                   c[25] || (c[25] = F("Add field", -1))
@@ -2465,7 +2465,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               t("div", oo, [
                 De.value && !e.readonly ? (a(), s("div", {
                   key: 0,
-                  id: b(rt),
+                  id: b(ct),
                   class: "group-create-row"
                 }, [
                   t("span", uo, [
@@ -2476,7 +2476,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                     "save-label": "Create group",
                     "cancel-label": "Cancel group creation",
                     onSave: Qt,
-                    onCancel: ct
+                    onCancel: vt
                   })
                 ], 8, io)) : g("", !0),
                 f(Re, { node: Wt.value }, {
@@ -2491,7 +2491,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                       "can-add": e.config.fields.length < 100,
                       readonly: e.readonly,
                       onRename: (ne) => Ht(q, ne),
-                      onAdd: (ne) => mt(q),
+                      onAdd: (ne) => pt(q),
                       onReorder: (ne) => sl(q, ne),
                       onRemove: (ne) => nl(q)
                     }, null, 8, ["path", "name", "count", "first", "last", "max-length", "can-add", "readonly", "onRename", "onAdd", "onReorder", "onRemove"])
@@ -2508,7 +2508,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                       first: !e.config.fields.slice(0, q).some((Y) => Y.group === e.config.fields[q].group),
                       last: !e.config.fields.slice(q + 1).some((Y) => Y.group === e.config.fields[q].group),
                       onSelect: re,
-                      onAdd: pt,
+                      onAdd: bt,
                       onReorder: ll
                     }, null, 8, ["shape", "field", "path", "selected", "readonly", "error", "first", "last"])
                   ]),
@@ -2700,7 +2700,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           t("span", Bo, [
             f(b(L), { icon: Dt.value }, null, 8, ["icon"])
           ]),
-          t("h2", { id: b(B) }, d(ut.value), 9, Oo),
+          t("h2", { id: b(B) }, d(dt.value), 9, Oo),
           t("button", {
             ref_key: "closeButton",
             ref: U,
@@ -2743,7 +2743,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               "map-enabled": zt.value,
               readonly: e.readonly,
               onRemove: tl,
-              onAdd: c[15] || (c[15] = (q) => pt(h.value.field, h.value.trail)),
+              onAdd: c[15] || (c[15] = (q) => bt(h.value.field, h.value.trail)),
               onSelectItem: c[16] || (c[16] = (q) => re(h.value.field, [...h.value.trail, "item"]))
             }, null, 8, ["field", "shape", "depth", "sibling-names", "other-names", "groups", "deep-enabled", "map-enabled", "readonly"]),
             !e.readonly && h.value.trail.at(-1) !== "item" ? (a(), s("fieldset", Do, [
@@ -2797,12 +2797,12 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
             t("label", null, [
               c[45] || (c[45] = F("Tags", -1)),
               W(t("input", {
-                "onUpdate:modelValue": c[20] || (c[20] = (q) => bt.value = q),
+                "onUpdate:modelValue": c[20] || (c[20] = (q) => ft.value = q),
                 placeholder: "invoices, finance"
               }, null, 512), [
                 [
                   _,
-                  bt.value,
+                  ft.value,
                   void 0,
                   { lazy: !0 }
                 ]
@@ -2833,7 +2833,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         onClick: c[22] || (c[22] = (q) => G(!0))
       }, [
         f(b(L), { icon: "tabler:layout-sidebar-right-expand" }),
-        t("span", Yo, d(ut.value), 1)
+        t("span", Yo, d(dt.value), 1)
       ]))
     ], 2));
   }
@@ -2914,7 +2914,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   setup(e) {
     const n = e, l = N(() => n.value !== null && typeof n.value == "object" && !Array.isArray(n.value) ? n.value : null), u = N(() => [.../* @__PURE__ */ new Set([...Object.keys(n.schema?.properties ?? {}), ...Object.keys(l.value ?? {})])]), i = N(() => Array.isArray(n.schema?.type) && n.schema.type.includes("null") ? "Missing" : "—");
     return (p, y) => {
-      const r = ot("NestedValue", !0);
+      const r = it("NestedValue", !0);
       return a(), s("div", ai, [
         Array.isArray(e.value) ? (a(), s("ol", ni, [
           (a(!0), s(M, null, z(e.value, ($, C) => (a(), s("li", { key: C }, [
@@ -2929,7 +2929,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
             t("dt", null, d($), 1),
             t("dd", null, [
               f(r, {
-                value: b(nt)(l.value, $),
+                value: b(st)(l.value, $),
                 schema: e.schema?.properties?.[$]
               }, null, 8, ["value", "schema"])
             ])
@@ -3090,7 +3090,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   },
   emits: ["run"],
   setup(e, { emit: n }) {
-    const l = e, u = n, i = R(""), p = (S) => `${(S / 1e3).toFixed(1)}s`, y = N(() => Math.max(1, ...l.result?.trace.map((S) => S.duration_ms) ?? [1])), r = { read: { label: "Read document", icon: "tabler:file-text" }, highlight: { label: "Highlighter", icon: "tabler:highlight" } }, $ = (S) => r[S]?.label ?? $e[S] ?? S, C = (S) => r[S]?.icon ?? it[S] ?? "tabler:point";
+    const l = e, u = n, i = R(""), p = (S) => `${(S / 1e3).toFixed(1)}s`, y = N(() => Math.max(1, ...l.result?.trace.map((S) => S.duration_ms) ?? [1])), r = { read: { label: "Read document", icon: "tabler:file-text" }, highlight: { label: "Highlighter", icon: "tabler:highlight" } }, $ = (S) => r[S]?.label ?? $e[S] ?? S, C = (S) => r[S]?.icon ?? ut[S] ?? "tabler:point";
     return (S, v) => (a(), s("div", ki, [
       t("section", $i, [
         t("div", xi, [
@@ -3675,9 +3675,9 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                     default: me(({ index: O }) => [
                       t("div", nd, [
                         t("strong", null, d(e.fields[O].name), 1),
-                        b(nt)(x.expected, b(K)(e.fields[O])) !== void 0 ? (a(), J(Le, {
+                        b(st)(x.expected, b(K)(e.fields[O])) !== void 0 ? (a(), J(Le, {
                           key: 0,
-                          value: b(nt)(x.expected, b(K)(e.fields[O]))
+                          value: b(st)(x.expected, b(K)(e.fields[O]))
                         }, null, 8, ["value"])) : (a(), s("span", sd, "Not stated"))
                       ])
                     ]),
@@ -3902,14 +3902,14 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
     }
     function A() {
       const j = l.snapshot;
-      r.value = structuredClone(ht(j.config ?? $t())), $.value = j.title, C.value = j.description ?? "", v.value = j.expected_revision, w.value = void 0;
+      r.value = structuredClone(lt(j.config ?? $t())), $.value = j.title, C.value = j.description ?? "", v.value = j.expected_revision, w.value = void 0;
     }
     be(() => l.snapshot, (j, D) => {
       S.value.includes(y.value) || (y.value = S.value[0]), !(D && j.id === D.id && j.can_edit && D.can_edit && !m(D) && !m(j)) && A();
     }, { immediate: !0 });
     const T = N(() => l.snapshot.can_edit && !m(l.snapshot)), U = N(() => Ul(r.value)), B = N(() => Object.keys($e).filter((j) => Qe(r.value, j)).length);
     function G() {
-      u("save", { title: $.value, description: C.value, config: structuredClone(ht(r.value)), expected_revision: v.value });
+      u("save", { title: $.value, description: C.value, config: structuredClone(lt(r.value)), expected_revision: v.value });
     }
     return (j, D) => (a(), s("main", Rd, [
       t("div", Ld, [
