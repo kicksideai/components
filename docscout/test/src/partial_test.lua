@@ -97,14 +97,14 @@ return { run = test.run_cases(function()
             }
             cfg.stages.verify.check_quotes, cfg.stages.verify.check_support = false, false
             local entry = assert(registry.get("app:fixture_success_model"))
-            entry.data.providers[1].options = { reply = assert(json.decode('{"reference":{"found":true,"value":{"child":{"book":null},"page":"7"},"confidence":1,"evidence":[]}}')) }
+            entry.data.providers[1].options = { reply = assert(json.decode('{"reference":{"found":true,"value":{"child":{"book":null},"page":"7"},"confidence":1,"evidence":[{"chunk":1,"quote":"The total amount is 1250."}]}}')) }
             local changes = assert(registry.overlay("app:partial_test")):changes(); changes:update(entry); assert(changes:apply())
             local ok, failure = pcall(function()
                 local run = context(cfg)
                 test.is_nil(stages.extract(run, { meter = ai.meter() }))
                 test.is_false(run.values[1].missing); test.is_false(run.values[1].failed)
                 test.eq(json.encode(run.values[1].value), '{"page":"7"}')
-                test.is_nil(stages.verify(run, {})); test.is_true(run.values[1].verified)
+                test.is_nil(stages.verify(run, {})); test.is_true(run.values[1].verified, run.values[1].reason)
             end)
             local restore = assert(registry.overlay("app:partial_test")):changes(); restore:delete(entry.id); assert(restore:apply())
             if not ok then error(failure) end
