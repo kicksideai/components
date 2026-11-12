@@ -51,6 +51,21 @@ return { run = test.run_cases(function()
             test.eq(stored.source_revision, "revision")
             test.eq(stored.verification.status, "passed")
         end)
+        test.it("treats all-absent nullable visual values as missing and filters empty rows", function()
+            local owner, cfg = uuid.v4(), configuration()
+            cfg.fields[1].name, cfg.fields[1].type = "reference", "object"
+            cfg.fields[1].properties = {{name = "book", type = "text", description = "", enum_values = {}, expected_format = "", required = true, nullable = true}}
+            local rows = assert(json.decode(assert(json.encode(cfg.fields[1]))))
+            rows.name, rows.type, rows.item = "rows", "list", {type = "object", properties = rows.properties}
+            rows.properties = nil
+            cfg.fields[2] = rows
+            local result = invoke(owner, cfg, upload(owner, {'reference: {"book":null}\nrows: [{"book":null},{"book":"12"},{"book":null}]'}))
+            test.eq(result.status, "completed", assert(json.encode(result)))
+            test.is_true(result.fields[1].missing); test.is_false(result.fields[1].verified); test.is_nil(result.fields[1].value)
+            test.eq(json.encode(result.fields[2].value), '[{"book":"12"}]')
+            test.is_true(result.fields[2].verified)
+            test.eq(result.summary.found, 1); test.eq(result.summary.missing, 1); test.eq(result.summary.verified, 1)
+        end)
         test.it("stores explicit visual checks and image identities, independent of text agreement", function()
             local owner = uuid.v4()
             local result, caller, extractor = invoke(owner, configuration(), upload(owner, {"amount: 1250"}))

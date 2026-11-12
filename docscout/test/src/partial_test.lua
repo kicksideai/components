@@ -62,7 +62,7 @@ return { run = test.run_cases(function()
             restore:delete(entry.id); assert(restore:apply())
             if not ok then error(failure) end
         end)
-        test.it("stores and verifies decoded missing members, including an entirely absent object", function()
+        test.it("marks all-absent nullable compounds missing before verification", function()
             local cfg = configuration({ "reference", "rows" })
             local member = { name = "book", type = "text", description = "", enum_values = assert(json.decode("[]")), expected_format = "", required = true, nullable = true, max_length = 24 }
             cfg.fields[1].type, cfg.fields[1].properties = "object", { member }
@@ -76,17 +76,35 @@ return { run = test.run_cases(function()
                 local id = assert(caller:call("app:probe", { op = "create", input = { title = "Nullable reader", config = cfg } })).component_id
                 local upload = data.upload(owner, "application/pdf", "Original bytes", "# Invoice\nThe total amount is 1250.")
                 local result = assert(caller:call("kickside.docscout:invoke", { extractor_id = id, upload_id = upload }))
-                test.eq(result.status, "completed", assert(json.encode(result))); test.eq(result.summary.found, 2); test.eq(result.summary.missing, 0); test.eq(result.summary.verified, 2)
+                test.eq(result.status, "completed", assert(json.encode(result))); test.eq(result.summary.found, 0); test.eq(result.summary.missing, 2); test.eq(result.summary.verified, 0)
                 for _, value in ipairs(result.fields) do
-                    test.is_true(value.verified); test.is_false(value.failed); test.is_false(value.missing); test.not_nil(value.value_schema)
+                    test.is_false(value.verified); test.is_false(value.failed); test.is_true(value.missing); test.is_nil(value.value); test.eq(#value.evidence, 0); test.eq(value.confidence, 0)
                 end
-                test.eq(json.encode(result.values), '{"reference":{},"rows":[{}]}')
+                test.eq(json.encode(result.values), "{}")
                 local stored = assert(caller:call("app:probe", { op = "get", id = id })).runs[1].result
                 test.eq(json.encode(stored.values), json.encode(result.values))
                 test.eq(json.encode(stored.fields), json.encode(result.fields))
             end)
             local restore = assert(registry.overlay("app:partial_test")):changes(); restore:delete(entry.id); assert(restore:apply())
             if not ok then error(failure) end
+        end)
+        test.it("keeps only present nullable rows at every compound depth without changing legacy empties", function()
+            local row = { type = "object", properties = { { name = "book", type = "text", nullable = true },
+                { name = "page", type = "text", required = false } } }
+            local list = { type = "list", item = row }
+            local original = assert(json.decode('[{}, {"book":""}, {"page":"7"}, {}]'))
+            test.eq(json.encode(shapes.extracted_value(list, original)), '[{"book":""},{"page":"7"}]')
+            test.is_nil(shapes.extracted_value(list, assert(json.decode("[]"))))
+            test.is_nil(shapes.extracted_value(list, assert(json.decode("[{},{}]"))))
+            local nested = { type = "object", properties = { { name = "rows", type = "list", nullable = true, item = row } } }
+            test.is_nil(shapes.extracted_value(nested, assert(json.decode('{"rows":[{}]}'))))
+            test.eq(json.encode(shapes.extracted_value(nested, assert(json.decode('{"rows":[{}, {"page":"7"}]}')))), '{"rows":[{"page":"7"}]}')
+            test.eq(shapes.extracted_value({ type = "boolean", nullable = true }, false), false)
+            test.eq(shapes.extracted_value({ type = "number", nullable = true }, 0), 0)
+            row.properties[1].nullable = nil
+            test.eq(json.encode(shapes.extracted_value(row, assert(json.decode("{}")))), "{}")
+            test.eq(json.encode(shapes.extracted_value(list, assert(json.decode("[{}]")))), "[{}]")
+            test.eq(json.encode(shapes.extracted_value(list, assert(json.decode("[]")))), "[]")
         end)
         test.it("rejects a wire null for a non-nullable member", function()
             local reply_schema = { type = "object", required = { "book" }, properties = { book = { type = "string" } } }
