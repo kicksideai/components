@@ -43,7 +43,7 @@ vars:
   kickside_root: ../../../kickside
   pg_database: docscout_test
   pg_host: 127.0.0.1
-  pg_port: 5547
+  pg_port: 5433
   pg_username: kickside
   pg_password: kickside
 override:
