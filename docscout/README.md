@@ -28,6 +28,14 @@ Caller scopes need the native contract capabilities `contract.security` on `secu
 
 Every caller opens `kickside.docscout:extraction`, binding `kickside.docscout:engine`, under its execution identity. The `run` input has `extractor_id`, `upload_id`, `caller` (`ui`, `agent`, `workflow`, `eval`) an optional `pages: { first, last }`, and an optional RFC3339 deadline. Evaluation calls additionally identify the admitted evaluation and case. The contract accepts saved configuration; chat tuning edits that configuration through the configurator trait.
 
+### Page images
+
+Set `stages.extract.reads = "pages"` and `max_pages` (1–32) to read values from physical page images. Extract and enabled visual Verify models require the `vision` capability. The uploads `page_images` contract supplies authorized, revision-bound pages; unbound text, unavailable mappings and image errors remain typed run failures. Existing paginated Markdown is required for retrieval. Child uploads are unsupported.
+
+`max_pages` bounds each extraction or verification call. The context estimator includes the complete base64 image payload and can admit fewer pages; exhausted requests return `context_budget_exceeded`. Images stay inside the run range and each field's selected section. A section sharing a physical page with another section returns `section_image_boundary_unavailable`.
+
+Page-derived fields store `extraction_kind`, `source_revision`, image evidence identities and `verification = {kind = "page_image", status, checks}`. Visual support determines `verified`; text agreement is informational. Without visual support, verification is `not_run`. Absent metadata retains existing text semantics. Omitting `reads`, or setting it to `"text"`, preserves the text requests and stored results.
+
 ### One document per input
 
 An extractor reads one document: a single instance of the record its fields describe. For an upload that bundles several documents, such as several invoices scanned into one PDF, start a run for each document with the same `upload_id` and its own `pages: { first: 2, last: 4 }`. Bounds are 1-based, inclusive integers within the real page count. Documents without page information reject a range with `INVALID`. Omitting `pages` reads the whole upload with unchanged behavior. No child uploads are created. Rules that relate one field's value to another, such as one date following another, belong to the consumer of the result.

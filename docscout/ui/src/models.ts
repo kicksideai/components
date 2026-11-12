@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import type {Config,Field} from './config'
 export interface PageRange {first:number;last:number}
-export interface Evidence {quote:string;section:string;page?:number;chunk_id:string;found?:boolean}
-export interface Value {name:string;path:string;value:unknown;confidence:number;evidence:Evidence[];verified:boolean;missing?:boolean;reason?:string;codes?:string[];complete?:boolean;failed?:boolean;error?:CaseError|null}
+export interface Evidence {quote:string;section:string;page?:number;chunk_id?:string;image_checksum?:string;source_revision?:string;found?:boolean}
+export type CheckStatus='passed'|'failed'|'not_run'|'unavailable'
+export interface Verification {kind:'page_image';status:CheckStatus;checks:Record<string,CheckStatus>}
+export interface Value {extraction_kind?:'page_image';source_revision?:string;verification?:Verification;name:string;path:string;value:unknown;confidence:number;evidence:Evidence[];verified:boolean;missing?:boolean;reason?:string;codes?:string[];complete?:boolean;failed?:boolean;error?:CaseError|null}
 export interface TraceStep {kind:string;status:'completed'|'failed';scope?:string;model?:string;duration_ms:number;input_tokens:number;output_tokens:number;queries?:string[];message?:string;pages?:PageRange}
 export interface Extraction {run_id:string;upload_id:string;config_revision:number;values:Record<string,unknown>;fields:Value[];trace:TraceStep[];duration_ms:number;tokens:number;status?:'completed'|'partial'|'failed';error?:string;pages?:number;page_range?:PageRange}
 export interface Run {id:string;caller:'ui'|'agent'|'eval'|'workflow';status:'completed'|'partial'|'failed';upload_id:string;duration_ms:number;tokens:number;created_at:string;expires_at:string;result:{fields:Value[];values:Record<string,unknown>;page_range?:PageRange};config_revision:number}
 export interface EvalCase {pages?:PageRange;id:string;upload_id:string;upload_name:string;expected:Record<string,unknown>}
 export interface FieldMetric {field:string;accuracy:number;verified:number}
-export interface FieldScore {field:string;expected?:unknown;value?:unknown;score:number;verified:boolean;failed?:boolean;error?:CaseError|null}
+export interface FieldScore {extraction_kind?:'page_image';source_revision?:string;verification?:Verification;field:string;expected?:unknown;value?:unknown;score:number;verified:boolean;failed?:boolean;error?:CaseError|null}
 export interface CaseError {kind:string;message:string;retryable:boolean;details:unknown}
 export interface CaseResult {pages?:PageRange;case_id:string;upload_name:string;status:'queued'|'completed'|'partial'|'failed';run_id?:string;scores:FieldScore[];tokens:number;duration_ms:number;error?:CaseError|null}
 export type EvalStatus='queued'|'running'|'completed'|'partial'|'failed'
@@ -20,3 +22,5 @@ export type Snapshot = SnapshotBase & (
 )
 export const finished=(e:Evaluation)=>e.status==='completed'||e.status==='partial'||e.status==='failed'
 export const meanAccuracy=(e:Evaluation)=>e.metrics.length?e.metrics.reduce((s,m)=>s+m.accuracy,0)/e.metrics.length:0
+
+export const verificationLabel=(verification?:Verification)=>verification?`Visual · ${verification.status}`:'Quote'

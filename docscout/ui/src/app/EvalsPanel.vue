@@ -8,7 +8,7 @@ import UploadPicker from './UploadPicker.vue'
 import {fieldPath,getValue,setValue,groupTree,type Field} from '../config'
 import NestedValue from './NestedValue.vue'
 import FieldGroups from './FieldGroups.vue'
-import {finished,meanAccuracy,type EvalCase,type Evaluation,type CaseResult,type FieldScore} from '../models'
+import {finished,meanAccuracy,verificationLabel,type EvalCase,type Evaluation,type CaseResult,type FieldScore} from '../models'
 import {when} from '../format'
 const props=defineProps<{cases:EvalCase[];addedCaseId?:string;fields:Field[];evaluations:Evaluation[];evaluation?:Evaluation;revision:number;changed?:boolean;saving?:boolean;starting?:boolean}>()
 const emit=defineEmits<{'add-case':[input:{upload_id:string;expected:Record<string,unknown>}];'delete-case':[id:string];evaluate:[];open:[eval_id:string]}>()
@@ -123,7 +123,7 @@ const statusLabel:Record<string,string>={queued:'Queued',running:'Running',compl
         <p v-if="r.error" class="muted" :data-error-kind="r.error.kind" :title="r.error.kind">{{r.error.message}}</p>
         <FieldGroups :node="groupTree(r.scores.map(s=>s.field))"><template #default="{index}"><dl v-for="s in [r.scores[index]]" :key="s.field" class="compare">
           <dt class="mono">{{s.field.split('.').at(-1)}}</dt>
-          <dd><span class="cell" :class="grade(s)">{{s.failed?'Failed':pct(s.score)}}</span><div class="cmp"><span class="cmp-label">Expected</span><NestedValue :value="s.expected"/></div><div class="cmp"><span class="cmp-label">Extracted</span><FieldFailure v-if="s.failed" :error="s.error"/><NestedValue v-else :value="s.value"/></div><span v-if="!s.failed"><span class="chip" :class="s.verified?'primary':'warn'"><Icon :icon="s.verified?'tabler:shield-check':'tabler:shield-question'"/>{{s.verified?'Verified':'Unverified'}}</span></span></dd>
+          <dd><span class="cell" :class="grade(s)">{{s.failed?'Failed':pct(s.score)}}</span><div class="cmp"><span class="cmp-label">Expected</span><NestedValue :value="s.expected"/></div><div class="cmp"><span class="cmp-label">Extracted</span><FieldFailure v-if="s.failed" :error="s.error"/><NestedValue v-else :value="s.value"/></div><span v-if="!s.failed"><span class="chip" :class="s.verified?'primary':'warn'"><Icon :icon="s.verified?'tabler:shield-check':'tabler:shield-question'"/>{{s.verified?'Verified':'Unverified'}}</span></span><span v-if="s.verification" class="chip" aria-label="Verification method">{{verificationLabel(s.verification)}}</span></dd>
         </dl></template></FieldGroups>
 
         <p class="muted case-meta">{{r.tokens.toLocaleString()}} tokens · {{secs(r.duration_ms)}}</p>

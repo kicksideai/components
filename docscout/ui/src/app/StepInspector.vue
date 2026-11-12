@@ -16,6 +16,11 @@ const tools=documentTools()
 const deepCount=computed(()=>props.config.fields.filter(f=>f.strategy==='deep').length)
 const sectionFields=computed(()=>props.config.fields.filter(f=>f.search_within==='sections').map(f=>f.name||'New field'))
 const groups=computed(()=>fieldGroups(props.config))
+const reads=computed({get:()=>s.value.extract.reads??'text',set:(value:'text'|'pages')=>{
+ s.value.extract.reads=value
+ if(value==='pages'&&s.value.extract.max_pages===undefined)s.value.extract.max_pages=8
+}})
+const maxPages=computed({get:()=>s.value.extract.max_pages??8,set:(value:number)=>{s.value.extract.max_pages=value}})
 function supportChanged(value:boolean){s.value.verify.check_support=value;if(!value)s.value.verify.check_completeness=false}
 function selectAgent(id:string){if(id)s.value.scout.agent_id=id;else delete s.value.scout.agent_id}
 function setTool(id:string,on:boolean){
@@ -90,6 +95,11 @@ function setTool(id:string,on:boolean){
   </template>
 
   <template v-if="stage==='extract'">
+   <div class="label-block"><span id="extract-reads-label">Read values from</span><Segmented v-model="reads" labelled-by="extract-reads-label" name="Read values from" :options="[{value:'text',label:'Text'},{value:'pages',label:'Page images'}]" :disabled="readonly"/></div>
+   <template v-if="reads==='pages'">
+    <p class="muted">Extraction and visual support need models with vision. Text retrieval selects pages; section boundaries that share a page are unsupported.</p>
+    <Slider v-model="maxPages" label="Page images per call" :min="b('max_pages').min" :max="b('max_pages').max" :disabled="readonly" note="The context budget can admit fewer pages."/>
+   </template>
    <h4>Models</h4>
    <div id="model-extract" class="model-role"><span>Extraction</span><ModelPicker :value="s.extract.model" capability="generate" labelled-by="model-extract" @select="s.extract.model=$event"/></div>
    <h4>Field groups</h4>
@@ -101,8 +111,8 @@ function setTool(id:string,on:boolean){
 
   <template v-if="stage==='verify'">
    <div class="toggle-row"><span>Stage enabled</span><Toggle v-model="s.verify.enabled" label="Enable step" :disabled="readonly"/></div>
-   <div class="toggle-row"><span>Quotes exist<small>Each quote is matched against the document text. No model call.</small></span><Toggle v-model="s.verify.check_quotes" label="Quotes exist" :disabled="readonly"/></div>
-   <div class="toggle-row"><span>Quotes support values<small>A model confirms each quote supports its value.</small></span><Toggle :model-value="s.verify.check_support" @update:model-value="supportChanged" label="Quotes support values" :disabled="readonly"/></div>
+   <div class="toggle-row"><span>Quotes exist<small>{{reads==='pages'?'Text agreement is informational; visual support determines verification.':'Each quote is matched against the document text. No model call.'}}</small></span><Toggle v-model="s.verify.check_quotes" label="Quotes exist" :disabled="readonly"/></div>
+   <div class="toggle-row"><span>Quotes support values<small>{{reads==='pages'?'A vision model checks the quote and value against physical page images.':'A model confirms each quote supports its value.'}}</small></span><Toggle :model-value="s.verify.check_support" @update:model-value="supportChanged" label="Quotes support values" :disabled="readonly"/></div>
    <template v-if="s.verify.check_support">
     <div class="toggle-row"><span>Check completeness<small>Check the requested text and lists against additional source passages. Adds input tokens; completeness can remain unknown.</small></span><Toggle :model-value="s.verify.check_completeness===true" @update:model-value="s.verify.check_completeness=$event" label="Check completeness" :disabled="readonly"/></div>
     <h4>Models</h4>

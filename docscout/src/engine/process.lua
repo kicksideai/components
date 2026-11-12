@@ -360,6 +360,7 @@ function M.ensure(component_id: string, owner_id: string, upload_id: string, ret
         local range_err = M.validate_pages(pages, existing.page_count)
         if range_err then return nil, range_err end
         step.message = "Reused the processed copy (" .. existing.chunk_count .. " chunks)"
+        existing.checksum = content.checksum
         existing.source = doc2md.strip_markers(content.markdown)
         existing.embedding_model = models.embedding
         return existing, nil
@@ -386,7 +387,7 @@ function M.ensure(component_id: string, owner_id: string, upload_id: string, ret
     if save_err then return nil, save_err end
     step.message = "Processed " .. #chunks .. " chunks in " .. #outline .. " sections" .. (page_count > 0 and (" over " .. page_count .. " pages") or "")
     return { id = id, outline = outline, page_count = page_count, chunk_count = #chunks, tokens = tokens, embedding_model = models.embedding,
-        source = doc2md.strip_markers(content.markdown) }, nil
+        source = doc2md.strip_markers(content.markdown), checksum = content.checksum }, nil
 end
 
 return M
