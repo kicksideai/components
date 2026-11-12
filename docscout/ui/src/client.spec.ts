@@ -5,11 +5,11 @@ import {newConfig} from './config'
 const api=vi.hoisted(()=>({get:vi.fn(),post:vi.fn(),put:vi.fn(),delete:vi.fn()}))
 vi.mock('@wippy-fe/proxy',()=>({api}))
 describe('Docscout client',()=>{
- it('shows the API admission error when rejection precedes run creation',async()=>{
+ it('preserves the original pre-run API error',async()=>{
   const cause=new Error('Request failed with status code 400')
   Object.assign(cause,{response:{data:{success:false,error:'The model does not support page images',kind:'Invalid',details:{code:'model_vision_unsupported'}}}})
   api.post.mockRejectedValueOnce(cause)
-  await expect(client.run('reader','upload')).rejects.toThrow('The model does not support page images')
+  await expect(client.run('reader','upload')).rejects.toBe(cause)
  })
  it('preserves a transport error without an API error envelope',async()=>{
   const cause=new Error('Transport failed')

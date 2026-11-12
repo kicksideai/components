@@ -3873,8 +3873,7 @@ const Ki = (e) => e.response?.data, Is = {
       return B((await q.post(J(e) + "/run", n)).data);
     } catch (o) {
       const a = Ki(o), s = a?.details?.trace;
-      if (!s)
-        throw a?.error ? new Error(a.error, { cause: o }) : o;
+      if (!s) throw o;
       return { run_id: a?.details?.run_id ?? "", upload_id: t, config_revision: 0, values: {}, fields: [], trace: s, duration_ms: s.reduce((l, i) => l + i.duration_ms, 0), tokens: s.reduce((l, i) => l + i.input_tokens + i.output_tokens, 0), status: "failed", error: a?.error };
     }
   },

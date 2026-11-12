@@ -32,9 +32,9 @@ describe('Physical page images',()=>{
   const w=mount(ResultFields,{props:{fields:[saved]}})
   expect(w.get('[aria-label="Verification method"]').text()).toBe('Visual · passed')
  })
- it('interprets absent verification metadata as quote verification',()=>{
+ it('keeps existing text result labels unchanged',()=>{
   const field:Value={name:'amount',path:'amount',value:1250,confidence:1,verified:true,evidence:[]}
   const w=mount(ResultFields,{props:{fields:[field]}})
-  expect(w.get('[aria-label="Verification method"]').text()).toBe('Quote')
+  expect(w.find('[aria-label="Verification method"]').exists()).toBe(false)
  })
 })

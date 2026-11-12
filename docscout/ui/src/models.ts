@@ -23,4 +23,4 @@ export type Snapshot = SnapshotBase & (
 export const finished=(e:Evaluation)=>e.status==='completed'||e.status==='partial'||e.status==='failed'
 export const meanAccuracy=(e:Evaluation)=>e.metrics.length?e.metrics.reduce((s,m)=>s+m.accuracy,0)/e.metrics.length:0
 
-export const verificationLabel=(verification?:Verification)=>verification?`Visual · ${verification.status}`:'Quote'
+export const verificationLabel=(verification:Verification)=>`Visual · ${verification.status}`
