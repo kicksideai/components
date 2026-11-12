@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.12](https://github.com/kicksideai/components/compare/docscout-v0.1.11...docscout-v0.1.12) (2026-11-12)
+
+
+### Bug Fixes
+
+* **docscout:** read visual verdicts of grouped fields by their path key ([#96](https://github.com/kicksideai/components/issues/96)) ([f9899dd](https://github.com/kicksideai/components/commit/f9899ddafe6b59e000fff9c5c541072df7a9db34))
+
+
+### Reverts
+
+* **docscout:** remove commentary length bounds ([#98](https://github.com/kicksideai/components/issues/98)) ([dcb4862](https://github.com/kicksideai/components/commit/dcb486251c16dd639532f619c32152035a33fe91))
+
 ## [0.1.11](https://github.com/kicksideai/components/compare/docscout-v0.1.10...docscout-v0.1.11) (2026-11-12)
 
 
