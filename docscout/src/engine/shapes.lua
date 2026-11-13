@@ -534,6 +534,17 @@ local EQUIVALENT = {
 -- Only parsed math spans interpret LaTeX spacing. Code and literal backslashes
 -- retain their text, and a spacing-only math span contributes one space.
 local function math_spacing(text: string): string
+    local braces, stack, at = {}, {}, 1
+    while true do
+        local brace = text:find("[{}]", at)
+        if not brace then break end
+        if text:sub(brace, brace) == "{" then stack[#stack + 1] = brace
+        elseif #stack > 0 then
+            braces[stack[#stack]] = brace + 1
+            stack[#stack] = nil
+        end
+        at = brace + 1
+    end
     local out, i, start = {}, 1, 1
     while i <= #text do
         local slash = text:find("\\", i, true)
@@ -552,15 +563,8 @@ local function math_spacing(text: string): string
                 local at = i + #command + 1
                 if text:sub(at, at) == "*" then at = at + 1 end
                 while at <= #text and text:sub(at, at):match("%s") do at = at + 1 end
-                local last, depth = at, 0
-                if text:sub(at, at) == "{" then
-                    repeat
-                        local brace = text:sub(last, last)
-                        if brace == "{" then depth = depth + 1 elseif brace == "}" then depth = depth - 1 end
-                        last = last + 1
-                    until depth == 0 or last > #text
-                end
-                if depth == 0 and last > at + 2 then replacement, finish = " ", last end
+                local last = braces[at]
+                if last and last > at + 2 then replacement, finish = " ", last end
             end
         end
         if replacement then
@@ -574,27 +578,32 @@ local function math_spacing(text: string): string
     return table.concat(out)
 end
 
-local function unescaped(text: string, at: integer): boolean
-    local slashes, i = 0, at - 1
-    while i > 0 and text:sub(i, i) == "\\" do slashes, i = slashes + 1, i - 1 end
-    return slashes % 2 == 0
-end
-
 local function code_spans(text: string): { any }
-    local spans, i, line_start = {}, 1, 1
+    local closing_ticks, previous, at = {}, {}, 1
+    while true do
+        local first, last = text:find("`+", at)
+        if not first then break end
+        local length = (last :: integer) - first + 1
+        if previous[length] then closing_ticks[previous[length]] = last end
+        previous[length] = first
+        at = (last :: integer) + 1
+    end
+    local spans, i, blank = {}, 1, true
     while i <= #text do
         local candidate = text:find("[`~\n]", i)
         if not candidate then break end
+        if blank then blank = fence_prefix:match_string(text:sub(i, candidate - 1)) end
         i = candidate
         local symbol = text:sub(i, i)
-        local count = 0
-        if symbol == "`" or symbol == "~" then
-            while text:sub(i + count, i + count) == symbol do count = count + 1 end
+        local last = i
+        if symbol ~= "\n" then
+            local _, finish = text:find(symbol .. "+", i)
+            last = finish :: integer
         end
-        local fenced = count >= 3 and fence_prefix:match_string(text:sub(line_start, i - 1))
+        local count = last - i + 1
         local finish = nil
-        if fenced then
-            local newline = text:find("\n", i + count, true)
+        if symbol ~= "\n" and count >= 3 and blank then
+            local newline = text:find("\n", last + 1, true)
             while newline do
                 local next_line = text:find("\n", newline + 1, true) or #text + 1
                 local closing = assert(closing_fences[symbol]):find_string_submatch(text:sub(newline + 1, next_line - 1))
@@ -602,68 +611,78 @@ local function code_spans(text: string): { any }
                 newline = next_line <= #text and next_line or nil
             end
             finish = finish or #text
-        elseif symbol == "`" then
-            local at = i + count
-            while true do
-                local found = text:find("`", at, true)
-                if not found then break end
-                local length = 1
-                while text:sub(found + length, found + length) == "`" do length = length + 1 end
-                if length == count then finish = found + length - 1; break end
-                at = found + length
-            end
-        end
+        elseif symbol == "`" then finish = closing_ticks[i] end
         if finish then
             spans[#spans + 1] = { first = i, last = finish }
-            local newline = text:find("\n", i, true)
-            while newline and newline <= finish do
-                line_start = newline + 1
-                newline = text:find("\n", line_start, true)
-            end
-            i = finish + 1
+            i, blank = finish + 1, false
         else
-            if symbol == "\n" then line_start = i + 1 end
-            i = i + math.max(1, count)
+            i, blank = last + 1, symbol == "\n"
         end
     end
     return spans
 end
 
-local function normalize_math(text: string): string
-    local out, i, start, code_at = {}, 1, 1, 1
-    local codes = code_spans(text)
+-- Index delimiters once; failed openers never search the same suffix again.
+local function math_delimiters(text: string): ({ any }, any)
+    local openings, closings = {}, { ["$"] = {}, ["$$"] = {}, ["\\)"] = {}, ["\\]"] = {} }
+    local i, escaped_dollar = 1, 0
     while i <= #text do
-        local candidate = text:find("[$\\]", i)
-        if not candidate then break end
-        i = candidate
-        while codes[code_at] and codes[code_at].last < i do code_at = code_at + 1 end
-        local ch = text:sub(i, i)
-        local code: any = codes[code_at]
-        if code and i >= code.first then
-            i = (code.last :: integer) + 1; code_at = code_at + 1
+        local at = text:find("[$\\]", i)
+        if not at then break end
+        local symbol = text:sub(at, at)
+        if symbol == "\\" then
+            local last = text:find("[^\\]", at) or #text + 1
+            if (last - at) % 2 == 1 then
+                local pair = text:sub(last - 1, last)
+                if pair == "\\(" or pair == "\\[" then openings[#openings + 1] = { at = last - 1, token = pair }
+                elseif closings[pair] then
+                    local positions = closings[pair]
+                    positions[#positions + 1] = last - 1
+                end
+                if text:sub(last, last) == "$" then escaped_dollar = last; last = last + 1 end
+            end
+            i = last
         else
-            local opening, closing = nil, nil
-            if ch == "$" and unescaped(text, i) then
-                opening = text:sub(i, i + 1) == "$$" and "$$" or "$"; closing = opening
-            elseif ch == "\\" and unescaped(text, i) and (text:sub(i + 1, i + 1) == "(" or text:sub(i + 1, i + 1) == "[") then
-                opening = text:sub(i, i + 1); closing = opening == "\\(" and "\\)" or "\\]"
+            local token = text:sub(at, at + 1) == "$$" and "$$" or "$"
+            openings[#openings + 1] = { at = at, token = token }
+            closings["$"][#closings["$"] + 1] = at
+            -- An escaped pair consumes both dollars during a closing search.
+            if token == "$$" and at ~= escaped_dollar + 1 then closings["$$"][#closings["$$"] + 1] = at end
+            i = at + 1
+        end
+    end
+    return openings, closings
+end
+
+local function normalize_math(text: string): string
+    local out, start, code_at = {}, 1, 1
+    local codes = code_spans(text)
+    local openings, closings = math_delimiters(text)
+    local cursors = {}
+    for _, entry in ipairs(openings) do
+        local i = entry.at
+        while codes[code_at] and codes[code_at].last < i do code_at = code_at + 1 end
+        local code: any = codes[code_at]
+        if i >= start and (not code or i < code.first) then
+            local opening = entry.token
+            local closing = opening == "\\(" and "\\)" or (opening == "\\[" and "\\]" or opening)
+            local positions = closings[closing]
+            local cursor = cursors[closing] or 1
+            while positions[cursor] and positions[cursor] < i + #opening do cursor = cursor + 1 end
+            cursors[closing] = cursor
+            local first = positions[cursor]
+            if first and (not code or code.first > first) then
+                local last = first + #closing - 1
+                local content = text:sub(i + #opening, first - 1)
+                local valid = M.trim(content) ~= ""
+                if opening == "$" and (content:match("^%s") or content:match("%s$") or text:sub(last + 1, last + 1):match("%d")) then valid = false end
+                if valid then
+                    local normalized = math_spacing(content)
+                    out[#out + 1] = text:sub(start, i - 1)
+                    out[#out + 1] = M.trim(normalized) == "" and " " or (opening .. normalized .. closing)
+                    start = last + 1
+                end
             end
-            local first, last = nil, nil
-            if opening then
-                first, last = text:find(closing :: string, i + #opening, true)
-                while first and not unescaped(text, first) do first, last = text:find(closing :: string, (last :: integer) + 1, true) end
-            end
-            local content = first and text:sub(i + #(opening :: string), first - 1) or ""
-            local valid = first ~= nil and M.trim(content) ~= ""
-            if code and first and code.first <= first then valid = false end
-            if opening == "$" and (content:match("^%s") or content:match("%s$") or text:sub((last or 0) + 1, (last or 0) + 1):match("%d")) then valid = false end
-            if valid then
-                local normalized = math_spacing(content)
-                out[#out + 1] = text:sub(start, i - 1)
-                out[#out + 1] = M.trim(normalized) == "" and " " or ((opening :: string) .. normalized .. (closing :: string))
-                i = (last :: integer) + 1
-                start = i
-            else i = i + 1 end
         end
     end
     out[#out + 1] = text:sub(start)
