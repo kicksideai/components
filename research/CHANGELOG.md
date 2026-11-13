@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.26](https://github.com/kicksideai/components/compare/research-v0.1.25...research-v0.1.26) (2026-11-13)
+
+
+### Bug Fixes
+
+* **research:** name the arm when resuming a parked block ([#108](https://github.com/kicksideai/components/issues/108)) ([08dc8c4](https://github.com/kicksideai/components/commit/08dc8c4718c0e3da85f45ee186cd45a8a46a422c))
+
 ## [0.1.25](https://github.com/kicksideai/components/compare/research-v0.1.24...research-v0.1.25) (2026-11-10)
 
 
