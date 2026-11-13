@@ -28,12 +28,12 @@ function M.discover(issuer)
     local base = issuer:gsub("/+$", "")
     local resp, err = http_client.get(base .. "/.well-known/openid-configuration",
         { headers = { ["Accept"] = "application/json" } })
-    if err then return nil, "discovery failed: " .. err end
+    if err then return nil, "discovery failed" end
     if resp.status_code >= 400 then
         return nil, "discovery http " .. tostring(resp.status_code)
     end
     local doc, derr = json.decode(resp.body or "")
-    if derr then return nil, "discovery parse failed: " .. derr end
+    if derr then return nil, "discovery parse failed" end
     return {
         issuer = doc.issuer or issuer,
         authorize = doc.authorization_endpoint,

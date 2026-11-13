@@ -127,7 +127,7 @@ function M.decode_segment(segment)
     local raw = util.base64url_decode(segment)
     if not raw then return nil, "malformed JWT segment" end
     local obj, err = json.decode(raw)
-    if err then return nil, "malformed JWT JSON: " .. err end
+    if err then return nil, "malformed JWT JSON" end
     return obj
 end
 
@@ -162,13 +162,13 @@ function M.pem_for_token(jwks_uri, jwt)
     local token_alg = type(hdr) == "table" and hdr.alg or nil
 
     local resp, err = http_client.get(jwks_uri, { headers = { ["Accept"] = "application/json" } })
-    if err then return nil, "jwks fetch failed: " .. err end
+    if err then return nil, "jwks fetch failed" end
     if resp.status_code >= 400 then
         return nil, "jwks http " .. tostring(resp.status_code)
     end
 
     local data, derr = json.decode(resp.body or "")
-    if derr then return nil, "jwks parse failed: " .. derr end
+    if derr then return nil, "jwks parse failed" end
     if type(data) ~= "table" or type(data.keys) ~= "table" then
         return nil, "jwks has no keys"
     end
