@@ -13,6 +13,7 @@ local ai = require("ai")
 local time = require("time")
 local registry = require("registry")
 local security = require("security")
+local canonical_json = require("canonical_json")
 
 local MARKDOWN = table.concat({
     "<!-- page 1 -->", "", "Preamble before any heading.", "",
@@ -52,6 +53,37 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Document processing", function()
+        test.it("keeps first-section ownership for repeated and overlapping chunk prefixes", function()
+            local sections = {
+                "# First\n]%-^[ repeated text " .. string.rep("word ", 30),
+                "# Second\n]%-^[ repeated text " .. string.rep("word ", 30),
+                "# Third\n]%-^[ different text " .. string.rep("other ", 30),
+            }
+            local markdown = table.concat(sections, "\n")
+            local source_sections = process.sections(markdown)
+            for _, overlap in ipairs({ 0, 8 }) do
+                local document = assert(process.chunk(markdown, retrieval({ split_headings = false, chunk_size = 18, overlap = overlap })))
+                for _, chunk in ipairs(document.chunks) do
+                    local owner = source_sections[1]
+                    for _, section in ipairs(source_sections) do
+                        if section.text:find(chunk.content:sub(1, 80), 1, true) then owner = section; break end
+                    end
+                    test.eq(chunk.section_id, owner.id)
+                    test.eq(chunk.heading_path, owner.path)
+                end
+            end
+        end)
+        test.it("preserves fixture sections, chunks and normalized results", function()
+            local snapshots = { sections = process.sections(MARKDOWN), chunks = {}, results = {} }
+            for _, headings in ipairs({ true, false }) do
+                for _, overlap in ipairs({ 0, 20 }) do
+                    snapshots.chunks[#snapshots.chunks + 1] = assert(process.chunk(MARKDOWN,
+                        retrieval({ split_headings = headings, chunk_size = 100, overlap = overlap })))
+                end
+            end
+            for _, section in ipairs(snapshots.sections) do snapshots.results[#snapshots.results + 1] = shapes.normalize(section.text) end
+            test.eq(assert(canonical_json.hash(snapshots)), "ce03d9902e156933bdb3ed1d4862f1ee5e5d3d9156d3644a94b0eac7cd128bbb")
+        end)
         test.it("clips boundary chunks and outline to inclusive real pages before indexing", function()
             local markdown = "<!-- page 1 -->\n# Outside\nExcluded first\n<!-- page 2 -->\n# Selected\nIncluded second\n<!-- page 3 -->\nIncluded third\n<!-- page 4 -->\n# Outside end\nExcluded fourth"
             for _, headings in ipairs({ true, false }) do

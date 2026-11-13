@@ -13,6 +13,9 @@ local shapes = require("shapes")
 local error_envelope = require("error_envelope")
 
 local trim = shapes.trim
+local SPACE = "[ \t\n\v\f\r]"
+local fence = assert(text.regexp.compile("^" .. SPACE .. "*(?:```|~~~)"))
+local heading = assert(text.regexp.compile("^(#+)" .. SPACE .. "+(.*?)" .. SPACE .. "*#*" .. SPACE .. "*$"))
 
 local M = {}
 
@@ -139,10 +142,13 @@ function M.sections(markdown: string): { any }
     local stack: { any } = {}
     local current: any = { id = "s0", level = 0, title = "Start of document", path = "Start of document", lines = {} }
     local fenced = false
-    for line in (markdown .. "\n"):gmatch("(.-)\n") do
-        if line:match("^%s*```") or line:match("^%s*~~~") then fenced = not fenced end
+    for line in shapes.each_line(markdown) do
+        if fence:match_string(line) then fenced = not fenced end
         local hashes, title = nil, nil
-        if not fenced then hashes, title = line:match("^(#+)%s+(.-)%s*#*%s*$") end
+        if not fenced then
+            local found = heading:find_string_submatch(line)
+            if found then hashes, title = found[2], found[3] end
+        end
         if hashes and #hashes <= 6 and title ~= "" then
             if keep(current) then sections[#sections + 1] = current end
             local level = #hashes
@@ -177,6 +183,37 @@ local function split(input: string, retrieval: any): ({ string }?, error?)
     return out, nil
 end
 
+-- Chunk probes contain at most 80 bytes. Scan sections once for their starting
+-- bytes and look up bounded windows, preserving the first section for each probe.
+local function chunk_owners(sections: { any }, chunks: { string }): any
+    local probes, lengths, starts = {}, {}, {}
+    for _, chunk in ipairs(chunks) do
+        local probe = chunk:sub(1, 80)
+        probes[probe] = {}
+        lengths[#probe] = true
+        starts[probe:sub(1, 1)] = true
+    end
+    if #chunks == 0 then return probes end
+    local first_bytes = {}
+    for ch in pairs(starts) do
+        first_bytes[#first_bytes + 1] = ch == "\0" and "%z" or ch:gsub("([%%%^%]%-])", "%%%1")
+    end
+    local pattern = "[" .. table.concat(first_bytes) .. "]"
+    for _, section in ipairs(sections) do
+        local at = 1
+        while true do
+            local first = section.text:find(pattern, at)
+            if not first then break end
+            for length in pairs(lengths) do
+                local probe = probes[section.text:sub(first, first + length - 1)]
+                if probe then probe.owner = probe.owner or section end
+            end
+            at = first + 1
+        end
+    end
+    return probes
+end
+
 -- Chunks with section, heading path and page or slide range, markers removed.
 function M.chunk(markdown: string, retrieval: any, pages: any?): (any?, error?)
     local validation_err = M.validate_document_pages(markdown, pages)
@@ -193,10 +230,9 @@ function M.chunk(markdown: string, retrieval: any, pages: any?): (any?, error?)
         local by_line: { any } = {}
         local split_chunks, err = split(markdown, retrieval)
         if err then return nil, err end
+        local owners = chunk_owners(sections, split_chunks)
         for _, c in ipairs(split_chunks) do
-            local owner = sections[1]
-            local probe = c:sub(1, 80)
-            for _, s in ipairs(sections) do if s.text:find(probe, 1, true) then owner = s; break end end
+            local owner = owners[c:sub(1, 80)].owner or sections[1]
             by_line[#by_line + 1] = { section = owner, text = c }
         end
         pieces = by_line

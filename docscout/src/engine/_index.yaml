@@ -21,7 +21,7 @@ entries:
   meta:
     comment: Pure helpers for the evidence pool, model-facing text, extraction schemas and quote matching.
   source: file://shapes.lua
-  modules: [json, time]
+  modules: [json, time, text]
 - name: process
   kind: library.lua
   meta:

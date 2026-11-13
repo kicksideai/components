@@ -769,7 +769,7 @@ type Value = { name: string, path: string, value: any?, confidence: number, evid
 
 -- Extraction: structured calls over the evidence pool, each for fields that share a group and a region.
 local EXTRACT_SYSTEM = system([[You extract field values from passages of one document. Use only what the passages state.
-For each field say whether the passages state it (found), give the value (any placeholder of the right type when not found), your confidence from 0 to 1, and evidence:
+For each field say whether the passages state it (found), give the value (null when not found), your confidence from 0 to 1, and evidence:
 the chunk number and an exact quote copied character for character from that chunk.]])
 
 -- Extraction calls: fields grouped by their group, then by the region they read,
@@ -843,6 +843,7 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
     local result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch, passages), EXTRACT_SYSTEM,
         extraction_input(run, batch, passages, notes),
         { max_tokens = cfg.max_output_tokens, temperature = cfg.temperature, stage = "extract", sources = shapes.ordinals(passages), fields = shapes.paths(batch) })
+    if not err then err = shapes.extraction_error(batch, result, cfg.model) end
     if err then return err end
     local entries = {}
     for _, f in ipairs(batch) do
