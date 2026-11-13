@@ -2110,3 +2110,19 @@ entries:
   providers:
   - id: app:fixture_reply_contract_provider
     provider_model: reply-contract-parsed
+- name: fixture_reply_contract_found_null_model
+  kind: registry.entry
+  meta: {type: llm.model, name: reply-contract-found-null, capabilities: [generate, structured_output, vision], class: [reply-contract-found-null], priority: 100}
+  max_tokens: 128000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_reply_contract_provider
+    provider_model: reply-contract-found-null
+- name: fixture_reply_contract_absent_value_model
+  kind: registry.entry
+  meta: {type: llm.model, name: reply-contract-absent-value, capabilities: [generate, structured_output, vision], class: [reply-contract-absent-value], priority: 100}
+  max_tokens: 128000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_reply_contract_provider
+    provider_model: reply-contract-absent-value

@@ -66,15 +66,29 @@ return {run = test.run_cases(function()
         end)
         for _, reads in ipairs({"text", "pages"}) do
             for _, caller_kind in ipairs({"ui", "agent"}) do
-                test.it("records null not-found values as missing for " .. reads .. " from " .. caller_kind, function()
-                    local result, saved = extract("reply-contract-absent", reads, caller_kind)
+                for _, mode in ipairs({"absent", "absent-value"}) do
+                    test.it("records " .. mode .. " values as missing for " .. reads .. " from " .. caller_kind, function()
+                        local result, saved = extract("reply-contract-" .. mode, reads, caller_kind)
+                        for _, value in ipairs({result, saved}) do
+                            test.eq(#value.fields, 6)
+                            test.eq(value.summary.missing, 6); test.eq(value.summary.failed, 0)
+                            for _, field in ipairs(value.fields) do
+                                test.is_true(field.missing, assert(json.encode(field)))
+                                test.is_false(field.failed); test.is_nil(field.error); test.is_nil(field.value)
+                                test.is_false(field.verified); test.eq(field.confidence, 0); test.eq(#field.evidence, 0)
+                            end
+                            test.eq(json.encode(value.values), "{}")
+                        end
+                    end)
+                end
+                test.it("fails found fields with null values for " .. reads .. " from " .. caller_kind, function()
+                    local result, saved = extract("reply-contract-found-null", reads, caller_kind)
                     for _, value in ipairs({result, saved}) do
-                        test.eq(#value.fields, 6)
-                        test.eq(value.summary.missing, 6); test.eq(value.summary.failed, 0)
+                        test.eq(value.summary.failed, 6); test.eq(value.summary.missing, 0)
                         for _, field in ipairs(value.fields) do
-                            test.is_true(field.missing, assert(json.encode(field)))
-                            test.is_false(field.failed); test.is_nil(field.error); test.is_nil(field.value)
-                            test.is_false(field.verified); test.eq(field.confidence, 0); test.eq(#field.evidence, 0)
+                            test.is_true(field.failed); test.is_false(field.missing); test.is_nil(field.value)
+                            test.eq(field.error.kind, errors.UNAVAILABLE)
+                            test.eq(field.error.details.code, "structured_reply_invalid")
                         end
                         test.eq(json.encode(value.values), "{}")
                     end
