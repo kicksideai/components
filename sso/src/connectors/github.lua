@@ -54,13 +54,13 @@ function M.complete(d, p)
             redirect_uri = p.redirect_uri,
         }),
     })
-    if err then return nil, "token exchange failed: " .. err end
+    if err then return nil, "token exchange request failed" end
     if resp.status_code >= 400 then
         return nil, "token exchange http " .. tostring(resp.status_code)
     end
 
     local tok, terr = json.decode(resp.body or "")
-    if terr then return nil, "token parse failed: " .. terr end
+    if terr then return nil, "token response is not valid JSON" end
     if type(tok) ~= "table" or not tok.access_token then
         return nil, "no access token in response"
     end
