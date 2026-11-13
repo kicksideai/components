@@ -769,7 +769,7 @@ type Value = { name: string, path: string, value: any?, confidence: number, evid
 
 -- Extraction: structured calls over the evidence pool, each for fields that share a group and a region.
 local EXTRACT_SYSTEM = system([[You extract field values from passages of one document. Use only what the passages state.
-For each field say whether the passages state it (found), give the value (any placeholder of the right type when not found), your confidence from 0 to 1, and evidence:
+For each field say whether the passages state it (found), give the value (null when not found), your confidence from 0 to 1, and evidence:
 the chunk number and an exact quote copied character for character from that chunk.]])
 
 -- Extraction calls: fields grouped by their group, then by the region they read,

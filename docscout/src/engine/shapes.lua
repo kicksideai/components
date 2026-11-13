@@ -307,7 +307,7 @@ function M.value_schema(f: any): any
     if f.nullable then
         schema.type = { schema.type, "null" }
         if schema.enum then
-            schema.anyOf = { { enum = schema.enum }, { type = "null" } }
+            schema.anyOf = { { type = schema.type[1], enum = schema.enum }, { type = "null" } }
             schema.enum = nil
         end
     end
@@ -511,9 +511,12 @@ function M.group_schema(fields: { any }, passages: { any }, image_pages: { integ
     local ref = image_pages and "page" or "chunk"
     local members = { "found", "value", "confidence", "evidence" }
     for _, f in ipairs(fields) do
+        local field = {}
+        for key, item in pairs(f) do field[key] = item end
+        field.nullable = true
         local value = { type = "object", additionalProperties = false, required = members, properties = {
             found = { type = "boolean" },
-            value = M.value_schema(f),
+            value = M.value_schema(field),
             confidence = { type = "number", minimum = 0, maximum = 1 },
             evidence = { type = "array", maxItems = M.EVIDENCE_LIMIT, items = { type = "object", additionalProperties = false, required = { ref, "quote" },
                 properties = { [ref] = chunk, quote = { type = "string" } } } },

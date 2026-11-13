@@ -294,7 +294,7 @@ return { run = test.run_cases(function()
             test.eq((json.encode(a.required)), (json.encode({ "found", "value", "confidence", "evidence" })))
             test.eq(a.properties.found.type, "boolean")
             test.eq((json.encode(a.properties.evidence.items.required)), (json.encode({ "chunk", "quote" })))
-            test.eq(schema.properties.b.properties.value.type, "number")
+            test.eq(json.encode(schema.properties.b.properties.value.type), '["number","null"]')
         end)
     end)
 end) }

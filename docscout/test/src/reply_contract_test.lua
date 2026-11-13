@@ -55,6 +55,15 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Extraction reply contracts", function()
+        test.it("declares typed nullable enum alternatives for strict providers", function()
+            local schema = shapes.group_schema({{name = "status", type = "enum", enum_values = {"registered", "unregistered"}}}, {{ordinal = 1}})
+            local value = schema.properties.status.properties.value
+            test.eq(value.anyOf[1].type, "string")
+            test.eq(json.encode(value.anyOf[1].enum), '["registered","unregistered"]')
+            test.eq(value.anyOf[2].type, "null")
+            test.is_true((json.validate_string(schema, '{"status":{"found":false,"value":null,"confidence":0,"evidence":[]}}')))
+            test.is_false((json.validate_string(schema, '{"status":{"found":true,"value":"invented","confidence":1,"evidence":[]}}')))
+        end)
         for _, reads in ipairs({"text", "pages"}) do
             for _, caller_kind in ipairs({"ui", "agent"}) do
                 test.it("records null not-found values as missing for " .. reads .. " from " .. caller_kind, function()

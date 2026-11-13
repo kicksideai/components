@@ -9,7 +9,7 @@ local types = require("types")
 local M = {}
 
 local SYSTEM = [[You extract field values from physical page images of one document. Read only the supplied pages.
-For each field say whether it is found, give its value, confidence from 0 to 1, and evidence: a supplied page number and an exact quote visible on that page.
+For each field say whether it is found, give its value (null when not found), confidence from 0 to 1, and evidence: a supplied page number and an exact quote visible on that page.
 Do not treat absent pages as proof that a value is absent or complete.
 ]] .. shapes.DATA_RULE
 
