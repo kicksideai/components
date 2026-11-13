@@ -54,6 +54,22 @@ return { run = test.run_cases(function()
             test.eq(shapes.normalize("field invoice_total"), "field invoice_total")
             test.eq(shapes.normalize("Gebühr für Prüfung"), "gebühr für prüfung")
         end)
+        test.it("preserves escaped pairs, nested spacing braces and code boundaries", function()
+            local escaped = [=[$$\$$$\[$\\\]]=]
+            test.eq(shapes.normalize(escaped), shapes.normalize_literal(escaped))
+            test.eq(shapes.normalize([=[$\hspace{a{b}c}x$]=]), "$ x$")
+            test.eq(shapes.normalize([=[$\hspace{}x$]=]), [=[$\hspace{}x$]=])
+            test.eq(shapes.normalize([=[\(x `\quad` y\)]=]), [=[\(x \quad y\)]=])
+            test.eq(shapes.normalize("  ~~~\n$x\\quad y$\n  ~~~\n$x\\quad y$"), "~~~ $x\\quad y$ ~~~ $x y$")
+        end)
+        test.it("retains trailing empty lines", function()
+            local lines = {}
+            for line in shapes.each_line("a\n\n") do lines[#lines + 1] = line end
+            test.eq(json.encode(lines), json.encode({ "a", "", "" }))
+            lines = {}
+            for line in shapes.each_line("") do lines[#lines + 1] = line end
+            test.eq(json.encode(lines), json.encode({ "" }))
+        end)
         test.it("reads OCR math spacing markup as whitespace and keeps other dollar signs", function()
             local plain = shapes.normalize("Item A Item B")
             test.eq(shapes.normalize("Item A $\\quad$ Item B"), plain)

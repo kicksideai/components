@@ -53,6 +53,26 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Document processing", function()
+        test.it("keeps first-section ownership for repeated and overlapping chunk prefixes", function()
+            local sections = {
+                "# First\n]%-^[ repeated text " .. string.rep("word ", 30),
+                "# Second\n]%-^[ repeated text " .. string.rep("word ", 30),
+                "# Third\n]%-^[ different text " .. string.rep("other ", 30),
+            }
+            local markdown = table.concat(sections, "\n")
+            local source_sections = process.sections(markdown)
+            for _, overlap in ipairs({ 0, 8 }) do
+                local document = assert(process.chunk(markdown, retrieval({ split_headings = false, chunk_size = 18, overlap = overlap })))
+                for _, chunk in ipairs(document.chunks) do
+                    local owner = source_sections[1]
+                    for _, section in ipairs(source_sections) do
+                        if section.text:find(chunk.content:sub(1, 80), 1, true) then owner = section; break end
+                    end
+                    test.eq(chunk.section_id, owner.id)
+                    test.eq(chunk.heading_path, owner.path)
+                end
+            end
+        end)
         test.it("preserves fixture sections, chunks and normalized results", function()
             local snapshots = { sections = process.sections(MARKDOWN), chunks = {}, results = {} }
             for _, headings in ipairs({ true, false }) do

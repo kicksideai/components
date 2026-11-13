@@ -61,6 +61,60 @@ return { run = test.run_cases(function()
             test.eq(shapes.normalize("$" .. body .. "\\quad end$"), "$" .. body .. " end$")
             test.is_true(time.now():sub(started):seconds() < 10, "math normalization exceeds ten seconds")
         end)
+        test.it("scans repeated inline code without rescanning the suffix within ten seconds", function()
+            local body = string.rep("`x` ", 750000)
+            local started = time.now()
+            test.eq(shapes.normalize(body), shapes.normalize_literal(body))
+            test.is_true(time.now():sub(started):seconds() < 10, "inline code scan exceeds ten seconds")
+        end)
+        test.it("scans unmatched spacing braces within ten seconds", function()
+            local body = "$" .. string.rep("\\hspace{", 15000) .. "$"
+            local started = time.now()
+            test.eq(shapes.normalize(body), body)
+            test.is_true(time.now():sub(started):seconds() < 10, "spacing brace scan exceeds ten seconds")
+        end)
+        test.it("scans unmatched math delimiters within ten seconds", function()
+            local body = string.rep("\\(", 1000000)
+            local started = time.now()
+            test.eq(shapes.normalize(body), body)
+            test.is_true(time.now():sub(started):seconds() < 10, "unmatched math scan exceeds ten seconds")
+        end)
+        test.it("scans backslash runs within ten seconds", function()
+            local body = string.rep("\\", 120000) .. "(x\\quad y)"
+            local started = time.now()
+            test.eq(shapes.normalize(body), body)
+            test.is_true(time.now():sub(started):seconds() < 10, "escape scan exceeds ten seconds")
+        end)
+        test.it("scans nonfence prefixes within ten seconds", function()
+            local body = string.rep("x~~~ ", 200000)
+            local started = time.now()
+            test.eq(shapes.normalize(body), shapes.trim(body))
+            test.is_true(time.now():sub(started):seconds() < 10, "fence prefix scan exceeds ten seconds")
+        end)
+        test.it("scans distinct unmatched tick runs within ten seconds", function()
+            local runs = {}
+            for n = 1, 2200 do runs[n] = "x" .. string.rep("`", n) end
+            local body = table.concat(runs, " ")
+            local started = time.now()
+            test.eq(shapes.normalize(body), shapes.normalize_literal(body))
+            test.is_true(time.now():sub(started):seconds() < 10, "unmatched tick scan exceeds ten seconds")
+        end)
+        test.it("assigns whole-document chunks to their first matching section within ten seconds", function()
+            local sections = {}
+            for n = 1, 12000 do
+                sections[n] = "# Section " .. n .. "\nrow " .. n .. " " .. string.rep("word ", 80)
+            end
+            local started = time.now()
+            local document = assert(process.chunk(table.concat(sections, "\n"),
+                { chunk_size = 110, overlap = 0, split_headings = false, keep_tables = true }))
+            for _, chunk in ipairs(document.chunks) do
+                local probe, owner = chunk.content:sub(1, 80), nil
+                local number = probe:match("^# Section (%d+)\n") or probe:match("^row (%d+) ")
+                if number then owner = "Section " .. number end
+                if owner then test.eq(chunk.heading_path, owner) end
+            end
+            test.is_true(time.now():sub(started):seconds() < 10, "chunk ownership exceeds ten seconds")
+        end)
         test.it("retains literal math in code after a long code span", function()
             local literal = string.rep("x", 120000)
             local markdown = "```\n" .. literal .. "\n```\n`$x\\quad y$`\n$x\\quad y$"
