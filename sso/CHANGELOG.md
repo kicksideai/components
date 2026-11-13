@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.44](https://github.com/kicksideai/components/compare/sso-v0.1.43...sso-v0.1.44) (2026-11-13)
+
+
+### Bug Fixes
+
+* **sso:** keep token-exchange credentials out of errors ([#106](https://github.com/kicksideai/components/issues/106)) ([92422f5](https://github.com/kicksideai/components/commit/92422f53dd3329f9f1f38cb0ae362304290df00d))
+
 ## [0.1.43](https://github.com/kicksideai/components/compare/sso-v0.1.42...sso-v0.1.43) (2026-11-06)
 
 
