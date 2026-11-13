@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Generic OIDC engine shared by the google, microsoft, and oidc connectors.
 -- Authorization-code + PKCE, id_token validation, and userinfo enrichment.
 --

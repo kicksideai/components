@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- GitHub connector. GitHub is OAuth2 (not OIDC): no id_token, so identity comes
 -- from the REST API. The primary verified email is read from /user/emails (the
 -- /user endpoint omits the email when it is private), and verification is taken
