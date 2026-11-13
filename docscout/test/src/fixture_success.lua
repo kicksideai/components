@@ -19,6 +19,13 @@ local function inspect(args: any)
     end
 end
 local function value(schema: any, text: string?): any
+    if schema.anyOf then return value(schema.anyOf[1], text) end
+    if type(schema.type) == "table" then
+        local present = {}
+        for key, item in pairs(schema) do present[key] = item end
+        present.type = schema.type[1]
+        return value(present, text)
+    end
     if schema.enum then return schema.enum[1] end
     if schema.type == "number" or schema.type == "integer" then return schema.maximum or 1250 end
     if schema.type == "boolean" then return false end
