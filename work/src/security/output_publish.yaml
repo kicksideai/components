@@ -1,0 +1,173 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.security
+entries:
+- name: schema_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:create
+    - kickside.work.service:apply_schema
+    - kickside.work.jobs:operation_batch
+  policy:
+    resources:
+    - kickside.work.command:command.recorded
+    - kickside.work.events:schema.applied
+    - kickside.work.events:prefix.claimed
+    actions: threads.output.publish
+    effect: allow
+- name: apply_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:apply
+    - kickside.work.service:approve
+    - kickside.work.service:report
+    - kickside.work.jobs:process_batch
+    - kickside.work.jobs:advance_batch
+    - kickside.work.jobs:migrate_batch
+    - kickside.work.jobs:operation_batch
+  policy:
+    resources:
+    - kickside.work.command:command.recorded
+    - kickside.work.events:item.created
+    - kickside.work.events:item.changed
+    - kickside.work.events:item.transitioned
+    - kickside.work.events:item.ranked
+    - kickside.work.events:item.parented
+    - kickside.work.events:item.linked
+    - kickside.work.events:item.unlinked
+    - kickside.work.events:item.deleted
+    - kickside.work.events:item.restored
+    - kickside.work.events:comment.added
+    - kickside.work.events:comment.edited
+    - kickside.work.events:comment.deleted
+    - kickside.work.events:stage.entered
+    - kickside.work.events:stage.reported
+    - kickside.work.events:approval.recorded
+    - kickside.work.events:timer.fired
+    actions: threads.output.publish
+    effect: allow
+- name: migration_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.jobs:migrate_batch
+  policy:
+    resources:
+    - kickside.work.events:item.migrated
+    actions: threads.output.publish
+    effect: allow
+- name: rebalance_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.jobs:rebalance_batch
+  policy:
+    resources:
+    - kickside.work.events:rank.rebalanced
+    actions: threads.output.publish
+    effect: allow
+- name: recompute_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.jobs:recompute_batch
+  policy:
+    resources:
+    - kickside.work.events:rollups.recomputed
+    actions: threads.output.publish
+    effect: allow
+- name: reindex_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.jobs:reindex_batch
+  policy:
+    resources:
+    - kickside.work.events:index.rebuilt
+    actions: threads.output.publish
+    effect: allow
+- name: retention_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.retention:owner
+  policy:
+    resources:
+    - kickside.work.events:prefix.released
+    - kickside.work.events:item.purged
+    actions: threads.output.publish
+    effect: allow
+- name: plugin_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:configure_plugin
+  policy:
+    resources:
+    - kickside.work.events:plugin.configured
+    actions: threads.output.publish
+    effect: allow
+- name: board_delete_report
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    comment: Board teardown reports the deletion so the lifecycle reaper removes what the board owns.
+  policy:
+    resources: kickside.core.lifecycle:report
+    actions: lifecycle.report.publish
+    effect: allow
+- name: operations_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:move
+    - kickside.work.jobs:operation_batch
+  policy:
+    resources:
+    - kickside.work.command:command.recorded
+    - kickside.work.events:bulk.progress
+    - kickside.work.events:item.move_prepared
+    - kickside.work.events:item.moved_out
+    - kickside.work.events:item.moved_in
+    actions: threads.output.publish
+    effect: allow
+- name: board_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:update
+  policy:
+    resources:
+    - kickside.work.events:board.updated
+    actions: threads.output.publish
+    effect: allow
+- name: plugin_rebuild_output_publish
+  kind: security.policy
+  meta: { private: true, service_only: true, producers: [kickside.work.extensions:plugin_batch] }
+  policy:
+    resources: [kickside.work.events:plugin.rebuild]
+    actions: threads.output.publish
+    effect: allow

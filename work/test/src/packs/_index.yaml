@@ -1,0 +1,455 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: kanban_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Kanban
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Tasks across a delivery flow
+  data:
+    schema: &id009
+      fields: &id015
+      - &id016
+        code: title
+        form: text
+        title: Title
+      - &id001
+        code: note
+        form: text
+        title: Note
+      item_types: &id002
+      - id: task
+        title: Task
+        process: delivery
+        fields:
+        - title
+        - note
+    processes: &id003
+    - id: delivery
+      initial: todo
+      migration: follow
+      states:
+      - id: todo
+        name: To do
+        category: unstarted
+      - &id010
+        id: done
+        name: Done
+        category: completed
+      transitions: &id013
+      - id: finish
+        from:
+        - todo
+        to: done
+    views: &id011
+    - id: all
+      title: All tasks
+      view: &id004
+        type: list
+        columns:
+        - title
+    automations: &id005
+    - id: stages
+      type: app:pack_automation
+      input: &id017
+        board_id: $board
+    traits: &id006
+    - app:pack_trait
+    requires: &id007 []
+    starter: &id008
+      items:
+      - op: create
+        type: task
+        values:
+          title: First task
+      - op: create
+        type: task
+        values:
+          title: Second task
+      default: false
+- name: kanban_next_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: kanban next pack
+    version: 2.0.0
+    icon: tabler:layout-kanban
+    description: Tasks across a delivery flow
+  data:
+    schema:
+      fields:
+      - code: title
+        form: text
+        title: Task title
+      - *id001
+      - code: estimate
+        form: int
+        title: Estimate
+      item_types: *id002
+    processes: *id003
+    views:
+    - id: all
+      title: Work items
+      view: *id004
+    automations: *id005
+    traits: *id006
+    requires: *id007
+    starter: *id008
+- name: renamed_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: renamed pack
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Tasks across a delivery flow
+  data:
+    schema: *id009
+    processes: &id012
+    - id: delivery
+      initial: ready
+      migration: follow
+      states:
+      - id: ready
+        name: To do
+        category: unstarted
+      - *id010
+      transitions:
+      - id: finish
+        from:
+        - ready
+        to: done
+    views: *id011
+    automations: *id005
+    traits: *id006
+    requires: *id007
+    starter: *id008
+- name: invalid_form_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: invalid form pack
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Tasks across a delivery flow
+  data:
+    schema:
+      fields:
+      - code: title
+        form: int
+        title: Title
+      - *id001
+      item_types: *id002
+    processes: *id012
+    views: *id011
+    automations: *id005
+    traits: *id006
+    requires: *id007
+    starter: *id008
+- name: pipeline_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: pipeline pack
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Tasks across a delivery flow
+  data:
+    schema: *id009
+    processes:
+    - id: delivery
+      initial: todo
+      migration: follow
+      states:
+      - id: todo
+        category: unstarted
+      - id: review
+        category: started
+        kind: gate
+        release_when:
+          wait: P1D
+      - id: build
+        category: started
+        kind: automated
+        run:
+          stage: build
+      - id: done
+        category: completed
+      transitions: *id013
+    views: *id011
+    automations: *id005
+    traits: *id006
+    requires:
+    - app:schema_template
+    starter: *id008
+- name: missing_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: missing pack
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Tasks across a delivery flow
+  data:
+    schema: *id009
+    processes: *id003
+    views: *id011
+    automations: *id007
+    traits: *id007
+    requires:
+    - app:absent_plugin
+    starter: *id008
+- name: hidden_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: hidden pack
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Tasks across a delivery flow
+  data:
+    schema: *id009
+    processes: *id003
+    views: *id011
+    automations: *id007
+    traits: *id007
+    requires: *id007
+    starter: *id008
+- name: pack_discovery
+  kind: security.policy
+  groups: &id014
+  - kickside.security.groups:members
+  policy:
+    resources:
+    - app:numeric_pack
+    - app:numeric_plugin
+    - app:kanban_pack
+    - app:kanban_next_pack
+    - app:renamed_pack
+    - app:invalid_form_pack
+    - app:pipeline_pack
+    - app:missing_pack
+    - app:absent_plugin
+    - app:pack_automation
+    - app:pack_prepare
+    - app:pack_trait
+    - app:policy_pack
+    - app:visibility_pack
+    - app:automation_type_pack
+    - app:replacement_automation
+    actions:
+    - registry.get
+    - registry.find
+    effect: allow
+- name: pack_automation
+  kind: contract.binding
+  meta: &id018
+    type: kickside.automation
+    title: Stage consumer
+    inputs:
+      type: object
+      required:
+      - board_id
+      properties:
+        board_id:
+          type: string
+      additionalProperties: false
+  contracts: &id019
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.core.threads:thread_status
+  - contract: kickside.automation:prepared_installable
+    methods:
+      prepare_install: app:pack_prepare
+  - contract: kickside.contract:deletable
+    methods:
+      delete: kickside.automation:noop_delete
+- name: pack_prepare
+  kind: function.lua
+  source: file://../pack_automation.lua
+  method: prepare
+- name: pack_trait
+  kind: registry.entry
+  meta:
+    type: agent.trait
+    title: Pack helper
+  tools: *id007
+- name: pack_view_probe
+  kind: library.lua
+  source: file://../pack_view_probe.lua
+  modules:
+  - sql
+  imports:
+    views: kickside.work.service:pack_views
+    schema_commands: kickside.work.command:schema_commands
+- name: pack_runtime
+  kind: security.policy
+  groups: *id014
+  policy:
+    resources:
+    - app:pack_prepare
+    actions:
+    - funcs.call
+    - funcs.security
+    effect: allow
+- name: pack_schema_probe
+  kind: library.lua
+  source: file://../pack_view_probe.lua
+  modules:
+  - sql
+  imports:
+    views: kickside.work.service:pack_views
+    schema_commands: kickside.work.command:schema_commands
+- name: policy_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: policy pack
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Tasks across a delivery flow
+  data:
+    schema:
+      fields: *id015
+      item_types: *id002
+      policy:
+        audit_days: 7
+    processes: *id003
+    views: *id011
+    automations: *id005
+    traits: *id006
+    requires: *id007
+    starter: *id008
+- name: visibility_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: visibility pack
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Tasks across a delivery flow
+  data:
+    schema:
+      fields:
+      - *id016
+      - *id001
+      - code: level
+        form: text
+        index: key
+      item_types:
+      - id: task
+        title: Task
+        process: delivery
+        fields:
+        - title
+        - note
+        - level
+      visibility:
+        field: level
+        bypass: admin
+        levels:
+        - id: internal
+          holders:
+          - group: app.security:work_admin
+    processes: *id003
+    views: *id011
+    automations: *id005
+    traits: *id006
+    requires: *id007
+    starter: *id008
+- name: automation_type_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: automation type pack
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Tasks across a delivery flow
+  data:
+    schema: *id009
+    processes: *id003
+    views: *id011
+    automations:
+    - id: stages
+      type: app:replacement_automation
+      input: *id017
+    traits: *id006
+    requires: *id007
+    starter: *id008
+- name: replacement_automation
+  kind: contract.binding
+  meta: *id018
+  contracts: *id019
+- name: numeric_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Counted pipeline
+    version: 1.0.0
+    icon: tabler:route
+    description: A pipeline with declared counts and ordering
+  data:
+    schema:
+      fields:
+      - code: priority
+        type: option
+        options:
+        - {id: normal, order: 1}
+        - {id: high, order: 2}
+      item_types:
+      - {id: task, process: delivery, fields: [priority]}
+      policy:
+        wip:
+          review: {limit: 5, hard: false}
+    processes:
+    - id: delivery
+      initial: todo
+      states:
+      - {id: todo, category: unstarted}
+      - id: review
+        category: started
+        kind: gate
+        release_when:
+          approvals: {min: 1, from: {group: 'kickside.security.groups:members'}}
+      - id: build
+        category: started
+        kind: automated
+        run: {stage: build, retry: {max: 3, backoff: PT1S}, on_fail: failed}
+      - {id: failed, category: canceled}
+      - {id: done, category: completed}
+      transitions:
+      - {id: submit, from: [todo], to: review, order: 1}
+      - {id: approved, from: [review], to: build, auto: true, default: true}
+      - {id: passed, from: [build], to: done}
+      - {id: failed, from: [build], to: failed}
+    views: []
+    automations: []
+    traits: []
+    requires: []
+    starter: {items: [], default: false}
+- name: numeric_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    schema:
+      template:
+        fields:
+        - code: plugin_priority
+          type: option
+          options: [{id: normal, order: 1}]
+        item_types: [{id: task, fields: [plugin_priority]}]
+        processes:
+        - id: plugin_review
+          initial: review
+          states:
+          - id: review
+            category: started
+            kind: gate
+            release_when:
+              approvals: {min: 1, from: {group: 'kickside.security.groups:members'}}
+          transitions: []

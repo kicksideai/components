@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.events
+entries:
+- name: plugin.configured
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+  schema:
+    type: object
+    properties:
+      plugin: &id001
+        type: string
+      attachment: *id001
+      config:
+        type: object
+      actor: *id001
+      at: *id001
+      source: *id001
+    required:
+    - plugin
+    - attachment
+    - config
+    - actor
+    - at
+    additionalProperties: false
+- name: plugin.rebuild
+  kind: registry.entry
+  meta: { type: kickside.core.threads.event }
+  schema:
+    type: object
+    properties: { plugin: { type: string } }
+    required: [plugin]
+    additionalProperties: false

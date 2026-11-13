@@ -1,0 +1,115 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app.security
+
+# The application baseline every installation composes for its users: the
+# group of the core module access policies and the runtime grants of the
+# trusted product runtime. Entries mirror the application's own declarations so
+# the scopes the real-scope suite builds equal the ones an installation resolves.
+
+entries:
+  - name: core_access
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.security:user
+    policies:
+      - kickside.core.jobs.security:module_access
+      - kickside.component.security:module_access
+      - kickside.contract.security:module_access
+      - kickside.core.security:module_access
+      - kickside.execution.security:module_access
+
+  - name: member_access
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: kickside.security.groups:members
+    groups: [app.security:user]
+
+  - name: user
+    kind: security.scope
+    meta:
+      comment: Application baseline group of every signed-in user.
+    policies: []
+
+  - name: user.unrestricted_runtime_actions
+    kind: security.policy
+    meta: {type: app.security.policy_binding, surface: app.runtime, intent: trusted_product_runtime}
+    groups: [app.security:user]
+    policy:
+      resources: '*'
+      actions: [contract.call, http_client.private_ip, process.send]
+      effect: allow
+
+  - name: user.context_runtime
+    kind: security.policy
+    meta: {type: app.security.policy_binding, surface: app.runtime, intent: trusted_product_runtime}
+    groups: [app.security:user]
+    policy:
+      resources: [context]
+      actions: [contract.context, funcs.context]
+      effect: allow
+
+  - name: user.runtime_data_access
+    kind: security.policy
+    meta: {type: app.security.policy_binding, surface: app.runtime.data, intent: trusted_product_runtime}
+    groups: [app.security:user]
+    policy:
+      resources: [app:db, app:uploads, kickside.models:cache, app:cache]
+      actions: [db.get, fs.get, store.get, store.info, store.key.get, store.key.list, store.key.set, store.key.delete, store.key.has]
+      effect: allow
+
+  - name: user.runtime_contracts
+    kind: security.policy
+    meta: {type: app.security.policy_binding, surface: app.runtime.contracts, intent: trusted_product_runtime}
+    groups: [app.security:user]
+    policy:
+      resources: [security]
+      actions: [contract.get, contract.open, contract.call, contract.implementations, contract.security, funcs.call, funcs.security]
+      effect: allow
+
+  - name: user.identity_resolution
+    kind: security.policy
+    meta: {type: app.security.policy_binding, surface: app.runtime.identity, intent: trusted_product_runtime}
+    groups: [app.security:user]
+    policy:
+      resources: [kickside.users:scope_resolver_binding, kickside.users.binding:scope_resolver_func]
+      actions: [contract.get, contract.open, funcs.call]
+      effect: allow
+
+  - name: user.runtime_process_context
+    kind: security.policy
+    meta: {type: app.security.policy_binding, surface: app.runtime.process, intent: trusted_product_runtime}
+    groups: [app.security:user]
+    policy:
+      resources: [context, security]
+      actions: [process.context, process.security]
+      effect: allow
+
+  - name: user.runtime_process_host
+    kind: security.policy
+    meta: {type: app.security.policy_binding, surface: app.runtime.process, intent: trusted_product_runtime}
+    groups: [app.security:user]
+    policy:
+      resources: [app:processes]
+      actions: [process.host]
+      effect: allow
+
+  - name: user.environment_runtime
+    kind: security.policy
+    meta: {type: app.security.policy_binding, surface: app.runtime, intent: trusted_product_runtime}
+    groups: [app.security:user]
+    policy:
+      resources:
+        - ENCRYPTION_KEY
+        - KICKSIDE_COMPONENT_DB_ID
+        - KICKSIDE_CORE_JOB_DB_ID
+        - KICKSIDE_PROJECTION_DB_ID
+        - KICKSIDE_PROJECTION_PROC_HOST
+        - KICKSIDE_THREADS_DB_ID
+        - KICKSIDE_THREAD_HYDRATION_DB_ID
+        - kickside.users.env:admin_group_id
+        - kickside.users.env:baseline_group_id
+        - kickside.users.env:database_resource
+        - kickside.users.env:default_group_id
+      actions: env.get
+      effect: allow

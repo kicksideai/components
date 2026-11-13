@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: reindex_append
+  kind: library.lua
+  source: file://reindex_append.lua
+  modules: [sql, time]
+  imports:
+    append: kickside.work.persist:append
+    domain: kickside.work:types

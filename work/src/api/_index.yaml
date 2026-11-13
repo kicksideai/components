@@ -1,0 +1,552 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.api
+entries:
+- name: list
+  kind: function.lua
+  meta:
+    comment: list on the board contract under the request actor.
+  source: file://list.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: list.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: GET
+  func: list
+  path: /work/boards
+- name: create
+  kind: function.lua
+  meta:
+    comment: create on the board contract under the request actor.
+  source: file://create.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: create.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: create
+  path: /work/boards
+- name: get_schema
+  kind: function.lua
+  meta:
+    comment: get_schema on the board contract under the request actor.
+  source: file://get_schema.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: get_schema.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: get_schema
+  path: /work/boards/{id}/get_schema
+- name: plan_schema
+  kind: function.lua
+  meta:
+    comment: plan_schema on the board contract under the request actor.
+  source: file://plan_schema.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: plan_schema.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: plan_schema
+  path: /work/boards/{id}/plan_schema
+- name: apply_schema
+  kind: function.lua
+  meta:
+    comment: apply_schema on the board contract under the request actor.
+  source: file://apply_schema.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: apply_schema.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: apply_schema
+  path: /work/boards/{id}/apply_schema
+- name: resume_migration
+  kind: function.lua
+  meta:
+    comment: resume_migration on the board contract under the request actor.
+  source: file://resume_migration.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: resume_migration.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: resume_migration
+  path: /work/boards/{id}/resume_migration
+- name: apply
+  kind: function.lua
+  meta:
+    comment: apply on the board contract under the request actor.
+  source: file://apply.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: apply.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: apply
+  path: /work/boards/{id}/apply
+- name: get
+  kind: function.lua
+  meta:
+    comment: get on the board contract under the request actor.
+  source: file://get.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: get.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: get
+  path: /work/boards/{id}/get
+- name: list_changes
+  kind: function.lua
+  meta:
+    comment: list_changes on the board contract under the request actor.
+  source: file://list_changes.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: list_changes.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: list_changes
+  path: /work/boards/{id}/list_changes
+- name: list_history
+  kind: function.lua
+  meta:
+    comment: list_history on the board contract under the request actor.
+  source: file://list_history.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: list_history.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: list_history
+  path: /work/boards/{id}/list_history
+- name: get_time_in_state
+  kind: function.lua
+  meta:
+    comment: get_time_in_state on the board contract under the request actor.
+  source: file://get_time_in_state.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: get_time_in_state.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: get_time_in_state
+  path: /work/boards/{id}/get_time_in_state
+- name: query
+  kind: function.lua
+  meta:
+    comment: query on the board contract under the request actor.
+  source: file://query.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: query.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: query
+  path: /work/boards/{id}/query
+- name: count
+  kind: function.lua
+  meta:
+    comment: count on the board contract under the request actor.
+  source: file://count.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: count.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board endpoint behind the authenticated API router.
+  method: POST
+  func: count
+  path: /work/boards/{id}/count
+- name: types
+  kind: library.lua
+  source: file://types.lua
+- name: access
+  kind: library.lua
+  source: file://access.lua
+  modules:
+  - http
+  - json
+  - security
+  imports:
+    http_errors: kickside.contract:http_errors
+    types: kickside.work.api:types
+    board_client: kickside.work:client
+- name: list_links
+  kind: function.lua
+  source: file://list_links.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: list_links.endpoint
+  kind: http.endpoint
+  method: POST
+  func: list_links
+  path: /work/boards/{id}/list_links
+- name: list_comments
+  kind: function.lua
+  source: file://list_comments.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: list_comments.endpoint
+  kind: http.endpoint
+  method: POST
+  func: list_comments
+  path: /work/boards/{id}/list_comments
+- name: explain
+  kind: function.lua
+  source: file://explain.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: explain.endpoint
+  kind: http.endpoint
+  method: POST
+  func: explain
+  path: /work/boards/{id}/explain
+- name: configure_plugin
+  kind: function.lua
+  source: file://configure_plugin.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: configure_plugin.endpoint
+  kind: http.endpoint
+  method: POST
+  func: configure_plugin
+  path: /work/boards/{id}/configure_plugin
+- name: create_view
+  kind: function.lua
+  source: file://create_view.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: create_view.endpoint
+  kind: http.endpoint
+  method: POST
+  func: create_view
+  path: /work/boards/{id}/views
+- name: save_view
+  kind: function.lua
+  source: file://save_view.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: save_view.endpoint
+  kind: http.endpoint
+  method: POST
+  func: save_view
+  path: /work/views/{id}/save
+- name: run_view
+  kind: function.lua
+  source: file://run_view.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: run_view.endpoint
+  kind: http.endpoint
+  method: POST
+  func: run_view
+  path: /work/views/{id}/run
+- name: approve
+  kind: function.lua
+  source: file://approve.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: approve.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board process command behind the authenticated API router.
+  method: POST
+  func: approve
+  path: /work/boards/{id}/approve
+- name: report
+  kind: function.lua
+  source: file://report.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: report.endpoint
+  kind: http.endpoint
+  meta:
+    comment: Board process command behind the authenticated API router.
+  method: POST
+  func: report
+  path: /work/boards/{id}/report
+- name: bulk
+  kind: function.lua
+  source: file://bulk.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: bulk.endpoint
+  kind: http.endpoint
+  meta: {}
+  method: POST
+  func: bulk
+  path: /work/boards/{id}/bulk
+- name: bulk_status
+  kind: function.lua
+  source: file://bulk_status.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: bulk_status.endpoint
+  kind: http.endpoint
+  meta: {}
+  method: POST
+  func: bulk_status
+  path: /work/boards/{id}/bulk_status
+- name: cancel_bulk
+  kind: function.lua
+  source: file://cancel_bulk.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: cancel_bulk.endpoint
+  kind: http.endpoint
+  meta: {}
+  method: POST
+  func: cancel_bulk
+  path: /work/boards/{id}/cancel_bulk
+- name: plan_move
+  kind: function.lua
+  source: file://plan_move.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: plan_move.endpoint
+  kind: http.endpoint
+  meta: {}
+  method: POST
+  func: plan_move
+  path: /work/boards/{id}/plan_move
+- name: move
+  kind: function.lua
+  source: file://move.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: move.endpoint
+  kind: http.endpoint
+  meta: {}
+  method: POST
+  func: move
+  path: /work/boards/{id}/move
+- name: move_status
+  kind: function.lua
+  source: file://move_status.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: move_status.endpoint
+  kind: http.endpoint
+  meta: {}
+  method: POST
+  func: move_status
+  path: /work/boards/{id}/move_status
+- name: get_view
+  kind: function.lua
+  source: file://get_view.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: get_view.endpoint
+  kind: http.endpoint
+  method: GET
+  func: get_view
+  path: /work/views/{id}
+- name: list_views
+  kind: function.lua
+  source: file://list_views.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: list_views.endpoint
+  kind: http.endpoint
+  method: POST
+  func: list_views
+  path: /work/boards/{id}/list_views
+- name: rename_view
+  kind: function.lua
+  source: file://rename_view.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: rename_view.endpoint
+  kind: http.endpoint
+  method: POST
+  func: rename_view
+  path: /work/views/{id}/rename
+- name: delete_view
+  kind: function.lua
+  source: file://delete_view.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: delete_view.endpoint
+  kind: http.endpoint
+  method: DELETE
+  func: delete_view
+  path: /work/views/{id}
+- name: update
+  kind: function.lua
+  source: file://update.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+  meta:
+    comment: Update board metadata through the board contract under the request actor.
+- name: update.endpoint
+  kind: http.endpoint
+  method: POST
+  func: update
+  path: /work/boards/{id}/update
+  meta:
+    comment: Update board metadata through the board contract under the request actor.
+- name: list_packs
+  kind: function.lua
+  source: file://list_packs.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: list_packs.endpoint
+  kind: http.endpoint
+  method: GET
+  func: list_packs
+  path: /work/packs
+- name: pack_plan
+  kind: function.lua
+  source: file://pack_plan.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: pack_plan.endpoint
+  kind: http.endpoint
+  method: POST
+  func: pack_plan
+  path: /work/boards/{id}/pack_plan
+- name: pack_apply
+  kind: function.lua
+  source: file://pack_apply.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: pack_apply.endpoint
+  kind: http.endpoint
+  method: POST
+  func: pack_apply
+  path: /work/boards/{id}/pack_apply
+- name: pack_fleet
+  kind: function.lua
+  source: file://pack_fleet.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: pack_fleet.endpoint
+  kind: http.endpoint
+  method: GET
+  func: pack_fleet
+  path: /work/packs/boards
+- name: list_stage_runs
+  kind: function.lua
+  source: file://list_stage_runs.lua
+  method: handler
+  modules:
+  - http
+  imports:
+    access: kickside.work.api:access
+- name: list_stage_runs.endpoint
+  kind: http.endpoint
+  method: POST
+  func: list_stage_runs
+  path: /work/boards/{id}/list_stage_runs

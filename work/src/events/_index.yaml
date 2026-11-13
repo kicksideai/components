@@ -1,0 +1,544 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.events
+entries:
+- name: schema.applied
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: A schema generation is activated.
+    output_kind: kickside.work.binding:board
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      command_key:
+        type: string
+      actor:
+        type: string
+      at:
+        type: string
+        description: Command time, RFC3339 UTC.
+      source:
+        type: string
+        description: Reported origin of the command, for example an API client or a flow.
+      origin:
+        type: object
+        description: Reported provenance; never used for authorization.
+      receipt:
+        type: object
+        description: Command receipt carried by the first event of an idempotent command.
+      claim_version:
+        type: integer
+        description: Prefix claim subject version accepted with this schema.
+      generation:
+        type: integer
+      declaration:
+        type: object
+      compiled:
+        type: object
+      digest:
+        type: string
+      class:
+        type: string
+      changes:
+        type: array
+        items:
+          type: object
+      maps:
+        type: object
+      migrates:
+        type: boolean
+        description: The generation changes the definition of a follow process whose items already exist; the fold demands
+          the board's migration job.
+      plugin_configs:
+        type: object
+        additionalProperties:
+          type: object
+      pack:
+        type: object
+        additionalProperties: false
+        properties:
+          id:
+            type: string
+          version:
+            type: string
+          digest:
+            type: string
+          base:
+            type: object
+        required:
+        - id
+        - version
+        - digest
+        - base
+    required:
+    - generation
+    - declaration
+    - compiled
+    - digest
+    - class
+- name: comment.added
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: A comment is added to an item.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: &id001
+        type: string
+      at: &id002
+        type: string
+        description: Command time, RFC3339 UTC.
+      source: &id003
+        type: string
+        description: Reported origin of the command, for example an API client or a flow.
+      origin: &id004
+        type: object
+        description: Reported provenance; never used for authorization.
+      command_key: &id005
+        type: string
+      receipt: &id006
+        type: object
+        description: Command receipt carried by the first event of an idempotent command.
+      audit: &id007
+        type: string
+        enum:
+        - fields
+        - 'off'
+      comment:
+        type: string
+      item:
+        type: string
+      mentions:
+        type: array
+        items:
+          type: object
+      body:
+        type: string
+    required:
+    - comment
+    - item
+    - body
+- name: comment.edited
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: A comment body changes.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      comment:
+        type: string
+      item:
+        type: string
+      mentions:
+        type: array
+        items:
+          type: object
+      body:
+        type: string
+    required:
+    - comment
+    - item
+    - body
+- name: comment.deleted
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: A comment is deleted.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      comment:
+        type: string
+      item:
+        type: string
+      mentions:
+        type: array
+        items:
+          type: object
+    required:
+    - comment
+    - item
+- name: item.parented
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: An item moves under a parent or to the root.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item:
+        type: string
+      parent:
+        type: string
+        description: The new parent; absent when the item moved to the root.
+      previous:
+        type: string
+        description: The parent before the move; absent when the item had none.
+    required:
+    - item
+- name: item.linked
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: An item gains a relation.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item:
+        type: string
+      type:
+        type: string
+      target:
+        type: object
+        required:
+        - board
+        - item
+        properties:
+          board:
+            type: string
+          item:
+            type: string
+    required:
+    - item
+    - type
+    - target
+- name: item.unlinked
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: An item loses a relation.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item:
+        type: string
+      type:
+        type: string
+      target:
+        type: object
+        required:
+        - board
+        - item
+        properties:
+          board:
+            type: string
+          item:
+            type: string
+    required:
+    - item
+    - type
+    - target
+- name: item.transitioned
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: An item moves to another state; auto marks a step the process takes by itself.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item:
+        type: string
+      transition:
+        type: string
+      from:
+        type: string
+      to:
+        type: string
+      visit:
+        type: integer
+        description: The visit number of the state entered.
+      patch: &id008
+        type: array
+        items:
+          type: object
+          required:
+          - f
+          properties:
+            f:
+              type: integer
+            v:
+              description: Canonical value written.
+            before:
+              description: Canonical value replaced.
+            clear:
+              type: boolean
+            unset:
+              type: boolean
+      region:
+        type: string
+      force:
+        type: boolean
+      auto:
+        type: boolean
+    required:
+    - item
+    - transition
+    - from
+    - to
+    - visit
+    - patch
+- name: item.migrated
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: An item moves to the current definition of its process; state_map holds its destination state.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item:
+        type: string
+      from_generation:
+        type: integer
+      to_generation:
+        type: integer
+      state_map:
+        type: object
+        additionalProperties:
+          type: string
+    required:
+    - item
+    - from_generation
+    - to_generation
+    - state_map
+- name: stage.entered
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item:
+        type: string
+      state:
+        type: string
+      visit:
+        type: integer
+      attempt:
+        type: integer
+    required:
+    - item
+    - state
+    - visit
+    - attempt
+- name: stage.reported
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item:
+        type: string
+      state:
+        type: string
+      visit:
+        type: integer
+      attempt:
+        type: integer
+      outcome:
+        enum:
+        - passed
+        - failed
+        - canceled
+      outputs:
+        type: object
+      progress:
+        type: object
+    required:
+    - item
+    - state
+    - visit
+    - attempt
+    - outcome
+- name: approval.recorded
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item:
+        type: string
+      gate:
+        type: string
+      visit:
+        type: integer
+      decision:
+        enum:
+        - approve
+        - reject
+    required:
+    - item
+    - gate
+    - visit
+    - decision
+- name: timer.fired
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item:
+        type: string
+      state:
+        type: string
+      visit:
+        type: integer
+      timer:
+        type: string
+      scheduled_at:
+        type: string
+      emitted:
+        type: string
+    required:
+    - item
+    - state
+    - visit
+    - timer
+    - scheduled_at
+- name: item.created
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: An item is created; the board assigns its key when the projection folds the event.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item:
+        type: string
+      type:
+        type: string
+      parent:
+        type: string
+      state:
+        type: string
+      patch: *id008
+    required:
+    - item
+    - type
+    - state
+    - patch
+- name: item.changed
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: Item values change.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item:
+        type: string
+      patch: *id008
+    required:
+    - item
+    - patch

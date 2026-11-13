@@ -1,0 +1,460 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.persist
+entries:
+- name: config
+  kind: registry.entry
+  meta:
+    comment: Host-selected database id for work persistence.
+- name: bulk
+  kind: library.lua
+  meta:
+    comment: Multi-row INSERT and DELETE in chunks under the bind-parameter limits of SQLite and PostgreSQL.
+  source: file://bulk.lua
+  imports:
+    storage: kickside.work.persist:types
+    types: kickside.work:types
+- name: threads
+  kind: library.lua
+  meta:
+    comment: Typed Core threads client - open as the caller, catch up, find receipts.
+  source: file://threads.lua
+  modules:
+  - contract
+  - security
+  - json
+  imports:
+    store: kickside.work.persist:store
+    types: kickside.work:types
+- name: generated
+  kind: library.lua
+  meta:
+    comment: Generated item tables - DDL for a layout and its system columns, in-place alter, and bulk row writes.
+  source: file://generated.lua
+  modules:
+  - sql
+  imports:
+    bulk: kickside.work.persist:bulk
+    storage: kickside.work.persist:types
+    types: kickside.work:types
+- name: store
+  kind: library.lua
+  meta:
+    comment: Row access over the fixed work tables.
+  source: file://store.lua
+  modules:
+  - sql
+  - registry
+  imports:
+    consts: kickside.work:consts
+    schema: kickside.work.domain:schema
+    values: kickside.work.domain:values
+    types: kickside.work:types
+    storage: kickside.work.persist:types
+    row_decode: kickside.work.persist:row_decode
+    process_data: kickside.work.persist:process_data
+- name: intervals
+  kind: library.lua
+  meta:
+    comment: Value intervals - the periods an item held a state, a category or a tracked value.
+  source: file://intervals.lua
+  modules:
+  - sql
+  imports:
+    bulk: kickside.work.persist:bulk
+    values: kickside.work.domain:values
+    types: kickside.work:types
+    storage: kickside.work.persist:types
+- name: fold_batch
+  kind: library.lua
+  meta:
+    comment: Shared state and row helpers of the fold.
+  source: file://fold_batch.lua
+  modules:
+  - json
+  - sql
+  imports:
+    consts: kickside.work:consts
+    bulk: kickside.work.persist:bulk
+    document: kickside.work.domain:document
+    intervals: kickside.work.persist:intervals
+    store: kickside.work.persist:store
+    types: kickside.work:types
+    storage: kickside.work.persist:types
+- name: fold_schema
+  kind: library.lua
+  meta:
+    comment: Fold of schema generations and the follow migration demand.
+  source: file://fold_schema.lua
+  modules:
+  - json
+  - sql
+  imports:
+    consts: kickside.work:consts
+    jobs: kickside.core.jobs:jobs
+    schema: kickside.work.domain:schema
+    generated: kickside.work.persist:generated
+    tables: kickside.work.domain:layout
+    store: kickside.work.persist:store
+    types: kickside.work:types
+    fold_batch: kickside.work.persist:fold_batch
+    rollup: kickside.work.domain:rollup
+    fold_rollup: kickside.work.persist:fold_rollup
+    index_rows: kickside.work.persist:index_rows
+    plugin_rows: kickside.work.persist:plugin_rows
+    values: kickside.work.domain:values
+- name: fold_items
+  kind: library.lua
+  meta:
+    comment: Fold of item creation, changes, transitions and process migrations.
+  source: file://fold_items.lua
+  modules:
+  - json
+  - sql
+  imports:
+    fold_rank: kickside.work.persist:fold_rank
+    fold_process: kickside.work.persist:fold_process
+    consts: kickside.work:consts
+    rank: kickside.work.domain:rank
+    store: kickside.work.persist:store
+    types: kickside.work:types
+    fold_batch: kickside.work.persist:fold_batch
+    document: kickside.work.domain:document
+    intervals: kickside.work.persist:intervals
+    process: kickside.work.domain:process
+    fold_rollup: kickside.work.persist:fold_rollup
+    storage: kickside.work.persist:types
+- name: materializer
+  kind: library.lua
+  meta:
+    comment: Folds board events into the fixed tables, dispatching each event family to its fold.
+  source: file://materializer.lua
+  modules:
+  - json
+  - sql
+  imports:
+    fold_process: kickside.work.persist:fold_process
+    consts: kickside.work:consts
+    bulk: kickside.work.persist:bulk
+    storage: kickside.work.persist:types
+    index_rows: kickside.work.persist:index_rows
+    store: kickside.work.persist:store
+    types: kickside.work:types
+    fold_batch: kickside.work.persist:fold_batch
+    fold_schema: kickside.work.persist:fold_schema
+    fold_items: kickside.work.persist:fold_items
+    fold_rollup: kickside.work.persist:fold_rollup
+    plugin_rows: kickside.work.persist:plugin_rows
+    fold_moves: kickside.work.persist:fold_moves
+    board_meta: kickside.work.persist:board_meta
+- name: projection
+  kind: function.lua
+  meta:
+    type: projection.worker
+    post_commit_ref: func://kickside.work.persist:projection_committed
+    comment: Board projection worker; one transaction per prefetched batch.
+  source: file://projection.lua
+  method: run
+  modules: [funcs]
+  imports:
+    principals: kickside.work.read:principals
+    consts: kickside.work:consts
+    jobs: kickside.core.jobs:jobs
+    store: kickside.work.persist:store
+    materializer: kickside.work.persist:materializer
+    types: kickside.work:types
+    storage: kickside.work.persist:types
+- name: projection_committed
+  kind: function.lua
+  meta:
+    type: projection.worker
+    comment: Publishes board public meta after the projection commit.
+  source: file://public_meta.lua
+  method: after_commit
+  modules:
+  - funcs
+  imports:
+    component: kickside.component:component
+    store: kickside.work.persist:store
+    storage: kickside.work.persist:types
+    job_rows: kickside.work.persist:job_rows
+    board_meta: kickside.work.persist:board_meta
+- name: publish_meta
+  kind: function.lua
+  meta:
+    private: true
+    comment: Writes caller-independent board metadata.
+  source: file://public_meta.lua
+  method: publish
+  modules:
+  - funcs
+  security:
+    policies:
+    - kickside.work.security:board_public_meta
+  imports:
+    component: kickside.component:component
+    store: kickside.work.persist:store
+    storage: kickside.work.persist:types
+    job_rows: kickside.work.persist:job_rows
+    board_meta: kickside.work.persist:board_meta
+- name: fold_rollup
+  kind: library.lua
+  source: file://fold_rollup.lua
+  modules:
+  - json
+  - sql
+  imports:
+    seams: kickside.work.domain:seams
+    process: kickside.work.domain:process
+    values: kickside.work.domain:values
+    formula: kickside.work.domain:formula
+    fold_process: kickside.work.persist:fold_process
+    consts: kickside.work:consts
+    types: kickside.work:types
+    store: kickside.work.persist:store
+    fold_batch: kickside.work.persist:fold_batch
+    conditions: kickside.work.persist:predicate_rows
+    rollup: kickside.work.domain:rollup
+    document: kickside.work.domain:document
+    jobs: kickside.core.jobs:jobs
+    rollup_rows: kickside.work.persist:rollup_rows
+- name: index_rows
+  kind: library.lua
+  source: file://index_rows.lua
+  modules:
+  - json
+  - sql
+  imports:
+    bulk: kickside.work.persist:bulk
+    generated: kickside.work.persist:generated
+    tables: kickside.work.domain:layout
+    store: kickside.work.persist:store
+    types: kickside.work:types
+    access_rows: kickside.work.persist:access_rows
+    jobs: kickside.core.jobs:jobs
+    consts: kickside.work:consts
+    fold_batch: kickside.work.persist:fold_batch
+- name: rollup_rows
+  kind: library.lua
+  source: file://rollup_rows.lua
+  modules:
+  - sql
+  imports:
+    local_types: kickside.work.persist:types
+    working_rows: kickside.work.persist:working_rows
+    store: kickside.work.persist:store
+    types: kickside.work:types
+    consts: kickside.work:consts
+- name: registry
+  kind: library.lua
+  meta:
+    comment: The installation prefix registry - claims and releases of board key prefixes.
+  source: file://registry.lua
+  imports:
+    autoinit: kickside.component:autoinit
+    consts: kickside.work:consts
+    domain: kickside.work:types
+    storage: kickside.work.persist:types
+- name: append
+  kind: library.lua
+  meta:
+    comment: Appends writes on one or more threads in a single atomic call.
+  source: file://append.lua
+  imports:
+    domain: kickside.work:types
+- name: lifecycle
+  kind: library.lua
+  source: file://lifecycle.lua
+  modules:
+  - sql
+  imports:
+    local_types: kickside.work.persist:types
+    store: kickside.work.persist:store
+    generated: kickside.work.persist:generated
+    tables: kickside.work.domain:layout
+    types: kickside.work:types
+- name: predicate_rows
+  kind: library.lua
+  source: file://predicate_rows.lua
+  modules:
+  - security
+  - sql
+  imports:
+    guard: kickside.work.command:guard
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    component: kickside.component:component
+    predicates: kickside.work.domain:predicates
+    access_rows: kickside.work.persist:access_rows
+    tables: kickside.work.domain:layout
+    working_rows: kickside.work.persist:working_rows
+- name: job_rows
+  kind: library.lua
+  source: file://job_rows.lua
+  modules:
+  - sql
+  - funcs
+  imports:
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    storage: kickside.work.persist:types
+- name: read_rows
+  kind: library.lua
+  source: file://read_rows.lua
+  modules:
+  - sql
+  imports:
+    domain: kickside.work:types
+- name: tree_rows
+  kind: library.lua
+  source: file://tree_rows.lua
+  modules:
+  - sql
+  imports:
+    domain: kickside.work:types
+    store: kickside.work.persist:store
+- name: types
+  kind: library.lua
+  source: file://types.lua
+  modules:
+  - sql
+- name: plugin_rows
+  kind: library.lua
+  source: file://plugin_rows.lua
+  modules:
+  - sql
+  - json
+  imports:
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    storage: kickside.work.persist:types
+    jobs: kickside.core.jobs:jobs
+- name: access_rows
+  kind: library.lua
+  source: file://access_rows.lua
+  modules:
+  - sql
+  imports:
+    values: kickside.work.domain:values
+    store: kickside.work.persist:store
+    rules: kickside.work.domain:access_rules
+    predicates: kickside.work.domain:predicates
+    domain: kickside.work:types
+- name: query_pages
+  kind: library.lua
+  source: file://query_pages.lua
+  modules:
+  - sql
+  imports:
+    domain: kickside.work:types
+- name: working_rows
+  kind: library.lua
+  source: file://working_rows.lua
+  modules:
+  - sql
+  imports:
+    declaration: kickside.work.domain:declaration
+    document: kickside.work.domain:document
+    formula: kickside.work.domain:formula
+    tables: kickside.work.domain:layout
+    values: kickside.work.domain:values
+    domain: kickside.work:types
+- name: row_decode
+  kind: library.lua
+  source: file://row_decode.lua
+  modules:
+  - sql
+  - json
+  imports:
+    types: kickside.work:types
+    error_envelope: kickside.contract:error_envelope
+    policy: kickside.work.domain:policy
+- name: fold_process
+  kind: library.lua
+  source: file://fold_process.lua
+  modules:
+  - sql
+  imports:
+    jobs: kickside.core.jobs:jobs
+    consts: kickside.work:consts
+    store: kickside.work.persist:store
+    process: kickside.work.domain:process
+    durations: kickside.work.domain:process_time
+    fold_batch: kickside.work.persist:fold_batch
+    types: kickside.work:types
+- name: fold_rank
+  kind: library.lua
+  source: file://fold_rank.lua
+  modules:
+  - sql
+  - json
+  imports:
+    jobs: kickside.core.jobs:jobs
+    consts: kickside.work:consts
+    rank: kickside.work.domain:rank
+    store: kickside.work.persist:store
+    types: kickside.work:types
+    fold_batch: kickside.work.persist:fold_batch
+- name: operation_rows
+  kind: library.lua
+  source: file://operation_rows.lua
+  imports:
+    store: kickside.work.persist:store
+    identity: kickside.execution:execution_identity
+    jobs: kickside.core.jobs:jobs
+    types: kickside.work.command:types
+    expiry: kickside.work.persist:operation_expiry
+  modules:
+  - sql
+  - uuid
+- name: operation_expiry
+  kind: library.lua
+  source: file://operation_expiry.lua
+  imports:
+    policy: kickside.work.domain:policy
+    clock: kickside.work.domain:clock
+    store: kickside.work.persist:store
+    jobs: kickside.core.jobs:jobs
+- name: fold_moves
+  kind: library.lua
+  source: file://fold_moves.lua
+  imports:
+    rollup_rows: kickside.work.persist:rollup_rows
+    rollups: kickside.work.persist:fold_rollup
+    store: kickside.work.persist:store
+    batch_rows: kickside.work.persist:fold_batch
+    items: kickside.work.persist:fold_items
+    intervals: kickside.work.persist:intervals
+    types: kickside.work:types
+    jobs: kickside.core.jobs:jobs
+    consts: kickside.work:consts
+  modules:
+  - sql
+- name: board_meta
+  kind: library.lua
+  source: file://board_meta.lua
+  imports:
+    store: kickside.work.persist:store
+    storage: kickside.work.persist:types
+    types: kickside.work:types
+- name: process_data
+  kind: library.lua
+  source: file://process_data.lua
+  imports:
+    types: kickside.work:types
+    storage: kickside.work.persist:types
+    process: kickside.work.domain:process
+    durations: kickside.work.domain:process_time
+    consts: kickside.work:consts
+
+- name: memberships
+  kind: library.lua
+  source: file://memberships.lua
+  modules: [funcs, security]
+  imports:
+    clock: kickside.work.domain:clock
+    store: kickside.work.persist:store
+    tables: kickside.work.domain:layout
+    predicates: kickside.work.domain:predicates
+    domain: kickside.work:types
+    storage: kickside.work.persist:types

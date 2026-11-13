@@ -1,0 +1,319 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.blocks
+entries:
+- name: apply.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: apply
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: transition.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: apply
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: comment.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: apply
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: get.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: get
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: find.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: find
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: report.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: report
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: apply
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work apply
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"key":{"type":"string","description":"Idempotency key."},"mode":{"type":"string","enum":["atomic","independent"]},"ops":{"type":"array","items":{"type":"object","properties":{"op":{"type":"string"},"type":{"type":"string"},"parent":{"anyOf":[{"type":"string"},{"type":"boolean"},{"type":"null"}]},"values":{"type":"object","additionalProperties":{}},"clear":{"type":"array","items":{"type":"string"}},"unset":{"type":"array","items":{"type":"string"}},"state":{"type":"string"},"item":{"type":"string"},"expect_version":{"type":"integer"},"transition":{"type":"string"},"target":{"type":"object","properties":{"board":{"type":"string"},"item":{"type":"string"},"kind":{"type":"string"},"id":{"type":"string"}},"additionalProperties":false},"comment":{"type":"string"},"body":{"type":"string"},"delete":{"type":"boolean"},"mentions":{},"after":{},"before":{}},"required":["op"]}},"source":{"type":"string"},"origin":{"type":"object"}},"required":["ops"]}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: &id001
+      - id: result
+        label: Result
+        direction: out
+      - id: failed
+        label: Failed
+        direction: out
+      presentation: &id002
+        category: Work
+        icon: tabler:layout-kanban
+        hue: blue
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:apply.run
+- name: bulk
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work bulk
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"key":{"type":"string","minLength":1,"maxLength":255},"query":{"type":"object","properties":{"where":{"type":"object"},"min_seq":{"type":"integer","minimum":0},"include_trashed":{"type":"boolean"},"scopes":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"where":{"type":"object"}},"required":["id"],"additionalProperties":false}}},"additionalProperties":false},"ops_template":{"type":"array","minItems":1,"maxItems":200,"items":{"type":"object","properties":{"op":{"type":"string"},"type":{"type":"string"},"parent":{"anyOf":[{"type":"string"},{"type":"boolean"},{"type":"null"}]},"values":{"type":"object","additionalProperties":{}},"clear":{"type":"array","items":{"type":"string"}},"unset":{"type":"array","items":{"type":"string"}},"state":{"type":"string"},"item":{"type":"string"},"expect_version":{"type":"integer"},"transition":{"type":"string"},"target":{"type":"object","properties":{"board":{"type":"string"},"item":{"type":"string"},"kind":{"type":"string"},"id":{"type":"string"}},"additionalProperties":false},"comment":{"type":"string"},"body":{"type":"string"},"delete":{"type":"boolean"},"mentions":{},"after":{},"before":{}},"required":["op"]}}},"required":["key","query","ops_template"],"additionalProperties":false}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"bulk_id":{"type":"string"},"move_id":{"type":"string"},"job_id":{"type":"string"},"status":{"type":"string"},"total":{"type":"integer"},"processed":{"type":"integer"},"applied":{"type":"integer"},"unchanged":{"type":"integer"},"invalid":{"type":"integer"},"denied":{"type":"integer"},"conflict":{"type":"integer"},"unavailable":{"type":"integer"},"error_code":{"type":"string"},"item":{"type":"string"},"items":{"type":"array","items":{"type":"string"}}},"required":["job_id","status","total","processed"],"additionalProperties":false}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: *id001
+      presentation: *id002
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:bulk.run
+- name: bulk.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: bulk
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: bulk_status
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work bulk status
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"bulk_id":{"type":"string"}},"required":["bulk_id"],"additionalProperties":false}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"bulk_id":{"type":"string"},"move_id":{"type":"string"},"job_id":{"type":"string"},"status":{"type":"string"},"total":{"type":"integer"},"processed":{"type":"integer"},"applied":{"type":"integer"},"unchanged":{"type":"integer"},"invalid":{"type":"integer"},"denied":{"type":"integer"},"conflict":{"type":"integer"},"unavailable":{"type":"integer"},"error_code":{"type":"string"},"item":{"type":"string"},"items":{"type":"array","items":{"type":"string"}}},"required":["job_id","status","total","processed"],"additionalProperties":false}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: *id001
+      presentation: *id002
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:bulk_status.run
+- name: bulk_status.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: bulk_status
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: cancel_bulk
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work cancel bulk
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"bulk_id":{"type":"string"}},"required":["bulk_id"],"additionalProperties":false}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"bulk_id":{"type":"string"},"move_id":{"type":"string"},"job_id":{"type":"string"},"status":{"type":"string"},"total":{"type":"integer"},"processed":{"type":"integer"},"applied":{"type":"integer"},"unchanged":{"type":"integer"},"invalid":{"type":"integer"},"denied":{"type":"integer"},"conflict":{"type":"integer"},"unavailable":{"type":"integer"},"error_code":{"type":"string"},"item":{"type":"string"},"items":{"type":"array","items":{"type":"string"}}},"required":["job_id","status","total","processed"],"additionalProperties":false}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: *id001
+      presentation: *id002
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:cancel_bulk.run
+- name: cancel_bulk.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: cancel_bulk
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: comment
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work comment
+    description: Adds, edits or deletes item comments.
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"key":{"type":"string","description":"Idempotency key."},"mode":{"type":"string","enum":["atomic","independent"]},"ops":{"type":"array","items":{"type":"object","properties":{"op":{"type":"string","enum":["comment"]},"type":{"type":"string"},"parent":{"anyOf":[{"type":"string"},{"type":"boolean"},{"type":"null"}]},"values":{"type":"object","additionalProperties":{}},"clear":{"type":"array","items":{"type":"string"}},"unset":{"type":"array","items":{"type":"string"}},"state":{"type":"string"},"item":{"type":"string"},"expect_version":{"type":"integer"},"transition":{"type":"string"},"target":{"type":"object","properties":{"board":{"type":"string"},"item":{"type":"string"},"kind":{"type":"string"},"id":{"type":"string"}},"additionalProperties":false},"comment":{"type":"string"},"body":{"type":"string"},"delete":{"type":"boolean"},"mentions":{},"after":{},"before":{}},"required":["op"]}},"source":{"type":"string"},"origin":{"type":"object"}},"required":["ops"]}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: *id001
+      presentation: *id002
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:comment.run
+- name: find
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work find
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"where":{"type":"object"},"min_seq":{"type":"integer","minimum":0},"include_trashed":{"type":"boolean"},"order":{"anyOf":[{"type":"object","properties":{"field":{"type":"string"},"ctx":{"type":"object","additionalProperties":{"type":"string"}},"dir":{"type":"string"}},"additionalProperties":false,"required":["field"]},{"type":"array","items":{"type":"object","properties":{"field":{"type":"string"},"ctx":{"type":"object","additionalProperties":{"type":"string"}},"dir":{"type":"string"}},"additionalProperties":false,"required":["field"]}}]},"after":{"type":"object","properties":{"id":{"type":"string","minLength":1},"v":{"type":["string","integer","boolean"]},"keys":{"type":"array","items":{"type":"object","properties":{"v":{"type":["string","integer","boolean"]}},"additionalProperties":false}}},"required":["id"],"additionalProperties":false},"limit":{"type":"integer","minimum":1,"maximum":200},"scopes":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"where":{"type":"object"}},"required":["id"],"additionalProperties":false}},"group_by":{"type":"string"},"sub_group_by":{"type":"string"}},"additionalProperties":false}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"as_of":{"type":"integer"},"generation":{"type":"integer"},"items":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"key":{"type":"string"},"type":{"type":"string"},"state":{"type":"string"},"category":{"type":"string"},"visit":{"type":"integer"},"process_generation":{"type":"integer"},"version":{"type":"integer"},"parent":{"type":"string"},"life":{"type":"string"},"rank":{"type":"string"},"values":{"type":"object","additionalProperties":{}},"created_seq":{"type":"integer"},"updated_seq":{"type":"integer"},"board_id":{"type":"string"}},"additionalProperties":false,"required":["id","key","type","state","category","visit","process_generation","version","life","values","created_seq","updated_seq"]}},"after":{"type":"object","properties":{"id":{"type":"string"},"v":{"anyOf":[{"type":"string"},{"type":"integer"},{"type":"boolean"}]},"keys":{"type":"array","items":{"type":"object","properties":{"v":{"type":["string","integer","boolean"]}},"additionalProperties":false}}},"additionalProperties":false,"required":["id"]},"reindexing":{"type":"boolean"},"cross_after":{"type":"object","properties":{"id":{"type":"string"},"boards":{"type":"object","additionalProperties":{"type":"object","properties":{"id":{"type":"string"},"v":{"type":["string","integer","boolean"]},"keys":{"type":"array","items":{"type":"object","properties":{"v":{"type":["string","integer","boolean"]}},"additionalProperties":false}}},"required":["id"],"additionalProperties":false}},"selection":{"type":"array","items":{"type":"string"}}},"required":["id","boards","selection"],"additionalProperties":false},"positions":{"type":"object","additionalProperties":{"type":"object","properties":{"as_of":{"type":"integer"},"generation":{"type":"integer"}},"additionalProperties":false}},"groups":{"type":"array","items":{"type":"object"}}},"required":["items","reindexing"],"additionalProperties":false}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: *id001
+      presentation: *id002
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:find.run
+- name: get
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work get
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"item":{"type":"object","properties":{"id":{"type":"string"},"key":{"type":"string"}}},"include":{"type":"array","items":{"type":"string","enum":["links","children","comments","transitions"]}},"min_seq":{"type":"integer"}},"required":["item"]}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"as_of":{"type":"integer"},"generation":{"type":"integer"},"item":{"type":"object","properties":{"id":{"type":"string"},"key":{"type":"string"},"type":{"type":"string"},"state":{"type":"string"},"category":{"type":"string"},"visit":{"type":"integer"},"process_generation":{"type":"integer"},"version":{"type":"integer"},"parent":{"type":"string"},"life":{"type":"string"},"rank":{"type":"string"},"values":{"type":"object","additionalProperties":{}},"created_seq":{"type":"integer"},"updated_seq":{"type":"integer"}},"additionalProperties":false,"required":["id","key","type","state","category","visit","process_generation","version","life","values","created_seq","updated_seq"]},"links":{"type":"array","items":{"type":"object","properties":{"type":{"type":"string"},"direction":{"type":"string"},"board":{"type":"string"},"item":{"type":"string"},"at":{"type":"string"},"unavailable":{"type":"boolean"}},"additionalProperties":false,"required":["type","direction","at"]}},"children":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"key":{"type":"string"},"type":{"type":"string"},"state":{"type":"string"},"category":{"type":"string"},"visit":{"type":"integer"},"process_generation":{"type":"integer"},"version":{"type":"integer"},"parent":{"type":"string"},"life":{"type":"string"},"rank":{"type":"string"},"values":{"type":"object","additionalProperties":{}},"created_seq":{"type":"integer"},"updated_seq":{"type":"integer"}},"additionalProperties":false,"required":["id","key","type","state","category","visit","process_generation","version","life","values","created_seq","updated_seq"]}},"comments":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"body":{"type":"string"},"mentions":{"type":"array","items":{"type":"object","properties":{"kind":{"type":"string"},"id":{"type":"string"}},"additionalProperties":false,"required":["kind","id"]}},"author":{"type":"string"},"version":{"type":"integer"},"created_at":{"type":"string"},"edited_at":{"type":"string"}},"additionalProperties":false,"required":["id","body","mentions","author","version","created_at"]}},"transitions":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"name":{"type":"string"},"to":{"type":"string"},"require":{"type":"array","items":{"type":"string"}}},"additionalProperties":false,"required":["id","name","to","require"]}}},"required":["item"],"additionalProperties":false}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: *id001
+      presentation: *id002
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:get.run
+- name: move
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work move
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"item":{"type":"string"},"to_board":{"type":"string"},"key":{"type":"string","minLength":1,"maxLength":255},"map":{"type":"object","properties":{"type":{"type":"object","additionalProperties":{"type":"string"}},"state":{"type":"object","additionalProperties":{"type":"string"}},"fields":{"type":"object","additionalProperties":{"oneOf":[{"type":"string"},{"type":"boolean","const":false}]}},"relations":{"type":"object","additionalProperties":{"type":"string"}}},"required":[],"additionalProperties":false}},"required":["item","to_board","map"],"additionalProperties":false}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"bulk_id":{"type":"string"},"move_id":{"type":"string"},"job_id":{"type":"string"},"status":{"type":"string"},"total":{"type":"integer"},"processed":{"type":"integer"},"applied":{"type":"integer"},"unchanged":{"type":"integer"},"invalid":{"type":"integer"},"denied":{"type":"integer"},"conflict":{"type":"integer"},"unavailable":{"type":"integer"},"error_code":{"type":"string"},"item":{"type":"string"},"items":{"type":"array","items":{"type":"string"}}},"required":["job_id","status","total","processed"],"additionalProperties":false}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: *id001
+      presentation: *id002
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:move.run
+- name: move.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: move
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: move_status
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work move status
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"move_id":{"type":"string"}},"required":["move_id"],"additionalProperties":false}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"bulk_id":{"type":"string"},"move_id":{"type":"string"},"job_id":{"type":"string"},"status":{"type":"string"},"total":{"type":"integer"},"processed":{"type":"integer"},"applied":{"type":"integer"},"unchanged":{"type":"integer"},"invalid":{"type":"integer"},"denied":{"type":"integer"},"conflict":{"type":"integer"},"unavailable":{"type":"integer"},"error_code":{"type":"string"},"item":{"type":"string"},"items":{"type":"array","items":{"type":"string"}}},"required":["job_id","status","total","processed"],"additionalProperties":false}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: *id001
+      presentation: *id002
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:move_status.run
+- name: move_status.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: move_status
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: plan_move
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work plan move
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"item":{"type":"string"},"to_board":{"type":"string"},"key":{"type":"string","minLength":1,"maxLength":255},"map":{"type":"object","properties":{"type":{"type":"object","additionalProperties":{"type":"string"}},"state":{"type":"object","additionalProperties":{"type":"string"}},"fields":{"type":"object","additionalProperties":{"oneOf":[{"type":"string"},{"type":"boolean","const":false}]}},"relations":{"type":"object","additionalProperties":{"type":"string"}}},"required":[],"additionalProperties":false}},"required":["item","to_board","map"],"additionalProperties":false}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"allowed":{"type":"boolean"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"required":["code","message"],"additionalProperties":false}},"items":{"type":"array","items":{"type":"object","properties":{"item":{"type":"string"},"from":{"type":"string"},"type":{"type":"string"},"state":{"type":"string"},"parent":{"type":"string"},"values":{"type":"object"},"clear":{"type":"array","items":{"type":"string"}},"version":{"type":"integer"},"old_key":{"type":"string"}},"required":["item","from","type","state","version","old_key","values","clear"],"additionalProperties":false}},"links":{"type":"array","items":{"type":"object","properties":{"item":{"type":"string"},"type":{"type":"string"},"target":{"type":"object","properties":{"board":{"type":"string"},"item":{"type":"string"}},"required":["board","item"],"additionalProperties":false}},"required":["item","type","target"],"additionalProperties":false}},"source_seq":{"type":"integer"},"target_seq":{"type":"integer"},"to_board":{"type":"string"},"item":{"type":"string"},"target_digest":{"type":"string"},"from_board":{"type":"string"}},"required":["allowed","findings","items","links","to_board"],"additionalProperties":false}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: *id001
+      presentation: *id002
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:plan_move.run
+- name: plan_move.run
+  kind: function.lua
+  source: file://blocks.lua
+  method: plan_move
+  imports:
+    types: kickside.work.blocks:types
+    board_client: kickside.work:client
+- name: report
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work report
+    description: Reports the outcome and progress of an automated stage.
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"item":{"type":"string"},"visit":{"type":"integer","minimum":1},"key":{"type":"string"},"source":{"type":"string"},"origin":{"type":"object"},"trace_context":{"type":"object"},"attempt":{"type":"integer","minimum":1},"outcome":{"enum":["passed","failed","canceled"]},"outputs":{"type":"object"},"progress":{"type":"object"}},"required":["item","visit","attempt","outcome"],"additionalProperties":false}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: *id001
+      presentation: *id002
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:report.run
+- name: transition
+  kind: registry.entry
+  meta:
+    type: kickside.block
+    public: true
+    title: Work transition
+    description: Moves items along declared transitions.
+  data:
+    block:
+      api_version: kickside.block/v1
+      input: {"type":"object","properties":{"key":{"type":"string","description":"Idempotency key."},"mode":{"type":"string","enum":["atomic","independent"]},"ops":{"type":"array","items":{"type":"object","properties":{"op":{"type":"string","enum":["transition"]},"type":{"type":"string"},"parent":{"anyOf":[{"type":"string"},{"type":"boolean"},{"type":"null"}]},"values":{"type":"object","additionalProperties":{}},"clear":{"type":"array","items":{"type":"string"}},"unset":{"type":"array","items":{"type":"string"}},"state":{"type":"string"},"item":{"type":"string"},"expect_version":{"type":"integer"},"transition":{"type":"string"},"target":{"type":"object","properties":{"board":{"type":"string"},"item":{"type":"string"},"kind":{"type":"string"},"id":{"type":"string"}},"additionalProperties":false},"comment":{"type":"string"},"body":{"type":"string"},"delete":{"type":"boolean"},"mentions":{},"after":{},"before":{}},"required":["op"]}},"source":{"type":"string"},"origin":{"type":"object"}},"required":["ops"]}
+      config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
+      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
+      error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
+      ports: *id001
+      presentation: *id002
+      execution:
+        kind: function
+        function_id: kickside.work.blocks:transition.run
+- name: types
+  kind: library.lua
+  source: file://types.lua

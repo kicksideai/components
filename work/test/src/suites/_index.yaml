@@ -1,0 +1,554 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: board_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Board creation and schema apply on the real thread stack.
+  source: file://../board_test.lua
+  method: run
+  modules:
+  - json
+  - registry
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
+    steps: app:steps
+- name: schema_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Schema compile
+    plan: null
+    apply: null
+    field ids and refusals.: null
+  source: file://../schema_test.lua
+  method: run
+  modules:
+  - json
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: items_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Item commands and the reads over them.
+  source: file://../items_test.lua
+  method: run
+  modules:
+  - sql
+  - json
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: process_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Process compile and its refusals.
+  source: file://../process_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+- name: transition_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Transitions
+    effects: null
+    requirements: null
+    auto chains and concurrency.: null
+  source: file://../transition_test.lua
+  method: run
+  imports:
+    domain: kickside.work:types
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    schema: kickside.work.domain:schema
+    flow: kickside.work.command:flow
+- name: interval_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Value intervals and time in state.
+  source: file://../interval_test.lua
+  method: run
+  modules:
+  - json
+  imports:
+    row_checks: app:rows
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    materializer: kickside.work.persist:materializer
+- name: migration_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Process plans
+    state maps and the follow migration job.: null
+  source: file://../migration_test.lua
+  method: run
+  modules:
+  - json
+  - time
+  imports:
+    authorization_probe: app:authorization_probe
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    rows: app:rows
+    store: kickside.work.persist:store
+    process_changes: kickside.work.domain:process_changes
+    domain: kickside.work:types
+- name: concurrency_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Per-item acceptance
+    atomic rollback and independent outcomes.: null
+  source: file://../concurrency_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+- name: idempotency_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Idempotency keys - replay
+    conflict and scope.: null
+  source: file://../idempotency_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+- name: history_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Change history
+    the changes feed and fold idempotence under redelivery.: null
+  source: file://../history_test.lua
+  method: run
+  modules:
+  - json
+  - uuid
+  imports:
+    row_checks: app:rows
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    materializer: kickside.work.persist:materializer
+- name: access_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Board ACL levels and callers outside the member group.
+  source: file://../access_test.lua
+  method: run
+  imports:
+    probe: app:authorization_probe
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    guard: kickside.work.command:guard
+- name: access_policy_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Module access policy
+    requirements and unauthenticated HTTP.: null
+  source: file://../access_policy_test.lua
+  method: run
+  modules:
+  - funcs
+  - http_client
+  - registry
+  - security
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    rows: app:rows
+    steps: app:steps
+    composition: kickside.security:policy_composition
+- name: teardown_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Deletable teardown and published board meta.
+  source: file://../teardown_test.lua
+  method: run
+  modules:
+  - sql
+  - time
+  - funcs
+  imports:
+    observer: app:cleanup_observer
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: registry_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Prefix registry access and cross-thread append atomicity.
+  source: file://../registry_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    autoinit: kickside.component:autoinit
+    scoped: app:scoped
+- name: prefix_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Prefix claims on the registry
+    derived keys and bare key resolution.: null
+  source: file://../prefix_test.lua
+  method: run
+  modules:
+  - time
+  - channel
+  - funcs
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: retention_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Prefix release by the retention owner and release authority.
+  source: file://../retention_test.lua
+  method: run
+  modules:
+  - funcs
+  - uuid
+  - sql
+  imports:
+    clock: kickside.work.domain:clock
+    operation_steps: app:operation_steps
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    autoinit: kickside.component:autoinit
+- name: scope_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Members
+    administrators and outsiders through the endpoints and the contract with the scopes an installation composes.: null
+  source: file://../scope_test.lua
+  method: run
+  modules:
+  - json
+  - funcs
+  - security
+  - time
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    rows: app:rows
+    scoped: app:scoped
+- name: evolve_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Effective declarations and field usage.
+  source: file://../evolve_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    rows: app:rows
+    store: kickside.work.persist:store
+    materializer: kickside.work.persist:materializer
+    domain: kickside.work:types
+- name: rank_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Rank commands, ordered reads, rebalance and fold throughput.
+  source: file://../rank_test.lua
+  method: run
+  modules:
+  - json
+  - time
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
+    steps: app:steps
+    rows: app:rows
+    store: kickside.work.persist:store
+    materializer: kickside.work.persist:materializer
+    domain: kickside.work:types
+- name: mentions_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    comment: Mention validation and comment reads.
+  source: file://../mentions_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+- name: hierarchy_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Hierarchy depth, subtree bounds and fold accounting.
+  source: file://../hierarchy_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    rows: app:rows
+    store: kickside.work.persist:store
+    materializer: kickside.work.persist:materializer
+    domain: kickside.work:types
+- name: items_related_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+    comment: Existing relation, comment, lifecycle and read cases.
+  source: file://../items_related_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: process_engine_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://../process_engine_test.lua
+  method: run
+  modules:
+  - time
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    rows: app:rows
+- name: process_regions_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://../process_regions_test.lua
+  method: run
+  modules:
+  - registry
+  - json
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    shape: kickside.work.domain:shape
+- name: model_data_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://../model_data_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+- name: model_values_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://../model_values_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: model_flow_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://../model_flow_test.lua
+  method: run
+  imports:
+    directory_probe: app:directory_probe
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: pack_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../pack_test.lua
+  method: run
+  modules:
+  - uuid
+  - json
+  - registry
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    store: kickside.work.persist:store
+    steps: app:steps
+    component: kickside.component:component
+    provider: app:plugin_provider
+    probe: app:pack_view_probe
+    reconcile: kickside.security:trigger_reconcile
+  security:
+    policies:
+    - kickside.security.service:reconcile_request_access
+
+- name: pack_bounds_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+  source: file://../pack_bounds_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    reconcile: kickside.security:trigger_reconcile
+    scoped: app:scoped
+    fixture: app:fixture
+    batch: kickside.work.jobs:pack_commands
+    planner: kickside.work.command:pack_plan
+    component: kickside.component:component
+    views: kickside.work.service:pack_views
+
+  security:
+    policies:
+    - kickside.security.service:reconcile_request_access
+
+- name: stage_runs_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://../stage_runs_test.lua
+  method: run
+  modules:
+  - funcs
+  - time
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: gate_reads_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work, timeout: 300s}
+  source: file://../gate_reads_test.lua
+  method: run
+  modules: [sql, json]
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+- name: member_of_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work, timeout: 300s}
+  source: file://../member_of_test.lua
+  method: run
+  modules: [sql]
+  imports:
+    tables: kickside.work.domain:layout
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+- name: awaiting_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work, timeout: 300s}
+  source: file://../awaiting_test.lua
+  method: run
+  modules: [sql, json, registry]
+  imports:
+    shape: kickside.work.domain:shape
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps

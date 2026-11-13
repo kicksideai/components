@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: work-harness
+description: Standalone harness that boots kickside/work on the real Core stack and runs its co-located *_test.lua suites.

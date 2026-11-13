@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.events
+entries:
+- name: prefix.claimed
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: A board claims a key prefix on the installation registry.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      prefix:
+        type: string
+      board:
+        type: string
+      actor:
+        type: string
+      at:
+        type: string
+        description: Command time, RFC3339 UTC.
+    required:
+    - prefix
+    - board
+    - actor
+    - at
+- name: prefix.released
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: A purged board releases a key prefix on the installation registry.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      prefix:
+        type: string
+      board:
+        type: string
+      at:
+        type: string
+        description: Command time, RFC3339 UTC.
+    required:
+    - prefix
+    - board
+    - at

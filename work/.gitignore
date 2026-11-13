@@ -1,0 +1,3 @@
+.wippy/
+wippy.lock
+test/wippy.lock.runtime.lock
