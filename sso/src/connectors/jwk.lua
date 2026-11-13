@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- JWT/JWKS helpers for OIDC id_token validation.
 --
 -- The runtime's crypto.jwt.verify accepts an RS256 or ES256 PEM public key but there
