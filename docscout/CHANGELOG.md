@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.14](https://github.com/kicksideai/components/compare/docscout-v0.1.13...docscout-v0.1.14) (2026-11-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **docscout:** represent absent extraction values with null ([#101](https://github.com/kicksideai/components/issues/101))
+
+### Bug Fixes
+
+* **docscout:** represent absent extraction values with null ([#101](https://github.com/kicksideai/components/issues/101)) ([1b21197](https://github.com/kicksideai/components/commit/1b211979e1a877ac95c982ce9955746691a08d2b))
+
 ## [0.1.13](https://github.com/kicksideai/components/compare/docscout-v0.1.12...docscout-v0.1.13) (2026-11-13)
 
 
