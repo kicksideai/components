@@ -526,6 +526,20 @@ function M.group_schema(fields: { any }, passages: { any }, image_pages: { integ
     return root
 end
 
+-- Check the raw reply before nullable compounds normalize to absence.
+function M.extraction_error(fields: { any }, result: any, model: string): error?
+    for _, field in ipairs(fields) do
+        local path = M.path(field)
+        local item = M.get(result, path)
+        if item.found and item.value == nil then
+            return errors.new({ kind = errors.UNAVAILABLE, retryable = true,
+                message = "Structured model reply does not match its schema: found field " .. path .. " has no value",
+                details = { code = "structured_reply_invalid", model = model } })
+        end
+    end
+    return nil
+end
+
 -- Typographic characters that PDFs and models swap for plain ones.
 local EQUIVALENT = {
     ["‘"] = "'", ["’"] = "'", ["‚"] = "'", ["′"] = "'",

@@ -76,6 +76,7 @@ function M.extract(run: types.PageRun, step: types.PageStep, calls: {types.PageC
                 {max_tokens = cfg.max_output_tokens, temperature = cfg.temperature, stage = "extract", fields = shapes.paths(batch), pages = prepared.numbers,
                     image_bytes = page_calls.bytes(prepared.kept), estimated_input_tokens = ai.estimate(SYSTEM,
                         page_calls.message(prepared.kept, input(batch, prepared.numbers)), shapes.group_schema(batch, {}, prepared.numbers))})
+            if not err then err = shapes.extraction_error(batch, result, cfg.model) end
             made = made + 1
             if err then
                 for _, field in ipairs(batch) do M.failed(run, field, err); failed = failed + 1 end
