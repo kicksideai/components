@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: kind_member
+  kind: security.policy
+  policy:
+    resources: '*'
+    actions: [contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security, registry.get, registry.find, db.get, env.get, process.send, process.spawn, fs.get, fs.read, fs.write, realtime.publish]
+    effect: allow
+- name: kind_admission_test
+  kind: function.lua
+  source: file://kind_admission_test.lua
+  method: run
+  meta: {type: test, suite: docscout_kind_admission}
+  modules: [contract, security, funcs, registry, json, uuid]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data

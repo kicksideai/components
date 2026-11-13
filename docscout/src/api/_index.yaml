@@ -4,6 +4,8 @@ namespace: kickside.docscout.api
 entries:
 - name: create
   kind: function.lua
+  security:
+    policies: [kickside.docscout.security:extractor_create]
   source: file://handlers.lua
   method: create
   modules:
@@ -34,6 +36,8 @@ entries:
   func: get
 - name: update
   kind: function.lua
+  security:
+    policies: [kickside.docscout.security:extractor_update]
   source: file://handlers.lua
   method: update
   modules:
