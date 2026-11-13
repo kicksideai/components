@@ -1,0 +1,213 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.traits
+entries:
+- name: apply
+  kind: function.lua
+  meta:
+    type: tool
+    title: Work apply
+    llm_alias: WorkApply
+    llm_description: 'Apply item operations under board WRITE and operation-specific access, returning ordered outcomes, item ids, versions and committed sequence. Supply board_id in the call or omit it to use trait context; the call argument takes precedence.'
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: &work_schema_1 '{"type":"object","properties":{"board_id":{"type":"string","description":"Board component id returned by WorkListBoards; keys and titles do not resolve."},"key":{"type":"string","description":"Nonempty replay identity for the same request; creation trims spaces, creation and item keys allow at most 255 bytes, and omission where optional disables replay protection."},"mode":{"type":"string","enum":["atomic","independent"],"description":"Apply the whole batch atomically or allow independent operation outcomes; omit for atomic."},"ops":{"type":"array","items":{"type":"object","properties":{"op":{"description":"Accepted: approve, report, advance, timer, create, set, transition, parent, rank, comment, link, unlink, delete, restore. Each operation returns its own outcome."},"type":{"description":"Item type id for create, or relation type id for link and unlink, as listed by WorkGetSchema; omit for other operations."},"parent":{"description":"Parent item id on this board; omit on create for root, and supply an id or false for a parent operation to reparent or move to root."},"values":{"type":"object","additionalProperties":{},"description":"Field codes from WorkGetSchema mapped to typed values; omit to leave values unchanged, and use item references as {board,item} with ids."},"clear":{"type":"array","items":{"type":"string"},"description":"Field codes from WorkGetSchema to clear locally; omit to clear none."},"unset":{"type":"array","items":{"type":"string"},"description":"Field codes from WorkGetSchema whose local override is removed to resume inheritance; omit to unset none."},"state":{"description":"Initial state id from WorkGetSchema for create, or recorded state for timer; omit on create to use its initial state and use transition for manual edges."},"item":{"type":"string","description":"Item id string returned by WorkGetItem or WorkFindItems; resolve a key with WorkGetItem before writing."},"expect_version":{"description":"Item version returned by WorkGetItem; omit to use the version read during preparation, or supply it to refuse stale writes."},"transition":{"description":"Transition id from WorkGetSchema; required for a transition operation, and state alone does not select an edge."},"target":{"description":"Relation target as {item: item id, board?: board component id}; omit board for this board and resolve keys with WorkGetItem."},"comment":{"type":"string","description":"Comment id returned by WorkListComments to edit or delete; omit to create a comment."},"body":{"description":"Comment text up to 65536 bytes; required for a new comment and omitted when deleting."},"delete":{"type":"boolean","description":"Set true to delete the comment named by comment; omit or set false to create or edit its body."},"mentions":{"description":"Accepted kinds: user, group, service. Up to 200 {kind,id} principals with ids of 1 to 255 bytes; invalid input returns invalid_mentions."},"after":{"description":"Neighbor item id to rank after; omit to leave that side unbounded and resolve keys with WorkGetItem."},"before":{"description":"Neighbor item id to rank before; omit to leave that side unbounded and resolve keys with WorkGetItem."},"region":{"description":"Active region id from WorkGetItem for a regional transition; omit to transition the root state. Invalid input returns parallel_region_unknown."},"force":{"type":"boolean","description":"Set true as board ADMIN to allow the declared transition to leave a managed state; omit or set false for ordinary transition checks."},"visit":{"description":"Current visit from WorkGetItem.visit or WorkListHistory stage.entered after.visit for a regional visit; stale visits are refused."},"attempt":{"description":"Current attempt from WorkListHistory stage.entered after.attempt or the stage-entered event; stale attempts are refused."},"outcome":{"description":"Accepted: passed, failed, canceled. Invalid input returns stage_outcome_invalid."},"decision":{"description":"Accepted: approve, reject. Omit for approve; invalid input returns approval_decision_invalid."},"outputs":{"type":"object","description":"Stage outputs as an object up to 65536 canonical JSON bytes; omit when no outputs are reported."},"progress":{"type":"object","description":"Stage progress metadata recorded with the report; omit when no progress metadata is needed."},"timer":{"type":"string","description":"Timer id from the recorded process in WorkGetSchema; required only for a timer operation."},"scheduled_at":{"type":"string","description":"Exact RFC 3339 deadline from the scheduled process job; required for a timer operation, which process workers normally issue."}},"additionalProperties":false},"description":"Ordered operations to apply, from 1 to 200; non-create operations address existing item ids."},"source":{"type":"string","description":"Attribution label for emitted events; omit to use api."},"origin":{"type":"object","description":"Origin metadata copied onto emitted events; omit when no upstream origin is recorded."},"trace_context":{"type":"object","properties":{"trace_id":{"type":"string","description":"Execution trace id; omit to use the active trace when available."},"run_id":{"type":"string","description":"Execution run id; omit when no run is associated."},"caused_by_event_id":{"type":"string","description":"Upstream event id that causes this command; omit when no event causes it."},"correlation_key":{"type":"string","description":"Caller correlation key for diagnostics; omit when no correlation is needed."}},"additionalProperties":false,"description":"Diagnostic correlation metadata; omit to derive the active execution trace without changing command identity."}},"required":["ops"],"additionalProperties":false}'
+    output_schema: &work_schema_2 '{"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"}},"additionalProperties":false,"required":["op","status"]},"description":"Ordered per-operation statuses, item ids, versions and findings."},"applied":{"type":"boolean","description":"Whether this command records changes."},"seq":{"type":"integer","description":"Sequence of the command append, absent when nothing is appended."},"as_of":{"type":"integer","description":"Committed sequence covered by the returned snapshot."},"replayed":{"type":"boolean","description":"True when this request reuses its previously recorded result."},"success":{"type":"boolean","const":true,"description":"True when the contract call returns a result without an error."}},"additionalProperties":false,"required":["outcomes","applied","success"]}'
+  source: file://work_tool.lua
+  method: apply
+  modules:
+  - ctx
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+- name: transition
+  kind: function.lua
+  meta:
+    type: tool
+    title: Work transition
+    llm_alias: WorkTransition
+    llm_description: 'Apply operations using transition ids from WorkGetSchema under board WRITE and operation-specific access, returning per-operation outcomes and item versions. Supply board_id in the call or omit it to use trait context; the call argument takes precedence.'
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: *work_schema_1
+    output_schema: *work_schema_2
+  source: file://work_tool.lua
+  method: transition
+  modules:
+  - ctx
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+- name: comment
+  kind: function.lua
+  meta:
+    type: tool
+    title: Work comment
+    llm_alias: WorkComment
+    llm_description: 'Apply comment operations using item ids from WorkGetItem under board WRITE and item visibility, returning outcomes and comment ids for WorkListComments. Supply board_id in the call or omit it to use trait context; the call argument takes precedence.'
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: *work_schema_1
+    output_schema: *work_schema_2
+  source: file://work_tool.lua
+  method: comment
+  modules:
+  - ctx
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+- name: approve
+  kind: function.lua
+  meta:
+    type: tool
+    title: Work approve
+    llm_alias: WorkApprove
+    llm_description: 'Record a gate decision using the WorkGetItem id and visit under board WRITE and eligible-approver access, returning outcomes and item version. Supply board_id in the call or omit it to use trait context; the call argument takes precedence.'
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","description":"Board component id returned by WorkListBoards; keys and titles do not resolve."},"item":{"type":"string","description":"Item id string returned by WorkGetItem or WorkFindItems; resolve a key with WorkGetItem before writing."},"visit":{"type":"integer","minimum":1,"description":"Current visit from WorkGetItem.visit or WorkListHistory stage.entered after.visit for a regional visit; stale visits are refused."},"key":{"type":"string","description":"Nonempty replay identity for the same request; creation trims spaces, creation and item keys allow at most 255 bytes, and omission where optional disables replay protection."},"source":{"type":"string","description":"Attribution label for emitted events; omit to use api."},"origin":{"type":"object","description":"Origin metadata copied onto emitted events; omit when no upstream origin is recorded."},"trace_context":{"type":"object","properties":{"trace_id":{"type":"string","description":"Execution trace id; omit to use the active trace when available."},"run_id":{"type":"string","description":"Execution run id; omit when no run is associated."},"caused_by_event_id":{"type":"string","description":"Upstream event id that causes this command; omit when no event causes it."},"correlation_key":{"type":"string","description":"Caller correlation key for diagnostics; omit when no correlation is needed."}},"additionalProperties":false,"description":"Diagnostic correlation metadata; omit to derive the active execution trace without changing command identity."},"decision":{"enum":["approve","reject"],"description":"Approval or rejection for the current visit; omit for approve."}},"required":["item","visit"],"additionalProperties":false}'
+    output_schema: *work_schema_2
+  source: file://work_tool.lua
+  method: approve
+  modules:
+  - ctx
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+- name: report
+  kind: function.lua
+  meta:
+    type: tool
+    title: Work report
+    llm_alias: WorkReport
+    llm_description: 'Report a WorkListHistory stage-entered visit and attempt under board WRITE for an item id from WorkGetItem, returning outcomes and the resulting item version. Supply board_id in the call or omit it to use trait context; the call argument takes precedence.'
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","description":"Board component id returned by WorkListBoards; keys and titles do not resolve."},"item":{"type":"string","description":"Item id string returned by WorkGetItem or WorkFindItems; resolve a key with WorkGetItem before writing."},"visit":{"type":"integer","minimum":1,"description":"Current visit from WorkGetItem.visit or WorkListHistory stage.entered after.visit for a regional visit; stale visits are refused."},"key":{"type":"string","description":"Nonempty replay identity for the same request; creation trims spaces, creation and item keys allow at most 255 bytes, and omission where optional disables replay protection."},"source":{"type":"string","description":"Attribution label for emitted events; omit to use api."},"origin":{"type":"object","description":"Origin metadata copied onto emitted events; omit when no upstream origin is recorded."},"trace_context":{"type":"object","properties":{"trace_id":{"type":"string","description":"Execution trace id; omit to use the active trace when available."},"run_id":{"type":"string","description":"Execution run id; omit when no run is associated."},"caused_by_event_id":{"type":"string","description":"Upstream event id that causes this command; omit when no event causes it."},"correlation_key":{"type":"string","description":"Caller correlation key for diagnostics; omit when no correlation is needed."}},"additionalProperties":false,"description":"Diagnostic correlation metadata; omit to derive the active execution trace without changing command identity."},"attempt":{"type":"integer","minimum":1,"description":"Current attempt from WorkListHistory stage.entered after.attempt or the stage-entered event; stale attempts are refused."},"outcome":{"enum":["passed","failed","canceled"],"description":"Completed automated stage result; the process definition in WorkGetSchema determines the resulting transition."},"outputs":{"type":"object","description":"Stage outputs as an object up to 65536 canonical JSON bytes; omit when no outputs are reported."},"progress":{"type":"object","description":"Stage progress metadata recorded with the report; omit when no progress metadata is needed."}},"required":["item","visit","attempt","outcome"],"additionalProperties":false}'
+    output_schema: *work_schema_2
+  source: file://work_tool.lua
+  method: report
+  modules:
+  - ctx
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+- name: bulk
+  kind: function.lua
+  meta:
+    type: tool
+    title: Work bulk
+    llm_alias: WorkBulk
+    llm_description: 'Start a frozen item selection under board WRITE and per-operation access, returning a bulk id for WorkBulkStatus and WorkCancelBulk plus progress. Supply board_id in the call or omit it to use trait context; the call argument takes precedence.'
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","description":"Board component id returned by WorkListBoards; keys and titles do not resolve."},"key":{"type":"string","minLength":1,"maxLength":255,"description":"Nonempty replay identity for the same request; creation trims spaces, creation and item keys allow at most 255 bytes, and omission where optional disables replay protection."},"query":{"type":"object","properties":{"where":{"type":"object","description":"Filter tree: and/or/not, {field,op,value}, or {awaiting:true} for live items awaiting the caller. Principal member_of accepts a group id or list. Omit for all visible live items."},"min_seq":{"type":"integer","minimum":0,"description":"Nonnegative minimum committed sequence to include; omit to read the current committed snapshot."},"include_trashed":{"type":"boolean","description":"Set true to include trashed items; omit or set false to select live items only."},"scopes":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"Exact adopted scope registry id from WorkGetSchema; use its declared filter schema for where."},"where":{"type":"object","description":"Filters accepted by this scope declaration from WorkGetSchema; omit to use the scope without additional filters."}},"required":["id"],"additionalProperties":false},"description":"Declared scope ids from WorkGetSchema, with optional filters; omit to apply no scope filters."}},"additionalProperties":false,"description":"Selection frozen when the bulk starts; an empty object selects all live visible items."},"ops_template":{"type":"array","minItems":1,"maxItems":200,"items":{"type":"object","properties":{"op":{"description":"Accepted: approve, report, advance, timer, set, transition, parent, rank, comment, link, unlink, delete, restore. Each operation returns its own outcome."},"type":{"description":"Item type id for create, or relation type id for link and unlink, as listed by WorkGetSchema; omit for other operations."},"parent":{"description":"Parent item id on this board; omit on create for root, and supply an id or false for a parent operation to reparent or move to root."},"values":{"type":"object","additionalProperties":{},"description":"Field codes from WorkGetSchema mapped to typed values; omit to leave values unchanged, and use item references as {board,item} with ids."},"clear":{"type":"array","items":{"type":"string"},"description":"Field codes from WorkGetSchema to clear locally; omit to clear none."},"unset":{"type":"array","items":{"type":"string"},"description":"Field codes from WorkGetSchema whose local override is removed to resume inheritance; omit to unset none."},"state":{"description":"Initial state id from WorkGetSchema for create, or recorded state for timer; omit on create to use its initial state and use transition for manual edges."},"expect_version":{"description":"Item version returned by WorkGetItem; omit to use the version read during preparation, or supply it to refuse stale writes."},"transition":{"description":"Transition id from WorkGetSchema; required for a transition operation, and state alone does not select an edge."},"target":{"description":"Relation target as {item: item id, board?: board component id}; omit board for this board and resolve keys with WorkGetItem."},"comment":{"type":"string","description":"Comment id returned by WorkListComments to edit or delete; omit to create a comment."},"body":{"description":"Comment text up to 65536 bytes; required for a new comment and omitted when deleting."},"delete":{"type":"boolean","description":"Set true to delete the comment named by comment; omit or set false to create or edit its body."},"mentions":{"description":"Accepted kinds: user, group, service. Up to 200 {kind,id} principals with ids of 1 to 255 bytes; invalid input returns invalid_mentions."},"after":{"description":"Neighbor item id to rank after; omit to leave that side unbounded and resolve keys with WorkGetItem."},"before":{"description":"Neighbor item id to rank before; omit to leave that side unbounded and resolve keys with WorkGetItem."},"region":{"description":"Active region id from WorkGetItem for a regional transition; omit to transition the root state. Invalid input returns parallel_region_unknown."},"force":{"type":"boolean","description":"Set true as board ADMIN to allow the declared transition to leave a managed state; omit or set false for ordinary transition checks."},"visit":{"description":"Current visit from WorkGetItem.visit or WorkListHistory stage.entered after.visit for a regional visit; stale visits are refused."},"attempt":{"description":"Current attempt from WorkListHistory stage.entered after.attempt or the stage-entered event; stale attempts are refused."},"outcome":{"description":"Accepted: passed, failed, canceled. Invalid input returns stage_outcome_invalid."},"decision":{"description":"Accepted: approve, reject. Omit for approve; invalid input returns approval_decision_invalid."},"outputs":{"type":"object","description":"Stage outputs as an object up to 65536 canonical JSON bytes; omit when no outputs are reported."},"progress":{"type":"object","description":"Stage progress metadata recorded with the report; omit when no progress metadata is needed."},"timer":{"type":"string","description":"Timer id from the recorded process in WorkGetSchema; required only for a timer operation."},"scheduled_at":{"type":"string","description":"Exact RFC 3339 deadline from the scheduled process job; required for a timer operation, which process workers normally issue."},"item":{"description":"Any supplied item is refused with bulk_template_item; omit because bulk supplies each selected item id."}},"additionalProperties":false},"description":"From 1 to 200 operations applied to every frozen query match; omit item and do not use create."}},"required":["key","query","ops_template"],"additionalProperties":false}'
+    output_schema: &work_schema_6 '{"type":"object","properties":{"bulk_id":{"type":"string","description":"Bulk operation id to pass to WorkBulkStatus or WorkCancelBulk."},"move_id":{"type":"string","description":"Move operation id to pass to WorkMoveStatus."},"job_id":{"type":"string","description":"Durable job id responsible for continuing accepted work."},"status":{"type":"string","description":"Current command or durable-operation status."},"total":{"type":"integer","description":"Matching item count or total items in a durable operation."},"processed":{"type":"integer","description":"Number of selected items processed so far."},"applied":{"type":"integer","description":"Number of applied operations."},"unchanged":{"type":"integer","description":"Number of operations that leave the item unchanged."},"invalid":{"type":"integer","description":"Number of operations refused for invalid values or state."},"denied":{"type":"integer","description":"Number of operations refused by access rules."},"conflict":{"type":"integer","description":"Number of operations refused by version expectations."},"unavailable":{"type":"integer","description":"Number of operations unable to finish."},"error_code":{"type":"string","description":"Machine-readable failure code when the durable operation fails."},"item":{"type":"string","description":"Destination root item id for the proposed or accepted move."},"items":{"type":"array","items":{"type":"string"},"description":"Caller-visible item records or the item ids produced by this operation."},"success":{"type":"boolean","const":true,"description":"True when the contract call returns a result without an error."}},"required":["job_id","status","total","processed","success"],"additionalProperties":false}'
+  source: file://work_tool.lua
+  method: bulk
+  modules:
+  - ctx
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+- name: cancel_bulk
+  kind: function.lua
+  meta:
+    type: tool
+    title: Work cancel bulk
+    llm_alias: WorkCancelBulk
+    llm_description: 'Cancel a WorkBulk operation under board WRITE and operation-owner or ADMIN authority, returning its current status and progress. Supply board_id in the call or omit it to use trait context; the call argument takes precedence.'
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","description":"Board component id returned by WorkListBoards; keys and titles do not resolve."},"bulk_id":{"type":"string","description":"Bulk operation id returned by WorkBulk; use it on the same board."}},"required":["bulk_id"],"additionalProperties":false}'
+    output_schema: *work_schema_6
+  source: file://work_tool.lua
+  method: cancel_bulk
+  modules:
+  - ctx
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+- name: create_view
+  kind: function.lua
+  meta:
+    type: tool
+    title: Work create view
+    llm_alias: WorkCreateView
+    llm_description: 'Create a view under board READ for a personal view or WRITE for a shared view, returning an id for WorkGetView and WorkRunView. Supply board_id in the call or omit it to use trait context; the call argument takes precedence.'
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","description":"Board component id returned by WorkListBoards; keys and titles do not resolve."},"view":{"type":"object","properties":{"type":{"type":"string","description":"Installed view type id, such as list or board; WorkGetView.view.type lists the selected type of an existing saved view."},"where":{"type":"object","description":"Filter tree: and/or/not, {field,op,value}, or {awaiting:true} for live items awaiting the caller. Principal member_of accepts a group id or list. Omit for all visible live items."},"order":{"anyOf":[{"type":"object","properties":{"field":{"type":"string","description":"Declared field code from WorkGetSchema; use the exact code rather than its display title."},"dir":{"type":"string","enum":["asc","desc"],"description":"Sort ascending or descending; omit for asc, with null values last."}},"required":["field"],"additionalProperties":false},{"type":"array","items":{"type":"object","properties":{"field":{"type":"string","description":"Declared field code from WorkGetSchema; use the exact code rather than its display title."},"dir":{"type":"string","enum":["asc","desc"],"description":"Sort ascending or descending; omit for asc, with null values last."}},"required":["field"],"additionalProperties":false},"minItems":1,"maxItems":3}],"description":"One indexed sort field or 1..3 {field,dir} entries on one board; cross-board queries accept one key, and omission sorts by rank."},"group_by":{"type":"string","description":"Field code from WorkGetSchema or a built-in grouping field; omit for an ungrouped page, with at most 200 groups."},"sub_group_by":{"type":"string","description":"Second grouping field code from WorkGetSchema; omit for one grouping level and supply only with group_by."},"columns":{"type":"array","items":{"type":"string"},"description":"Field codes from WorkGetSchema to display; omit to use the presentation default."},"scopes":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"Exact adopted scope registry id from WorkGetSchema; use its declared filter schema for where."},"where":{"type":"object","description":"Filters accepted by this scope declaration from WorkGetSchema; omit to use the scope without additional filters."}},"required":["id"],"additionalProperties":false},"description":"Declared scope ids from WorkGetSchema, with optional filters; omit to apply no scope filters."},"card":{"type":"object","description":"Presentation metadata stored with the view; omit when no card layout is needed."},"config":{"type":"object","description":"Presentation configuration accepted by the installed view type declaration; WorkGetView shows the current config, and omission uses that type''s defaults."}},"required":["type"],"additionalProperties":false,"description":"Saved query and presentation definition; WorkGetView returns the existing definition for an update."},"title":{"type":"string","description":"Display title of the saved view; omit to use View."},"personal":{"type":"boolean","description":"Set true to create a private root view under board READ; omit or set false for a shared view under board WRITE."}},"required":["board_id","view"],"additionalProperties":false}'
+    output_schema: &work_schema_9 '{"type":"object","properties":{"view_id":{"type":"string","description":"Saved view id to pass to WorkGetView, WorkRunView or view mutations."},"success":{"type":"boolean","const":true,"description":"True when the contract call returns a result without an error."}},"required":["view_id","success"],"additionalProperties":false}'
+  source: file://work_tool.lua
+  method: create_view
+  modules:
+  - ctx
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+- name: save_view
+  kind: function.lua
+  meta:
+    type: tool
+    title: Work save view
+    llm_alias: WorkSaveView
+    llm_description: 'Replace a WorkListViews or WorkCreateView definition under view WRITE and board READ, returning its id; a title change also needs owner or board ADMIN.'
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: '{"type":"object","properties":{"view_id":{"type":"string","description":"Saved view component id returned by WorkListViews or WorkCreateView; titles do not resolve."},"view":{"type":"object","properties":{"type":{"type":"string","description":"Installed view type id, such as list or board; WorkGetView.view.type lists the selected type of an existing saved view."},"where":{"type":"object","description":"Filter tree: and/or/not, {field,op,value}, or {awaiting:true} for live items awaiting the caller. Principal member_of accepts a group id or list. Omit for all visible live items."},"order":{"anyOf":[{"type":"object","properties":{"field":{"type":"string","description":"Declared field code from WorkGetSchema; use the exact code rather than its display title."},"dir":{"type":"string","enum":["asc","desc"],"description":"Sort ascending or descending; omit for asc, with null values last."}},"required":["field"],"additionalProperties":false},{"type":"array","items":{"type":"object","properties":{"field":{"type":"string","description":"Declared field code from WorkGetSchema; use the exact code rather than its display title."},"dir":{"type":"string","enum":["asc","desc"],"description":"Sort ascending or descending; omit for asc, with null values last."}},"required":["field"],"additionalProperties":false},"minItems":1,"maxItems":3}],"description":"One indexed sort field or 1..3 {field,dir} entries on one board; cross-board queries accept one key, and omission sorts by rank."},"group_by":{"type":"string","description":"Field code from WorkGetSchema or a built-in grouping field; omit for an ungrouped page, with at most 200 groups."},"sub_group_by":{"type":"string","description":"Second grouping field code from WorkGetSchema; omit for one grouping level and supply only with group_by."},"columns":{"type":"array","items":{"type":"string"},"description":"Field codes from WorkGetSchema to display; omit to use the presentation default."},"scopes":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"Exact adopted scope registry id from WorkGetSchema; use its declared filter schema for where."},"where":{"type":"object","description":"Filters accepted by this scope declaration from WorkGetSchema; omit to use the scope without additional filters."}},"required":["id"],"additionalProperties":false},"description":"Declared scope ids from WorkGetSchema, with optional filters; omit to apply no scope filters."},"card":{"type":"object","description":"Presentation metadata stored with the view; omit when no card layout is needed."},"config":{"type":"object","description":"Presentation configuration accepted by the installed view type declaration; WorkGetView shows the current config, and omission uses that type''s defaults."}},"required":["type"],"additionalProperties":false,"description":"Saved query and presentation definition; WorkGetView returns the existing definition for an update."},"title":{"type":"string","minLength":1,"pattern":"\\S","description":"Nonblank new display title; omit to retain the current title."}},"required":["view_id","view"],"additionalProperties":false}'
+    output_schema: *work_schema_9
+  source: file://work_tool.lua
+  method: save_view
+  modules:
+  - ctx
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+- name: rename_view
+  kind: function.lua
+  meta:
+    type: tool
+    title: Work rename view
+    llm_alias: WorkRenameView
+    llm_description: 'Rename a WorkListViews or WorkCreateView view as its owner or a board administrator, returning its view id.'
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: '{"type":"object","properties":{"view_id":{"type":"string","description":"Saved view component id returned by WorkListViews or WorkCreateView; titles do not resolve."},"title":{"type":"string","minLength":1,"pattern":"\\S","description":"Nonblank new display title for the saved view."}},"required":["view_id","title"],"additionalProperties":false}'
+    output_schema: *work_schema_9
+  source: file://work_tool.lua
+  method: rename_view
+  modules:
+  - ctx
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+- name: delete_view
+  kind: function.lua
+  meta:
+    type: tool
+    title: Work delete view
+    llm_alias: WorkDeleteView
+    llm_description: 'Delete a WorkListViews or WorkCreateView view as its owner or a board administrator, returning its id and deletion progress.'
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: '{"type":"object","properties":{"view_id":{"type":"string","description":"Saved view component id returned by WorkListViews or WorkCreateView; titles do not resolve."}},"required":["view_id"],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"view_id":{"type":"string","description":"Saved view id to pass to WorkGetView, WorkRunView or view mutations."},"deleted":{"type":"boolean","description":"Whether the saved view is removed."},"in_progress":{"type":"boolean","description":"Whether accepted view deletion is still completing."},"success":{"type":"boolean","const":true,"description":"True when the contract call returns a result without an error."}},"required":["view_id","deleted","in_progress","success"],"additionalProperties":false}'
+  source: file://work_tool.lua
+  method: delete_view
+  modules:
+  - ctx
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client

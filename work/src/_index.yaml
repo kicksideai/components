@@ -1,0 +1,183 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: Kickside Work
+    description: Work tracking on Kickside threads - boards of typed items with per-item concurrency, change history and a projected read model.
+- name: dep.kickside.component
+  version: '*'
+  kind: ns.dependency
+  meta:
+    comment: Board components, ACL checks and deletion.
+  component: kickside/component
+- name: dep.kickside.core
+  version: '*'
+  kind: ns.dependency
+  meta:
+    comment: Board threads, subjects, projections and retention.
+  component: kickside/core
+- name: dep.kickside.jobs
+  version: '*'
+  kind: ns.dependency
+  meta:
+    comment: Follow-migration jobs after schema changes.
+  component: kickside/jobs
+- name: dep.kickside.execution
+  version: '*'
+  kind: ns.dependency
+  meta:
+    comment: Resolves the board execution identity the migration job runs under.
+  component: kickside/execution
+- name: dep.kickside.contract
+  version: '*'
+  kind: ns.dependency
+  meta:
+    comment: Shared component and deletable contracts.
+  component: kickside/contract
+- name: dep.wippy.migration
+  version: '*'
+  kind: ns.dependency
+  meta:
+    comment: Migration framework for the fixed work tables.
+  component: wippy/migration
+- name: target_db
+  kind: ns.requirement
+  meta:
+    value_kind: db.sql
+    comment: Database for work tables; must be the Core database so projection folds share transactions.
+  targets:
+  - entry: kickside.work.migrations:01_work
+    path: .meta.target_db
+  - entry: kickside.work.migrations:02_retire_storage
+    path: .meta.target_db
+  - entry: kickside.work.persist:config
+    path: .meta.db_id
+- name: api_router
+  kind: ns.requirement
+  meta:
+    value_kind: http.router
+    comment: Authenticated HTTP router the work endpoints attach to. Must run token_auth and endpoint_firewall.
+  targets:
+  - entry: kickside.work.api:list.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:create.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:update.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:get_schema.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:plan_schema.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:apply_schema.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:resume_migration.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:apply.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:query.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:count.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:get.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:list_changes.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:list_history.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:get_time_in_state.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:list_links.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:list_stage_runs.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:list_comments.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:explain.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:configure_plugin.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:create_view.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:save_view.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:rename_view.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:delete_view.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:run_view.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:get_view.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:list_views.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:approve.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:report.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:bulk.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:bulk_status.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:cancel_bulk.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:plan_move.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:move.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:move_status.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:list_packs.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:pack_plan.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:pack_apply.endpoint
+    path: .meta.router
+  - entry: kickside.work.api:pack_fleet.endpoint
+    path: .meta.router
+- name: board_event_retention_days
+  kind: ns.requirement
+  default: 90
+  meta:
+    comment: Initial board event retention in days.
+  targets:
+  - entry: kickside.work.binding:board
+    path: .meta.retention.event_days
+- name: registry_admin_grant
+  kind: ns.requirement
+  meta:
+    value_kind: object
+    comment: Structured grant { subject_id, subject_type, access_mask } on the prefix registry for the host's work administrator group; READ and WRITE (3) let its members claim key prefixes.
+  targets:
+  - entry: kickside.work.binding:registry
+    path: .meta.provision.grants +=
+- name: consts
+  kind: library.lua
+  meta:
+    comment: Stable work identifiers, event types and limits.
+  source: file://consts.lua
+- name: types
+  kind: library.lua
+  meta:
+    comment: Shared work types - values, declarations, the compiled model, rows and events.
+  source: file://types.lua
+  modules:
+  - sql
+- name: dep.kickside.settings
+  version: '*'
+  kind: ns.dependency
+  component: kickside/settings
+- name: client
+  kind: library.lua
+  source: file://client.lua
+  modules:
+  - contract
+  - security
+  imports:
+    types: kickside.work:types
+- name: dep.kickside.automation
+  kind: ns.dependency
+  version: '*'
+  component: kickside/automation

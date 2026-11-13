@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.security
+entries:
+- name: work_tools
+  kind: security.policy
+  meta:
+    title: Work tools
+    surface: kickside.work
+    intent: tool_access
+  groups: []
+  policy:
+    resources:
+    - kickside.work.traits:work
+    - kickside.work.traits:work_readonly
+    - kickside.work.traits:work_admin
+    - kickside.work.traits:build_work
+    - kickside.work.traits:build_readonly
+    - kickside.work.traits:list_boards
+    - kickside.work.traits:get_schema
+    - kickside.work.traits:find_items
+    - kickside.work.traits:get_item
+    - kickside.work.traits:count
+    - kickside.work.traits:explain
+    - kickside.work.traits:list_history
+    - kickside.work.traits:get_time_in_state
+    - kickside.work.traits:list_links
+    - kickside.work.traits:list_comments
+    - kickside.work.traits:list_stage_runs
+    - kickside.work.traits:list_changes
+    - kickside.work.traits:bulk_status
+    - kickside.work.traits:move_status
+    - kickside.work.traits:list_packs
+    - kickside.work.traits:list_views
+    - kickside.work.traits:get_view
+    - kickside.work.traits:run_view
+    - kickside.work.traits:apply
+    - kickside.work.traits:transition
+    - kickside.work.traits:comment
+    - kickside.work.traits:approve
+    - kickside.work.traits:report
+    - kickside.work.traits:bulk
+    - kickside.work.traits:cancel_bulk
+    - kickside.work.traits:create_view
+    - kickside.work.traits:save_view
+    - kickside.work.traits:rename_view
+    - kickside.work.traits:delete_view
+    - kickside.work.traits:create_board
+    - kickside.work.traits:update_board
+    - kickside.work.traits:plan_schema
+    - kickside.work.traits:apply_schema
+    - kickside.work.traits:pack_plan
+    - kickside.work.traits:pack_apply
+    - kickside.work.traits:configure_plugin
+    - kickside.work.traits:plan_move
+    - kickside.work.traits:move
+    actions:
+    - registry.get
+    - registry.find
+    - funcs.call
+    - funcs.security
+    effect: allow

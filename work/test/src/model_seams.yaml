@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: model_seams_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work, timeout: 300s}
+  source: file://model_seams_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: model_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    requires: [app:work_plugin]
+    seams: [app:model_guard, app:model_group_guard, app:model_operand, app:model_search, app:model_search_ids, app:model_search_admin_ids]
+- name: model_guard
+  kind: function.lua
+  meta: {type: kickside.work.guard, plugin: 'app:model_plugin', reads: [estimate], cost: interactive, enforce: write}
+  source: file://model_seams_fixture.lua
+  method: guard
+  modules: [security]
+- name: unlisted_guard
+  kind: function.lua
+  meta: {type: kickside.work.guard, plugin: 'app:model_plugin'}
+  source: file://model_seams_fixture.lua
+  method: guard
+  modules: [security]
+- name: model_group_guard
+  kind: function.lua
+  meta: {type: kickside.work.guard, plugin: 'app:model_plugin'}
+  source: file://model_seams_fixture.lua
+  method: group_guard
+  modules: [security]
+- name: model_operand
+  kind: function.lua
+  meta: {type: kickside.work.operand, plugin: 'app:model_plugin'}
+  source: file://model_seams_fixture.lua
+  method: operand
+  modules: [security]
+- name: model_search
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: app:model_plugin
+    table: kickside_work_item
+    board_column: board_id
+    item_column: item_id
+    match: [item_id]
+    filters: {}
+- name: model_search_ids
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: app:model_plugin
+    resolve_ids: app:model_resolver
+- name: model_resolver
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:search_resolver
+    methods: {resolve_ids: 'app:model_resolve_ids'}
+- name: model_resolve_ids
+  kind: function.lua
+  source: file://model_seams_fixture.lua
+  method: resolve_ids
+  modules: [security]
+
+- name: model_search_admin_ids
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: app:model_plugin
+    access: admin
+    resolve_ids: app:model_resolver

@@ -4,5 +4,6 @@
   "agent-onboarding": "0.1.11",
   "sso": "0.1.43",
   "storage-s3": "0.2.2",
-  "docscout": "0.1.14"
+  "docscout": "0.1.14",
+  "work": "0.1.0"
 }

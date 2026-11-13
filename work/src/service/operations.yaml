@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.service
+entries:
+- name: bulk
+  kind: function.lua
+  source: file://operations.lua
+  method: bulk
+  imports:
+    requests: kickside.work.service:requests
+    locate: kickside.work.command:locate
+    bulk: kickside.work.command:bulk
+    move: kickside.work.command:move
+    types: kickside.work.command:types
+- name: bulk_status
+  kind: function.lua
+  source: file://operations.lua
+  method: bulk_status
+  imports:
+    requests: kickside.work.service:requests
+    locate: kickside.work.command:locate
+    bulk: kickside.work.command:bulk
+    move: kickside.work.command:move
+    types: kickside.work.command:types
+- name: cancel_bulk
+  kind: function.lua
+  source: file://operations.lua
+  method: cancel_bulk
+  imports:
+    requests: kickside.work.service:requests
+    locate: kickside.work.command:locate
+    bulk: kickside.work.command:bulk
+    move: kickside.work.command:move
+    types: kickside.work.command:types
+- name: plan_move
+  kind: function.lua
+  source: file://operations.lua
+  method: plan_move
+  imports:
+    requests: kickside.work.service:requests
+    locate: kickside.work.command:locate
+    bulk: kickside.work.command:bulk
+    move: kickside.work.command:move
+    types: kickside.work.command:types
+- name: move
+  kind: function.lua
+  source: file://operations.lua
+  method: move
+  imports:
+    requests: kickside.work.service:requests
+    locate: kickside.work.command:locate
+    bulk: kickside.work.command:bulk
+    move: kickside.work.command:move
+    types: kickside.work.command:types
+  security:
+    policies:
+    - kickside.work.security:operations_output_publish
+- name: move_status
+  kind: function.lua
+  source: file://operations.lua
+  method: move_status
+  imports:
+    requests: kickside.work.service:requests
+    locate: kickside.work.command:locate
+    bulk: kickside.work.command:bulk
+    move: kickside.work.command:move
+    types: kickside.work.command:types

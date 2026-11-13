@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: work
+type: plugin
+description: Work tracking for KickSide - boards of typed items with a per-board log, per-item concurrency, change history and a projected read model.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+homepage: https://wippy.ai
+keywords:
+- kickside
+- work
+exclude_meta:
+  type:
+  - test
+exclude:
+- wippy.lock
+- app:**
+- app.env:**
+- test/**
+- test:**
+- .wippy/**
+- .wippy:**

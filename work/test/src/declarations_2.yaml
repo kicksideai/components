@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: secret_anyOf
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    config_schema: {"type": "object", "properties": {"payload": {"anyOf": [{"type": "string", "format": "password"}]}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
+
+- name: secret_oneOf
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    config_schema: {"type": "object", "properties": {"payload": {"oneOf": [{"type": "string", "format": "password"}]}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
+
+- name: secret_allOf
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    config_schema: {"type": "object", "properties": {"payload": {"allOf": [{"type": "string", "format": "password"}]}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
+
+- name: secret_items
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    config_schema: {"type": "object", "properties": {"payload": {"items": {"type": "string", "format": "password"}}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
+
+- name: secret_additionalProperties
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    config_schema: {"type": "object", "properties": {"payload": {"additionalProperties": {"type": "string", "format": "password"}}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
+
+- name: secret_ref
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    config_schema: {"type": "object", "properties": {"payload": {"$ref": "#/$defs/private"}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
+
+- name: secret_recursive
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    config_schema: {"type": "object", "properties": {"payload": {"$ref": "#/$defs/loop"}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
+
+- name: attachment_rows
+  kind: library.lua
+  source: file://plugin_attachment.lua
+  modules: [sql, ctx]
+- name: attachment_delete
+  kind: function.lua
+  source: file://plugin_attachment.lua
+  method: delete
+  modules: [sql, ctx]
+
+- name: cleanup_observer
+  kind: library.lua
+  source: file://cleanup_observer.lua
+  modules: [sql]
+  imports:
+    lifecycle: kickside.work.persist:lifecycle
+    tables: kickside.work.domain:layout
+
+- name: retention_append
+  kind: library.lua
+  source: file://retention_append.lua
+  modules: [sql, funcs]
+  imports:
+    append: kickside.work.persist:append
+    domain: kickside.work:types
+    clock: kickside.work.domain:clock
+
+- name: authorization_probe
+  kind: library.lua
+  source: file://authorization_probe.lua
+  modules: [sql]
+  imports:
+    component: kickside.component:component

@@ -1,0 +1,181 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.binding
+entries:
+- name: delete_func
+  kind: function.lua
+  meta:
+    comment: Removes a board's rows from the fixed work tables; its key prefixes are released by the retention owner.
+  source: file://delete_func.lua
+  method: handle
+  modules:
+  - ctx
+  imports:
+    lifecycle: kickside.work.persist:lifecycle
+    lifecycle_report: kickside.core.lifecycle:report
+    types: kickside.work:types
+  security:
+    policies:
+    - kickside.work.security:board_delete_report
+- name: registry
+  kind: contract.binding
+  meta:
+    class:
+    - work_registry
+    title: Work registry
+    comment: Installation-wide claims on board key prefixes; its thread is the event log of the claims.
+    thread_class: work.registry
+    provision:
+      scope: system
+      grants:
+      - subject_id: system:kickside.work.retention
+        subject_type: user
+        access_mask: 1
+    retention:
+      event_days: 3650
+    events:
+      output:
+      - type: kickside.work.events:prefix.claimed
+        system_only: true
+      - type: kickside.work.events:prefix.released
+        system_only: true
+      input: []
+  contracts:
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.core.threads:thread_status
+- name: board
+  kind: contract.binding
+  meta:
+    class:
+    - work_board
+    title: Work board
+    icon: tabler:layout-kanban
+    thread_class: work.board
+    comment: One board per component; its thread is the command log and its projection owns the board tables.
+    retention:
+      event_days: 90
+    events:
+      read: admin
+      input: []
+      output:
+      - type: kickside.work.command:command.recorded
+        system_only: true
+      - type: kickside.work.events:schema.applied
+        system_only: true
+      - type: kickside.work.events:item.created
+        system_only: true
+      - type: kickside.work.events:item.changed
+        system_only: true
+      - type: kickside.work.events:item.transitioned
+        system_only: true
+      - type: kickside.work.events:item.migrated
+        system_only: true
+      - type: kickside.work.events:item.ranked
+        system_only: true
+      - type: kickside.work.events:rank.rebalanced
+        system_only: true
+      - type: kickside.work.events:rollups.recomputed
+        system_only: true
+      - type: kickside.work.events:index.rebuilt
+        system_only: true
+      - type: kickside.work.events:item.parented
+        system_only: true
+      - type: kickside.work.events:item.linked
+        system_only: true
+      - type: kickside.work.events:item.unlinked
+        system_only: true
+      - type: kickside.work.events:item.purged
+        system_only: true
+      - type: kickside.work.events:item.deleted
+        system_only: true
+      - type: kickside.work.events:item.restored
+        system_only: true
+      - type: kickside.work.events:comment.added
+        system_only: true
+      - type: kickside.work.events:comment.edited
+        system_only: true
+      - type: kickside.work.events:comment.deleted
+        system_only: true
+      - type: kickside.work.events:plugin.rebuild
+        system_only: true
+      - type: kickside.work.events:plugin.configured
+        system_only: true
+      - type: kickside.work.events:stage.entered
+        system_only: true
+      - type: kickside.work.events:stage.reported
+        system_only: true
+      - type: kickside.work.events:approval.recorded
+        system_only: true
+      - type: kickside.work.events:timer.fired
+        system_only: true
+      - type: kickside.work.events:bulk.progress
+        system_only: true
+      - type: kickside.work.events:item.move_prepared
+        system_only: true
+      - type: kickside.work.events:item.moved_out
+        system_only: true
+      - type: kickside.work.events:item.moved_in
+        system_only: true
+      - type: kickside.work.events:board.updated
+        system_only: true
+    projections:
+    - kind: kickside.work:board_model
+      worker_ref: func://kickside.work.persist:projection
+      input_mode: prefetch_events
+      events:
+        input:
+        - type: kickside.work.command:command.recorded
+        - type: kickside.work.events:schema.applied
+        - type: kickside.work.events:item.created
+        - type: kickside.work.events:item.changed
+        - type: kickside.work.events:item.transitioned
+        - type: kickside.work.events:item.migrated
+        - type: kickside.work.events:item.ranked
+        - type: kickside.work.events:rank.rebalanced
+        - type: kickside.work.events:rollups.recomputed
+        - type: kickside.work.events:index.rebuilt
+        - type: kickside.work.events:item.parented
+        - type: kickside.work.events:item.linked
+        - type: kickside.work.events:item.unlinked
+        - type: kickside.work.events:item.purged
+        - type: kickside.work.events:item.deleted
+        - type: kickside.work.events:item.restored
+        - type: kickside.work.events:comment.added
+        - type: kickside.work.events:comment.edited
+        - type: kickside.work.events:comment.deleted
+        - type: kickside.work.events:plugin.rebuild
+        - type: kickside.work.events:plugin.configured
+        - type: kickside.work.events:stage.entered
+        - type: kickside.work.events:stage.reported
+        - type: kickside.work.events:approval.recorded
+        - type: kickside.work.events:timer.fired
+        - type: kickside.work.events:bulk.progress
+        - type: kickside.work.events:item.move_prepared
+        - type: kickside.work.events:item.moved_out
+        - type: kickside.work.events:item.moved_in
+        - type: kickside.work.events:board.updated
+  contracts:
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.core.threads:thread_status
+  - contract: kickside.contract:deletable
+    context_required:
+    - component_id
+    methods:
+      delete: kickside.work.binding:delete_func
+- name: view
+  kind: contract.binding
+  meta:
+    title: Work view
+    class:
+    - kickside.work:view
+    placement:
+      parents:
+      - kickside.work.binding:board
+      - root
+      fixed: true
+  contracts:
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.core.threads:thread_status

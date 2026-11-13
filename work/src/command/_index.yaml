@@ -1,0 +1,466 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.command
+entries:
+- name: types
+  kind: library.lua
+  modules:
+  - sql
+  meta:
+    comment: Command requests, outcomes and plans.
+  source: file://types.lua
+  imports:
+    reads: kickside.work.read:types
+    domain: kickside.work:types
+- name: items
+  kind: library.lua
+  meta: &id001
+    comment: Prepare - turns ops into events against the projection, with per-item expectations.
+  source: file://items.lua
+  imports:
+    domain: kickside.work:types
+    rollup_rows: kickside.work.persist:rollup_rows
+    process: kickside.work.domain:process
+    process_context: kickside.work.command:process_context
+    approval: kickside.work.command:process_approval
+    report: kickside.work.command:process_report
+    timer: kickside.work.command:process_timer
+    flow: kickside.work.command:flow
+    consts: kickside.work:consts
+    store: kickside.work.persist:store
+    types: kickside.work.command:types
+    fields: kickside.work.domain:fields
+    when: kickside.work.command:when
+    item_fields: kickside.work.command:item_fields
+    item_tree: kickside.work.command:item_tree
+    item_comments: kickside.work.command:item_comments
+    prepare_context: kickside.work.command:prepare_context
+- name: flow
+  kind: library.lua
+  meta:
+    comment: Process execution in prepare - transitions, effects, requirements and auto chains.
+  source: file://flow.lua
+  imports:
+    seams: kickside.work.domain:seams
+    durations: kickside.work.domain:process_time
+    declaration: kickside.work.domain:declaration
+    identity: kickside.execution:execution_identity
+    consts: kickside.work:consts
+    document: kickside.work.domain:document
+    fields: kickside.work.domain:fields
+    process: kickside.work.domain:process
+    types: kickside.work:types
+- name: guard
+  kind: library.lua
+  meta:
+    comment: Request-level checks of the write commands - board access, the calling actor, command time and common errors.
+  source: file://guard.lua
+  modules:
+  - security
+  imports:
+    error_envelope: kickside.contract:error_envelope
+    component: kickside.component:component
+    clock: kickside.work.domain:clock
+- name: receipts
+  kind: library.lua
+  meta:
+    comment: Idempotency receipts, external identity of command events and the wait for the projection to cover an append.
+  source: file://receipts.lua
+  modules:
+  - hash
+  - uuid
+  - funcs
+  imports:
+    guard: kickside.work.command:guard
+    clock: kickside.work.domain:clock
+    policy: kickside.work.domain:policy
+    consts: kickside.work:consts
+    values: kickside.work.domain:values
+    domain: kickside.work:types
+    types: kickside.work.command:types
+    store: kickside.work.persist:store
+    trace: kickside.execution:trace
+- name: schema_commands
+  kind: library.lua
+  meta:
+    comment: Schema plan and apply with key prefix claims, and the wake of a parked follow migration.
+  source: file://schema_commands.lua
+  modules:
+  - sql
+  - hash
+  imports:
+    layout: kickside.work.domain:layout
+    jobs: kickside.core.jobs:jobs
+    consts: kickside.work:consts
+    clock: kickside.work.domain:clock
+    store: kickside.work.persist:store
+    threads: kickside.work.persist:threads
+    registry: kickside.work.persist:registry
+    append: kickside.work.persist:append
+    schema: kickside.work.domain:schema
+    declaration: kickside.work.domain:declaration
+    changes: kickside.work.domain:changes
+    guard: kickside.work.command:guard
+    receipts: kickside.work.command:receipts
+    domain: kickside.work:types
+    types: kickside.work.command:types
+    rollup_rows: kickside.work.persist:rollup_rows
+    defaults: kickside.work.settings:defaults
+    plugin_rows: kickside.work.persist:plugin_rows
+    plugins: kickside.work.domain:plugins
+    plugin_schema: kickside.work.domain:plugin_schema
+    fields: kickside.work.domain:fields
+- name: apply_ops
+  kind: library.lua
+  meta:
+    comment: The item command path - access, idempotency, append under per-item expectations, catch-up.
+  source: file://apply_ops.lua
+  modules: [uuid]
+  imports:
+    principals: kickside.work.read:principals
+    rules: kickside.work.domain:access_rules
+    consts: kickside.work:consts
+    clock: kickside.work.domain:clock
+    store: kickside.work.persist:store
+    threads: kickside.work.persist:threads
+    append: kickside.work.persist:append
+    items: kickside.work.command:items
+    prepare_snapshot: kickside.work.command:prepare_snapshot
+    guard: kickside.work.command:guard
+    receipts: kickside.work.command:receipts
+    domain: kickside.work:types
+    types: kickside.work.command:types
+    defaults: kickside.work.settings:defaults
+- name: locate
+  kind: library.lua
+  meta:
+    comment: The boards a caller can read and the rule that picks one.
+  source: file://locate.lua
+  imports:
+    reads: kickside.work.read:types
+    store: kickside.work.persist:store
+    tables: kickside.work.domain:layout
+    access_rows: kickside.work.persist:access_rows
+    principals: kickside.work.read:principals
+    access: kickside.work.read:access
+    component: kickside.component:component
+    consts: kickside.work:consts
+    domain: kickside.work:types
+    types: kickside.work.command:types
+- name: create
+  kind: library.lua
+  meta:
+    comment: Board creation - deterministic id, component and thread, optional first schema.
+  source: file://create.lua
+  modules:
+  - hash
+  - security
+  imports:
+    component: kickside.component:component
+    consts: kickside.work:consts
+    threads: kickside.work.persist:threads
+    schema_commands: kickside.work.command:schema_commands
+    locate: kickside.work.command:locate
+    types: kickside.work.command:types
+    domain: kickside.work:types
+    identifiers: kickside.work.domain:identifiers
+    packs: kickside.work.command:packs
+    plugins: kickside.work.domain:plugins
+    catalog: kickside.work.domain:pack_catalog
+    planner: kickside.work.command:pack_plan
+- name: when
+  kind: library.lua
+  source: file://when.lua
+  imports:
+    predicates: kickside.work.domain:predicates
+    conditions: kickside.work.persist:predicate_rows
+    domain: kickside.work:types
+    types: kickside.work.command:types
+- name: prepare_snapshot
+  kind: library.lua
+  source: file://prepare_snapshot.lua
+  modules:
+  - sql
+  imports:
+    memberships: kickside.work.persist:memberships
+    approval_rules: kickside.work.domain:approvals
+    process: kickside.work.domain:process
+    values: kickside.work.domain:values
+    fields: kickside.work.domain:fields
+    guard: kickside.work.command:guard
+    principals: kickside.work.read:principals
+    component: kickside.component:component
+    items: kickside.work.command:items
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    types: kickside.work.command:types
+    policy: kickside.work.domain:policy
+    references: kickside.work.command:references
+- name: configure
+  kind: library.lua
+  source: file://configure.lua
+  imports:
+    manifests: kickside.work.domain:manifests
+    defaults: kickside.work.settings:defaults
+    plugin_rows: kickside.work.persist:plugin_rows
+    threads: kickside.work.persist:threads
+    append: kickside.work.persist:append
+    receipts: kickside.work.command:receipts
+    guard: kickside.work.command:guard
+    clock: kickside.work.domain:clock
+    consts: kickside.work:consts
+    domain: kickside.work:types
+    types: kickside.work.command:types
+    access: kickside.work.read:access
+- name: prepare_context
+  kind: library.lua
+  meta: *id001
+  source: file://prepare_context.lua
+  imports:
+    guard: kickside.work.command:guard
+    access_rows: kickside.work.persist:access_rows
+    rules: kickside.work.domain:access_rules
+    flow: kickside.work.command:flow
+    component: kickside.component:component
+    consts: kickside.work:consts
+    domain: kickside.work:types
+    store: kickside.work.persist:store
+    types: kickside.work.command:types
+    tree_rows: kickside.work.persist:tree_rows
+- name: item_fields
+  kind: library.lua
+  meta: *id001
+  source: file://item_fields.lua
+  modules:
+  - uuid
+  imports:
+    seams: kickside.work.domain:seams
+    references: kickside.work.command:references
+    rules: kickside.work.domain:access_rules
+    flow: kickside.work.command:flow
+    consts: kickside.work:consts
+    domain: kickside.work:types
+    store: kickside.work.persist:store
+    types: kickside.work.command:types
+    document: kickside.work.domain:document
+    fields: kickside.work.domain:fields
+    when: kickside.work.command:when
+    process: kickside.work.domain:process
+    prepare_context: kickside.work.command:prepare_context
+- name: item_tree
+  kind: library.lua
+  meta: *id001
+  source: file://item_tree.lua
+  imports:
+    references: kickside.work.command:references
+    component: kickside.component:component
+    consts: kickside.work:consts
+    domain: kickside.work:types
+    store: kickside.work.persist:store
+    types: kickside.work.command:types
+    tree_rows: kickside.work.persist:tree_rows
+    prepare_context: kickside.work.command:prepare_context
+- name: item_comments
+  kind: library.lua
+  meta: *id001
+  source: file://item_comments.lua
+  modules:
+  - uuid
+  imports:
+    consts: kickside.work:consts
+    domain: kickside.work:types
+    store: kickside.work.persist:store
+    types: kickside.work.command:types
+    prepare_context: kickside.work.command:prepare_context
+- name: command.recorded
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: A command records its identity and receipt.
+  schema:
+    type: object
+    required:
+    - command_key
+    - receipt
+    properties:
+      command_key:
+        type: string
+      receipt:
+        type: object
+- name: process_context
+  kind: library.lua
+  source: file://process_context.lua
+  imports:
+    seams: kickside.work.domain:seams
+    store: kickside.work.persist:store
+    process: kickside.work.domain:process
+    flow: kickside.work.command:flow
+    when: kickside.work.command:when
+    prepare_context: kickside.work.command:prepare_context
+    types: kickside.work.command:types
+    domain: kickside.work:types
+- name: process_approval
+  kind: library.lua
+  source: file://process_approval.lua
+  modules:
+  - funcs
+  imports:
+    consts: kickside.work:consts
+    process: kickside.work.domain:process
+    approvals: kickside.work.domain:approvals
+    prepare_context: kickside.work.command:prepare_context
+    process_context: kickside.work.command:process_context
+    types: kickside.work.command:types
+    domain: kickside.work:types
+- name: process_report
+  kind: library.lua
+  source: file://process_report.lua
+  imports:
+    process: kickside.work.domain:process
+    flow: kickside.work.command:flow
+    read_rows: kickside.work.persist:read_rows
+    consts: kickside.work:consts
+    values: kickside.work.domain:values
+    prepare_context: kickside.work.command:prepare_context
+    process_context: kickside.work.command:process_context
+    types: kickside.work.command:types
+    domain: kickside.work:types
+- name: process_timer
+  kind: library.lua
+  source: file://process_timer.lua
+  imports:
+    report: kickside.work.command:process_report
+    consts: kickside.work:consts
+    prepare_context: kickside.work.command:prepare_context
+    process_context: kickside.work.command:process_context
+    types: kickside.work.command:types
+    domain: kickside.work:types
+- name: references
+  kind: library.lua
+  source: file://references.lua
+  imports:
+    component: kickside.component:component
+    fields: kickside.work.domain:fields
+    values: kickside.work.domain:values
+    store: kickside.work.persist:store
+    access_rows: kickside.work.persist:access_rows
+    prepare_context: kickside.work.command:prepare_context
+    domain: kickside.work:types
+    types: kickside.work.command:types
+- name: bulk
+  kind: library.lua
+  source: file://bulk.lua
+  imports:
+    guard: kickside.work.command:guard
+    receipts: kickside.work.command:receipts
+    query: kickside.work.read:query
+    store: kickside.work.persist:store
+    rows: kickside.work.persist:operation_rows
+    types: kickside.work.command:types
+- name: operation_events
+  kind: library.lua
+  source: file://operation_events.lua
+  imports:
+    commands: kickside.work.command:types
+    domain: kickside.work:types
+    threads: kickside.work.persist:threads
+    append: kickside.work.persist:append
+    receipts: kickside.work.command:receipts
+    guard: kickside.work.command:guard
+    clock: kickside.work.domain:clock
+    consts: kickside.work:consts
+- name: move_plan
+  kind: library.lua
+  source: file://move_plan.lua
+  imports:
+    domain: kickside.work:types
+    store: kickside.work.persist:store
+    component: kickside.component:component
+    principals: kickside.work.read:principals
+    guard: kickside.work.command:guard
+    items: kickside.work.command:items
+    fields: kickside.work.domain:fields
+    rules: kickside.work.domain:access_rules
+    types: kickside.work.command:types
+    defaults: kickside.work.settings:defaults
+    snapshot: kickside.work.command:prepare_snapshot
+    receipts: kickside.work.command:receipts
+    clock: kickside.work.domain:clock
+    consts: kickside.work:consts
+  modules:
+  - sql
+  - uuid
+- name: move
+  kind: library.lua
+  source: file://move.lua
+  imports:
+    domain: kickside.work:types
+    planner: kickside.work.command:move_plan
+    rows: kickside.work.persist:operation_rows
+    operations: kickside.work.command:bulk
+    events: kickside.work.command:operation_events
+    receipts: kickside.work.command:receipts
+    store: kickside.work.persist:store
+    types: kickside.work.command:types
+    consts: kickside.work:consts
+    guard: kickside.work.command:guard
+  modules:
+  - uuid
+- name: update
+  kind: library.lua
+  source: file://update.lua
+  imports:
+    guard: kickside.work.command:guard
+    locate: kickside.work.command:locate
+    receipts: kickside.work.command:receipts
+    threads: kickside.work.persist:threads
+    append: kickside.work.persist:append
+    clock: kickside.work.domain:clock
+    consts: kickside.work:consts
+    domain: kickside.work:types
+    types: kickside.work.command:types
+    store: kickside.work.persist:store
+    board_meta: kickside.work.persist:board_meta
+  modules:
+  - funcs
+- name: pack_plan
+  kind: library.lua
+  source: file://pack_plan.lua
+  modules: []
+  imports:
+    commands: kickside.work.command:types
+    catalog: kickside.work.domain:pack_catalog
+    merge: kickside.work.domain:pack_merge
+    declaration: kickside.work.domain:declaration
+    schema_commands: kickside.work.command:schema_commands
+    guard: kickside.work.command:guard
+    store: kickside.work.persist:store
+    types: kickside.work.domain:types
+    domain: kickside.work:types
+    resources: kickside.work.command:pack_resources
+- name: packs
+  kind: library.lua
+  source: file://packs.lua
+  modules:
+  - funcs
+  imports:
+    planner: kickside.work.command:pack_plan
+    receipts: kickside.work.command:receipts
+    rows: kickside.work.persist:operation_rows
+    store: kickside.work.persist:store
+    guard: kickside.work.command:guard
+    jobs: kickside.core.jobs:jobs
+    types: kickside.work.domain:types
+    operations: kickside.work.command:types
+- name: pack_resources
+  kind: library.lua
+  source: file://pack_resources.lua
+  imports:
+    envelope: kickside.component:envelope
+    component_types: kickside.component:types
+    component: kickside.component:component
+    identifiers: kickside.work.domain:identifiers
+    declaration: kickside.work.domain:declaration
+    merge: kickside.work.domain:pack_merge
+    types: kickside.work.domain:types
+    domain: kickside.work:types

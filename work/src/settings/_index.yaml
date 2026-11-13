@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.settings
+entries:
+- name: audit
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: audit
+  value_type: string
+  default: fields
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: string
+    enum:
+    - fields
+    - 'off'
+  title: Audit
+  description: Default board audit.
+  category: Work
+  order: 0
+  scope: global
+  editable: true
+  visible: true
+- name: audit_days
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: audit_days
+  value_type: int
+  default: 365
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 0
+  title: Audit days
+  description: Default board audit days.
+  category: Work
+  order: 10
+  scope: global
+  editable: true
+  visible: true
+- name: trash_days
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: trash_days
+  value_type: int
+  default: 14
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 0
+  title: Trash days
+  description: Default board trash days.
+  category: Work
+  order: 20
+  scope: global
+  editable: true
+  visible: true
+- name: tombstone_days
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: tombstone_days
+  value_type: int
+  default: 365
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 0
+  title: Tombstone days
+  description: Default board tombstone days.
+  category: Work
+  order: 30
+  scope: global
+  editable: true
+  visible: true
+- name: interval_days
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: interval_days
+  value_type: int
+  default: 0
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 0
+  title: Interval days
+  description: Default board interval days.
+  category: Work
+  order: 40
+  scope: global
+  editable: true
+  visible: true
+- name: defaults
+  kind: library.lua
+  source: file://defaults.lua
+  modules:
+  - contract
+  imports:
+    policy: kickside.work.domain:policy
+    types: kickside.work:types
+- name: validate
+  kind: function.lua
+  source: file://validate.lua
+  method: validate
+  imports:
+    policy: kickside.work.domain:policy
+    types: kickside.work:types

@@ -1,0 +1,350 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.read
+entries:
+- name: scopes
+  kind: library.lua
+  meta:
+    comment: Scope declarations - plugin tables items may be filtered by, checked from their registry entries and admitted
+      per reader.
+  source: file://scopes.lua
+  modules:
+  - registry
+  imports:
+    registry_values: kickside.work.domain:registry_values
+    types: kickside.work:types
+- name: select
+  kind: library.lua
+  meta:
+    comment: Query compiler - one item query over a generated table set into one dialect-neutral SELECT.
+  source: file://select.lua
+  modules:
+  - sql
+  imports:
+    window: kickside.work.read:window
+    filter: kickside.work.domain:filter
+    scopes: kickside.work.read:scopes
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    types: kickside.work.read:types
+- name: types
+  kind: library.lua
+  meta:
+    comment: Read requests and the views reads answer.
+  source: file://types.lua
+  imports:
+    domain: kickside.work:types
+  modules:
+  - sql
+- name: access
+  kind: library.lua
+  meta:
+    comment: READ access and one committed snapshot stamped with its position.
+  source: file://access.lua
+  modules:
+  - sql
+  imports:
+    memberships: kickside.work.persist:memberships
+    budget: kickside.work.read:budget
+    component: kickside.component:component
+    store: kickside.work.persist:store
+    types: kickside.work.read:types
+    principals: kickside.work.read:principals
+    domain: kickside.work:types
+- name: reader
+  kind: library.lua
+  meta:
+    comment: Schema, item, history reads.
+  source: file://reader.lua
+  modules:
+  - json
+  - time
+  imports:
+    stage_runs: kickside.work.read:stage_runs
+    interval_views: kickside.work.read:interval_views
+    transitions: kickside.work.read:transitions
+    item_view: kickside.work.read:item_view
+    access_rows: kickside.work.persist:access_rows
+    access: kickside.work.read:access
+    consts: kickside.work:consts
+    fields: kickside.work.domain:fields
+    conditions: kickside.work.persist:predicate_rows
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    types: kickside.work.read:types
+    read_rows: kickside.work.persist:read_rows
+    defaults: kickside.work.settings:defaults
+    policy: kickside.work.domain:policy
+    plugin_rows: kickside.work.persist:plugin_rows
+    rules: kickside.work.domain:access_rules
+    peers: kickside.work.read:peers
+    manifests: kickside.work.domain:manifests
+    plugin_schema: kickside.work.domain:plugin_schema
+    plugins: kickside.work.read:plugins
+    budget: kickside.work.read:budget
+    locate: kickside.work.command:locate
+    pack_catalog: kickside.work.domain:pack_catalog
+- name: feeds
+  kind: library.lua
+  meta:
+    comment: The changes feed.
+  source: file://feeds.lua
+  modules:
+  - hash
+  - security
+  imports:
+    peers: kickside.work.read:peers
+    query: kickside.work.read:query
+    values: kickside.work.domain:values
+    access: kickside.work.read:access
+    consts: kickside.work:consts
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    types: kickside.work.read:types
+    read_rows: kickside.work.persist:read_rows
+    item_view: kickside.work.read:item_view
+    access_rows: kickside.work.persist:access_rows
+    budget: kickside.work.read:budget
+- name: query
+  kind: library.lua
+  source: file://query.lua
+  modules:
+  - security
+  - sql
+  imports:
+    awaiting: kickside.work.read:awaiting
+    planner: kickside.work.read:planner
+    window: kickside.work.read:window
+    budget: kickside.work.read:budget
+    peers: kickside.work.read:peers
+    transitions: kickside.work.read:transitions
+    guard: kickside.work.command:guard
+    access: kickside.work.read:access
+    tables: kickside.work.domain:layout
+    store: kickside.work.persist:store
+    predicates: kickside.work.domain:predicates
+    select: kickside.work.read:select
+    access_rows: kickside.work.persist:access_rows
+    resolve: kickside.work.persist:predicate_rows
+    item_view: kickside.work.read:item_view
+    domain: kickside.work:types
+    types: kickside.work.read:types
+    job_rows: kickside.work.persist:job_rows
+    read_rows: kickside.work.persist:read_rows
+    plugins: kickside.work.domain:plugins
+    scopes: kickside.work.read:scopes
+    component: kickside.component:component
+- name: related
+  kind: library.lua
+  source: file://related.lua
+  imports:
+    access: kickside.work.read:access
+    reader: kickside.work.read:reader
+    read_rows: kickside.work.persist:read_rows
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    types: kickside.work.read:types
+    peers: kickside.work.read:peers
+    budget: kickside.work.read:budget
+- name: peers
+  kind: library.lua
+  source: file://peers.lua
+  imports:
+    domain: kickside.work:types
+    types: kickside.work.read:types
+    guard: kickside.work.command:guard
+    component: kickside.component:component
+    store: kickside.work.persist:store
+    access: kickside.work.read:access
+    access_rows: kickside.work.persist:access_rows
+- name: principals
+  kind: library.lua
+  source: file://principals.lua
+  modules:
+  - security
+  - funcs
+  - contract
+  imports:
+    clock: kickside.work.domain:clock
+    approvals: kickside.work.domain:approvals
+    types: kickside.work.read:types
+    identity: kickside.execution:execution_identity
+    component: kickside.component:component
+    rules: kickside.work.domain:access_rules
+    domain: kickside.work:types
+- name: cross_board
+  kind: library.lua
+  source: file://cross_board.lua
+  imports:
+    budget: kickside.work.read:budget
+    values: kickside.work.domain:values
+    component: kickside.component:component
+    consts: kickside.work:consts
+    locate: kickside.work.command:locate
+    query: kickside.work.read:query
+    store: kickside.work.persist:store
+    predicates: kickside.work.domain:predicates
+    rules: kickside.work.domain:access_rules
+    pages: kickside.work.persist:query_pages
+    domain: kickside.work:types
+    types: kickside.work.read:types
+- name: resolve_principal
+  kind: function.lua
+  source: file://principals.lua
+  method: resolve_principal
+  modules:
+  - security
+  - funcs
+  - contract
+  imports:
+    clock: kickside.work.domain:clock
+    approvals: kickside.work.domain:approvals
+    types: kickside.work.read:types
+    identity: kickside.execution:execution_identity
+    component: kickside.component:component
+    rules: kickside.work.domain:access_rules
+    domain: kickside.work:types
+  security:
+    policies:
+    - kickside.work.security:principal_lookup
+    - kickside.work.security:principal_groups
+- name: item_view
+  kind: library.lua
+  source: file://item_view.lua
+  imports:
+    gate: kickside.work.read:gate
+    access: kickside.work.read:access
+    fields: kickside.work.domain:fields
+    store: kickside.work.persist:store
+    rules: kickside.work.domain:access_rules
+    access_rows: kickside.work.persist:access_rows
+    domain: kickside.work:types
+    types: kickside.work.read:types
+- name: transitions
+  kind: library.lua
+  source: file://transitions.lua
+  imports:
+    seams: kickside.work.domain:seams
+    store: kickside.work.persist:store
+    process: kickside.work.domain:process
+    conditions: kickside.work.persist:predicate_rows
+    domain: kickside.work:types
+    types: kickside.work.read:types
+- name: interval_views
+  kind: library.lua
+  source: file://interval_views.lua
+  modules:
+  - time
+  - json
+  imports:
+    fields: kickside.work.domain:fields
+    store: kickside.work.persist:store
+    rules: kickside.work.domain:access_rules
+    domain: kickside.work:types
+    types: kickside.work.read:types
+    peers: kickside.work.read:peers
+- name: window
+  kind: library.lua
+  source: file://window.lua
+  modules:
+  - sql
+  imports:
+    domain: kickside.work:types
+- name: budget
+  kind: library.lua
+  source: file://budget.lua
+  modules:
+  - time
+  imports:
+    clock: kickside.work.domain:clock
+    consts: kickside.work:consts
+    types: kickside.work.read:types
+- name: planner
+  kind: library.lua
+  source: file://planner.lua
+  modules:
+  - sql
+  - json
+  imports:
+    types: kickside.work.read:types
+- name: plugins
+  kind: library.lua
+  source: file://plugins.lua
+  modules: [registry]
+  imports:
+    manifests: kickside.work.domain:manifests
+    defaults: kickside.work.settings:defaults
+    states: kickside.work.extensions:plugin_projection_state
+    types: kickside.work:types
+- name: plugin_access
+  kind: library.lua
+  source: file://plugin_access.lua
+  imports:
+    access: kickside.work.read:access
+    budget: kickside.work.read:budget
+    rows: kickside.work.persist:plugin_rows
+    manifests: kickside.work.domain:manifests
+    plugins: kickside.work.read:plugins
+    states: kickside.work.extensions:plugin_projection_state
+    component: kickside.component:component
+    types: kickside.work.read:types
+    domain: kickside.work:types
+
+- name: stage_runs
+  kind: library.lua
+  source: file://stage_runs.lua
+  imports:
+    consts: kickside.work:consts
+    access: kickside.work.read:access
+    budget: kickside.work.read:budget
+    item_view: kickside.work.read:item_view
+    read_rows: kickside.work.persist:read_rows
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    types: kickside.work.read:types
+
+- name: gate
+  kind: library.lua
+  source: file://gate.lua
+  modules: [security]
+  imports:
+    durations: kickside.work.domain:process_time
+    store: kickside.work.persist:store
+    process: kickside.work.domain:process
+    fields: kickside.work.domain:fields
+    rules: kickside.work.domain:access_rules
+    approvals: kickside.work.domain:approvals
+    identity: kickside.execution:execution_identity
+    domain: kickside.work:types
+    types: kickside.work.read:types
+
+- name: resolve_memberships
+  kind: function.lua
+  source: file://principals.lua
+  method: resolve_memberships
+  modules:
+  - security
+  - funcs
+  - contract
+  imports:
+    clock: kickside.work.domain:clock
+    approvals: kickside.work.domain:approvals
+    types: kickside.work.read:types
+    identity: kickside.execution:execution_identity
+    component: kickside.component:component
+    rules: kickside.work.domain:access_rules
+    domain: kickside.work:types
+  security:
+    policies:
+    - kickside.work.security:principal_lookup
+    - kickside.work.security:principal_groups
+
+- name: awaiting
+  kind: library.lua
+  source: file://awaiting.lua
+  imports:
+    approvals: kickside.work.domain:approvals
+    access_rows: kickside.work.persist:access_rows
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    types: kickside.work.read:types

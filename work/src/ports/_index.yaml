@@ -1,0 +1,345 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.ports
+entries:
+- name: plugin_rebuild
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work plugin rebuild
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:plugin.rebuild
+  config_schema:
+    thread_id:
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      required: true
+      role: primary
+      title: Board
+- name: command_recorded
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work command recorded
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.command:command.recorded
+  config_schema:
+    thread_id: &id001
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      required: true
+      role: primary
+      title: Board
+- name: schema_applied
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work schema applied
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:schema.applied
+  config_schema: &id002
+    thread_id: *id001
+- name: item_created
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item created
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.created
+  config_schema: *id002
+- name: item_changed
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item changed
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.changed
+  config_schema: *id002
+- name: item_transitioned
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item transitioned
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.transitioned
+  config_schema: *id002
+- name: item_migrated
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item migrated
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.migrated
+  config_schema: *id002
+- name: item_ranked
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item ranked
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.ranked
+  config_schema: *id002
+- name: rank_rebalanced
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work rank rebalanced
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:rank.rebalanced
+  config_schema: *id002
+- name: rollups_recomputed
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work rollups recomputed
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:rollups.recomputed
+  config_schema: *id002
+- name: index_rebuilt
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work index rebuilt
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:index.rebuilt
+  config_schema: *id002
+- name: item_parented
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item parented
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.parented
+  config_schema: *id002
+- name: item_linked
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item linked
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.linked
+  config_schema: *id002
+- name: item_unlinked
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item unlinked
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.unlinked
+  config_schema: *id002
+- name: item_purged
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item purged
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.purged
+  config_schema: *id002
+- name: item_deleted
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item deleted
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.deleted
+  config_schema: *id002
+- name: item_restored
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item restored
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.restored
+  config_schema: *id002
+- name: comment_added
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work comment added
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:comment.added
+  config_schema: *id002
+- name: comment_edited
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work comment edited
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:comment.edited
+  config_schema: *id002
+- name: comment_deleted
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work comment deleted
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:comment.deleted
+  config_schema: *id002
+- name: plugin_configured
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work plugin configured
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:plugin.configured
+  config_schema: *id002
+- name: stage_entered
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work stage entered
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:stage.entered
+  config_schema:
+    thread_id:
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      required: true
+      role: primary
+      title: Board
+- name: stage_reported
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work stage reported
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:stage.reported
+  config_schema:
+    thread_id:
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      required: true
+      role: primary
+      title: Board
+- name: approval_recorded
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work approval recorded
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:approval.recorded
+  config_schema:
+    thread_id:
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      required: true
+      role: primary
+      title: Board
+- name: timer_fired
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work timer fired
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:timer.fired
+  config_schema:
+    thread_id:
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      required: true
+      role: primary
+      title: Board
+- name: bulk_progress
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work bulk progress
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:bulk.progress
+  config_schema:
+    thread_id:
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      required: true
+      role: primary
+      title: Board
+- name: item_move_prepared
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item move_prepared
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.move_prepared
+  config_schema:
+    thread_id:
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      required: true
+      role: primary
+      title: Board
+- name: item_moved_out
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item moved_out
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.moved_out
+  config_schema:
+    thread_id:
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      required: true
+      role: primary
+      title: Board
+- name: item_moved_in
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work item moved_in
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:item.moved_in
+  config_schema:
+    thread_id:
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      required: true
+      role: primary
+      title: Board
+- name: board_updated
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work board updated
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:board.updated
+  config_schema: *id002

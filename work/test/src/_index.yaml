@@ -1,0 +1,473 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: Kickside Work Test Harness
+- name: db
+  kind: db.sql.sqlite
+  foreign_keys: true
+  meta:
+    comment: Test database; the postgres profile replaces it.
+  file: ./.wippy/work-test.sqlite
+- name: env_storage
+  kind: env.storage.file
+  meta:
+    type: envstorage
+  file_path: ./.wippy/test.env
+  auto_create: true
+- name: processes
+  kind: process.host
+  lifecycle:
+    auto_start: true
+- name: gateway
+  kind: http.service
+  addr: :19239
+  lifecycle:
+    auto_start: true
+- name: api
+  kind: http.router
+  meta:
+    server: gateway
+  middleware:
+  - token_auth
+  post_middleware:
+  - endpoint_firewall
+  options:
+    token_store: kickside.users.security:tokens
+  prefix: /api
+- name: user
+  kind: security.policy
+  meta:
+    comment: Permissive scope for harness actors.
+  groups:
+  - app.security:work_test
+  policy:
+    resources: '*'
+    actions: '*'
+    effect: allow
+- name: work_admin
+  kind: security.scope
+  meta:
+    comment: Work administrator group as an installation composes it - the Member policies and the work administration policy.
+  policies: []
+- name: work_admin_composition
+  kind: registry.entry
+  meta:
+    type: kickside.security.group_composition
+  group_id: app.security:work_admin
+  groups:
+  - kickside.security.groups:members
+  policies:
+  - kickside.work.security:work_admin
+- name: no_output_publish
+  kind: security.policy
+  meta:
+    comment: Withholds the producer capability for declared output events; stands for a work administrator without framework maintenance authority.
+  groups: []
+  policy:
+    resources: '*'
+    actions:
+    - threads.output.publish
+    effect: deny
+- name: caller_only
+  kind: security.policy
+  meta:
+    comment: Lets a harness actor run the harness caller function and nothing else; stands for a caller outside the module member group.
+  groups:
+  - app.security:work_test
+  policy:
+    resources:
+    - app:work_call
+    actions:
+    - funcs.call
+    - funcs.security
+    effect: allow
+- name: dep.test
+  kind: ns.dependency
+  version: '*'
+  component: wippy/test
+- name: dep.migration
+  kind: ns.dependency
+  version: '*'
+  component: wippy/migration
+  parameters:
+  - name: wippy.migration:app_db
+    value: app:db
+- name: dep.users
+  kind: ns.dependency
+  version: '*'
+  component: kickside/users
+  parameters:
+  - name: kickside.users:target_db
+    value: app:db
+  - name: kickside.users:env_storage
+    value: app:env_storage
+  - name: kickside.users:api_router
+    value: app:api
+  - name: kickside.users:public_router
+    value: app:api
+  - name: kickside.users:ui_server
+    value: app:gateway
+  - name: kickside.users:user_security_scope
+    value: app.security:work_test
+  - name: kickside.users:admin_security_scope
+    value: app.security:work_test
+  - name: kickside.users:login_role_resource
+    value: app:user
+- name: dep.settings
+  kind: ns.dependency
+  version: '*'
+  component: kickside/settings
+  parameters:
+  - name: kickside.settings:target_db
+    value: app:db
+  - name: kickside.settings:api_router
+    value: app:api
+  - name: kickside.settings:ui_server
+    value: app:gateway
+- name: dep.component
+  kind: ns.dependency
+  version: '*'
+  component: kickside/component
+  parameters:
+  - name: kickside.component:target_db
+    value: app:db
+  - name: kickside.component:api_router
+    value: app:api
+  - name: kickside.component:lifecycle_impl
+    value: kickside.core.lifecycle:component_lifecycle_impl
+- name: dep.jobs
+  kind: ns.dependency
+  version: '*'
+  component: kickside/jobs
+  parameters:
+  - name: kickside.core.jobs:target_db
+    value: app:db
+  - name: kickside.core.jobs:process_host
+    value: app:processes
+- name: dep.core
+  kind: ns.dependency
+  version: '*'
+  component: kickside/core
+  parameters:
+  - name: kickside.core:target_db
+    value: app:db
+  - name: kickside.core.lifecycle:process_host
+    value: app:processes
+  - name: kickside.core.threads:api_router
+    value: app:api
+  - name: kickside.core.threads:process_host
+    value: app:processes
+  - name: kickside.core.projections:api_router
+    value: app:api
+  - name: kickside.core.retention:api_router
+    value: app:api
+  - name: kickside.core.retention:process_host
+    value: app:processes
+  - name: kickside.core.lifecycle:admin_lifecycle_grant
+    value:
+      subject_id: app.security:work_admin
+      subject_type: group
+      access_mask: 11
+  - name: kickside.core.lifecycle:user_lifecycle_grant
+    value:
+      subject_id: app:user
+      subject_type: group
+      access_mask: 2
+- name: dep.contract
+  kind: ns.dependency
+  version: '*'
+  component: kickside/contract
+- name: dep.security
+  kind: ns.dependency
+  version: '*'
+  component: kickside/security
+  parameters:
+  - name: kickside.security:target_db
+    value: app:db
+  - name: kickside.security:api_router
+    value: app:api
+  - name: kickside.security:ui_server
+    value: app:gateway
+  - name: kickside.security:process_host
+    value: app:processes
+- name: dep.module
+  kind: ns.dependency
+  version: '*'
+  component: kickside/work
+  parameters:
+  - name: kickside.work:board_event_retention_days
+    value: 17
+  - name: kickside.work:target_db
+    value: app:db
+  - name: kickside.work:api_router
+    value: app:api
+  - name: kickside.work:registry_admin_grant
+    value:
+      subject_id: app.security:work_admin
+      subject_type: group
+      access_mask: 3
+- name: dep.bootloader
+  kind: ns.dependency
+  version: '*'
+  component: wippy/bootloader
+  parameters:
+  - name: wippy.bootloader:application_host
+    value: app:processes
+  - name: wippy.bootloader:env_storage
+    value: app:env_storage
+- name: dep.views
+  kind: ns.dependency
+  version: '*'
+  component: wippy/views
+  parameters:
+  - name: wippy.views:api_router
+    value: app:api
+  - name: wippy.views:env_storage
+    value: app:env_storage
+- name: actors
+  kind: library.lua
+  meta:
+    comment: Persists harness users so deferred projections resolve their principals.
+  source: file://actors.lua
+  modules:
+  - sql
+  - security
+- name: fixture
+  kind: library.lua
+  meta:
+    comment: Creates boards with the reference delivery schema.
+  source: file://fixture.lua
+  modules:
+  - security
+  - uuid
+  - funcs
+  - json
+  imports:
+    actors: app:actors
+- name: scoped
+  kind: library.lua
+  meta:
+    comment: Sessions holding exactly the scope an installation composes for members, work administrators and outsiders.
+  source: file://scoped.lua
+  modules:
+  - security
+  - funcs
+  - uuid
+  - json
+  - http_client
+  imports:
+    actors: app:actors
+    fixture: app:fixture
+- name: rows
+  kind: library.lua
+  meta:
+    comment: Row-level checks over the fixed work tables.
+  source: file://rows.lua
+  imports:
+    store: kickside.work.persist:store
+- name: steps
+  kind: library.lua
+  meta:
+    comment: Typed shortcuts - one-op commands and item reads.
+  source: file://steps.lua
+  modules:
+  - json
+  - sql
+  - time
+  - channel
+  - funcs
+  imports:
+    fixture: app:fixture
+- name: work_call
+  kind: function.lua
+  meta:
+    comment: Runs one work operation under the caller's actor (harness only).
+  source: file://work_call.lua
+  method: run
+  modules:
+  - registry
+  - contract
+  - security
+  - funcs
+  imports:
+    pack_views: kickside.work.service:pack_views
+    pack_batch: kickside.work.jobs:pack_commands
+    component: kickside.component:component
+    api_access: kickside.work.api:access
+    component_envelope: kickside.component:envelope
+- name: rollup_fixture
+  kind: library.lua
+  source: file://rollup_fixture.lua
+  imports:
+    fixture: app:fixture
+- name: trusted_fixture_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+  policy:
+    actions: threads.output.publish
+    effect: allow
+    resources:
+    - kickside.work.events:schema.applied
+    - kickside.work.events:prefix.claimed
+    - kickside.work.events:item.created
+    - kickside.work.events:item.changed
+    - kickside.work.events:item.transitioned
+    - kickside.work.events:item.ranked
+    - kickside.work.events:item.parented
+    - kickside.work.events:item.linked
+    - kickside.work.events:item.unlinked
+    - kickside.work.events:item.deleted
+    - kickside.work.events:item.restored
+    - kickside.work.events:comment.added
+    - kickside.work.events:comment.edited
+    - kickside.work.events:comment.deleted
+    - kickside.work.events:item.migrated
+    - kickside.work.events:rank.rebalanced
+    - kickside.work.events:rollups.recomputed
+    - kickside.work.events:index.rebuilt
+    - kickside.work.events:prefix.released
+- name: trusted_append
+  kind: function.lua
+  source: file://trusted_append.lua
+  method: run
+  modules:
+  - contract
+  - security
+  security:
+    policies:
+    - app:trusted_fixture_publish
+- name: system_delete
+  kind: function.lua
+  source: file://system_delete.lua
+  method: run
+  modules:
+  - security
+  imports:
+    component: kickside.component:component
+  security:
+    actor:
+      id: system:lifecycle
+- name: realtime_capture
+  kind: function.lua
+  source: file://realtime_capture.lua
+  method: notify
+  modules:
+  - sql
+  - json
+  - security
+- name: realtime_binding
+  kind: contract.binding
+  contracts:
+  - contract: kickside.contract:realtime
+    default: true
+    methods:
+      notify: app:realtime_capture
+      broadcast: app:realtime_broadcast
+- name: realtime_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://realtime_test.lua
+  method: run
+  modules:
+  - json
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    steps: app:steps
+    store: kickside.work.persist:store
+    failures: kickside.work.jobs:failures
+- name: realtime_broadcast
+  kind: function.lua
+  source: file://realtime_capture.lua
+  method: broadcast
+  modules:
+  - sql
+  - json
+  - security
+- name: read_surface_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://read_surface_test.lua
+  method: run
+  imports:
+    clock: kickside.work.domain:clock
+    test: wippy.test:test
+    scoped: app:scoped
+    steps: app:steps
+- name: configuration_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://configuration_test.lua
+  method: run
+  modules:
+  - sql
+  imports:
+    attachments: kickside.work.service:attachments
+    attachment_rows: app:attachment_rows
+    test: wippy.test:test
+    scoped: app:scoped
+    steps: app:steps
+- name: dep.blocks
+  kind: ns.dependency
+  version: '*'
+  component: kickside/blocks
+  parameters:
+  - name: kickside.blocks:process_host
+    value: app:processes
+  - name: wippy.session:api_router
+    value: app:api
+  - name: wippy.session:env_storage
+    value: app:env_storage
+  - name: wippy.session:delegation_func_id
+    value: userspace.dataflow.session:delegate
+- name: deadline_apply_probe
+  kind: library.lua
+  source: file://deadline_apply_probe.lua
+  imports:
+    commands: kickside.work.command:types
+- name: process_deadline_batch
+  kind: function.lua
+  source: file://process_deadline_batch.lua
+  method: advance_batch
+  imports:
+    outcomes: kickside.work.domain:outcomes
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    process: kickside.work.domain:process
+    apply_ops: app:deadline_apply_probe
+    store: kickside.work.persist:store
+    deadline: kickside.work.jobs:deadline
+    clock: kickside.work.domain:clock
+    types: kickside.work.jobs:types
+    commands: kickside.work.command:types
+    domain: kickside.work:types
+- name: dep.automation
+  kind: ns.dependency
+  version: '*'
+  component: kickside/automation
+  parameters:
+  - name: kickside.automation:target_db
+    value: app:db
+  - name: kickside.automation:api_router
+    value: app:api
+  - name: kickside.automation:ui_server
+    value: app:gateway
+- name: dep.agent
+  kind: ns.dependency
+  version: '*'
+  component: wippy/agent

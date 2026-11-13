@@ -1,0 +1,133 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.traits
+entries:
+- name: work
+  kind: registry.entry
+  meta:
+    type: agent.trait
+    public: true
+    title: Work
+    context_schema:
+      type: object
+      properties:
+        board_id:
+          type: string
+          description: Board component id used when a tool call omits board_id; an explicit call argument takes precedence.
+      additionalProperties: false
+  prompt: Read and change board items and saved views as the calling agent. Pair with Work administration for board structure and configuration.
+  tools:
+  - kickside.work.traits:list_boards
+  - kickside.work.traits:get_schema
+  - kickside.work.traits:find_items
+  - kickside.work.traits:get_item
+  - kickside.work.traits:count
+  - kickside.work.traits:explain
+  - kickside.work.traits:list_history
+  - kickside.work.traits:get_time_in_state
+  - kickside.work.traits:list_links
+  - kickside.work.traits:list_comments
+  - kickside.work.traits:list_stage_runs
+  - kickside.work.traits:list_changes
+  - kickside.work.traits:bulk_status
+  - kickside.work.traits:move_status
+  - kickside.work.traits:list_packs
+  - kickside.work.traits:list_views
+  - kickside.work.traits:get_view
+  - kickside.work.traits:run_view
+  - kickside.work.traits:apply
+  - kickside.work.traits:transition
+  - kickside.work.traits:comment
+  - kickside.work.traits:approve
+  - kickside.work.traits:report
+  - kickside.work.traits:bulk
+  - kickside.work.traits:cancel_bulk
+  - kickside.work.traits:create_view
+  - kickside.work.traits:save_view
+  - kickside.work.traits:rename_view
+  - kickside.work.traits:delete_view
+  build_func_id: kickside.work.traits:build_work
+- name: work_readonly
+  kind: registry.entry
+  meta:
+    type: agent.trait
+    public: true
+    title: Work reads
+    context_schema:
+      type: object
+      properties:
+        board_id:
+          type: string
+          description: Board component id used when a tool call omits board_id; an explicit call argument takes precedence.
+      additionalProperties: false
+  prompt: Read boards, items, history, operations, packs and saved views as the calling agent.
+  tools:
+  - kickside.work.traits:list_boards
+  - kickside.work.traits:get_schema
+  - kickside.work.traits:find_items
+  - kickside.work.traits:get_item
+  - kickside.work.traits:count
+  - kickside.work.traits:explain
+  - kickside.work.traits:list_history
+  - kickside.work.traits:get_time_in_state
+  - kickside.work.traits:list_links
+  - kickside.work.traits:list_comments
+  - kickside.work.traits:list_stage_runs
+  - kickside.work.traits:list_changes
+  - kickside.work.traits:bulk_status
+  - kickside.work.traits:move_status
+  - kickside.work.traits:list_packs
+  - kickside.work.traits:list_views
+  - kickside.work.traits:get_view
+  - kickside.work.traits:run_view
+  build_func_id: kickside.work.traits:build_readonly
+- name: work_admin
+  kind: registry.entry
+  meta:
+    type: agent.trait
+    public: true
+    title: Work administration
+    context_schema:
+      type: object
+      properties:
+        board_id:
+          type: string
+          description: Board component id used when a tool call omits board_id; an explicit call argument takes precedence.
+      additionalProperties: false
+  prompt: Manage board structure, schema, plugins, packs and cross-board moves. Pair this trait with the working Work trait to read and change items and saved views.
+  tools:
+  - kickside.work.traits:create_board
+  - kickside.work.traits:update_board
+  - kickside.work.traits:plan_schema
+  - kickside.work.traits:apply_schema
+  - kickside.work.traits:pack_plan
+  - kickside.work.traits:pack_apply
+  - kickside.work.traits:configure_plugin
+  - kickside.work.traits:plan_move
+  - kickside.work.traits:move
+  - kickside.work.traits:list_boards
+  - kickside.work.traits:get_schema
+  - kickside.work.traits:list_packs
+- name: types
+  kind: library.lua
+  source: file://types.lua
+- name: build_work
+  kind: function.lua
+  source: file://plugin_tools.lua
+  method: working
+  modules:
+  - registry
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+    manifests: kickside.work.domain:manifests
+- name: build_readonly
+  kind: function.lua
+  source: file://plugin_tools.lua
+  method: reads_only
+  modules:
+  - registry
+  imports:
+    types: kickside.work.traits:types
+    board_client: kickside.work:client
+    manifests: kickside.work.domain:manifests

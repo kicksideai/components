@@ -1,0 +1,136 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: plugin_projection_test
+  kind: function.lua
+  meta: { type: test, suite: kickside_work, timeout: 120s }
+  source: file://plugin_projection_test.lua
+  method: run
+  modules: [sql, registry]
+  imports:
+    component: kickside.component:component
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    scoped: app:scoped
+- name: plugin_projection_worker
+  kind: function.lua
+  meta: { type: projection.worker }
+  source: file://plugin_projection_worker.lua
+  method: run
+  modules: [sql, security, ctx]
+  imports:
+    board: kickside.work:client
+    component: kickside.component:component
+- name: folding_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:fold_attachment
+    config_schema: { type: object, properties: { fail: { type: boolean }, marker: { type: string } }, additionalProperties: false }
+    projections:
+    - kind: app:item_fold
+      worker_ref: func://app:plugin_projection_worker
+      input: state
+- name: missing_worker_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:fold_attachment
+    projections:
+    - { kind: app:missing_fold, worker_ref: 'func://app:absent_worker', input: events, events: [] }
+- name: wrong_worker_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:fold_attachment
+    projections:
+    - { kind: app:wrong_fold, worker_ref: 'func://app:work_call', input: events, events: [] }
+- name: fold_attachment
+  kind: contract.binding
+  meta:
+    class: [work_test_plugin]
+    placement: { parents: [root], fixed: true }
+  contracts:
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.core.threads:thread_status
+  - contract: kickside.contract:deletable
+    context_required: [component_id]
+    methods:
+      delete: app:fold_attachment_delete
+- name: fold_attachment_delete
+  kind: function.lua
+  source: file://plugin_projection_worker.lua
+  method: delete
+  modules: [ctx, sql, security]
+  imports:
+    board: kickside.work:client
+    component: kickside.component:component
+- name: contract_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    title: Contract
+    description: Contract fixture
+    icon: puzzle
+    attachment: app:fold_attachment
+    config_schema:
+      type: object
+      properties:
+        nested:
+          type: object
+          properties: { token: { type: string }, count: { type: integer } }
+          required: [token, count]
+          additionalProperties: false
+      required: [nested]
+      additionalProperties: false
+    projections:
+    - { kind: app:state, worker_ref: 'func://app:plugin_projection_worker', input: state, revision: 2 }
+    - { kind: app:events, worker_ref: 'func://app:plugin_projection_worker', input: events, events: [kickside.work.events:item.purged] }
+- name: plugin_lifecycle_test
+  kind: function.lua
+  meta: { type: test, suite: kickside_work, timeout: 120s }
+  source: file://plugin_lifecycle_test.lua
+  method: run
+  modules: [sql]
+  imports:
+    steps: app:steps
+    test: wippy.test:test
+    fixture: app:fixture
+
+- name: mapped_requires_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:fold_attachment
+    requires: { hidden: app:work_plugin }
+- name: mapped_seams_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:fold_attachment
+    seams: { hidden: app:text_type }
+- name: false_revision_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:fold_attachment
+    projections:
+    - { kind: app:false_revision, worker_ref: 'func://app:plugin_projection_worker', input: state, revision: false }
+
+- name: plugin_worker_callbacks
+  kind: security.policy
+  groups: [wippy.security:process]
+  policy:
+    resources: [app:plugin_projection_worker]
+    actions: [registry.get, funcs.call]
+    effect: allow
+- name: folding_plugin_access
+  kind: security.policy
+  groups: [kickside.security.groups:members]
+  policy:
+    resources: [app:folding_plugin, app:fold_attachment, app:plugin_projection_worker]
+    actions: [registry.get, contract.get, contract.open]
+    effect: allow
