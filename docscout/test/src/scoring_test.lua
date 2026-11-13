@@ -8,6 +8,12 @@ local function near(a: number, b: number): boolean return math.abs(a - b) < 1e-9
 
 return { run = test.run_cases(function()
     test.describe("Scoring values", function()
+        test.it("scores every word in long extracted text", function()
+            local body = string.rep("word ", 70000)
+            local score = scoring.value("text", body .. "last", body .. "different", {})
+            test.is_true(score < 1)
+            test.is_true(near(score, 70000 / 70001))
+        end)
         test.it("includes failed fields in partial and fully failed case metrics", function()
             local fields = { { name = "amount", type = "number" } }
             local cause = { kind = errors.TIMEOUT, message = "Call timed out", retryable = true }

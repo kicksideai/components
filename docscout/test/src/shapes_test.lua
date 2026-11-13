@@ -19,6 +19,23 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Text helpers", function()
+        test.it("counts long extracted Unicode values without truncation", function()
+            local value = string.rep("界", 120000)
+            local issue = shapes.length_issue({ type = "string", maxLength = 20 }, value)
+            test.eq(issue.length, 120000)
+            test.eq(issue.limit, 20)
+        end)
+        test.it("retains the byte scan semantics for incomplete UTF-8 sequences", function()
+            local function scanned(value: string): string
+                local characters = {}
+                for ch in value:gmatch("[%z\1-\127\194-\244][\128-\191]*") do characters[#characters + 1] = ch end
+                return table.concat(characters):lower()
+            end
+            local value = "\128a\128\192\128b\245\191"
+            test.eq(shapes.normalize_literal(value), scanned(value))
+            value = "a\194\128b\226\128"
+            test.eq(shapes.normalize_literal(value), scanned(value))
+        end)
         test.it("trims and splits non-empty lines", function()
             test.eq(shapes.trim("  a b \n"), "a b")
             test.eq(shapes.trim(""), "")
@@ -36,6 +53,22 @@ return { run = test.run_cases(function()
             test.eq(shapes.normalize("*Net 30* applies"), "net 30 applies")
             test.eq(shapes.normalize("field invoice_total"), "field invoice_total")
             test.eq(shapes.normalize("Gebühr für Prüfung"), "gebühr für prüfung")
+        end)
+        test.it("preserves escaped pairs, nested spacing braces and code boundaries", function()
+            local escaped = [=[$$\$$$\[$\\\]]=]
+            test.eq(shapes.normalize(escaped), shapes.normalize_literal(escaped))
+            test.eq(shapes.normalize([=[$\hspace{a{b}c}x$]=]), "$ x$")
+            test.eq(shapes.normalize([=[$\hspace{}x$]=]), [=[$\hspace{}x$]=])
+            test.eq(shapes.normalize([=[\(x `\quad` y\)]=]), [=[\(x \quad y\)]=])
+            test.eq(shapes.normalize("  ~~~\n$x\\quad y$\n  ~~~\n$x\\quad y$"), "~~~ $x\\quad y$ ~~~ $x y$")
+        end)
+        test.it("retains trailing empty lines", function()
+            local lines = {}
+            for line in shapes.each_line("a\n\n") do lines[#lines + 1] = line end
+            test.eq(json.encode(lines), json.encode({ "a", "", "" }))
+            lines = {}
+            for line in shapes.each_line("") do lines[#lines + 1] = line end
+            test.eq(json.encode(lines), json.encode({ "" }))
         end)
         test.it("reads OCR math spacing markup as whitespace and keeps other dollar signs", function()
             local plain = shapes.normalize("Item A Item B")
