@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.13](https://github.com/kicksideai/components/compare/docscout-v0.1.12...docscout-v0.1.13) (2026-11-13)
+
+
+### Bug Fixes
+
+* **docscout:** process document text with linear scans ([#99](https://github.com/kicksideai/components/issues/99)) ([69f8b6e](https://github.com/kicksideai/components/commit/69f8b6e4428af75b986833820ed47bbc154a45d6))
+
 ## [0.1.12](https://github.com/kicksideai/components/compare/docscout-v0.1.11...docscout-v0.1.12) (2026-11-12)
 
 
