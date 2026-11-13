@@ -1,8 +1,14 @@
-import { WippyVueElement, define } from '@wippy-fe/webcomponent-vue'
+import { WippyVueElement, define, useEvents } from '@wippy-fe/webcomponent-vue'
 import type { WippyElementConfig, WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
 import { PrimeVuePlugin } from '@wippy-fe/theme/primevue-plugin'
-import Storage from './storage.vue'
+import { lazyControl } from './lazy'
 import stylesText from './styles.css?inline'
+
+const Storage = lazyControl(
+  () => import('./storage.vue'),
+  { loading: 'Loading the S3 storage settings…', failed: 'Could not load the S3 storage settings. Reload the page to try again.' },
+  useEvents,
+)
 
 interface Props {}
 interface Events { load: undefined; error: { message: string; error: unknown } }

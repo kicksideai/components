@@ -1,7 +1,13 @@
-import { WippyVueElement, define } from '@wippy-fe/webcomponent-vue'
+import { WippyVueElement, define, useEvents } from '@wippy-fe/webcomponent-vue'
 import type { WippyElementConfig, WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
-import Root from './app/ProviderCard.vue'
+import { lazyControl } from './lazy'
 import stylesText from './card.css?inline'
+
+const Root = lazyControl(
+  () => import('./app/ProviderCard.vue'),
+  { immediate: true, loading: 'Loading provider settings…', failed: 'Could not load the provider settings. Reload the page to try again.' },
+  useEvents,
+)
 
 // kickside-sso-provider — the generic provider admin card. The SSO admin shell
 // mounts it once per discovered provider, passing that provider's config slice

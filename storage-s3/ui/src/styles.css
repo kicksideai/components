@@ -4,5 +4,10 @@
 .storage-s3 h2 { margin: 0 0 .75rem; font-size: 1.25rem; }
 .storage-s3 p, .storage-s3 small { color: var(--p-text-muted-color); line-height: 1.5; }
 .storage-s3 form { display: grid; gap: .75rem; margin-top: 1.25rem; }
+/* Holds the settings height while the policy loads. */
+.storage-s3:has(> p[role="status"]) { min-height: 329px; }
 .storage-s3 label { font-weight: 600; }
 .storage-s3-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .5rem; }
+
+/* The loaded height, reserved while the implementation loads or fails. Width is never reserved. */
+:host > div:empty, :host > div:has(> [data-lazy-state]) { min-height: 329px; }
