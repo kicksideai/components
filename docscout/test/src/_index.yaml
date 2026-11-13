@@ -2051,3 +2051,62 @@ entries:
     test: wippy.test:test
     process: kickside.docscout.engine:process
     shapes: kickside.docscout.engine:shapes
+
+- name: reply_contract_test
+  kind: function.lua
+  meta: {type: test, suite: docscout_reply_contract, group: Docscout}
+  source: file://reply_contract_test.lua
+  method: run
+  modules: [registry, json, uuid, hash]
+  imports:
+    test: wippy.test:test
+    data: app:fixture_data
+    artifacts: kickside.uploads.persist:artifact_content_repo
+    ai: kickside.docscout.engine:ai
+    stages: kickside.docscout.engine:stages
+    shapes: kickside.docscout.engine:shapes
+- name: fixture_reply_contract_structured
+  kind: function.lua
+  source: file://fixture_reply_contract.lua
+  method: structured
+  modules: [json]
+- name: fixture_reply_contract_generate
+  kind: function.lua
+  source: file://fixture_reply_contract.lua
+  method: generate
+  modules: [json]
+- name: fixture_reply_contract_driver
+  kind: contract.binding
+  contracts:
+  - contract: wippy.llm:structured_output
+    methods: {structured_output: app:fixture_reply_contract_structured}
+  - contract: wippy.llm:generator
+    methods: {generate: app:fixture_reply_contract_generate}
+- name: fixture_reply_contract_provider
+  kind: registry.entry
+  meta: {type: llm.provider, name: reply-contract}
+  driver: {id: app:fixture_reply_contract_driver, options: {}}
+- name: fixture_reply_contract_absent_model
+  kind: registry.entry
+  meta: {type: llm.model, name: reply-contract-absent, capabilities: [generate, structured_output, vision], class: [reply-contract-absent], priority: 100}
+  max_tokens: 128000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_reply_contract_provider
+    provider_model: reply-contract-absent
+- name: fixture_reply_contract_partial_model
+  kind: registry.entry
+  meta: {type: llm.model, name: reply-contract-partial, capabilities: [generate, structured_output, vision], class: [reply-contract-partial], priority: 100}
+  max_tokens: 128000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_reply_contract_provider
+    provider_model: reply-contract-partial
+- name: fixture_reply_contract_parsed_model
+  kind: registry.entry
+  meta: {type: llm.model, name: reply-contract-parsed, capabilities: [generate, structured_output, vision], class: [reply-contract-parsed], priority: 100}
+  max_tokens: 128000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_reply_contract_provider
+    provider_model: reply-contract-parsed
