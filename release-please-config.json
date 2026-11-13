@@ -50,8 +50,7 @@
         "docscout/test",
         "docscout/ui/dist",
         "docscout/ui/node_modules"
-      ],
-      "release-as": "0.1.14"
+      ]
     }
   }
 }
