@@ -227,6 +227,7 @@ entries:
 - name: extractor
   kind: contract.binding
   meta:
+    mutation: closed
     title: Docscout
     icon: tabler:file-search
     class:
