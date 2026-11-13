@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Generic OIDC engine shared by the google, microsoft, and oidc connectors.
 -- Authorization-code + PKCE, id_token validation, and userinfo enrichment.
 --
@@ -27,12 +28,12 @@ function M.discover(issuer)
     local base = issuer:gsub("/+$", "")
     local resp, err = http_client.get(base .. "/.well-known/openid-configuration",
         { headers = { ["Accept"] = "application/json" } })
-    if err then return nil, "discovery failed: " .. err end
+    if err then return nil, "discovery failed" end
     if resp.status_code >= 400 then
         return nil, "discovery http " .. tostring(resp.status_code)
     end
     local doc, derr = json.decode(resp.body or "")
-    if derr then return nil, "discovery parse failed: " .. derr end
+    if derr then return nil, "discovery parse failed" end
     return {
         issuer = doc.issuer or issuer,
         authorize = doc.authorization_endpoint,
@@ -197,13 +198,13 @@ function M.complete(d, p)
             code_verifier = p.code_verifier,
         }),
     })
-    if err then return nil, "token exchange failed: " .. err end
+    if err then return nil, "token exchange request failed" end
     if resp.status_code >= 400 then
-        return nil, "token exchange http " .. tostring(resp.status_code) .. ": " .. (resp.body or "")
+        return nil, "token exchange http " .. tostring(resp.status_code)
     end
 
     local tok, terr = json.decode(resp.body or "")
-    if terr then return nil, "token parse failed: " .. terr end
+    if terr then return nil, "token response is not valid JSON" end
     if type(tok) ~= "table" or not tok.id_token then
         return nil, "no id_token in response"
     end
