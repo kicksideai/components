@@ -1,7 +1,7 @@
 import { defineComponent as q, computed as u, reactive as F, ref as R, watch as G, openBlock as o, createElementBlock as l, createElementVNode as n, createVNode as g, unref as m, createTextVNode as y, toDisplayString as c, createCommentVNode as p, normalizeClass as f, Fragment as S, renderList as M } from "vue";
 import { Icon as w } from "@iconify/vue";
 import { api as Q } from "@wippy-fe/proxy";
-import { a as U, u as W } from "./wc-runtime-CNDpK4lj.js";
+import { a as U, u as W } from "./wc-runtime-f54Bo-yJ.js";
 const X = {
   key: 0,
   class: "ap"
@@ -262,4 +262,4 @@ const X = {
 export {
   je as default
 };
-//# sourceMappingURL=ProviderCard-DvH0E_OM.js.map
+//# sourceMappingURL=ProviderCard-s1v0HkIV.js.map

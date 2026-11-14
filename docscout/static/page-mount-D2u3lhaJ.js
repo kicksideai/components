@@ -1,11 +1,9 @@
-import { P as D } from "./primevue-plugin-UREsRVxx.js";
-import { defineComponent as S, ref as c, watch as P, onBeforeUnmount as F, openBlock as a, createElementBlock as l, createElementVNode as o, toDisplayString as n, createCommentVNode as v, withDirectives as R, vModelText as T, createVNode as y, unref as p, createBlock as h, Fragment as E, renderList as U, createTextVNode as V, computed as q } from "vue";
-import { b as H, u as I, a as M } from "./wc-runtime-DUvG5Zds.js";
+import { b as D, u as F, a as R, P as T } from "./wc-runtime-CWPiLYui.js";
+import { defineComponent as B, ref as c, watch as P, onBeforeUnmount as U, openBlock as a, createElementBlock as l, createElementVNode as s, toDisplayString as n, createCommentVNode as v, withDirectives as q, vModelText as H, createVNode as y, unref as p, createBlock as h, Fragment as E, renderList as I, createTextVNode as V, computed as M } from "vue";
 import { Icon as $ } from "@iconify/vue";
-import N from "primevue/button";
-import { c as B, n as O } from "./config-Y09Qqq2I.js";
-import { _ as j } from "./CreateForm.vue_vue_type_script_setup_true_lang-rXh7a6Vh.js";
-import { w as A, _ as G } from "./Extractor.vue_vue_type_script_setup_true_lang-Cir8WoQ_.js";
+import { s as N, c as S, n as O } from "./index-DsWOWvnx.js";
+import { _ as j } from "./CreateForm.vue_vue_type_script_setup_true_lang-eLkqoebJ.js";
+import { w as A, _ as G } from "./Extractor.vue_vue_type_script_setup_true_lang-DGqO-rWv.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const J = { class: "docscout list-page" }, K = { class: "toolbar" }, Q = { class: "toolbar-title" }, W = {
   key: 0,
@@ -25,28 +23,28 @@ const J = { class: "docscout list-page" }, K = { class: "toolbar" }, Q = { class
 }, ae = {
   key: 3,
   class: "empty-state"
-}, oe = {
+}, se = {
   key: 4,
   class: "cards"
-}, se = ["onClick"], le = { class: "card-icon" }, ne = { class: "card-main" }, re = { class: "card-title-row" }, ie = { class: "card-title" }, ce = {
+}, oe = ["onClick"], le = { class: "card-icon" }, ne = { class: "card-main" }, re = { class: "card-title-row" }, ie = { class: "card-title" }, ce = {
   key: 0,
   class: "access"
 }, ue = {
   key: 0,
   class: "card-desc"
-}, de = { class: "card-meta" }, me = /* @__PURE__ */ S({
+}, de = { class: "card-meta" }, me = /* @__PURE__ */ B({
   __name: "ExtractorList",
   emits: ["open"],
   setup(L, { emit: b }) {
-    const k = b, s = c(), u = c(), m = c(!1), r = c(""), i = c(!1), g = c(!1), x = c(""), _ = c("");
+    const k = b, o = c(), u = c(), m = c(!1), r = c(""), i = c(!1), g = c(!1), x = c(""), _ = c("");
     let f = 0;
     async function C(d) {
       const t = ++f;
       m.value = !0;
       try {
-        const e = await B.list({ filter: _.value.trim(), ...d ? { cursor: d } : {} });
+        const e = await S.list({ filter: _.value.trim(), ...d ? { cursor: d } : {} });
         if (t !== f) return;
-        s.value = d ? [...s.value ?? [], ...e.items] : e.items, u.value = e.next_cursor, r.value = "";
+        o.value = d ? [...o.value ?? [], ...e.items] : e.items, u.value = e.next_cursor, r.value = "";
       } catch (e) {
         t === f && (r.value = e instanceof Error ? e.message : String(e));
       } finally {
@@ -54,14 +52,14 @@ const J = { class: "docscout list-page" }, K = { class: "toolbar" }, Q = { class
       }
     }
     P(_, () => {
-      s.value = void 0, u.value = void 0, C();
-    }), H(() => C()), F(() => {
+      o.value = void 0, u.value = void 0, C();
+    }), D(() => C()), U(() => {
       f++;
     });
     async function z(d) {
       g.value = !0, x.value = "";
       try {
-        const t = await B.create({ ...d, config: O() });
+        const t = await S.create({ ...d, config: O() });
         i.value = !1, k("open", t.component_id);
       } catch (t) {
         x.value = t instanceof Error ? t.message : String(t);
@@ -74,20 +72,20 @@ const J = { class: "docscout list-page" }, K = { class: "toolbar" }, Q = { class
       return t & 8 ? "" : t & 2 ? "Shared · can edit" : "Shared · can run";
     }
     return (d, t) => (a(), l("main", J, [
-      o("div", K, [
-        o("div", Q, [
-          t[5] || (t[5] = o("h1", null, "Docscout", -1)),
-          s.value ? (a(), l("span", W, n(s.value.length) + n(u.value ? "+" : ""), 1)) : v("", !0)
+      s("div", K, [
+        s("div", Q, [
+          t[5] || (t[5] = s("h1", null, "Docscout", -1)),
+          o.value ? (a(), l("span", W, n(o.value.length) + n(u.value ? "+" : ""), 1)) : v("", !0)
         ]),
-        o("div", X, [
-          R(o("input", {
+        s("div", X, [
+          q(s("input", {
             "onUpdate:modelValue": t[0] || (t[0] = (e) => _.value = e),
             class: "filter",
             type: "search",
             placeholder: "Filter extractors",
             "aria-label": "Filter extractors"
           }, null, 512), [
-            [T, _.value]
+            [H, _.value]
           ]),
           y(p(N), {
             label: "New extractor",
@@ -96,14 +94,14 @@ const J = { class: "docscout list-page" }, K = { class: "toolbar" }, Q = { class
           })
         ])
       ]),
-      o("div", Y, [
+      s("div", Y, [
         i.value ? (a(), l("section", Z, [
           y(j, {
             saving: g.value,
             error: x.value,
             onSubmit: z
           }, null, 8, ["saving", "error"]),
-          o("button", {
+          s("button", {
             type: "button",
             class: "kx-iconbtn kx-focus-outline create-close",
             "aria-label": "Cancel",
@@ -112,42 +110,42 @@ const J = { class: "docscout list-page" }, K = { class: "toolbar" }, Q = { class
             y(p($), { icon: "tabler:x" })
           ])
         ])) : v("", !0),
-        r.value ? (a(), l("p", ee, n(r.value), 1)) : s.value ? !s.value.length && !i.value ? (a(), l("div", ae, [
+        r.value ? (a(), l("p", ee, n(r.value), 1)) : o.value ? !o.value.length && !i.value ? (a(), l("div", ae, [
           y(p($), {
             icon: "tabler:file-search",
             class: "empty-icon"
           }),
-          o("p", null, n(_.value.trim() ? "No extractors match." : "Create an extractor to pull typed fields from documents."), 1),
+          s("p", null, n(_.value.trim() ? "No extractors match." : "Create an extractor to pull typed fields from documents."), 1),
           _.value.trim() ? v("", !0) : (a(), h(p(N), {
             key: 0,
             label: "New extractor",
             size: "small",
             onClick: t[3] || (t[3] = (e) => i.value = !0)
           }))
-        ])) : (a(), l("div", oe, [
-          (a(!0), l(E, null, U(s.value, (e) => (a(), l("button", {
+        ])) : (a(), l("div", se, [
+          (a(!0), l(E, null, I(o.value, (e) => (a(), l("button", {
             key: e.component_id,
             type: "button",
             class: "card kx-focus-halo",
             onClick: (pe) => k("open", e.component_id)
           }, [
-            o("span", le, [
+            s("span", le, [
               y(p($), { icon: "tabler:file-search" })
             ]),
-            o("span", ne, [
-              o("span", re, [
-                o("span", ie, n(e.meta.title), 1),
+            s("span", ne, [
+              s("span", re, [
+                s("span", ie, n(e.meta.title), 1),
                 w(e) ? (a(), l("span", ce, n(w(e)), 1)) : v("", !0)
               ]),
               e.meta.description ? (a(), l("span", ue, n(e.meta.description), 1)) : v("", !0),
-              o("span", de, [
+              s("span", de, [
                 V(n(e.meta.field_count ?? 0) + " " + n(e.meta.field_count === "1" ? "field" : "fields") + " · updated " + n(p(A)(e.updated_at)), 1),
                 w(e) && e.meta.owner ? (a(), l(E, { key: 0 }, [
                   V(" · from " + n(e.meta.owner), 1)
                 ], 64)) : v("", !0)
               ])
             ])
-          ], 8, se))), 128)),
+          ], 8, oe))), 128)),
           u.value ? (a(), h(p(N), {
             key: 0,
             label: "Load more",
@@ -161,17 +159,17 @@ const J = { class: "docscout list-page" }, K = { class: "toolbar" }, Q = { class
       ])
     ]));
   }
-}), ve = /* @__PURE__ */ S({
+}), ve = /* @__PURE__ */ B({
   __name: "PageRoot",
   setup(L) {
-    const b = I(), k = M(), s = c("");
+    const b = F(), k = R(), o = c("");
     P(() => b.value.route, (r) => {
-      s.value = (r ?? "").split("/")[0];
+      o.value = (r ?? "").split("/")[0];
     }, { immediate: !0 });
     function u(r) {
-      s.value = r, k("navigate", r);
+      o.value = r, k("navigate", r);
     }
-    const m = q(() => s.value);
+    const m = M(() => o.value);
     return (r, i) => m.value ? (a(), h(G, {
       key: 0,
       id: m.value,
@@ -182,10 +180,10 @@ const J = { class: "docscout list-page" }, K = { class: "toolbar" }, Q = { class
       onOpen: u
     }));
   }
-}), Ce = {
+}), be = {
   rootComponent: ve,
-  plugins: [D]
+  plugins: [T]
 };
 export {
-  Ce as mountConfig
+  be as mountConfig
 };

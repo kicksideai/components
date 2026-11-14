@@ -1,4 +1,4 @@
-import { W as n, u as s } from "./wc-runtime-BMe_f3Uc.js";
+import { W as n, u as s } from "./wc-runtime-CrvNf-P9.js";
 import "@iconify/vue";
 import { defineComponent as t, h as l, onMounted as v } from "vue";
 import { define as m } from "@wippy-fe/proxy";
@@ -33,7 +33,7 @@ class e extends n {
   static get vueConfig() {
     return {
       lazyConfig: f(
-        () => import("./lazy-mount-VvGomr6z.js").then((r) => r.mountConfig),
+        () => import("./lazy-mount-CC4afDH8.js").then((r) => r.mountConfig),
         "Could not load the Dashboard. Reload the page to try again.",
         s
       )

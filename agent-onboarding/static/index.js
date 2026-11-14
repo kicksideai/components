@@ -1,4 +1,4 @@
-import { W as p, u as l } from "./wc-runtime-DZZltuMO.js";
+import { W as p, u as l } from "./wc-runtime-XRIaIpl7.js";
 import "@iconify/vue";
 import { defineComponent as d, h as s, onMounted as m } from "vue";
 import { define as g } from "@wippy-fe/proxy";
@@ -29,7 +29,7 @@ class n extends p {
   static get vueConfig() {
     return {
       lazyConfig: x(
-        () => import("./lazy-mount-CoGN0Tz6.js").then((e) => e.mountConfig),
+        () => import("./lazy-mount-cEvxa_F8.js").then((e) => e.mountConfig),
         "Could not load the onboarding. Reload the page to try again.",
         l
       )
