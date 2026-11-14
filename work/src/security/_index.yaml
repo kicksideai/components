@@ -1,0 +1,410 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.security
+entries:
+- name: module_runtime
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.work.api:apply
+    - kickside.work.api:apply_schema
+    - kickside.work.api:approve
+    - kickside.work.api:bulk
+    - kickside.work.api:bulk_status
+    - kickside.work.api:cancel_bulk
+    - kickside.work.api:configure_plugin
+    - kickside.work.api:count
+    - kickside.work.api:create
+    - kickside.work.api:create_view
+    - kickside.work.api:delete_view
+    - kickside.work.api:explain
+    - kickside.work.api:get
+    - kickside.work.api:get_schema
+    - kickside.work.api:get_time_in_state
+    - kickside.work.api:get_view
+    - kickside.work.api:list
+    - kickside.work.api:list_changes
+    - kickside.work.api:list_comments
+    - kickside.work.api:list_history
+    - kickside.work.api:list_links
+    - kickside.work.api:list_packs
+    - kickside.work.api:list_stage_runs
+    - kickside.work.api:list_views
+    - kickside.work.api:move
+    - kickside.work.api:move_status
+    - kickside.work.api:pack_apply
+    - kickside.work.api:pack_fleet
+    - kickside.work.api:pack_plan
+    - kickside.work.api:plan_move
+    - kickside.work.api:plan_schema
+    - kickside.work.api:query
+    - kickside.work.api:rename_view
+    - kickside.work.api:report
+    - kickside.work.api:resume_migration
+    - kickside.work.api:run_view
+    - kickside.work.api:save_view
+    - kickside.work.api:update
+    - kickside.work.binding:board
+    - kickside.work.binding:registry
+    - kickside.work.binding:view
+    - kickside.work.blocks:apply.run
+    - kickside.work.blocks:bulk.run
+    - kickside.work.blocks:bulk_status.run
+    - kickside.work.blocks:cancel_bulk.run
+    - kickside.work.blocks:comment.run
+    - kickside.work.blocks:find.run
+    - kickside.work.blocks:get.run
+    - kickside.work.blocks:move.run
+    - kickside.work.blocks:move_status.run
+    - kickside.work.blocks:plan_move.run
+    - kickside.work.blocks:report.run
+    - kickside.work.blocks:transition.run
+    - kickside.work.domain:validate_tool
+    - kickside.work.extensions:plugin_projections
+    - kickside.work.persist:publish_meta
+    - kickside.work.read:resolve_memberships
+    - kickside.work.read:resolve_principal
+    - kickside.work.service:apply
+    - kickside.work.service:apply_schema
+    - kickside.work.service:approve
+    - kickside.work.service:board
+    - kickside.work.service:bulk
+    - kickside.work.service:bulk_status
+    - kickside.work.service:cancel_bulk
+    - kickside.work.service:configure_plugin
+    - kickside.work.service:count
+    - kickside.work.service:create
+    - kickside.work.service:create_view
+    - kickside.work.service:delete_view
+    - kickside.work.service:explain
+    - kickside.work.service:get
+    - kickside.work.service:get_schema
+    - kickside.work.service:get_time_in_state
+    - kickside.work.service:get_view
+    - kickside.work.service:list
+    - kickside.work.service:list_changes
+    - kickside.work.service:list_comments
+    - kickside.work.service:list_history
+    - kickside.work.service:list_links
+    - kickside.work.service:list_packs
+    - kickside.work.service:list_stage_runs
+    - kickside.work.service:list_views
+    - kickside.work.service:move
+    - kickside.work.service:move_status
+    - kickside.work.service:pack_apply
+    - kickside.work.service:pack_fleet
+    - kickside.work.service:pack_plan
+    - kickside.work.service:packs
+    - kickside.work.service:plan_move
+    - kickside.work.service:plan_schema
+    - kickside.work.service:plugin_context
+    - kickside.work.service:plugin_feed
+    - kickside.work.service:query
+    - kickside.work.service:rename_view
+    - kickside.work.service:report
+    - kickside.work.service:resume_migration
+    - kickside.work.service:run_view
+    - kickside.work.service:save_view
+    - kickside.work.service:schema_options
+    - kickside.work.service:update
+    - kickside.work.service:view
+    - kickside.work.settings:validate
+    - kickside.work.sink:items
+    - kickside.work.sink:write
+    - kickside.work.source:changes
+    - kickside.work.source:items
+    - kickside.work.source:pull_changes
+    - kickside.work.source:pull_items
+    - kickside.work:board
+    - kickside.work:packs
+    - kickside.work:schema_provider
+    - kickside.work:search_resolver
+    - kickside.work:view
+    actions:
+    - contract.get
+    - contract.open
+    - contract.call
+    - contract.implementations
+    - contract.security
+    - funcs.call
+    - funcs.security
+    effect: allow
+- name: member_endpoints
+  kind: security.policy
+  meta:
+    private: true
+    comment: Members call the board endpoints; the board ACL decides each call.
+  groups: []
+  policy:
+    resources:
+    - kickside.work.api:list.endpoint
+    - kickside.work.api:get_schema.endpoint
+    - kickside.work.api:apply.endpoint
+    - kickside.work.api:get.endpoint
+    - kickside.work.api:query.endpoint
+    - kickside.work.api:count.endpoint
+    - kickside.work.api:list_changes.endpoint
+    - kickside.work.api:list_history.endpoint
+    - kickside.work.api:get_time_in_state.endpoint
+    - kickside.work.api:list_links.endpoint
+    - kickside.work.api:list_comments.endpoint
+    - kickside.work.api:list_stage_runs.endpoint
+    - kickside.work.api:explain.endpoint
+    - kickside.work.api:create_view.endpoint
+    - kickside.work.api:save_view.endpoint
+    - kickside.work.api:rename_view.endpoint
+    - kickside.work.api:delete_view.endpoint
+    - kickside.work.api:run_view.endpoint
+    - kickside.work.api:get_view.endpoint
+    - kickside.work.api:list_views.endpoint
+    - kickside.work.api:approve.endpoint
+    - kickside.work.api:report.endpoint
+    - kickside.work.api:bulk.endpoint
+    - kickside.work.api:bulk_status.endpoint
+    - kickside.work.api:cancel_bulk.endpoint
+    - kickside.work.api:plan_move.endpoint
+    - kickside.work.api:move.endpoint
+    - kickside.work.api:move_status.endpoint
+    - kickside.work.api:list_packs.endpoint
+    - kickside.work.api:pack_fleet.endpoint
+    actions: access
+    effect: allow
+- name: work_admin
+  kind: security.policy
+  meta:
+    title: Kickside Work administration
+    surface: kickside.work
+    intent: module_management
+    includes:
+    - kickside.work.security:module_runtime
+    - kickside.work.security:admin_endpoints
+    - kickside.work.security:board_creation
+  groups: []
+  policy:
+    resources:
+    - kickside.work:board
+    actions:
+    - registry.get
+    - registry.find
+    effect: allow
+- name: board_creation
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.work.binding:board
+    actions:
+    - work.board.create
+    effect: allow
+- name: admin_endpoints
+  kind: security.policy
+  meta:
+    private: true
+    comment: Administrators create boards, plan and apply schemas and resume migrations; the board ACL still decides every call.
+  groups: []
+  policy:
+    resources:
+    - kickside.work.api:create.endpoint
+    - kickside.work.api:plan_schema.endpoint
+    - kickside.work.api:apply_schema.endpoint
+    - kickside.work.api:resume_migration.endpoint
+    - kickside.work.api:configure_plugin.endpoint
+    - kickside.work.api:update.endpoint
+    - kickside.work.api:pack_plan.endpoint
+    - kickside.work.api:pack_apply.endpoint
+    actions: access
+    effect: allow
+- name: user_security_scope
+  kind: ns.requirement
+  default: kickside.security.groups:members
+  meta:
+    value_kind: security.scope
+    comment: Application security group that receives the work module policies.
+  targets:
+  - entry: kickside.work.security:module_access
+    path: .groups +=
+  - entry: kickside.work.security:module_runtime
+    path: .groups +=
+  - entry: kickside.work.security:member_endpoints
+    path: .groups +=
+- name: board_public_meta
+  kind: security.policy
+  meta:
+    private: true
+    comment: Lets the board meta publisher write public meta on board components only.
+    service_only: true
+    producers:
+    - kickside.work.persist:publish_meta
+  policy:
+    resources: '*'
+    actions: component.runtime_meta.write
+    effect: allow
+    conditions:
+    - field: meta.impl_id
+      operator: eq
+      value: kickside.work.binding:board
+- name: migrate_defer
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+  policy:
+    resources:
+    - kickside.work.jobs:migrate
+    actions: kickside.execution.defer
+    effect: allow
+- name: rebalance_defer
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+  policy:
+    resources:
+    - kickside.work.jobs:rebalance
+    actions: kickside.execution.defer
+    effect: allow
+- name: recompute_defer
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+  policy:
+    resources:
+    - kickside.work.jobs:recompute
+    actions: kickside.execution.defer
+    effect: allow
+- name: reindex_defer
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+  policy:
+    resources:
+    - kickside.work.jobs:reindex
+    actions: kickside.execution.defer
+    effect: allow
+- name: principal_lookup
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.read:resolve_principal
+    - kickside.work.read:resolve_memberships
+    comment: Resolves live directory memberships for caller authority and principal predicates.
+  policy:
+    resources:
+    - kickside.contract:directory
+    - kickside.users.directory:directory_binding
+    - kickside.users.directory:directory_groups
+    actions:
+    - registry.get
+    - contract.get
+    - contract.open
+    - contract.call
+    - contract.implementations
+    - contract.security
+    - funcs.call
+    - funcs.security
+    effect: allow
+- name: principal_groups
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.read:resolve_principal
+    - kickside.work.read:resolve_memberships
+    comment: Checks declared holder group identities inside the principal resolver.
+  policy:
+    resources: '*'
+    actions: security.policy_group.get
+    effect: allow
+- name: sync_defer
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:sync
+  policy:
+    resources:
+    - kickside.work.service:sync
+    actions:
+    - kickside.execution.defer
+    effect: allow
+- name: sync_actor
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:sync
+    comment: Reconstructs the validated stored board principal for the position-only command barrier.
+  policy:
+    resources: '*'
+    actions:
+    - security.actor.create
+    - security.policy.get
+    - security.scope.get
+    - security.policy_group.get
+    effect: allow
+- name: sync_frame
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:sync
+  policy:
+    resources:
+    - security
+    - custom
+    actions:
+    - funcs.security
+    - security.scope.create
+    effect: allow
+- name: process_defer
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+  policy:
+    resources:
+    - kickside.work.jobs:process
+    actions: kickside.execution.defer
+    effect: allow
+- name: advance_defer
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+  policy:
+    resources:
+    - kickside.work.jobs:advance
+    actions: kickside.execution.defer
+    effect: allow
+- name: operations_defer
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+  policy:
+    resources:
+    - kickside.work.jobs:bulk
+    - kickside.work.jobs:move
+    - kickside.work.jobs:pack
+    actions: kickside.execution.defer
+    effect: allow
+- name: plugins_defer
+  kind: security.policy
+  meta: { private: true, service_only: true }
+  policy:
+    resources: [kickside.work.jobs:plugins]
+    actions: kickside.execution.defer
+    effect: allow

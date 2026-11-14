@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: traits_conformance_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://traits_conformance_test.lua
+  method: run
+  modules:
+  - registry
+  - json
+  imports:
+    shape: kickside.work.domain:shape
+    test: wippy.test:test
+    fixture: app:fixture
+    compiler: wippy.agent.compiler:compiler
+    consts: kickside.work:consts
+    values: kickside.work.domain:values
+- name: compile_work_agent
+  kind: function.lua
+  source: file://compile_work_agent.lua
+  method: run
+  imports:
+    compiler: wippy.agent.compiler:compiler
+- name: trait_plugins_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://trait_plugins_test.lua
+  method: run
+  modules:
+  - registry
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    values: kickside.work.domain:values
+- name: trait_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:fold_attachment
+    tools:
+    - app:trait_plugin_read
+    - app:trait_plugin_write
+- name: trait_plugin_read
+  kind: function.lua
+  source: file://trait_plugin_tool.lua
+  method: read
+  modules:
+  - funcs
+  meta:
+    type: tool
+    title: Read plugin board schema
+    llm_alias: WorkTestPluginRead
+    llm_description: Read the board schema as a board reader and return its declaration and compiled model.
+    mcp:
+      required_scopes:
+      - state.read
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string"}}}'
+    output_schema: '{"type":"object"}'
+- name: trait_plugin_write
+  kind: function.lua
+  source: file://trait_plugin_tool.lua
+  method: write
+  modules:
+  - funcs
+  meta:
+    type: tool
+    title: Change plugin board items
+    llm_alias: WorkTestPluginWrite
+    llm_description: Apply item changes as a board writer and return the accepted command outcomes.
+    mcp:
+      required_scopes:
+      - state.write
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string"}}}'
+    output_schema: '{"type":"object"}'
+- name: traits_surface_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://traits_surface_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps

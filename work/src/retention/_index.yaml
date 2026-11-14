@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.retention
+entries:
+- name: types
+  kind: library.lua
+  meta:
+    comment: Retention run result.
+  source: file://types.lua
+- name: owner
+  kind: function.lua
+  meta:
+    type: kickside.retention.owner
+    comment: Purges expired trash and collects board data and orphan prefixes in bounded resumable batches.
+  source: file://owner.lua
+  method: run
+  modules: [sql]
+  security:
+    actor:
+      id: system:kickside.work.retention
+    policies:
+    - kickside.work.security:retention_output_publish
+    - kickside.work.security:module_runtime
+  imports:
+    operation_expiry: kickside.work.persist:operation_expiry
+    component: kickside.component:component
+    rows: kickside.work.retention:rows
+    clock: kickside.work.domain:clock
+    defaults: kickside.work.settings:defaults
+    policy: kickside.work.domain:policy
+    consts: kickside.work:consts
+    store: kickside.work.persist:store
+    threads: kickside.work.persist:threads
+    registry: kickside.work.persist:registry
+    append: kickside.work.persist:append
+    domain: kickside.work:types
+    types: kickside.work.retention:types
+    lifecycle: kickside.work.persist:lifecycle
+
+- name: rows
+  kind: library.lua
+  source: file://rows.lua
+  modules: [sql, time]
+  imports:
+    types: kickside.work.retention:types
+    tables: kickside.work.domain:layout
+    operation_expiry: kickside.work.persist:operation_expiry
+    store: kickside.work.persist:store
+    lifecycle: kickside.work.persist:lifecycle
+    clock: kickside.work.domain:clock
+    policy: kickside.work.domain:policy
+    domain: kickside.work:types

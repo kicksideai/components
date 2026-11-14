@@ -1,0 +1,422 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.service
+entries:
+- name: create
+  kind: function.lua
+  meta:
+    comment: kickside.work:board create.
+  source: file://board.lua
+  method: create
+  imports: &id001
+    schema_commands: kickside.work.command:schema_commands
+    apply_ops: kickside.work.command:apply_ops
+    query: kickside.work.read:query
+    cross_board: kickside.work.read:cross_board
+    reader: kickside.work.read:reader
+    plugin_access: kickside.work.read:plugin_access
+    plugin_feed: kickside.work.extensions:plugin_feed
+    feeds: kickside.work.read:feeds
+    create: kickside.work.command:create
+    locate: kickside.work.command:locate
+    requests: kickside.work.service:requests
+    commands: kickside.work.command:types
+    reads: kickside.work.read:types
+    related: kickside.work.read:related
+    configure: kickside.work.command:configure
+    update: kickside.work.command:update
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:schema_output_publish
+    - kickside.work.security:pack_batch_call
+- name: update
+  kind: function.lua
+  meta:
+    comment: Update board component metadata under board ADMIN.
+  source: file://board.lua
+  method: update
+  imports: *id001
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:board_output_publish
+- name: list
+  kind: function.lua
+  meta:
+    comment: kickside.work:board list.
+  source: file://board.lua
+  method: list
+  imports: *id001
+- name: get_schema
+  kind: function.lua
+  meta:
+    comment: kickside.work:board get_schema.
+  source: file://board.lua
+  method: get_schema
+  imports: *id001
+- name: plan_schema
+  kind: function.lua
+  meta:
+    comment: kickside.work:board plan_schema.
+  source: file://board.lua
+  method: plan_schema
+  imports: *id001
+- name: apply_schema
+  kind: function.lua
+  meta:
+    comment: kickside.work:board apply_schema.
+  source: file://board.lua
+  method: apply_schema
+  imports: *id001
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:schema_output_publish
+- name: resume_migration
+  kind: function.lua
+  meta:
+    comment: kickside.work:board resume_migration.
+  source: file://board.lua
+  method: resume_migration
+  imports: *id001
+- name: apply
+  kind: function.lua
+  meta:
+    comment: kickside.work:board apply.
+  source: file://board.lua
+  method: apply
+  imports: *id001
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:apply_output_publish
+- name: get
+  kind: function.lua
+  meta:
+    comment: kickside.work:board get.
+  source: file://board.lua
+  method: get
+  imports: *id001
+- name: list_changes
+  kind: function.lua
+  meta:
+    comment: kickside.work:board changes.
+  source: file://board.lua
+  method: list_changes
+  imports: *id001
+- name: list_history
+  kind: function.lua
+  meta:
+    comment: kickside.work:board history.
+  source: file://board.lua
+  method: list_history
+  imports: *id001
+- name: get_time_in_state
+  kind: function.lua
+  meta:
+    comment: kickside.work:board get_time_in_state.
+  source: file://board.lua
+  method: get_time_in_state
+  imports: *id001
+- name: query
+  kind: function.lua
+  meta:
+    comment: kickside.work:board query.
+  source: file://board.lua
+  method: query
+  imports: *id001
+- name: count
+  kind: function.lua
+  meta:
+    comment: kickside.work:board count.
+  source: file://board.lua
+  method: count
+  imports: *id001
+- name: board
+  kind: contract.binding
+  meta:
+    title: Work board service
+    comment: Default implementation of kickside.work:board.
+  contracts:
+  - contract: kickside.work:board
+    default: true
+    methods:
+      create: kickside.work.service:create
+      list: kickside.work.service:list
+      get_schema: kickside.work.service:get_schema
+      plan_schema: kickside.work.service:plan_schema
+      apply_schema: kickside.work.service:apply_schema
+      resume_migration: kickside.work.service:resume_migration
+      apply: kickside.work.service:apply
+      get: kickside.work.service:get
+      query: kickside.work.service:query
+      count: kickside.work.service:count
+      list_changes: kickside.work.service:list_changes
+      list_history: kickside.work.service:list_history
+      get_time_in_state: kickside.work.service:get_time_in_state
+      list_links: kickside.work.service:list_links
+      list_comments: kickside.work.service:list_comments
+      list_stage_runs: kickside.work.service:list_stage_runs
+      explain: kickside.work.service:explain
+      plugin_context: kickside.work.service:plugin_context
+      plugin_feed: kickside.work.service:plugin_feed
+      schema_options: kickside.work.service:schema_options
+      configure_plugin: kickside.work.service:configure_plugin
+      approve: kickside.work.service:approve
+      report: kickside.work.service:report
+      bulk: kickside.work.service:bulk
+      bulk_status: kickside.work.service:bulk_status
+      cancel_bulk: kickside.work.service:cancel_bulk
+      plan_move: kickside.work.service:plan_move
+      move: kickside.work.service:move
+      move_status: kickside.work.service:move_status
+      update: kickside.work.service:update
+      list_packs: kickside.work.service:list_packs
+      pack_plan: kickside.work.service:pack_plan
+      pack_apply: kickside.work.service:pack_apply
+- name: requests
+  kind: library.lua
+  source: file://requests.lua
+  modules:
+  - contract
+  - json
+  - registry
+  imports:
+    shape: kickside.work.domain:shape
+    types: kickside.work:types
+- name: list_links
+  kind: function.lua
+  meta:
+    comment: kickside.work:board list_links.
+  source: file://board.lua
+  method: list_links
+  imports: *id001
+- name: list_comments
+  kind: function.lua
+  meta:
+    comment: kickside.work:board list_comments.
+  source: file://board.lua
+  method: list_comments
+  imports: *id001
+- name: explain
+  kind: function.lua
+  meta:
+    comment: kickside.work:board explain.
+  source: file://board.lua
+  method: explain
+  imports: *id001
+- name: attachments
+  kind: library.lua
+  source: file://attachments.lua
+  modules:
+  - time
+  imports:
+    domain: kickside.work:types
+    teardown: kickside.component.persist:teardown
+    component: kickside.component:component
+    component_envelope: kickside.component:envelope
+    component_types: kickside.component:types
+- name: configure_plugin
+  kind: function.lua
+  meta:
+    comment: Configure an active board plugin under board ADMIN.
+  source: file://board.lua
+  method: configure_plugin
+  imports: *id001
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:plugin_output_publish
+- name: types
+  kind: library.lua
+  source: file://types.lua
+  imports:
+    reads: kickside.work.read:types
+    domain: kickside.work:types
+- name: create_view
+  kind: function.lua
+  source: file://views.lua
+  method: create
+  modules: &id003
+  - registry
+  - security
+  imports: &id002
+    values: kickside.work.domain:values
+    registry_values: kickside.work.domain:registry_values
+    component: kickside.component:component
+    component_envelope: kickside.component:envelope
+    requests: kickside.work.service:requests
+    query: kickside.work.read:query
+    access: kickside.work.read:access
+    predicates: kickside.work.domain:predicates
+    shape: kickside.work.domain:shape
+    types: kickside.work.service:types
+    domain: kickside.work:types
+    reads: kickside.work.read:types
+    component_types: kickside.component:types
+- name: save_view
+  kind: function.lua
+  source: file://views.lua
+  method: save
+  modules:
+  - registry
+  - security
+  imports: *id002
+- name: run_view
+  kind: function.lua
+  source: file://views.lua
+  method: run
+  modules:
+  - registry
+  - security
+  imports: *id002
+- name: get_view
+  kind: function.lua
+  source: file://views.lua
+  method: get
+  modules:
+  - registry
+  - security
+  imports: *id002
+- name: list_views
+  kind: function.lua
+  source: file://views.lua
+  method: list
+  modules:
+  - registry
+  - security
+  imports: *id002
+- name: rename_view
+  kind: function.lua
+  source: file://views.lua
+  method: rename
+  modules:
+  - registry
+  - security
+  imports: *id002
+  security:
+    policies:
+    - kickside.work.security:view_public_meta
+- name: delete_view
+  kind: function.lua
+  source: file://views.lua
+  method: delete
+  modules:
+  - registry
+  - security
+  imports: *id002
+- name: view
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:view
+    default: true
+    methods:
+      create: kickside.work.service:create_view
+      save: kickside.work.service:save_view
+      rename: kickside.work.service:rename_view
+      delete: kickside.work.service:delete_view
+      run: kickside.work.service:run_view
+      get: kickside.work.service:get_view
+      list: kickside.work.service:list_views
+- name: sync
+  kind: function.lua
+  meta:
+    private: true
+    comment: Checks command authority and waits under the board execution identity.
+  source: file://sync.lua
+  method: cover
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:sync_defer
+    - kickside.work.security:sync_actor
+    - kickside.work.security:sync_frame
+  imports:
+    types: kickside.work.service:types
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    guard: kickside.work.command:guard
+    threads: kickside.work.persist:threads
+    consts: kickside.work:consts
+    domain: kickside.work:types
+- name: sync_position
+  kind: function.lua
+  meta:
+    private: true
+  source: file://sync.lua
+  method: position
+  imports:
+    types: kickside.work.service:types
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    guard: kickside.work.command:guard
+    threads: kickside.work.persist:threads
+    consts: kickside.work:consts
+    domain: kickside.work:types
+- name: pack_views
+  kind: library.lua
+  source: file://views.lua
+  modules: *id003
+  imports: *id002
+- name: list_packs
+  kind: function.lua
+  source: file://packs.lua
+  method: list_packs
+  imports: &id004
+    requests: kickside.work.service:requests
+    catalog: kickside.work.domain:pack_catalog
+    planner: kickside.work.command:pack_plan
+    packs: kickside.work.command:packs
+    component: kickside.component:component
+    store: kickside.work.persist:store
+    consts: kickside.work:consts
+    types: kickside.work.domain:types
+- name: pack_plan
+  kind: function.lua
+  source: file://packs.lua
+  method: pack_plan
+  imports: *id004
+- name: pack_apply
+  kind: function.lua
+  source: file://packs.lua
+  method: pack_apply
+  imports: *id004
+  security:
+    policies:
+    - kickside.work.security:pack_batch_call
+- name: pack_fleet
+  kind: function.lua
+  source: file://packs.lua
+  method: fleet
+  imports: *id004
+- name: packs
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:packs
+    default: true
+    methods:
+      list: kickside.work.service:pack_fleet
+- name: plugin_context
+  kind: function.lua
+  source: file://board.lua
+  method: plugin_context
+  imports: *id001
+- name: schema_options
+  kind: function.lua
+  source: file://board.lua
+  method: schema_options
+  imports: *id001
+- name: plugin_feed
+  kind: function.lua
+  source: file://board.lua
+  method: plugin_feed
+  imports: *id001
+
+- name: list_stage_runs
+  kind: function.lua
+  meta:
+    comment: Stage-run pages under board READ and item visibility.
+  source: file://board.lua
+  method: list_stage_runs
+  imports: *id001

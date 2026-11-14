@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: bulk_move_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://bulk_move_test.lua
+  method: run
+  modules:
+  - sql
+  - registry
+  - json
+  imports:
+    operation_steps: app:operation_steps
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    block_contract: kickside.blocks:contract
+    retention: kickside.work.retention:rows
+    defaults: kickside.work.settings:defaults
+- name: deferred_probe
+  kind: library.lua
+  source: file://deferred_probe.lua
+  modules:
+  - sql
+  - time
+  imports:
+    identity: kickside.execution:execution_identity
+- name: move_phase_probe
+  kind: library.lua
+  source: file://move_phase_probe.lua
+  modules:
+  - sql
+  imports:
+    events: kickside.work.command:operation_events
+- name: move_admission_probe
+  kind: library.lua
+  source: file://move_admission_probe.lua
+  modules:
+  - sql
+  imports:
+    principals: kickside.work.read:principals
+    domain: kickside.work:types
+- name: operation_rows_probe
+  kind: library.lua
+  source: file://operation_rows_probe.lua
+  modules:
+  - sql
+  - security
+  imports:
+    rows: kickside.work.persist:operation_rows
+    types: kickside.work.command:types
+- name: operation_steps
+  kind: library.lua
+  source: file://operation_steps.lua
+  modules: [sql]
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+- name: bulk_move_contract_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://bulk_move_contract_test.lua
+  method: run
+  modules: [sql, registry, json]
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    operation_steps: app:operation_steps
+- name: bulk_apply_probe
+  kind: library.lua
+  source: file://bulk_apply_probe.lua
+  modules: [sql, time]
+  imports:
+    apply_ops: kickside.work.command:apply_ops
+    types: kickside.work.command:types
+- name: bulk_progress_probe
+  kind: library.lua
+  source: file://bulk_progress_probe.lua
+  modules: [sql, time]
+  imports:
+    events: kickside.work.command:operation_events
+    domain: kickside.work:types

@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.sink
+entries:
+- name: write
+  kind: function.lua
+  source: file://write.lua
+  method: write
+  modules: [hash, registry, security]
+  imports:
+    outcomes: kickside.work.domain:outcomes
+    local_types: kickside.work.sink:types
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    values: kickside.work.domain:values
+    board_client: kickside.work:client
+    data_error: kickside.work.source:data_error
+    writable_sink: kickside.data:writable_sink
+    types: kickside.work.command:types
+    read_types: kickside.work.read:types
+- name: items
+  kind: contract.binding
+  meta:
+    title: Work items
+    delivery: at_least_once
+    input_shape: record
+  contracts:
+  - contract: kickside.data:writable
+    methods:
+      write: kickside.work.sink:write
+- name: items_port
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work items
+    icon: tabler:layout-kanban
+    group: Work
+    class: kickside.work
+  binding: kickside.work.sink:items
+  input_mode: transform_output
+  capabilities:
+    receipt_identity: 2
+    structured_failure: 1
+  operations:
+    upsert: {}
+  config_schema:
+    board_id:
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      role: primary
+      required: true
+      title: Board
+    source:
+      type: string
+      required: true
+      title: Registered Work write source
+  input_schema: '{"type": "object", "additionalProperties": false, "properties": {"values": {"type": "object"},
+    "clear": {"type": "array", "items": {"type": "string"}}, "unset": {"type": "array", "items": {"type": "string"}}}}'
+  output_schema: '{"type":"object","properties":{"item_id":{"type":"string"}}}'
+- name: types
+  kind: library.lua
+  source: file://types.lua
+  imports:
+    domain: kickside.work:types
+    read_types: kickside.work.read:types
+    types: kickside.work.command:types

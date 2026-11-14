@@ -211,6 +211,7 @@ local function define_tests()
             test.eq(resume_calls[1].target, "kickside.blocks:resume")
             test.eq(resume_calls[1].args.dataflow_id, "df-4")
             test.eq(resume_calls[1].args.signal_id, "sig-4")
+            test.eq(resume_calls[1].args.arm_id, "kickside.research:arm_research_block")
             local payload = resume_calls[1].args.payload
             test.eq(payload.outcome, "result")
             test.eq(payload.status, "complete")
@@ -248,6 +249,7 @@ local function define_tests()
             block_signal._modules = {}
 
             test.eq(#resume_calls, 1)
+            test.eq(resume_calls[1].args.arm_id, "kickside.research:arm_research_block")
             local payload = resume_calls[1].args.payload
             test.eq(payload.outcome, "failed")
             test.eq(payload.status, "failed")

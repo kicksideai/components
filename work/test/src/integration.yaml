@@ -1,0 +1,105 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: event_baseline
+  kind: library.lua
+  source: file://event_baseline.lua
+  modules:
+  - json
+- name: event_compatibility
+  kind: library.lua
+  source: file://event_compatibility.lua
+  imports:
+    values: kickside.work.domain:values
+- name: ports_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://ports_test.lua
+  method: run
+  modules:
+  - registry
+  - json
+  - funcs
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    event_baseline: app:event_baseline
+    event_compatibility: app:event_compatibility
+- name: sources_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://sources_test.lua
+  method: run
+  modules:
+  - registry
+  - json
+  - funcs
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: sink_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://sink_test.lua
+  method: run
+  modules:
+  - registry
+  - json
+  - funcs
+  imports:
+    scoped: app:scoped
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+- name: blocks_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://blocks_test.lua
+  method: run
+  modules:
+  - registry
+  - json
+  - funcs
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    block_contract: kickside.blocks:contract
+    block_lower: kickside.blocks:lower
+- name: traits_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://traits_test.lua
+  method: run
+  modules:
+  - registry
+  - json
+  - funcs
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    values: kickside.work.domain:values
+- name: work_write_source
+  kind: registry.entry
+  meta:
+    type: kickside.work.write_source

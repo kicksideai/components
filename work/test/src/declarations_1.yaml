@@ -1,0 +1,438 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: views_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://views_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    steps: app:steps
+- name: work_plugin
+  kind: registry.entry
+  meta:
+    seams: [app:work_scope, app:work_type]
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    config_schema:
+      type: object
+      properties:
+        threshold:
+          type: integer
+          default: 1
+      additionalProperties: false
+- name: hidden_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+- name: work_scope
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: app:work_plugin
+    table: kickside_work_item
+    board_column: board_id
+    item_column: item_id
+    filters: {}
+- name: work_attachment
+  kind: contract.binding
+  meta:
+    title: Work test attachment
+    class:
+    - work_test_attachment
+  contracts:
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.core.threads:thread_status
+  - contract: kickside.contract:deletable
+    context_required: [component_id]
+    methods:
+      delete: app:attachment_delete
+- name: list_view_type
+  kind: registry.entry
+  meta:
+    type: kickside.work.ui.view
+    id: list
+    requires: {}
+    config_schema:
+      type: object
+      additionalProperties: false
+- name: plugin_scope_access
+  kind: security.policy
+  groups:
+  - kickside.security.groups:members
+  policy:
+    resources:
+    - app:model_plugin
+    - app:model_guard
+    - app:unlisted_guard
+    - app:model_operand
+    - app:work_plugin
+    - app:missing_plugin
+    - app:work_scope
+    - app:work_attachment
+    - app:list_view_type
+    - app:work_type
+    actions:
+    - registry.get
+    - registry.find
+    - contract.open
+    - contract.get
+    - contract.call
+    - contract.security
+    - funcs.call
+    effect: allow
+- name: settings_admin
+  kind: security.policy
+  groups:
+  - app.security:work_admin
+  policy:
+    resources:
+    - kickside.settings.api:put_settings.endpoint
+    actions: access
+    effect: allow
+- name: work_type
+  kind: registry.entry
+  meta:
+    type: kickside.work.type
+    plugin: app:work_plugin
+    form: int
+    indexes:
+    - none
+    - number
+    config_schema:
+      type: object
+      additionalProperties: false
+- name: schema_template
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    schema:
+      template:
+        fields:
+        - {code: plugin_score, form: int, index: number}
+        - code: plugin_secret
+          form: int
+          index: number
+          access:
+            read: [{group: 'app.security:work_admin'}]
+            write: [{group: 'app.security:work_admin'}]
+        item_types:
+        - {id: task, fields: [plugin_score, plugin_secret]}
+- name: schema_provider
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    config_schema:
+      type: object
+      properties:
+        extra: {type: boolean}
+      additionalProperties: false
+    schema:
+      provider: app:plugin_schema_binding
+- name: settings_provider
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    settings: app.board_settings
+    attachment: app:work_attachment
+    config_schema:
+      type: object
+      properties:
+        extra: {type: boolean}
+      additionalProperties: false
+    schema:
+      provider: app:plugin_schema_binding
+- name: board_settings_extra
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: app.board_settings
+  key: extra
+  value_type: bool
+  default: false
+  schema:
+    type: boolean
+  title: Extra
+  description: App default of the harness plugin's extra config.
+  category: Work
+  order: 0
+  scope: global
+  editable: true
+  visible: true
+- name: schema_ungranted
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    schema:
+      provider: app:private_schema_binding
+- name: schema_unresolvable
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    schema:
+      provider: app:absent_schema_binding
+- name: plugin_schema_binding
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:schema_provider
+    methods:
+      resolve: app:resolve_plugin_schema
+- name: private_schema_binding
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:schema_provider
+    methods:
+      resolve: app:resolve_plugin_schema
+- name: resolve_plugin_schema
+  kind: function.lua
+  source: file://plugin_provider.lua
+  method: resolve
+  modules: [sql, json, security]
+- name: plugin_provider
+  kind: library.lua
+  source: file://plugin_provider.lua
+  modules: [sql, json, security]
+- name: schema_plugin_access
+  kind: security.policy
+  groups: [kickside.security.groups:members]
+  policy:
+    resources:
+    - kickside.work:schema_provider
+    - app:schema_template
+    - app:schema_provider
+    - app:settings_provider
+    - app:board_settings_extra
+    - app:schema_ungranted
+    - app:schema_unresolvable
+    - app:plugin_schema_binding
+    - app:resolve_plugin_schema
+    actions: [registry.get, registry.find, contract.open, contract.get, contract.call, contract.security, funcs.call, funcs.security]
+    effect: allow
+- name: plugin_schema_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://plugin_schema_test.lua
+  method: run
+  modules: [json, uuid, time]
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    steps: app:steps
+    provider: app:plugin_provider
+    reindex: app:reindex_append
+    store: kickside.work.persist:store
+    tables: kickside.work.domain:layout
+    materializer: kickside.work.persist:materializer
+    values: kickside.work.domain:values
+    domain: kickside.work:types
+
+- name: directory_probe
+  kind: library.lua
+  source: file://directory_probe.lua
+  modules: [sql]
+  imports:
+    directory: kickside.users.directory:directory_lib
+- name: shelf_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    comment: Harness plugin with per-board shelf settings.
+    title: Shelf
+    settings: app.shelf
+    attachment: app:work_attachment
+    config_schema:
+      type: object
+      properties:
+        location: {type: string}
+        reorder_days: {type: integer, minimum: 1}
+        auto_reorder: {type: boolean}
+      required: [location]
+      additionalProperties: false
+    schema:
+      template:
+        aspects: [{namespace: shelf, attributes: [{code: bin, type: text}]}]
+- name: fields_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    comment: Harness plugin whose fields come from a provider reading its own store.
+    config_schema: {type: object, properties: {prefix: {type: string}}, additionalProperties: false}
+    schema:
+      provider: app:fields_provider
+- name: failing_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    comment: Harness plugin whose provider fails.
+    schema:
+      provider: app:failing_provider
+- name: malformed_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    comment: Harness plugin whose provider answers without a fragment.
+    schema:
+      provider: app:malformed_provider
+- name: two_sources_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    comment: Harness plugin naming both a template and a provider.
+    schema:
+      template: {aspects: []}
+      provider: app:fields_provider
+- name: string_template_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    comment: Harness plugin whose template is not an object.
+    schema:
+      template: aspects
+- name: leaky_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    comment: Harness plugin declaring a secret-shaped config property.
+    config_schema:
+      type: object
+      properties:
+        endpoint: {type: string}
+        auth: {type: object, properties: {token: {type: string, writeOnly: true}}}
+- name: bare_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    comment: Harness plugin with no settings and no config.
+- name: listed_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    comment: Harness plugin with a list in its config.
+    config_schema: {type: object, properties: {tags: {type: array, items: {type: string}}}}
+- name: fields_provider
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:schema_provider
+    methods:
+      resolve: app:fields_resolve
+- name: failing_provider
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:schema_provider
+    methods:
+      resolve: app:failing_resolve
+- name: malformed_provider
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:schema_provider
+    methods:
+      resolve: app:malformed_resolve
+- name: fields_resolve
+  kind: function.lua
+  source: file://fields_resolve.lua
+  method: resolve
+  modules: [sql, security]
+- name: failing_resolve
+  kind: function.lua
+  source: file://fields_resolve.lua
+  method: fail
+  modules: [sql, security]
+- name: malformed_resolve
+  kind: function.lua
+  source: file://fields_resolve.lua
+  method: malformed
+  modules: [sql, security]
+- name: resolve_probe
+  kind: function.lua
+  meta:
+    comment: Runs a plugin schema resolution under the calling actor.
+  source: file://resolve_probe.lua
+  method: run
+  imports:
+    manifests: kickside.work.domain:manifests
+    types: kickside.work:types
+- name: text_type
+  kind: registry.entry
+  meta: {type: kickside.work.type, form: text, indexes: [none, key], comment: Harness field type.}
+- name: configured_type
+  kind: registry.entry
+  meta: {type: kickside.work.type, form: text, config_schema: {type: object}, comment: Harness field type with a config schema.}
+- name: formless_type
+  kind: registry.entry
+  meta: {type: kickside.work.type, comment: Harness type without a form.}
+- name: undeclared_type
+  kind: registry.entry
+  meta: {type: other, comment: Harness entry that is no seam.}
+- name: listed_config_type
+  kind: registry.entry
+  meta: {type: kickside.work.type, form: text, config_schema: {type: array}, comment: Harness type whose config schema is not an object schema.}
+- name: callback_type
+  kind: registry.entry
+  meta: {type: kickside.work.type, form: text, normalize: app:fields_resolve, comment: Harness type naming a callback.}
+- name: stock
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    comment: Harness scope over stock rows per item, readable by readers.
+    table: rt_stock
+    board_column: board_id
+    item_column: item_id
+    filters:
+      available: {column: available, type: integer, ops: [gt, eq]}
+- name: stock_admin
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    comment: Harness scope restricted to admins.
+    table: rt_stock
+    board_column: board_id
+    item_column: item_id
+    access: admin
+    filters:
+      available: {column: available, type: integer, ops: [gt]}
+- name: hostile
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    comment: Harness scope whose table name is not an identifier.
+    table: "rt_stock; DROP TABLE kickside_work_item"
+    board_column: board_id
+    item_column: item_id
+    filters:
+      available: {column: available, type: integer, ops: [gt]}
+- name: filter_fixture
+  kind: library.lua
+  meta:
+    comment: A generated table set with eight items for filter tree tests.
+  source: file://filter_fixture.lua
+  modules: [sql, uuid]
+  imports:
+    generated: kickside.work.persist:generated
+    select: kickside.work.read:select
+    tables: kickside.work.domain:layout
+    values: kickside.work.domain:values
+    types: kickside.work:types

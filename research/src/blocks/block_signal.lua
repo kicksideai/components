@@ -220,6 +220,7 @@ local function resume_one(research_id: string, etype: string, event: any): strin
     local _, rerr = executor:call(RESUME_TARGET, {
         dataflow_id = (row :: any).dataflow_id,
         signal_id = (row :: any).signal_id,
+        arm_id = "kickside.research:arm_research_block",
         payload = payload,
     })
     if rerr then return "could not resume Block: " .. tostring(rerr) end

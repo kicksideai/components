@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.migrations
+entries:
+- name: 01_work
+  kind: function.lua
+  meta:
+    type: migration
+    tags:
+    - work
+    - board
+    comment: Fixed work tables - boards, schema generations, items, links, change history, comments and board jobs.
+    timestamp: '2026-11-03T00:00:01Z'
+  source: file://01_work.lua
+  imports:
+    operation_expiry: kickside.work.persist:operation_expiry
+    migration: wippy.migration:migration
+  method: migrate
+- name: 02_retire_storage
+  kind: function.lua
+  meta:
+    type: migration
+    tags: [work, board]
+    timestamp: '2026-11-12T00:00:02Z'
+  source: file://02_retire_storage.lua
+  imports:
+    migration: wippy.migration:migration
+  method: migrate

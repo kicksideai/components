@@ -31,7 +31,8 @@ read model — each contributed through registry entries, no edits to the host.
   terminals + the `researcher` agent + the `DeepResearch` agent tool.
 - A strict `kickside.block/v1` Research wait Block. Its arm calls the same
   package-owned request contract and its terminal projection resumes the parked
-  Dataflow Signal through `kickside.blocks:resume`.
+  Dataflow Signal through `kickside.blocks:resume`, always naming its own
+  `arm_id: kickside.research:arm_research_block` for both result and failure events.
 
 ## Boundary
 

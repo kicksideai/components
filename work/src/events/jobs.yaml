@@ -1,0 +1,145 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.events
+entries:
+- name: item.ranked
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: Board rank order changes in the fold.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      item:
+        type: string
+      after:
+        type: string
+      before:
+        type: string
+      actor:
+        type: string
+      at:
+        type: string
+      source:
+        type: string
+      origin:
+        type: object
+      command_key:
+        type: string
+      receipt:
+        type: object
+      audit:
+        type: string
+        enum:
+        - fields
+        - 'off'
+    required:
+    - item
+- name: rank.rebalanced
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: Board rank order changes in the fold.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      range:
+        type: object
+        additionalProperties: false
+        properties:
+          offset:
+            type: integer
+            minimum: 0
+          total:
+            type: integer
+            minimum: 1
+          direction:
+            type: string
+            enum:
+            - left
+            - right
+        required:
+        - offset
+        - total
+        - direction
+      count:
+        type: integer
+        minimum: 1
+        maximum: 500
+      actor:
+        type: string
+      at:
+        type: string
+      source:
+        type: string
+      origin:
+        type: object
+      command_key:
+        type: string
+      receipt:
+        type: object
+    required:
+    - range
+    - count
+- name: rollups.recomputed
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: Rollup backfill advances a bounded item range.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      recompute:
+        type: object
+        properties:
+          after:
+            type: string
+          through:
+            type: string
+          generation:
+            type: integer
+        required:
+        - after
+        - through
+        - generation
+      actor:
+        type: string
+      at:
+        type: string
+      source:
+        type: string
+    required:
+    - recompute
+- name: index.rebuilt
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: Index backfill advances a bounded item range.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      recompute:
+        type: object
+        properties:
+          after:
+            type: string
+          through:
+            type: string
+          generation:
+            type: integer
+        required:
+        - after
+        - through
+        - generation
+      actor:
+        type: string
+      at:
+        type: string
+      source:
+        type: string
+    required:
+    - recompute

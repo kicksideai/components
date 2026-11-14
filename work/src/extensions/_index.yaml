@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.extensions
+entries:
+- name: plugin_projection_state
+  kind: library.lua
+  source: file://plugin_projection_state.lua
+  modules: [json]
+  imports:
+    local_types: kickside.work.extensions:types
+    plugin_feed: kickside.work.extensions:plugin_feed
+    threads: kickside.work.persist:threads
+    types: kickside.work:types
+- name: plugin_projections
+  kind: function.lua
+  source: file://plugin_projections.lua
+  method: run
+  modules: [json]
+  imports:
+    local_types: kickside.work.extensions:types
+    threads: kickside.work.persist:threads
+    manifests: kickside.work.domain:manifests
+    attachments: kickside.work.service:attachments
+    store: kickside.work.persist:store
+    plugin_rows: kickside.work.persist:plugin_rows
+    plugins: kickside.work.read:plugins
+    jobs: kickside.core.jobs:jobs
+    consts: kickside.work:consts
+    types: kickside.work:types
+    component: kickside.component:component
+    values: kickside.work.domain:values
+- name: types
+  kind: library.lua
+  source: file://types.lua
+  imports:
+    domain: kickside.work:types
+    reads: kickside.work.read:types
+- name: plugin_batch
+  kind: function.lua
+  security:
+    policies: [kickside.work.security:plugin_rebuild_output_publish]
+  source: file://plugin_projections.lua
+  method: batch
+  modules: [json]
+  imports:
+    local_types: kickside.work.extensions:types
+    threads: kickside.work.persist:threads
+    manifests: kickside.work.domain:manifests
+    attachments: kickside.work.service:attachments
+    store: kickside.work.persist:store
+    plugin_rows: kickside.work.persist:plugin_rows
+    plugins: kickside.work.read:plugins
+    jobs: kickside.core.jobs:jobs
+    consts: kickside.work:consts
+    types: kickside.work:types
+    component: kickside.component:component
+    values: kickside.work.domain:values
+- name: plugin_feed
+  kind: library.lua
+  source: file://plugin_feed.lua
+  modules: [json]
+  imports:
+    access: kickside.work.read:access
+    feeds: kickside.work.read:feeds
+    manifests: kickside.work.domain:manifests
+    threads: kickside.work.persist:threads
+    types: kickside.work.read:types
+    local_types: kickside.work.extensions:types

@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.security
+entries:
+- name: view_public_meta
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:rename_view
+  policy:
+    resources: '*'
+    actions: component.runtime_meta.write
+    effect: allow
+    conditions:
+    - field: meta.impl_id
+      operator: eq
+      value: kickside.work.binding:view
+
+- name: framework_callbacks
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+  groups:
+  - wippy.security:process
+  policy:
+    resources:
+    - kickside.work.jobs:migrate
+    - kickside.work.jobs:migrate_batch
+    - kickside.work.jobs:rebalance
+    - kickside.work.jobs:rebalance_batch
+    - kickside.work.jobs:recompute
+    - kickside.work.jobs:recompute_batch
+    - kickside.work.jobs:reindex
+    - kickside.work.jobs:reindex_batch
+    - kickside.work.jobs:process
+    - kickside.work.jobs:advance
+    - kickside.work.jobs:process_batch
+    - kickside.work.jobs:advance_batch
+    - kickside.work.jobs:bulk
+    - kickside.work.jobs:move
+    - kickside.work.jobs:operation_batch
+    - kickside.work.jobs:pack
+    - kickside.work.retention:owner
+    - kickside.work.service:sync
+    - kickside.work.service:sync_position
+    - kickside.work.persist:projection
+    - kickside.work.persist:projection_committed
+    - kickside.work.binding:delete_func
+    actions:
+    - registry.get
+    - funcs.call
+    - funcs.security
+    effect: allow
+
+- name: pack_batch_call
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:create
+    - kickside.work.service:pack_apply
+  policy:
+    resources:
+    - kickside.work.jobs:operation_batch
+    actions: funcs.call
+    effect: allow
+
+- name: tool_reference_read
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.domain:validate_tool
+  policy:
+    resources: '*'
+    actions: registry.get
+    effect: allow
+
+- name: sync_call
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:create
+    - kickside.work.service:update
+    - kickside.work.service:apply_schema
+    - kickside.work.service:apply
+    - kickside.work.service:configure_plugin
+    - kickside.work.service:approve
+    - kickside.work.service:report
+    - kickside.work.service:sync
+    - kickside.work.jobs:migrate_batch
+    - kickside.work.jobs:rebalance_batch
+    - kickside.work.jobs:recompute_batch
+    - kickside.work.jobs:reindex_batch
+    - kickside.work.jobs:process_batch
+    - kickside.work.jobs:advance_batch
+    - kickside.work.jobs:operation_batch
+  policy:
+    resources:
+    - kickside.work.service:sync
+    - kickside.work.service:sync_position
+    actions: funcs.call
+    effect: allow

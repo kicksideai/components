@@ -8,6 +8,48 @@ namespace: app
 # harness tests; release sources exclude test entries. Harness-only.
 
 entries:
+  - name: secret_error_test
+    kind: function.lua
+    meta: {type: test, suite: sso_secret_errors}
+    source: file://secret_error_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      oidc: app:secret_error_oidc
+      github: app:secret_error_github
+      fixture: app:secret_error_fixture
+      jwk: app:secret_error_jwk
+      util: kickside.sso:util
+      log: app:secret_error_logger
+  - name: secret_error_logger
+    kind: library.lua
+    source: file://secret_error_logger.lua
+  - name: secret_error_jwk
+    kind: library.lua
+    source: file://secret_error_jwk.lua
+    modules: [json, base64]
+    imports:
+      http_client: app:secret_error_fixture
+      sso_util: kickside.sso:util
+  - name: secret_error_github
+    kind: library.lua
+    source: file://secret_error_github.lua
+    modules: [json]
+    imports:
+      http_client: app:secret_error_fixture
+      sso_util: kickside.sso:util
+  - name: secret_error_fixture
+    kind: library.lua
+    source: file://secret_error_fixture.lua
+  - name: secret_error_oidc
+    kind: library.lua
+    source: file://secret_error_oidc.lua
+    modules: [json, crypto]
+    imports:
+      http_client: app:secret_error_fixture
+      sso_util: kickside.sso:util
+      sso_jwk: app:secret_error_jwk
+      logger: app:secret_error_logger
   - name: dep.kickside.security
     kind: ns.dependency
     version: '*'

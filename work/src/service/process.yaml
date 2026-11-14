@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.service
+entries:
+- name: approve
+  kind: function.lua
+  meta:
+    comment: kickside.work:board approve.
+  source: file://board.lua
+  method: approve
+  imports:
+    schema_commands: kickside.work.command:schema_commands
+    apply_ops: kickside.work.command:apply_ops
+    query: kickside.work.read:query
+    cross_board: kickside.work.read:cross_board
+    reader: kickside.work.read:reader
+    plugin_access: kickside.work.read:plugin_access
+    plugin_feed: kickside.work.extensions:plugin_feed
+    feeds: kickside.work.read:feeds
+    create: kickside.work.command:create
+    locate: kickside.work.command:locate
+    requests: kickside.work.service:requests
+    commands: kickside.work.command:types
+    reads: kickside.work.read:types
+    related: kickside.work.read:related
+    configure: kickside.work.command:configure
+    update: kickside.work.command:update
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:apply_output_publish
+- name: report
+  kind: function.lua
+  meta:
+    comment: kickside.work:board report.
+  source: file://board.lua
+  method: report
+  imports:
+    schema_commands: kickside.work.command:schema_commands
+    apply_ops: kickside.work.command:apply_ops
+    query: kickside.work.read:query
+    cross_board: kickside.work.read:cross_board
+    reader: kickside.work.read:reader
+    plugin_access: kickside.work.read:plugin_access
+    plugin_feed: kickside.work.extensions:plugin_feed
+    feeds: kickside.work.read:feeds
+    create: kickside.work.command:create
+    locate: kickside.work.command:locate
+    requests: kickside.work.service:requests
+    commands: kickside.work.command:types
+    reads: kickside.work.read:types
+    related: kickside.work.read:related
+    configure: kickside.work.command:configure
+    update: kickside.work.command:update
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:apply_output_publish

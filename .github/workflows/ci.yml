@@ -57,7 +57,7 @@ jobs:
   modules:
     name: ${{ matrix.module }} / ${{ matrix.engine }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: ${{ matrix.timeout_minutes || 30 }}
     strategy:
       fail-fast: false
       matrix:
@@ -232,6 +232,47 @@ jobs:
             cd "$source_root"
             version=$(jq -er --arg path sso '.[$path]' .release-please-manifest.json)
             wippy publish --config sso --version "$version" --dry-run --create --module-visibility public --module-type plugin --embed kickside.sso:ui_fs
+        - module: work
+          engine: sqlite
+          timeout_minutes: 45
+          commands: |
+            set -euo pipefail
+            source_root="$PWD"
+            export TMPDIR="$source_root/work/.wippy/tmp"
+            mkdir -p "$TMPDIR"
+            make -C work setup
+            cd work/test
+            mkdir -p .wippy
+            wippy lint --ns kickside.work --ns 'kickside.work.*'
+            wippy test 2>&1 | tee .wippy-test.log
+            LC_ALL=C sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' .wippy-test.log > .wippy-test.clean.log
+            awk '/No tests found/ { empty=1 } /^[[:space:]]*FAILED([[:space:]]|$)/ { failed=1 } /^[[:space:]]*PASSED([[:space:]]|$)/ { passed=1 } END { exit(empty || failed || !passed) }' .wippy-test.clean.log
+            cd "$source_root"
+            version=$(jq -er --arg path work '.[$path]' .release-please-manifest.json)
+            wippy publish --config work --version "$version" --dry-run --create --module-visibility public --module-type plugin
+        - module: work
+          engine: postgres
+          timeout_minutes: 45
+          commands: |
+            set -euo pipefail
+            source_root="$PWD"
+            export TMPDIR="$source_root/work/.wippy/tmp"
+            mkdir -p "$TMPDIR"
+            make -C work setup
+            cd work/test
+            databases=()
+            cleanup_databases() { for database in "${databases[@]}"; do dropdb "$database"; done; }
+            trap cleanup_databases EXIT
+            database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_0"
+            createdb "$database"
+            databases+=("$database")
+            wippy lint --ns kickside.work --ns 'kickside.work.*' --profile postgres --set "vars.pg_database=${databases[0]}" --set vars.pg_host=127.0.0.1 --set "vars.pg_port=$PGPORT"
+            wippy test --profile postgres --set "vars.pg_database=${databases[0]}" --set vars.pg_host=127.0.0.1 --set "vars.pg_port=$PGPORT" 2>&1 | tee .wippy-test.log
+            LC_ALL=C sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' .wippy-test.log > .wippy-test.clean.log
+            awk '/No tests found/ { empty=1 } /^[[:space:]]*FAILED([[:space:]]|$)/ { failed=1 } /^[[:space:]]*PASSED([[:space:]]|$)/ { passed=1 } END { exit(empty || failed || !passed) }' .wippy-test.clean.log
+            cd "$source_root"
+            version=$(jq -er --arg path work '.[$path]' .release-please-manifest.json)
+            wippy publish --config work --version "$version" --dry-run --create --module-visibility public --module-type plugin
         - module: storage-s3
           engine: sqlite
           commands: |
