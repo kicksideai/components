@@ -73,6 +73,8 @@ entries:
     tool_result: kickside.contract:tool_result
 - name: configure_tool
   kind: function.lua
+  security:
+    policies: [kickside.docscout.security:extractor_update]
   meta:
     type: tool
     private: true

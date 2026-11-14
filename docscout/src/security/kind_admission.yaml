@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.docscout.security
+entries:
+- name: extractor_create
+  kind: security.policy
+  policy:
+    actions: component.kind.create
+    resources: kickside.docscout:extractor
+    effect: allow
+- name: extractor_update
+  kind: security.policy
+  policy:
+    actions: component.kind.update
+    resources: kickside.docscout:extractor
+    effect: allow
