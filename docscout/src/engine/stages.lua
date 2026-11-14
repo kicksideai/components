@@ -135,7 +135,7 @@ end
 
 -- One required summary per section id, so a constrained decoder cannot leave a section out.
 function M.summary_schema(outline: { any }): any
-    return shapes.keyed(section_ids(outline), shapes.comment())
+    return shapes.keyed(section_ids(outline), { type = "string" })
 end
 
 -- One required property per field path, each a list of at least one existing
@@ -379,7 +379,7 @@ function M.scout_schema(cfg: any, fields: { any }, pool: { any }): any
         drop = { type = "array", maxItems = #pool, items = chunk },
         queries = { type = "array", maxItems = cfg.max_extra_queries, items = { type = "object", additionalProperties = false, required = { "field", "query" },
             properties = { field = { type = "string", enum = names }, query = { type = "string" } } } },
-        notes = shapes.keyed(names, shapes.comment()) } }
+        notes = shapes.keyed(names, { type = "string" }) } }
 end
 
 -- Notes as prompt lines. A note names its field, or covers the document as a
@@ -769,7 +769,7 @@ type Value = { name: string, path: string, value: any?, confidence: number, evid
 
 -- Extraction: structured calls over the evidence pool, each for fields that share a group and a region.
 local EXTRACT_SYSTEM = system([[You extract field values from passages of one document. Use only what the passages state.
-For each field say whether the passages state it (found), give the value (any placeholder of the right type when not found), your confidence from 0 to 1, and evidence:
+For each field say whether the passages state it (found), give the value (null when not found), your confidence from 0 to 1, and evidence:
 the chunk number and an exact quote copied character for character from that chunk.]])
 
 -- Extraction calls: fields grouped by their group, then by the region they read,
@@ -843,6 +843,7 @@ local function extract_call(run: any, step: any, cfg: any, call: any): error?
     local result, err = ai.structured(step.meter, cfg.model, shapes.group_schema(batch, passages), EXTRACT_SYSTEM,
         extraction_input(run, batch, passages, notes),
         { max_tokens = cfg.max_output_tokens, temperature = cfg.temperature, stage = "extract", sources = shapes.ordinals(passages), fields = shapes.paths(batch) })
+    if not err then err = shapes.extraction_error(batch, result, cfg.model) end
     if err then return err end
     local entries = {}
     for _, f in ipairs(batch) do
@@ -979,7 +980,7 @@ local function support_schema(values: { any }): any
     local paths = {}
     for _, v in ipairs(values) do paths[#paths + 1] = shapes.path(v) end
     return shapes.keyed(paths, { type = "object", additionalProperties = false, required = { "supported", "reason" },
-        properties = { supported = { type = "boolean" }, reason = shapes.comment() } })
+        properties = { supported = { type = "boolean" }, reason = { type = "string" } } })
 end
 
 -- The optional policy judges support for the requested field and completeness
@@ -1011,7 +1012,7 @@ function M.support_schema(values: { any }, complete_fields: { [string]: boolean 
         local path = shapes.path(v)
         required[#required + 1] = path
         local item = { type = "object", additionalProperties = false, required = { "verdict", "reason" }, properties = {
-            verdict = { type = "string", enum = { VERDICT.supported, VERDICT.not_supported, VERDICT.insufficient } }, reason = shapes.comment() } }
+            verdict = { type = "string", enum = { VERDICT.supported, VERDICT.not_supported, VERDICT.insufficient } }, reason = { type = "string" } } }
         if complete_fields[path] then
             item.required = { "verdict", "complete", "reason" }
             item.properties.complete = { type = "string", enum = { COMPLETENESS.complete, COMPLETENESS.incomplete, COMPLETENESS.insufficient } }

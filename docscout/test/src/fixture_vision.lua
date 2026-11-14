@@ -60,11 +60,12 @@ local function answer(schema: types.Schema, path: string, texts: { [integer]: st
     if props.found and props.evidence then
         local name = path:match("([^.]+)$")
         local page, line, value = line_of(texts, name)
-        if not page then return { found = false, value = props.value.type == "number" and 0 or "", confidence = 0, evidence = {} } end
+        if not page then return { found = false, confidence = 0, evidence = {} } end
+        local kind = type(props.value.type) == "table" and props.value.type[1] or props.value.type
         local typed: types.Json = value
-        if props.value.type == "number" then typed = tonumber(value)
-        elseif props.value.type == "boolean" then typed = value == "true"
-        elseif props.value.type == "array" or props.value.type == "object" then typed = assert(json.decode(value)) end
+        if kind == "number" then typed = tonumber(value)
+        elseif kind == "boolean" then typed = value == "true"
+        elseif kind == "array" or kind == "object" then typed = assert(json.decode(value)) end
         return { found = true, value = typed, confidence = 1, evidence = { { page = page, quote = line } } }
     end
     if props.quote_on_page then

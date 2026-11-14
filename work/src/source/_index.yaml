@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.source
+entries:
+- name: data_error
+  kind: library.lua
+  source: file://data_error.lua
+  imports:
+    types: kickside.work.source:types
+- name: pull_items
+  kind: function.lua
+  source: file://collections.lua
+  method: items
+  imports:
+    local_types: kickside.work.source:types
+    board_client: kickside.work:client
+    data_error: kickside.work.source:data_error
+    types: kickside.work.read:types
+    domain: kickside.work:types
+- name: items
+  kind: contract.binding
+  meta:
+    title: Work items
+    group: Work
+    class: kickside.work
+    icon: tabler:layout-kanban
+  contracts:
+  - contract: kickside.data:pullable
+    methods:
+      pull: kickside.work.source:pull_items
+- name: items_port
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work items
+    group: Work
+    class: kickside.work
+    icon: tabler:layout-kanban
+  binding: kickside.work.source:items
+  config_schema:
+    board_id:
+      type: string
+      required: true
+      picker: wc-component-picker
+      class: work_board
+      role: primary
+      title: Board
+    where:
+      type: object
+      title: Filter
+      description: Item-local indexed-field filter tree. Actor operands use the calling principal; nonmatches produce deletes.
+  output_schema: '{"type": "object", "required": ["item_id", "updated_seq", "op"], "properties": {"item_id": {"type":
+    "string"}, "key": {"type": "string"}, "updated_seq": {"type": "integer"}, "op": {"type": "string"}, "values":
+    {"type": "object"}, "state": {"type": "string"}, "category": {"type": "string"}, "type": {"type": "string"},
+    "version": {"type": "integer"}, "parent": {"type": "string"}}}'
+- name: pull_changes
+  kind: function.lua
+  source: file://collections.lua
+  method: changes
+  imports:
+    local_types: kickside.work.source:types
+    board_client: kickside.work:client
+    data_error: kickside.work.source:data_error
+    types: kickside.work.read:types
+    domain: kickside.work:types
+- name: changes
+  kind: contract.binding
+  meta:
+    title: Work changes
+    group: Work
+    class: kickside.work
+    icon: tabler:layout-kanban
+  contracts:
+  - contract: kickside.data:pullable
+    methods:
+      pull: kickside.work.source:pull_changes
+- name: changes_port
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work changes
+    group: Work
+    class: kickside.work
+    icon: tabler:layout-kanban
+  binding: kickside.work.source:changes
+  config_schema:
+    board_id:
+      type: string
+      required: true
+      picker: wc-component-picker
+      class: work_board
+      role: primary
+      title: Board
+  output_schema: '{"type": "object", "required": ["item_id", "updated_seq", "op"], "properties": {"item_id": {"type":
+    "string"}, "key": {"type": "string"}, "updated_seq": {"type": "integer"}, "op": {"type": "string"}, "values":
+    {"type": "object"}, "state": {"type": "string"}, "category": {"type": "string"}, "type": {"type": "string"},
+    "version": {"type": "integer"}, "parent": {"type": "string"}}}'
+- name: types
+  kind: library.lua
+  source: file://types.lua
+  imports:
+    domain: kickside.work:types
+    types: kickside.work.read:types

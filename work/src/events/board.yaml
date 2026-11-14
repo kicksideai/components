@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.events
+entries:
+- name: board.updated
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    output_kind: kickside.work.binding:board
+    comment: Board component metadata changes.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      title:
+        type: string
+      description:
+        type: string
+      icon:
+        type: string
+      actor:
+        type: string
+      at:
+        type: string
+      source:
+        type: string
+    required:
+    - title
+    - description
+    - icon
+    - actor
+    - at
+    - source

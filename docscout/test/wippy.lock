@@ -15,8 +15,8 @@ modules:
     - name: kickside/core
       version: 0.3.14
     - name: kickside/doc2md
-      version: 0.8.21
-      hash: e5d66ebe2da394f2eba7bbc318f4d1d2e647065e95dddc3a531e088a2ad2b700
+      version: 0.8.22
+      hash: f7d2155373f5b081fc8334e1a7b7104a819639a0d7f2adb3e9624b7bffb88a3c
     - name: kickside/docscout
       version: 0.0.0
     - name: kickside/execution
@@ -35,8 +35,8 @@ modules:
     - name: kickside/settings
       version: 0.0.0
     - name: kickside/uploads
-      version: 0.3.16
-      hash: 1da76c70aab9280c9f3f378dfa1c1fd9a9be159d08b73940158eadaaab82b4f2
+      version: 0.3.17
+      hash: fb022339a70ef6947b2c22b18516390c375340c077b18d22b65eddd1a6b455c2
     - name: kickside/users
       version: 0.0.0
     - name: kickside/widgets

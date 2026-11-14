@@ -14,9 +14,9 @@ For fields asking for completeness, answer complete, incomplete, or insufficient
 Return one check per field with a reason.
 ]] .. shapes.DATA_RULE
 
-function M.check_schema(value: types.PageValue, complete: boolean): types.Json
+local function schema(value: types.PageValue, complete: boolean): types.Json
     local properties = {quote_on_page = {type = "string", enum = {"yes", "no", "unreadable"}},
-        states_value = {type = "string", enum = {"yes", "no", "unreadable"}}, reason = shapes.comment()}
+        states_value = {type = "string", enum = {"yes", "no", "unreadable"}}, reason = {type = "string"}}
     local required = {"quote_on_page", "states_value", "reason"}
     if complete then
         properties.complete = {type = "string", enum = {"complete", "incomplete", "insufficient_evidence"}}
@@ -93,7 +93,7 @@ function M.verify(run: types.PageRun, step: types.PageStep, support_line: types.
         local read_err = page_calls.load(run.page_images, selected)
         if read_err then value.verification.status = "unavailable"; return read_err end
         local complete = cfg.check_completeness == true and (field.type == "text" or field.type == "list")
-        local reply_schema = M.check_schema(value, complete)
+        local reply_schema = schema(value, complete)
         local user = input(field, value, allowed, support_line)
         while #selected > required_count and not fits(SYSTEM, page_calls.message(selected, user), reply_schema) do
             table.remove(selected); cut = true
@@ -104,7 +104,7 @@ function M.verify(run: types.PageRun, step: types.PageStep, support_line: types.
             {max_tokens = cfg.max_tokens, temperature = cfg.temperature, stage = "support", fields = {value.path}, pages = page_calls.numbers(selected),
                 image_bytes = page_calls.bytes(selected), estimated_input_tokens = estimated})
         if err then value.verification.status = "unavailable"; return err end
-        local verdict = shapes.get(result, value.path)
+        local verdict = result[value.path]
         checks.visual_quote, checks.value_support = status(verdict.quote_on_page), status(verdict.states_value)
         if complete then
             local partial = cut or #selected < #allowed

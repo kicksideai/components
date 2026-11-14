@@ -28,8 +28,6 @@ Caller scopes need the native contract capabilities `contract.security` on `secu
 
 Every caller opens `kickside.docscout:extraction`, binding `kickside.docscout:engine`, under its execution identity. The `run` input has `extractor_id`, `upload_id`, `caller` (`ui`, `agent`, `workflow`, `eval`) an optional `pages: { first, last }`, and an optional RFC3339 deadline. Evaluation calls additionally identify the admitted evaluation and case. The contract accepts saved configuration; chat tuning edits that configuration through the configurator trait.
 
-Structured comment fields (scout notes, support and page-check reasons, completeness explanations, section summaries and generated search contexts) are bounded to 300 Unicode characters. Providers with constrained decoding enforce this bound during generation; other providers’ comments are cut to the bound on receipt before validation. A provider that rejects `maxLength` in strict mode surfaces its own invalid-request error. Extracted values, evidence quotes and verdicts are unchanged.
-
 ### Compound members
 
 Declared object properties accept optional `nullable` (boolean) and
@@ -57,7 +55,7 @@ image extraction. Compounds without nullable members keep their existing behavio
 
 A provider that ignores `maxLength` returns a typed field error
 `value_max_length_exceeded` with `path`, `limit` and actual `length`; values are
-never cut. As with comment bounds, a provider that rejects `maxLength` in strict
+never cut. A provider that rejects `maxLength` in strict
 mode surfaces its own invalid-request error. Omitted options preserve existing
 schemas, requests and behavior. Found results with nullable members include an optional
 `value_schema` so result views can show omitted members as Missing, including

@@ -1,0 +1,355 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.domain
+entries:
+- name: clock
+  kind: library.lua
+  meta:
+    comment: Deadlines and canonical RFC3339 UTC timestamps.
+  source: file://clock.lua
+  modules:
+  - time
+  imports:
+    types: kickside.work:types
+- name: shape
+  kind: library.lua
+  meta:
+    comment: Tolerant JSON schemas - validate decoded Lua values where an empty table stands for an empty list.
+  source: file://shape.lua
+  modules:
+  - json
+  imports:
+    types: kickside.work:types
+- name: values
+  kind: library.lua
+  meta:
+    comment: Canonical value forms, equality keys and order values.
+  source: file://values.lua
+  modules:
+  - json
+  imports:
+    types: kickside.work:types
+- name: operands
+  kind: library.lua
+  meta:
+    comment: Filter operands - $actor and $now values resolved when a query compiles.
+  source: file://operands.lua
+  imports:
+    durations: kickside.work.domain:process_time
+    seams: kickside.work.domain:seams
+    clock: kickside.work.domain:clock
+    types: kickside.work:types
+- name: filter_history
+  kind: library.lua
+  meta:
+    comment: History conditions - was, by and during answered from the change table.
+  source: file://filter_history.lua
+  imports:
+    values: kickside.work.domain:values
+    operands: kickside.work.domain:operands
+    types: kickside.work:types
+- name: filter_relation
+  kind: library.lua
+  meta:
+    comment: Relation conditions - some, every and none over the items a typed link reaches.
+  source: file://filter_relation.lua
+  imports:
+    types: kickside.work:types
+- name: filter
+  kind: library.lua
+  meta:
+    comment: The filter tree - and, or, not and typed leaves compiled to one SQL fragment with bound values.
+  source: file://filter.lua
+  imports:
+    values: kickside.work.domain:values
+    operands: kickside.work.domain:operands
+    search: kickside.work.domain:search
+    filter_history: kickside.work.domain:filter_history
+    filter_relation: kickside.work.domain:filter_relation
+    types: kickside.work:types
+- name: manifests
+  kind: library.lua
+  meta:
+    comment: Plugin manifests - load a kickside.work.plugin declaration, check board config, compute effective config, resolve
+      the plugin's schema from its template or provider.
+  source: file://manifests.lua
+  modules:
+  - funcs
+  - registry
+  - contract
+  - security
+  - hash
+  imports:
+    worker: kickside.core.projections.persist:worker
+    registry_values: kickside.work.domain:registry_values
+    shape: kickside.work.domain:shape
+    types: kickside.work:types
+    values: kickside.work.domain:values
+- name: fields
+  kind: library.lua
+  meta:
+    comment: Field types over the value forms - request values to canonical values and back.
+  source: file://fields.lua
+  modules:
+  - json
+  imports:
+    document: kickside.work.domain:document
+    consts: kickside.work:consts
+    values: kickside.work.domain:values
+    types: kickside.work:types
+- name: document
+  kind: library.lua
+  meta:
+    comment: Item documents and the patches that change them.
+  source: file://document.lua
+  imports:
+    values: kickside.work.domain:values
+    types: kickside.work:types
+- name: process
+  kind: library.lua
+  meta:
+    comment: Process compiler for states, transitions and effects.
+  source: file://process.lua
+  imports:
+    transitions: kickside.work.domain:process_transitions
+    state_compile: kickside.work.domain:process_state
+    consts: kickside.work:consts
+    fields: kickside.work.domain:fields
+    values: kickside.work.domain:values
+    types: kickside.work:types
+- name: schema
+  kind: library.lua
+  meta:
+    comment: Schema declaration compiler and model indexes.
+  source: file://schema.lua
+  modules:
+  - hash
+  imports:
+    seams: kickside.work.domain:seams
+    formula: kickside.work.domain:formula
+    consts: kickside.work:consts
+    process: kickside.work.domain:process
+    predicates: kickside.work.domain:predicates
+    values: kickside.work.domain:values
+    types: kickside.work:types
+    rollup: kickside.work.domain:rollup
+    plugins: kickside.work.domain:plugins
+    policy: kickside.work.domain:policy
+    access_rules: kickside.work.domain:access_rules
+    fields: kickside.work.domain:fields
+- name: declaration
+  kind: library.lua
+  source: file://declaration.lua
+  imports:
+    declaration_shape: kickside.work.domain:declaration_shape
+    policy: kickside.work.domain:policy
+    shape: kickside.work.domain:shape
+    types: kickside.work:types
+- name: changes
+  kind: library.lua
+  source: file://changes.lua
+  imports:
+    values: kickside.work.domain:values
+    process_changes: kickside.work.domain:process_changes
+    types: kickside.work:types
+    rollup: kickside.work.domain:rollup
+- name: process_changes
+  kind: library.lua
+  source: file://process_changes.lua
+  imports:
+    process: kickside.work.domain:process
+    types: kickside.work:types
+- name: rank
+  kind: library.lua
+  meta:
+    comment: Bounded base-62 midpoint and evenly spaced order keys.
+  source: file://rank.lua
+- name: rollup
+  kind: library.lua
+  source: file://rollup.lua
+  imports:
+    document: kickside.work.domain:document
+    types: kickside.work:types
+    values: kickside.work.domain:values
+    predicates: kickside.work.domain:predicates
+    consts: kickside.work:consts
+- name: predicates
+  kind: library.lua
+  source: file://predicates.lua
+  imports:
+    tables: kickside.work.domain:layout
+    types: kickside.work:types
+    filter: kickside.work.domain:filter
+- name: layout
+  kind: library.lua
+  source: file://layout.lua
+  modules:
+  - hash
+  imports:
+    document: kickside.work.domain:document
+    values: kickside.work.domain:values
+    types: kickside.work:types
+    fields: kickside.work.domain:fields
+- name: policy
+  kind: library.lua
+  source: file://policy.lua
+  modules: [registry]
+  imports:
+    durations: kickside.work.domain:process_time
+    consts: kickside.work:consts
+    types: kickside.work:types
+- name: plugins
+  kind: library.lua
+  source: file://plugins.lua
+  modules:
+  - registry
+  - security
+  imports:
+    registry_values: kickside.work.domain:registry_values
+    manifests: kickside.work.domain:manifests
+    types: kickside.work:types
+    defaults: kickside.work.settings:defaults
+    shape: kickside.work.domain:shape
+- name: access_rules
+  kind: library.lua
+  source: file://access_rules.lua
+  imports:
+    document: kickside.work.domain:document
+    types: kickside.work:types
+    fields: kickside.work.domain:fields
+    values: kickside.work.domain:values
+- name: plugin_schema
+  kind: library.lua
+  source: file://plugin_schema.lua
+  imports:
+    declaration: kickside.work.domain:declaration
+    values: kickside.work.domain:values
+    consts: kickside.work:consts
+    types: kickside.work:types
+- name: process_state
+  kind: library.lua
+  source: file://process_state.lua
+  imports:
+    approvals: kickside.work.domain:approvals
+    consts: kickside.work:consts
+    durations: kickside.work.domain:process_time
+    types: kickside.work:types
+- name: process_time
+  kind: library.lua
+  source: file://process_time.lua
+  modules:
+  - time
+  imports:
+    document: kickside.work.domain:document
+    types: kickside.work:types
+- name: formula
+  kind: library.lua
+  source: file://formula.lua
+  modules:
+  - expr
+  imports:
+    fields: kickside.work.domain:fields
+    values: kickside.work.domain:values
+    document: kickside.work.domain:document
+    types: kickside.work:types
+- name: seams
+  kind: library.lua
+  source: file://seams.lua
+  modules:
+  - funcs
+  - registry
+  - security
+  imports:
+    registry_values: kickside.work.domain:registry_values
+    rules: kickside.work.domain:access_rules
+    plugins: kickside.work.domain:plugins
+    fields: kickside.work.domain:fields
+    values: kickside.work.domain:values
+    types: kickside.work:types
+- name: search
+  kind: library.lua
+  source: file://search.lua
+  modules:
+  - registry
+  - contract
+  - security
+  imports:
+    registry_values: kickside.work.domain:registry_values
+    plugins: kickside.work.domain:plugins
+    scopes: kickside.work.read:scopes
+    types: kickside.work:types
+- name: types
+  kind: library.lua
+  source: file://types.lua
+  modules: &id001 []
+  imports:
+    domain: kickside.work:types
+    commands: kickside.work.command:types
+    views: kickside.work.service:types
+- name: pack_catalog
+  kind: library.lua
+  source: file://pack_catalog.lua
+  modules:
+  - registry
+  - hash
+  imports:
+    registry_values: kickside.work.domain:registry_values
+    types: kickside.work.domain:types
+    domain: kickside.work:types
+    values: kickside.work.domain:values
+    shape: kickside.work.domain:shape
+    manifests: kickside.work.domain:manifests
+- name: pack_merge
+  kind: library.lua
+  source: file://pack_merge.lua
+  modules: *id001
+  imports:
+    types: kickside.work.domain:types
+    domain: kickside.work:types
+    values: kickside.work.domain:values
+    declaration: kickside.work.domain:declaration
+- name: identifiers
+  kind: library.lua
+  source: file://identifiers.lua
+  modules:
+  - hash
+  imports: {}
+- name: registry_values
+  kind: library.lua
+  source: file://registry_values.lua
+
+- name: validate_tool
+  kind: function.lua
+  meta:
+    private: true
+    comment: Validates an installed tool reference without exposing its metadata or invocation authority.
+  source: file://tool_reference.lua
+  method: validate
+  modules: [registry]
+  security:
+    policies:
+    - kickside.work.security:tool_reference_read
+
+- name: approvals
+  kind: library.lua
+  source: file://approvals.lua
+  imports:
+    consts: kickside.work:consts
+    rules: kickside.work.domain:access_rules
+    types: kickside.work:types
+- name: outcomes
+  kind: library.lua
+  source: file://outcomes.lua
+  imports:
+    types: kickside.work:types
+- name: process_transitions
+  kind: library.lua
+  source: file://process_transitions.lua
+  imports:
+    types: kickside.work:types
+- name: declaration_shape
+  kind: library.lua
+  source: file://declaration_shape.lua
+  modules: [json]
+  imports:
+    types: kickside.work:types

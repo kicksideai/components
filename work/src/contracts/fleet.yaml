@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work
+entries:
+- name: packs
+  kind: contract.definition
+  meta:
+    title: Work pack fleet
+  methods:
+  - name: list
+    description: Lists pack provenance for boards administered by the caller.
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"pack":{"type":"string"},"limit":{"type":"integer","minimum":1,"maximum":50,"description":"Maximum administered boards to examine; omit for 50."},"after":{"type":"integer","minimum":0,"description":"Continuation from the preceding fleet page; omit to start."}},"required":[],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"boards":{"type":"array","items":{"type":"object","properties":{"board_id":{"type":"string"},"pack":{"type":"string"},"version":{"type":"string"},"digest":{"type":"string"},"outdated":{"type":"boolean"}},"required":["board_id","pack","version","digest","outdated"],"additionalProperties":false}},"next":{"type":"integer","minimum":0,"description":"Continuation for the next bounded fleet page; absent at the end."}},"required":["boards"],"additionalProperties":false}'

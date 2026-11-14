@@ -1,0 +1,173 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.events
+entries:
+- name: bulk.progress
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+  schema:
+    type: object
+    properties:
+      actor: &id001
+        type: string
+      at: *id001
+      source: *id001
+      origin: &id003
+        type: object
+      receipt: &id004
+        type: object
+      command_key: *id001
+      audit: *id001
+      operation_id: *id001
+      processed: &id002
+        type: integer
+      total: *id002
+      status:
+        type: string
+        enum:
+        - running
+        - done
+        - cancelled
+      counts:
+        type: object
+        properties:
+          applied: *id002
+          unchanged: *id002
+          invalid: *id002
+          denied: *id002
+          conflict: *id002
+          unavailable: *id002
+        additionalProperties: false
+    required:
+    - operation_id
+    - processed
+    - total
+    - status
+    - counts
+    additionalProperties: false
+- name: item.move_prepared
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+  schema:
+    type: object
+    properties:
+      actor: *id001
+      at: *id001
+      source: *id001
+      origin: *id003
+      receipt: *id004
+      command_key: *id001
+      audit: *id001
+      item: *id001
+      operation_id: *id001
+    required:
+    - item
+    - operation_id
+    additionalProperties: false
+- name: item.moved_out
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+  schema:
+    type: object
+    properties:
+      actor: *id001
+      at: *id001
+      source: *id001
+      origin: *id003
+      receipt: *id004
+      command_key: *id001
+      audit: *id001
+      item: *id001
+      operation_id: *id001
+      old_key: *id001
+      moved_to:
+        type: object
+        properties:
+          board: *id001
+          item: *id001
+        required:
+        - board
+        - item
+        additionalProperties: false
+    required:
+    - item
+    - operation_id
+    - old_key
+    - moved_to
+    additionalProperties: false
+- name: item.moved_in
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: An item is created; the board assigns its key when the projection folds the event.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      item:
+        type: string
+      type:
+        type: string
+      parent:
+        type: string
+      state:
+        type: string
+      patch:
+        type: array
+        items:
+          type: object
+          required:
+          - f
+          additionalProperties: false
+          properties:
+            f:
+              type: integer
+            v:
+              description: Canonical value written.
+            before:
+              description: Canonical value replaced.
+            clear:
+              type: boolean
+            unset:
+              type: boolean
+      actor:
+        type: string
+      at:
+        type: string
+        description: Command time, RFC3339 UTC.
+      source:
+        type: string
+        description: Reported origin of the command, for example an API client or a flow.
+      origin:
+        type: object
+        description: Reported provenance; never used for authorization.
+      command_key:
+        type: string
+      receipt:
+        type: object
+        description: Command receipt carried by the first event of an idempotent command.
+      audit:
+        type: string
+        enum:
+        - fields
+        - 'off'
+      moved_from:
+        type: object
+        properties:
+          board: *id001
+          item: *id001
+        required:
+        - board
+        - item
+        additionalProperties: false
+      operation_id: *id001
+    required:
+    - item
+    - type
+    - state
+    - patch
+    - moved_from
+    - operation_id

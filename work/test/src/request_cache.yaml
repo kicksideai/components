@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: request_cache_test
+  kind: function.lua
+  meta: { type: test, suite: kickside_work }
+  source: file://request_cache_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    requests: app:request_parser_probe
+    fixture: app:request_schema_fixture
+- name: request_schema_fixture
+  kind: library.lua
+  source: file://request_schema_fixture.lua
+  modules: [json]
+- name: request_parser_probe
+  kind: library.lua
+  source: file://request_parser_probe.lua
+  imports:
+    contract: app:request_schema_fixture
+    registry: app:request_registry_fixture
+    json: app:request_json_fixture
+    shape: kickside.work.domain:shape
+    types: kickside.work:types
+- name: request_registry_fixture
+  kind: library.lua
+  source: file://request_registry_fixture.lua
+  imports:
+    fixture: app:request_schema_fixture
+- name: request_json_fixture
+  kind: library.lua
+  source: file://request_json_fixture.lua
+  imports:
+    fixture: app:request_schema_fixture

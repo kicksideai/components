@@ -1,0 +1,106 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.events
+entries:
+- name: item.deleted
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: An item moves to the trash.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      item:
+        type: string
+      actor:
+        type: string
+      at:
+        type: string
+        description: Command time, RFC3339 UTC.
+      source:
+        type: string
+        description: Reported origin of the command, for example an API client or a flow.
+      origin:
+        type: object
+        description: Reported provenance; never used for authorization.
+      command_key:
+        type: string
+      receipt:
+        type: object
+        description: Command receipt carried by the first event of an idempotent command.
+      audit:
+        type: string
+        enum:
+        - fields
+        - 'off'
+    required:
+    - item
+- name: item.restored
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: An item returns from the trash.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      item:
+        type: string
+      actor:
+        type: string
+      at:
+        type: string
+        description: Command time, RFC3339 UTC.
+      source:
+        type: string
+        description: Reported origin of the command, for example an API client or a flow.
+      origin:
+        type: object
+        description: Reported provenance; never used for authorization.
+      command_key:
+        type: string
+      receipt:
+        type: object
+        description: Command receipt carried by the first event of an idempotent command.
+      audit:
+        type: string
+        enum:
+        - fields
+        - 'off'
+    required:
+    - item
+- name: item.purged
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+    comment: Expired trash becomes an identity-only tombstone.
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      item:
+        type: string
+      actor:
+        type: string
+      at:
+        type: string
+        description: Command time, RFC3339 UTC.
+      source:
+        type: string
+        description: Reported origin of the command, for example an API client or a flow.
+      origin:
+        type: object
+        description: Reported provenance; never used for authorization.
+      command_key:
+        type: string
+      receipt:
+        type: object
+        description: Command receipt carried by the first event of an idempotent command.
+      audit:
+        type: string
+        enum:
+        - fields
+        - 'off'
+    required:
+    - item

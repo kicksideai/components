@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: model_budgets_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work, timeout: 300s}
+  source: file://model_budgets_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: read_budget_probe
+  kind: function.lua
+  source: file://read_budget_probe.lua
+  method: run
+  modules: [time]
+  imports:
+    access: kickside.work.read:access
+    types: kickside.work.read:types

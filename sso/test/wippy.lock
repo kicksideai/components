@@ -35,8 +35,8 @@ modules:
       version: 0.1.11
       hash: 8516eee22ba1e19eef2e5d087b8c5d9a0306d9ffc193a4dcf1907c2bf6ddea79
     - name: kickside/users
-      version: 0.2.21
-      hash: 5bee917a5489db3c7fd3fdeaf296d888b3d7abe433e824514ee82d0692558824
+      version: 0.2.22
+      hash: b2885b57e85abe950053fda9226c977a3edd7348d51c0c02d7f519aac141ecb6
     - name: wippy/bootloader
       version: 0.3.18
       hash: c7e71b358539b450b49b55e725f60f2dac8218e1c596cf3a473ce71e36b10a9b

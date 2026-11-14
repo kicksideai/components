@@ -1,0 +1,329 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: rollup_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../rollup_test.lua
+  method: run
+  imports:
+    rollup_fixture: app:rollup_fixture
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: rollup_schema_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../rollup_schema_test.lua
+  method: run
+  modules:
+  - json
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    rollup_fixture: app:rollup_fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    scoped: app:scoped
+- name: rollup_fold_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../rollup_fold_test.lua
+  method: run
+  modules:
+  - time
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    materializer: kickside.work.persist:materializer
+    domain: kickside.work:types
+- name: event_security_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../event_security_test.lua
+  method: run
+  modules: [registry]
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    steps: app:steps
+    rows: app:rows
+    autoinit: kickside.component:autoinit
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    consts: kickside.work:consts
+- name: request_validation_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../request_validation_test.lua
+  method: run
+  modules: [registry]
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    steps: app:steps
+- name: retention_gate_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../retention_gate_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+- name: conformance_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+  source: file://../conformance_test.lua
+  method: run
+  modules:
+  - registry
+  - security
+  - funcs
+  - uuid
+  imports:
+    clock: kickside.work.domain:clock
+    test: wippy.test:test
+    scoped: app:scoped
+    steps: app:steps
+    component: kickside.component:component
+- name: board_isolation_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Two boards in one install keep schema, plugins and settings apart; app settings only supply defaults.
+  source: file://../board_isolation_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    steps: app:steps
+    fixture: app:fixture
+    provider: app:plugin_provider
+- name: values_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Canonical value forms, keys and order values.
+  source: file://../values_test.lua
+  method: run
+  modules:
+  - json
+  imports:
+    test: wippy.test:test
+    values: kickside.work.domain:values
+    types: kickside.work:types
+- name: shape_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Tolerant schemas over decoded JSON.
+  source: file://../shape_test.lua
+  method: run
+  modules:
+  - json
+  imports:
+    test: wippy.test:test
+    shape: kickside.work.domain:shape
+    types: kickside.work:types
+- name: bulk_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Chunked bulk writes.
+  source: file://../bulk_test.lua
+  method: run
+  modules:
+  - sql
+  imports:
+    test: wippy.test:test
+    bulk: kickside.work.persist:bulk
+    storage: kickside.work.persist:types
+    types: kickside.work:types
+- name: mechanism_edges_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Edge cases of row narrowing, clock, bulk, shape, merge and the thread client.
+  source: file://../mechanism_edges_test.lua
+  method: run
+  modules:
+  - time
+  - sql
+  - json
+  - uuid
+  imports:
+    test: wippy.test:test
+    store: kickside.work.persist:store
+    clock: kickside.work.domain:clock
+    bulk: kickside.work.persist:bulk
+    shape: kickside.work.domain:shape
+    declaration: kickside.work.domain:declaration
+    changes: kickside.work.domain:changes
+    threads: kickside.work.persist:threads
+    types: kickside.work:types
+    job_rows: kickside.work.persist:job_rows
+- name: declaration_merge_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Declaration merge and field change classes.
+  source: file://../declaration_merge_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    declaration: kickside.work.domain:declaration
+    changes: kickside.work.domain:changes
+    types: kickside.work:types
+- name: manifests_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Plugin manifests and field type seams.
+  source: file://../manifests_test.lua
+  method: run
+  modules:
+  - sql
+  - security
+  - funcs
+  imports:
+    test: wippy.test:test
+    manifests: kickside.work.domain:manifests
+    plugins: kickside.work.domain:plugins
+    types: kickside.work:types
+- name: filter_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: The filter tree on both engines.
+  source: file://../filter_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    filter_fixture: app:filter_fixture
+    select: kickside.work.read:select
+    filter: kickside.work.domain:filter
+    reads: kickside.work.read:types
+    types: kickside.work:types
+- name: filter_history_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: History conditions and operands in the filter tree.
+  source: file://../filter_history_test.lua
+  method: run
+  modules:
+  - sql
+  imports:
+    test: wippy.test:test
+    filter_fixture: app:filter_fixture
+    values: kickside.work.domain:values
+    types: kickside.work:types
+- name: filter_relation_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Relation conditions in the filter tree.
+  source: file://../filter_relation_test.lua
+  method: run
+  modules:
+  - sql
+  imports:
+    test: wippy.test:test
+    filter_fixture: app:filter_fixture
+    types: kickside.work:types
+- name: query_compile_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+    comment: Generated tables and the query compiler.
+  source: file://../query_compile_test.lua
+  method: run
+  modules:
+  - sql
+  imports:
+    test: wippy.test:test
+    generated: kickside.work.persist:generated
+    select: kickside.work.read:select
+    scopes: kickside.work.read:scopes
+    tables: kickside.work.domain:layout
+    filter_fixture: app:filter_fixture
+    types: kickside.work:types
+- name: retention_policy_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../retention_policy_test.lua
+  method: run
+  modules: [uuid]
+  imports:
+    race: app:retention_append
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    lifecycle: kickside.work.persist:lifecycle
+    tables: kickside.work.domain:layout
+- name: zz_retention_schedule_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://../retention_schedule_test.lua
+  method: run
+  modules: [process]
+  imports:
+    clock: kickside.work.domain:clock
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store

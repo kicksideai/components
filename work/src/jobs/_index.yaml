@@ -1,0 +1,464 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.jobs
+entries:
+- name: migrate
+  kind: function.lua
+  meta:
+    private: true
+    comment: Follow-migration job - moves items to the current definition of their process under the board's execution identity.
+  source: file://board_slot.lua
+  method: run
+  imports:
+    config: kickside.work.jobs:migrate_config
+    jobs: kickside.core.jobs:jobs
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    clock: kickside.work.domain:clock
+    job_rows: kickside.work.persist:job_rows
+    failures: kickside.work.jobs:failures
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+  security:
+    policies:
+    - kickside.work.security:migrate_defer
+- name: migrate_batch
+  kind: function.lua
+  meta:
+    private: true
+    comment: One migration batch; the job calls it as the board's execution identity.
+  source: file://migrate.lua
+  method: batch
+  modules:
+  - sql
+  - time
+  - security
+  imports:
+    process: kickside.work.domain:process
+    flow: kickside.work.command:flow
+    prepare_context: kickside.work.command:prepare_context
+    when: kickside.work.command:when
+    principals: kickside.work.read:principals
+    component: kickside.component:component
+    consts: kickside.work:consts
+    store: kickside.work.persist:store
+    threads: kickside.work.persist:threads
+    append: kickside.work.persist:append
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+    job_rows: kickside.work.persist:job_rows
+    deadline: kickside.work.jobs:deadline
+    receipts: kickside.work.command:receipts
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:migration_output_publish
+    - kickside.work.security:apply_output_publish
+- name: rebalance
+  kind: function.lua
+  meta:
+    private: true
+    comment: Bounded rank rebalance under the board execution identity.
+  source: file://board_slot.lua
+  method: run
+  imports:
+    config: kickside.work.jobs:rebalance_config
+    jobs: kickside.core.jobs:jobs
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    clock: kickside.work.domain:clock
+    job_rows: kickside.work.persist:job_rows
+    failures: kickside.work.jobs:failures
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+  security:
+    policies:
+    - kickside.work.security:rebalance_defer
+- name: rebalance_batch
+  kind: function.lua
+  meta:
+    private: true
+    comment: Bounded rank rebalance under the board execution identity.
+  source: file://rebalance.lua
+  method: batch
+  modules:
+  - json
+  - time
+  - security
+  imports:
+    component: kickside.component:component
+    consts: kickside.work:consts
+    store: kickside.work.persist:store
+    threads: kickside.work.persist:threads
+    append: kickside.work.persist:append
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+    job_rows: kickside.work.persist:job_rows
+    deadline: kickside.work.jobs:deadline
+    receipts: kickside.work.command:receipts
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:rebalance_output_publish
+- name: recompute
+  kind: function.lua
+  meta:
+    private: true
+    comment: Bounded rollup recompute under the board execution identity.
+  source: file://board_slot.lua
+  method: run
+  imports:
+    config: kickside.work.jobs:recompute_config
+    jobs: kickside.core.jobs:jobs
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    clock: kickside.work.domain:clock
+    job_rows: kickside.work.persist:job_rows
+    failures: kickside.work.jobs:failures
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+  security:
+    policies:
+    - kickside.work.security:recompute_defer
+- name: recompute_batch
+  kind: function.lua
+  meta:
+    private: true
+    comment: Bounded rollup recompute under the board execution identity.
+  source: file://range_batch.lua
+  method: batch
+  modules:
+  - time
+  - security
+  imports:
+    config: kickside.work.jobs:recompute_config
+    component: kickside.component:component
+    consts: kickside.work:consts
+    store: kickside.work.persist:store
+    threads: kickside.work.persist:threads
+    append: kickside.work.persist:append
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+    job_rows: kickside.work.persist:job_rows
+    deadline: kickside.work.jobs:deadline
+    receipts: kickside.work.command:receipts
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:recompute_output_publish
+- name: reindex
+  kind: function.lua
+  meta:
+    private: true
+    comment: Bounded index backfill under the board execution identity.
+  source: file://board_slot.lua
+  method: run
+  imports:
+    config: kickside.work.jobs:reindex_config
+    jobs: kickside.core.jobs:jobs
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    clock: kickside.work.domain:clock
+    job_rows: kickside.work.persist:job_rows
+    failures: kickside.work.jobs:failures
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+  security:
+    policies:
+    - kickside.work.security:reindex_defer
+- name: reindex_batch
+  kind: function.lua
+  meta:
+    private: true
+    comment: Bounded index backfill under the board execution identity.
+  source: file://range_batch.lua
+  method: batch
+  modules:
+  - time
+  - security
+  imports:
+    config: kickside.work.jobs:reindex_config
+    component: kickside.component:component
+    consts: kickside.work:consts
+    store: kickside.work.persist:store
+    threads: kickside.work.persist:threads
+    append: kickside.work.persist:append
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+    job_rows: kickside.work.persist:job_rows
+    deadline: kickside.work.jobs:deadline
+    receipts: kickside.work.command:receipts
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:reindex_output_publish
+- name: types
+  kind: library.lua
+  source: file://types.lua
+  imports:
+    domain: kickside.work:types
+- name: failures
+  kind: library.lua
+  source: file://failures.lua
+  imports:
+    job_rows: kickside.work.persist:job_rows
+    error_envelope: kickside.contract:error_envelope
+- name: deadline
+  kind: library.lua
+  source: file://deadline.lua
+  modules:
+  - time
+  imports:
+    clock: kickside.work.domain:clock
+    consts: kickside.work:consts
+    types: kickside.work.jobs:types
+- name: process
+  kind: function.lua
+  meta:
+    private: true
+  source: file://process.lua
+  method: process
+  imports:
+    outcomes: kickside.work.domain:outcomes
+    commands: kickside.work.command:types
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    process: kickside.work.domain:process
+    apply_ops: kickside.work.command:apply_ops
+    store: kickside.work.persist:store
+    deadline: kickside.work.jobs:deadline
+    clock: kickside.work.domain:clock
+    types: kickside.work.jobs:types
+  security:
+    policies:
+    - kickside.work.security:process_defer
+- name: advance
+  kind: function.lua
+  meta:
+    private: true
+  source: file://process.lua
+  method: advance
+  imports:
+    outcomes: kickside.work.domain:outcomes
+    commands: kickside.work.command:types
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    process: kickside.work.domain:process
+    apply_ops: kickside.work.command:apply_ops
+    store: kickside.work.persist:store
+    deadline: kickside.work.jobs:deadline
+    clock: kickside.work.domain:clock
+    types: kickside.work.jobs:types
+  security:
+    policies:
+    - kickside.work.security:advance_defer
+- name: process_batch
+  kind: function.lua
+  meta:
+    private: true
+  source: file://process.lua
+  method: process_batch
+  imports:
+    outcomes: kickside.work.domain:outcomes
+    commands: kickside.work.command:types
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    process: kickside.work.domain:process
+    apply_ops: kickside.work.command:apply_ops
+    store: kickside.work.persist:store
+    deadline: kickside.work.jobs:deadline
+    clock: kickside.work.domain:clock
+    types: kickside.work.jobs:types
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:apply_output_publish
+- name: advance_batch
+  kind: function.lua
+  meta:
+    private: true
+  source: file://process.lua
+  method: advance_batch
+  imports:
+    outcomes: kickside.work.domain:outcomes
+    commands: kickside.work.command:types
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    process: kickside.work.domain:process
+    apply_ops: kickside.work.command:apply_ops
+    store: kickside.work.persist:store
+    deadline: kickside.work.jobs:deadline
+    clock: kickside.work.domain:clock
+    types: kickside.work.jobs:types
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:apply_output_publish
+- name: bulk_commands
+  kind: library.lua
+  source: file://bulk.lua
+  imports:
+    apply_ops: kickside.work.command:apply_ops
+    rows: kickside.work.persist:operation_rows
+    events: kickside.work.command:operation_events
+    types: kickside.work.command:types
+  modules: []
+- name: move_commands
+  kind: library.lua
+  source: file://move.lua
+  imports:
+    planner: kickside.work.command:move_plan
+    rows: kickside.work.persist:operation_rows
+    events: kickside.work.command:operation_events
+    receipts: kickside.work.command:receipts
+    domain: kickside.work:types
+    types: kickside.work.command:types
+    consts: kickside.work:consts
+  modules: []
+- name: bulk
+  kind: function.lua
+  source: file://operations.lua
+  method: run
+  meta:
+    private: true
+  imports: &id001
+    jobs: kickside.core.jobs:jobs
+    identity: kickside.execution:execution_identity
+    rows: kickside.work.persist:operation_rows
+    store: kickside.work.persist:store
+    clock: kickside.work.domain:clock
+    deadline: kickside.work.jobs:deadline
+    bulk: kickside.work.jobs:bulk_commands
+    move: kickside.work.jobs:move_commands
+    types: kickside.work.command:types
+    guard: kickside.work.command:guard
+    job_types: kickside.core.jobs:types
+    pack: kickside.work.jobs:pack_commands
+  security:
+    policies:
+    - kickside.work.security:operations_defer
+- name: move
+  kind: function.lua
+  source: file://operations.lua
+  method: run
+  meta:
+    private: true
+  imports: *id001
+  security:
+    policies:
+    - kickside.work.security:operations_defer
+- name: operation_batch
+  kind: function.lua
+  source: file://operations.lua
+  method: batch
+  meta:
+    private: true
+  imports: *id001
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:operations_output_publish
+    - kickside.work.security:apply_output_publish
+    - kickside.work.security:schema_output_publish
+- name: migrate_config
+  kind: library.lua
+  source: file://migrate.lua
+  modules:
+  - sql
+  - time
+  - security
+  imports:
+    process: kickside.work.domain:process
+    flow: kickside.work.command:flow
+    prepare_context: kickside.work.command:prepare_context
+    when: kickside.work.command:when
+    principals: kickside.work.read:principals
+    component: kickside.component:component
+    consts: kickside.work:consts
+    store: kickside.work.persist:store
+    threads: kickside.work.persist:threads
+    append: kickside.work.persist:append
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+    job_rows: kickside.work.persist:job_rows
+    deadline: kickside.work.jobs:deadline
+    receipts: kickside.work.command:receipts
+- name: rebalance_config
+  kind: library.lua
+  source: file://rebalance.lua
+  modules:
+  - json
+  - time
+  - security
+  imports:
+    component: kickside.component:component
+    consts: kickside.work:consts
+    store: kickside.work.persist:store
+    threads: kickside.work.persist:threads
+    append: kickside.work.persist:append
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+    job_rows: kickside.work.persist:job_rows
+    deadline: kickside.work.jobs:deadline
+    receipts: kickside.work.command:receipts
+- name: recompute_config
+  kind: library.lua
+  source: file://recompute.lua
+  imports:
+    consts: kickside.work:consts
+- name: reindex_config
+  kind: library.lua
+  source: file://reindex.lua
+  imports:
+    consts: kickside.work:consts
+- name: pack
+  kind: function.lua
+  source: file://operations.lua
+  method: run
+  meta:
+    private: true
+  imports: *id001
+  security:
+    policies:
+    - kickside.work.security:operations_defer
+- name: pack_commands
+  kind: library.lua
+  source: file://pack.lua
+  modules:
+  - registry
+  imports:
+    clock: kickside.work.domain:clock
+    guard: kickside.work.command:guard
+    commands: kickside.work.command:types
+    schema_commands: kickside.work.command:schema_commands
+    apply_ops: kickside.work.command:apply_ops
+    views: kickside.work.service:pack_views
+    automations: kickside.automation:automation
+    component: kickside.component:component
+    identifiers: kickside.work.domain:identifiers
+    rows: kickside.work.persist:operation_rows
+    types: kickside.work.domain:types
+    values: kickside.work.domain:values
+- name: plugins
+  kind: function.lua
+  meta:
+    private: true
+    comment: Converges desired plugin resources in leased bounded batches under the board identity.
+  source: file://board_slot.lua
+  method: run
+  imports:
+    config: kickside.work.jobs:plugins_config
+    jobs: kickside.core.jobs:jobs
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    clock: kickside.work.domain:clock
+    job_rows: kickside.work.persist:job_rows
+    failures: kickside.work.jobs:failures
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+  security:
+    policies:
+    - kickside.work.security:plugins_defer
+- name: plugins_config
+  kind: library.lua
+  source: file://plugins_config.lua

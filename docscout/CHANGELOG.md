@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.1.14](https://github.com/kicksideai/components/compare/docscout-v0.1.13...docscout-v0.1.14) (2026-11-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **docscout:** represent absent extraction values with null ([#101](https://github.com/kicksideai/components/issues/101))
+
+### Bug Fixes
+
+* **docscout:** represent absent extraction values with null ([#101](https://github.com/kicksideai/components/issues/101)) ([1b21197](https://github.com/kicksideai/components/commit/1b211979e1a877ac95c982ce9955746691a08d2b))
+
+## [0.1.13](https://github.com/kicksideai/components/compare/docscout-v0.1.12...docscout-v0.1.13) (2026-11-13)
+
+
+### Bug Fixes
+
+* **docscout:** process document text with linear scans ([#99](https://github.com/kicksideai/components/issues/99)) ([69f8b6e](https://github.com/kicksideai/components/commit/69f8b6e4428af75b986833820ed47bbc154a45d6))
+
+## [0.1.12](https://github.com/kicksideai/components/compare/docscout-v0.1.11...docscout-v0.1.12) (2026-11-12)
+
+
+### Bug Fixes
+
+* **docscout:** read visual verdicts of grouped fields by their path key ([#96](https://github.com/kicksideai/components/issues/96)) ([f9899dd](https://github.com/kicksideai/components/commit/f9899ddafe6b59e000fff9c5c541072df7a9db34))
+
+
+### Reverts
+
+* **docscout:** remove commentary length bounds ([#98](https://github.com/kicksideai/components/issues/98)) ([dcb4862](https://github.com/kicksideai/components/commit/dcb486251c16dd639532f619c32152035a33fe91))
+
 ## [0.1.11](https://github.com/kicksideai/components/compare/docscout-v0.1.10...docscout-v0.1.11) (2026-11-12)
 
 

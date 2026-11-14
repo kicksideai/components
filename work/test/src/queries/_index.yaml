@@ -1,0 +1,126 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: query_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../query_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    steps: app:steps
+- name: query_index_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../query_index_test.lua
+  method: run
+  modules:
+  - json
+  - funcs
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    tables: kickside.work.domain:layout
+    materializer: kickside.work.persist:materializer
+    rollup_fixture: app:rollup_fixture
+    scoped: app:scoped
+- name: query_benchmark_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 1800s
+  source: file://../query_benchmark_test.lua
+  method: run
+  modules:
+  - time
+  - uuid
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
+    store: kickside.work.persist:store
+    materializer: kickside.work.persist:materializer
+    domain: kickside.work:types
+- name: relation_filter_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../relation_filter_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    steps: app:steps
+- name: when_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../when_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    steps: app:steps
+- name: rollup_where_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../rollup_where_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    materializer: kickside.work.persist:materializer
+    domain: kickside.work:types
+- name: visibility_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../visibility_test.lua
+  method: run
+  modules: [registry, sql]
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    steps: app:steps
+- name: cross_board_test
+  modules: [time]
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 600s
+  source: file://../cross_board_test.lua
+  method: run
+  imports:
+    component: kickside.component:component
+    directory_probe: app:directory_probe
+    store: kickside.work.persist:store
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    steps: app:steps

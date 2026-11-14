@@ -51,6 +51,16 @@
         "docscout/ui/dist",
         "docscout/ui/node_modules"
       ]
+    },
+    "work": {
+      "component": "work",
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
+      "exclude-paths": [
+        "work/test",
+        "work/.wippy",
+        "work/wippy.lock"
+      ]
     }
   }
 }

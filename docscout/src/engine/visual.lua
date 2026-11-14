@@ -9,7 +9,7 @@ local types = require("types")
 local M = {}
 
 local SYSTEM = [[You extract field values from physical page images of one document. Read only the supplied pages.
-For each field say whether it is found, give its value, confidence from 0 to 1, and evidence: a supplied page number and an exact quote visible on that page.
+For each field say whether it is found, give its value (null when not found), confidence from 0 to 1, and evidence: a supplied page number and an exact quote visible on that page.
 Do not treat absent pages as proof that a value is absent or complete.
 ]] .. shapes.DATA_RULE
 
@@ -76,6 +76,7 @@ function M.extract(run: types.PageRun, step: types.PageStep, calls: {types.PageC
                 {max_tokens = cfg.max_output_tokens, temperature = cfg.temperature, stage = "extract", fields = shapes.paths(batch), pages = prepared.numbers,
                     image_bytes = page_calls.bytes(prepared.kept), estimated_input_tokens = ai.estimate(SYSTEM,
                         page_calls.message(prepared.kept, input(batch, prepared.numbers)), shapes.group_schema(batch, {}, prepared.numbers))})
+            if not err then err = shapes.extraction_error(batch, result, cfg.model) end
             made = made + 1
             if err then
                 for _, field in ipairs(batch) do M.failed(run, field, err); failed = failed + 1 end

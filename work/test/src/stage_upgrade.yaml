@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: stage_upgrade_test
+  kind: function.lua
+  meta: { type: test, suite: kickside_work, timeout: 300s }
+  source: file://stage_upgrade_test.lua
+  method: run
+  modules: [funcs, json]
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store

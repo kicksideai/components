@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work
+entries:
+- name: schema_provider
+  kind: contract.definition
+  meta:
+    title: Plugin schema provider
+    comment: Answers the schema fragment a plugin contributes to one board. Work calls it as the caller when a board names the plugin, stores the answer as the board's own data and never calls it while folding events.
+  methods:
+  - name: resolve
+    description: 'Resolve the plugin''s schema fragment for one board: the fragment in the declaration vocabulary and an optional version the provider uses to describe it. current is the copy the board holds, when it holds one.'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","required":["board_id","plugin","config"],"properties":{"board_id":{"type":"string"},"plugin":{"type":"string"},"config":{"type":"object"},"current":{"type":"object","required":["fragment","digest"],"properties":{"fragment":{"type":"object"},"version":{"type":"string"},"digest":{"type":"string"}}},"trace_context":{"type":"object","properties":{"trace_id":{"type":"string"},"run_id":{"type":"string"},"caused_by_event_id":{"type":"string"},"correlation_key":{"type":"string"}},"additionalProperties":false}},"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","required":["fragment"],"properties":{"fragment":{"type":"object"},"version":{"type":"string"}},"additionalProperties":false}'
+  imports: null
+- name: search_resolver
+  kind: contract.definition
+  methods:
+  - name: resolve_ids
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string"},"query":{"type":"string"},"limit":{"type":"integer","minimum":1,"maximum":1000}},"required":["board_id","query","limit"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"ids":{"type":"array","maxItems":1000,"uniqueItems":true,"items":{"type":"string","minLength":1}}},"required":["ids"],"additionalProperties":false}'
