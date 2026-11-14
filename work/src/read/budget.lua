@@ -4,13 +4,15 @@ local time = require("time")
 local clock = require("clock")
 local consts = require("consts")
 local types = require("types")
+local limits = require("limits")
 local M = {}
 function M.start(asked: types.ReadBudget?): (types.ReadAllowance?, error?)
     local rows = asked and asked.rows or 200000
     if math.tointeger(rows) == nil or rows < 1 or rows > 200000 then
         return nil, errors.new({ kind = errors.INVALID, message = "read scan allowance is 1..200000", details = { code = "invalid_read_budget" } })
     end
-    local deadline = clock.deadline(consts.LIMITS.read_deadline_ms)
+    local deadline, deadline_err = limits.deadline("read_deadline_ms")
+    if deadline_err or not deadline then return nil, deadline_err end
     if asked and asked.deadline then
         local at, err = time.parse(time.RFC3339, asked.deadline)
         if err or not at then return nil, errors.new({ kind = errors.INVALID, message = "read deadline is an instant", details = { code = "invalid_read_budget" } }) end

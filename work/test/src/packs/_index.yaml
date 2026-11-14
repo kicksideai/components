@@ -235,6 +235,7 @@ entries:
     - app:missing_pack
     - app:absent_plugin
     - app:pack_automation
+    - app:pack_configurable
     - app:pack_prepare
     - app:pack_trait
     - app:policy_pack
@@ -250,6 +251,8 @@ entries:
   meta: &id018
     type: kickside.automation
     title: Stage consumer
+    reconfigurable: true
+    actions: [reconfigure]
     inputs:
       type: object
       required:
@@ -262,6 +265,9 @@ entries:
   - contract: kickside.contract:component
     methods:
       get_status: kickside.core.threads:thread_status
+  - contract: app:pack_configurable
+    methods:
+      reconfigure: app:pack_reconfigure
   - contract: kickside.automation:prepared_installable
     methods:
       prepare_install: app:pack_prepare
@@ -272,6 +278,9 @@ entries:
   kind: function.lua
   source: file://../pack_automation.lua
   method: prepare
+  modules: [ctx]
+  imports:
+    automations: kickside.automation:automation
 - name: pack_trait
   kind: registry.entry
   meta:
@@ -453,3 +462,37 @@ entries:
             release_when:
               approvals: {min: 1, from: {group: 'kickside.security.groups:members'}}
           transitions: []
+
+- name: pack_configurable
+  kind: contract.definition
+  methods:
+  - name: reconfigure
+- name: pack_reconfigure
+  kind: function.lua
+  source: file://../pack_automation.lua
+  method: reconfigure
+  modules: [ctx]
+  imports:
+    automations: kickside.automation:automation
+- name: pack_reconfigure_access
+  kind: security.policy
+  groups: [kickside.security.groups:members]
+  policy:
+    resources: [app:pack_configurable, app:pack_automation, app:pack_reconfigure, app:pack_run]
+    actions: [registry.get, contract.get, contract.open, contract.call, contract.security, funcs.call]
+    effect: allow
+
+- name: pack_run
+  kind: function.lua
+  source: file://../pack_run.lua
+  method: run
+  modules: [funcs]
+  security:
+    policies: [app:pack_run_admission]
+- name: pack_run_admission
+  kind: security.policy
+  meta: {private: true, service_only: true, producers: [app:pack_run]}
+  policy:
+    resources: [kickside.work.jobs:operation_batch]
+    actions: funcs.call
+    effect: allow

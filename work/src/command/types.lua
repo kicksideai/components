@@ -39,7 +39,7 @@ type SchemaPlan = {
 type Finding = domain.Finding
 type Outcome = {
     op: integer, status: string, item: string?, key: string?, version: integer?, comment: string?, findings: { Finding }?,
-    rolled_back: boolean?,
+    error: domain.CommandError?, rolled_back: boolean?,
 }
 type ApplyResult = { outcomes: { Outcome }, applied: boolean, seq: integer?, as_of: integer?, replayed: boolean? }
 type SchemaResult = { generation: integer, class: string, changes: { SchemaChange }, seq: integer?, as_of: integer?, replayed: boolean? }
@@ -57,7 +57,7 @@ type ListResult = { boards: { BoardSummary }, next: integer? }
 -- OpPlan is the planned result of one op: its status, the events it appends and
 -- the write group they join. Ops of one group share one write and one expect.
 type OpPlan = {
-    status: string, events: { Event }, group: string, item: string?, comment: string?, version: integer?, findings: { Finding }?,
+    error: domain.CommandError?, status: string, events: { Event }, group: string, item: string?, comment: string?, version: integer?, findings: { Finding }?,
     guards: { [string]: integer }?, expected: integer?, head: integer?,
 }
 -- Write is one append: the events of a group and the subject version it expects, on the
@@ -82,7 +82,7 @@ type Executor = sql.DB | sql.Transaction
 type Durable = { receipt: domain.Receipt, seq: integer }
 
 type ApplyContext = {
-    generation: string,
+    claim_version: integer?, generation: string,
     settings: domain.Policy,
     c: domain.ThreadClient, board_id: string, request: ApplyRequest, ops: { Op }, hashed: string,
     claimed: boolean?, base: string?, until_at: domain.Deadline, source: string,

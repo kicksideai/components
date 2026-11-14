@@ -7,9 +7,11 @@ local domain = require("domain")
 local storage = require("storage")
 local jobs = require("jobs")
 local M = {}
-function M.list(tx: storage.Executor, board_id: string, pending: boolean?): ({ domain.PluginState }?, error?)
+function M.list(tx: storage.Executor, board_id: string, pending: boolean?, limit: integer?): ({ domain.PluginState }?, error?)
     local where = pending and " AND revision > applied_revision" or ""
-    local rows, err = tx:query("SELECT * FROM kickside_work_plugin WHERE board_id = $1" .. where .. " ORDER BY plugin", { board_id })
+    local params: domain.SqlParams = {board_id}
+    if limit then params[2]=limit end
+    local rows, err = tx:query("SELECT * FROM kickside_work_plugin WHERE board_id = $1" .. where .. " ORDER BY plugin" .. (limit and " LIMIT $2" or ""), params)
     if err then return nil, err end
     local out: { domain.PluginState } = {}
     for _, row in ipairs(rows or {}) do

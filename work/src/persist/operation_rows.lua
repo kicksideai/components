@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local sql = require("sql")
+local funcs = require("funcs")
 local uuid = require("uuid")
 local jobs = require("jobs")
 local identity = require("identity")
@@ -33,7 +34,7 @@ function M.create(board_id: string, kind: string, key: string, hashed: string, d
     if ierr then return nil, ierr :: error end
     local encoded, eerr = identity.to_row(captured)
     if eerr or not encoded then return nil, eerr :: error? end
-    local _, retirement_err = expiry.retire(board_id,kind,key)
+    local _, retirement_err = funcs.call("kickside.work.retention:retire_operation",{board_id=board_id,kind=kind,key=key})
     if retirement_err then return nil,retirement_err end
     local db, err = store.open()
     if not db then return nil, err end
@@ -66,12 +67,15 @@ function M.create(board_id: string, kind: string, key: string, hashed: string, d
     return owner, nil
 end
 
-function M.update(owner: types.Owner, status: string, code: string?): error?
+function M.update(owner: types.Owner, status: string, code: string?, save_data: boolean?): error?
     local db, err = store.open()
     if not db then return err end
+    local params: {unknown} = { status, owner.processed, store.encode(owner.counts), code or sql.NULL }
+    if save_data then params[5] = store.encode(owner.data) end
+    local board_param = save_data and 6 or 5
+    params[board_param], params[board_param+1] = owner.board_id, owner.operation_id
     local updated, uerr = db:query([[UPDATE kickside_work_operation SET status = CASE WHEN status = 'cancelled' THEN status ELSE $1 END,
-        processed = $2, counts = $3, error_code = $4 WHERE board_id = $5 AND operation_id = $6 RETURNING status]],
-        { status, owner.processed, store.encode(owner.counts), code or sql.NULL, owner.board_id, owner.operation_id })
+        processed = $2, counts = $3, error_code = $4]] .. (save_data and ", data = $5" or "") .. " WHERE board_id = $" .. board_param .. " AND operation_id = $" .. (board_param+1) .. " RETURNING status", params)
     db:release()
     if uerr then return uerr end
     if not updated or not updated[1] then return errors.new({ kind = errors.NOT_FOUND, message = "operation owner is absent", details = { code = "operation_not_found" } }) end

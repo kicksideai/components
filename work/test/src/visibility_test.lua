@@ -306,8 +306,8 @@ local function define()
             for _, method in ipairs({ "get", "query", "count", "list_history", "list_changes", "list_links", "list_comments", "list_stage_runs", "get_time_in_state", "explain" }) do
                 local request = method == "get" or method == "list_links" or method == "list_comments" or method == "list_stage_runs" or method == "get_time_in_state" or method == "list_history"
                 local response = admin.http("POST", "/" .. h.id .. "/" .. method, request and { item = { id = id } } or {})
-                test.eq(response.status, 503, method)
-                test.eq(response.body.details.code, "contract_unavailable", method)
+                test.eq(response.status, 404, method)
+                test.is_nil(response.body.data, method)
             end
         end)
 

@@ -393,6 +393,18 @@ local function list_history(request: types.HistoryRequest, context: types.ReadCo
             end
         end
     end
+    for _, entry in ipairs(result.entries) do
+        if entry.kind == "moved_in" or entry.kind == "moved_out" then
+            for _, side in ipairs({ "before", "after" }) do
+                local raw = side == "before" and entry.before or entry.after
+                if type(raw) == "table" then
+                    local surface, err = peers.reference(raw)
+                    if err then return nil, err end
+                    if side == "before" then entry.before = surface :: domain.Json else entry.after = surface :: domain.Json end
+                end
+            end
+        end
+    end
     local ierr = interval_views.redact(result.intervals or {}, redact)
     if ierr then return nil, ierr end
     return result, nil

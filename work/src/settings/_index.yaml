@@ -35,8 +35,9 @@ entries:
   schema:
     type: integer
     minimum: 0
+    maximum: 106751
   title: Audit days
-  description: Default board audit days.
+  description: Default board audit days; zero selects 365 days.
   category: Work
   order: 10
   scope: global
@@ -54,6 +55,7 @@ entries:
   schema:
     type: integer
     minimum: 0
+    maximum: 106751
   title: Trash days
   description: Default board trash days.
   category: Work
@@ -73,6 +75,7 @@ entries:
   schema:
     type: integer
     minimum: 0
+    maximum: 106751
   title: Tombstone days
   description: Default board tombstone days.
   category: Work
@@ -87,13 +90,14 @@ entries:
   namespace: kickside.work
   key: interval_days
   value_type: int
-  default: 0
+  default: 365
   validate_func: kickside.work.settings:validate
   schema:
     type: integer
     minimum: 0
+    maximum: 106751
   title: Interval days
-  description: Default board interval days.
+  description: Default board interval days (365 by default); zero selects 365 days.
   category: Work
   order: 40
   scope: global
@@ -112,5 +116,474 @@ entries:
   source: file://validate.lua
   method: validate
   imports:
+    limits: kickside.work.settings:limits
     policy: kickside.work.domain:policy
     types: kickside.work:types
+- name: limits
+  kind: library.lua
+  source: file://limits.lua
+  imports:
+    defaults: kickside.work.settings:defaults
+    clock: kickside.work.domain:clock
+    types: kickside.work:types
+- name: comments_per_item
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: comments_per_item
+  value_type: int
+  default: 10000
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100000
+  title: Comments per item
+  description: Work comments per item; valid range 1..100000.
+  category: Work
+  order: 50
+  scope: global
+  editable: true
+  visible: true
+- name: command_deadline_ms
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: command_deadline_ms
+  value_type: int
+  default: 5000
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 60000
+  title: Command deadline ms
+  description: Work command deadline ms; valid range 1..60000.
+  category: Work
+  order: 60
+  scope: global
+  editable: true
+  visible: true
+- name: read_deadline_ms
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: read_deadline_ms
+  value_type: int
+  default: 2000
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 60000
+  title: Read deadline ms
+  description: Work read deadline ms; valid range 1..60000.
+  category: Work
+  order: 70
+  scope: global
+  editable: true
+  visible: true
+- name: retention_batch
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: retention_batch
+  value_type: int
+  default: 500
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 205
+    maximum: 5000
+  title: Retention batch
+  description: Work retention batch; valid range 205..5000.
+  category: Work
+  order: 80
+  scope: global
+  editable: true
+  visible: true
+- name: bulk_batch_items
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: bulk_batch_items
+  value_type: int
+  default: 200
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 2000
+  title: Bulk batch items
+  description: Work bulk batch items; valid range 1..2000.
+  category: Work
+  order: 90
+  scope: global
+  editable: true
+  visible: true
+- name: bulk_batch_ops
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: bulk_batch_ops
+  value_type: int
+  default: 200
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 200
+  title: Bulk batch ops
+  description: Work bulk batch ops; valid range 1..200.
+  category: Work
+  order: 100
+  scope: global
+  editable: true
+  visible: true
+- name: rebuild_batch
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: rebuild_batch
+  value_type: int
+  default: 500
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 500
+  title: Rebuild batch
+  description: Work rebuild batch; valid range 1..500.
+  category: Work
+  order: 110
+  scope: global
+  editable: true
+  visible: true
+- name: rebuild_batches_per_run
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: rebuild_batches_per_run
+  value_type: int
+  default: 20
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+  title: Rebuild batches per run
+  description: Work rebuild batches per run; valid range 1..100.
+  category: Work
+  order: 120
+  scope: global
+  editable: true
+  visible: true
+- name: migration_batch
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: migration_batch
+  value_type: int
+  default: 500
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 500
+  title: Migration batch
+  description: Work migration batch; valid range 1..500.
+  category: Work
+  order: 130
+  scope: global
+  editable: true
+  visible: true
+- name: migration_batches_per_run
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: migration_batches_per_run
+  value_type: int
+  default: 20
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+  title: Migration batches per run
+  description: Work migration batches per run; valid range 1..100.
+  category: Work
+  order: 140
+  scope: global
+  editable: true
+  visible: true
+- name: rebalance_batch
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: rebalance_batch
+  value_type: int
+  default: 500
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 500
+  title: Rebalance batch
+  description: Work rebalance batch; valid range 1..500.
+  category: Work
+  order: 150
+  scope: global
+  editable: true
+  visible: true
+- name: rebalance_batches_per_run
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: rebalance_batches_per_run
+  value_type: int
+  default: 20
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+  title: Rebalance batches per run
+  description: Work rebalance batches per run; valid range 1..100.
+  category: Work
+  order: 160
+  scope: global
+  editable: true
+  visible: true
+- name: pack_steps_per_run
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: pack_steps_per_run
+  value_type: int
+  default: 20
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+  title: Pack steps per run
+  description: Work pack steps per run; valid range 1..100.
+  category: Work
+  order: 170
+  scope: global
+  editable: true
+  visible: true
+- name: operation_batches_per_run
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: operation_batches_per_run
+  value_type: int
+  default: 20
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+  title: Operation batches per run
+  description: Work operation batches per run; valid range 1..100.
+  category: Work
+  order: 180
+  scope: global
+  editable: true
+  visible: true
+- name: recovery_batch
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: recovery_batch
+  value_type: int
+  default: 100
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 500
+  title: Recovery batch
+  description: Work recovery batch; valid range 1..500.
+  category: Work
+  order: 190
+  scope: global
+  editable: true
+  visible: true
+- name: recovery_batches_per_run
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: recovery_batches_per_run
+  value_type: int
+  default: 4
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+  title: Recovery batches per run
+  description: Work recovery batches per run; valid range 1..100.
+  category: Work
+  order: 200
+  scope: global
+  editable: true
+  visible: true
+- name: plugin_batch
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: plugin_batch
+  value_type: int
+  default: 20
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+  title: Plugin batch
+  description: Work plugin batch; valid range 1..100.
+  category: Work
+  order: 210
+  scope: global
+  editable: true
+  visible: true
+- name: plugin_batches_per_run
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: plugin_batches_per_run
+  value_type: int
+  default: 1
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+  title: Plugin batches per run
+  description: Work plugin batches per run; valid range 1..100.
+  category: Work
+  order: 220
+  scope: global
+  editable: true
+  visible: true
+- name: plugin_projection_batch
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: plugin_projection_batch
+  value_type: int
+  default: 20
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+  title: Plugin projection batch
+  description: Work plugin projection batch; valid range 1..100.
+  category: Work
+  order: 230
+  scope: global
+  editable: true
+  visible: true
+- name: plugin_discovery_batch
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: plugin_discovery_batch
+  value_type: int
+  default: 200
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 200
+  title: Plugin discovery batch
+  description: Work plugin discovery batch; valid range 1..200.
+  category: Work
+  order: 240
+  scope: global
+  editable: true
+  visible: true
+- name: projection_catchup_ticks
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: projection_catchup_ticks
+  value_type: int
+  default: 1000
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100000
+  title: Projection catchup ticks
+  description: Work projection catchup ticks; valid range 1..100000.
+  category: Work
+  order: 250
+  scope: global
+  editable: true
+  visible: true
+- name: cleanup_batch
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: cleanup_batch
+  value_type: int
+  default: 100
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 5000
+  title: Cleanup batch
+  description: Work cleanup batch; valid range 1..5000.
+  category: Work
+  order: 260
+  scope: global
+  editable: true
+  visible: true
+- name: storage_batch
+  kind: registry.entry
+  meta:
+    type: kickside.settings:definition
+  namespace: kickside.work
+  key: storage_batch
+  value_type: int
+  default: 100
+  validate_func: kickside.work.settings:validate
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 1000
+  title: Storage batch
+  description: Maximum rows grouped into internal storage statements; valid range
+    1..1000.
+  category: Work
+  order: 270
+  scope: global
+  editable: true
+  visible: true

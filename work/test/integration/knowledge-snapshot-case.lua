@@ -1,0 +1,26 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+        test.it("indexes all 201 comments from one complete Work snapshot per version", function()
+            local h=fixture.board()
+            local id=create(h,"Complete comments")
+            local db=assert(sql.get("app:db"))
+            assert(db:execute([[WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM numbers WHERE n<201)
+                INSERT INTO kickside_work_comment (board_id,comment_id,item_id,body,mentions,author,version,deleted,created_at)
+                SELECT $1,'snapshot-' || n,$2,'comment-' || n || '-complete','[]','fixture',1,0,'2020-01-01T00:00:00Z' FROM numbers]],{h.id,id}))
+            db:release()
+            activate(h)
+            local kb=call(h,"status",{}).kb_id
+            db=assert(sql.get("app:db"))
+            local docs=assert(db:query("SELECT content,version FROM app_kb_doc WHERE kb_id=$1",{kb}));db:release()
+            test.eq(#docs,1)
+            for n=1,201 do test.not_nil(docs[1].content:find("comment-"..n.."-complete",1,true),"missing comment "..n) end
+            fixture.apply(h,{{op="comment",item=id,body="new-comment-complete"}})
+            settle(h)
+            db=assert(sql.get("app:db"))
+            local updated=assert(db:query("SELECT content,version FROM app_kb_doc WHERE kb_id=$1",{kb}))[1];db:release()
+            test.is_true(updated.version~=docs[1].version)
+            for n=1,201 do test.not_nil(updated.content:find("comment-"..n.."-complete",1,true)) end
+            test.not_nil(updated.content:find("new-comment-complete",1,true))
+            settle(h)
+            db=assert(sql.get("app:db"))
+            test.eq(assert(db:query("SELECT content FROM app_kb_doc WHERE kb_id=$1",{kb}))[1].content,updated.content);db:release()
+        end)

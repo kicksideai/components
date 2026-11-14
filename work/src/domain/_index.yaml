@@ -240,6 +240,7 @@ entries:
   modules:
   - time
   imports:
+    consts: kickside.work:consts
     document: kickside.work.domain:document
     types: kickside.work:types
 - name: formula

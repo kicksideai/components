@@ -15,6 +15,7 @@ local types = require("types")
 local sql = require("sql")
 local operation_expiry = require("operation_expiry")
 
+local limits = require("limits")
 local M = {}
 
 -- release appends the registry release of the claim the row records and removes the
@@ -62,16 +63,27 @@ local function retain(client: domain.ThreadClient, base: domain.Policy, board_id
             expect_subject = subject, expect_version = version, caller_expect = false } })
         if aerr and not threads.mismatch(aerr, "version_mismatch") then return nil, nil, nil, nil, aerr end
         if not aerr then purged = purged + 1 end
-        last = id
     end
     local spent = #(expired or {})
-    if spent == limit then return purged, spent, true, last, nil end
-    local retired, retirement_err=operation_expiry.retire(board_id)
-    if retirement_err then return nil,nil,nil,nil,retirement_err end
-    if retired then return purged+1,spent+1,true,last,nil end
-    local pruned, perr = rows.prune(board_id, base, limit - spent)
+    -- A native slot page can remove 100 runs, its slot and the Work owner row.
+    if limit - spent < 105 then return purged, spent, true, last, nil end
+    if after=="" or after:sub(1,11)=="operations:" then
+        local operation_after=after:sub(1,11)=="operations:" and after:sub(12) or ""
+        local retired,retirement_err,next_after=operation_expiry.retire(board_id,nil,nil,operation_after)
+        if retirement_err then return nil,nil,nil,nil,retirement_err end
+        if next_after then
+            return purged+(retired and 1 or 0),spent+(retired and 105 or 2),true,"operations:" .. next_after,nil
+        end
+        after=""
+    end
+    local pruned, perr = rows.prune(board_id, base, limit - spent, after)
     if perr or not pruned then return nil, nil, nil, nil, perr end
-    return purged + pruned.removed, spent + pruned.removed, pruned.more, last, nil
+    spent=spent+(pruned.spent or pruned.removed)
+    if pruned.more then return purged+pruned.removed,spent,true,pruned.cursor or last,nil end
+    if after:sub(1,6)~="timer:" then after="slots" end
+    local slot_spent,slot_more,slot_after,slot_err=rows.slots(board_id,limit-spent,after)
+    if slot_err then return nil,nil,nil,nil,slot_err end
+    return purged+pruned.removed,spent+(slot_spent :: integer),slot_more or spent-(pruned.examined or 0)>0,slot_after,nil
 end
 
 local function deadline_for(db: sql.DB, board_id: string, base: domain.Policy): (integer?, error?)
@@ -83,9 +95,11 @@ local function deadline_for(db: sql.DB, board_id: string, base: domain.Policy): 
 end
 
 function M.run(_input: unknown): types.Result
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return { success = false, error = settings_err } end
     local db, err = store.open()
     if not db then return { success = false, error = err } end
-    local orphans, qerr = lifecycle.orphans(db, consts.LIMITS.retention_batch)
+    local orphans, qerr = lifecycle.orphans(db, settings.retention_batch)
     db:release()
     if qerr then return { success = false, error = qerr } end
     local client, cerr = threads.open()
@@ -93,14 +107,15 @@ function M.run(_input: unknown): types.Result
     local found, deleted = orphans or {}, 0
     local blocked: { types.Blocked } = {}
     for _, row in ipairs(found) do
-        local done, rerr = release(client, row.prefix, row.claim_version, row.board_id, clock.now())
+        local done, rerr = false, nil
+        if not row.present then done,rerr=release(client, row.prefix, row.claim_version, row.board_id, clock.now()) end
         if rerr then blocked[#blocked + 1] = { component_id = row.board_id, prefix = row.prefix, error = rerr }
         elseif done then deleted = deleted + 1 end
     end
-    local more = #found == consts.LIMITS.retention_batch
-    local advance_err = lifecycle.advance_orphans(more and found[#found].prefix or "")
+    local more = #found == settings.retention_batch
+    local advance_err = lifecycle.advance_orphans(more and found[#found].prefix or "~")
     if advance_err then return { success = false, error = advance_err } end
-    local left = consts.LIMITS.retention_batch - #found
+    local left = settings.retention_batch - #found
     if left == 0 then return { success = true, deleted = deleted, blocked = blocked, needs_continue = true } end
     local base, serr = defaults.read()
     if serr or not base then return { success = false, error = serr } end
@@ -108,7 +123,7 @@ function M.run(_input: unknown): types.Result
     if not db then return { success = false, error = err } end
     local position: types.Position?,poserr: error? = rows.position(db)
     local boards: { domain.Row }?
-    if not poserr and position then boards, poserr = rows.boards(db, position, 11) end
+    if not poserr and position then boards, poserr = rows.boards(db, position, math.min(left,settings.cleanup_batch)+1) end
     db:release()
     if poserr or not position then return { success = false, error = poserr } end
     local deadline = position.deadline_ms
@@ -126,9 +141,9 @@ function M.run(_input: unknown): types.Result
         if cerr then return { success = false, error = cerr } end
         for _, entry in ipairs(components or {}) do deleting[entry.component_id] = entry.deleting_at ~= nil end
     end
-    more = #page > 10
+    more = #page > math.min(left,settings.cleanup_batch)
     local first_error: error? = nil
-    for i = 1, math.min(#page, 10) do
+    for i = 1, math.min(#page, math.min(left,settings.cleanup_batch)) do
         local board_id = ids[i]
         next_position = { board_after = board_id, inclusive = 0, item_after = "" }
         if not deleting[board_id] then
@@ -144,6 +159,9 @@ function M.run(_input: unknown): types.Result
             end
             if rerr then
                 if not first_error then first_error = rerr end
+                next_position={board_after=board_id,inclusive=1,item_after=after}
+                more=true
+                break
             else
                 deleted, left = deleted + (n :: integer), left - (spent :: integer)
                 next_position = { board_after = board_id, inclusive = again and 1 or 0, item_after = again and (last :: string) or "" }
@@ -158,6 +176,10 @@ function M.run(_input: unknown): types.Result
         next_position = { board_after = "", inclusive = 0, item_after = "" }
     end
     if more then next_position.deadline_ms = deadline end
+    if not more then
+        local orphan_err=lifecycle.advance_orphans("")
+        if orphan_err then return {success=false,error=orphan_err} end
+    end
     local saved = rows.advance(next_position)
     if saved then return { success = false, error = saved } end
     return { success = first_error == nil, error = first_error, deleted = deleted, blocked = blocked, needs_continue = more, deadline_ms = deadline }

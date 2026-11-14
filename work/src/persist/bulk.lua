@@ -5,6 +5,7 @@
 local storage = require("storage")
 local types = require("types")
 
+local limits = require("limits")
 local M = {}
 
 local MAX_PARAMS = 30000
@@ -21,7 +22,9 @@ function M.insert(db: storage.Executor, table_name: string, columns: { storage.C
     if #rows == 0 then return nil end
     local names: { string } = {}
     for i, c in ipairs(columns) do names[i] = c.name end
-    local per = math.max(1, MAX_PARAMS // #columns)
+    local settings,settings_err=limits.read()
+    if settings_err or not settings then return settings_err end
+    local per = math.min(settings.storage_batch, math.max(1, MAX_PARAMS // #columns))
     local head = "INSERT INTO " .. table_name .. " (" .. table.concat(names, ", ") .. ") VALUES "
     for first = 1, #rows, per do
         local tuples: { string } = {}
@@ -45,7 +48,9 @@ end
 -- the rows matching scope (a condition with leading parameters scope_params).
 function M.delete_in(db: storage.Executor, table_name: string, scope: string?, scope_params: types.SqlParams, column: string, ids: { string }): error?
     if #ids == 0 then return nil end
-    local per = MAX_PARAMS - #scope_params
+    local settings,settings_err=limits.read()
+    if settings_err or not settings then return settings_err end
+    local per = math.min(settings.storage_batch, MAX_PARAMS - #scope_params)
     for first = 1, #ids, per do
         local params: types.SqlParams = {}
         for _, p in ipairs(scope_params) do params[#params + 1] = p end

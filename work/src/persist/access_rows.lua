@@ -171,8 +171,8 @@ function M.record(tx: sql.Transaction, board: domain.Board, item: domain.Item): 
         if derr then return derr end
         if values.canonical(document) == encoded then return nil end
     end
-    local _, err = tx:execute("INSERT INTO kickside_work_visibility (board_id, item_id, seq, document) VALUES ($1,$2,$3,$4) ON CONFLICT (board_id, item_id, seq) DO UPDATE SET document = excluded.document",
-        { board.board_id, item.item_id, item.updated_seq, encoded })
+    local _, err = tx:execute("INSERT INTO kickside_work_visibility (board_id, item_id, seq, document, at) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (board_id, item_id, seq) DO UPDATE SET document = excluded.document, at = excluded.at",
+        { board.board_id, item.item_id, item.updated_seq, encoded, item.updated_at })
     return err
 end
 

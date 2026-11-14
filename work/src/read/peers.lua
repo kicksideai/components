@@ -16,6 +16,13 @@ function M.catalog(board: domain.Board): { [string]: domain.Field }
     return out
 end
 
+function M.reference(raw: unknown): (unknown, error?)
+    local target = raw :: { board: string, item: string? }
+    local visible, err = M.visible(target.board, target.item)
+    if err then return nil, err end
+    return visible and raw or { unavailable = true }, nil
+end
+
 function M.redactor(catalog: { [string]: domain.Field }): types.Redactor
     local cache: { [string]: boolean } = {}
     local function reference(raw: unknown): (unknown, error?)

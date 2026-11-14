@@ -4,6 +4,7 @@ local storage = require("storage")
 -- The fold itself has no side effects.
 local component = require("component")
 local funcs = require("funcs")
+local security = require("security")
 local job_rows = require("job_rows")
 local store = require("store")
 local board_meta = require("board_meta")
@@ -13,6 +14,19 @@ local M = {}
 function M.publish(input: storage.MetaInput): (storage.Published?, error?)
     local board_id = input.thread_id
     if type(board_id) ~= "string" or board_id == "" then return { published = false }, nil end
+    local framework, permission_err = security.can("work.meta.publish", "kickside.work.persist:publish_meta")
+    if permission_err then return nil, permission_err end
+    if not framework then
+        local admitted = false
+        local denial: error? = nil
+        for _, mask in ipairs({ component.ACCESS.READ, component.ACCESS.WRITE, component.ACCESS.ADMIN }) do
+            local _, access_err = component.validate_access(board_id, mask :: integer)
+            if not access_err then admitted = true; break end
+            denial = access_err :: error
+            if not errors.is(denial, errors.PERMISSION_DENIED) and not errors.is(denial, errors.NOT_FOUND) then return nil, denial end
+        end
+        if not admitted then return nil, denial end
+    end
     local db, err = store.open()
     if not db then return nil, err end
     local metadata, merr = board_meta.get(db, board_id)

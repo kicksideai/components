@@ -8,6 +8,7 @@ local values = require("values")
 local bulk = require("bulk")
 local types = require("types")
 
+local limits = require("limits")
 local M = {}
 
 M.STATE = "state"
@@ -42,10 +43,13 @@ end
 
 local function flush_ends(tx: storage.Executor, batch: types.FoldBatch): error?
     local rows = batch.interval_ends or {}
-    for first = 1, #rows, 1000 do
+    local settings,settings_err=limits.read()
+    if settings_err or not settings then return settings_err end
+    local per=settings.storage_batch
+    for first = 1, #rows, per do
         local params: types.SqlParams = {}
         local tuples: { string } = {}
-        for i = first, math.min(first + 999, #rows) do
+        for i = first, math.min(first + per - 1, #rows) do
             params[#params + 1] = rows[i][1]
             local id = "$" .. #params
             params[#params + 1] = rows[i][2]

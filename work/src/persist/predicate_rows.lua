@@ -10,6 +10,7 @@ local tables = require("tables")
 local access_rows = require("access_rows")
 local working_rows = require("working_rows")
 local guard = require("guard")
+local limits = require("limits")
 local M = {}
 
 -- Key resolution adds retained prefixes to the shared field predicates.
@@ -100,11 +101,14 @@ function M.filter(tx: sql.Transaction, board: domain.Board, rows: { domain.Item 
     if err or not fragment then return nil, err end
     local out: { domain.Item } = {}
     local matched: { [string]: boolean } = {}
-    for first = 1, #rows, 100 do
+    local settings,settings_err=limits.read()
+    if settings_err or not settings then return nil,settings_err end
+    local per=settings.storage_batch
+    for first = 1, #rows, per do
         local marks: { string } = {}
         local args: { unknown } = {}
         for _, value in ipairs(fragment.args) do args[#args + 1] = value end
-        for i = first, math.min(first + 99, #rows) do marks[#marks + 1] = "?"; args[#args + 1] = rows[i].item_id end
+        for i = first, math.min(first + per - 1, #rows) do marks[#marks + 1] = "?"; args[#args + 1] = rows[i].item_id end
         local statement = "SELECT i.item_id FROM " .. tables.names(board.board_id).item .. " i WHERE (" .. fragment.sql .. ") AND i.item_id IN (" .. table.concat(marks, ",") .. ")"
         local n = 0
         statement = statement:gsub("%?", function(): string n = n + 1; return "$" .. n end)

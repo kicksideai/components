@@ -27,6 +27,11 @@ entries:
   - wippy.security:process
   policy:
     resources:
+    - kickside.work.jobs:recovery
+    - kickside.work.jobs:recovery_batch
+    - kickside.work.jobs:plugins
+    - kickside.work.extensions:plugin_batch
+    - kickside.work.persist:publish_meta
     - kickside.work.jobs:migrate
     - kickside.work.jobs:migrate_batch
     - kickside.work.jobs:rebalance
@@ -87,6 +92,9 @@ entries:
     private: true
     service_only: true
     producers:
+    - kickside.work.service:bulk
+    - kickside.work.service:plan_move
+    - kickside.work.service:move
     - kickside.work.service:create
     - kickside.work.service:update
     - kickside.work.service:apply_schema
@@ -107,4 +115,61 @@ entries:
     - kickside.work.service:sync
     - kickside.work.service:sync_position
     actions: funcs.call
+    effect: allow
+
+- name: framework_meta
+  kind: security.policy
+  meta: { private: true, service_only: true }
+  groups: [wippy.security:process]
+  policy:
+    resources: [kickside.work.persist:publish_meta]
+    actions: work.meta.publish
+    effect: allow
+
+- name: recovery_defer
+  kind: security.policy
+  meta: {private: true, service_only: true}
+  policy:
+    resources: [kickside.work.jobs:recovery]
+    actions: kickside.execution.defer
+    effect: allow
+
+- name: board_kind_create
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers: [kickside.work.service:create]
+  policy:
+    resources: [kickside.work.binding:board]
+    actions: component.kind.create
+    effect: allow
+
+- name: board_kind_update
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:create
+    - kickside.work.jobs:operation_batch
+    - kickside.work.persist:publish_meta
+  policy:
+    resources: [kickside.work.binding:board]
+    actions: component.kind.update
+    effect: allow
+
+- name: subject_retirement
+  kind: security.policy
+  meta: {private: true, service_only: true, producers: [kickside.work.retention:owner, kickside.work.retention:retire_operation]}
+  policy:
+    resources: [work.board]
+    actions: threads.subjects.retire
+    effect: allow
+- name: operation_retirement_call
+  kind: security.policy
+  meta: {private: true, service_only: true, producers: [kickside.work.service:bulk, kickside.work.service:move, kickside.work.service:create, kickside.work.service:pack_apply]}
+  policy:
+    resources: [kickside.work.retention:retire_operation]
+    actions: [registry.get, funcs.call]
     effect: allow

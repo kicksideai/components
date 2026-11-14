@@ -256,6 +256,7 @@ entries:
   modules:
   - time
   imports:
+    limits: kickside.work.settings:limits
     clock: kickside.work.domain:clock
     consts: kickside.work:consts
     types: kickside.work.read:types

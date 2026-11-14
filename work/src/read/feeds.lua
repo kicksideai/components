@@ -58,7 +58,7 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
         if cursor.seq > 0 and stamp ~= cursor.access then
             return { items = {}, next = { seq = 0, item_id = "", access = stamp }, has_more = false, gap = { floor = board.applied_seq } }, nil
         end
-        if cursor.seq > 0 and cursor.seq < board.tombstone_floor_seq then
+        if cursor.seq > 0 and cursor.seq < board.tombstone_floor_seq and (cursor.floor or 0) < board.tombstone_floor_seq then
             return { items = {}, next = cursor, has_more = false, gap = { floor = board.tombstone_floor_seq } }, nil
         end
         local rows, err = read_rows.changes(tx, board, cursor.seq, cursor.item_id, limit + 1)
@@ -76,7 +76,10 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
             if select_err then return nil, select_err end
         end
         local items: { types.ChangeItem } = {}
+        local processed = 0
+        local comments_left = 10000
         for i = 1, math.min(#(rows or {}), limit) do
+            processed = i
             local r = rows[i] :: domain.Row
             local decoded_3, decode_err = store.need(r, "item_id")
             if decode_err then return nil, decode_err end
@@ -85,7 +88,7 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
             if herr or not held then return nil, herr end
             local visible, aerr = access_rows.permits(tx, board, held.item_id)
             if aerr then return nil, aerr end
-            local previous, perr = access_rows.previous(tx, board, held, cursor.seq)
+            local previous, perr = access_rows.previous(tx, board, held, math.max(cursor.seq,cursor.floor or 0))
             if perr then return nil, perr end
             if visible or previous then
                 local live = held.life == "live" and visible and (not selected or selected[held.item_id] == true)
@@ -98,17 +101,23 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
                     item.state, item.category, item.parent, item.values = view.state, view.category, view.parent, view.values
                     item.visit, item.process_generation = view.visit, view.process_generation
                     item.value_states, item.gate, item.awaiting = view.value_states, view.gate, view.awaiting
-                    local comments, cerr = store.comments(tx, board.board_id, held.item_id, 10001, 0)
+                    local comments, cerr = store.comment_page(tx, board.board_id, held.item_id, "", 10001)
                     if cerr then return nil, cerr end
                     if #(comments or {}) > 10000 then
-                        return nil, errors.new({ kind = errors.UNAVAILABLE, message = "comment document exceeds the read bound", details = { code = "comments_limit" } })
+                        table.remove(comments :: { domain.CommentRow })
+                        item.comments_truncated = true
                     end
+                    -- A version is always a complete document. Defer the whole
+                    -- next item if it would exceed this response's comment cap.
+                    if #(comments or {}) > comments_left then processed = i - 1; break end
+                    comments_left = comments_left - #(comments or {})
                     item.comments = comments
                 end
                 items[#items + 1] = item
             end
+            if comments_left == 0 then break end
         end
-        local last = rows and rows[math.min(#rows, limit)]
+        local last = rows and rows[processed]
         local next_cursor: types.ChangesCursor = { seq = cursor.seq, item_id = cursor.item_id }
         if last then
         local decoded_1, decode_err = store.need(last, "item_id")
@@ -120,7 +129,8 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
             next_cursor.seq, next_cursor.item_id = decoded_2, decoded_1
         end
         next_cursor.access = stamp
-        return { items = items, next = next_cursor, has_more = #(rows or {}) > limit }, nil
+        next_cursor.floor = board.tombstone_floor_seq
+        return { items = items, next = next_cursor, has_more = #(rows or {}) > processed }, nil
     end, context, nil, request.selection)
     if read_err or not result then return nil, read_err end
     local err = peers.items(result.items, peers.redactor(catalog))

@@ -18,7 +18,7 @@ return require("migration").define(function()
                 down(function(db)
                     execute(db, "DROP INDEX kickside_work_change_legacy")
                     for _, column in ipairs({ "item_count", "open_count", "trashed_count" }) do
-                        execute(db, "ALTER TABLE kickside_work_board ADD COLUMN " .. column .. " bigint NOT NULL DEFAULT 0")
+                        execute(db, "ALTER TABLE kickside_work_board ADD COLUMN " .. column .. (dialect == "sqlite" and " integer" or " bigint") .. " NOT NULL DEFAULT 0")
                     end
                     execute(db, "ALTER TABLE kickside_work_change ADD COLUMN ctx text NOT NULL DEFAULT ''")
                     execute(db, [[UPDATE kickside_work_board SET

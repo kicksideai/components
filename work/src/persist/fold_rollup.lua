@@ -244,7 +244,7 @@ function M.apply_recomputed(tx: sql.Transaction, board: types.Board, event: type
     local err = fold_batch.flush(tx, batch)
     if err then return err end
     local rows, rerr = tx:query([[SELECT item_id FROM kickside_work_item WHERE board_id = $1 AND item_id > $2 AND item_id <= $3
-        AND life <> 'purged' ORDER BY item_id LIMIT $4]], { board.board_id, range.after, range.through, consts.LIMITS.recompute_batch })
+        AND life <> 'purged' ORDER BY item_id LIMIT $4]], { board.board_id, range.after, range.through, consts.MAX_REBUILD_BATCH })
     if rerr then return rerr end
     for _, item in ipairs(rows or {}) do
         local decoded_1, decode_err = store.need(item, "item_id")

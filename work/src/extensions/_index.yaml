@@ -17,6 +17,7 @@ entries:
   method: run
   modules: [json]
   imports:
+    limits: kickside.work.settings:limits
     local_types: kickside.work.extensions:types
     threads: kickside.work.persist:threads
     manifests: kickside.work.domain:manifests
@@ -43,6 +44,7 @@ entries:
   method: batch
   modules: [json]
   imports:
+    limits: kickside.work.settings:limits
     local_types: kickside.work.extensions:types
     threads: kickside.work.persist:threads
     manifests: kickside.work.domain:manifests
@@ -60,6 +62,7 @@ entries:
   source: file://plugin_feed.lua
   modules: [json]
   imports:
+    limits: kickside.work.settings:limits
     access: kickside.work.read:access
     feeds: kickside.work.read:feeds
     manifests: kickside.work.domain:manifests

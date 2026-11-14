@@ -13,6 +13,7 @@ local trace = require("trace")
 local guard = require("guard")
 local clock = require("clock")
 local policy = require("policy")
+local expiry = require("expiry")
 local uuid = require("uuid")
 local M = {}
 
@@ -28,7 +29,7 @@ function M.command(board_id: string, key: string): (types.Durable?, error?)
     if derr or not days then return nil, derr end
     local db, err = store.open()
     if not db then return nil, err end
-    local rows, rerr = db:query("SELECT request_hash, principal, result, seq FROM kickside_work_receipt WHERE board_id = $1 AND command_key = $2 AND at >= $3", { board_id, key, clock.offset(-days * 86400) })
+    local rows, rerr = db:query("SELECT request_hash, principal, result, seq FROM kickside_work_receipt WHERE board_id = $1 AND command_key = $2 AND (at >= $3 OR " .. expiry.PROTECTED_RECEIPT .. ")", { board_id, key, clock.offset(-days * 86400) })
     db:release()
     if rerr then return nil, rerr end
     local row = rows and rows[1]
@@ -48,20 +49,29 @@ function M.command(board_id: string, key: string): (types.Durable?, error?)
     return { receipt = { request_hash = decoded_3, result = decoded_2 }, seq = decoded_1 }, nil
 end
 
-function M.claim(board_id: string, key: string, hashed: string, result: domain.JsonObject, head: integer): types.Write
+function M.subject(key: string): string
+    -- A fixed shard set bounds Core subject rows independently of command-key cardinality.
+    return "command:" .. tostring(hash.sha256(key)):sub(1, 2)
+end
+
+function M.claim(board_id: string, key: string, hashed: string, result: domain.JsonObject, head: integer?, version: integer?): types.Write
     return { group = "command", events = { { type = consts.EVENTS.COMMAND_RECORDED,
-        subject = "command", body = { command_key = key, receipt = { request_hash = hashed, result = result } } } },
-        ops = {}, expect_head = head, caller_expect = false }
+        subject = M.subject(key), body = { command_key = key, receipt = { request_hash = hashed, result = result } } } },
+        ops = {}, expect_head = head, expect_subject = version and M.subject(key) or nil, expect_version = version, caller_expect = false }
 end
 
 function M.request_hash(value: unknown): string
     return tostring(hash.sha256(values.canonical(value)))
 end
 
--- durable returns the receipt stored by an earlier run of the same command, or nil.
+-- version reads the claim-shard version, then covers it before receipt lookup.
+function M.version(board_id: string, key: string, deadline: domain.Deadline): (integer?, error?)
+    local result, err = funcs.call("kickside.work.service:sync", { board_id = board_id, deadline = deadline, command_key = key })
+    if err then return nil, err end
+    return result :: integer, nil
+end
 
--- covered waits until the projection reaches the thread head; a projection that
--- does not get there before the deadline is a retryable unavailability.
+-- covered waits until the projection reaches the thread head.
 function M.covered(board_id: string, deadline: domain.Deadline): (integer?, error?)
     local result, err = funcs.call("kickside.work.service:sync", { board_id = board_id, deadline = deadline })
     if err then return nil, err end

@@ -63,6 +63,6 @@ function M.write(req: local_types.Request): local_types.Result
     if outcome.status == "applied" or outcome.status == "unchanged" then
         return { success = true, result = outcome.status == "applied" and "updated" or "noop", dest_ref = { item_id = outcome.item } }
     end
-    return data_error.failure(outcomes.error(outcome.status, outcome.findings) :: error) :: local_types.Result
+    return data_error.failure(outcomes.error(outcome.status, outcome.findings, outcome.error) :: error) :: local_types.Result
 end
 return M

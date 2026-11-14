@@ -6,6 +6,7 @@ local types = require("types")
 local consts = require("consts")
 
 local working_rows = require("working_rows")
+local limits = require("limits")
 local M = {}
 
 -- Relation predicates propagate source changes through their declared hop depth.
@@ -99,9 +100,12 @@ end
 function M.expand(tx: sql.DB | sql.Transaction, board: types.Board, changed: { [string]: integer }): ({ [string]: integer }?, error?)
     local all = seeds(changed, 1)
     local found: { [string]: integer } = {}
-    for first = 1, #all, 100 do
+    local settings,settings_err=limits.read()
+    if settings_err or not settings then return nil,settings_err end
+    local per=settings.storage_batch
+    for first = 1, #all, per do
         local batch: { local_types.Seed } = {}
-        for i = first, math.min(first + 99, #all) do batch[#batch + 1] = all[i] end
+        for i = first, math.min(first + per - 1, #all) do batch[#batch + 1] = all[i] end
         local rows, err = query(tx, board, batch)
         if err then return nil, err end
         for _, row in ipairs(rows or {}) do
@@ -115,11 +119,14 @@ function M.expand(tx: sql.DB | sql.Transaction, board: types.Board, changed: { [
     return found, nil
 end
 
--- admit bounds each event independently in batches of one hundred event graphs.
+-- admit bounds each event independently in configured storage batches.
 function M.admit(tx: sql.DB | sql.Transaction, board: types.Board, events: { { [string]: integer } }, limit: integer, links: { [string]: boolean }): error?
-    for first = 1, #events, 100 do
+    local settings,settings_err=limits.read()
+    if settings_err or not settings then return settings_err end
+    local per=settings.storage_batch
+    for first = 1, #events, per do
         local batch: { local_types.Seed } = {}
-        for i = first, math.min(first + 99, #events) do
+        for i = first, math.min(first + per - 1, #events) do
             for _, seed in ipairs(seeds(events[i], i)) do batch[#batch + 1] = seed end
         end
         local rows, err = query(tx, board, batch, limit, links)

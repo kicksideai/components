@@ -490,6 +490,8 @@ entries:
   source: file://../pack_bounds_test.lua
   method: run
   imports:
+    identifiers: kickside.work.domain:identifiers
+    store: kickside.work.persist:store
     test: wippy.test:test
     reconcile: kickside.security:trigger_reconcile
     scoped: app:scoped

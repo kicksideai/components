@@ -80,6 +80,7 @@ entries:
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
+    blocks: kickside.blocks:blocks
     block_contract: kickside.blocks:contract
     block_lower: kickside.blocks:lower
 - name: traits_test

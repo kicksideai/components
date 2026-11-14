@@ -11,6 +11,7 @@ local pack = require("pack")
 local types = require("types")
 local guard = require("guard")
 local job_types = require("job_types")
+local limits = require("limits")
 local M = {}
 local function owner(input: types.Locator): (types.Owner?, error?)
     local db, err = store.open()
@@ -35,9 +36,11 @@ function M.batch(input: types.Locator): (boolean?, error?)
     return move.batch(out)
 end
 function M.run(input: types.Input): (unknown, error?)
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return nil, settings_err end
     local until_at, derr = deadline.bound(input.job.deadline)
     if derr or not until_at then return nil, derr end
-    for _ = 1, 20 do
+    for _ = 1, settings.operation_batches_per_run do
         if clock.passed(until_at) then break end
         local valid, lerr = jobs.lease_valid(input.job.id, { token = input.job.lease_token, execution_seq = input.job.execution_seq })
         if lerr then return nil, lerr end

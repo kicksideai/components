@@ -2,34 +2,49 @@
 local document = require("document")
 local time = require("time")
 local types = require("types")
+local consts = require("consts")
 local M = {}
 local STAMP = "2006-01-02T15:04:05.000000000Z"
+
+local function invalid(): error
+    return errors.new({ kind = errors.INVALID, message = "duration is a wall-clock ISO 8601 duration of at least one nanosecond and at most " .. consts.MAX_DURATION_DAYS .. " days", details = { code = "timer_duration_invalid" } })
+end
 
 function M.duration(raw: unknown, options: { signed: boolean?, zero: boolean? }?): (number?, error?)
     local sign = 1
     if options and options.signed and type(raw) == "string" and raw:sub(1, 1) == "-" then sign, raw = -1, raw:sub(2) end
     if type(raw) == "string" and raw:sub(1, 1) == "P" then
         local rest = raw:sub(2)
-        local seconds = 0
+        local seconds = 0.0
         local weeks = rest:match("^(%d+)W$")
         if weeks then
-            seconds, rest = (tonumber(weeks) :: number) * 604800, ""
+            local n = tonumber(weeks)
+            if not n then return nil, invalid() end
+            seconds, rest = n * 604800.0, ""
         else
             local days, tail = rest:match("^(%d+)D(.*)$")
-            if days then seconds, rest = (tonumber(days) :: number) * 86400, tail :: string end
+            if days then
+                local n = tonumber(days)
+                if not n then return nil, invalid() end
+                seconds, rest = n * 86400.0, tail :: string
+            end
             if rest:sub(1, 1) == "T" then
                 rest = rest:sub(2)
                 if rest == "" then rest = "invalid" end
-                for _, unit in ipairs({ { suffix = "H", scale = 3600 }, { suffix = "M", scale = 60 }, { suffix = "S", scale = 1 } }) do
+                for _, unit in ipairs({ { suffix = "H", scale = 3600.0 }, { suffix = "M", scale = 60.0 }, { suffix = "S", scale = 1.0 } }) do
                     local pattern = unit.suffix == "S" and "^(%d+%.?%d*)S(.*)$" or "^(%d+)" .. unit.suffix .. "(.*)$"
                     local amount, tail = rest:match(pattern)
-                    if amount then seconds, rest = seconds + (tonumber(amount) :: number) * unit.scale, tail :: string end
+                    if amount then
+                        local n = tonumber(amount)
+                        if not n then return nil, invalid() end
+                        seconds, rest = seconds + n * unit.scale, tail :: string
+                    end
                 end
             end
         end
-        if rest == "" and raw ~= "P" and (seconds > 0 or (options and options.zero)) and seconds < math.huge then return sign * seconds, nil end
+        if rest == "" and raw ~= "P" and (seconds >= 0.000000001 or (seconds == 0 and options and options.zero and not raw:find("[1-9]"))) and seconds <= consts.MAX_DURATION_SECONDS then return sign * seconds, nil end
     end
-    return nil, errors.new({ kind = errors.INVALID, message = "duration is a positive wall-clock ISO 8601 duration", details = { code = "timer_duration_invalid" } })
+    return nil, invalid()
 end
 
 function M.after(at: string, duration: string): (string?, error?)

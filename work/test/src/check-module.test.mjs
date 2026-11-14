@@ -213,3 +213,16 @@ printf 'PASSED\n'
     await rm(directory, { recursive: true })
   }
 })
+
+test('every Work migration is bound to the host database', async () => {
+  const { parseYamlDocuments } = await import(rulesPath)
+  const [migrations, module] = await parseYamlDocuments(await Promise.all([
+    readFile(resolve(root, 'src/migrations/_index.yaml'), 'utf8'),
+    readFile(resolve(root, 'src/_index.yaml'), 'utf8'),
+  ]))
+  const database = module.entries.find(entry => entry.name === 'target_db')
+  const bound = new Set(database.targets.filter(target => target.path === '.meta.target_db').map(target => target.entry))
+  const missing = migrations.entries.filter(entry => entry.meta?.type === 'migration')
+    .map(entry => `${migrations.namespace}:${entry.name}`).filter(id => !bound.has(id))
+  assert.deepEqual(missing, [])
+})

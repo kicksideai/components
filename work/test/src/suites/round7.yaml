@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: round7_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work}
+  source: file://../round7_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    operations: app:operation_steps
+    durations: kickside.work.domain:process_time
+    rows: kickside.work.retention:rows
+    defaults: kickside.work.settings:defaults
+    limits: kickside.work.settings:limits

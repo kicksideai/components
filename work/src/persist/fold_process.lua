@@ -9,12 +9,12 @@ local fold_batch = require("fold_batch")
 local types = require("types")
 local M = {}
 
-local function schedule(tx: sql.Transaction, dialect: string, board: types.Board, item: types.Item, timer: string, deadline: string, attempt: integer?, trace_context: types.TraceContext?): error?
+function M.schedule(tx: sql.Transaction, dialect: string, board: types.Board, item: types.Item, timer: string, deadline: string, attempt: integer?, trace_context: types.TraceContext?): error?
     local _, err = jobs.enqueue_tx(tx, dialect, { namespace = "kickside.work", scope = board.board_id,
         key = "t:" .. item.item_id .. ":" .. item.state .. ":" .. (item.work.visit or item.visit) .. ":" .. timer,
         owner_locator = { kind = "component", id = board.board_id }, job_type = consts.PROCESS_JOB,
         immutable_payload = { board_id = board.board_id, item = item.item_id, state = item.state, visit = item.work.visit or item.visit, timer = timer, attempt = attempt },
-        scheduled_at = deadline, slot = true, trace_context = trace_context })
+        scheduled_at = deadline, trace_context = trace_context })
     return err
 end
 
@@ -28,7 +28,7 @@ local function arm_state(tx: sql.Transaction, dialect: string, board: types.Boar
         if deadline then
             work.timer_due = work.timer_due or {}
             work.timer_due[timer.id] = deadline
-            local serr = schedule(tx, dialect, board, item, timer.id, deadline, nil, trace_context)
+            local serr = M.schedule(tx, dialect, board, item, timer.id, deadline, nil, trace_context)
             if serr then return serr end
         end
     end
@@ -38,7 +38,7 @@ local function arm_state(tx: sql.Transaction, dialect: string, board: types.Boar
         if derr or not deadline then return derr end
         work.timer_due = work.timer_due or {}
         work.timer_due[consts.WAIT_TIMER] = deadline
-        return schedule(tx, dialect, board, item, consts.WAIT_TIMER, deadline, nil, trace_context)
+        return M.schedule(tx, dialect, board, item, consts.WAIT_TIMER, deadline, nil, trace_context)
     end
     return nil
 end
@@ -80,7 +80,7 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
         work.timer_due = work.timer_due or {}
         local key = consts.STAGE_TIMER_PREFIX .. body.attempt
         work.timer_due[key] = deadline
-        local serr = schedule(tx, dialect, board, item, key, deadline, body.attempt, batch.trace_context)
+        local serr = M.schedule(tx, dialect, board, item, key, deadline, body.attempt, batch.trace_context)
         if serr then return serr end
         err = fold_batch.exec(tx, [[INSERT INTO kickside_work_stage_run (board_id,item_id,visit,attempt,state,started)
             VALUES ($1,$2,$3,$4,$5,$6)]], { board.board_id, item.item_id, body.visit, body.attempt, body.state, body.at })
@@ -103,7 +103,7 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
             work.timer_due = work.timer_due or {}
             local key = consts.RETRY_TIMER_PREFIX .. (body.attempt + 1)
             work.timer_due[key] = deadline
-            err = schedule(tx, dialect, board, item, key, deadline, body.attempt + 1, batch.trace_context)
+            err = M.schedule(tx, dialect, board, item, key, deadline, body.attempt + 1, batch.trace_context)
         end
     elseif event.type == consts.EVENTS.APPROVAL_RECORDED then
         work.approvals = work.approvals or {}

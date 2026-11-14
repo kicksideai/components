@@ -347,6 +347,7 @@ entries:
     - kickside.work.read:types
     - kickside.work.read:window
     - kickside.work.retention:owner
+    - kickside.work.retention:retire_operation
     - kickside.work.retention:rows
     - kickside.work.retention:types
     - kickside.work.security:admin_endpoints
@@ -378,6 +379,8 @@ entries:
     - kickside.work.security:reindex_defer
     - kickside.work.security:reindex_output_publish
     - kickside.work.security:retention_output_publish
+    - kickside.work.security:subject_retirement
+    - kickside.work.security:operation_retirement_call
     - kickside.work.security:schema_output_publish
     - kickside.work.security:sync_actor
     - kickside.work.security:sync_call

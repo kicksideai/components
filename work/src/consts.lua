@@ -94,18 +94,22 @@ M.KEY_PREFIX_MIN = 2
 M.KEY_PREFIX_MAX = 10
 M.ID_PATTERN = "^[a-z][a-z0-9_]*$"
 
+-- Largest whole-day duration representable in signed 64-bit nanoseconds.
+M.MAX_DURATION_DAYS = 106751
+M.MAX_DURATION_SECONDS = M.MAX_DURATION_DAYS * 86400
+
+-- Historical range events replay under fixed protocol bounds, independently
+-- of the installation's current execution batch sizes.
+M.MAX_REBUILD_BATCH = 500
+M.MAX_REBALANCE_BATCH = 500
 M.LIMITS = {
     stage_outputs = 65536,
     plugin_fragment_bytes = 262144,
     rollup_children = 2000,
     rollup_links = 2000,
-    recompute_batch = 500,
-    recompute_batches_per_run = 20,
     ops = 200,
     fields = 200,
     item_types = 50,
-    migration_batch = 500,
-    migration_batches_per_run = 20,
     states = 64,
     transitions = 256,
     auto_steps = 8,
@@ -114,16 +118,11 @@ M.LIMITS = {
     mentions = 200,
     mention_id_bytes = 255,
     rank_length = 64,
-    rebalance_batch = 500,
-    rebalance_batches_per_run = 20,
     page = 200,
     comments = 200,
     children = 200,
     comment_bytes = 65536,
-    command_deadline_ms = 5000,
-    read_deadline_ms = 2000,
     fold_rows = 5000,
-    retention_batch = 100,
     prepare_retries = 3,
 }
 

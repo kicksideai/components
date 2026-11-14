@@ -63,12 +63,29 @@ function M.with_snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?
     local db, err = store.open()
     if not db then return nil, err end
     local admitted, perr = store.board(db, board_id)
-    if admitted and not perr then perr = memberships.prepare(db, admitted, where, nil, allowance.deadline, allowance.remaining) end
-    db:release()
-    if perr then return nil, perr end
-    if not admitted then return nil, errors.new({ details = { code = "board_schema_missing" }, kind = errors.NOT_FOUND, message = "board has no schema" }) end
+    if admitted and not perr and not (context and context.partial and budget.expired(allowance)) then
+        perr = memberships.prepare(db, admitted, where, nil, allowance.deadline, allowance.remaining)
+    end
+    if perr then db:release(); return nil, perr end
+    if not admitted then db:release(); return nil, errors.new({ details = { code = "board_schema_missing" }, kind = errors.NOT_FOUND, message = "board has no schema" }) end
     local aerr = principals.resolve(admitted, context)
-    if aerr then return nil, aerr end
+    if aerr then db:release(); return nil, aerr end
+    -- Partial query/count callbacks return their empty incomplete result when
+    -- exhausted. Admission metadata supplies its position without opening a
+    -- data snapshot whose statement timeout could no longer be enabled.
+    if context and context.partial and budget.expired(allowance) then
+        if min_seq and admitted.applied_seq < min_seq then
+            db:release()
+            return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "board has not reached seq " .. min_seq,
+                details = { code = "projection_pending", min_seq = min_seq, applied_seq = admitted.applied_seq } })
+        end
+        local result, err = fn(db, admitted, db:type())
+        db:release()
+        if err or not result then return nil, err end
+        result.as_of, result.generation = admitted.applied_seq, admitted.generation
+        return result, nil
+    end
+    db:release()
     db, err = store.open()
     if not db then return nil, err end
     local tx, berr = db:begin()
@@ -77,7 +94,7 @@ function M.with_snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?
         return nil, errors.wrap(berr, "read transaction begin failed")
     end
     if db:type() == sql.type.POSTGRES then
-        local isolation_err = store.read_snapshot(tx, true)
+        local isolation_err = store.read_snapshot(tx, allowance.deadline)
         if isolation_err then tx:rollback(); db:release(); return nil, isolation_err end
     end
     local board, cerr = store.board(tx, board_id)

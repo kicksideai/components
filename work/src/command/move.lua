@@ -10,8 +10,28 @@ local receipts = require("receipts")
 local store = require("store")
 local types = require("types")
 local domain = require("domain")
+local peers = require("peers")
 local M = {}
-M.plan = planner.plan
+function M.plan(request: types.MoveRequest): (types.MovePlan?, error?)
+    local plan, err = planner.plan(request)
+    if err or not plan then return nil, err end
+    local rerr = planner.redact(plan)
+    if rerr then return nil, rerr end
+    return plan, nil
+end
+local function surface(owner: types.Owner): (types.Status?, error?)
+    local status = rows.status(owner)
+    local plan = owner.data.plan :: types.MovePlan
+    local ids: { string } = {}
+    for _, id in ipairs(status.items or {}) do
+        local ref, err = peers.reference({ board = plan.to_board, item = id })
+        if err then return nil, err end
+        if not (ref :: { unavailable: boolean? }).unavailable then ids[#ids + 1] = id end
+    end
+    if #ids == #(status.items or {}) then return status, nil end
+    status.item, status.items = nil, #ids > 0 and ids or nil
+    return status, nil
+end
 
 function M.start(request: types.MoveRequest): (types.Status?, error?)
     local err = planner.access(request)
@@ -49,11 +69,11 @@ function M.start(request: types.MoveRequest): (types.Status?, error?)
     if perr then return nil, perr end
     local resumed, rerr = rows.resume(owner)
     if rerr or not resumed then return nil, rerr end
-    return rows.status(resumed), nil
+    return surface(resumed)
 end
 function M.status(request: types.Locator): (types.Status?, error?)
     local owner, err = operations.owner(request, "move")
     if err or not owner then return nil, err end
-    return rows.status(owner), nil
+    return surface(owner)
 end
 return M
