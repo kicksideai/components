@@ -12,6 +12,8 @@ keywords:
 exclude_meta:
   type:
   - test
+  - test_helper
+  - test_support
 exclude:
 - wippy.lock
 - app:**
