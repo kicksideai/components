@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.pim.admin.api
+entries:
+- name: principals
+  kind: function.lua
+  source: file://principals.lua
+  method: post
+  modules:
+  - http
+  - contract
+  - security
+  imports:
+    types: kickside.pim.admin:types
+    component: kickside.component:component
+    http_errors: kickside.contract:http_errors
+- name: principals.endpoint
+  kind: http.endpoint
+  method: POST
+  func: principals
+  path: /pim-admin/catalogs/{id}/principal_labels
+- name: defaults
+  kind: function.lua
+  source: file://defaults.lua
+  method: get
+  modules:
+  - http
+  - contract
+  - security
+  imports:
+    types: kickside.pim.admin:types
+    component: kickside.component:component
+    catalog_client: kickside.pim:client
+    http_errors: kickside.contract:http_errors
+- name: defaults.endpoint
+  kind: http.endpoint
+  method: GET
+  func: defaults
+  path: /pim-admin/catalogs/{id}/policy_defaults

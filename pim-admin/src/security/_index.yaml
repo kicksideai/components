@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.pim.admin.security
+entries:
+- name: module_access
+  kind: security.policy
+  meta:
+    title: KickSide PIM administration
+    surface: kickside.pim.admin
+    intent: module_access
+    includes:
+    - kickside.pim.admin.security:member_endpoints
+    - kickside.pim.admin.security:module_runtime
+  groups: []
+  policy:
+    resources:
+    - kickside.pim.admin:admin
+    - kickside.pim.admin:catalog_settings
+    - kickside.pim.admin:settings_tab
+    actions:
+    - registry.get
+    - registry.find
+    effect: allow
+- name: member_endpoints
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.pim.admin:ui_static
+    - kickside.pim.admin:admin
+    - kickside.pim.admin:catalog_settings
+    - kickside.pim.admin.api:principals.endpoint
+    - kickside.pim.admin.api:defaults.endpoint
+    actions: access
+    effect: allow
+- name: module_runtime
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.pim.admin.api:principals
+    - kickside.pim.admin.api:principals.endpoint
+    - kickside.pim.admin.api:defaults
+    - kickside.pim.admin.api:defaults.endpoint
+    actions:
+    - registry.get
+    - funcs.call
+    effect: allow
+- name: user_security_scope
+  kind: ns.requirement
+  meta:
+    value_kind: security.scope
+    comment: Group with access to PIM administration.
+  default: kickside.security.groups:members
+  targets:
+  - entry: kickside.pim.admin.security:module_access
+    path: .groups +=
+  - entry: kickside.pim.admin.security:member_endpoints
+    path: .groups +=
+  - entry: kickside.pim.admin.security:module_runtime
+    path: .groups +=
