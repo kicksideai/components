@@ -1,0 +1,31 @@
+<!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>Definition columns</title></head>
+  <body>
+    <div id="fixture"></div>
+    <script>
+      window.__WIPPY_APP_CONFIG__ = {}
+      window.__WIPPY_APP_API__ = { api: {}, loadByTagName: async () => undefined }
+    </script>
+    <script type="module">
+      import { createApp, h } from 'vue'
+      import { PrimeVuePlugin } from '@wippy-fe/theme/primevue-plugin'
+      import FieldsEditor from '../src/app/settings/FieldsEditor.vue'
+      import styles from '../src/styles.css?inline'
+      const shadow = document.querySelector('#fixture').attachShadow({ mode: 'open' })
+      const sheet = document.createElement('style')
+      sheet.textContent = styles
+      const root = document.createElement('div')
+      shadow.append(sheet, root)
+      const draft = { fields: [
+        { code: 'short', title: 'A', form: 'text' },
+        { code: 'long', title: 'A much longer field name', form: 'int', track: true },
+        { code: 'third', form: 'text' },
+        { code: 'fourth', form: 'text' },
+      ] }
+      createApp({ render: () => h(FieldsEditor, { draft, advanced: false }) })
+        .use(PrimeVuePlugin).mount(root)
+    </script>
+  </body>
+</html>

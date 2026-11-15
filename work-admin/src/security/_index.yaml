@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.admin.security
+entries:
+- name: module_access
+  kind: security.policy
+  meta:
+    title: KickSide Work administration
+    surface: kickside.work.admin
+    intent: module_access
+    includes:
+    - kickside.work.admin.security:member_endpoints
+    - kickside.work.admin.security:module_runtime
+  groups: []
+  policy:
+    resources:
+    - kickside.work.admin:admin
+    - kickside.work.admin:board_settings
+    - kickside.work.admin:settings_tab
+    actions:
+    - registry.get
+    - registry.find
+    effect: allow
+- name: member_endpoints
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.work.admin:ui_static
+    - kickside.work.admin:admin
+    - kickside.work.admin:board_settings
+    - kickside.work.admin.api:options.endpoint
+    - kickside.work.admin.api:principals.endpoint
+    actions: access
+    effect: allow
+- name: module_runtime
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.work.admin.api:options
+    - kickside.work.admin.api:options.endpoint
+    - kickside.work.admin.api:principals
+    - kickside.work.admin.api:principals.endpoint
+    actions:
+    - registry.get
+    - funcs.call
+    effect: allow
+- name: user_security_scope
+  kind: ns.requirement
+  meta:
+    value_kind: security.scope
+    comment: Group with access to Work administration.
+  default: kickside.security.groups:members
+  targets:
+  - entry: kickside.work.admin.security:module_access
+    path: .groups +=
+  - entry: kickside.work.admin.security:member_endpoints
+    path: .groups +=
+  - entry: kickside.work.admin.security:module_runtime
+    path: .groups +=

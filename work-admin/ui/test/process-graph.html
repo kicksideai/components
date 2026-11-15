@@ -1,0 +1,40 @@
+<!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>Work process layout fixture</title></head>
+  <body style="margin:0">
+    <div id="fixture"></div>
+    <script>
+      window.__WIPPY_APP_CONFIG__ = {}
+      window.__WIPPY_APP_API__ = { api: {}, loadByTagName: async () => undefined }
+    </script>
+    <script type="module">
+      import { createApp, h } from 'vue'
+      import { PrimeVuePlugin } from '@wippy-fe/theme/primevue-plugin'
+      import ProcessGraph from '../src/app/settings/ProcessGraph.vue'
+      import { graphFixtures } from '../src/app/settings/__fixtures__/processes'
+      import styles from '../src/styles.css?inline'
+      const params = new URLSearchParams(location.search)
+      const process = graphFixtures[params.get('process') || 'small']
+      const dark = params.get('theme') === 'dark'
+      const shadow = document.querySelector('#fixture').attachShadow({ mode: 'open' })
+      const sheet = document.createElement('style')
+      sheet.textContent = styles + `:host {
+        --p-text-color: ${dark ? '#e2e8f0' : '#1e293b'};
+        --p-text-muted-color: ${dark ? '#94a3b8' : '#475569'};
+        --p-content-background: ${dark ? '#0f172a' : '#ffffff'};
+        --p-content-border-color: ${dark ? '#475569' : '#cbd5e1'};
+        --p-primary-color: ${dark ? '#60a5fa' : '#2563eb'};
+        --p-primary-contrast-color: ${dark ? '#0f172a' : '#ffffff'};
+        --p-warn-600: #d97706; --kx-surface-1: ${dark ? '#1e293b' : '#f8fafc'};
+        --p-focus-ring-color: #2563eb; --kx-control-height: 34px;
+        display:block; font-family:system-ui,sans-serif;
+      }`
+      const root = document.createElement('div')
+      shadow.append(sheet, root)
+      createApp({ render: () => h(ProcessGraph, { process, draft: { processes: [process] } }) })
+        .use(PrimeVuePlugin).mount(root)
+      window.fixtureStateCount = process.states.length
+    </script>
+  </body>
+</html>

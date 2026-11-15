@@ -1,0 +1,107 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: packs_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work_admin
+    timeout: 300s
+  source: file://packs_test.lua
+  method: run
+  modules:
+  - json
+  - uuid
+  - registry
+  imports:
+    test: wippy.test:test
+    session: app:session
+- name: delivery_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Delivery
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Tasks through a small delivery flow.
+  data: &id001
+    schema: &id002
+      fields:
+      - code: title
+        form: text
+        title: Title
+      item_types:
+      - id: task
+        title: Task
+        fields:
+        - title
+        process: flow
+      processes:
+      - id: flow
+        name: Delivery
+        initial: open
+        states:
+        - id: open
+          name: Open
+          category: unstarted
+        transitions: []
+    views: &id003 []
+    automations: &id004 []
+    traits: &id005 []
+    requires: []
+    starter: &id006
+      default: false
+      items:
+      - op: create
+        type: task
+        values:
+          title: First task
+- name: upgrade_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Upgrade flow
+    version: 1.0.0
+    icon: tabler:route
+    description: A flow for reviewing upgrades.
+  data: *id001
+- name: unavailable_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Extended flow
+    version: 1.0.0
+    icon: tabler:inbox
+    description: A flow requiring another capability.
+  data:
+    schema: *id002
+    views: *id003
+    automations: *id004
+    traits: *id005
+    requires:
+    - app:unavailable_plugin
+    starter: *id006
+- name: hidden_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Private flow
+    version: 1.0.0
+    icon: tabler:lock
+    description: A pack outside the member scope.
+  data: *id001
+- name: pack_entries
+  kind: security.policy
+  groups:
+  - kickside.security.groups:members
+  policy:
+    resources:
+    - app:delivery_pack
+    - app:upgrade_pack
+    - app:unavailable_pack
+    - app:unavailable_plugin
+    actions:
+    - registry.get
+    - registry.find
+    effect: allow

@@ -1,0 +1,137 @@
+<!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
+<script setup lang="ts">
+import { Icon } from '@iconify/vue'
+import SelectButton from 'primevue/selectbutton'
+import ToggleSwitch from 'primevue/toggleswitch'
+import { computed, ref, watch } from 'vue'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import Textarea from 'primevue/textarea'
+import NativeDialog from '../NativeDialog.vue'
+import { work } from '../api'
+import type { Pack } from '../packs'
+const props = defineProps<{ visible: boolean }>()
+const emit = defineEmits<{ close: []; created: [boardId: string] }>()
+const title = ref(''), description = ref(''), prefix = ref('WORK'), selected = ref(''), starter = ref(false)
+const step = ref(1), busy = ref(false), loading = ref(false), error = ref(''), discoveryError = ref(''), packs = ref<Pack[]>([])
+let key = crypto.randomUUID(), attempted = '', read = 0
+const choices = computed(() => [{ id: '', title: 'Empty board', description: 'Start with an empty board and build its schema in Settings.', icon: 'tabler:square', version: '', disabled: false }, ...packs.value.map(pack => ({ ...pack, disabled: pack.plugins.some(plugin => !plugin.installed) }))])
+const chosen = computed(() => choices.value.find(pack => pack.id === selected.value))
+const valid = computed(() => !!title.value.trim() && /^[A-Z][A-Z0-9]{1,9}$/.test(prefix.value) && !!chosen.value && !chosen.value.disabled)
+watch(() => props.visible, async visible => {
+  const current = ++read
+  if (!visible) return
+  step.value = 1; error.value = ''; discoveryError.value = ''; title.value = ''; description.value = ''; prefix.value = 'WORK'; selected.value = ''; starter.value = false; key = crypto.randomUUID(); attempted = ''; packs.value = []; loading.value = true
+  try { const rows = await work.packs(); if (current === read) packs.value = rows }
+  catch (e) { if (current === read) discoveryError.value = e instanceof Error ? e.message : 'Could not load packs.' }
+  finally { if (current === read) loading.value = false }
+}, { immediate: true })
+async function create() {
+  if (!valid.value || busy.value) return
+  if (step.value === 1) { step.value = 2; return }
+  busy.value = true; error.value = ''
+  const selection = selected.value ? { pack: selected.value, version: chosen.value?.version, starter: starter.value } : {}
+  const declaration = { key_prefix: prefix.value }
+  const request = JSON.stringify([title.value.trim(), description.value, declaration, selection])
+  if (attempted && attempted !== request) key = crypto.randomUUID()
+  attempted = request
+  try { const result = await work.createBoard(title.value.trim(), declaration, key, description.value, selection); emit('created', result.board_id); emit('close') }
+  catch (e) { error.value = e instanceof Error ? e.message : 'Could not create the board.' }
+  finally { busy.value = false }
+}
+</script>
+<template>
+  <NativeDialog :visible="visible" label="New board" :busy="busy" @close="emit('close')"
+    ><form class="work-dialog-box" @submit.prevent="create">
+      <header class="work-stack work-tight">
+        <span class="work-muted work-small">Step {{ step }} of 2</span>
+        <h2>{{ step === 1 ? 'Name your board' : 'Choose a pack' }}</h2>
+        <p class="work-muted work-small">
+          {{
+            step === 1
+              ? 'Give this work a home and a recognizable item key.'
+              : 'Packs provide a process and schema you can edit in Board settings.'
+          }}
+        </p>
+      </header>
+      <template v-if="step === 1"
+        ><label class="work-stack work-tight"
+          >Title<InputText
+            id="board-title"
+            v-model="title"
+            autofocus
+            required
+            :disabled="busy"
+            placeholder="Team delivery" /></label
+        ><label class="work-stack work-tight"
+          >Description<Textarea
+            id="board-description"
+            v-model="description"
+            rows="3"
+            :disabled="busy"
+            placeholder="What does this board help the team deliver?" /></label
+        ><label class="work-stack work-tight"
+          >Item key prefix<InputText
+            id="board-prefix"
+            v-model="prefix"
+            required
+            pattern="[A-Z][A-Z0-9]{1,9}"
+            maxlength="10"
+            :disabled="busy"
+        /></label>
+        <p class="work-muted work-small">
+          Keys look like {{ prefix || 'WORK' }}-1. The prefix must be unique in this installation.
+        </p></template
+      >
+      <template v-else
+        ><p v-if="loading" class="work-muted" role="status">Loading packs…</p>
+        <p v-if="discoveryError" class="kx-err" role="alert">{{ discoveryError }}</p>
+        <SelectButton
+          v-model="selected"
+          class="work-pack-choices"
+          :options="choices"
+          optionLabel="title"
+          optionValue="id"
+          optionDisabled="disabled"
+          :allowEmpty="false"
+          :disabled="busy"
+          aria-label="Board pack"
+          ><template #option="{ option }"
+            ><span class="work-pack-choice"
+              ><span class="work-row"
+                ><Icon :icon="option.icon" aria-hidden="true" /><strong>{{ option.title }}</strong
+                ><span v-if="option.version" class="work-muted work-small">{{ option.version }}</span></span
+              ><span class="work-muted work-small">{{ option.description }}</span
+              ><span v-if="option.disabled" class="work-pack-unavailable"
+                >Required plugin unavailable. Install the pack's required capabilities to use it.</span
+              ></span
+            ></template
+          ></SelectButton
+        ><label v-if="selected" class="work-row work-small"
+          ><ToggleSwitch v-model="starter" :disabled="busy" aria-label="Include starter items" />Include
+          starter items</label
+        >
+        <div class="work-settings-card work-stack work-tight">
+          <strong>{{ title }}</strong>
+          <p v-if="description" class="work-muted work-small">{{ description }}</p>
+          <span class="work-mono work-muted">{{ prefix }}-1</span>
+          <p class="work-muted work-small">{{ chosen?.title }}</p>
+        </div></template
+      >
+      <p v-if="error" class="kx-err" role="alert">{{ error }}</p>
+      <footer class="work-dialog-actions">
+        <Button
+          :label="step === 1 ? 'Cancel' : 'Back'"
+          severity="secondary"
+          :disabled="busy"
+          @click="step === 1 ? emit('close') : (step = 1)"
+          outlined
+        /><Button
+          type="submit"
+          :label="step === 1 ? 'Continue' : 'Create board'"
+          :loading="busy"
+          :disabled="!valid || busy"
+        />
+      </footer></form
+  ></NativeDialog>
+</template>

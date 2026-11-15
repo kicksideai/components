@@ -54,6 +54,8 @@ jobs:
         wippy artifacts materialize "docscout/build-inputs/.wippy/vendor/kickside/ui-kit-$version.wapp" kickside.ui_kit:package_fs --root docscout/ui/.wippy
     - name: Materialize locked PIM admin UI Kit for license provenance
       run: make -C pim-admin ui-kit
+    - name: Materialize locked Work admin UI Kit for license provenance
+      run: make -C work-admin ui-kit
     - uses: kicksideai/.github/actions/legal-check@e1186b6a3f9aac84125b7d5300077b7b23a70804
       with:
         base: ${{ github.event.pull_request.base.sha }}
@@ -252,7 +254,7 @@ jobs:
             awk '/No tests found/ { empty=1 } /^[[:space:]]*FAILED([[:space:]]|$)/ { failed=1 } /^[[:space:]]*PASSED([[:space:]]|$)/ { passed=1 } END { exit(empty || failed || !passed) }' .wippy-test.clean.log
             cd "$source_root"
             version=$(jq -er --arg path work '.[$path]' .release-please-manifest.json)
-            wippy publish --config work --version "$version" --dry-run --create --module-visibility public --module-type plugin
+            wippy publish --config work --version "$version" --dry-run --create --module-visibility private --module-type plugin
         - module: work
           engine: postgres
           timeout_minutes: 45
@@ -275,7 +277,7 @@ jobs:
             awk '/No tests found/ { empty=1 } /^[[:space:]]*FAILED([[:space:]]|$)/ { failed=1 } /^[[:space:]]*PASSED([[:space:]]|$)/ { passed=1 } END { exit(empty || failed || !passed) }' .wippy-test.clean.log
             cd "$source_root"
             version=$(jq -er --arg path work '.[$path]' .release-please-manifest.json)
-            wippy publish --config work --version "$version" --dry-run --create --module-visibility public --module-type plugin
+            wippy publish --config work --version "$version" --dry-run --create --module-visibility private --module-type plugin
         - module: pim
           engine: sqlite
           timeout_minutes: 45
@@ -318,6 +320,7 @@ jobs:
             version=$(jq -r '.pim // "0.1.0"' .release-please-manifest.json)
             wippy publish --config pim --version "$version" --dry-run --create --module-visibility private --module-type plugin
         - module: pim-admin
+        - module: work-admin
           engine: sqlite
           commands: |
             set -euo pipefail
@@ -327,6 +330,10 @@ jobs:
             make -C pim-admin test
             make -C pim-admin pack
         - module: pim-admin
+            make -C work-admin setup build typecheck ui-test lint strict check
+            make -C work-admin test
+            make -C work-admin pack
+        - module: work-admin
           engine: postgres
           commands: |
             set -euo pipefail
@@ -338,6 +345,12 @@ jobs:
             trap 'dropdb "$database"' EXIT
             make -C pim-admin test-pg PIM_ADMIN_PG_PORT="$PGPORT" WIPPY_ARGS="--set vars.pg_database=$database --set vars.pg_host=127.0.0.1"
             make -C pim-admin pack
+            make -C work-admin setup build typecheck ui-test lint strict check
+            database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_work_admin"
+            createdb "$database"
+            trap 'dropdb "$database"' EXIT
+            make -C work-admin test-pg WORK_ADMIN_PG_PORT="$PGPORT" WIPPY_ARGS="--set vars.pg_database=$database --set vars.pg_host=127.0.0.1"
+            make -C work-admin pack
         - module: storage-s3
           engine: sqlite
           commands: |

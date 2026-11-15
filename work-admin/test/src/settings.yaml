@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: settings_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work_admin
+    timeout: 300s
+  source: file://settings_test.lua
+  method: run
+  modules:
+  - json
+  - uuid
+  - registry
+  - fs
+  imports:
+    test: wippy.test:test
+    session: app:session
+    fixture: app:fixture
+- name: ui_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    title: Board enhancements
+    tools:
+    - kickside.work.traits:get_schema
+    attachment: app:ui_attachment
+    seams: []
+    config_schema:
+      type: object
+      properties:
+        threshold:
+          type: integer
+          minimum: 1
+          default: 1
+      additionalProperties: false
+- name: malformed_ui_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    title: Invalid enhancement
+    attachment: app:ui_attachment
+    config_schema:
+      type: object
+      properties:
+        amount:
+          type: integer
+    projections:
+    - kind: app:malformed_projection
+      input: unsupported
+- name: ui_attachment
+  kind: contract.binding
+  meta:
+    title: Board enhancement attachment
+    class:
+    - work_admin_attachment
+  contracts:
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.core.threads:thread_status
+  - contract: kickside.contract:deletable
+    context_required:
+    - component_id
+    methods:
+      delete: app:ui_attachment_delete
+- name: ui_attachment_delete
+  kind: function.lua
+  source: file://attachment.lua
+  method: delete
+- name: settings_fixture_access
+  kind: security.policy
+  groups:
+  - kickside.security.groups:members
+  policy:
+    resources:
+    - app:ui_plugin
+    - app:malformed_ui_plugin
+    - app:ui_attachment
+    actions:
+    - registry.get
+    - registry.find
+    - contract.get
+    - contract.open
+    - contract.call
+    - contract.security
+    effect: allow
