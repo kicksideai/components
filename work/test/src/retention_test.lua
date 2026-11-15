@@ -61,7 +61,7 @@ local function define()
             assert(db:execute([[WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM numbers WHERE n<205)
                 INSERT INTO kickside_work_change (board_id,seq,n,subject,kind,field_id,after,actor,at)
                 SELECT $1,2,1000+n,$2,'query_value',-1,'"open"',$3,'2026-01-01T00:00:00Z' FROM numbers]], { h.id, "i:" .. id, h.actor:id() }))
-            assert(db:execute("UPDATE kickside_work_retention SET board_after=$1,inclusive=1,item_after='',deadline_ms=NULL WHERE owner_id='work'", { h.id }))
+            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,item_after='',deadline_ms=NULL WHERE owner_id='work'", { h.id }))
             db:release()
             drain(function(): boolean return steps.count_rows("kickside_work_change", h.id, " AND kind='query_value'") == 0 end)
             db = assert(store.open())
@@ -77,7 +77,7 @@ local function define()
             local deadline = clock.deadline(86400000).ns // 1000000
             local db = assert(store.open())
             local last = assert(db:query("SELECT MAX(board_id) AS board_id FROM kickside_work_board", {}))[1].board_id
-            assert(db:execute("UPDATE kickside_work_retention SET board_after=$1,inclusive=0,item_after='',deadline_ms=$2 WHERE owner_id='work'", { last or "", deadline }))
+            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=0,item_after='',deadline_ms=$2 WHERE owner_id='work'", { last or "", deadline }))
             db:release()
             local out = run_owner()
             test.is_false(out.needs_continue)
@@ -98,12 +98,15 @@ local function define()
             local identity = assert(store.stored(row.actor_context, {} :: Map))
             identity.captured_at = "2000-01-01T00:00:00Z"
             assert(db:execute("UPDATE kickside_work_operation SET actor_context = $1 WHERE board_id = $2 AND operation_id = $3", { store.encode(identity), h.id, operation.bulk_id }))
+            assert(db:execute("INSERT INTO kickside_thread_subject (thread_id,subject,version,last_seq,updated_at) VALUES ($1,$2,1,1,'2000-01-01T00:00:00Z') ON CONFLICT DO NOTHING",{h.id,"bulk:" .. operation.bulk_id}))
             db:release()
             drain(function(): boolean return steps.count_rows("kickside_work_operation", h.id) == 0 end)
             db = assert(store.open())
             local rows = assert(db:query("SELECT COUNT(*) AS n FROM kickside_work_operation WHERE board_id = $1", { h.id }))
             local jobs = assert(db:query("SELECT COUNT(*) AS n FROM kickside_job WHERE id=$1", {operation.job_id}))
+            local subjects=assert(store.count(db,"SELECT COUNT(*) AS n FROM kickside_thread_subject WHERE thread_id=$1 AND subject=$2",{h.id,"bulk:" .. operation.bulk_id}))
             db:release()
+            test.eq(subjects,0)
             test.eq(tonumber(rows[1].n), 0)
             test.eq(tonumber(jobs[1].n),0)
             local restarted = assert(h.call("bulk", { key = "retired-operation", query = {}, ops_template = { { op = "set", values = { title = "Unused" } } } }))
@@ -204,7 +207,9 @@ local function define()
 
         test.it("records a failed prefix and releases the next orphan in the same run", function()
             drain()
-            local h = fixture.board()
+            -- Both orphan candidates precede retained W-prefixed live boards,
+            -- so this tests failure isolation inside one bounded candidate page.
+            local h = fixture.board({ declaration = fixture.declaration("A" .. fixture.fresh_prefix():sub(2)) })
             assert(h.call("delete", {}))
             steps.deleted(h.id)
             local prefix = "0" .. fixture.fresh_prefix()
@@ -235,9 +240,17 @@ local function define()
             local db = assert(store.open())
             assert(db:execute("INSERT INTO kickside_work_prefix (prefix, board_id, claimed_seq, claim_version) VALUES ($1, $2, 1, 1)", { prefix, (uuid.v4()) }))
             db:release()
-            local out, err = funcs.call(OWNER, {})
-            assert(not err, steps.detail(err))
-            local result = out :: Map
+            local observed: Map? = nil
+            drain(function(): boolean return observed ~= nil end, function(): Map
+                local out, err = funcs.call(OWNER, {})
+                assert(not err, steps.detail(err))
+                local result = out :: Map
+                for _, row in ipairs(result.blocked :: { Map }) do
+                    if (row.error :: error):details().prefix == prefix then observed = result end
+                end
+                return result
+            end)
+            local result = assert(observed)
             test.is_true(result.success)
             test.eq(#result.blocked, 1)
             local failed = result.blocked[1].error
@@ -274,10 +287,10 @@ local function define()
 
         test.it("releases orphan prefixes over successive runs when more than one batch exists", function()
             local admin = fixture.board({ bare = true })
-            local total = 250
+            local total = 505
             local seeded: { string } = {}
             for _ = 1, total do
-                local prefix = fixture.fresh_prefix()
+                local prefix = "B" .. fixture.fresh_prefix():sub(2)
                 seeded[#seeded + 1] = prefix
                 local _, err = admin.call("trusted_append", { thread_id = registry_id(), expect = { subject = "prefix:" .. prefix, version = 0 },
                     events = { { type = "kickside.work.events:prefix.claimed", subject = "prefix:" .. prefix,
@@ -288,6 +301,7 @@ local function define()
             for _, prefix in ipairs(seeded) do
                 assert(db:execute("INSERT INTO kickside_work_prefix (prefix, board_id, claimed_seq, claim_version) VALUES ($1, $2, 1, 1)", { prefix, (uuid.v4()) }))
             end
+            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='' WHERE owner_id='work'", {}))
             local function remaining(): integer
                 local n = 0
                 for _, prefix in ipairs(seeded) do n = n + held(prefix) end

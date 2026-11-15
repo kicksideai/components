@@ -3,13 +3,13 @@
 -- Callers open the contract under the caller's actor and scope and get narrowed
 -- results.
 local contract = require("contract")
-local json = require("json")
 local security = require("security")
 local store = require("store")
 local types = require("types")
 
 local THREADS = "kickside.core:threads"
 
+local limits = require("limits")
 local M = {}
 
 local function field(v: unknown, name: string): unknown
@@ -32,7 +32,9 @@ end
 -- catch_up waits until the thread's projection of kind covers the thread head
 -- or the deadline passes; done reports whether it got there.
 function M.catch_up(c: types.ThreadClient, thread_id: string, kind: string, deadline: types.Deadline): (types.CatchUp?, error?)
-    local result, err = c:catch_up_projection({ thread_id = thread_id, kind = kind, max_ticks = 1000, deadline = deadline.at })
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return nil, settings_err end
+    local result, err = c:catch_up_projection({ thread_id = thread_id, kind = kind, max_ticks = settings.projection_catchup_ticks, deadline = deadline.at })
     if err then return nil, errors.wrap(err, "projection catch-up failed") end
     local done = field(result, "done") == true
     local last_seq = store.int(field(result, "last_seq"))
@@ -48,28 +50,13 @@ function M.mismatch(err: error, reason: string): boolean
     return details.reason == reason
 end
 
--- find_marker narrows a Core event lookup for callers holding its read authority.
-function M.find_marker(c: types.ThreadClient, thread_id: string, event_type: string, source: string, external_id: string): (types.ThreadMarker?, error?)
-    local found, err = c:find_event_by_external({ thread_id = thread_id, event_type = event_type,
-        external_source = source, external_id = external_id })
-    if err then return nil, errors.wrap(err, "receipt lookup failed") end
-    local event = field(found, "event")
-    if type(event) ~= "table" then return nil, nil end
-    local body = field(event, "body")
-    if type(body) == "string" then
-        local decoded, derr = json.decode(body)
-        if derr then return nil, errors.wrap(derr, "marker event body is not JSON") end
-        body = decoded
-    end
-    local seq = store.int(field(event, "seq"))
-    if not seq then return nil, errors.new({ details = { code = "row_corrupt" }, kind = errors.INTERNAL, message = "marker event has no seq" }) end
-    return { seq = seq, body = body }, nil
-end
-
--- create registers a component with its thread.
-function M.create(c: types.ThreadClient, request: types.ThreadRequest): (boolean, error?)
-    local created, err = c:create(request)
-    return created ~= nil and err == nil, err
+-- Every name is already fenced by its Work owner. Never call in a SQL write transaction.
+function M.retire(board_id: string, subjects: {string}): error?
+    if #subjects == 0 then return nil end
+    local client, err = M.open()
+    if err or not client then return err end
+    local _, rerr = client:retire_subjects({thread_id=board_id, subjects=subjects})
+    return rerr
 end
 
 return M

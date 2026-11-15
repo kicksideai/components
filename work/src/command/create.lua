@@ -1,15 +1,13 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- The board creation authority. A request owns one actor-scoped, deterministic
--- component id; the component and its thread are created through the threads
--- contract, then an optional initial declaration is applied as an ordinary
--- schema command keyed by the board id, so a retried request converges on the
--- same board and schema.
+-- component id; Component atomically creates its identity and declared thread.
+-- Initialization uses ordinary keyed commands. Its permanent completion result
+-- prevents a completed retry from reapplying the initial declaration.
 local component = require("component")
 local identifiers = require("identifiers")
 local packs = require("packs")
 local security = require("security")
 local consts = require("consts")
-local threads = require("threads")
 local schema_commands = require("schema_commands")
 local locate = require("locate")
 local types = require("types")
@@ -17,6 +15,10 @@ local domain = require("domain")
 local plugins = require("plugins")
 local catalog = require("catalog")
 local planner = require("planner")
+local receipts = require("receipts")
+local envelope = require("envelope")
+local component_types = require("component_types")
+local threads = require("threads")
 
 local M = {}
 
@@ -36,8 +38,8 @@ function M.board_id(key: string): (string?, error?)
     return identifiers.uuid(ID_NAMESPACE .. "\0" .. actor:id() .. "\0" .. key)
 end
 
-local function existing(board_id: string, title: string, parent_id: string): (boolean?, error?)
-    local rows, err = component.query({ component_ids = { board_id }, include = { meta = true, placement = true }, limit = 1 })
+local function existing(board_id: string): (boolean?, error?)
+    local rows, err = component.query({ component_ids = { board_id }, access_mask = component.ACCESS.ADMIN :: integer, include = { meta = false }, limit = 1 })
     if err then return nil, errors.wrap(err :: error, "board idempotency lookup failed") end
     local first: unknown = type(rows) == "table" and (rows :: { unknown })[1] or nil
     if first == nil then return false, nil end
@@ -46,12 +48,22 @@ local function existing(board_id: string, title: string, parent_id: string): (bo
     if row.impl_id ~= consts.BOARD_IMPL then
         return nil, errors.new({ details = { code = "idempotency_conflict" }, kind = errors.CONFLICT, message = "board idempotency key collides with another component" })
     end
-    local meta: domain.ComponentMeta = row.meta or {}
-    if trim(meta.title) ~= title or trim(row.parent_id) ~= parent_id then
-        return nil, errors.new({ kind = errors.CONFLICT, message = "board idempotency key was already used with a different request",
-            details = { code = "idempotency_conflict" } })
-    end
     return true, nil
+end
+
+local function validate_initial(input: types.CreateRequest): error?
+    local initial = input.declaration
+    if input.pack then
+        local pack, perr = catalog.load(input.pack, input.version)
+        if perr or not pack then return perr end
+        initial = planner.declaration(pack.data)
+    end
+    if initial then
+        local _, err = plugins.compile(initial.plugins, input.plugin_configs)
+        if err then return err end
+    end
+
+    return nil
 end
 
 function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
@@ -67,30 +79,56 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
     local board_id, id_err = M.board_id(key)
     if not board_id then return nil, id_err end
 
-    local initial = input.declaration
-    if input.pack then
-        local pack, perr = catalog.load(input.pack, input.version)
-        if perr or not pack then return nil, perr end
-        initial = planner.declaration(pack.data)
-    end
-    if initial then
-        local _, err = plugins.compile(initial.plugins, input.plugin_configs)
-        if err then return nil, err end
-    end
-
-    local found, ferr = existing(board_id, title, parent_id)
+    local fingerprint = receipts.request_hash({ title = title, parent_id = parent_id, declaration = input.declaration,
+        pack = input.pack, version = input.version, starter = input.starter, plugin_configs = input.plugin_configs })
+    local found, ferr = existing(board_id)
     if ferr then return nil, ferr end
+    local service, service_err = component.get_service()
+    if service_err or not service then return nil, service_err :: error? end
     if not found then
-        local c, oerr = threads.open()
-        if oerr or not c then return nil, oerr end
-        local created, cerr = threads.create(c, { id = board_id, impl_id = consts.BOARD_IMPL, thread_class = consts.THREAD_CLASS,
-            parent_id = parent_id ~= "" and parent_id or nil, title = title, icon = ICON })
-        if not created then
-            local winner, werr = existing(board_id, title, parent_id)
-            if not winner then return nil, errors.wrap(cerr or werr or errors.new({ kind = errors.INTERNAL, retryable = false, message = "operation returned no result", details = { code = "internal" } }), "board create failed") end
+        local validation_err = validate_initial(input)
+        if validation_err then return nil,validation_err end
+        -- Component owns atomic creation of the board, its immutable identity
+        -- and the primary thread declared by the kind. Failed admission leaves
+        -- no independent Work receipt behind.
+        local result, call_err = service:register({ component_id = board_id, impl_id = consts.BOARD_IMPL,
+            parent_id = parent_id ~= "" and parent_id or nil,
+            meta = { title = title, icon = ICON }, private_context = { work_creation = fingerprint } })
+        local creation_err = call_err :: error? or envelope.error_of(result :: component_types.ServiceEnvelope, "register")
+        if creation_err then
+            if not errors.is(creation_err,errors.CONFLICT) then return nil, creation_err end
+            local winner, werr = existing(board_id)
+            if werr or not winner then return nil, werr or creation_err end
         end
     end
+    local context, context_err = service:get_access_context({component_id=board_id,access_mask=component.ACCESS.ADMIN,include_context=true})
+    if context_err then return nil,context_err :: error end
+    local read_err = envelope.error_of(context :: component_types.ServiceEnvelope,"get_access_context")
+    if read_err then return nil,read_err end
+    local held = context :: component_types.AccessContextResult
+    local creation = held.context and held.context.work_creation
+    if creation == nil then
+        -- Published predecessor boards had no immutable creation identity.
+        -- Bind their first upgraded replay once through Component's revision CAS.
+        local _, bind_err = component.update(board_id,{{type="PATCH_CONTEXT",payload={patch={work_creation=fingerprint}}}},
+            {expected_revision=held.context_revision})
+        if bind_err then return nil,bind_err :: error end
+    elseif creation ~= fingerprint then return nil,receipts.conflict_of() end
+    local completed = held.context and held.context.work_creation_result
+    if completed then
+        local result = completed :: types.CreateResult
+        return { board_id = result.board_id, title = result.title, generation = result.generation, replayed = true }, nil
+    end
 
+    if found then
+        local validation_err = validate_initial(input)
+        if validation_err then return nil,validation_err end
+    end
+
+    local client, client_err = threads.open()
+    if client_err or not client then return nil,client_err end
+    local _, converge_err = client:ensure_thread({component_id=board_id,impl_id=consts.BOARD_IMPL,thread_class=consts.THREAD_CLASS})
+    if converge_err then return nil,converge_err end
     local generation: integer? = nil
     if input.pack then
         local installed, perr = packs.apply({ board_id = board_id, pack = input.pack, version = input.version,
@@ -102,7 +140,18 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
         if serr or not applied then return nil, errors.wrap(serr or errors.new({ kind = errors.INTERNAL, retryable = false, message = "operation returned no result", details = { code = "internal" } }), "initial schema failed") end
         generation = applied.generation
     end
-    return { board_id = board_id, title = title, generation = generation, replayed = found == true }, nil
+    local result: types.CreateResult = { board_id = board_id, title = title, generation = generation, replayed = found == true }
+    -- Absence of a result means initialization is still recoverable. Publish
+    -- completion with the fingerprint, independently of expiring schema receipts.
+    local current, read_context_err = service:get_access_context({component_id=board_id,access_mask=component.ACCESS.ADMIN,include_context=true})
+    if read_context_err then return nil,read_context_err :: error end
+    local current_err = envelope.error_of(current :: component_types.ServiceEnvelope,"get_access_context")
+    if current_err then return nil,current_err end
+    local completed_context = current :: component_types.AccessContextResult
+    local _, complete_err = component.update(board_id,{{type="PATCH_CONTEXT",payload={patch={work_creation=fingerprint,work_creation_result=result}}}},
+        {expected_revision=completed_context.context_revision})
+    if complete_err then return nil,complete_err :: error end
+    return result, nil
 end
 
 return M

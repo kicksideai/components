@@ -19,9 +19,11 @@ entries:
     actor:
       id: system:kickside.work.retention
     policies:
+    - kickside.work.security:subject_retirement
     - kickside.work.security:retention_output_publish
     - kickside.work.security:module_runtime
   imports:
+    limits: kickside.work.settings:limits
     operation_expiry: kickside.work.persist:operation_expiry
     component: kickside.component:component
     rows: kickside.work.retention:rows
@@ -42,6 +44,8 @@ entries:
   source: file://rows.lua
   modules: [sql, time]
   imports:
+    jobs: kickside.core.jobs:jobs
+    threads: kickside.work.persist:threads
     types: kickside.work.retention:types
     tables: kickside.work.domain:layout
     operation_expiry: kickside.work.persist:operation_expiry
@@ -50,3 +54,16 @@ entries:
     clock: kickside.work.domain:clock
     policy: kickside.work.domain:policy
     domain: kickside.work:types
+
+- name: retire_operation
+  kind: function.lua
+  meta: {private: true, comment: Retires only terminal aged unreferenced operation identities.}
+  source: 'local expiry = require("expiry"); return {run = function(input: {board_id: string, kind: string, key: string}): (boolean?, error?) return expiry.retire(input.board_id, input.kind, input.key) end}'
+  method: run
+  security:
+    actor: {id: system:kickside.work.retention}
+    policies:
+    - kickside.work.security:module_runtime
+    - kickside.work.security:subject_retirement
+  imports:
+    expiry: kickside.work.persist:operation_expiry

@@ -8,7 +8,7 @@ type ProjectionOutput = { body: unknown, last_seq: integer }
 type MetaInput = { thread_id: string? }
 type Published = { published: boolean }
 
-type OwnedTable = { name: string, keys: string }
+type OwnedTable = { name: string, keys: string, order: string? }
 type Cleanup = { success: boolean, needs_continue: boolean, deleted: integer }
 
 type StageRun = { item_id: string, state: string, visit: integer, attempt: integer, started: string, finished: string?, outcome: string? }

@@ -139,7 +139,7 @@ function M.read(db: sql.DB, board_id: string, ops: { types.Op }, indices: { inte
     local tx, err = db:begin()
     if err or not tx then return nil, {}, err end
     if db:type() == sql.type.POSTGRES then
-        local ierr = store.read_snapshot(tx)
+        local ierr = store.read_snapshot(tx, deadline)
         if ierr then tx:rollback(); return nil, {}, ierr end
     end
     local board, berr = M.board(tx, board_id, admitted, settings, db:type())

@@ -97,7 +97,9 @@ local function define()
             local _, derr = holder.call("delete", {})
             test.is_nil(derr, steps.detail(derr))
             steps.deleted(holder.id)
-            assert(funcs.call("kickside.work.retention:owner", {}).success)
+            steps.retention_sweep(function(): boolean
+                return count("SELECT COUNT(*) AS n FROM kickside_work_prefix WHERE board_id=$1",{holder.id})==0
+            end)
             local applied, aerr = first.call("apply_schema", { declaration = fixture.declaration(holder.prefix) })
             test.is_nil(aerr, steps.detail(aerr))
             test.eq((applied :: Map).generation, 1)

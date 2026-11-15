@@ -47,6 +47,14 @@ local function plan_comment(ctx: types.PrepareContext, op: types.Op): types.OpPl
     local mentions, merr = mentions_of(op.mentions)
     if merr or not mentions then return merr or M.invalid("invalid_mentions", "invalid mentions", "mentions") end
     if op.comment == nil then
+        local count, count_err = store.count(ctx.db, "SELECT COUNT(*) AS n FROM kickside_work_comment WHERE board_id=$1 AND item_id=$2 AND deleted=0", { ctx.board.board_id, item.item_id })
+        if count_err then return M.failed(count_err) end
+        local slot = "comments:" .. item.item_id
+        if (count :: integer) + (ctx.child_delta[slot] or 0) >= (ctx.board.compiled.policy.comments_per_item :: integer) then
+            return M.invalid("comments_limit", "an item holds at most " .. ctx.board.compiled.policy.comments_per_item .. " live comments")
+        end
+        ctx.head_guard = ctx.board.applied_seq
+        ctx.child_delta[slot] = (ctx.child_delta[slot] or 0) + 1
         if type(op.body) ~= "string" or op.body == "" or #op.body > consts.LIMITS.comment_bytes then
             return M.invalid("invalid_body", "comment body is 1 to " .. consts.LIMITS.comment_bytes .. " bytes", "body")
         end
@@ -61,18 +69,23 @@ local function plan_comment(ctx: types.PrepareContext, op: types.Op): types.OpPl
     if not comment then
         local found, err = store.comment(ctx.db, ctx.board.board_id, id)
         if err then return M.failed(err) end
-        if not found or found.deleted or found.item_id ~= item.item_id then
+        if not found or found.item_id ~= item.item_id then
             return M.result("invalid", group, "unknown_comment", "unknown comment " .. id, "comment")
         end
         comment = found
         ctx.comments[id] = comment
         ctx.comment_base[id] = comment.version
     end
+    if comment.deleted then
+        return M.result("invalid", group, "unknown_comment", "unknown comment " .. id, "comment")
+    end
     local plan: types.OpPlan = { status = "applied", events = {}, group = group, item = item.item_id, comment = id }
     plan.expected = ctx.comment_base[id]
     if op.delete == true then
-        comment.deleted = true
+        local slot = "comments:" .. item.item_id
+        ctx.child_delta[slot] = (ctx.child_delta[slot] or 0) - 1
         comment.version = comment.version + 1
+        comment.deleted = true
         plan.events = { M.event(EV.COMMENT_DELETED, group, { comment = id, item = item.item_id }) }
         return plan
     end

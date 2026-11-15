@@ -48,6 +48,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:apply
     public: true
     title: Work apply
   data:
@@ -55,7 +57,7 @@ entries:
       api_version: kickside.block/v1
       input: {"type":"object","properties":{"key":{"type":"string","description":"Idempotency key."},"mode":{"type":"string","enum":["atomic","independent"]},"ops":{"type":"array","items":{"type":"object","properties":{"op":{"type":"string"},"type":{"type":"string"},"parent":{"anyOf":[{"type":"string"},{"type":"boolean"},{"type":"null"}]},"values":{"type":"object","additionalProperties":{}},"clear":{"type":"array","items":{"type":"string"}},"unset":{"type":"array","items":{"type":"string"}},"state":{"type":"string"},"item":{"type":"string"},"expect_version":{"type":"integer"},"transition":{"type":"string"},"target":{"type":"object","properties":{"board":{"type":"string"},"item":{"type":"string"},"kind":{"type":"string"},"id":{"type":"string"}},"additionalProperties":false},"comment":{"type":"string"},"body":{"type":"string"},"delete":{"type":"boolean"},"mentions":{},"after":{},"before":{}},"required":["op"]}},"source":{"type":"string"},"origin":{"type":"object"}},"required":["ops"]}
       config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
-      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
+      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"},"error":{"type":"object","description":"Native error envelope retaining the original condition and retry policy.","properties":{"kind":{"type":"string","description":"Native error kind."},"message":{"type":"string","description":"Original failure message."},"retryable":{"type":"boolean","description":"Original retry policy."},"details":{"type":"object","description":"Original condition details."}},"required":["kind","message","retryable"],"additionalProperties":false}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
       error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
       ports: &id001
       - id: result
@@ -75,6 +77,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:bulk
     public: true
     title: Work bulk
   data:
@@ -100,6 +104,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:bulk_status
     public: true
     title: Work bulk status
   data:
@@ -125,6 +131,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:cancel_bulk
     public: true
     title: Work cancel bulk
   data:
@@ -150,6 +158,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:comment
     public: true
     title: Work comment
     description: Adds, edits or deletes item comments.
@@ -158,7 +168,7 @@ entries:
       api_version: kickside.block/v1
       input: {"type":"object","properties":{"key":{"type":"string","description":"Idempotency key."},"mode":{"type":"string","enum":["atomic","independent"]},"ops":{"type":"array","items":{"type":"object","properties":{"op":{"type":"string","enum":["comment"]},"type":{"type":"string"},"parent":{"anyOf":[{"type":"string"},{"type":"boolean"},{"type":"null"}]},"values":{"type":"object","additionalProperties":{}},"clear":{"type":"array","items":{"type":"string"}},"unset":{"type":"array","items":{"type":"string"}},"state":{"type":"string"},"item":{"type":"string"},"expect_version":{"type":"integer"},"transition":{"type":"string"},"target":{"type":"object","properties":{"board":{"type":"string"},"item":{"type":"string"},"kind":{"type":"string"},"id":{"type":"string"}},"additionalProperties":false},"comment":{"type":"string"},"body":{"type":"string"},"delete":{"type":"boolean"},"mentions":{},"after":{},"before":{}},"required":["op"]}},"source":{"type":"string"},"origin":{"type":"object"}},"required":["ops"]}
       config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
-      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
+      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"},"error":{"type":"object","description":"Native error envelope retaining the original condition and retry policy.","properties":{"kind":{"type":"string","description":"Native error kind."},"message":{"type":"string","description":"Original failure message."},"retryable":{"type":"boolean","description":"Original retry policy."},"details":{"type":"object","description":"Original condition details."}},"required":["kind","message","retryable"],"additionalProperties":false}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
       error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
       ports: *id001
       presentation: *id002
@@ -169,6 +179,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:find_items
     public: true
     title: Work find
   data:
@@ -187,6 +199,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:get_item
     public: true
     title: Work get
   data:
@@ -205,6 +219,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:move
     public: true
     title: Work move
   data:
@@ -230,6 +246,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:move_status
     public: true
     title: Work move status
   data:
@@ -255,6 +273,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:plan_move
     public: true
     title: Work plan move
   data:
@@ -262,7 +282,7 @@ entries:
       api_version: kickside.block/v1
       input: {"type":"object","properties":{"item":{"type":"string"},"to_board":{"type":"string"},"key":{"type":"string","minLength":1,"maxLength":255},"map":{"type":"object","properties":{"type":{"type":"object","additionalProperties":{"type":"string"}},"state":{"type":"object","additionalProperties":{"type":"string"}},"fields":{"type":"object","additionalProperties":{"oneOf":[{"type":"string"},{"type":"boolean","const":false}]}},"relations":{"type":"object","additionalProperties":{"type":"string"}}},"required":[],"additionalProperties":false}},"required":["item","to_board","map"],"additionalProperties":false}
       config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
-      output: {"type":"object","properties":{"allowed":{"type":"boolean"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"required":["code","message"],"additionalProperties":false}},"items":{"type":"array","items":{"type":"object","properties":{"item":{"type":"string"},"from":{"type":"string"},"type":{"type":"string"},"state":{"type":"string"},"parent":{"type":"string"},"values":{"type":"object"},"clear":{"type":"array","items":{"type":"string"}},"version":{"type":"integer"},"old_key":{"type":"string"}},"required":["item","from","type","state","version","old_key","values","clear"],"additionalProperties":false}},"links":{"type":"array","items":{"type":"object","properties":{"item":{"type":"string"},"type":{"type":"string"},"target":{"type":"object","properties":{"board":{"type":"string"},"item":{"type":"string"}},"required":["board","item"],"additionalProperties":false}},"required":["item","type","target"],"additionalProperties":false}},"source_seq":{"type":"integer"},"target_seq":{"type":"integer"},"to_board":{"type":"string"},"item":{"type":"string"},"target_digest":{"type":"string"},"from_board":{"type":"string"}},"required":["allowed","findings","items","links","to_board"],"additionalProperties":false}
+      output: {"type":"object","properties":{"allowed":{"type":"boolean"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"required":["code","message"],"additionalProperties":false}},"items":{"type":"array","items":{"type":"object","properties":{"item":{"type":"string"},"from":{"type":"string"},"type":{"type":"string"},"state":{"type":"string"},"parent":{"type":"string"},"values":{"type":"object"},"clear":{"type":"array","items":{"type":"string"}},"version":{"type":"integer"},"old_key":{"type":"string"}},"required":["item","from","type","state","version","old_key","values","clear"],"additionalProperties":false}},"links":{"type":"array","items":{"type":"object","properties":{"item":{"type":"string"},"type":{"type":"string"},"target":{"anyOf":[{"type":"object","properties":{"board":{"type":"string"},"item":{"type":"string"}},"required":["board","item"],"additionalProperties":false},{"type":"object","properties":{"unavailable":{"type":"boolean","const":true}},"required":["unavailable"],"additionalProperties":false}]}},"required":["item","type","target"],"additionalProperties":false}},"source_seq":{"type":"integer"},"target_seq":{"type":"integer"},"to_board":{"type":"string"},"item":{"type":"string"},"target_digest":{"type":"string"},"from_board":{"type":"string"}},"required":["allowed","findings","items","links","to_board"],"additionalProperties":false}
       error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
       ports: *id001
       presentation: *id002
@@ -280,6 +300,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:report
     public: true
     title: Work report
     description: Reports the outcome and progress of an automated stage.
@@ -288,7 +310,7 @@ entries:
       api_version: kickside.block/v1
       input: {"type":"object","properties":{"item":{"type":"string"},"visit":{"type":"integer","minimum":1},"key":{"type":"string"},"source":{"type":"string"},"origin":{"type":"object"},"trace_context":{"type":"object"},"attempt":{"type":"integer","minimum":1},"outcome":{"enum":["passed","failed","canceled"]},"outputs":{"type":"object"},"progress":{"type":"object"}},"required":["item","visit","attempt","outcome"],"additionalProperties":false}
       config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
-      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
+      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"},"error":{"type":"object","description":"Native error envelope retaining the original condition and retry policy.","properties":{"kind":{"type":"string","description":"Native error kind."},"message":{"type":"string","description":"Original failure message."},"retryable":{"type":"boolean","description":"Original retry policy."},"details":{"type":"object","description":"Original condition details."}},"required":["kind","message","retryable"],"additionalProperties":false}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
       error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
       ports: *id001
       presentation: *id002
@@ -299,6 +321,8 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.block
+    deprecated: true
+    replacement: kickside.work.traits:transition
     public: true
     title: Work transition
     description: Moves items along declared transitions.
@@ -307,7 +331,7 @@ entries:
       api_version: kickside.block/v1
       input: {"type":"object","properties":{"key":{"type":"string","description":"Idempotency key."},"mode":{"type":"string","enum":["atomic","independent"]},"ops":{"type":"array","items":{"type":"object","properties":{"op":{"type":"string","enum":["transition"]},"type":{"type":"string"},"parent":{"anyOf":[{"type":"string"},{"type":"boolean"},{"type":"null"}]},"values":{"type":"object","additionalProperties":{}},"clear":{"type":"array","items":{"type":"string"}},"unset":{"type":"array","items":{"type":"string"}},"state":{"type":"string"},"item":{"type":"string"},"expect_version":{"type":"integer"},"transition":{"type":"string"},"target":{"type":"object","properties":{"board":{"type":"string"},"item":{"type":"string"},"kind":{"type":"string"},"id":{"type":"string"}},"additionalProperties":false},"comment":{"type":"string"},"body":{"type":"string"},"delete":{"type":"boolean"},"mentions":{},"after":{},"before":{}},"required":["op"]}},"source":{"type":"string"},"origin":{"type":"object"}},"required":["ops"]}
       config: {"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","minLength":1,"title":"Board","picker":"wc-component-picker","class":"work_board","value_field":"id"}}}
-      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
+      output: {"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string"},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"},"error":{"type":"object","description":"Native error envelope retaining the original condition and retry policy.","properties":{"kind":{"type":"string","description":"Native error kind."},"message":{"type":"string","description":"Original failure message."},"retryable":{"type":"boolean","description":"Original retry policy."},"details":{"type":"object","description":"Original condition details."}},"required":["kind","message","retryable"],"additionalProperties":false}},"additionalProperties":false,"required":["op","status"]}},"applied":{"type":"boolean"},"seq":{"type":"integer"},"as_of":{"type":"integer"},"replayed":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied"]}
       error: {"type":"object","required":["code","message"],"properties":{"code":{"type":"string"},"message":{"type":"string"}}}
       ports: *id001
       presentation: *id002

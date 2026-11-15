@@ -93,31 +93,7 @@ local function pending(tx: types.Executor, board: domain.Board, request: types.Q
         if request.group_by then used[request.group_by] = true end
         if request.sub_group_by then used[request.sub_group_by] = true end
     end
-    local rows, err = job_rows.rebuilds(tx, board.board_id)
-    if err then return false, err end
-    for _, row in ipairs(rows or {}) do
-        local blocked = false
-        if row.job_type == "reindex" then
-            local decoded_4, decode_err = store.stored(row.key, {} :: domain.JsonObject)
-            if decode_err then return false, decode_err end
-            local decoded_4 = decoded_4 :: domain.JsonObject
-            local state = decoded_4
-            if state.fields == nil then blocked = true
-            else
-                for _, code in ipairs(state.fields :: { string }) do if used[code] then blocked = true end end
-            end
-        else
-            for _, f in ipairs(board.compiled.fields) do if (f.rollup or f.formula) and used[f.code] then blocked = true end end
-        end
-        if blocked then
-            if row.status == "failed" then
-                return false, errors.new({ kind = errors.UNAVAILABLE, retryable = false, message = store.text(row.error) or "board rebuild failed",
-                    details = { code = "rebuild_failed" } })
-            end
-            return true, nil
-        end
-    end
-    return false, nil
+    return job_rows.rebuilding(tx, board, used)
 end
 
 local function compile(tx: types.Executor, dialect: string, board: domain.Board, request: types.QueryRequest, counted: boolean, grants: { [string]: boolean }?, additional: { domain.Condition }?, scan: integer?): (types.Plan?, error?)
@@ -367,7 +343,7 @@ function M.freeze(request: types.QueryRequest): ({ string }?, error?)
         local rebuilding, perr = pending(tx, board, request, true)
         if perr then return nil, perr end
         if rebuilding then return nil, errors.new({ kind = errors.UNAVAILABLE, message = "bulk selection awaits indexes", details = { code = "projection_pending" } }) end
-        local population, nerr = job_rows.population(tx, board.board_id)
+        local population, nerr = job_rows.work_population(tx, board.board_id)
         if nerr then return nil, nerr end
         if population and population > 200000 then return nil, errors.new({ kind = errors.INVALID, message = "bulk selection exceeds its scan budget", details = { code = "bulk_selection_limit" } }) end
         request.limit = 200000

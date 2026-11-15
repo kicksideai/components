@@ -11,6 +11,7 @@ local clock = require("clock")
 local consts = require("consts")
 local domain = require("domain")
 local types = require("types")
+local limits = require("limits")
 local M = {}
 
 function M.update(request: types.UpdateRequest): (types.UpdateResult?, error?)
@@ -20,7 +21,8 @@ function M.update(request: types.UpdateRequest): (types.UpdateResult?, error?)
     local title = request.title and locate.trim(request.title) or nil
     if title == "" then return nil, guard.invalid("board title must be nonblank", { code = "board_title_blank" }) end
     if title and #title > 255 then return nil, guard.invalid("board title exceeds 255 bytes", { code = "board_title_too_long" }) end
-    local deadline = clock.deadline(consts.LIMITS.command_deadline_ms)
+    local deadline, deadline_err = limits.deadline("command_deadline_ms")
+    if deadline_err or not deadline then return nil, deadline_err end
     local head, herr = receipts.covered(request.board_id, deadline)
     if herr or not head then return nil, herr end
     local db, derr = store.open()

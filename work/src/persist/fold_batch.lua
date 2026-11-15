@@ -33,18 +33,19 @@ end
 
 local ITEM_COLUMNS: { storage.Column } = {}
 for _, name in ipairs({ "board_id", "item_id", "number", "type", "state", "category", "process_generation", "visit", "parent_id",
-    "path", "rank", "version", "life", "life_at", "document", "created_seq", "updated_seq", "created_at", "updated_at", "process_data", "findings", "move_id" }) do
+    "path", "rank", "version", "life", "life_at", "document", "created_seq", "updated_seq", "created_at", "updated_at", "process_data", "findings", "move_id", "purge_pending" }) do
     ITEM_COLUMNS[#ITEM_COLUMNS + 1] = { name = name }
 end
 local ITEM_UPSERT = [[ ON CONFLICT (board_id, item_id) DO UPDATE SET state = excluded.state, category = excluded.category,
     process_generation = excluded.process_generation, visit = excluded.visit, parent_id = excluded.parent_id, path = excluded.path,
     move_id = excluded.move_id, rank = excluded.rank, version = excluded.version, life = excluded.life, life_at = excluded.life_at,
+    purge_pending = CASE WHEN excluded.life='purged' AND kickside_work_item.life<>'purged' THEN 1 ELSE kickside_work_item.purge_pending END,
     findings = excluded.findings, process_data = excluded.process_data, document = excluded.document, updated_seq = excluded.updated_seq, updated_at = excluded.updated_at]]
 
 local function item_row(item: types.Item): types.SqlParams
     return { item.board_id, item.item_id, item.number, item.type, item.state, item.category, item.process_generation, item.visit,
         item.parent_id or sql.NULL, item.path, item.rank or sql.NULL, item.version, item.life, item.life_at or sql.NULL,
-        next(item.document) == nil and "{}" or json.encode(item.document), item.created_seq, item.updated_seq, item.created_at or "", item.updated_at or "", store.encode(item.work or {}), store.encode(item.findings or {}), item.move_id or sql.NULL }
+        next(item.document) == nil and "{}" or json.encode(item.document), item.created_seq, item.updated_seq, item.created_at or "", item.updated_at or "", store.encode(item.work or {}), store.encode(item.findings or {}), item.move_id or sql.NULL, item.life == "purged" and 1 or 0 }
 end
 
 -- save writes an item through the batch's shared row representation.

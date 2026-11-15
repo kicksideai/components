@@ -5,6 +5,7 @@ local sql = require("sql")
 local store = require("store")
 local domain = require("domain")
 local funcs = require("funcs")
+local clock = require("clock")
 local M = {}
 
 local function marks(params: domain.SqlParams, values: { string }): string
@@ -38,7 +39,7 @@ function M.stale(db: storage.Executor, board: domain.Board, p: domain.Process, l
     local migration = dialect == sql.type.POSTGRES and "p.value ->> 'migration'" or "json_extract(p.value, '$.migration')"
     local follows = "EXISTS (SELECT 1 FROM " .. definitions .. " WHERE g.board_id = i.board_id AND g.generation = i.process_generation AND "
         .. process_id .. " = $3 AND " .. migration .. " = 'follow')"
-    local rows, err = db:query("SELECT i.item_id FROM kickside_work_item i WHERE i.board_id = $1 AND i.process_generation < $2 AND " .. follows
+    local rows, err = db:query("SELECT i.item_id FROM kickside_work_item i WHERE i.board_id = $1 AND i.life <> 'purged' AND i.process_generation < $2 AND " .. follows
         .. " AND i.type IN (" .. type_marks .. ") ORDER BY i.item_id LIMIT $" .. #params, params)
     if err then return nil, errors.wrap(err, "stale item read failed") end
     local ids: { string } = {}
@@ -60,12 +61,18 @@ function M.demand(db: storage.Executor, board_id: string, kind: string): ({ doma
     return db:query("SELECT key, status, job_id FROM kickside_work_job WHERE board_id = $1 AND job_type = $2", { board_id, kind })
 end
 
+-- Board-wide rank facts address the retained row order; item work admits only
+-- active subjects. These populations have different replay semantics.
 function M.population(db: storage.Executor, board_id: string): (integer?, error?)
     return store.count(db, "SELECT COUNT(*) AS n FROM kickside_work_item WHERE board_id = $1", { board_id })
 end
 
+function M.work_population(db: storage.Executor, board_id: string): (integer?, error?)
+    return store.count(db, "SELECT COUNT(*) AS n FROM kickside_work_item WHERE board_id = $1 AND life <> 'purged'", { board_id })
+end
+
 function M.long_ranks(db: storage.Executor, board_id: string, limit: integer): (integer?, error?)
-    return store.count(db, "SELECT COUNT(*) AS n FROM kickside_work_item WHERE board_id = $1 AND length(rank) > $2", { board_id, limit })
+    return store.count(db, "SELECT COUNT(*) AS n FROM kickside_work_item WHERE board_id = $1 AND life <> 'purged' AND length(rank) > $2", { board_id, limit })
 end
 
 function M.range(db: storage.Executor, board_id: string, after: string, limit: integer): ({ domain.Row }?, error?)
@@ -74,7 +81,7 @@ function M.range(db: storage.Executor, board_id: string, after: string, limit: i
 end
 
 function M.finish_rebuild(db: storage.Executor, board_id: string, job_id: string, kind: string, key: unknown): (boolean, error?)
-    local rows, err = db:query("UPDATE kickside_work_job SET status = 'done', error = NULL WHERE board_id = $1 AND job_id = $2 AND job_type = $3 AND key = $4 AND status <> 'done' RETURNING job_id", { board_id, job_id, kind, key })
+    local rows, err = db:query("UPDATE kickside_work_job SET status = 'done', error = NULL, failed_at = NULL WHERE board_id = $1 AND job_id = $2 AND job_type = $3 AND key = $4 AND status <> 'done' RETURNING job_id", { board_id, job_id, kind, key })
     if err then return false, err end
     return rows ~= nil and rows[1] ~= nil, nil
 end
@@ -92,8 +99,9 @@ end
 function M.record(board_id: string, job_id: string, status: string, message: string?): error?
     local db, err = store.open()
     if not db then return err end
-    local _, rerr = db:execute("UPDATE kickside_work_job SET status = $1, error = $2 WHERE board_id = $3 AND job_id = $4",
-        { status, message or sql.NULL, board_id, job_id })
+    local _, rerr = db:execute([[UPDATE kickside_work_job SET status = $1, error = $2, failed_at = $3 WHERE board_id = $4 AND job_id = $5
+        AND (status <> $1 OR COALESCE(error, '') <> COALESCE($2, ''))]],
+        { status, message or sql.NULL, status == "failed" and clock.now() or sql.NULL, board_id, job_id })
     db:release()
     if rerr then return rerr end
     local _, perr = funcs.call("kickside.work.persist:publish_meta", { thread_id = board_id })
@@ -103,6 +111,34 @@ end
 -- rebuilds reads the durable demand and failure state for query admission and public meta.
 function M.rebuilds(db: storage.Executor, board_id: string): ({ domain.Row }?, error?)
     return db:query("SELECT job_type, key, status, error FROM kickside_work_job WHERE board_id = $1 AND job_type IN ('reindex', 'recompute') AND status <> 'done' ORDER BY job_type", { board_id })
+end
+
+function M.rebuilding(tx: storage.Executor, board: domain.Board, used: { [string]: boolean }): (boolean, error?)
+    local rows, err = M.rebuilds(tx, board.board_id)
+    if err then return false, err end
+    for _, row in ipairs(rows or {}) do
+        local blocked = false
+        if row.job_type == "reindex" then
+            local decoded_4, decode_err = store.stored(row.key, {} :: domain.JsonObject)
+            if decode_err then return false, decode_err end
+            local decoded_4 = decoded_4 :: domain.JsonObject
+            local state = decoded_4
+            if state.fields == nil then blocked = true
+            else
+                for _, code in ipairs(state.fields :: { string }) do if used[code] then blocked = true end end
+            end
+        else
+            for _, f in ipairs(board.compiled.fields) do if (f.rollup or f.formula) and used[f.code] then blocked = true end end
+        end
+        if blocked then
+            if row.status == "failed" then
+                return false, errors.new({ kind = errors.UNAVAILABLE, retryable = false, message = store.text(row.error) or "board rebuild failed",
+                    details = { code = "rebuild_failed" } })
+            end
+            return true, nil
+        end
+    end
+    return false, nil
 end
 
 return M

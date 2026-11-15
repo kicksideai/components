@@ -6,9 +6,23 @@ local fixture = require("fixture")
 local steps = require("steps")
 local block_contract = require("block_contract")
 local block_lower = require("block_lower")
+local blocks = require("blocks")
 type Map = { [string]: unknown }
 local function define()
     test.describe("Work Blocks", function()
+        test.it("offers virtual tools while preserving stored legacy Block references", function()
+            local catalog = assert(blocks.catalog())
+            for name, tool in pairs({find="find_items",get="get_item",apply="apply",transition="transition",comment="comment",report="report",
+                bulk="bulk",bulk_status="bulk_status",cancel_bulk="cancel_bulk",plan_move="plan_move",move="move",move_status="move_status"}) do
+                local current = catalog["kickside.work.traits:"..tool]
+                test.not_nil(current);test.eq(current.source_kind,"tool");test.is_true(current.public)
+                local legacy = assert(blocks.resolve("kickside.work.blocks:"..name))
+                local entry=assert(registry.get(legacy.id))
+                test.is_true(entry.meta.deprecated);test.eq(entry.meta.replacement,current.id)
+                local plan, err = blocks.plan({block_id=legacy.id,config={board_id="stored-board"}})
+                test.is_nil(err,tostring(err));test.not_nil(plan)
+            end
+        end)
         test.it("validates and lowers every function Block with its board picker", function()
             for _, name in ipairs({ "find", "get", "apply", "transition", "comment", "report" }) do
                 local e = assert(registry.get("kickside.work.blocks:" .. name))

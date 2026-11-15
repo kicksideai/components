@@ -5,9 +5,11 @@ local clock = require("clock")
 local consts = require("consts")
 local types = require("types")
 
+local limits = require("limits")
 local M = {}
 function M.bound(boundary: string?): (types.Deadline?, error?)
-    local deadline = clock.deadline(consts.LIMITS.command_deadline_ms)
+    local deadline, deadline_err = limits.deadline("command_deadline_ms")
+    if deadline_err or not deadline then return nil, deadline_err end
     if boundary then
         local instant, err = time.parse(time.RFC3339, boundary)
         if err or not instant then

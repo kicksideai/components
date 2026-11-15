@@ -7,6 +7,7 @@ local consts = require("consts")
 local M = {}
 
 function M.needs(item: types.Item): boolean
+    if item.life == "purged" then return false end
     local work = item.work :: types.ProcessData
     if not work.stage_visits then return true end
     local function missing(data: types.ProcessData): boolean

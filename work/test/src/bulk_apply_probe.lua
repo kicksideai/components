@@ -5,6 +5,13 @@ local time = require("time")
 local types = require("types")
 local M = {}
 function M.apply(request: types.ApplyRequest, boundary: unknown): (types.ApplyResult?, error?)
+    local capture, capture_err = sql.get("app:db")
+    if not capture then return nil, capture_err end
+    local _, create_err = capture:execute("CREATE TABLE IF NOT EXISTS app_work_bulk_chunks (board_id TEXT NOT NULL, first_key TEXT NOT NULL, n INTEGER NOT NULL)",{})
+    if create_err then capture:release();return nil,create_err end
+    local _, insert_err = capture:execute("INSERT INTO app_work_bulk_chunks VALUES ($1,$2,$3)",{request.board_id,request.key,#request.ops})
+    capture:release()
+    if insert_err then return nil,insert_err end
     local out, err = apply_ops.apply(request, boundary)
     if err or not out then return nil, err end
     local db, derr = sql.get("app:db")
@@ -24,7 +31,12 @@ function M.apply(request: types.ApplyRequest, boundary: unknown): (types.ApplyRe
         local gates, gerr = handle:query("SELECT released FROM work_bulk_page_gate WHERE board_id = $1", { request.board_id })
         handle:release()
         if gerr then return nil, gerr end
-        if gates and gates[1] and tonumber(gates[1].released) == 1 then return out, nil end
+        if gates and gates[1] and tonumber(gates[1].released) == 1 then
+            if tonumber(rows[1].interrupt)==2 then
+                return nil, errors.new({kind=errors.UNAVAILABLE,retryable=true,message="interrupted after setting change",details={code="bulk_page_interrupted"}})
+            end
+            return out, nil
+        end
         time.sleep("100ms")
     end
     return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "bulk page waits for its test release", details = { code = "bulk_page_gate_timeout" } })

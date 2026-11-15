@@ -11,6 +11,7 @@ local consts = require("consts")
 local fold_batch = require("fold_batch")
 
 local access_rows = require("access_rows")
+local limits = require("limits")
 local M = {}
 
 -- Generated rows follow every item row changed by a fold, including subtree writes.
@@ -38,7 +39,9 @@ local function write_batch(tx: sql.Transaction, board: types.Board, ids: { strin
 end
 
 function M.write(tx: sql.Transaction, dialect: string, board: types.Board, ids: { string }): error?
-    local per = dialect == sql.type.POSTGRES and 500 or 100
+    local settings,settings_err=limits.read()
+    if settings_err or not settings then return settings_err end
+    local per = settings.storage_batch
     for first = 1, #ids, per do
         local chunk: { string } = {}
         for i = first, math.min(first + per - 1, #ids) do chunk[#chunk + 1] = ids[i] end
@@ -96,9 +99,9 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
     local err = fold_batch.flush(tx, batch)
     if err then return err end
     local rows, rerr = tx:query([[SELECT item_id FROM kickside_work_item WHERE board_id = $1 AND item_id > $2 AND item_id <= $3
-        AND life <> 'purged' ORDER BY item_id LIMIT $4]], { board.board_id, range.after, range.through, consts.LIMITS.recompute_batch + 1 })
+        AND life <> 'purged' ORDER BY item_id LIMIT $4]], { board.board_id, range.after, range.through, consts.MAX_REBUILD_BATCH + 1 })
     if rerr then return rerr end
-    if #(rows or {}) > consts.LIMITS.recompute_batch then return fold_batch.corrupt("reindex range exceeds its batch limit") end
+    if #(rows or {}) > consts.MAX_REBUILD_BATCH then return fold_batch.corrupt("reindex range exceeds its batch limit") end
     local ids: { string } = {}
     for _, item in ipairs(rows or {}) do
         local decoded_1, decode_err = store.need(item, "item_id")

@@ -8,19 +8,19 @@ entries:
     title: Kickside Work
     description: Work tracking on Kickside threads - boards of typed items with per-item concurrency, change history and a projected read model.
 - name: dep.kickside.component
-  version: '*'
+  version: '>=0.3.20'
   kind: ns.dependency
   meta:
     comment: Board components, ACL checks and deletion.
   component: kickside/component
 - name: dep.kickside.core
-  version: '*'
+  version: '>=0.3.17'
   kind: ns.dependency
   meta:
     comment: Board threads, subjects, projections and retention.
   component: kickside/core
 - name: dep.kickside.jobs
-  version: '*'
+  version: '>=0.1.80'
   kind: ns.dependency
   meta:
     comment: Follow-migration jobs after schema changes.
@@ -50,6 +50,14 @@ entries:
     comment: Database for work tables; must be the Core database so projection folds share transactions.
   targets:
   - entry: kickside.work.migrations:01_work
+    path: .meta.target_db
+  - entry: kickside.work.migrations:03_hardening
+    path: .meta.target_db
+  - entry: kickside.work.migrations:04_bounded_retention
+    path: .meta.target_db
+  - entry: kickside.work.migrations:05_cleanup_seeks
+    path: .meta.target_db
+  - entry: kickside.work.migrations:06_age_seeks
     path: .meta.target_db
   - entry: kickside.work.migrations:02_retire_storage
     path: .meta.target_db
@@ -179,5 +187,5 @@ entries:
     types: kickside.work:types
 - name: dep.kickside.automation
   kind: ns.dependency
-  version: '*'
+  version: '>=0.2.27'
   component: kickside/automation

@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: round6_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work}
+  source: file://../round6_test.lua
+  method: run
+  imports:
+    operations: app:operation_steps
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    observer: app:cleanup_observer
+    durations: kickside.work.domain:process_time
+    budget: kickside.work.read:budget
+    job_deadline: kickside.work.jobs:deadline
+    clock: kickside.work.domain:clock

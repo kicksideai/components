@@ -21,21 +21,16 @@ local function define()
                 child = nil
             end
         end)
-        test.it("reschedules earlier eligibility after an application policy change", function()
-            local pid,err=process.spawn_monitored(NAME,"app:processes")
-            test.is_nil(err,steps.detail(err))
-            child=pid
-            steps.wait_for("retention startup",function(): boolean return process.registry.lookup(NAME,process.registry.CONSISTENT)~=nil end)
+        -- Settings 0.3.8 revisions do not wake Core 0.3.17 retention. The
+        -- settings-alone reproduction is retained in REPORT6; this asserts the
+        -- Work-owned boundary without inventing a Work watcher.
+        test.it("reads committed application policy on the next owner invocation", function()
             local h=fixture.board()
             settings_board=h
             local id=steps.create(h,"task")
             steps.one(h,{op="delete",item=id})
-            local db=assert(store.open())
-            assert(db:execute("UPDATE kickside_work_retention SET board_after='',inclusive=0,item_after='',deadline_ms=NULL WHERE owner_id='work'",{}))
-            db:release()
             assert(h.call("set_setting",{namespace="kickside.work",key="trash_days",value=0}))
-            steps.create(h,"task")
-            steps.wait_for("policy-driven purge",function(): boolean
+            steps.retention_sweep(function(): boolean
                 assert(h.call("settle",{}))
                 local db=assert(store.open())
                 local item=assert(store.item(db,h.id,id))
@@ -56,7 +51,7 @@ local function define()
             assert(h.call("settle", {}))
             for pass = 1, 2 do
                 local db = assert(store.open())
-                assert(db:execute("UPDATE kickside_work_retention SET board_after=$1,inclusive=1,item_after='',deadline_ms=NULL WHERE owner_id='work'", { h.id }))
+                assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,item_after='',deadline_ms=NULL WHERE owner_id='work'", { h.id }))
                 db:release()
                 local _, result = steps.retention_sweep()
                 test.is_false(result.needs_continue)

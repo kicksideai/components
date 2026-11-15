@@ -7,11 +7,13 @@ local clock = require("clock")
 local domain = require("domain")
 local commands = require("commands")
 local consts = require("consts")
+local limits = require("limits")
 local M = {}
 
 -- A phase has one receipt, one event order and one append boundary.
 function M.append(board_id: string, key: string, writes: { commands.Write }, result: domain.JsonObject, boundary: domain.Deadline?): (domain.JsonObject?, error?)
-    local until_at = clock.deadline(consts.LIMITS.command_deadline_ms)
+    local until_at, deadline_err = limits.deadline("command_deadline_ms")
+    if deadline_err or not until_at then return nil, deadline_err end
     if boundary and boundary.ns < until_at.ns then until_at = boundary end
     local head, cerr = receipts.covered(board_id, until_at)
     if cerr then return nil, cerr end

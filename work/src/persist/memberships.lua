@@ -40,7 +40,7 @@ function M.prepare(db: storage.Executor, board: domain.Board, where: unknown, pr
     local pinned = false
     for _, process in ipairs(board.compiled.processes) do pinned = pinned or process.migration == "pin" end
     if pinned then
-        local generations, err = db:query("SELECT DISTINCT process_generation FROM kickside_work_item WHERE board_id=$1 LIMIT " .. (limit + 1), { board.board_id })
+        local generations, err = db:query("SELECT DISTINCT process_generation FROM kickside_work_item WHERE board_id=$1 AND life<>'purged' LIMIT " .. (limit + 1), { board.board_id })
         if err then return err end
         if #(generations or {}) > limit then return exceeded() end
         for _, row in ipairs(generations or {}) do

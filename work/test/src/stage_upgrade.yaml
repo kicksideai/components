@@ -9,6 +9,8 @@ entries:
   method: run
   modules: [funcs, json]
   imports:
+    retention: kickside.work.retention:rows
+    policy: kickside.work.domain:policy
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps

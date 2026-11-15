@@ -12,6 +12,7 @@ entries:
     comment: Multi-row INSERT and DELETE in chunks under the bind-parameter limits of SQLite and PostgreSQL.
   source: file://bulk.lua
   imports:
+    limits: kickside.work.settings:limits
     storage: kickside.work.persist:types
     types: kickside.work:types
 - name: threads
@@ -24,6 +25,7 @@ entries:
   - security
   - json
   imports:
+    limits: kickside.work.settings:limits
     store: kickside.work.persist:store
     types: kickside.work:types
 - name: generated
@@ -44,8 +46,10 @@ entries:
   source: file://store.lua
   modules:
   - sql
+  - time
   - registry
   imports:
+    limits: kickside.work.settings:limits
     consts: kickside.work:consts
     schema: kickside.work.domain:schema
     values: kickside.work.domain:values
@@ -61,6 +65,7 @@ entries:
   modules:
   - sql
   imports:
+    limits: kickside.work.settings:limits
     bulk: kickside.work.persist:bulk
     values: kickside.work.domain:values
     types: kickside.work:types
@@ -112,6 +117,7 @@ entries:
   - json
   - sql
   imports:
+    rules: kickside.work.domain:access_rules
     fold_rank: kickside.work.persist:fold_rank
     fold_process: kickside.work.persist:fold_process
     consts: kickside.work:consts
@@ -173,6 +179,7 @@ entries:
   method: after_commit
   modules:
   - funcs
+  - security
   imports:
     component: kickside.component:component
     store: kickside.work.persist:store
@@ -188,8 +195,10 @@ entries:
   method: publish
   modules:
   - funcs
+  - security
   security:
     policies:
+    - kickside.work.security:board_kind_update
     - kickside.work.security:board_public_meta
   imports:
     component: kickside.component:component
@@ -225,6 +234,7 @@ entries:
   - json
   - sql
   imports:
+    limits: kickside.work.settings:limits
     bulk: kickside.work.persist:bulk
     generated: kickside.work.persist:generated
     tables: kickside.work.domain:layout
@@ -240,6 +250,7 @@ entries:
   modules:
   - sql
   imports:
+    limits: kickside.work.settings:limits
     local_types: kickside.work.persist:types
     working_rows: kickside.work.persist:working_rows
     store: kickside.work.persist:store
@@ -268,6 +279,7 @@ entries:
   modules:
   - sql
   imports:
+    limits: kickside.work.settings:limits
     local_types: kickside.work.persist:types
     store: kickside.work.persist:store
     generated: kickside.work.persist:generated
@@ -280,6 +292,7 @@ entries:
   - security
   - sql
   imports:
+    limits: kickside.work.settings:limits
     guard: kickside.work.command:guard
     store: kickside.work.persist:store
     domain: kickside.work:types
@@ -295,6 +308,7 @@ entries:
   - sql
   - funcs
   imports:
+    clock: kickside.work.domain:clock
     store: kickside.work.persist:store
     domain: kickside.work:types
     storage: kickside.work.persist:types
@@ -405,12 +419,15 @@ entries:
     types: kickside.work.command:types
     expiry: kickside.work.persist:operation_expiry
   modules:
+  - funcs
   - sql
   - uuid
 - name: operation_expiry
   kind: library.lua
   source: file://operation_expiry.lua
   imports:
+    types: kickside.work:types
+    threads: kickside.work.persist:threads
     policy: kickside.work.domain:policy
     clock: kickside.work.domain:clock
     store: kickside.work.persist:store
@@ -419,6 +436,7 @@ entries:
   kind: library.lua
   source: file://fold_moves.lua
   imports:
+    rules: kickside.work.domain:access_rules
     rollup_rows: kickside.work.persist:rollup_rows
     rollups: kickside.work.persist:fold_rollup
     store: kickside.work.persist:store

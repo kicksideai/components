@@ -10,6 +10,7 @@ entries:
   source: file://board_slot.lua
   method: run
   imports:
+    limits: kickside.work.settings:limits
     config: kickside.work.jobs:migrate_config
     jobs: kickside.core.jobs:jobs
     component: kickside.component:component
@@ -34,6 +35,7 @@ entries:
   - time
   - security
   imports:
+    limits: kickside.work.settings:limits
     process: kickside.work.domain:process
     flow: kickside.work.command:flow
     prepare_context: kickside.work.command:prepare_context
@@ -62,6 +64,7 @@ entries:
   source: file://board_slot.lua
   method: run
   imports:
+    limits: kickside.work.settings:limits
     config: kickside.work.jobs:rebalance_config
     jobs: kickside.core.jobs:jobs
     component: kickside.component:component
@@ -86,6 +89,7 @@ entries:
   - time
   - security
   imports:
+    limits: kickside.work.settings:limits
     component: kickside.component:component
     consts: kickside.work:consts
     store: kickside.work.persist:store
@@ -108,6 +112,7 @@ entries:
   source: file://board_slot.lua
   method: run
   imports:
+    limits: kickside.work.settings:limits
     config: kickside.work.jobs:recompute_config
     jobs: kickside.core.jobs:jobs
     component: kickside.component:component
@@ -131,6 +136,7 @@ entries:
   - time
   - security
   imports:
+    limits: kickside.work.settings:limits
     config: kickside.work.jobs:recompute_config
     component: kickside.component:component
     consts: kickside.work:consts
@@ -154,6 +160,7 @@ entries:
   source: file://board_slot.lua
   method: run
   imports:
+    limits: kickside.work.settings:limits
     config: kickside.work.jobs:reindex_config
     jobs: kickside.core.jobs:jobs
     component: kickside.component:component
@@ -177,6 +184,7 @@ entries:
   - time
   - security
   imports:
+    limits: kickside.work.settings:limits
     config: kickside.work.jobs:reindex_config
     component: kickside.component:component
     consts: kickside.work:consts
@@ -209,6 +217,7 @@ entries:
   modules:
   - time
   imports:
+    limits: kickside.work.settings:limits
     clock: kickside.work.domain:clock
     consts: kickside.work:consts
     types: kickside.work.jobs:types
@@ -298,6 +307,7 @@ entries:
   kind: library.lua
   source: file://bulk.lua
   imports:
+    limits: kickside.work.settings:limits
     apply_ops: kickside.work.command:apply_ops
     rows: kickside.work.persist:operation_rows
     events: kickside.work.command:operation_events
@@ -322,6 +332,7 @@ entries:
   meta:
     private: true
   imports: &id001
+    limits: kickside.work.settings:limits
     jobs: kickside.core.jobs:jobs
     identity: kickside.execution:execution_identity
     rows: kickside.work.persist:operation_rows
@@ -356,6 +367,7 @@ entries:
   imports: *id001
   security:
     policies:
+    - kickside.work.security:board_kind_update
     - kickside.work.security:sync_call
     - kickside.work.security:operations_output_publish
     - kickside.work.security:apply_output_publish
@@ -368,6 +380,7 @@ entries:
   - time
   - security
   imports:
+    limits: kickside.work.settings:limits
     process: kickside.work.domain:process
     flow: kickside.work.command:flow
     prepare_context: kickside.work.command:prepare_context
@@ -391,6 +404,7 @@ entries:
   - time
   - security
   imports:
+    limits: kickside.work.settings:limits
     component: kickside.component:component
     consts: kickside.work:consts
     store: kickside.work.persist:store
@@ -427,6 +441,7 @@ entries:
   modules:
   - registry
   imports:
+    limits: kickside.work.settings:limits
     clock: kickside.work.domain:clock
     guard: kickside.work.command:guard
     commands: kickside.work.command:types
@@ -447,6 +462,7 @@ entries:
   source: file://board_slot.lua
   method: run
   imports:
+    limits: kickside.work.settings:limits
     config: kickside.work.jobs:plugins_config
     jobs: kickside.core.jobs:jobs
     component: kickside.component:component
@@ -462,3 +478,39 @@ entries:
 - name: plugins_config
   kind: library.lua
   source: file://plugins_config.lua
+
+- name: recovery
+  kind: function.lua
+  meta:
+    private: true
+    comment: Recovers predecessor process deadlines in bounded resumable batches.
+  source: file://board_slot.lua
+  method: run
+  imports:
+    limits: kickside.work.settings:limits
+    config: kickside.work.jobs:recovery_config
+    jobs: kickside.core.jobs:jobs
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    clock: kickside.work.domain:clock
+    job_rows: kickside.work.persist:job_rows
+    failures: kickside.work.jobs:failures
+    types: kickside.work.jobs:types
+    domain: kickside.work:types
+  security:
+    policies:
+    - kickside.work.security:recovery_defer
+- name: recovery_config
+  kind: library.lua
+  source: file://recovery_config.lua
+- name: recovery_batch
+  kind: function.lua
+  source: file://recovery.lua
+  method: batch
+  imports:
+    limits: kickside.work.settings:limits
+    store: kickside.work.persist:store
+    process: kickside.work.domain:process
+    fold_process: kickside.work.persist:fold_process
+    types: kickside.work.jobs:types
+    domain: kickside.work:types

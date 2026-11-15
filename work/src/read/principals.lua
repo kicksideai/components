@@ -61,13 +61,16 @@ function M.resolve_principal(input: unknown): (types.PrincipalResult?, error?)
     for _, id in ipairs(groups) do
         if type(id) ~= "string" or id == "" then return nil, unavailable("holder group is malformed") end
         local group, err = security.named_scope(id)
-        if err or not group then return nil, unavailable("holder group " .. id .. " cannot resolve") end
+        if err then return nil, err end
+        if not group then return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = false,
+            message = "holder group " .. id .. " is absent", details = { code = "access_group_missing", group = id } }) end
     end
     if (input :: { validate_only: boolean? }).validate_only == true then return true, nil end
     local actor = security.actor()
     if not actor then return nil, unavailable("caller principal is unavailable") end
     local principal, perr = identity.principal_of_key(actor:id())
-    if perr or not principal then return nil, unavailable("caller principal cannot resolve") end
+    if perr then return nil, perr :: error end
+    if not principal then return nil, unavailable("caller principal cannot resolve") end
     local caller: domain.AccessCaller = { principal = principal :: domain.PrincipalDecl, groups = {}, admin = false }
     if principal.kind == "group" then caller.groups[principal.id] = true end
     if principal.kind == "user" then

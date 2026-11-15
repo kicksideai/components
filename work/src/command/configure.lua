@@ -12,6 +12,7 @@ local consts = require("consts")
 local domain = require("domain")
 local access = require("access")
 local types = require("types")
+local limits = require("limits")
 local M = {}
 function M.configure_plugin(request: types.ConfigureRequest): (types.ConfigureResult?, error?)
     local trace_context, trace_err = receipts.trace(request.trace_context, "work.configure")
@@ -37,6 +38,8 @@ function M.configure_plugin(request: types.ConfigureRequest): (types.ConfigureRe
         return nil, errors.new({ kind = errors.NOT_FOUND, message = "plugin is inactive", details = { code = "plugin_inactive", plugin = request.plugin } })
     end, { admitted = { [request.board_id] = true }, holders = {} })
     if snapshot_err or not snapshot then return nil, snapshot_err end
+    local deadline, deadline_err = limits.deadline("command_deadline_ms")
+    if deadline_err or not deadline then return nil, deadline_err end
     local selected = snapshot.plugin
     local client, oerr = threads.open()
     if oerr or not client then return nil, oerr end
@@ -45,7 +48,7 @@ function M.configure_plugin(request: types.ConfigureRequest): (types.ConfigureRe
             actor = guard.actor_id(), at = guard.stamp_now(), source = "api" } }
     local seq, err = append.writes(client, request.board_id, { { group = event.subject, events = { event }, ops = {}, expect_subject = "schema", expect_version = snapshot.schema_version, caller_expect = true } })
     if err then return nil, err end
-    local as_of, perr = receipts.covered(request.board_id, clock.deadline(consts.LIMITS.command_deadline_ms))
+    local as_of, perr = receipts.covered(request.board_id, deadline)
     if perr then return nil, perr end
     return { attachment_id = selected.attachment_id, as_of = as_of, seq = seq }, nil
 end

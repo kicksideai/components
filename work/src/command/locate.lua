@@ -12,6 +12,8 @@ local tables = require("tables")
 local access_rows = require("access_rows")
 local principals = require("principals")
 local reads = require("reads")
+local job_rows = require("job_rows")
+local sql = require("sql")
 local M = {}
 
 -- counts reads one aggregate statement for the caller's bounded board page.
@@ -58,8 +60,25 @@ function M.counts(out: { types.BoardSummary }): error?
     local statement = table.concat(statements, " UNION ALL "):gsub("%?", function(): string n = n + 1; return "$" .. n end)
     db, err = store.open()
     if not db then return err end
-    local counted, cerr = db:query(statement, args)
-    db:release()
+    local tx, terr = db:begin()
+    if terr or not tx then db:release(); return terr end
+    local function counted_page(): ({ domain.Row }?, error?)
+        if dialect == sql.type.POSTGRES then
+            local serr = store.read_snapshot(tx)
+            if serr then return nil, serr end
+        end
+        for _, board in pairs(boards) do
+            local used: { [string]: boolean } = {}
+            if board.compiled.visibility then used[board.compiled.visibility.field] = true end
+            local rebuilding, rebuild_err = job_rows.rebuilding(tx, board, used)
+            if rebuild_err then return nil, rebuild_err end
+            if rebuilding then return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
+                message = "discovery counts await visibility indexes", details = { code = "projection_pending" } }) end
+        end
+        return tx:query(statement, args)
+    end
+    local counted, cerr = counted_page()
+    tx:rollback(); db:release()
     if cerr then return cerr end
     for _, row in ipairs(counted or {}) do
         local id, ierr = store.need(row, "board_id")

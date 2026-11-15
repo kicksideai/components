@@ -2,8 +2,9 @@
 local types = require("types")
 local M = {}
 
-function M.error(status: string, findings: { types.Finding }?): error?
+function M.error(status: string, findings: { types.Finding }?, native: types.CommandError?): error?
     if status == "applied" or status == "unchanged" then return nil end
+    if native then return errors.new({ kind = native.kind, message = native.message, retryable = native.retryable, details = native.details }) end
     local kind = status == "denied" and errors.PERMISSION_DENIED or status == "conflict" and errors.CONFLICT
         or status == "unavailable" and errors.UNAVAILABLE or errors.INVALID
     local finding = findings and findings[1]

@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: round8_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+  source: file://../round8_test.lua
+  method: run
+  modules:
+  - time
+  - sql
+  security:
+    policies:
+    - kickside.work.security:subject_retirement
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    limits: kickside.work.settings:limits
+    threads: kickside.work.persist:threads
+    rows: kickside.work.retention:rows
+    defaults: kickside.work.settings:defaults
+    clock: kickside.work.domain:clock
+    probe: app:round8_probe
+    plugin_batch: app:round8_plugin_batch
+- name: round8_probe
+  kind: library.lua
+  source: file://../round8_probe.lua
+  imports:
+    limits: kickside.work.settings:limits
+- name: round8_plugin_batch
+  kind: library.lua
+  source: file://../round8_plugin_batch.lua
+  modules:
+  - json
+  imports:
+    limits: app:round8_limits
+    local_types: kickside.work.extensions:types
+    threads: app:round8_threads
+    manifests: app:round8_manifests
+    attachments: app:round8_attachments
+    store: app:round8_store
+    plugin_rows: app:round8_plugin_rows
+    plugins: app:round8_plugins
+    jobs: kickside.core.jobs:jobs
+    consts: kickside.work:consts
+    types: kickside.work:types
+    component: app:round8_component
+    values: kickside.work.domain:values
+- name: round8_threads
+  kind: library.lua
+  source: 'local probe=require("probe"); return probe :: any'
+  imports:
+    probe: app:round8_probe
+- name: round8_manifests
+  kind: library.lua
+  source: 'local probe=require("probe"); return probe :: any'
+  imports:
+    probe: app:round8_probe
+- name: round8_attachments
+  kind: library.lua
+  source: 'local probe=require("probe"); return probe :: any'
+  imports:
+    probe: app:round8_probe
+- name: round8_store
+  kind: library.lua
+  source: 'local probe=require("probe"); return probe :: any'
+  imports:
+    probe: app:round8_probe
+- name: round8_plugin_rows
+  kind: library.lua
+  source: 'local probe=require("probe"); return probe :: any'
+  imports:
+    probe: app:round8_probe
+- name: round8_plugins
+  kind: library.lua
+  source: 'local probe=require("probe"); return probe :: any'
+  imports:
+    probe: app:round8_probe
+- name: round8_component
+  kind: library.lua
+  source: 'local probe=require("probe"); return probe :: any'
+  imports:
+    probe: app:round8_probe
+- name: round8_limits
+  kind: library.lua
+  source: 'local probe=require("probe"); return probe :: any'
+  imports:
+    probe: app:round8_probe
+- name: round8_read_budget
+  kind: function.lua
+  source: file://../round8_read_budget.lua
+  method: run
+  imports:
+    access: kickside.work.read:access
+    types: kickside.work.read:types

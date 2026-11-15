@@ -274,6 +274,16 @@ function M.compile(prev: types.Compiled?, decl: types.Declaration, generation: i
     end
     local effective_policy, policy_err = policy.effective(defaults or policy.DEFAULTS, decl.policy)
     if policy_err or not effective_policy then return nil, policy_err end
+    local states: { [string]: boolean } = {}
+    for _, process in ipairs(processes) do
+        for _, state in ipairs(process.states) do states[state.id] = true end
+    end
+    for state in pairs(effective_policy.wip or {}) do
+        if not states[state] then
+            return nil, errors.new({ kind = errors.INVALID, message = "WIP policy names unknown state " .. state,
+                details = { code = "wip_state_unknown", state = state } })
+        end
+    end
     local compiled: types.Compiled = { visibility = decl.visibility, key_prefix = decl.key_prefix :: string, fields = fields, item_types = item_types, relation_types = relations,
         processes = processes, plugins = chosen, scopes = decl.scopes or {}, policy = effective_policy, policy_overrides = decl.policy or {}, next_field_id = next_id, counter_field = counter }
     local seam_err = seams.validate(compiled)

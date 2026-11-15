@@ -3,6 +3,7 @@ local storage = require("storage")
 local sql = require("sql")
 local json = require("json")
 local consts = require("consts")
+local rules = require("rules")
 local rank = require("rank")
 local store = require("store")
 local types = require("types")
@@ -336,7 +337,8 @@ function M.apply_purged(tx: storage.Executor, board: types.Board, event: types.F
     if err or not item then return err end
     if item.life ~= "trashed" then return fold_batch.corrupt("purge names an item outside trash") end
     fold_batch.held(batch, item.document, -1)
-    item.document = {}
+    item.document = rules.retained(board, item.document)
+    item.work, item.findings = nil, nil
     item.life = "purged"
     item.life_at = event.body.at
     fold_batch.touch(batch, item, event.seq)
@@ -362,7 +364,7 @@ local function apply_comment(tx: storage.Executor, board: types.Board, event: ty
         err = fold_batch.exec(tx, "UPDATE kickside_work_comment SET body = $1, mentions = $2, version = version + 1, edited_at = $3 WHERE board_id = $4 AND comment_id = $5",
             { body.body or "", json.encode(body.mentions or {}), body.at or "", board.board_id, id })
     else
-        err = fold_batch.exec(tx, "UPDATE kickside_work_comment SET deleted = 1, version = version + 1, edited_at = $1 WHERE board_id = $2 AND comment_id = $3",
+        err = fold_batch.exec(tx, "UPDATE kickside_work_comment SET deleted = 1, body = '', mentions = '[]', version = version + 1, edited_at = $1 WHERE board_id = $2 AND comment_id = $3",
             { body.at or "", board.board_id, id })
     end
     if err then return errors.wrap(err, "comment write failed") end
