@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: pim-harness
+description: Standalone runnable harness that boots kickside/pim and runs its co-located *_test.lua suites.

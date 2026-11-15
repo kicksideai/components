@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.migrations
+
+entries:
+  - name: 01_catalog
+    kind: function.lua
+    meta:
+      type: migration
+      tags: [pim, catalog]
+      comment: Fixed PIM tables - catalog, schema generations, attributes, terms, products, references and unique values.
+      timestamp: "2026-11-03T00:00:01Z"
+    source: file://01_catalog.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

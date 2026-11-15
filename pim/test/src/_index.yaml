@@ -1,0 +1,2422 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app
+
+# Harness for kickside/pim on the real Core stack: components, threads,
+# projections and jobs, on SQLite by default and PostgreSQL with --profile postgres.
+
+entries:
+  - name: clock_precision_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim }
+    source: file://clock_precision_test.lua
+    method: run
+    modules: [time]
+    imports:
+      types: kickside.pim:types
+      store: kickside.pim.persist:store
+      retention_rows: kickside.pim.persist:retention_rows
+      consts: kickside.pim:consts
+      test: wippy.test:test
+      clock: kickside.pim:clock
+
+  - name: definition
+    kind: ns.definition
+    meta: { title: Kickside PIM Test Harness }
+
+  - name: db
+    kind: db.sql.sqlite
+    foreign_keys: true
+    meta:
+      comment: Test database; the postgres profile replaces it.
+    file: ./.wippy/pim-test.sqlite
+
+  - name: env_storage
+    kind: env.storage.file
+    meta:
+      type: envstorage
+    file_path: ./.wippy/test.env
+    auto_create: true
+
+  - name: processes
+    kind: process.host
+    lifecycle:
+      auto_start: true
+
+  - name: gateway
+    kind: http.service
+    addr: :19319
+    lifecycle:
+      auto_start: true
+
+  - name: api
+    kind: http.router
+    meta:
+      server: gateway
+    middleware:
+      - token_auth
+    post_middleware:
+      - endpoint_firewall
+    options:
+      token_store: kickside.users.security:tokens
+    prefix: /api
+
+  - name: user
+    kind: security.policy
+    meta:
+      comment: Permissive scope for harness actors.
+    groups:
+      - app.security:pim_test
+    policy:
+      resources: '*'
+      actions: '*'
+      effect: allow
+
+  - name: plugin_runtime
+    kind: security.policy
+    meta:
+      comment: What a plugin module grants its users - reading its own declarations; stands for the plugin's module_runtime.
+    groups:
+      - kickside.security.groups:members
+    policy:
+      resources:
+        - app:stock_scope
+        - app:cost_scope
+        - app:ghost_scope
+        - app:weight_check
+        - app:actor_check
+        - app:location_target
+        - app:offline_target
+      actions: [registry.get, funcs.call]
+      effect: allow
+
+  - name: caller_only
+    kind: security.policy
+    meta:
+      comment: Lets a session run the harness caller function and nothing else; the application baseline carries the session's own actor and scope into the call.
+    policy:
+      resources: ['app:pim_call', 'app:direct_call']
+      actions: ['funcs.call']
+      effect: allow
+
+  - name: actors
+    kind: library.lua
+    meta:
+    source: file://actors.lua
+    modules: [sql, security]
+
+  - name: fixture
+    kind: library.lua
+    meta:
+    source: file://fixture.lua
+    modules: [security, uuid, funcs, json]
+    imports:
+      types: kickside.pim:types
+      store: kickside.pim.persist:store
+      retention_rows: kickside.pim.persist:retention_rows
+      actors: app:actors
+
+  - name: schema_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Declaration compile, ids, ownership, layout and resolution. }
+    source: file://schema_test.lua
+    method: run
+    modules: [json]
+    imports:
+      types: kickside.pim:types
+      schema_fixture: app:schema_fixture
+      test: wippy.test:test
+      schema: kickside.pim.schema:compile
+      changes: kickside.pim.schema:classify
+      declaration: kickside.pim.schema:merge
+
+  - name: catalog_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Command path, projection, replay, uniqueness and queries on the real thread stack. }
+    source: file://catalog_test.lua
+    method: run
+    modules: [json, time, channel]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      materializer: kickside.pim.persist:materializer
+      types: kickside.pim:types
+
+  - name: history_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Change history rows and the audit policy across settings, catalog policy and sources. }
+    source: file://history_test.lua
+    method: run
+    modules: [funcs, registry]
+    imports:
+      steps: app:steps
+      test: wippy.test:test
+      fixture: app:fixture
+      types: kickside.pim:types
+
+  - name: trash_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Trash, restore, purge, tombstones and change-history retention. }
+    source: file://trash_test.lua
+    method: run
+    imports:
+      trash_fixture: app:trash_fixture
+      steps: app:steps
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: projection_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Fold budget, catalog counters, descendant stamping and the rebuild slot. }
+    source: file://projection_test.lua
+    method: run
+    modules: [funcs, uuid, time, json]
+    imports:
+      catalog_fixture: app:catalog_fixture
+      narrow: kickside.pim:narrow
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      materializer: kickside.pim.persist:materializer
+      types: kickside.pim:types
+      jobs: kickside.core.jobs:jobs
+
+  - name: feeds_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Changes and publications feeds, release, schema, link, hierarchy and explain reads. }
+    source: file://feeds_test.lua
+    method: run
+    modules: [time]
+    imports:
+      steps: app:steps
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: location_target
+    kind: contract.binding
+    meta:
+      comment: Harness link target - locations a plugin owns, answered from its own table.
+      kind: app.location
+      title: Location
+    contracts:
+      - contract: kickside.pim:link_target
+        methods:
+          resolve: app:location_resolve
+          describe: app:location_describe
+
+  - name: offline_target
+    kind: contract.binding
+    meta:
+      comment: Harness link target whose owner is offline.
+      kind: app.offline
+      title: Offline
+    contracts:
+      - contract: kickside.pim:link_target
+        methods:
+          resolve: app:location_offline
+          describe: app:location_offline
+
+  - name: location_resolve
+    kind: function.lua
+    meta: { comment: Harness link target resolve. }
+    source: file://link_targets.lua
+    method: resolve
+    modules: [sql, security]
+
+  - name: location_describe
+    kind: function.lua
+    meta: { comment: Harness link target describe. }
+    source: file://link_targets.lua
+    method: describe
+    modules: [sql, security]
+
+  - name: location_offline
+    kind: function.lua
+    meta: { comment: Harness link target that fails. }
+    source: file://link_targets.lua
+    method: offline
+    modules: [sql, security]
+
+  - name: merge_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Term merge - inline rewrite, refusals, and the job beyond 500 products. }
+    source: file://merge_test.lua
+    method: run
+    modules: [sql, json, time, funcs]
+    imports:
+      merge_rows: kickside.pim.persist:merge_rows
+      clock: kickside.pim:clock
+      test: wippy.test:test
+      fixture: app:fixture
+      scoped: app:scoped
+      steps: app:steps
+      types: kickside.pim:types
+      store: kickside.pim.persist:store
+
+  - name: enforce_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Enforced checks - compile rule, rejection before state changes, level ownership, exemptions, proposals. }
+    source: file://enforce_test.lua
+    method: run
+    modules: [json]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: links_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Link kinds - bound targets, one resolve per kind per command, index, release labels, degradation. }
+    source: file://links_test.lua
+    method: run
+    modules: [sql, json]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: realtime_notify
+    kind: function.lua
+    meta: { comment: Harness realtime notify recording each delivery. }
+    source: file://realtime_fake.lua
+    method: notify
+    modules: [sql]
+
+  - name: realtime_broadcast
+    kind: function.lua
+    meta: { comment: Harness realtime broadcast; catalogs only notify their readers. }
+    source: file://realtime_fake.lua
+    method: broadcast
+    modules: [sql]
+
+  - name: realtime_binding
+    kind: contract.binding
+    meta:
+      comment: Harness realtime implementation recording catalog notifications.
+    contracts:
+      - contract: kickside.contract:realtime
+        default: true
+        methods:
+          notify: app:realtime_notify
+          broadcast: app:realtime_broadcast
+
+  - name: steps
+    kind: library.lua
+    meta: { comment: Typed shortcuts for one-item commands and product reads in tests. }
+    source: file://steps.lua
+    modules: [time]
+    imports:
+      types: kickside.pim:types
+      fixture: app:fixture
+
+  - name: context_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Contexts and fallback chains through writes, reads, explain, snapshots and indexes. }
+    source: file://context_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: ownership_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Ownership levels, variation axes, hierarchy, moves and the descendant limit. }
+    source: file://ownership_test.lua
+    method: run
+    modules: [time]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: unique_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: "SKU and unique values - case, length, in-command claims, keys and reuse." }
+    source: file://unique_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: version_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: "Expect versions, ordered sources, source rules, statuses and command modes." }
+    source: file://version_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: idempotency_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: "Idempotency keys - replay, conflicts, namespaces and stored results." }
+    source: file://idempotency_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      types: kickside.pim:types
+
+  - name: terms_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: "Vocabulary terms - codes, labels, hierarchy, retirement and use in values." }
+    source: file://terms_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+      store: kickside.pim.persist:store
+
+  - name: dep.test
+    kind: ns.dependency
+    version: "*"
+    component: wippy/test
+
+  - name: dep.migration
+    kind: ns.dependency
+    version: "*"
+    component: wippy/migration
+    parameters:
+      - { name: wippy.migration:app_db, value: app:db }
+
+  - name: dep.users
+    kind: ns.dependency
+    version: "*"
+    component: kickside/users
+    parameters:
+      - { name: kickside.users:target_db, value: app:db }
+      - { name: kickside.users:env_storage, value: app:env_storage }
+      - { name: kickside.users:api_router, value: app:api }
+      - { name: kickside.users:public_router, value: app:api }
+      - { name: kickside.users:ui_server, value: app:gateway }
+      - { name: kickside.users:user_security_scope, value: app.security:pim_test }
+      - { name: kickside.users:admin_security_scope, value: app.security:pim_test }
+      - { name: kickside.users:login_role_resource, value: app:user }
+
+  - name: dep.settings
+    kind: ns.dependency
+    version: "*"
+    component: kickside/settings
+    parameters:
+      - { name: kickside.settings:target_db, value: app:db }
+      - { name: kickside.settings:api_router, value: app:api }
+      - { name: kickside.settings:ui_server, value: app:gateway }
+
+  - name: dep.component
+    kind: ns.dependency
+    version: "*"
+    component: kickside/component
+    parameters:
+      - { name: kickside.component:target_db, value: app:db }
+      - { name: kickside.component:api_router, value: app:api }
+      - { name: kickside.component:lifecycle_impl, value: kickside.core.lifecycle:component_lifecycle_impl }
+
+  - name: dep.jobs
+    kind: ns.dependency
+    version: "*"
+    component: kickside/jobs
+    parameters:
+      - { name: kickside.core.jobs:target_db, value: app:db }
+      - { name: kickside.core.jobs:process_host, value: app:processes }
+
+  - name: dep.core
+    kind: ns.dependency
+    version: "*"
+    component: kickside/core
+    parameters:
+      - { name: kickside.core:target_db, value: app:db }
+      - { name: kickside.core.lifecycle:process_host, value: app:processes }
+      - { name: kickside.core.threads:api_router, value: app:api }
+      - { name: kickside.core.threads:process_host, value: app:processes }
+      - { name: kickside.core.projections:api_router, value: app:api }
+      - { name: kickside.core.retention:api_router, value: app:api }
+      - { name: kickside.core.retention:process_host, value: app:processes }
+      - name: kickside.core.lifecycle:user_lifecycle_grant
+        value: { subject_id: app:user, subject_type: group, access_mask: 2 }
+
+  - name: dep.contract
+    kind: ns.dependency
+    version: "*"
+    component: kickside/contract
+
+  - name: dep.security
+    kind: ns.dependency
+    version: "*"
+    component: kickside/security
+    parameters:
+      - { name: kickside.security:target_db, value: app:db }
+      - { name: kickside.security:api_router, value: app:api }
+      - { name: kickside.security:ui_server, value: app:gateway }
+      - { name: kickside.security:process_host, value: app:processes }
+
+  - name: dep.module
+    kind: ns.dependency
+    version: "*"
+    component: kickside/pim
+    parameters:
+      - { name: kickside.pim:target_db, value: app:db }
+      - { name: kickside.pim:api_router, value: app:api }
+
+  - name: pim_call
+    kind: function.lua
+    meta:
+    source: file://pim_call.lua
+    method: run
+    modules: [contract, security, funcs]
+    imports:
+      conflict_fixture: app:conflict_fixture
+      conflict_writer: app:conflict_writer_probe
+      merge_fixture: app:merge_fixture
+      component: kickside.component:component
+
+  - name: dep.blocks
+    kind: ns.dependency
+    version: "*"
+    component: kickside/blocks
+    parameters:
+      - { name: kickside.blocks:process_host, value: app:processes }
+      - { name: wippy.session:api_router, value: app:api }
+      - { name: wippy.session:env_storage, value: app:env_storage }
+      - { name: wippy.session:delegation_func_id, value: userspace.dataflow.session:delegate }
+
+  - name: dep.bootloader
+    kind: ns.dependency
+    version: "*"
+    component: wippy/bootloader
+    parameters:
+      - { name: wippy.bootloader:application_host, value: app:processes }
+      - { name: wippy.bootloader:env_storage, value: app:env_storage }
+
+  - name: dep.views
+    kind: ns.dependency
+    version: "*"
+    component: wippy/views
+    parameters:
+      - { name: wippy.views:api_router, value: app:api }
+      - { name: wippy.views:env_storage, value: app:env_storage }
+
+  - name: schema_change_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Schema evolution - merge, rename, removal, refusal, rebuild and migration. }
+    source: file://schema_change_test.lua
+    method: run
+    modules: [json]
+    imports:
+      catalog_fixture: app:catalog_fixture
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      steps: app:steps
+
+  - name: release_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Readiness, release, publication state and the publications feed. }
+    source: file://release_test.lua
+    method: run
+    modules: [json]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+
+  - name: stock_scope
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - stock rows per location.
+      table: pim_test_stock
+      catalog_column: catalog_id
+      product_column: product_id
+      access: read
+      filters:
+        location: { column: location_id, type: text, ops: [eq, in] }
+        available: { column: available, type: integer, ops: [gt, gte, eq] }
+
+  - name: cost_scope
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - restricted to catalog admins.
+      table: pim_test_stock
+      catalog_column: catalog_id
+      product_column: product_id
+      access: admin
+      filters:
+        available: { column: available, type: integer, ops: [gt] }
+
+  - name: ghost_scope
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - names a table that does not exist.
+      table: pim_test_missing
+      catalog_column: catalog_id
+      product_column: product_id
+      filters:
+        available: { column: available, type: integer, ops: [gt] }
+
+  - name: hostile_scope
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - a table name that is not an identifier.
+      table: "pim_test_stock; DROP TABLE kickside_pim_product"
+      catalog_column: catalog_id
+      product_column: product_id
+      filters:
+        available: { column: available, type: integer, ops: [gt] }
+
+  - name: scopes_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Declarative scopes - plugin-table filters, validation, access and missing tables. }
+    source: file://scopes_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: actor_check
+    kind: function.lua
+    meta: { type: kickside.pim.check, comment: Harness check that reports the actor it ran under. }
+    source: file://actor_check.lua
+    method: run
+    modules: [security]
+    imports:
+      types: kickside.pim:types
+
+  - name: weight_check
+    kind: function.lua
+    meta: { type: kickside.pim.check, comment: Harness check - net weight at most config.max kg. }
+    source: file://weight_check.lua
+    method: run
+    imports:
+      types: kickside.pim:types
+
+  - name: checks_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Requirement sets, the authored rule, channel coverage and readiness reads. }
+    source: file://checks_test.lua
+    method: run
+    imports:
+      store: kickside.pim.persist:store
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: query_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Item-table filters, keyset paging, text search and the get, explain and links views. }
+    source: file://query_test.lua
+    method: run
+    modules: [json]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: shelf_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness plugin for PIM - shelf location per catalog.
+      title: Shelf
+      settings: app.shelf
+      config_schema:
+        type: object
+        properties:
+          location: { type: string, minLength: 2 }
+          reorder_days: { type: integer, minimum: 1 }
+        required: [location]
+        additionalProperties: false
+      schema:
+        template:
+          aspects: [ { namespace: shelf, attributes: [ { code: bin, type: kickside.pim.types:identifier, index: key } ] } ]
+
+  - name: zones_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness plugin whose template contributes a vocabulary and a select attribute over it.
+      title: Zones
+      schema:
+        template:
+          vocabularies: [ { code: zones } ]
+          aspects: [ { namespace: placement, attributes: [ { code: zone, type: kickside.pim.types:select, vocabulary: zones, index: key } ] } ]
+
+  - name: dynamic_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness plugin whose fields an admin declares in the plugin's own store; a provider resolves them per catalog.
+      title: Dynamic fields
+      config_schema:
+        type: object
+        properties:
+          namespace: { type: string, pattern: "^[a-z][a-z0-9_]*$" }
+        required: [namespace]
+        additionalProperties: false
+      settings: app.dynamic
+      schema:
+        provider: app:dynamic_provider
+
+  - name: dynamic_namespace
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: Harness plugin app default aspect namespace. }
+    namespace: app.dynamic
+    key: namespace
+    value_type: string
+    default: dynamic
+    title: Dynamic fields namespace
+    scope: global
+    editable: true
+    visible: true
+
+  - name: dynamic_provider
+    kind: contract.binding
+    meta:
+      comment: Harness schema provider - the dynamic plugin's declared fields per catalog.
+    contracts:
+      - contract: kickside.pim:schema_provider
+        methods:
+          resolve: app:dynamic_resolve
+
+  - name: dynamic_resolve
+    kind: function.lua
+    meta: { comment: Resolves the dynamic plugin's fields from its own table under the caller. }
+    source: file://dynamic_fields.lua
+    method: resolve
+    modules: [sql, security]
+
+  - name: offline_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness plugin whose provider is offline.
+      schema:
+        provider: app:offline_provider
+
+  - name: offline_provider
+    kind: contract.binding
+    meta:
+      comment: Harness schema provider that fails.
+    contracts:
+      - contract: kickside.pim:schema_provider
+        methods:
+          resolve: app:offline_resolve
+
+  - name: offline_resolve
+    kind: function.lua
+    meta: { comment: Fails every resolve. }
+    source: file://dynamic_fields.lua
+    method: offline
+    modules: [sql, security]
+
+  - name: shelf_location
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: Harness plugin app default location. }
+    namespace: app.shelf
+    key: location
+    value_type: string
+    default: WH0
+    title: Default shelf location
+    scope: global
+    editable: true
+    visible: true
+
+  - name: shelf_reorder
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: Harness plugin app default reorder period. }
+    namespace: app.shelf
+    key: reorder_days
+    value_type: int
+    default: 14
+    title: Reorder days
+    scope: global
+    editable: true
+    visible: true
+
+  - name: other_seam_plugin
+    kind: registry.entry
+    meta:
+      type: app.elsewhere.plugin
+      comment: Harness manifest of another seam; PIM never lists it.
+
+  - name: traits_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Agent tools over the catalog contract. }
+    source: file://traits_test.lua
+    method: run
+    modules: [registry, json]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      conformance: app:agent_conformance
+
+  - name: plugins_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Plugin choices per catalog over app-level settings. }
+    source: file://plugins_test.lua
+    method: run
+    modules: [sql, json, uuid]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      types: kickside.pim:types
+
+  - name: leaky_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness plugin - declares a secret-shaped config property.
+      config_schema: { type: object, properties: { token: { type: string, writeOnly: true } } }
+
+  - name: bare_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness plugin - no settings and no config.
+
+  - name: strict_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness plugin - requires a key with no app-level default.
+      config_schema: { type: object, properties: { endpoint: { type: string }, flags: { type: array, items: { type: string } }, live: { type: boolean } }, required: [endpoint] }
+
+  - name: raising_check
+    kind: function.lua
+    meta: { type: kickside.pim.check, comment: Harness check that raises. }
+    source: file://misbehaving_checks.lua
+    method: raises
+
+  - name: silent_check
+    kind: function.lua
+    meta: { type: kickside.pim.check, comment: Harness check that answers without findings. }
+    source: file://misbehaving_checks.lua
+    method: silent
+
+  - name: scalar_check
+    kind: function.lua
+    meta: { type: kickside.pim.check, comment: Harness check that answers a scalar. }
+    source: file://misbehaving_checks.lua
+    method: scalar
+
+  - name: wordless_check
+    kind: function.lua
+    meta: { type: kickside.pim.check, comment: Harness check whose finding has no message. }
+    source: file://misbehaving_checks.lua
+    method: wordless
+
+  - name: config_check
+    kind: function.lua
+    meta: { type: kickside.pim.check, comment: Harness check that reports its config and the keys it received. }
+    source: file://misbehaving_checks.lua
+    method: reports
+
+  - name: plain_function
+    kind: function.lua
+    meta: { comment: Harness function that is not declared as a check. }
+    source: file://misbehaving_checks.lua
+    method: silent
+
+  - name: code_type
+    kind: registry.entry
+    meta:
+      type: kickside.pim.type
+      comment: Harness type with a config schema and normalize/validate functions.
+      form: text
+      indexes: [none, key]
+      config_schema: { type: object, properties: { length: { type: integer, minimum: 1 } }, additionalProperties: false }
+      functions: { normalize: app:code_normalize, validate: app:code_validate }
+
+  - name: broken_type
+    kind: registry.entry
+    meta:
+      type: kickside.pim.type
+      comment: Harness type whose normalize answers out of shape.
+      form: text
+      functions: { normalize: app:broken_normalize }
+
+  - name: code_normalize
+    kind: function.lua
+    meta: { comment: Harness type normalize - uppercases and strips spaces. }
+    source: file://type_functions.lua
+    method: normalize
+    modules: [sql]
+    imports:
+      common: app:type_value_fixture
+
+  - name: code_validate
+    kind: function.lua
+    meta: { comment: Harness type validate - length against config. }
+    source: file://type_functions.lua
+    method: validate
+    modules: [sql]
+    imports:
+      common: app:type_value_fixture
+
+  - name: broken_normalize
+    kind: function.lua
+    meta: { comment: Harness type normalize answering out of shape. }
+    source: file://type_functions.lua
+    method: broken
+    modules: [sql]
+    imports:
+      common: app:type_value_fixture
+
+  - name: type_functions_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Type functions - config schema at compile, batched normalize and validate in prepare, unavailability. }
+    source: file://type_functions_test.lua
+    method: run
+    modules: [sql, json]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: counter_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, comment: Harness type with a form only a fold assigns., form: counter, indexes: [none] }
+
+  - name: banana_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, comment: Harness type with a form the engine does not know., form: banana, indexes: [none] }
+
+  - name: unaimed_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, comment: Harness reference type without a target., form: ref, indexes: [none] }
+
+  - name: formless_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, comment: Harness type without a form. }
+
+  - name: bad_access_scope
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - unknown access level.
+      table: pim_test_stock
+      catalog_column: catalog_id
+      product_column: product_id
+      access: owner
+      filters: { available: { column: available, type: integer, ops: [gt] } }
+
+  - name: bad_type_scope
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - unknown filter type.
+      table: pim_test_stock
+      catalog_column: catalog_id
+      product_column: product_id
+      filters: { available: { column: available, type: float, ops: [gt] } }
+
+  - name: bad_op_scope
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - unknown filter op.
+      table: pim_test_stock
+      catalog_column: catalog_id
+      product_column: product_id
+      filters: { available: { column: available, type: integer, ops: [like] } }
+
+  - name: hostile_column_scope
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - a filter column that is not an identifier.
+      table: pim_test_stock
+      catalog_column: catalog_id
+      product_column: product_id
+      filters: { available: { column: "available) OR (1=1", type: integer, ops: [gt] } }
+
+  - name: wrong_column_scope
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - a filter column the table lacks.
+      table: pim_test_stock
+      catalog_column: catalog_id
+      product_column: product_id
+      filters: { shelf: { column: shelf_number, type: integer, ops: [gt] } }
+
+  - name: hardening_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Plugins and extension seams under hostile declarations and misbehaving plugin code. }
+    source: file://hardening_test.lua
+    method: run
+    modules: [json]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: sink_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: The products sink - requests, upserts, ordering and failure shapes. }
+    source: file://sink_test.lua
+    method: run
+    imports:
+      scoped: app:scoped
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+    modules: [json]
+
+  - name: concurrency_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Races through the head check - one winner, no lost writes, exact counts. }
+    source: file://concurrency_test.lua
+    method: run
+    modules: [time, channel]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: lifecycle_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Catalog lifecycle, projection counters and replay, portability and read views. }
+    source: file://lifecycle_test.lua
+    method: run
+    modules: [time]
+    imports:
+      catalog_fixture: app:catalog_fixture
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      store: kickside.pim.persist:store
+
+  - name: access_cases
+    kind: library.lua
+    meta:
+    source: file://access_cases.lua
+    imports:
+      test: wippy.test:test
+
+  - name: scoped
+    kind: library.lua
+    meta:
+    source: file://scoped.lua
+    modules: [registry, security, funcs, uuid, json, http_client]
+    imports:
+      member_scope: app:member_scope
+      actors: app:actors
+      fixture: app:fixture
+      access_cases: app:access_cases
+
+  - name: scope_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Members and outsiders through the endpoints and the contract with the scopes an installation composes. }
+    source: file://scope_test.lua
+    method: run
+    modules: [json, http_client]
+    imports:
+      scope_fixture: app:scope_fixture
+      test: wippy.test:test
+      fixture: app:fixture
+      scoped: app:scoped
+      access_cases: app:access_cases
+      store: kickside.pim.persist:store
+      steps: app:steps
+
+  - name: isolation_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Component access matrix, catalog isolation and revocation. }
+    source: file://isolation_test.lua
+    method: run
+    imports:
+      access_cases: app:access_cases
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: proposals_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Proposals - propose validation, accept outcomes, reject and decision races. }
+    source: file://proposals_test.lua
+    method: run
+    modules: [json]
+    imports:
+      requests: kickside.pim:requests
+      steps: app:steps
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: milestone4_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Family checks and the products sink. }
+    source: file://milestone4_test.lua
+    method: run
+    modules: [json]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+
+  - name: exports
+    kind: fs.directory
+    meta: { comment: Export envelopes for portability tests. }
+    directory: ./.wippy/exports
+    auto_init: true
+
+  - name: portability_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Export and import. }
+    source: file://portability_test.lua
+    method: run
+    modules: [json, uuid, sql, fs]
+    imports:
+      steps: app:steps
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      portable_result: kickside.pim.portability:result
+
+  - name: contract_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: The catalog contract - create, list, schema plan, history, min_seq and decisions. }
+    source: file://contract_test.lua
+    method: run
+    modules: [registry, time, sql]
+    imports:
+      requests: kickside.pim:requests
+      steps: app:steps
+      store: kickside.pim.persist:store
+      test: wippy.test:test
+      fixture: app:fixture
+
+  - name: access_policy_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Endpoint policy, requirements and unauthenticated HTTP refusal. }
+    source: file://access_policy_test.lua
+    method: run
+    modules: [registry, security, http_client]
+    imports:
+      test: wippy.test:test
+
+  - name: ports_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Automation ports resolve to their bindings and events, and every emitted event matches its declared schema. }
+    source: file://ports_test.lua
+    method: run
+    modules: [registry, json]
+    imports:
+      event_baseline: app:event_baseline
+      event_compatibility: app:event_compatibility
+      steps: app:steps
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: access_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Catalog ACL - outsider, READ, WRITE and ADMIN principals. }
+    source: file://access_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+
+  # ─── Unit suites of PIM's value, schema, query, command and fold internals ──
+  - name: values_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Canonical forms, keys and order values. }
+    source: file://values_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+
+  - name: bulk_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Chunked multi-row insert and delete on both engines. }
+    source: file://bulk_test.lua
+    method: run
+    modules: [sql]
+    imports:
+      test: wippy.test:test
+      bulk: kickside.pim.persist:bulk
+      types: kickside.pim:types
+
+  - name: shape_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Tolerant JSON schemas over decoded Lua values. }
+    source: file://shape_test.lua
+    method: run
+    modules: [json]
+    imports:
+      test: wippy.test:test
+      shape: kickside.pim:shape
+      types: kickside.pim:types
+
+  - name: probe.changed
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "Harness event type with a declared body schema." }
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        rows: { type: integer }
+        tags: { type: array, items: { type: string } }
+      required: [id]
+
+  - name: fold_driver_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Fold driver - parsing, applied skip, ordering and the row budget. }
+    source: file://fold_driver_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      driver: kickside.pim.persist:fold_driver
+      types: kickside.pim:types
+
+  - name: pipeline_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Command pipeline - idempotency, retry under expect, read-your-writes. }
+    source: file://pipeline_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      pipeline: kickside.pim.command:pipeline
+      types: kickside.pim:types
+
+  - name: edges_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Edge cases of narrowing, clock, bulk, shape, merge helpers and the thread client. }
+    source: file://edges_test.lua
+    method: run
+    modules: [sql, json]
+    imports:
+      test: wippy.test:test
+      narrow: kickside.pim:narrow
+      clock: kickside.pim:clock
+      bulk: kickside.pim.persist:bulk
+      shape: kickside.pim:shape
+      declaration: kickside.pim.schema:merge
+      changes: kickside.pim.schema:classify
+      threads: kickside.pim.command:threads
+      types: kickside.pim:types
+
+  - name: schema_evolution_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Declaration merge helpers and attribute change classification. }
+    source: file://schema_evolution_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      declaration: kickside.pim.schema:merge
+      changes: kickside.pim.schema:classify
+      types: kickside.pim:types
+
+  - name: change_rows_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Change history rows - collect, page, prune. }
+    source: file://change_rows_test.lua
+    method: run
+    modules: [sql]
+    imports:
+      test: wippy.test:test
+      history: kickside.pim.persist:history
+      types: kickside.pim:types
+
+  - name: tree_fixture
+    kind: library.lua
+    meta: { comment: A generated table set with eight items for filter tree tests. }
+    source: file://tree_fixture.lua
+    modules: [sql]
+    imports:
+      layout: kickside.pim.persist:layout
+      select: kickside.pim.persist:select
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+
+  - name: tree_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: The filter tree on both engines. }
+    source: file://tree_test.lua
+    method: run
+    modules: []
+    imports:
+      test: wippy.test:test
+      fixtures: app:tree_fixture
+      select: kickside.pim.persist:select
+      tree: kickside.pim.persist:tree
+      types: kickside.pim:types
+
+  - name: operands_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Operands and time keys in the filter tree. }
+    source: file://operands_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixtures: app:tree_fixture
+
+  - name: select_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Generated tables and the query compiler on both engines. }
+    source: file://select_test.lua
+    method: run
+    modules: [sql]
+    imports:
+      narrow: kickside.pim:narrow
+      test: wippy.test:test
+      layout: kickside.pim.persist:layout
+      select: kickside.pim.persist:select
+      scopes: kickside.pim.extensions:scopes
+      types: kickside.pim:types
+
+  - name: probe_stock
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - stock rows per item, readable by readers.
+      table: rt_stock
+      catalog_column: catalog_id
+      product_column: product_id
+      filters:
+        available: { column: available, type: integer, ops: [gt, eq] }
+
+  - name: probe_stock_admin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - restricted to admins.
+      table: rt_stock
+      catalog_column: catalog_id
+      product_column: product_id
+      access: admin
+      filters:
+        available: { column: available, type: integer, ops: [gt] }
+
+  - name: probe_hostile
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      comment: Harness scope - a table name that is not an identifier.
+      table: "rt_stock; DROP TABLE kickside_pim_product"
+      catalog_column: catalog_id
+      product_column: product_id
+      filters:
+        available: { column: available, type: integer, ops: [gt] }
+
+  - name: type_function_batches_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Type functions - batched normalize and validate, answer checks. }
+    source: file://type_function_batches_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      type_functions: kickside.pim.extensions:type_functions
+
+  - name: probe_normalize
+    kind: function.lua
+    meta: { comment: Harness normalize - uppercases and strips spaces; refuses blanks. }
+    source: file://type_function_probes.lua
+    method: normalize
+    imports:
+      common: app:type_value_fixture
+
+  - name: probe_validate
+    kind: function.lua
+    meta: { comment: Harness validate - a finding when the length differs from config.length. }
+    source: file://type_function_probes.lua
+    method: validate
+    imports:
+      common: app:type_value_fixture
+
+  - name: probe_broken
+    kind: function.lua
+    meta: { comment: Harness normalize answering out of shape. }
+    source: file://type_function_probes.lua
+    method: broken
+    imports:
+      common: app:type_value_fixture
+
+  - name: probe_raising
+    kind: function.lua
+    meta: { comment: Harness validate that raises. }
+    source: file://type_function_probes.lua
+    method: raise
+    imports:
+      common: app:type_value_fixture
+
+  - name: seams_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Declared attribute types and checks. }
+    source: file://seams_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      seams: kickside.pim.extensions:seams
+
+  - name: probe_code_type
+    kind: registry.entry
+    meta:
+      type: kickside.pim.type
+      comment: Harness type with a config schema and functions.
+      form: text
+      indexes: [none, key]
+      config_schema: { type: object, properties: { length: { type: integer, minimum: 1 } }, additionalProperties: false }
+      functions: { normalize: app:probe_normalize, validate: app:probe_validate }
+
+  - name: probe_wordy_functions_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, comment: Harness type whose functions field is not a table., form: text, functions: normalize }
+
+  - name: probe_blank_function_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, comment: Harness type naming an empty function id., form: text, functions: { normalize: "" } }
+
+  - name: probe_listed_config_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, comment: Harness type whose config schema is not an object schema., form: text, config_schema: { type: array } }
+
+  - name: probe_text_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, form: text, indexes: [none, key], comment: Harness attribute type. }
+
+  - name: probe_term_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, form: ref, target: term, comment: Harness reference type. }
+
+  - name: probe_formless_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, comment: Harness type without a form. }
+
+  - name: probe_check
+    kind: registry.entry
+    meta: { type: kickside.pim.check, comment: Harness check declaration. }
+
+  - name: probe_no_seam
+    kind: registry.entry
+    meta: { type: other, comment: Harness entry that is no seam. }
+
+  - name: manifest_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Plugin manifests - load, config checks, effective config. }
+    source: file://manifest_test.lua
+    method: run
+    modules: [sql, security, funcs]
+    imports:
+      test: wippy.test:test
+      plugins: kickside.pim.extensions:plugins
+      types: kickside.pim:types
+
+  - name: probe_shelf_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      comment: Harness manifest - per-catalog shelf settings.
+      title: Shelf
+      settings: app.probe_shelf
+      attachment: app:probe_shelf_attachment
+      config_schema:
+        type: object
+        properties:
+          location: { type: string }
+          reorder_days: { type: integer, minimum: 1 }
+          auto_reorder: { type: boolean }
+        required: [location]
+        additionalProperties: false
+      schema:
+        template:
+          aspects: [ { namespace: shelf, attributes: [ { code: bin, type: kickside.pim.types:text } ] } ]
+
+  - name: probe_fields_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness manifest whose fields come from a provider reading its own store.
+      config_schema: { type: object, properties: { prefix: { type: string } }, additionalProperties: false }
+      schema:
+        provider: app:probe_fields_provider
+
+  - name: probe_failing_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness manifest whose provider fails.
+      schema:
+        provider: app:probe_failing_provider
+
+  - name: probe_malformed_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness manifest whose provider answers without a fragment.
+      schema:
+        provider: app:probe_malformed_provider
+
+  - name: probe_two_sources_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness manifest naming both a template and a provider.
+      schema:
+        template: { aspects: [] }
+        provider: app:probe_fields_provider
+
+  - name: probe_string_template_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness manifest whose template is not an object.
+      schema:
+        template: "aspects"
+
+  - name: probe_leaky_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness manifest - declares a secret-shaped config property.
+      config_schema:
+        type: object
+        properties:
+          endpoint: { type: string }
+          auth: { type: object, properties: { token: { type: string, writeOnly: true } } }
+
+  - name: probe_bare_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness manifest - no settings and no config.
+
+  - name: probe_listed_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness manifest with a list in its config.
+      config_schema: { type: object, properties: { tags: { type: array, items: { type: string } } } }
+
+  - name: probe_fields_provider
+    kind: contract.binding
+    meta:
+      comment: Harness schema provider - fields from the plugin's own rows per catalog.
+    contracts:
+      - contract: kickside.pim:schema_provider
+        methods:
+          resolve: app:probe_fields_resolve
+
+  - name: probe_failing_provider
+    kind: contract.binding
+    meta:
+      comment: Harness schema provider that fails.
+    contracts:
+      - contract: kickside.pim:schema_provider
+        methods:
+          resolve: app:probe_failing_resolve
+
+  - name: probe_malformed_provider
+    kind: contract.binding
+    meta:
+      comment: Harness schema provider answering without a fragment.
+    contracts:
+      - contract: kickside.pim:schema_provider
+        methods:
+          resolve: app:probe_malformed_resolve
+
+  - name: probe_fields_resolve
+    kind: function.lua
+    meta: { comment: Resolves the fields plugin's schema from its own store under the caller. }
+    source: file://probe_fields.lua
+    method: resolve
+    modules: [sql, security]
+
+  - name: probe_failing_resolve
+    kind: function.lua
+    meta: { comment: Fails every resolve. }
+    source: file://probe_fields.lua
+    method: fail
+    modules: [sql, security]
+
+  - name: probe_malformed_resolve
+    kind: function.lua
+    meta: { comment: Answers without a fragment. }
+    source: file://probe_fields.lua
+    method: malformed
+    modules: [sql, security]
+
+  - name: probe_resolve
+    kind: function.lua
+    meta: { comment: Runs a plugin schema resolution under the calling actor. }
+    source: file://probe_resolve.lua
+    method: run
+    imports:
+      plugins: kickside.pim.extensions:plugins
+      types: kickside.pim:types
+
+  # ─── Component-level configuration across two catalogs ──────────────────
+  - name: catalog_config_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Two catalogs with different schemas, plugins and settings in one install. }
+    source: file://catalog_config_test.lua
+    method: run
+    modules: [contract, sql]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      clock: kickside.pim:clock
+      types: kickside.pim:types
+
+  - name: config_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      comment: Harness plugin that only some catalogs choose, contributing the config aspect.
+      title: Config probe
+      settings: app.config_plugin
+      config_schema:
+        type: object
+        properties:
+          location: { type: string }
+          zone_limit: { type: integer, minimum: 1 }
+        additionalProperties: false
+      schema:
+        template:
+          aspects: [ { namespace: config, attributes: [ { code: zone, type: kickside.pim.types:text } ] } ]
+
+  - name: config_plugin_location
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: Harness app default of the config plugin location. }
+    namespace: app.config_plugin
+    key: location
+    value_type: string
+    default: HQ
+    title: Default location
+    scope: global
+    editable: true
+    visible: true
+
+  - name: config_plugin_zone_limit
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: Harness app default of the config plugin zone limit. }
+    namespace: app.config_plugin
+    key: zone_limit
+    value_type: int
+    default: 10
+    title: Default zone limit
+    scope: global
+    editable: true
+    visible: true
+
+  - name: blocks_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Catalog Blocks - valid kickside.block/v1 declarations over the catalog contract, lowered to function nodes and run as the caller. }
+    source: file://blocks_test.lua
+    method: run
+    modules: [registry, json, funcs]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      block_contract: kickside.blocks:contract
+      block_lower: kickside.blocks:lower
+
+  - name: probe_type_denied
+    kind: function.lua
+    source: file://type_function_probes.lua
+    method: denied
+    imports:
+      common: app:type_value_fixture
+
+  - name: registry_failure_fixture
+    kind: library.lua
+    source: file://registry_failure_fixture.lua
+
+  - name: seams_failure_probe
+    kind: library.lua
+    source: file://seams_failure_probe.lua
+    imports:
+      registry: app:registry_failure_fixture
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
+  - name: scopes_failure_probe
+    kind: library.lua
+    source: file://scopes_failure_probe.lua
+    imports:
+      registry: app:registry_failure_fixture
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
+  - name: plugins_failure_probe
+    kind: library.lua
+    source: file://plugins_failure_probe.lua
+    modules: [contract, hash, security]
+    imports:
+      registry: app:registry_failure_fixture
+      worker: kickside.core.projections.persist:worker
+      failure: kickside.pim:failure
+      shape: kickside.pim:shape
+      values: kickside.pim.domain:values
+      defaults: kickside.pim.settings:defaults
+      types: kickside.pim:types
+
+  - name: extension_errors_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://extension_errors_test.lua
+    method: run
+    imports:
+      links: app:link_discovery_probe
+      test: wippy.test:test
+      registry_fixture: app:registry_failure_fixture
+      seams: app:seams_failure_probe
+      plugins: app:plugins_failure_probe
+      scopes: app:scopes_failure_probe
+
+  - name: collection_sources_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://collection_sources_test.lua
+    method: run
+    imports:
+      store: kickside.pim.persist:store
+      test: wippy.test:test
+      fixture: app:fixture
+
+  - name: catalog_cleanup_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://catalog_cleanup_test.lua
+    method: run
+    modules: [funcs, json, time]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      scoped: app:scoped
+      store: kickside.pim.persist:store
+      cleanup_rows: kickside.pim.persist:cleanup_rows
+
+  - name: job_boundary_fixture
+    kind: library.lua
+    source: file://job_boundary_fixture.lua
+    modules: [sql]
+    imports:
+      types: kickside.pim:types
+
+  - name: job_store_fixture
+    kind: library.lua
+    source: file://job_fixture_adapter.lua
+    imports:
+      fixture: app:job_boundary_fixture
+
+  - name: job_merge_rows_fixture
+    kind: library.lua
+    source: file://job_fixture_adapter.lua
+    imports:
+      fixture: app:job_boundary_fixture
+
+  - name: job_execution_identity_fixture
+    kind: library.lua
+    source: file://job_fixture_adapter.lua
+    imports:
+      fixture: app:job_boundary_fixture
+
+  - name: term_merge_boundary_probe
+    kind: library.lua
+    source: file://term_merge_boundary_probe.lua
+    imports:
+      defaults: kickside.pim.settings:defaults
+      error_envelope: kickside.contract:error_envelope
+      budget: kickside.pim.jobs:budget
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      jobs: app:job_boundary_fixture
+      store: app:job_store_fixture
+      merge_rows: app:job_merge_rows_fixture
+      execution_identity: app:job_execution_identity_fixture
+      writer: kickside.pim.command:writer
+      types: kickside.pim:types
+
+  - name: job_boundaries_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://job_boundaries_test.lua
+    method: run
+    imports:
+      catalog_fixture: app:fixture
+      scoped: app:scoped
+      store: kickside.pim.persist:store
+      test: wippy.test:test
+      job_fixture: app:job_boundary_fixture
+      merge: app:term_merge_boundary_probe
+      clock: kickside.pim:clock
+
+  - name: retention_budget_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://retention_budget_test.lua
+    method: run
+    modules: [funcs, json]
+    imports:
+      fair: app:retention_fair_fixture
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+
+  - name: schema_fold_budget_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://schema_fold_budget_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      schema: kickside.pim.schema:compile
+      seams: kickside.pim.extensions:seams
+      materializer: kickside.pim.persist:materializer
+      types: kickside.pim:types
+      clock: kickside.pim:clock
+
+  - name: model_release_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://model_release_test.lua
+    method: run
+    modules: [time]
+    imports:
+      store: kickside.pim.persist:store
+      test: wippy.test:test
+      fixture: app:fixture
+      scoped: app:scoped
+      jobs: kickside.core.jobs:jobs
+
+  - name: error_codes_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://error_codes_test.lua
+    method: run
+    modules: [funcs]
+    imports:
+      test: wippy.test:test
+      checks: kickside.pim.extensions:checks
+      failure: kickside.pim:failure
+      fixture: app:fixture
+
+
+  - name: schema_limits_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://schema_limits_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      schema: kickside.pim.schema:compile
+      types: kickside.pim:types
+
+
+  - name: schema_order_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://schema_order_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+
+
+  - name: command_state_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://command_state_test.lua
+    modules: [hash, json]
+    method: run
+    imports:
+      store: kickside.pim.persist:store
+      items: kickside.pim.command:items
+      types: kickside.pim:types
+      test: wippy.test:test
+      fixture: app:fixture
+
+
+  - name: persisted_rows_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://persisted_rows_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      types: kickside.pim:types
+      store: kickside.pim.persist:store
+      history: kickside.pim.persist:history
+      merge_rows: kickside.pim.persist:merge_rows
+
+
+  - name: migration_shape_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://migration_shape_test.lua
+    method: run
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+      store: kickside.pim.persist:store
+
+  - name: catalog_fixture
+    kind: library.lua
+    source: file://catalog_fixture.lua
+    modules: [json, uuid]
+    imports:
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      materializer: kickside.pim.persist:materializer
+      types: kickside.pim:types
+
+  - name: fold_replay_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Catalog lifecycle, projection counters and replay, portability and read views. }
+    source: file://fold_replay_test.lua
+    method: run
+    imports:
+      resolve: kickside.pim.domain:resolve
+      catalog_fixture: app:catalog_fixture
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      store: kickside.pim.persist:store
+      materializer: kickside.pim.persist:materializer
+      types: kickside.pim:types
+
+  - name: portable_roundtrip_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Catalog lifecycle, projection counters and replay, portability and read views. }
+    source: file://portable_roundtrip_test.lua
+    method: run
+    modules: [uuid, json]
+    imports:
+      catalog_fixture: app:catalog_fixture
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+
+  - name: read_views_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Catalog lifecycle, projection counters and replay, portability and read views. }
+    source: file://read_views_test.lua
+    method: run
+    imports:
+      catalog_fixture: app:catalog_fixture
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: integration_access_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Catalog lifecycle, projection counters and replay, portability and read views. }
+    source: file://integration_access_test.lua
+    method: run
+    modules: [http_client, json]
+    imports:
+      scoped: app:scoped
+      access_cases: app:access_cases
+      catalog_fixture: app:catalog_fixture
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+
+  - name: schema_fixture
+    kind: library.lua
+    source: file://schema_fixture.lua
+
+  - name: schema_rules_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, comment: Declaration compile, ids, ownership, layout and resolution. }
+    source: file://schema_rules_test.lua
+    method: run
+    modules: [json]
+    imports:
+      types: kickside.pim:types
+      schema_fixture: app:schema_fixture
+      policy: kickside.pim.domain:policy
+      test: wippy.test:test
+      schema: kickside.pim.schema:compile
+      changes: kickside.pim.schema:classify
+      resolve: kickside.pim.domain:resolve
+      declaration: kickside.pim.schema:merge
+
+  - name: event_baseline
+    kind: library.lua
+    source: file://event_baseline.lua
+    modules: [json]
+
+  - name: event_compatibility
+    kind: library.lua
+    source: file://event_compatibility.lua
+    imports:
+      values: kickside.pim.domain:values
+
+  - name: type_value_fixture
+    kind: library.lua
+    source: file://type_value_fixture.lua
+
+  - name: schema_change_edges_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Schema evolution - merge, rename, removal, refusal, rebuild and migration. }
+    source: file://schema_change_edges_test.lua
+    method: run
+    imports:
+      catalog_fixture: app:catalog_fixture
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      steps: app:steps
+
+
+  - name: thread_security_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Members and outsiders through the endpoints and the contract with the scopes an installation composes. }
+    source: file://thread_security_test.lua
+    method: run
+    modules: [json, registry]
+    imports:
+      scope_fixture: app:scope_fixture
+      test: wippy.test:test
+      fixture: app:fixture
+      scoped: app:scoped
+      access_cases: app:access_cases
+
+
+  - name: scope_fixture
+    kind: library.lua
+    source: file://scope_fixture.lua
+    modules: [json]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      scoped: app:scoped
+
+  - name: durability_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://durability_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      scoped: app:scoped
+      store: kickside.pim.persist:store
+      values: kickside.pim.domain:values
+
+  - name: snapshot_bounds_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://snapshot_bounds_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      values: kickside.pim.domain:values
+
+  - name: merge_fixture
+    kind: library.lua
+    source: file://merge_fixture.lua
+    modules: [security]
+    imports:
+      store: kickside.pim.persist:store
+      items: kickside.pim.command:items
+      defaults: kickside.pim.settings:defaults
+      materializer: kickside.pim.persist:materializer
+      merge_rows: kickside.pim.persist:merge_rows
+      types: kickside.pim:types
+
+  - name: link_discovery_registry
+    kind: library.lua
+    source: file://link_discovery_fixture.lua
+
+  - name: link_discovery_contract
+    kind: library.lua
+    source: file://link_discovery_fixture.lua
+
+  - name: link_discovery_probe
+    kind: library.lua
+    source: file://link_discovery_probe.lua
+    modules: [security]
+    imports:
+      registry: app:link_discovery_registry
+      contract: app:link_discovery_contract
+      types: kickside.pim:types
+
+  - name: job_component_fixture
+    kind: library.lua
+    source: file://job_component_fixture.lua
+    imports:
+      component: kickside.component:component
+      fixture: app:job_boundary_fixture
+
+  - name: rebuild_progress_probe
+    kind: library.lua
+    source: file://rebuild_progress_probe.lua
+    modules: [funcs]
+    imports:
+      defaults: kickside.pim.settings:defaults
+      jobs: app:job_boundary_fixture
+      budget: kickside.pim.jobs:budget
+      failure: kickside.pim:failure
+      component: app:job_component_fixture
+      execution_identity: app:job_execution_identity_fixture
+      consts: kickside.pim:consts
+      clock: kickside.pim:clock
+      store: kickside.pim.persist:store
+      rebuild_rows: kickside.pim.persist:rebuild_rows
+      document: kickside.pim.domain:document
+      item_index: kickside.pim.persist:item_index
+      types: kickside.pim:types
+
+  - name: rebuild_progress_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://rebuild_progress_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      values: kickside.pim.domain:values
+      worker: app:rebuild_progress_probe
+      jobs_fixture: app:job_boundary_fixture
+      clock: kickside.pim:clock
+
+  - name: conflict_writer_probe
+    kind: library.lua
+    meta:
+      comment: The single PIM write path - head-checked appends with projection catch-up.
+    source: file://conflict_writer_probe.lua
+    modules: [security, funcs]
+    imports:
+      policy: kickside.pim.domain:policy
+      receipts: kickside.pim.persist:receipts
+      release_jobs: kickside.pim.persist:release_jobs
+      clock: kickside.pim:clock
+      failure: kickside.pim:failure
+      pipeline: app:conflict_fixture
+      plugins: kickside.pim.extensions:plugins
+      links: kickside.pim.extensions:links
+      scopes: kickside.pim.extensions:scopes
+      types: kickside.pim:types
+      component: kickside.component:component
+      consts: kickside.pim:consts
+      seams: kickside.pim.extensions:seams
+      proposal_rows: kickside.pim.persist:proposal_rows
+      store: kickside.pim.persist:store
+      threads: kickside.pim.command:threads
+      jobs: kickside.core.jobs:jobs
+      items: kickside.pim.command:items
+      releases: kickside.pim.command:releases
+      proposals: kickside.pim.command:proposals
+      schema: kickside.pim.schema:compile
+      declaration: kickside.pim.schema:merge
+      changes: kickside.pim.schema:classify
+      defaults: kickside.pim.settings:defaults
+      values: kickside.pim.domain:values
+
+
+  - name: conflict_fixture
+    kind: library.lua
+    source: file://conflict_fixture.lua
+    imports:
+      store: kickside.pim.persist:store
+      values: kickside.pim.domain:values
+      pipeline: kickside.pim.command:pipeline
+
+  - name: trash_retention_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Trash, restore, purge, tombstones and change-history retention. }
+    source: file://trash_retention_test.lua
+    method: run
+    imports:
+      trash_fixture: app:trash_fixture
+      steps: app:steps
+      retention_rows: kickside.pim.persist:retention_rows
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+      clock: kickside.pim:clock
+
+
+  - name: trash_fixture
+    kind: library.lua
+    source: file://trash_fixture.lua
+    modules: [funcs]
+    imports:
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      retention_rows: kickside.pim.persist:retention_rows
+      types: kickside.pim:types
+
+  - name: controlled_term_merge
+    kind: function.lua
+    meta:
+      comment: Term merge job - repeats the merge command as the asking actor until no value references the retired term.
+    source: file://term_merge_boundary_probe.lua
+    method: run
+    security:
+      policies:
+        - kickside.pim.security:merge_defer
+    imports:
+      defaults: kickside.pim.settings:defaults
+      error_envelope: kickside.contract:error_envelope
+      budget: kickside.pim.jobs:budget
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      jobs: app:job_boundary_fixture
+      execution_identity: kickside.execution:execution_identity
+      store: kickside.pim.persist:store
+      merge_rows: kickside.pim.persist:merge_rows
+      writer: kickside.pim.command:writer
+      types: kickside.pim:types
+
+
+  - name: unavailable_job
+    kind: function.lua
+    source: file://unavailable_job.lua
+    method: run
+    security:
+      policies: [app:job_fixture_database]
+    modules: [sql]
+
+  - name: job_attempts_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://job_attempts_test.lua
+    method: run
+    modules: [time]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      jobs: kickside.core.jobs:jobs
+      store: kickside.pim.persist:store
+
+  - name: job_fixture_database
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [app:db]
+      actions: [db.get]
+      effect: allow
+
+  - name: plugin_projection_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 120s }
+    source: file://plugin_projection_test.lua
+    method: run
+    modules: [funcs, time, sql, json, security]
+    imports:
+      scoped: app:scoped
+      worker: kickside.core.projections.persist:worker
+      attachments: kickside.pim.extensions:plugin_attachments
+      component: kickside.component:component
+      test: wippy.test:test
+      fixture: app:fixture
+      types: kickside.pim:types
+
+  - name: plugin_projection_worker
+    kind: function.lua
+    meta: { type: projection.worker }
+    source: file://plugin_projection_worker.lua
+    method: run
+    modules: [sql, security, contract]
+
+  - name: folding_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:plugin_attachment
+      config_schema: { type: object, properties: { fail: { type: boolean }, marker: { type: string } }, additionalProperties: false }
+      projections:
+        - kind: app:product_fold
+          worker_ref: func://app:plugin_projection_worker
+          input: events
+          events: [kickside.pim.events:product.created, kickside.pim.events:product.changed]
+
+  - name: missing_worker_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      projections:
+        - { kind: app:missing_fold, worker_ref: 'func://app:absent_worker', input: events, events: [] }
+
+  - name: wrong_worker_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      projections:
+        - { kind: app:wrong_fold, worker_ref: 'func://app:pim_call', input: events, events: [] }
+
+  - name: plugin_attachment
+    kind: contract.binding
+    meta:
+      class: [pim_test_plugin]
+      placement: { parents: [root], fixed: true }
+    contracts:
+      - contract: kickside.contract:component
+        methods:
+          get_status: kickside.core.threads:thread_status
+      - contract: kickside.contract:deletable
+        context_required: [component_id]
+        methods:
+          delete: app:plugin_attachment_delete
+
+  - name: plugin_attachment_delete
+    kind: function.lua
+    source: file://plugin_attachment_delete.lua
+    method: delete
+    modules: [ctx, sql]
+    imports:
+      component: kickside.component:component
+
+  - name: agent_conformance
+    kind: library.lua
+    source: file://agent_conformance.lua
+    modules: [registry, json, security]
+    imports:
+      test: wippy.test:test
+      consts: kickside.pim:consts
+      requests: kickside.pim:requests
+
+  - name: compile_agent
+    kind: function.lua
+    source: file://compile_agent.lua
+    method: run
+    imports:
+      compiler: wippy.agent.compiler:compiler
+
+  - name: unknown_tool_plugin
+    kind: registry.entry
+    meta: {type: kickside.pim.plugin, attachment: 'app:empty_plugin_attachment', tools: ['app:absent_tool']}
+  - name: wrong_tool_plugin
+    kind: registry.entry
+    meta: {type: kickside.pim.plugin, attachment: 'app:empty_plugin_attachment', tools: ['app:pim_call']}
+
+
+  - name: plugin_rebuild
+    kind: function.lua
+    source: file://plugin_rebuild.lua
+    method: run
+    security:
+      policies: [kickside.pim.security:schema_output_publish]
+    imports: { writer: 'kickside.pim.command:writer' }
+
+  - name: malformed_answer
+    kind: function.lua
+    source: file://type_function_probes.lua
+    method: malformed
+    imports: {common: 'app:type_value_fixture'}
+
+  - name: audit_regressions_test
+    kind: function.lua
+    meta: {type: test, suite: kickside_pim, timeout: 300s}
+    source: file://audit_regressions_test.lua
+    method: run
+    modules: [json, funcs, registry]
+    imports:
+      clock: kickside.pim:clock
+      plugins: kickside.pim.extensions:plugins
+      retention_rows: kickside.pim.persist:retention_rows
+      component: kickside.component:component
+      create: kickside.pim.command:create
+      attachments: kickside.pim.extensions:plugin_attachments
+      threads: kickside.pim.command:threads
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      values: kickside.pim.domain:values
+      checks: kickside.pim.extensions:checks
+      type_functions: kickside.pim.extensions:type_functions
+      types: kickside.pim:types
+      data_error: kickside.pim:data_error
+      store: kickside.pim.persist:store
+
+  - name: ownership_probe
+    kind: function.lua
+    source: file://ownership_probe.lua
+    modules: [time, json]
+    method: run
+    imports:
+      create: kickside.pim.command:create
+      threads: kickside.pim.command:threads
+      attachments: kickside.pim.extensions:plugin_attachments
+      component: kickside.component:component
+
+  - name: incomplete_tool
+    kind: function.lua
+    source: file://empty_plugin_delete.lua
+    method: delete
+    meta: {type: tool, title: Incomplete}
+  - name: incomplete_tool_plugin
+    kind: registry.entry
+    meta: {type: kickside.pim.plugin, attachment: 'app:empty_plugin_attachment', tools: ['app:incomplete_tool']}
+
+  - name: dep.agents
+    kind: ns.dependency
+    version: "*"
+    component: kickside/agents
+    parameters:
+      - {name: 'kickside.agents:api_router', value: 'app:api'}
+      - {name: 'kickside.agents:ui_server', value: 'app:gateway'}
+      - {name: 'kickside.connection:api_router', value: 'app:api'}
+      - {name: 'kickside.connection:ui_server', value: 'app:gateway'}
+      - {name: 'kickside.uploads:database_resource', value: 'app:db'}
+      - {name: 'kickside.uploads:api_router', value: 'app:api'}
+      - {name: 'kickside.uploads:ui_server', value: 'app:gateway'}
+      - {name: 'kickside.uploads:env_storage', value: 'app:env_storage'}
+      - {name: 'kickside.uploads:storage_id', value: 'app:exports'}
+      - {name: 'wippy.relay:application_host', value: 'app:processes'}
+      - {name: 'wippy.relay:env_storage', value: 'app:env_storage'}

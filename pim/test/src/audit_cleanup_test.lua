@@ -1,0 +1,22 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local test=require("test")
+local fixture=require("fixture")
+local projection=require("projection")
+local function define()
+    test.describe("projection cleanup audit",function()
+        test.it("surfaces database release failure after a committed fold",function()
+            fixture.reset(false)
+            local out,err=projection.run({thread_id="catalog",range={to_seq=1},events={}})
+            test.is_nil(out)
+            test.eq(err:details().code,"release_failed")
+        end)
+        test.it("retains operation and rollback failures when cleanup also fails",function()
+            fixture.reset(true)
+            local out,err=projection.run({thread_id="catalog",range={to_seq=1},events={}})
+            test.is_nil(out)
+            test.eq(err:details().code,"release_failed")
+            test.eq(err:details().operation_error.details.operation_error.details.code,"fold_failed")
+        end)
+    end)
+end
+return {run=test.run_cases(define)}

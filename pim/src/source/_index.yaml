@@ -1,0 +1,117 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.source
+
+entries:
+  - name: pull
+    kind: function.lua
+    meta:
+      comment: Publications feed of one catalog channel - published releases as upserts, withdrawals as deletes.
+    source: file://pull.lua
+    method: pull
+    imports:
+      catalog_client: kickside.pim:client
+      data_error: kickside.pim:data_error
+      failure: kickside.pim:failure
+      writable_sink: kickside.data:writable_sink
+      types: kickside.pim:types
+  - name: publications
+    kind: contract.binding
+    meta:
+      title: PIM channel publications
+      comment: Released item snapshots of one catalog channel, in publication order; config names the catalog and the channel.
+      group: PIM
+      class: kickside.pim
+      icon: tabler:packages
+    contracts:
+      - contract: kickside.data:pullable
+        methods:
+          pull: kickside.pim.source:pull
+
+  - name: publications_port
+    kind: registry.entry
+    meta:
+      type: kickside.automation.port
+      title: PIM channel publications
+      icon: tabler:rocket
+      group: PIM
+      class: kickside.pim
+      comment: Released item snapshots of one channel - upserts carry the release snapshot, deletes are withdrawals.
+    binding: kickside.pim.source:publications
+    config_schema:
+      catalog_id:
+        type: string
+        picker: wc-component-picker
+        class: pim_catalog
+        required: true
+        role: primary
+        title: Catalog
+      channel:
+        type: string
+        required: true
+        title: Channel
+
+
+  - name: pull_products
+    kind: function.lua
+    source: file://collections.lua
+    method: products
+    imports:
+      catalog_client: kickside.pim:client
+      data_error: kickside.pim:data_error
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
+  - name: products
+    kind: contract.binding
+    meta: { title: PIM products, group: PIM, class: kickside.pim, icon: 'tabler:packages' }
+    contracts:
+      - contract: kickside.data:pullable
+        methods:
+          pull: kickside.pim.source:pull_products
+
+  - name: products_port
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM products, group: PIM, class: kickside.pim, icon: 'tabler:packages' }
+    binding: kickside.pim.source:products
+    config_schema:
+      catalog_id:
+        type: string
+        picker: wc-component-picker
+        class: pim_catalog
+        required: true
+        role: primary
+        title: Catalog
+      families: { type: array, items: { type: string }, title: Families }
+      aspects: { type: array, items: { type: string }, title: Aspects }
+
+  - name: pull_proposals
+    kind: function.lua
+    source: file://collections.lua
+    method: proposals
+    imports:
+      catalog_client: kickside.pim:client
+      data_error: kickside.pim:data_error
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
+  - name: proposals
+    kind: contract.binding
+    meta: { title: PIM proposals, group: PIM, class: kickside.pim, icon: 'tabler:packages' }
+    contracts:
+      - contract: kickside.data:pullable
+        methods:
+          pull: kickside.pim.source:pull_proposals
+
+  - name: proposals_port
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM proposals, group: PIM, class: kickside.pim, icon: 'tabler:packages' }
+    binding: kickside.pim.source:proposals
+    config_schema:
+      catalog_id:
+        type: string
+        picker: wc-component-picker
+        class: pim_catalog
+        required: true
+        role: primary
+        title: Catalog

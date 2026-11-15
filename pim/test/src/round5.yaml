@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+  - name: round5_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim }
+    method: run
+    source: file://round5_test.lua
+    modules: [fs, json]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      catalog_fixture: app:catalog_fixture
+      store: kickside.pim.persist:store
+      clock: kickside.pim:clock
+      input: kickside.pim.portability:input
+      policy: kickside.pim.domain:policy
+
+  - name: r5_import_boundary
+    kind: function.lua
+    source: file://r5_import_boundary.lua
+    method: run
+    imports:
+      work: app:import_work_probe
+      storage: app:import_storage_fixture

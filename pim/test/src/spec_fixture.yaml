@@ -1,0 +1,142 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: spec_fixture
+  kind: registry.entry
+  family:
+    code: footwear
+    aspects:
+    - core
+    - marketing
+    - shipping
+    requirements:
+    - id: web
+      context:
+        locale: all
+      require:
+      - core.name
+      - core.gtin
+    - id: regional_de
+      context:
+        locale: de
+      require:
+      - core.gtin
+      - shipping.weight
+      authored:
+      - marketing.description
+    variation:
+    - axes:
+      - core.color
+      own:
+      - core.materials
+    - axes:
+      - core.size
+      own:
+      - core.gtin
+      - shipping.weight
+    checks:
+    - check: app:weight_check
+      reads:
+      - shipping.weight
+      config:
+        max: '12'
+  routes:
+  - method: GET
+    path: /pim/catalogs/{id}/summary
+    operation: get_catalog
+  - operation: configure_plugin
+    method: POST
+    path: /pim/catalogs/{id}/plugins/configure
+  - operation: list
+    method: GET
+    path: /pim/catalogs
+    access: READ
+  - operation: create
+    method: POST
+    path: /pim/catalogs
+    access: CREATE
+  - operation: get_schema
+    method: GET
+    path: /pim/catalogs/{id}/schema
+    access: READ
+  - operation: apply_schema
+    method: POST
+    path: /pim/catalogs/{id}/schema
+    access: ADMIN
+  - operation: plan_schema
+    method: POST
+    path: /pim/catalogs/{id}/schema/plan
+    access: ADMIN
+  - operation: get
+    method: GET
+    path: /pim/catalogs/{id}/product
+    access: READ
+  - operation: query
+    method: POST
+    path: /pim/catalogs/{id}/query
+    access: READ
+  - operation: list_history
+    method: GET
+    path: /pim/catalogs/{id}/history
+    access: READ
+  - operation: apply
+    method: POST
+    path: /pim/catalogs/{id}/apply
+    access: WRITE
+  - operation: propose
+    method: POST
+    path: /pim/catalogs/{id}/proposals
+    access: READ
+  - operation: list_proposals
+    method: GET
+    path: /pim/catalogs/{id}/proposals
+    access: READ
+  - operation: decide
+    method: POST
+    path: /pim/catalogs/{id}/proposals/{proposal_id}/decision
+    access: WRITE
+  - operation: release
+    method: POST
+    path: /pim/catalogs/{id}/releases
+    access: WRITE
+  - operation: list_terms
+    method: GET
+    path: /pim/catalogs/{id}/terms
+    access: READ
+  - operation: schema_options
+    method: GET
+    path: /pim/catalogs/{id}/schema/options
+    access: READ
+  - operation: list_releases
+    method: GET
+    path: /pim/catalogs/{id}/releases
+    access: READ
+  - operation: get_release
+    method: GET
+    path: /pim/catalogs/{id}/releases/{release_id}
+    access: READ
+  - operation: withdraw
+    method: POST
+    path: /pim/catalogs/{id}/withdrawals
+    access: WRITE
+  - operation: rebuild
+    method: POST
+    path: /pim/catalogs/{id}/rebuild
+    access: ADMIN
+  - operation: list_links
+    method: GET
+    path: /pim/catalogs/{id}/links
+    access: READ
+  - operation: explain
+    method: GET
+    path: /pim/catalogs/{id}/explain
+    access: READ
+  - operation: list_changes
+    method: GET
+    path: /pim/catalogs/{id}/changes
+    access: READ
+  - operation: list_publications
+    method: GET
+    path: /pim/catalogs/{id}/publications
+    access: READ

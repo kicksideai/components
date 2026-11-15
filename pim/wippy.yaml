@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: pim
+type: plugin
+description: Product information management for KickSide - typed contextual product values, variants, schema evolution, readiness, releases and a publications feed for channel modules.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+homepage: https://wippy.ai
+keywords:
+- kickside
+- pim
+exclude_meta:
+  type:
+  - test
+  - test_helper
+  - test_support
+exclude:
+- wippy.lock
+- app:**
+- "app.**:**"
+- app.env:**
+- test/**
+- test:**
+- .wippy/**
+- .wippy:**

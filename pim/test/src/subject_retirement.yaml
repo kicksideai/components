@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app
+entries:
+  - name: subject_retirement_test
+    kind: function.lua
+    meta: {type: test, suite: kickside_pim, timeout: 300s}
+    source: file://subject_retirement_test.lua
+    method: run
+    modules: [funcs, time, security, registry]
+    imports:
+      test: wippy.test:test
+      scoped: app:scoped
+      fixture: app:fixture
+      trash_fixture: app:trash_fixture
+      store: kickside.pim.persist:store
+      jobs: kickside.core.jobs:jobs
+  - name: retirement_member_call
+    kind: function.lua
+    source: file://retirement_member_call.lua
+    method: run
+    imports: {threads: 'kickside.pim.command:threads'}
+  - name: retirement_ambiguous_threads
+    kind: library.lua
+    source: file://retirement_ambiguous_threads.lua
+    imports: {threads: 'kickside.pim.command:threads'}
+  - name: retirement_ambiguous_owner
+    kind: function.lua
+    meta:
+      type: kickside.retention.owner
+      comment: Purges trash past its window, prunes change history and tombstones past theirs, and advances each catalog's tombstone floor.
+    source: file://retirement_ambiguous_owner.lua
+    method: run
+    modules: [security, json]
+    security:
+      actor: { id: system:kickside.pim.retention }
+      policies: [kickside.pim.security:module_runtime, kickside.pim.security:retention_db_access, kickside.pim.security:purge_output_publish, kickside.pim.security:catalog_delete_report, kickside.pim.security:subject_retirement]
+    imports:
+      creations: kickside.pim.persist:creations
+      archive_rows: kickside.pim.persist:archive_rows
+      references: kickside.pim.domain:references
+      failure: kickside.pim:failure
+      cleanup_rows: kickside.pim.persist:cleanup_rows
+      error_envelope: kickside.contract:error_envelope
+      cleanup: kickside.pim.retention:cleanup
+      history: kickside.pim.persist:history
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+      retention_rows: kickside.pim.persist:retention_rows
+      threads: app:retirement_ambiguous_threads
+      policy: kickside.pim.domain:policy
+      defaults: kickside.pim.settings:defaults
+      types: kickside.pim:types
+
+
+  - name: retirement_probe_call
+    kind: security.policy
+    policy:
+      resources: app:retirement_member_call
+      actions: funcs.call
+      effect: allow

@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.types
+
+# Built-in PIM types. A type names its canonical form and the index kinds it
+# supports; contributed types use the same meta.type from their own modules.
+entries:
+  - name: text
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Text, form: text, indexes: [none, key, text] }
+  - name: rich_text
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Rich text, form: text, indexes: [none, text] }
+  - name: identifier
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Identifier, form: text, indexes: [none, key] }
+  - name: integer
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Integer, form: int, indexes: [none, key, number] }
+  - name: number
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Number, form: dec, indexes: [none, number] }
+  - name: boolean
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Boolean, form: bool, indexes: [none, key] }
+  - name: date
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Date, form: time, indexes: [none, key] }
+  - name: datetime
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Date and time, form: time, indexes: [none, key] }
+  - name: select
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Select, form: ref, target: term, indexes: [none, key] }
+  - name: reference
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Product reference, form: ref, target: product, indexes: [none, key] }
+  - name: link
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Link, form: ref, indexes: [none, key], comment: A reference to an entity a plugin owns; config.target names the bound link kind. }
+  - name: quantity
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Quantity, form: quantity, indexes: [none, key, number] }
+  - name: money
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Money, form: dec, indexes: [none, number] }
+  - name: record
+    kind: registry.entry
+    meta: { type: kickside.pim.type, title: Record, form: record, indexes: [none] }

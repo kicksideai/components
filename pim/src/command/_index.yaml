@@ -1,0 +1,174 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.command
+
+entries:
+  - name: threads
+    kind: library.lua
+    meta:
+      comment: Typed Core threads client - open as the caller, append under expect, catch up, find receipts.
+    source: file://threads.lua
+    modules: [contract, security, json]
+    imports:
+      failure: kickside.pim:failure
+      narrow: kickside.pim:narrow
+      clock: kickside.pim:clock
+      types: kickside.pim:types
+
+  - name: pipeline
+    kind: library.lua
+    meta:
+      comment: Command pipeline - idempotent receipts, append under the attempt's guard, rebuild on a lost race, read-your-writes.
+    source: file://pipeline.lua
+    modules: [hash]
+    imports:
+      failure: kickside.pim:failure
+      clock: kickside.pim:clock
+      threads: kickside.pim.command:threads
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+
+  - name: items
+    kind: library.lua
+    meta:
+      comment: Validates apply items at the command head and plans their events.
+    source: file://items.lua
+    modules: [uuid]
+    imports:
+      failure: kickside.pim:failure
+      terms: kickside.pim.command:terms
+      types: kickside.pim:types
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+      values: kickside.pim.domain:values
+      policy: kickside.pim.domain:policy
+      item_state: kickside.pim.command:item_state
+      item_patch: kickside.pim.command:item_patch
+      evaluate: kickside.pim.domain:evaluate
+      checks: kickside.pim.extensions:checks
+
+  - name: item_state
+    kind: library.lua
+    meta:
+      comment: Command state - the catalog as earlier items in the command left it.
+    source: file://item_state.lua
+    imports:
+      failure: kickside.pim:failure
+      merge_rows: kickside.pim.persist:merge_rows
+      derived: kickside.pim.persist:derived
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+
+  - name: item_patch
+    kind: library.lua
+    meta:
+      comment: Item patches - values checked against the attribute, source rights and index.
+    source: file://item_patch.lua
+    modules: [hash, json]
+    imports:
+      references: kickside.pim.domain:references
+      type_functions: kickside.pim.extensions:type_functions
+      links: kickside.pim.extensions:links
+      types: kickside.pim:types
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+      schema: kickside.pim.schema:compile
+      values: kickside.pim.domain:values
+      item_state: kickside.pim.command:item_state
+
+  - name: writer
+    kind: library.lua
+    meta:
+      comment: The single PIM write path - head-checked appends with projection catch-up.
+    source: file://writer.lua
+    modules: [security, funcs]
+    imports:
+      policy: kickside.pim.domain:policy
+      receipts: kickside.pim.persist:receipts
+      release_jobs: kickside.pim.persist:release_jobs
+      clock: kickside.pim:clock
+      failure: kickside.pim:failure
+      pipeline: kickside.pim.command:pipeline
+      plugins: kickside.pim.extensions:plugins
+      links: kickside.pim.extensions:links
+      scopes: kickside.pim.extensions:scopes
+      types: kickside.pim:types
+      component: kickside.component:component
+      consts: kickside.pim:consts
+      seams: kickside.pim.extensions:seams
+      proposal_rows: kickside.pim.persist:proposal_rows
+      store: kickside.pim.persist:store
+      threads: kickside.pim.command:threads
+      jobs: kickside.core.jobs:jobs
+      items: kickside.pim.command:items
+      releases: kickside.pim.command:releases
+      proposals: kickside.pim.command:proposals
+      schema: kickside.pim.schema:compile
+      declaration: kickside.pim.schema:merge
+      changes: kickside.pim.schema:classify
+      defaults: kickside.pim.settings:defaults
+      values: kickside.pim.domain:values
+
+  - name: releases
+    kind: library.lua
+    meta:
+      comment: Plans release and withdraw commands from product rows at the command head.
+    source: file://releases.lua
+    modules: [hash, uuid]
+    imports:
+      execution_identity: kickside.execution:execution_identity
+      links: kickside.pim.extensions:links
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+      evaluate: kickside.pim.domain:evaluate
+      checks: kickside.pim.extensions:checks
+      snapshot: kickside.pim.domain:snapshot
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+
+  - name: proposals
+    kind: library.lua
+    meta:
+      comment: Stored proposals - base versions, decisions and the apply request that accepts one.
+    source: file://proposals.lua
+    imports:
+      failure: kickside.pim:failure
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: create
+    kind: library.lua
+    meta:
+      comment: Actor-scoped, idempotent catalog creation through the threads contract, with an optional initial schema.
+    source: file://create.lua
+    modules: [hash, security, json]
+    imports:
+      component_types: kickside.component:types
+      envelope: kickside.component:envelope
+      creations: kickside.pim.persist:creations
+      failure: kickside.pim:failure
+      component: kickside.component:component
+      consts: kickside.pim:consts
+      writer: kickside.pim.command:writer
+      locate: kickside.pim.read:locate
+      types: kickside.pim:types
+      threads: kickside.pim.command:threads
+
+  - name: terms
+    kind: library.lua
+    meta: { comment: Sequential term edits and validated merge planning. }
+    source: file://terms.lua
+    imports:
+      failure: kickside.pim:failure
+      references: kickside.pim.domain:references
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+      item_state: kickside.pim.command:item_state
+      item_patch: kickside.pim.command:item_patch
+      merge_rows: kickside.pim.persist:merge_rows
+      execution_identity: kickside.execution:execution_identity
+      resolve: kickside.pim.domain:resolve

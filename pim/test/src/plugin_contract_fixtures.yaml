@@ -1,0 +1,209 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app
+entries:
+
+  - name: probe_unattached_plugin
+    kind: registry.entry
+    meta: { type: kickside.pim.plugin }
+  - name: probe_public_recursive
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema:
+        type: object
+        properties:
+          token: { type: string }
+          nested: { $ref: '#/$defs/node' }
+        $defs:
+          node:
+            type: object
+            properties:
+              child: { $ref: '#/$defs/node' }
+  - name: probe_owned_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      requires: [app:probe_bare_plugin]
+      seams: [app:probe_type]
+  - name: probe_bad_requires
+    kind: registry.entry
+    meta: { type: kickside.pim.plugin, attachment: 'app:empty_plugin_attachment', requires: [a, a] }
+  - name: probe_bad_seams
+    kind: registry.entry
+    meta: { type: kickside.pim.plugin, attachment: 'app:empty_plugin_attachment', seams: { a: b } }
+
+  - name: probe_secret_allof
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema: { type: object, allOf: [{ properties: { token: { writeOnly: true } } }] }
+
+  - name: probe_secret_anyof
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema: { type: object, anyOf: [{ properties: { token: { format: password } } }] }
+
+  - name: probe_secret_oneof
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema: { type: object, oneOf: [{ properties: { token: { writeOnly: true } } }] }
+
+  - name: probe_secret_defs
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema: { type: object, $defs: { credential: { properties: { token: { writeOnly: true } } } } }
+
+  - name: probe_secret_definitions
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema: { type: object, definitions: { credential: { format: password } } }
+
+  - name: probe_secret_ref
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema: { type: object, properties: { credential: { $ref: '#/$defs/credential' } }, $defs: { credential: { format: password } } }
+
+  - name: probe_secret_tuple
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema: { type: object, properties: { credentials: { type: array, items: [{ format: password }] } } }
+
+  - name: probe_secret_additional
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema: { type: object, additionalProperties: { writeOnly: true } }
+
+  - name: empty_plugin_attachment
+    kind: contract.binding
+    meta:
+      class: [pim_test_plugin]
+      placement: { parents: [root], fixed: true }
+    contracts:
+      - contract: kickside.contract:component
+        methods:
+          get_status: kickside.core.threads:thread_status
+      - contract: kickside.contract:deletable
+        context_required: [component_id]
+        methods:
+          delete: app:empty_plugin_delete
+
+  - name: empty_plugin_delete
+    kind: function.lua
+    source: file://empty_plugin_delete.lua
+    method: delete
+
+  - name: probe_secret_uri_ref
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema:
+        type: object
+        properties:
+          credential: { $ref: '#/credential%20schema~1~0/' }
+        credential schema/~: { "": { format: password } }
+
+  - name: probe_secret_array_ref
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema:
+        type: object
+        properties:
+          credential: { $ref: '#/schemas/0' }
+        schemas: [{ writeOnly: true }]
+
+  - name: probe_secret_dependencies
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema:
+        type: object
+        dependencies:
+          credential: { properties: { token: { writeOnly: true } } }
+
+  - name: probe_secret_content
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      config_schema:
+        type: object
+        properties:
+          payload: { type: string, contentSchema: { properties: { token: { format: password } } } }
+
+  - name: state_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:plugin_attachment
+      config_schema: { type: object, properties: { fail: { type: boolean }, marker: { type: string } }, additionalProperties: false }
+      projections:
+        - { kind: app:state_fold, input: state, worker_ref: 'func://app:plugin_state_worker', revision: 2 }
+
+  - name: plugin_state_worker
+    kind: function.lua
+    meta: { type: projection.worker }
+    source: file://plugin_state_worker.lua
+    method: run
+    modules: [sql, json, contract, security]
+
+  - name: scoped_worker_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      projections: [{kind: 'app:scoped_fold', input: state, worker_ref: 'func://app:scoped_plugin_worker'}]
+
+  - name: scoped_plugin_worker
+    kind: function.lua
+    meta: {type: projection.worker}
+    source: file://plugin_state_worker.lua
+    method: run
+    modules: [sql, json, contract, security]
+    security:
+      policies: [app:user]
+
+  - name: plugin_worker_callbacks
+    kind: security.policy
+    groups: [wippy.security:process]
+    policy:
+      resources: [app:plugin_state_worker, app:plugin_projection_worker]
+      actions: [registry.get, funcs.call]
+      effect: allow
+
+  - name: state_plugin_access
+    kind: security.policy
+    groups: [kickside.security.groups:members]
+    policy:
+      resources: [app:state_plugin, app:plugin_attachment]
+      actions: [registry.get, contract.get, contract.open]
+      effect: allow
+
+  - name: state_worker_metadata
+    kind: security.policy
+    groups: [kickside.pim.security:manifest_reader]
+    policy:
+      resources: [app:plugin_state_worker]
+      actions: [registry.get]
+      effect: allow

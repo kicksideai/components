@@ -61,6 +61,16 @@
         "work/.wippy",
         "work/wippy.lock"
       ]
+    },
+    "pim": {
+      "component": "pim",
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
+      "exclude-paths": [
+        "pim/test",
+        "pim/.wippy",
+        "pim/wippy.lock"
+      ]
     }
   }
 }
