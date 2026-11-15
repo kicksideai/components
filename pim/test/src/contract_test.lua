@@ -1,0 +1,297 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local test = require("test")
+local sql = require("sql")
+local fixture = require("fixture")
+local requests = require("requests")
+local steps = require("steps")
+local store = require("store")
+local registry = require("registry")
+local time = require("time")
+
+type Map = { [string]: unknown }
+
+local METHODS = { "create", "list", "get_schema", "plan_schema", "apply_schema", "get", "query", "list_history", "apply", "propose",
+    "decide", "list_proposals", "release", "withdraw", "rebuild",
+    "list_links", "explain", "list_changes", "list_publications", "get_release", "list_releases", "list_terms", "schema_options" }
+
+local function define()
+    test.describe("request parsing", function()
+        test.it("answers every method in the shape its contract declares", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local sku = "RDG-moss-40"
+            local version = steps.version(h, sku)
+            local function shaped(method: string, request: Map): Map
+                local out, err = h.call(method, request)
+                test.is_nil(err, method .. ": " .. tostring(err))
+                test.is_nil(requests.check_output(method, out), method)
+                return out :: Map
+            end
+            shaped("list", {})
+            shaped("get_schema", {})
+            shaped("plan_schema", { declaration = { vocabularies = { { code = "probe" } } } })
+            shaped("apply_schema", { declaration = { vocabularies = { { code = "probe" } } } })
+            shaped("get", { product = { sku = sku } })
+            shaped("query", { limit = 1, count = true })
+            shaped("explain", { product = { sku = sku }, attr = "core.care" })
+            local proposed = shaped("propose", { items = { { product = { sku = sku }, set = { { attr = "core.gtin", value = "proposed-shape" } } } } })
+            shaped("list_proposals", {})
+            shaped("decide", { proposal_id = proposed.proposal_id, decision = "reject" })
+            shaped("apply", { items = { { product = { sku = sku }, expect_version = version, set = { { attr = "core.gtin", value = "shape" } } } } })
+            shaped("list_history", {})
+            shaped("list_terms", { vocabulary = "colors", limit = 2 })
+            local options = shaped("schema_options", {})
+            local type_ids: { [string]: Map } = {}
+            for _, t in ipairs(options.types :: { Map }) do type_ids[t.id :: string] = t end
+            test.eq(assert(type_ids["kickside.pim.types:text"]).form, "text")
+            test.eq(#(assert(type_ids["kickside.pim.types:quantity"]).indexes :: { string }), 3)
+            test.is_true(type(assert(type_ids["app:formless_type"]).problem) == "string", "a refused type declaration is listed with its problem")
+            local scope_ids: { [string]: boolean } = {}
+            for _, s in ipairs(options.scopes :: { Map }) do scope_ids[s.id :: string] = true end
+            test.is_true(scope_ids["app:stock_scope"] == true, "harness scope listed")
+            local plugin_ids: { [string]: Map } = {}
+            for _, p in ipairs(options.plugins :: { Map }) do plugin_ids[p.plugin :: string] = p end
+            test.eq(assert(plugin_ids["app:zones_plugin"]).installed, true)
+            test.eq(plugin_ids["app:zones_plugin"].active, false)
+            test.not_nil(plugin_ids["app:zones_plugin"].config_schema)
+            test.is_true(#(options.link_kinds :: { Map }) >= 1, "a bound link kind is listed")
+            shaped("list_changes", {})
+            shaped("list_links", { kind = "product", target = "none" })
+            shaped("list_publications", { channel = "web" })
+            shaped("rebuild", {})
+            local released = shaped("release", { items = { { product = { sku = sku }, expect_version = steps.version(h, sku) } } })
+            local outcome = (released.outcomes :: { Map })[1]
+            test.not_nil(outcome.release_id, tostring(outcome.outcome))
+            shaped("get_release", { release_id = outcome.release_id })
+            shaped("list_releases", { product = { sku = sku } })
+            shaped("withdraw", { items = { { product = { sku = sku } } } })
+        end)
+
+        test.it("carries the caller's trace context onto the events it appends", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local trace = { trace_id = "trace-1", run_id = "run-1", correlation_key = "corr-1" }
+            local out, err = h.call("apply", { trace_context = trace, items = { { product = { sku = "RDG" }, expect_version = steps.version(h, "RDG"), status = "draft" } } })
+            test.is_nil(err)
+            local db = assert(store.open())
+            local rows = assert(db:query("SELECT trace_id, run_id, correlation_key FROM kickside_event WHERE thread_id = $1 AND seq = $2", { h.id, out.seq }))
+            db:release()
+            test.eq(rows[1].trace_id, "trace-1")
+            test.eq(rows[1].run_id, "run-1")
+            test.eq(rows[1].correlation_key, "corr-1")
+            local _, refused = h.call("apply", { trace_context = { trace_id = "t", other = "x" }, items = {} })
+            test.not_nil(refused)
+            test.eq((refused :: error):kind(), errors.INVALID)
+        end)
+
+        test.it("refuses requests that do not match the method's input schema before running them", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            for _, case in ipairs({
+                { "get", { product = "RDG" } },
+                { "get", { product = { sku = "RDG" }, context = "en" } },
+                { "apply", { items = "RDG" } },
+                { "apply", { items = { { product = { sku = "RDG" }, expect_version = "any", set = { { value = 1 } } } } }, "item" },
+                { "list_history", { limit = "ten" } },
+                { "get_schema", { generation = "first" } },
+                { "release", { items = { { product = { sku = 5 } } } } },
+                { "decide", { proposal_id = 5, decision = "accept" } },
+                { "query", { limit = 1.5 } },
+            } :: { { unknown } }) do
+                local op = case[1] :: string
+                local out, err = h.call(op, case[2])
+                if case[3] == "item" then
+                    test.is_nil(err, tostring(err))
+                    test.eq(out.outcomes[1].outcome, "invalid")
+                    test.eq(assert(h.call("get", { product = { sku = "RDG" } })).product.version, 1)
+                else
+                    test.not_nil(err, op)
+                    test.eq((err :: error):kind(), errors.INVALID, op .. ": " .. tostring(err))
+                end
+            end
+            for _, method in ipairs(METHODS) do
+                local _, err = h.call(method, { unexpected = 1 })
+                test.not_nil(err, method)
+                test.eq((err :: error):kind(), errors.INVALID, method .. ": " .. tostring(err))
+            end
+            local version = 1
+            for _, case in ipairs({
+                { "apply", { items = { { product = { sku = "RDG" }, expect_verison = version, status = "draft" } } } },
+                { "apply", { items = { { product = { sku = "RDG", ski = "x" }, expect_version = version, status = "draft" } } } },
+                { "apply", { items = { { product = { sku = "RDG" }, expect_version = version, set = { { attr = "core.care", value = "x", locale = "en" } } } } } },
+                { "apply", { items = { { product = { sku = "RDG" }, expect_version = version, status = "draft" } }, idempotency = { namespace = "a", key = "b", ttl = 1 } } },
+                { "propose", { items = { { product = { sku = "RDG" }, expect_verison = version, status = "draft" } } } },
+                { "release", { items = { { product = { sku = "RDG" }, expect_verison = version } } } },
+                { "withdraw", { items = { { product = { sku = "RDG" }, channel = "x" } } } },
+                { "get", { product = { sku = "RDG", extra = true } } },
+                { "query", { filters = { { attr = "core.size", op = "eq", value = 40 } } } },
+                { "query", { ready = { set = "x", value = true, extra = 1 } } },
+                { "query", { parent = { skew = "RDG" } } },
+                { "query", { root = { skew = "RDG" } } },
+                { "query", { published = { channel = "x", state = "y" } } },
+                { "query", { scopes = { { id = "x", where = {}, extra = 1 } } } },
+                { "list_changes", { cursor = { seq = 1, product_id = "x", extra = 1 } } },
+            } :: { { unknown } }) do
+                local op = case[1] :: string
+                local out, err = h.call(op, case[2])
+                if case[3] == "item" then
+                    test.is_nil(err, tostring(err))
+                    test.eq(out.outcomes[1].outcome, "invalid")
+                    test.eq(assert(h.call("get", { product = { sku = "RDG" } })).product.version, 1)
+                else
+                    test.not_nil(err, op)
+                    test.eq((err :: error):kind(), errors.INVALID, op .. ": " .. tostring(err))
+                end
+            end
+            local _, empty_tree = h.call("query", { where = {} })
+            test.not_nil(empty_tree)
+            test.eq((empty_tree :: error):kind(), errors.INVALID)
+            local page, err = h.call("query", { scopes = {} })
+            test.is_nil(err)
+            test.eq(#page.items, 6)
+        end)
+    end)
+
+    test.describe("catalog contract", function()
+        test.it("binds every method to a registered service function", function()
+            local binding = assert(registry.get("kickside.pim.binding:catalog_service"))
+            local methods = binding.data.contracts[1].methods
+            for _, name in ipairs(METHODS) do
+                test.eq(methods[name], "kickside.pim.service:" .. name)
+                local fn = assert(registry.get(methods[name]))
+                test.eq(fn.kind, "function.lua")
+            end
+        end)
+
+        test.it("creates idempotently per caller and resolves the caller's only catalog", function()
+            local h = fixture.catalog({ bare = true })
+            local again, err = h.call("create", { idempotency_key = "fixture", title = "Fixture catalog" })
+            test.is_nil(err)
+            test.is_true(again.replayed)
+            test.eq(again.catalog_id, h.id)
+            local _, cerr = h.call("create", { idempotency_key = "fixture", title = "Another title" })
+            test.not_nil(cerr)
+            test.eq(#h.call("list", {}).catalogs, 1)
+            local _, ierr = h.executor:call("app:pim_call", { op = "get_schema", request = {} })
+            test.eq((ierr :: error):kind(), errors.NOT_FOUND, tostring(ierr))
+            local second = h.call("create", { idempotency_key = "two", title = "Second" })
+            test.is_false(second.replayed)
+            test.eq(#h.call("list", {}).catalogs, 2)
+            local _, ambiguous = h.executor:call("app:pim_call", { op = "get_schema", request = {} })
+            test.eq((ambiguous :: error):details().code, "catalog_ambiguous", tostring(ambiguous))
+        end)
+
+        test.it("plans a schema change without applying it", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local plan, err = h.call("plan_schema", { declaration = { aspects = { { namespace = "logistics", attributes = {
+                { code = "net_weight", type = "kickside.pim.types:number", index = "number", config = { scale = 2 } } } } } } })
+            test.is_nil(err)
+            test.eq(plan.class, "refused")
+            test.eq(plan.refused[1].what, "config.scale")
+            test.not_nil(plan.migration)
+            local schema = h.call("get_schema", {})
+            test.eq(schema.generation, 1)
+            test.eq(schema.attributes["logistics.net_weight"].config.scale, 3)
+            test.eq(schema.attributes["core.gtin"].unique, true)
+        end)
+
+        test.it("pages history for one product", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local root = h.call("get", { product = { sku = "RDG" } })
+            h.call("apply", { items = { { product = { sku = "RDG" }, expect_version = root.product.version,
+                set = { { attr = "core.name", ctx = { locale = "en" }, value = "Renamed" } } } } })
+            local page, err = h.call("list_history", { product = { sku = "RDG" }, limit = 3 })
+            test.is_nil(err)
+            test.eq(#page.entries, 3)
+            test.eq(page.entries[1].kind, "set")
+            test.eq(page.entries[1].attribute, "core.name")
+            test.eq(page.entries[1].ctx, "locale=en")
+            test.eq(page.entries[1].before, "Ridgeline hiking boot")
+            test.eq(page.entries[1].after, "Renamed")
+            test.eq(page.entries[1].actor, h.actor:id())
+            test.not_nil(page.entries[1].at)
+            test.not_nil(page.next)
+            local rest = h.call("list_history", { product = { sku = "RDG" }, before = page.next, limit = 50 })
+            local last = rest.entries[#rest.entries]
+            test.eq(last.kind, "created")
+            test.eq(last.after.sku, "RDG")
+            test.is_nil(rest.next)
+        end)
+
+        test.it("refuses a read until the projection reaches min_seq", function()
+            local h = fixture.catalog()
+            local _, err = h.call("query", { min_seq = 1000000 })
+            test.not_nil(err)
+            test.is_true(err:retryable())
+            local ok = h.call("query", { min_seq = 1 })
+            test.not_nil(ok)
+        end)
+
+        test.it("publishes catalog counts, generation and rebuild state as public meta", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local function meta(): unknown
+                return h.call("list", {}).catalogs[1]
+            end
+            local m
+            for _ = 1, 100 do
+                m = meta()
+                if m.product_count == 9 then break end
+                time.after("50ms"):receive()
+            end
+            test.eq(m.product_count, 9)
+            test.eq(m.item_count, 6)
+            test.eq(m.generation, 1)
+            h.call("apply_schema", { declaration = { aspects = { { namespace = "core", attributes = {
+                { code = "care", type = "kickside.pim.types:text", default = "Hand wash.", index = "key" } } } } } })
+            for _ = 1, 200 do
+                m = meta()
+                if m.generation == 2 and m.status == "ready" then break end
+                time.after("50ms"):receive()
+            end
+            test.eq(m.generation, 2)
+            test.eq(m.status, "ready")
+        end)
+
+        test.it("notifies every catalog reader of each committed change on the catalog topic", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local root = h.call("get", { product = { sku = "RDG" } })
+            local out = h.call("apply", { items = { { product = { sku = "RDG" }, expect_version = root.product.version,
+                set = { { attr = "core.name", ctx = { locale = "en" }, value = "Live" } } } } })
+            local seq = out.seq
+            local found = false
+            for _ = 1, 100 do
+                local db = assert(sql.get("app:db"))
+                local rows = db:query([[SELECT event, last_event_seq FROM pim_realtime_notices WHERE user_id = $1 AND topic = $2]],
+                    { h.actor:id(), "component." .. h.id })
+                db:release()
+                for _, r in ipairs(rows or {}) do
+                    if r.event == "component.meta.changed" and math.tointeger(tonumber(r.last_event_seq)) == seq then found = true end
+                end
+                if found then break end
+                time.after("50ms"):receive()
+            end
+            test.is_true(found)
+        end)
+
+        test.it("keeps one decision per proposal", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local p = h.call("propose", { items = { { product = { sku = "RDG" }, set = { { attr = "core.name", ctx = { locale = "en" }, value = "A" } } } } })
+            test.eq(h.call("decide", { proposal_id = p.proposal_id, decision = "accept" }).status, "accepted")
+            local _, rerr = h.call("decide", { proposal_id = p.proposal_id, decision = "reject" })
+            test.not_nil(rerr)
+            test.eq(rerr:details().code, "proposal_decided")
+            local q = h.call("propose", { items = { { product = { sku = "RDG" }, set = { { attr = "core.name", ctx = { locale = "en" }, value = "B" } } } } })
+            test.eq(h.call("decide", { proposal_id = q.proposal_id, decision = "reject" }).status, "rejected")
+            local late = h.call("decide", { proposal_id = q.proposal_id, decision = "accept" })
+            test.eq(late.status, "rejected")
+            test.eq(h.call("get", { product = { sku = "RDG" }, context = { locale = "en" } }).values["core.name"].value, "A")
+        end)
+    end)
+end
+
+return { run = test.run_cases(define) }

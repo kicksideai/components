@@ -1,0 +1,335 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.settings
+
+# Deployment defaults for every catalog. A catalog overrides them in its
+# declaration (policy) and excludes sources from audit (sources[].audit).
+entries:
+  - name: block
+    kind: registry.entry
+    meta:
+      type: kickside.settings:block
+      comment: Products settings - the deployment defaults every catalog starts from.
+    key: pim
+    title: Products
+    icon: tabler:packages
+    group: Content
+    order: 40
+    namespace: kickside.pim
+
+  - name: audit
+    kind: registry.entry
+    meta:
+      type: kickside.settings:definition
+      comment: Field-level change history; lifecycle history is always kept.
+    namespace: kickside.pim
+    key: audit
+    value_type: string
+    default: fields
+    schema: { type: string, enum: [fields, "off"] }
+    validate_func: kickside.pim.settings:validate
+    title: Audit trail
+    category: Products
+    order: 10
+    description: "fields records every value change with actor, source and time; off records only product lifecycle, schema and release history."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: audit_days
+    kind: registry.entry
+    meta:
+      type: kickside.settings:definition
+      comment: Change history retention.
+    namespace: kickside.pim
+    key: audit_days
+    value_type: int
+    default: 365
+    schema: { type: integer, minimum: 0, maximum: 106751 }
+    validate_func: kickside.pim.settings:validate
+    title: Audit retention (days)
+    category: Products
+    order: 20
+    description: Days change history is kept (0–106751); 0 uses the 365-day default. History always expires.
+    scope: global
+    editable: true
+    visible: true
+
+  - name: trash_days
+    kind: registry.entry
+    meta:
+      type: kickside.settings:definition
+      comment: Trash window before a deleted product is purged.
+    namespace: kickside.pim
+    key: trash_days
+    value_type: int
+    default: 14
+    schema: { type: integer, minimum: 1, maximum: 106751 }
+    validate_func: kickside.pim.settings:validate
+    title: Trash window (days)
+    category: Products
+    order: 30
+    description: Days a deleted product stays restorable before it is purged.
+    scope: global
+    editable: true
+    visible: true
+
+  - name: tombstone_days
+    kind: registry.entry
+    meta:
+      type: kickside.settings:definition
+      comment: Retention of purged-product tombstones that feeds report as deletes.
+    namespace: kickside.pim
+    key: tombstone_days
+    value_type: int
+    default: 365
+    schema: { type: integer, minimum: 1, maximum: 106751 }
+    validate_func: kickside.pim.settings:validate
+    title: Tombstone retention (days)
+    category: Products
+    order: 40
+    description: Days a purged product is still reported as deleted to feed consumers; a consumer further behind resyncs.
+    scope: global
+    editable: true
+    visible: true
+
+  - name: validate
+    kind: function.lua
+    meta:
+      comment: Server-side invariants of the PIM settings, run by the settings writer before a change persists.
+    source: file://validate.lua
+    method: validate
+    imports:
+      policy: kickside.pim.domain:policy
+
+  - name: defaults
+    kind: library.lua
+    meta:
+      comment: Reads the PIM deployment defaults; a settings failure is an error, never a guess.
+    source: file://defaults.lua
+    modules: [contract]
+    imports:
+      policy: kickside.pim.domain:policy
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: proposal_days
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: proposal_days
+    value_type: int
+    default: 30
+    schema: { type: integer, minimum: 1, maximum: 3650 }
+    validate_func: kickside.pim.settings:validate
+    title: Proposal retention (days)
+    category: Products
+    order: 50
+    description: "Allowed range 1–3650; deployment default 30."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: completed_work_days
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: completed_work_days
+    value_type: int
+    default: 180
+    schema: { type: integer, minimum: 1, maximum: 3650 }
+    validate_func: kickside.pim.settings:validate
+    title: Completed release work retention (days)
+    category: Products
+    order: 60
+    description: "Allowed range 1–3650; deployment default 180."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: abandoned_work_days
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: abandoned_work_days
+    value_type: int
+    default: 180
+    schema: { type: integer, minimum: 1, maximum: 3650 }
+    validate_func: kickside.pim.settings:validate
+    title: Abandoned release work retention (days)
+    category: Products
+    order: 70
+    description: "Allowed range 1–3650; deployment default 180."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: import_days
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: import_days
+    value_type: int
+    default: 180
+    schema: { type: integer, minimum: 1, maximum: 3650 }
+    validate_func: kickside.pim.settings:validate
+    title: Completed import retention (days)
+    category: Products
+    order: 80
+    description: "Allowed range 1–3650; deployment default 180."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: pending_creation_days
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: pending_creation_days
+    value_type: int
+    default: 90
+    schema: { type: integer, minimum: 1, maximum: 3650 }
+    validate_func: kickside.pim.settings:validate
+    title: Pending creation expiry (days)
+    category: Products
+    order: 90
+    description: "Allowed range 1–3650; deployment default 90."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: proposal_count
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: proposal_count
+    value_type: int
+    default: 1000
+    schema: { type: integer, minimum: 1, maximum: 1000 }
+    validate_func: kickside.pim.settings:validate
+    title: Proposal quota
+    category: Products
+    order: 100
+    description: "Allowed range 1–1000; deployment default 1000."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: proposal_bytes
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: proposal_bytes
+    value_type: int
+    default: 262144
+    schema: { type: integer, minimum: 1024, maximum: 262144 }
+    validate_func: kickside.pim.settings:validate
+    title: Proposal size (bytes)
+    category: Products
+    order: 110
+    description: "Allowed range 1024–262144; deployment default 262144."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: command_deadline_ms
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: command_deadline_ms
+    value_type: int
+    default: 5000
+    schema: { type: integer, minimum: 100, maximum: 5000 }
+    validate_func: kickside.pim.settings:validate
+    title: Command execution budget (ms)
+    category: Products
+    order: 120
+    description: "Allowed range 100–5000; deployment default 5000."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: maintenance_rows
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: maintenance_rows
+    value_type: int
+    default: 500
+    schema: { type: integer, minimum: 20, maximum: 500 }
+    validate_func: kickside.pim.settings:validate
+    title: Maintenance work per callback
+    category: Products
+    order: 130
+    description: "Allowed range 20–500; deployment default 500."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: maintenance_catalogs
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: maintenance_catalogs
+    value_type: int
+    default: 10
+    schema: { type: integer, minimum: 1, maximum: 10 }
+    validate_func: kickside.pim.settings:validate
+    title: Catalogs per maintenance callback
+    category: Products
+    order: 140
+    description: "Allowed range 1–10; deployment default 10."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: rebuild_rows
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: rebuild_rows
+    value_type: int
+    default: 500
+    schema: { type: integer, minimum: 1, maximum: 500 }
+    validate_func: kickside.pim.settings:validate
+    title: Products per rebuild transaction
+    category: Products
+    order: 150
+    description: "Allowed range 1–500; deployment default 500."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: job_batches
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: job_batches
+    value_type: int
+    default: 20
+    schema: { type: integer, minimum: 1, maximum: 20 }
+    validate_func: kickside.pim.settings:validate
+    title: Batches per job execution
+    category: Products
+    order: 160
+    description: "Allowed range 1–20; deployment default 20."
+    scope: global
+    editable: true
+    visible: true
+
+  - name: import_rows
+    kind: registry.entry
+    meta: { type: kickside.settings:definition, comment: "Validated operating policy with a bounded maximum." }
+    namespace: kickside.pim
+    key: import_rows
+    value_type: int
+    default: 200
+    schema: { type: integer, minimum: 1, maximum: 200 }
+    validate_func: kickside.pim.settings:validate
+    title: Rows per import batch
+    category: Products
+    order: 170
+    description: "Allowed range 1–200; deployment default 200."
+    scope: global
+    editable: true
+    visible: true

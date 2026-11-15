@@ -1,0 +1,574 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.security
+
+# Module access. Administrators select the public module_access policy for a
+# group in System -> Security; the platform Members group composes it by
+# default. Policies list exact entry IDs; endpoint names grant nothing. The
+# user_security_scope requirement binds the host group at install time.
+
+entries:
+  # kickside.pim.security:module_access
+  - name: module_access
+    kind: security.policy
+    meta:
+      title: Kickside PIM
+      surface: kickside.pim
+      intent: module_access
+      includes:
+        - kickside.pim.security:module_runtime
+        - kickside.pim.security:job_declarations
+        - kickside.pim.security:pim_endpoint_access
+    groups: []
+    policy:
+      resources:
+        - kickside.pim:catalog
+        - kickside.pim.binding:catalog
+        - kickside.pim.events:plugin.rebuild
+        - kickside.pim.events:plugin.configured
+        - kickside.pim.events:schema.applied
+        - kickside.pim.events:product.created
+        - kickside.pim.events:product.changed
+        - kickside.pim.events:product.moved
+        - kickside.pim.events:product.deleted
+        - kickside.pim.events:product.restored
+        - kickside.pim.events:product.purged
+        - kickside.pim.events:term.changed
+        - kickside.pim.events:model.release_requested
+        - kickside.pim.events:product.released
+        - kickside.pim.events:product.withdrawn
+        - kickside.pim.ports:plugin_configured
+        - kickside.pim.ports:plugin_rebuild
+        - kickside.pim.ports:schema_applied
+        - kickside.pim.ports:product_created
+        - kickside.pim.ports:product_changed
+        - kickside.pim.ports:product_moved
+        - kickside.pim.ports:product_deleted
+        - kickside.pim.ports:product_restored
+        - kickside.pim.ports:product_purged
+        - kickside.pim.ports:term_changed
+        - kickside.pim.ports:model_release_requested
+        - kickside.pim.ports:product_released
+        - kickside.pim.ports:product_withdrawn
+        - kickside.pim.source:publications_port
+        - kickside.pim.source:products_port
+        - kickside.pim.source:proposals_port
+        - kickside.pim.sink:products_port
+        - kickside.pim.blocks:get_product
+        - kickside.pim.blocks:query_products
+        - kickside.pim.blocks:apply
+        - kickside.pim.blocks:release
+      actions:
+        - registry.get
+        - registry.find
+      effect: allow
+
+  # kickside.pim.security:module_runtime
+  - name: module_runtime
+    kind: security.policy
+    meta:
+      private: true
+    groups: []
+    policy:
+      resources:
+        - kickside.pim:definition
+        - kickside.pim:dep.kickside.component
+        - kickside.pim:dep.kickside.core
+        - kickside.pim:dep.kickside.jobs
+        - kickside.pim:dep.kickside.contract
+        - kickside.pim:dep.kickside.execution
+        - kickside.pim:dep.kickside.settings
+        - kickside.pim:dep.wippy.migration
+        - kickside.pim:target_db
+        - kickside.pim:api_router
+        - kickside.pim:catalog_event_retention_days
+        - kickside.pim:requests
+        - kickside.pim:types
+        - kickside.pim:consts
+        - kickside.pim:data_error
+        - kickside.pim:client
+        - kickside.pim:failure
+        - kickside.pim:clock
+        - kickside.pim:narrow
+        - kickside.pim:shape
+        - kickside.pim:schema_provider
+        - kickside.pim:catalog
+        - kickside.pim:link_target
+        - kickside.pim.api:access
+        - kickside.pim.api:list
+        - kickside.pim.api:get_catalog
+        - kickside.pim.api:list.endpoint
+        - kickside.pim.api:get_catalog.endpoint
+        - kickside.pim.api:create
+        - kickside.pim.api:create.endpoint
+        - kickside.pim.api:get_schema
+        - kickside.pim.api:get_schema.endpoint
+        - kickside.pim.api:apply_schema
+        - kickside.pim.api:apply_schema.endpoint
+        - kickside.pim.api:plan_schema
+        - kickside.pim.api:plan_schema.endpoint
+        - kickside.pim.api:get
+        - kickside.pim.api:get.endpoint
+        - kickside.pim.api:query
+        - kickside.pim.api:query.endpoint
+        - kickside.pim.api:list_history
+        - kickside.pim.api:list_history.endpoint
+        - kickside.pim.api:apply
+        - kickside.pim.api:apply.endpoint
+        - kickside.pim.api:propose
+        - kickside.pim.api:propose.endpoint
+        - kickside.pim.api:list_proposals
+        - kickside.pim.api:list_proposals.endpoint
+        - kickside.pim.api:decide
+        - kickside.pim.api:decide.endpoint
+        - kickside.pim.api:release
+        - kickside.pim.api:release.endpoint
+        - kickside.pim.api:list_terms
+        - kickside.pim.api:list_terms.endpoint
+        - kickside.pim.api:schema_options
+        - kickside.pim.api:schema_options.endpoint
+        - kickside.pim.api:list_releases
+        - kickside.pim.api:list_releases.endpoint
+        - kickside.pim.api:get_release
+        - kickside.pim.api:get_release.endpoint
+        - kickside.pim.api:withdraw
+        - kickside.pim.api:withdraw.endpoint
+        - kickside.pim.api:rebuild
+        - kickside.pim.api:rebuild.endpoint
+        - kickside.pim.api:list_links
+        - kickside.pim.api:list_links.endpoint
+        - kickside.pim.api:explain
+        - kickside.pim.api:explain.endpoint
+        - kickside.pim.api:list_changes
+        - kickside.pim.api:list_changes.endpoint
+        - kickside.pim.api:list_publications
+        - kickside.pim.api:list_publications.endpoint
+        - kickside.pim.api:configure_plugin
+        - kickside.pim.api:configure_plugin.endpoint
+        - kickside.pim.binding:catalog
+        - kickside.pim.binding:catalog_service
+        - kickside.pim.binding:access
+        - kickside.pim.blocks:get_product
+        - kickside.pim.blocks:query_products
+        - kickside.pim.blocks:apply
+        - kickside.pim.blocks:release
+        - kickside.pim.blocks:get_product.run
+        - kickside.pim.blocks:query_products.run
+        - kickside.pim.blocks:apply.run
+        - kickside.pim.blocks:release.run
+        - kickside.pim.command:threads
+        - kickside.pim.command:pipeline
+        - kickside.pim.command:items
+        - kickside.pim.command:item_state
+        - kickside.pim.command:item_patch
+        - kickside.pim.command:writer
+        - kickside.pim.command:releases
+        - kickside.pim.command:proposals
+        - kickside.pim.command:create
+        - kickside.pim.command:terms
+        - kickside.pim.domain:values
+        - kickside.pim.domain:policy
+        - kickside.pim.domain:resolve
+        - kickside.pim.domain:evaluate
+        - kickside.pim.domain:snapshot
+        - kickside.pim.domain:document
+        - kickside.pim.domain:search
+        - kickside.pim.domain:references
+        - kickside.pim.events:schema.applied
+        - kickside.pim.events:product.created
+        - kickside.pim.events:product.changed
+        - kickside.pim.events:product.moved
+        - kickside.pim.events:product.deleted
+        - kickside.pim.events:product.restored
+        - kickside.pim.events:product.purged
+        - kickside.pim.events:term.changed
+        - kickside.pim.events:product.released
+        - kickside.pim.events:product.withdrawn
+        - kickside.pim.events:model.release_requested
+        - kickside.pim.events:plugin.configured
+        - kickside.pim.events:plugin.rebuild
+        - kickside.pim.persist:config
+        - kickside.pim.persist:creations
+        - kickside.pim.persist:receipts
+        - kickside.pim.persist:store
+        - kickside.pim.persist:bulk
+        - kickside.pim.persist:layout
+        - kickside.pim.persist:history
+        - kickside.pim.persist:fold_driver
+        - kickside.pim.persist:operands
+        - kickside.pim.persist:tree
+        - kickside.pim.persist:select
+        - kickside.pim.persist:materializer
+        - kickside.pim.persist:publish_meta
+        - kickside.pim.persist:proposal_rows
+        - kickside.pim.persist:read_model
+        - kickside.pim.persist:retention_rows
+        - kickside.pim.persist:derived
+        - kickside.pim.persist:item_index
+        - kickside.pim.persist:rebuild_rows
+        - kickside.pim.persist:merge_rows
+        - kickside.pim.persist:cleanup_rows
+        - kickside.pim.persist:schema_cleanup
+        - kickside.pim.persist:release_jobs
+        - kickside.pim.schema:compile
+        - kickside.pim.schema:merge
+        - kickside.pim.schema:classify
+        - kickside.pim.schema:sections
+        - kickside.pim.schema:contexts
+        - kickside.pim.jobs:budget
+        - kickside.pim.extensions:plugin_attachments
+        - kickside.pim.extensions:plugin_projections
+        - kickside.pim.extensions:plugin_projection_state
+        - kickside.pim.extensions:checks
+        - kickside.pim.extensions:plugins
+        - kickside.pim.extensions:seams
+        - kickside.pim.extensions:type_functions
+        - kickside.pim.extensions:scopes
+        - kickside.pim.extensions:links
+        - kickside.pim.extensions:plugin_feed
+        - kickside.pim.types:text
+        - kickside.pim.types:rich_text
+        - kickside.pim.types:identifier
+        - kickside.pim.types:integer
+        - kickside.pim.types:number
+        - kickside.pim.types:boolean
+        - kickside.pim.types:date
+        - kickside.pim.types:datetime
+        - kickside.pim.types:select
+        - kickside.pim.types:reference
+        - kickside.pim.types:link
+        - kickside.pim.types:quantity
+        - kickside.pim.types:money
+        - kickside.pim.types:record
+        - kickside.pim.ports:schema_applied
+        - kickside.pim.ports:product_created
+        - kickside.pim.ports:product_changed
+        - kickside.pim.ports:product_moved
+        - kickside.pim.ports:product_deleted
+        - kickside.pim.ports:product_restored
+        - kickside.pim.ports:product_purged
+        - kickside.pim.ports:term_changed
+        - kickside.pim.ports:product_released
+        - kickside.pim.ports:product_withdrawn
+        - kickside.pim.ports:model_release_requested
+        - kickside.pim.ports:plugin_configured
+        - kickside.pim.ports:plugin_rebuild
+        - kickside.pim.portability:export
+        - kickside.pim.portability:import_into
+        - kickside.pim.portability:import_work
+        - kickside.pim.portability:result
+        - kickside.pim.read:access
+        - kickside.pim.read:reader
+        - kickside.pim.read:feeds
+        - kickside.pim.read:releases
+        - kickside.pim.read:locate
+        - kickside.pim.retention:cleanup
+        - kickside.pim.security:module_access
+        - kickside.pim.security:pim_endpoint_access
+        - kickside.pim.security:user_security_scope
+        - kickside.pim.security:tool_access
+        - kickside.pim.security:plugin_defer
+        - kickside.pim.service:create
+        - kickside.pim.service:list
+        - kickside.pim.service:get_catalog
+        - kickside.pim.service:get_schema
+        - kickside.pim.service:plan_schema
+        - kickside.pim.service:apply_schema
+        - kickside.pim.service:get
+        - kickside.pim.service:query
+        - kickside.pim.service:list_history
+        - kickside.pim.service:apply
+        - kickside.pim.service:propose
+        - kickside.pim.service:decide
+        - kickside.pim.service:list_proposals
+        - kickside.pim.service:release
+        - kickside.pim.service:withdraw
+        - kickside.pim.service:rebuild
+        - kickside.pim.service:list_links
+        - kickside.pim.service:explain
+        - kickside.pim.service:list_changes
+        - kickside.pim.service:list_publications
+        - kickside.pim.service:get_release
+        - kickside.pim.service:list_terms
+        - kickside.pim.service:schema_options
+        - kickside.pim.service:list_releases
+        - kickside.pim.service:configure_plugin
+        - kickside.pim.service:plugin_context
+        - kickside.pim.service:plugin_feed
+        - kickside.pim.settings:block
+        - kickside.pim.settings:audit
+        - kickside.pim.settings:audit_days
+        - kickside.pim.settings:trash_days
+        - kickside.pim.settings:tombstone_days
+        - kickside.pim.settings:validate
+        - kickside.pim.settings:defaults
+        - kickside.pim.sink:write
+        - kickside.pim.sink:products
+        - kickside.pim.sink:products_port
+        - kickside.pim.source:pull
+        - kickside.pim.source:publications
+        - kickside.pim.source:publications_port
+        - kickside.pim.source:pull_products
+        - kickside.pim.source:products
+        - kickside.pim.source:products_port
+        - kickside.pim.source:pull_proposals
+        - kickside.pim.source:proposals
+        - kickside.pim.source:proposals_port
+      actions:
+        - registry.get
+        - registry.find
+        - contract.get
+        - contract.open
+        - contract.call
+        - contract.implementations
+        - contract.security
+        - funcs.call
+        - funcs.security
+      effect: allow
+
+  # kickside.pim.security:pim_endpoint_access
+  - name: pim_endpoint_access
+    kind: security.policy
+    meta:
+      comment: Members load the PIM view and bundle and call the catalog endpoints; the catalog ACL decides each call.
+    groups: []
+    policy:
+      resources:
+        - kickside.pim.api:list.endpoint
+        - kickside.pim.api:get_catalog.endpoint
+        - kickside.pim.api:create.endpoint
+        - kickside.pim.api:get_schema.endpoint
+        - kickside.pim.api:plan_schema.endpoint
+        - kickside.pim.api:configure_plugin.endpoint
+        - kickside.pim.api:apply_schema.endpoint
+        - kickside.pim.api:get.endpoint
+        - kickside.pim.api:query.endpoint
+        - kickside.pim.api:list_history.endpoint
+        - kickside.pim.api:apply.endpoint
+        - kickside.pim.api:propose.endpoint
+        - kickside.pim.api:decide.endpoint
+        - kickside.pim.api:list_proposals.endpoint
+        - kickside.pim.api:release.endpoint
+        - kickside.pim.api:withdraw.endpoint
+        - kickside.pim.api:rebuild.endpoint
+        - kickside.pim.api:list_links.endpoint
+        - kickside.pim.api:explain.endpoint
+        - kickside.pim.api:list_changes.endpoint
+        - kickside.pim.api:list_publications.endpoint
+        - kickside.pim.api:get_release.endpoint
+        - kickside.pim.api:list_releases.endpoint
+        - kickside.pim.api:list_terms.endpoint
+        - kickside.pim.api:schema_options.endpoint
+      actions: access
+      effect: allow
+
+  # kickside.pim.security:user_security_scope
+  - name: user_security_scope
+    kind: ns.requirement
+    default: kickside.security.groups:members
+    meta:
+      value_kind: security.scope
+      comment: Application security group that receives the pim module policies.
+    targets:
+      - entry: kickside.pim.security:module_access
+        path: ".groups +="
+      - entry: kickside.pim.security:module_runtime
+        path: ".groups +="
+      - entry: kickside.pim.security:job_declarations
+        path: ".groups +="
+      - entry: kickside.pim.security:pim_endpoint_access
+        path: ".groups +="
+
+  # kickside.pim.security:catalog_public_meta
+  - name: catalog_public_meta
+    kind: security.policy
+    meta:
+      private: true
+      service_only: true
+      comment: Lets the catalog meta publisher write public meta on catalog components only.
+    policy:
+      resources: '*'
+      actions: component.runtime_meta.write
+      effect: allow
+      conditions:
+        - field: meta.impl_id
+          operator: eq
+          value: kickside.pim.binding:catalog
+
+  # kickside.pim.security:catalog_delete_report
+  - name: catalog_delete_report
+    kind: security.policy
+    meta:
+      private: true
+      service_only: true
+      comment: Catalog teardown reports the deletion so the lifecycle reaper removes what the catalog owns.
+    policy:
+      resources: kickside.core.lifecycle:report
+      actions: lifecycle.report.publish
+      effect: allow
+
+  # kickside.pim.security:rebuild_defer
+  - name: rebuild_defer
+    kind: security.policy
+    meta:
+      private: true
+      service_only: true
+      comment: Lets the rebuild job run its batches as the catalog's execution identity.
+    policy:
+      resources: [kickside.pim.jobs:rebuild]
+      actions: kickside.execution.defer
+      effect: allow
+
+  # kickside.pim.security:merge_defer
+  - name: merge_defer
+    kind: security.policy
+    meta:
+      private: true
+      service_only: true
+      comment: Lets the term merge job issue merge commands as the actor who asked.
+    policy:
+      resources:
+        - kickside.pim.jobs:term_merge
+      actions: kickside.execution.defer
+      effect: allow
+
+  # kickside.pim.security:retention_db_access
+  - name: retention_db_access
+    kind: security.policy
+    meta:
+      private: true
+      service_only: true
+      comment: Lets the PIM retention owner open the PIM database.
+    groups: []
+    policy:
+      resources: []
+      actions: [db.get]
+      effect: allow
+
+  - name: release_defer
+    kind: security.policy
+    meta: { private: true, service_only: true, comment: The model release job runs batches as its requesting actor. }
+    policy:
+      resources: kickside.pim.jobs:release_model
+      actions: kickside.execution.defer
+      effect: allow
+
+  - name: tool_access
+    kind: security.policy
+    meta: {title: PIM tools, surface: kickside.pim, intent: tool_access}
+    groups: []
+    policy:
+      resources: &tool_ids
+      - kickside.pim.traits:pim_readonly
+      - kickside.pim.traits:pim_trait
+      - kickside.pim.traits:pim_admin
+      - kickside.pim.traits:build
+      - kickside.pim.traits:build_reads
+      - kickside.pim.traits:list_catalogs
+      - kickside.pim.traits:get_schema
+      - kickside.pim.traits:schema_options
+      - kickside.pim.traits:list_terms
+      - kickside.pim.traits:query
+      - kickside.pim.traits:get
+      - kickside.pim.traits:explain
+      - kickside.pim.traits:list_history
+      - kickside.pim.traits:list_links
+      - kickside.pim.traits:list_proposals
+      - kickside.pim.traits:list_releases
+      - kickside.pim.traits:get_release
+      - kickside.pim.traits:list_publications
+      - kickside.pim.traits:list_changes
+      - kickside.pim.traits:apply
+      - kickside.pim.traits:propose
+      - kickside.pim.traits:decide
+      - kickside.pim.traits:release
+      - kickside.pim.traits:withdraw
+      - kickside.pim.traits:create_catalog
+      - kickside.pim.traits:plan_schema
+      - kickside.pim.traits:apply_schema
+      actions: [registry.get, registry.find, funcs.call]
+      effect: allow
+
+  - name: platform_callbacks
+    kind: security.policy
+    meta: { private: true }
+    groups: [wippy.security:process]
+    policy:
+      resources:
+        - kickside.pim.persist:projection
+        - kickside.pim.persist:projection_committed
+        - kickside.pim.binding:delete_func
+        - kickside.pim.migrations:01_catalog
+        - kickside.pim.jobs:rebuild
+        - kickside.pim.jobs:import
+        - kickside.pim.jobs:import_batch
+        - kickside.pim.jobs:plugins
+        - kickside.pim.jobs:release_model
+        - kickside.pim.jobs:term_merge
+        - kickside.pim.extensions:plugin_batch
+        - kickside.pim.jobs:rebuild_batch
+        - kickside.pim.jobs:term_merge_batch
+        - kickside.pim.jobs:release_model_batch
+        - kickside.pim.retention:owner
+      actions: [registry.get, funcs.call]
+      effect: allow
+
+  - name: job_declarations
+    kind: security.policy
+    meta: { private: true }
+    groups: []
+    policy:
+      resources: [kickside.pim.jobs:import, kickside.pim.jobs:plugins, kickside.pim.jobs:rebuild, kickside.pim.jobs:term_merge, kickside.pim.jobs:release_model]
+      actions: [registry.get]
+      effect: allow
+
+  - name: manifest_reader
+    kind: security.scope
+    meta:
+      private: true
+      comment: Function-local lookup of tool declarations during plugin validation.
+    policies: []
+
+  - name: manifest_metadata
+    kind: security.policy
+    meta: { private: true }
+    groups: [kickside.pim.security:manifest_reader]
+    policy:
+      resources: *tool_ids
+      actions: [registry.get, registry.find]
+      effect: allow
+
+  - name: plugin_defer
+    kind: security.policy
+    policy:
+      resources: [kickside.pim.jobs:plugins]
+      actions: [kickside.execution.defer]
+      effect: allow
+
+  - name: import_defer
+    kind: security.policy
+    meta: {private: true,service_only: true}
+    policy:
+      resources: [kickside.pim.jobs:import]
+      actions: [kickside.execution.defer]
+      effect: allow
+
+  - name: tools_catalog
+    kind: security.policy
+    meta: {private: true}
+    groups: [kickside.pim.security:manifest_reader]
+    policy:
+      resources: [kickside.agents:tools, kickside.agents.registry:tools_registry, kickside.agents.registry:t_find]
+      actions: [registry.get, registry.find, contract.get, contract.open, contract.call, contract.implementations, contract.security, funcs.call, funcs.security]
+      effect: allow
+
+  - name: subject_retirement
+    kind: security.policy
+    meta:
+      private: true
+      service_only: true
+      comment: Only the retention owner ends permanently purged product subject lifetimes.
+    policy:
+      resources: pim.catalog
+      actions: threads.subjects.retire
+      effect: allow

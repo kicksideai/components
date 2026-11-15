@@ -1,0 +1,143 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.extensions
+
+entries:
+  - name: plugin_attachments
+    kind: library.lua
+    source: file://plugin_attachments.lua
+    modules: [hash]
+    imports:
+      values: kickside.pim.domain:values
+      component_types: kickside.component:types
+      creations: kickside.pim.persist:creations
+      component: kickside.component:component
+      envelope: kickside.component:envelope
+      types: kickside.pim:types
+
+  - name: plugin_projections
+    kind: function.lua
+    security:
+      groups: [kickside.pim.security:manifest_reader]
+    source: file://plugin_projections.lua
+    method: run
+    modules: [sql, json]
+    imports:
+      component: kickside.component:component
+      threads: kickside.pim.command:threads
+      plugins: kickside.pim.extensions:plugins
+      writer: kickside.pim.command:writer
+      consts: kickside.pim:consts
+      jobs: kickside.core.jobs:jobs
+      values: kickside.pim.domain:values
+      attachments: kickside.pim.extensions:plugin_attachments
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: plugin_batch
+    kind: function.lua
+    security:
+      groups: [kickside.pim.security:manifest_reader]
+      policies: [kickside.pim.security:lifecycle_output_publish]
+    source: file://plugin_projections.lua
+    method: batch
+    modules: [sql, json]
+    imports:
+      component: kickside.component:component
+      threads: kickside.pim.command:threads
+      plugins: kickside.pim.extensions:plugins
+      writer: kickside.pim.command:writer
+      consts: kickside.pim:consts
+      jobs: kickside.core.jobs:jobs
+      values: kickside.pim.domain:values
+      attachments: kickside.pim.extensions:plugin_attachments
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: plugin_projection_state
+    kind: library.lua
+    modules: [json]
+    source: file://plugin_projection_state.lua
+    imports:
+      values: kickside.pim.domain:values
+      failure: kickside.pim:failure
+      threads: kickside.pim.command:threads
+      plugin_feed: kickside.pim.extensions:plugin_feed
+      types: kickside.pim:types
+
+  - name: checks
+    kind: library.lua
+    meta:
+      comment: Runs family check functions through funcs.
+    source: file://checks.lua
+    modules: [funcs]
+    imports:
+      shape: kickside.pim:shape
+      types: kickside.pim:types
+
+  - name: plugins
+    kind: library.lua
+    meta:
+      comment: PIM plugins - manifests, app-level values, effective config per catalog and the schema a plugin contributes.
+    source: file://plugins.lua
+    modules: [registry, contract, security, hash]
+    imports:
+      failure: kickside.pim:failure
+      shape: kickside.pim:shape
+      values: kickside.pim.domain:values
+      worker: kickside.core.projections.persist:worker
+      defaults: kickside.pim.settings:defaults
+      types: kickside.pim:types
+
+  - name: seams
+    kind: library.lua
+    meta:
+      comment: Declared seams a schema names by id - attribute types (form, indexes, target, config schema, functions) and checks.
+    source: file://seams.lua
+    modules: [registry]
+    imports:
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
+  - name: type_functions
+    kind: library.lua
+    meta:
+      comment: Runs a type's normalize and validate functions, batched per attribute, and checks their answers.
+    source: file://type_functions.lua
+    modules: [funcs]
+    imports:
+      shape: kickside.pim:shape
+      types: kickside.pim:types
+
+  - name: scopes
+    kind: library.lua
+    meta:
+      comment: Scope declarations - plugin tables products may be filtered by, checked from their registry entries and admitted per reader.
+    source: file://scopes.lua
+    modules: [registry]
+    imports:
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
+  - name: links
+    kind: library.lua
+    meta:
+      comment: Link targets - bound link kinds, which ids exist for the caller, and their labels for release snapshots.
+    source: file://links.lua
+    modules: [contract, registry, security]
+    imports:
+      types: kickside.pim:types
+
+  - name: plugin_feed
+    kind: library.lua
+    source: file://plugin_feed.lua
+    modules: [json]
+    imports:
+      failure: kickside.pim:failure
+      values: kickside.pim.domain:values
+      access: kickside.pim.read:access
+      feeds: kickside.pim.read:feeds
+      store: kickside.pim.persist:store
+      plugins: kickside.pim.extensions:plugins
+      threads: kickside.pim.command:threads
+      types: kickside.pim:types

@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.domain
+
+entries:
+  - name: values
+    kind: library.lua
+    meta:
+      comment: Canonical value forms - normalize, equality keys and int64 order values per form.
+    source: file://values.lua
+    modules: [json]
+    imports:
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
+  - name: policy
+    kind: library.lua
+    meta:
+      comment: Catalog policy keys, their bounds, and the effective policy over the deployment defaults.
+    source: file://policy.lua
+    imports:
+      types: kickside.pim:types
+
+  - name: resolve
+    kind: library.lua
+    meta:
+      comment: The single value resolver - owning level, fallback candidates, cleared stops.
+    source: file://resolve.lua
+    imports:
+      types: kickside.pim:types
+      schema: kickside.pim.schema:compile
+
+  - name: evaluate
+    kind: library.lua
+    meta:
+      comment: The single evaluator - requirement presence and the authored rule.
+    source: file://evaluate.lua
+    imports:
+      resolve: kickside.pim.domain:resolve
+      snapshot: kickside.pim.domain:snapshot
+      types: kickside.pim:types
+
+  - name: snapshot
+    kind: library.lua
+    meta:
+      comment: Release snapshot - every applicable attribute resolved in every served context.
+    source: file://snapshot.lua
+    imports:
+      references: kickside.pim.domain:references
+      resolve: kickside.pim.domain:resolve
+      types: kickside.pim:types
+
+  - name: document
+    kind: library.lua
+    meta:
+      comment: Product documents - event patches and the attributes a document holds.
+    source: file://document.lua
+    imports:
+      types: kickside.pim:types
+
+
+  - name: search
+    kind: library.lua
+    source: file://search.lua
+    modules: [text]
+
+  - name: references
+    kind: library.lua
+    source: file://references.lua
+    imports:
+      types: kickside.pim:types

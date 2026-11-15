@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.schema
+
+entries:
+  - name: compile
+    kind: library.lua
+    meta:
+      comment: Schema declaration compiler, context keys and change classification.
+    source: file://compile.lua
+    modules: [hash]
+    imports:
+      failure: kickside.pim:failure
+      shape: kickside.pim:shape
+      consts: kickside.pim:consts
+      values: kickside.pim.domain:values
+      policy: kickside.pim.domain:policy
+      sections: kickside.pim.schema:sections
+      contexts: kickside.pim.schema:contexts
+      types: kickside.pim:types
+
+  - name: merge
+    kind: library.lua
+    meta:
+      comment: Declaration merge - named entries replace, omitted entries stay, remove destroys.
+    source: file://merge.lua
+    imports:
+      failure: kickside.pim:failure
+      shape: kickside.pim:shape
+      policy: kickside.pim.domain:policy
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+
+  - name: classify
+    kind: library.lua
+    meta:
+      comment: Schema change classification against catalog usage.
+    source: file://classify.lua
+    imports:
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+
+  - name: sections
+    kind: library.lua
+    meta:
+      comment: Schema sections that compile on their own - sources, channels, layout, scopes and plugins.
+    source: file://sections.lua
+    modules: [hash]
+    imports:
+      consts: kickside.pim:consts
+      values: kickside.pim.domain:values
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
+  - name: contexts
+    kind: library.lua
+    meta: { comment: Context validation and bounded dimension expansion. }
+    source: file://contexts.lua
+    imports:
+      consts: kickside.pim:consts
+      types: kickside.pim:types
+      failure: kickside.pim:failure

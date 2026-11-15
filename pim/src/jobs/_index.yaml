@@ -1,0 +1,149 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.jobs
+
+entries:
+  - name: rebuild
+    kind: function.lua
+    meta:
+      comment: Rebuild job - runs rewrite batches as the catalog's execution identity until the rebuild ends.
+    source: file://rebuild.lua
+    method: run
+    modules: [funcs]
+    security:
+      policies:
+        - kickside.pim.security:rebuild_defer
+    imports: &rebuild_imports
+      defaults: kickside.pim.settings:defaults
+      failure: kickside.pim:failure
+      budget: kickside.pim.jobs:budget
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      jobs: kickside.core.jobs:jobs
+      component: kickside.component:component
+      execution_identity: kickside.execution:execution_identity
+      store: kickside.pim.persist:store
+      rebuild_rows: kickside.pim.persist:rebuild_rows
+      document: kickside.pim.domain:document
+      item_index: kickside.pim.persist:item_index
+      types: kickside.pim:types
+
+  - name: rebuild_batch
+    kind: function.lua
+    meta:
+      private: true
+      comment: One rebuild batch - rewrites item rows and drops removed attribute values; the job calls it as the catalog's execution identity.
+    source: file://rebuild.lua
+    method: batch
+    modules: [funcs]
+    imports: *rebuild_imports
+
+  - name: term_merge
+    kind: function.lua
+    meta:
+      comment: Term merge job - repeats the merge command as the asking actor until no value references the retired term.
+    source: file://term_merge.lua
+    method: run
+    security:
+      policies:
+        - kickside.pim.security:merge_defer
+    imports: &merge_imports
+      defaults: kickside.pim.settings:defaults
+      error_envelope: kickside.contract:error_envelope
+      budget: kickside.pim.jobs:budget
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      jobs: kickside.core.jobs:jobs
+      execution_identity: kickside.execution:execution_identity
+      store: kickside.pim.persist:store
+      merge_rows: kickside.pim.persist:merge_rows
+      writer: kickside.pim.command:writer
+      types: kickside.pim:types
+
+  - name: term_merge_batch
+    kind: function.lua
+    meta:
+      private: true
+      comment: One term merge batch - the merge command issued as the asking actor; answers how many products still reference the term.
+    source: file://term_merge.lua
+    method: batch
+    security:
+      policies: [kickside.pim.security:item_output_publish]
+    imports: *merge_imports
+
+  - name: budget
+    kind: library.lua
+    source: file://budget.lua
+    modules: [time]
+    imports:
+      clock: kickside.pim:clock
+
+  - name: release_model
+    kind: function.lua
+    source: file://release_model.lua
+    method: run
+    security:
+      policies: [kickside.pim.security:release_defer]
+    imports: &release_imports
+      defaults: kickside.pim.settings:defaults
+      component: kickside.component:component
+      failure: kickside.pim:failure
+      error_envelope: kickside.contract:error_envelope
+      jobs: kickside.core.jobs:jobs
+      execution_identity: kickside.execution:execution_identity
+      release_jobs: kickside.pim.persist:release_jobs
+      store: kickside.pim.persist:store
+      writer: kickside.pim.command:writer
+      consts: kickside.pim:consts
+      budget: kickside.pim.jobs:budget
+      clock: kickside.pim:clock
+      types: kickside.pim:types
+
+  - name: release_model_batch
+    kind: function.lua
+    meta: { private: true }
+    source: file://release_model.lua
+    method: batch
+    security:
+      policies: [kickside.pim.security:release_output_publish]
+    imports: *release_imports
+
+  - name: plugins
+    kind: function.lua
+    source: file://plugins.lua
+    method: run
+    security:
+      policies: [kickside.pim.security:plugin_defer]
+    imports:
+      defaults: kickside.pim.settings:defaults
+      jobs: kickside.core.jobs:jobs
+      budget: kickside.pim.jobs:budget
+      clock: kickside.pim:clock
+      component: kickside.component:component
+      execution_identity: kickside.execution:execution_identity
+      types: kickside.pim:types
+
+  - name: import
+    kind: function.lua
+    source: file://import.lua
+    method: run
+    security:
+      policies: [kickside.pim.security:import_defer]
+    imports: &import_imports
+      defaults: kickside.pim.settings:defaults
+      jobs: kickside.core.jobs:jobs
+      work: kickside.pim.portability:import_work
+      store: kickside.pim.persist:store
+      budget: kickside.pim.jobs:budget
+      clock: kickside.pim:clock
+      component: kickside.component:component
+      execution_identity: kickside.execution:execution_identity
+      types: kickside.pim:types
+  - name: import_batch
+    kind: function.lua
+    meta: {private: true}
+    source: file://import.lua
+    method: batch
+    security:
+      policies: [kickside.pim.security:item_output_publish, kickside.pim.security:schema_output_publish]
+    imports: *import_imports

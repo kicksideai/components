@@ -1,0 +1,223 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.events
+
+# Catalog thread event types. The registry id is the event type.
+entries:
+  - name: schema.applied
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "A schema generation becomes active." }
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        plugin_configs: { type: object }
+        generation: { type: integer }
+        declaration: { type: object }
+        compiled: { type: object }
+        class: { type: string }
+        changes: { type: array, items: { type: object } }
+        actor: { type: string }
+        at: { type: string, description: Command time, RFC3339 UTC. }
+        receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
+      required: [generation, declaration, compiled, class]
+
+  - name: product.created
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "A product is created." }
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        product_id: { type: string }
+        sku: { type: string }
+        family: { type: string }
+        parent_id: { type: string }
+        level: { type: integer }
+        is_item: { type: boolean }
+        axis_key: { type: string }
+        status: { type: string }
+        source: { type: string }
+        source_seq: { type: integer, description: Sequence of the ordered source that created the product. }
+        patch: { type: array, items: { type: object, required: [a, c], properties: { a: { type: integer }, c: { type: string }, v: { description: Canonical value written. }, before: { description: Canonical value replaced. }, clear: { type: boolean }, unset: { type: boolean }, s: { type: string } } } }
+        origin: { type: object, description: "Canonical provenance {type, id}: what produced this change." }
+        provenance: { type: object, description: "Reported detail beside origin: model, confidence, evidence." }
+        approval_item_id: { type: string }
+        actor: { type: string }
+        audit: { type: boolean, description: Whether this event's value steps enter the change history. }
+        at: { type: string, description: Command time, RFC3339 UTC. }
+        receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
+      required: [product_id, sku, family, level, is_item, patch]
+
+  - name: product.changed
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "Product values or status change." }
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        product_id: { type: string }
+        patch: { type: array, items: { type: object, required: [a, c], properties: { a: { type: integer }, c: { type: string }, v: { description: Canonical value written. }, before: { description: Canonical value replaced. }, clear: { type: boolean }, unset: { type: boolean }, s: { type: string } } } }
+        status: { type: string }
+        previous_status: { type: string, description: Status before this change; set with status. }
+        axis_key: { type: string }
+        source: { type: string }
+        source_seq: { type: integer }
+        origin: { type: object, description: "Canonical provenance {type, id}: what produced this change." }
+        provenance: { type: object, description: "Reported detail beside origin: model, confidence, evidence." }
+        approval_item_id: { type: string }
+        actor: { type: string }
+        audit: { type: boolean, description: Whether this event's value steps enter the change history. }
+        at: { type: string, description: Command time, RFC3339 UTC. }
+        receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
+      required: [product_id, patch]
+
+  - name: product.moved
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "A variant moves to another parent." }
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        product_id: { type: string }
+        parent_id: { type: string }
+        axis_key: { type: string }
+        actor: { type: string }
+        at: { type: string, description: Command time, RFC3339 UTC. }
+        receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
+      required: [product_id, parent_id, axis_key]
+
+  - name: product.deleted
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "A product moves to the trash; its sku, unique values and axis slot are free." }
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        product_id: { type: string }
+        actor: { type: string }
+        at: { type: string, description: Command time, RFC3339 UTC. }
+        receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
+      required: [product_id]
+
+  - name: product.restored
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "A trashed product returns to the catalog." }
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        product_id: { type: string }
+        axis_key: { type: string }
+        actor: { type: string }
+        at: { type: string, description: Command time, RFC3339 UTC. }
+        receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
+      required: [product_id]
+
+  - name: product.purged
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "A trashed product past the trash window is purged; a tombstone remains." }
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        product_id: { type: string }
+        actor: { type: string }
+        at: { type: string, description: Command time, RFC3339 UTC. }
+      required: [product_id]
+
+  - name: term.changed
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "A vocabulary term is created or changes." }
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        vocabulary: { type: string }
+        code: { type: string }
+        labels: { type: object }
+        parent: { type: string }
+        retired: { type: boolean }
+        merge: { type: object, description: Deferred merge intent persisted with the term and its job. }
+        merged_into: { type: string, description: The term every value referencing this retired term is re-pointed at. }
+        actor: { type: string }
+        at: { type: string, description: Command time, RFC3339 UTC. }
+        receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
+      required: [vocabulary, code, labels, retired]
+
+  - name: product.released
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "An item is released as an immutable snapshot to the channels it is ready for." }
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        product_id: { type: string }
+        release_id: { type: string }
+        version: { type: integer }
+        generation: { type: integer }
+        snapshot: { type: object }
+        hash: { type: string }
+        channels: { type: array, items: { type: string } }
+        actor: { type: string }
+        at: { type: string, description: Command time, RFC3339 UTC. }
+        receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
+      required: [product_id, release_id, version, generation, snapshot, hash, channels]
+
+  - name: product.withdrawn
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "An item is withdrawn from channels." }
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        product_id: { type: string }
+        channels: { type: array, items: { type: string } }
+        actor: { type: string }
+        at: { type: string, description: Command time, RFC3339 UTC. }
+        receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
+      required: [product_id, channels]
+
+  - name: model.release_requested
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: A model release requests one job over its ready items. }
+    schema:
+      type: object
+      additionalProperties: false
+      required: [request_id, product_id, root, identity]
+      properties:
+        request_id: { type: string }
+        product_id: { type: string }
+        root: { type: boolean }
+        identity: { type: object }
+        channels: { type: array, items: { type: string } }
+        actor: { type: string }
+        at: { type: string }
+        receipt: { type: object }
+
+  - name: plugin.configured
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      type: object
+      additionalProperties: false
+      required: [plugin, config]
+      properties:
+        plugin: { type: string }
+        config: { anyOf: [{ type: object }, { type: array, maxItems: 0 }] }
+        actor: { type: string }
+        at: { type: string }
+        receipt: { type: object }
+
+  - name: plugin.rebuild
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      type: object
+      additionalProperties: false
+      required: [plugin]
+      properties:
+        plugin: { type: string }
+        actor: { type: string }
+        at: { type: string }
+        receipt: { type: object }

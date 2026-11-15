@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.security
+
+# Catalog events are the facts its commands validated, so the binding reserves
+# them with system_only. Each policy lets one producer publish exactly what it
+# appends, and each command checks the caller's catalog access first.
+
+entries:
+  - name: schema_output_publish
+    kind: security.policy
+    meta: { private: true, service_only: true, comment: Catalog creation and schema apply publish schema generations. }
+    policy:
+      resources: [kickside.pim.events:schema.applied, kickside.pim.events:plugin.configured, kickside.pim.events:plugin.rebuild]
+      actions: threads.output.publish
+      effect: allow
+
+  - name: item_output_publish
+    kind: security.policy
+    meta: { private: true, service_only: true, comment: "Apply, proposal decisions, the sink and import publish product and term changes." }
+    policy:
+      resources:
+        - kickside.pim.events:product.created
+        - kickside.pim.events:product.changed
+        - kickside.pim.events:product.moved
+        - kickside.pim.events:product.deleted
+        - kickside.pim.events:product.restored
+        - kickside.pim.events:term.changed
+      actions: threads.output.publish
+      effect: allow
+
+  - name: release_output_publish
+    kind: security.policy
+    meta: { private: true, service_only: true, comment: The release command publishes releases. }
+    policy:
+      resources: [kickside.pim.events:product.released, kickside.pim.events:model.release_requested]
+      actions: threads.output.publish
+      effect: allow
+
+  - name: withdraw_output_publish
+    kind: security.policy
+    meta: { private: true, service_only: true, comment: The withdraw command publishes withdrawals. }
+    policy:
+      resources: [kickside.pim.events:product.withdrawn]
+      actions: threads.output.publish
+      effect: allow
+
+  - name: purge_output_publish
+    kind: security.policy
+    meta: { private: true, service_only: true, comment: The retention owner publishes purges. }
+    policy:
+      resources: kickside.pim.events:product.purged
+      actions: threads.output.publish
+      effect: allow
+
+  - name: lifecycle_output_publish
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.pim.events:plugin.rebuild]
+      actions: threads.output.publish
+      effect: allow

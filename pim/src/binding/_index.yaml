@@ -1,0 +1,127 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.binding
+
+entries:
+  - name: delete_func
+    kind: function.lua
+    meta:
+      comment: Removes a catalog's generated tables and rows.
+    source: file://delete_func.lua
+    method: delete
+    modules: [ctx]
+    security:
+      policies:
+        - kickside.pim.security:catalog_delete_report
+    imports:
+      store: kickside.pim.persist:store
+      cleanup_rows: kickside.pim.persist:cleanup_rows
+      types: kickside.pim:types
+      access: kickside.pim.binding:access
+      retention_rows: kickside.pim.persist:retention_rows
+      cleanup: kickside.pim.retention:cleanup
+
+  - name: catalog
+    kind: contract.binding
+    meta:
+      class: [pim_catalog]
+      title: Product catalog
+      icon: tabler:packages
+      thread_class: pim.catalog
+      comment: One catalog per component; its thread is the command log and its projection owns the catalog tables.
+      retention:
+        event_days: 90
+      events:
+        input: []
+        output:
+          - { type: kickside.pim.events:plugin.rebuild, system_only: true }
+          - { type: kickside.pim.events:plugin.configured, system_only: true }
+          - { type: kickside.pim.events:schema.applied, system_only: true }
+          - { type: kickside.pim.events:product.created, system_only: true }
+          - { type: kickside.pim.events:product.changed, system_only: true }
+          - { type: kickside.pim.events:product.moved, system_only: true }
+          - { type: kickside.pim.events:product.deleted, system_only: true }
+          - { type: kickside.pim.events:product.restored, system_only: true }
+          - { type: kickside.pim.events:product.purged, system_only: true }
+          - { type: kickside.pim.events:term.changed, system_only: true }
+          - { type: kickside.pim.events:model.release_requested, system_only: true }
+          - { type: kickside.pim.events:product.released, system_only: true }
+          - { type: kickside.pim.events:product.withdrawn, system_only: true }
+      projections:
+        - kind: kickside.pim:catalog_model
+          worker_ref: func://kickside.pim.persist:projection
+          input_mode: prefetch_events
+          events:
+            input:
+              - { type: kickside.pim.events:plugin.rebuild }
+              - { type: kickside.pim.events:plugin.configured }
+              - { type: kickside.pim.events:schema.applied }
+              - { type: kickside.pim.events:product.created }
+              - { type: kickside.pim.events:product.changed }
+              - { type: kickside.pim.events:product.moved }
+              - { type: kickside.pim.events:product.deleted }
+              - { type: kickside.pim.events:product.restored }
+              - { type: kickside.pim.events:product.purged }
+              - { type: kickside.pim.events:term.changed }
+              - { type: kickside.pim.events:model.release_requested }
+              - { type: kickside.pim.events:product.released }
+              - { type: kickside.pim.events:product.withdrawn }
+    contracts:
+      - contract: kickside.contract:component
+        methods:
+          get_status: kickside.core.threads:thread_status
+      - contract: kickside.contract:deletable
+        context_required: [component_id]
+        methods:
+          delete: kickside.pim.binding:delete_func
+      - contract: kickside.contract:portable
+        context_required: [component_id]
+        methods:
+          export: kickside.pim.portability:export
+          import_into: kickside.pim.portability:import_into
+
+  - name: catalog_service
+    kind: contract.binding
+    meta:
+      title: PIM catalog service
+      comment: Default implementation of kickside.pim:catalog.
+    contracts:
+      - contract: kickside.pim:catalog
+        default: true
+        methods:
+          create: kickside.pim.service:create
+          list: kickside.pim.service:list
+          get_catalog: kickside.pim.service:get_catalog
+          get_schema: kickside.pim.service:get_schema
+          configure_plugin: kickside.pim.service:configure_plugin
+          plugin_feed: kickside.pim.service:plugin_feed
+          plugin_context: kickside.pim.service:plugin_context
+          plan_schema: kickside.pim.service:plan_schema
+          apply_schema: kickside.pim.service:apply_schema
+          get: kickside.pim.service:get
+          query: kickside.pim.service:query
+          list_history: kickside.pim.service:list_history
+          apply: kickside.pim.service:apply
+          propose: kickside.pim.service:propose
+          decide: kickside.pim.service:decide
+          list_proposals: kickside.pim.service:list_proposals
+          release: kickside.pim.service:release
+          withdraw: kickside.pim.service:withdraw
+          rebuild: kickside.pim.service:rebuild
+          list_links: kickside.pim.service:list_links
+          explain: kickside.pim.service:explain
+          list_changes: kickside.pim.service:list_changes
+          list_publications: kickside.pim.service:list_publications
+          get_release: kickside.pim.service:get_release
+          list_releases: kickside.pim.service:list_releases
+          list_terms: kickside.pim.service:list_terms
+          schema_options: kickside.pim.service:schema_options
+
+  - name: access
+    kind: library.lua
+    source: file://access.lua
+    modules: [security]
+    imports:
+      failure: kickside.pim:failure
+      component: kickside.component:component
+      execution_identity: kickside.execution:execution_identity

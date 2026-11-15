@@ -1,0 +1,56 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+-- Type functions run batched per attribute and answer one result per value;
+-- malformed answers fail and function errors retain their native fields.
+local test = require("test")
+local type_functions = require("type_functions")
+
+local function define()
+    test.describe("type functions", function()
+        test.it("normalizes a batch, keeping each value's answer in order", function()
+            local out = assert(type_functions.normalize("app:probe_normalize", {}, { "ab c", 7, "  ", "x" }))
+            test.eq(#out, 4)
+            test.eq(out[1].value, "ABC")
+            test.eq(out[2].error, "text required")
+            test.eq(out[3].error, "blank code")
+            test.eq(out[4].value, "X")
+        end)
+
+        test.it("validates a batch against the attribute config", function()
+            local out = assert(type_functions.validate("app:probe_validate", { length = 3 }, { "ABC", "ABCD" }))
+            test.eq(#out[1], 0)
+            test.eq(out[2][1].code, "wrong_length")
+            test.is_true(out[2][1].message:find("4 characters", 1, true) ~= nil)
+            local none = assert(type_functions.validate("app:probe_validate", {}, { "ABCD" }))
+            test.eq(#none[1], 0)
+        end)
+
+        test.it("preserves a type owner's native classification and details", function()
+            local value, err = type_functions.normalize("app:probe_type_denied", {}, { "a" })
+            test.is_nil(value)
+            test.eq(err:kind(), errors.PERMISSION_DENIED)
+            test.is_false(err:retryable())
+            test.eq(err:details().code, "type_owner_denied")
+            test.eq(err:details().owner, "probe")
+        end)
+
+        test.it("answers unavailable for a function that fails or answers out of shape", function()
+            local _, broken = type_functions.normalize("app:probe_broken", {}, { "a" })
+            test.not_nil(broken)
+            test.eq((broken :: error):kind(), errors.UNAVAILABLE)
+            test.is_true((broken :: error):retryable())
+            test.eq(broken:details().code, "contract_unavailable")
+            local value, short = type_functions.normalize("app:probe_broken", {}, { "a", "b" })
+            test.is_nil(value)
+            test.eq(short:kind(), errors.UNAVAILABLE)
+            test.eq(short:details().code, "contract_unavailable")
+            test.is_true(short:retryable())
+            test.is_true(tostring(short):find("1 results for 2 values", 1, true) ~= nil, tostring(short))
+            local _, raised = type_functions.validate("app:probe_raising", {}, { "a" })
+            test.eq((raised :: error):kind(), errors.UNAVAILABLE)
+            local _, missing = type_functions.normalize("app:nope", {}, { "a" })
+            test.not_nil(missing)
+        end)
+    end)
+end
+
+return { run = test.run_cases(define) }

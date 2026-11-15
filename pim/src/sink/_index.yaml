@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.sink
+
+entries:
+  - name: write
+    kind: function.lua
+    meta:
+      comment: Products sink write - one sku upsert per call through the single write path.
+    source: file://write.lua
+    method: write
+    modules: [registry, json]
+    security:
+      policies:
+        - kickside.pim.security:item_output_publish
+    imports:
+      shape: kickside.pim:shape
+      requests: kickside.pim:requests
+      data_error: kickside.pim:data_error
+      failure: kickside.pim:failure
+      writable_sink: kickside.data:writable_sink
+      writer: kickside.pim.command:writer
+      types: kickside.pim:types
+
+  - name: products
+    kind: contract.binding
+    meta:
+      title: PIM products
+      comment: Upserts products by sku into a catalog; config names the catalog and the registered source.
+      group: PIM
+      class: kickside.pim
+      icon: tabler:packages
+      delivery: at_least_once
+      input_shape: record
+    contracts:
+      - contract: kickside.data:writable
+        methods:
+          write: kickside.pim.sink:write
+
+  - name: products_port
+    kind: registry.entry
+    meta:
+      type: kickside.automation.port
+      title: PIM products
+      icon: tabler:packages
+      group: PIM
+      class: kickside.pim
+    binding: kickside.pim.sink:products
+    input_mode: transform_output
+    capabilities:
+      receipt_identity: 2
+      structured_failure: 1
+    operations:
+      upsert: {}
+    config_schema:
+      catalog_id:
+        type: string
+        picker: wc-component-picker
+        class: pim_catalog
+        required: true
+        role: primary
+        title: Catalog
+      source:
+        type: string
+        title: Source
+        description: Registered catalog source the writes come from.
+    input_schema: |
+      { "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object", "additionalProperties": false, "required": ["sku"],
+        "properties": {
+          "sku": { "type": "string", "minLength": 1 },
+          "family": { "type": "string" },
+          "parent_sku": { "type": "string" },
+          "seq": { "type": "integer", "description": "Source sequence for ordered sources." },
+          "status": { "type": "string", "enum": ["active", "draft", "archived"] },
+          "set": { "type": "array", "items": { "$ref": "#/$defs/value" } },
+          "clear": { "type": "array", "items": { "$ref": "#/$defs/value" } },
+          "unset": { "type": "array", "items": { "$ref": "#/$defs/value" } } },
+        "$defs": { "value": { "type": "object", "required": ["attr"], "properties": {
+          "attr": { "type": "string" }, "ctx": { "type": "object", "additionalProperties": { "type": "string" } }, "value": {} } } } }
+    output_schema: |
+      { "type": "object", "properties": { "product_id": { "type": "string" } } }

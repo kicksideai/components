@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.ports
+
+# Event source ports: one per catalog event; the config picks the catalog thread.
+entries:
+  - name: schema_applied
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM schema applied, icon: "tabler:schema" }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:schema.applied
+    config_schema: &pim_catalog
+      thread_id:
+        type: string
+        picker: wc-component-picker
+        class: pim_catalog
+        required: true
+        role: primary
+        title: Catalog
+
+  - name: product_created
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM product created, icon: "tabler:package-import" }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:product.created
+    config_schema: *pim_catalog
+
+  - name: product_changed
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM product changed, icon: "tabler:package" }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:product.changed
+    config_schema: *pim_catalog
+
+  - name: product_moved
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM variant moved, icon: "tabler:arrows-move" }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:product.moved
+    config_schema: *pim_catalog
+
+  - name: product_deleted
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM product trashed, icon: "tabler:package-off" }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:product.deleted
+    config_schema: *pim_catalog
+
+  - name: product_restored
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM product restored, icon: "tabler:restore" }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:product.restored
+    config_schema: *pim_catalog
+
+  - name: product_purged
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM product purged, icon: "tabler:trash-x" }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:product.purged
+    config_schema: *pim_catalog
+
+  - name: term_changed
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM term changed, icon: "tabler:tags" }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:term.changed
+    config_schema: *pim_catalog
+
+  - name: product_released
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM product released, icon: "tabler:rocket" }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:product.released
+    config_schema: *pim_catalog
+
+  - name: product_withdrawn
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM product withdrawn, icon: "tabler:rocket-off" }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:product.withdrawn
+    config_schema: *pim_catalog
+
+  - name: model_release_requested
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM model release requested, icon: 'tabler:rocket' }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:model.release_requested
+    config_schema: *pim_catalog
+
+  - name: plugin_configured
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM plugin configured, icon: 'tabler:settings' }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:plugin.configured
+    config_schema: *pim_catalog
+
+  - name: plugin_rebuild
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM plugin rebuild, icon: 'tabler:refresh' }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:plugin.rebuild
+    config_schema: *pim_catalog
