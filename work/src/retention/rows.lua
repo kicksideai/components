@@ -49,16 +49,14 @@ function M.trash(db: sql.DB, board_id: string, days: integer, limit: integer, _a
 end
 
 
-local function past_visit(name: string, dialect: string, counters: boolean?): string
+local function past_visit(name: string, dialect: string): string
     local root = dialect == "postgres" and "CAST(i.process_data::jsonb ->> 'visit' AS integer)"
         or "json_extract(i.process_data, '$.visit')"
     local regions = dialect == "postgres" and "jsonb_each(i.process_data::jsonb -> 'region_data') r"
         or "json_each(i.process_data, '$.region_data') r"
     local visit = dialect == "postgres" and "CAST(r.value ->> 'visit' AS integer)" or "json_extract(r.value, '$.visit')"
-    local legacy = counters and (dialect == "postgres" and "i.process_data::jsonb ->> 'stage_visits' IS NULL OR "
-        or "json_extract(i.process_data, '$.stage_visits') IS NULL OR ") or ""
     return "NOT EXISTS (SELECT 1 FROM kickside_work_item i WHERE i.board_id=$1 AND i.item_id=" .. name .. ".item_id"
-        .. " AND i.life<>'purged' AND (" .. legacy .. "COALESCE(" .. root .. ",i.visit)=" .. name .. ".visit"
+        .. " AND i.life<>'purged' AND (COALESCE(" .. root .. ",i.visit)=" .. name .. ".visit"
         .. " OR EXISTS (SELECT 1 FROM " .. regions .. " WHERE " .. visit .. "=" .. name .. ".visit)))"
 end
 
@@ -227,27 +225,6 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
     local comment_page,cerr=comments(board_id,limit,nil)
     if cerr or not comment_page then return nil,cerr end
     if comment_page.more then return comment_page,nil end
-    -- Legacy completed purges also retire before losing their tombstone address.
-    local db,open_err=store.open()
-    if not db then return nil,open_err end
-    local current,board_err=store.board(db,board_id)
-    if board_err or not current then db:release();return {removed=0,more=false},board_err end
-    local effective,policy_err=policy.effective(defaults :: domain.JsonObject,current.compiled.policy_overrides)
-    if policy_err or not effective then db:release();return nil,policy_err end
-    local tombs,tomb_err=db:query([[SELECT item_id FROM kickside_work_item WHERE board_id=$1 AND life<>'live' AND life='purged'
-        AND purge_pending=0 AND life_at<$2 ORDER BY life_at,item_id LIMIT $3]],{board_id,clock.offset(-(effective.tombstone_days :: integer)*86400),math.min(100,limit//2)})
-    db:release()
-    if tomb_err then return nil,tomb_err end
-    local tomb_subjects: {string}={}
-    local tomb_ids: {[string]:boolean}={}
-    for _,row in ipairs(tombs or {}) do
-        local id,ierr=store.need(row,"item_id")
-        if ierr or not id then return nil,ierr end
-        tomb_ids[id]=true;tomb_subjects[#tomb_subjects+1]="i:" .. id
-    end
-    local retirement_err=threads.retire(board_id,tomb_subjects)
-    if retirement_err then return nil,retirement_err end
-    local requested=#tomb_subjects
     return lifecycle.transaction(function(tx: sql.Transaction, dialect: string): (types.Pruned?, error?)
         local board, err = store.board(tx, board_id, dialect)
         if err then return nil, err end
@@ -256,9 +233,8 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
         if perr or not effective then return nil, perr end
         local event_days, event_err = policy.event_days()
         if event_err or not event_days then return nil, event_err end
-        local left = limit-requested
+        local left = limit
         local examined=0
-        local in_slots=cursor=="slots" or (cursor and cursor:sub(1,6)=="timer:")
         local in_visibility=cursor and cursor:sub(1,11)=="visibility:"
         local row_anchor: types.CollectionPosition?=nil
         if cursor and cursor:sub(1,5)=="rows:" then
@@ -266,7 +242,7 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
             if decode_err then return nil,decode_err end
             row_anchor=decoded
         end
-        if not in_slots and not in_visibility and not row_anchor then
+        if not in_visibility and not row_anchor then
             local anchor: types.VisibilityPosition={seq=board.tombstone_floor_seq,item=""}
             if cursor and cursor:sub(1,4)=="age:" then
                 local decoded,decode_err=store.stored(cursor:sub(5),{} :: types.VisibilityPosition)
@@ -309,9 +285,6 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
             left = left - n
             return more == true, nil
         end
-        local legacy_more, legacy_err = page("kickside_work_change", "seq, n", "board_id = $1 AND kind = 'query_value'", { board_id })
-        if legacy_err then return nil, legacy_err end
-        if legacy_more then return { removed = limit-left-examined, spent=limit-left, examined=examined, more=true },nil end
         local pages: {types.Collection} = {
             { name = "kickside_work_receipt", keys = "command_key", where = "board_id = $1 AND at < $2", protection="NOT (" .. operation_expiry.PROTECTED_RECEIPT .. ")", days = event_days, age="at", order = "at, command_key" },
             { name = "kickside_work_key_alias", keys = "key", where = "board_id = $1 AND at < $2", days = effective.tombstone_days, age="at", order = "at, key" },
@@ -321,10 +294,10 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
                 AND NOT EXISTS (SELECT 1 FROM kickside_work_item i WHERE i.board_id = $1 AND i.life IN ('live','trashed') AND i.process_generation <= kickside_work_generation.generation)
                 AND NOT EXISTS (SELECT 1 FROM kickside_work_job j WHERE j.board_id = $1 AND j.status BETWEEN 'pending' AND 'running')]], days = effective.audit_days, age="applied_at", order = "applied_at, generation" },
             { name="kickside_work_approval", keys="item_id, visit, actor", where="board_id=$1 AND at<$2", protection=past_visit("kickside_work_approval",dialect), days=effective.audit_days, age="at", order="at, item_id, visit, actor" },
-            { name="kickside_work_stage_run", keys="item_id, visit, attempt", where="board_id=$1 AND COALESCE(finished, started)<$2", protection=past_visit("kickside_work_stage_run",dialect,true), days=effective.audit_days, age="COALESCE(finished, started)", order="COALESCE(finished, started), item_id, visit, attempt" },
+            { name="kickside_work_stage_run", keys="item_id, visit, attempt", where="board_id=$1 AND COALESCE(finished, started)<$2", protection=past_visit("kickside_work_stage_run",dialect), days=effective.audit_days, age="COALESCE(finished, started)", order="COALESCE(finished, started), item_id, visit, attempt" },
             { name="kickside_work_job", keys="job_id", where="board_id=$1 AND status='failed' AND failed_at<$2", days=effective.audit_days, age="failed_at", order="failed_at, job_id" },
         }
-        if not in_slots and not in_visibility then
+        if not in_visibility then
             local reached=row_anchor==nil
             for _,entry in ipairs(pages) do
                 if row_anchor and row_anchor.name==entry.name then reached=true end
@@ -351,7 +324,7 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
         end
         -- Limit candidates before evaluating baseline eligibility. Retained rows
         -- advance a keyset in the existing owner position, just like deleted rows.
-        if not in_slots then
+        do
             local anchor: types.VisibilityPosition = {seq=-1,item=""}
             if cursor and cursor:sub(1,11)=="visibility:" then
                 local decoded,decode_err=store.stored(cursor:sub(12),{} :: types.VisibilityPosition)
@@ -385,13 +358,12 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
             end
         end
         local tombs, terr = tx:query([[SELECT item_id, updated_seq FROM kickside_work_item WHERE board_id = $1 AND life <> 'live' AND life = 'purged'
-            AND purge_pending=0 AND life_at < $2 ORDER BY life_at, item_id LIMIT $3]], { board_id, clock.offset(-(effective.tombstone_days :: integer) * 86400), math.min(left,requested) })
+            AND purge_pending=0 AND life_at < $2 ORDER BY life_at, item_id LIMIT $3]], { board_id, clock.offset(-(effective.tombstone_days :: integer) * 86400), left })
         if terr then return nil, terr end
         local floor = board.tombstone_floor_seq
         for _, tomb in ipairs(tombs or {}) do
             local id, ierr = store.need(tomb, "item_id")
             if ierr then return nil, ierr end
-            if not tomb_ids[id :: string] then break end
             local seq, serr = store.need_int(tomb, "updated_seq")
             if serr or not seq then return nil, serr end
             local _, derr = tx:execute("DELETE FROM kickside_work_item WHERE board_id = $1 AND item_id = $2", { board_id, id })
@@ -403,65 +375,9 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
             if uerr then return nil, uerr end
         end
         local n = #(tombs or {})
-        return { removed = limit - left - examined + n, spent = limit - left + n, examined = examined, more = (left > 0 and n == left) or (requested>0 and requested==math.min(100,limit//2)) }, nil
+        return { removed = limit - left - examined + n, spent = limit - left + n, examined = examined, more = (left > 0 and n == left) }, nil
     end)
 end
--- One bounded native owner page. An idle predecessor timer has no scheduled
--- work, demand or producers left: current writers enroll ordinary jobs. A due,
--- scheduled or running timer remains owned by Jobs until its callback settles.
-function M.slots(board_id: string, limit: integer, cursor: string): (integer?, boolean?, string?, error?)
-    if limit<205 then return 0,true,cursor,nil end
-    local owner={kind="component",id=board_id}
-    local anchor: types.Anchor?=nil
-    if cursor:sub(1,6)=="timer:" then
-        local decoded,err=store.stored(cursor:sub(7),{} :: types.Anchor)
-        if err then return nil,nil,nil,err end
-        anchor=decoded
-        if not anchor then return nil,nil,nil,errors.new({kind=errors.INTERNAL,message="invalid timer retention anchor"}) end
-        local held,herr=jobs.get_job(anchor.id)
-        if herr then return nil,nil,nil,herr end
-        if not held then anchor=nil end
-    end
-    local size=math.min(100,(limit-102)//103)
-    local page,err,more=jobs.list_owner_jobs(owner,{job_type="kickside.work.jobs:process"},size,
-        anchor and {id=anchor.id,owner_id=board_id} or nil)
-    if err then return nil,nil,nil,err end
-    local spent=#(page or {})
-    local function purge(row: types.Anchor): (boolean,error?)
-        local current,cerr=jobs.get_job(row.id)
-        if cerr then return false,cerr end
-        if not current or not current.slot or current.status~="pending" or current.scheduled_at~=nil or current.due or current.wake_control_pending==true or current.wake_control_pending==1 then return true,nil end
-        local _,perr=jobs.purge_slot({job_identity=row.job_identity,owner_locator=owner})
-        spent=spent+101
-        if perr then
-            if (perr:details() or {}).cleanup_pending then return false,nil end
-            return false,perr
-        end
-        return true,nil
-    end
-    local next_anchor: types.Anchor?=nil
-    for i,row in ipairs(page or {}) do
-        local id,ierr=store.need(row,"id")
-        if ierr or not id then return nil,nil,nil,ierr end
-        local identity,jerr=store.need(row,"job_identity")
-        if jerr or not identity then return nil,nil,nil,jerr end
-        local entry: types.Anchor={id=id,owner_id=board_id,job_identity=identity}
-        if more and i==#page then next_anchor=entry
-        else
-            local done,perr=purge(entry)
-            if perr then return nil,nil,nil,perr end
-            if not done then return spent,true,cursor,nil end
-        end
-    end
-    -- Retire the prior anchor only after its next page has been read and handled.
-    if anchor then
-        local done,perr=purge(anchor)
-        if perr then return nil,nil,nil,perr end
-        if not done then return spent,true,cursor,nil end
-    end
-    return spent,more==true,next_anchor and "timer:" .. store.encode(next_anchor) or "",nil
-end
-
 -- deadline reads the earliest future eligibility for each retained row class.
 function M.deadline(db: sql.DB, board_id: string, effective: domain.Policy): (integer?, error?)
     local event_days, event_err = policy.event_days()

@@ -5,7 +5,6 @@ local steps = require("steps")
 local sql = require("sql")
 local registry = require("registry")
 local json = require("json")
-local block_contract = require("block_contract")
 local retention = require("retention")
 local defaults = require("defaults")
 
@@ -368,17 +367,12 @@ local function define()
             test.not_nil(err)
             test.eq(err:kind(), errors.NOT_FOUND)
         end)
-        test.it("declares callable Blocks HTTP routes closed events and exact discovery ids", function()
+        test.it("declares HTTP routes closed events and exact discovery ids", function()
             local policy = assert(registry.get("kickside.work.security:module_access")).data.policy.resources
             local resources: { [string]: boolean } = {}
             for _, id in ipairs(policy) do resources[id] = true end
             for _, method in ipairs({ "bulk", "bulk_status", "cancel_bulk", "plan_move", "move", "move_status" }) do
-                local id = "kickside.work.blocks:" .. method
-                local block = assert(registry.get(id))
-                test.is_nil(block_contract.validate(block))
-                test.is_true(resources[id])
-                test.is_true(resources[id .. ".run"])
-                test.eq(block.data.block.execution.function_id, id .. ".run")
+                test.is_true(resources["kickside.work.api:" .. method .. ".endpoint"])
                 local endpoint = assert(registry.get("kickside.work.api:" .. method .. ".endpoint"))
                 test.eq(endpoint.data.method, "POST")
                 test.eq(endpoint.data.path, "/work/boards/{id}/" .. method)
@@ -387,8 +381,8 @@ local function define()
             grant(a, b)
             gate(a, true)
             local id = steps.create(a, "task", { estimate = 1 })
-            local started, err = a.executor:call("kickside.work.blocks:bulk.run", { config = { board_id = a.id },
-                input = { key = "block", query = {}, ops_template = { { op = "set", values = { estimate = 2 } } } } })
+            local started, err = a.call("bulk", { key = "contract", query = {},
+                ops_template = { { op = "set", values = { estimate = 2 } } } })
             assert(not err and started, steps.detail(err))
             test.eq(finished(a, started.bulk_id).status, "done")
             moved(a, move_request(b, id, "events"))

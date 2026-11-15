@@ -151,9 +151,9 @@ local function define()
             for _,n in pairs(times) do test.eq(n,1);count=count+n end
             test.eq(count,5)
         end)
-        test.it("limits pack effects and recovery candidates with committed settings",function()
+        test.it("limits pack effects with committed settings",function()
             local h=fixture.board();held=h
-            for key,value in pairs({pack_steps_per_run=1,recovery_batch=1,recovery_batches_per_run=1}) do
+            for key,value in pairs({pack_steps_per_run=1}) do
                 assert(h.call("set_setting",{namespace="kickside.work",key=key,value=value}).success)
             end
             local plan=assert(h.call("pack_plan",{board_id=h.id,pack="app:kanban_pack",expected_generation=1}))
@@ -164,23 +164,10 @@ local function define()
             local progress=assert(db:query("SELECT processed FROM kickside_work_operation WHERE board_id=$1 AND operation_id=$2",{h.id,owner.operation_id}))[1]
             test.eq(tonumber(progress.processed),1)
             db:release()
-            for _=1,3 do steps.create(h,"task") end
-            db=assert(store.open())
-            assert(db:execute([[INSERT INTO kickside_work_job (board_id,job_id,job_type,key,status)
-                VALUES ($1,'recovery-limit','recovery','{"phase":"items","after":""}','pending')]],{h.id}))
-            db:release()
-            local result=assert(h.call("worker_batch",{worker="recovery"}))
-            test.is_false(result.done)
-            db=assert(store.open())
-            local stored=assert(db:query("SELECT key FROM kickside_work_job WHERE board_id=$1 AND job_id='recovery-limit'",{h.id}))[1]
-            local key=assert(store.stored(stored.key,{} :: {phase:string,after:string}))
-            test.eq(assert(store.count(db,"SELECT COUNT(*) AS n FROM kickside_work_item WHERE board_id=$1 AND item_id<=$2",{h.id,key.after})),1)
-            assert(db:execute("DELETE FROM kickside_work_job WHERE board_id=$1 AND job_id='recovery-limit'",{h.id}))
-            db:release()
         end)
         test.it("validates install throughput controls and preserves defaults",function()
             local h=fixture.board();held=h
-            local bounds={storage_batch={100,1,1000},plugin_projection_batch={20,1,100},plugin_discovery_batch={200,1,200},projection_catchup_ticks={1000,1,100000},cleanup_batch={100,1,5000},plugin_batch={20,1,100},plugin_batches_per_run={1,1,100},rebuild_batch={500,1,500},rebuild_batches_per_run={20,1,100},migration_batch={500,1,500},migration_batches_per_run={20,1,100},rebalance_batch={500,1,500},rebalance_batches_per_run={20,1,100},pack_steps_per_run={20,1,100},operation_batches_per_run={20,1,100},recovery_batch={100,1,500},recovery_batches_per_run={4,1,100}}
+            local bounds={storage_batch={100,1,1000},plugin_projection_batch={20,1,100},plugin_discovery_batch={200,1,200},projection_catchup_ticks={1000,1,100000},cleanup_batch={100,1,5000},plugin_batch={20,1,100},plugin_batches_per_run={1,1,100},rebuild_batch={500,1,500},rebuild_batches_per_run={20,1,100},migration_batch={500,1,500},migration_batches_per_run={20,1,100},rebalance_batch={500,1,500},rebalance_batches_per_run={20,1,100},pack_steps_per_run={20,1,100},operation_batches_per_run={20,1,100}}
             for key,rule in pairs(bounds) do
                 for _,value in ipairs({rule[2]-1,rule[3]+1,1.5}) do
                     local out,err=h.call("set_setting",{namespace="kickside.work",key=key,value=value})

@@ -20,7 +20,6 @@ entries:
     operations: app:operation_steps
     prepare: kickside.work.command:prepare_context
     outcomes: kickside.work.domain:outcomes
-    process_data: kickside.work.persist:process_data
     store: kickside.work.persist:store
 
 - name: hardening_probe
@@ -37,26 +36,6 @@ entries:
   modules: [sql]
   imports:
     append: kickside.work.persist:append
-- name: upgrade_seed_test
-  kind: function.lua
-  meta: { type: upgrade_fixture, suite: kickside_work_upgrade, timeout: 300s }
-  source: file://upgrade_restart_test.lua
-  method: seed
-  modules: [json, time]
-  imports: &upgrade_imports
-    test: wippy.test:test
-    fixture: app:fixture
-    steps: app:steps
-    store: kickside.work.persist:store
-    jobs: kickside.core.jobs:jobs
-- name: upgrade_restart_test
-  kind: function.lua
-  meta: { type: upgrade_fixture, suite: kickside_work_upgrade, timeout: 300s }
-  source: file://upgrade_restart_test.lua
-  method: verify
-  modules: [json, time]
-  imports: *upgrade_imports
-
 - name: placement_folder
   kind: contract.binding
   contracts:
@@ -70,36 +49,6 @@ entries:
     resources: [app:placement_folder]
     actions: [registry.get]
     effect: allow
-
-- name: upgrade_interrupted_test
-  kind: function.lua
-  meta: { type: upgrade_fixture, suite: kickside_work_upgrade, timeout: 300s }
-  source: file://upgrade_restart_test.lua
-  method: interrupted
-  modules: [json, time]
-  imports: *upgrade_imports
-- name: recovery_pause_jobs
-  kind: library.lua
-  source: file://recovery_jobs_probe.lua
-  modules: [json, time]
-  imports:
-    jobs: kickside.core.jobs:jobs
-    store: kickside.work.persist:store
-    config: app:recovery_pause_config
-- name: recovery_resume_jobs
-  kind: library.lua
-  source: file://recovery_jobs_probe.lua
-  modules: [json, time]
-  imports:
-    jobs: kickside.core.jobs:jobs
-    store: kickside.work.persist:store
-    config: app:recovery_resume_config
-- name: recovery_pause_config
-  kind: library.lua
-  source: 'return {hold=true}'
-- name: recovery_resume_config
-  kind: library.lua
-  source: 'return {hold=false}'
 
 - name: retirement_threads
   kind: library.lua

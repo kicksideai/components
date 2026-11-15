@@ -27,8 +27,6 @@ entries:
   - wippy.security:process
   policy:
     resources:
-    - kickside.work.jobs:recovery
-    - kickside.work.jobs:recovery_batch
     - kickside.work.jobs:plugins
     - kickside.work.extensions:plugin_batch
     - kickside.work.persist:publish_meta
@@ -124,14 +122,6 @@ entries:
   policy:
     resources: [kickside.work.persist:publish_meta]
     actions: work.meta.publish
-    effect: allow
-
-- name: recovery_defer
-  kind: security.policy
-  meta: {private: true, service_only: true}
-  policy:
-    resources: [kickside.work.jobs:recovery]
-    actions: kickside.execution.defer
     effect: allow
 
 - name: board_kind_create

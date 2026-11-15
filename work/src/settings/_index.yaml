@@ -406,46 +406,6 @@ entries:
   scope: global
   editable: true
   visible: true
-- name: recovery_batch
-  kind: registry.entry
-  meta:
-    type: kickside.settings:definition
-  namespace: kickside.work
-  key: recovery_batch
-  value_type: int
-  default: 100
-  validate_func: kickside.work.settings:validate
-  schema:
-    type: integer
-    minimum: 1
-    maximum: 500
-  title: Recovery batch
-  description: Work recovery batch; valid range 1..500.
-  category: Work
-  order: 190
-  scope: global
-  editable: true
-  visible: true
-- name: recovery_batches_per_run
-  kind: registry.entry
-  meta:
-    type: kickside.settings:definition
-  namespace: kickside.work
-  key: recovery_batches_per_run
-  value_type: int
-  default: 4
-  validate_func: kickside.work.settings:validate
-  schema:
-    type: integer
-    minimum: 1
-    maximum: 100
-  title: Recovery batches per run
-  description: Work recovery batches per run; valid range 1..100.
-  category: Work
-  order: 200
-  scope: global
-  editable: true
-  visible: true
 - name: plugin_batch
   kind: registry.entry
   meta:

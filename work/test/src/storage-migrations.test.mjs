@@ -12,7 +12,6 @@ local db = { execute = function(_, statement, params)
     for i, value in ipairs(params or {}) do statement = statement:gsub("%$" .. i, "'" .. value .. "'") end
     io.write(statement, "\\0"); return {}, nil
 end }
-package.preload.clock = function() return { now = function() return "2026-11-14T00:00:00.000000000Z" end } end
 package.preload.operation_expiry = function()
     return { TERMINAL = "status IN ('done','cancelled','failed')", at = function(dialect)
         local captured = dialect == "postgres" and "(actor_context::jsonb ->> 'captured_at')" or "json_extract(actor_context, '$.captured_at')"
@@ -51,178 +50,20 @@ print(json.dumps(db.execute("SELECT name FROM sqlite_master WHERE type='table' A
   assert.deepEqual(JSON.parse(result), [])
 })
 
-test('storage retirement preserves in-flight data and restores accurate counters on rollback', async () => {
-  const predecessor = await statements('01_work', 'up')
-  const up = await statements('02_retire_storage', 'up')
-  const down = await statements('02_retire_storage', 'down')
-  const bounded = await statements('04_bounded_retention', 'up')
-  const boundedDown = await statements('04_bounded_retention', 'down')
-  const result = await run('python3', ['-c', `
-import json, sqlite3, sys
-predecessor, up, down, bounded, bounded_down = json.load(sys.stdin)
-db = sqlite3.connect(':memory:')
-for statement in predecessor: db.execute(statement)
-def insert(table, values):
-    cols = db.execute("PRAGMA table_info("+table+")").fetchall()
-    payload = {c[1]: (0 if c[2] == "INTEGER" else "") for c in cols if c[3] and c[4] is None}
-    payload.update(values)
-    db.execute("INSERT INTO "+table+" ("+",".join(payload)+") VALUES ("+",".join("?" for _ in payload)+")",list(payload.values()))
-insert("kickside_work_board",dict(board_id="board",counter=42,item_count=99,open_count=99,trashed_count=99))
-insert("kickside_work_change",dict(board_id="board",seq=1,n=1,kind="created",subject="i:a",after="accepted fact",ctx=""))
-for id,life,category in [("a","live","started"),("b","live","completed"),("c","trashed","started")]:
-    insert("kickside_work_item",dict(board_id="board",item_id=id,number=ord(id),life=life,category=category))
-# Verify the predecessor has the same STRICT shape as published installs.
-assert db.execute("SELECT strict FROM pragma_table_list WHERE name=\'kickside_work_board\'").fetchone()[0] == 1
-db.commit()
-db.execute('BEGIN')
-for sql in up[:2]: db.execute(sql)
-db.rollback()
-assert {'item_count','open_count','trashed_count'} <= {row[1] for row in db.execute('PRAGMA table_info(kickside_work_board)')}
-for sql in up: db.execute(sql)
-columns = [row[1] for row in db.execute('PRAGMA table_info(kickside_work_board)')]
-assert 'counter' in columns and not {'item_count','open_count','trashed_count'} & set(columns), columns
-assert db.execute('SELECT board_id,counter FROM kickside_work_board').fetchall() == [('board',42)]
-assert db.execute('SELECT board_id,after FROM kickside_work_change').fetchall() == [('board','accepted fact')]
-assert db.execute('SELECT COUNT(*) FROM kickside_work_item').fetchone()[0] == 3
-# A populated predecessor has neither completion state nor a failure timestamp.
-db.execute("UPDATE kickside_work_item SET life='purged' WHERE item_id='c'")
-insert("kickside_work_job",dict(board_id="board",job_id="failed-job",status="failed"))
-db.commit()
-db.execute('BEGIN')
-for sql in bounded[:2]: db.execute(sql)
-db.rollback()
-assert 'purge_pending' not in {row[1] for row in db.execute('PRAGMA table_info(kickside_work_item)')}
-for sql in bounded: db.execute(sql)
-assert db.execute("SELECT purge_pending FROM kickside_work_item WHERE item_id='c'").fetchone()[0] == 1
-assert db.execute("SELECT SUM(purge_pending) FROM kickside_work_item").fetchone()[0] == 1
-assert db.execute("SELECT failed_at FROM kickside_work_job WHERE job_id='failed-job'").fetchone()[0] == '2026-11-14T00:00:00.000000000Z'
-for sql in bounded_down: db.execute(sql)
-assert 'failed_at' not in {row[1] for row in db.execute('PRAGMA table_info(kickside_work_job)')}
-# The retirement rollback reconstructs counts using the retained life states.
-db.execute("UPDATE kickside_work_item SET life='trashed' WHERE item_id='c'")
-for sql in down: db.execute(sql)
-print(json.dumps(db.execute('SELECT counter,item_count,open_count,trashed_count FROM kickside_work_board').fetchone()))
-`], {}, JSON.stringify([predecessor, up, down, bounded, boundedDown]))
-  assert.deepEqual(JSON.parse(result), [42, 2, 1, 1])
-})
-
-// The VM supplies a disposable database through its container's psql. No mocked
-// PostgreSQL DDL: use the published predecessor on the actual engine.
-test('populated PostgreSQL predecessor survives transactional retirement, restart and rollback',
-  { skip: !process.env.WORK_MIGRATION_POSTGRES }, async () => {
-    const predecessor = await statements('01_work', 'up', 'postgres')
-    const up = await statements('02_retire_storage', 'up', 'postgres')
-    const down = await statements('02_retire_storage', 'down', 'postgres')
-    const bounded = await statements('04_bounded_retention', 'up', 'postgres')
-    const boundedDown = await statements('04_bounded_retention', 'down', 'postgres')
-    const cleanup = await statements('05_cleanup_seeks', 'up', 'postgres')
-    const cleanupDown = await statements('05_cleanup_seeks', 'down', 'postgres')
-    const schema = `work_upgrade_${process.pid}`
-    async function psql(script) {
-      const args = ['exec', '-i', 'kickside-test-pg', 'psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-U', 'kickside', '-d', 'kickside_test_work']
-      return process.env.WORK_MIGRATION_SSH
-        ? run('ssh', [process.env.WORK_MIGRATION_SSH, 'docker', ...args], {}, script)
-        : run('docker', args, {}, script)
-    }
-    const seed = `
-DO $fixture$
-DECLARE entry record; columns text; literals text;
-BEGIN
-FOR entry IN SELECT * FROM (VALUES
- ('kickside_work_board','board_id','board'),
- ('kickside_work_item','item_id','a'),
- ('kickside_work_item','item_id','b'),
- ('kickside_work_item','item_id','c'),
- ('kickside_work_change','subject','i:a')) AS t(tab,key,val)
-LOOP
- SELECT string_agg(quote_ident(column_name),',' ORDER BY ordinal_position),
-        string_agg(CASE WHEN column_name='board_id' THEN quote_literal('board')
-             WHEN column_name=entry.key THEN quote_literal(entry.val)
-             WHEN column_name='number' THEN ascii(entry.val)::text
-             WHEN data_type IN ('bigint','integer','smallint') THEN '1' ELSE quote_literal('') END,',' ORDER BY ordinal_position)
- INTO columns,literals FROM information_schema.columns
- WHERE table_schema=current_schema() AND table_name=entry.tab
- AND is_nullable='NO' AND column_default IS NULL;
- EXECUTE format('INSERT INTO %I (%s) VALUES (%s)',entry.tab,columns,literals);
-END LOOP;
-END $fixture$;
-UPDATE kickside_work_board SET counter=42,item_count=99,open_count=99,trashed_count=99;
-UPDATE kickside_work_item SET life=CASE WHEN item_id='c' THEN 'trashed' ELSE 'live' END,
- category=CASE WHEN item_id='b' THEN 'completed' ELSE 'started' END,document='{"1":{"p":"Before"}}';
-UPDATE kickside_work_change SET after='accepted fact';
-`
-    await psql(`CREATE SCHEMA ${schema};`)
-    try {
-      await psql(`SET search_path TO ${schema};\n${predecessor.join(';\n')};\n${seed}`)
-      // Aborted DDL is rolled back before retry. The next connection is a restart.
-      await psql(`SET search_path TO ${schema}; BEGIN; ${up.slice(0,2).join(';')}; ROLLBACK;`)
-      await psql(`SET search_path TO ${schema}; BEGIN; ${up.join(';')}; COMMIT;`)
-      const result = await psql(`SET search_path TO ${schema};
-SELECT counter FROM kickside_work_board;
-SELECT after FROM kickside_work_change;
-SELECT count(*) FROM kickside_work_item;
-BEGIN; ${down.join(';')}; COMMIT;
-SELECT counter||','||item_count||','||open_count||','||trashed_count FROM kickside_work_board;`)
-      assert.deepEqual(result.trim().split('\n'), ['42','accepted fact','3','42,2,1,1'])
-      await psql(`SET search_path TO ${schema}; BEGIN; ${up.join(';')}; COMMIT;`)
-      await psql(`SET search_path TO ${schema};
-UPDATE kickside_work_item SET life='purged' WHERE item_id='c';
-INSERT INTO kickside_work_job (board_id,job_id,job_type,key,status) VALUES ('board','failed-job','migration','old','failed');
-BEGIN; ${bounded.slice(0,2).join(';')}; ROLLBACK;`)
-      await psql(`SET search_path TO ${schema}; BEGIN; ${bounded.join(';')}; COMMIT;`)
-      await psql(`SET search_path TO ${schema};
-CREATE INDEX kickside_work_comment_deleted ON kickside_work_comment (board_id,edited_at) WHERE deleted=1;
-INSERT INTO kickside_work_comment (board_id,comment_id,item_id,body,mentions,author,version,deleted,created_at,edited_at)
- SELECT 'board','c'||n,'unrelated','body','[]','fixture',1,n%2,'2000','2000' FROM generate_series(1,20000) n;
-INSERT INTO kickside_work_comment (board_id,comment_id,item_id,body,mentions,author,version,deleted,created_at)
- VALUES ('board','z-dead','purged','body','[]','fixture',1,0,'2000');
-INSERT INTO kickside_work_link (board_id,from_id,type,to_board_id,to_id,at,seq)
- SELECT 'source','link'||n,'relates','unrelated','target','2000',1 FROM generate_series(1,20000) n;
-INSERT INTO kickside_work_link (board_id,from_id,type,to_board_id,to_id,at,seq)
- VALUES ('a','same','relates','target-board','target-item','2000',1),('b','same','relates','target-board','target-item','2000',1);
-`)
-      await psql(`SET search_path TO ${schema}; BEGIN; ${cleanup.join(';')}; ROLLBACK;`)
-      await psql(`SET search_path TO ${schema}; BEGIN; ${cleanup.join(';')}; COMMIT;`)
-      const plan = await psql(`SET search_path TO ${schema}; ANALYZE kickside_work_comment; ANALYZE kickside_work_link;
-EXPLAIN SELECT comment_id FROM kickside_work_comment WHERE board_id='board' AND item_id='purged' ORDER BY comment_id LIMIT 100;
-EXPLAIN SELECT comment_id FROM kickside_work_comment WHERE board_id='board' AND deleted=1 AND edited_at<'2026' ORDER BY edited_at,comment_id LIMIT 100;
-EXPLAIN SELECT board_id,from_id,type,to_board_id,to_id FROM kickside_work_link WHERE to_board_id='target-board' ORDER BY to_id,board_id,from_id,type LIMIT 100;`)
-      assert.match(plan, /kickside_work_comment_purge/)
-      assert.match(plan, /kickside_work_link_target/)
-      assert.match(plan, /kickside_work_comment_deleted/)
-      assert.doesNotMatch(plan, /Sort|Seq Scan/)
-      const upgraded = await psql(`SET search_path TO ${schema};
-SELECT SUM(purge_pending) FROM kickside_work_item;
-SELECT failed_at FROM kickside_work_job WHERE job_id='failed-job';
-SELECT count(*) FROM pg_indexes WHERE schemaname='${schema}' AND indexname='kickside_work_comment_purge';
-BEGIN; ${cleanupDown.join(';')}; COMMIT;
-BEGIN; ${boundedDown.join(';')}; COMMIT;
-SELECT count(*) FROM information_schema.columns WHERE table_schema='${schema}' AND column_name IN ('purge_pending','failed_at');`)
-      assert.deepEqual(upgraded.trim().split('\n'), ['1','2026-11-14T00:00:00.000000000Z','1','0'])
-    } finally { await psql(`DROP SCHEMA ${schema} CASCADE;`) }
-  })
-
 test('purged comments and incoming board links have bounded ordered seeks on a populated board', async () => {
   const initial = await statements('01_work', 'up')
-  // Extract published predecessor indexes; migration 03 also enrolls native jobs,
-  // which this SQL-only access-path proof does not execute.
   const { readFile } = await import('node:fs/promises')
-  const hardening = await readFile(resolve(root, 'src/migrations/03_hardening.lua'), 'utf8')
-  const indexes = [...hardening.matchAll(/execute\(db,"(CREATE INDEX [^"]+)"\)/g)].map(m => m[1]).filter(sql => sql.includes('kickside_work_comment'))
-  const { existsSync } = await import('node:fs')
-  const upgrade = existsSync(resolve(root, 'src/migrations/05_cleanup_seeks.lua')) ? await statements('05_cleanup_seeks', 'up') : []
   const source = await readFile(resolve(root, 'src/retention/rows.lua'), 'utf8')
   assert.match(source, /local where=item_id and "item_id=\$2"/)
   assert.match(source, /local order=item_id and "comment_id"/)
   const lifecycle = await readFile(resolve(root, 'src/persist/lifecycle.lua'), 'utf8')
   assert.match(lifecycle, /"board_id, from_id, type, to_board_id, to_id", "to_board_id = \$1"/)
   assert.match(lifecycle, /"to_id, board_id, from_id, type"/)
-  const rollback = upgrade.length ? await statements('05_cleanup_seeks', 'down') : []
   const result = await run('python3', ['-c', `
 import json,sqlite3,sys
-initial,indexes,upgrade,rollback=json.load(sys.stdin)
+initial=json.load(sys.stdin)
 db=sqlite3.connect(':memory:')
-for sql in initial+indexes: db.execute(sql)
+for sql in initial: db.execute(sql)
 for i in range(20000):
  db.execute("INSERT INTO kickside_work_comment (board_id,comment_id,item_id,body,mentions,author,version,deleted,created_at) VALUES (?,?,?,?,?,?,1,?,?)",('board',f'c{i:06d}','unrelated','body','[]','fixture',i%2,'2000'))
  db.execute("UPDATE kickside_work_comment SET edited_at='2000' WHERE comment_id=?",(f'c{i:06d}',))
@@ -233,12 +74,6 @@ for source in ('a','b'):
  for kind in ('blocks','relates'):
   db.execute("INSERT INTO kickside_work_link VALUES (?,?,?,?,?,?,?)",(source,'same',kind,'target-board','target-item','2000',1))
 db.commit()
-# Transactional migration retry and populated rollback preserve predecessor indexes.
-db.execute('BEGIN')
-for sql in upgrade: db.execute(sql)
-db.rollback()
-assert not db.execute("SELECT 1 FROM sqlite_master WHERE name='kickside_work_comment_purge'").fetchall()
-for sql in upgrade: db.execute(sql)
 query='SELECT comment_id FROM kickside_work_comment WHERE board_id=$1 AND item_id=$2 ORDER BY comment_id LIMIT $3'
 plans=[]
 for analyzed in (False,True):
@@ -263,34 +98,20 @@ for analyzed in (False,True):
  assert any('kickside_work_link_target' in row[3] and 'to_board_id=?' in row[3] for row in plan),plan
  rows=db.execute(incoming,('target-board',3)).fetchall()
  assert len(rows)==3 and len(set(rows))==3
-for sql in rollback: db.execute(sql)
-assert not db.execute("SELECT 1 FROM sqlite_master WHERE name='kickside_work_comment_purge'").fetchall()
-assert db.execute("SELECT sql FROM sqlite_master WHERE name='kickside_work_link_target'").fetchone()[0].endswith('(to_board_id, to_id)')
-assert db.execute('SELECT count(*) FROM kickside_work_comment').fetchone()[0]==20001
-assert db.execute('SELECT count(*) FROM kickside_work_link').fetchone()[0]==20004
 print(json.dumps(plans))
-`], {}, JSON.stringify([initial, indexes, upgrade, rollback]))
+`], {}, JSON.stringify(initial))
   assert.ok(JSON.parse(result).length === 2)
 })
 
 // Tie-heavy populations expose a partial ORDER BY index even with LIMIT 1.
 test('every age-retention class has a populated eligibility and complete-order seek', async () => {
   const { readFile } = await import('node:fs/promises')
-  const { existsSync } = await import('node:fs')
   const initial = await statements('01_work', 'up')
-  const bounded = await statements('04_bounded_retention', 'up')
-  const hardening = await readFile(resolve(root, 'src/migrations/03_hardening.lua'), 'utf8')
-  const indexes = [...hardening.matchAll(/execute\(db,"(CREATE INDEX [^"]+)"\)/g)].map(m => m[1])
-  const cleanup = await statements('05_cleanup_seeks', 'up')
-  const upgrade = existsSync(resolve(root, 'src/migrations/06_age_seeks.lua')) ? await statements('06_age_seeks', 'up') : []
-  const downgrade = upgrade.length ? await statements('06_age_seeks','down') : []
   const result = await run('python3', ['-c', `
 import json,sqlite3,sys
-initial,bounded,indexes,cleanup,upgrade,downgrade=json.load(sys.stdin)
+initial=json.load(sys.stdin)
 db=sqlite3.connect(':memory:')
 for sql in initial: db.execute(sql)
-db.execute("ALTER TABLE kickside_work_visibility ADD COLUMN at text NOT NULL DEFAULT ''")
-for sql in indexes+bounded+cleanup+upgrade: db.execute(sql)
 def insert(table,values):
  cols=db.execute('PRAGMA table_info(kickside_work_'+table+')').fetchall()
  payload={c[1]:(0 if c[2].upper() in ('INTEGER','BIGINT') else '') for c in cols if c[3] and c[4] is None}
@@ -341,11 +162,8 @@ for analyzed in (False,True):
   db.set_progress_handler(None,0)
   assert ticks[0]<1000,(table,ticks,plan)
   plans.append([table,analyzed,ticks[0],plan])
-for sql in downgrade: db.execute(sql)
-assert db.execute("SELECT sql FROM sqlite_master WHERE name='kickside_work_change_at'").fetchone()[0].endswith('(board_id, at)')
-assert db.execute('SELECT COUNT(*) FROM kickside_work_change').fetchone()[0]==20000
 print(json.dumps(plans))
-`], {}, JSON.stringify([initial,bounded,indexes,cleanup,upgrade,downgrade]))
+`], {}, JSON.stringify(initial))
   assert.equal(JSON.parse(result).length,24)
 })
 
@@ -357,15 +175,11 @@ test('an idle page over 20000 visibility baselines examines only a keyset candid
   const deletion = source.match(/local deleted,delete_err=tx:query\(\[\[([\s\S]*?)\]\]/)?.[1]
   const age = source.match(/local aged, age_err = tx:query\(\[\[([\s\S]*?)\]\]/)?.[1]
   const initial = await statements('01_work','up')
-  const bounded = await statements('04_bounded_retention','up')
   const result = await run('python3',['-c',`
 import json,sqlite3,sys
-initial,bounded,candidate,deletion,age=json.load(sys.stdin)
+initial,candidate,deletion,age=json.load(sys.stdin)
 db=sqlite3.connect(':memory:')
 for sql in initial: db.execute(sql)
-db.execute("ALTER TABLE kickside_work_visibility ADD COLUMN at text NOT NULL DEFAULT ''")
-db.execute("CREATE INDEX kickside_work_visibility_age ON kickside_work_visibility (board_id,at,seq)")
-for sql in bounded: db.execute(sql)
 cols=db.execute('PRAGMA table_info(kickside_work_item)').fetchall()
 base={c[1]:(0 if c[2].upper() in ('INTEGER','BIGINT') else '') for c in cols if c[3] and c[4] is None}
 for n in range(20000):
@@ -405,16 +219,13 @@ for analyzed in (False,True):
   metrics.append([analyzed,anchor,len(rows),deleted,ticks[0]])
  assert db.execute("SELECT COUNT(*) FROM kickside_work_visibility WHERE board_id='board'").fetchone()[0]==20000
 print(json.dumps(metrics))
-`],{},JSON.stringify([initial,bounded,candidate,deletion,age]))
+`],{},JSON.stringify([initial,candidate,deletion,age]))
   assert.equal(JSON.parse(result).length,6)
 })
 
-test('PostgreSQL age selectors use complete populated ordered indexes and survive rollback',
+test('PostgreSQL initial schema supplies complete populated ordered indexes',
   {skip: !process.env.WORK_MIGRATION_POSTGRES}, async () => {
     const initial = await statements('01_work','up','postgres')
-    const bounded = await statements('04_bounded_retention','up','postgres')
-    const upgrade = await statements('06_age_seeks','up','postgres')
-    const down = await statements('06_age_seeks','down','postgres')
     const schema = `work_age_${process.pid}`
     async function psql(script) {
       const args=['exec','-i','kickside-test-pg','psql','-X','-qAt','-v','ON_ERROR_STOP=1','-U','kickside','-d','kickside_test_work']
@@ -451,10 +262,7 @@ test('PostgreSQL age selectors use complete populated ordered indexes and surviv
     ]
     await psql(`CREATE SCHEMA ${schema};`)
     try {
-      await psql(`SET search_path TO ${schema}; ${initial.join(';')}; ${bounded.join(';')};
-ALTER TABLE kickside_work_visibility ADD COLUMN at text NOT NULL DEFAULT '';
-CREATE INDEX kickside_work_visibility_age ON kickside_work_visibility (board_id,at,seq);
-CREATE INDEX kickside_work_comment_deleted ON kickside_work_comment (board_id,edited_at,comment_id) WHERE deleted=1;
+      await psql(`SET search_path TO ${schema}; ${initial.join(';')};
 DO $fixture$
 DECLARE entry jsonb; columns text; expressions text;
 BEGIN
@@ -469,8 +277,7 @@ LOOP
 END LOOP;
 END $fixture$;
 INSERT INTO kickside_work_visibility SELECT 'board',lpad(n::text,6,'0'),n,'{}','2000' FROM generate_series(1,20000) n;
-BEGIN; ${upgrade.join(';')}; ROLLBACK;
-BEGIN; ${upgrade.join(';')}; COMMIT;`)
+`)
       for (const analyzed of [false,true]) {
         if(analyzed) await psql(`SET search_path TO ${schema}; ANALYZE;`)
         for(const [name,where,order,index] of queries) {
@@ -479,9 +286,8 @@ BEGIN; ${upgrade.join(';')}; COMMIT;`)
           assert.doesNotMatch(plan,/Sort|Seq Scan/,`${name}: ${plan}`)
         }
       }
-      await psql(`SET search_path TO ${schema}; BEGIN; ${down.join(';')}; COMMIT;`)
       const kept=await psql(`SET search_path TO ${schema}; SELECT COUNT(*) FROM kickside_work_change; SELECT indexdef FROM pg_indexes WHERE schemaname='${schema}' AND indexname='kickside_work_change_at';`)
-      assert.match(kept,/20000/);assert.match(kept,/\(board_id, at\)/)
+      assert.match(kept,/20000/);assert.match(kept,/\(board_id, at, seq, n\)/)
     } finally { await psql(`DROP SCHEMA ${schema} CASCADE;`) }
   })
 
@@ -533,13 +339,11 @@ end
   const queries=[]
   for(let i=0;i<chunks.length;i+=3)queries.push(chunks.slice(i,i+3))
   const initial=await statements('01_work','up')
-  const bounded=await statements('04_bounded_retention','up')
-  const age=await statements('06_age_seeks','up')
   const result=await run('python3',['-c',`
 import json,sqlite3,sys
-initial,bounded,age,queries=json.load(sys.stdin)
+initial,queries=json.load(sys.stdin)
 db=sqlite3.connect(':memory:');db.row_factory=sqlite3.Row
-for q in initial+bounded+age:db.execute(q)
+for q in initial:db.execute(q)
 def insert(table,values):
  cols=db.execute('PRAGMA table_info('+table+')').fetchall()
  data={c[1]:(0 if c[2].upper() in ('INTEGER','BIGINT') else '') for c in cols if c[3] and c[4] is None}
@@ -593,7 +397,7 @@ for analyzed in (False,True):
    if name in ('kickside_work_receipt','kickside_work_generation','kickside_work_approval','kickside_work_stage_run'):assert rows[0]['eligible']==0,(name,dict(rows[0]))
    metrics.append([name,analyzed,anchor,ticks[0]])
 print(json.dumps(metrics))
-`],{},JSON.stringify([initial,bounded,age,queries]))
+`],{},JSON.stringify([initial,queries]))
   const metrics=JSON.parse(result)
   console.log("round8 collection maxima",Object.fromEntries([...new Set(metrics.map(m=>m[0]))].map(name=>[name,Math.max(...metrics.filter(m=>m[0]===name).map(m=>m[3]))])))
   assert.equal(metrics.length,48)
@@ -611,7 +415,7 @@ print(json.dumps(metrics))
         checks.push({name,sql:q,protected:['receipt','generation','approval','stage_run'].includes(name)})
       }
     }
-    const pgInitial=await statements('01_work','up','postgres'),pgBounded=await statements('04_bounded_retention','up','postgres'),pgAge=await statements('06_age_seeks','up','postgres')
+    const pgInitial=await statements('01_work','up','postgres')
     const key="lpad((n-1)::text,6,'0')",at="'2000'"
     const tables=[
       ['board',{board_id:"'board'",generation:'30000'},1],
@@ -632,7 +436,7 @@ print(json.dumps(metrics))
     }
     await psql(`CREATE SCHEMA ${schema};`)
     try {
-      await psql(`SET search_path TO ${schema}; ${pgInitial.join(';')}; ${pgBounded.join(';')}; ${pgAge.join(';')};
+      await psql(`SET search_path TO ${schema}; ${pgInitial.join(';')};
 DO $fixture$
 DECLARE entry jsonb; columns text; expressions text;
 BEGIN
@@ -706,15 +510,12 @@ M.deadline(db,'future',{trash_days=1,tombstone_days=1,audit_days=1,interval_days
   const bits=captured.split('\0');const queries=[]
   for(let i=0;i<bits.length-1;i+=2)queries.push([bits[i],bits[i+1]])
   assert.equal(queries.length,13)
-  const initial=await statements('01_work','up'),bounded=await statements('04_bounded_retention','up'),age=await statements('06_age_seeks','up')
+  const initial=await statements('01_work','up')
   const result=await run('python3',['-c',`
 import json,sqlite3,sys
-initial,bounded,age,queries=json.load(sys.stdin)
+initial,queries=json.load(sys.stdin)
 db=sqlite3.connect(':memory:')
-for q in initial+bounded+age:db.execute(q)
-db.execute("ALTER TABLE kickside_work_visibility ADD COLUMN at text NOT NULL DEFAULT ''")
-db.execute('CREATE INDEX kickside_work_visibility_age ON kickside_work_visibility(board_id,at,seq)')
-db.execute('CREATE INDEX kickside_work_comment_deleted ON kickside_work_comment(board_id,edited_at,comment_id) WHERE deleted=1')
+for q in initial:db.execute(q)
 def insert(table,values):
  cols=db.execute('PRAGMA table_info('+table+')').fetchall()
  data={c[1]:(0 if c[2].upper() in ('INTEGER','BIGINT') else '') for c in cols if c[3] and c[4] is None}
@@ -750,7 +551,7 @@ for analyzed in (False,True):
   assert len(rows)==1 and ticks[0]<1000,(q,ticks,plan)
   metrics.append([analyzed,q,ticks[0]])
 print(json.dumps(metrics))
-`],{},JSON.stringify([initial,bounded,age,queries]))
+`],{},JSON.stringify([initial,queries]))
   console.log("round8 deadline maximum instructions",Math.max(...JSON.parse(result).map(m=>m[2])))
   assert.equal(JSON.parse(result).length,26)
 })
@@ -787,12 +588,12 @@ io.write(M.selection('sqlite','',false),'\\0',M.selection('sqlite','',true),'\\0
   const operations=captured.split('\0')
   const lifecycle=await readFile(resolve(root,'src/persist/lifecycle.lua'),'utf8')
   const orphans=lifecycle.match(/local rows, err = db:query\(\[\[(SELECT p\.\*[\s\S]*?)\]\]/)[1]
-  const initial=await statements('01_work','up'),bounded=await statements('04_bounded_retention','up'),age=await statements('06_age_seeks','up')
+  const initial=await statements('01_work','up')
   const result=await run('python3',['-c',`
 import json,sqlite3,sys
-initial,bounded,age,operations,orphans=json.load(sys.stdin)
+initial,operations,orphans=json.load(sys.stdin)
 db=sqlite3.connect(':memory:');db.row_factory=sqlite3.Row
-for q in initial+bounded+age:db.execute(q)
+for q in initial:db.execute(q)
 def insert(table,values):
  cols=db.execute('PRAGMA table_info('+table+')').fetchall()
  data={c[1]:(0 if c[2].upper() in ('INTEGER','BIGINT') else '') for c in cols if c[3] and c[4] is None}
@@ -826,7 +627,7 @@ for analyzed in (False,True):
   assert len(rows)==1 and rows[0]['present']==1 and ticks[0]<1000,(anchor,ticks)
   metrics.append(['prefix',analyzed,anchor,ticks[0]])
 print(json.dumps(metrics))
-`],{},JSON.stringify([initial,bounded,age,operations,orphans]))
+`],{},JSON.stringify([initial,operations,orphans]))
   console.log("round8 operation/prefix maxima",Object.fromEntries(["operation","named","prefix"].map(name=>[name,Math.max(...JSON.parse(result).filter(m=>m[0]===name).map(m=>m[3]))])))
   assert.equal(JSON.parse(result).length,14)
 })
@@ -852,7 +653,6 @@ local owned=${owned}
 for _,e in ipairs(owned) do e.where='board_id=$1';e.params={board_id};classes[#classes+1]=e end
 classes[#classes+1]={name=names.set,keys='item_id,col,value_key',where='1=1',params={}}
 classes[#classes+1]={name=names.item,keys='item_id',where='1=1',params={}}
-classes[#classes+1]={name='kickside_work_change',keys='seq,n',where="board_id=$1 AND kind='query_value'",params={board_id}}
 for _,e in ipairs(classes) do
  local name,keys,where,order=e.name,e.keys,e.where,e.order
  local params={}
@@ -868,17 +668,13 @@ end
     const section=rows.slice(rows.indexOf(`function M.${fn}(`))
     queries.push([section.match(/db:query\(\[\[([\s\S]*?)\]\]/)[1],args])
   }
-  queries.push([rows.match(/local tombs,tomb_err=db:query\(\[\[([\s\S]*?)\]\]/)[1],['board','2026',1]])
-  const initial=await statements('01_work','up'),bounded=await statements('04_bounded_retention','up'),age=await statements('06_age_seeks','up'),seeks=await statements('05_cleanup_seeks','up')
-  initial.push(...(await statements('02_retire_storage','up')).filter(q=>q.startsWith('CREATE INDEX')))
+  queries.push([rows.match(/local tombs, terr = tx:query\(\[\[([\s\S]*?)\]\]/)[1],['board','2026',1]])
+  const initial=await statements('01_work','up')
   const result=await run('python3',['-c',`
 import json,sqlite3,sys
-initial,bounded,age,seeks,queries=json.load(sys.stdin)
+initial,queries=json.load(sys.stdin)
 db=sqlite3.connect(':memory:')
-for q in initial+bounded+age:db.execute(q)
-db.execute("ALTER TABLE kickside_work_visibility ADD COLUMN at text NOT NULL DEFAULT ''")
-db.execute('CREATE INDEX kickside_work_comment_deleted ON kickside_work_comment(board_id,edited_at) WHERE deleted=1')
-for q in seeks:db.execute(q)
+for q in initial:db.execute(q)
 db.execute('CREATE TABLE retention_test_set(item_id TEXT,col TEXT,value_key TEXT,PRIMARY KEY(item_id,col,value_key))')
 db.execute('CREATE TABLE retention_test_item(item_id TEXT PRIMARY KEY)')
 def insert(table,values):
@@ -925,9 +721,9 @@ for analyzed in (False,True):
   assert len(result)<=1 and ticks[0]<1000,(q,ticks,plan)
   metrics.append([analyzed,q,ticks[0]])
 print(json.dumps(metrics))
-`],{},JSON.stringify([initial,bounded,age,seeks,queries]))
+`],{},JSON.stringify([initial,queries]))
   console.log('round8 remaining-selector maximum instructions',Math.max(...JSON.parse(result).map(m=>m[2])))
-  assert.equal(JSON.parse(result).length,68)
+  assert.equal(JSON.parse(result).length,66)
 })
 
 test('retention page performs no inspection after its budget is exhausted', async () => {

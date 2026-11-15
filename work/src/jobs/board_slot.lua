@@ -63,7 +63,7 @@ function M.run(input: types.SlotInput): (types.MigrationResult?, error?)
             if werr then return nil, werr end
             return { migrated = true }, nil
         elseif not migration and batch.done then
-            if config.kind == "rebalance" or config.kind == "recovery" then
+            if config.kind == "rebalance" then
                 local werr = job_rows.record(board_id, job.id, "done", nil)
                 return {}, werr
             end

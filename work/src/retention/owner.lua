@@ -80,10 +80,7 @@ local function retain(client: domain.ThreadClient, base: domain.Policy, board_id
     if perr or not pruned then return nil, nil, nil, nil, perr end
     spent=spent+(pruned.spent or pruned.removed)
     if pruned.more then return purged+pruned.removed,spent,true,pruned.cursor or last,nil end
-    if after:sub(1,6)~="timer:" then after="slots" end
-    local slot_spent,slot_more,slot_after,slot_err=rows.slots(board_id,limit-spent,after)
-    if slot_err then return nil,nil,nil,nil,slot_err end
-    return purged+pruned.removed,spent+(slot_spent :: integer),slot_more or spent-(pruned.examined or 0)>0,slot_after,nil
+    return purged+pruned.removed,spent,spent-(pruned.examined or 0)>0,"",nil
 end
 
 local function deadline_for(db: sql.DB, board_id: string, base: domain.Policy): (integer?, error?)

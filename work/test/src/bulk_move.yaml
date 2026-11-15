@@ -19,7 +19,6 @@ entries:
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
-    block_contract: kickside.blocks:contract
     retention: kickside.work.retention:rows
     defaults: kickside.work.settings:defaults
 - name: deferred_probe

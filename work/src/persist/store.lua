@@ -8,7 +8,6 @@ local consts = require("consts")
 local schema = require("schema")
 local types = require("types")
 local values = require("values")
-local process_data = require("process_data")
 
 local limits = require("limits")
 local M = {}
@@ -151,19 +150,10 @@ end
 
 local function item_rows(db: storage.Executor, rows: { types.Row }): ({ types.Item }?, error?)
     local items: { types.Item } = {}
-    local legacy = false
     for _, row in ipairs(rows) do
         local item, err = codec.item(row)
         if err or not item then return nil, err end
         items[#items + 1] = item
-        legacy = legacy or process_data.needs(item)
-    end
-    if legacy then
-        local board, berr = M.board(db, items[1].board_id)
-        if berr then return nil, berr end
-        if not board then return nil, errors.new({ kind = errors.INTERNAL, message = "item board is missing", details = { code = "row_corrupt" } }) end
-        local uerr = process_data.read(db, board, items, function(item: { type: string, process_generation: integer }): (types.Process?, error?, types.Compiled?) return M.process(db, board, item) end)
-        if uerr then return nil, uerr end
     end
     return items, nil
 end

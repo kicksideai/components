@@ -6,11 +6,6 @@ local durations = require("durations")
 local consts = require("consts")
 local M = {}
 M.DEFAULTS = { audit = "fields", audit_days = 365, trash_days = 14, tombstone_days = 365, interval_days = 365, stage_timeout = "PT1H", stage_max_visits = 5, comments_per_item = 10000 }
-function M.upgrade(compiled: types.Compiled)
-    for _, key in ipairs({ "stage_timeout", "stage_max_visits", "comments_per_item" }) do
-        if compiled.policy[key] == nil then compiled.policy[key] = M.DEFAULTS[key] end
-    end
-end
 function M.event_days(): (integer?, error?)
     local entry, err = registry.get(consts.BOARD_IMPL)
     if err then return nil, err end
@@ -64,7 +59,7 @@ function M.effective(defaults: types.JsonObject, own: types.PolicyDecl?): (types
     local values: types.JsonObject = {}
     for key, value in pairs(M.DEFAULTS) do values[key] = defaults[key] == nil and value or defaults[key] end
     for key, value in pairs(own or {}) do values[key] = value end
-    -- Legacy zero windows now select the finite defaults.
+    -- Zero windows select the finite defaults.
     for _, key in ipairs({ "audit_days", "interval_days" }) do
         if values[key] == 0 then values[key] = M.DEFAULTS[key] end
     end
