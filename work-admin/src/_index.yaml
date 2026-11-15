@@ -1,0 +1,119 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.admin
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: KickSide Work administration
+    description: Board configuration on the platform System surface.
+- name: dep.kickside.work
+  version: '*'
+  kind: ns.dependency
+  component: kickside/work
+- name: dep.kickside.widgets
+  version: '*'
+  kind: ns.dependency
+  component: kickside/widgets
+- name: dep.kickside.component
+  kind: ns.dependency
+  component: kickside/component
+  version: '*'
+- name: dep.kickside.contract
+  kind: ns.dependency
+  component: kickside/contract
+  version: '*'
+- name: types
+  kind: library.lua
+  source: file://types.lua
+- name: ui_server
+  kind: ns.requirement
+  meta:
+    value_kind: http.service
+    comment: Server for the Work bundle.
+  targets:
+  - entry: kickside.work.admin:ui_static
+    path: .meta.server
+- name: api_router
+  kind: ns.requirement
+  meta:
+    value_kind: http.router
+    comment: Authenticated router with token_auth and endpoint_firewall for administration
+      helpers.
+  targets:
+  - entry: kickside.work.admin.api:options.endpoint
+    path: .meta.router
+  - entry: kickside.work.admin.api:principals.endpoint
+    path: .meta.router
+- name: ui_fs
+  kind: fs.directory
+  directory: ./static
+  auto_init: true
+- name: ui_static
+  kind: http.static
+  path: /kickside-work-admin
+  fs: kickside.work.admin:ui_fs
+  options:
+    mime_types:
+      .js: application/javascript
+      .css: text/css
+      .map: application/json
+- name: admin
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Work administration
+    announced: true
+    auto_register: true
+    tag_name: kickside-work-admin
+    base_path: kickside-work-admin
+    entry_point: admin.js
+    icon: tabler:layout-kanban
+    description: Board schemas, process and plugin administration under the signed-in
+      user.
+    props: {}
+- name: settings_tab
+  kind: registry.entry
+  meta:
+    type: ui.settings_tab
+    comment: Work board administration on the System page.
+  key: work
+  label: Work
+  icon: tabler:layout-kanban
+  order: 41
+  render: component
+  component_tag: kickside-work-admin
+  access: kickside.work.api:create.endpoint
+- name: board_settings
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Work board settings
+    announced: true
+    auto_register: true
+    tag_name: kickside-work-board-settings
+    base_path: kickside-work-admin
+    entry_point: settings.js
+    icon: tabler:adjustments
+    description: Board fields, item types, process, policy, relations and plugins
+      with one draft reviewed before applying. Embedded mode fits inside a System
+      detail pane.
+  props:
+    type: object
+    properties:
+      board-id:
+        type: string
+        default: ''
+        description: Board whose settings the signed-in administrator edits.
+      embedded:
+        type: boolean
+        default: false
+        description: Renders a detail header inside an existing System surface.
+  events:
+    navigate:
+      type: object
+      properties:
+        route:
+          type: string
+      required:
+      - route

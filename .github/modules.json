@@ -183,7 +183,7 @@
       "organization": "kickside",
       "module": "work",
       "type": "plugin",
-      "visibility": "public",
+      "visibility": "private",
       "embed": [],
       "targets": [
         "setup",
@@ -236,6 +236,49 @@
         [
           "make",
           "typecheck"
+        ]
+      ]
+    },
+    "work-admin": {
+      "path": "work-admin",
+      "organization": "kickside",
+      "module": "work-admin",
+      "type": "plugin",
+      "visibility": "private",
+      "embed": [
+        "kickside.work.admin:ui_fs"
+      ],
+      "targets": [
+        "setup",
+        "build",
+        "typecheck",
+        "ui-test",
+        "lint",
+        "strict",
+        "check",
+        "test",
+        "test-pg",
+        "pack",
+        "verify",
+        "publish"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "kickside_test_work_admin",
+      "extra_tests": [
+        [
+          "make",
+          "ui-test"
+        ],
+        [
+          "make",
+          "typecheck"
+        ],
+        [
+          "make",
+          "check"
         ]
       ]
     }

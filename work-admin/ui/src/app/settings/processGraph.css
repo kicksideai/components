@@ -1,0 +1,21 @@
+/* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
+
+.work-process-canvas > svg { height: 480px; width: 100%; }
+.work-process-canvas:focus-visible { outline: var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color); outline-offset: var(--p-focus-ring-offset); }
+.work-state-card { fill: var(--p-content-background); stroke: var(--p-content-border-color); stroke-width: 1.5; }
+.work-graph-node.work-selected .work-state-card { stroke: var(--p-primary-color); stroke-width: 2.5; fill: color-mix(in srgb, var(--p-primary-color) 6%, var(--p-content-background)); }
+.work-graph-node:focus-visible .work-state-card { stroke: var(--p-focus-ring-color); stroke-width: var(--p-focus-ring-width); }
+.work-process-canvas .work-edge-label { font-size: 12px; fill: var(--p-text-color); }
+.work-process-canvas .work-edge-label-bg { fill: var(--p-content-background); stroke: var(--p-content-border-color); stroke-width: 1; }
+.work-edge-line { stroke: var(--p-primary-color); stroke-width: 1.5; }
+.work-edge-return .work-edge-line { stroke: var(--p-text-muted-color); stroke-dasharray: 5 4; }
+.work-graph-arrow { fill: context-stroke; }
+.work-lane-line { fill: none; stroke: var(--p-text-muted-color); stroke-width: 1.5; stroke-dasharray: 2 4; }
+.work-node-connector { fill: var(--p-content-background); stroke: var(--p-primary-color); stroke-width: 1.5; }
+.work-node-connector:hover, .work-node-connector:focus-visible { fill: var(--p-primary-color); }
+.work-process-legend { position: static; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--p-content-border-color); background: var(--p-content-background); }
+@media (max-width: 700px) { .work-process-canvas > svg { height: 420px; } }
+
+.work-process-more { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--p-content-border-color); background: var(--p-content-background); color: var(--p-text-muted-color); font-size: 12px; }
+.work-process-canvas .work-graph-edge.work-selected .work-edge-label-bg { fill: var(--p-primary-color); stroke: var(--p-primary-color); }
+.work-process-canvas .work-graph-edge.work-selected .work-edge-label { fill: var(--p-primary-contrast-color); }

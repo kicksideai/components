@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: work-admin
+type: plugin
+description: System administration for KickSide Work board schemas, processes, policy, plugins and packs.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+homepage: https://wippy.ai
+keywords: [kickside, work, admin, settings]
+embed: [kickside.work.admin:ui_fs]
+exclude_meta:
+  type: [test]
+exclude:
+  - build-inputs/**
+  - build-inputs:**
+  - ui/.wippy/**
+  - ui/.wippy:**
+  - wippy.lock
+  - app:**
+  - app.env:**
+  - test/**
+  - test:**
+  - .wippy/**
+  - .wippy:**
+  - ui/node_modules/**
+  - ui/node_modules:**
+  - ui/coverage/**
+  - ui/coverage:**
+  - ui/dist/**
+  - static/*.map
+  - static/**/*.map

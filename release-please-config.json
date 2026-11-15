@@ -83,6 +83,19 @@
         "pim-admin/ui/node_modules",
         "pim-admin/ui/coverage"
       ]
+    },
+    "work-admin": {
+      "component": "work-admin",
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
+      "exclude-paths": [
+        "work-admin/test",
+        "work-admin/.wippy",
+        "work-admin/wippy.lock",
+        "work-admin/ui/node_modules",
+        "work-admin/ui/coverage",
+        "work-admin/ui/dist"
+      ]
     }
   }
 }
