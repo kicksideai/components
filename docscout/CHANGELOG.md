@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.15](https://github.com/kicksideai/components/compare/docscout-v0.1.14...docscout-v0.1.15) (2026-11-15)
+
+
+### Bug Fixes
+
+* **docscout:** require owning admission for extractor mutation ([#107](https://github.com/kicksideai/components/issues/107)) ([ab5f78f](https://github.com/kicksideai/components/commit/ab5f78f4f50e2b1ecd2a080a46cdcded4c0e47fb))
+
 ## [0.1.14](https://github.com/kicksideai/components/compare/docscout-v0.1.13...docscout-v0.1.14) (2026-11-13)
 
 
