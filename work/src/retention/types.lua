@@ -5,9 +5,8 @@ type Result = { success: boolean, deadline_ms: integer?, deleted: integer?, need
 
 
 type Position = { board_after: string, inclusive: integer, item_after: string, deadline_ms: integer? }
-type Anchor = {id: string, owner_id: string, job_identity: string}
 type VisibilityPosition = {seq: integer, item: string}
 type Collection = {name: string, keys: string, where: string, order: string?, protection: string?, age: string?, days: integer?}
 type CollectionPosition = {name: string, after: {unknown}}
 type Pruned = { removed: integer, more: boolean, spent: integer?, examined: integer?, cursor: string? }
-return { Collection = Collection, CollectionPosition = CollectionPosition, VisibilityPosition = VisibilityPosition, Anchor = Anchor, Position = Position, Pruned = Pruned, Blocked = Blocked, Result = Result }
+return { Collection = Collection, CollectionPosition = CollectionPosition, VisibilityPosition = VisibilityPosition, Position = Position, Pruned = Pruned, Blocked = Blocked, Result = Result }

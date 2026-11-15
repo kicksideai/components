@@ -12,7 +12,7 @@ end
 
 function M.history(tx: sql.DB | sql.Transaction, board_id: string, subject: string?, before_seq: integer?, before_n: integer?, limit: integer): ({ domain.Row }?, error?)
     local params: domain.SqlParams = { board_id }
-    local where = "board_id = $1 AND kind <> 'query_value'"
+    local where = "board_id = $1"
     if subject then
         params[#params + 1] = subject
         where = where .. " AND subject = $" .. #params

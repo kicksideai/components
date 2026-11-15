@@ -107,13 +107,7 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
     if read_err then return nil,read_err end
     local held = context :: component_types.AccessContextResult
     local creation = held.context and held.context.work_creation
-    if creation == nil then
-        -- Published predecessor boards had no immutable creation identity.
-        -- Bind their first upgraded replay once through Component's revision CAS.
-        local _, bind_err = component.update(board_id,{{type="PATCH_CONTEXT",payload={patch={work_creation=fingerprint}}}},
-            {expected_revision=held.context_revision})
-        if bind_err then return nil,bind_err :: error end
-    elseif creation ~= fingerprint then return nil,receipts.conflict_of() end
+    if creation ~= fingerprint then return nil,receipts.conflict_of() end
     local completed = held.context and held.context.work_creation_result
     if completed then
         local result = completed :: types.CreateResult

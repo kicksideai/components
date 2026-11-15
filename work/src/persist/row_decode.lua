@@ -4,7 +4,6 @@ local sql = require("sql")
 local json = require("json")
 local types = require("types")
 local error_envelope = require("error_envelope")
-local policy = require("policy")
 local M = {}
 
 local function int(v: unknown): integer?
@@ -86,7 +85,6 @@ function M.compiled(raw: unknown): (types.Compiled?, error?)
             if name == "fields" and int((entry :: types.Row).id) == nil then return nil, corrupt("compiled.fields.id") end
         end
     end
-    policy.upgrade(value :: types.Compiled)
     return value :: types.Compiled, nil
 end
 

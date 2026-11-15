@@ -29,7 +29,6 @@ end
 
 -- model indexes a compiled schema.
 function M.model(compiled: types.Compiled): types.Model
-    policy.upgrade(compiled)
     local m: types.Model = { compiled = compiled, fields = {}, by_id = {}, item_types = {}, relations = {}, processes = {} }
     for _, f in ipairs(compiled.fields) do
         m.fields[f.code] = f

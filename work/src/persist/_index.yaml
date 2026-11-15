@@ -56,7 +56,6 @@ entries:
     types: kickside.work:types
     storage: kickside.work.persist:types
     row_decode: kickside.work.persist:row_decode
-    process_data: kickside.work.persist:process_data
 - name: intervals
   kind: library.lua
   meta:
@@ -382,7 +381,6 @@ entries:
   imports:
     types: kickside.work:types
     error_envelope: kickside.contract:error_envelope
-    policy: kickside.work.domain:policy
 - name: fold_process
   kind: library.lua
   source: file://fold_process.lua
@@ -455,16 +453,6 @@ entries:
     store: kickside.work.persist:store
     storage: kickside.work.persist:types
     types: kickside.work:types
-- name: process_data
-  kind: library.lua
-  source: file://process_data.lua
-  imports:
-    types: kickside.work:types
-    storage: kickside.work.persist:types
-    process: kickside.work.domain:process
-    durations: kickside.work.domain:process_time
-    consts: kickside.work:consts
-
 - name: memberships
   kind: library.lua
   source: file://memberships.lua

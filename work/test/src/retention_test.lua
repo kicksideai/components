@@ -51,28 +51,6 @@ end
 
 local function define()
     test.describe("prefix retention", function()
-        test.it("drains legacy hidden state rows while retaining declared audit history", function()
-            local d = fixture.declaration(fixture.fresh_prefix())
-            d.policy = { audit_days = 0 }
-            local h = fixture.board({ declaration = d })
-            local id = steps.create(h, "task", { title = "Retained" })
-            local before = steps.get(h, id).item
-            local db = assert(store.open())
-            assert(db:execute([[WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM numbers WHERE n<205)
-                INSERT INTO kickside_work_change (board_id,seq,n,subject,kind,field_id,after,actor,at)
-                SELECT $1,2,1000+n,$2,'query_value',-1,'"open"',$3,'2026-01-01T00:00:00Z' FROM numbers]], { h.id, "i:" .. id, h.actor:id() }))
-            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,item_after='',deadline_ms=NULL WHERE owner_id='work'", { h.id }))
-            db:release()
-            drain(function(): boolean return steps.count_rows("kickside_work_change", h.id, " AND kind='query_value'") == 0 end)
-            db = assert(store.open())
-            test.eq(assert(store.count(db, "SELECT COUNT(*) AS n FROM kickside_work_change WHERE board_id=$1 AND kind='query_value'", { h.id })), 0)
-            test.eq(assert(store.count(db, "SELECT COUNT(*) AS n FROM kickside_work_change WHERE board_id=$1 AND kind='created'", { h.id })), 1)
-            db:release()
-            local after = steps.get(h, id).item
-            test.eq(after.version, before.version)
-            test.eq(after.state, before.state)
-            test.eq(after.values.title, "Retained")
-        end)
         test.it("carries an earlier page's deadline through sweep completion", function()
             local deadline = clock.deadline(86400000).ns // 1000000
             local db = assert(store.open())

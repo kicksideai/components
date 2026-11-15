@@ -94,42 +94,6 @@ local function define()
             test.is_nil(out);test.eq(err:kind(),errors.CONFLICT);test.eq(err:details().reason,"version_mismatch")
         end)
 
-        test.it("purges enumerated parked predecessor slots and preserves another owner and scheduled timers", function()
-            local h=fixture.board()
-            local foreign=fixture.board()
-            if h.id<foreign.id then h,foreign=foreign,h end
-            local db=assert(store.open())
-            db:release()
-            local ids={}
-            for i=1,9 do
-                local board=i==9 and foreign.id or h.id
-                local job=assert(jobs.enqueue({namespace="kickside.work",scope=board,key="t:" .. uuid.v4() .. ":old:1:timer",
-                    owner_locator={kind="component",id=board},job_type="kickside.work.jobs:process",slot=true,parked=i~=8,
-                    scheduled_at=i==8 and "2099-01-01T00:00:00Z" or nil,
-                    immutable_payload={board_id=board,item=uuid.v4(),state="old",visit=1,timer="timer"}}))
-                ids[i]=job.id
-            end
-            db=assert(store.open())
-            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,item_after='',deadline_ms=NULL WHERE owner_id='work'",{h.id}))
-            db:release()
-            local runs=0
-            repeat
-                local out=steps.retention_run();runs=runs+1
-                db=assert(store.open())
-                local remaining=assert(store.count(db,"SELECT COUNT(*) AS n FROM kickside_job WHERE owner_id=$1 AND job_type='kickside.work.jobs:process' AND id<>$2",{h.id,ids[8]}))
-                local position=assert(db:query("SELECT board_after FROM kickside_work_retention WHERE owner_id='work'",{}))[1]
-                db:release()
-                if remaining==0 then break end
-                test.is_true(out.needs_continue);test.eq(position.board_after,h.id)
-                assert(runs<8,"orphan slot pages must drain")
-            until false
-            test.is_true(runs>=2,"native purge history budget bounds owner pages")
-            db=assert(store.open())
-            local kept=assert(store.count(db,"SELECT COUNT(*) AS n FROM kickside_job WHERE id IN ($1,$2)",{ids[8],ids[9]}))
-            db:release()
-            test.eq(kept,2)
-        end)
-
         test.it("retries exact retirement names after a lost Core response without dropping the owner page", function()
             local h=fixture.board()
             local id=steps.create(h,"task")

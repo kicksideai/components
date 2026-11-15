@@ -18,8 +18,6 @@ M.DEFINITIONS = {
     rebalance_batches_per_run = { default = 20, min = 1, max = 100 },
     pack_steps_per_run = { default = 20, min = 1, max = 100 },
     operation_batches_per_run = { default = 20, min = 1, max = 100 },
-    recovery_batch = { default = 100, min = 1, max = 500 },
-    recovery_batches_per_run = { default = 4, min = 1, max = 100 },
     plugin_batch = { default = 20, min = 1, max = 100 },
     plugin_batches_per_run = { default = 1, min = 1, max = 100 },
 

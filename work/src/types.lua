@@ -169,7 +169,7 @@ type ProcessDecl = {
     map: { [string]: string }?,
 }
 type OperationPosition = {at: string, id: string}
-type OperationalLimits = { storage_batch: integer, plugin_projection_batch: integer, plugin_discovery_batch: integer, projection_catchup_ticks: integer, cleanup_batch: integer,  rebuild_batch: integer, rebuild_batches_per_run: integer, migration_batch: integer, migration_batches_per_run: integer, rebalance_batch: integer, rebalance_batches_per_run: integer, pack_steps_per_run: integer, operation_batches_per_run: integer, recovery_batch: integer, recovery_batches_per_run: integer, plugin_batch: integer, plugin_batches_per_run: integer, command_deadline_ms: integer, read_deadline_ms: integer, retention_batch: integer, bulk_batch_items: integer, bulk_batch_ops: integer }
+type OperationalLimits = { storage_batch: integer, plugin_projection_batch: integer, plugin_discovery_batch: integer, projection_catchup_ticks: integer, cleanup_batch: integer,  rebuild_batch: integer, rebuild_batches_per_run: integer, migration_batch: integer, migration_batches_per_run: integer, rebalance_batch: integer, rebalance_batches_per_run: integer, pack_steps_per_run: integer, operation_batches_per_run: integer, plugin_batch: integer, plugin_batches_per_run: integer, command_deadline_ms: integer, read_deadline_ms: integer, retention_batch: integer, bulk_batch_items: integer, bulk_batch_ops: integer }
 type SettingRule = { default: integer, min: integer, max: integer }
 type PolicyDecl = { stage_timeout: string?, stage_max_visits: integer?, comments_per_item: integer?, wip: Wip?, audit: string?, audit_days: integer?, trash_days: integer?, tombstone_days: integer?, interval_days: integer? }
 type PluginOwners = { [string]: { [string]: string } }
