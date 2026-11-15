@@ -16,6 +16,7 @@ Independently installable modules for the KickSide application:
 | [docscout](docscout) | `kickside/docscout` | Extracts verified, cited fields from uploaded documents for people, agents, evaluations and Workflows. |
 | [work](work) | `kickside/work` | Runs boards of typed items with process transitions, queries, history, views and agent tools. |
 | [pim](pim) | `kickside/pim` | Manages product catalogs, contextual values, variants, schema evolution, readiness, releases and channel publications. |
+| [pim-admin](pim-admin) | `kickside/pim-admin` | Configures catalog schemas, vocabularies, plugins and policy on System/settings. |
 
 Install a package through **System → Modules** in KickSide. The [module installation guide](https://github.com/kicksideai/docs/blob/main/getting-started/first-module.md) explains requirements and bindings.
 

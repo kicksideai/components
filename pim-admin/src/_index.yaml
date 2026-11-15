@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.pim.admin
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: KickSide PIM administration
+    description: Catalog schema administration on the platform System surface.
+- name: dep.kickside.pim
+  version: '*'
+  kind: ns.dependency
+  meta:
+    description: The catalog service these pages read and write.
+  component: kickside/pim
+- name: dep.kickside.widgets
+  version: '*'
+  kind: ns.dependency
+  meta:
+    description: Shared schema forms and principal pickers loaded by tag.
+  component: kickside/widgets
+- name: ui_server
+  kind: ns.requirement
+  meta:
+    value_kind: http.service
+    comment: HTTP service that serves the PIM administration bundle.
+  targets:
+  - entry: kickside.pim.admin:ui_static
+    path: .meta.server
+- name: api_router
+  kind: ns.requirement
+  meta:
+    value_kind: http.router
+    comment: Authenticated router with token_auth and endpoint_firewall for the name
+      resolver.
+  targets:
+  - entry: kickside.pim.admin.api:principals.endpoint
+    path: .meta.router
+  - entry: kickside.pim.admin.api:defaults.endpoint
+    path: .meta.router
+- name: ui_fs
+  kind: fs.directory
+  meta:
+    comment: Built administration components from ui/.
+  directory: ./static
+  auto_init: true
+- name: ui_static
+  kind: http.static
+  meta:
+    comment: Serves the administration bundle at /kickside-pim-admin.
+  path: /kickside-pim-admin
+  fs: kickside.pim.admin:ui_fs
+  options:
+    mime_types:
+      .js: application/javascript
+      .css: text/css
+      .map: application/json
+- name: admin
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Products administration
+    announced: true
+    auto_register: true
+    tag_name: kickside-pim-admin
+    base_path: kickside-pim-admin
+    entry_point: admin.js
+    icon: tabler:packages
+    description: Catalog schema administration for KickSide PIM - attributes, families,
+      plugins and the declaration with plan and apply - mounted on the System page
+      for catalog administrators.
+    props: {}
+- name: catalog_settings
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Catalog settings
+    announced: true
+    auto_register: true
+    tag_name: kickside-pim-catalog-settings
+    base_path: kickside-pim-admin
+    entry_point: settings.js
+    icon: tabler:settings
+    description: Catalog fields, families, dimensions, vocabularies, channels, plugins
+      and policy with one draft reviewed before apply. Embedded mode fits inside a
+      System detail pane.
+  props:
+    type: object
+    properties:
+      catalog-id:
+        type: string
+        default: ''
+        description: Catalog whose schema the signed-in administrator edits.
+      embedded:
+        type: boolean
+        default: false
+        description: Displays a detail header within an existing System surface.
+  events:
+    navigate:
+      type: object
+      properties:
+        route:
+          type: string
+      required:
+      - route
+- name: settings_tab
+  kind: registry.entry
+  meta:
+    type: ui.settings_tab
+    comment: Catalog schema administration on the System page.
+  key: pim
+  label: Products
+  icon: tabler:packages
+  order: 40
+  render: component
+  component_tag: kickside-pim-admin
+  access: kickside.pim.api:apply_schema.endpoint
+- name: dep.kickside.component
+  kind: ns.dependency
+  version: '*'
+  component: kickside/component
+- name: dep.kickside.contract
+  kind: ns.dependency
+  version: '*'
+  component: kickside/contract
+- name: types
+  kind: library.lua
+  source: file://types.lua
+- name: dep.kickside.settings
+  kind: ns.dependency
+  component: kickside/settings
+  version: '*'

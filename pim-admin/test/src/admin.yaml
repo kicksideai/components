@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+  - name: admin_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim_admin, timeout: 300s }
+    source: file://admin_test.lua
+    method: run
+    modules: [json, uuid, registry, fs, http_client]
+    imports:
+      test: wippy.test:test
+      session: app:session

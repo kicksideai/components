@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
+.kx-head-text { flex: 1; }
+.kx-head-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-head-actions .search { width: 180px; }
+
+.pim-panel-head .kx-title { font-size: 16px; }
+
+.pim-title-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

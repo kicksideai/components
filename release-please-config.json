@@ -71,6 +71,18 @@
         "pim/.wippy",
         "pim/wippy.lock"
       ]
+    },
+    "pim-admin": {
+      "component": "pim-admin",
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
+      "exclude-paths": [
+        "pim-admin/test",
+        "pim-admin/build-inputs",
+        "pim-admin/.wippy",
+        "pim-admin/ui/node_modules",
+        "pim-admin/ui/coverage"
+      ]
     }
   }
 }
