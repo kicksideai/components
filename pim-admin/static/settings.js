@@ -2904,7 +2904,7 @@ const Be = {
               severity: "info"
             }, {
               default: m(() => [...T[6] || (T[6] = [
-                N("No catalog definitions yet. Add an aspect to start defining fields.", -1)
+                N("Define its schema. Add an aspect to start defining fields.", -1)
               ])]),
               _: 1
             })) : q("", !0),

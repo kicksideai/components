@@ -1370,7 +1370,7 @@ The catalog is the security unit: READ sees every item of the catalog.
 | `list_links({ kind, target, cursor?, limit? })` | products referencing a target, for every ref kind (`product`, `term`, `asset`, `component`, link kinds), from `ref(catalog_id, kind, target)` |
 | `get_release({ release_id })` | the immutable snapshot, hash, version, generation and channels |
 | `list_releases({ product, before?, limit? })` | a product's releases newest first |
-| `get_schema({ generation? })` | the declaration and compiled public parts of the head, or of a past generation; `plugins` is the per-catalog state list in §3.2 |
+| `get_schema({ generation? })` | the declaration and compiled public parts of the head (including an initially empty schema), or of a past generation; `plugins` is the per-catalog state list in §3.2 |
 | `plugin_context({ catalog_id, plugin })` | contract-only READ; `{ attachment_id, config, lifecycle, projections }` for an active plugin (§3.2) |
 | `plugin_feed({ catalog_id, plugin, kind, token? })` | contract-only READ; one bounded state page `{ attachment_id, config, bootstrap, changes, token, done }` for an active declared state projection (§3.11) |
 | `explain({ product, attr, context })` | the resolution steps (2.6) and the findings behind readiness |
@@ -1610,12 +1610,25 @@ Malformed bytes return `INTERNAL / contract_schema_invalid`.
 
   | Method | Access | Plugin contract |
   |---|---|---|
-  | `create` | CREATE | initial declaration and separate `plugin_configs?` |
+  | `create` | CREATE | optional initial declaration (empty when omitted) and separate `plugin_configs?`; always establishes generation 1 |
   | `apply_schema` | ADMIN | declaration, `expected_generation?`, idempotency and separate `plugin_configs?` |
   | `plan_schema` | ADMIN | schema request with initial `plugin_configs?`; validates without append |
   | `configure_plugin { catalog_id, plugin, config }` | ADMIN | validates effective attachment configuration before appending one catalog fact |
   | `plugin_context { catalog_id, plugin }` | READ | contract only; active plugin context (§3.2) |
   | `plugin_feed { catalog_id, plugin, kind, token? }` | READ | contract only; bounded durable state page and opaque token (§3.11) |
+
+Successful `create` always establishes the initial schema through `apply_schema`
+and waits for its projection before returning the required `generation`. Omitting
+`declaration` is equivalent to `{}`: generation 1 has no custom definitions and
+includes the built-in `generic` family. `get_schema`, `query` and the catalog
+summary immediately read that head with current caller access and zero counts.
+Commands before user definitions validate against this empty schema: generic
+products are allowed; undeclared families or fields produce ordinary item
+validation findings, never `catalog_not_found`. Applying definitions then advances
+the head normally with `expected_generation = 1`. While its command receipt is
+retained, a matching creation retry returns its original generation and does not
+reset a later schema head.
+Administration opens the new catalog's schema editor with “Define its schema”.
 
 - Contract `kickside.pim:link_target` (3.3) bound by plugins.
 - HTTP (pim): the exact method/path/access inventory is §7.1.
