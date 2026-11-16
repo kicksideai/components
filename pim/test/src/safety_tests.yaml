@@ -96,6 +96,7 @@ entries:
     kind: library.lua
     source: file://request_error_probe.lua
     imports:
+      trim_text: kickside.pim:text
       json: app:schema_json_probe
       registry: app:schema_registry_probe
       contract: app:contract_failure_fixture

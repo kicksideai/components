@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Each contract method declares the request shape checked before the method acts.
+local trim = require("trim_text").trim
 local contract = require("contract")
 local json = require("json")
 local registry = require("registry")
@@ -32,7 +33,7 @@ local function schema_text(raw: unknown): (string?, error?)
     else
         return nil, errors.new({ kind = errors.INTERNAL, message = "definition is neither text nor bytes", details = { code = "contract_schema_invalid" } })
     end
-    local trimmed = text:match("^%s*(.-)%s*$") or text
+    local trimmed = trim(text)
     if trimmed:sub(1, 1) == '"' then
         local inner, derr = json.decode(trimmed)
         if derr then return nil, errors.wrap(derr, "definition string literal is not JSON") end

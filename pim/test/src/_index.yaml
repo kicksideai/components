@@ -2420,3 +2420,12 @@ entries:
       - {name: 'kickside.uploads:storage_id', value: 'app:exports'}
       - {name: 'wippy.relay:application_host', value: 'app:processes'}
       - {name: 'wippy.relay:env_storage', value: 'app:env_storage'}
+
+  - name: trim_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim }
+    source: file://trim_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      trim_text: kickside.pim:text

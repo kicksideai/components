@@ -8,10 +8,7 @@ local http = require("http")
 local security = require("security")
 local state = require("research_state")
 
-local function trim(value: any): string
-    if type(value) ~= "string" then return "" end
-    return (value:gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 local function handler()
     local req = http.request()

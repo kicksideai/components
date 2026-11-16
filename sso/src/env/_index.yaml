@@ -116,6 +116,8 @@ entries:
     meta:
       comment: Pure seed planning — turns the raw bootstrap env values into the ordered global settings to write.
     source: file://seed_plan.lua
+    imports:
+      trim_text: kickside.sso:text
 
   - name: seed.env_read
     kind: security.policy
@@ -180,5 +182,6 @@ entries:
       - env
       - contract
     imports:
+      trim_text: kickside.sso:text
       sso_seed_plan: kickside.sso.env:seed_plan
     method: run

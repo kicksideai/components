@@ -31,10 +31,7 @@ local function invalid(message: string): error
     return errors.new({ kind = errors.INVALID, message = message })
 end
 
-local function trim(value: any): string
-    if type(value) ~= "string" then return "" end
-    return (value:gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 -- An event body arrives as a table or as its JSON-encoded string; normalize to a table.
 local function as_table(value: any): any

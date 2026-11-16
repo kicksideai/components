@@ -18,10 +18,7 @@ local DEFAULT_AGENT = "kickside.research.agents:researcher"
 local POLL_MS = 2000
 local MAX_WAIT_MS = 240000 -- 4 minutes
 
-local function trim(value: any): string
-    if type(value) ~= "string" then return "" end
-    return (value:gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 function M.handle(input: any): (any?, error?)
     input = type(input) == "table" and input or {}
