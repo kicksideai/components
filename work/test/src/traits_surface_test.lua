@@ -78,14 +78,14 @@ local function define()
             test.eq(tool(h, "get_schema", {}).key_prefix, h.prefix)
             assert(h.call("apply_schema", { declaration = { plugins = { { use = "app:trait_plugin" } } } }))
             test.not_nil(tool(h, "configure_plugin", { plugin = "app:trait_plugin", config = {} }).attachment_id)
-            local empty = tool(h, "create_board", { idempotency_key = "agent-packed", title = "Packed" }).board_id
-            local request = { board_id = empty, pack = "app:numeric_pack", expected_generation = 0, key = "agent-install" }
+            local empty = tool(h, "create_board", { idempotency_key = "agent-packed", title = "Packed" })
+            local request = { board_id = empty.board_id, pack = "app:numeric_pack", expected_generation = empty.generation, key = "agent-install" }
             test.not_nil(tool(h, "pack_plan", request).digest)
             test.eq(tool(h, "pack_apply", request).status, "done")
-            test.not_nil(tool(h, "get_schema", { board_id = empty }).compiled)
+            test.not_nil(tool(h, "get_schema", { board_id = empty.board_id }).compiled)
             local fleet = tool(h, "list_pack_boards", { pack = "app:numeric_pack" })
             test.eq(#fleet.boards, 1)
-            test.eq(fleet.boards[1].board_id, empty)
+            test.eq(fleet.boards[1].board_id, empty.board_id)
             test.eq(#tool(fixture.board(), "list_pack_boards", { pack = "app:numeric_pack" }).boards, 0)
             local from_pack = tool(h, "create_board", { idempotency_key = "agent-pack-create", pack = "app:numeric_pack", starter = false })
             test.not_nil(from_pack.board_id)
