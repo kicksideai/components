@@ -201,6 +201,32 @@
       "pg_database": "kickside_test_work",
       "extra_tests": []
     },
+    "pim": {
+      "path": "pim",
+      "organization": "kickside",
+      "module": "pim",
+      "type": "plugin",
+      "visibility": "private",
+      "embed": [],
+      "targets": [
+        "setup",
+        "lint",
+        "strict",
+        "typecheck",
+        "check",
+        "check-module",
+        "test",
+        "test-pg",
+        "pack",
+        "verify"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "kickside_test_pim",
+      "extra_tests": []
+    },
     "pim-admin": {
       "path": "pim-admin",
       "organization": "kickside",
