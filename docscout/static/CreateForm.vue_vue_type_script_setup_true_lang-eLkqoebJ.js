@@ -1,9 +1,10 @@
 import { mergeProps as x, openBlock as p, createElementBlock as f, defineComponent as T, ref as g, withModifiers as _, createElementVNode as o, createTextVNode as w, createVNode as y, unref as u, toDisplayString as h, createCommentVNode as V } from "vue";
-import { e as O, f as z, B as S, g as P, n as R, h as k, i as H, m as D, s as U } from "./index-CrYiACP3.js";
+import { n as O, a as z, i as R, m as H, s as D } from "./index-DsWOWvnx.js";
+import { s as U, c as k, B as S, f as P } from "./wc-runtime-CWPiLYui.js";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 var A = {
   name: "BaseEditableHolder",
-  extends: O,
+  extends: U,
   emits: ["update:modelValue", "value-change"],
   props: {
     modelValue: {
@@ -98,12 +99,12 @@ var A = {
     findNonEmpty: function() {
       for (var t = arguments.length, n = new Array(t), i = 0; i < t; i++)
         n[i] = arguments[i];
-      return n.find(z);
+      return n.find(k);
     }
   },
   computed: {
     $filled: function() {
-      return z(this.d_value);
+      return k(this.d_value);
     },
     $invalid: function() {
       var t, n;
@@ -556,7 +557,7 @@ const lt = { class: "create-summary" }, dt = {
 }, ut = {
   key: 1,
   class: "row"
-}, ft = /* @__PURE__ */ T({
+}, ct = /* @__PURE__ */ T({
   __name: "CreateForm",
   props: {
     saving: { type: Boolean },
@@ -565,7 +566,7 @@ const lt = { class: "create-summary" }, dt = {
   },
   emits: ["submit"],
   setup(e, { expose: t, emit: n }) {
-    const i = R(), l = Object.keys(k).filter((d) => H(i, d)).map((d) => k[d]).join(", "), a = D(i.stages.extract.model), B = i.retrieval.search_mode.replace(/^\w/, (d) => d.toUpperCase()), E = e, j = n, s = g(""), b = g(""), v = g("");
+    const i = O(), l = Object.keys(z).filter((d) => R(i, d)).map((d) => z[d]).join(", "), a = H(i.stages.extract.model), B = i.retrieval.search_mode.replace(/^\w/, (d) => d.toUpperCase()), E = e, j = n, s = g(""), b = g(""), v = g("");
     function F() {
       if (!E.saving) {
         if (!s.value.trim()) {
@@ -617,7 +618,7 @@ const lt = { class: "create-summary" }, dt = {
       ]),
       e.error || v.value ? (p(), f("p", dt, h(e.error || v.value), 1)) : V("", !0),
       e.inPopup ? V("", !0) : (p(), f("footer", ut, [
-        y(u(U), {
+        y(u(D), {
           label: "Create extractor",
           type: "submit",
           loading: e.saving,
@@ -628,5 +629,5 @@ const lt = { class: "create-summary" }, dt = {
   }
 });
 export {
-  ft as _
+  ct as _
 };
