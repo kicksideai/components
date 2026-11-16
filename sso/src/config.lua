@@ -3,6 +3,7 @@
 -- list parsing for domains/scopes. All reads go through the settings contract, so
 -- a settings change takes effect without redeploy.
 
+local trim = require("trim_text").trim
 local contract = require("contract")
 local consts = require("sso_consts")
 local providers_registry = require("sso_providers_registry")
@@ -40,7 +41,7 @@ local function as_list(v, lower)
     local out = {}
     local function push(s)
         if type(s) ~= "string" then return end
-        s = s:gsub("^%s+", ""):gsub("%s+$", "")
+        s = trim(s)
         if s == "" then return end
         out[#out + 1] = lower and s:lower() or s
     end
