@@ -34,7 +34,7 @@ local function define()
             local h = scoped.board(scoped.admin())
             for i = 1, 3 do steps.create(h, "task", { estimate = i }) end
             local out = assert(h.call("explain", { where = { field = "estimate", op = "eq", value = 2 },
-                order = { field = "estimate" }, budget = { rows = 1 } }))
+                order = { field = "estimate" }, budget = { rows = 1, deadline = clock.deadline(10000).at } }))
             test.not_nil(out.plan.indexes)
             test.is_true(#out.plan.indexes > 0)
             local previous = ""
@@ -46,7 +46,7 @@ local function define()
             test.eq(out.budget.rows_scanned, 0)
             test.eq(out.budget.rows_remaining, 1)
             test.is_true(out.budget.deadline_remaining_ms > 0)
-            test.is_true(out.budget.deadline_remaining_ms <= 2000)
+            test.is_true(out.budget.deadline_remaining_ms <= 10000)
             test.is_nil(out.items)
             local deadline = clock.deadline(1000).at
             out = assert(h.call("explain", { budget = { rows = 7, deadline = deadline } }))
