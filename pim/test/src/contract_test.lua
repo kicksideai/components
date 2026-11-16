@@ -7,6 +7,8 @@ local steps = require("steps")
 local store = require("store")
 local registry = require("registry")
 local time = require("time")
+local summary_component = require("summary_component")
+local summary_locate = require("summary_locate")
 
 type Map = { [string]: unknown }
 
@@ -153,6 +155,32 @@ local function define()
     end)
 
     test.describe("catalog contract", function()
+        test.it("reads committed summary state before public metadata is published", function()
+            local h = fixture.catalog({ bare = true })
+            summary_component.metadata({ title = "New catalog" })
+            local summary = assert(summary_locate.summary(h.id))
+            test.eq(summary.generation, 1, "summary before first metadata publication")
+            test.eq(summary.product_count, 0)
+            test.eq(summary.item_count, 0)
+            test.eq(summary.status, "ready")
+            test.eq(summary.title, "New catalog")
+            test.is_true(summary.access.read)
+            test.is_true(summary.access.write)
+            test.is_true(summary.access.admin)
+
+            assert(h.call("apply_schema", { expected_generation = 1,
+                declaration = { aspects = { { namespace = "core" } } } }))
+            assert(h.call("apply", { items = { { product = { sku = "first" }, create = { family = "generic" } } } }))
+            summary_component.metadata({ title = "Renamed catalog", generation = 1,
+                product_count = 0, item_count = 0, status = "rebuilding" })
+            local current = assert(summary_locate.summary(h.id))
+            test.eq(current.generation, 2, "summary before updated metadata publication")
+            test.eq(current.product_count, 1)
+            test.eq(current.item_count, 1)
+            test.eq(current.status, "ready")
+            test.eq(current.title, "Renamed catalog")
+        end)
+
         test.it("binds every method to a registered service function", function()
             local binding = assert(registry.get("kickside.pim.binding:catalog_service"))
             local methods = binding.data.contracts[1].methods

@@ -71,6 +71,7 @@ entries:
       comment: Readable catalogs and the explicit-or-only catalog selection rule.
     source: file://locate.lua
     imports:
+      store: kickside.pim.persist:store
       failure: kickside.pim:failure
       access: kickside.pim.read:access
       types: kickside.pim:types

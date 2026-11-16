@@ -1111,6 +1111,23 @@ entries:
       store: kickside.pim.persist:store
       portable_result: kickside.pim.portability:result
 
+  - name: summary_component
+    kind: library.lua
+    source: file://summary_component.lua
+    imports:
+      types: kickside.pim:types
+
+  - name: summary_locate
+    kind: library.lua
+    source: file://summary_locate.lua
+    imports:
+      failure: kickside.pim:failure
+      access: kickside.pim.read:access
+      types: kickside.pim:types
+      component: app:summary_component
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+
   - name: contract_test
     kind: function.lua
     meta: { type: test, suite: kickside_pim, timeout: 300s, comment: The catalog contract - create, list, schema plan, history, min_seq and decisions. }
@@ -1118,6 +1135,8 @@ entries:
     method: run
     modules: [registry, time, sql]
     imports:
+      summary_component: app:summary_component
+      summary_locate: app:summary_locate
       requests: kickside.pim:requests
       steps: app:steps
       store: kickside.pim.persist:store
