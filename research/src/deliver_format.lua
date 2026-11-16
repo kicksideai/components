@@ -1,9 +1,6 @@
 local M = {}
 
-local function trim(value: any): string
-    if type(value) ~= "string" then return "" end
-    return (value:gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 M.REPORT_SCHEMA = {
     type = "object",
