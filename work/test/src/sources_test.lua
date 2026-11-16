@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local test = require("test")
 local registry = require("registry")
+local json = require("json")
 local fixture = require("fixture")
 local steps = require("steps")
 local store = require("store")
@@ -15,20 +16,39 @@ end
 local function define()
     test.describe("Work pullable sources", function()
         test.it("advances durable feed documents for comment creation edits and deletion", function()
+            local schema
+            for _, method in ipairs(assert(registry.get("kickside.work:board")).data.methods) do
+                if method.name == "list_changes" then schema = assert(json.decode(method.output_schemas[1].definition)) end
+            end
+            assert(schema)
+            local function validate(page: Map)
+                local valid, err = json.validate(schema, assert(json.decode(assert(json.encode(page)))))
+                test.is_true(valid == true, steps.detail(err))
+            end
             local h = fixture.board()
             local id = steps.create(h, "task", { title = "Comments" })
             local cursor = assert(h.call("list_changes", {})).next
             local added = steps.one(h, { op = "comment", item = id, body = "First" })
             local page = assert(h.call("list_changes", { cursor = cursor }))
+            validate(page)
             test.eq(#page.items, 1); test.eq(page.items[1].item_id, id)
+            test.eq(page.items[1].comments[1].comment_id, added.comment)
+            test.eq(page.items[1].comments[1].item_id, id)
+            test.eq(page.items[1].comments[1].author, h.actor:id())
+            test.eq(page.items[1].comments[1].version, 1)
+            test.eq(page.items[1].comments[1].deleted, false)
             test.eq(page.items[1].comments[1].body, "First")
             cursor = page.next
             steps.one(h, { op = "comment", item = id, comment = added.comment, body = "Edited" })
             page = assert(h.call("list_changes", { cursor = cursor }))
+            validate(page)
             test.eq(page.items[1].comments[1].body, "Edited")
+            test.eq(page.items[1].comments[1].version, 2)
+            test.not_nil(page.items[1].comments[1].edited_at)
             cursor = page.next
             steps.one(h, { op = "comment", item = id, comment = added.comment, delete = true })
             page = assert(h.call("list_changes", { cursor = cursor }))
+            validate(page)
             test.eq(#page.items[1].comments, 0)
         end)
         test.it("declares standalone items and changes ports with board pickers", function()
