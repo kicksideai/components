@@ -21,6 +21,7 @@ typecheck:
 	cd test && $(WIPPY) lint --strict-any --level warning --ns 'kickside.pim.*' --ns kickside.pim
 check: check-module
 check-module:
+	node scripts/generate-contracts.mjs --check
 	python3 -B scripts/test-pim-plans.py
 	WIPPY="$(WIPPY)" node scripts/check-module.mjs
 test:

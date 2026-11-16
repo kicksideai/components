@@ -30,7 +30,9 @@ local function with_catalog<R>(method: string, fn: (string, unknown) -> (R?, err
         if perr then return nil, perr end
         local id, lerr = locate.resolve(addressed(input))
         if lerr or not id then return nil, lerr end
-        return fn(id, input)
+        local out, err = fn(id, input)
+        if err or out == nil then return nil, err end
+        return requests.output(method, out)
     end
 end
 
