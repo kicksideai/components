@@ -19,6 +19,9 @@ import { humanize } from '../../forms'
 
 const props = defineProps<{ catalogId: string; draft: Declaration; schema: SchemaView }>()
 const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string] }>()
+// Mirrors pim/src/command/terms.lua, including its strict end and 128-byte limit.
+const TERM_CODE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}(?![\s\S])/
+const canWrite = computed(() => props.schema.access.write)
 const vocabs = computed(() => props.draft.vocabularies ?? [])
 const newCode = ref('')
 function add() {
@@ -56,7 +59,7 @@ function form(code: string) {
 }
 async function addTerm(v: VocabularyDecl) {
   const f = form(v.code)
-  if (!CODE.test(f.code)) return
+  if (!canWrite.value || !TERM_CODE.test(f.code)) return
   busy.value[v.code] = true
   error.value[v.code] = ''
   try {
@@ -71,6 +74,7 @@ async function addTerm(v: VocabularyDecl) {
   } catch (e) { error.value[v.code] = e instanceof Error ? e.message : 'Could not add the term.' } finally { busy.value[v.code] = false }
 }
 async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
+  if (!canWrite.value) return
   busy.value[v.code] = true
   error.value[v.code] = ''
   try {
@@ -98,7 +102,7 @@ async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
             <thead><tr><th>Code</th><th>Label</th><th v-if="v.hierarchical">Parent</th><th></th></tr></thead>
             <tbody><tr v-for="t in terms[v.code]" :key="t.code" :class="{ muted: t.retired }">
               <td class="mono">{{ t.code }}</td><td>{{ label(t) }}</td><td v-if="v.hierarchical" class="mono muted">{{ t.parent ?? '' }}</td>
-              <td class="num"><Button type="button" :disabled="busy[v.code]" @click="retire(v, t, !t.retired)" text severity="secondary" size="small">{{ t.retired ? 'Restore' : 'Retire' }}</Button></td>
+              <td class="num"><Button type="button" :disabled="!canWrite || busy[v.code]" @click="retire(v, t, !t.retired)" text severity="secondary" size="small">{{ t.retired ? 'Restore' : 'Retire' }}</Button></td>
             </tr></tbody>
           </table>
           <p v-else-if="!busy[v.code]" class="muted small">No terms yet.</p>
@@ -107,10 +111,10 @@ async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
             <Button type="button" :disabled="busy[v.code] || !cursors[v.code]" @click="loadTerms(v.code, cursors[v.code])" severity="secondary" outlined size="small"><Icon icon="tabler:chevron-right" aria-hidden="true" /> Next terms</Button>
           </div>
           <div class="row wrap pim-add-row">
-            <InputText v-model="form(v.code).code" type="text" placeholder="code" class="mono narrow" />
-            <InputText v-model="form(v.code).label" type="text" placeholder="Label (en)" />
-            <Select v-if="v.hierarchical" v-model="form(v.code).parent" class="narrow" :options="[{ value: '', label: 'No parent' }, ...(terms[v.code] ?? []).map((t) => ({ value: t.code, label: String(label(t)) }))]" option-label="label" option-value="value" appendTo="self" />
-            <Button type="button" :disabled="busy[v.code] || !CODE.test(form(v.code).code)" @click="addTerm(v)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add term</Button>
+            <InputText v-model="form(v.code).code" :disabled="!canWrite || busy[v.code]" type="text" placeholder="code" class="mono narrow" />
+            <InputText v-model="form(v.code).label" :disabled="!canWrite || busy[v.code]" type="text" placeholder="Label (en)" />
+            <Select v-if="v.hierarchical" v-model="form(v.code).parent" :disabled="!canWrite || busy[v.code]" class="narrow" :options="[{ value: '', label: 'No parent' }, ...(terms[v.code] ?? []).map((t) => ({ value: t.code, label: String(label(t)) }))]" option-label="label" option-value="value" appendTo="self" />
+            <Button type="button" :disabled="!canWrite || busy[v.code] || !TERM_CODE.test(form(v.code).code)" @click="addTerm(v)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add term</Button>
           </div>
         </div>
       </div>
