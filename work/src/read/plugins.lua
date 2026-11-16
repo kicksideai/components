@@ -40,7 +40,7 @@ function M.list(board_id: string, desired: { types.PluginState }, activations: {
             title = type(meta.title) == "string" and meta.title or nil,
             description = type(meta.description) == "string" and meta.description or nil,
             icon = type(meta.icon) == "string" and meta.icon or nil,
-            requires = {}, tools = {}, projections = {}, lifecycle = { state = "ready" } }
+            requires = {}, tools = {}, projections = table.create(0, 1), lifecycle = { state = "ready" } }
         local plugin, perr = manifests.load(id)
         if plugin then
             view.title, view.description, view.icon = plugin.title, plugin.description, plugin.icon

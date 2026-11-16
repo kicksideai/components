@@ -83,6 +83,10 @@ local function define()
             test.not_nil(tool(h, "pack_plan", request).digest)
             test.eq(tool(h, "pack_apply", request).status, "done")
             test.not_nil(tool(h, "get_schema", { board_id = empty }).compiled)
+            local fleet = tool(h, "list_pack_boards", { pack = "app:numeric_pack" })
+            test.eq(#fleet.boards, 1)
+            test.eq(fleet.boards[1].board_id, empty)
+            test.eq(#tool(fixture.board(), "list_pack_boards", { pack = "app:numeric_pack" }).boards, 0)
             local from_pack = tool(h, "create_board", { idempotency_key = "agent-pack-create", pack = "app:numeric_pack", starter = false })
             test.not_nil(from_pack.board_id)
         end)
@@ -113,6 +117,8 @@ local function define()
             for _, case in ipairs({
                 { h = outsider, tool = "get_schema", method = "get_schema", args = {} },
                 { h = reader, tool = "apply", method = "apply", args = { ops = { { op = "create", type = "task" } } } },
+                { h = writer, tool = "schema_options", method = "schema_options", args = {} },
+                { h = writer, tool = "resume_migration", method = "resume_migration", args = {} },
                 { h = writer, tool = "plan_schema", method = "plan_schema", args = { declaration = {} } },
             }) do
                 case.args.board_id = h.id

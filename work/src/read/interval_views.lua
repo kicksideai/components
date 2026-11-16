@@ -58,7 +58,7 @@ end
 
 function M.totals(field: string, totals: { [string]: integer }, catalog: { [string]: domain.Field }, redact: types.Redactor): ({ [string]: integer }?, error?)
     if not catalog[field] then return totals, nil end
-    local out: { [string]: integer } = {}
+    local out: { [string]: integer } = table.create(0, 1)
     for key, duration in pairs(totals) do
         local raw, err = json.decode(key)
         if err then return nil, err end

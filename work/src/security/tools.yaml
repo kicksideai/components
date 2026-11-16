@@ -54,6 +54,9 @@ entries:
     - kickside.work.traits:configure_plugin
     - kickside.work.traits:plan_move
     - kickside.work.traits:move
+    - kickside.work.traits:schema_options
+    - kickside.work.traits:resume_migration
+    - kickside.work.traits:list_pack_boards
     actions:
     - registry.get
     - registry.find

@@ -105,7 +105,7 @@ function M.query(request: types.QueryRequest): (types.QueryResult?, error?)
     local keys: { unknown } = {}
     local owners: { string } = {}
     local cursors: { domain.Cursor } = {}
-    local positions: { [string]: types.ReadStamp } = {}
+    local positions: { [string]: types.ReadStamp } = table.create(0, 1)
     local more, reindexing, incomplete = false, false, false
     local empty_cursors: { [string]: domain.Cursor } = {}
     local kind: string? = nil
@@ -133,7 +133,7 @@ function M.query(request: types.QueryRequest): (types.QueryResult?, error?)
     db:release()
     if oerr or not ordered then return nil, oerr end
     local out: { types.ItemView } = {}
-    local next_cursor: types.CrossCursor = { id = "cross", boards = {}, selection = ids }
+    local next_cursor: types.CrossCursor = { id = "cross", boards = table.create(0, 1), selection = ids }
     for id, held in pairs(cursor and cursor.boards or {}) do next_cursor.boards[id] = held end
     for id, held in pairs(empty_cursors) do next_cursor.boards[id] = held end
     for i = 1, math.min(#ordered, limit) do

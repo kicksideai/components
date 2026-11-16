@@ -7,7 +7,7 @@ local plugin_feed = require("plugin_feed")
 local local_types = require("local_types")
 local M = {}
 function M.states(board_id: string, plugin: types.Plugin): { [string]: types.PluginProjectionState }
-    local out: { [string]: types.PluginProjectionState } = {}
+    local out: { [string]: types.PluginProjectionState } = table.create(0, 1)
     local client, err = threads.open()
     for _, p in ipairs(plugin.projections) do
         local state: types.PluginProjectionState = { last_seq = 0, parked = false, bootstrapping = p.input == "state" }
