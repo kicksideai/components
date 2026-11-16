@@ -111,7 +111,15 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
                     -- next item if it would exceed this response's comment cap.
                     if #(comments or {}) > comments_left then processed = i - 1; break end
                     comments_left = comments_left - #(comments or {})
-                    item.comments = comments
+                    item.comments = {}
+                    for _, comment in ipairs(comments or {}) do
+                        item.comments[#item.comments + 1] = {
+                            comment_id = comment.comment_id, item_id = comment.item_id,
+                            body = comment.body, mentions = comment.mentions, author = comment.author,
+                            version = comment.version, deleted = comment.deleted,
+                            created_at = comment.created_at, edited_at = comment.edited_at,
+                        }
+                    end
                 end
                 items[#items + 1] = item
             end
