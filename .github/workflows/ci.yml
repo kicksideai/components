@@ -47,11 +47,7 @@ jobs:
         version: 0.3.64a
         hub-url: https://hub.wippy.ai
     - name: Materialize locked Docscout UI Kit for license provenance
-      run: |
-        set -euo pipefail
-        (cd docscout/build-inputs && wippy install)
-        version=$(jq -er '.packages[".wippy/npm/@kickside/ui-kit"].version' docscout/ui/package-lock.json)
-        wippy artifacts materialize "docscout/build-inputs/.wippy/vendor/kickside/ui-kit-$version.wapp" kickside.ui_kit:package_fs --root docscout/ui/.wippy
+      run: make -C docscout ui-kit
     - name: Materialize locked PIM admin UI Kit for license provenance
       run: make -C pim-admin ui-kit
     - name: Materialize locked Work admin UI Kit for license provenance
@@ -405,6 +401,7 @@ jobs:
             export TMPDIR="$PWD/.scratch"
             mkdir -p "$TMPDIR"
             python3 docscout/test/check-package-bindings.py
+            python3 docscout/test/test_build_inputs.py
             make -C docscout lockrefresh ui-install build typecheck test-ui lint test
         - module: docscout
           engine: postgres
@@ -413,6 +410,7 @@ jobs:
             export TMPDIR="$PWD/.scratch"
             mkdir -p "$TMPDIR"
             python3 docscout/test/check-package-bindings.py
+            python3 docscout/test/test_build_inputs.py
             make -C docscout lockrefresh ui-install build typecheck test-ui lint
             database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_docscout"
             createdb "$database"
