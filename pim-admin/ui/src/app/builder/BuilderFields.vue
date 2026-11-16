@@ -48,7 +48,7 @@ function isLink(attr: AttributeDecl): boolean {
   const t = typeOf(attr)
   return !!t && t.form === 'ref' && !t.target
 }
-function populated(ns: string, attr: AttributeDecl): boolean {
+function declared(ns: string, attr: AttributeDecl): boolean {
   return attr.id !== undefined && props.schema.attributes[ns + '.' + attr.code] !== undefined
 }
 
@@ -88,7 +88,6 @@ function setScope(attr: AttributeDecl, dims: string[]) {
   if (dims.length) attr.scope = dims
   else delete attr.scope
   if (!dims.length) delete attr.index_contexts
-  if (dims.length) delete attr.default
 }
 function setOptional<K extends keyof AttributeDecl>(attr: AttributeDecl, k: K, v: AttributeDecl[K] | undefined | '') {
   if (v === undefined || v === '' || (v === false && k !== 'default')) delete attr[k]
@@ -141,7 +140,7 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
   const list = a.attributes ?? []
   const i = list.indexOf(attr)
   if (i >= 0) list.splice(i, 1)
-  if (populated(a.namespace, attr)) emit('remove', 'attributes', a.namespace + '.' + attr.code)
+  if (declared(a.namespace, attr)) emit('remove', 'attributes', a.namespace + '.' + attr.code)
 }
 function move(list: AttributeDecl[], from: number, to: number) {
   if (to < 0 || to >= list.length) return
@@ -183,16 +182,16 @@ function move(list: AttributeDecl[], from: number, to: number) {
           <Button type="button" :disabled="i === (a.attributes?.length ?? 0) - 1" :aria-label="'Move ' + attr.code + ' later'" @click="move(a.attributes!, i, i + 1)" text severity="secondary" size="small"><Icon icon="tabler:arrow-down" /></Button>
         </template>
           <div class="pim-fields">
-            <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Code</label><span v-if="populated(a.namespace, attr)" class="pim-f-note">renames keep values</span></div><InputText type="text" :value="attr.code" @input="attr.code = ($event.target as HTMLInputElement).value" class="mono" /></div>
-            <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Type</label><span v-if="populated(a.namespace, attr)" class="pim-f-note">fixed once values exist</span></div>
+            <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Code</label><span v-if="declared(a.namespace, attr)" class="pim-f-note">renames keep values</span></div><InputText type="text" :value="attr.code" @input="attr.code = ($event.target as HTMLInputElement).value" class="mono" /></div>
+            <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Type</label></div>
               <Select
-                :model-value="attr.type" :disabled="populated(a.namespace, attr)"
+                :model-value="attr.type"
                 :options="typeOptions" option-label="label" option-value="value" appendTo="self"
                 @update:model-value="setType(attr, $event)"
               /></div>
             <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Cardinality</label></div>
               <Select
-                :model-value="attr.cardinality ?? 'one'" :disabled="populated(a.namespace, attr)"
+                :model-value="attr.cardinality ?? 'one'"
                 :options="CARDINALITIES" appendTo="self"
                 @update:model-value="setOptional(attr, 'cardinality', $event === 'one' ? undefined : $event)"
               /></div>
@@ -208,7 +207,7 @@ function move(list: AttributeDecl[], from: number, to: number) {
             <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Width</label><span class="pim-f-note">of a form row</span></div>
               <SelectButton :model-value="attr.width ?? schema.attributes[a.namespace + '.' + attr.code]?.width ?? 'half'" :options="WIDTHS" :allow-empty="false" @update:model-value="attr.width = $event" /></div>
             <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Varies per</label><span class="pim-f-note">dimensions the value depends on</span></div>
-              <ChipPicker :model-value="attr.scope ?? []" :options="dimensions" :disabled="populated(a.namespace, attr)" @update:model-value="setScope(attr, $event)" /></div>
+              <ChipPicker :model-value="attr.scope ?? []" :options="dimensions" @update:model-value="setScope(attr, $event)" /></div>
             <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Unique</label><span class="pim-f-note">one holder per value, catalog wide</span></div>
               <label class="row"><ToggleSwitch :aria-label="'Unique ' + attr.code" :model-value="attr.unique === true" :disabled="!!attr.scope?.length || (attr.cardinality ?? 'one') !== 'one'" @update:model-value="setOptional(attr, 'unique', $event)" /><span>{{ attr.unique ? 'Yes' : 'No' }}</span></label></div>
             <div v-if="(attr.scope?.length ?? 0) > 0 && attr.index && attr.index !== 'none'" class="pim-f pim-w-full"><div class="pim-f-label"><label>Indexed contexts</label><span class="pim-f-note">which combinations get an index</span></div>
@@ -223,7 +222,7 @@ function move(list: AttributeDecl[], from: number, to: number) {
                 </div>
                 <Button type="button" @click="addContext(attr)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add context</Button>
               </div></div>
-            <div v-if="!attr.scope?.length" class="pim-f pim-w-half"><div class="pim-f-label"><label>Default</label><span class="pim-f-note">when no value is set</span></div>
+            <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Default</label><span class="pim-f-note">when no value is set</span></div>
               <DefaultValue :attribute="attr" :type="typeOf(attr)" @change="setOptional(attr, 'default', $event)" /></div>
             <div v-if="typeOf(attr)?.config_schema" class="pim-f pim-w-full"><div class="pim-f-label"><label>Type configuration</label></div>
               <ConfigForm :schema="typeOf(attr)!.config_schema!" :model-value="attr.config ?? {}" @update:model-value="setConfig(attr, $event)" /></div>
