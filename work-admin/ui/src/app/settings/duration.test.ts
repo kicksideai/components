@@ -24,3 +24,28 @@ it('serializes small and large positive control values without exponent notation
     expect(durationParts(value)).toBeDefined()
   }
 })
+
+import { mount } from '@vue/test-utils'
+import InputNumber from 'primevue/inputnumber'
+import DurationControl from './DurationControl.vue'
+it('reports duration validity for invalid edits, unsupported storage, correction and removal', async () => {
+  const w = mount(DurationControl, { props: { label: 'Deadline', modelValue: 'PT1H' } })
+  expect(w.emitted('validity')?.at(-1)?.slice(0, 1)).toEqual([true])
+  await w.getComponent(InputNumber).setValue(0)
+  expect(w.emitted('validity')?.at(-1)?.slice(0, 1)).toEqual([false])
+  expect(w.emitted('update:modelValue')).toBeUndefined()
+  await w.getComponent(InputNumber).setValue(2)
+  expect(w.emitted('validity')?.at(-1)?.slice(0, 1)).toEqual([true])
+  await w.setProps({ modelValue: 'unsupported' })
+  expect(w.emitted('validity')?.at(-1)?.slice(0, 1)).toEqual([false])
+  w.unmount(); expect(w.emitted('validity')?.at(-1)?.slice(0, 1)).toEqual([true])
+})
+
+it('reports an unparseable attempted duration without clearing the stored value', async () => {
+  const w = mount(DurationControl, { props: { label: 'Deadline', modelValue: 'PT1H' } })
+  w.getComponent(InputNumber).vm.$emit('input', { value: '-', formattedValue: '-' })
+  expect(w.emitted('validity')?.at(-1)?.slice(0, 1)?.[0]).toBe(false)
+  w.getComponent(InputNumber).vm.$emit('update:modelValue', null)
+  expect(w.emitted('validity')?.at(-1)?.[0]).toBe(false)
+  expect(w.emitted('update:modelValue')).toBeUndefined(); w.unmount()
+})

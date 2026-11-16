@@ -109,17 +109,20 @@ export function processLayout(process: Process, draft: Declaration = {}, viewpor
     const axis = vertical ? 'y' : 'x'
     return Math.abs(nodeFor(a.from)[axis] - nodeFor(a.transition.to)[axis]) - Math.abs(nodeFor(b.from)[axis] - nodeFor(b.transition.to)[axis])
   })
-  const tracks = new Map<string, { x: number; y: number; corridor: number }>()
+  const tracks = new Map<string, { x: number; y: number; corridor: number; height: number }>()
   const returnWidth = Math.max(0, ...returnRoutes.map(r => r.width))
   let bottom = flowBottom + 32
   for (const [index, route] of returnRoutes.entries()) {
     const from = nodeFor(route.from), to = nodeFor(route.transition.to)
     // In TB maps the chip sits on the horizontal departure leg. The exterior
     // spine is vertical; no line enters a chip from above or below.
-    const corridor = vertical ? flowRight + 16 + returnWidth + 18 + index * 18 : bottom + route.height / 2
-    const x = vertical ? (flowRight + 16 + corridor) / 2 : (from.x + to.x) / 2
-    const y = vertical ? from.y + from.height / 2 + 18 : corridor
-    tracks.set(route.key, { x, y, corridor })
+    const corridor = vertical ? flowRight + 16 + returnWidth + 28 + index * 18 : bottom + route.height / 2
+    const x = vertical ? flowRight + 16 + returnWidth / 2 : (from.x + to.x) / 2
+    let y = vertical ? from.y + from.height / 2 + 18 : corridor
+    if (vertical) for (const label of [...tracks.values()].sort((a, b) => a.y - b.y)) {
+      if (y + route.height / 2 + 10 > label.y - label.height / 2 - 10 && y - route.height / 2 - 10 < label.y + label.height / 2 + 10) y = label.y + label.height / 2 + 24 + route.height / 2
+    }
+    tracks.set(route.key, { x, y, corridor, height: route.height })
     bottom = corridor + route.height / 2 + 24
   }
   const labels = routes.map(route => ({ ...route, ...(tracks.get(route.key) ?? graph.edge({ v: route.from, w: route.transition.to, name: route.key })) }))
@@ -141,7 +144,7 @@ export function processLayout(process: Process, draft: Declaration = {}, viewpor
     let segments: Point[][]
     if (back) {
       const { corridor } = tracks.get(route.key)!
-      const outsideStart = vertical ? { x: corridor, y: sourceStub.y } : { x: sourceStub.x, y: corridor }
+      const outsideStart = vertical ? { x: corridor, y: route.y } : { x: sourceStub.x, y: corridor }
       const outsideEnd = vertical ? { x: corridor, y: targetStub.y } : { x: targetStub.x, y: corridor }
       segments = vertical ? [
         [start, ...orthogonalRoute(sourceStub, before, obstacles)],

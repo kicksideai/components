@@ -10,6 +10,7 @@ export const visibility = new Set<() => Promise<void>>()
 export function notify(topic: string) { for (const fn of subscriptions.get(topic) ?? []) fn() }
 vi.mock('@wippy-fe/proxy', () => ({
   api: { get: vi.fn(), post: vi.fn() },
+  host: { confirm: vi.fn().mockResolvedValue(false) },
   loadByTagName: vi.fn().mockResolvedValue(undefined),
   on: vi.fn((topic: string, fn: () => void) => {
     const listeners = subscriptions.get(topic) ?? new Set<() => void>(); listeners.add(fn); subscriptions.set(topic, listeners)

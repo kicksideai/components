@@ -12,6 +12,7 @@ import { humanize } from '../../forms'
 import type { Declaration } from '../../types'
 import DurationControl from './DurationControl.vue'
 const props = defineProps<{ draft: Declaration }>()
+const emit = defineEmits<{ validity: [key: string, valid: boolean] }>()
 const policy = computed(() => props.draft.policy ?? {})
 const states = computed(() => [...new Set(props.draft.processes?.flatMap(p => p.states.map(s => s.id)) ?? [])])
 const days = ['audit_days', 'trash_days', 'tombstone_days', 'interval_days'] as const
@@ -28,7 +29,7 @@ function retention(key: typeof days[number], value: number | null) { update(key,
     <p class="work-muted work-small">A blank limit sets no restriction. A hard limit rejects transitions over capacity.</p>
     <div class="work-settings-list work-wip-container"><table class="work-wip-table"><thead><tr><th>State</th><th>Limit</th><th>Hard limit</th></tr></thead><tbody><tr v-for="state in states" :key="state"><td><strong>{{ draft.processes?.flatMap(p => p.states).find(s => s.id === state)?.name || humanize(state) }}</strong><code class="work-mono">{{ state }}</code></td><td><CapacityControl :draft="draft" :state="state" :label="state + ' WIP limit'" /></td><td><CapacityControl :draft="draft" :state="state" :label="state + ' hard WIP limit'" hard /></td></tr></tbody></table><div v-for="state in Object.keys(policy.wip ?? {}).filter(s => !states.includes(s))" :key="state" class="work-settings-row"><div class="work-row-main">{{ humanize(state) }} <span class="work-muted">Removed state</span></div><Button label="Remove stale limit" severity="secondary" outlined @click="delete policy.wip![state]"><template #icon><Icon icon="tabler:trash" /></template></Button></div></div>
     <h3 class="work-group-title">Automated stages</h3>
-    <DurationControl :model-value="policy.stage_timeout" @update:model-value="update('stage_timeout', $event)" label="Default attempt timeout" />
+    <DurationControl :model-value="policy.stage_timeout" @update:model-value="update('stage_timeout', $event)" label="Default attempt timeout" @validity="(valid, key) => emit('validity', key, valid)" />
     <p class="work-muted work-small">Blank uses one hour. Each retry gets a new deadline.</p>
     <label class="work-row"><span class="work-spacer">Default maximum visits</span><InputNumber
       :model-value="policy.stage_max_visits ?? null" aria-label="Default maximum visits" :min="1" :useGrouping="false"

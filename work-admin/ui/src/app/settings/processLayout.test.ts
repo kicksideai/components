@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { expect, it } from 'vitest'
-import { graphFixtures } from './__fixtures__/processes'
+import { graphFixtures, cicd } from './__fixtures__/processes'
 import { processLayout } from './process'
 const intersects = (a: {x: number; y: number; width: number; height: number}, b: {x: number; y: number; width: number; height: number}) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
 it.each(Object.entries(graphFixtures))('%s reserves visible node titles and all transition labels', (_, process) => {
@@ -50,4 +50,20 @@ it('lays out long names, multiline labels, globals and self loops without mutati
     expect(box.y + box.height / 2).toBeLessThanOrEqual(layout.height)
   }
   expect(JSON.stringify(process)).toBe(before)
+})
+
+it('allocates padded vertical return labels and stubs for returns sharing a source', () => {
+  const process = structuredClone(graphFixtures.looping)
+  process.transitions!.push({ id: 'retry_release', from: ['release'], to: 'quality', name: 'Retry release verification with a long label' })
+  const layout = processLayout(process, {}, { width: 550, height: 900 })
+  expect(layout.edges).toHaveLength(process.transitions!.length)
+  const boxes = layout.edges.filter(e => e.type === 'return').map(e => ({ x: e.x - e.width / 2 - 10, y: e.y - e.height / 2 - 10, width: e.width + 20, height: e.height + 20 }))
+  for (const [i, box] of boxes.entries()) for (const other of boxes.slice(i + 1)) expect(intersects(box, other)).toBe(false)
+})
+
+it.each([1400, 700, 520])('routes every source in the reviewed CI/CD process with padded label clearance at %s', width => {
+  const layout = processLayout(cicd, {}, { width, height: 900 })
+  expect(layout.edges).toHaveLength(11)
+  const boxes = layout.edges.map(e => ({ x: e.x - e.width / 2 - 10, y: e.y - e.height / 2 - 10, width: e.width + 20, height: e.height + 20 }))
+  for (const [i, box] of boxes.entries()) for (const other of boxes.slice(i + 1)) expect(intersects(box, other)).toBe(false)
 })

@@ -28,7 +28,8 @@ function M.get()
     local client, open_err = scoped:open()
     if open_err then return fail(res, open_err) end
     local _, read_err = (client :: types.Board):get_schema({ board_id = id })
-    if read_err then return fail(res, read_err) end
+    local missing = read_err and read_err:details() and read_err:details().code == "board_schema_missing"
+    if read_err and not missing then return fail(res, read_err) end
     local granted: { [string]: boolean } = {}
     for level, mask in pairs({ read = component.ACCESS.READ, write = component.ACCESS.WRITE, admin = component.ACCESS.ADMIN }) do
         local _, access_err = component.validate_access(id, mask)
@@ -38,9 +39,11 @@ function M.get()
     local options: types.Map = { plugins = {} }
     local installed: { types.FieldTypeOption } = {}
     if granted.admin then
-        local found, options_err = (client :: types.Board):schema_options({ board_id = id })
-        if options_err then return fail(res, options_err) end
-        options = found :: types.Map
+        if not missing then
+            local found, options_err = (client :: types.Board):schema_options({ board_id = id })
+            if options_err then return fail(res, options_err) end
+            options = found :: types.Map
+        end
         local found_types, types_err = field_types.field_types()
         if types_err then return fail(res, types_err) end
         installed = found_types or {}

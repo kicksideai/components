@@ -228,7 +228,7 @@ async function remove(p: Process) {
             :draft="draft"
             :advanced="advanced"
             :board-id="boardId"
-            @validity="(key, valid) => emit('validity', process!.id + ':' + state!.id + ':' + key, valid)"
+            @validity="(key, valid) => emit('validity', key.includes('duration:') ? key : process!.id + ':' + state!.id + ':' + key, valid)"
           />
           <label class="work-stack work-tight"
             >Phase<Select

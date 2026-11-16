@@ -26,4 +26,31 @@ export const parallel: Process = {
   states: [state('ready', 'Ready', 'unstarted'), { ...state('checks', 'Verification'), kind: 'parallel', regions: [{ id: 'test', initial: 'testing' }, { id: 'scan', initial: 'scanning' }], join: 'all' }, state('testing', 'Functional testing'), state('scanning', 'Security scanning'), state('done', 'Done', 'completed')],
   transitions: [edge('start', 'ready', 'checks', 'Begin checks'), edge('tested', 'testing', 'done', 'Tests pass'), edge('scanned', 'scanning', 'done', 'Scan clean'), { ...edge('join', 'checks', 'done', 'All checks pass'), auto: true, default: true }],
 }
+// The release process used in the administration review.
+export const cicd: Process = {
+  id: 'release', name: 'Release pipeline flow', initial: 'planned', migration: 'pin',
+  states: [
+    {"id": "planned", "name": "Planned", "category": "unstarted"},
+    {"id": "review", "name": "Review checkpoint", "category": "started", "kind": "gate", "release_when": {"approvals": {"min": 1, "from": {"group": "kickside.security.groups:members"}, "prevent_self": true}}},
+    {"id": "building", "name": "Building", "category": "started", "kind": "automated", "run": {"stage": "build", "retry": {"max": 3, "backoff": "PT1S"}, "on_fail": "failed"}},
+    {"id": "verifying", "name": "Verifying", "category": "started", "kind": "parallel", "regions": [{"id": "functional", "initial": "functional_check"}, {"id": "safety", "initial": "safety_check"}], "join": "all"},
+    {"id": "functional_check", "name": "Functional check", "category": "started"},
+    {"id": "safety_check", "name": "Safety check", "category": "started"},
+    {"id": "checked", "name": "Check complete", "category": "completed"},
+    {"id": "released", "name": "Released", "category": "completed"},
+    {"id": "failed", "name": "Build failed", "category": "canceled"},
+    {"id": "canceled", "name": "Canceled", "category": "canceled"},
+  ],
+  transitions: [
+    {"id": "submit", "name": "Request approval", "from": ["planned"], "to": "review", "require": ["version"]},
+    {"id": "approve_release", "name": "Approve release", "from": ["review"], "to": "building", "auto": true, "default": true},
+    {"id": "reject", "name": "Return to planning", "from": ["review"], "to": "planned"},
+    {"id": "passed", "name": "Build passed", "from": ["building"], "to": "verifying"},
+    {"id": "failed", "name": "Build failed", "from": ["building"], "to": "failed"},
+    {"id": "canceled", "name": "Cancel build", "from": ["building"], "to": "canceled"},
+    {"id": "check_pass", "name": "Confirm check", "from": ["functional_check", "safety_check"], "to": "checked"},
+    {"id": "verification_complete", "name": "Release verified build", "from": ["verifying"], "to": "released", "auto": true, "default": true},
+    {"id": "retry", "name": "Plan another attempt", "from": ["failed", "canceled"], "to": "planned"},
+  ],
+}
 export const graphFixtures = { small, branching, looping, large, parallel }

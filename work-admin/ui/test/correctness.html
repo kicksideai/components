@@ -1,0 +1,57 @@
+<!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Work administration correctness fixture</title></head>
+<body style="margin:0">
+  <div id="fixture"></div>
+  <dialog id="confirm"><h2>Discard changes?</h2><p>Your unsaved board settings will be discarded.</p><button id="keep">Keep editing</button><button id="discard">Discard</button></dialog>
+  <script>
+    const listeners = new Map()
+    window.fixtureNotify = topic => { for (const fn of listeners.get(topic) || []) fn() }
+    const request = async (path, body) => {
+      const response = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const data = await response.json()
+      if (!response.ok) throw { response: { status: response.status, data } }
+      return { data }
+    }
+    window.__WIPPY_APP_CONFIG__ = {}
+    window.__WIPPY_APP_API__ = {
+      config: {}, api: { get: path => request(path), post: request },
+      on: (topic, fn) => { if (!listeners.has(topic)) listeners.set(topic, new Set()); listeners.get(topic).add(fn); return () => listeners.get(topic).delete(fn) },
+      loadByTagName: async () => undefined,
+      host: { confirm: options => new Promise(resolve => {
+        const dialog = document.querySelector('#confirm'); dialog.showModal()
+        document.querySelector('#keep').onclick = () => { dialog.close(); resolve(false) }
+        document.querySelector('#discard').onclick = () => { dialog.close(); resolve(true) }
+      }) },
+    }
+  </script>
+  <script type="module">
+    import { createApp, h, ref } from 'vue'
+    import { PrimeVuePlugin } from '@wippy-fe/theme/primevue-plugin'
+    import { HOST_VISIBILITY_PROVIDER } from '@wippy-fe/webcomponent-vue'
+    import CreateBoard from '../src/app/CreateBoard.vue'
+    import BoardSettings from '../src/app/settings/BoardSettings.vue'
+    import AdminApp from '../src/app/settings/AdminApp.vue'
+    import '../src/settings.ts?declare-tag=kickside-work-board-settings'
+    import { hostCss } from '@wippy-fe/proxy'
+    import themeCss from '@wippy-fe/theme/theme-config.css?inline'
+    import primeCss from '@wippy-fe/theme/primevue/tailwind.css?inline'
+    import graphStyles from '../src/app/settings/processGraph.css?inline'
+    import styles from '../src/styles.css?inline'
+    hostCss.themeConfigUrl = 'data:text/css,' + encodeURIComponent(themeCss)
+    hostCss.primeVueCssUrl = 'data:text/css,' + encodeURIComponent(primeCss)
+    hostCss.iframeCssUrl = 'data:text/css,'
+    const sheet = document.createElement('style')
+    sheet.textContent = themeCss + primeCss + styles + graphStyles + `:root {
+      --p-text-color:#1e293b; --p-text-muted-color:#475569; --p-content-background:#fff;
+      --p-content-border-color:#cbd5e1; --p-primary-color:#2563eb; --p-primary-contrast-color:#fff;
+      --p-warn-600:#d97706; --kx-surface-1:#f8fafc; --kx-control-height:34px;
+      --p-focus-ring-color:#2563eb; font-family:system-ui,sans-serif; color:#1e293b;
+    } body { padding:24px; } #fixture { min-height:700px; } dialog { border:1px solid #cbd5e1; border-radius:12px; padding:24px; }`
+    document.head.append(sheet)
+    const mode = new URLSearchParams(location.search).get('mode')
+    const component = mode === 'create' ? CreateBoard : mode === 'admin' ? AdminApp : BoardSettings
+    const props = mode === 'create' ? { visible:true, onCreated: id => { window.createdBoard = id } } : mode === 'admin' ? {} : { boardId:'b' }
+    createApp({ render: () => h(component, props) }).use(PrimeVuePlugin).provide(HOST_VISIBILITY_PROVIDER, ref(null)).mount('#fixture')
+  </script>
+</body></html>
