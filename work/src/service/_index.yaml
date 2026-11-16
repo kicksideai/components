@@ -186,6 +186,7 @@ entries:
   - json
   - registry
   imports:
+    trim_text: kickside.work:text
     shape: kickside.work.domain:shape
     types: kickside.work:types
 - name: list_links

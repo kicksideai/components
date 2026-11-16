@@ -25,10 +25,7 @@ local function mod(name: string): any
     return M._modules[name] or _declared[name]
 end
 
-local function trim(value: any): string
-    if type(value) ~= "string" then return "" end
-    return (value:gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 local function append_event(thread_id: string, event_type: string, body: any, text: string): string?
     local _, aerr = mod("funcs").new():call(consts.THREADS_APPEND_EVENT, {
