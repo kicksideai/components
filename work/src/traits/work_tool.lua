@@ -52,4 +52,7 @@ function M.pack_apply(args: types.Map): (types.Map?, error?) return run("kicksid
 function M.configure_plugin(args: types.Map): (types.Map?, error?) return run("kickside.work:board", "configure_plugin", args, true) end
 function M.plan_move(args: types.Map): (types.Map?, error?) return run("kickside.work:board", "plan_move", args, true) end
 function M.move(args: types.Map): (types.Map?, error?) return run("kickside.work:board", "move", args, true) end
+function M.schema_options(args: types.Map): (types.Map?, error?) return run("kickside.work:board", "schema_options", args, true) end
+function M.resume_migration(args: types.Map): (types.Map?, error?) return run("kickside.work:board", "resume_migration", args, true) end
+function M.list_pack_boards(args: types.Map): (types.Map?, error?) return run("kickside.work:packs", "list", args, false) end
 return M
