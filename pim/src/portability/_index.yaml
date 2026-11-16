@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.portability
+
+entries:
+  - name: export
+    kind: function.lua
+    meta:
+      comment: Catalog export - schema, terms and products (parents first) to a storage envelope.
+    source: file://export.lua
+    method: handler
+    modules: [fs, ctx, json]
+    imports:
+      input: kickside.pim.portability:input
+      error_envelope: kickside.contract:error_envelope
+      references: kickside.pim.domain:references
+      component: kickside.component:component
+      narrow: kickside.pim:narrow
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+      read_model: kickside.pim.persist:read_model
+      resolve: kickside.pim.domain:resolve
+      portable_io: kickside.component.portability:portable_io
+      types: kickside.pim:types
+      portable_result: kickside.pim.portability:result
+      failure: kickside.pim:failure
+
+  - name: import_into
+    kind: function.lua
+    meta:
+      comment: Catalog import - replays an export through the write path into the registered shell.
+    source: file://import.lua
+    method: handler
+    modules: [fs, ctx, json]
+    security:
+      groups: [kickside.pim.security:manifest_reader]
+      policies:
+        - kickside.pim.security:item_output_publish
+        - kickside.pim.security:schema_output_publish
+    imports:
+      input: kickside.pim.portability:input
+      defaults: kickside.pim.settings:defaults
+      work: kickside.pim.portability:import_work
+      jobs: kickside.core.jobs:jobs
+      clock: kickside.pim:clock
+      component: kickside.component:component
+      threads: kickside.pim.command:threads
+      consts: kickside.pim:consts
+      types: kickside.pim:types
+      portable_result: kickside.pim.portability:result
+      failure: kickside.pim:failure
+
+  - name: result
+    kind: library.lua
+    meta: { comment: Structured portable failure envelopes. }
+    source: file://result.lua
+    imports:
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
+  - name: import_work
+    kind: library.lua
+    source: file://import_work.lua
+    modules: [fs, json, hash, sql]
+    imports:
+      input: kickside.pim.portability:input
+      defaults: kickside.pim.settings:defaults
+      error_envelope: kickside.contract:error_envelope
+      failure: kickside.pim:failure
+      component: kickside.component:component
+      store: kickside.pim.persist:store
+      writer: kickside.pim.command:writer
+      jobs: kickside.core.jobs:jobs
+      execution_identity: kickside.execution:execution_identity
+      values: kickside.pim.domain:values
+      references: kickside.pim.domain:references
+      clock: kickside.pim:clock
+      types: kickside.pim:types
+
+  - name: input
+    kind: library.lua
+    source: file://input.lua
+    modules: [fs, json]
+    imports:
+      types: kickside.pim:types
+      error_envelope: kickside.contract:error_envelope

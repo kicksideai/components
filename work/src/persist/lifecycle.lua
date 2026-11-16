@@ -6,6 +6,7 @@ local store = require("store")
 local generated = require("generated")
 local tables = require("tables")
 local types = require("types")
+local limits = require("limits")
 local M = {}
 
 
@@ -18,7 +19,7 @@ local TABLES: { local_types.OwnedTable } = {
     { name = "kickside_work_plugin", keys = "plugin" },
     { name = "kickside_work_job", keys = "job_id" },
     { name = "kickside_work_operation", keys = "operation_id" },
-    { name = "kickside_work_key_alias", keys = "key" },
+    { name = "kickside_work_key_alias", keys = "key", order = "at, key" },
     { name = "kickside_work_comment", keys = "comment_id" },
     { name = "kickside_work_change", keys = "seq, n" },
     { name = "kickside_work_interval", keys = "item_id, field_id, start_seq" },
@@ -42,15 +43,15 @@ function M.transaction<T>(fn: (sql.Transaction, string) -> (T?, error?)): (T?, e
 end
 
 -- page deletes at most limit rows identified by their complete primary key.
-function M.page(tx: sql.DB | sql.Transaction, name: string, keys: string, where: string, args: types.SqlParams, limit: integer): (integer?, boolean?, error?)
+function M.page(tx: sql.DB | sql.Transaction, name: string, keys: string, where: string, args: types.SqlParams, limit: integer, order: string?): (integer?, boolean?, error?)
+    if limit<=0 then return 0,true,nil end
     local params: types.SqlParams = {}
     for i, value in ipairs(args) do params[i] = value end
-    params[#params + 1] = math.max(1, limit)
-    local selection = "SELECT " .. keys .. " FROM " .. name .. " WHERE " .. where .. " ORDER BY " .. keys .. " LIMIT $" .. #params
+    params[#params + 1] = limit
+    local selection = "SELECT " .. keys .. " FROM " .. name .. " WHERE " .. where .. " ORDER BY " .. (order or keys) .. " LIMIT $" .. #params
     local rows, err = tx:query(selection, params)
     if err then return nil, nil, err end
     local n = #(rows or {})
-    if limit == 0 then return 0, n > 0, nil end
     if n > 0 then
         local _, derr = tx:execute("DELETE FROM " .. name .. " WHERE " .. where .. " AND (" .. keys .. ") IN (" .. selection .. ")", params)
         if derr then return nil, nil, derr end
@@ -60,10 +61,18 @@ end
 
 
 function M.delete(board_id: string): (local_types.Cleanup?, error?)
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return nil, settings_err end
+    local bound = settings.cleanup_batch
     return M.transaction(function(tx: sql.Transaction, dialect: string): (local_types.Cleanup?, error?)
         local board, berr = store.board(tx, board_id, dialect)
         if berr then return nil, berr end
-        local left = 100
+        local incoming, incoming_more, incoming_err = M.page(tx, "kickside_work_link",
+            "board_id, from_id, type, to_board_id, to_id", "to_board_id = $1", { board_id }, bound,
+            "to_id, board_id, from_id, type")
+        if incoming_err or not incoming then return nil, incoming_err end
+        if incoming_more then return { success = false, needs_continue = true, deleted = incoming }, nil end
+        local left = bound - incoming
         local owned: { local_types.OwnedTable } = {}
         local names = tables.names(board_id)
         if board then
@@ -73,27 +82,28 @@ function M.delete(board_id: string): (local_types.Cleanup?, error?)
         for _, entry in ipairs(TABLES) do owned[#owned + 1] = entry end
         for _, entry in ipairs(owned) do
             local where = entry.name == names.set or entry.name == names.item
-            local n, more, err = M.page(tx, entry.name, entry.keys, where and "1 = 1" or "board_id = $1", where and {} or { board_id }, left)
+            local n, more, err = M.page(tx, entry.name, entry.keys, where and "1 = 1" or "board_id = $1", where and {} or { board_id }, left, entry.order)
             if err or not n then return nil, err end
             left = left - n
-            if more then return { success = false, needs_continue = true, deleted = 100 - left }, nil end
+            if more then return { success = false, needs_continue = true, deleted = bound - left }, nil end
         end
-        if left == 0 then return { success = false, needs_continue = true, deleted = 100 }, nil end
+        if left == 0 then return { success = false, needs_continue = true, deleted = bound }, nil end
         local derr = generated.drop(tx, names)
         if derr then return nil, derr end
         local _, err = tx:execute("DELETE FROM kickside_work_board WHERE board_id = $1", { board_id })
         if err then return nil, err end
-        return { success = true, needs_continue = false, deleted = 100 - left + (board and 1 or 0) }, nil
+        return { success = true, needs_continue = false, deleted = bound - left + (board and 1 or 0) }, nil
     end)
 end
 
-function M.orphans(db: sql.DB, limit: integer): ({ { prefix: string, board_id: string, claim_version: integer } }?, error?)
-    local rows, err = db:query([[SELECT p.prefix, p.board_id, p.claim_version FROM kickside_work_prefix p
-        WHERE p.prefix > (SELECT orphan_after FROM kickside_work_retention WHERE owner_id = 'work')
-        AND NOT EXISTS (SELECT 1 FROM kickside_work_board b WHERE b.board_id = p.board_id)
-        ORDER BY p.prefix LIMIT $1]], { limit })
+function M.orphans(db: sql.DB, limit: integer): ({ { prefix: string, board_id: string, claim_version: integer, present: boolean } }?, error?)
+    local rows, err = db:query([[SELECT p.*, CASE WHEN EXISTS (SELECT 1 FROM kickside_work_board b WHERE b.board_id=p.board_id) THEN 1 ELSE 0 END AS present
+        FROM (SELECT prefix,board_id,claim_version FROM kickside_work_prefix
+            WHERE (SELECT orphan_after FROM kickside_work_retention WHERE owner_id = 'work') <> '~'
+            AND prefix > (SELECT orphan_after FROM kickside_work_retention WHERE owner_id = 'work')
+            ORDER BY prefix LIMIT $1) p]], { limit })
     if err then return nil, err end
-    local out: { { prefix: string, board_id: string, claim_version: integer } } = {}
+    local out: { { prefix: string, board_id: string, claim_version: integer, present: boolean } } = {}
     for _, row in ipairs(rows or {}) do
         local prefix, perr = store.need(row, "prefix")
         if perr or not prefix then return nil, perr end
@@ -101,14 +111,14 @@ function M.orphans(db: sql.DB, limit: integer): ({ { prefix: string, board_id: s
         if berr or not board_id then return nil, berr end
         local version, verr = store.need_int(row, "claim_version")
         if verr or not version then return nil, verr end
-        out[#out + 1] = { prefix = prefix, board_id = board_id, claim_version = version }
+        out[#out + 1] = { prefix = prefix, board_id = board_id, claim_version = version, present = store.int(row.present)==1 }
     end
     return out, nil
 end
 
 function M.advance_orphans(after: string): error?
     local _, err = M.transaction(function(tx: sql.Transaction, _dialect: string): (boolean?, error?)
-        local _, err = tx:execute("UPDATE kickside_work_retention SET orphan_after = $1 WHERE owner_id = 'work'", { after })
+        local _, err = tx:execute("UPDATE kickside_work_retention SET orphan_after = $1 WHERE owner_id = 'work' AND orphan_after <> $1", { after })
         return true, err
     end)
     return err

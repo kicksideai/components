@@ -101,7 +101,7 @@ end
 -- Directional passes keep each batch in board order as it converges on evenly spaced keys.
 function M.apply_rebalanced(tx: sql.Transaction, board: types.Board, event: types.FoldEvent, batch: types.FoldBatch): error?
     local range, count = event.body.range, event.body.count
-    if not range or not count or count < 1 or count > consts.LIMITS.rebalance_batch or range.offset < 0 or range.total < 1
+    if not range or not count or count < 1 or count > consts.MAX_REBALANCE_BATCH or range.offset < 0 or range.total < 1
         or (range.direction ~= "left" and range.direction ~= "right") then return fold_batch.corrupt("rank.rebalanced range is malformed") end
     local err = fold_batch.flush(tx, batch)
     if err then return err end

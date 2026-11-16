@@ -283,6 +283,8 @@ entries:
   - *id002
 - name: probe
   kind: function.lua
+  security:
+    policies: [kickside.docscout.security:extractor_create, kickside.docscout.security:extractor_update]
   source: file://probe.lua
   method: run
   modules: [contract, security, json, funcs]

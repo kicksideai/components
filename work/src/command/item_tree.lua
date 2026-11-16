@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local rules = require("rules")
 local references = require("references")
 local component = require("component")
 local consts = require("consts")
@@ -191,6 +192,11 @@ local function plan_life(ctx: types.PrepareContext, op: types.Op, deleting: bool
                 ctx.base[row.item_id] = row.version
             end
             if child.life == (deleting and "live" or "trashed") and (deleting or child.life_at == marked) then affected[#affected + 1] = child end
+        end
+    end
+    for _, changed in ipairs(affected) do
+        if not rules.visible(ctx.board, changed.document) then
+            return M.result("denied", group, "subtree_access_denied", "every affected descendant must be visible")
         end
     end
     for _, changed in ipairs(affected) do

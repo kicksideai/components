@@ -14,9 +14,12 @@ local types = require("types")
 local domain = require("domain")
 
 local receipts = require("receipts")
+local limits = require("limits")
 local M = {}
 
 function M.batch(request: types.RebalanceRequest): (types.RebalanceResult?, error?)
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return nil, settings_err end
     local trace_context, trace_err = receipts.trace(request.trace_context, "work.rebalance")
     if trace_err then return nil, trace_err end
     local board_id = request.board_id
@@ -47,7 +50,7 @@ function M.batch(request: types.RebalanceRequest): (types.RebalanceResult?, erro
         state = { offset = 0, total = total, direction = "left" }
     end
     if total == 0 or (state.direction == "right" and state.offset == 0) then return { done = true }, nil end
-    local count = math.min(consts.LIMITS.rebalance_batch, state.direction == "left" and (total - state.offset) or state.offset)
+    local count = math.min(settings.rebalance_batch, state.direction == "left" and (total - state.offset) or state.offset)
     local offset = state.direction == "left" and state.offset or (state.offset - count)
     local event: domain.Event = { trace_context = trace_context, type = consts.EVENTS.RANK_REBALANCED, subject = "rank", body = {
         range = { offset = offset, total = total, direction = state.direction }, count = count,
@@ -61,5 +64,5 @@ end
 M.kind = "rebalance"
 M.batch_id = "kickside.work.jobs:rebalance_batch"
 M.owner = consts.REBALANCE_OWNER
-M.batches = consts.LIMITS.rebalance_batches_per_run
+M.batches = "rebalance_batches_per_run"
 return M

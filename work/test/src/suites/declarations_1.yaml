@@ -303,14 +303,18 @@ entries:
     timeout: 600s
   source: file://../retention_policy_test.lua
   method: run
-  modules: [uuid]
+  modules: [uuid, funcs]
   imports:
+    operations: app:operation_steps
     race: app:retention_append
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
     store: kickside.work.persist:store
     lifecycle: kickside.work.persist:lifecycle
+    rows: kickside.work.retention:rows
+    policy: kickside.work.domain:policy
+    jobs: kickside.core.jobs:jobs
     tables: kickside.work.domain:layout
 - name: zz_retention_schedule_test
   kind: function.lua

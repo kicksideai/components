@@ -29,6 +29,8 @@ function M.batch(owner: types.Owner): (boolean?, error?)
     local request = owner.data.request :: types.MoveRequest
     local aerr = planner.access(request)
     if aerr then return nil, aerr end
+    local source_err = planner.source(plan, request.map)
+    if source_err then return nil, source_err end
     local ierr = incoming(owner, plan)
     if ierr then return nil, ierr end
     local writes: { types.Write } = {}

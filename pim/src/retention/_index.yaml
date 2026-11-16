@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.retention
+
+entries:
+  - name: owner
+    kind: function.lua
+    meta:
+      type: kickside.retention.owner
+      comment: Purges trash past its window, prunes change history and tombstones past theirs, and advances each catalog's tombstone floor.
+    source: file://owner.lua
+    method: run
+    modules: [security, json]
+    security:
+      actor: { id: system:kickside.pim.retention }
+      policies: [kickside.pim.security:module_runtime, kickside.pim.security:retention_db_access, kickside.pim.security:purge_output_publish, kickside.pim.security:catalog_delete_report, kickside.pim.security:subject_retirement]
+    imports:
+      creations: kickside.pim.persist:creations
+      archive_rows: kickside.pim.persist:archive_rows
+      references: kickside.pim.domain:references
+      failure: kickside.pim:failure
+      cleanup_rows: kickside.pim.persist:cleanup_rows
+      error_envelope: kickside.contract:error_envelope
+      cleanup: kickside.pim.retention:cleanup
+      history: kickside.pim.persist:history
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+      retention_rows: kickside.pim.persist:retention_rows
+      threads: kickside.pim.command:threads
+      policy: kickside.pim.domain:policy
+      defaults: kickside.pim.settings:defaults
+      types: kickside.pim:types
+
+  - name: cleanup
+    kind: library.lua
+    source: file://cleanup.lua
+    imports:
+      store: kickside.pim.persist:store
+      retention_rows: kickside.pim.persist:retention_rows
+      cleanup_rows: kickside.pim.persist:cleanup_rows
+      lifecycle_report: kickside.core.lifecycle:report
+      types: kickside.pim:types

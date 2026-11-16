@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: hardening_test
+  kind: function.lua
+  meta: { type: test, suite: kickside_work, timeout: 300s }
+  source: file://hardening_test.lua
+  method: run
+  modules: [sql, json, registry, security, uuid]
+  imports:
+    retention: kickside.work.retention:rows
+    policy: kickside.work.domain:policy
+    tables: kickside.work.domain:layout
+    identifiers: kickside.work.domain:identifiers
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
+    steps: app:steps
+    operations: app:operation_steps
+    prepare: kickside.work.command:prepare_context
+    outcomes: kickside.work.domain:outcomes
+    store: kickside.work.persist:store
+
+- name: hardening_probe
+  kind: function.lua
+  source: file://hardening_probe.lua
+  method: run
+  imports:
+    receipts: kickside.work.command:receipts
+    move: kickside.work.jobs:move_commands
+
+- name: keyed_append
+  kind: library.lua
+  source: file://keyed_append.lua
+  modules: [sql]
+  imports:
+    append: kickside.work.persist:append
+- name: placement_folder
+  kind: contract.binding
+  contracts:
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.core.threads:thread_status
+
+- name: placement_fixture_discovery
+  kind: security.policy
+  policy:
+    resources: [app:placement_folder]
+    actions: [registry.get]
+    effect: allow
+
+- name: retirement_threads
+  kind: library.lua
+  source: file://retirement_threads.lua
+  imports:
+    threads: kickside.work.persist:threads
+    store: kickside.work.persist:store
+
+- name: operation_retirement_call
+  kind: security.policy
+  meta: {private: true, service_only: true, producers: [app:work_call]}
+  policy:
+    resources: [kickside.work.retention:retire_operation]
+    actions: [registry.get, funcs.call]
+    effect: allow

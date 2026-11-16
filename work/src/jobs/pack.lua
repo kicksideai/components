@@ -12,12 +12,15 @@ local commands = require("commands")
 local values = require("values")
 local clock = require("clock")
 local guard = require("guard")
+local limits = require("limits")
 local M = {}
 function M.batch(owner: commands.Owner): (boolean?, error?)
     if owner.status == "done" then return true, nil end
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return nil, settings_err end
     local plan = owner.data.plan :: types.Plan
     local total = 1 + #plan.views + #plan.automations + 1 + (owner.data.starter and 1 or 0)
-    local through = math.min(owner.processed + 20, total)
+    local through = math.min(owner.processed + settings.pack_steps_per_run, total)
     while owner.processed < through do
         if owner.deadline and clock.passed(owner.deadline) then return false, nil end
         local aerr = guard.require_access(owner.board_id, guard.admin_access())
@@ -49,7 +52,7 @@ function M.batch(owner: commands.Owner): (boolean?, error?)
                     return nil, errors.new({ kind = errors.INVALID, message = "automation type change requires replacement", details = { code = "pack_automation_type_changed" } })
                 end
                 if not values.equal((context :: types.Map)._portable_input, entry.input) then
-                    local _, aerr = automations.reconfigure(id, entry.input)
+                    local _, aerr = automations.reconfigure(id, entry.input, {expected_revision=entry.revision})
                     err = aerr :: error?
                 end
             else

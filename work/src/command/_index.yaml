@@ -71,6 +71,7 @@ entries:
   - uuid
   - funcs
   imports:
+    expiry: kickside.work.persist:operation_expiry
     guard: kickside.work.command:guard
     clock: kickside.work.domain:clock
     policy: kickside.work.domain:policy
@@ -89,6 +90,7 @@ entries:
   - sql
   - hash
   imports:
+    limits: kickside.work.settings:limits
     layout: kickside.work.domain:layout
     jobs: kickside.core.jobs:jobs
     consts: kickside.work:consts
@@ -117,6 +119,7 @@ entries:
   source: file://apply_ops.lua
   modules: [uuid]
   imports:
+    limits: kickside.work.settings:limits
     principals: kickside.work.read:principals
     rules: kickside.work.domain:access_rules
     consts: kickside.work:consts
@@ -133,10 +136,12 @@ entries:
     defaults: kickside.work.settings:defaults
 - name: locate
   kind: library.lua
+  modules: [sql]
   meta:
     comment: The boards a caller can read and the rule that picks one.
   source: file://locate.lua
   imports:
+    job_rows: kickside.work.persist:job_rows
     reads: kickside.work.read:types
     store: kickside.work.persist:store
     tables: kickside.work.domain:layout
@@ -156,9 +161,12 @@ entries:
   - hash
   - security
   imports:
+    receipts: kickside.work.command:receipts
+    threads: kickside.work.persist:threads
+    envelope: kickside.component:envelope
+    component_types: kickside.component:types
     component: kickside.component:component
     consts: kickside.work:consts
-    threads: kickside.work.persist:threads
     schema_commands: kickside.work.command:schema_commands
     locate: kickside.work.command:locate
     types: kickside.work.command:types
@@ -200,6 +208,7 @@ entries:
   kind: library.lua
   source: file://configure.lua
   imports:
+    limits: kickside.work.settings:limits
     manifests: kickside.work.domain:manifests
     defaults: kickside.work.settings:defaults
     plugin_rows: kickside.work.persist:plugin_rows
@@ -252,6 +261,7 @@ entries:
   meta: *id001
   source: file://item_tree.lua
   imports:
+    rules: kickside.work.domain:access_rules
     references: kickside.work.command:references
     component: kickside.component:component
     consts: kickside.work:consts
@@ -351,6 +361,7 @@ entries:
   kind: library.lua
   source: file://bulk.lua
   imports:
+    limits: kickside.work.settings:limits
     guard: kickside.work.command:guard
     receipts: kickside.work.command:receipts
     query: kickside.work.read:query
@@ -361,6 +372,7 @@ entries:
   kind: library.lua
   source: file://operation_events.lua
   imports:
+    limits: kickside.work.settings:limits
     commands: kickside.work.command:types
     domain: kickside.work:types
     threads: kickside.work.persist:threads
@@ -373,6 +385,8 @@ entries:
   kind: library.lua
   source: file://move_plan.lua
   imports:
+    limits: kickside.work.settings:limits
+    peers: kickside.work.read:peers
     domain: kickside.work:types
     store: kickside.work.persist:store
     component: kickside.component:component
@@ -394,6 +408,7 @@ entries:
   kind: library.lua
   source: file://move.lua
   imports:
+    peers: kickside.work.read:peers
     domain: kickside.work:types
     planner: kickside.work.command:move_plan
     rows: kickside.work.persist:operation_rows
@@ -410,6 +425,7 @@ entries:
   kind: library.lua
   source: file://update.lua
   imports:
+    limits: kickside.work.settings:limits
     guard: kickside.work.command:guard
     locate: kickside.work.command:locate
     receipts: kickside.work.command:receipts

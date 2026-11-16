@@ -1,0 +1,122 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.traits
+entries:
+  - name: pim_readonly
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      title: Read product catalogs
+      public: true
+      icon: tabler:packages
+      context_schema:
+        type: object
+        properties:
+          catalog_id:
+            type: string
+            description: Catalog id used when the call omits it.
+        additionalProperties: false
+    prompt: |
+      Read caller-visible catalog schemas, products, terms, history, links, proposals, releases and feeds. Supply catalog_id in the call or configure it in trait context; a call id wins. These tools do not change catalog state.
+    build_func_id: kickside.pim.traits:build_reads
+    tools:
+      - kickside.pim.traits:list_catalogs
+      - kickside.pim.traits:get_schema
+      - kickside.pim.traits:schema_options
+      - kickside.pim.traits:list_terms
+      - kickside.pim.traits:query
+      - kickside.pim.traits:get
+      - kickside.pim.traits:explain
+      - kickside.pim.traits:list_history
+      - kickside.pim.traits:list_links
+      - kickside.pim.traits:list_proposals
+      - kickside.pim.traits:list_releases
+      - kickside.pim.traits:get_release
+      - kickside.pim.traits:list_publications
+      - kickside.pim.traits:list_changes
+
+  - name: pim_trait
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      title: Work with product catalogs
+      public: true
+      icon: tabler:packages
+      context_schema:
+        type: object
+        properties:
+          catalog_id:
+            type: string
+            description: Catalog id used when the call omits it.
+        additionalProperties: false
+    prompt: |
+      Read and change catalog products and terms, review proposals, publish releases and withdraw publications. Supply catalog_id in the call or configure it in trait context; a call id wins. PIMApply names products by sku or id with expect_version and contextual values as {attr, ctx, value}. Pair with the administration trait when you also need catalog structure or configuration.
+    build_func_id: kickside.pim.traits:build
+    tools:
+      - kickside.pim.traits:list_catalogs
+      - kickside.pim.traits:get_schema
+      - kickside.pim.traits:schema_options
+      - kickside.pim.traits:list_terms
+      - kickside.pim.traits:query
+      - kickside.pim.traits:get
+      - kickside.pim.traits:explain
+      - kickside.pim.traits:list_history
+      - kickside.pim.traits:list_links
+      - kickside.pim.traits:list_proposals
+      - kickside.pim.traits:list_releases
+      - kickside.pim.traits:get_release
+      - kickside.pim.traits:list_publications
+      - kickside.pim.traits:list_changes
+      - kickside.pim.traits:apply
+      - kickside.pim.traits:propose
+      - kickside.pim.traits:decide
+      - kickside.pim.traits:release
+      - kickside.pim.traits:withdraw
+
+  - name: pim_admin
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      title: Administer product catalogs
+      public: true
+      icon: tabler:packages
+      context_schema:
+        type: object
+        properties:
+          catalog_id:
+            type: string
+            description: Catalog id used when the call omits it.
+        additionalProperties: false
+    prompt: |
+      Create catalogs and plan or apply schema changes. Pair this administration trait with the working trait for product reads and writes. PIMSchemaPlan classifies changes before PIMSchemaApply; named entries replace, omitted entries stay and declaration.remove destroys. Supply catalog_id in the call or configure it in trait context; a call id wins.
+    tools:
+      - kickside.pim.traits:create_catalog
+      - kickside.pim.traits:plan_schema
+      - kickside.pim.traits:apply_schema
+      - kickside.pim.traits:list_catalogs
+      - kickside.pim.traits:get_schema
+      - kickside.pim.traits:schema_options
+
+  - name: build
+    kind: function.lua
+    security:
+      groups: [kickside.pim.security:manifest_reader]
+    source: file://build.lua
+    method: working
+    modules: [registry]
+    imports:
+      catalog_client: kickside.pim:client
+      plugins: kickside.pim.extensions:plugins
+      types: kickside.pim:types
+
+  - name: build_reads
+    kind: function.lua
+    security:
+      groups: [kickside.pim.security:manifest_reader]
+    source: file://build.lua
+    method: reads
+    modules: [registry]
+    imports:
+      catalog_client: kickside.pim:client
+      plugins: kickside.pim.extensions:plugins
+      types: kickside.pim:types

@@ -16,6 +16,8 @@ local function snapshot(id: string): (integer, boolean, boolean)
         total = total + n
         if name == "kickside_work_board" then shell = n > 0 end
     end
+    local incoming = assert(db:query("SELECT COUNT(*) AS n FROM kickside_work_link WHERE to_board_id=$1 AND board_id<>$1",{id}))
+    total=total+(tonumber(incoming[1].n) :: integer)
     local names = tables.names(id)
     local catalog = db:type() == "postgres" and "SELECT tablename AS name FROM pg_tables WHERE tablename = $1 OR tablename = $2"
         or "SELECT name FROM sqlite_master WHERE type='table' AND (name = $1 OR name = $2)"

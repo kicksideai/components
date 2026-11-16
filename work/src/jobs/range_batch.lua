@@ -14,9 +14,12 @@ local domain = require("domain")
 
 local receipts = require("receipts")
 local config = require("config")
+local limits = require("limits")
 local M = {}
 
 function M.batch(request: types.RecomputeRequest): (types.RecomputeResult?, error?)
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return nil, settings_err end
     local trace_context, trace_err = receipts.trace(request.trace_context, "work." .. config.kind)
     if trace_err then return nil, trace_err end
     local board_id = request.board_id
@@ -49,7 +52,7 @@ function M.batch(request: types.RecomputeRequest): (types.RecomputeResult?, erro
     if decode_err then db:release(); return nil, decode_err end
 
     local after = state.after :: string
-    local items, ierr = job_rows.range(db, board_id, after, consts.LIMITS.recompute_batch)
+    local items, ierr = job_rows.range(db, board_id, after, settings.rebuild_batch)
     db:release()
     if ierr then return nil, ierr end
     if not items or #items == 0 then

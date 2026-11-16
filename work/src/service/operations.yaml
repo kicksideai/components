@@ -12,6 +12,11 @@ entries:
     bulk: kickside.work.command:bulk
     move: kickside.work.command:move
     types: kickside.work.command:types
+  security:
+    policies:
+    - kickside.work.security:operation_retirement_call
+    - kickside.work.security:sync_call
+
 - name: bulk_status
   kind: function.lua
   source: file://operations.lua
@@ -42,6 +47,10 @@ entries:
     bulk: kickside.work.command:bulk
     move: kickside.work.command:move
     types: kickside.work.command:types
+  security:
+    policies:
+    - kickside.work.security:sync_call
+
 - name: move
   kind: function.lua
   source: file://operations.lua
@@ -54,6 +63,8 @@ entries:
     types: kickside.work.command:types
   security:
     policies:
+    - kickside.work.security:operation_retirement_call
+    - kickside.work.security:sync_call
     - kickside.work.security:operations_output_publish
 - name: move_status
   kind: function.lua

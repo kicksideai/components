@@ -25,6 +25,7 @@ local plugins = require("plugins")
 local plugin_schema = require("plugin_schema")
 local fields = require("fields")
 local layout = require("layout")
+local limits = require("limits")
 local M = {}
 
 local EV = consts.EVENTS
@@ -164,11 +165,14 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
             for _, code in ipairs(affected) do if field.code == code then selected[#selected + 1] = field end end
         end
         local representation = { fields = selected } :: domain.Compiled
-        local until_at = clock.deadline(consts.LIMITS.command_deadline_ms)
+        local until_at, deadline_err = limits.deadline("command_deadline_ms")
+        if deadline_err or not until_at then return nil, deadline_err end
+        local settings, settings_err = limits.read()
+        if settings_err or not settings then return nil, settings_err end
         local after = ""
         while true do
             if clock.passed(until_at) then return nil, errors.new({ kind = errors.TIMEOUT, message = "schema validation deadline passed", details = { code = "schema_validation_deadline" } }) end
-            local rows, err = db:query("SELECT item_id FROM kickside_work_item WHERE board_id = $1 AND item_id > $2 AND life <> 'purged' ORDER BY item_id LIMIT 200", { board_id, after })
+            local rows, err = db:query("SELECT item_id FROM kickside_work_item WHERE board_id = $1 AND item_id > $2 AND life <> 'purged' ORDER BY item_id LIMIT $3", { board_id, after, settings.rebuild_batch })
             if err then return nil, err end
             if not rows or #rows == 0 then break end
             local ids: { string } = {}
@@ -242,7 +246,8 @@ function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?,
     if access_err then return nil, access_err end
     local c, cerr = threads.open()
     if not c then return nil, cerr end
-    local until_at = clock.deadline(consts.LIMITS.command_deadline_ms)
+    local until_at, deadline_err = limits.deadline("command_deadline_ms")
+    if deadline_err or not until_at then return nil, deadline_err end
     if boundary and boundary.ns < until_at.ns then until_at = boundary end
     local marker: string? = nil
     local hashed: string? = nil

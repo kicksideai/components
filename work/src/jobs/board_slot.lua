@@ -9,9 +9,12 @@ local failures = require("failures")
 local config = require("config")
 local types = require("types")
 local domain = require("domain")
+local limits = require("limits")
 local M = {}
 
 function M.run(input: types.SlotInput): (types.MigrationResult?, error?)
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return nil, settings_err end
     local job, board_id = input.job, input.payload and input.payload.board_id
     local migration = config.kind == "migration"
     local retryable: boolean? = nil
@@ -40,7 +43,7 @@ function M.run(input: types.SlotInput): (types.MigrationResult?, error?)
     local rerr = job_rows.record(board_id, job.id, "running", nil)
     if rerr then return nil, rerr end
     local lease: types.JobLease = { token = job.lease_token, execution_seq = job.execution_seq }
-    for _ = 1, config.batches do
+    for _ = 1, settings[config.batches] do
         local valid, lerr = jobs.lease_valid(job.id, lease)
         if lerr then return nil, lerr end
         if not valid then return { self_completed = true }, nil end

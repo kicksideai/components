@@ -19,12 +19,14 @@ local function batch(input: types.ProcessRequest, timer: boolean): (types.Proces
     if derr then return nil, derr end
     local op: commands.Op = { op = timer and "timer" or "advance", item = input.item, state = input.state, visit = input.visit,
         timer = input.timer, attempt = input.attempt, scheduled_at = input.scheduled_at }
+    local db, err = store.open()
+    if not db then return nil, err end
+    local current, ierr = store.item(db, input.board_id, input.item)
+    db:release()
+    if ierr then return nil, ierr end
+    if not current or current.life=="purged" then return {record={status="completed"}},nil end
     if timer then
-        local db, err = store.open()
-        if not db then return nil, err end
-        local item, ierr = store.item(db, input.board_id, input.item)
-        db:release()
-        if ierr then return nil, ierr end
+        local item=current
         if item then item = process.for_visit(item, input.visit) end
         if not item or item.life ~= "live" or item.state ~= input.state then
             return { record = { status = "completed" } }, nil
@@ -36,7 +38,7 @@ local function batch(input: types.ProcessRequest, timer: boolean): (types.Proces
     local result, err = apply_ops.apply({ board_id = input.board_id, ops = { op }, mode = "atomic", source = "process", trace_context = input.trace_context }, until_at)
     if err then return nil, err end
     for _, out in ipairs(result.outcomes) do
-        local refusal = outcomes.error(out.status, out.findings)
+        local refusal = outcomes.error(out.status, out.findings, out.error)
         if refusal then return nil, refusal end
     end
     local db, err = store.open()

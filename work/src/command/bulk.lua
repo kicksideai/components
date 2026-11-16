@@ -5,6 +5,7 @@ local query = require("query")
 local store = require("store")
 local rows = require("rows")
 local types = require("types")
+local limits = require("limits")
 local M = {}
 
 function M.owner(request: types.Locator, kind: string): (types.Owner?, error?)
@@ -40,6 +41,11 @@ function M.start(request: types.BulkRequest): (types.Status?, error?)
         local resumed, rerr = rows.resume(owner)
         if rerr or not resumed then return nil, rerr end
         return rows.status(resumed), nil
+    end
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return nil, settings_err end
+    if #request.ops_template > settings.bulk_batch_ops then
+        return nil, errors.new({ kind = errors.INVALID, message = "bulk template exceeds bulk_batch_ops", details = { code = "bulk_template_limit" } })
     end
     request.query.board_id = request.board_id
     local ids, qerr = query.freeze(request.query)

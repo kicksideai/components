@@ -1,0 +1,4 @@
+/* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
+.native-dialog { color: var(--p-text-color); background: var(--p-content-background); border: 1px solid var(--p-content-border-color); border-radius: 14px; padding: 0; max-width: min(680px, 92vw); max-height: 85vh; overflow: auto; }
+.native-dialog::backdrop { background: var(--p-mask-background); }
+.native-dialog .dialog-box, .native-dialog .pim-sheet { width: auto; max-width: 100%; }

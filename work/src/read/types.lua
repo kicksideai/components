@@ -42,11 +42,11 @@ type GetResult = ReadStamp & {
     stage_runs: { StageRun }?,
     item: ItemView, links: { LinkView }?, children: { ItemView }?, comments: { CommentView }?, transitions: { TransitionView }?,
 }
-type ChangesCursor = { access: string?, seq: integer, item_id: string }
+type ChangesCursor = { floor: integer?, access: string?, seq: integer, item_id: string }
 type ChangesRequest = { budget: ReadBudget?, selection: domain.Where?, board_id: string, cursor: ChangesCursor?, limit: integer?, min_seq: integer? }
 type ChangeItem = { awaiting: AwaitingView?, gate: GateView?,
     item_id: string, op: string, updated_seq: integer, key: string?, type: string?, visit: integer?, process_generation: integer?, state: string | { [string]: string } | nil, category: string?, parent: string?,
-    comments: { domain.CommentRow }?, version: integer?, value_states: { [string]: string }?, values: { [string]: unknown }?,
+    comments_truncated: boolean?, comments: { domain.CommentRow }?, version: integer?, value_states: { [string]: string }?, values: { [string]: unknown }?,
 }
 type FeedGap = { floor: integer }
 type ChangesResult = ReadStamp & { items: { ChangeItem }, next: ChangesCursor, has_more: boolean, gap: FeedGap? }

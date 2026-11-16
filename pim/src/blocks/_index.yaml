@@ -1,0 +1,355 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.blocks
+
+# Blocks of the catalog: one exact function Block per contract method a Flow
+# composes - read one product, query products, apply changes, release items.
+# A Flow fixes the catalog in the Block config and feeds the method's request
+# as input; the function runs as the Flow's caller, so the catalog ACL decides.
+entries:
+  - name: get_product
+    kind: registry.entry
+    meta:
+      type: kickside.block
+      public: true
+      title: PIM product
+      description: One live product by id or sku with its values resolved for a context, its readiness and publications.
+    data:
+      block:
+        api_version: kickside.block/v1
+        input:
+          type: object
+          additionalProperties: false
+          required: [product]
+          properties:
+            product: &product_ref
+              type: object
+              title: Product
+              additionalProperties: false
+              properties:
+                id: { type: string }
+                sku: { type: string }
+            context: &context
+              type: object
+              title: Context
+              description: Dimension values the attributes resolve in, such as locale or channel.
+              additionalProperties: { type: string }
+            min_seq: { type: integer, title: Read after sequence }
+        config: &catalog_config
+          type: object
+          additionalProperties: false
+          required: [catalog_id]
+          properties:
+            catalog_id:
+              type: string
+              minLength: 1
+              title: Catalog
+              picker: wc-component-picker
+              class: pim_catalog
+              value_field: id
+        output:
+          type: object
+          additionalProperties: true
+          required: [product, values, publications]
+          properties:
+            product: &product
+              type: object
+              required: [product_id, sku, family, root_id, level, is_item, version, status]
+              properties:
+                product_id: { type: string }
+                sku: { type: string }
+                family: { type: string }
+                parent_id: { type: string }
+                root_id: { type: string }
+                level: { type: integer }
+                is_item: { type: boolean }
+                version: { type: integer }
+                status: { type: string }
+            values: { type: object }
+            readiness: { type: object }
+            release_id: { type: string }
+            publications: { type: array, items: { type: object } }
+            as_of: { type: integer }
+            generation: { type: integer }
+            rebuilding: { type: boolean }
+        error: &error
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+        ports: &ports
+          - { id: result, label: Result, direction: out }
+          - { id: failed, label: Failed, direction: out }
+        presentation:
+          category: Products
+          icon: tabler:package
+          hue: blue
+          blurb: Reads one product with its resolved values.
+        execution:
+          kind: function
+          function_id: kickside.pim.blocks:get_product.run
+
+  - name: query_products
+    kind: registry.entry
+    meta:
+      type: kickside.block
+      public: true
+      title: PIM query products
+      description: Products matching a filter tree, text, family, status, readiness, hierarchy and plugin scopes, in pages with chosen columns.
+    data:
+      block:
+        api_version: kickside.block/v1
+        input:
+          type: object
+          additionalProperties: false
+          properties:
+            where:
+              type: object
+              title: Filter
+              description: "Filter tree: {and: [node]}, {or: [node]}, {not: node} or a leaf {field, ctx?, op, value}."
+            text: { type: string, title: Text }
+            family: { type: string, title: Family }
+            status: { type: string, title: Status }
+            ready:
+              type: object
+              title: Readiness
+              additionalProperties: false
+              required: [set, value]
+              properties:
+                set: { type: string }
+                value: { type: boolean }
+            sort:
+              type: object
+              title: Sort
+              additionalProperties: false
+              required: [field]
+              properties:
+                field: { type: string }
+                ctx: *context
+                dir: { type: string, enum: [asc, desc] }
+            count: { type: boolean, title: Count matches }
+            limit: { type: integer, title: Page size }
+            after:
+              type: object
+              title: After
+              additionalProperties: false
+              required: [id]
+              properties:
+                id: { type: string }
+                v: { type: [string, integer] }
+            published:
+              type: object
+              title: Published on channel
+              additionalProperties: false
+              properties:
+                channel: { type: string }
+            parent: *product_ref
+            root: *product_ref
+            scopes:
+              type: array
+              title: Plugin scopes
+              items:
+                type: object
+                additionalProperties: false
+                required: [id]
+                properties:
+                  id: { type: string }
+                  where: { type: object }
+            min_seq: { type: integer, title: Read after sequence }
+            columns: { type: array, title: Columns, items: { type: string } }
+            context: *context
+        config: *catalog_config
+        output:
+          type: object
+          additionalProperties: true
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                required: [product_id, sku, version, status, family]
+                properties:
+                  product_id: { type: string }
+                  sku: { type: string }
+                  version: { type: integer }
+                  status: { type: string }
+                  family: { type: string }
+                  values: { type: object }
+            after: { type: object }
+            total: { type: integer }
+            estimated: { type: boolean }
+            incomplete: { type: boolean }
+            as_of: { type: integer }
+            generation: { type: integer }
+            rebuilding: { type: boolean }
+        error: *error
+        ports: *ports
+        presentation:
+          category: Products
+          icon: tabler:packages
+          hue: blue
+          blurb: Finds the products a filter selects, one page at a time.
+        execution:
+          kind: function
+          function_id: kickside.pim.blocks:query_products.run
+
+  - name: apply
+    kind: registry.entry
+    meta:
+      type: kickside.block
+      public: true
+      title: PIM apply
+      description: Creates, changes, moves, trashes or restores products and terms in one command, atomic or item by item, idempotent by key.
+    data:
+      block:
+        api_version: kickside.block/v1
+        input:
+          type: object
+          additionalProperties: false
+          required: [items]
+          properties:
+            items:
+              type: array
+              title: Items
+              minItems: 1
+              items: { type: object, additionalProperties: true }
+            mode: { type: string, title: Mode, enum: [atomic, independent] }
+            source: { type: string, title: Source }
+            origin:
+              type: object
+              title: Origin
+              description: "Canonical provenance: what produced this change."
+              additionalProperties: false
+              required: [type, id]
+              properties:
+                type: { type: string }
+                id: { type: string }
+            idempotency: &idempotency
+              type: object
+              title: Idempotency
+              additionalProperties: false
+              required: [namespace, key]
+              properties:
+                namespace: { type: string }
+                key: { type: string }
+            trace_context: &trace_context
+              type: object
+              title: Trace
+              additionalProperties: false
+              properties:
+                trace_id: { type: string }
+                run_id: { type: string }
+                caused_by_event_id: { type: string }
+                correlation_key: { type: string }
+            provenance: { type: object, title: Provenance, description: "Reported detail beside origin: model, confidence, evidence." }
+        config: *catalog_config
+        output: &command_result
+          type: object
+          additionalProperties: true
+          required: [outcomes, applied]
+          properties:
+            outcomes:
+              type: array
+              items:
+                type: object
+                required: [outcome]
+                properties:
+                  index: { type: integer }
+                  outcome: { type: string }
+                  product_id: { type: string }
+                  sku: { type: string }
+                  version: { type: integer }
+                  term: { type: string }
+                  findings: { type: array, items: { type: object } }
+                  release_id: { type: string }
+                  hash: { type: string }
+                  channels: { type: array, items: { type: string } }
+                  rewritten: { type: integer }
+                  deferred: { type: integer }
+            applied: { type: boolean }
+            seq: { type: integer }
+            as_of: { type: integer }
+            replayed: { type: boolean }
+        error: *error
+        ports: *ports
+        presentation:
+          category: Products
+          icon: tabler:pencil
+          hue: blue
+          blurb: Writes product values, status and hierarchy through the catalog's rules.
+        execution:
+          kind: function
+          function_id: kickside.pim.blocks:apply.run
+
+  - name: release
+    kind: registry.entry
+    meta:
+      type: kickside.block
+      public: true
+      title: PIM release
+      description: Releases items as immutable snapshots to the channels they are ready for.
+    data:
+      block:
+        api_version: kickside.block/v1
+        input:
+          type: object
+          additionalProperties: false
+          required: [items]
+          properties:
+            items:
+              type: array
+              title: Items
+              minItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                properties:
+                  product: *product_ref
+                  expect_version: { type: integer }
+                  channels: { type: array, items: { type: string } }
+            idempotency: *idempotency
+            trace_context: *trace_context
+        config: *catalog_config
+        output: *command_result
+        error: *error
+        ports: *ports
+        presentation:
+          category: Products
+          icon: tabler:rocket
+          hue: blue
+          blurb: Publishes ready items to their channels.
+        execution:
+          kind: function
+          function_id: kickside.pim.blocks:release.run
+
+  # ─── Block functions ──────────────────────────────────────────────────
+  - name: get_product.run
+    kind: function.lua
+    meta: { comment: Function target of the PIM product Block. }
+    source: file://blocks.lua
+    method: get_product
+    imports:
+      catalog_client: kickside.pim:client
+  - name: query_products.run
+    kind: function.lua
+    meta: { comment: Function target of the PIM query products Block. }
+    source: file://blocks.lua
+    method: query_products
+    imports:
+      catalog_client: kickside.pim:client
+  - name: apply.run
+    kind: function.lua
+    meta: { comment: Function target of the PIM apply Block. }
+    source: file://blocks.lua
+    method: apply
+    imports:
+      catalog_client: kickside.pim:client
+  - name: release.run
+    kind: function.lua
+    meta: { comment: Function target of the PIM release Block. }
+    source: file://blocks.lua
+    method: release
+    imports:
+      catalog_client: kickside.pim:client

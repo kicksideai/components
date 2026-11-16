@@ -13,10 +13,11 @@ local json = require("json")
 local values = require("values")
 local jobs = require("jobs")
 local consts = require("consts")
+local limits = require("limits")
 local M = {}
 local PREFIX = "kickside.work.plugin:"
 
-local function converge(board_id: string, row: types.PluginState, plugin: types.Plugin): (boolean?, error?)
+local function converge(board_id: string, row: types.PluginState, plugin: types.Plugin, settings: types.OperationalLimits): (boolean?, error?)
     local client, err = threads.open()
     if err or not client then return nil, err end
     local config, cerr = plugins.effective(plugin, row.config)
@@ -26,7 +27,7 @@ local function converge(board_id: string, row: types.PluginState, plugin: types.
     if not progress.scanned then
         local expected: { [string]: boolean } = {}
         for _, p in ipairs(plugin.projections) do expected[p.kind] = true end
-        local raw, lerr = client:list_projections({ thread_id = board_id, limit = 200, projections_cursor = progress.projection_after })
+        local raw, lerr = client:list_projections({ thread_id = board_id, limit = settings.plugin_discovery_batch, projections_cursor = progress.projection_after })
         if lerr then return nil, lerr end
         local page = raw :: local_types.Page
         for _, p in ipairs(page.projections) do
@@ -46,7 +47,7 @@ local function converge(board_id: string, row: types.PluginState, plugin: types.
     local aerr = attachments.ensure(board_id, row)
     if aerr then return nil, aerr end
     local first = (progress.registered or 0) + 1
-    for index = first, math.min(#plugin.projections, first + 19) do
+    for index = first, math.min(#plugin.projections, first + settings.plugin_projection_batch - 1) do
         local p = plugin.projections[index]
         local previous: types.JsonObject? = nil
         local raw, perr = client:get_projection_cursor({ thread_id = board_id, kind = p.kind, projection_key = PREFIX .. row.plugin })
@@ -86,19 +87,21 @@ local function converge(board_id: string, row: types.PluginState, plugin: types.
 end
 
 function M.batch(input: { board_id: string }): ({ done: boolean }?, error?)
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return nil, settings_err end
     local _, aerr = component.validate_access(input.board_id, component.ACCESS.WRITE)
     if aerr then return nil, aerr end
     local db, oerr = store.open()
     if oerr or not db then return nil, oerr end
-    local rows, lerr = plugin_rows.list(db, input.board_id, true)
+    local rows, lerr = plugin_rows.list(db, input.board_id, true, settings.plugin_batch+1)
     local _, rerr = db:release()
     if lerr or rerr then return nil, lerr or rerr end
-    local pending = #(rows or {}) > 20
-    for i = 1, math.min(#(rows or {}), 20) do
+    local pending = #(rows or {}) > settings.plugin_batch
+    for i = 1, math.min(#(rows or {}), settings.plugin_batch) do
         local row = rows[i]
         local plugin, err = manifests.load(row.plugin)
         local complete = false
-        if plugin then complete, err = converge(input.board_id, row, plugin) end
+        if plugin then complete, err = converge(input.board_id, row, plugin, settings) end
         pending = pending or (not complete and not err)
         local lifecycle: types.PluginLifecycle = { state = complete and "ready" or "pending" }
         if err then lifecycle = { state = "failed", error = plugins.failure(err) } end
@@ -106,7 +109,7 @@ function M.batch(input: { board_id: string }): ({ done: boolean }?, error?)
         local ferr = plugin_rows.finish(input.board_id, row, lifecycle)
         if ferr then return nil, ferr end
     end
-    return { done = not pending, inspected = math.min(#(rows or {}), 20) }, nil
+    return { done = not pending, inspected = math.min(#(rows or {}), settings.plugin_batch) }, nil
 end
 
 function M.run(input: { board_id: string }): (boolean?, error?)

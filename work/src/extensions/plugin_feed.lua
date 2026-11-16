@@ -7,11 +7,12 @@ local threads = require("threads")
 local json = require("json")
 local types = require("types")
 local local_types = require("local_types")
+local limits = require("limits")
 local M = {}
 local TOKEN_SCHEMA = { type = "object", required = { "projection_id", "start_seq", "bootstrapping" }, additionalProperties = false,
     properties = { projection_id = { type = "string" }, start_seq = { type = "integer" }, bootstrapping = { type = "boolean" },
         cursor = { type = "object", required = { "seq", "item_id" }, additionalProperties = false,
-            properties = { seq = { type = "integer", minimum = 0 }, item_id = { type = "string" }, access = { type = "string" } } } } }
+            properties = { floor = {type="integer",minimum=0}, seq = { type = "integer", minimum = 0 }, item_id = { type = "string" }, access = { type = "string" } } } } }
 
 function M.decode(token: string): (local_types.FeedToken?, error?)
     local decoded, err = json.decode(token)
@@ -22,6 +23,8 @@ function M.decode(token: string): (local_types.FeedToken?, error?)
 end
 
 function M.page(request: types.PluginFeedRequest, context: types.PluginContext): (types.PluginFeed?, error?)
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return nil, settings_err end
     local plugin, perr = manifests.load(request.plugin)
     if perr or not plugin then return nil, perr end
     local declared = false
@@ -53,11 +56,11 @@ function M.page(request: types.PluginFeedRequest, context: types.PluginContext):
     local head, herr = client:find({ thread_id = request.board_id })
     if herr then return nil, herr end
     if not head then return nil, errors.new({ kind = errors.NOT_FOUND, message = "board thread is absent", details = { code = "board_not_found" } }) end
-    local page, ferr = feeds.list_changes({ board_id = request.board_id, cursor = token.cursor, limit = 200 })
+    local page, ferr = feeds.list_changes({ board_id = request.board_id, cursor = token.cursor, limit = settings.plugin_discovery_batch })
     if ferr or not page then return nil, ferr end
     if page.gap then
         token.cursor, token.bootstrapping = nil, true
-        page, ferr = feeds.list_changes({ board_id = request.board_id, limit = 200 })
+        page, ferr = feeds.list_changes({ board_id = request.board_id, limit = settings.plugin_discovery_batch })
         if ferr or not page then return nil, ferr end
     end
     local bootstrap = token.bootstrapping

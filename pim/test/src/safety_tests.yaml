@@ -1,0 +1,180 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app
+
+entries:
+  - name: authority_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim }
+    source: file://authority_test.lua
+    method: run
+    modules: [funcs, security, registry]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      scoped: app:scoped
+      values: kickside.pim.domain:values
+      store: kickside.pim.persist:store
+
+  - name: retention_deadline_test
+    kind: function.lua
+    meta: { type: test, suite: a_retention_deadlines, timeout: 30s }
+    source: file://retention_deadline_test.lua
+    method: run
+    modules: [funcs, time]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      clock: kickside.pim:clock
+      retention_service: app:retention_service
+
+  - name: retention_service
+    kind: library.lua
+    source: file://retention_service.lua
+    modules: [process, time, channel]
+
+  - name: settings_failure_fixture
+    kind: library.lua
+    source: file://settings_failure_fixture.lua
+
+  - name: settings_failure_defaults
+    kind: library.lua
+    source: file://settings_defaults.lua
+    imports:
+      contract: app:settings_failure_fixture
+      policy: kickside.pim.domain:policy
+      types: kickside.pim:types
+
+  - name: settings_errors_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim }
+    source: file://settings_errors_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:settings_failure_fixture
+      defaults: app:settings_failure_defaults
+
+  - name: member_scope
+    kind: library.lua
+    source: file://member_scope.lua
+    modules: [contract, security]
+    imports:
+      execution_identity: kickside.execution:execution_identity
+
+  - name: direct_call
+    kind: function.lua
+    source: file://direct_call.lua
+    method: run
+    modules: [funcs, registry]
+
+  - name: contract_failure_fixture
+    kind: library.lua
+    source: file://contract_failure_fixture.lua
+
+  - name: client_error_probe
+    kind: library.lua
+    source: file://client_error_probe.lua
+    modules: [security]
+    imports:
+      contract: app:contract_failure_fixture
+      failure: kickside.pim:failure
+
+  - name: contract_errors_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim }
+    source: file://contract_errors_test.lua
+    method: run
+    imports:
+      requests: app:request_error_probe
+      test: wippy.test:test
+      fixture: app:contract_failure_fixture
+      client: app:client_error_probe
+
+  - name: request_error_probe
+    kind: library.lua
+    source: file://request_error_probe.lua
+    imports:
+      json: app:schema_json_probe
+      registry: app:schema_registry_probe
+      contract: app:contract_failure_fixture
+      shape: kickside.pim:shape
+      types: kickside.pim:types
+
+
+  - name: declaration_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim }
+    source: file://declaration_test.lua
+    method: run
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+
+  - name: batch_channels_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim }
+    source: file://batch_channels_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+
+  - name: record_refs_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://record_refs_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      catalog_fixture: app:catalog_fixture
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: schema_bounds_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://schema_bounds_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      types: kickside.pim:types
+
+  - name: spec_contracts_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://spec_contracts_test.lua
+    method: run
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: schema_json_probe
+    kind: library.lua
+    source: file://schema_json_probe.lua
+    modules: [json]
+
+  - name: request_cache_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim }
+    source: file://request_cache_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      requests: app:request_error_probe
+      fixture: app:contract_failure_fixture
+      decoder: app:schema_json_probe
+
+  - name: schema_registry_probe
+    kind: library.lua
+    source: file://schema_registry_probe.lua
+    imports:
+      fixture: app:contract_failure_fixture

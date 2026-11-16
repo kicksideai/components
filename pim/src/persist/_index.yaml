@@ -1,0 +1,315 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.persist
+
+entries:
+  - name: config
+    kind: registry.entry
+    meta:
+      comment: Host-selected database id for PIM persistence.
+
+  - name: store
+    kind: library.lua
+    meta:
+      comment: Row access over the fixed PIM tables.
+    source: file://store.lua
+    modules: [json, sql, registry]
+    imports:
+      failure: kickside.pim:failure
+      error_envelope: kickside.contract:error_envelope
+      persisted_json: kickside.contract:persisted_json
+      narrow: kickside.pim:narrow
+      consts: kickside.pim:consts
+      schema: kickside.pim.schema:compile
+      types: kickside.pim:types
+
+  - name: bulk
+    kind: library.lua
+    meta:
+      comment: Multi-row INSERT and DELETE in chunks under the bind-parameter limits of SQLite and PostgreSQL.
+    source: file://bulk.lua
+    imports:
+      types: kickside.pim:types
+
+  - name: layout
+    kind: library.lua
+    meta:
+      comment: Generated item tables - DDL for a layout and its system columns, in-place alter, and bulk row writes.
+    source: file://layout.lua
+    modules: [hash, sql]
+    imports:
+      search: kickside.pim.domain:search
+      bulk: kickside.pim.persist:bulk
+      types: kickside.pim:types
+
+  - name: history
+    kind: library.lua
+    meta:
+      comment: Change history - collect a fold's change rows, write them in bulk, page them newest first, prune by age.
+    source: file://history.lua
+    modules: [sql, json]
+    imports:
+      failure: kickside.pim:failure
+      error_envelope: kickside.contract:error_envelope
+      narrow: kickside.pim:narrow
+      bulk: kickside.pim.persist:bulk
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+
+  - name: fold_driver
+    kind: library.lua
+    meta:
+      comment: Fold driver - parse events against declared body schemas, skip applied ones, apply in order, stop at the row budget.
+    source: file://fold_driver.lua
+    modules: [registry, json]
+    imports:
+      failure: kickside.pim:failure
+      narrow: kickside.pim:narrow
+      shape: kickside.pim:shape
+      types: kickside.pim:types
+
+  - name: operands
+    kind: library.lua
+    meta:
+      comment: Operands - $actor and $now values resolved when a query compiles.
+    source: file://operands.lua
+    imports:
+      failure: kickside.pim:failure
+      clock: kickside.pim:clock
+      types: kickside.pim:types
+
+  - name: tree
+    kind: library.lua
+    meta:
+      comment: The filter tree - and, or, not and typed leaves compiled to one SQL fragment with bound values.
+    source: file://tree.lua
+    imports:
+      failure: kickside.pim:failure
+      values: kickside.pim.domain:values
+      operands: kickside.pim.persist:operands
+      types: kickside.pim:types
+
+  - name: select
+    kind: library.lua
+    meta:
+      comment: Query compiler - one item query over a generated table set into one dialect-neutral SELECT.
+    source: file://select.lua
+    modules: [sql]
+    imports:
+      search: kickside.pim.domain:search
+      failure: kickside.pim:failure
+      tree: kickside.pim.persist:tree
+      scopes: kickside.pim.extensions:scopes
+      narrow: kickside.pim:narrow
+      types: kickside.pim:types
+
+  - name: materializer
+    kind: library.lua
+    meta:
+      comment: Folds catalog events into the fixed and generated tables.
+    source: file://materializer.lua
+    modules: [json, sql]
+    imports:
+      failure: kickside.pim:failure
+      attachments: kickside.pim.extensions:plugin_attachments
+      release_jobs: kickside.pim.persist:release_jobs
+      schema_cleanup: kickside.pim.persist:schema_cleanup
+      merge_rows: kickside.pim.persist:merge_rows
+      driver: kickside.pim.persist:fold_driver
+      narrow: kickside.pim:narrow
+      history: kickside.pim.persist:history
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      values: kickside.pim.domain:values
+      layout: kickside.pim.persist:layout
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+      jobs: kickside.core.jobs:jobs
+      document: kickside.pim.domain:document
+      derived: kickside.pim.persist:derived
+      item_index: kickside.pim.persist:item_index
+
+  - name: projection
+    kind: function.lua
+    meta:
+      type: projection.worker
+      post_commit_ref: "func://kickside.pim.persist:projection_committed"
+      comment: Catalog projection worker; one transaction per prefetched batch.
+    source: file://projection.lua
+    method: run
+    modules: [json, funcs, sql]
+    imports:
+      receipts: kickside.pim.persist:receipts
+      store: kickside.pim.persist:store
+      materializer: kickside.pim.persist:materializer
+      jobs: kickside.core.jobs:jobs
+      types: kickside.pim:types
+      consts: kickside.pim:consts
+
+  - name: projection_committed
+    kind: function.lua
+    meta: { type: projection.worker, comment: Publishes catalog public meta after the projection commit. }
+    source: file://public_meta.lua
+    method: after_commit
+    modules: [funcs]
+    imports:
+      narrow: kickside.pim:narrow
+      component: kickside.component:component
+      store: kickside.pim.persist:store
+      jobs: kickside.core.jobs:jobs
+      types: kickside.pim:types
+
+  - name: publish_meta
+    kind: function.lua
+    meta: { private: true, comment: Writes a catalog's public counts, generation and rebuild state. }
+    source: file://public_meta.lua
+    method: publish
+    modules: [funcs]
+    security:
+      policies:
+        - kickside.pim.security:catalog_public_meta
+    imports:
+      narrow: kickside.pim:narrow
+      component: kickside.component:component
+      store: kickside.pim.persist:store
+      jobs: kickside.core.jobs:jobs
+      types: kickside.pim:types
+
+  - name: proposal_rows
+    kind: library.lua
+    meta:
+      comment: Proposal rows - stored commands and their decisions.
+    source: file://proposal_rows.lua
+    modules: [uuid, sql]
+    imports:
+      narrow: kickside.pim:narrow
+      clock: kickside.pim:clock
+      store: kickside.pim.persist:store
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+
+  - name: read_model
+    kind: library.lua
+    meta:
+      comment: Read statements - the pages behind feeds, links, releases and export.
+    source: file://read_model.lua
+    imports:
+      store: kickside.pim.persist:store
+      select: kickside.pim.persist:select
+      types: kickside.pim:types
+
+  - name: retention_rows
+    kind: library.lua
+    meta:
+      comment: Retention statements - the scans and prunes the retention owner runs.
+    source: file://retention_rows.lua
+    modules: [sql, time, json]
+    imports:
+      failure: kickside.pim:failure
+      clock: kickside.pim:clock
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: derived
+    kind: library.lua
+    meta:
+      comment: Rows derived from documents - refs, unique values and attribute usage.
+    source: file://derived.lua
+    imports:
+      references: kickside.pim.domain:references
+      values: kickside.pim.domain:values
+      bulk: kickside.pim.persist:bulk
+      types: kickside.pim:types
+
+  - name: item_index
+    kind: library.lua
+    meta:
+      comment: The generated item table - each live item's row, computed from its lineage.
+    source: file://item_index.lua
+    imports:
+      resolve: kickside.pim.domain:resolve
+      values: kickside.pim.domain:values
+      evaluate: kickside.pim.domain:evaluate
+      checks: kickside.pim.extensions:checks
+      layout: kickside.pim.persist:layout
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: rebuild_rows
+    kind: library.lua
+    meta:
+      comment: Rebuild statements - the next page of products and the rebuild cursor.
+    source: file://rebuild_rows.lua
+    imports:
+      types: kickside.pim:types
+
+  - name: merge_rows
+    kind: library.lua
+    meta:
+      comment: Pending term merge rows and the term references a merge rewrites.
+    source: file://merge_rows.lua
+    modules: [sql]
+    imports:
+      failure: kickside.pim:failure
+      references: kickside.pim.domain:references
+      narrow: kickside.pim:narrow
+      values: kickside.pim.domain:values
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: cleanup_rows
+    kind: library.lua
+    source: file://cleanup_rows.lua
+    modules: [sql]
+    imports:
+      store: kickside.pim.persist:store
+      layout: kickside.pim.persist:layout
+      types: kickside.pim:types
+
+  - name: schema_cleanup
+    kind: library.lua
+    source: file://schema_cleanup.lua
+    modules: [sql]
+    imports:
+      cleanup_rows: kickside.pim.persist:cleanup_rows
+      layout: kickside.pim.persist:layout
+      types: kickside.pim:types
+
+  - name: release_jobs
+    kind: library.lua
+    source: file://release_jobs.lua
+    modules: [sql]
+    imports:
+      clock: kickside.pim:clock
+      store: kickside.pim.persist:store
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+      jobs: kickside.core.jobs:jobs
+      consts: kickside.pim:consts
+
+  - name: receipts
+    kind: library.lua
+    source: file://receipts.lua
+    modules: [registry, sql]
+    imports:
+      store: kickside.pim.persist:store
+      values: kickside.pim.domain:values
+      clock: kickside.pim:clock
+      types: kickside.pim:types
+
+  - name: creations
+    kind: library.lua
+    source: file://creations.lua
+    modules: [uuid, sql]
+    imports:
+      clock: kickside.pim:clock
+      component: kickside.component:component
+      store: kickside.pim.persist:store
+      values: kickside.pim.domain:values
+      types: kickside.pim:types
+
+  - name: archive_rows
+    kind: library.lua
+    source: file://archive_rows.lua
+    imports:
+      types: kickside.pim:types

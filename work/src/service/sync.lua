@@ -7,6 +7,7 @@ local execution_identity = require("execution_identity")
 local threads = require("threads")
 local consts = require("consts")
 local domain = require("domain")
+local receipts = require("receipts")
 local M = {}
 
 function M.cover(input: types.SyncRequest): (integer?, error?)
@@ -28,11 +29,20 @@ end
 function M.position(input: types.SyncRequest): (integer?, error?)
     local client, err = threads.open()
     if err or not client then return nil, err end
+    local version: integer? = nil
+    if input.command_key then
+        local head, herr = client:find({ thread_id = input.board_id, subject = receipts.subject(input.command_key) })
+        if herr then return nil, herr end
+        if head then version = math.tointeger(tonumber((head :: { subject_version: unknown }).subject_version)) end
+        if not version then return nil, errors.new({ kind = errors.INTERNAL, message = "command subject version is missing", details = { code = "row_corrupt" } }) end
+    end
+    -- Cover the claim version read above before consulting projected receipts.
     local caught, cerr = threads.catch_up(client, input.board_id, consts.PROJECTION_KIND, input.deadline)
     if cerr or not caught then return nil, cerr end
     if not caught.done or not caught.last_seq then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "board projection has not reached its command position", details = { code = "projection_pending" } })
     end
+    if version then return version, nil end
     return caught.last_seq, nil
 end
 return M

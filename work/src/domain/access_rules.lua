@@ -144,4 +144,25 @@ function M.field(board: types.Board, field: types.Field, mode: string, doc: type
     return allowed
 end
 
+-- Retained history uses the same authority inputs after payload disposal.
+function M.retained(board: types.Board, doc: types.Document): types.Document
+    local out: types.Document = {}
+    local function keep(code: string)
+        local field = board.model.fields[code]
+        if field then out[tostring(field.id)] = doc[tostring(field.id)] end
+    end
+    local function holders(list: { types.Holder }?)
+        for _, holder in ipairs(list or {}) do if holder.field then keep(holder.field) end end
+    end
+    local visibility = board.compiled.visibility
+    if visibility then
+        keep(visibility.field)
+        for _, level in ipairs(visibility.levels) do holders(level.holders) end
+    end
+    for _, field in ipairs(board.compiled.fields) do
+        if field.access then holders(field.access.read); holders(field.access.write) end
+    end
+    return out
+end
+
 return M

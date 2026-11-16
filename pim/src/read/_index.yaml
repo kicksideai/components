@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.read
+
+entries:
+  - name: access
+    kind: library.lua
+    meta:
+      comment: Shared read discipline - READ access, the min_seq check, one stamped read snapshot.
+    source: file://access.lua
+    modules: [security]
+    imports:
+      failure: kickside.pim:failure
+      component: kickside.component:component
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: reader
+    kind: library.lua
+    modules: [registry]
+    meta:
+      comment: Product reads and item queries; every answer reports as_of.
+    source: file://reader.lua
+    imports:
+      failure: kickside.pim:failure
+      layout: kickside.pim.persist:layout
+      plugins: kickside.pim.extensions:plugins
+      plugin_projections: kickside.pim.extensions:plugin_projection_state
+      history: kickside.pim.persist:history
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+      access: kickside.pim.read:access
+      select: kickside.pim.persist:select
+      scopes: kickside.pim.extensions:scopes
+      seams: kickside.pim.extensions:seams
+      links: kickside.pim.extensions:links
+      schema: kickside.pim.schema:compile
+      resolve: kickside.pim.domain:resolve
+      types: kickside.pim:types
+      proposal_rows: kickside.pim.persist:proposal_rows
+      read_model: kickside.pim.persist:read_model
+
+  - name: feeds
+    kind: library.lua
+    meta:
+      comment: Cursor-resumable feeds over durable state - product changes and channel publications.
+    source: file://feeds.lua
+    imports:
+      narrow: kickside.pim:narrow
+      store: kickside.pim.persist:store
+      read_model: kickside.pim.persist:read_model
+      snapshot: kickside.pim.domain:snapshot
+      access: kickside.pim.read:access
+      types: kickside.pim:types
+
+  - name: releases
+    kind: library.lua
+    meta:
+      comment: Release reads - one release by id, and a product's releases newest first.
+    source: file://releases.lua
+    imports:
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+      read_model: kickside.pim.persist:read_model
+      access: kickside.pim.read:access
+      types: kickside.pim:types
+
+  - name: locate
+    kind: library.lua
+    meta:
+      comment: Readable catalogs and the explicit-or-only catalog selection rule.
+    source: file://locate.lua
+    imports:
+      failure: kickside.pim:failure
+      access: kickside.pim.read:access
+      types: kickside.pim:types
+      component: kickside.component:component
+      consts: kickside.pim:consts

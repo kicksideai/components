@@ -41,7 +41,6 @@ local function define()
             local surfaces = {
                 source = { "items", "changes", "items_port", "changes_port", "pull_items", "pull_changes" },
                 sink = { "items", "items_port", "write" },
-                blocks = { "find", "get", "apply", "transition", "comment" },
                 traits = { "work", "work_readonly", "work_admin", "build_work", "build_readonly", "find_items", "get_item", "apply", "transition", "comment", "get_schema", "explain" },
             }
             for namespace, names in pairs(surfaces) do

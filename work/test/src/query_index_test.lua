@@ -144,12 +144,13 @@ local function define()
             local db = assert(store.open())
             assert(db:execute("DELETE FROM kickside_work_board WHERE board_id = $1", { h.id }))
             db:release()
-            local result = assert(funcs.call("kickside.work.retention:owner", {}))
-            test.is_true(result.success)
-            db = assert(store.open())
-            local _, err = db:query("SELECT * FROM " .. names.item, {})
-            test.not_nil(err)
-            db:release()
+            steps.retention_sweep(function(): boolean
+                local db=assert(store.open())
+                local _,err=db:query("SELECT * FROM " .. names.item,{})
+                db:release()
+                return err~=nil
+            end)
+
         end)
 
         test.it("backfills more than 500 rows under the stored board identity", function()

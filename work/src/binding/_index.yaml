@@ -47,6 +47,8 @@ entries:
 - name: board
   kind: contract.binding
   meta:
+    mutation: closed
+    thread: {class: work.board}
     class:
     - work_board
     title: Work board

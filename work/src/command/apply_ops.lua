@@ -18,6 +18,7 @@ local types = require("types")
 local defaults = require("defaults")
 local principals = require("principals")
 local rules = require("rules")
+local limits = require("limits")
 local M = {}
 
 -- status_of maps an append failure onto the outcome status that names it.
@@ -29,7 +30,7 @@ local function status_of(err: error): string
 end
 
 local function outcome_of(i: integer, plan: types.OpPlan): types.Outcome
-    return { op = i, status = plan.status, item = plan.item, version = plan.version, comment = plan.comment, findings = plan.findings }
+    return { op = i, status = plan.status, item = plan.item, version = plan.version, comment = plan.comment, findings = plan.findings, error = plan.error }
 end
 
 local function stored_outcomes(found: types.Durable): { types.Outcome }
@@ -129,8 +130,9 @@ end
 local function stored(ctx: types.ApplyContext, indices: { integer }): ({ [string]: types.Durable }?, error?)
     local found: { [string]: types.Durable } = {}
     if not ctx.base then return found, nil end
-    local _, cerr = receipts.covered(ctx.board_id, ctx.until_at)
-    if cerr then return nil, cerr end
+    local version, version_err = receipts.version(ctx.board_id, ctx.base, ctx.until_at)
+    if version_err or not version then return nil, version_err end
+    ctx.claim_version = version
     local command, err = receipts.command(ctx.board_id, ctx.base)
     if err then return nil, err end
     ctx.claimed = command ~= nil
@@ -146,12 +148,18 @@ local function stored(ctx: types.ApplyContext, indices: { integer }): ({ [string
     return found, nil
 end
 
-local function claim(ctx: types.ApplyContext, writes: { types.Write }, head: integer)
-    if ctx.base and not ctx.claimed and #writes > 0 then
-        local write = receipts.claim(ctx.board_id, ctx.base, ctx.hashed, { generation = ctx.generation }, head)
+local function claim(ctx: types.ApplyContext, writes: { types.Write }): boolean
+    local required = not ctx.claimed
+    -- Existing item/comment subjects already serialize replay of their group.
+    -- Free groups need the key claim even after another group claimed the key.
+    for _, write in ipairs(writes) do if write.group == items.FREE then required = true end end
+    if ctx.base and required and #writes > 0 then
+        local write = receipts.claim(ctx.board_id, ctx.base, ctx.hashed, { generation = ctx.generation }, nil, ctx.claim_version)
         receipts.decorate(write.events[1], guard.actor_id(), guard.stamp_now(), ctx.source, ctx.request.origin, ctx.request.trace_context)
         table.insert(writes, 1, write)
+        return true
     end
+    return false
 end
 
 -- seal marks each write's events with the command key and its group, and gives
@@ -217,9 +225,8 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
                 event.body.audit = board.compiled.policy.audit
             end
         end
-        seal(ctx, writes, function(_: types.Write): domain.JsonObject return { outcomes = outcomes } end)
-        if ctx.base then for _, write in ipairs(writes) do write.expect_head = last_seq end end
-        claim(ctx, writes, last_seq)
+        seal(ctx, writes, function(_: types.Write): domain.JsonObject return { outcomes = outcomes } :: domain.JsonObject end)
+        claim(ctx, writes)
         local max_seq, aerr = append.writes(ctx.c, ctx.board_id, writes)
         if not aerr then
             local found, ferr = stored(ctx, all)
@@ -312,11 +319,11 @@ local function run_independent(ctx: types.ApplyContext): (types.ApplyResult?, er
                 receipts.decorate(event, actor, at, ctx.source, ctx.request.origin, ctx.request.trace_context)
                 event.body.audit = board.compiled.policy.audit
             end
-            seal(ctx, { w }, function(_: types.Write): domain.JsonObject return { outcomes = w_outcomes } end)
-            if ctx.base then w.expect_head = last_seq end
+            seal(ctx, { w }, function(_: types.Write): domain.JsonObject return { outcomes = w_outcomes } :: domain.JsonObject end)
             local batch: { types.Write } = { w }
-            claim(ctx, batch, last_seq)
+            local claimed = claim(ctx, batch)
             local max_seq, aerr = append.writes(ctx.c, ctx.board_id, batch)
+            if claimed and not aerr then ctx.claim_version = (ctx.claim_version :: integer) + 1 end
             if aerr and ctx.base then
                 local found, ferr = stored(ctx, w.ops)
                 if ferr then return nil, ferr end
@@ -339,7 +346,7 @@ local function run_independent(ctx: types.ApplyContext): (types.ApplyResult?, er
             else
                 local status = status_of(aerr)
                 for _, i in ipairs(w.ops) do
-                    outcomes[i] = { op = i, status = status, findings = { { code = status, message = aerr:message() } } }
+                    outcomes[i] = { op = i, status = status, error = { kind = aerr:kind(), message = aerr:message(), retryable = aerr:retryable(), details = aerr:details() }, findings = { { code = status, message = aerr:message() } } }
                 end
             end
         end
@@ -371,7 +378,8 @@ function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?): (type
     local c, cerr = threads.open()
     if not c then return nil, cerr end
     local source = request.source or "api"
-    local until_at = clock.deadline(consts.LIMITS.command_deadline_ms)
+    local until_at, deadline_err = limits.deadline("command_deadline_ms")
+    if deadline_err or not until_at then return nil, deadline_err end
     if boundary and boundary.ns < until_at.ns then until_at = boundary end
     local ctx: types.ApplyContext = {
         settings = settings, c = c, board_id = board_id, request = request, ops = request.ops, source = source,

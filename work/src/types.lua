@@ -8,6 +8,7 @@ local sql = require("sql")
 -- JSON documents as decoded or encoded.
 type Json = nil | boolean | number | string | { Json } | { [string]: Json }
 type JsonObject = { [string]: Json }
+type CommandError = { kind: string, message: string, retryable: boolean, details: { [string]: unknown }? }
 
 -- SQL parameter lists and result rows; rows are narrowed field by field.
 type SqlParams = { unknown }
@@ -37,10 +38,10 @@ type Deadline = { at: string, ns: integer }
 -- The Core threads contract as boards use it.
 type ThreadRequest = { [string]: unknown }
 type ThreadClient = {
+    retire_subjects: (self: ThreadClient, request: {thread_id: string, subjects: {string}}) -> ({thread_id: string, retired: integer}?, error?),
     find: (self: ThreadClient, request: ThreadRequest) -> (unknown, error?),
-    create: (self: ThreadClient, request: ThreadRequest) -> (unknown, error?),
+    ensure_thread: (self: ThreadClient, request: ThreadRequest) -> (unknown, error?),
     catch_up_projection: (self: ThreadClient, request: ThreadRequest) -> (unknown, error?),
-    find_event_by_external: (self: ThreadClient, request: ThreadRequest) -> (unknown, error?),
     list_projections: (self: ThreadClient, request: ThreadRequest) -> (unknown, error?),
     register_projection: (self: ThreadClient, request: ThreadRequest) -> (unknown, error?),
     remove_projection: (self: ThreadClient, request: ThreadRequest) -> (unknown, error?),
@@ -51,7 +52,6 @@ type ThreadClient = {
 type CatchUp = { done: boolean, last_seq: integer? }
 -- ThreadExpect is the append guard: the thread head or one subject's version.
 type ThreadExpect = { head: integer } | { subject: string, version: integer }
-type ThreadMarker = { seq: integer, body: unknown }
 
 -- Generated tables, one set per board. A layout column holds one indexed field: key
 -- and number columns hold a value's key or order value.
@@ -168,7 +168,10 @@ type ProcessDecl = {
     id: string, name: string?, states: { StateDecl }, initial: string?, transitions: { TransitionDecl }?, migration: string?,
     map: { [string]: string }?,
 }
-type PolicyDecl = { stage_timeout: string?, stage_max_visits: integer?, wip: Wip?, audit: string?, audit_days: integer?, trash_days: integer?, tombstone_days: integer?, interval_days: integer? }
+type OperationPosition = {at: string, id: string}
+type OperationalLimits = { storage_batch: integer, plugin_projection_batch: integer, plugin_discovery_batch: integer, projection_catchup_ticks: integer, cleanup_batch: integer,  rebuild_batch: integer, rebuild_batches_per_run: integer, migration_batch: integer, migration_batches_per_run: integer, rebalance_batch: integer, rebalance_batches_per_run: integer, pack_steps_per_run: integer, operation_batches_per_run: integer, plugin_batch: integer, plugin_batches_per_run: integer, command_deadline_ms: integer, read_deadline_ms: integer, retention_batch: integer, bulk_batch_items: integer, bulk_batch_ops: integer }
+type SettingRule = { default: integer, min: integer, max: integer }
+type PolicyDecl = { stage_timeout: string?, stage_max_visits: integer?, comments_per_item: integer?, wip: Wip?, audit: string?, audit_days: integer?, trash_days: integer?, tombstone_days: integer?, interval_days: integer? }
 type PluginOwners = { [string]: { [string]: string } }
 type PluginDecl = { schema: PluginSchema?, use: string, attachment_kind: string?, attachment_id: string? }
 type PluginProgress = { projection_after: string?, scanned: boolean?, registered: integer? }
@@ -206,7 +209,7 @@ type Process = {
     plugin: string?,
     id: string, name: string, initial: string, migration: string, generation: integer, states: { State }, transitions: { Transition },
 }
-type Policy = { stage_timeout: string?, stage_max_visits: integer?, wip: Wip?, audit: string, audit_days: integer?, trash_days: integer?, tombstone_days: integer?, interval_days: integer? }
+type Policy = { stage_timeout: string?, stage_max_visits: integer?, comments_per_item: integer?, wip: Wip?, audit: string, audit_days: integer?, trash_days: integer?, tombstone_days: integer?, interval_days: integer? }
 type Compiled = {
     visibility: Visibility?, key_prefix: string, fields: { Field }, item_types: { ItemType }, relation_types: { Relation }, processes: { Process },
     plugins: { PluginDecl }?, scopes: { string }?, policy_overrides: PolicyDecl?, policy: Policy, next_field_id: integer, counter_field: integer?,
@@ -310,8 +313,8 @@ type DeleteResult = { success: boolean }
 
 
 type BoardClient = { [string]: (BoardClient, Row) -> (unknown, error?) }
-return { PrincipalSource = PrincipalSource, Memberships = Memberships, Approvals = Approvals, BoardClient = BoardClient, BoardMeta = BoardMeta, BoardAccess = BoardAccess, StateItem = StateItem, AutoBudget = AutoBudget, TimerEffect = TimerEffect, ProcessData = ProcessData, Timer = Timer, Release = Release, Stage = Stage, Region = Region, Wip = Wip, WorkingState = WorkingState, TraceContext = TraceContext,
-    Deadline = Deadline, ThreadRequest = ThreadRequest, ThreadClient = ThreadClient, CatchUp = CatchUp, ThreadExpect = ThreadExpect, ThreadMarker = ThreadMarker,
+return { OperationPosition = OperationPosition, OperationalLimits = OperationalLimits, SettingRule = SettingRule, PrincipalSource = PrincipalSource, Memberships = Memberships, Approvals = Approvals, BoardClient = BoardClient, BoardMeta = BoardMeta, BoardAccess = BoardAccess, StateItem = StateItem, AutoBudget = AutoBudget, TimerEffect = TimerEffect, ProcessData = ProcessData, Timer = Timer, Release = Release, Stage = Stage, Region = Region, Wip = Wip, WorkingState = WorkingState, TraceContext = TraceContext,
+    CommandError = CommandError, Deadline = Deadline, ThreadRequest = ThreadRequest, ThreadClient = ThreadClient, CatchUp = CatchUp, ThreadExpect = ThreadExpect,
     Scalar = Scalar, Record = Record, MemberSpec = MemberSpec, ColumnValue = ColumnValue, LayoutColumn = LayoutColumn, SystemColumn = SystemColumn,
     GeneratedNames = GeneratedNames, GeneratedTable = GeneratedTable, IndexRow = IndexRow, Reader = Reader, Where = Where, Sort = Sort, Cursor = Cursor,
     ItemQuery = ItemQuery, ColumnTarget = ColumnTarget, Resolver = Resolver, Condition = Condition, FilterEnvironment = FilterEnvironment,

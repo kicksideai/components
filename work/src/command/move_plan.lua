@@ -15,6 +15,8 @@ local defaults = require("defaults")
 local receipts = require("receipts")
 local clock = require("clock")
 local consts = require("consts")
+local peers = require("peers")
+local limits = require("limits")
 local M = {}
 
 local function refused(plan: types.MovePlan, code: string, message: string): types.MovePlan
@@ -135,7 +137,9 @@ local function build(tx: sql.Transaction, source: domain.Board, target: domain.B
     return plan, nil
 end
 function M.prepare(plan: types.MovePlan, operation_id: string?): ({ types.Write }?, error?)
-    local covered, cerr = receipts.covered(plan.to_board, clock.deadline(consts.LIMITS.command_deadline_ms))
+    local deadline, deadline_err = limits.deadline("command_deadline_ms")
+    if deadline_err or not deadline then return nil, deadline_err end
+    local covered, cerr = receipts.covered(plan.to_board, deadline)
     if cerr or not covered then return nil, cerr end
     local ops: { types.Op } = {}
     for _, item in ipairs(plan.items) do
@@ -150,7 +154,7 @@ function M.prepare(plan: types.MovePlan, operation_id: string?): ({ types.Write 
     if serr or not settings then return nil, serr end
     local db, err = store.open()
     if not db then return nil, err end
-    local board, planned, perr = snapshot.read(db, plan.to_board, ops, indices, guard.actor_id(), guard.stamp_now(), settings, clock.deadline(consts.LIMITS.command_deadline_ms))
+    local board, planned, perr = snapshot.read(db, plan.to_board, ops, indices, guard.actor_id(), guard.stamp_now(), settings, deadline)
     db:release()
     if perr then return nil, perr end
     if not board then return nil, errors.new({ kind = errors.NOT_FOUND, message = "move target is absent", details = { code = "move_board_not_found" } }) end
@@ -162,7 +166,9 @@ function M.plan(request: types.MoveRequest): (types.MovePlan?, error?)
     local aerr = M.access(request)
     if aerr then return nil, aerr end
     if request.board_id == request.to_board then return nil, errors.new({ kind = errors.INVALID, message = "move requires different boards", details = { code = "move_same_board" } }) end
-    local covered, cerr = receipts.covered(request.board_id, clock.deadline(consts.LIMITS.command_deadline_ms))
+    local deadline, deadline_err = limits.deadline("command_deadline_ms")
+    if deadline_err or not deadline then return nil, deadline_err end
+    local covered, cerr = receipts.covered(request.board_id, deadline)
     if cerr or not covered then return nil, cerr end
     local db, err = store.open()
     if not db then return nil, err end
@@ -178,7 +184,7 @@ function M.plan(request: types.MoveRequest): (types.MovePlan?, error?)
     local tx, berr = db:begin()
     if berr or not tx then db:release(); return nil, berr end
     if db:type() == sql.type.POSTGRES then
-        local ierr = store.read_snapshot(tx)
+        local ierr = store.read_snapshot(tx, deadline)
         if ierr then tx:rollback(); db:release(); return nil, ierr end
     end
     local source_snapshot, source_err = snapshot.board(tx, request.board_id, source, settings, db:type())
@@ -192,5 +198,76 @@ function M.plan(request: types.MoveRequest): (types.MovePlan?, error?)
     local _, perr = M.prepare(plan :: types.MovePlan, nil)
     if perr then return nil, perr end
     return plan :: types.MovePlan, nil
+end
+-- Execution rechecks the frozen population under the operation's live identity.
+function M.source(plan: types.MovePlan, mapping: types.MoveMap): error?
+    local db, err = store.open()
+    if not db then return err end
+    local board, berr = store.board(db, plan.from_board :: string)
+    if berr or not board then db:release(); return berr or guard.invalid("move source is absent") end
+    local perr = principals.resolve(board)
+    if perr then db:release(); return perr end
+    for _, moved in ipairs(plan.items) do
+        local item, ierr = store.item(db, board.board_id, moved.from)
+        if ierr then db:release(); return ierr end
+        if not item or not rules.visible(board, item.document) then
+            db:release()
+            return errors.new({ kind = errors.PERMISSION_DENIED, retryable = false, message = "move source item is unavailable",
+                details = { code = "move_source_denied" } })
+        end
+        for key in pairs(item.document) do
+            local field = board.model.by_id[math.tointeger(tonumber(key)) :: integer]
+            if not field then db:release(); return guard.invalid("move source field is absent") end
+            if field.type ~= "counter" and field.type ~= "rollup" and field.type ~= "formula" and field.type ~= "rank"
+                and (not mapping.fields or mapping.fields[field.code] ~= false)
+                and not rules.field(board, field, "read", item.document) then
+                db:release()
+                return errors.new({ kind = errors.PERMISSION_DENIED, retryable = false,
+                    message = "move requires reading each mapped field", details = { code = "move_field_denied" } })
+            end
+        end
+    end
+    db:release()
+    return nil
+end
+
+-- New destination ids in the mapped subtree have already been authorized by plan.
+function M.redact(plan: types.MovePlan): error?
+    local internal: { [string]: boolean } = {}
+    for _, item in ipairs(plan.items) do internal[item.item] = true end
+    local function reference(raw: unknown): (unknown, error?)
+        local ref = raw :: domain.Target
+        if ref.board == plan.to_board and internal[ref.item] then return raw, nil end
+        return peers.reference(raw)
+    end
+    for _, link in ipairs(plan.links) do
+        local value, err = reference(link.target)
+        if err then return err end
+        link.target = value :: domain.Target
+    end
+    local db, err = store.open()
+    if not db then return err end
+    local board, berr = store.board(db, plan.to_board)
+    db:release()
+    if berr or not board then return berr end
+    for _, item in ipairs(plan.items) do
+        for code, value in pairs(item.values) do
+            local field = board.model.fields[code]
+            if field and field.type == "item" then
+                if field.cardinality == "one" then
+                    local surface, serr = reference(value)
+                    if serr then return serr end
+                    item.values[code] = surface
+                else
+                    for i, ref in ipairs(value :: { unknown }) do
+                        local surface, serr = reference(ref)
+                        if serr then return serr end
+                        (value :: { unknown })[i] = surface
+                    end
+                end
+            end
+        end
+    end
+    return nil
 end
 return M

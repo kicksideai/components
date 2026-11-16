@@ -81,6 +81,7 @@ entries:
   policy:
     resources:
     - app:work_call
+    - app:hardening_probe
     actions:
     - funcs.call
     - funcs.security
@@ -294,11 +295,15 @@ entries:
   - security
   - funcs
   imports:
+    pack_rows: kickside.work.persist:operation_rows
+    automations: kickside.automation:automation
     pack_views: kickside.work.service:pack_views
     pack_batch: kickside.work.jobs:pack_commands
     component: kickside.component:component
     api_access: kickside.work.api:access
     component_envelope: kickside.component:envelope
+  security:
+    policies: [app:placement_fixture_discovery, app:operation_retirement_call]
 - name: rollup_fixture
   kind: library.lua
   source: file://rollup_fixture.lua
@@ -450,7 +455,7 @@ entries:
     execution_identity: kickside.execution:execution_identity
     process: kickside.work.domain:process
     apply_ops: app:deadline_apply_probe
-    store: kickside.work.persist:store
+    store: app:deadline_store_probe
     deadline: kickside.work.jobs:deadline
     clock: kickside.work.domain:clock
     types: kickside.work.jobs:types
@@ -471,3 +476,16 @@ entries:
   kind: ns.dependency
   version: '*'
   component: wippy/agent
+
+- name: deadline_store_probe
+  kind: library.lua
+  source: |
+    local domain=require("domain")
+    local M={}
+    function M.open() return {release=function(_self: unknown) return true,nil end},nil end
+    function M.item(_db: unknown,_board: string,_id: string): (domain.Item?,error?)
+        return ({life="live"} :: unknown) :: domain.Item,nil
+    end
+    return M :: any
+  imports:
+    domain: kickside.work:types

@@ -20,10 +20,10 @@ local POSTGRES = {
     [[CREATE TABLE kickside_work_key_alias (
         board_id text NOT NULL, key text NOT NULL PRIMARY KEY, item_id text NOT NULL,
         to_board_id text NOT NULL, to_item_id text NOT NULL, at text NOT NULL)]],
-    [[CREATE INDEX kickside_work_key_alias_expiry ON kickside_work_key_alias (board_id, at)]],
+    [[CREATE INDEX kickside_work_key_alias_expiry ON kickside_work_key_alias (board_id, at, key)]],
     [[CREATE TABLE kickside_work_retention (owner_id text NOT NULL PRIMARY KEY, orphan_after text NOT NULL, board_after text NOT NULL, inclusive integer NOT NULL, item_after text NOT NULL, deadline_ms bigint)]],
     [[INSERT INTO kickside_work_retention (owner_id, orphan_after, board_after, inclusive, item_after) VALUES ('work', '', '', 0, '')]],
-    [[CREATE TABLE kickside_work_visibility (board_id text NOT NULL, item_id text NOT NULL, seq bigint NOT NULL, document text NOT NULL, PRIMARY KEY (board_id, item_id, seq))]],
+    [[CREATE TABLE kickside_work_visibility (board_id text NOT NULL, item_id text NOT NULL, seq bigint NOT NULL, document text NOT NULL, at text NOT NULL DEFAULT '', PRIMARY KEY (board_id, item_id, seq))]],
     [[CREATE TABLE kickside_work_plugin (
         board_id text NOT NULL, plugin text NOT NULL, attachment_id text NOT NULL, impl_id text NOT NULL,
         config text NOT NULL, lifecycle text NOT NULL DEFAULT '{"state":"pending"}', progress text NOT NULL DEFAULT '{}', active integer NOT NULL, revision bigint NOT NULL, applied_revision bigint NOT NULL DEFAULT 0, PRIMARY KEY (board_id, plugin))]],
@@ -37,9 +37,6 @@ local POSTGRES = {
         layout text,
         applied_seq bigint NOT NULL,
         counter bigint NOT NULL,
-        item_count bigint NOT NULL,
-        open_count bigint NOT NULL,
-        trashed_count bigint NOT NULL,
         tombstone_floor_seq bigint NOT NULL,
         pack text,
         pack_version text,
@@ -56,7 +53,7 @@ local POSTGRES = {
     [[CREATE TABLE kickside_work_receipt (
         board_id text NOT NULL, command_key text NOT NULL, request_hash text NOT NULL, principal text NOT NULL, at text NOT NULL, result text NOT NULL, seq bigint NOT NULL,
         PRIMARY KEY (board_id, command_key))]],
-    [[CREATE INDEX kickside_work_receipt_expiry ON kickside_work_receipt (board_id, at)]],
+    [[CREATE INDEX kickside_work_receipt_expiry ON kickside_work_receipt (board_id, at, command_key)]],
     [[CREATE TABLE kickside_work_generation (
         board_id text NOT NULL,
         generation integer NOT NULL,
@@ -70,7 +67,7 @@ local POSTGRES = {
         applied_seq bigint NOT NULL,
         applied_at text NOT NULL,
         PRIMARY KEY (board_id, generation))]],
-    [[CREATE INDEX kickside_work_generation_expiry ON kickside_work_generation (board_id, applied_at)]],
+    [[CREATE INDEX kickside_work_generation_expiry ON kickside_work_generation (board_id, applied_at, generation)]],
     [[CREATE TABLE kickside_work_item (
         board_id text NOT NULL,
         item_id text NOT NULL,
@@ -94,8 +91,9 @@ local POSTGRES = {
         updated_seq bigint NOT NULL,
         created_at text NOT NULL,
         updated_at text NOT NULL,
+        purge_pending integer NOT NULL DEFAULT 0,
         PRIMARY KEY (board_id, item_id))]],
-    [[CREATE INDEX kickside_work_item_expiry ON kickside_work_item (board_id, life, life_at) WHERE life <> 'live']],
+    [[CREATE INDEX kickside_work_item_expiry ON kickside_work_item (board_id, life, life_at, item_id) WHERE life <> 'live']],
     [[CREATE TABLE kickside_work_approval (
         board_id text NOT NULL, item_id text NOT NULL, visit integer NOT NULL, actor text NOT NULL, decision text NOT NULL, at text NOT NULL,
         PRIMARY KEY (board_id, item_id, visit, actor))]],
@@ -121,7 +119,7 @@ local POSTGRES = {
         at text NOT NULL,
         seq bigint NOT NULL,
         PRIMARY KEY (board_id, from_id, type, to_board_id, to_id))]],
-    [[CREATE INDEX kickside_work_link_target ON kickside_work_link (to_board_id, to_id)]],
+    [[CREATE INDEX kickside_work_link_target ON kickside_work_link (to_board_id, to_id, board_id, from_id, type)]],
     [[CREATE TABLE kickside_work_change (
         board_id text NOT NULL,
         seq bigint NOT NULL,
@@ -135,10 +133,9 @@ local POSTGRES = {
         source text,
         origin text,
         at text NOT NULL,
-        ctx text NOT NULL DEFAULT '',
         PRIMARY KEY (board_id, seq, n))]],
     [[CREATE INDEX kickside_work_change_subject ON kickside_work_change (board_id, subject, seq, n)]],
-    [[CREATE INDEX kickside_work_change_at ON kickside_work_change (board_id, at)]],
+    [[CREATE INDEX kickside_work_change_at ON kickside_work_change (board_id, at, seq, n)]],
     [[CREATE TABLE kickside_work_interval (
         board_id text NOT NULL,
         item_id text NOT NULL,
@@ -155,7 +152,7 @@ local POSTGRES = {
         ended_at text,
         PRIMARY KEY (board_id, item_id, field_id, start_seq))]],
     [[CREATE INDEX kickside_work_interval_value ON kickside_work_interval (board_id, field_id, value_key, started_at)]],
-    [[CREATE INDEX kickside_work_interval_expiry ON kickside_work_interval (board_id, ended_at) WHERE ended_at IS NOT NULL]],
+    [[CREATE INDEX kickside_work_interval_expiry ON kickside_work_interval (board_id, ended_at, item_id, field_id, start_seq) WHERE ended_at IS NOT NULL]],
     [[CREATE TABLE kickside_work_comment (
         board_id text NOT NULL,
         comment_id text NOT NULL,
@@ -176,7 +173,25 @@ local POSTGRES = {
         key text NOT NULL,
         status text NOT NULL,
         error text,
+        failed_at text,
         PRIMARY KEY (board_id, job_id))]],
+    [[CREATE INDEX kickside_work_change_legacy ON kickside_work_change (board_id,seq,n) WHERE kind = 'query_value']],
+    [[CREATE INDEX kickside_work_visibility_age ON kickside_work_visibility (board_id,at,seq)]],
+    [[CREATE INDEX kickside_work_comment_page ON kickside_work_comment (board_id,item_id,deleted,comment_id)]],
+    [[CREATE INDEX kickside_work_purge_pending ON kickside_work_item (board_id, life_at, item_id) WHERE purge_pending=1 AND life='purged']],
+    [[CREATE INDEX kickside_work_approval_age ON kickside_work_approval (board_id, at, item_id, visit, actor)]],
+    [[CREATE INDEX kickside_work_stage_run_age ON kickside_work_stage_run (board_id, COALESCE(finished, started), item_id, visit, attempt)]],
+    [[CREATE INDEX kickside_work_job_failed ON kickside_work_job (board_id, failed_at, job_id) WHERE status='failed']],
+    [[CREATE INDEX kickside_work_job_done ON kickside_work_job (board_id, job_id) WHERE status='done']],
+    [[CREATE INDEX kickside_work_job_active ON kickside_work_job (board_id, status)]],
+    [[CREATE INDEX kickside_work_item_generation ON kickside_work_item (board_id, life, process_generation)]],
+    [[CREATE INDEX kickside_work_operation_lookup ON kickside_work_operation (operation_id)]],
+    [[CREATE INDEX kickside_work_item_move ON kickside_work_item (board_id, move_id) WHERE move_id IS NOT NULL]],
+    [[CREATE INDEX kickside_work_field_unused ON kickside_work_field_usage (board_id, field_id) WHERE items=0]],
+    [[CREATE INDEX kickside_work_plugin_converged ON kickside_work_plugin (board_id, plugin) WHERE active=0 AND revision=applied_revision]],
+    [[CREATE INDEX kickside_work_visibility_floor ON kickside_work_visibility (board_id, seq, item_id)]],
+    [[CREATE INDEX kickside_work_comment_purge ON kickside_work_comment (board_id, item_id, comment_id)]],
+    [[CREATE INDEX kickside_work_comment_deleted ON kickside_work_comment (board_id, edited_at, comment_id) WHERE deleted=1]],
 }
 
 local SQLITE = {}
@@ -188,7 +203,7 @@ end
 
 for dialect, statements in pairs({ postgres = POSTGRES, sqlite = SQLITE }) do
     statements[#statements + 1] = "CREATE INDEX kickside_work_operation_expiry ON kickside_work_operation (board_id, " ..
-        operation_expiry.at(dialect) .. ") WHERE " .. operation_expiry.TERMINAL
+        operation_expiry.at(dialect) .. ", operation_id) WHERE " .. operation_expiry.TERMINAL
 end
 
 local DROP = {

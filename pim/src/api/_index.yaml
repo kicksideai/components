@@ -1,0 +1,413 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.pim.api
+
+entries:
+  - name: access
+    kind: library.lua
+    meta: { comment: Shared JSON response and contract call of the catalog endpoints. }
+    source: file://access.lua
+    modules: [http, json, security]
+    imports:
+      consts: kickside.pim:consts
+      native_failure: kickside.pim:failure
+      catalog_client: kickside.pim:client
+      http_errors: kickside.contract:http_errors
+      http_params: kickside.contract:http_params
+
+  - name: list
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs - the catalogs the caller can read." }
+    source: file://list.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: list.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: list
+    path: /pim/catalogs
+
+  - name: get_catalog
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/summary - exact actor-scoped catalog summary." }
+    source: file://get_catalog.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: get_catalog.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: get_catalog
+    path: /pim/catalogs/{id}/summary
+
+  - name: create
+    kind: function.lua
+    meta: { comment: "POST /pim/catalogs - create a catalog, idempotent per caller and key." }
+    source: file://create.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: create.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: POST
+    func: create
+    path: /pim/catalogs
+
+  - name: get_schema
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/schema - the declaration and compiled schema." }
+    source: file://get_schema.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: get_schema.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: get_schema
+    path: /pim/catalogs/{id}/schema
+
+  - name: apply_schema
+    kind: function.lua
+    meta: { comment: "POST /pim/catalogs/{id}/schema - apply a schema change." }
+    source: file://apply_schema.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: apply_schema.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: POST
+    func: apply_schema
+    path: /pim/catalogs/{id}/schema
+
+  - name: plan_schema
+    kind: function.lua
+    meta: { comment: "POST /pim/catalogs/{id}/schema/plan - classify a schema change without applying it." }
+    source: file://plan_schema.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: plan_schema.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: POST
+    func: plan_schema
+    path: /pim/catalogs/{id}/schema/plan
+
+  - name: get
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/product - one product by sku or id, with resolved values." }
+    source: file://get.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: get.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: get
+    path: /pim/catalogs/{id}/product
+
+  - name: query
+    kind: function.lua
+    meta: { comment: "POST /pim/catalogs/{id}/query - items by filter tree, text and hierarchy." }
+    source: file://query.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: query.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: POST
+    func: query
+    path: /pim/catalogs/{id}/query
+
+  - name: list_history
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/history - change history newest first." }
+    source: file://list_history.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: list_history.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: list_history
+    path: /pim/catalogs/{id}/history
+
+  - name: apply
+    kind: function.lua
+    meta: { comment: "POST /pim/catalogs/{id}/apply - product and term changes." }
+    source: file://apply.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: apply.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: POST
+    func: apply
+    path: /pim/catalogs/{id}/apply
+
+  - name: propose
+    kind: function.lua
+    meta: { comment: "POST /pim/catalogs/{id}/proposals - store changes for a decision." }
+    source: file://propose.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: propose.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: POST
+    func: propose
+    path: /pim/catalogs/{id}/proposals
+
+  - name: list_proposals
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/proposals - proposals for review." }
+    source: file://list_proposals.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: list_proposals.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: list_proposals
+    path: /pim/catalogs/{id}/proposals
+
+  - name: decide
+    kind: function.lua
+    meta: { comment: "POST /pim/catalogs/{id}/proposals/{proposal_id}/decision - accept or reject a proposal." }
+    source: file://decide.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: decide.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: POST
+    func: decide
+    path: /pim/catalogs/{id}/proposals/{proposal_id}/decision
+
+  - name: release
+    kind: function.lua
+    meta: { comment: "POST /pim/catalogs/{id}/releases - release products to channels." }
+    source: file://release.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: release.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: POST
+    func: release
+    path: /pim/catalogs/{id}/releases
+
+  - name: list_terms
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/terms - a vocabulary's terms by code." }
+    source: file://list_terms.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: list_terms.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: list_terms
+    path: /pim/catalogs/{id}/terms
+
+  - name: schema_options
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/schema/options - the types, scopes, plugins and link kinds a schema may name." }
+    source: file://schema_options.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: schema_options.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: schema_options
+    path: /pim/catalogs/{id}/schema/options
+
+  - name: list_releases
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/releases - a product's releases newest first." }
+    source: file://list_releases.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: list_releases.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: list_releases
+    path: /pim/catalogs/{id}/releases
+
+  - name: get_release
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/releases/{release_id} - one release snapshot." }
+    source: file://get_release.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: get_release.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: get_release
+    path: /pim/catalogs/{id}/releases/{release_id}
+
+  - name: withdraw
+    kind: function.lua
+    meta: { comment: "POST /pim/catalogs/{id}/withdrawals - withdraw products from channels." }
+    source: file://withdraw.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: withdraw.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: POST
+    func: withdraw
+    path: /pim/catalogs/{id}/withdrawals
+
+  - name: rebuild
+    kind: function.lua
+    meta: { comment: "POST /pim/catalogs/{id}/rebuild - resume a parked rebuild." }
+    source: file://rebuild.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: rebuild.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: POST
+    func: rebuild
+    path: /pim/catalogs/{id}/rebuild
+
+  - name: list_links
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/links - products referencing a target." }
+    source: file://list_links.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: list_links.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: list_links
+    path: /pim/catalogs/{id}/links
+
+  - name: explain
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/explain - how a value resolved." }
+    source: file://explain.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: explain.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: explain
+    path: /pim/catalogs/{id}/explain
+
+  - name: list_changes
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/changes - the product change feed." }
+    source: file://list_changes.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: list_changes.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: list_changes
+    path: /pim/catalogs/{id}/changes
+
+  - name: list_publications
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/publications - a channel publication feed." }
+    source: file://list_publications.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: list_publications.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: list_publications
+    path: /pim/catalogs/{id}/publications
+
+  - name: configure_plugin
+    kind: function.lua
+    source: file://configure_plugin.lua
+    method: handler
+    imports: { access: 'kickside.pim.api:access' }
+
+  - name: configure_plugin.endpoint
+    kind: http.endpoint
+    meta: { comment: Configures an active plugin. }
+    method: POST
+    func: configure_plugin
+    path: /pim/catalogs/{id}/plugins/configure

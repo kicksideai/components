@@ -1,0 +1,333 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app
+entries:
+  - name: lifecycle_audit_fixture
+    kind: library.lua
+    source: file://lifecycle_audit_fixture.lua
+    modules: [json]
+    imports: {types: 'kickside.pim:types', store: 'kickside.pim.persist:store'}
+  - name: lifecycle_audit_probe
+    kind: library.lua
+    source: file://lifecycle_audit_probe.lua
+    modules: [json, sql]
+    imports:
+      types: kickside.pim:types
+      consts: kickside.pim:consts
+      values: kickside.pim.domain:values
+      component: app:lifecycle_audit_component
+      threads: app:lifecycle_audit_threads
+      plugins: app:lifecycle_audit_plugins
+      store: app:lifecycle_audit_store
+      attachments: app:lifecycle_audit_attachments
+      writer: app:lifecycle_audit_writer
+      jobs: app:lifecycle_audit_jobs
+  - name: audit_lifecycle_test
+    kind: function.lua
+    source: file://audit_lifecycle_test.lua
+    method: run
+    meta: {type: test, suite: kickside_pim}
+    imports:
+      fixture: app:lifecycle_audit_fixture
+      lifecycle: app:lifecycle_audit_probe
+      projection_state: app:projection_state_audit_probe
+      attachments: app:attachment_audit_probe
+      test: wippy.test:test
+
+  - name: attachment_audit_probe
+    kind: library.lua
+    source: file://attachment_audit_probe.lua
+    modules: [hash]
+    imports:
+      component: app:lifecycle_audit_component
+      creations: app:lifecycle_audit_fixture
+      component_types: kickside.component:types
+      envelope: kickside.component:envelope
+      types: kickside.pim:types
+      values: kickside.pim.domain:values
+
+  - name: projection_state_audit_probe
+    kind: library.lua
+    source: file://projection_state_audit_probe.lua
+    modules: [json]
+    imports:
+      threads: app:lifecycle_audit_threads
+      plugin_feed: kickside.pim.extensions:plugin_feed
+      values: kickside.pim.domain:values
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
+  - name: lifecycle_audit_component
+    kind: library.lua
+    source: file://lifecycle_audit_alias.lua
+    imports: {fixture: 'app:lifecycle_audit_fixture'}
+
+  - name: lifecycle_audit_threads
+    kind: library.lua
+    source: file://lifecycle_audit_alias.lua
+    imports: {fixture: 'app:lifecycle_audit_fixture'}
+
+  - name: lifecycle_audit_plugins
+    kind: library.lua
+    source: file://lifecycle_audit_alias.lua
+    imports: {fixture: 'app:lifecycle_audit_fixture'}
+
+  - name: lifecycle_audit_store
+    kind: library.lua
+    source: file://lifecycle_audit_alias.lua
+    imports: {fixture: 'app:lifecycle_audit_fixture'}
+
+  - name: lifecycle_audit_attachments
+    kind: library.lua
+    source: file://lifecycle_audit_alias.lua
+    imports: {fixture: 'app:lifecycle_audit_fixture'}
+
+  - name: lifecycle_audit_writer
+    kind: library.lua
+    source: file://lifecycle_audit_alias.lua
+    imports: {fixture: 'app:lifecycle_audit_fixture'}
+
+  - name: lifecycle_audit_jobs
+    kind: library.lua
+    source: file://lifecycle_audit_alias.lua
+    imports: {fixture: 'app:lifecycle_audit_fixture'}
+  - name: api_audit_fixture
+    kind: library.lua
+    source: file://api_audit_fixture.lua
+  - name: api_audit_client
+    kind: library.lua
+    source: file://lifecycle_audit_alias.lua
+    imports: {fixture: 'app:api_audit_fixture'}
+  - name: api_audit_probe
+    kind: library.lua
+    source: file://api_audit_probe.lua
+    modules: [json, security]
+    imports:
+      consts: kickside.pim:consts
+      http: app:api_audit_fixture
+      catalog_client: app:api_audit_client
+      native_failure: kickside.pim:failure
+      http_errors: kickside.contract:http_errors
+      http_params: kickside.contract:http_params
+  - name: audit_http_test
+    kind: function.lua
+    source: file://audit_http_test.lua
+    method: run
+    meta: {type: test, suite: kickside_pim}
+    imports:
+      fixture: app:api_audit_fixture
+      api: app:api_audit_probe
+      test: wippy.test:test
+  - name: projection_audit_fixture
+    kind: library.lua
+    source: file://projection_audit_fixture.lua
+    imports:
+      types: kickside.pim:types
+      store: kickside.pim.persist:store
+      error_envelope: kickside.contract:error_envelope
+  - name: projection_audit_materializer
+    kind: library.lua
+    source: file://lifecycle_audit_alias.lua
+    imports: {fixture: 'app:projection_audit_fixture'}
+  - name: projection_audit_probe
+    kind: library.lua
+    source: file://projection_audit_probe.lua
+    modules: [json, sql]
+    imports:
+      store: app:projection_audit_fixture
+      materializer: app:projection_audit_materializer
+      receipts: kickside.pim.persist:receipts
+      jobs: kickside.core.jobs:jobs
+      types: kickside.pim:types
+      consts: kickside.pim:consts
+  - name: audit_cleanup_test
+    kind: function.lua
+    source: file://audit_cleanup_test.lua
+    method: run
+    meta: {type: test, suite: kickside_pim}
+    imports:
+      fixture: app:projection_audit_fixture
+      projection: app:projection_audit_probe
+      test: wippy.test:test
+
+  - name: retention_fair_owner
+    kind: function.lua
+    meta:
+      comment: Purges trash past its window, prunes change history and tombstones past theirs, and advances each catalog's tombstone floor.
+    source: file://retention_fair_owner.lua
+    method: run
+    modules: [security, json]
+    security:
+      actor: { id: system:kickside.pim.retention }
+      policies: [kickside.pim.security:module_runtime, kickside.pim.security:retention_db_access, kickside.pim.security:purge_output_publish, kickside.pim.security:catalog_delete_report, kickside.pim.security:subject_retirement]
+    imports:
+      creations: kickside.pim.persist:creations
+      archive_rows: kickside.pim.persist:archive_rows
+      references: kickside.pim.domain:references
+      failure: kickside.pim:failure
+      cleanup_rows: kickside.pim.persist:cleanup_rows
+      error_envelope: kickside.contract:error_envelope
+      cleanup: app:retention_fair_fixture
+      history: kickside.pim.persist:history
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+      retention_rows: kickside.pim.persist:retention_rows
+      threads: kickside.pim.command:threads
+      policy: kickside.pim.domain:policy
+      defaults: kickside.pim.settings:defaults
+      types: kickside.pim:types
+
+  - name: retention_fair_fixture
+    kind: library.lua
+    source: file://retention_fair_fixture.lua
+
+  - name: import_work_probe
+    kind: library.lua
+    source: file://import_work_probe.lua
+    modules: [json, hash, sql]
+    imports:
+      input: kickside.pim.portability:input
+      defaults: kickside.pim.settings:defaults
+      error_envelope: kickside.contract:error_envelope
+      fs: app:import_storage_fixture
+      failure: kickside.pim:failure
+      component: kickside.component:component
+      store: kickside.pim.persist:store
+      writer: kickside.pim.command:writer
+      jobs: kickside.core.jobs:jobs
+      execution_identity: kickside.execution:execution_identity
+      values: kickside.pim.domain:values
+      references: kickside.pim.domain:references
+      clock: kickside.pim:clock
+      types: kickside.pim:types
+
+  - name: import_storage_fixture
+    kind: library.lua
+    source: file://import_storage_fixture.lua
+    modules: [fs]
+  - name: import_batch_probe
+    kind: function.lua
+    source: file://import_batch_probe.lua
+    method: run
+    imports:
+      work: app:import_work_probe
+      storage: app:import_storage_fixture
+
+  - name: round3_test
+    kind: function.lua
+    source: file://round3_test.lua
+    method: run
+    meta: {type: test, suite: kickside_pim, timeout: 180s}
+    modules: [json, fs, funcs, time]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      pipeline: kickside.pim.command:pipeline
+      receipts: kickside.pim.persist:receipts
+      clock: kickside.pim:clock
+      layout: kickside.pim.persist:layout
+  - name: r3_creation_store
+    kind: library.lua
+    source: file://r3_creation_store.lua
+    imports: {store: 'kickside.pim.persist:store'}
+  - name: r3_creations
+    kind: library.lua
+    source: file://r3_creations.lua
+    modules: [uuid, sql]
+    imports:
+      clock: kickside.pim:clock
+      component: kickside.component:component
+      store: app:r3_creation_store
+      types: kickside.pim:types
+      values: kickside.pim.domain:values
+  - name: r3_attachments
+    kind: library.lua
+    source: file://r3_attachments.lua
+    modules: [hash]
+    imports:
+      component: kickside.component:component
+      creations: app:r3_creations
+      component_types: kickside.component:types
+      envelope: kickside.component:envelope
+      types: kickside.pim:types
+      values: kickside.pim.domain:values
+  - name: r3_creation_recovery
+    kind: function.lua
+    source: file://r3_creation_recovery.lua
+    method: run
+    imports:
+      fixture: app:r3_creation_store
+      attachments: app:r3_attachments
+      create: app:r3_create
+      threads: app:r3_creation_threads
+
+  - name: r3_creation_threads
+    kind: library.lua
+    source: file://r3_creation_threads.lua
+    imports: {threads: 'kickside.pim.command:threads'}
+  - name: r3_create
+    kind: library.lua
+    source: file://r3_create.lua
+    modules: [hash, security, json]
+    imports:
+      failure: kickside.pim:failure
+      component: kickside.component:component
+      consts: kickside.pim:consts
+      envelope: kickside.component:envelope
+      component_types: kickside.component:types
+      threads: app:r3_creation_threads
+      writer: kickside.pim.command:writer
+      locate: kickside.pim.read:locate
+      types: kickside.pim:types
+      creations: app:r3_creations
+
+  - name: r3_retention_rows
+    kind: library.lua
+    source: file://r3_retention_rows.lua
+    imports: {rows: 'kickside.pim.persist:retention_rows'}
+  - name: r3_retention_owner
+    kind: function.lua
+    source: file://r3_retention_owner.lua
+    method: run
+    modules: [security, json]
+    security:
+      actor: {id: 'system:kickside.pim.retention'}
+      policies: [kickside.pim.security:module_runtime, kickside.pim.security:retention_db_access, kickside.pim.security:purge_output_publish, kickside.pim.security:catalog_delete_report, kickside.pim.security:subject_retirement]
+    imports:
+      creations: kickside.pim.persist:creations
+      archive_rows: kickside.pim.persist:archive_rows
+      references: kickside.pim.domain:references
+      failure: kickside.pim:failure
+      cleanup_rows: kickside.pim.persist:cleanup_rows
+      error_envelope: kickside.contract:error_envelope
+      cleanup: app:r3_retention_cleanup
+      history: kickside.pim.persist:history
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      store: kickside.pim.persist:store
+      retention_rows: app:r3_retention_rows
+      threads: kickside.pim.command:threads
+      policy: kickside.pim.domain:policy
+      defaults: kickside.pim.settings:defaults
+      types: kickside.pim:types
+
+  - name: r3_retention_cleanup
+    kind: library.lua
+    source: file://r3_retention_cleanup.lua
+
+  - name: round4_test
+    kind: function.lua
+    source: file://round4_test.lua
+    method: run
+    meta: {type: test, suite: kickside_pim, timeout: 180s}
+    modules: [funcs, json]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      store: kickside.pim.persist:store
+      creations: kickside.pim.persist:creations
+      receipts: kickside.pim.persist:receipts
+      cleanup_rows: kickside.pim.persist:cleanup_rows
+      clock: kickside.pim:clock

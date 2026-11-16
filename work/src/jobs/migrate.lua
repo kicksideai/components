@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Follow migration (spec 4.7). A schema apply that changes the definition of a follow process starts a board
--- job under the execution identity the board component holds. Each batch moves up to 500 items that run an older
+-- job under the execution identity the board component holds. Each configured batch moves items that run an older
 -- definition: one item.migrated event per item, appended with the item's version as the expectation, which
 -- stamps the item's process generation in the fold. An item that changed meanwhile is read again by the next batch.
 local security = require("security")
@@ -22,6 +22,7 @@ local when = require("when")
 local principals = require("principals")
 
 local receipts = require("receipts")
+local limits = require("limits")
 local M = {}
 
 local STAMP = "2006-01-02T15:04:05.000000000Z"
@@ -108,6 +109,8 @@ end
 
 -- batch moves the next stale items of the board's follow processes; it runs as the board identity.
 function M.batch(request: types.BatchRequest): (types.BatchResult?, error?)
+    local settings, settings_err = limits.read()
+    if settings_err or not settings then return nil, settings_err end
     local trace_context, trace_err = receipts.trace(request.trace_context, "work.migrate")
     if trace_err then return nil, trace_err end
     local board_id = request.board_id
@@ -135,7 +138,7 @@ function M.batch(request: types.BatchRequest): (types.BatchResult?, error?)
     local at = time.now():utc():format(STAMP)
     local result: types.BatchResult = { candidates = 0, moved = 0, stranded = 0 }
     local writes: { domain.Write } = {}
-    local room = consts.LIMITS.migration_batch
+    local room = settings.migration_batch
     for _, p in ipairs(board.compiled.processes) do
         if p.migration == "follow" and room > 0 then
             local found, serr = job_rows.stale(db, board, p, room, db:type())
@@ -179,5 +182,5 @@ end
 M.kind = "migration"
 M.batch_id = "kickside.work.jobs:migrate_batch"
 M.owner = consts.MIGRATION_OWNER
-M.batches = consts.LIMITS.migration_batches_per_run
+M.batches = "migration_batches_per_run"
 return M

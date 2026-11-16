@@ -16,13 +16,3 @@ entries:
     operation_expiry: kickside.work.persist:operation_expiry
     migration: wippy.migration:migration
   method: migrate
-- name: 02_retire_storage
-  kind: function.lua
-  meta:
-    type: migration
-    tags: [work, board]
-    timestamp: '2026-11-12T00:00:02Z'
-  source: file://02_retire_storage.lua
-  imports:
-    migration: wippy.migration:migration
-  method: migrate

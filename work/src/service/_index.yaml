@@ -27,6 +27,9 @@ entries:
     update: kickside.work.command:update
   security:
     policies:
+    - kickside.work.security:operation_retirement_call
+    - kickside.work.security:board_kind_create
+    - kickside.work.security:board_kind_update
     - kickside.work.security:sync_call
     - kickside.work.security:schema_output_publish
     - kickside.work.security:pack_batch_call
@@ -339,6 +342,7 @@ entries:
     guard: kickside.work.command:guard
     threads: kickside.work.persist:threads
     consts: kickside.work:consts
+    receipts: kickside.work.command:receipts
     domain: kickside.work:types
 - name: sync_position
   kind: function.lua
@@ -353,6 +357,7 @@ entries:
     guard: kickside.work.command:guard
     threads: kickside.work.persist:threads
     consts: kickside.work:consts
+    receipts: kickside.work.command:receipts
     domain: kickside.work:types
 - name: pack_views
   kind: library.lua
@@ -384,6 +389,7 @@ entries:
   imports: *id004
   security:
     policies:
+    - kickside.work.security:operation_retirement_call
     - kickside.work.security:pack_batch_call
 - name: pack_fleet
   kind: function.lua

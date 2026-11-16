@@ -3,12 +3,13 @@ local storage = require("storage")
 -- types.Row access over the fixed work tables, shared by the projection, the commands and the reads.
 local registry = require("registry")
 local sql = require("sql")
+local time = require("time")
 local consts = require("consts")
 local schema = require("schema")
 local types = require("types")
 local values = require("values")
-local process_data = require("process_data")
 
+local limits = require("limits")
 local M = {}
 
 local function unconfigured(): error
@@ -149,21 +150,25 @@ end
 
 local function item_rows(db: storage.Executor, rows: { types.Row }): ({ types.Item }?, error?)
     local items: { types.Item } = {}
-    local legacy = false
     for _, row in ipairs(rows) do
         local item, err = codec.item(row)
         if err or not item then return nil, err end
         items[#items + 1] = item
-        legacy = legacy or process_data.needs(item)
-    end
-    if legacy then
-        local board, berr = M.board(db, items[1].board_id)
-        if berr then return nil, berr end
-        if not board then return nil, errors.new({ kind = errors.INTERNAL, message = "item board is missing", details = { code = "row_corrupt" } }) end
-        local uerr = process_data.read(db, board, items, function(item: { type: string, process_generation: integer }): (types.Process?, error?, types.Compiled?) return M.process(db, board, item) end)
-        if uerr then return nil, uerr end
     end
     return items, nil
+end
+
+function M.comment_page(db: storage.Executor, board_id: string, item_id: string, after: string, limit: integer): ({ types.CommentRow }?, error?)
+    local rows, err = db:query([[SELECT * FROM kickside_work_comment WHERE board_id=$1 AND item_id=$2
+        AND deleted=0 AND comment_id > $3 ORDER BY comment_id LIMIT $4]], { board_id,item_id,after,limit })
+    if err then return nil, err end
+    local out: { types.CommentRow } = {}
+    for _, row in ipairs(rows or {}) do
+        local comment, cerr = codec.comment(row)
+        if cerr or not comment then return nil, cerr end
+        out[#out+1] = comment
+    end
+    return out,nil
 end
 
 function M.item(db: storage.Executor, board_id: string, item_id: string): (types.Item?, error?)
@@ -248,7 +253,9 @@ end
 -- items reads the given items of a board, one statement per chunk.
 function M.items(db: storage.Executor, board_id: string, ids: { string }): ({ types.Item }?, error?)
     local out: { types.Item } = {}
-    local per = 10000
+    local settings,settings_err=limits.read()
+    if settings_err or not settings then return nil,settings_err end
+    local per = settings.storage_batch
     for first = 1, #ids, per do
         local params: types.SqlParams = { board_id }
         local marks: { string } = {}
@@ -463,10 +470,12 @@ function M.usage(db: sql.DB, board_id: string): (types.Usage?, error?)
     return usage, nil
 end
 
-function M.read_snapshot(tx: sql.Transaction, timeout: boolean?): error?
+function M.read_snapshot(tx: sql.Transaction, deadline: types.Deadline?): error?
     local _, err = tx:execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY", {})
-    if err or not timeout then return err end
-    local _, terr = tx:execute("SET LOCAL statement_timeout = '2s'", {})
+    if err or not deadline then return err end
+    local remaining = math.floor((deadline.ns - time.now():unix_nano()) / 1000000)
+    if remaining < 1 then return errors.new({kind=errors.TIMEOUT,message="read deadline passed",details={code="read_deadline"}}) end
+    local _, terr = tx:execute("SET LOCAL statement_timeout = '" .. remaining .. "ms'", {})
     return terr
 end
 

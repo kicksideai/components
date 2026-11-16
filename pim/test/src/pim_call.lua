@@ -1,0 +1,129 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+-- Runs one PIM operation under the caller's actor (harness only): catalog
+-- methods through the kickside.pim:catalog contract, plus the portable,
+-- pullable and writable bindings.
+local contract = require("contract")
+local security = require("security")
+local funcs = require("funcs")
+local component = require("component")
+
+local merge_fixture = require("merge_fixture")
+local conflict_fixture = require("conflict_fixture")
+local conflict_writer = require("conflict_writer")
+local M = {}
+
+local CATALOG_METHODS = { create = true, list = true, get_catalog = true, get_schema = true, plan_schema = true, apply_schema = true, get = true,
+    query = true, list_history = true, apply = true, propose = true, decide = true, list_proposals = true, release = true, withdraw = true, rebuild = true,
+    list_links = true, explain = true, list_changes = true, list_publications = true, get_release = true, list_releases = true, list_terms = true,
+    schema_options = true, configure_plugin = true, plugin_feed = true, plugin_context = true }
+
+type Service = { [string]: (Service, unknown) -> (unknown, error?) }
+
+local function open(contract_id: string, binding: string?, context: { [string]: string }?): Service
+    local def = assert(contract.get(contract_id))
+    def = def:with_actor(security.actor()):with_scope(security.scope())
+    if context then def = def:with_context(context) end
+    return assert(def:open(binding)) :: Service
+end
+
+local function invoke(service: Service, method: string, arg: unknown): (unknown, error?)
+    local fn = service[method]
+    if not fn then return nil, errors.new({ kind = errors.INVALID, message = "no method " .. method }) end
+    return fn(service, arg)
+end
+
+function M.run(input: unknown): (unknown, error?)
+    local op, id, req = input.op, input.catalog_id, input.request or {}
+    if CATALOG_METHODS[op] then
+        if op ~= "create" and op ~= "list" then req.catalog_id = id end
+        local service = open("kickside.pim:catalog")
+        return invoke(service, op, req)
+    end
+    if op == "apply_conflicted" then
+        conflict_fixture.configure(id, req.changed_generation == true)
+        return conflict_writer.apply(id, req.request)
+    end
+    if op == "plan_fold_merge" then return merge_fixture.plan(id, req.source) end
+    if op == "batch" then
+        local service = open("kickside.pim:catalog")
+        local results = {}
+        for i, r in ipairs(req.requests) do
+            r.catalog_id = id
+            local out, err = invoke(service, "apply", r)
+            if err then return nil, err end
+            results[i] = out
+        end
+        return { results = results }, nil
+    end
+    if op == "settle" then
+        -- settle waits until the catalog projection covers the thread head.
+        local threads = open("kickside.core:threads")
+        return invoke(threads, "catch_up_projection", { thread_id = id, kind = "kickside.pim:catalog_model", max_ticks = 1000 })
+    end
+    if op == "projection_padding" then
+        local client = open("kickside.core:threads")
+        for n=1,200 do
+            local _,err=invoke(client,"register_projection",{thread_id=id,kind=string.format("aaa:padding_%03d",n),
+                worker_ref="func://kickside.pim.persist:projection",worker_input_mode="prefetch_events",start_seq=0,events={input={{type="app:padding"}}}})
+            if err then return nil,err end
+        end
+        return true,nil
+    end
+    if op == "plugin_projections" then
+        return invoke(open("kickside.core:threads"), "list_projections", { thread_id = id, limit = 1000 })
+    end
+    if op == "plugin_sync" then
+        return funcs.call("kickside.pim.extensions:plugin_projections", { catalog_id = id })
+    end
+    if op == "events" then
+        local threads = open("kickside.core:threads")
+        return invoke(threads, "list_events", { thread_id = id, from_seq = 1, ascending = true, limit = 1000 })
+    end
+    if op == "grant" then
+        local service = assert(component.get_service())
+        return service:grant_subtree({ root_component_id = id, subject = { subject_id = req.subject_id, subject_type = "user" },
+            access_mask = req.mask })
+    end
+    if op == "portable" then
+        local inst = open("kickside.contract:portable", "kickside.pim.binding:catalog", { component_id = id })
+        return invoke(inst, req.method, req.args)
+    end
+    if op == "component_meta" then
+        local rows, err = component.query({ component_ids = { id }, include = { meta = true }, limit = 1 })
+        if err then return nil, err end
+        return rows[1].meta, nil
+    end
+    if op == "delete_component" then
+        return assert(component.get_service()):delete({ component_id = id })
+    end
+    if op == "delete_catalog_rows" then
+        return funcs.new():with_context({ component_id = id }):call("kickside.pim.binding:delete_func", {})
+    end
+    if op == "rebuild_batch" then
+        req.catalog_id = id
+        return funcs.call("kickside.pim.jobs:rebuild_batch", req)
+    end
+    if op == "release_model_batch" then
+        req.catalog_id = id
+        return funcs.call("kickside.pim.jobs:release_model_batch", req)
+    end
+    if op == "pull_products" or op == "pull_proposals" then
+        req.config = req.config or {}
+        req.config.catalog_id = id
+        local binding = op == "pull_products" and "kickside.pim.source:products" or "kickside.pim.source:proposals"
+        return invoke(open("kickside.data:pullable", binding), "pull", req)
+    end
+    if op == "pull" then
+        req.config = req.config or {}
+        req.config.catalog_id = id
+        return invoke(open("kickside.data:pullable", "kickside.pim.source:publications"), "pull", req)
+    end
+    if op == "sink" then
+        req.config = req.config or {}
+        req.config.catalog_id = id
+        return invoke(open("kickside.data:writable", "kickside.pim.sink:products"), "write", req)
+    end
+    return nil, errors.new({ kind = errors.INVALID, message = "unknown op " .. tostring(op) })
+end
+
+return M

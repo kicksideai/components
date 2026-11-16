@@ -17,6 +17,6 @@ type SavedView = { view_id: string, board_id: string, title: string, view: View 
 type ViewList = { views: { SavedView }, after: string? }
 type ListViewsRequest = { board_id: string, after: string?, limit: integer? }
 
-type SyncRequest = { board_id: string, deadline: domain.Deadline }
+type SyncRequest = { board_id: string, deadline: domain.Deadline, command_key: string? }
 return { SyncRequest = SyncRequest, RenameViewRequest = RenameViewRequest, DeleteViewResult = DeleteViewResult, SavedView = SavedView, ViewList = ViewList, ListViewsRequest = ListViewsRequest, Sort = Sort, View = View, ViewContext = ViewContext, CreateViewRequest = CreateViewRequest, SaveViewRequest = SaveViewRequest,
     RunViewRequest = RunViewRequest, ViewResult = ViewResult }

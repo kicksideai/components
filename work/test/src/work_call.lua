@@ -6,6 +6,8 @@ local security = require("security")
 local component = require("component")
 local funcs = require("funcs")
 local pack_batch = require("pack_batch")
+local automations = require("automations")
+local pack_rows = require("pack_rows")
 local pack_views = require("pack_views")
 local registry = require("registry")
 local api_access = require("api_access")
@@ -74,12 +76,31 @@ function M.run(input: unknown): (unknown, error?)
     end
     if op == "pack_view" then return pack_views.install(req.view_id, req.request, req.revision) end
     if op == "pack_step" then return pack_batch.batch(req) end
+    if op == "pack_owner" then return pack_rows.create(id,"pack",req.key,req.key,req.data,true) end
+    if op == "automation_reconfigure" then return automations.reconfigure(req.id,req.input,{expected_revision=req.revision}) end
+    if op == "component_update" then return component.update(id,req) end
+    if op == "component_meta" then return component.set_meta(id,req) end
+    if op == "register_kind" then
+        local result,err=assert(component.get_service()):register(req)
+        if err then return nil,err end
+        local failure=component_envelope.error_of(result,"register")
+        if failure then return nil,failure end
+        return result,nil
+    end
+    if op == "placement" then
+        req.component_id=id
+        local out,err=assert(component.get_service()):set_placement(req)
+        if err then return nil,err end
+        local failure=component_envelope.error_of(out,"set_placement")
+        if failure then return nil,failure end
+        return out,nil
+    end
     if op == "direct" then return funcs.call(req.target, req.input) end
     if op == "operation_batch" then
         return funcs.call("kickside.work.jobs:operation_batch", { board_id = id, operation_id = req.operation_id })
     end
     if op == "worker_batch" then
-        return funcs.call("kickside.work.jobs:" .. req.worker .. "_batch", { board_id = id, deadline = req.deadline })
+        return funcs.call("kickside.work.jobs:" .. req.worker .. "_batch", { board_id = id, deadline = req.deadline, item=req.item, state=req.state, visit=req.visit, timer=req.timer, attempt=req.attempt, scheduled_at=req.scheduled_at })
     end
     if op == "discover" then
         return registry.find({ [".kind"] = req.kind, [".id"] = req.id })
@@ -103,6 +124,11 @@ function M.run(input: unknown): (unknown, error?)
     end
     if op == "trusted_append" then
         return funcs.call("app:trusted_append", req)
+    end
+    if op == "retire_subjects" then
+        local threads, err = open("kickside.core:threads")
+        if not threads then return nil, err end
+        return invoke(threads, "retire_subjects", req)
     end
     if op == "append" then
         local threads, err = open("kickside.core:threads")

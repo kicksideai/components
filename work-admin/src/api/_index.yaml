@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.admin.api
+entries:
+  - name: options
+    kind: function.lua
+    source: file://options.lua
+    method: get
+    modules: [http, contract, security]
+    imports:
+      types: kickside.work.admin:types
+      component: kickside.component:component
+      http_errors: kickside.contract:http_errors
+      field_types: kickside.work.admin.api:field_types
+  - name: options.endpoint
+    kind: http.endpoint
+    method: GET
+    func: options
+    path: /work-admin/boards/{id}/options
+  - name: field_types
+    kind: library.lua
+    source: file://field_types.lua
+    modules: [registry]
+    imports:
+      types: kickside.work.admin:types
+  - name: principals
+    kind: function.lua
+    source: file://principals.lua
+    method: post
+    modules: [http, contract, security]
+    imports:
+      types: kickside.work.admin:types
+      component: kickside.component:component
+      http_errors: kickside.contract:http_errors
+  - name: principals.endpoint
+    kind: http.endpoint
+    method: POST
+    func: principals
+    path: /work-admin/boards/{id}/principal_labels

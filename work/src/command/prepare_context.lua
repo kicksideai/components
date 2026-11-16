@@ -52,6 +52,7 @@ function M.failed(err: error): types.OpPlan
     local status = kind == errors.PERMISSION_DENIED and "denied" or kind == errors.INVALID and "invalid" or "unavailable"
     local details = err:details() or {}
     local plan = M.result(status, FREE, type(details.code) == "string" and details.code or tostring(kind), err:message())
+    plan.error = { kind = err:kind(), message = err:message(), retryable = err:retryable(), details = err:details() } :: domain.CommandError
     return plan
 end
 

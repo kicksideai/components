@@ -23,7 +23,7 @@ local function declaration(): Map
             { id = "stop", from = { "verify" }, to = "canceled" },
         } } } }
 end
-local function legacy(): Map
+local function transition_process(): Map
     local d = declaration()
     d.processes[1].states = {
         { id = "triage", category = "started", kind = "automated", run = { stage = "build" } },
@@ -53,7 +53,7 @@ local function define()
             end
         end)
         test.it("keeps omitted pass and cancel routes compatible", function()
-            local d = legacy()
+            local d = transition_process()
             d.processes[1].transitions[4] = { id = "failed", from = { "triage" }, to = "canceled" }
             local h = fixture.board({ declaration = d })
             local id = steps.create(h, "task")
@@ -75,7 +75,7 @@ local function define()
         for _, key in ipairs({ "on_pass", "on_cancel", "on_fail" }) do
             test.it("refuses unknown and foreign " .. key .. " transitions at compile", function()
                 for _, transition in ipairs({ "missing", "restart" }) do
-                    local d = legacy()
+                    local d = transition_process()
                     d.processes[1].states[1].run[key] = transition
                     local h = fixture.board({ bare = true }); d.key_prefix = h.prefix
                     local _, err = h.call("plan_schema", { declaration = d })
@@ -97,7 +97,7 @@ local function define()
     end)
     test.describe("stage timeout", function()
         test.it("fails a silent attempt and applies its failure route", function()
-            local d = legacy()
+            local d = transition_process()
             d.policy = { stage_timeout = "P1D" }
             d.processes[1].states[1].run.timeout = "PT0.1S"
             d.processes[1].states[1].run.on_fail = "canceled"
@@ -114,7 +114,7 @@ local function define()
             test.eq(late.outcomes[1].findings[1].code, "stage_attempt_finished")
         end)
         test.it("times out every retry using the board policy", function()
-            local d = legacy()
+            local d = transition_process()
             d.policy = { stage_timeout = "PT0.1S" }
             d.processes[1].states[1].run.on_fail = "canceled"
             d.processes[1].states[1].run.retry = { max = 2, backoff = "PT0.1S" }
@@ -130,7 +130,7 @@ local function define()
             end
         end)
         test.it("arms the engine deadline and lets a report finish first", function()
-            local h = fixture.board({ declaration = legacy() })
+            local h = fixture.board({ declaration = transition_process() })
             local id = steps.create(h, "task")
             local db = assert(store.open())
             local item = assert(store.item(db, h.id, id)); db:release()
@@ -192,7 +192,7 @@ local function define()
     end)
     test.describe("human stage control", function()
         test.it("lists people actions without automation-only routes on point and awaiting pages", function()
-            local d = legacy()
+            local d = transition_process()
             d.processes[1].initial = "waiting"
             d.processes[1].states[4] = { id = "waiting", category = "started", awaiting = { group = "app.security:work_test" } }
             d.processes[1].states[1].run = { stage = "build", on_pass = "passed", on_fail = "failed", on_cancel = "canceled", on_exhausted = "exhausted" }
@@ -223,7 +223,7 @@ local function define()
             check(2)
         end)
         test.it("lets an administrator take a global transition and closes the open attempt", function()
-            local d = legacy()
+            local d = transition_process()
             d.processes[1].transitions[4] = { id = "stop", from = "any", to = "canceled" }
             local h = fixture.board({ declaration = d })
             local id = steps.create(h, "task")
@@ -247,7 +247,7 @@ local function define()
             test.eq(late.outcomes[1].findings[1].code, "stage_attempt_finished")
         end)
         test.it("lets a writer stop a stage only when the named transition condition holds", function()
-            local d = legacy()
+            local d = transition_process()
             d.processes[1].transitions[4] = { id = "stop", from = "any", to = "canceled", when = { field = "title", op = "eq", value = "stop" } }
             d.fields[1].index = "key"
             local h = scoped.board(scoped.admin(), d)
@@ -266,7 +266,7 @@ local function define()
     end)
     test.describe("stage lifecycle boundaries", function()
         test.it("bounds visits by the engine default when no budget is declared", function()
-            local h = fixture.board({ declaration = legacy() })
+            local h = fixture.board({ declaration = transition_process() })
             local id = steps.create(h, "task")
             for n = 1, 5 do
                 report(h, id, n * 2 - 1, "passed")
@@ -276,7 +276,7 @@ local function define()
             test.eq(run.visit, 11); test.eq(run.outputs.error, "stage_visits_exhausted")
         end)
         test.it("cancels only the departing regional attempt and closes all attempts on a forced parent exit", function()
-            local d = legacy()
+            local d = transition_process()
             local p = d.processes[1]
             p.initial = "lanes"
             p.states[4] = { id = "lanes", category = "started", kind = "parallel", regions = { { id = "qa", initial = "triage" }, { id = "security", initial = "triage" } }, join = "all" }
@@ -294,7 +294,7 @@ local function define()
             end
         end)
         test.it("records a timeout even when the stage declares no failure exit", function()
-            local d = legacy(); d.processes[1].states[1].run.timeout = "PT0.1S"
+            local d = transition_process(); d.processes[1].states[1].run.timeout = "PT0.1S"
             local h = fixture.board({ declaration = d })
             local id = steps.create(h, "task")
             steps.wait_for("visible unrouted timeout", function()
@@ -319,7 +319,7 @@ local function define()
             test.eq(#assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs, 2)
         end)
         test.it("shares a state visit budget across parallel regions", function()
-            local d = legacy(); local p = d.processes[1]
+            local d = transition_process(); local p = d.processes[1]
             p.initial = "lanes"; p.states[1].run.max_visits = 1
             p.states[4] = { id = "lanes", category = "started", kind = "parallel", regions = { { id = "qa", initial = "triage" }, { id = "security", initial = "triage" } }, join = "all" }
             local h = fixture.board({ declaration = d })
@@ -333,7 +333,7 @@ local function define()
             test.eq(entered, 1)
         end)
         test.it("keeps automated visit counts when a follow migration re-enters a regional state", function()
-            local d = legacy(); local p = d.processes[1]
+            local d = transition_process(); local p = d.processes[1]
             p.initial, p.migration = "lanes", "follow"; p.states[1].run.max_visits = 1
             p.states[4] = { id = "lanes", category = "started", kind = "parallel", regions = { { id = "qa", initial = "triage" } }, join = "all" }
             local h = fixture.board({ declaration = d })
@@ -353,7 +353,7 @@ local function define()
     end)
     test.describe("exhaustion route declarations", function()
         test.it("rejects a cycle made only of exhaustion routes", function()
-            local d = legacy()
+            local d = transition_process()
             d.processes[1].states[1].run.on_exhausted = "restart"
             d.processes[1].transitions[3].from = "any"
             local h = fixture.board({ bare = true }); d.key_prefix = h.prefix
@@ -364,7 +364,7 @@ local function define()
     end)
     test.describe("regional exhaustion routing", function()
         test.it("takes a global exhaustion route for a regional initial entry", function()
-            local d = legacy(); local p = d.processes[1]
+            local d = transition_process(); local p = d.processes[1]
             p.initial = "lanes"; p.states[1].run.max_visits = 1; p.states[1].run.on_exhausted = "stop"
             p.states[4] = { id = "lanes", category = "started", kind = "parallel", regions = { { id = "qa", initial = "triage" }, { id = "security", initial = "triage" } }, join = "all" }
             p.transitions[4] = { id = "stop", from = "any", to = "canceled" }
@@ -377,14 +377,14 @@ local function define()
     end)
     test.describe("stage run retention", function()
         test.it("drains stage runs when their item is purged", function()
-            local d = legacy(); d.policy = { trash_days = 1 }
+            local d = transition_process(); d.policy = { trash_days = 1 }
             local h = fixture.board({ declaration = d })
             local id = steps.create(h, "task")
             report(h, id, 1, "passed")
             steps.one(h, { op = "delete", item = id })
             local db = assert(store.open())
             assert(db:execute("UPDATE kickside_work_item SET life_at = $1 WHERE board_id = $2 AND item_id = $3", { "2000-01-01T00:00:00Z", h.id, id }))
-            assert(db:execute("UPDATE kickside_work_retention SET board_after = $1, inclusive = 1, item_after = '', deadline_ms = NULL WHERE owner_id = 'work'", { h.id }))
+            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~', board_after = $1, inclusive = 1, item_after = '', deadline_ms = NULL WHERE owner_id = 'work'", { h.id }))
             db:release()
             steps.retention_sweep(function(): boolean
                 assert(h.call("settle", {}))
@@ -398,7 +398,7 @@ local function define()
     end)
     test.describe("stage run reads", function()
         test.it("pages runs newest first and includes only the current visit in get", function()
-            local h = fixture.board({ declaration = legacy() })
+            local h = fixture.board({ declaration = transition_process() })
             local id = steps.create(h, "task")
             local entered = assert(steps.get(h, id, { "stage_runs" }))
             test.eq(#entered.stage_runs, 1); test.eq(entered.stage_runs[1].state, "triage")
@@ -420,7 +420,7 @@ local function define()
             test.eq(#second.stage_runs, 1); test.eq(second.stage_runs[1].visit, 1); test.is_nil(second.after)
         end)
         test.it("exposes the recorded retry deadline only while its attempt is current", function()
-            local d = legacy()
+            local d = transition_process()
             d.processes[1].states[1].run.retry = { max = 2, backoff = "PT1H" }
             local h = fixture.board({ declaration = d })
             local id = steps.create(h, "task")
@@ -434,7 +434,7 @@ local function define()
             test.is_nil(assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1].retry_at)
         end)
         test.it("pages retry attempts within a visit newest first", function()
-            local d = legacy()
+            local d = transition_process()
             d.processes[1].states[1].run.retry = { max = 2, backoff = "PT0.05S" }
             local h = fixture.board({ declaration = d })
             local id = steps.create(h, "task")
@@ -453,7 +453,7 @@ local function define()
             test.eq(completed.outcomes[1].status, "applied")
         end)
         test.it("rejects malformed stage-run continuations", function()
-            local h = fixture.board({ declaration = legacy() })
+            local h = fixture.board({ declaration = transition_process() })
             local id = steps.create(h, "task")
             for _, after in ipairs({ "bad", "0:1", "1:0", "999999999999999999999:1" }) do
                 local _, err = h.call("list_stage_runs", { item = { id = id }, after = after })
@@ -462,7 +462,7 @@ local function define()
         end)
         test.it("serves the same stage run page over HTTP and the read tool", function()
             local admin, member = scoped.admin(), scoped.member()
-            local h = scoped.board(admin, legacy())
+            local h = scoped.board(admin, transition_process())
             local id = steps.create(h, "task")
             assert(h.call("grant", { subject_id = member.id, mask = 1 }))
             local page, err = member.call("list_stage_runs", { item = { id = id }, limit = 1 }, h.id)
@@ -473,7 +473,7 @@ local function define()
             assert(tool, steps.detail(terr)); test.is_true(tool.success); test.eq(tool.stage_runs[1].visit, page.stage_runs[1].visit)
         end)
         test.it("requires board READ and item visibility for stage run pages", function()
-            local d = legacy()
+            local d = transition_process()
             d.fields[2] = { code = "level", form = "text", index = "key" }
             d.item_types[1].fields[2] = "level"
             d.visibility = { field = "level", levels = { { id = "hidden", holders = {} } } }

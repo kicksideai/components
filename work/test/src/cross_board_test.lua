@@ -177,8 +177,8 @@ local function define()
                 { id = "internal", holders = { { group = "app.security:missing_group" } } },
             } } } }))
             local response = owner.http("POST", "/" .. boards[1].id .. "/query", { boards = { boards[1].id, boards[2].id } })
-            test.eq(response.status, 503)
-            test.eq(response.body.details.code, "contract_unavailable")
+            test.eq(response.status, 404)
+            test.is_nil(response.body.data)
         end)
 
         test.it("refuses a digest change during principal resolution on both read paths", function()

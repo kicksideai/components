@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local consts = require("consts")
+local rules = require("rules")
 local sql = require("sql")
 local jobs = require("jobs")
 local store = require("store")
@@ -35,7 +36,7 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
         for id, seq in pairs(affected) do batch.observed[id] = math.max(batch.observed[id] or 0, seq) end
     end
     batch_rows.held(batch, item.document, -1)
-    item.document, item.work, item.findings = {}, nil, nil
+    item.document, item.work, item.findings = rules.retained(board, item.document), nil, nil
     item.life, item.life_at, item.move_id = "purged", body.at, nil
     batch_rows.touch(batch, item, event.seq)
     local _, redirect_err = tx:execute([[UPDATE kickside_work_key_alias SET to_board_id = $1, to_item_id = $2
