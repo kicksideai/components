@@ -1,8 +1,8 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- The catalog creation authority. A request owns one actor-scoped,
 -- deterministic component id; the component and its thread are created through
--- the threads contract, then an optional initial declaration is applied as an
--- ordinary schema command keyed by the catalog id, so a retried request
+-- the threads contract, then its initial declaration (empty when omitted) is
+-- applied as a schema command keyed by the catalog id, so a retried request
 -- converges on the same catalog and schema.
 local failure = require("failure")
 local component = require("component")
@@ -99,16 +99,11 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
     local terr=threads.ensure(client,{component_id=catalog_id,impl_id=consts.CATALOG_IMPL,thread_class=consts.THREAD_CLASS})
     if terr then return nil,terr end
 
-    local generation: integer? = nil
-    local declaration = input.declaration
-    if declaration then
-        local applied, serr = writer.apply_schema(catalog_id, { declaration = declaration, plugin_configs = input.plugin_configs,
-            idempotency = { namespace = "create", key = catalog_id } })
-        if serr then return nil, errors.wrap(serr, "initial schema failed") end
-        if not applied then return nil, errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "initial schema returned no result" }) end
-        generation = applied.generation
-    end
-    return { catalog_id = catalog_id, title = title, generation = generation, replayed = found == true }, nil
+    local applied, serr = writer.apply_schema(catalog_id, { declaration = input.declaration or {}, plugin_configs = input.plugin_configs,
+        idempotency = { namespace = "create", key = catalog_id } })
+    if serr then return nil, errors.wrap(serr, "initial schema failed") end
+    if not applied then return nil, errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "initial schema returned no result" }) end
+    return { catalog_id = catalog_id, title = title, generation = applied.generation, replayed = found == true }, nil
 end
 
 return M

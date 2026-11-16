@@ -16,10 +16,11 @@ local import = catalog_fixture.import
 
 local function define()
     test.describe("portability", function()
-        test.it("refuses to export a catalog without a schema", function()
+        test.it("exports a newly created catalog with its empty schema", function()
             local h = fixture.catalog({ bare = true })
             local out = export(h.call)
-            test.eq(out.success, false)
+            test.eq(out.success, true)
+            test.eq(((out.manifest :: Map).counts :: Map).products, 0)
         end)
 
         test.it("leaves trashed products out of an export", function()
@@ -80,7 +81,7 @@ local function define()
             local dst = fixture.catalog({ bare = true })
             test.eq(import(dst.call, path).success, true)
             test.eq(catalog(dst).compiled.attributes["core.size"].id, catalog(src).compiled.attributes["core.size"].id)
-            test.eq(catalog(dst).generation, 1)
+            test.eq(catalog(dst).generation, 2)
         end)
 
         test.it("refuses an export path that holds nothing", function()

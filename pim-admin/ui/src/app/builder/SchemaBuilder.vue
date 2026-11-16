@@ -206,7 +206,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
       <div v-if="loading && (!schema || !options)" class="kx-loading" role="status">Loading…</div>
       <Button v-else-if="(!schema || !options) && error" @click="load()" severity="secondary" outlined>Retry</Button>
       <fieldset v-else-if="schema && options" class="pim-editor-surface" :disabled="busy || !schema.access.admin" :inert="busy || !schema.access.admin">
-        <Message v-if="empty && section === 'fields'" severity="info">No catalog definitions yet. Add an aspect to start defining fields.</Message>
+        <Message v-if="empty && section === 'fields'" severity="info">Define its schema. Add an aspect to start defining fields.</Message>
         <BuilderFields v-if="section === 'fields'" :draft="draft" :schema="schema" :options="options" @remove="remove" />
         <BuilderDimensions v-else-if="section === 'dimensions'" :draft="draft" :schema="schema" @remove="remove" />
         <BuilderVocabularies v-else-if="section === 'vocabularies'" :catalog-id="catalogId" :draft="draft" :schema="schema" @remove="remove" />
