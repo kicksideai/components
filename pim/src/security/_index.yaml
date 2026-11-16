@@ -212,6 +212,7 @@ entries:
         - kickside.pim.persist:release_jobs
         - kickside.pim.schema:compile
         - kickside.pim.schema:merge
+        - kickside.pim.schema:declaration_shape
         - kickside.pim.schema:classify
         - kickside.pim.schema:sections
         - kickside.pim.schema:contexts
@@ -486,6 +487,8 @@ entries:
       - kickside.pim.traits:create_catalog
       - kickside.pim.traits:plan_schema
       - kickside.pim.traits:apply_schema
+      - kickside.pim.traits:configure_plugin
+      - kickside.pim.traits:rebuild
       actions: [registry.get, registry.find, funcs.call]
       effect: allow
 
