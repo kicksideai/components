@@ -59,7 +59,7 @@ local function define()
             test.eq(ctx:call("kickside.pim.binding:delete_func").success, true)
         end)
 
-        test.it("deletes a catalog that never had a schema", function()
+        test.it("deletes a catalog with only its initial empty schema", function()
             local h = fixture.catalog({ bare = true })
             test.eq(h.executor:with_context({ component_id = h.id }):call("kickside.pim.binding:delete_func").success, true)
         end)
