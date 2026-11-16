@@ -12,11 +12,19 @@ entries:
     fixture: app:fixture
     steps: app:steps
     store: kickside.work.persist:store
+    limits: kickside.work.settings:limits
 - name: read_budget_probe
   kind: function.lua
   source: file://read_budget_probe.lua
   method: run
-  modules: [time]
   imports:
+    clock: app:read_budget_clock
     access: kickside.work.read:access
     types: kickside.work.read:types
+- name: read_budget_clock
+  kind: library.lua
+  source: file://read_budget_clock.lua
+  modules: [time]
+  imports:
+    real: kickside.work.domain:clock
+    types: kickside.work:types
