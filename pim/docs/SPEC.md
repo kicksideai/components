@@ -1638,6 +1638,10 @@ and waits for its projection before returning the required `generation`. Omittin
 `declaration` is equivalent to `{}`: generation 1 has no custom definitions and
 includes the built-in `generic` family. `get_schema`, `query` and the catalog
 summary immediately read that head with current caller access and zero counts.
+The exact catalog summary reads generation, counts and rebuild status from the
+committed PIM catalog row, retaining title and access from the actor-scoped
+component lookup. Catalog lists use public component metadata; its post-commit
+publication can lag command acknowledgement and does not gate creation.
 Commands before user definitions validate against this empty schema: generic
 products are allowed; undeclared families or fields produce ordinary item
 validation findings, never `catalog_not_found`. Applying definitions then advances
