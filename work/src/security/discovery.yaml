@@ -426,6 +426,9 @@ entries:
     - kickside.work.sink:items_port
     - kickside.work.sink:types
     - kickside.work.sink:write
+    - kickside.work.sink:stage_failure
+    - kickside.work.sink:stage_failures
+    - kickside.work.sink:stage_failures_port
     - kickside.work.source:changes
     - kickside.work.source:changes_port
     - kickside.work.source:data_error

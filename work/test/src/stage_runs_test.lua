@@ -42,6 +42,16 @@ local function report(h: fixture.Handle, id: string, visit: integer, outcome: st
     assert(out, steps.detail(err))
     test.eq(out.outcomes[1].status, "applied")
 end
+local function failed_run(h: fixture.Handle, id: string, visit: integer, attempt: integer, status: string?): Map
+    local out, err = h.executor:call("kickside.work.sink:stage_failure", {
+        config = { board_id = h.id }, origin = "stage-failures", sink_op = "upsert", idempotency_key = "terminal-" .. visit .. "-" .. attempt,
+        input = { run_id = "failed-run-" .. attempt, status = status or "failed",
+            correlation = { board_id = h.id, item = id, visit = visit, attempt = attempt } },
+    })
+    assert(out, steps.detail(err))
+    test.is_true(out.success == true, out.error and (tostring(out.error.message) .. " " .. tostring(out.error.code)) or tostring(out))
+    return out :: Map
+end
 local function define()
     test.describe("stage routing", function()
         test.it("routes each of three automated stages through its own pass transition", function()
@@ -93,6 +103,167 @@ local function define()
             local plan = assert(h.call("plan_schema", { declaration = d }))
             test.eq(plan.class, "semantic")
             test.is_true(#plan.changes > 0)
+        end)
+    end)
+    test.describe("stage flow failure", function()
+        test.it("publishes the complete stage locator on initial and retry entries", function()
+            local d = transition_process()
+            d.processes[1].states[1].run.retry = { max = 2, backoff = "PT0.05S" }
+            local h = fixture.board({ declaration = d })
+            local id = steps.create(h, "task")
+            report(h, id, 1, "failed")
+            steps.wait_for("retry entry", function(): boolean
+                return assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1].attempt == 2
+            end)
+            local count = 0
+            for _, e in ipairs(steps.events(h)) do
+                if e.type == "kickside.work.events:stage.entered" then
+                    test.eq(e.body.board_id, h.id); test.eq(e.body.item, id)
+                    test.eq(e.body.visit, 1); count = count + 1; test.eq(e.body.attempt, count)
+                end
+            end
+            test.eq(count, 2)
+        end)
+        test.it("closes a failed flow immediately and uses retry backoff then the failure route", function()
+            local d = transition_process()
+            d.processes[1].states[1].run.retry = { max = 2, backoff = "PT0.2S" }
+            d.processes[1].states[1].run.on_fail = "canceled"
+            local h = fixture.board({ declaration = d })
+            local id = steps.create(h, "task")
+            failed_run(h, id, 1, 1)
+            local first = assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1]
+            test.eq(first.outcome, "failed"); test.eq(first.outputs.error, "flow_run_failed")
+            test.eq(first.flow_run, "failed-run-1"); test.not_nil(first.finished_at); test.not_nil(first.retry_at)
+            test.eq(steps.get(h, id).item.state, "triage")
+            steps.wait_for("failed flow retry", function(): boolean
+                return assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1].attempt == 2
+            end)
+            failed_run(h, id, 1, 2)
+            test.eq(steps.get(h, id).item.state, "canceled")
+            local runs = assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs
+            test.eq(#runs, 2); test.eq(runs[1].outcome, "failed"); test.eq(runs[2].outcome, "failed")
+        end)
+        test.it("keeps a committed report when failure arrives later", function()
+            local h = fixture.board({ declaration = transition_process() })
+            local id = steps.create(h, "task")
+            report(h, id, 1, "passed")
+            local version = steps.version(h, id); local count = #steps.events(h)
+            failed_run(h, id, 1, 1)
+            test.eq(steps.version(h, id), version); test.eq(#steps.events(h), count)
+            local run = assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1]
+            test.eq(run.outcome, "passed"); test.eq(run.outputs.count, 3); test.eq(run.flow_run, "flow-123")
+        end)
+        test.it("ignores stale attempts and duplicate failures without appending events", function()
+            local d = transition_process()
+            d.processes[1].states[1].run.retry = { max = 2, backoff = "PT0.05S" }
+            local h = fixture.board({ declaration = d })
+            local id = steps.create(h, "task")
+            failed_run(h, id, 1, 1)
+            steps.wait_for("current attempt", function(): boolean
+                return assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1].attempt == 2
+            end)
+            local version = steps.version(h, id); local count = #steps.events(h)
+            failed_run(h, id, 1, 1); failed_run(h, id, 1, 3)
+            test.eq(steps.version(h, id), version); test.eq(#steps.events(h), count)
+            test.is_nil(assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1].outcome)
+            failed_run(h, id, 1, 2)
+            version = steps.version(h, id); count = #steps.events(h)
+            failed_run(h, id, 1, 2)
+            test.eq(steps.version(h, id), version); test.eq(#steps.events(h), count)
+        end)
+        test.it("ignores a stale visit after reentry and a failure for a retired item", function()
+            local h = fixture.board({ declaration = transition_process() })
+            local id = steps.create(h, "task")
+            report(h, id, 1, "passed")
+            steps.one(h, { op = "transition", item = id, transition = "restart" })
+            local version = steps.version(h, id)
+            failed_run(h, id, 1, 1)
+            test.eq(steps.version(h, id), version)
+            test.is_nil(assert(steps.get(h, id, { "stage_runs" })).stage_runs[1].outcome)
+            steps.one(h, { op = "delete", item = id })
+            local count = #steps.events(h)
+            failed_run(h, id, 3, 1)
+            test.eq(#steps.events(h), count)
+        end)
+        for _, status in ipairs({ "cancelled", "terminated" }) do
+            test.it("treats " .. status .. " as a failed stage outcome", function()
+                local d = transition_process(); d.processes[1].states[1].run.on_fail = "canceled"
+                local h = fixture.board({ declaration = d })
+                local id = steps.create(h, "task")
+                failed_run(h, id, 1, 1, status)
+                test.eq(steps.get(h, id).item.state, "canceled")
+                test.eq(assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1].outcome, "failed")
+                local late = assert(h.call("report", { item = id, visit = 1, attempt = 1, outcome = "passed" }))
+                test.eq(late.outcomes[1].findings[1].code, "stage_attempt_finished")
+            end)
+        end
+        test.it("leaves a successful silent run open for report or timeout", function()
+            local h = fixture.board({ declaration = transition_process() })
+            local id = steps.create(h, "task"); local version = steps.version(h, id)
+            failed_run(h, id, 1, 1, "completed")
+            test.eq(steps.version(h, id), version)
+            test.is_nil(assert(steps.get(h, id, { "stage_runs" })).stage_runs[1].outcome)
+        end)
+        test.it("preserves a failed report and its backoff when the flow fails afterward", function()
+            local d = transition_process(); d.processes[1].states[1].run.retry = { max = 2, backoff = "PT1H" }
+            local h = fixture.board({ declaration = d }); local id = steps.create(h, "task")
+            report(h, id, 1, "failed")
+            local before = assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1]
+            local version = steps.version(h, id); local count = #steps.events(h)
+            failed_run(h, id, 1, 1)
+            local after = assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1]
+            test.eq(after.outputs.count, 3); test.eq(after.retry_at, before.retry_at)
+            test.eq(after.flow_run, "flow-123"); test.eq(steps.version(h, id), version); test.eq(#steps.events(h), count)
+        end)
+        test.it("requires an existing unfinished stage row", function()
+            local h = fixture.board({ declaration = transition_process() }); local id = steps.create(h, "task")
+            local db = assert(store.open())
+            assert(db:execute("DELETE FROM kickside_work_stage_run WHERE board_id = $1 AND item_id = $2", { h.id, id }))
+            db:release()
+            local version = steps.version(h, id); local count = #steps.events(h)
+            failed_run(h, id, 1, 1)
+            test.eq(steps.version(h, id), version); test.eq(#steps.events(h), count)
+            test.eq(#assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs, 0)
+        end)
+        test.it("ignores uncorrelated runs and another board and rejects incomplete stage locators", function()
+            local h = fixture.board({ declaration = transition_process() }); local id = steps.create(h, "task")
+            local version = steps.version(h, id)
+            for _, correlation in ipairs({ {}, { board_id = "another-board", item = id, visit = 1, attempt = 1 },
+                { board_id = h.id, item = id, visit = 1 } }) do
+                local out = assert(h.executor:call("kickside.work.sink:stage_failure", {
+                    config = { board_id = h.id }, sink_op = "upsert", origin = "test",
+                    input = { status = "failed", run_id = "run", correlation = correlation },
+                }))
+                test.eq(out.success, correlation.board_id ~= h.id)
+                if correlation.board_id == h.id then test.eq(out.error.code, "invalid_request") end
+            end
+            test.eq(steps.version(h, id), version)
+        end)
+        test.it("uses the stored caller's board authority and Work service capabilities", function()
+            local h = scoped.board(scoped.admin(), transition_process()); local id = steps.create(h, "task")
+            local member = scoped.member()
+            local request = { config = { board_id = h.id }, sink_op = "upsert", origin = "test",
+                input = { status = "failed", run_id = "run", correlation = { board_id = h.id, item = id, visit = 1, attempt = 1 } } }
+            local caller = funcs.new():with_actor(member.actor):with_scope(member.scope)
+            local denied = assert(caller:call("kickside.work.sink:stage_failure", request))
+            test.is_false(denied.success); test.eq(denied.error.kind, errors.PERMISSION_DENIED)
+            assert(h.call("grant", { subject_id = member.id, mask = 3 }))
+            local out, err = caller:call("kickside.work.sink:stage_failure", request)
+            assert(out, steps.detail(err)); test.is_true(out.success == true, out.error and out.error.message)
+            test.eq(assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1].outcome, "failed")
+        end)
+        test.it("closes only the correlated parallel region", function()
+            local d = transition_process(); local p = d.processes[1]
+            p.initial = "lanes"; p.states[1].run.on_fail = "canceled"
+            p.states[4] = { id = "lanes", category = "started", kind = "parallel", regions = { { id = "qa", initial = "triage" }, { id = "security", initial = "triage" } }, join = "all" }
+            local h = fixture.board({ declaration = d }); local id = steps.create(h, "task")
+            local runs = assert(steps.get(h, id, { "stage_runs" })).stage_runs
+            failed_run(h, id, runs[1].visit, 1)
+            local closed = 0
+            for _, run in ipairs(assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs) do
+                if run.outcome then closed = closed + 1; test.eq(run.visit, runs[1].visit); test.eq(run.outcome, "failed") end
+            end
+            test.eq(closed, 1)
         end)
     end)
     test.describe("stage timeout", function()

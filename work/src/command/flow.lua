@@ -224,7 +224,7 @@ local function entry_event(board: types.Board, item: types.Item, state: types.St
         return M.report(item, "failed", { error = "stage_visits_exhausted" }), nil
     end
     return { type = consts.EVENTS.STAGE_ENTERED, subject = "i:" .. item.item_id,
-        body = { item = item.item_id, state = item.state, visit = work.visit or item.visit, attempt = 1 } }, nil
+        body = { board_id = board.board_id, item = item.item_id, state = item.state, visit = work.visit or item.visit, attempt = 1 } }, nil
 end
 
 -- settle shares one automatic-step budget across items and regions in the command.
