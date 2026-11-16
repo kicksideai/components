@@ -19,6 +19,7 @@ entries:
   kind: library.lua
   source: file://request_parser_probe.lua
   imports:
+    trim_text: kickside.work:text
     contract: app:request_schema_fixture
     registry: app:request_registry_fixture
     json: app:request_json_fixture

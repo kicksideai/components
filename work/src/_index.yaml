@@ -179,3 +179,7 @@ entries:
   kind: ns.dependency
   version: '>=0.2.27'
   component: kickside/automation
+
+- name: text
+  kind: library.lua
+  source: file://text.lua
