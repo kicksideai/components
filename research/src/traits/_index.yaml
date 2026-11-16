@@ -44,6 +44,7 @@ entries:
     method: handle
     modules: [contract, security, time]
     imports:
+      trim_text: kickside.research:text
       research_state: kickside.research:state
       research_consts: kickside.research:consts
 

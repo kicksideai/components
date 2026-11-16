@@ -36,6 +36,7 @@ entries:
     source: file://repo.lua
     modules: [sql, json, time]
     imports:
+      trim_text: kickside.research:text
       research_consts: kickside.research:consts
 
   - name: state
@@ -44,6 +45,7 @@ entries:
     source: file://state.lua
     modules: [security]
     imports:
+      trim_text: kickside.research:text
       research_repo: kickside.research:repo
       component: kickside.component:component
       research_consts: kickside.research:consts
@@ -86,6 +88,7 @@ entries:
     method: request
     modules: [security, funcs, uuid]
     imports:
+      trim_text: kickside.research:text
       flow: userspace.dataflow.flow:flow
       research_consts: kickside.research:consts
       deliver_format: kickside.research:deliver_format
@@ -357,6 +360,7 @@ entries:
     method: handler
     modules: [http, security]
     imports:
+      trim_text: kickside.research:text
       research_state: kickside.research:state
 
   - name: status.endpoint
@@ -373,6 +377,7 @@ entries:
     method: handler
     modules: [http, security, funcs, json]
     imports:
+      trim_text: kickside.research:text
       research_state: kickside.research:state
       research_consts: kickside.research:consts
 
@@ -421,6 +426,7 @@ entries:
     method: handle
     modules: [ctx, funcs]
     imports:
+      trim_text: kickside.research:text
       research_consts: kickside.research:consts
 
   # ─── Dataflow terminal nodes: result / failure -> thread events ──────
@@ -428,6 +434,8 @@ entries:
     kind: library.lua
     meta: { name: deliver_format, comment: "Structured research report validation and markdown rendering shared by deliver and tests." }
     source: file://deliver_format.lua
+    imports:
+      trim_text: kickside.research:text
 
   - name: deliver
     kind: function.lua
@@ -436,6 +444,7 @@ entries:
     method: handler
     modules: [funcs, logger]
     imports:
+      trim_text: kickside.research:text
       research_consts: kickside.research:consts
       deliver_format: kickside.research:deliver_format
 
@@ -446,6 +455,7 @@ entries:
     method: error_handler
     modules: [funcs, logger]
     imports:
+      trim_text: kickside.research:text
       research_consts: kickside.research:consts
       deliver_format: kickside.research:deliver_format
 
@@ -463,3 +473,7 @@ entries:
     imports:
       test: wippy.test:test
       deliver: kickside.research:deliver
+
+  - name: text
+    kind: library.lua
+    source: file://text.lua

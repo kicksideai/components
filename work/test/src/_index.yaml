@@ -489,3 +489,12 @@ entries:
     return M :: any
   imports:
     domain: kickside.work:types
+
+- name: trim_test
+  kind: function.lua
+  meta: { type: test, suite: kickside_work }
+  source: file://trim_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    trim_text: kickside.work:text

@@ -35,9 +35,7 @@ local function str(v: any): string
     return ""
 end
 
-local function trim(v: any): string
-    return (str(v):gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 local function content_value(v: any): string
     if type(v) == "string" then return v end

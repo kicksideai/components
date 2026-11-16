@@ -44,7 +44,7 @@ jobs:
         node-version: '22'
     - uses: kicksideai/.github/actions/setup-wippy@5401fa65bed7d8648125957520e94206ed1ffd0b
       with:
-        version: 0.3.61a
+        version: 0.3.64a
         hub-url: https://hub.wippy.ai
     - name: Materialize locked Docscout UI Kit for license provenance
       run: |
@@ -320,7 +320,6 @@ jobs:
             version=$(jq -r '.pim // "0.1.0"' .release-please-manifest.json)
             wippy publish --config pim --version "$version" --dry-run --create --module-visibility private --module-type plugin
         - module: pim-admin
-        - module: work-admin
           engine: sqlite
           commands: |
             set -euo pipefail
@@ -330,10 +329,6 @@ jobs:
             make -C pim-admin test
             make -C pim-admin pack
         - module: pim-admin
-            make -C work-admin setup build typecheck ui-test lint strict check
-            make -C work-admin test
-            make -C work-admin pack
-        - module: work-admin
           engine: postgres
           commands: |
             set -euo pipefail
@@ -345,6 +340,21 @@ jobs:
             trap 'dropdb "$database"' EXIT
             make -C pim-admin test-pg PIM_ADMIN_PG_PORT="$PGPORT" WIPPY_ARGS="--set vars.pg_database=$database --set vars.pg_host=127.0.0.1"
             make -C pim-admin pack
+        - module: work-admin
+          engine: sqlite
+          commands: |
+            set -euo pipefail
+            export TMPDIR="$PWD/.scratch"
+            mkdir -p "$TMPDIR"
+            make -C work-admin setup build typecheck ui-test lint strict check
+            make -C work-admin test
+            make -C work-admin pack
+        - module: work-admin
+          engine: postgres
+          commands: |
+            set -euo pipefail
+            export TMPDIR="$PWD/.scratch"
+            mkdir -p "$TMPDIR"
             make -C work-admin setup build typecheck ui-test lint strict check
             database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_work_admin"
             createdb "$database"
@@ -430,7 +440,7 @@ jobs:
         node-version: '22'
     - uses: kicksideai/.github/actions/setup-wippy@5401fa65bed7d8648125957520e94206ed1ffd0b
       with:
-        version: 0.3.61a
+        version: 0.3.64a
         hub-url: https://hub.wippy.ai
     - name: Check out converters module sources
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
