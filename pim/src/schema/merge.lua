@@ -3,6 +3,7 @@
 -- replace theirs, omitted entries stay, and only remove destroys.
 local failure = require("failure")
 local shape = require("shape")
+local declaration_shape = require("declaration_shape")
 local types = require("types")
 local policy = require("policy")
 local values = require("values")
@@ -131,60 +132,19 @@ local function use_of(entry: types.PluginEntry): string? return entry.use end
 -- SHAPE is the JSON schema of a declaration as callers send it. check_shape
 -- refuses anything else as invalid, so merge and compile only see well-formed
 -- sections and judge their meaning.
-local STRINGS = { type = "array", items = { type = "string" } }
-local CTX = { type = "object", additionalProperties = { type = "string" } }
-local CONFIG = { type = "object" }
-local function object(properties: { [string]: unknown }, required: { string }?): { [string]: unknown }
-    local out: { [string]: unknown } = { type = "object", properties = properties, additionalProperties = false }
-    if required then out.required = required end
-    return out
-end
-local function list(item: unknown): { [string]: unknown }
-    return { type = "array", items = item }
-end
-local ATTRIBUTE_FIELDS: { [string]: unknown } = {
-    code = { type = "string" }, type = { type = "string" }, scope = STRINGS,
-    cardinality = { type = "string" }, index = { type = "string" }, index_contexts = list(CTX), unique = { type = "boolean" },
-    vocabulary = { type = "string" }, default = true, config = CONFIG, width = { type = "string" },
-}
-local function attribute(with_id: boolean): { [string]: unknown }
-    local fields: { [string]: unknown } = {}
-    for k, v in pairs(ATTRIBUTE_FIELDS) do fields[k] = v end
-    if with_id then fields.id = { type = "integer" } end
-    return object(fields, { "code" })
-end
-local VOCABULARIES = list(object({ code = { type = "string" }, hierarchical = { type = "boolean" }, semantic = { type = "boolean" } }, { "code" }))
-local function aspects(with_ids: boolean): { [string]: unknown }
-    return list(object({ namespace = { type = "string" }, write = object({ sources = STRINGS }), attributes = list(attribute(with_ids)) },
-        { "namespace" }))
-end
-local SHAPE = object({
-    dimensions = list(object({ name = { type = "string" }, members = STRINGS,
-        fallback = { type = "object", additionalProperties = STRINGS } }, { "name", "members" })),
-    vocabularies = VOCABULARIES,
-    aspects = aspects(true),
-    families = list(object({
-        code = { type = "string" }, aspects = STRINGS,
-        variation = list(object({ axes = STRINGS, own = STRINGS })),
-        requirements = list(object({ id = { type = "string" }, context = CTX, require = STRINGS, authored = STRINGS }, { "id" })),
-        checks = list(object({ check = { type = "string" }, reads = STRINGS, cost = { type = "string" }, config = CONFIG, enforce = { type = "string" } }, { "check" })),
-    }, { "code" })),
-    sources = list(object({ id = { type = "string" }, ordering = { type = "string" }, writes = STRINGS, principals = STRINGS,
-        audit = { type = "boolean" } }, { "id" })),
-    channels = list(object({ id = { type = "string" }, requirements = STRINGS, families = STRINGS }, { "id" })),
-    policy = { type = "object" },
-    scopes = STRINGS,
-    plugins = list(object({ use = { type = "string", minLength = 1 }, schema = { type = "object" } }, { "use" })),
-    remove = object({ dimensions = STRINGS, vocabularies = STRINGS, aspects = STRINGS, families = STRINGS, sources = STRINGS,
-        channels = STRINGS, attributes = STRINGS, scopes = STRINGS, plugins = STRINGS }),
-})
+local SHAPE = declaration_shape.get()
+local TOLERANT = shape.tolerant(SHAPE)
 
-local TOLERANT = shape.tolerant(SHAPE :: types.JsonObject)
-
--- FRAGMENT is the JSON schema of what a plugin's schema source contributes:
--- aspects and vocabularies, attributes without ids since the catalog keeps the
--- ids by code.
-local FRAGMENT = shape.tolerant(object({ vocabularies = VOCABULARIES, aspects = aspects(false) }) :: types.JsonObject)
+-- Plugins contribute the same aspects and vocabularies, without catalog ids.
+local fragment = M.copy(SHAPE)
+local properties = fragment.properties :: types.JsonObject
+local aspects = properties.aspects :: types.JsonObject
+local aspect = aspects.items :: types.JsonObject
+local attributes = (aspect.properties :: types.JsonObject).attributes :: types.JsonObject
+local attribute = attributes.items :: types.JsonObject
+(attribute.properties :: types.JsonObject).id = nil
+local FRAGMENT = shape.tolerant({ type = "object", additionalProperties = false,
+    properties = { aspects = aspects, vocabularies = properties.vocabularies } })
 
 -- check_shape checks a declaration against SHAPE.
 function M.check_shape(declaration: unknown): error?

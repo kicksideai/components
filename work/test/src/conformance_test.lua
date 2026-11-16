@@ -101,7 +101,9 @@ local function define()
                 test.eq(endpoint.data.func, method, id)
                 test.eq(targets[id .. ".endpoint"], ".meta.router", id)
             end
-            for _, method in ipairs({ "plugin_context", "plugin_feed", "schema_options" }) do
+            test.is_true(methods.schema_options == true)
+            test.eq(assert(registry.get("kickside.work.traits:schema_options")).data.method, "schema_options")
+            for _, method in ipairs({ "plugin_context", "plugin_feed" }) do
                 test.is_true(methods[method] == true, method)
                 test.eq(#assert(registry.find({ [".id"] = "kickside.work.traits:" .. method })), 0, "host admission adds no tool")
             end

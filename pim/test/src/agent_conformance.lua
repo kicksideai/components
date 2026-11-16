@@ -11,10 +11,8 @@ type Map = { [string]: unknown }
 
 local exclusions = {
     ["kickside.pim:catalog.get_catalog"] = "Settings resolves one exact catalog; PIMCatalogs already exposes its summary to agents.",
-    ["kickside.pim:catalog.configure_plugin"] = "ADMIN configuration uses the host contract without adding a tool.",
     ["kickside.pim:catalog.plugin_feed"] = "State workers consume opaque feed tokens through the host contract only.",
     ["kickside.pim:catalog.plugin_context"] = "Plugin service admission uses the host contract only.",
-    ["kickside.pim:catalog.rebuild"] = "Maintenance resumes the materialized view rebuild.",
     ["kickside.pim:schema_provider.resolve"] = "Provider seam resolves plugin schema declarations.",
     ["kickside.pim:link_target.resolve"] = "Provider seam resolves link targets.",
     ["kickside.pim:link_target.describe"] = "Provider seam describes link targets.",

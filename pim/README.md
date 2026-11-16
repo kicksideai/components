@@ -60,11 +60,13 @@ Three public traits call `kickside.pim:catalog` as the calling agent. The readon
 - `PIMCatalogCreate` → `create`
 - `PIMSchemaPlan` → `plan_schema`
 - `PIMSchemaApply` → `apply_schema`
+- `PIMConfigurePlugin` → `configure_plugin`
+- `PIMRebuild` → `rebuild`
 - `PIMCatalogs` → `list`
 - `PIMSchemaGet` → `get_schema`
 - `PIMSchemaOptions` → `schema_options`
 
-`rebuild` is maintenance; `schema_provider` and `link_target` are provider seams. They stay outside the traits. The readonly trait uses `kickside.pim.traits:build_reads` and the working trait `kickside.pim.traits:build` to contribute tools declared by active catalog plugins, or all installed plugin declarations when context omits `catalog_id`. Readonly contributes only tools whose sole required scope is `state.read`. Administration contributes no plugin tools. Plugins ship exact `tool_access` policies and no traits. Missing or non-tool declarations fail with `plugin_tool_invalid`; inactive plugin contracts refuse with `plugin_inactive`.
+Catalog rebuild is product-owned maintenance in the administration trait. `schema_provider` and `link_target` remain provider seams outside the traits. The readonly trait uses `kickside.pim.traits:build_reads` and the working trait `kickside.pim.traits:build` to contribute tools declared by active catalog plugins, or all installed plugin declarations when context omits `catalog_id`. Readonly contributes only tools whose sole required scope is `state.read`. Administration contributes no plugin tools. Plugins ship exact `tool_access` policies and no traits. Missing or non-tool declarations fail with `plugin_tool_invalid`; inactive plugin contracts refuse with `plugin_inactive`.
 
 The platform MCP server expands static trait tools only; dynamic plugin contributions require upstream MCP support.
 

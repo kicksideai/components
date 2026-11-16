@@ -113,6 +113,25 @@ function M.check(schema: types.JsonObject, value: unknown, what: string): error?
     return nil
 end
 
+-- Preserve empty object identity in declared response fields before dispatch
+-- copies the value to tools, HTTP or another contract caller. Open JSON values
+-- and non-empty arrays retain their existing meaning.
+function M.objects(schema: types.JsonObject, value: unknown): unknown
+    if type(value) ~= "table" then return value end
+    local node = value :: { [unknown]: unknown }
+    if schema.type == "object" then
+        if next(node) == nil then return table.create(0, 1) end
+        local properties = (schema.properties or {}) :: types.JsonObject
+        for key, child in pairs(node) do
+            local declared = properties[tostring(key)] or schema.additionalProperties
+            if type(declared) == "table" then node[key] = M.objects(declared :: types.JsonObject, child) end
+        end
+    elseif schema.type == "array" and type(schema.items) == "table" then
+        for i, child in ipairs(value :: { unknown }) do node[i] = M.objects(schema.items :: types.JsonObject, child) end
+    end
+    return value
+end
+
 -- array_length rejects object keys and holes instead of truncating at ipairs.
 function M.array_length(value: unknown): integer?
     if type(value) ~= "table" then return nil end

@@ -19,6 +19,13 @@ entries:
       contexts: kickside.pim.schema:contexts
       types: kickside.pim:types
 
+  - name: declaration_shape
+    kind: library.lua
+    source: file://declaration_shape.lua
+    modules: [json]
+    imports:
+      types: kickside.pim:types
+
   - name: merge
     kind: library.lua
     meta:
@@ -27,6 +34,7 @@ entries:
     imports:
       failure: kickside.pim:failure
       shape: kickside.pim:shape
+      declaration_shape: kickside.pim.schema:declaration_shape
       policy: kickside.pim.domain:policy
       values: kickside.pim.domain:values
       types: kickside.pim:types
