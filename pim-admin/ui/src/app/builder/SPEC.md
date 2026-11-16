@@ -15,6 +15,16 @@ the review. Apply sends that snapshot with its expected generation; backend
 validation and ACL failures remain visible. Refresh does not overwrite a dirty
 draft, and replies for an old catalog cannot replace the current catalog's draft.
 
+Declared fields remain editable in type, cardinality and scope; declaration
+presence does not establish authored values. The existing review/apply boundary
+classifies or refuses those changes. Scope changes preserve defaults and the
+same default editor remains available for scoped fields.
+
+Term codes follow the backend grammar: 1–128 ASCII characters, beginning with
+an alphanumeric character, then alphanumeric characters, underscores, dots or
+hyphens. Declaration codes retain their separate grammar. Adding, retiring and
+restoring terms require catalog WRITE independently of ADMIN; term reads and
+schema editing remain available to an administrator without WRITE.
 Term writes use PIM's apply endpoint and only term-shaped requests. Active plugin
 configuration saves separately and must preserve unrelated schema drafts and
 other unsaved plugin configuration. Deployment policy defaults are read through
