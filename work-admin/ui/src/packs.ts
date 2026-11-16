@@ -2,7 +2,7 @@
 import type { Declaration } from './types'
 import { clone, type SchemaPlan } from './app/settings/model'
 export interface AvailablePack { id: string; title: string; version: string; icon: string; description: string; requires: string[]; plugins: { id: string; installed: boolean }[] }
-export interface UnavailablePack { id: string; title: string; version?: string; icon?: string; description?: string; problem: { code: string; message: string } }
+export interface UnavailablePack { id: string; title?: string; version?: string; icon?: string; description?: string; problem: { code: string; message: string } }
 export type Pack = AvailablePack | UnavailablePack
 export const availablePack = (pack: Pack): pack is AvailablePack => !('problem' in pack)
 export interface PackSelection { pack?: string; version?: string; starter?: boolean }

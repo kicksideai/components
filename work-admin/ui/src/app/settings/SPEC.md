@@ -71,4 +71,4 @@ Board creation sends only the declared create body. A nonempty description uses
 the existing metadata update after creation. Failed metadata updates retain the
 created board ID and retry that update without another creation; identity inputs
 stay fixed. Invalid installed pack summaries remain disabled choices with their
-problem reason, while valid packs and Empty board remain usable.
+problem reason; a missing title uses the declaration ID. Valid packs and Empty board remain usable.

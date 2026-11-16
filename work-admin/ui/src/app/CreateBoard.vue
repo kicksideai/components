@@ -16,7 +16,7 @@ const title = ref(''), description = ref(''), prefix = ref('WORK'), selected = r
 const step = ref(1), busy = ref(false), loading = ref(false), error = ref(''), discoveryError = ref(''), packs = ref<Pack[]>([])
 const created = ref('')
 let key = crypto.randomUUID(), attempted = '', read = 0
-const choices = computed(() => [{ id: '', title: 'Empty board', description: 'Start with an empty board and build its schema in Settings.', icon: 'tabler:square', version: '', disabled: false }, ...packs.value.map(pack => ({ ...pack, disabled: !availablePack(pack) || pack.plugins.some(plugin => !plugin.installed), unavailable: !availablePack(pack) ? pack.problem.message : 'Required plugin unavailable. Install the pack’s required capabilities to use it.' }))])
+const choices = computed(() => [{ id: '', title: 'Empty board', description: 'Start with an empty board and build its schema in Settings.', icon: 'tabler:square', version: '', disabled: false }, ...packs.value.map(pack => ({ ...pack, title: pack.title ?? pack.id, icon: pack.icon ?? 'tabler:package-off', disabled: !availablePack(pack) || pack.plugins.some(plugin => !plugin.installed), unavailable: !availablePack(pack) ? pack.problem.message : 'Required plugin unavailable. Install the pack’s required capabilities to use it.' }))])
 const chosen = computed(() => choices.value.find(pack => pack.id === selected.value))
 const valid = computed(() => !!title.value.trim() && /^[A-Z][A-Z0-9]{1,9}$/.test(prefix.value) && !!chosen.value && !chosen.value.disabled)
 watch(() => props.visible, async visible => {

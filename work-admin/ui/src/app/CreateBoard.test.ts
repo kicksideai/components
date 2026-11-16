@@ -62,3 +62,10 @@ it('updates description after creation and retries metadata on the same created 
   await w.get('form').trigger('submit'); await flushPromises()
   expect(work.createBoard).toHaveBeenCalledOnce(); expect(w.emitted('created')).toEqual([['new']]); w.unmount()
 })
+
+it('identifies an unavailable pack even when invalid metadata omits its title and icon', async () => {
+  vi.mocked(work.packs).mockResolvedValue([{ id: 'app:broken-metadata', problem: { code: 'invalid_pack', message: 'Pack title is malformed' } }])
+  const w = await render()
+  expect(w.text()).toContain('app:broken-metadata')
+  expect(w.text()).toContain('Pack title is malformed'); w.unmount()
+})
