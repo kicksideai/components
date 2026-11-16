@@ -96,10 +96,7 @@ function M.counts(out: { types.BoardSummary }): error?
 end
 
 -- trim returns the text of v without surrounding space; non-text is empty.
-local function trim(v: unknown): string
-    if type(v) ~= "string" then return "" end
-    return (v:gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 local function display(meta: domain.ComponentMeta): domain.BoardMeta
     return { title = trim(meta.title) ~= "" and trim(meta.title) or "Board",

@@ -11,10 +11,7 @@ local consts = require("research_consts")
 -- under the dataflow's ambient (requester) identity.
 local M = {}
 
-local function trim(value: any): string
-    if type(value) ~= "string" then return "" end
-    return (value:gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 local function ctx_get(key: string): string
     local v, _ = ctx.get(key)

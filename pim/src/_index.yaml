@@ -152,6 +152,7 @@ entries:
     source: file://requests.lua
     modules: [contract, json, registry]
     imports:
+      trim_text: kickside.pim:text
       shape: kickside.pim:shape
       types: kickside.pim:types
 
@@ -478,3 +479,7 @@ entries:
           - format: application/schema+json
             definition: |
               {"type": "object", "required": ["targets"], "properties": {"targets": {"type": "object", "additionalProperties": {"type": "object", "required": ["label"], "properties": {"label": {"type": "string"}, "data": {"type": "object"}}}}}, "additionalProperties": false}
+
+  - name: text
+    kind: library.lua
+    source: file://text.lua

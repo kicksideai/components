@@ -13,10 +13,7 @@ local json = require("json")
 local state = require("research_state")
 local consts = require("research_consts")
 
-local function trim(value: any): string
-    if type(value) ~= "string" then return "" end
-    return (value:gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 -- The research event types, in case other event kinds ever share the thread.
 local RESEARCH_TYPES: { [string]: boolean } = {}

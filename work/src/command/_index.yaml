@@ -141,6 +141,7 @@ entries:
     comment: The boards a caller can read and the rule that picks one.
   source: file://locate.lua
   imports:
+    trim_text: kickside.work:text
     job_rows: kickside.work.persist:job_rows
     reads: kickside.work.read:types
     store: kickside.work.persist:store

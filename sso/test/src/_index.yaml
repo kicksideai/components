@@ -678,3 +678,12 @@ entries:
     path: /fixture/landing
     method: GET
     func: oauth_fixture_landing
+
+  - name: trim_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_sso }
+    source: file://trim_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      trim_text: kickside.sso:text

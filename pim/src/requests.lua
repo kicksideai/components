@@ -3,6 +3,7 @@
 -- schema in the contract definition (_index.yaml) is the single statement of
 -- its request shape; parse checks a request against it before the method acts,
 -- so a malformed request ends as invalid at the boundary.
+local trim = require("trim_text").trim
 local contract = require("contract")
 local json = require("json")
 local registry = require("registry")
@@ -44,7 +45,7 @@ local function schema_text(raw: unknown): (string?, error?)
     else
         return nil, errors.new({ kind = errors.INTERNAL, retryable = false, message = "definition is neither text nor bytes", details = { code = "contract_schema_invalid" } })
     end
-    local trimmed = text:match("^%s*(.-)%s*$") or text
+    local trimmed = trim(text)
     if trimmed:sub(1, 1) == '"' then
         local inner, derr = json.decode(trimmed)
         if derr then return nil, errors.wrap(derr, "definition string literal is not JSON") end
