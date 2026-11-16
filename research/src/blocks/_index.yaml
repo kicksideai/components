@@ -77,6 +77,7 @@ entries:
     source: file://block_signal_repo.lua
     modules: [sql, time]
     imports:
+      trim_text: kickside.research:text
       research_consts: kickside.research:consts
 
   - name: arm_research_block
@@ -86,6 +87,7 @@ entries:
     method: arm
     modules: [contract, security, funcs, json]
     imports:
+      trim_text: kickside.research:text
       research_consts: kickside.research:consts
       block_signal_repo: kickside.research:block_signal_repo
 
@@ -96,6 +98,7 @@ entries:
     method: resume_from_event
     modules: [contract, security, funcs, json]
     imports:
+      trim_text: kickside.research:text
       research_consts: kickside.research:consts
       block_signal_repo: kickside.research:block_signal_repo
 

@@ -494,3 +494,12 @@ entries:
       test: wippy.test:test
       deliver: kickside.research:deliver
       deep_research: kickside.research.traits:deep_research
+
+  - name: trim_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_research }
+    source: file://trim_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      trim_text: kickside.research:text
