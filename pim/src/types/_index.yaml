@@ -7,19 +7,79 @@ namespace: kickside.pim.types
 entries:
   - name: text
     kind: registry.entry
-    meta: { type: kickside.pim.type, title: Text, form: text, indexes: [none, key, text] }
+    meta:
+      type: kickside.pim.type
+      title: Text
+      form: text
+      indexes: [none, key, text]
+      config_schema:
+        type: object
+        properties:
+          case:
+            type: string
+            title: Key matching
+            enum: [sensitive, insensitive]
   - name: rich_text
     kind: registry.entry
     meta: { type: kickside.pim.type, title: Rich text, form: text, indexes: [none, text] }
   - name: identifier
     kind: registry.entry
-    meta: { type: kickside.pim.type, title: Identifier, form: text, indexes: [none, key] }
+    meta:
+      type: kickside.pim.type
+      title: Identifier
+      form: text
+      indexes: [none, key]
+      config_schema:
+        type: object
+        properties:
+          case:
+            type: string
+            title: Key matching
+            enum: [sensitive, insensitive]
   - name: integer
     kind: registry.entry
-    meta: { type: kickside.pim.type, title: Integer, form: int, indexes: [none, key, number] }
+    meta:
+      type: kickside.pim.type
+      title: Integer
+      form: int
+      indexes: [none, key, number]
+      config_schema:
+        type: object
+        properties:
+          scale:
+            type: integer
+            title: Decimal places
+            description: Precision used by the numeric index.
+          range:
+            type: array
+            title: Allowed range
+            description: Minimum and maximum values.
+            items:
+              type: integer
+            minItems: 2
+            maxItems: 2
   - name: number
     kind: registry.entry
-    meta: { type: kickside.pim.type, title: Number, form: dec, indexes: [none, number] }
+    meta:
+      type: kickside.pim.type
+      title: Number
+      form: dec
+      indexes: [none, number]
+      config_schema:
+        type: object
+        properties:
+          scale:
+            type: integer
+            title: Decimal places
+            description: Precision used by the numeric index.
+          range:
+            type: array
+            title: Allowed range
+            description: Minimum and maximum values.
+            items:
+              type: integer
+            minItems: 2
+            maxItems: 2
   - name: boolean
     kind: registry.entry
     meta: { type: kickside.pim.type, title: Boolean, form: bool, indexes: [none, key] }
@@ -40,10 +100,74 @@ entries:
     meta: { type: kickside.pim.type, title: Link, form: ref, indexes: [none, key], comment: A reference to an entity a plugin owns; config.target names the bound link kind. }
   - name: quantity
     kind: registry.entry
-    meta: { type: kickside.pim.type, title: Quantity, form: quantity, indexes: [none, key, number] }
+    meta:
+      type: kickside.pim.type
+      title: Quantity
+      form: quantity
+      indexes: [none, key, number]
+      config_schema:
+        type: object
+        required: [units, canonical]
+        properties:
+          units:
+            type: object
+            title: Units
+            description: 'Unit names mapped to positive conversion factors, for example {"kg": "1", "g": "0.001"}.'
+            minProperties: 1
+          canonical:
+            type: string
+            title: Canonical unit
+            description: A declared unit whose conversion factor is 1.
+          scale:
+            type: integer
+            title: Decimal places
+            description: Precision used by the numeric index.
+          range:
+            type: array
+            title: Allowed range
+            description: Minimum and maximum values.
+            items:
+              type: integer
+            minItems: 2
+            maxItems: 2
   - name: money
     kind: registry.entry
-    meta: { type: kickside.pim.type, title: Money, form: dec, indexes: [none, number] }
+    meta:
+      type: kickside.pim.type
+      title: Money
+      form: dec
+      indexes: [none, number]
+      config_schema:
+        type: object
+        properties:
+          currency:
+            type: string
+            title: Currency
+            description: Currency code for this field.
+          scale:
+            type: integer
+            title: Decimal places
+            description: Precision used by the numeric index.
+          range:
+            type: array
+            title: Allowed range
+            description: Minimum and maximum values.
+            items:
+              type: integer
+            minItems: 2
+            maxItems: 2
   - name: record
     kind: registry.entry
-    meta: { type: kickside.pim.type, title: Record, form: record, indexes: [none] }
+    meta:
+      type: kickside.pim.type
+      title: Record
+      form: record
+      indexes: [none]
+      config_schema:
+        type: object
+        properties:
+          members:
+            type: object
+            title: Members
+            description: 'Member names mapped to value shapes, for example {"label": {"form": "text"}}. Supported
+              forms: text, int, dec, bool, time, ref, quantity, record.'

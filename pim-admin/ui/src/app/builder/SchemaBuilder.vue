@@ -28,7 +28,7 @@ import { requestGeneration } from '../../shared/requests'
 import { reconcileRemovals, reviewedRequest } from '../../state'
 
 const props = defineProps<{ catalogId: string; embedded?: boolean; title?: string; backLabel?: string }>()
-const emit = defineEmits<{ applied: [generation: number]; back: [] }>()
+const emit = defineEmits<{ applied: [generation: number]; back: []; 'dirty-changed': [dirty: boolean] }>()
 
 type Section = 'fields' | 'dimensions' | 'vocabularies' | 'families' | 'channels' | 'plugins' | 'policy' | 'declaration'
 const SECTIONS: { id: Section; title: string }[] = [
@@ -96,6 +96,7 @@ watch(() => props.catalogId, () => { reviews.begin(); busy.value = false; schema
 
 const removals = computed(() => Object.values(reconcileRemovals(draft.value, removed.value)).reduce((n, list) => n + (list?.length ?? 0), 0))
 const dirty = computed(() => !!schema.value && (JSON.stringify(draft.value) !== JSON.stringify(schema.value.declaration) || removals.value > 0 || Object.keys(pluginConfigs.value).length > 0))
+watch(dirty, value => emit('dirty-changed', value), { immediate: true })
 const empty = computed(() => ![draft.value.aspects, draft.value.dimensions, draft.value.vocabularies, draft.value.families, draft.value.channels, draft.value.sources, draft.value.plugins, draft.value.scopes].some(entries => entries?.length))
 
 // request is what Apply sends: the draft plus the removals the sections recorded.
@@ -206,7 +207,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
       <div v-if="loading && (!schema || !options)" class="kx-loading" role="status">Loading…</div>
       <Button v-else-if="(!schema || !options) && error" @click="load()" severity="secondary" outlined>Retry</Button>
       <fieldset v-else-if="schema && options" class="pim-editor-surface" :disabled="busy || !schema.access.admin" :inert="busy || !schema.access.admin">
-        <Message v-if="empty && section === 'fields'" severity="info">No catalog definitions yet. Add an aspect to start defining fields.</Message>
+        <Message v-if="empty && section === 'fields'" severity="info">No catalog definitions yet. Add a field group to start defining fields.</Message>
         <BuilderFields v-if="section === 'fields'" :draft="draft" :schema="schema" :options="options" @remove="remove" />
         <BuilderDimensions v-else-if="section === 'dimensions'" :draft="draft" :schema="schema" @remove="remove" />
         <BuilderVocabularies v-else-if="section === 'vocabularies'" :catalog-id="catalogId" :draft="draft" :schema="schema" @remove="remove" />

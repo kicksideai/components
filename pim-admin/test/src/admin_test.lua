@@ -107,6 +107,34 @@ local function cases()
                 test.eq(user.get("/pim-admin/catalogs/" .. id .. "/policy_defaults").status, mask == 9 and 200 or 403)
             end
         end)
+        test.it("exposes built-in configuration and reviews a configured Quantity", function()
+            local owner = session.admin()
+            local id = catalog(owner)
+            local options = owner.get(path(id, "/schema/options"))
+            test.eq(options.status, 200, json.encode(options.body))
+            local found = false
+            for _, option in ipairs(options.body.data.types) do
+                if option.id == "kickside.pim.types:quantity" then
+                    test.not_nil(option.config_schema)
+                    test.eq(option.config_schema.required[1], "units")
+                    test.eq(option.config_schema.required[2], "canonical")
+                    test.eq(option.config_schema.properties.units.type, "object")
+                    found = true
+                end
+            end
+            test.is_true(found)
+            local response = owner.post(path(id, "/schema/plan"), { declaration = {
+                aspects = { { namespace = "measurements", attributes = {
+                    { code = "weight", type = "kickside.pim.types:quantity", index = "number",
+                        config = { units = { kg = "1", g = "0.001" }, canonical = "kg", scale = 3 } },
+                    { code = "price", type = "kickside.pim.types:money", config = { scale = 2, currency = "USD" } },
+                    { code = "count", type = "kickside.pim.types:integer", config = { range = { 0, 100 }, scale = 0 } },
+                    { code = "record", type = "kickside.pim.types:record", config = { members = { label = { form = "text" } } } },
+                } } },
+            } })
+            test.eq(response.status, 200, json.encode(response.body))
+            test.eq(response.body.data.class, "additive", json.encode(response.body))
+        end)
         test.it("writes vocabulary terms without a product editor", function()
             local owner = session.admin()
             local id = catalog(owner)

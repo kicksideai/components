@@ -71,11 +71,11 @@ function setContext(r: RequirementDecl, dim: string, member: string) {
 <template>
   <DefinitionList :count="families.length" :columns="['code', 'details']">
     <DefinitionRow :title="humanize(f.code)" :code="f.code" v-for="f in families" :key="f.code">
-      <template #details><span class="muted small">{{ f.aspects?.length ?? 0 }} {{ f.aspects?.length === 1 ? 'aspect' : 'aspects' }}</span></template>
+      <template #details><span class="muted small">{{ f.aspects?.length ?? 0 }} {{ f.aspects?.length === 1 ? 'field group' : 'field groups' }}</span></template>
       <template #actions><Button type="button" @click="remove(f)" :aria-label="'Remove ' + humanize(f.code)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
       <div class="pim-aspect">
         <div class="pim-fields">
-          <div class="pim-f pim-w-full"><div class="pim-f-label"><label>Aspects</label><span class="pim-f-note">the fields this family's products carry</span></div>
+          <div class="pim-f pim-w-full"><div class="pim-f-label"><label>Field groups</label><span class="pim-f-note">the fields this family's products carry</span></div>
             <ChipPicker :model-value="f.aspects ?? []" :options="aspectOptions" @update:model-value="setList(f, 'aspects', $event)" /></div>
         </div>
       </div>
