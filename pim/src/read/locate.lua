@@ -11,10 +11,7 @@ local M = {}
 
 
 -- trim returns the text of v with surrounding space removed; non-text is empty.
-local function trim(v: unknown): string
-    if type(v) ~= "string" then return "" end
-    return (v:gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 -- readable lists the catalogs the caller can read, oldest first.
 function M.readable(limit:integer?,offset:integer?,exact:string?): ({ types.CatalogSummary }?, error?)
