@@ -37,10 +37,7 @@ local function append_event(exec: any, thread_id: string, etype: string, role: s
     return seq, nil
 end
 
-local function trim(value: any): string
-    if type(value) ~= "string" then return "" end
-    return (value:gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 local function executor(): (any?, any?, string?)
     local actor = security.actor()

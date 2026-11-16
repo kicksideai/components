@@ -12,10 +12,7 @@ local consts = require("research_consts")
 -- folds the same live thread events for freshness.
 local M = {}
 
-local function trim(value: any): string
-    if type(value) ~= "string" then return "" end
-    return (value:gsub("^%s*(.-)%s*$", "%1"))
-end
+local trim = require("trim_text").trim
 
 -- The acting actor id the run is keyed to.
 local function current_actor_id(): (string?, error?)
