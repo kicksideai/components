@@ -258,7 +258,7 @@ local function define()
             p.states[4] = { id = "lanes", category = "started", kind = "parallel", regions = { { id = "qa", initial = "triage" }, { id = "security", initial = "triage" } }, join = "all" }
             local h = fixture.board({ declaration = d }); local id = steps.create(h, "task")
             local runs = assert(steps.get(h, id, { "stage_runs" })).stage_runs
-            failed_run(h, id, runs[1].visit, 1)
+            failed_run(h, id, runs[1].visit :: integer, 1)
             local closed = 0
             for _, run in ipairs(assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs) do
                 if run.outcome then closed = closed + 1; test.eq(run.visit, runs[1].visit); test.eq(run.outcome, "failed") end
