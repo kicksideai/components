@@ -176,6 +176,9 @@ entries:
     fixture: app:fixture
     steps: app:steps
     store: kickside.work.persist:store
+    clock: kickside.work.domain:clock
+    rows: kickside.work.retention:rows
+    core_prune: kickside.core.retention:prune
     materializer: kickside.work.persist:materializer
 - name: access_test
   kind: function.lua

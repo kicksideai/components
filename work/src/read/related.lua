@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local budget = require("budget")
+local json = require("json")
 -- Bounded relation and comment pages over a committed board snapshot.
 local access = require("access")
 local reader = require("reader")
@@ -93,13 +94,20 @@ end
 local function list_comments(request: types.CommentsRequest, context: types.ReadContext): (types.CommentsResult?, error?)
     local limit = request.limit or 50
     if limit < 1 or limit > 200 then return nil, access.invalid("limit must be 1..200") end
-    local offset, oerr = offset_of(request.after)
-    if oerr or offset == nil then return nil, oerr end
+    local after: domain.CommentPosition? = nil
+    if request.after then
+        local cursor, err = json.decode(request.after)
+        if err or type(cursor) ~= "table" or type(cursor.created_at) ~= "string" or cursor.created_at == ""
+            or type(cursor.comment_id) ~= "string" or cursor.comment_id == "" then
+            return nil, access.invalid("after is a comment page cursor")
+        end
+        after = { created_at = cursor.created_at, comment_id = cursor.comment_id }
+    end
     return access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, _dialect: string): (types.CommentsResult?, error?)
         local item, ierr = reader.find(tx, board, request.item)
         if ierr then return nil, ierr end
         if not item then return nil, errors.new({ kind = errors.NOT_FOUND, message = "item not found", details = { code = "item_not_found" } }) end
-        local rows, rerr = store.comments(tx, board.board_id, item.item_id, limit + 1, offset)
+        local rows, rerr = store.comments(tx, board.board_id, item.item_id, limit + 1, after)
         if rerr or not rows then return nil, rerr end
         local comments: { types.CommentView } = {}
         for i = 1, math.min(#rows, limit) do
@@ -107,7 +115,12 @@ local function list_comments(request: types.CommentsRequest, context: types.Read
             comments[i] = { id = row.comment_id, body = row.body, mentions = row.mentions, author = row.author, version = row.version,
                 created_at = row.created_at, edited_at = row.edited_at }
         end
-        return { comments = comments, after = #rows > limit and tostring(offset + limit) or nil }, nil
+        local next_cursor: string? = nil
+        if #rows > limit then
+            local last = rows[limit]
+            next_cursor = store.encode({ created_at = last.created_at, comment_id = last.comment_id }) :: string
+        end
+        return { comments = comments, after = next_cursor }, nil
     end, context)
 end
 function M.list_links(request: types.LinksRequest): (types.LinksResult?, error?)

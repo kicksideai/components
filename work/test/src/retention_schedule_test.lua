@@ -51,7 +51,7 @@ local function define()
             assert(h.call("settle", {}))
             for pass = 1, 2 do
                 local db = assert(store.open())
-                assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,item_after='',deadline_ms=NULL WHERE owner_id='work'", { h.id }))
+                assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,pending_only=0,deadline_ms=NULL WHERE owner_id='work'", { h.id }))
                 db:release()
                 local _, result = steps.retention_sweep()
                 test.is_false(result.needs_continue)

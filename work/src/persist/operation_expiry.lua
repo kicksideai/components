@@ -1,6 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local policy = require("policy")
-local clock = require("clock")
 local store = require("store")
 local jobs = require("jobs")
 local threads = require("threads")
@@ -24,12 +23,6 @@ function M.at(dialect: string): string
     return "(substr(" .. captured .. ", 1, 19) || '.000000000Z')"
 end
 
-function M.before(): (string?, error?)
-    local days, err = policy.event_days()
-    if err or not days then return nil, err end
-    return clock.offset(-days * 86400), nil
-end
-
 -- The age expression is an index key, but SQLite cannot seek it in a row
 -- tuple. Equal-age and later-age seeks each inspect at most one candidate.
 function M.selection(dialect: string, named: string, continuing: boolean): string
@@ -42,11 +35,15 @@ function M.selection(dialect: string, named: string, continuing: boolean): strin
     return "SELECT kickside_work_operation.*, CASE WHEN " .. M.RETIRABLE .. " THEN 1 ELSE 0 END AS eligible FROM (" .. candidates .. ") kickside_work_operation"
 end
 
-function M.retire(board_id: string, kind: string?, key: string?, after: string?): (boolean?, error?, string?)
-    local before, berr = M.before()
-    if berr or not before then return nil, berr end
+function M.retire(board_id: string, kind: string?, key: string?, after: string?, window: types.EventWindow?): (boolean?, error?, string?)
     local db, err = store.open()
     if err or not db then return nil, err end
+    if not window then
+        window, err = policy.event_window(db, board_id)
+        if err or not window then db:release(); return nil, err end
+    end
+    local before = window.before
+    if not before then db:release(); return false, nil end
     local params: { unknown } = { board_id, before }
     local named = ""
     local continuing=false

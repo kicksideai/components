@@ -410,6 +410,7 @@ entries:
     jobs: kickside.core.jobs:jobs
     types: kickside.work.command:types
     expiry: kickside.work.persist:operation_expiry
+    policy: kickside.work.domain:policy
   modules:
   - funcs
   - sql
@@ -421,7 +422,6 @@ entries:
     types: kickside.work:types
     threads: kickside.work.persist:threads
     policy: kickside.work.domain:policy
-    clock: kickside.work.domain:clock
     store: kickside.work.persist:store
     jobs: kickside.core.jobs:jobs
 - name: fold_moves

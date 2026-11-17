@@ -1,21 +1,26 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Board policy values override application defaults.
 local types = require("types")
-local registry = require("registry")
+local sql = require("sql")
 local durations = require("durations")
 local consts = require("consts")
+local retention = require("retention")
+local clock = require("clock")
 local M = {}
 M.DEFAULTS = { audit = "fields", audit_days = 365, trash_days = 14, tombstone_days = 365, interval_days = 365, stage_timeout = "PT1H", stage_max_visits = 5, comments_per_item = 10000 }
-function M.event_days(): (integer?, error?)
-    local entry, err = registry.get(consts.BOARD_IMPL)
+function M.event_window(db: sql.DB, board_id: string): (types.EventWindow?, error?)
+    local policy, err = retention.find_by_thread(db, board_id)
     if err then return nil, err end
-    local retention = entry and entry.meta and entry.meta.retention
-    local days = type(retention) == "table" and retention.event_days
-    days = type(days) == "number" and math.tointeger(days) or nil
+    if not policy then
+        policy, err = retention.normalize()
+        if err or not policy then return nil, err end
+    end
+    if not policy.enabled then return {}, nil end
+    local days = policy.event_hot_retention_days
     if not days or days < 1 or days > consts.MAX_DURATION_DAYS then
         return nil, errors.new({ kind = errors.INTERNAL, message = "board event retention requires days in 1.." .. consts.MAX_DURATION_DAYS, details = { code = "invalid_retention_policy" } })
     end
-    return days :: integer, nil
+    return { days = days, before = clock.offset(-days * 86400) }, nil
 end
 
 function M.check(own: unknown): error?

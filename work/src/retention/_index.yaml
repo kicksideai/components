@@ -20,6 +20,7 @@ entries:
       id: system:kickside.work.retention
     policies:
     - kickside.work.security:subject_retirement
+    - kickside.work.security:prune_boundary_read
     - kickside.work.security:retention_output_publish
     - kickside.work.security:module_runtime
   imports:
@@ -30,7 +31,6 @@ entries:
     clock: kickside.work.domain:clock
     defaults: kickside.work.settings:defaults
     policy: kickside.work.domain:policy
-    consts: kickside.work:consts
     store: kickside.work.persist:store
     threads: kickside.work.persist:threads
     registry: kickside.work.persist:registry

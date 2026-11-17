@@ -3,6 +3,9 @@ local test = require("test")
 local clock = require("clock")
 local scoped = require("scoped")
 local steps = require("steps")
+local fixture = require("fixture")
+local store = require("store")
+
 local function define()
     test.describe("board read surfaces", function()
         test.it("reports independent READ WRITE and ADMIN grants on board reads", function()
@@ -103,6 +106,42 @@ local function define()
             test.eq(#next.comments, 1)
             test.is_nil(next.after)
             test.is_true(first.comments[1].id ~= next.comments[1].id)
+        end)
+
+        test.it("continues a comment page after its anchor comment is deleted", function()
+            local board = fixture.board()
+            local item = steps.create(board, "task")
+            local oldest = steps.one(board, { op = "comment", item = item, body = "First" }).comment
+            local remaining = steps.one(board, { op = "comment", item = item, body = "Second" }).comment
+            local page = assert(board.call("list_comments", { item = { id = item }, limit = 1 }))
+            test.eq(page.comments[1].id, oldest)
+            test.not_nil(page.after)
+            test.eq(steps.one(board, { op = "comment", item = item, comment = oldest, delete = true }).status, "applied")
+            local next_page = assert(board.call("list_comments", { item = { id = item }, limit = 1, after = page.after }))
+            test.eq(#next_page.comments, 1)
+            test.eq(next_page.comments[1].id, remaining)
+        end)
+
+        test.it("orders equal comment timestamps by id and rejects a malformed continuation", function()
+            local board = fixture.board()
+            local item = steps.create(board, "task")
+            local ids: { string } = {}
+            for i = 1, 3 do ids[i] = steps.one(board, { op = "comment", item = item, body = tostring(i) }).comment end
+            table.sort(ids)
+            local db = assert(store.open())
+            assert(db:execute("UPDATE kickside_work_comment SET created_at=$1 WHERE board_id=$2 AND item_id=$3",
+                { clock.now(), board.id, item }))
+            db:release()
+            local cursor: string? = nil
+            for i, id in ipairs(ids) do
+                local page = assert(board.call("list_comments", { item = { id = item }, limit = 1, after = cursor }))
+                test.eq(#page.comments, 1)
+                test.eq(page.comments[1].id, id)
+                test.eq(page.after ~= nil, i < #ids)
+                cursor = page.after
+            end
+            local _, err = board.call("list_comments", { item = { id = item }, after = "1" })
+            test.eq(err:kind(), errors.INVALID)
         end)
 
         test.it("explains an admitted compiled query as a reader without stored values", function()

@@ -306,6 +306,7 @@ entries:
   modules: [uuid, funcs]
   imports:
     operations: app:operation_steps
+    clock: kickside.work.domain:clock
     race: app:retention_append
     test: wippy.test:test
     fixture: app:fixture

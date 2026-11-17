@@ -313,7 +313,7 @@ local function past_visit(name,dialect,counters)
 ${past}
 end
 local effective={tombstone_days=1,audit_days=1,interval_days=1}
-local event_days,dialect=1,'${dialect}'
+local cutoff,dialect='2026','${dialect}'
 local pages=${entries}
 for _,e in ipairs(pages) do
  local order=e.order or e.keys
@@ -488,7 +488,7 @@ test('round 8 every future deadline is one bounded populated index seek', async 
   const constants=expiry.slice(expiry.indexOf('M.TERMINAL ='),expiry.indexOf('function M.at'))
   const at=expiry.match(/function M.at[^\n]*\n([\s\S]*?)\nend/)[1]
   const deadline=source.slice(source.indexOf('function M.deadline'),source.lastIndexOf('return M'))
-    .replace(/^function M.deadline[^\n]*/,'function M.deadline(db,board_id,effective)')
+    .replace(/^function M.deadline[^\n]*/,'function M.deadline(db,board_id,effective,window)')
     .replace(/local earliest: integer\?/,'local earliest')
     .replace(/local params: domain.SqlParams/,'local params')
     .replace(/ :: integer/g,'')
@@ -499,13 +499,12 @@ function M.at(dialect)
 ${at}
 end
 local operation_expiry=M
-local policy={event_days=function()return 1,nil end}
 local clock={offset=function()return '2026' end}
 ${deadline}
 local db={type=function()return 'sqlite' end,query=function(_,q,params)
  io.write(q,'\\0',params[3] or '', '\\0');return {},nil
 end}
-M.deadline(db,'future',{trash_days=1,tombstone_days=1,audit_days=1,interval_days=1})
+M.deadline(db,'future',{trash_days=1,tombstone_days=1,audit_days=1,interval_days=1},{days=1,before='2026'})
 `)
   const bits=captured.split('\0');const queries=[]
   for(let i=0;i<bits.length-1;i+=2)queries.push([bits[i],bits[i+1]])
@@ -641,6 +640,7 @@ test('round 8 remaining retention selectors use bounded seeks through 20000 reta
   const associated=rows.match(/local associated = (\{[\s\S]*?\n        \})/)[1]
   const owned=lifecycle.match(/local TABLES[^=]*= (\{[\s\S]*?\n\})/)[1]
   const selection=lifecycle.match(/local selection = ([^\n]+)/)[1]
+  const boards=rows.match(/function M.boards[^\n]*\n([\s\S]*?)\nend/)[1]
   const captured=await run('lua',['-'],{},`
 local board_id,id='board','missing'
 local names={set='retention_test_set',item='retention_test_item'}
@@ -661,10 +661,16 @@ for _,e in ipairs(classes) do
  local selection=${selection}
  io.write(selection,'\\0',#params,'\\0')
 end
+local PENDING='retention_after IS NOT NULL'
+local function scan(db,position,limit)
+${boards}
+end
+local db={query=function(_,q) io.write(q,'\\0',2,'\\0') end}
+for pending=0,1 do scan(db,{inclusive=0,pending_only=pending,board_after='009999'},1) end
 `)
   const bits=captured.split('\0'),queries=[]
   for(let i=0;i<bits.length-1;i+=2)queries.push([bits[i],Number(bits[i+1])===3?['board','missing',1]:Number(bits[i+1])===2?['board',1]:[1]])
-  for(const [fn,args] of [['boards',['009999',0,1]],['trash',['board','2026',1]],['collect',['board']]]) {
+  for(const [fn,args] of [['trash',['board','2026',1]],['collect',['board']]]) {
     const section=rows.slice(rows.indexOf(`function M.${fn}(`))
     queries.push([section.match(/db:query\(\[\[([\s\S]*?)\]\]/)[1],args])
   }
@@ -684,7 +690,7 @@ def insert(table,values):
  db.execute('INSERT INTO '+table+' ('+','.join(data)+') VALUES ('+','.join('?' for _ in data)+')',list(data.values()))
 for n in range(20000):
  key=f'{n:06d}'
- insert('kickside_work_board',dict(board_id=key))
+ insert('kickside_work_board',dict(board_id=key,retention_after='' if n==19000 else None))
  insert('kickside_work_board_meta',dict(board_id=key))
  for name,values in [
   ('receipt',dict(command_key=key,at='2099')),
@@ -713,7 +719,10 @@ metrics=[]
 for analyzed in (False,True):
  if analyzed:db.execute('ANALYZE')
  for q,args in queries:
+  if 'SELECT board_id, retention_after' in q: args=['009999',1]
   plan=db.execute('EXPLAIN QUERY PLAN '+q,args).fetchall()
+  if 'retention_after IS NOT NULL' in q:
+   assert any('kickside_work_board_retention_pending' in row[3] for row in plan),plan
   assert not any('TEMP B-TREE' in row[3] for row in plan),(q,plan)
   ticks=[0]
   def tick():ticks[0]+=1;return 0
@@ -723,7 +732,7 @@ for analyzed in (False,True):
 print(json.dumps(metrics))
 `],{},JSON.stringify([initial,queries]))
   console.log('round8 remaining-selector maximum instructions',Math.max(...JSON.parse(result).map(m=>m[2])))
-  assert.equal(JSON.parse(result).length,66)
+  assert.equal(JSON.parse(result).length,68)
 })
 
 test('retention page performs no inspection after its budget is exhausted', async () => {

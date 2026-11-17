@@ -142,6 +142,7 @@ entries:
 - name: related
   kind: library.lua
   source: file://related.lua
+  modules: [json]
   imports:
     access: kickside.work.read:access
     reader: kickside.work.read:reader
