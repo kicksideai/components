@@ -1,5 +1,5 @@
-import {WippyVueElement, define, useEvents, type WippyElementConfig, type WippyPropsSchema} from '@wippy-fe/webcomponent-vue'
-import {lazyPage} from './lazy'
+import { WippyVueElement, define, type WippyElementConfig, type WippyPropsSchema, lazyVueConfig } from '@wippy-fe/webcomponent-vue'
+
 import stylesText from './styles.css?inline'
 import pkg from '../package.json'
 class AgentOnboardingElement extends WippyVueElement {
@@ -8,11 +8,7 @@ class AgentOnboardingElement extends WippyVueElement {
   }
   static get vueConfig() {
     return {
-      lazyConfig: lazyPage(
-        () => import('./lazy-mount').then((module) => module.mountConfig),
-        'Could not load the onboarding. Reload the page to try again.',
-        useEvents,
-      ),
+      ...lazyVueConfig(() => import('./lazy-mount').then((module) => module.mountConfig), { surface: 'page', loading: 'Loading…', failed: 'Could not load the onboarding. Reload the page to try again.', timeout: 30000 }),
     }
   }
 }

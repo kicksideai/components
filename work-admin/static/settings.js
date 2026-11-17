@@ -1,11 +1,11 @@
 import { inject as fo, defineComponent as ue, ref as L, useSlots as po, openBlock as c, createElementBlock as g, createElementVNode as d, createVNode as b, normalizeClass as ft, unref as r, withCtx as F, renderSlot as We, toDisplayString as D, createCommentVNode as U, createBlock as z, withDirectives as Qe, vShow as ut, computed as K, watch as xe, onMounted as kl, onUnmounted as Da, resolveComponent as Ia, Fragment as H, renderList as ee, createTextVNode as M, resolveDynamicComponent as zl, onBeforeUnmount as it, useId as Xl, withKeys as Ae, withModifiers as be, normalizeStyle as bo, watchEffect as Aa, nextTick as ho, provide as yo } from "vue";
-import { Icon as Z } from "@iconify/vue";
-import { api as go, on as ko, host as wo, define as Vo } from "@wippy-fe/proxy";
+import { e as tt, u as go, b as ko, c as wo, a as Vo } from "./mount-DgmSMmP5.js";
 import "pinia";
-import { e as tt, u as $o, b as xo, c as Co, a as So } from "./mount-DyrlIXV_.js";
+import { Icon as Z } from "@iconify/vue";
 import te from "primevue/select";
-import { m as Bl, e as na, s as he, f as To, t as je, p as Ut, d as Jl, g as Dt, r as sa, w as $t, l as jl, h as Ke, i as Ct, b as at, u as Pa, j as Ra, k as Zl, n as Oa, o as ge, q as wl, v as _t, x as Eo, y as Na, z as Uo, A as Vt, B as Do, _ as Ma, C as Io, D as Ao, E as ra, F as gt, G as Po, H as da, I as Ro, J as ua, K as Oo, L as ca, M as No, a as Mo, N as va, O as Fo, P as Lo } from "./latestRequest-DpOFwcMD.js";
+import { m as Bl, e as na, s as he, f as $o, t as je, p as Ut, d as Jl, g as Dt, r as sa, w as $t, l as jl, h as Ke, i as Ct, b as at, u as Pa, j as Ra, k as Zl, n as Oa, o as ge, q as wl, v as _t, x as xo, y as Na, z as Co, A as Vt, B as So, _ as Ma, C as To, D as Eo, E as ra, F as gt, G as Uo, H as da, I as Do, J as ua, K as Io, L as ca, M as Ao, a as Po, N as va, O as Ro, P as Oo } from "./latestRequest-DpOFwcMD.js";
 import G from "primevue/button";
+import { api as No, on as Mo, host as Fo, define as Lo } from "@wippy-fe/proxy";
 import Re from "primevue/tag";
 import Le from "primevue/toggleswitch";
 import Mt from "primevue/checkbox";
@@ -111,7 +111,7 @@ function Go(e, l = {}, t = { width: 1400, height: 480 }) {
   const a = t.width < 750 || Bl(e).length > 8 ? "TB" : "LR", o = new na.graphlib.Graph({ multigraph: !0 });
   o.setGraph({ rankdir: a, ranker: "network-simplex", acyclicer: "greedy", nodesep: 32, edgesep: 32, ranksep: 24, marginx: 32, marginy: 32 }), o.setDefaultEdgeLabel(() => ({}));
   const s = Bl(e), v = new Map(s.map((h, T) => [h.id, T])), f = e.states.map((h) => {
-    const T = (e.transitions ?? []).filter((Te) => Te.from === "any" && Te.to === h.id), k = Ot(he(h)), j = Ot(To(h, e)), Y = T.flatMap((Te) => Ot(je(Te) + " works from any state")), se = l.policy?.wip?.[h.id]?.limit, fe = se === void 0 ? 0 : jt(" · limit " + se), Se = Math.max(168, ...k.map((Te) => jt(Te) + 58), ...j.map((Te, pt) => jt(Te) + 32 + (pt === j.length - 1 ? fe : 0)), ...Y.map((Te) => jt(Te) + 32)), Ne = Math.max(80, 42 + k.length * 18 + j.length * 16 + Y.length * 18);
+    const T = (e.transitions ?? []).filter((Te) => Te.from === "any" && Te.to === h.id), k = Ot(he(h)), j = Ot($o(h, e)), Y = T.flatMap((Te) => Ot(je(Te) + " works from any state")), se = l.policy?.wip?.[h.id]?.limit, fe = se === void 0 ? 0 : jt(" · limit " + se), Se = Math.max(168, ...k.map((Te) => jt(Te) + 58), ...j.map((Te, pt) => jt(Te) + 32 + (pt === j.length - 1 ? fe : 0)), ...Y.map((Te) => jt(Te) + 32)), Ne = Math.max(80, 42 + k.length * 18 + j.length * 16 + Y.length * 18);
     return o.setNode(h.id, { width: Se + (a === "LR" ? 36 : 0), height: Ne + (a === "TB" ? 36 : 0) }), { state: h, x: 0, y: 0, width: Se, height: Ne, title: k, caption: j, badges: T, row: v.has(h.id) ? 0 : 1 };
   }), m = new Set(f.map((h) => h.state.id)), i = (e.transitions ?? []).flatMap((h) => h.from === "any" ? [] : h.from.filter((T) => m.has(T) && m.has(h.to)).map((T) => {
     const k = `${h.id}-${T}`, j = Ot(je(h)), Y = Math.max(72, ...j.map((fe) => jt(fe) + 24)), se = Math.max(24, j.length * 16 + 10);
@@ -2782,7 +2782,7 @@ const An = { class: "work-stack work-tight work-option-builder" }, Pn = { class:
     }
     function S($, A) {
       try {
-        Eo(t.draft, $, A.value), delete f.value[$.code];
+        xo(t.draft, $, A.value), delete f.value[$.code];
       } catch (x) {
         f.value[$.code] = x.message, A.value = $.code;
       }
@@ -4158,11 +4158,11 @@ const zs = ["onKeydown"], Bs = {
 });
 async function xa(e) {
   try {
-    const { data: l } = await go.get(e);
+    const { data: l } = await No.get(e);
     if (!l?.success) throw new Error(l?.message || (typeof l?.error == "string" ? l.error : l?.error?.message) || "Could not read published Flow.");
     return l;
   } catch (l) {
-    throw Uo(l, "Published Flow");
+    throw Co(l, "Published Flow");
   }
 }
 const Ca = (e) => `/api/v1/workflows/${encodeURIComponent(e)}/versions`, Sa = {
@@ -5175,7 +5175,7 @@ const qr = { class: "work-stack work-tight" }, Wr = {
       (C.transitions ??= []).push(R), E(R);
     }
     function B(C, R) {
-      const N = Io(C, R);
+      const N = To(C, R);
       if (N.length) {
         m.value = `Used by ${N.join(", ")}. Update those references first.`;
         return;
@@ -5183,7 +5183,7 @@ const qr = { class: "work-stack work-tight" }, Wr = {
       C.transitions?.splice(C.transitions.indexOf(R), 1), A();
     }
     function O(C, R) {
-      const N = Ao(C, R);
+      const N = Eo(C, R);
       if (N.length) {
         m.value = `${he(R)} is used by ${N.join(", ")}. Update these references first.`;
         return;
@@ -5389,7 +5389,7 @@ const qr = { class: "work-stack work-tight" }, Wr = {
                 _: 1
               })
             ]),
-            d("p", Yd, D(r(Do)(N, e.draft)), 1),
+            d("p", Yd, D(r(So)(N, e.draft)), 1),
             b(Ld, {
               state: N,
               process: $.value,
@@ -6985,7 +6985,7 @@ const Qu = {
           }, 8, ["severity"]),
           d("span", Jc, "Generation " + D(e.generation) + " → " + D(e.plan.generation), 1)
         ]),
-        d("p", Zc, D(r(Po)[e.plan.class] || "Review the classified changes below."), 1),
+        d("p", Zc, D(r(Uo)[e.plan.class] || "Review the classified changes below."), 1),
         e.plan.migration ? (c(), g("p", Qc, "Migration needed: " + D(e.plan.migration), 1)) : e.follows.length ? (c(), g("p", _c, "Follow migration: " + D(e.follows.join(", ")) + ". Existing items move to the new process generation; declared state maps apply.", 1)) : (c(), g("p", ev, "No follow process migration is indicated by these changes.")),
         t.value.length ? (c(), g("section", tv, [
           o[1] || (o[1] = d("h3", null, "Flow bindings", -1)),
@@ -7219,7 +7219,7 @@ const Qu = {
       const Q = T(), q = gt(B.value), _ = JSON.stringify(B.value);
       V.value = !0, P.value = "", X.value = "";
       try {
-        const ye = await Oo(q, (Et) => kt.packPlan(t.boardId, Et));
+        const ye = await Io(q, (Et) => kt.packPlan(t.boardId, Et));
         if (!Q() || _ !== JSON.stringify(B.value)) return;
         O.value = ye.plan, C.value = ye.plan, B.value = ye.request, oe.value = gt(B.value), N.value = crypto.randomUUID(), i.value = "Review";
       } catch (ye) {
@@ -7228,7 +7228,7 @@ const Qu = {
         V.value = !1;
       }
     }
-    const no = K(() => C.value ? Ro(C.value, k.value) : []), St = K(() => !!w.value?.migration_error || S.value?.status === "migrating");
+    const no = K(() => C.value ? Do(C.value, k.value) : []), St = K(() => !!w.value?.migration_error || S.value?.status === "migrating");
     function rt() {
       J.value = [], T(), C.value = void 0, R.value = void 0, oe.value = void 0, N.value = "";
     }
@@ -7254,7 +7254,7 @@ const Qu = {
           return;
         }
         P.value = "";
-        const He = No(_);
+        const He = Ao(_);
         w.value = He, s !== void 0 && He.generation >= s ? (s = void 0, v === f() && Tl(He), v = "") : (Q || !p.value || !j.value && He.generation !== p.value.generation) && Tl(He), Y.value && rt(), await ia(q);
       } catch (_) {
         if (!q()) return;
@@ -7267,7 +7267,7 @@ const Qu = {
       de.value = "";
       try {
         const q = await $t.packs();
-        Q() && (ne.value = q.filter(Mo));
+        Q() && (ne.value = q.filter(Po));
       } catch (q) {
         Q() && (de.value = q instanceof Error ? q.message : "Could not load packs.");
       }
@@ -7291,7 +7291,7 @@ const Qu = {
         if (!Q() || Ve.value.size || !q.matches(k.value, p.value.generation, $.value)) return;
         C.value = _, R.value = q, N.value = crypto.randomUUID(), i.value = "Review";
       } catch (_) {
-        Q() && (rt(), P.value = _ instanceof Error ? _.message : "Could not review changes.", J.value = Fo(_, k.value));
+        Q() && (rt(), P.value = _ instanceof Error ? _.message : "Could not review changes.", J.value = Ro(_, k.value));
       } finally {
         V.value = !1;
       }
@@ -7344,7 +7344,7 @@ const Qu = {
       try {
         const He = await kt.plan(t.boardId, va(da(Et, p.value.declaration), _, $.value));
         if (!x.value || Y.value || p.value.generation !== _ || JSON.stringify(k.value) !== ye) return "The draft changes during the check. Try the removal again.";
-        const dt = Lo(He, Q, q);
+        const dt = Oo(He, Q, q);
         if (dt) return dt;
         if (He.class === "refused") return "Resolve the refused draft changes in Review before removing this definition.";
       } catch (He) {
@@ -7354,7 +7354,7 @@ const Qu = {
       }
     }
     async function vo() {
-      j.value && !await wo.confirm({ header: "Discard changes?", message: "Your unsaved board settings will be discarded.", acceptLabel: "Discard", rejectLabel: "Keep editing" }) || o({ name: "board", board: t.boardId });
+      j.value && !await Fo.confirm({ header: "Discard changes?", message: "Your unsaved board settings will be discarded.", acceptLabel: "Discard", rejectLabel: "Keep editing" }) || o({ name: "board", board: t.boardId });
     }
     function mo() {
       s = void 0, w.value && Tl(w.value), X.value = "", P.value = "";
@@ -7365,10 +7365,10 @@ const Qu = {
     let Ul = () => {
     };
     return xe(() => t.boardId, (Q) => {
-      Ul(), Ul = ko(`component.${Q}`, () => {
+      Ul(), Ul = Mo(`component.${Q}`, () => {
         Ze();
       });
-    }, { immediate: !0 }), $o(Ze), Da(() => {
+    }, { immediate: !0 }), go(Ze), Da(() => {
       Ul(), h(), T();
     }), (Q, q) => (c(), g("section", {
       class: ft(["work-settings-shell", { "work-embedded": e.embedded }])
@@ -7651,19 +7651,19 @@ const Qu = {
 }), Mv = /* @__PURE__ */ ue({
   __name: "SettingsRoot",
   setup(e) {
-    const l = xo(), t = Co();
+    const l = ko(), t = wo();
     return yo(La, (a) => t("navigate", { route: Ho(a) })), (a, o) => (c(), z(Nv, {
       "board-id": r(l).boardId ?? "",
       embedded: r(l).embedded,
       onDirtyChange: o[0] || (o[0] = (s) => r(t)("dirty-change", { dirty: s }))
     }, null, 8, ["board-id", "embedded"]));
   }
-}), Fv = So(Mv, {
+}), Fv = Vo(Mv, {
   type: "object",
   properties: {
     "board-id": { type: "string", default: "", description: "Board to administer." },
     embedded: { type: "boolean", default: !1, description: "Fits in a System detail pane." }
   }
 });
-Vo(import.meta.url, Fv);
+Lo(import.meta.url, Fv);
 //# sourceMappingURL=settings.js.map

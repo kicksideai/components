@@ -1,11 +1,11 @@
 import { defineComponent as J, ref as n, computed as N, watch as z, openBlock as d, createBlock as Y, withCtx as q, createElementVNode as l, withModifiers as ee, toDisplayString as i, createElementBlock as m, Fragment as K, createTextVNode as D, createVNode as p, unref as s, createCommentVNode as g, renderList as Q, onUnmounted as ae, onMounted as le, isRef as te, normalizeClass as se } from "vue";
-import { Icon as R } from "@iconify/vue";
-import { on as oe, host as H, define as ie } from "@wippy-fe/proxy";
+import { u as oe, e as ie, a as re } from "./mount-DgmSMmP5.js";
 import "pinia";
-import { u as re, e as ne, a as de } from "./mount-DyrlIXV_.js";
+import { on as ne, host as H, define as de } from "@wippy-fe/proxy";
 import T from "primevue/button";
 import { a as P, w as O, _ as ue, b as ce, l as ve, c as Z, d as me } from "./latestRequest-DpOFwcMD.js";
 import M from "primevue/inputtext";
+import { Icon as R } from "@iconify/vue";
 import pe from "primevue/selectbutton";
 import ke from "primevue/toggleswitch";
 import be from "primevue/textarea";
@@ -245,10 +245,10 @@ function Ke(I = !0) {
   const w = /* @__PURE__ */ new Map();
   return z(h, (o) => {
     for (const [t, S] of w) o.some(($) => $.board_id === t) || (S(), w.delete(t));
-    for (const t of o) w.has(t.board_id) || w.set(t.board_id, oe(`component.${t.board_id}`, () => {
+    for (const t of o) w.has(t.board_id) || w.set(t.board_id, ne(`component.${t.board_id}`, () => {
       k();
     }));
-  }), re(k), ae(() => {
+  }), oe(k), ae(() => {
     u();
     for (const o of w.values()) o();
   }), { boards: h, loading: x, error: _, search: f, visibleBoards: y, load: k };
@@ -311,7 +311,7 @@ const Oe = { class: "work-admin-shell" }, ze = {
       u.value && !B.some((r) => r.board_id === u.value && Z(r.access)) && (u.value = "");
     });
     async function V() {
-      o.value = !0, w.value = await ne("kickside-work-board-settings"), o.value = !1;
+      o.value = !0, w.value = await ie("kickside-work-board-settings"), o.value = !1;
     }
     le(V);
     async function A(B) {
@@ -424,6 +424,6 @@ const Oe = { class: "work-admin-shell" }, ze = {
       }, null, 8, ["visible"])
     ]));
   }
-}), ra = de(ia, { type: "object", properties: {} });
-ie(import.meta.url, ra);
+}), ra = re(ia, { type: "object", properties: {} });
+de(import.meta.url, ra);
 //# sourceMappingURL=admin.js.map
