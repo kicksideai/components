@@ -7,6 +7,7 @@ import CapacityControl from './CapacityControl.vue'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
+import StageFlow from './StageFlow.vue'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import type { Declaration, Process, State } from '../../types'
@@ -26,7 +27,7 @@ const kinds = [{ value: 'human', icon: 'user' }, { value: 'gate', icon: 'shield-
 function changeKind(value: string) {
   const s = props.state
   s.kind = value; delete s.run; delete s.release_when; delete s.regions; delete s.join; delete s.due; if (value === 'automated' || value === 'gate') delete s.awaiting
-  if (value === 'automated') s.run = { stage: '', retry: { max: 1, backoff: 'PT1M' } }
+  if (value === 'automated') s.run = { stage: s.id, retry: { max: 1, backoff: 'PT1M' } }
   if (value === 'gate') s.release_when = { approvals: { min: 1, from: { group: '' }, prevent_self: true } }
   if (value === 'parallel') { s.regions = [{ id: 'region_1', initial: props.process.states.find(state => state.id !== s.id)?.id ?? '' }]; s.join = 'all' }
 }
@@ -87,8 +88,9 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
     <template v-if="state.kind === 'automated' && state.run">
       <h4 class="work-process-group">Automation</h4>
       <label class="work-stack work-tight"
-        >What runs<InputText v-model="state.run.stage" aria-label="Stage" required
+        >Run label<InputText v-model="state.run.stage" aria-label="Run label" required
       /></label>
+      <StageFlow v-model="state.run.flow_ref" @validity="emit('validity', 'flow', $event)" />
       <DurationControl v-model="state.run.timeout" label="Attempt timeout" @validity="(valid, key) => emit('validity', key, valid)" />
       <small class="work-muted">Blank uses the board timeout, or one hour.</small>
       <label class="work-row"><span class="work-spacer">Maximum visits</span><InputNumber

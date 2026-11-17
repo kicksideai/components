@@ -113,3 +113,16 @@ Packed creation accepts per-required-plugin JSON objects keyed by manifest ID;
 configuration joins the frozen retry identity, is not sent for Empty board, and
 is validated by Work before admission. Schema-aware creation configuration is
 not inferred from summaries that do not expose a configuration schema.
+Automated states retain `run.stage` as their editable run label. The shared
+published Flow picker selects a Flow; an explicit published-version choice writes
+`run.flow_ref = {kind: flow, id, version}`. Selection in progress blocks review;
+it never silently upgrades a saved version. Schema review shows the exact pinned
+references and Apply uses the existing frozen declaration/generation request.
+The state panel shows the picker's Flow title and published version, with the
+saved Flow ID available on hover instead of a duplicate ID line.
+The version list and exact-version read expose deleted Flows, missing versions
+and lost read access as an unavailable binding with its ID/version and error;
+failed reads preserve the binding for explicit replacement or removal. Work
+revalidates authority and compatibility during plan/apply. Legacy unbound runs
+remain editable without introducing a Flow binding. No Automation setup or input
+mapping UI is provided.

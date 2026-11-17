@@ -1,9 +1,12 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import { computed } from 'vue'
+import type { Declaration } from '../../types'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { classDescription, changeReason, type SchemaPlan } from './model'
-defineProps<{ plan?: SchemaPlan; generation: number; follows: string[]; configCount: number; packReview?: boolean }>()
+const props = defineProps<{ declaration?: Declaration; plan?: SchemaPlan; generation: number; follows: string[]; configCount: number; packReview?: boolean }>()
+const bindings = computed(() => props.declaration?.processes?.flatMap(process => process.states.filter(state => state.run?.flow_ref).map(state => ({ process: process.name || process.id, state: state.name || state.id, reference: state.run!.flow_ref! }))) ?? [])
 </script>
 <template>
       <section
@@ -35,6 +38,11 @@ defineProps<{ plan?: SchemaPlan; generation: number; follows: string[]; configCo
           v-else
           class="work-muted work-small"
         >No follow process migration is indicated by these changes.</p>
+        <section v-if="bindings.length" class="work-stack work-tight" aria-label="Reviewed Flow bindings">
+          <h3>Flow bindings</h3>
+          <p v-for="binding in bindings" :key="binding.process + ':' + binding.state">{{ binding.process }} / {{ binding.state }}: {{ binding.reference.id }} · v{{ binding.reference.version }}</p>
+          <p class="work-muted work-small">New entries use these exact published versions. Before replacing a binding, stop new entries, drain existing attempts and deliveries, pause the old launcher, save, then resume entries.</p>
+        </section>
         <slot />
         <h3 v-if="plan.refused.length">Refused changes</h3>
         <Message v-for="(change, index) in plan.refused" :key="index" severity="error" role="alert">{{ change.code }} · {{ change.what }} · {{ changeReason(change) }}<span v-if="change.to"> → {{ change.to }}</span></Message>
