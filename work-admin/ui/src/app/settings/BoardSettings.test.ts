@@ -312,3 +312,31 @@ it('keeps the open plugin status visible when a refresh changes only lifecycle p
   expect(w.get('.work-plugin-status').text()).toContain('Attachment configured')
   expect(w.get('[aria-label="Plugins editor"] .work-definition-toggle').attributes('aria-expanded')).toBe('true')
 })
+
+it('reviews the exact Flow and version, preserves permission failures and invalidates a replaced binding', async () => {
+  const { api } = await import('@wippy-fe/proxy')
+  const Select = (await import('primevue/select')).default
+  const view = schema()
+  view.declaration.processes![0].states[1] = { id: 'doing', name: 'In progress', category: 'started', kind: 'automated', run: { stage: 'Build' } }
+  vi.mocked(work.schema).mockResolvedValue(view)
+  vi.mocked(api.get).mockImplementation(async (path: string) => ({ data: String(path).endsWith('/versions') ? { success: true, versions: [{ version: 2 }, { version: 1 }] } : { success: true, version: { version: Number(String(path).split('/').at(-1)) } } }) as never)
+  const w = await render()
+  await getButton(w, 'Process').trigger('click'); await flushPromises()
+  await w.get('[aria-label="Edit state In progress"]').trigger('click'); await flushPromises()
+  await w.get('wc-workflow-picker').trigger('change', { detail: { flow_ref: { kind: 'flow', id: 'flow-a', version: 2 } } }); await flushPromises()
+  expect(getButton(w.get('.kx-head-actions'), 'Review changes').attributes('disabled')).toBeDefined()
+  await w.findAllComponents(Select).find(s => s.props('ariaLabel') === 'Published version')!.setValue(1); await flushPromises()
+  await getButton(w.get('.kx-head-actions'), 'Review changes').trigger('click'); await flushPromises()
+  const snapshot = vi.mocked(settings.plan).mock.calls.at(-1)![1]
+  expect(snapshot.declaration.processes![0].states[1].run?.flow_ref).toEqual({ kind: 'flow', id: 'flow-a', version: 1 })
+  expect(w.get('[aria-label="Schema review"]').text()).toContain('flow-a · v1')
+  vi.mocked(settings.apply).mockRejectedValueOnce(new Error('Flow READ access denied'))
+  await getButton(w.get('.kx-head-actions'), 'Apply').trigger('click'); await flushPromises()
+  expect(w.text()).toContain('Flow READ access denied')
+  expect(settings.apply).toHaveBeenCalledWith('b', snapshot, expect.any(String))
+  await getButton(w, 'Process').trigger('click')
+  await w.get('wc-workflow-picker').trigger('change', { detail: { flow_ref: { kind: 'flow', id: 'flow-b', version: 2 } } }); await flushPromises()
+  expect(getButton(w.get('.kx-head-actions'), 'Review changes').attributes('disabled')).toBeDefined()
+  await w.findAllComponents(Select).find(s => s.props('ariaLabel') === 'Published version')!.setValue(2); await flushPromises()
+  expect(w.get('.kx-head-actions').text()).toContain('Review changes')
+})

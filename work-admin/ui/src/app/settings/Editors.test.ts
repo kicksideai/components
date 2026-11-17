@@ -39,7 +39,7 @@ it('edits per-kind stage, approval, parallel and timer settings in their process
   expect(state.release_when?.approvals).toMatchObject({ min: 1, prevent_self: true })
   expect(state.run).toBeUndefined()
   await w.getComponent(SelectButton).setValue('automated')
-  await w.get('input[aria-label="Stage"]').setValue('build')
+  await w.get('input[aria-label="Run label"]').setValue('build')
   expect(state.run).toEqual({ stage: 'build', retry: { max: 1, backoff: 'PT1M' } })
   expect(state.release_when).toBeUndefined()
   await w.getComponent(SelectButton).setValue('parallel')
