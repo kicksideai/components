@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { beforeEach, expect, it, vi } from 'vitest'
+import { host } from '@wippy-fe/proxy'
 import { flushPromises, mount } from '@vue/test-utils'
 import SchemaBuilder from './SchemaBuilder.vue'
 import BuilderDeclaration from './BuilderDeclaration.vue'
@@ -13,6 +14,7 @@ import type { Declaration } from '../../types'
 import { schema, pluginFixture } from '../../test/fixtures'
 vi.mock('../../api', () => ({ pim: { schema: vi.fn(), schemaOptions: vi.fn(), planSchema: vi.fn(), applySchema: vi.fn(), configurePlugin: vi.fn(), termsPage: vi.fn(), invalidateTerms: vi.fn(), apply: vi.fn() } }))
 beforeEach(() => {
+  vi.mocked(host.confirm).mockResolvedValue(true)
   vi.mocked(pim.schema).mockResolvedValue(structuredClone(schema))
   vi.mocked(pim.schemaOptions).mockResolvedValue({ types: [], scopes: [], plugins: [], link_kinds: [] })
 })

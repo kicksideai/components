@@ -339,7 +339,14 @@ projection or a rebuild, and never define key or order (0.4).
 
 Built-in pack `kickside.pim.types`: `text`, `rich_text`, `identifier`,
 `integer`, `number`, `quantity`, `money`, `boolean`, `date`, `datetime`,
-`select` (term), `reference` (product or link kind), `asset`, `record`.
+`select` (term), `reference` (product), `link` (bound link kind), `record`.
+Built-in type metadata declares `config_schema` for supported representation
+settings: text/identifier key matching, integer and decimal scale/range,
+Money currency, Quantity units/canonical unit and numeric index settings, and
+record members.
+Quantity requires a nonempty unit map and canonical unit; the compiler retains
+its conversion-factor and canonical-factor checks. Shared schema forms consume
+this metadata rather than duplicating type-specific editors.
 
 An attribute declaration may carry `width` (`full`, `half`, `third`,
 `quarter`): its share of a form row in the product editor's twelve-column
@@ -1346,7 +1353,7 @@ HTTP follows the contract: reads are `GET` with query parameters (`/schema`,
 `/links`, `/explain`, `/changes`, `/publications`), commands and the filter query
 are `POST` (`/schema`, `/schema/plan`, `/query`, `/apply`, `/proposals`,
 `/proposals/{proposal_id}/decision`, `/releases`, `/withdrawals`, `/rebuild`,
-`/plugins/{plugin}/config`), all
+`/plugins/configure`), all
 under `/pim/catalogs/{id}`.
 
 The catalog contract's `list` rows and `get_schema` response include required
@@ -1418,7 +1425,7 @@ the caller can read. ADMIN and WRITE are independent grants, not implied by READ
 | `get_schema` | GET | `/pim/catalogs/{id}/schema` | READ |
 | `apply_schema` | POST | `/pim/catalogs/{id}/schema` | ADMIN |
 | `plan_schema` | POST | `/pim/catalogs/{id}/schema/plan` | ADMIN |
-| `configure_plugin` | POST | `/pim/catalogs/{id}/plugins/{plugin}/config` | ADMIN |
+| `configure_plugin` | POST | `/pim/catalogs/{id}/plugins/configure` (body `{plugin, config}`) | ADMIN |
 | `get` | GET | `/pim/catalogs/{id}/product` | READ |
 | `query` | POST | `/pim/catalogs/{id}/query` | READ |
 | `list_history` | GET | `/pim/catalogs/{id}/history` | READ |

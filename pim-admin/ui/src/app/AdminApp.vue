@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import InteractiveSurface from '../shared/InteractiveSurface.vue'
 import { computed, onUnmounted, ref } from 'vue'
-import { on } from '@wippy-fe/proxy'
+import { host, on } from '@wippy-fe/proxy'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { requestGeneration } from '../shared/requests'
 import Button from 'primevue/button'
@@ -17,9 +17,18 @@ import CreateCatalog from './CreateCatalog.vue'
 
 const ready = ref(false), creating = ref(false)
 void ensureTag('kickside-pim-catalog-settings').then(value => { ready.value = value })
-async function created(id: string) { await load(); selected.value = id }
+async function created(id: string) { await load(); await selectCatalog(id) }
 const catalogs = ref<CatalogRow[]>([])
 const selected = ref('')
+const dirty = ref(false)
+async function selectCatalog(id: string) {
+  if (id === selected.value) return
+  if (dirty.value && !await host.confirm({ header: 'Discard unsaved changes?', message: 'Switching catalogs will discard unsaved schema and plugin changes.', acceptLabel: 'Discard and switch', rejectLabel: 'Cancel' })) return
+  dirty.value = false
+  selected.value = id
+}
+function dirtyChanged(event: Event) { dirty.value = (event as CustomEvent<{ dirty: boolean }>).detail.dirty }
+
 const search = ref('')
 const loading = ref(true)
 const error = ref('')
@@ -52,7 +61,7 @@ onUnmounted(() => { unsubscribe(); reads.begin() })
       </div>
       <InputText v-model="search" class="pim-rail-search" type="search" aria-label="Find a catalog" placeholder="Find a catalog…" />
       <div class="pim-rail-list">
-        <InteractiveSurface v-for="c in visible" :key="c.catalog_id" class="pim-rail-row" :class="{ active: selected === c.catalog_id }" :aria-pressed="selected === c.catalog_id" @click="selected = c.catalog_id">
+        <InteractiveSurface v-for="c in visible" :key="c.catalog_id" class="pim-rail-row" :class="{ active: selected === c.catalog_id }" :aria-pressed="selected === c.catalog_id" @click="selectCatalog(c.catalog_id)">
           <span>{{ c.title || 'Untitled catalog' }}</span>
         </InteractiveSurface>
       </div>
@@ -60,7 +69,7 @@ onUnmounted(() => { unsubscribe(); reads.begin() })
     </aside>
     <main class="pim-system-main">
       <Message v-if="error" severity="error">{{ error }}</Message>
-      <kickside-pim-catalog-settings v-if="selected && ready" :key="selected" :catalog-id="selected" embedded="true" />
+      <kickside-pim-catalog-settings v-if="selected && ready" :key="selected" :catalog-id="selected" embedded="true" @dirty-changed="dirtyChanged" />
       <div v-else-if="loading" class="kx-loading" role="status">Loading catalogs…</div>
       <div v-else class="kx-empty"><Icon icon="tabler:settings" class="kx-empty-ico" /><h3 class="kx-empty-title">Catalog settings</h3><p class="kx-empty-sub">Select a catalog to edit its schema, plugins and policy.</p></div>
     </main>

@@ -13,6 +13,7 @@ import { termLabel as label } from '../../forms'
 // data written at once through apply, so they are not part of the review.
 import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
+import { host } from '@wippy-fe/proxy'
 import { pim } from '../../api'
 import type { ApplyItem, Declaration, RemoveDecl, SchemaView, TermRow, VocabularyDecl } from '../../types'
 import { humanize } from '../../forms'
@@ -48,6 +49,7 @@ const error = ref<Record<string, string>>({})
 const term = ref<Record<string, { code: string; label: string; parent: string }>>({})
 async function loadTerms(code: string, after?: string) {
   busy.value[code] = true
+  error.value[code] = ''
   try { const page = await pim.termsPage(props.catalogId, code, after); terms.value[code] = page.terms; pages.value[code] = after; cursors.value[code] = page.next } catch (e) { error.value[code] = e instanceof Error ? e.message : 'Could not load terms.' } finally { busy.value[code] = false }
 }
 function toggle(code: string) {
@@ -75,6 +77,7 @@ async function addTerm(v: VocabularyDecl) {
 }
 async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
   if (!canWrite.value) return
+  if (retired && !await host.confirm({ header: 'Retire term?', message: `Retire ${label(t)}? Term changes save immediately. You can restore this term later.`, acceptLabel: 'Retire', rejectLabel: 'Cancel' })) return
   busy.value[v.code] = true
   error.value[v.code] = ''
   try {
@@ -97,7 +100,8 @@ async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
         <Button v-if="declared(v.code)" type="button" @click="toggle(v.code)" severity="secondary" outlined size="small"><Icon icon="tabler:adjustments" aria-hidden="true" /> {{ open[v.code] ? 'Hide terms' : 'Terms' }}</Button>
         <span v-else class="muted small">Apply the schema before adding terms.</span>
         <div v-if="open[v.code]" class="pim-stack tight pim-terms">
-          <Message v-if="error[v.code]" severity="error" role="alert">{{ error[v.code] }}</Message>
+          <p class="muted small">Term changes save immediately.</p>
+          <Message v-if="error[v.code]" severity="error" role="alert">{{ error[v.code] }} <Button type="button" :disabled="busy[v.code]" @click="loadTerms(v.code, pages[v.code])" severity="secondary" outlined size="small">Retry</Button></Message>
           <table v-if="(terms[v.code] ?? []).length" class="pim-grid compact">
             <thead><tr><th>Code</th><th>Label</th><th v-if="v.hierarchical">Parent</th><th></th></tr></thead>
             <tbody><tr v-for="t in terms[v.code]" :key="t.code" :class="{ muted: t.retired }">
