@@ -3,7 +3,9 @@
 
 The System surface lists only catalogs whose backend response grants ADMIN.
 Pagination and search operate within that list; catalog creation selects the new
-catalog. The standalone settings component accepts `catalog-id` and `embedded`.
+catalog in the schema editor. Creation without a declaration supplies an empty
+generation 1; the editor displays “Define its schema” and lets the administrator
+review and apply the first definitions against that generation. The standalone settings component accepts `catalog-id` and `embedded`.
 Each component instance owns its draft and requests; it does not share routing
 or selection state with other instances.
 
@@ -47,3 +49,23 @@ expiry and maintenance limits stay read-only, marked "Managed in deployment
 settings", in Advanced. Audit retention is bounded: zero selects the 365-day
 default, and the UI enforces the backend's 106751-day ceiling for audit, trash
 and deleted-product notices.
+
+System labels catalog administration **Catalogs** and retains the System capability
+boundary. Catalog ADMIN alone does not grant System access. Aspects display as
+**Field groups**; Values offers Single value, Ordered list and Unique set while
+preserving the declaration wire values. Declaration remains a peer section.
+Leaving Declaration discards its invalid local text and resets its local validity;
+invalid JSON remains visibly blocked while the editor is active.
+
+The settings component emits `dirty-changed` with `{dirty}` for schema/removal
+and plugin drafts. Switching catalogs asks the host to confirm discarding a dirty
+draft; cancellation preserves selection and draft. Catalog ADMIN sees Share,
+which loads the existing `kickside-share` widget with Component access/share URLs.
+It owns principal selection, grant validation and last-owner protection.
+
+Term panels state that term changes save immediately. Retirement asks for host
+confirmation before writing; restoration remains immediate. Term reads clear
+previous errors at the start and expose Retry while keeping failed reads visible.
+Built-in type configuration comes from the backend's `config_schema` metadata
+and renders through the shared `wc-schema-form`, including Quantity units and
+canonical unit. Conversion factors and record members use its structured inputs.

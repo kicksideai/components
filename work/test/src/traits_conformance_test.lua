@@ -20,6 +20,7 @@ local METHODS = {
     pack_plan = "board.pack_plan", pack_apply = "board.pack_apply", configure_plugin = "board.configure_plugin", plan_move = "board.plan_move", move = "board.move",
 }
 local EXCLUDED = {
+    ["board.delete"] = "Administrative lifecycle teardown is called directly through the board contract.",
     ["board.plugin_feed"] = "Host projection feed adds no agent tool.",
     ["board.plugin_context"] = "Host service admission adds no agent tool.",
     ["schema_provider.resolve"] = "Provider seam resolves declarations during schema preparation.",

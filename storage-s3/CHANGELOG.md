@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/kicksideai/components/compare/storage-s3-v0.2.2...storage-s3-v0.2.3) (2026-11-17)
+
+
+### Bug Fixes
+
+* preserve web component host contracts and eager bundles ([#36](https://github.com/kicksideai/components/issues/36)) ([4384075](https://github.com/kicksideai/components/commit/43840756fd53380d09c80f1743f95b786fd3a5f7))
+
 ## [0.2.2](https://github.com/kicksideai/components/compare/storage-s3-v0.2.1...storage-s3-v0.2.2) (2026-11-10)
 
 

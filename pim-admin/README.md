@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # PIM administration
 
-`kickside/pim-admin` configures PIM catalogs on **System → Products**. It installs
+`kickside/pim-admin` configures PIM catalogs on **System → Catalogs**. It installs
 two host-mounted web components: `kickside-pim-admin` selects and creates catalogs;
 `kickside-pim-catalog-settings` edits one catalog, with `catalog-id` and `embedded`
 inputs. It does not install a product navigation item or consumer pages.

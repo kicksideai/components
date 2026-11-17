@@ -11,7 +11,7 @@ import ChipPicker from './ChipPicker.vue'
 import ConditionEditor from './ConditionEditor.vue'
 import JsonInput from './JsonInput.vue'
 import { stateTitle } from './process'
-const props = defineProps<{ transition: Transition & { people?: boolean }; process: Process; draft: Declaration; advanced: boolean; boardId?: string }>()
+const props = defineProps<{ transition: Transition & { people?: boolean }; process: Process; draft: Declaration; boardId?: string }>()
 const emit = defineEmits<{ validity: [key: string, valid: boolean] }>()
 function addEffect() { (props.transition.set ??= []).push({ field: props.draft.fields?.[0]?.code ?? '', value: '' }) }
 function changeEffect(index: number, mode: string) {
@@ -115,32 +115,32 @@ function changeEffect(index: number, mode: string) {
     <Button label="Add value" severity="secondary" outlined size="small" @click="addEffect"
       ><template #icon><Icon icon="tabler:plus" /></template
     ></Button>
-    <template v-if="advanced">
-      <label class="work-stack work-tight">Offer to people<Select :model-value="transition.people" aria-label="Offer to people" appendTo="self" optionLabel="label" optionValue="value" :options="[{ label: 'Work default', value: undefined }, { label: 'Offer explicitly', value: true }, { label: 'Hide from people', value: false }]" @update:model-value="transition.people = $event" /></label>
-      <label class="work-stack work-tight">Evaluation order<InputNumber :model-value="transition.order ?? null" aria-label="Transition order" :min="0" :useGrouping="false" @update:model-value="transition.order = $event ?? undefined" /></label>
-      <h4 class="work-process-group">Only when</h4>
-      <ConditionEditor
-        label="Allow this transition when"
-        :draft="draft"
-        :board-id="boardId"
-        :model-value="transition.when"
-        @update:model-value="transition.when = $event"
-        @validity="emit('validity', 'when', $event)"
-      />
-      <JsonInput
-        label="Set values"
-        :model-value="transition.set"
-        shape="array"
-        @update:model-value="transition.set = $event as Transition['set']"
-        @validity="emit('validity', 'set', $event)"
-      />
-      <JsonInput
-        label="Guards"
-        :model-value="transition.guards"
-        shape="array"
-        @update:model-value="transition.guards = $event as string[]"
-        @validity="emit('validity', 'guards', $event)"
-      />
-    </template>
+
+    <label class="work-stack work-tight">Offer to people<Select :model-value="transition.people" aria-label="Offer to people" appendTo="self" optionLabel="label" optionValue="value" :options="[{ label: 'Work default', value: undefined }, { label: 'Offer explicitly', value: true }, { label: 'Hide from people', value: false }]" @update:model-value="transition.people = $event" /></label>
+    <label class="work-stack work-tight">Evaluation order<InputNumber :model-value="transition.order ?? null" aria-label="Transition order" :min="0" :useGrouping="false" @update:model-value="transition.order = $event ?? undefined" /></label>
+    <h4 class="work-process-group">Only when</h4>
+    <ConditionEditor
+      label="Allow this transition when"
+      :draft="draft"
+      :board-id="boardId"
+      :model-value="transition.when"
+      @update:model-value="transition.when = $event"
+      @validity="emit('validity', 'when', $event)"
+    />
+    <JsonInput
+      label="Set values"
+      :model-value="transition.set"
+      shape="array"
+      @update:model-value="transition.set = $event as Transition['set']"
+      @validity="emit('validity', 'set', $event)"
+    />
+    <JsonInput
+      label="Guards"
+      :model-value="transition.guards"
+      shape="array"
+      @update:model-value="transition.guards = $event as string[]"
+      @validity="emit('validity', 'guards', $event)"
+    />
+
   </div>
 </template>

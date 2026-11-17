@@ -129,8 +129,9 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
             starter = input.starter, plugin_configs = input.plugin_configs, expected_generation = 0, key = "create/" .. board_id, declaration = input.declaration, trace_context = input.trace_context })
         if perr or not installed then return nil, perr end
         generation = installed.generation
-    elseif input.declaration then
-        local applied, serr = schema_commands.apply_schema({ trace_context = input.trace_context, board_id = board_id, declaration = input.declaration, plugin_configs = input.plugin_configs, key = "create/" .. board_id })
+    else
+        local initial = input.declaration or { key_prefix = "W" .. board_id:gsub("-", ""):sub(1, 9):upper() }
+        local applied, serr = schema_commands.apply_schema({ trace_context = input.trace_context, board_id = board_id, declaration = initial, plugin_configs = input.plugin_configs, key = "create/" .. board_id })
         if serr or not applied then return nil, errors.wrap(serr or errors.new({ kind = errors.INTERNAL, retryable = false, message = "operation returned no result", details = { code = "internal" } }), "initial schema failed") end
         generation = applied.generation
     end

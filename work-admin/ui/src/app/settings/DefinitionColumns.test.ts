@@ -17,11 +17,11 @@ it('gives short and long titles separate code, kind, flag, usage and action colu
     { code: 'long', title: 'A much longer field name', form: 'int', track: true },
     { code: 'third', form: 'text' }, { code: 'fourth', form: 'text' },
   ]
-  const w = mount(FieldsEditor, { attachTo: document.body, props: { draft, advanced: false } }); wrappers.push(w)
+  const w = mount(FieldsEditor, { attachTo: document.body, props: { draft } }); wrappers.push(w)
   const rows = w.findAll('.work-definition-head')
-  expect(w.get('.work-definition-columns').text()).toContain('NameCodeKindDetailsUsed by')
+  expect(w.get('.work-definition-columns').text()).toContain('NameIdentifierKindDetailsUsed by')
   expect(rows.map(row => row.get('.work-definition-code').text())).toEqual(['short', 'long', 'third', 'fourth'])
-  expect(rows.map(row => row.get('.work-definition-kind').text())).toEqual(['Text', 'Int', 'Text', 'Text'])
+  expect(rows.map(row => row.get('.work-definition-kind').text())).toEqual(['Text', 'Whole number', 'Text', 'Text'])
   expect(rows[1].text()).toContain('Tracked')
 })
 

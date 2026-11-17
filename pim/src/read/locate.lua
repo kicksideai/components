@@ -6,6 +6,7 @@ local component = require("component")
 local access = require("access")
 local consts = require("consts")
 local types = require("types")
+local store = require("store")
 
 local M = {}
 
@@ -37,12 +38,24 @@ function M.readable(limit:integer?,offset:integer?,exact:string?): ({ types.Cata
     return out, nil
 end
 
--- Exact summary remains actor-scoped and uses the component identity lookup.
+-- Identity, title and access come from the actor-scoped component lookup.
+-- Mutable summary state comes from the committed PIM row: post-commit public
+-- metadata publication can still be pending after a command is acknowledged.
 function M.summary(id:string): (types.CatalogSummary?,error?)
     local rows,err=M.readable(1,0,id)
     if err or not rows then return nil,err end
     if not rows[1] then return nil,errors.new({kind=errors.NOT_FOUND,message="catalog not found",details={code="catalog_not_found"}}) end
-    return rows[1],nil
+    return store.with_db(function(db: types.Executor): (types.CatalogSummary?,error?)
+        local catalog,cerr=store.catalog(db,id)
+        if cerr then return nil,cerr end
+        if not catalog then return nil,errors.new({kind=errors.NOT_FOUND,message="catalog has no schema",details={code="catalog_not_found"}}) end
+        local summary=rows[1]
+        summary.generation=catalog.generation
+        summary.product_count=catalog.product_count
+        summary.item_count=catalog.item_count
+        summary.status=catalog.rebuild_after~=nil and "rebuilding" or "ready"
+        return summary,nil
+    end)
 end
 
 -- resolve answers the catalog a request addresses.

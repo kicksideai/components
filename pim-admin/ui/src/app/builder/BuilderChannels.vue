@@ -64,7 +64,7 @@ function removeSource(s: SourceDecl) {
     <DefinitionList :count="sources.length" :columns="['code', 'details']">
       <template #head><header class="pim-bsection-head"><h3>Sources</h3></header></template>
       <DefinitionRow v-for="s in sources" :key="s.id" :title="humanize(s.id)" :code="s.id">
-        <template #details><span class="muted small">{{ s.writes?.length ?? 0 }} {{ s.writes?.length === 1 ? 'aspect' : 'aspects' }}</span></template>
+        <template #details><span class="muted small">{{ s.writes?.length ?? 0 }} {{ s.writes?.length === 1 ? 'field group' : 'field groups' }}</span></template>
         <template #actions><Button type="button" @click="removeSource(s)" :aria-label="'Remove ' + humanize(s.id)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
         <div class="pim-fields">
           <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Ordering</label><span class="pim-f-note">sequence keeps late deliveries from winning</span></div>
@@ -72,7 +72,7 @@ function removeSource(s: SourceDecl) {
           <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Audit</label><span class="pim-f-note">record each value change</span></div>
             <label class="row"><ToggleSwitch :aria-label="'Audit ' + s.id" :model-value="s.audit !== false" @update:model-value="$event ? delete s.audit : (s.audit = false)" /><span>{{ s.audit === false ? 'Off for this source' : 'As the catalog policy' }}</span></label></div>
           <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Principals</label><span class="pim-f-note">who may write as this source</span></div><PrincipalList :catalog-id="catalogId" :model-value="s.principals ?? []" @update:model-value="setList(s, 'principals', $event)" /></div>
-          <div class="pim-f pim-w-full"><div class="pim-f-label"><label>Writes</label><span class="pim-f-note">aspects this source may set</span></div><ChipPicker :model-value="s.writes ?? []" :options="aspectOptions" @update:model-value="setList(s, 'writes', $event)" /></div>
+          <div class="pim-f pim-w-full"><div class="pim-f-label"><label>Writes</label><span class="pim-f-note">field groups this source may set</span></div><ChipPicker :model-value="s.writes ?? []" :options="aspectOptions" @update:model-value="setList(s, 'writes', $event)" /></div>
         </div>
       </DefinitionRow>
       <template #add><div class="row pim-add-row"><InputText v-model="newSource" type="text" placeholder="new_source" @keydown.enter.prevent="addSource" class="mono" /><Button type="button" :disabled="!CODE.test(newSource)" @click="addSource" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add source</Button></div></template>

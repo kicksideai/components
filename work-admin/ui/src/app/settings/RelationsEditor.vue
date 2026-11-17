@@ -43,7 +43,7 @@ async function remove(id: string) {
       role="alert"
     >{{ error }}</p>
     <DefinitionList columns="relations" :count="relations.length">
-    <DefinitionRow :title="humanize(relation.id)" :code="relation.id" :kind="relation.symmetric ? 'Symmetric' : 'Directional'"
+    <DefinitionRow :title="humanize(relation.id)" :code="relation.id" :kind="relation.symmetric ? 'Same both ways' : 'Different each way'"
       v-for="(relation, index) in relations"
       :key="index"
       class="work-stack"
@@ -57,7 +57,7 @@ async function remove(id: string) {
           @click="remove(relation.id)" aria-label="Remove relation" size="small"><Icon icon="tabler:trash" aria-hidden="true" /></Button>
       </template>
       <div class="work-settings-grid">
-        <label class="work-stack work-tight">ID
+        <label class="work-stack work-tight">Identifier
           <InputText
             v-model="relation.id"
             required
@@ -77,17 +77,17 @@ async function remove(id: string) {
             aria-label="Inward label"
           />
         </label>
-        <label class="work-stack work-tight">Cardinality
+        <label class="work-stack work-tight">Links allowed
           <Select
             :model-value="relation.cardinality ?? 'many'" @update:model-value="relation.cardinality = $event"
 
-            aria-label="Relation cardinality"
+            aria-label="Links allowed"
            appendTo="self" optionLabel="label" optionValue="value" optionDisabled="disabled" :options="[{ label: 'One link', value: 'one', disabled: false }, { label: 'Many links', value: 'many', disabled: false }]" />
         </label>
         <label class="work-row">
           <Checkbox
             v-model="relation.symmetric"
-            aria-label="Symmetric" binary />Same meaning in both directions
+            aria-label="Same meaning in both directions" binary />Same meaning in both directions
         </label>
       </div>
       <p class="work-relation-preview work-small">

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.23](https://github.com/kicksideai/components/compare/dashboard-v0.1.22...dashboard-v0.1.23) (2026-11-17)
+
+
+### Bug Fixes
+
+* preserve web component host contracts and eager bundles ([#36](https://github.com/kicksideai/components/issues/36)) ([4384075](https://github.com/kicksideai/components/commit/43840756fd53380d09c80f1743f95b786fd3a5f7))
+
 ## [0.1.22](https://github.com/kicksideai/components/compare/dashboard-v0.1.21...dashboard-v0.1.22) (2026-11-10)
 
 

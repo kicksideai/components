@@ -1,0 +1,256 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local test=require("test")
+local fixture=require("fixture")
+local steps=require("steps")
+local rows=require("rows")
+local uuid=require("uuid")
+local json=require("json")
+local function actor(h,a)
+    a.board_id=h.id
+    return h.call("direct",{target="app:stage_delivery_actor",input=a})
+end
+local function binding(h,a)
+    a.board_id=h.id
+    return h.call("direct",{target="app:flow_binding_actor",input=a})
+end
+local function setup(opts)
+    opts=opts or {}
+    local h=fixture.board({bare=true})
+    local ref=assert(binding(h,{op="flow",crash=opts.crash}))
+    if not opts.real then assert(binding(h,{op="fault",fault="success"})) end
+    local d={key_prefix=h.prefix,fields={},item_types={{id="task",process="p",fields={}}},processes={{id="p",initial="ready",migration="pin",states={
+        {id="ready",category="unstarted"},
+        {id="build",category="started",kind="automated",run={stage="Build",flow_ref=ref,on_pass="passed",on_fail="failed",on_cancel="canceled",retry=opts.retry and {max=2,backoff="PT0.1S"} or nil}},
+        {id="done",category="completed"},{id="failed",category="canceled"},{id="canceled",category="canceled"}},transitions={
+        {id="start",from={"ready"},to="build"},{id="passed",from={"build"},to="done"},{id="failed",from={"build"},to="failed"},
+        {id="canceled",from={"build"},to="canceled"},{id="again",from={"done","failed","canceled"},to="build"}}}}}
+    if opts.regional then
+        local p=d.processes[1]
+        p.states[#p.states+1]={id="parallel",kind="parallel",category="started",join="all",regions={{id="lane",initial="build"}}}
+        p.transitions[1].to="parallel"
+    end
+    assert(h.call("apply_schema",{declaration=d}))
+    if opts.manual then assert(binding(h,{op="pause_launcher"})) end
+    assert(actor(h,{op="probe",mode=opts.real and "real" or "success"}))
+    local item=steps.create(h,"task")
+    steps.one(h,{op="transition",item=item,transition="start"})
+    local entry
+    for _,e in ipairs(steps.events(h)) do if e.type=="kickside.work.events:stage.entered" then entry=e.body end end
+    assert(entry)
+    return h,entry,ref
+end
+local function envelope(e,ref,status)
+    return {token={board_id=e.board_id,item=e.item,visit=e.visit,attempt=e.attempt},run_id=uuid.v4(),dataflow_id=uuid.v4(),flow_ref=ref,status=status or "failed",ended_at="2026-11-17T00:00:00Z"}
+end
+local function launch(h,e,generation)
+    local launcher=assert(binding(h,{op="launcher_id"}))
+    return actor(h,{op="launch",request={config={board_id=h.id},input=e,sink_op="upsert",origin=launcher,
+        automation_ref={kind="automation",id=launcher,revision=generation or 1},identity_key="delivery",idempotency_key="delivery/"..(generation or 1)}})
+end
+local function reports(h,item)
+    return rows.scalar("SELECT COUNT(*) AS n FROM kickside_work_stage_run WHERE board_id=$1 AND item_id=$2 AND outcome IS NOT NULL",{h.id,item})
+end
+local function define()
+    test.describe("Work stage delivery and completion",function()
+        test.it("reuses attempt identity across Automation delivery generations and selects only the fixed envelope",function()
+            local h,e=setup()
+            local one=assert(launch(h,e,1));test.is_true(one.success)
+            local first=json.decode(assert(actor(h,{op="observed"})).request)
+            local two=assert(launch(h,e,2));test.is_true(two.success)
+            local second=json.decode(assert(actor(h,{op="observed"})).request)
+            test.eq(first.idempotency_key,second.idempotency_key)
+            test.eq(second.automation_ref.revision,2)
+            test.eq(second.origin,assert(binding(h,{op="launcher_id"})))
+            test.is_nil(second.input.flow_ref)
+            test.is_nil(second.input.at)
+            test.eq(second.config.completion.component_id,h.id)
+            test.eq(#second.config.completion.token_fields,4)
+        end)
+        test.it("keeps capacity and uncertain admission retryable while board reports can commit",function()
+            for _,mode in ipairs({"capacity","uncertain"}) do
+                local h,e=setup()
+                assert(actor(h,{op="probe",mode=mode}))
+                local out=assert(launch(h,e));test.is_false(out.success);test.is_true(out.error.retriable)
+                test.eq(out.error.code,mode=="capacity" and "rate_limited" or "provider_unavailable")
+                test.eq(assert(actor(h,{op="observed"})).calls,1)
+                test.eq(reports(h,e.item),0)
+                assert(h.call("report",{item=e.item,visit=e.visit,attempt=e.attempt,outcome="passed",outputs={answer=42}}))
+                test.eq(reports(h,e.item),1)
+            end
+        end)
+        test.it("keeps an admission with no acknowledgement or definite refusal pending",function()
+            for _,mode in ipairs({"no_verdict","no_ack"}) do
+                local h,e=setup()
+                assert(actor(h,{op="probe",mode=mode}))
+                local out=assert(launch(h,e))
+                test.is_false(out.success);test.is_true(out.error.retriable)
+                test.eq(reports(h,e.item),0)
+            end
+        end)
+        test.it("closes a definite pre-admission rejection through the finisher",function()
+            local h,e=setup()
+            assert(actor(h,{op="probe",mode="reject"}))
+            test.is_true(assert(launch(h,e)).success)
+            local runs=assert(h.call("list_stage_runs",{item={id=e.item}})).stage_runs
+            test.eq(runs[1].outcome,"failed")
+            test.eq(runs[1].outputs.error,"flow_launch_rejected")
+            test.eq(assert(h.call("get",{item={id=e.item}})).item.state,"failed")
+        end)
+        test.it("fences unbound and obsolete entries before calling Workflows",function()
+            local h,e=setup()
+            local old=e.visit;e.visit=old+100
+            test.is_true(assert(launch(h,e)).success)
+            e.visit=old;e.flow_ref=nil
+            test.is_true(assert(launch(h,e)).success)
+            test.eq(assert(actor(h,{op="observed"})).calls,0)
+        end)
+        for _,status in ipairs({"completed","failed","cancelled","terminated"}) do
+            test.it("finishes silent "..status.." through the matching stage route",function()
+                local h,e,ref=setup()
+                local out,err=actor(h,{op="complete",envelope=envelope(e,ref,status)})
+                test.is_nil(err);test.is_true(out and out.acknowledged)
+                local expected=status=="completed" and "done" or status=="cancelled" and "canceled" or "failed"
+                test.eq(assert(h.call("get",{item={id=e.item}})).item.state,expected)
+                test.eq(reports(h,e.item),1)
+            end)
+        end
+        test.it("recovers a crash before report and acknowledges duplicates without another append",function()
+            local h,e,ref=setup()
+            test.eq(reports(h,e.item),0)
+            local env=envelope(e,ref)
+            assert(actor(h,{op="probe",mode="crash_before_report"}))
+            local out,err=actor(h,{op="complete",envelope=env})
+            test.is_nil(out);test.not_nil(err);test.eq(err:details().code,"completion_interrupted")
+            test.eq(reports(h,e.item),0)
+            assert(actor(h,{op="complete",envelope=env}))
+            local n=#steps.events(h)
+            assert(actor(h,{op="complete",envelope=env}))
+            test.eq(#steps.events(h),n)
+        end)
+        test.it("lets a committed report win against every terminal status",function()
+            for _,status in ipairs({"completed","failed","cancelled","terminated"}) do
+                local h,e,ref=setup()
+                assert(h.call("report",{item=e.item,visit=e.visit,attempt=e.attempt,outcome="passed",outputs={answer=42}}))
+                local n=#steps.events(h)
+                assert(actor(h,{op="complete",envelope=envelope(e,ref,status)}))
+                test.eq(#steps.events(h),n)
+                test.eq(assert(h.call("list_stage_runs",{item={id=e.item}})).stage_runs[1].outputs.answer,42)
+            end
+        end)
+        test.it("retries the existing item CAS when a concurrent report commits first",function()
+            local h,e,ref=setup()
+            assert(actor(h,{op="probe",mode="cas_report"}))
+            assert(actor(h,{op="complete",envelope=envelope(e,ref)}))
+            local runs=assert(h.call("list_stage_runs",{item={id=e.item}})).stage_runs
+            test.eq(#runs,1);test.eq(runs[1].outcome,"passed");test.eq(runs[1].outputs.answer,42)
+        end)
+        test.it("acknowledges a retired stage row while its item locator still exists",function()
+            local h,e,ref=setup()
+            assert(actor(h,{op="retire_stage",item=e.item}))
+            local n=#steps.events(h)
+            assert(actor(h,{op="complete",envelope=envelope(e,ref)}))
+            test.eq(#steps.events(h),n)
+        end)
+        test.it("ignores stale visits attempts missing and trashed items",function()
+            for _,mode in ipairs({"visit","attempt","missing","trashed"}) do
+                local h,e,ref=setup()
+                local env=envelope(e,ref)
+                if mode=="visit" then env.token.visit=e.visit+100
+                elseif mode=="attempt" then env.token.attempt=e.attempt+1
+                elseif mode=="missing" then env.token.item=uuid.v4()
+                else steps.one(h,{op="delete",item=e.item}) end
+                local n=#steps.events(h)
+                assert(actor(h,{op="complete",envelope=env}))
+                test.eq(#steps.events(h),n)
+            end
+        end)
+        test.it("fences regional visits and completes the active region",function()
+            local h,e,ref=setup({regional=true})
+            local env=envelope(e,ref,"completed");env.token.visit=e.visit-1
+            assert(actor(h,{op="complete",envelope=env}));test.eq(reports(h,e.item),0)
+            env.token.visit=e.visit
+            assert(actor(h,{op="complete",envelope=env}));test.eq(reports(h,e.item),1)
+        end)
+        test.it("routes retry completion and fences the preceding attempt",function()
+            local h,e,ref=setup({retry=true})
+            local env=envelope(e,ref)
+            assert(actor(h,{op="complete",envelope=env}))
+            steps.wait_for("completion retry",function()
+                for _,event in ipairs(steps.events(h)) do
+                    if event.type=="kickside.work.events:stage.entered" and event.body.attempt==2 then return true end
+                end
+                return false
+            end)
+            local n=#steps.events(h)
+            assert(actor(h,{op="complete",envelope=env}));test.eq(#steps.events(h),n)
+            env.token.attempt=2
+            assert(actor(h,{op="complete",envelope=env}))
+            test.eq(assert(h.call("get",{item={id=e.item}})).item.state,"failed")
+        end)
+        test.it("rejects foreign board tokens unknown fields and invalid locators",function()
+            local h,e,ref=setup()
+            for _,mode in ipairs({"board","unknown","uuid","visit","attempt","envelope","ref","run","error"}) do
+                local env=envelope(e,ref)
+                if mode=="board" then env.token.board_id=uuid.v4()
+                elseif mode=="unknown" then env.token.input={secret=true}
+                elseif mode=="uuid" then env.token.item="no"
+                elseif mode=="envelope" then env.input={private=true}
+                elseif mode=="ref" then env.flow_ref.extra=true
+                elseif mode=="run" then env.run_id=nil
+                elseif mode=="error" then env.error={code="failed",message=string.rep("x",4097)}
+                else env.token[mode]=0 end
+                local out,err=actor(h,{op="complete",envelope=env})
+                test.is_nil(out);test.not_nil(err)
+            end
+            test.eq(reports(h,e.item),0)
+        end)
+        test.it("enforces live board WRITE on completion",function()
+            local h,e,ref=setup()
+            local other=fixture.user(h)
+            assert(h.call("grant",{subject_id=h.actor:id(),mask=15}))
+            local out,err=other("direct",{target="app:stage_delivery_actor",input={op="complete",board_id=h.id,envelope=envelope(e,ref)}})
+            test.is_nil(out);test.not_nil(err)
+            test.eq(reports(h,e.item),0)
+        end)
+        test.it("refuses another authorized user's principal before completion",function()
+            local h,e,ref=setup()
+            local other,id=fixture.user(h)
+            assert(h.call("grant",{subject_id=id,mask=3}))
+            local out,err=other("direct",{target="app:stage_delivery_actor",input={op="complete",board_id=h.id,envelope=envelope(e,ref)}})
+            test.is_nil(out);test.not_nil(err);test.eq(err:details().code,"stage_launch_principal_denied")
+            test.eq(reports(h,e.item),0)
+        end)
+        test.it("admits one real run across delivery replay and publishes completion without a report",function()
+            local h,e,ref=setup({real=true,manual=true})
+            local launcher=assert(binding(h,{op="launcher"}))
+            local req={config={board_id=h.id},input=e,sink_op="upsert",origin=launcher.id,
+                automation_ref={kind="automation",id=launcher.id,revision=1},identity_key="replay",idempotency_key="generation/1"}
+            local one=assert(actor(h,{op="launch",request=req}));test.is_true(one.success)
+            req.idempotency_key="generation/2"
+            local two=assert(actor(h,{op="launch",request=req}));test.is_true(two.success)
+            if two.dest_ref then test.eq(one.dest_ref.run_id,two.dest_ref.run_id) else test.eq(two.result,"noop") end
+            steps.wait_for("real run completion",function() return reports(h,e.item)==1 end)
+            test.eq(rows.scalar("SELECT COUNT(*) AS n FROM workflow_runs WHERE workflow_id=$1",{ref.id}),1)
+            test.eq(assert(h.call("get",{item={id=e.item}})).item.state,"done")
+        end)
+        test.it("routes a real launcher-driven crash immediately without waiting for the stage timeout",function()
+            local h,e,ref=setup({real=true,crash=true})
+            steps.wait_for("crashing Flow completion",function() return reports(h,e.item)==1 and rows.scalar("SELECT COUNT(*) AS n FROM workflow_runs WHERE workflow_id=$1 AND status='failed' AND NOT terminal_event_pending",{ref.id})==1 end)
+            test.eq(assert(h.call("get",{item={id=e.item}})).item.state,"failed")
+            test.eq(rows.scalar("SELECT COUNT(*) AS n FROM workflow_runs WHERE workflow_id=$1 AND status='failed' AND NOT terminal_event_pending",{ref.id}),1)
+        end)
+        test.it("removes the real owned launcher before deleting its board",function()
+            local h=fixture.board({bare=true})
+            local ref=assert(binding(h,{op="flow"}))
+            local d={key_prefix=h.prefix,fields={},item_types={{id="task",process="p",fields={}}},processes={{id="p",initial="ready",states={{id="ready",category="unstarted"},{id="build",category="started",kind="automated",run={stage="Build",flow_ref=ref}}}}}}
+            assert(h.call("apply_schema",{declaration=d}))
+            local launcher=assert(binding(h,{op="launcher"}))
+            local out,err=actor(h,{op="teardown"})
+            if err then test.eq(err:details().code,"stage_launcher_delete_pending",tostring(err)) end
+            steps.wait_for("owned launcher deletion",function() return rows.scalar("SELECT COUNT(*) AS n FROM kickside_components WHERE component_id=$1",{launcher.id})==0 end)
+            assert(actor(h,{op="teardown"}))
+            steps.deleted(h.id)
+        end)
+    end)
+end
+return {run=test.run_cases(define)}

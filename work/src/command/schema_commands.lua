@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Schema commands: plan a declaration against the board, apply it as the next generation (claiming key prefixes
 -- on the registry) and wake a parked follow migration. All need ADMIN on the board.
+local funcs = require("funcs")
 local jobs = require("jobs")
 local sql = require("sql")
 local consts = require("consts")
@@ -128,6 +129,8 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
             end
         end
     end
+    local _, binding_err = funcs.call("kickside.work.service:stage_binding", { board_id = board_id, compiled = compiled })
+    if binding_err then return nil, binding_err :: error end
     local limit_err = rollup_rows.check(db, board_id, compiled)
     if limit_err then return nil, limit_err end
     declaration.stamp(effective, compiled)
@@ -288,12 +291,14 @@ function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?,
         if rerr or stored then return stored, rerr end
         if berr then return nil, berr end
         if perr or not plan then return nil, perr end
-        if plan.unchanged and not marker then
-            return { generation = plan.generation, class = "unchanged", changes = {}, as_of = head }, nil
-        end
         if #plan.refused > 0 then
             return nil, guard.invalid("schema change reinterprets stored values", { code = "migration_required",
                 changes = plan.refused :: { domain.JsonObject }, migration = migration_hint(plan.refused) })
+        end
+        local _, binding_err = funcs.call("kickside.work.service:stage_binding", { board_id = board_id, compiled = plan.compiled, install = true })
+        if binding_err then return nil, binding_err :: error end
+        if plan.unchanged and not marker then
+            return { generation = plan.generation, class = "unchanged", changes = {}, as_of = head }, nil
         end
         local result: types.SchemaResult = { generation = plan.generation, class = plan.class, changes = plan.changes }
         local claim: types.Write? = nil

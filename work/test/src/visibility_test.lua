@@ -182,7 +182,7 @@ local function define()
                 local response = session.http("GET", "/api/work/packs")
                 test.eq(response.status, session == outsider and 403 or 200, "list_packs")
             end
-            local writes = { pack_plan = true, pack_apply = true, update = true, bulk = true, cancel_bulk = true, plan_move = true, move = true, create = true, plan_schema = true, apply_schema = true, resume_migration = true, apply = true, approve = true, report = true, configure_plugin = true }
+            local writes = { delete = true, pack_plan = true, pack_apply = true, update = true, bulk = true, cancel_bulk = true, plan_move = true, move = true, create = true, plan_schema = true, apply_schema = true, resume_migration = true, apply = true, approve = true, report = true, configure_plugin = true }
             for method, locator in pairs({ bulk_status = "bulk_id", move_status = "move_id" }) do
                 covered[method] = true
                 for _, s in ipairs({ outside, holder, inside, admin, outsider }) do

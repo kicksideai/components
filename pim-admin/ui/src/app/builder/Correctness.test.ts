@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { beforeEach, expect, it, vi } from 'vitest'
+import { host } from '@wippy-fe/proxy'
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
 import Select from 'primevue/select'
@@ -18,6 +19,7 @@ const options = { types: [
   { id: 'kickside.pim.types:integer', title: 'Integer', form: 'int', indexes: ['none'] },
 ], scopes: [], plugins: [], link_kinds: [] }
 beforeEach(() => {
+  vi.mocked(host.confirm).mockResolvedValue(true)
   vi.clearAllMocks()
   vi.mocked(pim.termsPage).mockResolvedValue({ terms: [
     { code: 'red', labels: { en: 'Red' }, retired: false },

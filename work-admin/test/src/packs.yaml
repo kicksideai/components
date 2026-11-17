@@ -57,6 +57,22 @@ entries:
         type: task
         values:
           title: First task
+- name: configured_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Configured delivery
+    version: 1.0.0
+    icon: tabler:settings
+    description: Delivery with initial board enhancements configuration.
+  data:
+    schema: *id002
+    views: *id003
+    automations: *id004
+    traits: *id005
+    requires:
+    - app:ui_plugin
+    starter: *id006
 - name: upgrade_pack
   kind: registry.entry
   meta:
@@ -98,6 +114,7 @@ entries:
   policy:
     resources:
     - app:delivery_pack
+    - app:configured_pack
     - app:upgrade_pack
     - app:unavailable_pack
     - app:unavailable_plugin

@@ -80,12 +80,13 @@ it('reviews and applies initial plugin configuration for a pack upgrade', async 
   const plugin = { plugin: 'app:new-plugin', installed: true, active: false, requires: [], tools: [], lifecycle: { state: 'ready' as const }, projections: {}, config_schema: { type: 'object', properties: { folder: { type: 'string' } }, required: ['folder'] } }
   vi.mocked(work.options).mockResolvedValue({ ...emptyOptions(), access: { read: true, write: true, admin: true }, schema_options: { plugins: [plugin] } })
   vi.mocked(settings.packPlan).mockResolvedValue({ ...result, conflicts: [], declaration: { ...result.declaration, plugins: [{ use: plugin.plugin }] } })
-  vi.mocked(work.packs).mockResolvedValue([{ ...pack, plugins: [{ id: plugin.plugin, installed: true }] }])
+  vi.mocked(work.packs).mockResolvedValue([{ ...pack, plugins: [{ plugin: plugin.plugin, installed: true }] }])
   const w = mount(BoardSettings, { props: { boardId: 'b' } }); await flushPromises()
   await button(w, 'Upgrade pack').trigger('click'); await flushPromises()
   const { default: ConfigForm } = await import('./ConfigForm.vue')
   const form = w.findComponent(ConfigForm)
   expect(form.exists()).toBe(true)
+  expect(button(w, 'Review changes').attributes('disabled')).toBeDefined()
   form.vm.$emit('update:modelValue', { folder: 'Documents' }); await flushPromises()
   await button(w, 'Review changes').trigger('click'); await flushPromises()
   const request = vi.mocked(settings.packPlan).mock.calls.at(-1)![1]
@@ -100,4 +101,21 @@ it('distinguishes a failed pack discovery from an unavailable pack version', asy
   expect(w.get('[role=alert]').text()).toContain('Packs offline')
   await button(w, 'Reload packs').trigger('click'); await flushPromises()
   expect(work.packs).toHaveBeenCalledTimes(2); w.unmount()
+})
+
+it('installs a discovered pack on an existing empty board through the reviewed pack request', async () => {
+  vi.mocked(work.schema).mockResolvedValue({ generation: 1, key_prefix: 'WORK', declaration: { key_prefix: 'WORK' }, compiled: {}, as_of: 0 })
+  vi.mocked(settings.packPlan).mockResolvedValue({ ...result, conflicts: [], maps: {} })
+  const w = mount(BoardSettings, { props: { boardId: 'b' } }); await flushPromises()
+  try {
+    await button(w, 'Install pack').trigger('click'); await flushPromises()
+    const choice = w.findAllComponents(Select).find(s => s.props('ariaLabel') === 'Pack to install')!
+    await choice.setValue(pack.id)
+    await w.get('form.work-dialog-box').trigger('submit'); await flushPromises()
+    const request = vi.mocked(settings.packPlan).mock.calls.at(-1)![1]
+    expect(request).toMatchObject({ pack: pack.id, expected_generation: 1 })
+    await button(w, 'Apply').trigger('click'); await flushPromises()
+    expect(settings.packApply).toHaveBeenCalledWith('b', request, expect.any(String))
+    expect(settings.apply).not.toHaveBeenCalled()
+  } finally { w.unmount() }
 })

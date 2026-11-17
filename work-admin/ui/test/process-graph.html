@@ -12,10 +12,10 @@
       import { createApp, h } from 'vue'
       import { PrimeVuePlugin } from '@wippy-fe/theme/primevue-plugin'
       import ProcessGraph from '../src/app/settings/ProcessGraph.vue'
-      import { graphFixtures } from '../src/app/settings/__fixtures__/processes'
+      import { graphFixtures, cicd } from '../src/app/settings/__fixtures__/processes'
       import styles from '../src/styles.css?inline'
       const params = new URLSearchParams(location.search)
-      const process = graphFixtures[params.get('process') || 'small']
+      const process = ({ ...graphFixtures, cicd })[params.get('process') || 'small']
       const dark = params.get('theme') === 'dark'
       const shadow = document.querySelector('#fixture').attachShadow({ mode: 'open' })
       const sheet = document.createElement('style')
