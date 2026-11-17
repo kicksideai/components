@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.17](https://github.com/kicksideai/components/compare/docscout-v0.1.16...docscout-v0.1.17) (2026-11-17)
+
+
+### Bug Fixes
+
+* **docscout:** select build artifacts from the native lock ([#131](https://github.com/kicksideai/components/issues/131)) ([e971048](https://github.com/kicksideai/components/commit/e97104809c5bf09b8472bfafbf8fafd8b8ff2239))
+
 ## [0.1.16](https://github.com/kicksideai/components/compare/docscout-v0.1.15...docscout-v0.1.16) (2026-11-17)
 
 

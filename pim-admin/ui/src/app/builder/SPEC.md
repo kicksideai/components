@@ -9,7 +9,7 @@ review and apply the first definitions against that generation. The standalone s
 Each component instance owns its draft and requests; it does not share routing
 or selection state with other instances.
 
-Fields, dimensions, vocabularies, families, channels, sources, plugins, scopes
+Fields, form layout, dimensions, vocabularies, families, channels, sources, plugins, scopes
 and policy are edited as one schema draft. Reading a section must not create
 absent fields in the draft. A review snapshots the declaration, removals, initial
 plugin configuration and schema generation. Editing any reviewed input invalidates
@@ -38,9 +38,8 @@ Principal labels resolve through a catalog-scoped endpoint after READ and ADMIN
 checks, under the caller's actor and scope. References are a dense list of at
 most 200 user/group references; named object keys and malformed references are
 rejected. Grants list exact owned entry IDs.
-Module access and catalog access are independent. Consumer catalog browsing,
-product editing, layout editing and history are excluded from both components
-and their bundles.
+Module access and catalog access are independent. Consumer catalog browsing and
+product editing are excluded from both components and their bundles.
 
 Policy presents Retention and Proposals first. Advanced processing limits are
 collapsed by default; opening or closing them preserves the draft and overrides.
@@ -66,6 +65,29 @@ It owns principal selection, grant validation and last-owner protection.
 Term panels state that term changes save immediately. Retirement asks for host
 confirmation before writing; restoration remains immediate. Term reads clear
 previous errors at the start and expose Retry while keeping failed reads visible.
+On narrow settings panes, definition rows stack their metadata below the title
+and keep their actions in view. Vocabulary terms show the label first, followed
+by the code and any parent, with the same retire or restore action.
 Built-in type configuration comes from the backend's `config_schema` metadata
 and renders through the shared `wc-schema-form`, including Quantity units and
 canonical unit. Conversion factors and record members use its structured inputs.
+
+Form layout and History are peer settings sections. Layout edits the same declaration
+as Fields: arrow controls and drag/drop reorder fields within their own field group;
+widths are full, half, third or quarter, using compiled defaults until explicitly edited.
+Plugin-owned groups remain read-only. Narrow screens stack cards while retaining
+their declared widths. The System catalog rail becomes a horizontal picker on
+phone screens, leaving the full width for settings and their actions. Review changes
+and Apply layout use the builder's shared review snapshot, removals, plugin configuration and expected generation. Discard
+resets the whole shared draft. Layout does not own a second loader or write path.
+
+History reads the existing PIM catalog history endpoint, newest first, in pages of
+50 using its opaque `next` cursor as `before`. People resolve with the existing
+catalog-scoped helper; unresolved people and references keep readable labels.
+Wide panes show a table. Narrow panes stack each entry with the change first,
+followed by the person, time and product or other subject. The caption and
+paging footer fit the pane in either layout.
+Loading, empty, failure and Retry states remain visible. Notifications and host
+visibility refresh restart the first page, stale replies are ignored, and unmount
+or catalog changes dispose subscriptions. History remains readable during a schema
+review and never changes the schema draft.

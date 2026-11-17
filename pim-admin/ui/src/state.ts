@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import type { Declaration, RemoveDecl, PluginConfigs } from './types'
+import type { Declaration, RemoveDecl, PluginConfigs, AttributeDecl } from './types'
 
 export function coordinateKey(code: string, scope: string[], context: Record<string, string>): string {
   return code + '|' + JSON.stringify(Object.fromEntries([...scope].sort().map(d => [d, context[d] ?? '*'])))
@@ -91,4 +91,10 @@ export const CODE = /^[a-z][a-z0-9_]*$/
 export function setList<K extends string>(target: { [P in K]?: string[] }, key: K, list: string[]) {
   if (list.length) target[key] = list
   else delete target[key]
+}
+
+export function moveField(attributes: AttributeDecl[], from: number, to: number) {
+  if (to < 0 || to >= attributes.length || from === to) return
+  const [field] = attributes.splice(from, 1)
+  attributes.splice(to, 0, field)
 }

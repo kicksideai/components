@@ -102,15 +102,24 @@ async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
         <div v-if="open[v.code]" class="pim-stack tight pim-terms">
           <p class="muted small">Term changes save immediately.</p>
           <Message v-if="error[v.code]" severity="error" role="alert">{{ error[v.code] }} <Button type="button" :disabled="busy[v.code]" @click="loadTerms(v.code, pages[v.code])" severity="secondary" outlined size="small">Retry</Button></Message>
-          <table v-if="(terms[v.code] ?? []).length" class="pim-grid compact">
-            <thead><tr><th>Code</th><th>Label</th><th v-if="v.hierarchical">Parent</th><th></th></tr></thead>
-            <tbody><tr v-for="t in terms[v.code]" :key="t.code" :class="{ muted: t.retired }">
-              <td class="mono">{{ t.code }}</td><td>{{ label(t) }}</td><td v-if="v.hierarchical" class="mono muted">{{ t.parent ?? '' }}</td>
-              <td class="num"><Button type="button" :disabled="!canWrite || busy[v.code]" @click="retire(v, t, !t.retired)" text severity="secondary" size="small">{{ t.retired ? 'Restore' : 'Retire' }}</Button></td>
-            </tr></tbody>
-          </table>
+          <div v-if="(terms[v.code] ?? []).length" class="pim-responsive-table">
+            <table class="pim-grid compact" aria-label="Vocabulary terms">
+              <thead><tr><th>Code</th><th>Label</th><th v-if="v.hierarchical">Parent</th><th></th></tr></thead>
+              <tbody><tr v-for="t in terms[v.code]" :key="t.code" :class="{ muted: t.retired }">
+                <td class="mono">{{ t.code }}</td><td>{{ label(t) }}</td><td v-if="v.hierarchical" class="mono muted">{{ t.parent ?? '' }}</td>
+                <td class="num"><Button type="button" :disabled="!canWrite || busy[v.code]" @click="retire(v, t, !t.retired)" text severity="secondary" size="small">{{ t.retired ? 'Restore' : 'Retire' }}</Button></td>
+              </tr></tbody>
+            </table>
+            <ul role="list" class="pim-stacked-list" aria-label="Vocabulary terms">
+              <li v-for="t in terms[v.code]" :key="t.code" class="pim-stacked-row" :class="{ muted: t.retired }">
+                <div>{{ label(t) }}</div>
+                <div class="pim-stacked-meta muted small"><span class="mono">{{ t.code }}</span><span v-if="v.hierarchical && t.parent">Parent: {{ t.parent }}</span></div>
+                <Button type="button" :disabled="!canWrite || busy[v.code]" @click="retire(v, t, !t.retired)" text severity="secondary" size="small">{{ t.retired ? 'Restore' : 'Retire' }}</Button>
+              </li>
+            </ul>
+          </div>
           <p v-else-if="!busy[v.code]" class="muted small">No terms yet.</p>
-          <div class="row">
+          <div class="row wrap">
             <Button type="button" :disabled="busy[v.code] || !pages[v.code]" @click="loadTerms(v.code)" severity="secondary" outlined size="small"><Icon icon="tabler:chevrons-left" aria-hidden="true" /> First terms</Button>
             <Button type="button" :disabled="busy[v.code] || !cursors[v.code]" @click="loadTerms(v.code, cursors[v.code])" severity="secondary" outlined size="small"><Icon icon="tabler:chevron-right" aria-hidden="true" /> Next terms</Button>
           </div>

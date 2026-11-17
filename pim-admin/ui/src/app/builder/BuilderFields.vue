@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { CODE } from '../../state'
+import { FIELD_WIDTHS, fieldWidth, humanize } from '../../forms'
+import { CODE, moveField as move } from '../../state'
 import DefinitionList from '../../shared/DefinitionList.vue'
 import DefinitionRow from '../../shared/DefinitionRow.vue'
 import MultiSelect from 'primevue/multiselect'
@@ -16,8 +17,7 @@ import Button from 'primevue/button'
 import { computed, ref } from 'vue'
 import { humanLabel } from '../../shared/labels'
 import { Icon } from '@iconify/vue'
-import type { AspectDecl, AttributeDecl, Declaration, RemoveDecl, SchemaOptions, SchemaView, TypeOption, Width } from '../../types'
-import { humanize } from '../../forms'
+import type { AspectDecl, AttributeDecl, Declaration, RemoveDecl, SchemaOptions, SchemaView, TypeOption } from '../../types'
 import ChipPicker from './ChipPicker.vue'
 import ConfigForm from './ConfigForm.vue'
 import DefaultValue from './DefaultValue.vue'
@@ -25,7 +25,7 @@ import DefaultValue from './DefaultValue.vue'
 const props = defineProps<{ draft: Declaration; schema: SchemaView; options: SchemaOptions }>()
 const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string] }>()
 
-const WIDTHS: Width[] = ['quarter', 'third', 'half', 'full']
+const WIDTHS = FIELD_WIDTHS.map(width => width.value)
 const CARDINALITIES = [{ value: 'one', label: 'Single value' }, { value: 'list', label: 'Ordered list' }, { value: 'set', label: 'Unique set' }]
 
 const aspects = computed(() => props.draft.aspects ?? [])
@@ -142,11 +142,7 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
   if (i >= 0) list.splice(i, 1)
   if (declared(a.namespace, attr)) emit('remove', 'attributes', a.namespace + '.' + attr.code)
 }
-function move(list: AttributeDecl[], from: number, to: number) {
-  if (to < 0 || to >= list.length) return
-  const [item] = list.splice(from, 1)
-  list.splice(to, 0, item)
-}
+
 </script>
 
 <template>
@@ -205,7 +201,7 @@ function move(list: AttributeDecl[], from: number, to: number) {
                 @update:model-value="setOptional(attr, 'index', $event === 'none' ? undefined : $event)"
               /></div>
             <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Width</label><span class="pim-f-note">of a form row</span></div>
-              <SelectButton :model-value="attr.width ?? schema.attributes[a.namespace + '.' + attr.code]?.width ?? 'half'" :options="WIDTHS" :allow-empty="false" @update:model-value="attr.width = $event" /></div>
+              <SelectButton :model-value="fieldWidth(schema, a.namespace, attr)" :options="WIDTHS" :allow-empty="false" @update:model-value="attr.width = $event" /></div>
             <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Varies per</label><span class="pim-f-note">dimensions the value depends on</span></div>
               <ChipPicker :model-value="attr.scope ?? []" :options="dimensions" @update:model-value="setScope(attr, $event)" /></div>
             <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Unique</label><span class="pim-f-note">one holder per value, catalog wide</span></div>

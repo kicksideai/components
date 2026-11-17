@@ -103,3 +103,19 @@ export interface ListTermsResult { terms: TermRow[]; next?: string; as_of: numbe
 
 export interface ApplyItem { term: { vocabulary: string; code: string }; labels?: Record<string, string>; parent?: string; retired?: boolean }
 export interface ApplyResult { applied: boolean; outcomes: { outcome: string; findings?: { code: string; message?: string }[] }[] }
+
+export interface HistoryEntry {
+  seq: number
+  n: number
+  subject: string
+  sku?: string
+  kind: string
+  attribute?: string
+  ctx?: string
+  before?: unknown
+  after?: unknown
+  actor: string
+  source?: string
+  at: string
+}
+export interface HistoryResult { entries: HistoryEntry[]; next?: string; as_of: number }
