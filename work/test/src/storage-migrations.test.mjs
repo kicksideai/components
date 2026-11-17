@@ -666,7 +666,7 @@ local function scan(db,position,limit)
 ${boards}
 end
 local db={query=function(_,q) io.write(q,'\\0',2,'\\0') end}
-for pending=0,1 do scan(db,{inclusive=0,pending_only=pending,board_after='009999'},1) end
+for _,phase in ipairs({'all','pending'}) do scan(db,{inclusive=0,board_scan=phase,board_after='009999'},1) end
 `)
   const bits=captured.split('\0'),queries=[]
   for(let i=0;i<bits.length-1;i+=2)queries.push([bits[i],Number(bits[i+1])===3?['board','missing',1]:Number(bits[i+1])===2?['board',1]:[1]])

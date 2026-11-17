@@ -126,7 +126,7 @@ local function define()
             local identity = assert(json.decode(row.actor_context))
             identity.captured_at = "2000-01-01T00:00:00Z"
             assert(db:execute("UPDATE kickside_work_operation SET actor_context=$1 WHERE board_id=$2 AND operation_id=$3", { json.encode(identity), a.id, started.move_id }))
-            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,pending_only=0,deadline_ms=NULL WHERE owner_id='work'", { a.id }))
+            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,board_scan='all',deadline_ms=NULL WHERE owner_id='work'", { a.id }))
             db:release()
             steps.retention_sweep()
             test.eq(call(a, "move_status", { move_id = started.move_id }).status, "failed")

@@ -55,7 +55,7 @@ local function define()
             local deadline = clock.deadline(86400000).ns // 1000000
             local db = assert(store.open())
             local last = assert(db:query("SELECT MAX(board_id) AS board_id FROM kickside_work_board", {}))[1].board_id
-            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=0,pending_only=0,deadline_ms=$2 WHERE owner_id='work'", { last or "", deadline }))
+            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=0,board_scan='all',deadline_ms=$2 WHERE owner_id='work'", { last or "", deadline }))
             db:release()
             local out = run_owner()
             test.is_false(out.needs_continue)
@@ -113,7 +113,7 @@ local function define()
             for i = 1, 5 do assert(steps.apply(h, { { op = "create", type = "task" } }, { key = "expires-" .. i })) end
             local db = assert(store.open())
             assert(db:execute("UPDATE kickside_work_receipt SET at = '2000-01-01T00:00:00.000000000Z' WHERE board_id = $1", { h.id }))
-            assert(db:execute("UPDATE kickside_work_retention SET board_after = (SELECT MAX(board_id) FROM kickside_work_board), inclusive = 0, pending_only=0, deadline_ms = NULL WHERE owner_id = 'work'", {}))
+            assert(db:execute("UPDATE kickside_work_retention SET board_after = (SELECT MAX(board_id) FROM kickside_work_board), inclusive = 0, board_scan='all', deadline_ms = NULL WHERE owner_id = 'work'", {}))
             db:release()
             drain(function(): boolean return steps.count_rows("kickside_work_receipt", h.id) == 0 end)
             db = assert(store.open())

@@ -4,7 +4,7 @@ type Blocked = { component_id: string, prefix: string, error: error }
 type Result = { success: boolean, deadline_ms: integer?, deleted: integer?, needs_continue: boolean?, blocked: { Blocked }?, error: error? }
 
 
-type Position = { board_after: string, inclusive: integer, pending_only: integer, deadline_ms: integer? }
+type Position = { board_after: string, inclusive: integer, board_scan: string, deadline_ms: integer? }
 type Checkpoint = { board_id: string, after: string? }
 type BoardPage = { removed: integer, spent: integer, after: string?, deadline_ms: integer? }
 type VisibilityPosition = {seq: integer, item: string}

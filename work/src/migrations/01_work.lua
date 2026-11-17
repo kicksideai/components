@@ -21,8 +21,8 @@ local POSTGRES = {
         board_id text NOT NULL, key text NOT NULL PRIMARY KEY, item_id text NOT NULL,
         to_board_id text NOT NULL, to_item_id text NOT NULL, at text NOT NULL)]],
     [[CREATE INDEX kickside_work_key_alias_expiry ON kickside_work_key_alias (board_id, at, key)]],
-    [[CREATE TABLE kickside_work_retention (owner_id text NOT NULL PRIMARY KEY, orphan_after text NOT NULL, board_after text NOT NULL, inclusive integer NOT NULL, pending_only integer NOT NULL, deadline_ms bigint)]],
-    [[INSERT INTO kickside_work_retention (owner_id, orphan_after, board_after, inclusive, pending_only) VALUES ('work', '', '', 0, 0)]],
+    [[CREATE TABLE kickside_work_retention (owner_id text NOT NULL PRIMARY KEY, orphan_after text NOT NULL, board_after text NOT NULL, inclusive integer NOT NULL, board_scan text NOT NULL CHECK (board_scan IN ('all','pending','pending_then_all')), deadline_ms bigint)]],
+    [[INSERT INTO kickside_work_retention (owner_id, orphan_after, board_after, inclusive, board_scan) VALUES ('work', '', '', 0, 'all')]],
     [[CREATE TABLE kickside_work_visibility (board_id text NOT NULL, item_id text NOT NULL, seq bigint NOT NULL, document text NOT NULL, at text NOT NULL DEFAULT '', PRIMARY KEY (board_id, item_id, seq))]],
     [[CREATE TABLE kickside_work_plugin (
         board_id text NOT NULL, plugin text NOT NULL, attachment_id text NOT NULL, impl_id text NOT NULL,

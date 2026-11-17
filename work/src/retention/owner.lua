@@ -176,14 +176,20 @@ function M.run(_input: unknown): types.Result
         if page.deadline_ms then deadline = deadline and math.min(deadline, page.deadline_ms) or page.deadline_ms end
         deleted, left = deleted + page.removed, left - page.spent
         position.board_after, position.inclusive = board_id, 0
+        if position.board_scan == "pending" and page.removed > 0 then
+            position.board_scan = "pending_then_all"
+        end
     end
 
-    -- An elapsed deadline requests another discovery pass after this lap has
-    -- reached the tail, so it cannot repeatedly send the scan back to the head.
-    if not more and deadline and deadline <= clock.deadline(0).ns // 1000000 then
-        deadline = nil
-        more = true
-        position.board_after, position.inclusive, position.pending_only = "", 0, 0
+    -- Finish the lap before restarting discovery. Productive pending laps
+    -- rediscover other boards that became eligible while the backlog drained.
+    if not more then
+        local due = deadline and deadline <= clock.deadline(0).ns // 1000000
+        if due then deadline = nil end
+        if due or position.board_scan == "pending_then_all" then
+            more = true
+            position.board_after, position.inclusive, position.board_scan = "", 0, "all"
+        end
     end
     position.deadline_ms = deadline
     local saved, pending = rows.advance(position, checkpoints, not more)

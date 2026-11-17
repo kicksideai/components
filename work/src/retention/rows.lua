@@ -16,16 +16,16 @@ local M = {}
 
 
 function M.position(db: sql.DB): (types.Position?, error?)
-    local rows, err = db:query("SELECT board_after, inclusive, pending_only, deadline_ms FROM kickside_work_retention WHERE owner_id = 'work'", {})
+    local rows, err = db:query("SELECT board_after, inclusive, board_scan, deadline_ms FROM kickside_work_retention WHERE owner_id = 'work'", {})
     if err then return nil, err end
     if not rows or not rows[1] then return nil, errors.new({ kind = errors.INTERNAL, message = "retention position is missing", details = { code = "row_corrupt" } }) end
     local board_after, berr = store.need(rows[1], "board_after")
     if berr or not board_after then return nil, berr end
     local inclusive, ierr = store.need_int(rows[1], "inclusive")
     if ierr or not inclusive then return nil, ierr end
-    local pending_only, perr = store.need_int(rows[1], "pending_only")
-    if perr or not pending_only then return nil, perr end
-    return { board_after = board_after, inclusive = inclusive, pending_only = pending_only, deadline_ms = store.int(rows[1].deadline_ms) }, nil
+    local board_scan, perr = store.need(rows[1], "board_scan")
+    if perr or not board_scan then return nil, perr end
+    return { board_after = board_after, inclusive = inclusive, board_scan = board_scan, deadline_ms = store.int(rows[1].deadline_ms) }, nil
 end
 
 local PENDING = "retention_after IS NOT NULL"
@@ -44,17 +44,17 @@ function M.advance(position: types.Position, checkpoints: { types.Checkpoint }?,
             local rows, pending_err = tx:query("SELECT board_id FROM kickside_work_board WHERE " .. PENDING .. " ORDER BY board_id LIMIT 1", {})
             if pending_err then return nil, pending_err end
             resume = rows ~= nil and rows[1] ~= nil
-            position.board_after, position.inclusive, position.pending_only = "", 0, resume and 1 or 0
+            position.board_after, position.inclusive, position.board_scan = "", 0, resume and "pending" or "all"
             if not resume then
                 position.deadline_ms = nil
                 local _, orphan_err = tx:execute("UPDATE kickside_work_retention SET orphan_after = '' WHERE owner_id = 'work' AND orphan_after <> ''", {})
                 if orphan_err then return nil, orphan_err end
             end
         end
-        local _, err = tx:execute([[UPDATE kickside_work_retention SET board_after = $1, inclusive = $2, pending_only = $3, deadline_ms = $4
-            WHERE owner_id = 'work' AND (board_after <> $1 OR inclusive <> $2 OR pending_only <> $3
+        local _, err = tx:execute([[UPDATE kickside_work_retention SET board_after = $1, inclusive = $2, board_scan = $3, deadline_ms = $4
+            WHERE owner_id = 'work' AND (board_after <> $1 OR inclusive <> $2 OR board_scan <> $3
                 OR COALESCE(deadline_ms, -1) <> COALESCE(CAST($4 AS bigint), -1))]],
-            { position.board_after, position.inclusive, position.pending_only, position.deadline_ms or sql.NULL })
+            { position.board_after, position.inclusive, position.board_scan, position.deadline_ms or sql.NULL })
         return resume, err
     end)
     return err, pending
@@ -62,7 +62,7 @@ end
 
 function M.boards(db: sql.DB, position: types.Position, limit: integer): ({ domain.Row }?, error?)
     local seek = position.inclusive == 1 and " >= $1" or " > $1"
-    local filter = position.pending_only == 1 and (" AND " .. PENDING) or ""
+    local filter = position.board_scan ~= "all" and (" AND " .. PENDING) or ""
     return db:query("SELECT board_id, retention_after FROM kickside_work_board WHERE board_id" .. seek .. filter ..
         " ORDER BY board_id LIMIT $2", { position.board_after, limit })
 end
