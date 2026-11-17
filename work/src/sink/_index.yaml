@@ -58,6 +58,54 @@ entries:
   input_schema: '{"type": "object", "additionalProperties": false, "properties": {"values": {"type": "object"},
     "clear": {"type": "array", "items": {"type": "string"}}, "unset": {"type": "array", "items": {"type": "string"}}}}'
   output_schema: '{"type":"object","properties":{"item_id":{"type":"string"}}}'
+- name: stage_failure
+  kind: function.lua
+  source: file://stage_failure.lua
+  method: write
+  imports:
+    types: kickside.work.sink:types
+    trace: kickside.execution:trace
+    domain: kickside.work:types
+    writable_sink: kickside.data:writable_sink
+    data_error: kickside.work.source:data_error
+    apply_ops: kickside.work.command:apply_ops
+    outcomes: kickside.work.domain:outcomes
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:apply_output_publish
+- name: stage_failures
+  kind: contract.binding
+  meta:
+    title: Work stage failures
+    delivery: at_least_once
+    input_shape: record
+  contracts:
+  - contract: kickside.data:writable
+    methods:
+      write: kickside.work.sink:stage_failure
+- name: stage_failures_port
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work stage failures
+    icon: tabler:layout-kanban
+    group: Work
+    class: kickside.work
+  binding: kickside.work.sink:stage_failures
+  input_mode: transform_output
+  operations:
+    upsert: {}
+  config_schema:
+    board_id:
+      type: string
+      picker: wc-component-picker
+      class: work_board
+      role: primary
+      required: true
+      title: Board
+  input_schema: '{"type":"object","properties":{"run_id":{"type":"string"},"status":{"type":"string"},"correlation":{"type":"object"}}}'
+  output_schema: '{"type":"object","properties":{"item_id":{"type":"string"}}}'
 - name: types
   kind: library.lua
   source: file://types.lua

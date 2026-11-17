@@ -9,4 +9,7 @@ type Request = { config: Config?, input: Input?, identity_key: string?, idempote
 type Result = { success: boolean, result: string?, dest_ref: { item_id: string? }? }
 type Board = { get: (Board, read_types.GetRequest) -> (read_types.GetResult?, error?),
     apply: (Board, types.ApplyRequest) -> (types.ApplyResult?, error?) }
-return { Config = Config, Input = Input, Request = Request, Result = Result, Board = Board }
+type Correlation = { board_id: string?, item: string?, visit: integer?, attempt: integer? }
+type TerminalInput = { trace_context: domain.TraceContext?, run_id: string?, status: string?, correlation: Correlation? }
+type FailureRequest = { trace_context: domain.TraceContext?, config: Config?, input: TerminalInput?, origin: string?, automation_ref: unknown, sink_op: string? }
+return { Config = Config, Input = Input, Request = Request, Result = Result, Board = Board, FailureRequest = FailureRequest }

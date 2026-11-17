@@ -449,6 +449,8 @@ entries:
       - { name: kickside.core.retention:process_host, value: app:processes }
       - name: kickside.core.lifecycle:user_lifecycle_grant
         value: { subject_id: app:user, subject_type: group, access_mask: 2 }
+      - name: kickside.core.lifecycle:admin_lifecycle_grant
+        value: { subject_id: app.security:pim_test, subject_type: group, access_mask: 11 }
 
   - name: dep.contract
     kind: ns.dependency
