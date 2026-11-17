@@ -51,7 +51,7 @@ function M.links(tx: sql.DB | sql.Transaction, board_id: string, item_id: string
 end
 
 function M.stage_run(tx: sql.DB | sql.Transaction, board_id: string, item_id: string, visit: integer, attempt: integer): (domain.Row?, error?)
-    local rows, err = tx:query("SELECT outcome FROM kickside_work_stage_run WHERE board_id = $1 AND item_id = $2 AND visit = $3 AND attempt = $4 AND outcome IS NOT NULL", { board_id, item_id, visit, attempt })
+    local rows, err = tx:query("SELECT outcome FROM kickside_work_stage_run WHERE board_id = $1 AND item_id = $2 AND visit = $3 AND attempt = $4", { board_id, item_id, visit, attempt })
     if err or not rows then return nil, err end
     return rows[1], nil
 end

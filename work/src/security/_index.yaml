@@ -102,6 +102,8 @@ entries:
     - kickside.work.settings:validate
     - kickside.work.sink:items
     - kickside.work.sink:write
+    - kickside.work.sink:stage_failure
+    - kickside.work.sink:stage_failures
     - kickside.work.source:changes
     - kickside.work.source:items
     - kickside.work.source:pull_changes

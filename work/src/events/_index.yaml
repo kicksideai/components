@@ -376,6 +376,8 @@ entries:
       command_key: *id005
       receipt: *id006
       audit: *id007
+      board_id:
+        type: string
       item:
         type: string
       state:

@@ -29,7 +29,7 @@ local function retry(ctx: types.PrepareContext, item: domain.StateItem, op: type
     local events = recorded(item, op)
     work.waiting, work.attempt = nil, op.attempt
     events[#events + 1] = M.event(consts.EVENTS.STAGE_ENTERED, group, {
-        item = item.item_id, state = item.state, visit = item.visit, attempt = op.attempt,
+        board_id = ctx.board.board_id, item = item.item_id, state = item.state, visit = item.visit, attempt = op.attempt,
     })
     item.version = item.version + 1
     return context.settle(ctx, item, events, p)

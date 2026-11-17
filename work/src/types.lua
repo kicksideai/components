@@ -264,7 +264,7 @@ type ChangeRow = {
 type PatchStep = { f: integer, v: Value?, before: Value?, clear: boolean?, unset: boolean? }
 type Target = { board: string, item: string }
 type Receipt = { request_hash: string, result: JsonObject }
-type EventBody = { pack: JsonObject?,
+type EventBody = { board_id: string?, pack: JsonObject?,
     title: string?, description: string?, icon: string?,
     operation_id: string?, processed: integer?, total: integer?, status: string?, counts: { [string]: integer }?, moved_from: Target?, moved_to: Target?, old_key: string?,
     region: string?, decision: string?, gate: string?, attempt: integer?, outcome: string?, outputs: JsonObject?, progress: JsonObject?, timer: string?, scheduled_at: string?, emitted: string?, force: boolean?,

@@ -27,6 +27,7 @@ entries:
     - kickside.work.service:apply
     - kickside.work.service:approve
     - kickside.work.service:report
+    - kickside.work.sink:stage_failure
     - kickside.work.jobs:process_batch
     - kickside.work.jobs:advance_batch
     - kickside.work.jobs:migrate_batch
