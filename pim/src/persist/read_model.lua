@@ -33,11 +33,25 @@ function M.changed_products(db: types.Executor, catalog_id: string, ceiling: int
     return rows_of(rows, err, "changes read")
 end
 
--- channel_seen reports whether a channel ever published in this catalog.
+-- channel_seen reports whether a channel still has publication rows.
 function M.channel_seen(db: types.Executor, catalog_id: string, channel: string): (boolean?, error?)
     local rows, err = db:query("SELECT 1 AS present FROM kickside_pim_publication WHERE catalog_id = $1 AND channel = $2 LIMIT 1", { catalog_id, channel })
     if err then return nil, errors.wrap(err, "channel lookup failed") end
     return #(rows or {}) > 0, nil
+end
+
+function M.publication_floor(db: types.Executor, catalog_id: string, channel: string, after: types.PublicationCursor): (types.Row?, error?)
+    local seen = after.expiry_floor or { seq = 0, product_id = "" }
+    local rows, err = db:query([[WITH floor AS (
+        SELECT seq, product_id FROM kickside_pim_publication_floor WHERE catalog_id = $1 AND channel = $2
+    )
+    SELECT seq, product_id,
+        CASE WHEN (seq, product_id) > ($3, $4) AND (seq, product_id) > ($5, $6) THEN 1 ELSE 0 END AS expired
+        FROM floor]],
+        { catalog_id, channel, after.seq, after.product_id, seen.seq, seen.product_id })
+    if err then return nil, errors.wrap(err, "publication floor read failed") end
+    if not rows or not rows[1] then return nil, nil end
+    return store.decode_row(rows[1], { seq = "int", product_id = "text", expired = "int" })
 end
 
 -- publications pages one channel in (seq, product_id) order with its releases.

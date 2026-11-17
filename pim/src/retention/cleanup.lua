@@ -7,7 +7,7 @@ local lifecycle_report = require("lifecycle_report")
 local types = require("types")
 local M = {}
 type Page = { catalog_id: string, cleaned: boolean, deleted: integer }
-type Result = { success: boolean, deleted: integer, catalogs: integer, needs_continue: boolean, sweep_complete: boolean,blocked: {{component_id:string,error:error}} }
+type Result = { deleted: integer, catalogs: integer, needs_continue: boolean, blocked: {{component_id:string,error:error}} }
 
 function M.report(catalog_id: string): error?
     local reported, err = lifecycle_report.component_deleted(catalog_id)
@@ -21,14 +21,15 @@ function M.report(catalog_id: string): error?
     return ferr
 end
 
-function M.run(limit: integer): (Result?,error?)
-    local candidates,err=store.with_db(function(db): ({rows.Cleanup}?,error?) return rows.cleanup_page(db,10) end)
-    if err or not candidates or #candidates==0 then return nil,err end
+function M.run(limit: integer, catalog_limit: integer): (Result?,error?)
+    local candidates,err=store.with_db(function(db): ({rows.Cleanup}?,error?) return rows.cleanup_page(db,catalog_limit+1) end)
+    if err or not candidates then return nil,err end
     local deleted,visited=0,0
     local blocked: {{component_id:string,error:error}}={}
-    local more=#candidates==10
-    for _,selected in ipairs(candidates) do
+    local more=#candidates>catalog_limit
+    for i=1,math.min(#candidates,catalog_limit) do
         if deleted==limit then more=true;break end
+        local selected=candidates[i]
         visited=visited+1
         local _,aerr=store.transaction("cleanup attempt",function(tx: types.Executor,_dialect: string): (boolean?,error?)
             local err=rows.attempt_cleanup(tx,selected.catalog_id)
@@ -51,6 +52,6 @@ function M.run(limit: integer): (Result?,error?)
         if not perr and page and page.cleaned then perr=M.report(page.catalog_id) end
         if perr then blocked[#blocked+1]={component_id=selected.catalog_id,error=perr} end
     end
-    return {success=true,deleted=deleted,catalogs=visited,needs_continue=more,sweep_complete=false,blocked=blocked},nil
+    return {deleted=deleted,catalogs=visited,needs_continue=more,blocked=blocked},nil
 end
 return M

@@ -17,6 +17,7 @@ local TABLES: { Table } = {
     { name = "kickside_pim_change", keys = "seq, n" },
     { name = "kickside_pim_proposal", keys = "proposal_id" },
     { name = "kickside_pim_publication", keys = "channel, product_id" },
+    { name = "kickside_pim_publication_floor", keys = "channel" },
     { name = "kickside_pim_release", keys = "release_id" },
     { name = "kickside_pim_attribute_usage", keys = "attribute_id" },
     { name = "kickside_pim_unique_value", keys = "attribute_id, value_key" },

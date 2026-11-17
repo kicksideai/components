@@ -11,7 +11,7 @@ local types = require("types")
 local M = {}
 
 type Config = { catalog_id: string?, channel: string? }
-type Cursor = types.ChangesCursor
+type Cursor = types.PublicationCursor
 type Request = { cursor: Cursor?, config: Config?, limit: integer? }
 type Payload = { release_id: string?, hash: string?, version: integer?, snapshot: types.Snapshot? }
 type Item = { item_key: string, dedup_key: string, source_version: string, occurred_at: string, op: string, payload: Payload? }
@@ -36,7 +36,11 @@ function M.pull(req: Request): Result
     if oerr then return fail(oerr) end
     local catalog = opened :: Catalog
     local page, err = catalog:list_publications({ catalog_id = catalog_id, channel = channel, after = req.cursor, limit = req.limit })
-    if err then return fail(err, err:kind() == errors.INVALID and "invalid_config" or nil) end
+    if err then
+        local details = err:details()
+        if details and details.code == "cursor_expired" then return fail(err, "cursor_expired") end
+        return fail(err, err:kind() == errors.INVALID and "invalid_config" or nil)
+    end
     if not page then return fail(errors.new({ kind = errors.INTERNAL, message = "publications read returns no page", details = { code = "internal" } })) end
     local items: { Item } = {}
     for i, p in ipairs(page.items) do

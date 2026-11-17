@@ -11,6 +11,7 @@ M.deadline=rows.deadline
 M.Tombstone=rows.Tombstone
 M.tombstones=rows.tombstones
 M.prune_tombstones=rows.prune_tombstones
+M.prune_publications=rows.prune_publications
 function M.catalogs(db,position,limit)
     return db:query([[SELECT catalog_id,compiled,retention_after FROM kickside_pim_catalog
         WHERE (catalog_id>$1 OR (catalog_id=$1 AND $2=1)) AND catalog_id LIKE 'r3-protected-%'

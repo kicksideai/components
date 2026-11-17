@@ -7,6 +7,7 @@ local execution_identity=require("execution_identity")
 local values=require("values")
 local references=require("references")
 local input=require("input")
+local term_line=require("term_line")
 local defaults=require("defaults")
 local fs=require("fs")
 local json=require("json")
@@ -72,22 +73,19 @@ local function term_page(storage: fs.FS,path: string,offset: integer,BATCH:integ
     local buffer=""
     local eof=false
     local _,err=file:seek("set",offset-1)
-    while not err and #rows<BATCH and lines<BATCH and cursor-offset<3000000 do
+    while not err and lines<BATCH and cursor-offset<term_line.BYTES do
         local newline=buffer:find("\n",1,true)
         if not newline and not eof then
-            if read_bytes>=3000000 then
-                if cursor==offset then err=invalid("import term exceeds command budget","import_chunk_limit") end
+            if read_bytes>=term_line.BYTES then
+                if cursor==offset then err=term_line.too_large() end
                 break
             end
-            local chunk,rerr=file:read(math.min(16384,3000000-read_bytes))
+            local chunk,rerr=file:read(math.min(16384,term_line.BYTES-read_bytes))
             if rerr and not errors.is(rerr,errors.NOT_FOUND) then err=rerr;break end
             if not chunk or chunk=="" then eof=true else buffer=buffer..chunk;read_bytes=read_bytes+#chunk end
-            if #buffer>3000000 then err=invalid("import term exceeds command budget","import_chunk_limit");break end
         else
             if buffer=="" and eof then break end
             local length=newline or #buffer
-            if cursor-offset+length>3000000 then break end
-            lines=lines+1
             local line=newline and buffer:sub(1,newline-1) or buffer
             if line:match("%S") then
                 local berr=input.structure(line)
@@ -96,12 +94,17 @@ local function term_page(storage: fs.FS,path: string,offset: integer,BATCH:integ
                 if jerr then err=jerr;break end
                 if type(decoded)~="table" then err=invalid("import term must be an object","invalid_request");break end
                 local term=decoded :: types.ExportedTerm
-                local item:types.ApplyItem={term={vocabulary=term.vocabulary,code=term.code},labels=term.labels,parent=term.parent,retired=term.retired}
-                local size=#values.canonical(item)
-                if size>3000000 then err=invalid("import term exceeds command budget","import_chunk_limit");break end
-                if payload+size>3000000 then break end
-                rows[#rows+1]=item;payload=payload+size
+                -- Bound normalized JSON too, since an external file may use
+                -- different escapes. Apply framing adds only a few bytes per row.
+                local encoded,eerr=term_line.encode({vocabulary=term.vocabulary,code=term.code,
+                    labels=term.labels,parent=term.parent,retired=term.retired})
+                if eerr or not encoded then err=eerr;break end
+                if payload+#encoded>term_line.BYTES then break end
+                payload=payload+#encoded
+                rows[#rows+1]={term={vocabulary=term.vocabulary,code=term.code},
+                    labels=term.labels,parent=term.parent,retired=term.retired}
             end
+            lines=lines+1
             cursor=cursor+length
             buffer=buffer:sub(length+1)
         end

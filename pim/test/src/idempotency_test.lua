@@ -2,6 +2,7 @@
 -- Idempotency keys: replay, conflicts, namespaces and what is stored.
 local test = require("test")
 local fixture = require("fixture")
+local store = require("store")
 local types = require("types")
 
 local function apply(h: fixture.Handle, items: { types.ApplyItem }, ns: string, key: string, extra: { [string]: unknown }?): (types.ApplyResult?, error?)
@@ -61,6 +62,36 @@ local function define()
             test.is_nil(same.seq)
             local rerun = assert(apply(h, { { product = { sku = "RDG" }, expect_version = 1, status = "active" } }, "ui", "u"))
             test.is_true(rerun.replayed)
+        end)
+
+        test.it("expires actual eventful and no-op receipts so their keys can be reused", function()
+            local h = fixture.catalog()
+            local initial = assert(apply(h, { create("RECEIPT-A") }, "expiry", "eventful"))
+            test.eq(initial.outcomes[1].outcome, "created")
+            local product = assert(h.call("get", { product = { sku = "RECEIPT-A" } })).product
+            local same: types.ApplyItem = { product = { sku = "RECEIPT-A" }, expect_version = product.version, status = product.status }
+            test.eq(assert(apply(h, { same }, "expiry", "noop")).outcomes[1].outcome, "unchanged")
+            test.is_true(assert(apply(h, { create("RECEIPT-A") }, "expiry", "eventful")).replayed)
+            test.is_true(assert(apply(h, { same }, "expiry", "noop")).replayed)
+            local db = assert(store.open())
+            local expired = assert(db:execute([[UPDATE kickside_pim_receipt SET expires_at=$1
+                WHERE catalog_id=$2 AND marker LIKE 'r:6:expiry%']],
+                { "2000-01-01T00:00:00Z", h.id }))
+            test.eq(expired.rows_affected, 2)
+            assert(db:release())
+            test.is_true(assert(fixture.retain()).success)
+            local check = assert(store.open())
+            local receipts = assert(check:query([[SELECT marker FROM kickside_pim_receipt
+                WHERE catalog_id=$1 AND marker LIKE 'r:6:expiry%']], { h.id }))
+            assert(check:release())
+            test.eq(#receipts, 0)
+            local reused = assert(apply(h, { same }, "expiry", "eventful"))
+            test.eq(reused.outcomes[1].outcome, "unchanged")
+            test.is_nil(reused.replayed)
+            test.eq(assert(apply(h, { create("RECEIPT-B") }, "expiry", "noop")).outcomes[1].outcome, "created")
+            local kept = assert(h.call("get", { product = { sku = "RECEIPT-A" } })).product
+            test.eq(kept.product_id, product.product_id)
+            test.eq(kept.version, product.version)
         end)
 
         test.it("replays independent failures and marks every event of the command", function()

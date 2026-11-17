@@ -1,9 +1,11 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local test = require("test")
+local types = require("types")
 local fixture = require("fixture")
 local steps = require("steps")
 local uuid = require("uuid")
 local json = require("json")
+local fs = require("fs")
 
 type Map = { [string]: unknown }
 
@@ -16,6 +18,40 @@ local import = catalog_fixture.import
 
 local function define()
     test.describe("portability", function()
+        test.it("bounds the encoded term line at admission and round-trips the exact limit", function()
+            local source = fixture.catalog()
+            local code = "storage-budget"
+            local empty = assert(json.encode({ vocabulary = "colors", code = code, labels = { en = "" }, retired = false }))
+            local label = string.rep("x", 3000000 - #empty - 1)
+            local function apply(text: string): types.ApplyResult
+                return assert(source.call("apply", { items = {
+                    { term = { vocabulary = "colors", code = code }, labels = { en = text } },
+                } }))
+            end
+            local accepted = apply(label)
+            test.eq(accepted.outcomes[1].outcome, "created")
+            local args = { storage_id = "app:exports", path = "term-budget-" .. source.id }
+            local exported = assert(source.call("portable", { method = "export", args = args }))
+            test.is_true(exported.success, json.encode(exported))
+            local target = fixture.catalog({ bare = true })
+            local imported = assert(target.call("portable", { method = "import_into", args = args }))
+            test.is_true(imported.success, json.encode(imported))
+            local terms = assert(target.call("list_terms", { vocabulary = "colors", after = "storage-budge", limit = 1 }))
+            test.eq(terms.terms[1].code, code)
+            test.eq(#terms.terms[1].labels.en, #label)
+            local oversized = apply(label .. "x")
+            test.eq(oversized.outcomes[1].outcome, "invalid")
+            local escaped = apply(label:sub(1, #label - 1) .. "\n")
+            test.eq(escaped.outcomes[1].outcome, "invalid", "JSON escaping counts towards the limit")
+            local storage = assert(fs.get(args.storage_id))
+            local line = assert(json.encode({ vocabulary = "colors", code = code, labels = { en = label .. "x" }, retired = false }))
+            assert(storage:writefile(args.path .. "/data/terms.jsonl", line .. "\n"))
+            local empty = fixture.catalog({ bare = true })
+            local refused = assert(empty.call("portable", { method = "import_into", args = args }))
+            test.is_false(refused.success)
+            test.eq(refused.details.code, "import_chunk_limit")
+        end)
+
         test.it("exports a newly created catalog with its empty schema", function()
             local h = fixture.catalog({ bare = true })
             local out = export(h.call)

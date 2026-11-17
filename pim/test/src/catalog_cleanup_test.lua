@@ -1,5 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local cleanup_rows = require("cleanup_rows")
+local retention_rows = require("retention_rows")
+local types = require("types")
 local funcs = require("funcs")
 local time = require("time")
 local json = require("json")
@@ -8,7 +10,8 @@ local fixture = require("fixture")
 local scoped = require("scoped")
 local store = require("store")
 
-local TABLES = { "schema_work", "release_job", "change", "proposal", "publication", "release", "attribute_usage", "unique_value", "ref", "product", "term", "generation", "merge", "catalog" }
+local TABLES = { "creation", "receipt", "import_work", "import_map", "schema_work", "release_job", "change", "proposal",
+    "publication", "publication_floor", "release", "attribute_usage", "unique_value", "ref", "product", "term", "generation", "merge", "catalog" }
 local function counts(catalog_id: string): integer
     local db = assert(store.open())
     local total = 0
@@ -43,6 +46,19 @@ local function reports(catalog_id: string): integer
     end
     return n
 end
+
+local function unregistered(catalog_id: string): boolean
+    local deadline = time.now():add(30 * time.SECOND)
+    repeat
+        local db = assert(store.open())
+        local rows = assert(db:query("SELECT component_id FROM kickside_components WHERE component_id = $1", { catalog_id }))
+        assert(db:release())
+        if #rows == 0 then return true end
+        time.sleep("10ms")
+    until not time.now():before(deadline)
+    return false
+end
+
 local function define()
     test.describe("bounded catalog teardown", function()
         test.it("refuses direct teardown with a forged catalog context without DELETE access", function()
@@ -67,6 +83,16 @@ local function define()
             local db = assert(store.open())
             local current = assert(store.catalog(db, h.id))
             local tx = assert(db:begin())
+            assert(tx:execute([[INSERT INTO kickside_pim_creation(catalog_id,component_id,request,token)
+                VALUES($1,$2,'{}','fixture')]], { h.id, h.id .. "-fixture" }))
+            assert(tx:execute([[INSERT INTO kickside_pim_receipt(catalog_id,marker,request_hash,result,first_seq,event_count,noop,expires_at)
+                VALUES($1,'cleanup-fixture','hash','{}',0,0,1,'2099-01-01T00:00:00Z')]], { h.id }))
+            assert(tx:execute([[INSERT INTO kickside_pim_import_work(catalog_id,request_id,storage_id,path,identity,position,job_id,done)
+                VALUES($1,'request','storage','path','{}','{}','job',0)]], { h.id }))
+            assert(tx:execute([[INSERT INTO kickside_pim_import_map(catalog_id,old_id,new_id,sku,refs)
+                VALUES($1,'old','new','sku','[]')]], { h.id }))
+            assert(tx:execute([[INSERT INTO kickside_pim_publication_floor(catalog_id,channel,seq,product_id)
+                VALUES($1,'web',1,'deleted')]], { h.id }))
             assert(tx:execute("INSERT INTO kickside_pim_schema_work (catalog_id, seq) VALUES ($1, 1000)", { h.id }))
             for i = 1, 501 do
                 local key = "cleanup-" .. i
@@ -93,16 +119,7 @@ local function define()
             local deleted, derr = h.call("delete_component", {})
             test.is_nil(derr, tostring(derr))
             test.is_true(deleted.success, tostring(deleted.error))
-            local deadline = time.now():add(30 * time.SECOND)
-            local registered = true
-            while registered and time.now():before(deadline) do
-                local db_after = assert(store.open())
-                local component_rows = assert(db_after:query("SELECT component_id FROM kickside_components WHERE component_id = $1", { h.id }))
-                db_after:release()
-                registered = #component_rows > 0
-                if registered then time.sleep("10ms") end
-            end
-            test.is_false(registered, "Core unregisters the component after the first page")
+            test.is_true(unregistered(h.id), "Core unregisters the component after the first page")
             local after = counts(h.id)
             test.is_true(before - after <= 500, "deletable row budget")
             test.is_true(after < before)
@@ -141,6 +158,36 @@ local function define()
             test.is_true(again.success, tostring(again.error))
             test.eq(reports(h.id), 1, "completion is reported once")
             test.eq(counts(other.id), keep)
+        end)
+
+        test.it("resumes a committed teardown awaiting its lifecycle report", function()
+            local h = fixture.catalog({ bare = true })
+            local db = assert(store.open())
+            assert(db:execute([[WITH RECURSIVE nums(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM nums WHERE n<501)
+                INSERT INTO kickside_pim_change(catalog_id,seq,n,subject,kind,actor,at)
+                SELECT $1,n+1000,1,'schema','schema','fixture','2000-01-01T00:00:00Z' FROM nums]], { h.id }))
+            assert(db:release())
+            test.is_true(assert(h.call("delete_component", {})).success)
+            test.is_true(unregistered(h.id))
+            local done, derr = store.transaction("finish fixture data page", function(tx: types.Executor, dialect: string): (boolean?, error?)
+                local complete, err = cleanup_rows.catalog(tx, dialect, h.id, 50)
+                if err or not complete then return nil, err end
+                return true, retention_rows.enqueue_cleanup(tx, h.id, true)
+            end)
+            test.is_nil(derr, tostring(derr))
+            test.is_true(done)
+            test.eq(counts(h.id), 0)
+            test.eq(reports(h.id), 0, "the last data page was committed before the report")
+            local resumed, rerr = funcs.call("kickside.pim.retention:owner", {})
+            test.is_nil(rerr, tostring(rerr))
+            test.is_true(resumed.success, tostring(resumed.error))
+            local check = assert(store.open())
+            local queue = assert(check:query("SELECT catalog_id FROM kickside_pim_cleanup WHERE catalog_id=$1", { h.id }))
+            assert(check:release())
+            test.eq(#queue, 0)
+            test.eq(reports(h.id), 1)
+            test.is_true(assert(fixture.retain()).success)
+            test.eq(reports(h.id), 1)
         end)
     end)
     test.describe("catalog cleanup", function()

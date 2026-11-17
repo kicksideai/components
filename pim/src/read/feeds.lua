@@ -91,9 +91,17 @@ function M.publications(catalog_id: string, request: types.PublicationsRequest):
     if access_err or not caller then return nil, access_err end
     local limit, lerr = page_limit(request.limit)
     if lerr or not limit then return nil, lerr end
-    local after: types.ChangesCursor = request.after or { seq = 0, product_id = "" }
+    local after: types.PublicationCursor = request.after or { seq = 0, product_id = "" }
     return access.with_snapshot(caller, function(tx: types.Executor, catalog: types.Catalog, _dialect: string): (types.PublicationsResult?, error?)
-        if not (catalog.compiled.channels or {})[request.channel] then
+        local floor, ferr = read_model.publication_floor(tx, catalog_id, request.channel, after)
+        if ferr then return nil, ferr end
+        local expiry_floor = floor and { seq = floor.seq :: integer, product_id = floor.product_id :: string } or nil
+        if floor and after.seq > 0 and floor.expired == 1 then
+            return nil, errors.new({ kind = errors.CONFLICT, retryable = false,
+                message = "publication cursor precedes an expired withdrawal",
+                details = { code = "cursor_expired", floor = expiry_floor } })
+        end
+        if not floor and not (catalog.compiled.channels or {})[request.channel] then
             local seen, kerr = read_model.channel_seen(tx, catalog_id, request.channel)
             if kerr then return nil, kerr end
             if not seen then return nil, access.invalid("unknown channel " .. request.channel) end
@@ -120,7 +128,8 @@ function M.publications(catalog_id: string, request: types.PublicationsRequest):
             items[i] = item
             last = { seq = seq, product_id = item.product_id }
         end
-        return { items = items, next = last, has_more = #(rows or {}) > limit }, nil
+        local continuation = { seq = last.seq, product_id = last.product_id, expiry_floor = expiry_floor }
+        return { items = items, next = continuation, has_more = #(rows or {}) > limit }, nil
     end)
 end
 
