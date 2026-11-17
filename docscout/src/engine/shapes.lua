@@ -357,13 +357,24 @@ function M.receipt_schema(schema: any): any
         end
     end
     if schema.items then receipt.items = M.receipt_schema(schema.items) end
+    if schema.anyOf then
+        receipt.anyOf = {}
+        for i, branch in ipairs(schema.anyOf) do receipt.anyOf[i] = M.receipt_schema(branch) end
+    end
     return receipt
 end
 
 -- Validate bounds without changing values, including when a provider ignores
--- the generation schema. JSON Schema lengths count Unicode code points.
+-- the generation schema. JSON Schema lengths count Unicode code points. The
+-- alternatives of a union bound a value at the same path alike.
 function M.length_issue(schema: any, value: any, path: string?): any?
     local location = path or ""
+    if schema.anyOf then
+        for _, branch in ipairs(schema.anyOf) do
+            local issue = M.length_issue(branch, value, path)
+            if issue then return issue end
+        end
+    end
     if schema.maxLength and type(value) == "string" then
         local length = 0
         for _ in value:gmatch("[%z\1-\127\194-\244][\128-\191]*") do length = length + 1 end
@@ -505,23 +516,32 @@ function M.passage_ref(chunks: { any }): any
 end
 
 -- One structured-output schema for a group of fields and its evidence passages.
+-- Each field replies absent (found false) or found: found true with a
+-- non-null value and, when its evidence is required, at least one quote.
 function M.group_schema(fields: { any }, passages: { any }, image_pages: { integer }?): any
     local root = { type = "object", additionalProperties = false, required = {}, properties = M.object() }
     local chunk = image_pages and {type = "integer", enum = image_pages} or M.passage_ref(passages)
     local ref = image_pages and "page" or "chunk"
     local members = { "found", "value", "confidence", "evidence" }
-    for _, f in ipairs(fields) do
-        local field = {}
-        for key, item in pairs(f) do field[key] = item end
-        field.nullable = true
-        local value = { type = "object", additionalProperties = false, required = members, properties = {
-            found = { type = "boolean" },
-            value = M.value_schema(field),
+    local quote = { type = "object", additionalProperties = false, required = { ref, "quote" }, properties = { [ref] = chunk, quote = { type = "string" } } }
+    local function reply(found: boolean, value: any, quotes: integer?): any
+        local evidence = { type = "array", maxItems = M.EVIDENCE_LIMIT, items = quote }
+        if quotes then evidence.minItems = quotes end
+        return { type = "object", additionalProperties = false, required = members, properties = {
+            found = { type = "boolean", enum = { found } },
+            value = value,
             confidence = { type = "number", minimum = 0, maximum = 1 },
-            evidence = { type = "array", maxItems = M.EVIDENCE_LIMIT, items = { type = "object", additionalProperties = false, required = { ref, "quote" },
-                properties = { [ref] = chunk, quote = { type = "string" } } } },
+            evidence = evidence,
         } }
-        M.schema_field(root, f, value, true)
+    end
+    for _, f in ipairs(fields) do
+        local absent = {}
+        for key, item in pairs(f) do absent[key] = item end
+        absent.nullable = true
+        M.schema_field(root, f, { anyOf = {
+            reply(false, M.value_schema(absent)),
+            reply(true, M.value_schema(f), f.evidence_required and 1 or nil),
+        } }, true)
     end
     return root
 end

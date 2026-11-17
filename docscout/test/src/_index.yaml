@@ -2128,3 +2128,19 @@ entries:
   providers:
   - id: app:fixture_reply_contract_provider
     provider_model: reply-contract-absent-value
+- name: fixture_reply_contract_constrained_null_model
+  kind: registry.entry
+  meta: {type: llm.model, name: reply-contract-constrained-null, capabilities: [generate, structured_output, vision], class: [reply-contract-constrained-null], priority: 100}
+  max_tokens: 128000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_reply_contract_provider
+    provider_model: reply-contract-constrained-null
+- name: fixture_reply_contract_constrained_quote_model
+  kind: registry.entry
+  meta: {type: llm.model, name: reply-contract-constrained-quote, capabilities: [generate, structured_output, vision], class: [reply-contract-constrained-quote], priority: 100}
+  max_tokens: 128000
+  output_tokens: 4096
+  providers:
+  - id: app:fixture_reply_contract_provider
+    provider_model: reply-contract-constrained-quote

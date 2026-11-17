@@ -44,6 +44,9 @@ local function system_prompt(messages: { any }): string
     return ""
 end
 local function extraction(schema: any): any
+    for _, reply in ipairs(schema.anyOf or {}) do
+        if reply.properties and reply.properties.found and reply.properties.found.enum[1] == true then schema = reply end
+    end
     if not schema.properties then return value(schema) end
     if schema.properties.found and schema.properties.found.type == "boolean" then
         local chunk = schema.properties.evidence.items.properties.chunk.enum[1]
@@ -130,7 +133,8 @@ function M.structured(args: any): (any?, error?)
         end
         return { result = { data = reply }, tokens = { prompt_tokens = 12, completion_tokens = 8 } }, nil
     end
-    if args.options and args.options.capture_requests and args.schema.properties.accepted and args.schema.properties.accepted.properties.supported then
+    local accepted = args.schema.properties.accepted
+    if args.options and args.options.capture_requests and accepted and accepted.properties and accepted.properties.supported then
         local reply = { accepted = { supported = true, reason = "Supported" }, rejected = { supported = false, reason = "Different value" } }
         return { result = { data = reply }, tokens = usage(args, 0, math.ceil(#assert(canonical_json.encode(reply)) / 4)) }, nil
     end

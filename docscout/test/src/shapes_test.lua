@@ -282,19 +282,23 @@ return { run = test.run_cases(function()
             test.is_false((json.validate(schema, json.decode('{"a":{"found":true,"value":"x","confidence":1,"evidence":[{"chunk":3,"quote":"x"}]}}'))))
         end)
         test.it("bounds evidence and confidence", function()
-            local f = shapes.group_schema({ field({ name = "a" }) }, {}).properties.a.properties
-            test.eq(f.evidence.maxItems, shapes.EVIDENCE_LIMIT)
-            test.eq(f.confidence.minimum, 0); test.eq(f.confidence.maximum, 1)
+            for _, reply in ipairs(shapes.group_schema({ field({ name = "a" }) }, {}).properties.a.anyOf) do
+                local f = reply.properties
+                test.eq(f.evidence.maxItems, shapes.EVIDENCE_LIMIT)
+                test.eq(f.confidence.minimum, 0); test.eq(f.confidence.maximum, 1)
+            end
         end)
         test.it("requires found, value, confidence and evidence for every field of a group", function()
             local schema = shapes.group_schema({ field({ name = "a" }), field({ name = "b", type = "number" }) }, {})
             test.eq((json.encode(schema.required)), (json.encode({ "a", "b" })))
             test.is_false(schema.additionalProperties)
-            local a = schema.properties.a
-            test.eq((json.encode(a.required)), (json.encode({ "found", "value", "confidence", "evidence" })))
-            test.eq(a.properties.found.type, "boolean")
-            test.eq((json.encode(a.properties.evidence.items.required)), (json.encode({ "chunk", "quote" })))
-            test.eq(json.encode(schema.properties.b.properties.value.type), '["number","null"]')
+            for found, a in ipairs(schema.properties.a.anyOf) do
+                test.eq((json.encode(a.required)), (json.encode({ "found", "value", "confidence", "evidence" })))
+                test.eq(a.properties.found.type, "boolean"); test.eq(json.encode(a.properties.found.enum), found == 2 and "[true]" or "[false]")
+                test.eq((json.encode(a.properties.evidence.items.required)), (json.encode({ "chunk", "quote" })))
+            end
+            test.eq(json.encode(schema.properties.b.anyOf[1].properties.value.type), '["number","null"]')
+            test.eq(schema.properties.b.anyOf[2].properties.value.type, "number")
         end)
     end)
 end) }
