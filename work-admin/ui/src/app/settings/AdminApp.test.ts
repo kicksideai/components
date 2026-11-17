@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { host } from '@wippy-fe/proxy'
 import AdminApp from './AdminApp.vue'
 import { work } from '../../api'
 import { notify, subscriptions } from '../../test/setup'
@@ -23,6 +24,19 @@ it('creates a board from the System tab with a native dialog then opens its sett
   const inputs = w.findAll('dialog input'); await inputs[0].setValue('Next delivery'); await inputs[1].setValue('NEXT')
   await w.get('dialog form').trigger('submit'); await flushPromises()
   await w.get('dialog form').trigger('submit'); await flushPromises()
-  expect(work.createBoard).toHaveBeenCalledWith('Next delivery', { key_prefix: 'NEXT' }, expect.any(String), '', {})
+  expect(work.createBoard).toHaveBeenCalledWith('Next delivery', { key_prefix: 'NEXT' }, expect.any(String), {})
   expect(w.get('kickside-work-board-settings').attributes('board-id')).toBe('new')
+})
+
+it('asks before replacing a dirty board and keeps the current board on cancel', async () => {
+  const rows = await work.boards(); vi.mocked(work.boards).mockResolvedValue([...rows, { board_id: 'other', title: 'Other', access: { read: true, write: true, admin: true } }])
+  const w = await render(); await w.get('[aria-label="Settings for Delivery"]').trigger('click'); await flushPromises()
+  await w.get('kickside-work-board-settings').trigger('dirty-change', { detail: { dirty: true } })
+  vi.mocked(host.confirm).mockResolvedValueOnce(false)
+  await w.get('[aria-label="Settings for Other"]').trigger('click'); await flushPromises()
+  expect(host.confirm).toHaveBeenCalledOnce()
+  expect(w.get('kickside-work-board-settings').attributes('board-id')).toBe('b')
+  vi.mocked(host.confirm).mockResolvedValueOnce(true)
+  await w.get('[aria-label="Settings for Other"]').trigger('click'); await flushPromises()
+  expect(w.get('kickside-work-board-settings').attributes('board-id')).toBe('other')
 })

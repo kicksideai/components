@@ -9,19 +9,20 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import NativeDialog from '../NativeDialog.vue'
 import { work } from '../api'
-import type { Pack } from '../packs'
+import { availablePack, type Pack } from '../packs'
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ close: []; created: [boardId: string] }>()
 const title = ref(''), description = ref(''), prefix = ref('WORK'), selected = ref(''), starter = ref(false)
 const step = ref(1), busy = ref(false), loading = ref(false), error = ref(''), discoveryError = ref(''), packs = ref<Pack[]>([])
+const created = ref('')
 let key = crypto.randomUUID(), attempted = '', read = 0
-const choices = computed(() => [{ id: '', title: 'Empty board', description: 'Start with an empty board and build its schema in Settings.', icon: 'tabler:square', version: '', disabled: false }, ...packs.value.map(pack => ({ ...pack, disabled: pack.plugins.some(plugin => !plugin.installed) }))])
+const choices = computed(() => [{ id: '', title: 'Empty board', description: 'Start with an empty board and build its schema in Settings.', icon: 'tabler:square', version: '', disabled: false }, ...packs.value.map(pack => ({ ...pack, title: pack.title ?? pack.id, icon: pack.icon ?? 'tabler:package-off', disabled: !availablePack(pack) || pack.plugins.some(plugin => !plugin.installed), unavailable: !availablePack(pack) ? pack.problem.message : 'Required plugin unavailable. Install the pack’s required capabilities to use it.' }))])
 const chosen = computed(() => choices.value.find(pack => pack.id === selected.value))
 const valid = computed(() => !!title.value.trim() && /^[A-Z][A-Z0-9]{1,9}$/.test(prefix.value) && !!chosen.value && !chosen.value.disabled)
 watch(() => props.visible, async visible => {
   const current = ++read
   if (!visible) return
-  step.value = 1; error.value = ''; discoveryError.value = ''; title.value = ''; description.value = ''; prefix.value = 'WORK'; selected.value = ''; starter.value = false; key = crypto.randomUUID(); attempted = ''; packs.value = []; loading.value = true
+  created.value = ''; step.value = 1; error.value = ''; discoveryError.value = ''; title.value = ''; description.value = ''; prefix.value = 'WORK'; selected.value = ''; starter.value = false; key = crypto.randomUUID(); attempted = ''; packs.value = []; loading.value = true
   try { const rows = await work.packs(); if (current === read) packs.value = rows }
   catch (e) { if (current === read) discoveryError.value = e instanceof Error ? e.message : 'Could not load packs.' }
   finally { if (current === read) loading.value = false }
@@ -35,8 +36,12 @@ async function create() {
   const request = JSON.stringify([title.value.trim(), description.value, declaration, selection])
   if (attempted && attempted !== request) key = crypto.randomUUID()
   attempted = request
-  try { const result = await work.createBoard(title.value.trim(), declaration, key, description.value, selection); emit('created', result.board_id); emit('close') }
-  catch (e) { error.value = e instanceof Error ? e.message : 'Could not create the board.' }
+  try {
+    if (!created.value) { const result = await work.createBoard(title.value.trim(), declaration, key, selection); created.value = result.board_id }
+    if (description.value) await work.updateBoard(created.value, { description: description.value })
+    emit('created', created.value); emit('close')
+  }
+  catch (e) { error.value = (created.value ? 'Board created. Description was not saved. ' : '') + (e instanceof Error ? e.message : 'Could not save the board.') }
   finally { busy.value = false }
 }
 </script>
@@ -61,14 +66,14 @@ async function create() {
             v-model="title"
             autofocus
             required
-            :disabled="busy"
+            :disabled="busy || !!created"
             placeholder="Team delivery" /></label
         ><label class="work-stack work-tight"
           >Description<Textarea
             id="board-description"
             v-model="description"
             rows="3"
-            :disabled="busy"
+            :disabled="busy || !!created"
             placeholder="What does this board help the team deliver?" /></label
         ><label class="work-stack work-tight"
           >Item key prefix<InputText
@@ -77,7 +82,7 @@ async function create() {
             required
             pattern="[A-Z][A-Z0-9]{1,9}"
             maxlength="10"
-            :disabled="busy"
+            :disabled="busy || !!created"
         /></label>
         <p class="work-muted work-small">
           Keys look like {{ prefix || 'WORK' }}-1. The prefix must be unique in this installation.
@@ -94,7 +99,7 @@ async function create() {
           optionValue="id"
           optionDisabled="disabled"
           :allowEmpty="false"
-          :disabled="busy"
+          :disabled="busy || !!created"
           aria-label="Board pack"
           ><template #option="{ option }"
             ><span class="work-pack-choice"
@@ -103,12 +108,12 @@ async function create() {
                 ><span v-if="option.version" class="work-muted work-small">{{ option.version }}</span></span
               ><span class="work-muted work-small">{{ option.description }}</span
               ><span v-if="option.disabled" class="work-pack-unavailable"
-                >Required plugin unavailable. Install the pack's required capabilities to use it.</span
+                >{{ option.unavailable }}</span
               ></span
             ></template
           ></SelectButton
         ><label v-if="selected" class="work-row work-small"
-          ><ToggleSwitch v-model="starter" :disabled="busy" aria-label="Include starter items" />Include
+          ><ToggleSwitch v-model="starter" :disabled="busy || !!created" aria-label="Include starter items" />Include
           starter items</label
         >
         <div class="work-settings-card work-stack work-tight">
@@ -123,12 +128,12 @@ async function create() {
         <Button
           :label="step === 1 ? 'Cancel' : 'Back'"
           severity="secondary"
-          :disabled="busy"
+          :disabled="busy || !!created"
           @click="step === 1 ? emit('close') : (step = 1)"
           outlined
         /><Button
           type="submit"
-          :label="step === 1 ? 'Continue' : 'Create board'"
+          :label="step === 1 ? 'Continue' : created ? 'Save description' : 'Create board'"
           :loading="busy"
           :disabled="!valid || busy"
         />

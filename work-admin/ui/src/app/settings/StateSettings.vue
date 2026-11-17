@@ -74,7 +74,7 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
             <label class="work-row"
               ><span class="work-spacer">Require approvals</span
               ><ToggleSwitch :model-value="!!state.release_when.approvals" aria-label="Require approvals" @update:model-value="state.release_when.approvals = $event ? { min: 1, from: { group: '' }, prevent_self: true } : undefined" /></label>
-            <DurationControl v-model="state.release_when.wait" label="Wait before release" />
+            <DurationControl v-model="state.release_when.wait" label="Wait before release" @validity="(valid, key) => emit('validity', key, valid)" />
             <ConditionEditor
               label="Release when"
               :draft="draft"
@@ -90,7 +90,7 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
         <label class="work-stack work-tight"
           >What runs<InputText v-model="state.run.stage" aria-label="Stage" required
         /></label>
-        <DurationControl v-model="state.run.timeout" label="Attempt timeout" />
+        <DurationControl v-model="state.run.timeout" label="Attempt timeout" @validity="(valid, key) => emit('validity', key, valid)" />
         <small class="work-muted">Blank uses the board timeout, or one hour.</small>
         <label class="work-row"><span class="work-spacer">Maximum visits</span><InputNumber
           :model-value="state.run.max_visits ?? null" aria-label="Maximum visits" :min="1" :useGrouping="false"
@@ -112,7 +112,7 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
           ><label class="work-row"
             ><span class="work-spacer">Maximum attempts</span
             ><InputNumber v-model="state.run.retry.max" :min="1" :useGrouping="false" /></label
-          ><DurationControl v-model="state.run.retry.backoff" label="Wait between attempts"
+          ><DurationControl v-model="state.run.retry.backoff" label="Wait between attempts" @validity="(valid, key) => emit('validity', key, valid)"
         /></template>
         <label v-for="route in ([{ key: 'on_pass', label: 'On success' }, { key: 'on_cancel', label: 'On cancellation' }] as const)" :key="route.key" class="work-stack work-tight">{{ route.label }}<Select :model-value="state.run[route.key]" :aria-label="route.label" appendTo="self" optionLabel="label" optionValue="value" showClear :options="outcomeTransitions.map(t => ({ label: transitionTitle(t), value: t.id }))" @update:model-value="state.run[route.key] = $event || undefined" /></label>
         <label class="work-stack work-tight"
@@ -212,7 +212,7 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
       :options="draft.fields?.map((f) => ({ value: f.code, label: f.title || f.code })) ?? []"
       v-model="state.require"
     />
-    <DurationControl v-if="!state.kind || state.kind === 'human'" v-model="state.due" label="Due after" />
+    <DurationControl v-if="!state.kind || state.kind === 'human'" v-model="state.due" label="Due after" @validity="(valid, key) => emit('validity', key, valid)" />
     <template v-if="advanced">
       <h4 class="work-process-group">Assignment and conditions</h4>
       <label class="work-stack work-tight">Stage label<InputText :model-value="state.stage" aria-label="Stage label" @update:model-value="state.stage = $event || undefined" /></label>

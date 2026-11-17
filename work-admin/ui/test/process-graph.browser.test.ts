@@ -111,3 +111,22 @@ it.each(cases)('renders real diagram geometry for $name in $theme at $width px',
     await page.close()
   }
 }, 30000)
+
+it.each([1500, 900])('renders every CI/CD route after Fit and inspector resizing at %s px', async width => {
+  const page = await browser.newPage({ viewport: { width, height: 1000 } })
+  const errors: string[] = []; page.on('pageerror', e => errors.push(e.message))
+  try {
+    await page.goto(`${server.resolvedUrls!.local[0]}test/process-graph.html?process=cicd`)
+    const canvas = page.getByLabel('Process map', { exact: true })
+    await canvas.press('0')
+    await expect.poll(() => page.locator('.work-state-card').count()).toBe(10)
+    // Opening the settings inspector takes another 320px from the graph canvas.
+    if (width === 900) { await canvas.evaluate(el => { (el as HTMLElement).style.width = '520px' }); await canvas.press('0') }
+    expect(await page.locator('.work-edge-label-bg').count()).toBe(11)
+    expect(errors).toEqual([])
+    if (process.env.WORK_ADMIN_SCREENSHOTS) {
+      await mkdir(process.env.WORK_ADMIN_SCREENSHOTS, { recursive: true })
+      await page.screenshot({ path: resolve(process.env.WORK_ADMIN_SCREENSHOTS, `W02-cicd-fit-${width}.png`), fullPage: true })
+    }
+  } finally { await page.close() }
+})

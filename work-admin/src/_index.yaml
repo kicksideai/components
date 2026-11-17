@@ -117,3 +117,10 @@ entries:
           type: string
       required:
       - route
+    dirty-change:
+      type: object
+      properties:
+        dirty:
+          type: boolean
+      required:
+      - dirty

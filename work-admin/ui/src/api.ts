@@ -15,7 +15,7 @@ export const work = {
     return boards
   },
   packs: () => get<{ packs: Pack[] }>(`${BASE}/packs`, 'Packs').then(r => r.packs),
-  createBoard: (title: string, declaration: Declaration, key: string, description = '', selection: PackSelection = {}) => post<{ board_id: string }>(`${BASE}/boards`, { title, description, declaration, idempotency_key: key, ...selection }, 'Create board'),
+  createBoard: (title: string, declaration: Declaration, key: string, selection: PackSelection = {}) => post<{ board_id: string }>(`${BASE}/boards`, { title, declaration, idempotency_key: key, ...selection }, 'Create board'),
   updateBoard: (id: string, changes: { title?: string; description?: string; icon?: string }) => post<{ board_id: string; status: 'updated' | 'unchanged' }>(`${board(id)}/update`, changes, 'Update board'),
   schema: (id: string, generation?: number, checkPlugins?: boolean) => post<Schema>(`${board(id)}/get_schema`, { generation, ...(checkPlugins ? { check_plugins: true } : {}) }, 'Schema'),
   // Typed operands in conditions and transition assignments can select an item.

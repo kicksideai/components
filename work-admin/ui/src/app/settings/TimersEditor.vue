@@ -20,7 +20,7 @@ function effect(timer: Timer, value: string) { timer.then = value === 'emit' ? {
 <template>
   <section class="work-stack">
     <h4>Timers</h4>
-    <article v-for="(timer, index) in timers()" :key="index" class="work-settings-card work-stack">
+    <article v-for="(timer, index) in timers()" :key="timer.id" class="work-settings-card work-stack">
       <div class="work-settings-grid">
         <label class="work-stack work-tight"
           >Timer ID<InputText v-model="timer.id" required pattern="[a-z][a-z0-9_]*" /></label
@@ -36,7 +36,7 @@ function effect(timer: Timer, value: string) { timer.then = value === 'emit' ? {
               { label: 'After duration', value: 'after', disabled: false },
               { label: 'At field', value: 'at_field', disabled: false },
             ]" /></label
-        ><DurationControl v-if="timer.after !== undefined" v-model="timer.after" label="After" /><label
+        ><DurationControl v-if="timer.after !== undefined" v-model="timer.after" label="After" @validity="(valid, key) => emit('validity', key, valid)" /><label
           v-else
           class="work-stack work-tight"
           >At field<Select
@@ -80,7 +80,7 @@ function effect(timer: Timer, value: string) { timer.then = value === 'emit' ? {
         @validity="emit('validity', 'table-' + index, $event)"
       />
       <div class="work-settings-grid">
-        <DurationControl v-model="timer.repeat" label="Repeat every" :disabled="timer.interrupting" /><label
+        <DurationControl v-model="timer.repeat" label="Repeat every" @validity="(valid, key) => emit('validity', key, valid)" :disabled="timer.interrupting" /><label
           class="work-row"
           ><Checkbox
             v-model="timer.interrupting"
