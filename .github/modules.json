@@ -146,7 +146,12 @@
         "postgres"
       ],
       "pg_database": "docscout_test",
-      "extra_tests": []
+      "extra_tests": [
+        [
+          "python3",
+          "test/test_build_inputs.py"
+        ]
+      ]
     },
     "storage-s3": {
       "path": "storage-s3",
