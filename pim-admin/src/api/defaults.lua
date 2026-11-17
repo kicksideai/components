@@ -5,6 +5,7 @@ local contract = require("contract")
 local component = require("component")
 local catalog_client = require("catalog_client")
 local http_errors = require("http_errors")
+local policy = require("policy")
 local types = require("types")
 local M = {}
 
@@ -35,6 +36,8 @@ function M.get()
     if not result or result.success ~= true or type(result.values) ~= "table" then
         return fail(res, errors.new({ kind = errors.UNAVAILABLE, message = "PIM policy defaults are unavailable" }))
     end
-    res:write_json({ success = true, data = result.values })
+    local values = result.values :: types.Map
+    values.audit_days = policy.audit_window(values.audit_days :: integer)
+    res:write_json({ success = true, data = values })
 end
 return M

@@ -32,6 +32,7 @@ entries:
     component: kickside.component:component
     catalog_client: kickside.pim:client
     http_errors: kickside.contract:http_errors
+    policy: kickside.pim.domain:policy
 - name: defaults.endpoint
   kind: http.endpoint
   method: GET
