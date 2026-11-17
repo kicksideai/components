@@ -146,7 +146,7 @@ entries:
 - name: registry_admin_grant
   kind: ns.requirement
   meta:
-    value_kind: object
+    value_type: object
     comment: Structured grant { subject_id, subject_type, access_mask } on the prefix registry for the host's work administrator group; READ and WRITE (3) let its members claim key prefixes.
   targets:
   - entry: kickside.work.binding:registry
