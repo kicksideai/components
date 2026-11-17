@@ -183,3 +183,12 @@ entries:
 - name: text
   kind: library.lua
   source: file://text.lua
+
+- name: dep.kickside.workflows
+  kind: ns.dependency
+  version: '*'
+  component: kickside/workflows
+- name: dep.kickside.sync
+  kind: ns.dependency
+  version: '*'
+  component: kickside/sync

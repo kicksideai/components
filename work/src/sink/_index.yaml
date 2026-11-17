@@ -65,3 +65,24 @@ entries:
     domain: kickside.work:types
     read_types: kickside.work.read:types
     types: kickside.work.command:types
+- name: stage_launch
+  kind: function.lua
+  source: file://stage_launch.lua
+  method: write
+- name: stage_launcher
+  kind: contract.binding
+  meta: { title: Work stage launcher, delivery: at_least_once, input_shape: record }
+  contracts:
+  - contract: kickside.data:writable
+    methods:
+      write: kickside.work.sink:stage_launch
+- name: stage_launch_port
+  kind: registry.entry
+  meta: { type: kickside.automation.port, title: Work stage launcher, private: true }
+  binding: kickside.work.sink:stage_launcher
+  input_mode: transform_output
+  capabilities: { receipt_identity: 2, structured_failure: 1 }
+  operations: { upsert: {} }
+  config_schema:
+    board_id: { type: string, picker: wc-component-picker, class: work_board, role: primary, required: true, title: Board }
+  input_schema: { type: object }

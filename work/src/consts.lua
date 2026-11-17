@@ -72,7 +72,7 @@ M.STATE_KEYS = { awaiting = true, id = true, name = true, category = true, kind 
     timers = true, run = true, release_when = true, regions = true, join = true, invariants = true }
 M.TRANSITION_KEYS = { people = true, id = true, name = true, from = true, to = true, require = true, set = true, auto = true, order = true, default = true, when = true, guards = true }
 M.TIMER_KEYS = { id = true, after = true, at_field = true, by = true, table = true, interrupting = true, ["repeat"] = true, ["then"] = true }
-M.STAGE_KEYS = { max_visits = true, on_exhausted = true, timeout = true, stage = true, retry = true, on_fail = true, on_pass = true, on_cancel = true }
+M.STAGE_KEYS = { flow_ref = true, max_visits = true, on_exhausted = true, timeout = true, stage = true, retry = true, on_fail = true, on_pass = true, on_cancel = true }
 M.RETRY_KEYS = { max = true, backoff = true }
 M.RELEASE_KEYS = { approvals = true, wait = true, when = true }
 M.APPROVAL_KEYS = { min = true, from = true, prevent_self = true }

@@ -57,6 +57,8 @@ entries:
     - kickside.work.read:resolve_principal
     - kickside.work.service:apply
     - kickside.work.service:apply_schema
+    - kickside.work.service:stage_binding
+    - kickside.work.service:stage_binding_selected
     - kickside.work.service:approve
     - kickside.work.service:board
     - kickside.work.service:bulk
@@ -100,6 +102,8 @@ entries:
     - kickside.work.service:update
     - kickside.work.service:view
     - kickside.work.settings:validate
+    - kickside.work.sink:stage_launcher
+    - kickside.work.sink:stage_launch
     - kickside.work.sink:items
     - kickside.work.sink:write
     - kickside.work.source:changes
