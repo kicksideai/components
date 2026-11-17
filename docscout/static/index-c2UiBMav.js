@@ -1,5 +1,5 @@
 import { api as s } from "@wippy-fe/proxy";
-import { h as F, B as j, l as L, c as R, s as B, f as w, R as V } from "./wc-runtime-CWPiLYui.js";
+import { h as F, B as j, i as L, c as R, s as B, f as w, R as V } from "./wc-runtime-CBjtO5xN.js";
 import { openBlock as g, createElementBlock as v, mergeProps as c, createElementVNode as W, renderSlot as y, createTextVNode as Z, toDisplayString as O, resolveComponent as C, resolveDirective as G, withDirectives as J, createBlock as S, resolveDynamicComponent as Y, withCtx as H, createCommentVNode as $, normalizeClass as A } from "vue";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 const p = (t) => `/api/v1/docscout/${encodeURIComponent(t)}`;

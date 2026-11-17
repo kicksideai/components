@@ -4,7 +4,7 @@ import {wippyComponentPlugin} from '@wippy-fe/vite-plugin'
 import {defineConfig} from 'vite'
 import {hostExternals, wcRuntimeChunk} from '../../wc-build'
 export default defineConfig({
-  plugins:[vue({template:{compilerOptions:{isCustomElement:(tag)=>tag.startsWith('wc-')||tag==='wc-agent-trait-picker'}}}),wippyComponentPlugin()],
+  plugins:[vue({template:{compilerOptions:{isCustomElement:(tag)=>tag.startsWith('wc-')||tag==='wc-agent-trait-picker'}}}),wippyComponentPlugin({ required: true, lazyEntries: ['index'] })],
   define:{'process.env.NODE_ENV':JSON.stringify('production')},
   build:{target:'esnext',outDir:resolve(__dirname,'../static'),emptyOutDir:true,
     lib:{entry:resolve(__dirname,'src/index.ts'),name:'AgentOnboarding',fileName:'index',formats:['es']},

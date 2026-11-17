@@ -5,7 +5,7 @@ import { wippyComponentPlugin } from '@wippy-fe/vite-plugin'
 import { defineConfig } from 'vite'
 import { hostExternals, wcRuntimeChunk } from '../../wc-build'
 export default defineConfig({
- plugins: [vue({ template: { compilerOptions: { isCustomElement: t => t.startsWith('wc-') } } }), wippyComponentPlugin()],
+ plugins: [vue({ template: { compilerOptions: { isCustomElement: t => t.startsWith('wc-') } } }), wippyComponentPlugin({ required: true, lazyEntries: ['index', 'page'] })],
  define: { 'process.env.NODE_ENV': JSON.stringify('production'), 'process.env': '{}' },
  build: { target: 'esnext', outDir: resolve(__dirname, '../static'), emptyOutDir: true,
  lib: { entry: { index: resolve(__dirname, 'src/manage.ts'), create: resolve(__dirname, 'src/create.ts'), page: resolve(__dirname, 'src/page.ts') }, formats: ['es'] },

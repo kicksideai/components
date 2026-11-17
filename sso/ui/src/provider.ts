@@ -1,13 +1,9 @@
-import { WippyVueElement, define, useEvents } from '@wippy-fe/webcomponent-vue'
+import { WippyVueElement, define, lazyVueConfig } from '@wippy-fe/webcomponent-vue'
 import type { WippyElementConfig, WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
-import { lazyControl } from './lazy'
+
 import stylesText from './card.css?inline'
 
-const Root = lazyControl(
-  () => import('./app/ProviderCard.vue'),
-  { immediate: true, loading: 'Loading provider settings…', failed: 'Could not load the provider settings. Reload the page to try again.' },
-  useEvents,
-)
+
 
 // kickside-sso-provider — the generic provider admin card. The SSO admin shell
 // mounts it once per discovered provider, passing that provider's config slice
@@ -24,7 +20,7 @@ class KicksideSsoProvider extends WippyVueElement<P, E> {
   static get wippyConfig(): WippyElementConfig<P> {
     return { propsSchema, hostCssKeys: ['themeConfigUrl'] as const, inlineCss: stylesText }
   }
-  static get vueConfig() { return { rootComponent: Root } }
+  static get vueConfig() { return lazyVueConfig(() => (() => import('./app/ProviderCard.vue'))().then(module => ({ rootComponent: module.default })), { surface: 'compact', loading: 'Loading provider settings…', failed: 'Could not load the provider settings. Reload the page to try again.', delay: true ? 0 : 200, timeout: 30000 }) }
 }
 
 export async function webComponent() { return KicksideSsoProvider }

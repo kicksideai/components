@@ -1,13 +1,9 @@
-import { WippyVueElement, define, useEvents } from '@wippy-fe/webcomponent-vue'
+import { WippyVueElement, define, lazyVueConfig } from '@wippy-fe/webcomponent-vue'
 import type { WippyElementConfig, WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
-import { lazyControl } from './lazy'
+
 import stylesText from './admin.css?inline'
 
-const Admin = lazyControl(
-  () => import('./app/admin.vue'),
-  { loading: 'Loading single sign-on settings…', failed: 'Could not load the single sign-on settings. Reload the page to try again.' },
-  useEvents,
-)
+
 
 // kickside-sso-admin — the provider configuration panel mounted by the System
 // "Single sign-on" tab. A separate element from the login surface (kickside-sso),
@@ -33,7 +29,7 @@ class KicksideSsoAdminElement extends WippyVueElement<AdminProps, AdminEvents> {
   }
 
   static get vueConfig() {
-    return { rootComponent: Admin }
+    return lazyVueConfig(() => (() => import('./app/admin.vue'))().then(module => ({ rootComponent: module.default })), { surface: 'compact', loading: 'Loading single sign-on settings…', failed: 'Could not load the single sign-on settings. Reload the page to try again.', delay: 200, timeout: 30000 })
   }
 }
 

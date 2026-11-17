@@ -12,17 +12,17 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@wippy-fe/theme": "*",
-    "@wippy-fe/webcomponent-core": "*",
-    "@wippy-fe/webcomponent-vue": "*",
+    "@wippy-fe/theme": "0.0.70",
+    "@wippy-fe/webcomponent-core": "0.0.70",
+    "@wippy-fe/webcomponent-vue": "0.0.70",
     "primevue": "*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "*",
     "@vitest/coverage-v8": "*",
     "@vue/test-utils": "*",
-    "@wippy-fe/proxy": "*",
-    "@wippy-fe/vite-plugin": "*",
+    "@wippy-fe/proxy": "0.0.70",
+    "@wippy-fe/vite-plugin": "0.0.70",
     "happy-dom": "*",
     "typescript": "^5.0.0",
     "vite": "*",
@@ -46,7 +46,7 @@
   },
   "peerDependencies": {
     "vue": "*",
-    "@wippy-fe/proxy": "*",
+    "@wippy-fe/proxy": "0.0.70",
     "@iconify/vue": "*"
   }
 }
