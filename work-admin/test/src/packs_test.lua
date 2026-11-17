@@ -66,6 +66,35 @@ local function cases()
             local missing = owner.post("/work/boards", { title = "Unavailable", pack = "app:unavailable_pack", idempotency_key = (uuid.v4()) })
             test.eq(missing.status, 400, json.encode(missing.body)); test.eq(missing.body.details.code, "unknown_plugin")
         end)
+        test.it("uses exact plugin identities and initial configuration for packed creation and empty-board installation", function()
+            local owner = session.admin()
+            local listed = owner.get("/work/packs")
+            test.eq(listed.status, 200, json.encode(listed.body))
+            for _, pack in ipairs(listed.body.data.packs) do
+                if pack.id == "app:configured_pack" then
+                    test.eq(pack.plugins[1].plugin, "app:ui_plugin")
+                    test.is_true(pack.plugins[1].installed)
+                    test.is_nil(pack.plugins[1].id)
+                end
+            end
+            local request = { title = "Configured board", pack = "app:configured_pack", starter = false,
+                declaration = { key_prefix = "P" .. uuid.v4():gsub("-", ""):sub(1, 8):upper() },
+                plugin_configs = { ["app:ui_plugin"] = { threshold = 7 } }, idempotency_key = uuid.v4() }
+            local created = owner.post("/work/boards", request)
+            test.eq(created.status, 200, json.encode(created.body))
+            test.eq(owner.post("/work/boards", request).body.data.board_id, created.body.data.board_id)
+            local view = owner.post(path(created.body.data.board_id, "get_schema"), {}).body.data
+            test.eq(view.plugins[1].plugin, "app:ui_plugin"); test.eq(view.plugins[1].config.threshold, 7)
+            local id = create(owner, nil, false)
+            local install = { pack = "app:configured_pack", expected_generation = 1,
+                plugin_configs = { ["app:ui_plugin"] = { threshold = 9 } }, key = uuid.v4() }
+            local planned = owner.post(path(id, "pack_plan"), install)
+            test.eq(planned.status, 200, json.encode(planned.body)); test.eq(#planned.body.data.refused, 0)
+            local applied = owner.post(path(id, "pack_apply"), install)
+            test.eq(applied.status, 200, json.encode(applied.body)); test.eq(applied.body.data.status, "done")
+            local installed = owner.post(path(id, "get_schema"), {}).body.data
+            test.eq(installed.pack.id, "app:configured_pack"); test.eq(installed.plugins[1].config.threshold, 9)
+        end)
         test.it("reviews conflicts and explicit state maps then applies with generation and ADMIN protection", function()
             local owner, reader = session.admin(), session.member()
             local id = create(owner, "app:upgrade_pack", false)

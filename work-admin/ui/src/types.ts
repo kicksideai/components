@@ -21,7 +21,7 @@ export interface Declaration {
   key_prefix?: string; fields?: Field[]; item_types?: ItemType[]; processes?: Process[]
   relation_types?: { id: string; outward?: string; inward?: string; cardinality?: string; symmetric?: boolean }[]
   plugins?: { use: string }[]; scopes?: string[]; visibility?: { field: string; levels: { id: string; holders: Holder[] }[]; bypass?: string }; remove?: Partial<Record<'fields' | 'item_types' | 'processes' | 'relation_types', string[]>>
-  policy?: { stage_timeout?: string; stage_max_visits?: number; wip?: Record<string, { limit: number; hard?: boolean }>; audit?: string; audit_days?: number; trash_days?: number; tombstone_days?: number; interval_days?: number }
+  policy?: { comments_per_item?: number; stage_timeout?: string; stage_max_visits?: number; wip?: Record<string, { limit: number; hard?: boolean }>; audit?: string; audit_days?: number; trash_days?: number; tombstone_days?: number; interval_days?: number }
 }
 export interface Schema { pack?: { id: string; version: string; digest: string }; outdated?: boolean; declaration: Declaration; compiled: Declaration; key_prefix: string; generation: number; as_of: number; migration_error?: string; plugins?: PluginState[] }
 export interface EligibleTransition { id: string; name: string; to: string; region?: string; require: string[] }

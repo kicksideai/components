@@ -15,10 +15,10 @@ end
 local function path(id: string, method: string): string return "/work-admin/boards/" .. id .. "/" .. method end
 local function cases()
     test.describe("administration module boundaries", function()
-        test.it("announces and serves only admin and board settings bundles", function()
+        test.it("announces and serves administration, board settings and shared defaults composition", function()
             local member, outsider = session.member(), session.outsider()
             local bundle = assert(fs.get("kickside.work.admin:ui_fs"))
-            for _, name in ipairs({ "admin", "board_settings" }) do
+            for _, name in ipairs({ "admin", "board_settings", "defaults" }) do
                 local id = "kickside.work.admin:" .. name
                 local entry = assert(registry.get(id))
                 test.eq(entry.meta.type, "view.component")

@@ -89,10 +89,9 @@ it('preserves drafts across wakeups, blocks stale applies, and disposes subscrip
   await getButton(w.get('.kx-head-actions'), 'Discard').trigger('click'); expect(w.text()).not.toContain('advances to generation')
   w.unmount(); wrappers.pop(); expect(subscriptions.has('component.b')).toBe(false)
 })
-it('hides advanced controls until opted in and denies non-admin actors', async () => {
+it('exposes the full settings surface without an Advanced section and denies non-admin actors', async () => {
   const w = await render()
-  expect(w.find('[aria-label="Who can read"]').exists()).toBe(false); expect(w.find('[aria-label="Board visibility"]').exists()).toBe(false)
-  await w.get('input[role=switch]').setValue(true)
+  expect(w.find('[aria-label="Advanced settings"]').exists()).toBe(false)
   expect(w.find('[aria-label="Who can read"]').exists()).toBe(true)
   await getButton(w, 'Policy').trigger('click')
   expect(w.find('[aria-label="Board visibility"]').exists()).toBe(true)
@@ -196,7 +195,7 @@ it('refreshes projection health from the latest read while preserving a schema d
   const w = await render(); await edit(w); await getButton(w, 'Plugins').trigger('click'); await flushPromises()
   expect(w.text()).toContain('Catching up')
   vi.mocked(work.schema).mockResolvedValue({ ...view, as_of: 8, plugins: [{ ...view.plugins[0], projections: { index: { last_seq: 8, parked: false, bootstrapping: false } } }] })
-  notify('component.b'); await flushPromises()
+  await getButton(w, 'Refresh status').trigger('click'); await flushPromises()
   expect(w.text()).toContain('Up to date'); expect(w.text()).toContain('Position 8 · Board head 8')
   expect(w.find<HTMLInputElement>('form input[aria-label="Field code"]').element.value).toBe('name')
 })
@@ -285,4 +284,31 @@ it('asks before Back discards settings and keeps editing on cancel', async () =>
   vi.mocked(host.confirm).mockResolvedValueOnce(true)
   await getButton(w, 'Back to board').trigger('click'); await flushPromises()
   expect(go).toHaveBeenCalledWith({ name: 'board', board: 'b' })
+})
+
+it('clears option validity after an earlier field is removed and the duplicate id is corrected', async () => {
+  const view = schema()
+  view.declaration.fields = [{ id: 1, code: 'first', form: 'text' }, { id: 2, code: 'choices', form: 'text', type: 'option', options: [{ id: 'XL' }, { id: 'XL' }] }]
+  view.declaration.item_types = []
+  vi.mocked(work.schema).mockResolvedValue(view)
+  const w = await render()
+  expect(getButton(w, 'Review changes').attributes('disabled')).toBeDefined()
+  await w.findAll('[aria-label="Remove field"]')[0].trigger('click'); await flushPromises()
+  await w.findAll('[aria-label="Option ID"]')[1].setValue('42')
+  expect(getButton(w, 'Review changes').attributes('disabled')).toBeUndefined()
+})
+
+it('keeps the open plugin status visible when a refresh changes only lifecycle progress', async () => {
+  const plugin = { plugin: 'app:plugin', installed: true, active: true, requires: [], tools: [], lifecycle: { state: 'pending' as const }, projections: {} }
+  const view = { ...schema(), plugins: [plugin] }
+  vi.mocked(work.schema).mockResolvedValue(view)
+  vi.mocked(work.options).mockResolvedValue({ ...emptyOptions(), access: { read: true, write: true, admin: true }, schema_options: { plugins: [{ ...plugin, title: 'Search', config_schema: {} }] } })
+  const w = await render(); await getButton(w, 'Plugins').trigger('click')
+  await w.get('[aria-label="Plugins editor"] .work-definition-toggle').trigger('click')
+  expect(w.get('.work-plugin-status').isVisible()).toBe(true)
+  vi.mocked(work.schema).mockResolvedValue({ ...view, plugins: [{ ...plugin, lifecycle: { state: 'ready' as const } }] })
+  await getButton(w, 'Refresh status').trigger('click'); await flushPromises()
+  expect(w.get('.work-plugin-status').isVisible()).toBe(true)
+  expect(w.get('.work-plugin-status').text()).toContain('Attachment configured')
+  expect(w.get('[aria-label="Plugins editor"] .work-definition-toggle').attributes('aria-expanded')).toBe('true')
 })

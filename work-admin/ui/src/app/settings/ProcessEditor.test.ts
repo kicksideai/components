@@ -11,13 +11,13 @@ import { schema } from '../../test/fixtures'
 import type { Declaration } from '../../types'
 const wrappers: ReturnType<typeof mount>[] = []
 afterEach(() => wrappers.splice(0).forEach(w => w.unmount()))
-function editor(advanced = false) {
-  const draft = reactive(schema().declaration), w = mount(ProcessEditor, { props: { draft, advanced } }); wrappers.push(w)
+function editor() {
+  const draft = reactive(schema().declaration), w = mount(ProcessEditor, { props: { draft } }); wrappers.push(w)
   return { draft, w }
 }
 it('adds after the selected stop and focuses its name without mutating other state settings', async () => {
   const host = document.createElement('div'); document.body.append(host)
-  const draft = reactive(schema().declaration), w = mount(ProcessEditor, { props: { draft, advanced: false }, attachTo: host }); wrappers.push(w)
+  const draft = reactive(schema().declaration), w = mount(ProcessEditor, { props: { draft }, attachTo: host }); wrappers.push(w)
   const first = structuredClone(schema().declaration.processes![0].states[0])
   await w.get('.work-graph-node').trigger('click')
   await w.get('button[aria-label="Add state"]').trigger('click'); await flushPromises()
@@ -46,7 +46,7 @@ it('edits the same draft through List and Map and provides the keyboard connecti
   expect(draft.processes![0].transitions![0].from).toEqual(['todo'])
 })
 it('guards referenced removal and edits a shared limit without seeding one on selection', async () => {
-  const { draft, w } = editor(true), before = JSON.stringify(draft)
+  const { draft, w } = editor(), before = JSON.stringify(draft)
   await w.get('.work-graph-node').trigger('click')
   expect(JSON.stringify(draft)).toBe(before)
   const limit = w.findAllComponents(InputNumber).find(c => c.find('[aria-label="Items allowed here"]').exists())!
@@ -71,7 +71,7 @@ it('keeps the process selector conditional and puts creation last', async () => 
 it('opens the initial-state menu in the owning shadow root with platform styling', async () => {
   const host = document.createElement('div'); document.body.append(host)
   const shadow = host.attachShadow({ mode: 'open' }), target = document.createElement('div'); shadow.append(target)
-  const w = mount(ProcessEditor, { props: { draft: schema().declaration, advanced: false }, attachTo: target, global: { stubs: { teleport: false } } }); wrappers.push(w)
+  const w = mount(ProcessEditor, { props: { draft: schema().declaration }, attachTo: target, global: { stubs: { teleport: false } } }); wrappers.push(w)
   await w.get('[aria-label="Starts in To do"]').trigger('click'); await flushPromises()
   const overlay = shadow.querySelector('.p-select-overlay')
   expect(overlay?.getRootNode()).toBe(shadow)
@@ -93,7 +93,7 @@ it('changes existing-item policy and maps removed states through Review without 
 })
 it('selection and clearing leave an absent transition collection untouched', async () => {
   const draft = reactive<Declaration>({ processes: [{ id: 'flow', initial: 'ready', states: [{ id: 'ready', name: 'Ready', category: 'unstarted' }] }] })
-  const w = mount(ProcessEditor, { props: { draft, advanced: true } }); wrappers.push(w)
+  const w = mount(ProcessEditor, { props: { draft } }); wrappers.push(w)
   const before = JSON.stringify(draft)
   await w.get('.work-graph-node').trigger('click')
   await w.get('.work-process-editor').trigger('keydown', { key: 'Escape' })

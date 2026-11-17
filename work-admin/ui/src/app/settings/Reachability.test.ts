@@ -12,7 +12,7 @@ import FilterNode from '../query/FilterNode.vue'
 import type { Declaration, Process } from '../../types'
 it('adds a manual state without declaring an invalid automatic default', async () => {
   const draft = reactive<Declaration>({ processes: [{ id: 'flow', initial: 'ready', states: [{ id: 'ready', name: 'Ready', category: 'unstarted' }], transitions: [] }] })
-  const w = mount(ProcessEditor, { props: { draft, advanced: false } })
+  const w = mount(ProcessEditor, { props: { draft } })
   await w.findAll('button').find(b => b.text() === 'Add state')!.trigger('click')
   expect(draft.processes![0].transitions).toHaveLength(1)
   expect(draft.processes![0].transitions![0].default).not.toBe(true)
@@ -27,7 +27,7 @@ it('clears a condition validity failure when the condition is disabled', async (
 })
 it('exposes each automation outcome route through a labeled platform select', async () => {
   const process = reactive<Process>({ id: 'flow', initial: 'build', states: [{ id: 'build', category: 'started', kind: 'automated', run: { stage: 'build' } }, { id: 'done', category: 'completed' }], transitions: [{ id: 'finish', name: 'Finish', from: ['build'], to: 'done' }] })
-  const w = mount(StateSettings, { props: { state: process.states[0], process, draft: { processes: [process] }, advanced: true } })
+  const w = mount(StateSettings, { props: { state: process.states[0], process, draft: { processes: [process] } } })
   for (const label of ['On success', 'On cancellation']) {
     const control = w.findAllComponents(Select).find(c => c.props('ariaLabel') === label)
     expect(control, label).toBeDefined()
@@ -39,7 +39,7 @@ it('exposes each automation outcome route through a labeled platform select', as
 it('exposes transition people visibility and evaluation order without changing the draft on mount', async () => {
   const process = reactive<Process>({ id: 'flow', initial: 'ready', states: [{ id: 'ready', category: 'unstarted' }], transitions: [{ id: 'retry', from: ['ready'], to: 'ready' }] })
   const transition = process.transitions![0], before = JSON.stringify(transition)
-  const w = mount(TransitionSettings, { props: { transition, process, draft: {}, advanced: true } })
+  const w = mount(TransitionSettings, { props: { transition, process, draft: {} } })
   expect(JSON.stringify(transition)).toBe(before)
   const people = w.findAllComponents(Select).find(c => c.props('ariaLabel') === 'Offer to people')
   expect(people).toBeDefined(); await people!.setValue(false)
@@ -51,8 +51,8 @@ it('exposes transition people visibility and evaluation order without changing t
 it('offers all formula result forms and all Work option categories', async () => {
   const { default: FieldsEditor } = await import('./FieldsEditor.vue')
   const draft = reactive<Declaration>({ fields: [{ code: 'derived', type: 'formula', form: 'int', expression: '1' }, { code: 'status', type: 'option', form: 'text', options: [{ id: 'ready' }] }] })
-  const w = mount(FieldsEditor, { props: { draft, advanced: true } })
-  const result = w.findAllComponents(Select).find(c => c.props('ariaLabel') === 'Result form')
+  const w = mount(FieldsEditor, { props: { draft } })
+  const result = w.findAllComponents(Select).find(c => c.props('ariaLabel') === 'Result type')
   expect(result).toBeDefined(); await result!.setValue('text')
   expect(draft.fields![0].form).toBe('text')
   const category = w.findAllComponents(Select).find(c => c.props('ariaLabel') === 'Option category')

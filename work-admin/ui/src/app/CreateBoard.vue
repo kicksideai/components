@@ -7,6 +7,8 @@ import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
+import JsonInput from './settings/JsonInput.vue'
+import type { PluginConfigs } from './settings/model'
 import NativeDialog from '../NativeDialog.vue'
 import { work } from '../api'
 import { availablePack, type Pack } from '../packs'
@@ -14,15 +16,18 @@ const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ close: []; created: [boardId: string] }>()
 const title = ref(''), description = ref(''), prefix = ref('WORK'), selected = ref(''), starter = ref(false)
 const step = ref(1), busy = ref(false), loading = ref(false), error = ref(''), discoveryError = ref(''), packs = ref<Pack[]>([])
-const created = ref('')
+const created = ref(''), configs = ref<PluginConfigs>({}), invalid = ref(new Set<string>())
+const requiredPlugins = computed(() => { const pack = packs.value.find(p => p.id === selected.value); return pack && availablePack(pack) ? pack.plugins : [] })
+watch(selected, () => { configs.value = {}; invalid.value.clear() })
+function validity(id: string, valid: boolean) { if (valid) invalid.value.delete(id); else invalid.value.add(id) }
 let key = crypto.randomUUID(), attempted = '', read = 0
 const choices = computed(() => [{ id: '', title: 'Empty board', description: 'Start with an empty board and build its schema in Settings.', icon: 'tabler:square', version: '', disabled: false }, ...packs.value.map(pack => ({ ...pack, title: pack.title ?? pack.id, icon: pack.icon ?? 'tabler:package-off', disabled: !availablePack(pack) || pack.plugins.some(plugin => !plugin.installed), unavailable: !availablePack(pack) ? pack.problem.message : 'Required plugin unavailable. Install the pack’s required capabilities to use it.' }))])
 const chosen = computed(() => choices.value.find(pack => pack.id === selected.value))
-const valid = computed(() => !!title.value.trim() && /^[A-Z][A-Z0-9]{1,9}$/.test(prefix.value) && !!chosen.value && !chosen.value.disabled)
+const valid = computed(() => !!title.value.trim() && /^[A-Z][A-Z0-9]{1,9}$/.test(prefix.value) && !!chosen.value && !chosen.value.disabled && !invalid.value.size)
 watch(() => props.visible, async visible => {
   const current = ++read
   if (!visible) return
-  created.value = ''; step.value = 1; error.value = ''; discoveryError.value = ''; title.value = ''; description.value = ''; prefix.value = 'WORK'; selected.value = ''; starter.value = false; key = crypto.randomUUID(); attempted = ''; packs.value = []; loading.value = true
+  created.value = ''; configs.value = {}; invalid.value.clear(); step.value = 1; error.value = ''; discoveryError.value = ''; title.value = ''; description.value = ''; prefix.value = 'WORK'; selected.value = ''; starter.value = false; key = crypto.randomUUID(); attempted = ''; packs.value = []; loading.value = true
   try { const rows = await work.packs(); if (current === read) packs.value = rows }
   catch (e) { if (current === read) discoveryError.value = e instanceof Error ? e.message : 'Could not load packs.' }
   finally { if (current === read) loading.value = false }
@@ -31,7 +36,7 @@ async function create() {
   if (!valid.value || busy.value) return
   if (step.value === 1) { step.value = 2; return }
   busy.value = true; error.value = ''
-  const selection = selected.value ? { pack: selected.value, version: chosen.value?.version, starter: starter.value } : {}
+  const selection = selected.value ? { pack: selected.value, version: chosen.value?.version, starter: starter.value, ...(Object.keys(configs.value).length ? { plugin_configs: configs.value } : {}) } : {}
   const declaration = { key_prefix: prefix.value }
   const request = JSON.stringify([title.value.trim(), description.value, declaration, selection])
   if (attempted && attempted !== request) key = crypto.randomUUID()
@@ -116,6 +121,12 @@ async function create() {
           ><ToggleSwitch v-model="starter" :disabled="busy || !!created" aria-label="Include starter items" />Include
           starter items</label
         >
+        <fieldset :disabled="busy || !!created" class="work-settings-fieldset">
+          <div v-for="plugin in requiredPlugins" :key="plugin.plugin" class="work-stack work-tight">
+            <p class="work-muted work-small">Provide any initial configuration required by {{ plugin.plugin }}. Work validates it before creating the board.</p>
+            <JsonInput :label="'Initial configuration for ' + plugin.plugin" shape="object" :model-value="configs[plugin.plugin]" :example="{}" @update:model-value="$event === undefined ? delete configs[plugin.plugin] : configs[plugin.plugin] = $event as Record<string, unknown>" @validity="validity(plugin.plugin, $event)" />
+          </div>
+        </fieldset>
         <div class="work-settings-card work-stack work-tight">
           <strong>{{ title }}</strong>
           <p v-if="description" class="work-muted work-small">{{ description }}</p>

@@ -28,9 +28,9 @@ it('edits WIP in a table with one header and preserves a blank limit as unrestri
   await rows[0].getComponent(InputNumber).setValue(null)
   expect(draft.policy!.wip!.todo).toBeUndefined()
 })
-it('selects states and transitions without altering the declaration, even in Advanced', async () => {
+it('selects states and transitions without altering the declaration, in the settings editor', async () => {
   const draft = reactive(schema().declaration)
-  const w = mount(ProcessEditor, { props: { draft, advanced: true } }); wrappers.push(w)
+  const w = mount(ProcessEditor, { props: { draft } }); wrappers.push(w)
   const before = JSON.stringify(draft)
   await w.get('.work-graph-node').trigger('click')
   expect(w.find('.work-process-sideform').exists()).toBe(true)
@@ -40,7 +40,7 @@ it('selects states and transitions without altering the declaration, even in Adv
 })
 it('creates a named process through a small dialog', async () => {
   const draft = reactive(schema().declaration)
-  const w = mount(ProcessEditor, { props: { draft, advanced: false } }); wrappers.push(w)
+  const w = mount(ProcessEditor, { props: { draft } }); wrappers.push(w)
   await w.get('[aria-label="New process"]').trigger('click')
   await w.get('input[aria-label="New process name"]').setValue('Editorial review')
   await w.get('form[aria-label="New process"]').trigger('submit')
@@ -48,7 +48,7 @@ it('creates a named process through a small dialog', async () => {
 })
 it('groups history switches and uses structured access controls without default JSON', async () => {
   const draft = reactive(schema().declaration)
-  const w = mount(FieldsEditor, { props: { draft, advanced: true } }); wrappers.push(w)
+  const w = mount(FieldsEditor, { props: { draft } }); wrappers.push(w)
   await w.get('[aria-expanded]').trigger('click')
   const body = w.get('.work-definition-body')
   expect(body.get('.work-field-history').findAllComponents(ToggleSwitch)).toHaveLength(2)
@@ -79,7 +79,7 @@ it('shows process labels and relation defaults without changing the declarations
   expect(JSON.stringify(draft)).toBe(before)
 })
 it('gives every process toolbar control a visible meaning or tooltip and groups zoom actions', () => {
-  const w = mount(ProcessEditor, { props: { draft: schema().declaration, advanced: false } }); wrappers.push(w)
+  const w = mount(ProcessEditor, { props: { draft: schema().declaration } }); wrappers.push(w)
   const controls = w.get('.work-process-controls')
   for (const button of controls.findAll('button')) {
     if (!button.text().trim()) { expect(button.attributes('aria-label')).toBeTruthy(); expect(button.attributes('title')).toBeTruthy() }
@@ -89,7 +89,7 @@ it('gives every process toolbar control a visible meaning or tooltip and groups 
 
 it('allows a zero capacity from the state inspector input', async () => {
   const draft = reactive(schema().declaration), process = draft.processes![0]
-  const w = mount(StateSettings, { props: { draft, process, state: process.states[0], advanced: false } }); wrappers.push(w)
+  const w = mount(StateSettings, { props: { draft, process, state: process.states[0] } }); wrappers.push(w)
   const input = w.get('input[aria-label="Items allowed here"]')
   await input.setValue('0'); await input.trigger('blur')
   expect(draft.policy?.wip?.todo?.limit).toBe(0)

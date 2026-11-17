@@ -33,7 +33,7 @@ const runtime = owned.get('kickside.work.admin.security:module_runtime').policy
 assert.equal(access.actions, 'access')
 assert.deepEqual(runtime.actions, ['registry.get', 'funcs.call'])
 assert.deepEqual([...access.resources].sort(), [
-  'kickside.work.admin:admin', 'kickside.work.admin:board_settings', 'kickside.work.admin:ui_static',
+  'kickside.work.admin:admin', 'kickside.work.admin:board_settings', 'kickside.work.admin:defaults', 'kickside.work.admin:ui_static',
   ...endpoints.map(entry => entry.id),
 ].sort())
 assert.deepEqual([...runtime.resources].sort(), endpoints.flatMap(entry => [entry.id, `kickside.work.admin.api:${entry.func}`]).sort())
@@ -47,7 +47,7 @@ for (const policy of entries.filter(entry => entry.kind === 'security.policy')) 
   assert(policy.policy.resources.every(id => owned.has(id)), policy.id)
 }
 assert.equal(owned.get('kickside.work.admin.security:user_security_scope').default, 'kickside.security.groups:members')
-assert.deepEqual(entries.filter(entry => entry.meta?.type === 'view.component').map(entry => entry.name).sort(), ['admin', 'board_settings'])
+assert.deepEqual(entries.filter(entry => entry.meta?.type === 'view.component').map(entry => entry.name).sort(), ['admin', 'board_settings', 'defaults'])
 assert.equal(entries.filter(entry => entry.meta?.type === 'ui.nav_item').length, 0)
 const tab = owned.get('kickside.work.admin:settings_tab')
 assert.equal(tab.component_tag, 'kickside-work-admin')

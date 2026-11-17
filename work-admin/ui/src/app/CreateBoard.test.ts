@@ -8,7 +8,7 @@ import { work } from '../api'
 vi.mock('../api', () => ({ work: { createBoard: vi.fn(), packs: vi.fn(), updateBoard: vi.fn() } }))
 const packs = [
   { id: 'app:delivery', title: 'Delivery', version: '1.0.0', icon: 'tabler:layout-kanban', description: 'Plan delivery.', requires: [], plugins: [] },
-  { id: 'app:cases', title: 'Cases', version: '1.1.0', icon: 'tabler:inbox', description: 'Resolve requests.', requires: ['app:missing'], plugins: [{ id: 'app:missing', installed: false }] },
+  { id: 'app:cases', title: 'Cases', version: '1.1.0', icon: 'tabler:inbox', description: 'Resolve requests.', requires: ['app:missing'], plugins: [{ plugin: 'app:missing', installed: false }] },
 ]
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(work.packs).mockResolvedValue(packs); vi.mocked(work.createBoard).mockResolvedValue({ board_id: 'new' }); vi.mocked(work.updateBoard).mockResolvedValue({ board_id: 'new', status: 'updated' }) })
 async function render() {
@@ -68,4 +68,27 @@ it('identifies an unavailable pack even when invalid metadata omits its title an
   const w = await render()
   expect(w.text()).toContain('app:broken-metadata')
   expect(w.text()).toContain('Pack title is malformed'); w.unmount()
+})
+
+it('sends initial pack plugin configuration and freezes its retry identity until configuration changes', async () => {
+  vi.mocked(work.packs).mockResolvedValue([{ ...packs[0], plugins: [{ plugin: 'app:log', installed: true }] }])
+  vi.mocked(work.createBoard).mockRejectedValue(new Error('Try again'))
+  const w = await render(); await w.getComponent(SelectButton).setValue('app:delivery')
+  const input = w.get('textarea[aria-label="Initial configuration for app:log"]')
+  await input.setValue('{"folder":"Documents"}')
+  await w.get('form').trigger('submit'); await flushPromises()
+  expect(vi.mocked(work.createBoard).mock.calls[0][3]).toMatchObject({ plugin_configs: { 'app:log': { folder: 'Documents' } } })
+  const key = vi.mocked(work.createBoard).mock.calls[0][2]
+  await w.get('form').trigger('submit'); await flushPromises()
+  expect(vi.mocked(work.createBoard).mock.calls[1][2]).toBe(key)
+  await input.setValue('{')
+  await w.get('form').trigger('submit'); await flushPromises()
+  expect(work.createBoard).toHaveBeenCalledTimes(2)
+  await input.setValue('{"folder":"Archive"}')
+  await w.get('form').trigger('submit'); await flushPromises()
+  expect(vi.mocked(work.createBoard).mock.calls[2][2]).not.toBe(key)
+  await w.getComponent(SelectButton).setValue('')
+  await w.get('form').trigger('submit'); await flushPromises()
+  expect(vi.mocked(work.createBoard).mock.calls.at(-1)![3]).toEqual({})
+  w.unmount()
 })

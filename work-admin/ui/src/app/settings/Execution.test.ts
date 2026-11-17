@@ -29,7 +29,7 @@ it('selects a group or distinct principals through the platform picker and valid
 it('supports wait-only gates without retaining approval requirements', async () => {
   const state = reactive<State>({ id: 'review', category: 'started', kind: 'gate', release_when: { approvals: { min: 1, from: { group: 'team' } } } })
   const process: Process = { id: 'flow', initial: 'review', states: [state] }
-  const w = mount(StateSettings, { props: { state, process, draft: {}, advanced: true } }); await flushPromises()
+  const w = mount(StateSettings, { props: { state, process, draft: {} } }); await flushPromises()
   const approvals = w.findAll('[type=checkbox]').find(input => input.element.closest('label')?.textContent?.includes('Require approvals'))!
   await approvals.setValue(false)
   const wait = w.findAllComponents(DurationControl).find(c => c.props('label') === 'Wait before release')!

@@ -15,7 +15,7 @@ it.each([
   [TypesEditor, 'Add type', 'item_types'],
   [RelationsEditor, 'Add relation', 'relation_types'],
 ] as const)('creates definitions on user writes, leaving absent collections absent on reads', async (component, action, key) => {
-  const draft = reactive<Declaration>({}), w = mount(component, { props: { draft, advanced: false } })
+  const draft = reactive<Declaration>({}), w = mount(component, { props: { draft } })
   expect(draft).toEqual({})
   await w.get('input').setValue('new_entry'); await getButton(w, action).trigger('click')
   expect(draft[key]).toHaveLength(1); w.unmount()

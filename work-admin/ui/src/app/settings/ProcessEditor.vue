@@ -15,7 +15,7 @@ import { categories, categoryTitle, uniqueId, stateUses, transitionUses, stateTi
 import { type RemovalGuard, type SchemaChange, changeReason, removeEntry } from './model'
 import type { Declaration, Process, State, Transition } from '../../types'
 import StateSettings from './StateSettings.vue'
-const props = defineProps<{ draft: Declaration; advanced: boolean; guardRemoval?: RemovalGuard; issues?: SchemaChange[]; boardId?: string }>()
+const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[]; boardId?: string }>()
 const emit = defineEmits<{ validity: [key: string, valid: boolean] }>()
 const processes = computed(() => props.draft.processes ?? [])
 const creating = ref(false), newName = ref(''), selected = ref(''), error = ref(''), mode = ref('Map'), target = ref('')
@@ -226,7 +226,6 @@ async function remove(p: Process) {
             :state="state"
             :process="process"
             :draft="draft"
-            :advanced="advanced"
             :board-id="boardId"
             @validity="(key, valid) => emit('validity', key.includes('duration:') ? key : process!.id + ':' + state!.id + ':' + key, valid)"
           />
@@ -303,7 +302,6 @@ async function remove(p: Process) {
             :transition="transition"
             :process="process"
             :draft="draft"
-            :advanced="advanced"
             :board-id="boardId"
             @validity="
               (key, valid) =>

@@ -11,15 +11,18 @@ import { ensureTag } from '../mount'
 import { canAdmin } from './model'
 import { useBoards } from '../useBoards'
 const dirty = ref(false), confirming = ref(false)
+async function mayLeave() {
+  if (confirming.value) return false
+  if (!dirty.value) return true
+  confirming.value = true
+  try { return await host.confirm({ header: 'Discard changes?', message: 'Your unsaved board settings will be discarded.', acceptLabel: 'Discard', rejectLabel: 'Keep editing' }) }
+  finally { confirming.value = false }
+}
 async function select(id: string) {
-  if (selected.value === id || confirming.value) return
-  if (dirty.value) {
-    confirming.value = true
-    try { if (!await host.confirm({ header: 'Discard changes?', message: 'Your unsaved board settings will be discarded.', acceptLabel: 'Discard', rejectLabel: 'Keep editing' })) return }
-    finally { confirming.value = false }
-  }
+  if (selected.value === id || !await mayLeave()) return
   dirty.value = false; selected.value = id
 }
+async function defaults() { if (await mayLeave()) host.navigate('/system/settings') }
 const selected = ref(''), creating = ref(false), ready = ref(false), widgetLoading = ref(true)
 const { boards, loading, error, search, visibleBoards, load } = useBoards(false)
 watch(boards, rows => { if (selected.value && !rows.some(board => board.board_id === selected.value && canAdmin(board.access))) selected.value = '' })
@@ -34,6 +37,8 @@ async function created(id: string) { await load(); await select(id) }
       <InputText v-model="search" type="search" aria-label="Search boards" placeholder="Search boards…" />
       <p v-if="search.trim()" class="work-muted work-small">{{ visibleBoards.length }} of {{ boards.length }} {{ boards.length === 1 ? 'board' : 'boards' }}</p>
       <p v-if="error" class="kx-err" role="alert">{{ error }}</p><p v-if="loading" class="kx-loading">Loading boards…</p>
+      <p class="work-muted work-small">Board settings override application defaults.</p>
+      <Button label="Application defaults" severity="secondary" outlined @click="defaults"><template #icon><Icon icon="tabler:settings" aria-hidden="true" /></template></Button>
       <div class="work-rail-group">Workspace</div>
       <ContentAction v-for="board in visibleBoards" :key="board.board_id" class="work-rail-row" :class="{ 'work-rail-active': selected === board.board_id }" :aria-label="'Settings for ' + board.title" :aria-current="selected === board.board_id ? 'page' : undefined" :disabled="!canAdmin(board.access)" @activate="select(board.board_id)">
         <span class="work-stack work-tight"><strong>{{ board.title || 'Untitled board' }}</strong><span class="work-row work-wrap"><code class="work-mono">{{ board.key_prefix || 'Board' }}</code></span><span class="work-muted work-small">{{ board.item_count ?? 0 }} {{ board.item_count === 1 ? 'item' : 'items' }} · {{ board.open_count ?? 0 }} open</span><span v-if="!canAdmin(board.access)" class="work-muted work-small">Administrator access required</span></span>

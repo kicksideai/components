@@ -20,7 +20,7 @@ const flow = (): Process => ({ id: 'flow', initial: 'open', states: [{ id: 'open
 it('lists field users and retains a field when Work refuses its removal', async () => {
   const draft = reactive<Declaration>({ fields: [{ id: 1, code: 'title', form: 'text' }], item_types: [{ id: 'task', title: 'Task', process: 'flow', fields: ['title'] }] })
   const guardRemoval = vi.fn().mockResolvedValue('Items still hold values in this field.')
-  const w = mount(FieldsEditor, { props: { draft, advanced: false, guardRemoval } })
+  const w = mount(FieldsEditor, { props: { draft, guardRemoval } })
   expect(w.get('.work-used-by').text()).toContain('Task')
   await button(w, 'Remove field').trigger('click'); await flushPromises()
   expect(guardRemoval).toHaveBeenCalledWith('fields', 'title'); expect(draft.fields).toHaveLength(1)
@@ -63,7 +63,7 @@ it('guards relation removal and previews directional and symmetric labels', asyn
   const draft = reactive<Declaration>({ relation_types: [{ id: 'blocks', outward: 'blocks', inward: 'is blocked by' }] })
   const w = mount(RelationsEditor, { props: { draft, guardRemoval: vi.fn().mockResolvedValue('Links still use this relation type.') } })
   expect(w.get('.work-relation-preview').text()).toContain('is blocked by')
-  await w.get('[aria-label=Symmetric]').setValue(true); expect(w.get('.work-relation-preview').text()).not.toContain('is blocked by')
+  await w.get('[aria-label="Same meaning in both directions"]').setValue(true); expect(w.get('.work-relation-preview').text()).not.toContain('is blocked by')
   await button(w, 'Remove relation').trigger('click'); await flushPromises()
   expect(w.get('[role=alert]').text()).toContain('Links still use'); expect(draft.relation_types).toHaveLength(1); w.unmount()
 })
@@ -98,7 +98,7 @@ it('supports keyboard connection and Escape cancellation', async () => {
 })
 it('opens side forms, adds unique graph transitions, and guards the initial state', async () => {
   const draft = reactive<Declaration>({ processes: [flow()] })
-  const w = mount(ProcessEditor, { props: { draft, advanced: false } })
+  const w = mount(ProcessEditor, { props: { draft } })
   await w.get('.work-graph-node').trigger('click'); expect(w.get('.work-process-sideform').attributes('aria-label')).toBe('State inspector')
   expect(w.findAllComponents(StateSettings)).toHaveLength(1)
   await w.get('.work-graph-node').trigger('click')
@@ -129,7 +129,7 @@ it('restores drag DOM before updating field order inside a shadow root and dispo
   const host = document.createElement('div'); document.body.append(host)
   const root = host.attachShadow({ mode: 'open' }), target = document.createElement('div'); root.append(target)
   const draft = reactive<Declaration>({ fields: [{ code: 'title', form: 'text' }, { code: 'priority', form: 'text' }], item_types: [{ id: 'task', fields: ['title', 'priority'], process: 'flow' }] })
-  const w = mount(FieldsEditor, { attachTo: target, props: { draft, advanced: false } })
+  const w = mount(FieldsEditor, { attachTo: target, props: { draft } })
   const list = w.get<HTMLElement>('.work-field-builder').element, sortable = Sortable.get(list)!
   expect(sortable.option('forceFallback')).toBe(true); expect(sortable.option('fallbackOnBody')).toBe(false)
   const destroy = vi.spyOn(sortable, 'destroy'), item = list.children[0] as HTMLElement
@@ -141,15 +141,14 @@ it('restores drag DOM before updating field order inside a shadow root and dispo
   expect(w.findAll('.work-field-row').map(row => row.get<HTMLInputElement>('input[aria-label="Field code"]').element.value)).toEqual(['priority', 'title'])
   w.unmount(); expect(destroy).toHaveBeenCalledTimes(1); host.remove()
 })
-it('edits field titles, cardinality, indexing, tracking and opt-in access', async () => {
+it('edits field titles, cardinality, indexing, tracking and field access', async () => {
   const draft = reactive<Declaration>({ fields: [{ code: 'points', form: 'int' }] })
-  const w = mount(FieldsEditor, { props: { draft, advanced: false } })
+  const w = mount(FieldsEditor, { props: { draft } })
   await w.get('[aria-label="Field title"]').setValue('Estimate')
   await w.findAllComponents(Select)[1].setValue('set'); await w.findAllComponents(Select)[2].setValue('number')
   await w.findAll('[type=checkbox]')[0].setValue(true); await w.findAll('[type=checkbox]')[1].setValue(true)
   expect(draft.fields![0]).toMatchObject({ title: 'Estimate', cardinality: 'set', index: 'number', track: true, intervals: true })
-  expect(w.find('[aria-label="Who can read"]').exists()).toBe(false); await w.setProps({ advanced: true })
-  await flushPromises()
+  expect(w.find('[aria-label="Who can read"]').exists()).toBe(true); await flushPromises()
   const access = w.get('[aria-label="Who can read"] wc-principal-picker')
   await access.trigger('config-changed', { detail: { id: 'team', type: 'group', label: 'Delivery team' } })
   expect(draft.fields![0].access).toEqual({ read: [{ group: 'team' }] }); w.unmount()

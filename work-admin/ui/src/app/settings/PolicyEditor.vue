@@ -16,6 +16,7 @@ const emit = defineEmits<{ validity: [key: string, valid: boolean] }>()
 const policy = computed(() => props.draft.policy ?? {})
 const states = computed(() => [...new Set(props.draft.processes?.flatMap(p => p.states.map(s => s.id)) ?? [])])
 const days = ['audit_days', 'trash_days', 'tombstone_days', 'interval_days'] as const
+const retentionHelp = { audit_days: 'Zero selects 365 days.', interval_days: 'Zero selects 365 days.', trash_days: 'Zero allows immediate cleanup of trashed items.', tombstone_days: 'Zero allows immediate cleanup of deletion records.' }
 type Policy = NonNullable<Declaration['policy']>
 function update<K extends keyof Policy>(key: K, value: Policy[K] | undefined) { if (value === undefined) { if (props.draft.policy) delete props.draft.policy[key] } else (props.draft.policy ??= {})[key] = value }
 function retention(key: typeof days[number], value: number | null) { update(key, value ?? undefined) }
@@ -34,13 +35,16 @@ function retention(key: typeof days[number], value: number | null) { update(key,
     <label class="work-row"><span class="work-spacer">Default maximum visits</span><InputNumber
       :model-value="policy.stage_max_visits ?? null" aria-label="Default maximum visits" :min="1" :useGrouping="false"
       placeholder="5" @update:model-value="update('stage_max_visits', $event ?? undefined)" /></label>
-    <h3 class="work-group-title">Query scopes</h3>
-    <p class="work-muted work-small">Declare the installed scope identifiers available to board queries.</p>
-    <ConfigForm :schema="{ type: 'object', properties: { scopes: { type: 'array', title: 'Scope identifiers', items: { type: 'string' } } } }" :model-value="{ scopes: draft.scopes }" @update:model-value="draft.scopes = $event.scopes as string[] | undefined" />
+    <h3 class="work-group-title">Comments</h3>
+    <label class="work-row"><span class="work-spacer">Comments per item</span><InputNumber :model-value="policy.comments_per_item ?? null" aria-label="Comments per item" :min="1" :max="100000" :useGrouping="false" placeholder="Application default" @update:model-value="update('comments_per_item', $event ?? undefined)" /></label>
+    <p class="work-muted work-small">Blank follows the application default.</p>
+    <h3 class="work-group-title">Saved query filters</h3>
+    <p class="work-muted work-small">Choose which installed query filters this board can use.</p>
+    <ConfigForm :schema="{ type: 'object', properties: { scopes: { type: 'array', title: 'Query filter identifiers', items: { type: 'string' } } } }" :model-value="{ scopes: draft.scopes }" @update:model-value="draft.scopes = $event.scopes as string[] | undefined" />
     <h3 class="work-group-title">Audit and retention</h3>
     <div class="work-settings-list">
       <div class="work-settings-row"><div class="work-row-main"><strong class="work-row-title">Audit trail</strong><p class="work-muted work-small">Choose which item changes appear in history.</p></div><div class="work-row-control"><Select :model-value="policy.audit ?? ''" aria-label="Audit trail" placeholder="Installation default" appendTo="self" optionLabel="label" optionValue="value" :options="[{ label: 'Installation default', value: '' }, { label: 'Off', value: 'off' }, { label: 'Fields', value: 'fields' }]" @update:model-value="update('audit', $event || undefined)" /></div></div>
-      <div v-for="key in days" :key="key" class="work-settings-row"><div class="work-row-main"><strong class="work-row-title">{{ humanize(key) }}</strong><p class="work-muted work-small">Blank follows the installation default. Zero keeps records indefinitely.</p></div><label class="work-row-control"><InputNumber :min="0" :aria-label="humanize(key)" :model-value="policy[key] ?? null" placeholder="Installation default" :useGrouping="false" @update:model-value="retention(key, $event)" /></label></div>
+      <div v-for="key in days" :key="key" class="work-settings-row"><div class="work-row-main"><strong class="work-row-title">{{ humanize(key) }}</strong><p class="work-muted work-small">Blank follows the application default. {{ retentionHelp[key] }}</p></div><label class="work-row-control"><InputNumber :min="0" :aria-label="humanize(key)" :model-value="policy[key] ?? null" placeholder="Installation default" :useGrouping="false" @update:model-value="retention(key, $event)" /></label></div>
     </div>
   </section>
 </template>

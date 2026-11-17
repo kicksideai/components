@@ -124,3 +124,25 @@ entries:
           type: boolean
       required:
       - dirty
+- name: defaults_block
+  kind: registry.entry
+  meta:
+    type: kickside.settings:block
+  key: kickside.work
+  title: Work
+  icon: tabler:layout-kanban
+  namespace: kickside.work
+  component_tag: kickside-work-defaults
+- name: defaults
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Work application defaults
+    announced: true
+    auto_register: true
+    tag_name: kickside-work-defaults
+    base_path: kickside-work-admin
+    entry_point: defaults.js
+    icon: tabler:settings
+    description: Application defaults in the shared Settings provider, with a link to board administration.
+    props: {}
