@@ -93,3 +93,20 @@ entries:
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
+- name: traits_admin_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://traits_admin_test.lua
+  method: run
+  modules:
+  - registry
+  - json
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    authorization_probe: app:authorization_probe
+    rows: app:rows

@@ -9,7 +9,7 @@ homepage: https://wippy.ai
 keywords: [kickside, work, admin, settings]
 embed: [kickside.work.admin:ui_fs]
 exclude_meta:
-  type: [test]
+  type: [test, test_helper, test_support]
 exclude:
   - build-inputs/**
   - build-inputs:**
@@ -17,6 +17,7 @@ exclude:
   - ui/.wippy:**
   - wippy.lock
   - app:**
+  - "app.**:**"
   - app.env:**
   - test/**
   - test:**

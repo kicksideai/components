@@ -91,7 +91,7 @@ function M.schema(base: domain.Declaration?, local_decl: domain.Declaration?, in
     return out, conflicts
 end
 function M.maps(current: domain.Declaration?, incoming: domain.Declaration): domain.StateMaps
-    local maps: domain.StateMaps = {}
+    local maps: domain.StateMaps = table.create(0, 1)
     local processes: { [string]: domain.ProcessDecl } = {}
     for _, process in ipairs(incoming.processes or {}) do processes[process.id] = process end
     for _, old in ipairs(current and current.processes or {}) do

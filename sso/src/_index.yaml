@@ -125,6 +125,7 @@ entries:
     source: file://config.lua
     modules: [contract]
     imports:
+      trim_text: kickside.sso:text
       sso_consts: kickside.sso:consts
       sso_providers_registry: kickside.sso:providers_registry
 
@@ -358,3 +359,7 @@ entries:
     kind: ns.dependency
     component: kickside/contract
     version: '*'
+
+  - name: text
+    kind: library.lua
+    source: file://text.lua

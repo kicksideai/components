@@ -15,7 +15,7 @@ local component_envelope = require("component_envelope")
 
 local M = {}
 
-local BOARD_METHODS = { plugin_feed = true, list_packs = true, pack_plan = true, pack_apply = true, update = true, move_status = true, bulk = true, bulk_status = true, cancel_bulk = true, plan_move = true, move = true, approve = true, report = true, create = true, list = true, get_schema = true, plan_schema = true, apply_schema = true, apply = true,
+local BOARD_METHODS = { schema_options = true, plugin_feed = true, list_packs = true, pack_plan = true, pack_apply = true, update = true, move_status = true, bulk = true, bulk_status = true, cancel_bulk = true, plan_move = true, move = true, approve = true, report = true, create = true, list = true, get_schema = true, plan_schema = true, apply_schema = true, apply = true,
     list_links = true, list_comments = true, list_stage_runs = true, configure_plugin = true, explain = true, query = true, count = true, get = true, list_changes = true, list_history = true, get_time_in_state = true, resume_migration = true }
 
 type Service = { [string]: (Service, unknown) -> (unknown, error?) }

@@ -10,6 +10,11 @@ registry:
   enable_history: true
   history_type: memory
 override:
+  # Functional suites assert data semantics; deadline tests select their own budget.
+  kickside.work.settings:read_deadline_ms:default: 60000
+  kickside.work.settings:command_deadline_ms:default: 60000
+  kickside.work.read:budget:imports.clock: app:read_budget_clock
+  kickside.work.settings:limits:imports.clock: app:read_budget_clock
   kickside.work.retention:rows:imports.threads: app:retirement_threads
   kickside.work.command:apply_ops:imports.append: app:keyed_append
   kickside.work.jobs:reindex_batch:imports.append: app:reindex_append

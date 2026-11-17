@@ -438,7 +438,7 @@ local function get_time_in_state(request: types.TimeInStateRequest, context: typ
         if verr or not periods then return nil, verr end
         local raw, terr = store.interval_totals(tx, board.board_id, item.item_id, interval, time.now():utc():format("2006-01-02T15:04:05.000000000Z"), _dialect)
         if terr or not raw then return nil, terr end
-        local totals: { [string]: integer } = {}
+        local totals: { [string]: integer } = table.create(0, 1)
         for key, duration in pairs(raw) do
             local rendered = key
             if name ~= "state" and name ~= "category" then

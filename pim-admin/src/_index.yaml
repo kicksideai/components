@@ -17,7 +17,7 @@ entries:
   version: '*'
   kind: ns.dependency
   meta:
-    description: Shared schema forms and principal pickers loaded by tag.
+    description: Shared schema forms, principal pickers and sharing loaded by tag.
   component: kickside/widgets
 - name: ui_server
   kind: ns.requirement
@@ -59,7 +59,7 @@ entries:
   kind: registry.entry
   meta:
     type: view.component
-    title: Products administration
+    title: Catalogs administration
     announced: true
     auto_register: true
     tag_name: kickside-pim-admin
@@ -96,6 +96,13 @@ entries:
         default: false
         description: Displays a detail header within an existing System surface.
   events:
+    dirty-changed:
+      type: object
+      properties:
+        dirty:
+          type: boolean
+      required:
+      - dirty
     navigate:
       type: object
       properties:
@@ -109,7 +116,7 @@ entries:
     type: ui.settings_tab
     comment: Catalog schema administration on the System page.
   key: pim
-  label: Products
+  label: Catalogs
   icon: tabler:packages
   order: 40
   render: component

@@ -8,13 +8,11 @@ local seed_plan = require("sso_seed_plan")
 
 local GLOBAL_NS = "kickside.sso"
 
-local function trim(value)
-    return tostring(value or ""):match("^%s*(.-)%s*$") or ""
-end
+local trim = require("trim_text").trim
 
 local function read(id: string): string
     local value = env.get(id)
-    return trim(value)
+    return trim(tostring(value or ""))
 end
 
 local function settings()

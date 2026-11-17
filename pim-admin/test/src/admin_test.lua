@@ -107,14 +107,59 @@ local function cases()
                 test.eq(user.get("/pim-admin/catalogs/" .. id .. "/policy_defaults").status, mask == 9 and 200 or 403)
             end
         end)
+        test.it("exposes built-in configuration and reviews a configured Quantity", function()
+            local owner = session.admin()
+            local id = catalog(owner)
+            local options = owner.get(path(id, "/schema/options"))
+            test.eq(options.status, 200, json.encode(options.body))
+            local found = false
+            for _, option in ipairs(options.body.data.types) do
+                if option.id == "kickside.pim.types:quantity" then
+                    test.not_nil(option.config_schema)
+                    test.eq(option.config_schema.required[1], "units")
+                    test.eq(option.config_schema.required[2], "canonical")
+                    test.eq(option.config_schema.properties.units.type, "object")
+                    found = true
+                end
+            end
+            test.is_true(found)
+            local response = owner.post(path(id, "/schema/plan"), { declaration = {
+                aspects = { { namespace = "measurements", attributes = {
+                    { code = "weight", type = "kickside.pim.types:quantity", index = "number",
+                        config = { units = { kg = "1", g = "0.001" }, canonical = "kg", scale = 3 } },
+                    { code = "price", type = "kickside.pim.types:money", config = { scale = 2, currency = "USD" } },
+                    { code = "count", type = "kickside.pim.types:integer", config = { range = { 0, 100 }, scale = 0 } },
+                    { code = "record", type = "kickside.pim.types:record", config = { members = { label = { form = "text" } } } },
+                } } },
+            } })
+            test.eq(response.status, 200, json.encode(response.body))
+            test.eq(response.body.data.class, "additive", json.encode(response.body))
+        end)
         test.it("writes vocabulary terms without a product editor", function()
             local owner = session.admin()
             local id = catalog(owner)
-            local response = owner.post(path(id, "/apply"), { items = { { term = { vocabulary = "colors", code = "red" }, labels = { en = "Red" } } } })
-            test.eq(response.status, 200, json.encode(response.body))
-            test.eq(response.body.data.outcomes[1].outcome, "created")
+            for _, code in ipairs({ "XL", "42", "blue-green", "A.b_9-", string.rep("x", 128) }) do
+                local response = owner.post(path(id, "/apply"), { items = { { term = { vocabulary = "colors", code = code }, labels = { en = code } } } })
+                test.eq(response.status, 200, json.encode(response.body))
+                test.eq(response.body.data.outcomes[1].outcome, "created")
+            end
             local terms = owner.get(path(id, "/terms?vocabulary=colors&limit=50"))
-            test.eq(terms.status, 200, json.encode(terms.body)); test.eq(terms.body.data.terms[1].code, "red")
+            test.eq(terms.status, 200, json.encode(terms.body)); test.eq(#terms.body.data.terms, 5)
+        end)
+        test.it("requires WRITE for term mutations independently of ADMIN", function()
+            local owner, administrator = session.admin(), session.member()
+            local id = catalog(owner)
+            assert(owner.call("grant", { subject_id = administrator.id, mask = 9 }, id))
+            local view = administrator.get(path(id, "/schema"))
+            test.eq(view.status, 200, json.encode(view.body))
+            test.is_true(view.body.data.access.admin); test.is_false(view.body.data.access.write)
+            for _, item in ipairs({
+                { term = { vocabulary = "colors", code = "XL" }, labels = { en = "Extra large" } },
+                { term = { vocabulary = "colors", code = "XL" }, retired = true },
+                { term = { vocabulary = "colors", code = "XL" }, retired = false },
+            }) do
+                test.eq(administrator.post(path(id, "/apply"), { items = { item } }).status, 403)
+            end
         end)
         test.it("resolves display names only for an authenticated catalog administrator", function()
             local owner, reader, writer, stranger, outsider = session.admin(), session.member(), session.member(), session.member(), session.outsider()

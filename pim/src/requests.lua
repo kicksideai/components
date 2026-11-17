@@ -3,6 +3,7 @@
 -- schema in the contract definition (_index.yaml) is the single statement of
 -- its request shape; parse checks a request against it before the method acts,
 -- so a malformed request ends as invalid at the boundary.
+local trim = require("trim_text").trim
 local contract = require("contract")
 local json = require("json")
 local registry = require("registry")
@@ -44,7 +45,7 @@ local function schema_text(raw: unknown): (string?, error?)
     else
         return nil, errors.new({ kind = errors.INTERNAL, retryable = false, message = "definition is neither text nor bytes", details = { code = "contract_schema_invalid" } })
     end
-    local trimmed = text:match("^%s*(.-)%s*$") or text
+    local trimmed = trim(text)
     if trimmed:sub(1, 1) == '"' then
         local inner, derr = json.decode(trimmed)
         if derr then return nil, errors.wrap(derr, "definition string literal is not JSON") end
@@ -75,7 +76,7 @@ local function definition(method: string, side: string): (types.JsonObject?, err
     local decoded, derr = json.decode(text)
     if derr then return nil, errors.wrap(derr, method .. " " .. side .. " schema is not JSON") end
     if type(decoded) ~= "table" then return nil, errors.new({ kind = errors.INTERNAL, retryable = false, message = method .. " " .. side .. " schema is not an object", details = { code = "contract_schema_invalid" } }) end
-    local schema = prepare(decoded :: types.JsonObject)
+    local schema = side == "input" and prepare(decoded :: types.JsonObject) or decoded :: types.JsonObject
     if not methods then methods = {}; cache[CONTRACT] = methods end
     methods[key] = { version = revision, schema = schema }
     return schema, nil
@@ -92,11 +93,18 @@ function M.parse(method: string, input: unknown): error?
     return shape.check(schema, value, method .. " request")
 end
 
+-- output preserves the JSON object fields declared by the contract answer.
+function M.output<T>(method: string, output: T): (T?, error?)
+    local schema, err = definition(method, "output")
+    if err or not schema then return nil, err end
+    return shape.objects(schema, output) :: T, nil
+end
+
 -- check_output checks a result against the output schema of method.
 function M.check_output(method: string, output: unknown): error?
     local schema, err = definition(method, "output")
     if err or not schema then return err end
-    return shape.check(schema, output, method .. " result")
+    return shape.check(shape.tolerant(schema), output, method .. " result")
 end
 
 return M

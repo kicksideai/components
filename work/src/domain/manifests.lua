@@ -253,7 +253,7 @@ end
 
 -- Effective configuration overlays board values on deployment values.
 function M.effective(p: types.Plugin, app: types.JsonObject, own: types.JsonObject?): (types.JsonObject?, error?)
-    local config: types.JsonObject = {}
+    local config: types.JsonObject = table.create(0, 1)
     for k, v in pairs(app) do config[k] = v end
     for k, v in pairs(own or {}) do config[k] = v end
     local err = shape.check(shape.tolerant(p.config_schema), config, p.id .. " effective config")

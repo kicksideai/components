@@ -1,7 +1,8 @@
-import { defineComponent as H, useModel as Be, openBlock as a, createElementBlock as n, withModifiers as ve, createElementVNode as t, mergeModels as Xe, computed as N, withKeys as Ee, unref as b, normalizeClass as Q, createVNode as f, toDisplayString as d, Fragment as M, renderList as z, createCommentVNode as h, createTextVNode as F, createBlock as J, ref as R, toRaw as lt, useId as pe, watch as be, withDirectives as W, vModelText as _, vModelSelect as Ge, resolveComponent as it, renderSlot as Ie, withCtx as me, mergeProps as ht, vShow as Ke, onMounted as Ue, nextTick as Ce, normalizeStyle as qe, onBeforeUnmount as Ct, vModelDynamic as rl } from "vue";
-import { B as cl, L as vl, j as ze, v as Me, k as ml, U as pl, I as yt, f as bl, i as Qe, l as Et, t as at, h as $e, o as ut, p as fl, m as qt, q as K, M as Ae, r as Ut, w as Nt, x as nt, y as gl, z as hl, A as yl, C as kl, D as $l, E as Ft, F as xl, G as Mt, H as wl, J as Vl, K as Sl, N as kt, O as Cl, P as et, Q as El, R as Oe, S as ql, T as st, s as de, n as $t, V as Ul, W as Nl, b as Fl, c as he } from "./index-CrYiACP3.js";
-import { loadByTagName as Ze, on as xt } from "@wippy-fe/proxy";
-import { Icon as L } from "@iconify/vue";
+import { defineComponent as H, useModel as Le, openBlock as a, createElementBlock as n, withModifiers as ve, createElementVNode as t, mergeModels as Xe, computed as N, withKeys as Ee, unref as b, normalizeClass as Q, createVNode as f, toDisplayString as d, Fragment as M, renderList as z, createCommentVNode as h, createTextVNode as F, createBlock as J, ref as R, toRaw as lt, useId as pe, watch as be, withDirectives as W, vModelText as _, vModelSelect as Ge, resolveComponent as it, renderSlot as Ie, withCtx as me, mergeProps as ht, vShow as Ke, onMounted as Ue, nextTick as Ce, normalizeStyle as qe, onBeforeUnmount as Ct, vModelDynamic as rl } from "vue";
+import { B as cl, L as vl, d as ze, v as Me, e as ml, U as pl, I as yt, c as bl, g as Et, b as fl } from "./wc-runtime-CWPiLYui.js";
+import { loadByTagName as Ze, on as kt } from "@wippy-fe/proxy";
+import { i as Qe, f as qt, t as at, a as $e, b as ut, d as gl, m as Ut, e as K, M as Ae, g as Nt, h as Ft, j as nt, k as hl, l as yl, o as kl, p as $l, q as xl, r as Mt, u as wl, v as Vl, w as Sl, x as Cl, y as $t, z as El, A as et, B as ql, C as Oe, D as Ul, E as st, s as de, n as xt, F as Nl, G as Fl, c as he } from "./index-DsWOWvnx.js";
+import { Icon as B } from "@iconify/vue";
 /*! SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 var Ml = cl.extend({
   name: "focustrap-directive"
@@ -38,13 +39,13 @@ function Vt(e) {
   return e;
 }
 function Rl(e, s, l) {
-  return (s = Ll(s)) in e ? Object.defineProperty(e, s, { value: l, enumerable: !0, configurable: !0, writable: !0 }) : e[s] = l, e;
+  return (s = Bl(s)) in e ? Object.defineProperty(e, s, { value: l, enumerable: !0, configurable: !0, writable: !0 }) : e[s] = l, e;
 }
-function Ll(e) {
-  var s = Bl(e, "string");
+function Bl(e) {
+  var s = Ll(e, "string");
   return Pe(s) == "symbol" ? s : s + "";
 }
-function Bl(e, s) {
+function Ll(e, s) {
   if (Pe(e) != "object" || !e) return e;
   var l = e[Symbol.toPrimitive];
   if (l !== void 0) {
@@ -139,7 +140,7 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
   }),
   emits: ["update:modelValue"],
   setup(e) {
-    const s = Be(e, "modelValue");
+    const s = Le(e, "modelValue");
     return (l, u) => (a(), n("button", {
       type: "button",
       role: "switch",
@@ -186,7 +187,7 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
         case "deep":
           return C.fields.filter((v) => v.strategy === "deep").map((v) => ({ text: v.name || "New field", tone: "primary" }));
         case "extract":
-          return Et(C).map((v) => ({ text: `${v.name} · ${v.fields.length}`, tone: "" }));
+          return qt(C).map((v) => ({ text: `${v.name} · ${v.fields.length}`, tone: "" }));
         default:
           return [];
       }
@@ -203,13 +204,13 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
       ]
     }, [
       t("span", Dl, [
-        f(b(L), {
+        f(b(B), {
           icon: b(ut)[e.stage]
         }, null, 8, ["icon"])
       ]),
       t("span", jl, [
         t("span", Il, d(b($e)[e.stage]), 1),
-        t("span", zl, d(i.value ? b(fl)(e.stage, e.config) : "Off"), 1),
+        t("span", zl, d(i.value ? b(gl)(e.stage, e.config) : "Off"), 1),
         i.value && r.value.length ? (a(), n("span", Wl, [
           (a(!0), n(M, null, z(r.value, (v) => (a(), n("span", {
             key: v.text,
@@ -217,14 +218,14 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
           }, d(v.text), 3))), 128))
         ])) : h("", !0),
         e.trace ? (a(), n("span", Hl, [
-          f(b(L), {
+          f(b(B), {
             icon: e.trace.status === "failed" ? "tabler:alert-circle" : "tabler:circle-check"
           }, null, 8, ["icon"]),
           F(d($(e.trace)), 1)
         ])) : h("", !0)
       ]),
       t("span", Gl, [
-        i.value && p.value ? (a(), n("span", Kl, d(b(qt)(p.value)), 1)) : h("", !0),
+        i.value && p.value ? (a(), n("span", Kl, d(b(Ut)(p.value)), 1)) : h("", !0),
         e.stage !== "extract" && !e.readonly ? (a(), J(Z, {
           key: 1,
           modelValue: g.value,
@@ -247,7 +248,7 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
   }),
   emits: ["update:modelValue"],
   setup(e) {
-    const s = e, l = Be(e, "modelValue"), u = R([]);
+    const s = e, l = Le(e, "modelValue"), u = R([]);
     function i(p, g) {
       const r = s.options.length - 1, $ = { ArrowRight: g + 1, ArrowDown: g + 1, ArrowLeft: g - 1, ArrowUp: g - 1, Home: 0, End: r }[p.key];
       if ($ === void 0) return;
@@ -275,7 +276,7 @@ const Pl = ["aria-checked", "aria-label", "disabled"], Z = /* @__PURE__ */ H({
         onClick: (C) => l.value = r.value,
         onKeydown: (C) => i(C, $)
       }, [
-        r.icon ? (a(), J(b(L), {
+        r.icon ? (a(), J(b(B), {
           key: 0,
           icon: r.icon,
           "aria-hidden": "true"
@@ -307,7 +308,7 @@ function Xl(e, s) {
   return Je(e).filter((l) => l.shape.type === "object" && ((l.shape.properties?.length ?? 0) < 100 || l.field === s.field && ie(l.field, l.trail) === ie(s.field, s.trail.slice(0, -1))) && l.depth + ot(s.shape) <= Ae && !(l.field === s.field && s.trail.every((u, i) => l.trail[i] === u)));
 }
 function Zl(e, s, l) {
-  const u = { ...Nt(), ...structuredClone(lt(s.shape)), name: s.shape.name };
+  const u = { ...Ft(), ...structuredClone(lt(s.shape)), name: s.shape.name };
   s.trail.length ? Je(e).find((g) => g.key === ie(s.field, s.trail.slice(0, -1))).shape.properties.splice(s.trail.at(-1), 1) : e.splice(s.field, 1);
   let i;
   if (l) {
@@ -324,7 +325,7 @@ function St(e, s = !1) {
     return i.type === "object" ? Object.fromEntries((i.properties ?? []).map((p) => [p.name || "unnamed", l(p)])) : i.type === "list" ? i.item ? [l(i.item)] : [] : s ? i.enum_values?.length ? i.enum_values[0] : { text: "Example value", number: 42, boolean: !0, date: "2026-01-15", enum: null }[i.type] : i.type === "enum" ? i.enum_values?.join(" | ") || "enum" : i.type;
   }
   const u = {};
-  return e.forEach((i) => Ut(u, K(i) || "unnamed", l(i))), u;
+  return e.forEach((i) => Nt(u, K(i) || "unnamed", l(i))), u;
 }
 const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria-invalid", "aria-describedby"], la = { class: "label-block" }, aa = ["id"], na = { key: 0 }, sa = ["id"], oa = {
   key: 2,
@@ -353,7 +354,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   emits: ["add", "selectItem"],
   setup(e, { emit: s }) {
     const l = e, u = s, i = N(() => l.shape), p = N(() => l.named ? l.depth === 1 ? "Field type" : "Property type" : "Item type"), g = N(() => At.filter((T) => l.depth < Ae || !["object", "list"].includes(T.value))), r = N({ get: () => l.shape.type, set: (T) => {
-      l.shape.type = T, delete l.shape.properties, delete l.shape.item, l.shape.enum_values = [], ["text", "date", "enum"].includes(T) || delete i.value.max_length, T === "object" && (l.shape.properties = []), T === "list" && (l.shape.item = gl());
+      l.shape.type = T, delete l.shape.properties, delete l.shape.item, l.shape.enum_values = [], ["text", "date", "enum"].includes(T) || delete i.value.max_length, T === "object" && (l.shape.properties = []), T === "list" && (l.shape.item = hl());
     } }), $ = N(() => l.named && l.depth > 1), C = N({ get: () => i.value.nullable === !0, set: (T) => {
       T ? i.value.nullable = !0 : delete i.value.nullable;
     } }), S = N({ get: () => i.value.max_length ?? "", set: (T) => {
@@ -362,7 +363,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     be(() => l.shape, () => {
       V.value = "", o.value = "";
     });
-    const m = N(() => l.validationError || (l.named ? hl(i.value.name, l.siblingNames) : "") || yl(l.shape, l.depth));
+    const m = N(() => l.validationError || (l.named ? yl(i.value.name, l.siblingNames) : "") || kl(l.shape, l.depth));
     function A() {
       const T = V.value.trim(), U = l.shape.enum_values ?? [];
       if (!T || T.length > 200) {
@@ -383,7 +384,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       e.named ? (a(), n("label", ea, [
         U[10] || (U[10] = F("Name", -1)),
         W(t("input", {
-          "onUpdate:modelValue": U[0] || (U[0] = (B) => i.value.name = B),
+          "onUpdate:modelValue": U[0] || (U[0] = (L) => i.value.name = L),
           "aria-label": e.depth === 1 ? "Field name" : "Property name",
           "aria-invalid": !!m.value,
           "aria-describedby": m.value ? b(w) : void 0,
@@ -403,7 +404,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         t("span", { id: b(v) }, d(e.named ? "Data type" : "Item type"), 9, aa),
         f(ye, {
           modelValue: r.value,
-          "onUpdate:modelValue": U[1] || (U[1] = (B) => r.value = B),
+          "onUpdate:modelValue": U[1] || (U[1] = (L) => r.value = L),
           class: "type-picker",
           options: g.value,
           "labelled-by": b(v),
@@ -418,28 +419,28 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         class: "field-error",
         role: "alert"
       }, d(m.value), 9, sa)) : h("", !0),
-      b(kl)(e.shape, e.named) ? (a(), n("div", oa, [
+      b($l)(e.shape, e.named) ? (a(), n("div", oa, [
         t("span", null, d(e.shape.type === "enum" ? "Allowed values" : "Allowed items (optional)"), 1),
         t("div", ia, [
-          (a(!0), n(M, null, z(e.shape.enum_values, (B, G) => (a(), n("span", {
-            key: B,
+          (a(!0), n(M, null, z(e.shape.enum_values, (L, G) => (a(), n("span", {
+            key: L,
             class: "chip primary"
           }, [
-            F(d(B), 1),
+            F(d(L), 1),
             e.readonly ? h("", !0) : (a(), n("button", {
               key: 0,
               type: "button",
               class: "kx-iconbtn kx-focus-outline",
-              "aria-label": `Remove allowed value ${B}`,
+              "aria-label": `Remove allowed value ${L}`,
               onClick: (j) => e.shape.enum_values.splice(G, 1)
             }, [
-              f(b(L), { icon: "tabler:x" })
+              f(b(B), { icon: "tabler:x" })
             ], 8, ua))
           ]))), 128))
         ]),
         e.readonly ? h("", !0) : (a(), n("div", da, [
           W(t("input", {
-            "onUpdate:modelValue": U[2] || (U[2] = (B) => V.value = B),
+            "onUpdate:modelValue": U[2] || (U[2] = (L) => V.value = L),
             "aria-label": "New allowed value",
             placeholder: "Add a value…",
             maxlength: "200",
@@ -458,7 +459,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       t("label", null, [
         U[11] || (U[11] = F("Description", -1)),
         W(t("textarea", {
-          "onUpdate:modelValue": U[3] || (U[3] = (B) => e.shape.description = B),
+          "onUpdate:modelValue": U[3] || (U[3] = (L) => e.shape.description = L),
           rows: "3",
           maxlength: "4000",
           placeholder: "What this value means in the document"
@@ -469,9 +470,9 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       ["boolean", "enum"].includes(e.shape.type) ? h("", !0) : (a(), n("label", va, [
         U[12] || (U[12] = F("Expected format", -1)),
         W(t("input", {
-          "onUpdate:modelValue": U[4] || (U[4] = (B) => e.shape.expected_format = B),
+          "onUpdate:modelValue": U[4] || (U[4] = (L) => e.shape.expected_format = L),
           maxlength: "400",
-          placeholder: b($l)(e.shape)
+          placeholder: b(xl)(e.shape)
         }, null, 8, ma), [
           [_, e.shape.expected_format]
         ])
@@ -480,7 +481,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         U[13] || (U[13] = t("span", null, "Required", -1)),
         f(Z, {
           modelValue: i.value.required,
-          "onUpdate:modelValue": U[5] || (U[5] = (B) => i.value.required = B),
+          "onUpdate:modelValue": U[5] || (U[5] = (L) => i.value.required = L),
           label: "Required",
           disabled: e.readonly
         }, null, 8, ["modelValue", "disabled"])
@@ -493,7 +494,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           ], -1)),
           f(Z, {
             modelValue: C.value,
-            "onUpdate:modelValue": U[6] || (U[6] = (B) => C.value = B),
+            "onUpdate:modelValue": U[6] || (U[6] = (L) => C.value = L),
             label: "May be absent",
             disabled: e.readonly
           }, null, 8, ["modelValue", "disabled"])
@@ -501,7 +502,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         ["text", "date", "enum"].includes(e.shape.type) ? (a(), n("label", fa, [
           U[15] || (U[15] = F("Maximum characters", -1)),
           W(t("input", {
-            "onUpdate:modelValue": U[7] || (U[7] = (B) => S.value = B),
+            "onUpdate:modelValue": U[7] || (U[7] = (L) => S.value = L),
             type: "number",
             min: "1",
             step: "1",
@@ -520,9 +521,9 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           class: "kx-btn kx-btn-ghost kx-focus-halo",
           "aria-label": `Add property to ${e.label}`,
           disabled: (e.shape.properties?.length ?? 0) >= 100,
-          onClick: U[8] || (U[8] = (B) => u("add"))
+          onClick: U[8] || (U[8] = (L) => u("add"))
         }, [
-          f(b(L), { icon: "tabler:plus" }),
+          f(b(B), { icon: "tabler:plus" }),
           U[17] || (U[17] = F("Add property", -1))
         ], 8, ha)) : h("", !0)
       ], 64)) : h("", !0),
@@ -530,9 +531,9 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         key: 7,
         type: "button",
         class: "kx-btn kx-btn-ghost kx-focus-halo",
-        onClick: U[9] || (U[9] = (B) => u("selectItem"))
+        onClick: U[9] || (U[9] = (L) => u("selectItem"))
       }, [
-        f(b(L), { icon: "tabler:brackets" }),
+        f(b(B), { icon: "tabler:brackets" }),
         F("Edit item shape · " + d(e.shape.item.type), 1)
       ])) : h("", !0)
     ]));
@@ -558,7 +559,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   },
   emits: ["remove", "add", "selectItem"],
   setup(e, { emit: s }) {
-    const l = e, u = s, i = N(() => !l.depth || l.depth === 1), p = N(() => Ft(l.field, l.otherNames));
+    const l = e, u = s, i = N(() => !l.depth || l.depth === 1), p = N(() => Mt(l.field, l.otherNames));
     return (g, r) => (a(), n("fieldset", {
       class: "inspector-form",
       disabled: e.readonly
@@ -636,7 +637,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           ])
         ]),
         e.field.strategy === "deep" && !e.deepEnabled ? (a(), n("p", Sa, [
-          f(b(L), { icon: "tabler:info-circle" }),
+          f(b(B), { icon: "tabler:info-circle" }),
           r[18] || (r[18] = F("Deep analysis is off in the flow, so this field runs as standard.", -1))
         ])) : h("", !0),
         t("div", Ca, [
@@ -650,7 +651,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           t("small", null, d(e.field.search_within === "sections" ? "Map picks the sections that should hold this value; search and reading stay inside them." : "Search covers the whole document."), 1)
         ]),
         e.field.search_within === "sections" && !e.mapEnabled ? (a(), n("p", Ea, [
-          f(b(L), { icon: "tabler:alert-circle" }),
+          f(b(B), { icon: "tabler:alert-circle" }),
           r[20] || (r[20] = F("Turn on Map the document to read sections.", -1))
         ])) : h("", !0),
         t("label", null, [
@@ -713,7 +714,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
 }), Ma = { class: "field-groups" }, Aa = {
   key: 0,
   class: "rows"
-}, Ra = ["aria-label"], La = { class: "field-group-head" }, Ba = ["aria-label", "aria-expanded", "aria-controls", "onClick"], Oa = { class: "group-title" }, Pa = ["id"], Ta = { class: "group-title" }, Re = /* @__PURE__ */ H({
+}, Ra = ["aria-label"], Ba = { class: "field-group-head" }, La = ["aria-label", "aria-expanded", "aria-controls", "onClick"], Oa = { class: "group-title" }, Pa = ["id"], Ta = { class: "group-title" }, Re = /* @__PURE__ */ H({
   __name: "FieldGroups",
   props: {
     node: {}
@@ -737,7 +738,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           class: "field-group",
           "aria-label": `Group ${$.path}`
         }, [
-          t("header", La, [
+          t("header", Ba, [
             t("button", {
               type: "button",
               class: "tree-toggle kx-iconbtn kx-focus-outline",
@@ -746,10 +747,10 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               "aria-controls": `${b(l)}-${$.path}`,
               onClick: (S) => u($.path)
             }, [
-              f(b(L), {
+              f(b(B), {
                 icon: s.value.has($.path) ? "tabler:chevron-right" : "tabler:chevron-down"
               }, null, 8, ["icon"])
-            ], 8, Ba),
+            ], 8, La),
             Ie(p.$slots, "header", {
               path: $.path,
               label: $.name,
@@ -799,7 +800,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     });
     function $() {
       const C = i.value.trim();
-      if (!C || !xl.test(C)) {
+      if (!C || !wl.test(C)) {
         p.value = "Use a dotted path of snake_case group names.";
         return;
       }
@@ -838,7 +839,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         "aria-label": e.saveLabel,
         title: e.saveLabel
       }, [
-        f(b(L), { icon: "tabler:check" })
+        f(b(B), { icon: "tabler:check" })
       ], 8, ja),
       t("button", {
         type: "button",
@@ -847,7 +848,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         title: e.cancelLabel,
         onClick: S[2] || (S[2] = (v) => u("cancel"))
       }, [
-        f(b(L), { icon: "tabler:x" })
+        f(b(B), { icon: "tabler:x" })
       ], 8, Ia),
       p.value ? (a(), n("p", {
         key: 0,
@@ -921,7 +922,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           onClick: v
         }, [
           t("span", null, d(e.name), 1),
-          f(b(L), {
+          f(b(B), {
             icon: "tabler:pencil",
             "aria-hidden": "true"
           })
@@ -939,7 +940,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
             title: "Add field",
             onClick: m[0] || (m[0] = (A) => u("add"))
           }, [
-            f(b(L), { icon: "tabler:plus" })
+            f(b(B), { icon: "tabler:plus" })
           ], 8, Qa),
           t("button", {
             type: "button",
@@ -950,9 +951,9 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
             "aria-controls": b(C),
             onClick: m[1] || (m[1] = (A) => $.value.toggle(A))
           }, [
-            f(b(L), { icon: "tabler:dots" })
+            f(b(B), { icon: "tabler:dots" })
           ], 8, Ja),
-          f(b(Mt), {
+          f(b(Et), {
             id: b(C),
             ref_key: "menu",
             ref: $,
@@ -1043,7 +1044,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
             "aria-expanded": C.value,
             onClick: A[0] || (A[0] = (U) => C.value = !C.value)
           }, [
-            f(b(L), {
+            f(b(B), {
               icon: C.value ? "tabler:chevron-down" : "tabler:chevron-right"
             }, null, 8, ["icon"])
           ], 8, Xa)) : (a(), n("span", Za)),
@@ -1057,7 +1058,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           }, [
             t("span", en, [
               t("span", tn, [
-                f(b(L), {
+                f(b(B), {
                   icon: b(Yl)(e.shape.type),
                   "aria-hidden": "true"
                 }, null, 8, ["icon"]),
@@ -1065,7 +1066,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                   class: "row-label",
                   title: v.value
                 }, d(v.value), 9, ln),
-                e.error ? (a(), J(b(L), {
+                e.error ? (a(), J(b(B), {
                   key: 0,
                   icon: "tabler:alert-circle",
                   class: "row-warn",
@@ -1083,25 +1084,25 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               t("span", sn, d(e.shape.type), 1),
               t("span", on, [
                 S.value && e.shape.required ? (a(), n("span", un, [
-                  f(b(L), {
+                  f(b(B), {
                     icon: "tabler:asterisk",
                     "aria-hidden": "true"
                   })
                 ])) : h("", !0),
                 w.value?.strategy === "deep" ? (a(), n("span", dn, [
-                  f(b(L), {
+                  f(b(B), {
                     icon: "tabler:microscope",
                     "aria-hidden": "true"
                   })
                 ])) : h("", !0),
                 w.value?.search_within === "sections" ? (a(), n("span", rn, [
-                  f(b(L), {
+                  f(b(B), {
                     icon: "tabler:layout-list",
                     "aria-hidden": "true"
                   })
                 ])) : h("", !0),
                 w.value?.evidence_required ? (a(), n("span", cn, [
-                  f(b(L), {
+                  f(b(B), {
                     icon: "tabler:file-search",
                     "aria-hidden": "true"
                   })
@@ -1117,7 +1118,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               disabled: e.first,
               onClick: A[2] || (A[2] = (U) => u("reorder", e.field, e.trail, -1))
             }, [
-              f(b(L), { icon: "tabler:chevron-up" })
+              f(b(B), { icon: "tabler:chevron-up" })
             ], 8, mn),
             t("button", {
               type: "button",
@@ -1126,7 +1127,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               disabled: e.last,
               onClick: A[3] || (A[3] = (U) => u("reorder", e.field, e.trail, 1))
             }, [
-              f(b(L), { icon: "tabler:chevron-down" })
+              f(b(B), { icon: "tabler:chevron-down" })
             ], 8, pn)
           ])) : h("", !0),
           !e.readonly && S.value ? (a(), n("div", {
@@ -1144,9 +1145,9 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               "aria-controls": b(p),
               onClick: A[4] || (A[4] = (U) => g.value.toggle(U))
             }, [
-              f(b(L), { icon: "tabler:dots" })
+              f(b(B), { icon: "tabler:dots" })
             ], 8, bn),
-            f(b(Mt), {
+            f(b(Et), {
               id: b(p),
               ref_key: "menu",
               ref: g,
@@ -1159,16 +1160,16 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           ], 32)) : h("", !0)
         ], 2),
         V.value && C.value ? (a(), n("ul", fn, [
-          (a(!0), n(M, null, z(e.shape.properties, (U, B) => (a(), n("li", { key: B }, [
+          (a(!0), n(M, null, z(e.shape.properties, (U, L) => (a(), n("li", { key: L }, [
             f(T, {
               shape: U,
               field: e.field,
-              trail: [...e.trail, B],
+              trail: [...e.trail, L],
               path: `${e.path}.${U.name || "New property"}`,
               selected: e.selected,
               readonly: e.readonly,
-              first: B === 0,
-              last: B === e.shape.properties.length - 1,
+              first: L === 0,
+              last: L === e.shape.properties.length - 1,
               onSelect: A[8] || (A[8] = (G, j) => u("select", G, j)),
               onAdd: A[9] || (A[9] = (G, j) => u("add", G, j)),
               onReorder: A[10] || (A[10] = (G, j, D) => u("reorder", G, j, D))
@@ -1182,9 +1183,9 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               path: `${e.path}[]`,
               selected: e.selected,
               readonly: e.readonly,
-              onSelect: A[11] || (A[11] = (U, B) => u("select", U, B)),
-              onAdd: A[12] || (A[12] = (U, B) => u("add", U, B)),
-              onReorder: A[13] || (A[13] = (U, B, G) => u("reorder", U, B, G))
+              onSelect: A[11] || (A[11] = (U, L) => u("select", U, L)),
+              onAdd: A[12] || (A[12] = (U, L) => u("add", U, L)),
+              onReorder: A[13] || (A[13] = (U, L, G) => u("reorder", U, L, G))
             }, null, 8, ["shape", "field", "trail", "path", "selected", "readonly"])
           ])) : h("", !0),
           !e.readonly && e.shape.type === "object" && e.trail.length + 1 < b(Ae) ? (a(), n("li", hn, [
@@ -1195,7 +1196,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               disabled: (e.shape.properties?.length ?? 0) >= 100,
               onClick: A[14] || (A[14] = (U) => u("add", e.field, e.trail))
             }, [
-              f(b(L), { icon: "tabler:plus" }),
+              f(b(B), { icon: "tabler:plus" }),
               A[15] || (A[15] = F("Add property", -1))
             ], 8, yn)
           ])) : h("", !0)
@@ -1213,7 +1214,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
 }, Sn = {
   key: 3,
   role: "status",
-  class: "muted"
+  class: "muted picker-pending picker-pending--list"
 }, Cn = /* @__PURE__ */ H({
   __name: "AgentPicker",
   props: {
@@ -1254,7 +1255,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   role: "alert"
 }, Un = {
   key: 2,
-  class: "dz-muted",
+  class: "dz-muted picker-pending",
   role: "status"
 }, ce = /* @__PURE__ */ H({
   __name: "ModelPicker",
@@ -1289,7 +1290,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
 }), Nn = { class: "slider" }, Fn = { class: "slider-head" }, Mn = { class: "slider-value" }, An = ["aria-label", "aria-valuetext", "disabled"], Rn = {
   key: 0,
   class: "slider-hints"
-}, Ln = { key: 1 }, Ve = 1e3, te = /* @__PURE__ */ H({
+}, Bn = { key: 1 }, Ve = 1e3, te = /* @__PURE__ */ H({
   __name: "Slider",
   props: /* @__PURE__ */ Xe({
     label: {},
@@ -1308,7 +1309,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   }),
   emits: ["update:modelValue"],
   setup(e) {
-    const s = e, l = Be(e, "modelValue"), u = N(() => s.percent ? `${Math.round(l.value * 100)}%` : `${l.value.toLocaleString()}${s.unit ? ` ${s.unit}` : ""}`), i = (r) => s.log ? Math.log(r / s.min) / Math.log(s.max / s.min) * Ve : (r - s.min) / (s.max - s.min) * Ve;
+    const s = e, l = Le(e, "modelValue"), u = N(() => s.percent ? `${Math.round(l.value * 100)}%` : `${l.value.toLocaleString()}${s.unit ? ` ${s.unit}` : ""}`), i = (r) => s.log ? Math.log(r / s.min) / Math.log(s.max / s.min) * Ve : (r - s.min) / (s.max - s.min) * Ve;
     function p(r) {
       const $ = s.log ? s.min * Math.pow(s.max / s.min, r / Ve) : s.min + (s.max - s.min) * r / Ve, C = Math.round($ / s.step) * s.step;
       return Math.min(s.max, Math.max(s.min, Number(C.toFixed(4))));
@@ -1343,10 +1344,10 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         t("span", null, d(e.hints[0]), 1),
         t("span", null, d(e.hints[1]), 1)
       ])) : h("", !0),
-      e.note ? (a(), n("small", Ln, d(e.note), 1)) : h("", !0)
+      e.note ? (a(), n("small", Bn, d(e.note), 1)) : h("", !0)
     ]));
   }
-}), Bn = {
+}), Ln = {
   class: "diagram flow-diagram",
   "aria-hidden": "true"
 }, On = { class: "fd-track" }, Pn = { class: "fd-node" }, Tn = { class: "fd-dots" }, Dn = { class: "fd-more" }, jn = { class: "fd-node goal" }, In = /* @__PURE__ */ H({
@@ -1358,7 +1359,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   },
   setup(e) {
     const s = e;
-    return (l, u) => (a(), n("figure", Bn, [
+    return (l, u) => (a(), n("figure", Ln, [
       t("div", On, [
         u[2] || (u[2] = t("span", { class: "fd-node solid" }, "Pass", -1)),
         (a(!0), n(M, null, z(Math.min(s.rounds, 8), (i) => (a(), n(M, { key: i }, [
@@ -1464,7 +1465,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     readonly: { type: Boolean }
   },
   setup(e) {
-    const s = e, l = N(() => s.config.stages), u = (V) => Cl(s.stage, V), i = wl(), p = N(() => s.config.fields.filter((V) => V.strategy === "deep").length), g = N(() => s.config.fields.filter((V) => V.search_within === "sections").map((V) => V.name || "New field")), r = N(() => Et(s.config)), $ = N({ get: () => l.value.extract.reads ?? "text", set: (V) => {
+    const s = e, l = N(() => s.config.stages), u = (V) => El(s.stage, V), i = Vl(), p = N(() => s.config.fields.filter((V) => V.strategy === "deep").length), g = N(() => s.config.fields.filter((V) => V.search_within === "sections").map((V) => V.name || "New field")), r = N(() => qt(s.config)), $ = N({ get: () => l.value.extract.reads ?? "text", set: (V) => {
       l.value.extract.reads = V, V === "pages" && l.value.extract.max_pages === void 0 && (l.value.extract.max_pages = 8);
     } }), C = N({ get: () => l.value.extract.max_pages ?? 8, set: (V) => {
       l.value.extract.max_pages = V;
@@ -1483,7 +1484,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       class: "inspector-form",
       disabled: e.readonly
     }, [
-      t("p", Xn, d(b(Vl)[e.stage]), 1),
+      t("p", Xn, d(b(Sl)[e.stage]), 1),
       e.stage === "map" ? (a(), n(M, { key: 0 }, [
         t("div", Zn, [
           o[35] || (o[35] = t("span", null, "Stage enabled", -1)),
@@ -1598,7 +1599,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           key: 1,
           type: "button",
           class: "kx-btn kx-btn-ghost kx-focus-halo",
-          onClick: o[5] || (o[5] = (m) => l.value.prefetch.queries.push(b(Sl)()))
+          onClick: o[5] || (o[5] = (m) => l.value.prefetch.queries.push(b(Cl)()))
         }, "Add query"))
       ], 64)) : h("", !0),
       e.stage === "scout" ? (a(), n(M, { key: 2 }, [
@@ -1892,7 +1893,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           min: u("max_fields_per_call").min,
           max: u("max_fields_per_call").max,
           disabled: e.readonly,
-          note: `${b(kt)(e.config)} extraction call${b(kt)(e.config) === 1 ? "" : "s"} per document. Groups larger than this are split.`
+          note: `${b($t)(e.config)} extraction call${b($t)(e.config) === 1 ? "" : "s"} per document. Groups larger than this are split.`
         }, null, 8, ["modelValue", "min", "max", "disabled", "note"]),
         f(te, {
           modelValue: l.value.extract.max_output_tokens,
@@ -1973,7 +1974,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
 }, As = {
   viewBox: "0 0 100 34",
   preserveAspectRatio: "none"
-}, Rs = ["x", "y", "width"], Ls = ["x", "width"], Bs = /* @__PURE__ */ H({
+}, Rs = ["x", "y", "width"], Bs = ["x", "width"], Ls = /* @__PURE__ */ H({
   __name: "ChunkDiagram",
   props: {
     size: {},
@@ -2002,7 +2003,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           width: u.value[g - 1].x + u.value[g - 1].w - u.value[g].x,
           height: "24",
           class: "shared"
-        }, null, 8, Ls)), 64))
+        }, null, 8, Bs)), 64))
       ])),
       t("figcaption", null, d(e.size.toLocaleString()) + " tokens per chunk · " + d(e.overlap.toLocaleString()) + " shared with the next (" + d(Math.round(l.value * 100)) + "%)", 1)
     ]));
@@ -2046,7 +2047,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         v[13] || (v[13] = t("small", null, "Duration for new processed documents and runs, for example 24h. Leave empty to use the global Docscout setting. Existing records keep their expiry.", -1))
       ]),
       v[22] || (v[22] = t("h4", null, "Chunks", -1)),
-      f(Bs, {
+      f(Ls, {
         size: l.value.chunk_size,
         overlap: l.value.overlap
       }, null, 8, ["size", "overlap"]),
@@ -2210,7 +2211,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   id: "flow-body",
   class: "flow",
   "aria-label": "Extraction flow"
-}, xo = { class: "node-icon" }, wo = { class: "node-main" }, Vo = { class: "node-summary" }, So = { class: "node-side" }, Co = { class: "chip model" }, Eo = { class: "branches" }, qo = { class: "branch" }, Uo = { class: "branch" }, No = { class: "node-icon" }, Fo = { class: "node-main" }, Mo = { class: "node-summary" }, Ao = ["aria-labelledby", "role", "aria-modal"], Ro = ["aria-valuenow"], Lo = { class: "side-panel-head" }, Bo = { class: "side-panel-icon" }, Oo = ["id"], Po = ["aria-label", "title"], To = { class: "node-breadcrumb mono" }, Do = {
+}, xo = { class: "node-icon" }, wo = { class: "node-main" }, Vo = { class: "node-summary" }, So = { class: "node-side" }, Co = { class: "chip model" }, Eo = { class: "branches" }, qo = { class: "branch" }, Uo = { class: "branch" }, No = { class: "node-icon" }, Fo = { class: "node-main" }, Mo = { class: "node-summary" }, Ao = ["aria-labelledby", "role", "aria-modal"], Ro = ["aria-valuenow"], Bo = { class: "side-panel-head" }, Lo = { class: "side-panel-icon" }, Oo = ["id"], Po = ["aria-label", "title"], To = { class: "node-breadcrumb mono" }, Do = {
   key: 0,
   class: "move-node",
   "aria-label": "Move node"
@@ -2239,7 +2240,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   }),
   emits: ["update:title", "update:description"],
   setup(e) {
-    const s = e, l = Be(e, "title"), u = Be(e, "description"), i = R({ kind: "document" });
+    const s = e, l = Le(e, "title"), u = Le(e, "description"), i = R({ kind: "document" });
     function p(k, c) {
       try {
         const q = localStorage.getItem(`docscout.${k}`);
@@ -2287,7 +2288,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       k.key === "ArrowLeft" ? (V(v.value + 24), k.preventDefault()) : k.key === "ArrowRight" && (V(v.value - 24), k.preventDefault());
     }
     let T = null;
-    const U = R(), B = pe();
+    const U = R(), L = pe();
     async function G(k) {
       if (r.value = k, !P.value) {
         g("panel", k);
@@ -2325,7 +2326,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       I.value = "";
     });
     const Ne = N(() => y.value ? Xl(s.config.fields, y.value) : []), ge = N(() => {
-      const k = El(s.config.fields.map(K));
+      const k = ql(s.config.fields.map(K));
       return k ? `Group path collides with field ${k}.` : "";
     }), Te = N(() => ge.value ? null : St(s.config.fields)), Tt = N(() => ge.value ? null : St(s.config.fields, !0)), dt = N(() => {
       const k = i.value;
@@ -2347,7 +2348,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     function Qt(k) {
       s.config.fields.push({ ...nt(), group: k }), vt();
     }
-    const Jt = N(() => [...new Set(s.config.fields.map((k) => k.group.trim()).filter(Boolean))]), Yt = (k) => Ft(s.config.fields[k], s.config.fields.filter((c, q) => q !== k).map(K)), mt = ["map", "prefetch", "scout", "deep", "extract", "verify"], Xt = N(() => mt.filter((k) => Qe(s.config, k)).map((k) => $e[k]).join(" · ")), Zt = N(() => s.config.fields.map((k) => k.name || "New field").join(", ")), _t = N(() => mt.filter((k) => Qe(s.config, k)).length), xe = (k) => s.result?.trace.find((c) => c.kind === k);
+    const Jt = N(() => [...new Set(s.config.fields.map((k) => k.group.trim()).filter(Boolean))]), Yt = (k) => Mt(s.config.fields[k], s.config.fields.filter((c, q) => q !== k).map(K)), mt = ["map", "prefetch", "scout", "deep", "extract", "verify"], Xt = N(() => mt.filter((k) => Qe(s.config, k)).map((k) => $e[k]).join(" · ")), Zt = N(() => s.config.fields.map((k) => k.name || "New field").join(", ")), _t = N(() => mt.filter((k) => Qe(s.config, k)).length), xe = (k) => s.result?.trace.find((c) => c.kind === k);
     function pt(k = "") {
       s.config.fields.push({ ...nt(), group: k }), $.value = !0, le({ kind: "field", index: s.config.fields.length - 1 });
     }
@@ -2359,7 +2360,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     }
     function bt(k, c) {
       const q = E.value.find((Y) => Y.key === ie(k, c));
-      q.shape.properties.push(Nt()), re(k, [...c, q.shape.properties.length - 1]);
+      q.shape.properties.push(Ft()), re(k, [...c, q.shape.properties.length - 1]);
     }
     function tl() {
       const k = y.value;
@@ -2427,7 +2428,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                 "aria-controls": "fields-body",
                 onClick: c[0] || (c[0] = (q) => j("fields"))
               }, [
-                f(b(L), {
+                f(b(B), {
                   icon: $.value ? "tabler:chevron-down" : "tabler:chevron-right"
                 }, null, 8, ["icon"]),
                 c[23] || (c[23] = t("h2", { id: "fields-head" }, "Fields", -1)),
@@ -2446,7 +2447,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                   disabled: e.config.fields.length >= 100,
                   onClick: Kt
                 }, [
-                  f(b(L), { icon: "tabler:folder-plus" }),
+                  f(b(B), { icon: "tabler:folder-plus" }),
                   c[24] || (c[24] = F("Add group", -1))
                 ], 8, lo),
                 t("button", {
@@ -2455,7 +2456,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                   disabled: e.config.fields.length >= 100,
                   onClick: c[1] || (c[1] = (q) => pt())
                 }, [
-                  f(b(L), { icon: "tabler:plus" }),
+                  f(b(B), { icon: "tabler:plus" }),
                   c[25] || (c[25] = F("Add field", -1))
                 ], 8, ao)
               ]))
@@ -2469,7 +2470,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                   class: "group-create-row"
                 }, [
                   t("span", uo, [
-                    f(b(L), { icon: "tabler:folder-plus" })
+                    f(b(B), { icon: "tabler:folder-plus" })
                   ]),
                   f(Rt, {
                     "input-label": "New group path",
@@ -2517,7 +2518,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               ]),
               t("details", ro, [
                 t("summary", co, [
-                  f(b(L), { icon: "tabler:braces" }),
+                  f(b(B), { icon: "tabler:braces" }),
                   c[26] || (c[26] = F("Output preview", -1))
                 ]),
                 ge.value ? (a(), n("p", vo, d(ge.value), 1)) : (a(), n("div", mo, [
@@ -2545,7 +2546,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                 "aria-controls": "flow-body",
                 onClick: c[2] || (c[2] = (q) => j("flow"))
               }, [
-                f(b(L), {
+                f(b(B), {
                   icon: C.value ? "tabler:chevron-down" : "tabler:chevron-right"
                 }, null, 8, ["icon"]),
                 c[30] || (c[30] = t("h2", { id: "flow-head" }, "Flow", -1)),
@@ -2557,7 +2558,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                 class: Q(["kx-btn kx-btn-ghost kx-focus-halo sm push", { on: oe({ kind: "details" }) }]),
                 onClick: c[3] || (c[3] = (q) => le({ kind: "details" }))
               }, [
-                f(b(L), { icon: "tabler:info-circle" }),
+                f(b(B), { icon: "tabler:info-circle" }),
                 c[31] || (c[31] = F("Details", -1))
               ], 2)
             ]),
@@ -2568,14 +2569,14 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                 onClick: c[4] || (c[4] = (q) => le({ kind: "document" }))
               }, [
                 t("span", xo, [
-                  f(b(L), { icon: "tabler:file-text" })
+                  f(b(B), { icon: "tabler:file-text" })
                 ]),
                 t("span", wo, [
                   c[32] || (c[32] = t("span", { class: "node-title" }, "Read document", -1)),
-                  t("span", Vo, d(b(ql)(e.config.retrieval)), 1)
+                  t("span", Vo, d(b(Ul)(e.config.retrieval)), 1)
                 ]),
                 t("span", So, [
-                  t("span", Co, d(b(qt)(e.config.retrieval.embedding_model)), 1)
+                  t("span", Co, d(b(Ut)(e.config.retrieval.embedding_model)), 1)
                 ])
               ], 2),
               c[37] || (c[37] = t("div", { class: "connector" }, null, -1)),
@@ -2656,7 +2657,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                 onClick: c[11] || (c[11] = (q) => le({ kind: "output" }))
               }, [
                 t("span", No, [
-                  f(b(L), { icon: "tabler:braces" })
+                  f(b(B), { icon: "tabler:braces" })
                 ]),
                 t("span", Fo, [
                   c[36] || (c[36] = t("span", { class: "node-title" }, "Output", -1)),
@@ -2677,7 +2678,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       r.value ? W((a(), n("aside", {
         key: String(P.value),
         class: "side-panel",
-        "aria-labelledby": b(B),
+        "aria-labelledby": b(L),
         role: P.value ? "dialog" : void 0,
         "aria-modal": P.value ? "true" : void 0,
         style: qe(P.value ? void 0 : { width: `${v.value}px` }),
@@ -2696,11 +2697,11 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
           onKeydown: A,
           onDblclick: c[13] || (c[13] = (q) => V(tt))
         }, null, 42, Ro)),
-        t("header", Lo, [
-          t("span", Bo, [
-            f(b(L), { icon: Dt.value }, null, 8, ["icon"])
+        t("header", Bo, [
+          t("span", Lo, [
+            f(b(B), { icon: Dt.value }, null, 8, ["icon"])
           ]),
-          t("h2", { id: b(B) }, d(dt.value), 9, Oo),
+          t("h2", { id: b(L) }, d(dt.value), 9, Oo),
           t("button", {
             ref_key: "closeButton",
             ref: U,
@@ -2710,7 +2711,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
             title: P.value ? "Close panel" : "Collapse panel",
             onClick: c[14] || (c[14] = (q) => G(!1))
           }, [
-            f(b(L), {
+            f(b(B), {
               icon: P.value ? "tabler:x" : "tabler:layout-sidebar-right-collapse"
             }, null, 8, ["icon"])
           ], 8, Po)
@@ -2832,7 +2833,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
         title: "Open panel",
         onClick: c[22] || (c[22] = (q) => G(!0))
       }, [
-        f(b(L), { icon: "tabler:layout-sidebar-right-expand" }),
+        f(b(B), { icon: "tabler:layout-sidebar-right-expand" }),
         t("span", Yo, d(dt.value), 1)
       ]))
     ], 2));
@@ -2842,8 +2843,8 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
   role: "alert"
 }, ei = {
   key: 2,
-  class: "muted"
-}, Lt = /* @__PURE__ */ H({
+  class: "muted picker-pending picker-pending--list"
+}, Bt = /* @__PURE__ */ H({
   __name: "UploadPicker",
   props: {
     value: {}
@@ -2874,7 +2875,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       onChange: p
     }, null, 40, Zo)) : i.value ? (a(), n("p", _o, d(i.value), 1)) : (a(), n("span", ei, "Loading uploads…"));
   }
-}), He = (e) => e.status === "completed" || e.status === "partial" || e.status === "failed", Se = (e) => e.metrics.length ? e.metrics.reduce((s, l) => s + l.accuracy, 0) / e.metrics.length : 0, Bt = (e) => `Visual · ${e.status}`, ti = ["data-error-kind", "data-error-code"], li = { key: 0 }, Ot = /* @__PURE__ */ H({
+}), He = (e) => e.status === "completed" || e.status === "partial" || e.status === "failed", Se = (e) => e.metrics.length ? e.metrics.reduce((s, l) => s + l.accuracy, 0) / e.metrics.length : 0, Lt = (e) => `Visual · ${e.status}`, ti = ["data-error-kind", "data-error-code"], li = { key: 0 }, Ot = /* @__PURE__ */ H({
   __name: "FieldFailure",
   props: {
     error: {}
@@ -2905,7 +2906,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
 }), ai = { class: "nested-value" }, ni = { key: 0 }, si = {
   key: 0,
   class: "muted"
-}, oi = { key: 1 }, ii = { key: 2 }, Le = /* @__PURE__ */ H({
+}, oi = { key: 1 }, ii = { key: 2 }, Be = /* @__PURE__ */ H({
   __name: "NestedValue",
   props: {
     value: {},
@@ -3011,21 +3012,21 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
                   class: Q(["chip", V.verified ? "primary" : "warn"]),
                   title: V.reason
                 }, [
-                  f(b(L), {
+                  f(b(B), {
                     icon: V.verified ? "tabler:shield-check" : "tabler:shield-question"
                   }, null, 8, ["icon"]),
                   F(d(V.verified ? "Verified" : "Check"), 1)
                 ], 10, mi),
-                V.verification ? (a(), n("span", pi, d(b(Bt)(V.verification)), 1)) : h("", !0),
+                V.verification ? (a(), n("span", pi, d(b(Lt)(V.verification)), 1)) : h("", !0),
                 V.codes?.includes("context_budget_partial") ? (a(), n("span", bi, "Partial context")) : h("", !0),
                 V.missing ? h("", !0) : (a(), n("span", fi, d(V.complete === !0 ? "Complete" : V.complete === !1 ? "Incomplete" : "Completeness unknown"), 1))
               ])),
-              f(b(L), {
+              f(b(B), {
                 icon: u.value === V.path ? "tabler:chevron-up" : "tabler:chevron-down",
                 class: "value-caret"
               }, null, 8, ["icon"])
             ], 8, di),
-            !V.failed && !V.missing && p(V.value) ? (a(), J(Le, {
+            !V.failed && !V.missing && p(V.value) ? (a(), J(Be, {
               key: 0,
               class: "structured-value",
               value: V.value,
@@ -3036,7 +3037,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               error: V.error
             }, null, 8, ["error"])) : h("", !0),
             W(t("div", gi, [
-              !V.failed && !V.missing && !p(V.value) ? (a(), J(Le, {
+              !V.failed && !V.missing && !p(V.value) ? (a(), J(Be, {
                 key: 0,
                 value: V.value,
                 schema: V.value_schema
@@ -3081,7 +3082,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
 }, Ei = {
   key: 3,
   class: "test-grid"
-}, qi = { class: "block" }, Ui = { class: "block-head" }, Ni = { class: "muted push" }, Fi = { class: "block" }, Mi = { class: "timeline" }, Ai = { class: "tl-icon" }, Ri = { class: "tl-main" }, Li = { class: "tl-head" }, Bi = { class: "muted push" }, Oi = { class: "tl-bar" }, Pi = { class: "muted" }, Ti = {
+}, qi = { class: "block" }, Ui = { class: "block-head" }, Ni = { class: "muted push" }, Fi = { class: "block" }, Mi = { class: "timeline" }, Ai = { class: "tl-icon" }, Ri = { class: "tl-main" }, Bi = { class: "tl-head" }, Li = { class: "muted push" }, Oi = { class: "tl-bar" }, Pi = { class: "muted" }, Ti = {
   key: 0,
   class: "tl-msg"
 }, Di = {
@@ -3101,7 +3102,7 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
     return (S, v) => (a(), n("div", ki, [
       t("section", $i, [
         t("div", xi, [
-          f(Lt, {
+          f(Bt, {
             value: i.value,
             onSelect: v[0] || (v[0] = (w) => i.value = w)
           }, null, 8, ["value"])
@@ -3116,11 +3117,11 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
       ]),
       e.result ? h("", !0) : (a(), n("p", Vi, "No extraction results yet.")),
       e.result?.status === "failed" ? (a(), n("p", Si, [
-        f(b(L), { icon: "tabler:alert-triangle" }),
+        f(b(B), { icon: "tabler:alert-triangle" }),
         F("The run stopped: " + d(e.result.error), 1)
       ])) : h("", !0),
       e.result?.status === "partial" ? (a(), n("p", Ci, [
-        f(b(L), { icon: "tabler:alert-triangle" }),
+        f(b(B), { icon: "tabler:alert-triangle" }),
         v[2] || (v[2] = F("Partial result · Some fields failed. Successful values are available below.", -1))
       ])) : h("", !0),
       e.result ? (a(), n("div", Ei, [
@@ -3151,14 +3152,14 @@ const _l = { class: "shape-editor" }, ea = { key: 0 }, ta = ["aria-label", "aria
               class: Q(w.status)
             }, [
               t("span", Ai, [
-                f(b(L), {
+                f(b(B), {
                   icon: C(w.kind)
                 }, null, 8, ["icon"])
               ]),
               t("div", Ri, [
-                t("div", Li, [
+                t("div", Bi, [
                   t("strong", null, d($(w.kind)), 1),
-                  t("span", Bi, d(p(w.duration_ms)), 1)
+                  t("span", Li, d(p(w.duration_ms)), 1)
                 ]),
                 t("span", Oi, [
                   t("span", {
@@ -3232,10 +3233,10 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
 }, Nu = ["colspan"], Fu = {
   key: 0,
   class: "cell-state"
-}, Mu = ["data-error-kind", "title"], Au = ["data-label"], Ru = ["title"], Lu = {
+}, Mu = ["data-error-kind", "title"], Au = ["data-label"], Ru = ["title"], Bu = {
   key: 0,
   class: "result-detail"
-}, Bu = ["colspan"], Ou = ["data-error-kind", "title"], Pu = { class: "mono" }, Tu = { class: "cmp" }, Du = { class: "cmp" }, ju = {
+}, Lu = ["colspan"], Ou = ["data-error-kind", "title"], Pu = { class: "mono" }, Tu = { class: "cmp" }, Du = { class: "cmp" }, ju = {
   key: 0,
   class: "value-checks"
 }, Iu = {
@@ -3289,7 +3290,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       try {
         for (const y of l.fields) {
           const x = String(g.value[K(y)] ?? "").trim();
-          x && Ut(E, K(y), $(y, x));
+          x && Nt(E, K(y), $(y, x));
         }
       } catch {
         r.value = 'Lists and objects need valid JSON, for example ["a","b"] or {"city":"Hamburg"}.';
@@ -3306,7 +3307,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       if (o.value) return v.value.find((y) => y.id === o.value);
       const E = v.value.findIndex((y) => y.id === w.value.id);
       return E >= 0 ? v.value[E + 1] : v.value[0];
-    }), A = N(() => (w.value?.metrics ?? []).map((E) => ({ ...E, before: m.value?.metrics.find((y) => y.field === E.field) }))), T = N(() => (w.value?.fields ?? []).map(K)), U = N(() => Oe(l.fields.map(K))), B = (E, y) => E.scores.find((x) => x.field === y), G = R(), j = (E) => `${Math.round(E * 100)}%`, D = (E) => {
+    }), A = N(() => (w.value?.metrics ?? []).map((E) => ({ ...E, before: m.value?.metrics.find((y) => y.field === E.field) }))), T = N(() => (w.value?.fields ?? []).map(K)), U = N(() => Oe(l.fields.map(K))), L = (E, y) => E.scores.find((x) => x.field === y), G = R(), j = (E) => `${Math.round(E * 100)}%`, D = (E) => {
       const y = Math.round(E * 100);
       return `${y > 0 ? "+" : y < 0 ? "−" : "±"}${Math.abs(y)} pts`;
     }, P = (E) => Math.round(E * 100) > 0 ? "up" : Math.round(E * 100) < 0 ? "down" : "flat", ue = (E) => E >= 6e4 ? `${Math.floor(E / 6e4)}m ${Math.round(E % 6e4 / 1e3)}s` : `${(E / 1e3).toFixed(1)}s`, ke = (E) => E == null || E === "" ? "—" : typeof E == "string" ? E : Array.isArray(E) && E.every((y) => typeof y != "object") ? E.join(", ") : JSON.stringify(E), le = (E) => E ? E.failed ? "fail" : E.score >= 0.999 ? "pass" : E.score > 0 ? "partial" : "fail" : "none", oe = (E) => (E.results ?? []).filter((y) => y.status === "completed").length, fe = { queued: "Queued", running: "Running", completed: "Completed", partial: "Partial", failed: "Failed" };
@@ -3317,7 +3318,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
             t("h2", Hi, "Evaluate revision " + d(e.revision), 1),
             y[6] || (y[6] = t("p", { class: "muted" }, "Runs every case below with the saved configuration and scores each field against the expected value.", -1)),
             e.changed ? (a(), n("p", Gi, [
-              f(b(L), { icon: "tabler:info-circle" }),
+              f(b(B), { icon: "tabler:info-circle" }),
               y[5] || (y[5] = F("Unsaved changes are not evaluated. Save first to measure them.", -1))
             ])) : h("", !0)
           ]),
@@ -3343,7 +3344,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
           class: Q(w.value.status === "failed" ? "run-failed" : "eval-warning"),
           role: "alert"
         }, [
-          f(b(L), { icon: "tabler:alert-triangle" }),
+          f(b(B), { icon: "tabler:alert-triangle" }),
           F(d(w.value.error), 1)
         ], 2)) : h("", !0),
         t("div", Yi, [
@@ -3426,7 +3427,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                       key: 0,
                       class: Q(["trend", P(x.accuracy - x.before.accuracy)])
                     }, [
-                      f(b(L), {
+                      f(b(B), {
                         icon: P(x.accuracy - x.before.accuracy) === "up" ? "tabler:trending-up" : P(x.accuracy - x.before.accuracy) === "down" ? "tabler:trending-down" : "tabler:minus"
                       }, null, 8, ["icon"]),
                       F(d(D(x.accuracy - x.before.accuracy)), 1)
@@ -3468,7 +3469,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                       "aria-expanded": G.value === x.case_id,
                       onClick: (O) => G.value = G.value === x.case_id ? void 0 : x.case_id
                     }, [
-                      f(b(L), {
+                      f(b(B), {
                         icon: G.value === x.case_id ? "tabler:chevron-down" : "tabler:chevron-right"
                       }, null, 8, ["icon"]),
                       F(d(x.upload_name), 1)
@@ -3481,7 +3482,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                     class: "muted"
                   }, [
                     x.status === "queued" ? (a(), n("span", Fu, [
-                      f(b(L), {
+                      f(b(B), {
                         icon: "tabler:loader-2",
                         class: "spin"
                       }),
@@ -3492,7 +3493,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                       "data-error-kind": x.error?.kind,
                       title: x.error?.kind
                     }, [
-                      f(b(L), { icon: "tabler:alert-triangle" }),
+                      f(b(B), { icon: "tabler:alert-triangle" }),
                       F(d(x.error?.message), 1)
                     ], 8, Mu))
                   ], 8, Nu)) : (a(!0), n(M, { key: 1 }, z(T.value, (O) => (a(), n("td", {
@@ -3500,12 +3501,12 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                     "data-label": O
                   }, [
                     t("span", {
-                      class: Q(["cell", le(B(x, O))]),
-                      title: ke(B(x, O)?.value)
-                    }, d(B(x, O)?.failed ? "Failed" : B(x, O) ? j(B(x, O).score) : "—"), 11, Ru)
+                      class: Q(["cell", le(L(x, O))]),
+                      title: ke(L(x, O)?.value)
+                    }, d(L(x, O)?.failed ? "Failed" : L(x, O) ? j(L(x, O).score) : "—"), 11, Ru)
                   ], 8, Au))), 128))
                 ], 2),
-                G.value === x.case_id ? (a(), n("tr", Lu, [
+                G.value === x.case_id ? (a(), n("tr", Bu, [
                   t("td", {
                     colspan: T.value.length + 1
                   }, [
@@ -3530,7 +3531,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                             }, d(I.failed ? "Failed" : j(I.score)), 3),
                             t("div", Tu, [
                               y[17] || (y[17] = t("span", { class: "cmp-label" }, "Expected", -1)),
-                              f(Le, {
+                              f(Be, {
                                 value: I.expected
                               }, null, 8, ["value"])
                             ]),
@@ -3539,7 +3540,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                               I.failed ? (a(), J(Ot, {
                                 key: 0,
                                 error: I.error
-                              }, null, 8, ["error"])) : (a(), J(Le, {
+                              }, null, 8, ["error"])) : (a(), J(Be, {
                                 key: 1,
                                 value: I.value
                               }, null, 8, ["value"]))
@@ -3549,12 +3550,12 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                                 key: 0,
                                 class: Q(["chip", I.verified ? "primary" : "warn"])
                               }, [
-                                f(b(L), {
+                                f(b(B), {
                                   icon: I.verified ? "tabler:shield-check" : "tabler:shield-question"
                                 }, null, 8, ["icon"]),
                                 F(d(I.verified ? "Verified" : "Unverified"), 1)
                               ], 2)),
-                              I.verification ? (a(), n("span", Iu, d(b(Bt)(I.verification)), 1)) : h("", !0)
+                              I.verification ? (a(), n("span", Iu, d(b(Lt)(I.verification)), 1)) : h("", !0)
                             ])) : h("", !0)
                           ])
                         ]))), 128))
@@ -3562,7 +3563,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                       _: 2
                     }, 1032, ["node"]),
                     t("p", zu, d(x.tokens.toLocaleString()) + " tokens · " + d(ue(x.duration_ms)), 1)
-                  ], 8, Bu)
+                  ], 8, Lu)
                 ])) : h("", !0)
               ], 64))), 128))
             ])
@@ -3589,7 +3590,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
         }, [
           t("label", null, [
             y[21] || (y[21] = F("Document", -1)),
-            f(Lt, {
+            f(Bt, {
               value: p.value,
               onSelect: y[3] || (y[3] = (x) => {
                 p.value = x;
@@ -3671,7 +3672,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                 key: x.id
               }, [
                 t("td", null, [
-                  f(b(L), {
+                  f(b(B), {
                     icon: "tabler:file-text",
                     class: "muted"
                   }),
@@ -3682,7 +3683,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                     default: me(({ index: O }) => [
                       t("div", nd, [
                         t("strong", null, d(e.fields[O].name), 1),
-                        b(st)(x.expected, b(K)(e.fields[O])) !== void 0 ? (a(), J(Le, {
+                        b(st)(x.expected, b(K)(e.fields[O])) !== void 0 ? (a(), J(Be, {
                           key: 0,
                           value: b(st)(x.expected, b(K)(e.fields[O]))
                         }, null, 8, ["value"])) : (a(), n("span", sd, "Not stated"))
@@ -3699,7 +3700,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                     disabled: e.saving,
                     onClick: (O) => u("delete-case", x.id)
                   }, [
-                    f(b(L), { icon: "tabler:trash" })
+                    f(b(B), { icon: "tabler:trash" })
                   ], 8, id)
                 ])
               ]))), 128))
@@ -3794,7 +3795,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                     "aria-expanded": s.value === p.id,
                     onClick: (g) => s.value = s.value === p.id ? void 0 : p.id
                   }, [
-                    f(b(L), {
+                    f(b(B), {
                       icon: s.value === p.id ? "tabler:chevron-down" : "tabler:chevron-right"
                     }, null, 8, ["icon"]),
                     F(d(b(Ye)(p.created_at)), 1)
@@ -3802,7 +3803,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
                 ]),
                 t("td", null, [
                   t("span", wd, [
-                    f(b(L), {
+                    f(b(B), {
                       icon: l[p.caller].icon
                     }, null, 8, ["icon"]),
                     F(d(l[p.caller].label), 1)
@@ -3862,7 +3863,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       p.value ? (a(), n("p", Md, d(p.value), 1)) : h("", !0)
     ], 512));
   }
-}), Rd = { class: "docscout" }, Ld = { class: "toolbar" }, Bd = { class: "toolbar-lead" }, Od = { class: "crumb-row" }, Pd = { class: "crumb" }, Td = {
+}), Rd = { class: "docscout" }, Bd = { class: "toolbar" }, Ld = { class: "toolbar-lead" }, Od = { class: "crumb-row" }, Pd = { class: "crumb" }, Td = {
   class: "tabs",
   role: "tablist",
   "aria-label": "Docscout"
@@ -3899,28 +3900,28 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
   },
   emits: ["save", "add-case", "delete-case", "back", "run", "evaluate", "open-evaluation"],
   setup(e, { emit: s }) {
-    const l = e, u = s, i = R(), p = R(!1), g = R("Builder"), r = R($t()), $ = R(""), C = R(""), S = N(() => l.snapshot.can_edit ? ["Builder", "Test", "Evals", "Runs"] : ["Test", "Runs"]);
+    const l = e, u = s, i = R(), p = R(!1), g = R("Builder"), r = R(xt()), $ = R(""), C = R(""), S = N(() => l.snapshot.can_edit ? ["Builder", "Test", "Evals", "Runs"] : ["Test", "Runs"]);
     be(g, () => {
       i.value && (i.value.scrollTop = 0);
     }, { flush: "post" });
     const v = R(), w = R(), V = N(() => l.snapshot.can_edit && v.value !== l.snapshot.expected_revision), o = N(() => V.value && w.value !== l.snapshot.expected_revision);
     function m(j) {
-      return $.value === j.title && C.value === (j.description ?? "") && Nl(r.value, j.config);
+      return $.value === j.title && C.value === (j.description ?? "") && Fl(r.value, j.config);
     }
     function A() {
       const j = l.snapshot;
-      r.value = structuredClone(lt(j.config ?? $t())), $.value = j.title, C.value = j.description ?? "", v.value = j.expected_revision, w.value = void 0;
+      r.value = structuredClone(lt(j.config ?? xt())), $.value = j.title, C.value = j.description ?? "", v.value = j.expected_revision, w.value = void 0;
     }
     be(() => l.snapshot, (j, D) => {
       S.value.includes(g.value) || (g.value = S.value[0]), !(D && j.id === D.id && j.can_edit && D.can_edit && !m(D) && !m(j)) && A();
     }, { immediate: !0 });
-    const T = N(() => l.snapshot.can_edit && !m(l.snapshot)), U = N(() => Ul(r.value)), B = N(() => Object.keys($e).filter((j) => Qe(r.value, j)).length);
+    const T = N(() => l.snapshot.can_edit && !m(l.snapshot)), U = N(() => Nl(r.value)), L = N(() => Object.keys($e).filter((j) => Qe(r.value, j)).length);
     function G() {
       u("save", { title: $.value, description: C.value, config: structuredClone(lt(r.value)), expected_revision: v.value });
     }
     return (j, D) => (a(), n("main", Rd, [
-      t("div", Ld, [
-        t("div", Bd, [
+      t("div", Bd, [
+        t("div", Ld, [
           t("span", Od, [
             e.back ? (a(), n("button", {
               key: 0,
@@ -3930,7 +3931,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
               title: "All extractors",
               onClick: D[0] || (D[0] = (P) => u("back"))
             }, [
-              f(b(L), { icon: "tabler:arrow-left" })
+              f(b(B), { icon: "tabler:arrow-left" })
             ])) : h("", !0),
             t("span", Pd, d(e.snapshot.title), 1)
           ]),
@@ -3955,7 +3956,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
             onClick: D[1] || (D[1] = (P) => p.value = !0)
           }, {
             default: me(() => [
-              f(b(L), { icon: "tabler:share" }),
+              f(b(B), { icon: "tabler:share" }),
               D[11] || (D[11] = t("span", { class: "btn-label" }, "Share", -1))
             ]),
             _: 1
@@ -3963,7 +3964,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
           t("span", Id, [
             F(d(e.snapshot.field_count) + " " + d(e.snapshot.field_count === 1 ? "field" : "fields"), 1),
             e.snapshot.can_edit ? (a(), n(M, { key: 0 }, [
-              F(" · " + d(B.value) + " steps · revision " + d(e.snapshot.expected_revision), 1)
+              F(" · " + d(L.value) + " steps · revision " + d(e.snapshot.expected_revision), 1)
             ], 64)) : (a(), n(M, { key: 1 }, [
               F(" · Read access")
             ], 64))
@@ -3982,7 +3983,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
               role: "alert",
               title: U.value
             }, [
-              f(b(L), { icon: "tabler:alert-circle" }),
+              f(b(B), { icon: "tabler:alert-circle" }),
               F(d(U.value), 1)
             ], 8, zd)) : T.value ? (a(), n("span", Wd, "Unsaved")) : h("", !0),
             f(b(de), {
@@ -4081,7 +4082,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
   key: 2,
   class: "empty pad-page",
   role: "status"
-}, lr = /* @__PURE__ */ H({
+}, ar = /* @__PURE__ */ H({
   __name: "Extractor",
   props: {
     id: {},
@@ -4091,11 +4092,11 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
   setup(e, { emit: s }) {
     const l = e, u = s, i = R(), p = R(""), g = R(!1), r = R(!1), $ = R(!1), C = R(), S = R(null), v = R([]), w = R();
     let V = [], o = 0, m = 0, A = 0, T;
-    const U = (E) => E instanceof Error ? E.message : String(E), B = (E) => E === o;
+    const U = (E) => E instanceof Error ? E.message : String(E), L = (E) => E === o;
     async function G(E, y) {
       const x = ++A;
       y && (T = y);
-      const O = () => B(E) && x === A;
+      const O = () => L(E) && x === A;
       try {
         const I = l.id, Ne = await he.evaluations(I);
         if (!O()) return;
@@ -4111,7 +4112,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       }
     }
     async function j(E) {
-      const y = ++m, x = () => B(E) && y === m;
+      const y = ++m, x = () => L(E) && y === m;
       if (!l.id) {
         p.value = "No extractor selected.";
         return;
@@ -4127,8 +4128,8 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
     be(() => l.id, (E, y) => {
       o++, T = void 0, V.forEach((O) => O()), V = [], C.value = void 0, i.value = void 0, S.value = null, v.value = [], w.value = void 0, p.value = "";
       const x = o;
-      l.id && (V = [xt(`component.${l.id}`, () => j(x)), xt(`docscout.runs.${l.id}`, () => j(x))]), y !== void 0 && j(x);
-    }, { immediate: !0 }), Fl(() => j(o)), Ct(() => {
+      l.id && (V = [kt(`component.${l.id}`, () => j(x)), kt(`docscout.runs.${l.id}`, () => j(x))]), y !== void 0 && j(x);
+    }, { immediate: !0 }), fl(() => j(o)), Ct(() => {
       o++, V.forEach((E) => E());
     });
     async function D(E) {
@@ -4136,10 +4137,10 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       g.value = !0, p.value = "";
       try {
         const x = await E();
-        if (B(y))
+        if (L(y))
           return await j(y), x;
       } catch (x) {
-        B(y) && (p.value = U(x));
+        L(y) && (p.value = U(x));
       } finally {
         g.value = !1;
       }
@@ -4147,7 +4148,7 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
     const P = (E) => D(() => he.update(l.id, E));
     async function ue(E) {
       const y = o, x = await D(() => he.addCase(l.id, E));
-      x && B(y) && (C.value = x.id);
+      x && L(y) && (C.value = x.id);
     }
     const ke = (E) => D(() => he.deleteCase(l.id, E));
     async function le(E) {
@@ -4155,9 +4156,9 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       r.value = !0, p.value = "";
       try {
         const x = await he.run(l.id, E);
-        B(y) && (S.value = x, await j(y));
+        L(y) && (S.value = x, await j(y));
       } catch (x) {
-        if (B(y)) {
+        if (L(y)) {
           const O = x?.response?.data?.error;
           p.value = i.value?.config?.stages.extract.reads === "pages" && O ? O : U(x);
         }
@@ -4170,9 +4171,9 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
       $.value = !0, p.value = "";
       try {
         const { eval_id: y } = await he.evaluate(l.id);
-        B(E) && await G(E, y);
+        L(E) && await G(E, y);
       } catch (y) {
-        B(E) && (p.value = U(y));
+        L(E) && (p.value = U(y));
       } finally {
         $.value = !1;
       }
@@ -4203,6 +4204,6 @@ const Ii = { class: "evals" }, zi = { class: "block eval-run" }, Wi = { class: "
   }
 });
 export {
-  lr as _,
+  ar as _,
   Ye as w
 };

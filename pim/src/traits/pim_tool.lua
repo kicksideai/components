@@ -43,4 +43,7 @@ function M.create_catalog(args: Map): (Map?, error?) return run("create", args, 
 function M.plan_schema(args: Map): (Map?, error?) return run("plan_schema", args, ctx.get("catalog_id")) end
 function M.apply_schema(args: Map): (Map?, error?) return run("apply_schema", args, ctx.get("catalog_id")) end
 
+function M.configure_plugin(args: Map): (Map?, error?) return run("configure_plugin", args, ctx.get("catalog_id")) end
+function M.rebuild(args: Map): (Map?, error?) return run("rebuild", args, ctx.get("catalog_id")) end
+
 return M

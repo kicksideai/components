@@ -15,6 +15,16 @@ the review. Apply sends that snapshot with its expected generation; backend
 validation and ACL failures remain visible. Refresh does not overwrite a dirty
 draft, and replies for an old catalog cannot replace the current catalog's draft.
 
+Declared fields remain editable in type, cardinality and scope; declaration
+presence does not establish authored values. The existing review/apply boundary
+classifies or refuses those changes. Scope changes preserve defaults and the
+same default editor remains available for scoped fields.
+
+Term codes follow the backend grammar: 1–128 ASCII characters, beginning with
+an alphanumeric character, then alphanumeric characters, underscores, dots or
+hyphens. Declaration codes retain their separate grammar. Adding, retiring and
+restoring terms require catalog WRITE independently of ADMIN; term reads and
+schema editing remain available to an administrator without WRITE.
 Term writes use PIM's apply endpoint and only term-shaped requests. Active plugin
 configuration saves separately and must preserve unrelated schema drafts and
 other unsaved plugin configuration. Deployment policy defaults are read through
@@ -37,3 +47,23 @@ expiry and maintenance limits stay read-only, marked "Managed in deployment
 settings", in Advanced. Audit retention is bounded: zero selects the 365-day
 default, and the UI enforces the backend's 106751-day ceiling for audit, trash
 and deleted-product notices.
+
+System labels catalog administration **Catalogs** and retains the System capability
+boundary. Catalog ADMIN alone does not grant System access. Aspects display as
+**Field groups**; Values offers Single value, Ordered list and Unique set while
+preserving the declaration wire values. Declaration remains a peer section.
+Leaving Declaration discards its invalid local text and resets its local validity;
+invalid JSON remains visibly blocked while the editor is active.
+
+The settings component emits `dirty-changed` with `{dirty}` for schema/removal
+and plugin drafts. Switching catalogs asks the host to confirm discarding a dirty
+draft; cancellation preserves selection and draft. Catalog ADMIN sees Share,
+which loads the existing `kickside-share` widget with Component access/share URLs.
+It owns principal selection, grant validation and last-owner protection.
+
+Term panels state that term changes save immediately. Retirement asks for host
+confirmation before writing; restoration remains immediate. Term reads clear
+previous errors at the start and expose Retry while keeping failed reads visible.
+Built-in type configuration comes from the backend's `config_schema` metadata
+and renders through the shared `wc-schema-form`, including Quantity units and
+canonical unit. Conversion factors and record members use its structured inputs.

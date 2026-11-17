@@ -11,8 +11,8 @@ local M = {}
 
 -- values_of renders held values under declared field codes.
 local function item_view(board: domain.Board, item: domain.Item): (types.ItemView?, error?)
-    local values: { [string]: unknown } = {}
-    local states: { [string]: string } = {}
+    local values: { [string]: unknown } = table.create(0, 1)
+    local states: { [string]: string } = table.create(0, 1)
     local carried = board.model.item_types[item.type]
     for _, code in ipairs(carried and carried.fields or {}) do
         local f = board.model.fields[code]

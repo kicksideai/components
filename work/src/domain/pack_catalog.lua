@@ -54,7 +54,7 @@ local function decode(entry: registry.Entry): (types.Pack?, error?)
             title = manifest and manifest.title, description = manifest and manifest.description, icon = manifest and manifest.icon,
             active = false, requires = manifest and manifest.requires or {}, tools = manifest and manifest.tools or {},
             lifecycle = ierr and { state = "failed", error = { kind = ierr:kind(), code = ierr:details().code, message = ierr:message() } } or { state = "ready" },
-            projections = {}, problem = ierr and { code = ierr:details().code, message = ierr:message() } or nil }
+            projections = table.create(0, 1), problem = ierr and { code = ierr:details().code, message = ierr:message() } or nil }
     end
     local digest, herr = data_digest(data)
     if herr or not digest then return nil, herr end

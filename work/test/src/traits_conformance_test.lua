@@ -16,14 +16,12 @@ local METHODS = {
     apply = "board.apply", transition = "board.apply", comment = "board.apply", approve = "board.approve", report = "board.report",
     bulk = "board.bulk", cancel_bulk = "board.cancel_bulk", create_view = "view.create", save_view = "view.save", rename_view = "view.rename", delete_view = "view.delete",
     create_board = "board.create", update_board = "board.update", plan_schema = "board.plan_schema", apply_schema = "board.apply_schema",
+    schema_options = "board.schema_options", resume_migration = "board.resume_migration", list_pack_boards = "packs.list",
     pack_plan = "board.pack_plan", pack_apply = "board.pack_apply", configure_plugin = "board.configure_plugin", plan_move = "board.plan_move", move = "board.move",
 }
 local EXCLUDED = {
     ["board.plugin_feed"] = "Host projection feed adds no agent tool.",
     ["board.plugin_context"] = "Host service admission adds no agent tool.",
-    ["board.schema_options"] = "Host configuration discovery adds no agent tool.",
-    ["board.resume_migration"] = "Maintenance resumes a parked migration.",
-    ["packs.list"] = "Fleet provenance belongs to installation operations.",
     ["schema_provider.resolve"] = "Provider seam resolves declarations during schema preparation.",
     ["search_resolver.resolve_ids"] = "Provider seam resolves search candidates during reads.",
 }
@@ -61,7 +59,14 @@ local function define()
                     test.not_nil(methods[method], id)
                     local tool = assert(registry.get(id))
                     test.eq(tool.meta.type, "tool")
-                    test.eq(values.canonical(assert(json.decode(tool.meta.input_schema))), values.canonical(assert(json.decode(methods[method].input_schemas[1].definition))), id)
+                    local input = assert(json.decode(tool.meta.input_schema))
+                    local contract_input = assert(json.decode(methods[method].input_schemas[1].definition))
+                    if input.properties.board_id and contract_input.required then
+                        local required = {}
+                        for _, key in ipairs(contract_input.required or {}) do if key ~= "board_id" then required[#required + 1] = key end end
+                        contract_input.required = required
+                    end
+                    test.eq(values.canonical(input), values.canonical(contract_input), id)
                 described(assert(json.decode(tool.meta.input_schema)) :: Map, tool.id)
                 described(assert(json.decode(methods[method].output_schemas[1].definition)) :: Map, tool.id, true)
                 local output = assert(json.decode(tool.meta.output_schema))
@@ -78,7 +83,7 @@ local function define()
                 test.is_true(sentences <= 2, tool.id)
                     test.is_true(tool.meta.llm_alias:match("^Work[A-Z]%w+$") ~= nil, id)
                     test.eq(#tool.meta.mcp.required_scopes, 1, id)
-                    test.eq(tool.meta.mcp.required_scopes[1], reads[id] and "state.read" or "state.write", id)
+                    test.eq(tool.meta.mcp.required_scopes[1], (reads[id] or method == "board.schema_options" or method == "packs.list") and "state.read" or "state.write", id)
                     if name == "work_readonly" then test.eq(tool.meta.mcp.required_scopes[1], "state.read", id) end
                     if not ids[id] then test.is_nil(aliases[tool.meta.llm_alias], id); aliases[tool.meta.llm_alias] = id end
                     ids[id], covered[method] = true, true

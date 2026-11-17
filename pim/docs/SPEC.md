@@ -339,7 +339,14 @@ projection or a rebuild, and never define key or order (0.4).
 
 Built-in pack `kickside.pim.types`: `text`, `rich_text`, `identifier`,
 `integer`, `number`, `quantity`, `money`, `boolean`, `date`, `datetime`,
-`select` (term), `reference` (product or link kind), `asset`, `record`.
+`select` (term), `reference` (product), `link` (bound link kind), `record`.
+Built-in type metadata declares `config_schema` for supported representation
+settings: text/identifier key matching, integer and decimal scale/range,
+Money currency, Quantity units/canonical unit and numeric index settings, and
+record members.
+Quantity requires a nonempty unit map and canonical unit; the compiler retains
+its conversion-factor and canonical-factor checks. Shared schema forms consume
+this metadata rather than duplicating type-specific editors.
 
 An attribute declaration may carry `width` (`full`, `half`, `third`,
 `quarter`): its share of a form row in the product editor's twelve-column
@@ -816,9 +823,18 @@ A `kickside.pim.plugin` registry declaration may carry `meta.tools`, a list of r
 
 Each tool maps to one exact contract method under the calling actor and scope. Its generic handler copies call arguments, uses trait context only for an omitted catalog id accepted by the method, calls the module client and adds `success = true`. Call arguments win, including invalid values that the contract must refuse. The contract owns validation, access and activation; an inactive catalog refuses with a native `errors.NOT_FOUND` whose `details.code` is `plugin_inactive`. Handlers do not repeat activation checks. Catalog access boundaries preserve the received error kind and source code; dependency denials without a code remain native dependency errors. Trait context reaches tools through `ctx.get`.
 
-Every tool declares a title, a unique PascalCase product alias, a model-facing description of its action, access and result, exact contract input schema, output schema and `mcp.required_scopes`: `state.read` for reads, `state.write` for state changes. Every named input property, including nested filter nodes and value coordinates, carries an actionable description of at most 200 characters. Product references accept `{id}` or `{sku}` with id precedence; inventory locations accept `{id}` or `{code}` with non-empty id precedence. Context maps use dimension names and members declared by `PIMSchemaGet`, and write coordinates supply every dimension in the attribute scope. Proposal inputs expose only existing-product value and status edits. Apply versions are integers or the explicit string `any`; proposal versions are captured at creation, and releases require an integer version. Product and location references name at least one supported identity, stock reads supply a product or product-id list, and reservation lookups supply a key or reservation id. Request structure and top-level enums validate before planning: malformed envelopes return native `INVALID` with `details.code = invalid_request` without appending. Batch-item values judged by the pipeline remain open in schemas and produce their own outcomes, including malformed versions, unknown statuses and missing release versions. Unknown read status filters remain request errors. Search returns hits; ask may additionally return an answer when authorized passages exist. Release and withdrawal channel lists use declared channel codes; omission selects every channel and an empty list selects none. Non-string channel entries produce per-item `invalid_channel` findings; unknown string codes produce `unknown_channel`. Both leave that item unchanged and preserve the other items' outcomes. Registry conformance tests compare contract and tool input schemas in full, including descriptions, check nested description presence and length, compare answer schemas with the tool success field, enforce method coverage or a reasoned exclusion, and require each module's exact `tool_access` policy to equal its declared tools, traits and trait build functions. Trait discovery and build invocation require tool access independently of module membership. Plugins ship their own exact tool policies and no traits. Maintenance and provider seams stay outside traits.
+Every tool declares a title, a unique PascalCase product alias, a model-facing description of its action, access and result, exact contract input schema, output schema and `mcp.required_scopes`: `state.read` for reads, `state.write` for state changes. Every named input property, including nested filter nodes and value coordinates, carries an actionable description of at most 200 characters. Product references accept `{id}` or `{sku}` with id precedence; inventory locations accept `{id}` or `{code}` with non-empty id precedence. Context maps use dimension names and members declared by `PIMSchemaGet`, and write coordinates supply every dimension in the attribute scope. Proposal inputs expose only existing-product value and status edits. Apply versions are integers or the explicit string `any`; proposal versions are captured at creation, and releases require an integer version. Product and location references name at least one supported identity, stock reads supply a product or product-id list, and reservation lookups supply a key or reservation id. Request structure and top-level enums validate before planning: malformed envelopes return native `INVALID` with `details.code = invalid_request` without appending. Batch-item values judged by the pipeline remain open in schemas and produce their own outcomes, including malformed versions, unknown statuses and missing release versions. Unknown read status filters remain request errors. Search returns hits; ask may additionally return an answer when authorized passages exist. Release and withdrawal channel lists use declared channel codes; omission selects every channel and an empty list selects none. Non-string channel entries produce per-item `invalid_channel` findings; unknown string codes produce `unknown_channel`. Both leave that item unchanged and preserve the other items' outcomes. Registry conformance tests compare contract and tool input schemas in full, including descriptions, check nested description presence and length, compare answer schemas with the tool success field, enforce method coverage or a reasoned exclusion, and require each module's exact `tool_access` policy to equal its declared tools, traits and trait build functions. Trait discovery and build invocation require tool access independently of module membership. Plugins ship their own exact tool policies and no traits. Product-owned catalog rebuild maintenance belongs to pim_admin; provider seams stay outside traits.
 
-Inventory contributes reads `list_locations`, `get_stock`, `get_reservation`, `list_reservations` and writes `receive`, `adjust`, `reserve`, `commit`, `release` through `kickside.pim.inventory:inventory`. `upsert_location` remains administration; `sweep` remains maintenance. Knowledge contributes the existing `search` tool and `ask`, both reads through `kickside.pim.knowledge:knowledge`; `status` stays outside. Core excludes `catalog.rebuild`, `schema_provider.resolve`, and `link_target.resolve`/`describe` as maintenance or provider seams. `configure_plugin` and contract-only `plugin_context` and `plugin_feed` have no agent tools; the declared agent tool list stays unchanged.
+The shared declaration grammar in `src/schema/declaration.json` describes sections,
+nested required fields and coordinates for create, plan and apply. Channels use
+`id`; aspects use `namespace`, attributes use local `code` (or an existing `id`
+for renaming), and dimensions use `name` and `members`. Generated contract/tool
+schemas and the runtime merge shape use that grammar. Compilation remains
+authoritative for types, configuration, policy and compatibility. Contract
+answers preserve declared JSON object identity, including empty maps; arrays
+and pipeline-owned open JSON values retain their existing shape.
+
+Inventory contributes reads `list_locations`, `get_stock`, `get_reservation`, `list_reservations` and writes `receive`, `adjust`, `reserve`, `commit`, `release` through `kickside.pim.inventory:inventory`. `upsert_location` remains administration; `sweep` remains maintenance. Knowledge contributes the existing `search` tool and `ask`, both reads through `kickside.pim.knowledge:knowledge`; `status` stays outside. Core exposes `configure_plugin` as `PIMConfigurePlugin` and `rebuild` as `PIMRebuild` in `pim_admin`, retaining catalog ADMIN checks. `schema_provider.resolve`, `link_target.resolve`/`describe`, `plugin_context` and `plugin_feed` remain contract-only provider or worker seams.
 
 The platform MCP server expands only static trait `tools`; dynamic plugin contributions require upstream MCP support. Modules do not duplicate plugin tools into static traits.
 
@@ -1337,7 +1353,7 @@ HTTP follows the contract: reads are `GET` with query parameters (`/schema`,
 `/links`, `/explain`, `/changes`, `/publications`), commands and the filter query
 are `POST` (`/schema`, `/schema/plan`, `/query`, `/apply`, `/proposals`,
 `/proposals/{proposal_id}/decision`, `/releases`, `/withdrawals`, `/rebuild`,
-`/plugins/{plugin}/config`), all
+`/plugins/configure`), all
 under `/pim/catalogs/{id}`.
 
 The catalog contract's `list` rows and `get_schema` response include required
@@ -1409,7 +1425,7 @@ the caller can read. ADMIN and WRITE are independent grants, not implied by READ
 | `get_schema` | GET | `/pim/catalogs/{id}/schema` | READ |
 | `apply_schema` | POST | `/pim/catalogs/{id}/schema` | ADMIN |
 | `plan_schema` | POST | `/pim/catalogs/{id}/schema/plan` | ADMIN |
-| `configure_plugin` | POST | `/pim/catalogs/{id}/plugins/{plugin}/config` | ADMIN |
+| `configure_plugin` | POST | `/pim/catalogs/{id}/plugins/configure` (body `{plugin, config}`) | ADMIN |
 | `get` | GET | `/pim/catalogs/{id}/product` | READ |
 | `query` | POST | `/pim/catalogs/{id}/query` | READ |
 | `list_history` | GET | `/pim/catalogs/{id}/history` | READ |
@@ -1554,7 +1570,7 @@ moves them unchanged).
 | Blocks | `kickside.block` (`kickside.pim.blocks`) | `get_product`, `query_products`, `apply`, `release`: one function Block per composed contract method; config `catalog_id` through the catalog picker, input = the method's request without it, run as the Flow's caller |
 | Agent tools | `agent.trait` `kickside.pim.traits:pim_readonly` | `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMTerms` → `list_terms`, `PIMQuery` → `query`, `PIMGet` → `get`, `PIMExplain` → `explain`, `PIMHistory` → `list_history`, `PIMLinks` → `list_links`, `PIMProposals` → `list_proposals`, `PIMReleases` → `list_releases`, `PIMReleaseGet` → `get_release`, `PIMPublications` → `list_publications`, `PIMChanges` → `list_changes` |
 | Agent tools | `agent.trait` `kickside.pim.traits:pim_trait` | `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMTerms` → `list_terms`, `PIMQuery` → `query`, `PIMGet` → `get`, `PIMExplain` → `explain`, `PIMHistory` → `list_history`, `PIMLinks` → `list_links`, `PIMProposals` → `list_proposals`, `PIMReleases` → `list_releases`, `PIMReleaseGet` → `get_release`, `PIMPublications` → `list_publications`, `PIMChanges` → `list_changes`, `PIMApply` → `apply`, `PIMPropose` → `propose`, `PIMDecide` → `decide`, `PIMRelease` → `release`, `PIMWithdraw` → `withdraw` |
-| Agent tools | `agent.trait` `kickside.pim.traits:pim_admin` | `PIMCatalogCreate` → `create`, `PIMSchemaPlan` → `plan_schema`, `PIMSchemaApply` → `apply_schema`, `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options` |
+| Agent tools | `agent.trait` `kickside.pim.traits:pim_admin` | `PIMCatalogCreate` → `create`, `PIMSchemaPlan` → `plan_schema`, `PIMSchemaApply` → `apply_schema`, `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMConfigurePlugin` → `configure_plugin`, `PIMRebuild` → `rebuild` |
 
 Feeds are cursor-resumable over durable state, so a plugin installed a year
 later builds its read model from the state feed's beginning. For declared

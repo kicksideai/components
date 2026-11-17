@@ -1,8 +1,8 @@
-import { WippyVueElement, define } from '@wippy-fe/webcomponent-vue'
+import { WippyVueElement, define, useEvents } from '@wippy-fe/webcomponent-vue'
 import type { WippyElementConfig, WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
 import type { ComponentProps } from './types.ts'
 import type { Events } from './constants.ts'
-import Research from './app/research.vue'
+import { lazyPage } from './lazy'
 import stylesText from './styles.css?inline'
 import pkg from '../package.json'
 
@@ -16,7 +16,13 @@ class ResearchAppElement extends WippyVueElement<ComponentProps, Events> {
   }
 
   static get vueConfig() {
-    return { rootComponent: Research }
+    return {
+      lazyConfig: lazyPage(
+        () => import('./lazy-mount').then((module) => module.mountConfig),
+        'Could not load Research. Reload the page to try again.',
+        useEvents,
+      ),
+    }
   }
 }
 

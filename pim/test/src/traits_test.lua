@@ -90,6 +90,76 @@ local function define()
             call("withdraw", { items = { { product = { id = product.product_id }, channels = { "web" } } } })
             test.eq(assert(h.call("get", { product = { id = product.product_id } })).publications[1].state, "withdrawn")
         end)
+        test.it("configures active plugins and resumes rebuilds as catalog ADMIN", function()
+            local h = fixture.catalog()
+            local executor = h.executor:with_context({ catalog_id = h.id })
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = "app:shelf_plugin" } } },
+                plugin_configs = { ["app:shelf_plugin"] = { location = "WH7" } } }))
+            local before = assert(h.call("get_schema", {})).schema_generation
+            local out, err = executor:call("kickside.pim.traits:configure_plugin", { plugin = "app:shelf_plugin", config = { location = "WH9" } })
+            test.is_nil(err, tostring(err))
+            test.is_true(out.success)
+            test.eq(assert(h.call("plugin_context", { plugin = "app:shelf_plugin" })).config.location, "WH9")
+            test.eq(assert(h.call("get_schema", {})).schema_generation, before)
+            local rebuilt, rerr = executor:call("kickside.pim.traits:rebuild", {})
+            test.is_nil(rerr, tostring(rerr))
+            test.is_true(rebuilt.success)
+            test.eq(type(rebuilt.rebuilding), "boolean")
+            local other = fixture.catalog()
+            assert(h.call("grant", { subject_id = other.actor:id(), mask = 3 }))
+            for _, case in ipairs({
+                { method = "configure_plugin", config = { plugin = "app:shelf_plugin", config = { location = "WH8" } } },
+                { method = "rebuild", config = {} },
+            }) do
+                case.config.catalog_id = h.id
+                local _, denied = other.executor:call("kickside.pim.traits:" .. case.method, case.config)
+                test.not_nil(denied)
+                test.eq(denied:kind(), errors.PERMISSION_DENIED)
+            end
+        end)
+        test.it("publishes the same declaration grammar for creation planning and application", function()
+            local previous: Map? = nil
+            for _, name in ipairs({ "create_catalog", "plan_schema", "apply_schema" }) do
+                local entry = assert(registry.get("kickside.pim.traits:" .. name))
+                local declaration = assert(json.decode(entry.meta.input_schema)).properties.declaration
+                test.not_nil(declaration.properties, name .. " declaration sections")
+                for _, section in ipairs({ "dimensions", "vocabularies", "aspects", "families", "sources", "channels", "policy", "scopes", "plugins", "remove" }) do
+                    test.not_nil(declaration.properties[section], section)
+                end
+                test.eq(declaration.properties.channels.items.required[1], "id")
+                test.is_false(json.validate(declaration, { channels = { { code = "demo" } } }))
+                test.is_true(json.validate(declaration, { channels = { { id = "demo" } } }))
+                if previous then conformance.equal(declaration, previous, "shared declaration") end
+                previous = declaration
+            end
+            local h = fixture.catalog()
+            local _, err = h.call("plan_schema", { declaration = { channels = { { code = "demo" } } } })
+            test.not_nil(err)
+            test.eq(err:kind(), errors.INVALID)
+            test.not_nil(assert(h.call("plan_schema", { declaration = { channels = { { id = "demo" } } } })).class)
+        end)
+        test.it("encodes empty maps as objects in published tool answers", function()
+            local h = fixture.catalog({ bare = true })
+            assert(h.call("apply_schema", { declaration = { aspects = { { namespace = "core", attributes = {
+                { code = "name", type = "kickside.pim.types:text" },
+            } } } } }))
+            assert(h.call("apply", { items = { { product = { sku = "EMPTY" }, create = {} } } }))
+            for _, case in ipairs({
+                { name = "get_schema", request = {} },
+                { name = "schema_options", request = {} },
+                { name = "get", request = { product = { sku = "EMPTY" } } },
+                { name = "explain", request = { product = { sku = "EMPTY" }, attr = "core.name" } },
+                { name = "query", request = { columns = { "core.name" } } },
+            }) do
+                case.request.catalog_id = h.id
+                local out = assert(tool(h, case.name, case.request))
+                local entry = assert(registry.get("kickside.pim.traits:" .. case.name))
+                local schema = assert(json.decode(entry.meta.output_schema))
+                local encoded = assert(json.encode(out))
+                local valid, err = json.validate(schema, assert(json.decode(encoded)))
+                test.is_true(valid, case.name .. ": " .. tostring(err) .. " wire: " .. encoded)
+            end
+        end)
         test.it("refuses plugin declarations whose tool does not exist or has the wrong type", function()
             local h = fixture.catalog()
             for _, id in ipairs({ "app:unknown_tool_plugin", "app:wrong_tool_plugin" }) do
@@ -114,7 +184,7 @@ local function define()
                 seen[tool.registry_id] = true
                 n = n + 1
             end
-            test.eq(n, 22)
+            test.eq(n, 24)
         end)
         test.it("covers contracts with matching schemas and exact tool policies", function()
             conformance.check()
@@ -125,7 +195,7 @@ local function define()
             local admin = assert(registry.get("kickside.pim.traits:pim_admin"))
             test.eq(#reads.data.tools, 14)
             test.eq(#working.data.tools, 19)
-            test.eq(#admin.data.tools, 6)
+            test.eq(#admin.data.tools, 8)
             test.eq(reads.data.build_func_id, "kickside.pim.traits:build_reads")
             test.eq(working.data.build_func_id, "kickside.pim.traits:build")
             test.is_nil(admin.data.build_func_id)
@@ -137,7 +207,7 @@ local function define()
             for id in pairs(reads_set) do working_set[id] = true end
             for _, method in ipairs({ "apply", "propose", "decide", "release", "withdraw" }) do working_set["kickside.pim.traits:" .. method] = true end
             local admin_set: Map = {}
-            for _, method in ipairs({ "create_catalog", "plan_schema", "apply_schema", "list_catalogs", "get_schema", "schema_options" }) do admin_set["kickside.pim.traits:" .. method] = true end
+            for _, method in ipairs({ "create_catalog", "plan_schema", "apply_schema", "configure_plugin", "rebuild", "list_catalogs", "get_schema", "schema_options" }) do admin_set["kickside.pim.traits:" .. method] = true end
             for _, role in ipairs({ { entry = reads, expected = reads_set }, { entry = working, expected = working_set }, { entry = admin, expected = admin_set } }) do
                 local actual: Map = {}
                 for _, id in ipairs(role.entry.data.tools) do
