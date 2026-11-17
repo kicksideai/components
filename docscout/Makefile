@@ -18,7 +18,7 @@ test-pg:
 	$(MAKE) test WIPPY_ARGS="--profile postgres $(WIPPY_ARGS)"
 ui-kit:
 	cd build-inputs && $(WIPPY) install
-	version=$$(node -p "require('./ui/package-lock.json').packages['.wippy/npm/@kickside/ui-kit'].version"); \
+	version=$$(awk '/name: kickside\/ui-kit$$/ { found = 1 } found && /version:/ { print $$2; exit }' build-inputs/wippy.lock); \
 	$(WIPPY) artifacts materialize "build-inputs/.wippy/vendor/kickside/ui-kit-$$version.wapp" kickside.ui_kit:package_fs --root ui/.wippy
 ui-install: ui-kit
 	cd ui && npm ci --no-audit --no-fund
