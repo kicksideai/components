@@ -12,6 +12,20 @@ const rulesPath = resolve(root, 'scripts/module-rules.mjs')
 const handler = (name) => ({ id: `kickside.work.api:${name}`, kind: 'function.lua', method: 'handler' })
 const endpoint = (name, func = name) => ({ id: `kickside.work.api:${name}.endpoint`, kind: 'http.endpoint', func })
 
+test('requirement literal types are declared under value_type', async () => {
+  const { parseYamlDocuments } = await import(rulesPath)
+  const source = resolve(root, 'src')
+  const paths = (await readdir(source, { recursive: true })).filter(path => /\.ya?ml$/.test(path))
+  const documents = await parseYamlDocuments(await Promise.all(paths.map(path => readFile(resolve(source, path), 'utf8'))))
+  const literalTypes = new Set(['boolean', 'number', 'integer', 'string', 'object', 'array'])
+  for (const document of documents) {
+    for (const entry of document.entries || []) {
+      if (entry.kind !== 'ns.requirement') continue
+      assert.ok(!literalTypes.has(entry.meta?.value_kind), `${document.namespace}:${entry.name} must declare literal types under meta.value_type`)
+    }
+  }
+})
+
 async function luaFiles(directory) {
   const paths = []
   for (const item of await readdir(directory, { withFileTypes: true })) {
