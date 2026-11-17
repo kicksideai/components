@@ -298,7 +298,7 @@ function M.count_child_terms(st: State, vocabulary: string, parent: string): (in
 end
 
 -- merge_references overlays pending documents on persisted relationships before paging products.
-function M.merge_references(st: State, target: string, maximum: integer?): ({ types.TermRefRow }?, integer?, error?)
+function M.merge_references(st: State, target: string, retiring: boolean): ({ types.TermRefRow }?, integer?, error?)
     local cap = consts.LIMITS.merge_holders
     local total, err = merge_rows.count_products(st.db, st.catalog_id, "term", target, cap + 1, st.products)
     if err or total == nil then return nil, nil, err end
@@ -310,7 +310,7 @@ function M.merge_references(st: State, target: string, maximum: integer?): ({ ty
         if not holders[r.product_id] then total = total + 1; holders[r.product_id] = true end
     end
     if total > cap then return {}, total, nil end
-    local limit = maximum or consts.LIMITS.merge_inline
+    local limit = retiring and total or consts.LIMITS.merge_inline
     local rows, rerr = merge_rows.references(st.db, st.catalog_id, "term", target, limit, st.products)
     if rerr or not rows then return nil, nil, rerr end
     for _, r in ipairs(pending) do rows[#rows + 1] = r end

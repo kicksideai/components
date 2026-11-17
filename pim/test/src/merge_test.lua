@@ -42,7 +42,14 @@ local function define()
     test.describe("term merge", function()
         test.it("validates holders beyond the first merge page before retirement",function()
             local h=fixture.catalog()
-            assert(h.call("apply_schema",{declaration={aspects={{namespace="pricing",write={sources={"pricing"}},attributes={{code="category",type="kickside.pim.types:select",vocabulary="categories"}}}}}}))
+            assert(h.call("apply_schema", { declaration = { aspects = {
+                { namespace = "pricing", write = { sources = { "pricing" } }, attributes = {
+                    { code = "category", type = "kickside.pim.types:select", vocabulary = "categories" },
+                } },
+                { namespace = "probe", attributes = {
+                    { code = "term", type = "kickside.pim.types:select", vocabulary = "categories", unique = true, index = "key" },
+                } },
+            } } }))
             for first=1,500,100 do
                 local batch={}
                 for n=first,first+99 do batch[#batch+1]={product={sku="BULK-"..n},create={},set={{attr="core.category",value="hiking"}}} end
@@ -53,6 +60,24 @@ local function define()
             local out=assert(merge(h,"categories","hiking","footwear"))
             test.eq(out.outcome,"forbidden")
             test.eq(assert(h.call("get_schema",{})).as_of,before)
+
+            assert(h.call("apply", { source = "pricing", items = {
+                { product = { sku = "LAST" }, seq = 2, unset = { { attr = "pricing.category" } } },
+            } }))
+            local claims = assert(h.call("apply", { items = {
+                { product = { sku = "LAST" }, expect_version = "any", set = { { attr = "probe.term", value = "hiking" } } },
+                { product = { sku = "CLAIM" }, create = {}, set = { { attr = "probe.term", value = "footwear" } } },
+            } }))
+            test.is_true(claims.applied)
+            before = assert(h.call("get_schema", {})).as_of
+            local rejected = assert(h.call("apply", { mode = "independent", items = {
+                { term_merge = { vocabulary = "categories", from = "hiking", into = "footwear" } },
+                { product = { sku = "BULK-1" }, expect_version = 1, status = "draft" },
+            } }))
+            test.eq(rejected.outcomes[1].outcome, "conflict")
+            test.eq(rejected.outcomes[2].outcome, "updated")
+            test.eq(rejected.seq, before + 1)
+            test.eq((assert(steps.get(h, "BULK-1")).values["core.category"].value :: types.Ref).ref[2], "categories:hiking")
         end)
         test.it("refuses an outstanding merge retarget before append",function()
             local h=fixture.catalog()
