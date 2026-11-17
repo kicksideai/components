@@ -6,7 +6,7 @@ import Tag from 'primevue/tag'
 import type { CatalogAccess } from '../../types'
 
 defineProps<{
-  access?: CatalogAccess; dirty: boolean
+  access?: CatalogAccess; applyLabel?: string; dirty: boolean
   busy: boolean; valid: boolean; reviewed: boolean; canApply: boolean
 }>()
 const emit = defineEmits<{ discard: []; review: []; apply: [] }>()
@@ -17,6 +17,6 @@ const emit = defineEmits<{ discard: []; review: []; apply: [] }>()
     <Tag v-if="dirty" severity="warn" value="Unsaved changes" />
     <Button severity="secondary" outlined :disabled="!dirty || busy" @click="emit('discard')"><Icon icon="tabler:restore" aria-hidden="true" /> Discard</Button>
     <Button v-if="!reviewed" :disabled="!dirty || busy || !valid" :loading="busy" @click="emit('review')">Review changes</Button>
-    <Button v-else :disabled="!dirty || busy || !canApply" :loading="busy" @click="emit('apply')">Apply</Button>
+    <Button v-else :disabled="!dirty || busy || !canApply" :loading="busy" @click="emit('apply')">{{ applyLabel || 'Apply' }}</Button>
   </template>
 </template>

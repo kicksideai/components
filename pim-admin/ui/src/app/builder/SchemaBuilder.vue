@@ -7,6 +7,8 @@ import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
 import Message from 'primevue/message'
+import LayoutEditor from '../LayoutEditor.vue'
+import HistoryPanel from '../HistoryPanel.vue'
 import SettingsActions from './SettingsActions.vue'
 import PageHead from '../../shared/PageHead.vue'
 import { clone } from '../../state'
@@ -30,9 +32,10 @@ import { reconcileRemovals, reviewedRequest } from '../../state'
 const props = defineProps<{ catalogId: string; embedded?: boolean; title?: string; backLabel?: string }>()
 const emit = defineEmits<{ applied: [generation: number]; back: []; 'dirty-changed': [dirty: boolean] }>()
 
-type Section = 'fields' | 'dimensions' | 'vocabularies' | 'families' | 'channels' | 'plugins' | 'policy' | 'declaration'
+type Section = 'layout' | 'history' | 'fields' | 'dimensions' | 'vocabularies' | 'families' | 'channels' | 'plugins' | 'policy' | 'declaration'
 const SECTIONS: { id: Section; title: string }[] = [
   { id: 'fields', title: 'Fields' },
+  { id: 'layout', title: 'Form layout' },
   { id: 'dimensions', title: 'Dimensions' },
   { id: 'vocabularies', title: 'Vocabularies' },
   { id: 'families', title: 'Families' },
@@ -40,6 +43,7 @@ const SECTIONS: { id: Section; title: string }[] = [
   { id: 'plugins', title: 'Plugins & scopes' },
   { id: 'policy', title: 'Policy' },
   { id: 'declaration', title: 'Declaration' },
+  { id: 'history', title: 'History' },
 ]
 const section = ref<Section>('fields')
 
@@ -191,12 +195,12 @@ function remove(kind: keyof RemoveDecl, id: string) {
       <h2>{{ title || 'Catalog' }}</h2><Tag severity="secondary" :value="'Generation ' + (schema?.schema_generation ?? '…')" />
       <div class="pim-detail-actions"><slot name="actions" :access="schema?.access" />
       <SettingsActions :access="schema?.access"
-        :dirty="dirty" :busy="busy" :valid="valid" :reviewed="!!plan" :can-apply="canApply"
+        :apply-label="section === 'layout' ? 'Apply layout' : 'Apply'" :dirty="dirty" :busy="busy" :valid="valid" :reviewed="!!plan" :can-apply="canApply"
         @discard="discard" @review="review" @apply="apply" /></div>
     </div>
     <PageHead v-else :title="title || 'Catalog'" :subtitle="'Settings · generation ' + (schema?.schema_generation ?? '…')" icon="tabler:settings" :back-label="backLabel" @back="emit('back')"><slot name="actions" :access="schema?.access" />
       <SettingsActions :access="schema?.access"
-        :dirty="dirty" :busy="busy" :valid="valid" :reviewed="!!plan" :can-apply="canApply"
+        :apply-label="section === 'layout' ? 'Apply layout' : 'Apply'" :dirty="dirty" :busy="busy" :valid="valid" :reviewed="!!plan" :can-apply="canApply"
         @discard="discard" @review="review" @apply="apply" /></PageHead>
     <Tabs v-model:value="section" class="pim-section-tabs">
       <TabList aria-label="Schema sections"><Tab v-for="s in SECTIONS" :key="s.id" :value="s.id">{{ s.title }}</Tab></TabList>
@@ -206,9 +210,11 @@ function remove(kind: keyof RemoveDecl, id: string) {
       <Message v-if="saved" severity="success">{{ saved }}</Message>
       <div v-if="loading && (!schema || !options)" class="kx-loading" role="status">Loading…</div>
       <Button v-else-if="(!schema || !options) && error" @click="load()" severity="secondary" outlined>Retry</Button>
+      <HistoryPanel v-else-if="schema && options && section === 'history'" :catalog-id="catalogId" />
       <fieldset v-else-if="schema && options" class="pim-editor-surface" :disabled="busy || !schema.access.admin" :inert="busy || !schema.access.admin">
         <Message v-if="empty && section === 'fields'" severity="info">Define its schema. Add a field group to start defining fields.</Message>
         <BuilderFields v-if="section === 'fields'" :draft="draft" :schema="schema" :options="options" @remove="remove" />
+        <LayoutEditor v-else-if="section === 'layout'" :draft="draft" :schema="schema" />
         <BuilderDimensions v-else-if="section === 'dimensions'" :draft="draft" :schema="schema" @remove="remove" />
         <BuilderVocabularies v-else-if="section === 'vocabularies'" :catalog-id="catalogId" :draft="draft" :schema="schema" @remove="remove" />
         <BuilderFamilies v-else-if="section === 'families'" :draft="draft" :schema="schema" @remove="remove" />

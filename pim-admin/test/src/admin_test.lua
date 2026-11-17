@@ -99,6 +99,43 @@ local function cases()
             test.is_true(after.body.data.schema_generation > before.body.data.schema_generation)
             test.eq(owner.post(path(id, "/schema"), request).status, 409)
         end)
+        test.it("persists layout widths and order and pages the schema history through existing PIM endpoints", function()
+            local owner, stranger = session.admin(), session.member()
+            local id = catalog(owner)
+            local initial = owner.get(path(id, "/schema"))
+            local added = owner.post(path(id, "/schema"), { expected_generation = initial.body.data.schema_generation,
+                declaration = { aspects = { { namespace = "core", attributes = { { code = "name", type = "kickside.pim.types:text" }, { code = "color", type = "kickside.pim.types:text" } } } } } })
+            test.eq(added.status, 200, json.encode(added.body))
+            local view = owner.get(path(id, "/schema")).body.data
+            local by_code = {}
+            for _, attribute in ipairs(view.declaration.aspects[1].attributes) do by_code[attribute.code] = attribute end
+            view.declaration.aspects[1].attributes = { by_code.color, by_code.name }
+            by_code.color.width = "quarter"
+            by_code.name.width = "full"
+            local request = { expected_generation = view.schema_generation, declaration = view.declaration }
+            local plan = owner.post(path(id, "/schema/plan"), request)
+            test.eq(plan.status, 200, json.encode(plan.body))
+            test.eq(plan.body.data.class, "cosmetic")
+            local applied = owner.post(path(id, "/schema"), request)
+            test.eq(applied.status, 200, json.encode(applied.body))
+            test.eq(applied.body.data.class, "cosmetic")
+            local after = owner.get(path(id, "/schema")).body.data
+            test.eq(after.declaration.aspects[1].attributes[1].code, "color")
+            test.eq(after.declaration.aspects[1].attributes[1].width, "quarter")
+            test.eq(after.attributes["core.name"].width, "full")
+            local history = owner.get(path(id, "/history?limit=1"))
+            test.eq(history.status, 200, json.encode(history.body))
+            test.eq(#history.body.data.entries, 1)
+            test.eq(history.body.data.entries[1].kind, "schema")
+            test.eq(history.body.data.entries[1].after.generation, applied.body.data.generation)
+            test.not_nil(history.body.data.next)
+            local older = owner.get(path(id, "/history?limit=1&before=" .. history.body.data.next))
+            test.eq(older.status, 200, json.encode(older.body))
+            test.eq(#older.body.data.entries, 1)
+            test.is_true(older.body.data.entries[1].seq < history.body.data.entries[1].seq)
+            test.eq(stranger.get(path(id, "/history")).status, 403)
+            test.eq(session.get(path(id, "/history")).status, 401)
+        end)
         test.it("denies schema and plugin changes to readers and writers", function()
             local owner = session.admin()
             local id = catalog(owner)

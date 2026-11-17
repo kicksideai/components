@@ -7,11 +7,11 @@ two host-mounted web components: `kickside-pim-admin` selects and creates catalo
 inputs. It does not install a product navigation item or consumer pages.
 
 The settings builder covers fields and types, dimensions, vocabularies and terms,
-families and requirements, channels and sources, plugins and scopes, policy, and
+families and requirements, channels and sources, plugins and scopes, policy, form layout, history, and
 the declaration. Schema edits remain one draft until review and apply. Applying
 uses the exact reviewed declaration, plugin configuration, and expected schema
-generation. Term writes and active plugin configuration save separately. Product
-browsing, product editing, the layout editor and history are outside this module.
+generation. Term writes and active plugin configuration save separately. Form layout
+shares that draft and review; history reads the existing catalog audit endpoint. Product browsing and product editing are outside this module.
 
 Bind `kickside.pim.admin:ui_server` to the host HTTP service and
 `kickside.pim.admin:api_router` to an authenticated router with `token_auth` and
@@ -45,7 +45,8 @@ The harness mounts real HTTP endpoints and resolves persisted users' installatio
 scopes; it supplies no permissive policy to Members. SQLite runs start with a
 fresh file; PostgreSQL runs require a caller-owned disposable database. The runner
 fails on empty or failing suites. UI tests include Chromium checks of definition
-columns in page and embedded settings panes.
+columns in page and embedded settings panes, plus stacked definition, term, and
+history rows at phone widths.
 
 UI Kit is a locked build input, materialized from `kickside/ui-kit` into
 `ui/.wippy`; it is not a consumer repository source replacement. `build` emits
