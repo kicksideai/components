@@ -14,6 +14,29 @@ local kind = catalog_fixture.kind
 
 local function define()
     test.describe("caller access on read surfaces", function()
+        test.it("keeps catalog schema readable without access to an active plugin's manifest", function()
+            local h = fixture.catalog()
+            local reader = scoped.member()
+            local plugin = "app:shelf_plugin"
+            assert(h.call("grant", { subject_id = reader.id, mask = READ }))
+            test.is_false(reader.scope:evaluate(reader.actor, "registry.get", plugin) == "allow")
+            test.eq(reader.invoke(h.id, "get_schema", {}).status, 200)
+
+            local applied = assert(h.call("apply_schema", { declaration = { plugins = { { use = plugin } } },
+                plugin_configs = { [plugin] = { location = "WH9" } } }))
+            local schema = reader.invoke(h.id, "get_schema", {})
+            local options = reader.invoke(h.id, "schema_options", {})
+            test.eq(schema.status, 200, json.encode({ schema = schema, options = options }))
+            test.eq(options.status, 200, json.encode(options.body))
+            test.eq(schema.body.data.schema_generation, applied.generation)
+            test.not_nil(schema.body.data.attributes["shelf.bin"])
+            for _, result in ipairs({ schema, options }) do
+                for _, entry in ipairs(result.body.data.plugins) do test.is_false(entry.plugin == plugin) end
+            end
+            local _, denied = reader.call("plugin_context", { plugin = plugin }, h.id)
+            test.eq(denied:kind(), errors.PERMISSION_DENIED)
+        end)
+
         for _, level in ipairs({
             { name = "reader", mask = 1, write = false, admin = false },
             { name = "writer", mask = 3, write = true, admin = false },

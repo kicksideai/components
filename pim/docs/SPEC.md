@@ -450,7 +450,8 @@ configuration command, not a running activation's services or workers.
 
 Deactivation (the plugin leaves the list) is refused with `plugin_required`
 while another active plugin requires it, and with `plugin_seam_in_use` while
-the schema names one of its seams. Secrets never enter plugin configuration:
+any effective schema field names one of its seams, including fields from retained
+and newly resolved plugin fragments. Secrets never enter plugin configuration:
 `format: password` and `writeOnly` annotations mark secrets. Credentials live
 in the attachment (`credential_schema`) or a connection component that config
 names by id.
@@ -467,10 +468,11 @@ a list, and the options listing):
   problem?: { code, message, field? } }
 ```
 
-`get_schema.plugins` lists the catalog's active plugins plus inactive installed
-ones (`active = false`). The options listing (`schema_options.plugins`, answered
-by the host backend, never by a UI module) lists every installed plugin with
-`config_schema`.
+`get_schema.plugins` lists active and installed plugins whose metadata the caller
+can read. The options listing (`schema_options.plugins`) includes their
+`config_schema`. The catalog's committed declaration and fields remain readable
+with catalog READ. An explicit `plugin_context` request also requires registry
+access to the requested plugin.
 
 Plugins declare deployment defaults through `kickside.settings:definition`
 entries in their `settings` namespace; deployment admins edit those values on
@@ -1376,7 +1378,9 @@ The catalog contract's `list` rows and `get_schema` response include required
 caller. The HTTP reads `GET /pim/catalogs` and
 `GET /pim/catalogs/{id}/schema` preserve that shape in `data`. Each boolean
 reports its own component grant: ADMIN does not imply WRITE. `list` contains
-only readable catalogs; `get_schema`, including a past generation, requires
+only readable catalogs with a committed schema generation. Implicit lookup
+selects the caller's sole initialized readable catalog. A failed initial
+schema can be retried with the original creation key. `get_schema`, including a past generation, requires
 current READ and reports current caller access. The shell consumes these
 booleans directly: ADMIN controls Settings, Form layout and schema mutation
 controls; WRITE controls product creation and editing. A refresh that removes
@@ -1919,10 +1923,12 @@ term vocabulary/code subjects, shared schema and plugin subjects retain versions
 ### Settings and portability rules
 
 `list` returns at most 100 actor-readable catalog summaries and an optional
-`after` offset; callers pass it unchanged for the next page. Ordering is by
-component identity. Concurrent catalog insertion or removal may shift this
-offset view. `get_catalog({catalog_id})` is an exact actor-scoped summary, also
-available at `GET /pim/catalogs/{id}/summary`, and supplies the settings title.
+`after` offset. Follow the offset even if a page is short or empty because
+catalogs with no committed generation are skipped. Ordering is by component
+identity. Concurrent catalog insertion or removal may shift the offset.
+`get_catalog({catalog_id})` is an exact actor-scoped summary, also available at
+`GET /pim/catalogs/{id}/summary`, and supplies the settings title. Both reads take
+counts, generation and rebuild status from committed catalog state.
 
 Portable schema and plugin configuration files are bounded to 4 MiB during
 reading, before JSON decoding. Product chunks additionally allow at most

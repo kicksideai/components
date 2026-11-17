@@ -16,6 +16,7 @@ local resolve = require("resolve")
 local layout = require("layout")
 local history = require("history")
 local plugins = require("plugins")
+local plugin_projections = require("plugin_projections")
 local types = require("types")
 local registry = require("registry")
 
@@ -244,37 +245,38 @@ end
 -- get_schema(catalog_id) returns the active declaration and the compiled model's
 -- public parts: attributes, families, channels, dimensions and layout.
 local function plugin_views(catalog_id: string, states: { [string]: types.PluginIntent }, membership: { [string]: types.PluginEntry }): ({ types.PluginOption }?, error?)
-    local views, err = plugins.list(states, membership)
-    if err or not views then return nil, err end
-    local plugin_projections = require("plugin_projections")
-    for _, view in ipairs(views) do
-        if view.active and not view.problem and view.lifecycle.state ~= "failed" then
-            local plugin, lerr = plugins.load(view.plugin :: string)
-            if lerr or not plugin then return nil, lerr end
-            local projections, perr = plugin_projections.states(catalog_id, plugin, states[view.plugin])
-            if perr then return nil, perr end
-            view.projections = projections or {}
-        end
-    end
-    return views, nil
+    return plugins.list(states, membership, function(plugin: types.Plugin, intent: types.PluginIntent?)
+        return plugin_projections.states(catalog_id, plugin, intent)
+    end)
 end
 function M.plugin_context(catalog_id: string, plugin: string): (types.PluginContext?, error?)
-    local view, err = M.get_schema(catalog_id)
-    if err or not view then return nil, err end
-    for _, state in ipairs(view.plugins) do
-        if state.plugin == plugin and state.active then
-            local declaration, derr = plugins.load(plugin)
-            if derr or not declaration then return nil, derr end
-            local _, cerr = plugins.merged(declaration, {}, state.config)
-            if cerr then return nil, cerr end
-            local binding, berr = registry.get("kickside.pim.binding:catalog")
-            if berr then return nil, berr end
-            local retention = (binding :: { meta: { retention: { event_days: integer } } }).meta.retention
-            return { attachment_id = state.attachment_id, config = state.config :: types.JsonObject,
-                lifecycle = state.lifecycle, projections = state.projections, retention = { event_days = retention.event_days } }, nil
+    local _, access_err = access.reader(catalog_id)
+    if access_err then return nil, access_err end
+    local state, _, err = store.snapshot(catalog_id, function(_tx: types.Executor, catalog: types.Catalog, _dialect: string): (types.PluginIntent?, error?)
+        if not catalog.compiled.plugins[plugin] then
+            return nil, errors.new({ kind = errors.NOT_FOUND, retryable = false, message = "plugin is inactive",
+                details = { code = "plugin_inactive", plugin = plugin } })
         end
+        local intent = catalog.plugin_state[plugin]
+        if not intent then return nil, failure.corrupt("active plugin has no lifecycle intent", "plugin_state") end
+        return intent, nil
+    end)
+    if err or not state then return nil, err end
+    local declaration, derr = plugins.load(plugin)
+    if derr or not declaration then return nil, derr end
+    local _, cerr = plugins.merged(declaration, {}, state.config)
+    if cerr then return nil, cerr end
+    local projections: { [string]: types.PluginProjectionState } = {}
+    if state.lifecycle.state ~= "failed" then
+        local live, perr = plugin_projections.states(catalog_id, declaration, state)
+        if perr then return nil, perr end
+        projections = live or {}
     end
-    return nil, errors.new({ kind = errors.NOT_FOUND, retryable = false, message = "plugin is inactive", details = { code = "plugin_inactive", plugin = plugin } })
+    local binding, berr = registry.get("kickside.pim.binding:catalog")
+    if berr then return nil, berr end
+    local retention = (binding :: { meta: { retention: { event_days: integer } } }).meta.retention
+    return { attachment_id = state.attachment_id, config = state.config, lifecycle = state.lifecycle,
+        projections = projections, retention = { event_days = retention.event_days } }, nil
 end
 function M.get_schema(catalog_id: string, request: types.GetSchemaRequest?): (types.SchemaView?, error?)
     local caller, access_err = access.reader(catalog_id)

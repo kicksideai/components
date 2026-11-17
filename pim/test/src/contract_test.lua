@@ -208,6 +208,9 @@ local function define()
             test.is_true(summary.access.read)
             test.is_true(summary.access.write)
             test.is_true(summary.access.admin)
+            local discovered = assert(summary_locate.readable(1, 0, h.id))
+            test.eq(#discovered, 1, "discovery before first metadata publication")
+            test.eq(discovered[1].generation, 1)
 
             assert(h.call("apply_schema", { expected_generation = 1,
                 declaration = { aspects = { { namespace = "core" } } } }))
@@ -220,6 +223,28 @@ local function define()
             test.eq(current.item_count, 1)
             test.eq(current.status, "ready")
             test.eq(current.title, "Renamed catalog")
+        end)
+
+        test.it("continues discovery past a page of uninitialized components", function()
+            local h = fixture.catalog({ bare = true })
+            local other = fixture.catalog({ bare = true })
+            local ids: { string } = {}
+            for i = 1, 40 do ids[i] = "pending-" .. tostring(i) end
+            ids[#ids + 1] = h.id
+            summary_component.directory(ids)
+            local empty, err, after = summary_locate.readable(1)
+            test.is_nil(err, tostring(err))
+            test.eq(#assert(empty), 0)
+            local next_page, next_err, final = summary_locate.readable(1, assert(after))
+            test.is_nil(next_err, tostring(next_err))
+            test.eq(assert(next_page)[1].catalog_id, h.id)
+            test.is_nil(final)
+            test.eq(assert(summary_locate.resolve()), h.id)
+
+            ids[#ids + 1] = other.id
+            summary_component.directory(ids)
+            local _, ambiguous = summary_locate.resolve()
+            test.eq(ambiguous:details().code, "catalog_ambiguous")
         end)
 
         test.it("binds every method to a registered service function", function()
@@ -311,6 +336,34 @@ local function define()
             test.eq(#h.call("list", {}).catalogs, 2)
             local _, ambiguous = h.executor:call("app:pim_call", { op = "get_schema", request = {} })
             test.eq((ambiguous :: error):details().code, "catalog_ambiguous", tostring(ambiguous))
+        end)
+
+        test.it("keeps rejected initial schemas out of discovery until creation is retried", function()
+            local h = fixture.catalog({ bare = true })
+            for _, key in ipairs({ "invalid-one", "invalid-two" }) do
+                local _, err = h.call("create", { idempotency_key = key, title = "Initial schema",
+                    declaration = { families = { { code = "Invalid code" } } } })
+                test.eq(err:kind(), errors.INVALID)
+            end
+            local listed = assert(h.call("list", { limit = 1 }))
+            local implicit, lookup_err = h.executor:call("app:pim_call", { op = "get_schema", request = {} })
+            test.eq(#listed.catalogs, 1, "implicit lookup " .. tostring(lookup_err))
+            test.eq(listed.catalogs[1].catalog_id, h.id)
+            test.is_nil(listed.after)
+            test.is_nil(lookup_err)
+            test.eq(implicit.schema_generation, 1)
+
+            local retried = assert(h.call("create", { idempotency_key = "invalid-one", title = "Initial schema" }))
+            test.is_true(retried.replayed)
+            test.eq(retried.generation, 1)
+            local first = assert(h.call("list", { limit = 1 }))
+            local second = assert(h.call("list", { limit = 1, after = assert(first.after) }))
+            test.eq(#first.catalogs, 1)
+            test.eq(#second.catalogs, 1)
+            test.is_nil(second.after)
+            test.is_true(first.catalogs[1].catalog_id ~= second.catalogs[1].catalog_id)
+            local _, ambiguous = h.executor:call("app:pim_call", { op = "get_schema", request = {} })
+            test.eq(ambiguous:details().code, "catalog_ambiguous")
         end)
 
         test.it("plans a schema change without applying it", function()

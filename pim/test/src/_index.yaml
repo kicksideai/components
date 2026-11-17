@@ -665,6 +665,28 @@ entries:
           vocabularies: [ { code: zones } ]
           aspects: [ { namespace: placement, attributes: [ { code: zone, type: kickside.pim.types:select, vocabulary: zones, index: key } ] } ]
 
+  - name: contributed_text_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, form: text, title: Plugin-owned text }
+
+  - name: seam_owner_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      seams: [app:contributed_text_type]
+
+  - name: seam_contributor_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      schema:
+        template:
+          aspects:
+            - namespace: contributed
+              attributes: [{ code: text, type: 'app:contributed_text_type' }]
+
   - name: dynamic_plugin
     kind: registry.entry
     meta:

@@ -48,12 +48,9 @@ function M.list(input: unknown): (types.ListResult?, error?)
     if perr then return nil, perr end
     local request = (input or {}) :: {limit:integer?,after:integer?}
     local limit=request.limit or 50
-    local offset=request.after or 0
-    local catalogs, err = locate.readable(limit+1,offset)
+    local catalogs, err, after = locate.readable(limit, request.after)
     if err or not catalogs then return nil, err end
-    local more=#catalogs>limit
-    if more then table.remove(catalogs) end
-    return { catalogs = catalogs,after=more and offset+#catalogs or nil }, nil
+    return { catalogs = catalogs, after = after }, nil
 end
 
 function M.get_catalog(input:unknown): (types.CatalogSummary?,error?)

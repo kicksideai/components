@@ -283,8 +283,11 @@ function M.find(): ({ string }?, error?)
     return ids, nil
 end
 
--- list reports installed and active plugins with one shared public shape.
-function M.list(states: { [string]: types.PluginIntent }?, membership: { [string]: types.PluginEntry }?): ({ types.PluginOption }?, error?)
+type ProjectionStates = (types.Plugin, types.PluginIntent?) -> ({ [string]: types.PluginProjectionState }?, error?)
+
+-- list reports installed and active plugins whose metadata the caller can read.
+function M.list(states: { [string]: types.PluginIntent }?, membership: { [string]: types.PluginEntry }?,
+    projections: ProjectionStates?): ({ types.PluginOption }?, error?)
     local ids, err = M.find()
     if err or not ids then return nil, err end
     local installed: { [string]: boolean } = {}
@@ -294,28 +297,35 @@ function M.list(states: { [string]: types.PluginIntent }?, membership: { [string
     local out: { types.PluginOption } = {}
     for _, id in ipairs(ids) do
         local p, lerr = M.load(id)
-        if lerr and lerr:kind() ~= errors.INVALID then return nil, lerr end
-        local state = states and states[id]
-        local active = membership ~= nil and membership[id] ~= nil
-        if p and state and active then
-            local _, cerr = M.merged(p, {}, state.config)
-            if cerr then lerr = cerr end
+        if not lerr or lerr:kind() ~= errors.PERMISSION_DENIED then
+            if lerr and lerr:kind() ~= errors.INVALID then return nil, lerr end
+            local state = states and states[id]
+            local active = membership ~= nil and membership[id] ~= nil
+            if p and state and active then
+                local _, cerr = M.merged(p, {}, state.config)
+                if cerr then lerr = cerr end
+            end
+            local entry: types.PluginOption = { plugin = id, installed = installed[id] == true, active = active,
+                requires = {}, tools = {}, lifecycle = active and { state = "pending" } or { state = "ready" }, projections = {}, config_schema = {} }
+            if state and active then
+                entry.attachment_id, entry.config, entry.lifecycle = state.attachment_id, state.config, state.lifecycle
+            end
+            if p then
+                entry.title, entry.description, entry.icon = p.title, p.description, p.icon
+                entry.requires, entry.tools, entry.config_schema = p.requires or {}, p.tools or {}, p.config_schema
+            end
+            if lerr then
+                local details = lerr:details()
+                entry.problem = { code = details.code :: string, message = tostring(lerr), field = details.field :: string? }
+                if active then entry.lifecycle = { state = "failed", error = { kind = lerr:kind(), code = details.code :: string?, message = tostring(lerr) } } end
+            end
+            if projections and p and active and not lerr and entry.lifecycle.state ~= "failed" then
+                local live, perr = projections(p, state)
+                if perr then return nil, perr end
+                entry.projections = live or {}
+            end
+            out[#out + 1] = entry
         end
-        local entry: types.PluginOption = { plugin = id, installed = installed[id] == true, active = active,
-            requires = {}, tools = {}, lifecycle = active and { state = "pending" } or { state = "ready" }, projections = {}, config_schema = {} }
-        if state and active then
-            entry.attachment_id, entry.config, entry.lifecycle = state.attachment_id, state.config, state.lifecycle
-        end
-        if p then
-            entry.title, entry.description, entry.icon = p.title, p.description, p.icon
-            entry.requires, entry.tools, entry.config_schema = p.requires or {}, p.tools or {}, p.config_schema
-        end
-        if lerr then
-            local details = lerr:details()
-            entry.problem = { code = details.code :: string, message = tostring(lerr), field = details.field :: string? }
-            if active then entry.lifecycle = { state = "failed", error = { kind = lerr:kind(), code = details.code :: string?, message = tostring(lerr) } } end
-        end
-        out[#out + 1] = entry
     end
     return out, nil
 end
@@ -390,9 +400,21 @@ function M.admit(declaration: types.Declaration, previous: types.Declaration?): 
         end
         return nil
     end
-    for _,aspect in ipairs(declaration.aspects or {}) do
-        for _,attribute in ipairs(aspect.attributes or {}) do
-            local err = seam(attribute.type) or target(attribute.config)
+    local function fields(aspects: { types.AspectDecl }?): error?
+        for _, aspect in ipairs(aspects or {}) do
+            for _, attribute in ipairs(aspect.attributes or {}) do
+                local err = seam(attribute.type) or target(attribute.config)
+                if err then return err end
+            end
+        end
+        return nil
+    end
+    local ferr = fields(declaration.aspects)
+    if ferr then return ferr end
+    for _, entry in ipairs(declaration.plugins or {}) do
+        if entry.schema then
+            local fragment = entry.schema.fragment :: types.Fragment
+            local err = fields(fragment.aspects)
             if err then return err end
         end
     end
