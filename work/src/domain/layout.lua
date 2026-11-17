@@ -122,10 +122,14 @@ function M.row(board: types.Board, item: types.Item, prepared: types.Layout?): (
             elseif f and value ~= nil then
                 if f.cardinality ~= "one" then
                     local keys: { string } = {}
+                    local seen: { [string]: boolean } = {}
                     for _, member in ipairs(values.members({ form = f.form, cardinality = f.cardinality, config = f.config }, value)) do
                         local key, err = fields.representation(f, member)
                         if err then return nil, err end
-                        if key then keys[#keys + 1] = key end
+                        if key and not seen[key] then
+                            seen[key] = true
+                            keys[#keys + 1] = key
+                        end
                     end
                     row.sets[c.column] = keys
                 else

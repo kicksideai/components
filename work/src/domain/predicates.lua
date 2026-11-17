@@ -129,7 +129,7 @@ function M.compile(compiled: types.Compiled, board_id: string, actor: string?, w
     for _, r in ipairs(compiled.relation_types) do relations[r.id] = r end
     local t = tables.of(board_id, tables.layout(compiled), relations)
     return filter.compile(where, { reader = { board_id = board_id, actor = actor, search = compiled.scopes, plugins = compiled.plugins, allows = function(level: string): boolean return level == "read" end },
-        item_table = t.names.item, set_table = t.names.set, position = dialect == "postgres" and "strpos" or "instr",
+        item_table = t.names.item, set_table = t.names.set, dialect = dialect,
         relations = t.relations, resolve = resolver or M.targets(compiled) })
 end
 

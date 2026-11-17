@@ -79,8 +79,7 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
     local clauses: { domain.Condition } = {}
     for _, c in ipairs(conditions) do clauses[#clauses + 1] = c end
     if q.where ~= nil then
-        local position = dialect == sql.type.POSTGRES and "strpos" or "instr"
-        local fragment, err = filter.compile(q.where, { reader = r, item_table = names.item, set_table = names.set, position = position,
+        local fragment, err = filter.compile(q.where, { reader = r, item_table = names.item, set_table = names.set, dialect = dialect,
             relations = t.relations, resolve = resolve })
         if err or not fragment then return nil, err end
         clauses[#clauses + 1] = fragment

@@ -83,9 +83,9 @@ type Resolver = (string, { [string]: string }?) -> (ColumnTarget?, error?)
 type Condition = { sql: string, args: { unknown } }
 -- FilterEnvironment is what a filter tree compiles against; FilterCompilation adds the
 -- leaves and values the tree may still use and the row it stands on.
-type FilterEnvironment = { reader: Reader, item_table: string, set_table: string, position: string, relations: { [string]: Relation }, resolve: Resolver }
+type FilterEnvironment = { reader: Reader, item_table: string, set_table: string, dialect: string, relations: { [string]: Relation }, resolve: Resolver }
 type FilterCompilation = {
-    reader: Reader, item_table: string, set_table: string, position: string, relations: { [string]: Relation }, resolve: Resolver,
+    reader: Reader, item_table: string, set_table: string, dialect: string, position: string, relations: { [string]: Relation }, resolve: Resolver,
     leaves: integer, values: integer, alias: string, hop: integer,
 }
 -- RelationScope is what the tree hands a relation condition; nested compiles a node with the target row as its alias.

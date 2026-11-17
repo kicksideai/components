@@ -13,6 +13,32 @@ local rollup_fixture = require("rollup_fixture")
 
 local function define()
     test.describe("query indexes", function()
+        test.it("preserves repeated list members while writing one membership key", function()
+            local declaration = fixture.declaration(fixture.fresh_prefix())
+            for _, field in ipairs(declaration.fields) do
+                if field.code == "labels" then
+                    field.cardinality = "list"
+                    field.index = "key"
+                    field.config = { case = "insensitive" }
+                end
+            end
+            local h = fixture.board({ declaration = declaration })
+            local item = steps.create(h, "task", { labels = { "alpha", "beta", "alpha", "Alpha" } })
+            local stored = assert(steps.get(h, item)).item.values.labels
+            test.eq(table.concat(stored, ","), "alpha,beta,alpha,Alpha")
+            local matched = assert(h.call("query", { where = { field = "labels", op = "has", value = "alpha" } }))
+            test.eq(#matched.items, 1)
+            test.eq(matched.items[1].id, item)
+
+            local db = assert(store.open())
+            local names = tables.names(h.id)
+            local members = assert(db:query("SELECT value_key FROM " .. names.set .. " WHERE item_id = $1 ORDER BY value_key", { item }))
+            db:release()
+            test.eq(#members, 2)
+            test.eq(members[1].value_key, "alpha")
+            test.eq(members[2].value_key, "beta")
+        end)
+
         test.it("fills new columns in bounded slot batches and refuses retired fields", function()
             local h = scoped.board(scoped.admin())
             for _ = 1, 3 do steps.create(h, "task", { title = "indexed later" }) end

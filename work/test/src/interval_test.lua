@@ -3,6 +3,7 @@ local row_checks = require("row_checks")
 -- Value intervals: state and category always, declared fields on request; closed on change and delete, reopened on restore.
 local test = require("test")
 local json = require("json")
+local uuid = require("uuid")
 local fixture = require("fixture")
 local steps = require("steps")
 local store = require("store")
@@ -43,6 +44,24 @@ end
 
 local function define()
     test.describe("intervals", function()
+        test.it("stores large text values in declared intervals", function()
+            local declaration = fixture.declaration(fixture.fresh_prefix())
+            declaration.fields[1].intervals = true
+            local h = fixture.board({ declaration = declaration })
+            local words = {}
+            for i = 1, 300 do words[i] = uuid.v4() end
+            local content = table.concat(words, " ")
+            local item = steps.create(h, "task", { title = content })
+            test.eq(assert(steps.get(h, item)).item.values.title, content)
+            test.eq(steps.count_rows("kickside_work_interval", h.id), 3)
+            test.eq(table.concat(periods(h, item, "title"), ","), content .. ":open")
+            local match = assert(h.call("query", { where = { history = { field = "state", was = "open" } } }))
+            test.eq(#match.items, 1)
+            test.eq(match.items[1].id, item)
+            local different = assert(h.call("query", { where = { history = { field = "state", was = "closed" } } }))
+            test.eq(#different.items, 0)
+        end)
+
         test.it("totals every retained period and pages the detail separately", function()
             local h = fixture.board()
             local id = steps.create(h, "task")

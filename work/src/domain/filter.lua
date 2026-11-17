@@ -230,7 +230,7 @@ function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.
             if next(n, next(n)) ~= nil then return nil, invalid("a history condition stands alone in its node") end
             if c.leaves < 1 then return nil, invalid("a filter tree holds at most " .. M.LIMITS.leaves .. " leaves") end
             c.leaves = c.leaves - 1
-            return filter_history.compile(c.reader, c.alias, c.resolve, n.history)
+            return filter_history.compile(c.reader, c.alias, c.resolve, n.history, c.dialect)
         end
         if n.rel ~= nil or n.children ~= nil then
             if c.leaves < 1 then return nil, invalid("a filter tree holds at most " .. M.LIMITS.leaves .. " leaves") end
@@ -267,7 +267,8 @@ end
 
 -- compile turns a tree into a fragment over alias i.
 function M.compile(where: unknown, env: types.FilterEnvironment): (types.Condition?, error?)
-    return node({ reader = env.reader, item_table = env.item_table, set_table = env.set_table, position = env.position,
+    local position = env.dialect == "postgres" and "strpos" or "instr"
+    return node({ reader = env.reader, item_table = env.item_table, set_table = env.set_table, dialect = env.dialect, position = position,
         relations = env.relations, resolve = env.resolve, leaves = M.LIMITS.leaves, values = M.LIMITS.values,
         alias = "i", hop = 0 }, where, 1)
 end

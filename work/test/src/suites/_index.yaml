@@ -97,6 +97,7 @@ entries:
   method: run
   modules:
   - json
+  - uuid
   imports:
     row_checks: app:rows
     test: wippy.test:test
