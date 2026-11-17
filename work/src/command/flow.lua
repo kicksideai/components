@@ -206,6 +206,13 @@ function M.report(item: types.Item, outcome: string, outputs: types.JsonObject?,
             attempt = item.work.attempt, outcome = outcome, outputs = outputs, progress = progress } }
 end
 
+function M.stage_entry(board: types.Board, item: types.Item, state: types.State, attempt: integer): types.Event
+    local ref = state.run and state.run.flow_ref
+    return { type = consts.EVENTS.STAGE_ENTERED, subject = "i:" .. item.item_id,
+        body = { item = item.item_id, state = item.state, visit = item.work.visit or item.visit, attempt = attempt,
+            board_id = ref and board.board_id or nil, flow_ref = ref and declaration.copy(ref) or nil } }
+end
+
 local function entry_event(board: types.Board, item: types.Item, state: types.State, p: types.Process): (types.Event?, error?, types.Transition?)
     local work = item.work
     if not work or not work.pending_entry then return nil, nil end
@@ -223,8 +230,7 @@ local function entry_event(board: types.Board, item: types.Item, state: types.St
     if (work.stage_visit :: integer) > (state.run.max_visits or board.compiled.policy.stage_max_visits :: integer) then
         return M.report(item, "failed", { error = "stage_visits_exhausted" }), nil
     end
-    return { type = consts.EVENTS.STAGE_ENTERED, subject = "i:" .. item.item_id,
-        body = { item = item.item_id, state = item.state, visit = work.visit or item.visit, attempt = 1 } }, nil
+    return M.stage_entry(board, item, state, 1), nil
 end
 
 -- settle shares one automatic-step budget across items and regions in the command.

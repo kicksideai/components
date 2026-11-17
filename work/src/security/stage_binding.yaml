@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.security
+entries:
+- name: stage_binding_defer
+  kind: security.policy
+  meta: { private: true, service_only: true, producers: [kickside.work.service:stage_binding] }
+  policy:
+    resources: [kickside.work.service:stage_binding]
+    actions: kickside.execution.defer
+    effect: allow
+- name: stage_binding_actor
+  kind: security.policy
+  meta: { private: true, service_only: true, producers: [kickside.work.service:stage_binding] }
+  policy:
+    resources: '*'
+    actions: [security.actor.create, security.policy.get, security.scope.get, security.policy_group.get]
+    effect: allow
+- name: stage_binding_frame
+  kind: security.policy
+  meta: { private: true, service_only: true, producers: [kickside.work.service:stage_binding] }
+  policy:
+    resources: [security, custom]
+    actions: [funcs.security, security.scope.create]
+    effect: allow

@@ -1,4 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local sql = require("sql")
+type ReadCommand = (sql.DB) -> (unknown, error?)
+type AutomationDB = { with_db: (ReadCommand) -> (unknown, error?) }
 local reads = require("reads")
 local domain = require("domain")
 type Sort = domain.Sort
@@ -18,5 +21,5 @@ type ViewList = { views: { SavedView }, after: string? }
 type ListViewsRequest = { board_id: string, after: string?, limit: integer? }
 
 type SyncRequest = { board_id: string, deadline: domain.Deadline, command_key: string? }
-return { SyncRequest = SyncRequest, RenameViewRequest = RenameViewRequest, DeleteViewResult = DeleteViewResult, SavedView = SavedView, ViewList = ViewList, ListViewsRequest = ListViewsRequest, Sort = Sort, View = View, ViewContext = ViewContext, CreateViewRequest = CreateViewRequest, SaveViewRequest = SaveViewRequest,
+return { AutomationDB = AutomationDB, SyncRequest = SyncRequest, RenameViewRequest = RenameViewRequest, DeleteViewResult = DeleteViewResult, SavedView = SavedView, ViewList = ViewList, ListViewsRequest = ListViewsRequest, Sort = Sort, View = View, ViewContext = ViewContext, CreateViewRequest = CreateViewRequest, SaveViewRequest = SaveViewRequest,
     RunViewRequest = RunViewRequest, ViewResult = ViewResult }

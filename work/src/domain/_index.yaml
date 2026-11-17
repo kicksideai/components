@@ -230,6 +230,7 @@ entries:
   kind: library.lua
   source: file://process_state.lua
   imports:
+    flow_ref: kickside.workflows.execution:flow_ref
     approvals: kickside.work.domain:approvals
     consts: kickside.work:consts
     durations: kickside.work.domain:process_time

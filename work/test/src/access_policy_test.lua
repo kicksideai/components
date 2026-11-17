@@ -70,7 +70,7 @@ local function exact(policy_id: string, expected: { [string]: boolean })
     local seen = 0
     for _, entry in ipairs(endpoints) do
         local id = tostring(entry.id)
-        if id:find("^kickside%.work") then
+        if id:find("^kickside%.work[.:]") then
             seen = seen + 1
             test.eq(policy:evaluate(actor, "access", id), expected[id] and "allow" or "undefined", id)
         end

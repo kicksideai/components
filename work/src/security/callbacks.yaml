@@ -100,6 +100,8 @@ entries:
     - kickside.work.service:configure_plugin
     - kickside.work.service:approve
     - kickside.work.service:report
+    - kickside.work.service:complete_stage
+    - kickside.work.sink:stage_launch
     - kickside.work.service:sync
     - kickside.work.jobs:migrate_batch
     - kickside.work.jobs:rebalance_batch

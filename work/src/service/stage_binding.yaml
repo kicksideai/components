@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.service
+entries:
+- name: stage_binding
+  kind: function.lua
+  meta: { private: true, comment: Validate schema bindings as the caller and the stored board execution principal. }
+  source: file://stage_binding.lua
+  method: admit
+  modules: [sql]
+  security:
+    policies:
+    - kickside.work.security:stage_binding_defer
+    - kickside.work.security:stage_binding_actor
+    - kickside.work.security:stage_binding_frame
+  imports: &binding_imports
+    service_types: kickside.work.service:types
+    automation_db: kickside.automation:automation_db
+    automation_command: kickside.automation:command
+    component: kickside.component:component
+    execution_identity: kickside.execution:execution_identity
+    identifiers: kickside.work.domain:identifiers
+    automations: kickside.automation:automation
+    versions: kickside.workflows.repo:version_read
+    schema_validate: kickside.workflows.schema:schema_validate
+    guard: kickside.work.command:guard
+    types: kickside.work:types
+- name: stage_binding_selected
+  kind: function.lua
+  meta: { private: true, comment: Provision the owned launcher under the stored board identity before schema append. }
+  source: file://stage_binding.lua
+  method: selected
+  modules: [sql]
+  imports: *binding_imports
