@@ -405,7 +405,7 @@ type ProposalsResult = { proposals: { Proposal }, next: ProposalCursor?, has_mor
 
 -- Catalog lifecycle contracts.
 type CreateRequest = { idempotency_key: string, title: string?, parent_id: string?, declaration: Declaration?, plugin_configs: { [string]: JsonObject }? }
-type CreateResult = { catalog_id: string, title: string, generation: integer?, replayed: boolean }
+type CreateResult = { catalog_id: string, title: string, generation: integer, replayed: boolean }
 type CatalogSummary = { access: CatalogAccess, catalog_id: string, title: string, product_count: integer?, item_count: integer?, generation: integer?, status: string? }
 type ListResult = { catalogs: { CatalogSummary },after:integer? }
 -- ComponentRow is the part of a component query row PIM reads.

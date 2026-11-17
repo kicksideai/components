@@ -4,7 +4,7 @@ import Message from 'primevue/message'
 import Textarea from 'primevue/textarea'
 // The draft as JSON, for the whole picture and for changes the forms do not
 // offer. A valid edit replaces the draft; an invalid one shows the error.
-import { ref, watch } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 import type { Declaration } from '../../types'
 import { parseDeclaration } from '../../state'
 
@@ -12,6 +12,7 @@ const props = defineProps<{ draft: Declaration }>()
 const emit = defineEmits<{ replace: [declaration: Declaration]; validity: [valid: boolean] }>()
 const text = ref(JSON.stringify(props.draft, null, 2))
 const error = ref('')
+onUnmounted(() => emit('validity', true))
 watch(() => props.draft, (d) => { text.value = JSON.stringify(d, null, 2); error.value = '' }, { deep: true })
 function commit() {
   try {

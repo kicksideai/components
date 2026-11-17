@@ -13,7 +13,7 @@ import { projectionHealth } from './plugin-state'
 import { settings } from './api'
 import ConfigForm from './ConfigForm.vue'
 const props = defineProps<{ boardId: string; draft: Declaration; schema: Schema; options: PluginOption[]; configs: PluginConfigs; disabled?: boolean; activationLocked?: boolean }>()
-const emit = defineEmits<{ configured: []; validity: [key: string, valid: boolean] }>()
+const emit = defineEmits<{ configured: []; refresh: []; validity: [key: string, valid: boolean] }>()
 const edit = ref<PluginConfigs>({}), busy = ref(''), error = ref(''), saved = ref('')
 const invalid = ref(new Set<string>())
 const emptyConfig: Record<string, unknown> = {}
@@ -42,8 +42,8 @@ async function save(id: string) {
 </script>
 <template>
   <section class="work-stack" aria-label="Plugins editor">
-    <header class="work-section-heading"><div><h2>Plugins</h2><p class="work-muted work-small">Add capabilities from installed modules.</p></div></header>
-    <p class="work-muted work-small">Activation joins the schema draft and requires review. Active plugin configuration saves separately.</p>
+    <header class="work-section-heading"><div><h2>Plugins</h2><p class="work-muted work-small">Add capabilities from installed modules.</p></div><Button label="Refresh status" severity="secondary" outlined :disabled="!!busy || disabled" @click="emit('refresh')"><template #icon><Icon icon="tabler:refresh" aria-hidden="true" /></template></Button></header>
+    <p class="work-muted work-small">Activation joins the schema draft and requires review. Active plugin configuration saves separately. Status reflects the last read; refresh to check progress.</p>
     <p v-if="!options.length" class="kx-loading">No installed plugins are visible to you.</p>
     <div v-if="error" class="kx-err" role="alert">{{ error }}</div><p v-if="saved" class="work-notice" role="status">{{ saved }}</p>
     <DefinitionList columns="plugins" :count="options.length">

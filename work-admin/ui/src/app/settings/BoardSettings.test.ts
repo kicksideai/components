@@ -3,9 +3,14 @@ import { getButton } from '../../test/controls'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import BoardSettings from './BoardSettings.vue'
+import { ApiError } from '../../transport'
+import DurationControl from './DurationControl.vue'
+import InputNumber from 'primevue/inputnumber'
 import { settings } from './api'
 import { work } from '../../api'
 import { deferred, schema } from '../../test/fixtures'
+import { host } from '@wippy-fe/proxy'
+import { navigatorKey } from '../route'
 import { notify, subscriptions, visibility } from '../../test/setup'
 import { emptyOptions } from '../../types'
 import type { SchemaPlan } from './model'
@@ -84,10 +89,9 @@ it('preserves drafts across wakeups, blocks stale applies, and disposes subscrip
   await getButton(w.get('.kx-head-actions'), 'Discard').trigger('click'); expect(w.text()).not.toContain('advances to generation')
   w.unmount(); wrappers.pop(); expect(subscriptions.has('component.b')).toBe(false)
 })
-it('hides advanced controls until opted in and denies non-admin actors', async () => {
+it('exposes the full settings surface without an Advanced section and denies non-admin actors', async () => {
   const w = await render()
-  expect(w.find('[aria-label="Who can read"]').exists()).toBe(false); expect(w.find('[aria-label="Board visibility"]').exists()).toBe(false)
-  await w.get('input[role=switch]').setValue(true)
+  expect(w.find('[aria-label="Advanced settings"]').exists()).toBe(false)
   expect(w.find('[aria-label="Who can read"]').exists()).toBe(true)
   await getButton(w, 'Policy').trigger('click')
   expect(w.find('[aria-label="Board visibility"]').exists()).toBe(true)
@@ -191,7 +195,7 @@ it('refreshes projection health from the latest read while preserving a schema d
   const w = await render(); await edit(w); await getButton(w, 'Plugins').trigger('click'); await flushPromises()
   expect(w.text()).toContain('Catching up')
   vi.mocked(work.schema).mockResolvedValue({ ...view, as_of: 8, plugins: [{ ...view.plugins[0], projections: { index: { last_seq: 8, parked: false, bootstrapping: false } } }] })
-  notify('component.b'); await flushPromises()
+  await getButton(w, 'Refresh status').trigger('click'); await flushPromises()
   expect(w.text()).toContain('Up to date'); expect(w.text()).toContain('Position 8 · Board head 8')
   expect(w.find<HTMLInputElement>('form input[aria-label="Field code"]').element.value).toBe('name')
 })
@@ -210,4 +214,101 @@ it('still refuses review when a control owned by the settings form is invalid', 
   vi.spyOn(w.get<HTMLInputElement>('[aria-label="Field code"]').element, 'reportValidity').mockReturnValue(false)
   await getButton(w.get('.kx-head-actions'), 'Review changes').trigger('click'); await flushPromises()
   expect(settings.plan).not.toHaveBeenCalled()
+})
+
+it('consumes the committed reset once even when a notification supersedes the apply read', async () => {
+  const w = await render(); await edit(w)
+  await getButton(w, 'Review changes').trigger('click'); await flushPromises()
+  const pending = deferred<ReturnType<typeof schema>>()
+  vi.mocked(work.schema).mockReturnValueOnce(pending.promise)
+  await getButton(w, 'Apply').trigger('click'); await flushPromises()
+  const committed = schema(); committed.generation = 2; committed.declaration.fields![0].code = 'name'
+  vi.mocked(work.schema).mockResolvedValue(committed)
+  notify('component.b'); await flushPromises()
+  pending.resolve(committed); await flushPromises()
+  expect(w.get('.kx-head-sub').text()).toContain('generation 2')
+  expect(w.text()).not.toContain('Unsaved changes'); expect(w.text()).not.toContain('advances to generation')
+  await w.find('form input[aria-label="Field code"]').setValue('new_draft')
+  notify('component.b'); await flushPromises()
+  expect(w.find<HTMLInputElement>('form input[aria-label="Field code"]').element.value).toBe('new_draft')
+})
+it('initializes a legacy schemaless board at generation zero without claiming access was denied', async () => {
+  vi.mocked(work.schema).mockRejectedValue(new ApiError({ message: 'board has no schema', details: { code: 'board_schema_missing' } }, 'Schema'))
+  const w = await render()
+  expect(w.get('.kx-title').text()).toBe('Delivery')
+  expect(w.text()).not.toContain('administrator access is required')
+  await getButton(w, 'Policy').trigger('click')
+  await w.get('[aria-label="Item key prefix"]').setValue('INIT')
+  await getButton(w, 'Review changes').trigger('click'); await flushPromises()
+  expect(vi.mocked(settings.plan).mock.calls[0][1].expected_generation).toBe(0)
+  expect(vi.mocked(settings.plan).mock.calls[0][1].declaration.key_prefix).toBe('INIT')
+})
+it('keeps service failures retryable without describing them as access denials', async () => {
+  vi.mocked(work.schema).mockRejectedValue(new Error('Service unavailable'))
+  const w = await render(); expect(w.text()).toContain('Service unavailable')
+  expect(w.text()).not.toContain('administrator access is required')
+})
+it('blocks Review while a duration edit is invalid, including after switching tabs', async () => {
+  const w = await render(); await edit(w); await getButton(w, 'Policy').trigger('click')
+  await w.getComponent(DurationControl).getComponent(InputNumber).setValue(0)
+  await getButton(w, 'Fields').trigger('click')
+  expect(getButton(w, 'Review changes').attributes('disabled')).toBeDefined()
+  await getButton(w, 'Review').trigger('click'); await flushPromises()
+  expect(settings.plan).not.toHaveBeenCalled()
+  await getButton(w, 'Policy').trigger('click'); await w.getComponent(DurationControl).getComponent(InputNumber).setValue(2)
+  await getButton(w, 'Review').trigger('click'); await flushPromises()
+  expect(settings.plan).toHaveBeenCalledOnce()
+})
+
+it('keeps a newer user draft stale if it changes while the committed refresh is still pending', async () => {
+  const w = await render(); await edit(w)
+  await getButton(w, 'Review changes').trigger('click'); await flushPromises()
+  const first = deferred<ReturnType<typeof schema>>(), accepted = deferred<ReturnType<typeof schema>>()
+  vi.mocked(work.schema).mockReturnValueOnce(first.promise).mockReturnValueOnce(accepted.promise)
+  await getButton(w, 'Apply').trigger('click'); await flushPromises()
+  notify('component.b'); await flushPromises()
+  const committed = schema(); committed.generation = 2; committed.declaration.fields![0].code = 'name'
+  first.resolve(committed); await flushPromises()
+  await w.get('form input[aria-label="Field code"]').setValue('newer_draft')
+  accepted.resolve(committed); await flushPromises()
+  expect(w.get<HTMLInputElement>('form input[aria-label="Field code"]').element.value).toBe('newer_draft')
+  expect(w.text()).toContain('advances to generation 2')
+})
+
+it('asks before Back discards settings and keeps editing on cancel', async () => {
+  const go = vi.fn(), w = mount(BoardSettings, { props: { boardId: 'b' }, global: { provide: { [navigatorKey as symbol]: go } } }); wrappers.push(w)
+  await flushPromises(); await edit(w)
+  vi.mocked(host.confirm).mockResolvedValueOnce(false)
+  await getButton(w, 'Back to board').trigger('click'); await flushPromises()
+  expect(go).not.toHaveBeenCalled()
+  vi.mocked(host.confirm).mockResolvedValueOnce(true)
+  await getButton(w, 'Back to board').trigger('click'); await flushPromises()
+  expect(go).toHaveBeenCalledWith({ name: 'board', board: 'b' })
+})
+
+it('clears option validity after an earlier field is removed and the duplicate id is corrected', async () => {
+  const view = schema()
+  view.declaration.fields = [{ id: 1, code: 'first', form: 'text' }, { id: 2, code: 'choices', form: 'text', type: 'option', options: [{ id: 'XL' }, { id: 'XL' }] }]
+  view.declaration.item_types = []
+  vi.mocked(work.schema).mockResolvedValue(view)
+  const w = await render()
+  expect(getButton(w, 'Review changes').attributes('disabled')).toBeDefined()
+  await w.findAll('[aria-label="Remove field"]')[0].trigger('click'); await flushPromises()
+  await w.findAll('[aria-label="Option ID"]')[1].setValue('42')
+  expect(getButton(w, 'Review changes').attributes('disabled')).toBeUndefined()
+})
+
+it('keeps the open plugin status visible when a refresh changes only lifecycle progress', async () => {
+  const plugin = { plugin: 'app:plugin', installed: true, active: true, requires: [], tools: [], lifecycle: { state: 'pending' as const }, projections: {} }
+  const view = { ...schema(), plugins: [plugin] }
+  vi.mocked(work.schema).mockResolvedValue(view)
+  vi.mocked(work.options).mockResolvedValue({ ...emptyOptions(), access: { read: true, write: true, admin: true }, schema_options: { plugins: [{ ...plugin, title: 'Search', config_schema: {} }] } })
+  const w = await render(); await getButton(w, 'Plugins').trigger('click')
+  await w.get('[aria-label="Plugins editor"] .work-definition-toggle').trigger('click')
+  expect(w.get('.work-plugin-status').isVisible()).toBe(true)
+  vi.mocked(work.schema).mockResolvedValue({ ...view, plugins: [{ ...plugin, lifecycle: { state: 'ready' as const } }] })
+  await getButton(w, 'Refresh status').trigger('click'); await flushPromises()
+  expect(w.get('.work-plugin-status').isVisible()).toBe(true)
+  expect(w.get('.work-plugin-status').text()).toContain('Attachment configured')
+  expect(w.get('[aria-label="Plugins editor"] .work-definition-toggle').attributes('aria-expanded')).toBe('true')
 })

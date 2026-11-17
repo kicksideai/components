@@ -26,7 +26,7 @@ const props = defineProps<{ draft: Declaration; schema: SchemaView; options: Sch
 const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string] }>()
 
 const WIDTHS: Width[] = ['quarter', 'third', 'half', 'full']
-const CARDINALITIES = ['one', 'list', 'set']
+const CARDINALITIES = [{ value: 'one', label: 'Single value' }, { value: 'list', label: 'Ordered list' }, { value: 'set', label: 'Unique set' }]
 
 const aspects = computed(() => props.draft.aspects ?? [])
 const dimensions = computed(() => (props.draft.dimensions ?? []).map((d) => ({ value: d.name, label: humanize(d.name) })))
@@ -159,10 +159,10 @@ function move(list: AttributeDecl[], from: number, to: number) {
           <div class="pim-source-permissions">
             <label :for="'writers-' + a.namespace">Sources allowed to write</label>
             <MultiSelect :input-id="'writers-' + a.namespace" aria-label="Sources allowed to write" :model-value="a.write?.sources ?? []" :options="sources" option-label="label" option-value="value" placeholder="Any source" appendTo="self" @update:model-value="a.write = { sources: $event }" />
-            <span class="small muted">Leave empty to allow any source to write this aspect.</span>
+            <span class="small muted">Leave empty to allow any source to write this field group.</span>
           </div>
         </div>
-        <Button type="button" @click="removeAspect(a)" text severity="secondary" size="small"><Icon icon="tabler:trash" /> Remove aspect</Button>
+        <Button type="button" @click="removeAspect(a)" text severity="secondary" size="small"><Icon icon="tabler:trash" /> Remove field group</Button>
       </header>
       </template>
       <DefinitionRow v-for="(attr, i) in a.attributes ?? []" :key="key(a.namespace, attr)"
@@ -172,7 +172,7 @@ function move(list: AttributeDecl[], from: number, to: number) {
         @head-dragover.prevent @head-drop.prevent="drop(a, i)" @head-keydown.alt.up.prevent="move(a.attributes ?? [], i, i - 1)" @head-keydown.alt.down.prevent="move(a.attributes ?? [], i, i + 1)">
         <template #handle><span class="pim-grip" draggable="true" aria-hidden="true" @click.stop @dragstart.stop="dragging = { namespace: a.namespace, index: i }" @dragend="dragging = null"><Icon icon="tabler:grip-vertical" /></span></template>
         <template #details>
-          <Tag v-if="attr.cardinality && attr.cardinality !== 'one'" class="kx-tag-sm" severity="secondary">{{ attr.cardinality }}</Tag>
+          <Tag v-if="attr.cardinality && attr.cardinality !== 'one'" class="kx-tag-sm" severity="secondary">{{ CARDINALITIES.find(c => c.value === attr.cardinality)?.label }}</Tag>
           <Tag v-if="attr.scope?.length" class="kx-tag-sm" severity="secondary">per {{ attr.scope.join(', ') }}</Tag>
           <Tag v-if="attr.index && attr.index !== 'none'" class="kx-tag-sm" severity="secondary">{{ attr.index }} index</Tag>
           <Tag v-if="attr.unique" class="kx-tag-sm" severity="secondary">unique</Tag>
@@ -189,10 +189,10 @@ function move(list: AttributeDecl[], from: number, to: number) {
                 :options="typeOptions" option-label="label" option-value="value" appendTo="self"
                 @update:model-value="setType(attr, $event)"
               /></div>
-            <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Cardinality</label></div>
+            <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Values</label></div>
               <Select
                 :model-value="attr.cardinality ?? 'one'"
-                :options="CARDINALITIES" appendTo="self"
+                :options="CARDINALITIES" option-label="label" option-value="value" appendTo="self"
                 @update:model-value="setOptional(attr, 'cardinality', $event === 'one' ? undefined : $event)"
               /></div>
             <div v-if="isTerm(attr)" class="pim-f pim-w-third"><div class="pim-f-label"><label>Vocabulary</label></div>
@@ -236,9 +236,9 @@ function move(list: AttributeDecl[], from: number, to: number) {
     </DefinitionList>
     <section class="form">
       <div class="pim-aspect row pim-add-row">
-        <InputText v-model="newAspect" type="text" placeholder="new_aspect" @keydown.enter.prevent="addAspect" class="mono" />
-        <Button type="button" :disabled="!CODE.test(newAspect)" @click="addAspect" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add aspect</Button>
-        <span class="muted small">An aspect groups fields and can be written by named sources only.</span>
+        <InputText v-model="newAspect" type="text" placeholder="new_field_group" @keydown.enter.prevent="addAspect" class="mono" />
+        <Button type="button" :disabled="!CODE.test(newAspect)" @click="addAspect" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add field group</Button>
+        <span class="muted small">A field group contains fields and can be written by named sources only.</span>
       </div>
     </section>
   </div>

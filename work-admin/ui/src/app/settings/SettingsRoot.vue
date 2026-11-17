@@ -5,7 +5,7 @@ import { useEvents, useProps } from '@wippy-fe/webcomponent-vue'
 import BoardSettings from './BoardSettings.vue'
 import { navigatorKey, pathOf } from '../route'
 const props = useProps<{ boardId?: string; embedded?: boolean }>()
-const emit = useEvents<{ navigate: { route: string } }>()
+const emit = useEvents<{ navigate: { route: string }; 'dirty-change': { dirty: boolean } }>()
 provide(navigatorKey, next => emit('navigate', { route: pathOf(next) }))
 </script>
-<template><BoardSettings :board-id="props.boardId ?? ''" :embedded="props.embedded" /></template>
+<template><BoardSettings :board-id="props.boardId ?? ''" :embedded="props.embedded" @dirty-change="emit('dirty-change', { dirty: $event })" /></template>

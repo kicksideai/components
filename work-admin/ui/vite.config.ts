@@ -19,7 +19,7 @@ export default defineConfig({
   build: {
     target: 'esnext',
     lib: {
-      entry: { settings: resolve(moduleRoot, 'src/settings.ts'), admin: resolve(moduleRoot, 'src/admin.ts') },
+      entry: { defaults: resolve(moduleRoot, 'src/defaults.ts'), settings: resolve(moduleRoot, 'src/settings.ts'), admin: resolve(moduleRoot, 'src/admin.ts') },
       name: 'KicksideWorkAdmin',
       formats: ['es'],
     },

@@ -1,11 +1,13 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
-import ToggleSwitch from 'primevue/toggleswitch'
+import Select from 'primevue/select'
+import NativeDialog from '../../NativeDialog.vue'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import Button from 'primevue/button'
-import { on } from '@wippy-fe/proxy'
+import { host, on } from '@wippy-fe/proxy'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
+import { ApiError } from '../../transport'
 import { work } from '../../api'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import type { BoardRow, Declaration, AdminOptions, Schema } from '../../types'
@@ -26,17 +28,21 @@ import Tab from 'primevue/tab'
 import SettingsHead from './SettingsHead.vue'
 import SchemaReview from './SchemaReview.vue'
 import PackReview from './PackReview.vue'
-import { planUpgrade, upgradeRequest, type Pack, type PackPlan, type PackRequest } from '../../packs'
+import { availablePack, planUpgrade, upgradeRequest, type AvailablePack, type PackPlan, type PackRequest } from '../../packs'
 const props = defineProps<{ boardId: string; embedded?: boolean }>()
+const emit = defineEmits<{ 'dirty-change': [dirty: boolean] }>()
 const go = useNavigate()
+let resetGeneration: number | undefined, resetDraft = ''
+const draftSnapshot = () => JSON.stringify([request.value, configs.value, packRequest.value, [...invalid.value]])
 const tabs = ['Fields', 'Item types', 'Process', 'Policy', 'Relation types', 'Plugins', 'Review'] as const
-const tab = ref<typeof tabs[number]>('Fields'), advanced = ref(false)
+const tab = ref<typeof tabs[number]>('Fields')
+const installing = ref(false), installPack = ref('')
 const visited = ref(new Set<typeof tabs[number]>(['Fields']))
 watch(tab, value => visited.value.add(value))
 const schema = ref<Schema>(), latest = ref<Schema>(), board = ref<BoardRow>(), draft = ref<Declaration>({}), configs = ref<PluginConfigs>({})
 const options = ref<AdminOptions>(), authorized = ref(false), loading = ref(true), busy = ref(false), error = ref(''), saved = ref('')
 const packError = ref('')
-const packs = ref<Pack[]>([]), packRequest = ref<PackRequest>(), packPlan = ref<PackPlan>(), packReviewed = ref<PackRequest>()
+const packs = ref<AvailablePack[]>([]), packRequest = ref<PackRequest>(), packPlan = ref<PackPlan>(), packReviewed = ref<PackRequest>()
 const plan = ref<SchemaPlan>(), reviewed = ref<ReturnType<typeof reviewSnapshot>>(), applyKey = ref('')
 const serverIssues = ref<import('./model').SchemaChange[]>([])
 const issues = computed(() => [...serverIssues.value, ...(plan.value?.refused ?? [])])
@@ -44,12 +50,13 @@ const checkingRemoval = ref(false), editorVersion = ref(0)
 const invalid = ref(new Set<string>()), editor = ref<HTMLFormElement>()
 const beginRead = latestRequest(), beginReview = latestRequest()
 const request = computed(() => requestDeclaration(draft.value, schema.value?.declaration ?? {}))
-const dirty = computed(() => !!packRequest.value || !!schema.value && (JSON.stringify(request.value) !== JSON.stringify(schema.value.declaration) || Object.keys(configs.value).length > 0))
+const dirty = computed(() => invalid.value.size > 0 || !!packRequest.value || !!schema.value && (JSON.stringify(request.value) !== JSON.stringify(schema.value.declaration) || Object.keys(configs.value).length > 0))
+watch(dirty, value => emit('dirty-change', value), { immediate: true, flush: 'sync' })
 const stale = computed(() => !!schema.value && !!latest.value && schema.value.generation !== latest.value.generation)
 const canSchemaApply = computed(() => authorized.value && !busy.value && !checkingRemoval.value && !migrationPending.value && !stale.value && !invalid.value.size && plan.value && (plan.value.changes.length > 0 || Object.keys(configs.value).length > 0) && plan.value.class !== 'refused' && !plan.value.refused.length && reviewed.value?.matches(request.value, schema.value?.generation ?? -1, configs.value))
-const packPlugins = computed(() => packs.value.find(pack => pack.id === packRequest.value?.pack)?.plugins.filter(plugin => !schema.value?.plugins?.some(state => state.plugin === plugin.id && state.active)).map(plugin => ({ use: plugin.id })) ?? [])
+const packPlugins = computed(() => packs.value.find(pack => pack.id === packRequest.value?.pack)?.plugins.filter(plugin => !schema.value?.plugins?.some(state => state.plugin === plugin.plugin && state.active)).map(plugin => ({ use: plugin.plugin })) ?? [])
 const packMatches = computed(() => !!packReviewed.value && JSON.stringify(packReviewed.value) === JSON.stringify(packRequest.value))
-const canApply = computed(() => packRequest.value ? authorized.value && !busy.value && !stale.value && !migrationPending.value && packMatches.value && plan.value?.class !== 'refused' && !plan.value?.refused.length && packPlan.value?.conflicts.every(c => !!packRequest.value?.resolutions?.[c.path]) : canSchemaApply.value)
+const canApply = computed(() => packRequest.value ? authorized.value && !busy.value && !invalid.value.size && !stale.value && !migrationPending.value && packMatches.value && plan.value?.class !== 'refused' && !plan.value?.refused.length && packPlan.value?.conflicts.every(c => !!packRequest.value?.resolutions?.[c.path]) : canSchemaApply.value)
 const isReviewed = computed(() => !!plan.value && (!packRequest.value || packMatches.value))
 const packTitle = computed(() => packs.value.find(p => p.id === schema.value?.pack?.id)?.title || 'Installed pack')
 const upgradeAvailable = computed(() => !packError.value && !!schema.value?.outdated && !!packs.value.find(p => p.id === schema.value?.pack?.id))
@@ -62,8 +69,14 @@ async function upgrade() {
   packRequest.value = upgradeRequest(installed, schema.value.generation); tab.value = 'Review'
   await reviewPack()
 }
+async function install() {
+  const pack = packs.value.find(p => p.id === installPack.value)
+  if (!schema.value || !pack || pack.plugins.some(p => !p.installed) || busy.value || dirty.value) return
+  packRequest.value = upgradeRequest(pack, schema.value.generation); installing.value = false; tab.value = 'Review'
+  await reviewPack()
+}
 async function reviewPack() {
-  if (!packRequest.value || busy.value || !authorized.value || stale.value) return
+  if (!packRequest.value || busy.value || !authorized.value || stale.value || invalid.value.size) return
   const current = beginReview(), request = clone(packRequest.value), before = JSON.stringify(packRequest.value)
   busy.value = true; error.value = ''; saved.value = ''
   try {
@@ -84,24 +97,33 @@ function reset(view: Schema) { clearPack(); editorVersion.value++; schema.value 
 async function load(force = false) {
   const current = beginRead()
   try {
-    const [view, ext, boards] = await Promise.all([work.schema(props.boardId, undefined, true), work.options(props.boardId), work.boards()])
+    const [view, ext, boards] = await Promise.all([work.schema(props.boardId, undefined, true).catch(e => {
+      if (e instanceof ApiError && e.details?.code === 'board_schema_missing') return { generation: 0, declaration: {}, compiled: {}, key_prefix: '', as_of: 0 } as Schema
+      throw e
+    }), work.options(props.boardId), work.boards()])
     if (!current()) return
     authorized.value = ext.access.admin; options.value = ext; board.value = boards.find(b => b.board_id === props.boardId)
     if (!authorized.value) { schema.value = undefined; draft.value = {}; invalidate(); return }
     error.value = ''
     const normalized = normalizeSchema(view)
     latest.value = normalized
-    if (force || !schema.value || !dirty.value) reset(normalized)
+    if (resetGeneration !== undefined && normalized.generation >= resetGeneration) {
+      resetGeneration = undefined
+      if (resetDraft === draftSnapshot()) reset(normalized)
+      resetDraft = ''
+    }
+    else if (force || !schema.value || !dirty.value && normalized.generation !== schema.value.generation) reset(normalized)
     if (stale.value) invalidate()
-    if (view.pack) await loadPacks(current)
+    await loadPacks(current)
   } catch (e) {
     if (!current()) return
-    authorized.value = false; invalidate(); error.value = e instanceof Error ? e.message : 'Could not load board settings.'
+    if (e instanceof ApiError && (e.status === 403 || e.kind?.toLowerCase() === 'permission_denied')) authorized.value = false
+    invalidate(); error.value = e instanceof Error ? e.message : 'Could not load board settings.'
   } finally { if (current()) loading.value = false }
 }
 async function loadPacks(current: () => boolean = () => true) {
   packError.value = ''
-  try { const rows = await work.packs(); if (current()) packs.value = rows }
+  try { const rows = await work.packs(); if (current()) packs.value = rows.filter(availablePack) }
   catch (e) { if (current()) packError.value = e instanceof Error ? e.message : 'Could not load packs.' }
 }
 function validForm() {
@@ -128,16 +150,19 @@ async function apply() {
   if (!canApply.value) return
   if (packRequest.value && packReviewed.value) {
     busy.value = true; error.value = ''
-    try { const result = await settings.packApply(props.boardId, clone(packReviewed.value), applyKey.value); await load(true); saved.value = result.status === 'done' ? `Pack upgraded at generation ${result.generation}.` : 'Pack installation continues in the background.' }
+    const appliedDraft = draftSnapshot()
+    try { const result = await settings.packApply(props.boardId, clone(packReviewed.value), applyKey.value); resetGeneration = result.generation; resetDraft = appliedDraft; await load(); saved.value = result.status === 'done' ? `Pack applied at generation ${result.generation}.` : 'Pack installation continues in the background.' }
     catch (e) { error.value = e instanceof Error ? e.message : 'Could not apply the pack upgrade.' }
     finally { busy.value = false }
     return
   }
   if (!reviewed.value) return
   busy.value = true; error.value = ''; saved.value = ''
+  const appliedDraft = draftSnapshot()
   try {
     const result = await settings.apply(props.boardId, reviewed.value, applyKey.value)
-    await load(true)
+    resetGeneration = result.generation; resetDraft = appliedDraft
+    await load()
     saved.value = `Applied generation ${result.generation} (${result.class}).`
   } catch (e) { error.value = e instanceof Error ? e.message : 'Could not apply schema.' }
   finally { busy.value = false }
@@ -165,9 +190,13 @@ async function guardRemoval(kind: RemovalKind, id: string): Promise<string | und
   } catch (e) { return e instanceof Error ? e.message : 'Could not check this removal.' }
   finally { checkingRemoval.value = false }
 }
-function discard() { if (latest.value) reset(latest.value); saved.value = ''; error.value = '' }
+async function back() {
+  if (dirty.value && !await host.confirm({ header: 'Discard changes?', message: 'Your unsaved board settings will be discarded.', acceptLabel: 'Discard', rejectLabel: 'Keep editing' })) return
+  go({ name: 'board', board: props.boardId })
+}
+function discard() { resetGeneration = undefined; if (latest.value) reset(latest.value); saved.value = ''; error.value = '' }
 
-watch(() => props.boardId, () => { clearPack(); packs.value = []; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); visited.value = new Set(['Fields']); tab.value = 'Fields'; authorized.value = false; loading.value = true; void load(true) })
+watch(() => props.boardId, () => { resetGeneration = undefined; clearPack(); packs.value = []; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); visited.value = new Set(['Fields']); tab.value = 'Fields'; authorized.value = false; loading.value = true; void load(true) })
 let stop = () => {}
 watch(() => props.boardId, id => { stop(); stop = on(`component.${id}`, () => { void load() }) }, { immediate: true })
 useHostVisibilityRefresh(load)
@@ -175,12 +204,11 @@ onUnmounted(() => { stop(); beginRead(); beginReview() })
 </script>
 <template>
   <section class="work-settings-shell" :class="{ 'work-embedded': embedded }">
-    <SettingsHead :board="board" :embedded="embedded" :generation="schema?.generation" :authorized="authorized" :dirty="dirty" :busy="busy" :checking-removal="checkingRemoval" :reviewed="isReviewed" :pack="schema?.pack" :pack-title="packTitle" :outdated="schema?.outdated" :upgrade-reason="upgradeReason" :can-upgrade="upgradeAvailable && !dirty && !busy && !migrationPending && authorized" @upgrade="upgrade" :disabled="!dirty || busy || checkingRemoval || migrationPending || stale || !!invalid.size || (isReviewed && !canApply)" @back="go({ name: 'board', board: boardId })" @discard="discard" @primary="isReviewed ? apply() : review()" @saved="load()" />
+    <SettingsHead :board="board" :embedded="embedded" :generation="schema?.generation" :authorized="authorized" :dirty="dirty" :busy="busy" :checking-removal="checkingRemoval" :reviewed="isReviewed" :pack="schema?.pack" :pack-title="packTitle" :outdated="schema?.outdated" :upgrade-reason="upgradeReason" :can-upgrade="upgradeAvailable && !dirty && !busy && !migrationPending && authorized" @upgrade="upgrade" @install="installing = true" :disabled="!dirty || busy || checkingRemoval || migrationPending || stale || !!invalid.size || (isReviewed && !canApply)" @back="back" @discard="discard" @primary="isReviewed ? apply() : review()" @saved="load()" />
     <div v-if="authorized && schema" class="work-settings-tabs">
       <div class="work-section-navigation"><Tabs :value="tab" @update:value="selectTab($event as typeof tab)">
         <TabList aria-label="Settings sections"><Tab v-for="name in tabs" :key="name" :value="name">{{ name }}</Tab></TabList>
       </Tabs></div>
-      <label class="work-row work-small work-advanced"><ToggleSwitch v-model="advanced" aria-label="Advanced settings" />Advanced</label>
     </div>
     <div
       v-if="error"
@@ -204,7 +232,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview() })
       role="status"
     >Loading settings…</p>
     <p
-      v-else-if="!authorized"
+      v-else-if="!authorized && !error"
       class="work-notice"
       role="alert"
     >Board administrator access is required.</p>
@@ -245,7 +273,6 @@ onUnmounted(() => { stop(); beginRead(); beginReview() })
             v-show="tab === 'Fields'"
             :draft="draft"
             :guard-removal="guardRemoval"
-            :advanced="advanced"
             :issues="issues"
             @validity="(key, valid) => validity('fields:' + key, valid)"
           />
@@ -261,7 +288,6 @@ onUnmounted(() => { stop(); beginRead(); beginReview() })
             v-show="tab === 'Process'"
             :draft="draft"
             :guard-removal="guardRemoval"
-            :advanced="advanced"
             :issues="issues"
             @validity="(key, valid) => validity('process:' + key, valid)"
           />
@@ -269,6 +295,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview() })
             v-if="visited.has('Policy')"
             v-show="tab === 'Policy'"
             :draft="draft"
+            @validity="(key, valid) => validity('policy:' + key, valid)"
           />
           <RelationsEditor
             v-if="visited.has('Relation types')"
@@ -285,12 +312,13 @@ onUnmounted(() => { stop(); beginRead(); beginReview() })
             :options="options?.schema_options.plugins ?? []"
             :configs="configs"
             :disabled="busy"
-            @configured="invalidate(); load()"
+            @configured="invalidate(); load()" @refresh="load()"
             @validity="(key, valid) => validity('plugin:' + key, valid)"
           />
           <section
-            v-if="advanced && tab === 'Policy'"
-            class="work-settings-card work-stack work-advanced-settings"
+            v-if="visited.has('Policy')"
+            v-show="tab === 'Policy'"
+            class="work-settings-card work-stack"
           >
 
             <VisibilityEditor :board-id="boardId" :draft="draft" @validity="validity('visibility', $event)" />
@@ -313,5 +341,14 @@ onUnmounted(() => { stop(); beginRead(); beginReview() })
       >Checking existing values and dependencies…</p>
 
     </div>
+    <NativeDialog v-if="authorized" :visible="installing" label="Install pack" :busy="busy" @close="installing = false">
+      <form class="work-dialog-box work-stack" @submit.prevent="install">
+        <h2>Install a pack</h2>
+        <p class="work-muted work-small">Packs can be installed on an empty board. Review checks whether this board is eligible.</p>
+        <label class="work-stack work-tight">Pack<Select v-model="installPack" aria-label="Pack to install" appendTo="self" optionLabel="title" optionValue="id" optionDisabled="disabled" :options="packs.map(p => ({ ...p, disabled: p.plugins.some(plugin => !plugin.installed) }))" /></label>
+        <p v-if="!packs.length" class="work-muted">No available packs were found.</p>
+        <footer class="work-dialog-actions"><Button label="Cancel" severity="secondary" outlined @click="installing = false" /><Button type="submit" label="Review pack" :disabled="!installPack || busy || dirty" /></footer>
+      </form>
+    </NativeDialog>
   </section>
 </template>

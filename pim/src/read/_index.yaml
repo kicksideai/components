@@ -72,6 +72,7 @@ entries:
     source: file://locate.lua
     imports:
       trim_text: kickside.pim:text
+      store: kickside.pim.persist:store
       failure: kickside.pim:failure
       access: kickside.pim.read:access
       types: kickside.pim:types

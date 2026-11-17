@@ -9,6 +9,7 @@ export const visibility = { task: undefined as undefined | (() => Promise<void>)
 vi.mock('@wippy-fe/proxy', () => ({
   on: vi.fn((topic: string, fn: () => void) => { events.set(topic, fn); return () => events.delete(topic) }),
   api: { get: vi.fn(), post: vi.fn() },
+  host: { confirm: vi.fn().mockResolvedValue(true) },
   loadByTagName: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('@wippy-fe/webcomponent-vue', async () => {

@@ -5,7 +5,7 @@ import { PrimeVuePlugin } from '@wippy-fe/theme/primevue-plugin'
 import SettingsApp from './app/SettingsApp.vue'
 import stylesText from './styles.css?inline'
 interface Props { catalogId?: string; embedded?: boolean }
-class CatalogSettingsElement extends WippyVueElement<Props, { navigate: { route: string } }> {
+class CatalogSettingsElement extends WippyVueElement<Props, { navigate: { route: string }; 'dirty-changed': { dirty: boolean } }> {
   static get wippyConfig(): WippyElementConfig<Props> {
     return {
       propsSchema: { type: 'object', properties: { 'catalog-id': { type: 'string', default: '' }, embedded: { type: 'boolean', default: false } } } as WippyPropsSchema,

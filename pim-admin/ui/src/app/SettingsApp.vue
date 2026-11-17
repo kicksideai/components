@@ -2,11 +2,12 @@
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { useProps, useEvents, useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
+import CatalogShare from './CatalogShare.vue'
 import SchemaBuilder from './builder/SchemaBuilder.vue'
 import { requestGeneration } from '../shared/requests'
 import { pim } from '../api'
 const props = useProps<{ catalogId?: string; embedded?: boolean }>()
-const emit = useEvents<{ navigate: { route: string } }>()
+const emit = useEvents<{ navigate: { route: string }; 'dirty-changed': { dirty: boolean } }>()
 const title = ref('')
 const catalogId = computed(() => props.value.catalogId ?? '')
 const reads = requestGeneration()
@@ -22,5 +23,7 @@ useHostVisibilityRefresh(loadTitle)
 onUnmounted(() => { reads.begin() })
 </script>
 <template>
-  <SchemaBuilder v-if="catalogId" :key="catalogId" :catalog-id="catalogId" :title="title || 'Catalog'" :embedded="props.embedded" :back-label="props.embedded ? undefined : 'Back to catalog settings'" @back="emit('navigate', { route: '' })" />
+  <SchemaBuilder v-if="catalogId" :key="catalogId" :catalog-id="catalogId" :title="title || 'Catalog'" :embedded="props.embedded" :back-label="props.embedded ? undefined : 'Back to catalog settings'" @back="emit('navigate', { route: '' })" @dirty-changed="emit('dirty-changed', { dirty: $event })">
+    <template #actions="{ access }"><CatalogShare v-if="access?.admin" :catalog-id="catalogId" :title="title || 'Catalog'" /></template>
+  </SchemaBuilder>
 </template>

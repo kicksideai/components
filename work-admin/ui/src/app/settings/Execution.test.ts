@@ -29,7 +29,7 @@ it('selects a group or distinct principals through the platform picker and valid
 it('supports wait-only gates without retaining approval requirements', async () => {
   const state = reactive<State>({ id: 'review', category: 'started', kind: 'gate', release_when: { approvals: { min: 1, from: { group: 'team' } } } })
   const process: Process = { id: 'flow', initial: 'review', states: [state] }
-  const w = mount(StateSettings, { props: { state, process, draft: {}, advanced: true } }); await flushPromises()
+  const w = mount(StateSettings, { props: { state, process, draft: {} } }); await flushPromises()
   const approvals = w.findAll('[type=checkbox]').find(input => input.element.closest('label')?.textContent?.includes('Require approvals'))!
   await approvals.setValue(false)
   const wait = w.findAllComponents(DurationControl).find(c => c.props('label') === 'Wait before release')!
@@ -79,4 +79,16 @@ it('preserves field approvers and edits their field source without a principal p
   await w.get('[aria-label="Principal field"]').setValue('')
   expect(w.emitted('validity')?.at(-1)).toEqual([false])
   w.unmount()
+})
+
+it('clears duration validity after removing an earlier timer and then the invalid timer', async () => {
+  const state = reactive<State>({ id: 'active', category: 'started', timers: [{ id: 'one', after: 'PT1H' }, { id: 'two', after: 'PT1H' }] })
+  const invalid = new Set<string>()
+  const w = mount(TimersEditor, { props: { state, draft: {}, onValidity: (key: string, valid: boolean) => { if (valid) invalid.delete(key); else invalid.add(key) } } })
+  await w.findAllComponents(DurationControl)[2].getComponent(InputNumber).setValue(0)
+  expect(invalid.size).toBe(1)
+  await w.findAll('[aria-label="Remove timer"]')[0].trigger('click')
+  expect(invalid.size).toBe(1)
+  await w.findAll('[aria-label="Remove timer"]')[0].trigger('click')
+  expect(invalid.size).toBe(0); w.unmount()
 })

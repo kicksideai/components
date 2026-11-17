@@ -19,7 +19,15 @@ local function track(admin, id)
     return id
 end
 local function empty(admin)
-    return track(admin, assert(admin.call("create", { idempotency_key = uuid.v4(), title = "Pack board" })).board_id)
+    -- Legacy/interrupted boards still support a generation-zero pack install.
+    local key = uuid.v4()
+    local title = "Pack board " .. key
+    local _, err = admin.call("create", { idempotency_key = key, title = title, declaration = { key_prefix = "invalid" } })
+    assert(err and err:kind() == errors.INVALID, tostring(err))
+    for _, board in ipairs(assert(admin.call("list", {})).boards) do
+        if board.title == title then return track(admin, board.board_id) end
+    end
+    error("interrupted pack board exists")
 end
 local function install(admin, id, pack, starter, key)
     return admin.call("pack_apply", { board_id = id, pack = pack or "app:kanban_pack", expected_generation = 0,

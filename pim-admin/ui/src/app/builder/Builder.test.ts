@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { beforeEach, expect, it, vi } from 'vitest'
+import { host } from '@wippy-fe/proxy'
 import { flushPromises, mount } from '@vue/test-utils'
 import SchemaBuilder from './SchemaBuilder.vue'
 import BuilderDeclaration from './BuilderDeclaration.vue'
@@ -13,6 +14,7 @@ import type { Declaration } from '../../types'
 import { schema, pluginFixture } from '../../test/fixtures'
 vi.mock('../../api', () => ({ pim: { schema: vi.fn(), schemaOptions: vi.fn(), planSchema: vi.fn(), applySchema: vi.fn(), configurePlugin: vi.fn(), termsPage: vi.fn(), invalidateTerms: vi.fn(), apply: vi.fn() } }))
 beforeEach(() => {
+  vi.mocked(host.confirm).mockResolvedValue(true)
   vi.mocked(pim.schema).mockResolvedValue(structuredClone(schema))
   vi.mocked(pim.schemaOptions).mockResolvedValue({ types: [], scopes: [], plugins: [], link_kinds: [] })
 })
@@ -111,5 +113,26 @@ it('preserves unsaved active configuration when applying a schema review', async
   vm.pluginConfigs.stock = { enabled: false }; await flushPromises()
   await vm.review(); await vm.apply(); await flushPromises()
   expect(vm.pluginConfigs.stock).toEqual({ enabled: false })
+  w.unmount()
+})
+
+it('opens an empty catalog in the schema editor and applies its first definitions', async () => {
+  const empty = { ...structuredClone(schema), declaration: {}, attributes: {} }
+  vi.mocked(pim.schema).mockResolvedValue(empty)
+  vi.mocked(pim.planSchema).mockResolvedValue({ generation: 2, class: 'additive', changes: [], refused: [] })
+  vi.mocked(pim.applySchema).mockResolvedValue({ generation: 2, class: 'additive' })
+  const w = mount(SchemaBuilder, { props: { catalogId: 'new', embedded: true } })
+  await flushPromises()
+  expect(w.text()).toContain('Generation 1')
+  expect(w.text()).toContain('Define its schema')
+  expect(w.find('.p-message-error').exists()).toBe(false)
+  expect(w.find('fieldset').attributes('disabled')).toBeUndefined()
+  await w.findAll('[role=tab]').find(b => b.text() === 'Declaration')!.trigger('click')
+  const declaration = { aspects: [{ namespace: 'core', attributes: [{ code: 'name', type: 'kickside.pim.types:text' }] }] }
+  await w.get('textarea').setValue(JSON.stringify(declaration)); await w.get('textarea').trigger('blur')
+  await w.findAll('button').find(b => b.text() === 'Review changes')!.trigger('click'); await flushPromises()
+  expect(pim.planSchema).toHaveBeenLastCalledWith('new', declaration, 1, {})
+  await w.findAll('button').find(b => b.text() === 'Apply')!.trigger('click'); await flushPromises()
+  expect(pim.applySchema).toHaveBeenLastCalledWith('new', declaration, 1, {})
   w.unmount()
 })

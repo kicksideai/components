@@ -38,7 +38,7 @@ it.each<[Component, Declaration]>([
   [TypesEditor, { item_types: [{ id: 'task', process: 'flow', fields: [] }] }],
   [RelationsEditor, { relation_types: [{ id: 'related', cardinality: 'many' }] }],
 ])('collapses definitions by default and expands the existing editor in place', async (component, declaration) => {
-  const wrapper = mount(component, { props: { draft: reactive(structuredClone(declaration)), advanced: false } }); wrappers.push(wrapper)
+  const wrapper = mount(component, { props: { draft: reactive(structuredClone(declaration)) } }); wrappers.push(wrapper)
   expect(wrapper.get('[aria-expanded]').attributes('aria-expanded')).toBe('false')
   expect(wrapper.get('.work-definition-body').attributes('style')).toContain('display: none')
   await wrapper.get('[aria-expanded]').trigger('click')
