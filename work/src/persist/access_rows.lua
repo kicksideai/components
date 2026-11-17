@@ -8,7 +8,7 @@ local values = require("values")
 local sql = require("sql")
 local M = {}
 
-function M.tree(board: domain.Board): unknown
+local function tree_for(board: domain.Board): unknown
     local rule, caller = board.compiled.visibility, board.caller
     if not rule or (caller and caller.admin and rule.bypass == "admin") then return nil end
     local options: { unknown } = { { field = rule.field, op = "is_null", value = true } }
@@ -29,27 +29,43 @@ function M.tree(board: domain.Board): unknown
     return #options == 1 and options[1] or { ["or"] = options }
 end
 
-function M.condition(board: domain.Board, dialect: string): (domain.Condition?, error?)
-    local tree = M.tree(board)
-    if tree == nil then return { sql = "1 = 1", args = {} }, nil end
-    local function compile(raw: unknown): (domain.Condition?, error?)
+local function unavailable(message: string): error
+    return errors.new({ kind = errors.UNAVAILABLE, retryable = false, message = message, details = { code = "contract_unavailable" } })
+end
+
+-- The host visibility clause has its own bound across the root and graph peers.
+function M.visibility(board: domain.Board, dialect: string): domain.VisibilityCondition
+    local tree = tree_for(board)
+    local actor = board.caller and board.caller.principal.id
+    local remaining = 4096
+    local function compile(raw: unknown, alias: string): (domain.Condition?, error?)
         local node = raw :: { [string]: unknown }
         local connective = node["or"] and "or" or node["and"] and "and" or nil
-        if not connective then return predicates.compile(board.compiled, board.board_id, board.caller and board.caller.principal.id, raw, dialect) end
+        if not connective then
+            local leaf, err = predicates.compile(board.compiled, board.board_id, actor, raw, dialect, nil, { alias = alias })
+            if err or not leaf then return nil, unavailable("visibility cannot compile") end
+            remaining = remaining - #leaf.args
+            if remaining < 0 then return nil, unavailable("visibility exceeds its bound of 4096 parameters") end
+            return leaf, nil
+        end
         local parts: { string } = {}
         local args: { unknown } = {}
         for _, child in ipairs(node[connective] :: { unknown }) do
-            local fragment, err = compile(child)
+            local fragment, err = compile(child, alias)
             if err or not fragment then return nil, err end
             parts[#parts + 1] = "(" .. fragment.sql .. ")"
             for _, value in ipairs(fragment.args) do args[#args + 1] = value end
         end
-        if #args > 4096 then return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = false, message = "visibility exceeds its bound of 4096 parameters", details = { code = "contract_unavailable" } }) end
         return { sql = "(" .. table.concat(parts, connective == "or" and " OR " or " AND ") .. ")", args = args }, nil
     end
-    local fragment, err = compile(tree)
-    if err then return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = false, message = "visibility cannot compile", details = { code = "contract_unavailable" } }) end
-    return fragment, nil
+    return function(alias: string): (domain.Condition?, error?)
+        if tree == nil then return { sql = "1 = 1", args = {} }, nil end
+        return compile(tree, alias)
+    end
+end
+
+function M.condition(board: domain.Board, dialect: string): (domain.Condition?, error?)
+    return M.visibility(board, dialect)("i")
 end
 
 function M.holders_condition(board: domain.Board, list: { domain.Holder }, alias: string, fields: { [string]: domain.Field }): (domain.Condition?, error?)
@@ -131,26 +147,6 @@ function M.resolver(board: domain.Board, base: domain.Resolver, doc: domain.Docu
     end
 end
 
--- Nested relation predicates range over the caller's visible peer items.
-function M.where(board: domain.Board, raw: unknown, depth: integer?): (unknown, error?)
-    if (depth or 1) > 16 then return nil, errors.new({ details = { code = "invalid_filter" }, kind = errors.INVALID, message = "predicate nesting exceeds the traversal limit" }) end
-    if type(raw) ~= "table" then return raw, nil end
-    local node: { [string]: unknown } = {}
-    for key, value in pairs(raw :: { [string]: unknown }) do
-        local next_value, err = M.where(board, value, (depth or 1) + 1)
-        if err then return nil, err end
-        node[key] = next_value
-    end
-    if node.rel or node.children then
-        local visibility = M.tree(board)
-        if visibility then
-            if node.q == "every" then node.where = { ["or"] = { { ["not"] = visibility }, node.where } }
-            elseif node.where then node.where = { ["and"] = { visibility, node.where } }
-            else node.where = visibility end
-        end
-    end
-    return node, nil
-end
 -- Durable visibility versions let a feed retract an item it previously exposed.
 function M.record(tx: sql.Transaction, board: domain.Board, item: domain.Item): error?
     local doc: domain.Document = {}

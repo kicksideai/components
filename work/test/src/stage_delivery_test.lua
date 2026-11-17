@@ -19,8 +19,7 @@ local function setup(opts)
     opts=opts or {}
     local h=fixture.board({bare=true})
     local ref=assert(binding(h,{op="flow",crash=opts.crash}))
-    if not opts.real then assert(binding(h,{op="fault",fault="success"})) end
-    local d={key_prefix=h.prefix,fields={},item_types={{id="task",process="p",fields={}}},processes={{id="p",initial="ready",migration="pin",states={
+    local d={key_prefix=h.prefix,fields={},item_types={{id="task",process="p",fields={}}},processes={{id="p",initial="ready",migration=opts.follow and "follow" or "pin",states={
         {id="ready",category="unstarted"},
         {id="build",category="started",kind="automated",run={stage="Build",flow_ref=ref,on_pass="passed",on_fail="failed",on_cancel="canceled",retry=opts.retry and {max=2,backoff=opts.backoff or "PT0.1S"} or nil}},
         {id="done",category="completed"},{id="failed",category="canceled"},{id="canceled",category="canceled"}},transitions={
@@ -40,7 +39,7 @@ local function setup(opts)
         d.processes[1].states[2].run.retry = { max = 2, backoff = opts.backoff }
     end
     assert(h.call("apply_schema",{declaration=d}))
-    if opts.manual then assert(binding(h,{op="pause_launcher"})) end
+    if not opts.real or opts.manual then assert(binding(h,{op="pause_launcher"})) end
     assert(actor(h,{op="probe",mode=opts.real and "real" or "success"}))
     if opts.unstarted then return h,nil,ref,d end
     local item=steps.create(h,"task",opts.ineligible_failure and { points = 0 } or nil)
@@ -62,7 +61,7 @@ local function envelope(e,ref,status)
 end
 local function launch(h,e,generation)
     local launcher=assert(binding(h,{op="launcher_id"}))
-    return actor(h,{op="launch",request={config={board_id=h.id},input=e,sink_op="upsert",origin=launcher,
+    return actor(h,{op="deliver",request={config={board_id=h.id},input=e,sink_op="upsert",origin=launcher,
         automation_ref={kind="automation",id=launcher,revision=generation or 1},identity_key="delivery",idempotency_key="delivery/"..(generation or 1)}})
 end
 local function reports(h,item)
@@ -110,6 +109,42 @@ local function define()
             assert(first, steps.detail(err))
             test.is_false(first.success, "acknowledging a pending stage as " .. tostring(first.result) .. " discards its delivery")
             test.is_true(first.error.retriable)
+        end)
+        test.it("rejects stage launch outside the owned Automation execution frame", function()
+            local h, entry = setup()
+            local launcher = assert(binding(h, { op = "launcher_id" }))
+            local out = assert(actor(h, { op = "launch", request = { config = { board_id = h.id },
+                input = entry, sink_op = "upsert", origin = launcher,
+                automation_ref = { kind = "automation", id = launcher, revision = 1 } } }))
+            test.is_false(out.success)
+            test.eq(out.error.code, "stage_launcher_mismatch")
+            test.eq(assert(actor(h, { op = "observed" })).calls, 0)
+        end)
+        test.it("uses the recorded attempt's Flow reference and state for launch", function()
+            local h, entry, ref = setup()
+            local state = entry.state
+            entry.state = "ready"
+            entry.flow_ref = { kind = "flow", id = ref.id, version = ref.version + 1 }
+            test.is_true(assert(launch(h, entry)).success)
+            local write = json.decode(assert(actor(h, { op = "observed" })).request)
+            test.eq(write.config.flow_ref.id, ref.id)
+            test.eq(write.config.flow_ref.version, ref.version)
+            test.eq(write.input.state, state)
+        end)
+        test.it("preserves the entered Flow when the item follows a new process generation", function()
+            local h, entry, frozen = setup({ follow = true })
+            local declaration = assert(h.call("get_schema", {})).declaration
+            local replacement = assert(binding(h, { op = "flow" }))
+            declaration.processes[1].states[2].run.flow_ref = replacement
+            local updated = assert(h.call("apply_schema", { declaration = { processes = declaration.processes } }))
+            steps.wait_for("following process generation", function()
+                return steps.get(h, entry.item).item.process_generation == updated.generation
+            end)
+            test.is_true(assert(launch(h, entry)).success)
+            local write = json.decode(assert(actor(h, { op = "observed" })).request)
+            test.eq(write.config.flow_ref.id, frozen.id)
+            test.eq(write.config.flow_ref.version, frozen.version)
+            test.eq(write.input.state, entry.state)
         end)
         test.it("keeps capacity and uncertain admission retryable while board reports can commit",function()
             for _,mode in ipairs({"capacity","uncertain"}) do
@@ -415,9 +450,9 @@ local function define()
             local launcher=assert(binding(h,{op="launcher"}))
             local req={config={board_id=h.id},input=e,sink_op="upsert",origin=launcher.id,
                 automation_ref={kind="automation",id=launcher.id,revision=1},identity_key="replay",idempotency_key="generation/1"}
-            local one=assert(actor(h,{op="launch",request=req}));test.is_true(one.success)
+            local one=assert(actor(h,{op="deliver",request=req}));test.is_true(one.success)
             req.idempotency_key="generation/2"
-            local two=assert(actor(h,{op="launch",request=req}));test.is_true(two.success)
+            local two=assert(actor(h,{op="deliver",request=req}));test.is_true(two.success)
             if two.dest_ref then test.eq(one.dest_ref.run_id,two.dest_ref.run_id) else test.eq(two.result,"noop") end
             steps.wait_for("real run completion",function() return reports(h,e.item)==1 end)
             test.eq(rows.scalar("SELECT COUNT(*) AS n FROM workflow_runs WHERE workflow_id=$1",{ref.id}),1)

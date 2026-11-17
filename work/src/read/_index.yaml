@@ -84,6 +84,12 @@ entries:
     budget: kickside.work.read:budget
     locate: kickside.work.command:locate
     pack_catalog: kickside.work.domain:pack_catalog
+- name: feed_cursor
+  kind: library.lua
+  source: file://feed_cursor.lua
+  imports:
+    codec: kickside.work.read:cursor_codec
+    types: kickside.work.read:types
 - name: feeds
   kind: library.lua
   meta:
@@ -93,6 +99,7 @@ entries:
   - hash
   - security
   imports:
+    feed_cursor: kickside.work.read:feed_cursor
     peers: kickside.work.read:peers
     query: kickside.work.read:query
     values: kickside.work.domain:values

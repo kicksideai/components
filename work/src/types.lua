@@ -73,7 +73,7 @@ type Reader = { awaiting: ((string) -> (Condition?, error?))?, search: { string 
 type Where = { [string]: unknown }
 type Sort = { field: string, ctx: { [string]: string }?, dir: string? }
 type Cursor = { id: string, phase: string?, position: string?, v: ColumnValue?, keys: { { v: ColumnValue? } }? }
-type ItemQuery = { scan: integer?, groups: { string }?, sorts: { Sort }?, where: Where?, after: Cursor?, count: integer? }
+type ItemQuery = { scan: integer?, groups: { string }?, sorts: { Sort }?, where: Where?, after: Cursor?, count: integer?, peer_visibility: VisibilityCondition? }
 -- ColumnTarget is the generated column a filter or sort names: the value shape normalizes
 -- request values, coerce maps a request shorthand onto the canonical form first, and
 -- field_id names the field in the change table.
@@ -82,15 +82,19 @@ type ColumnTarget = { principal: boolean?, memberships: Memberships?, column: st
 type Resolver = (string, { [string]: string }?) -> (ColumnTarget?, error?)
 -- Condition is compiled SQL and its arguments in placeholder order, over alias i (generated row) and r (item row).
 type Condition = { sql: string, args: { unknown }, residual: boolean?, item_row: boolean? }
+type VisibilityCondition = (string) -> (Condition?, error?)
+type FilterOptions = { alias: string?, peer_visibility: VisibilityCondition? }
 -- FilterEnvironment is what a filter tree compiles against; FilterCompilation adds the
 -- leaves and values the tree may still use and the row it stands on.
-type FilterEnvironment = { reader: Reader, item_table: string, set_table: string, dialect: string, relations: { [string]: Relation }, resolve: Resolver }
+type FilterEnvironment = { reader: Reader, item_table: string, set_table: string, dialect: string, relations: { [string]: Relation }, resolve: Resolver,
+    alias: string?, peer_visibility: VisibilityCondition? }
 type FilterCompilation = {
     reader: Reader, item_table: string, set_table: string, dialect: string, position: string, relations: { [string]: Relation }, resolve: Resolver,
-    leaves: integer, values: integer, alias: string, hop: integer,
+    leaves: integer, values: integer, alias: string, hop: integer, peer_visibility: VisibilityCondition?,
 }
 -- RelationScope is what the tree hands a relation condition; nested compiles a node with the target row as its alias.
-type RelationScope = { reader: Reader, alias: string, hop: integer, item_table: string, relations: { [string]: Relation }, nested: (unknown, string) -> (Condition?, error?) }
+type RelationScope = { reader: Reader, alias: string, hop: integer, item_table: string, relations: { [string]: Relation },
+    peer_visibility: VisibilityCondition?, nested: (unknown, string) -> (Condition?, error?) }
 -- HistoryAsked is a history condition as parsed: the field and what is asked of it.
 type HistoryAsked = { target: ColumnTarget, by: string?, from: string?, to: string?, held: string?, before: string?, after: string? }
 
@@ -241,7 +245,8 @@ type Cell = { p: Value?, c: integer? }
 type Document = { [string]: Cell }
 type AutoBudget = { steps: integer, chain: { string } }
 type StateData = { stage_visit: integer?, visit: integer?, entered_at: string?, entered_by: string?, pending_entry: boolean?, rejected: boolean?, attempt: integer?, waiting: boolean?,
-    approvals: { [string]: string }?, wait_done: boolean?, timer_due: { [string]: string }? }
+    approvals: { [string]: string }?, wait_done: boolean?, timer_due: { [string]: string }?,
+    stage_delivery: { state: string, flow_ref: FlowRef }? }
 type ProcessData = StateData & { stage_visits: { [string]: integer }?, region_data: { [string]: StateData }?, regions: { [string]: string }? }
 type Item = {
     move_id: string?,
@@ -325,7 +330,7 @@ return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, Operation
     Scalar = Scalar, Record = Record, MemberSpec = MemberSpec, ColumnValue = ColumnValue, LayoutColumn = LayoutColumn, SystemColumn = SystemColumn,
     GeneratedNames = GeneratedNames, GeneratedTable = GeneratedTable, IndexRow = IndexRow, Reader = Reader, Where = Where, Sort = Sort, Cursor = Cursor,
     ItemQuery = ItemQuery, ColumnTarget = ColumnTarget, Resolver = Resolver, Condition = Condition, FilterEnvironment = FilterEnvironment,
-    FilterCompilation = FilterCompilation, RelationScope = RelationScope, HistoryAsked = HistoryAsked, ScopeFilter = ScopeFilter, Scope = Scope,
+    FilterCompilation = FilterCompilation, FilterOptions = FilterOptions, VisibilityCondition = VisibilityCondition, RelationScope = RelationScope, HistoryAsked = HistoryAsked, ScopeFilter = ScopeFilter, Scope = Scope,
     ScopeQuery = ScopeQuery, AdmittedScope = AdmittedScope, PluginSchemaSource = PluginSchemaSource, PluginSchema = PluginSchema, ResolveContext = ResolveContext,
     PluginError = PluginError, PluginProblem = PluginProblem, PluginLifecycle = PluginLifecycle, PluginView = PluginView, PluginProjection = PluginProjection, PluginProjectionState = PluginProjectionState, Plugin = Plugin, ProviderResult = ProviderResult, Provider = Provider, FieldType = FieldType,
     Holder = Holder, FieldAccess = FieldAccess, Visibility = Visibility, AccessCaller = AccessCaller,

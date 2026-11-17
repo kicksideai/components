@@ -101,7 +101,7 @@ entries:
     timeout: 600s
   source: file://../visibility_test.lua
   method: run
-  modules: [registry, sql]
+  modules: [registry, sql, json]
   imports:
     test: wippy.test:test
     scoped: app:scoped

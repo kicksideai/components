@@ -270,7 +270,7 @@ function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.
             c.leaves = c.leaves - 1
             local alias, hop = c.alias, c.hop
             local out, err = filter_relation.compile({ reader = c.reader, alias = alias, hop = hop, item_table = c.item_table,
-                relations = c.relations, nested = function(where: unknown, target: string): (types.Condition?, error?)
+                relations = c.relations, peer_visibility = c.peer_visibility, nested = function(where: unknown, target: string): (types.Condition?, error?)
                     c.alias, c.hop = target, hop + 1
                     local inner, ierr = node(c, where, depth + 1)
                     c.alias, c.hop = alias, hop
@@ -301,12 +301,12 @@ function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.
     return { sql = "(" .. table.concat(parts, connective == "and" and " AND " or " OR ") .. ")", args = args, residual = residual }, nil
 end
 
--- compile turns a tree into a fragment over alias i.
+-- compile turns a tree into a fragment over the supplied row alias, defaulting to i.
 function M.compile(where: unknown, env: types.FilterEnvironment): (types.Condition?, error?)
     local position = env.dialect == "postgres" and "strpos" or "instr"
     return node({ reader = env.reader, item_table = env.item_table, set_table = env.set_table, dialect = env.dialect, position = position,
         relations = env.relations, resolve = env.resolve, leaves = M.LIMITS.leaves, values = M.LIMITS.values,
-        alias = "i", hop = 0 }, where, 1)
+        alias = env.alias or "i", hop = 0, peer_visibility = env.peer_visibility }, where, 1)
 end
 
 return M

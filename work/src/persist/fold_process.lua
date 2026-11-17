@@ -94,6 +94,7 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
     local work = item.work :: types.ProcessData
     if event.type == consts.EVENTS.STAGE_ENTERED then
         work.attempt, work.waiting = body.attempt, nil
+        work.stage_delivery = body.flow_ref and { state = body.state :: string, flow_ref = body.flow_ref } or nil
         local p, perr = store.process(tx, board, item)
         if perr or not p then return perr end
         local state = process.state_of(p, item.state) :: types.State

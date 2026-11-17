@@ -69,10 +69,12 @@ entries:
   kind: function.lua
   source: file://stage_launch.lua
   method: write
-  modules: [hash]
+  modules: [hash, security]
   imports:
     values: kickside.work.domain:values
     identifiers: kickside.work.domain:identifiers
+    identity: kickside.execution:execution_identity
+    automations: kickside.automation:automation
     writable_sink: kickside.data:writable_sink
     workflow_sink: kickside.work.sink:stage_workflow
     completion: kickside.work.service:stage_completion

@@ -35,6 +35,7 @@ function M.options(request: types.SchemaGetRequest): (types.PluginOptions?, erro
     local _, err = component.validate_access(request.board_id, component.ACCESS.ADMIN)
     if err then return nil, err end
     return budget.run(request, function(context: types.ReadContext): (types.PluginOptions?, error?)
+        context.admitted[request.board_id] = true
         local result, err = access.with_snapshot(request.board_id, nil, function(tx: types.Executor, board: domain.Board, _dialect: string): (types.PluginOptions?, error?)
             local desired, derr = rows.list(tx, board.board_id)
             if derr then return nil, derr end

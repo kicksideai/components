@@ -165,7 +165,7 @@ function M.bounds(raw: unknown, hops: integer?, depth: integer?): error?
 end
 
 function M.compile(compiled: types.Compiled, board_id: string, actor: string?, where: unknown, dialect: string,
-    resolver: types.Resolver?): (types.Condition?, error?)
+    resolver: types.Resolver?, options: types.FilterOptions?): (types.Condition?, error?)
     local berr = M.bounds(where)
     if berr then return nil, berr end
     local relations: { [string]: types.Relation } = {}
@@ -173,7 +173,8 @@ function M.compile(compiled: types.Compiled, board_id: string, actor: string?, w
     local t = tables.of(board_id, tables.layout(compiled), relations)
     return filter.compile(where, { reader = { board_id = board_id, actor = actor, search = compiled.scopes, plugins = compiled.plugins, allows = function(level: string): boolean return level == "read" end },
         item_table = t.names.item, set_table = t.names.set, dialect = dialect,
-        relations = t.relations, resolve = resolver or M.targets(compiled) })
+        relations = t.relations, resolve = resolver or M.targets(compiled),
+        alias = options and options.alias, peer_visibility = options and options.peer_visibility })
 end
 
 function M.validate(compiled: types.Compiled): error?

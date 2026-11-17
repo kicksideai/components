@@ -3,6 +3,7 @@ local funcs = require("funcs")
 local component = require("component")
 local identifiers = require("identifiers")
 local probe = require("probe")
+local security = require("security")
 local M = {}
 function M.run(a)
     if a.op == "retire_stage" then
@@ -24,6 +25,14 @@ function M.run(a)
     end
     if a.op == "launch" then
         return funcs.call("kickside.work.sink:stage_launch", a.request)
+    end
+    if a.op == "deliver" then
+        local launcher = assert(identifiers.uuid("kickside.work.launcher.v1\0" .. a.board_id))
+        local actor = assert(security.actor())
+        local meta = actor:meta()
+        meta.execution_identity = assert(component.get_private_context(launcher))._execution_identity
+        local execution = assert(security.new_actor(actor:id(), meta))
+        return assert(funcs.new():with_actor(execution)):call("kickside.work.sink:stage_launch", a.request)
     end
     if a.op == "teardown" then
         local client=assert(assert(require("contract").get("kickside.work:board")):open())
