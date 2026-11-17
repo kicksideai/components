@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/kicksideai/components/compare/pim-v0.1.1...pim-v0.1.2) (2026-11-17)
+
+
+### Bug Fixes
+
+* **pim:** initialize catalogs with an empty schema ([#118](https://github.com/kicksideai/components/issues/118)) ([ba56a57](https://github.com/kicksideai/components/commit/ba56a57cf34a6808c6b06c03f6656cef930acfc0))
+
 ## [0.1.1](https://github.com/kicksideai/components/compare/pim-v0.1.0...pim-v0.1.1) (2026-11-17)
 
 
