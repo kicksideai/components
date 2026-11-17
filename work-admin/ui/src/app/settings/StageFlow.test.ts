@@ -20,6 +20,9 @@ async function render(bound = false) {
 }
 it('uses the published Flow widget and requires an explicit version before replacing the binding', async () => {
   const { w, state } = await render(true)
+  expect(w.text()).not.toContain('flow-a')
+  expect(w.get('wc-workflow-picker').attributes('title')).toBe('flow-a')
+  expect(JSON.parse(w.get('wc-workflow-picker').attributes('config')!)).toEqual({ flow_ref: state.run!.flow_ref })
   await w.get('wc-workflow-picker').trigger('change', { detail: { flow_ref: { kind: 'flow', id: 'flow-b', version: 3 } } }); await flushPromises()
   expect(state.run!.flow_ref).toEqual({ kind: 'flow', id: 'flow-a', version: 1 })
   expect(w.emitted('validity')).toContainEqual(['flow', false])

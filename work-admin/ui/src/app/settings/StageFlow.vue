@@ -47,10 +47,9 @@ onBeforeUnmount(() => { sequence++; emit('validity', true) })
 <template>
   <section class="work-stack work-tight" aria-label="Stage Flow">
     <h4 class="work-field-label">What runs</h4>
-    <p v-if="modelValue" class="work-small">Bound Flow: {{ modelValue.id }} · v{{ modelValue.version }}</p>
-    <p v-else class="work-muted work-small">No Flow bound. This stage keeps its existing external execution contract.</p>
+    <p v-if="!modelValue" class="work-muted work-small">No Flow bound. This stage keeps its existing external execution contract.</p>
     <p v-if="error" class="kx-err" role="alert">{{ choosing ? 'Flow versions unavailable' : 'Flow binding unavailable' }}: {{ selectedId }}<template v-if="!choosing && modelValue"> · v{{ modelValue.version }}</template>. {{ error }}<Button label="Reload Flow" severity="secondary" text @click="load" /></p>
-    <wc-workflow-picker v-if="ready" :schema="schema" :config="config" @change="pick" />
+    <wc-workflow-picker v-if="ready" :schema="schema" :config="config" :title="modelValue?.id" @change="pick" />
     <p v-else class="kx-err" role="alert">Published Flow picker unavailable.<Button label="Reload Flow picker" text severity="secondary" @click="loadWidget" /></p>
     <label v-if="selectedId" class="work-stack work-tight">Published version<Select
       :model-value="choosing ? undefined : modelValue?.version" :options="versions.map(row => ({ label: 'v' + row.version, value: row.version }))"
