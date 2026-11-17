@@ -17,7 +17,7 @@ return { get = function(): any return assert(json.decode([=[
           "accepted"
         ],
         "model": "class:docscout-verification-identity",
-        "prompt_tokens": 376,
+        "prompt_tokens": 504,
         "sources": [
           1
         ],
@@ -29,7 +29,7 @@ return { get = function(): any return assert(json.decode([=[
           "rejected"
         ],
         "model": "class:docscout-verification-identity",
-        "prompt_tokens": 376,
+        "prompt_tokens": 504,
         "sources": [
           1
         ],
@@ -41,7 +41,7 @@ return { get = function(): any return assert(json.decode([=[
           "missing_reply"
         ],
         "model": "class:docscout-verification-identity",
-        "prompt_tokens": 380,
+        "prompt_tokens": 508,
         "sources": [
           1
         ],
@@ -187,54 +187,112 @@ return { get = function(): any return assert(json.decode([=[
           "additionalProperties": false,
           "properties": {
             "accepted": {
-              "additionalProperties": false,
-              "properties": {
-                "confidence": {
-                  "maximum": 1,
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "evidence": {
-                  "items": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "chunk": {
-                        "enum": [
-                          1
-                        ],
-                        "type": "integer"
-                      },
-                      "quote": {
-                        "type": "string"
-                      }
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
-                    "required": [
-                      "chunk",
-                      "quote"
-                    ],
-                    "type": "object"
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        false
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
                   },
-                  "maxItems": 5,
-                  "type": "array"
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 },
-                "found": {
-                  "type": "boolean"
-                },
-                "value": {
-                  "description": "Total amount",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 }
-              },
-              "required": [
-                "found",
-                "value",
-                "confidence",
-                "evidence"
-              ],
-              "type": "object"
+              ]
             }
           },
           "required": [
@@ -278,54 +336,112 @@ return { get = function(): any return assert(json.decode([=[
           "additionalProperties": false,
           "properties": {
             "rejected": {
-              "additionalProperties": false,
-              "properties": {
-                "confidence": {
-                  "maximum": 1,
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "evidence": {
-                  "items": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "chunk": {
-                        "enum": [
-                          1
-                        ],
-                        "type": "integer"
-                      },
-                      "quote": {
-                        "type": "string"
-                      }
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
-                    "required": [
-                      "chunk",
-                      "quote"
-                    ],
-                    "type": "object"
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        false
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
                   },
-                  "maxItems": 5,
-                  "type": "array"
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 },
-                "found": {
-                  "type": "boolean"
-                },
-                "value": {
-                  "description": "Total amount",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 }
-              },
-              "required": [
-                "found",
-                "value",
-                "confidence",
-                "evidence"
-              ],
-              "type": "object"
+              ]
             }
           },
           "required": [
@@ -369,54 +485,112 @@ return { get = function(): any return assert(json.decode([=[
           "additionalProperties": false,
           "properties": {
             "missing_reply": {
-              "additionalProperties": false,
-              "properties": {
-                "confidence": {
-                  "maximum": 1,
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "evidence": {
-                  "items": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "chunk": {
-                        "enum": [
-                          1
-                        ],
-                        "type": "integer"
-                      },
-                      "quote": {
-                        "type": "string"
-                      }
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
-                    "required": [
-                      "chunk",
-                      "quote"
-                    ],
-                    "type": "object"
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        false
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
                   },
-                  "maxItems": 5,
-                  "type": "array"
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 },
-                "found": {
-                  "type": "boolean"
-                },
-                "value": {
-                  "description": "Total amount",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 }
-              },
-              "required": [
-                "found",
-                "value",
-                "confidence",
-                "evidence"
-              ],
-              "type": "object"
+              ]
             }
           },
           "required": [
@@ -460,54 +634,112 @@ return { get = function(): any return assert(json.decode([=[
           "additionalProperties": false,
           "properties": {
             "provider_failure": {
-              "additionalProperties": false,
-              "properties": {
-                "confidence": {
-                  "maximum": 1,
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "evidence": {
-                  "items": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "chunk": {
-                        "enum": [
-                          1
-                        ],
-                        "type": "integer"
-                      },
-                      "quote": {
-                        "type": "string"
-                      }
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
-                    "required": [
-                      "chunk",
-                      "quote"
-                    ],
-                    "type": "object"
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        false
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
                   },
-                  "maxItems": 5,
-                  "type": "array"
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 },
-                "found": {
-                  "type": "boolean"
-                },
-                "value": {
-                  "description": "Total amount",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 }
-              },
-              "required": [
-                "found",
-                "value",
-                "confidence",
-                "evidence"
-              ],
-              "type": "object"
+              ]
             }
           },
           "required": [
@@ -607,7 +839,7 @@ return { get = function(): any return assert(json.decode([=[
         "status": "completed"
       },
       {
-        "input_tokens": 1132,
+        "input_tokens": 1516,
         "kind": "extract",
         "message": "4 calls \u00b7 4 values",
         "output_tokens": 77,
@@ -707,7 +939,7 @@ return { get = function(): any return assert(json.decode([=[
         }
       },
       "status": "partial",
-      "tokens": 1585
+      "tokens": 1969
     },
     "summary": {
       "failed": 1,
@@ -720,7 +952,7 @@ return { get = function(): any return assert(json.decode([=[
       },
       "verified": 2
     },
-    "tokens": 1585,
+    "tokens": 1969,
     "values": {
       "accepted": 1250,
       "rejected": 1250
@@ -740,7 +972,7 @@ return { get = function(): any return assert(json.decode([=[
           "accepted"
         ],
         "model": "class:docscout-verification-identity",
-        "prompt_tokens": 376,
+        "prompt_tokens": 504,
         "sources": [
           1
         ],
@@ -752,7 +984,7 @@ return { get = function(): any return assert(json.decode([=[
           "rejected"
         ],
         "model": "class:docscout-verification-identity",
-        "prompt_tokens": 376,
+        "prompt_tokens": 504,
         "sources": [
           1
         ],
@@ -764,7 +996,7 @@ return { get = function(): any return assert(json.decode([=[
           "missing_reply"
         ],
         "model": "class:docscout-verification-identity",
-        "prompt_tokens": 380,
+        "prompt_tokens": 508,
         "sources": [
           1
         ],
@@ -888,54 +1120,112 @@ return { get = function(): any return assert(json.decode([=[
           "additionalProperties": false,
           "properties": {
             "accepted": {
-              "additionalProperties": false,
-              "properties": {
-                "confidence": {
-                  "maximum": 1,
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "evidence": {
-                  "items": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "chunk": {
-                        "enum": [
-                          1
-                        ],
-                        "type": "integer"
-                      },
-                      "quote": {
-                        "type": "string"
-                      }
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
-                    "required": [
-                      "chunk",
-                      "quote"
-                    ],
-                    "type": "object"
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        false
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
                   },
-                  "maxItems": 5,
-                  "type": "array"
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 },
-                "found": {
-                  "type": "boolean"
-                },
-                "value": {
-                  "description": "Total amount",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 }
-              },
-              "required": [
-                "found",
-                "value",
-                "confidence",
-                "evidence"
-              ],
-              "type": "object"
+              ]
             }
           },
           "required": [
@@ -979,54 +1269,112 @@ return { get = function(): any return assert(json.decode([=[
           "additionalProperties": false,
           "properties": {
             "rejected": {
-              "additionalProperties": false,
-              "properties": {
-                "confidence": {
-                  "maximum": 1,
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "evidence": {
-                  "items": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "chunk": {
-                        "enum": [
-                          1
-                        ],
-                        "type": "integer"
-                      },
-                      "quote": {
-                        "type": "string"
-                      }
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
-                    "required": [
-                      "chunk",
-                      "quote"
-                    ],
-                    "type": "object"
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        false
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
                   },
-                  "maxItems": 5,
-                  "type": "array"
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 },
-                "found": {
-                  "type": "boolean"
-                },
-                "value": {
-                  "description": "Total amount",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 }
-              },
-              "required": [
-                "found",
-                "value",
-                "confidence",
-                "evidence"
-              ],
-              "type": "object"
+              ]
             }
           },
           "required": [
@@ -1070,54 +1418,112 @@ return { get = function(): any return assert(json.decode([=[
           "additionalProperties": false,
           "properties": {
             "missing_reply": {
-              "additionalProperties": false,
-              "properties": {
-                "confidence": {
-                  "maximum": 1,
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "evidence": {
-                  "items": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "chunk": {
-                        "enum": [
-                          1
-                        ],
-                        "type": "integer"
-                      },
-                      "quote": {
-                        "type": "string"
-                      }
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
-                    "required": [
-                      "chunk",
-                      "quote"
-                    ],
-                    "type": "object"
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        false
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
                   },
-                  "maxItems": 5,
-                  "type": "array"
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 },
-                "found": {
-                  "type": "boolean"
-                },
-                "value": {
-                  "description": "Total amount",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 }
-              },
-              "required": [
-                "found",
-                "value",
-                "confidence",
-                "evidence"
-              ],
-              "type": "object"
+              ]
             }
           },
           "required": [
@@ -1161,54 +1567,112 @@ return { get = function(): any return assert(json.decode([=[
           "additionalProperties": false,
           "properties": {
             "provider_failure": {
-              "additionalProperties": false,
-              "properties": {
-                "confidence": {
-                  "maximum": 1,
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "evidence": {
-                  "items": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "chunk": {
-                        "enum": [
-                          1
-                        ],
-                        "type": "integer"
-                      },
-                      "quote": {
-                        "type": "string"
-                      }
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
-                    "required": [
-                      "chunk",
-                      "quote"
-                    ],
-                    "type": "object"
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        false
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
                   },
-                  "maxItems": 5,
-                  "type": "array"
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 },
-                "found": {
-                  "type": "boolean"
-                },
-                "value": {
-                  "description": "Total amount",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "confidence": {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "evidence": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "chunk": {
+                            "enum": [
+                              1
+                            ],
+                            "type": "integer"
+                          },
+                          "quote": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chunk",
+                          "quote"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 5,
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "found": {
+                      "enum": [
+                        true
+                      ],
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "Total amount",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "found",
+                    "value",
+                    "confidence",
+                    "evidence"
+                  ],
+                  "type": "object"
                 }
-              },
-              "required": [
-                "found",
-                "value",
-                "confidence",
-                "evidence"
-              ],
-              "type": "object"
+              ]
             }
           },
           "required": [
@@ -1235,7 +1699,7 @@ return { get = function(): any return assert(json.decode([=[
         "status": "completed"
       },
       {
-        "input_tokens": 1132,
+        "input_tokens": 1516,
         "kind": "extract",
         "message": "4 calls \u00b7 4 values",
         "output_tokens": 77,
@@ -1319,7 +1783,7 @@ return { get = function(): any return assert(json.decode([=[
         }
       },
       "status": "partial",
-      "tokens": 1271
+      "tokens": 1655
     },
     "summary": {
       "failed": 1,
@@ -1332,7 +1796,7 @@ return { get = function(): any return assert(json.decode([=[
       },
       "verified": 0
     },
-    "tokens": 1271,
+    "tokens": 1655,
     "values": {
       "accepted": 1250,
       "rejected": 1250

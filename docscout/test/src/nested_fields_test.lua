@@ -172,7 +172,7 @@ return { run = test.run_cases(function()
             f.properties[2].enum_values = { "open", "closed" }
             f.properties[3].item = { type = "date", description = "", enum_values = assert(json.decode("[]")), expected_format = "YYYY-MM-DD" }
             local schema = shapes.group_schema({ f }, { { ordinal = 7 } })
-            local value = schema.properties.parties.properties.borrower.properties.terms.properties.value
+            local value = schema.properties.parties.properties.borrower.properties.terms.anyOf[2].properties.value
             test.is_false(value.additionalProperties)
             test.eq(value.properties.amount.type, "number"); test.eq(value.properties.dates.items.type, "string")
             test.eq(value.properties.status.enum[2], "closed"); test.eq(#value.required, 3)

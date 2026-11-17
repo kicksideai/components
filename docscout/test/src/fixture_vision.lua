@@ -56,6 +56,9 @@ end
 -- Walks the reply schema; leaf objects with found/evidence are extraction
 -- items, those with quote_on_page are support checks.
 local function answer(schema: types.Schema, path: string, texts: { [integer]: string }, prose: string): types.Json
+    for _, reply in ipairs(schema.anyOf or {}) do
+        if reply.properties and reply.properties.found and reply.properties.found.enum[1] == true then schema = reply end
+    end
     local props = schema.properties or {}
     if props.found and props.evidence then
         local name = path:match("([^.]+)$")
