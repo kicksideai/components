@@ -12,6 +12,7 @@ local function define()
             local h = scoped.board(admin)
             assert(h.call("grant", { subject_id = member.id, mask = 1 }))
             local before = tonumber(assert(member.call("get_meta", {}, h.id)).meta.last_event_seq) or 0
+            local cursor = assert(member.call("list_changes", {}, h.id)).next
             local response = admin.http("POST", "/" .. h.id .. "/apply", { ops = { { op = "create", type = "task", values = { title = "Realtime" } } } })
             test.eq(response.status, 200)
             steps.wait_for("member public snapshot", function(): boolean
@@ -35,7 +36,7 @@ local function define()
                 if data.meta and tonumber(data.meta.last_event_seq) == tonumber(meta.last_event_seq) then seen = true end
             end
             test.is_true(seen)
-            local feed = assert(member.call("list_changes", { cursor = { seq = before, item_id = "" } }, h.id))
+            local feed = assert(member.call("list_changes", { cursor = cursor }, h.id))
             test.eq(#feed.items, 1)
             local result, err = member.call("set_runtime_meta", { item_count = 999 }, h.id)
             test.is_nil(result)

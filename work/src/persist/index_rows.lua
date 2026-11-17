@@ -34,6 +34,10 @@ local function write_batch(tx: sql.Transaction, board: types.Board, ids: { strin
     end
     local t = tables.of(board.board_id, l)
     err = bulk.delete_in(tx, t.names.item, nil, {}, "item_id", gone)
+    if not err then
+        -- Retire usage immediately. Other set values remain on the retention path.
+        err = bulk.delete_in(tx, t.names.set, "col LIKE 'region!_%' ESCAPE '!'", {}, "item_id", gone)
+    end
     if not err then err = generated.write_rows(tx, t, rows) end
     return err
 end

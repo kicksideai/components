@@ -122,7 +122,7 @@ local function wip(ctx: types.PrepareContext, before: types.PrepareContext, plan
             previous = previous + (prior and prior.life == "live" and process.holds_state(prior, state) and 1 or 0) - held
         end
         if delta > previous then
-            local count, err = store.state_count(ctx.db, ctx.board.board_id, state, ctx.dialect)
+            local count, err = store.state_count(ctx.db, ctx.board.board_id, state, rule.limit - delta + 1)
             if err then return M.failed(err) end
             if rule.hard then plan.head = ctx.board.applied_seq end
             if count + delta > rule.limit then

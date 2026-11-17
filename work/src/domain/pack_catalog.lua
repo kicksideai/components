@@ -7,12 +7,18 @@ local shape = require("shape")
 local types = require("types")
 local manifests = require("manifests")
 local domain = require("domain")
+local declaration = require("declaration")
+local requests = require("requests")
 local M = {}
 local STRING: domain.JsonObject = { type = "string", minLength = 1 }
 local function array(item: domain.JsonObject): domain.JsonObject return { type = "array", items = item } end
 local function object(properties: domain.JsonObject, required: { string }): domain.JsonObject
     return { type = "object", properties = properties, required = required, additionalProperties = false }
 end
+local STATE = { type = "object", properties = { id = STRING, name = { type = "string" }, category = STRING }, required = { "id", "category" } }
+local PROCESSES = shape.tolerant(array({ type = "object", properties = {
+    id = STRING, initial = STRING, states = { type = "array", minItems = 1, items = STATE },
+}, required = { "id", "initial", "states" } }))
 local DATA = shape.tolerant(object({ schema = { type = "object" }, processes = array({ type = "object" }),
     views = array(object({ id = STRING, title = STRING, view = { type = "object" } }, { "id", "title", "view" })),
     automations = array(object({ id = STRING, type = STRING, input = { type = "object" } }, { "id", "type", "input" })),
@@ -26,6 +32,23 @@ local function data_digest(data: unknown): (string?, error?)
     if err then return nil, err end
     return tostring(digest), nil
 end
+
+local function processes_of(data: types.Data): { domain.ProcessDecl }?
+    return data.processes or data.schema.processes
+end
+
+function M.declaration(data: types.Data): domain.Declaration
+    local out = declaration.copy(data.schema)
+    out.processes = declaration.copy(processes_of(data))
+    out.policy = out.policy or {}
+    out.scopes = out.scopes or {}
+    out.plugins = out.plugins or {}
+    local listed: { [string]: boolean } = {}
+    for _, plugin in ipairs(out.plugins) do listed[plugin.use] = true end
+    for _, id in ipairs(data.requires) do if not listed[id] then out.plugins[#out.plugins + 1] = { use = id } end end
+    return out :: domain.Declaration
+end
+
 local function decode(entry: registry.Entry): (types.Pack?, error?)
     local meta = registry_values.canonical(entry.meta or {})
     if entry.kind ~= "registry.entry" or meta.type ~= "kickside.work.pack" then return nil, invalid("entry must declare kickside.work.pack") end
@@ -36,6 +59,28 @@ local function decode(entry: registry.Entry): (types.Pack?, error?)
     local err = shape.check(DATA, data, "pack data")
     if err then return nil, invalid(err:message()) end
     local data = data :: types.Data
+    local effective = declaration.copy(data.schema)
+    effective.processes = processes_of(data)
+    local schema_err = declaration.check_shape(effective)
+    if schema_err then
+        if schema_err:kind() ~= errors.INVALID then return nil, schema_err end
+        return nil, invalid(schema_err:message())
+    end
+    local processes = processes_of(data) or {}
+    local process_err = shape.check(PROCESSES, processes, "pack processes")
+    if process_err then return nil, invalid(process_err:message()) end
+    local process_ids: { [string]: boolean } = {}
+    for _, process in ipairs(processes) do
+        if process_ids[process.id] then return nil, invalid("duplicate pack process id: " .. process.id) end
+        process_ids[process.id] = true
+    end
+    for _, view in ipairs(data.views) do
+        local view_err = requests.parse("create", { board_id = "$board", title = view.title, view = view.view }, "kickside.work:view")
+        if view_err then
+            if view_err:kind() ~= errors.INVALID then return nil, view_err end
+            return nil, invalid("view " .. view.id .. ": " .. view_err:message())
+        end
+    end
     for _, section in ipairs({ data.views :: { { id: string } }, data.automations :: { { id: string } } }) do
         local seen: { [string]: boolean } = {}
         for _, item in ipairs(section) do

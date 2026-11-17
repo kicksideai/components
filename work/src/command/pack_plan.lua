@@ -2,25 +2,14 @@
 local resources = require("resources")
 local catalog = require("catalog")
 local merge = require("merge")
-local declaration = require("declaration")
 local schema_commands = require("schema_commands")
 local guard = require("guard")
 local store = require("store")
 local types = require("types")
 local domain = require("domain")
 local commands = require("commands")
+local views = require("views")
 local M = {}
-function M.declaration(data: types.Data): domain.Declaration
-    local out = declaration.copy(data.schema)
-    if data.processes then out.processes = declaration.copy(data.processes) end
-    out.policy = out.policy or {}
-    out.scopes = out.scopes or {}
-    out.plugins = out.plugins or {}
-    local listed: { [string]: boolean } = {}
-    for _, plugin in ipairs(out.plugins) do listed[plugin.use] = true end
-    for _, id in ipairs(data.requires) do if not listed[id] then out.plugins[#out.plugins + 1] = { use = id } end end
-    return out :: domain.Declaration
-end
 function M.plan(request: types.Request): (types.Plan?, error?)
     local aerr = guard.require_access(request.board_id, guard.admin_access())
     if aerr then return nil, aerr end
@@ -39,8 +28,8 @@ function M.plan(request: types.Request): (types.Plan?, error?)
     local admission_err = schema_commands.check_pack_install(db, request.board_id, board)
     if admission_err then db:release(); return nil, admission_err end
     db:release()
-    local incoming = M.declaration(pack.data)
-    local base = board and board.pack_base and M.declaration(board.pack_base :: types.Data) or nil
+    local incoming = catalog.declaration(pack.data)
+    local base = board and board.pack_base and catalog.declaration(board.pack_base :: types.Data) or nil
     local merged, conflicts = merge.schema(base, local_decl, incoming, request.resolutions)
     merged.key_prefix = board and board.key_prefix or (request.declaration and request.declaration.key_prefix) or incoming.key_prefix
         or ("W" .. request.board_id:gsub("-", ""):sub(1, 9):upper())
@@ -62,6 +51,10 @@ function M.plan(request: types.Request): (types.Plan?, error?)
         if err or not classified then return nil, err end
         prepared = classified
         plan = schema_commands.describe(classified)
+        for _, view in ipairs(managed.views) do
+            local view_err = views.validate(request.board_id, view.view, classified.compiled)
+            if view_err then return nil, view_err end
+        end
     end
     for _, change in ipairs(resource_refused or {}) do
         plan.refused[#plan.refused + 1] = change

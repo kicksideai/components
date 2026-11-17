@@ -64,7 +64,9 @@ entries:
     comment: Process compile and its refusals.
   source: file://../process_test.lua
   method: run
+  modules: [json]
   imports:
+    steps: app:steps
     test: wippy.test:test
     fixture: app:fixture
 - name: transition_test
@@ -315,7 +317,9 @@ entries:
     comment: Effective declarations and field usage.
   source: file://../evolve_test.lua
   method: run
+  modules: [json]
   imports:
+    clock: kickside.work.domain:clock
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
@@ -418,6 +422,8 @@ entries:
     fixture: app:fixture
     steps: app:steps
     shape: kickside.work.domain:shape
+    store: kickside.work.persist:store
+    tables: kickside.work.domain:layout
 - name: model_data_test
   kind: function.lua
   meta:

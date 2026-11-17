@@ -15,40 +15,51 @@ local types = require("types")
 local domain = require("domain")
 local reads = require("reads")
 local values = require("values")
+local schema = require("schema")
 local M = {}
 local KIND = "kickside.work.binding:view"
 local function invalid(message: string, code: string?): error
     return errors.new({ kind = errors.INVALID, message = message, details = { code = code or "invalid_view" } })
 end
-local function validate(board_id: string, view: types.View): error?
+local function validate_fields(view: types.View, model: domain.Model, requires: types.ViewRequirements?): error?
+    local resolve = predicates.targets(model.compiled)
+    for _, field in ipairs(view.columns or {}) do
+        if not model.fields[field] then
+            local _, err = resolve(field)
+            if err then return err end
+        end
+    end
+    if requires and requires.group_by then
+        if not view.group_by then return invalid("view type requires group_by") end
+        local field = model.fields[view.group_by]
+        local kind = field and field.type or view.group_by
+        for _, value in ipairs(requires.group_by.kinds or {}) do if value == kind then return nil end end
+        return invalid("view type refuses this group_by kind")
+    end
+    return nil
+end
+
+function M.validate(board_id: string, view: types.View, proposed: domain.Compiled?): error?
     local matches, merr = registry.find({ [".kind"] = "registry.entry", ["meta.type"] = "kickside.work.ui.view", ["meta.id"] = view.type })
     if merr then return merr end
     if not matches or #matches ~= 1 then return invalid("view type is unavailable") end
     local meta = registry_values.canonical(matches[1].meta or {})
+    local requires = meta.requires :: types.ViewRequirements?
     local config_schema = meta.config_schema
     if type(config_schema) ~= "table" then return invalid("view type declares config_schema") end
     local cerr = shape.check(shape.tolerant(config_schema :: domain.JsonObject), view.config or {}, "view config")
     if cerr then return cerr end
-    local _, err = query.explain({ group_by = view.group_by, sub_group_by = view.sub_group_by, board_id = board_id,
-        where = view.where, order = view.order, scopes = view.scopes })
+    local request: reads.QueryRequest = { group_by = view.group_by, sub_group_by = view.sub_group_by, board_id = board_id,
+        where = view.where, order = view.order, scopes = view.scopes }
+    if proposed then
+        local model = schema.model(proposed)
+        return query.validate_definition(request, proposed, model) or validate_fields(view, model, requires)
+    end
+    local _, err = query.explain(request)
     if err then return err end
     local _, verr = access.with_snapshot(board_id, nil, function(_tx: reads.Executor, board: domain.Board, _dialect: string): (reads.ReadStamp?, error?)
-        local resolve = predicates.targets(board.compiled)
-        for _, field in ipairs(view.columns or {}) do
-            if not board.model.fields[field] then
-                local _, err = resolve(field)
-                if err then return nil, err end
-            end
-        end
-        local requires = meta.requires :: { group_by: { kinds: { string } } }?
-        if requires and requires.group_by then
-            if not view.group_by then return nil, invalid("view type requires group_by") end
-            local field = board.model.fields[view.group_by]
-            local kind = field and field.type or view.group_by
-            local allowed = false
-            for _, value in ipairs(requires.group_by.kinds or {}) do if value == kind then allowed = true end end
-            if not allowed then return nil, invalid("view type refuses this group_by kind") end
-        end
+        local field_err = validate_fields(view, board.model, requires)
+        if field_err then return nil, field_err end
         return {}, nil
     end)
     return verr
@@ -125,7 +136,7 @@ end
 local function create(request: types.CreateViewRequest, component_id: string?): (types.ViewResult?, error?)
     local _, aerr = component.validate_access(request.board_id, request.personal and component.ACCESS.READ or component.ACCESS.WRITE)
     if aerr then return nil, aerr :: error end
-    local verr = validate(request.board_id, request.view)
+    local verr = M.validate(request.board_id, request.view)
     if verr then return nil, verr end
     local service, serr = component.get_service()
     if serr or not service then return nil, serr :: error? end
@@ -173,7 +184,7 @@ function M.save(input: unknown, revision: integer?): (types.ViewResult?, error?)
     end
     local context, err = load(request.view_id, component.ACCESS.WRITE :: integer)
     if err or not context then return nil, err end
-    local verr = validate(context.board_id, request.view)
+    local verr = M.validate(context.board_id, request.view)
     if verr then return nil, verr end
     local commands: { component_types.Command } = { { type = "PATCH_CONTEXT", payload = { patch = { view = request.view } } } }
     if request.title ~= nil then commands[#commands + 1] = { type = "SET_META", payload = { fields = { title = request.title } } } end

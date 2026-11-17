@@ -255,6 +255,7 @@ entries:
     requests: kickside.work.service:requests
     query: kickside.work.read:query
     access: kickside.work.read:access
+    schema: kickside.work.domain:schema
     predicates: kickside.work.domain:predicates
     shape: kickside.work.domain:shape
     types: kickside.work.service:types

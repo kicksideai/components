@@ -25,6 +25,7 @@ local component = require("component")
 local access_rows = require("access_rows")
 local guard = require("guard")
 local awaiting = require("awaiting")
+local principals = require("principals")
 local M = {}
 local function includes(list: { string }?, name: string): boolean
     for _, value in ipairs(list or {}) do if value == name then return true end end
@@ -96,14 +97,18 @@ local function pending(tx: types.Executor, board: domain.Board, request: types.Q
     return job_rows.rebuilding(tx, board, used)
 end
 
-local function compile(tx: types.Executor, dialect: string, board: domain.Board, request: types.QueryRequest, counted: boolean, grants: { [string]: boolean }?, additional: { domain.Condition }?, scan: integer?, order: { domain.Sort }?): (types.Plan?, error?)
+local function compile(tx: types.Executor, dialect: string, board: domain.Board, request: types.QueryRequest, counted: boolean, grants: { [string]: boolean }?, additional: { domain.Condition }?, scan: integer?, order: { domain.Sort }?,
+    definition_only: boolean?): (types.Plan?, error?)
     local berr = predicates.bounds(request.where)
     if berr then return nil, berr end
     local sort, serr = M.order(request.order)
     if serr then return nil, serr end
     local actor = security.actor()
     local caller: domain.Reader = { board_id = board.board_id, actor = actor and actor:id(), search = board.compiled.scopes, plugins = board.compiled.plugins, allows = function(level: string): boolean return level == "read" or (grants ~= nil and grants[level] == true) end }
-    caller.awaiting = function(alias: string): (domain.Condition?, error?) return awaiting.condition(tx, board, actor:id(), alias) end
+    caller.awaiting = function(alias: string): (domain.Condition?, error?)
+        if definition_only then return { sql = "1=0", args = {} }, nil end
+        return awaiting.condition(tx, board, actor:id(), alias)
+    end
     for _, scope in ipairs(request.scopes or {}) do
         local err = plugins.seam(scope.id, board.compiled.plugins, false, "scope")
         if err then return nil, err end
@@ -508,6 +513,24 @@ function M.explain(request: types.QueryRequest): (types.ExplainResult?, error?)
     if uerr or not usage then return nil, uerr end
     result.budget = usage
     return result :: types.ExplainResult, nil
+end
+
+-- Check a saved query against the next schema before its tables and rows exist.
+function M.validate_definition(request: types.QueryRequest, compiled: domain.Compiled, model: domain.Model): error?
+    local verr = validate(request, false)
+    if verr then return verr end
+    local grants, gerr = scope_grants(request)
+    if gerr or not grants then return gerr end
+    local board = { board_id = request.board_id, key_prefix = compiled.key_prefix, compiled = compiled, model = model,
+        memberships = {} } :: domain.Board
+    local aerr = principals.resolve(board)
+    if aerr then return aerr end
+    local db, derr = store.open()
+    if derr or not db then return derr end
+    board.dialect = db:type()
+    local _, err = compile(db, db:type(), board, request, false, grants, nil, nil, nil, true)
+    db:release()
+    return err
 end
 
 return M

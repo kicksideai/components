@@ -44,9 +44,13 @@ end
 
 function M.of(board_id: string, l: types.Layout, relations: { [string]: types.Relation }?): types.GeneratedTable
     return { names = M.names(board_id), layout = l, system = SYSTEM,
-        indexes = { { "life", "rank", "item_id" }, { "type", "state" }, { "parent_id" }, { "number", "item_id" },
-            { "updated_seq" }, { "rank", "item_id" } },
+        indexes = { { "life", "rank", "item_id" }, { "type", "state", "item_id" }, { "parent_id" }, { "number", "item_id" },
+            { "updated_seq" }, { "rank", "item_id" }, { "life", "state", "item_id" } },
         relations = relations or {} }
+end
+
+function M.region_column(life: string, state: string): string
+    return "region_" .. life .. ":" .. state
 end
 
 function M.signature(compiled: types.Compiled): string
@@ -104,6 +108,10 @@ function M.row(board: types.Board, item: types.Item, prepared: types.Layout?): (
     row.sets.path_under = {}
     for ancestor in item.path:gmatch("/([^/]+)") do
         if ancestor ~= item.item_id then row.sets.path_under[#row.sets.path_under + 1] = ancestor end
+    end
+    -- A state shared by two regions or by a region and the root counts once.
+    for _, state in pairs(item.work and item.work.regions or {}) do
+        if state ~= item.state then row.sets[M.region_column(item.life, state)] = { item.type } end
     end
     for _, name in ipairs({ "created_at", "updated_at" }) do
         local raw = row.system[name]

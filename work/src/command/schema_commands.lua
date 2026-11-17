@@ -33,10 +33,10 @@ local EV = consts.EVENTS
 
 -- Initial pack admission uses the same snapshot as its schema head expectation.
 function M.check_pack_install(db: sql.DB, board_id: string, board: domain.Board?): error?
-    if board and board.pack then return nil end
-    local count, err = store.count(db, "SELECT COUNT(*) AS n FROM kickside_work_item WHERE board_id = $1 AND life <> 'purged'", { board_id })
+    if not board or board.pack then return nil end
+    local occupied, err = store.has_items(db, board_id)
     if err then return err end
-    if (count or 0) > 0 then
+    if occupied then
         return errors.new({ kind = errors.INVALID, message = "pack installation requires an empty unprovenanced board",
             details = { code = "pack_requires_empty_board" } })
     end
@@ -141,7 +141,7 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
     end
     local usage: domain.Usage = { fields = {}, items = 0, types = {}, links = {}, states = {} }
     if board then
-        local loaded, uerr = store.usage(db, board_id)
+        local loaded, uerr = store.usage(db, board_id, changes.usage_targets(board.model, schema.model(compiled)))
         if uerr or not loaded then return nil, uerr end
         usage = loaded
     end

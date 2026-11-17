@@ -156,6 +156,37 @@ local function define()
             test.is_nil(page.after)
         end)
 
+        test.it("counts saved view subgroups and continues a filtered detail view as the viewer", function()
+            local owner, reader = scoped.admin(), scoped.member()
+            local h = scoped.board(owner)
+            local first = steps.create(h, "task", { estimate = 1 })
+            local second = steps.create(h, "task", { estimate = 1 })
+            local third = steps.create(h, "task", { estimate = 2 })
+            assert(h.call("grant", { subject_id = reader.id, mask = 1 }))
+            local id = assert(reader.call("create_view", { board_id = h.id, personal = true, view = { type = "list" } })).view_id
+            local order = { { field = "estimate" }, { field = "number", dir = "desc" } }
+            assert(reader.call("save_view", { view_id = id, view = {
+                type = "list", group_by = "state", sub_group_by = "estimate", order = order,
+            } }))
+            local page = assert(reader.call("run_view", { view_id = id, limit = 1 }))
+            test.eq(#page.groups, 1)
+            local group = page.groups[1]
+            test.eq(group.count, 3)
+            test.eq(#group.groups, 2)
+            test.eq(group.groups[1].count, 2)
+            test.eq(group.groups[1].items[1].id, second)
+            test.not_nil(group.groups[1].after)
+            test.eq(group.groups[2].count, 1)
+            test.eq(group.groups[2].items[1].id, third)
+            local detail = assert(reader.call("create_view", { board_id = h.id, personal = true, view = {
+                type = "list", where = { field = "estimate", op = "eq", value = 1 }, order = order,
+            } })).view_id
+            local next_page = assert(reader.call("run_view", { view_id = detail, limit = 1, after = group.groups[1].after }))
+            test.eq(#next_page.items, 1)
+            test.eq(next_page.items[1].id, first)
+            test.is_nil(next_page.after)
+        end)
+
         test.it("keeps personal views at root and validates saved trees and presentation", function()
             local admin, member = scoped.admin(), scoped.member()
             local h = scoped.board(admin)

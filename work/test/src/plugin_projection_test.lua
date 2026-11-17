@@ -6,6 +6,8 @@ local sql = require("sql")
 local json = require("json")
 local component = require("component")
 local scoped = require("scoped")
+local registry = require("registry")
+local json = require("json")
 type Map = { [string]: unknown }
 local PLUGIN = "app:folding_plugin"
 
@@ -54,6 +56,100 @@ end
 
 local function define()
     test.describe("declared plugin projections", function()
+        local original: registry.Entry?
+        test.after_each(function()
+            if original then
+                local changes = assert(registry.snapshot()):changes()
+                if registry.get(original.id) then changes:update(original) else changes:create(original) end
+                assert(changes:apply())
+                original = nil
+            end
+        end)
+
+        test.it("detaches an unused plugin after its manifest disappears", function()
+            local h = fixture.board()
+            activate(h, true)
+            ready(h, false)
+            local attachment = view(h).attachment_id :: string
+            original = assert(registry.get(PLUGIN))
+            local changes = assert(registry.snapshot()):changes()
+            changes:delete(PLUGIN)
+            assert(changes:apply())
+
+            local result, err = h.call("apply_schema", { declaration = { plugins = {} } })
+            assert(result, steps.detail(err))
+            local lifecycle: Map? = nil
+            steps.wait_for("plugin deactivation lifecycle", function()
+                local db = assert(sql.get("app:db"))
+                local rows = assert(db:query([[SELECT lifecycle FROM kickside_work_plugin
+                    WHERE board_id = $1 AND plugin = $2]], { h.id, PLUGIN }))
+                db:release()
+                if #rows == 0 then
+                    lifecycle = nil
+                    return true
+                end
+                local state = assert(json.decode(rows[1].lifecycle)) :: Map
+                lifecycle = state
+                return state.state == "failed"
+            end)
+            test.is_nil(lifecycle, json.encode(lifecycle))
+            steps.deleted(attachment)
+            for _, projection in ipairs(assert(h.call("plugin_projections", {})).projections) do
+                test.is_true(projection.projection_key ~= "kickside.work.plugin:" .. PLUGIN)
+            end
+        end)
+
+        test.it("detaches an active plugin after a valid manifest revision requires new config", function()
+            local h = fixture.board()
+            activate(h, true)
+            ready(h, false)
+            local attachment = view(h).attachment_id :: string
+            local found = assert(component.list_system({ component_ids = { attachment }, limit = 1 }))
+            test.eq(#found, 1)
+
+            original = assert(registry.get(PLUGIN))
+            local revised = assert(registry.get(PLUGIN))
+            local config_schema = revised.meta.config_schema :: Map
+            config_schema.required = { "marker" }
+            local changes = assert(registry.snapshot()):changes()
+            changes:update(revised)
+            assert(changes:apply())
+            local active = view(h)
+            test.eq((active.lifecycle :: Map).error.code, "plugin_config_invalid")
+
+            local result, err = h.call("apply_schema", { declaration = { plugins = {} } })
+            assert(result, steps.detail(err))
+            steps.wait_for("plugin deactivation lifecycle", function()
+                local entry = view(h)
+                return entry.active == false and (entry.lifecycle :: Map).state ~= "pending"
+            end)
+            local inactive = view(h)
+            test.eq((inactive.lifecycle :: Map).state, "ready", json.encode(inactive.lifecycle))
+            steps.deleted(attachment)
+            for _, projection in ipairs(assert(h.call("plugin_projections", {})).projections) do
+                test.is_true(projection.projection_key ~= "kickside.work.plugin:" .. PLUGIN)
+            end
+        end)
+        test.it("refreshes state projection snapshots after the board key prefix changes", function()
+            local h = fixture.board()
+            local id = steps.create(h, "task")
+            activate(h, true)
+            ready(h, false)
+            local request: Map = { plugin = PLUGIN, kind = "app:item_fold" }
+            local first = assert(h.call("plugin_feed", request))
+            test.eq(#first.changes, 1)
+            test.eq(first.changes[1].key, h.prefix .. "-1")
+            test.is_true(first.done)
+            request.token = first.token
+
+            local prefix = fixture.fresh_prefix()
+            assert(h.call("apply_schema", { declaration = { key_prefix = prefix } }))
+            test.eq(assert(steps.get(h, id)).item.key, prefix .. "-1")
+            local page = assert(h.call("plugin_feed", request))
+            test.eq(#page.changes, 1, "state feed advanced without updating the item's key")
+            test.eq(page.changes[1].key, prefix .. "-1")
+        end)
+
         test.it("registers state projections without raw board events and converges existing cursors", function()
             local h = fixture.board()
             activate(h, true)

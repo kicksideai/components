@@ -5,6 +5,8 @@ local steps = require("steps")
 local registry = require("registry")
 local json = require("json")
 local shape = require("shape")
+local store = require("store")
+local tables = require("tables")
 
 type Map = { [string]: unknown }
 
@@ -105,6 +107,41 @@ local function define()
     end)
 
     test.describe("parallel state entry", function()
+        test.it("indexes one regional membership per restorable item and tracks its life", function()
+            local h = fixture.board({ declaration = definition() })
+            local item = steps.create(h, "task")
+            local name = tables.names(h.id).set
+            local function members(life: string): integer
+                local db = assert(store.open())
+                local rows = assert(db:query("SELECT item_id FROM " .. name .. " WHERE col = $1 AND value_key = $2",
+                    { "region_" .. life .. ":review", "task" }))
+                db:release()
+                if #rows > 0 then test.eq(rows[1].item_id, item) end
+                return #rows
+            end
+            local function lifecycle(op: string)
+                test.eq(steps.one(h, { op = op, item = item }).status, "applied")
+                assert(h.call("settle", {}))
+            end
+
+            test.eq(steps.one(h, { op = "transition", item = item, transition = "start" }).status, "applied")
+            assert(h.call("settle", {}))
+            test.eq(members("live"), 1)
+            lifecycle("delete")
+            test.eq(members("live"), 0)
+            test.eq(members("trashed"), 1)
+            lifecycle("restore")
+            test.eq(members("live"), 1)
+            test.eq(members("trashed"), 0)
+            lifecycle("delete")
+            local last = table.remove(steps.events(h))
+            assert(h.call("trusted_append", { thread_id = h.id, events = {
+                { type = "kickside.work.events:item.purged", subject = "i:" .. item,
+                    body = { item = item, actor = "system:kickside.work.retention", at = last.body.at, source = "retention" } },
+            } }))
+            assert(h.call("settle", {}))
+            test.eq(members("trashed"), 0)
+        end)
         test.it("enforces regional WIP per live item and releases capacity after its last region leaves", function()
             local d = definition()
             d.policy = { wip = { review = { limit = 1, hard = true } } }

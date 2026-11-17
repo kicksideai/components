@@ -4,9 +4,13 @@ local test = require("test")
 local fixture = require("fixture")
 local steps = require("steps")
 local rows = require("rows")
+local clock = require("clock")
+local json = require("json")
 local store = require("store")
 local materializer = require("materializer")
 local domain = require("domain")
+
+type Map = { [string]: unknown }
 
 local function usage(h: fixture.Handle, id: integer): integer
     return rows.scalar("SELECT COALESCE(SUM(items), 0) AS n FROM kickside_work_field_usage WHERE board_id = $1 AND field_id = $2", { h.id, id })
@@ -14,6 +18,99 @@ end
 
 local function define()
     test.describe("evolve", function()
+        test.it("does not count a permanently purged item as holding a schema member", function()
+            local h = fixture.board()
+            local id = steps.create(h, "task")
+            test.eq(steps.one(h, { op = "delete", item = id }).status, "applied")
+            local request = { declaration = { remove = { item_types = { "task" } } } }
+            test.eq(assert(h.call("plan_schema", request)).class, "refused", "trashed items can be restored")
+            assert(h.call("trusted_append", { thread_id = h.id, events = {
+                { type = "kickside.work.events:item.purged", subject = "i:" .. id,
+                    body = { item = id, actor = "system:kickside.work.retention", at = clock.now(), source = "retention" } },
+            } }))
+            assert(h.call("settle", {}))
+            test.eq(steps.count_rows("kickside_work_item", h.id, " AND life = 'purged'"), 1)
+
+            local plan, err = h.call("plan_schema", request)
+            local result = assert(plan, steps.detail(err)) :: Map
+            test.eq(result.class, "semantic", json.encode(result.refused))
+            test.eq(assert(h.call("apply_schema", request)).generation, 2)
+        end)
+        test.it("excludes a retained purged item from item-type usage", function()
+            local declaration = fixture.declaration(fixture.fresh_prefix())
+            declaration.policy = { trash_days = 0, tombstone_days = 30 }
+            local board = fixture.board({ declaration = declaration })
+            local item = steps.create(board, "task", { estimate = 1 })
+            steps.one(board, { op = "delete", item = item })
+            steps.retention_sweep(function(): boolean
+                assert(board.call("settle", {}))
+                return steps.count_rows("kickside_work_item", board.id, " AND life = 'purged' AND purge_pending = 0") == 1
+            end)
+            local next_declaration = fixture.declaration(board.prefix)
+            table.remove(next_declaration.item_types :: { unknown }, 3)
+            next_declaration.remove = { item_types = { "task" } }
+            local plan = assert(board.call("plan_schema", { declaration = next_declaration }))
+            test.eq(#plan.refused, 0)
+        end)
+        test.it("classifies a numeric option order edit as a semantic index change", function()
+            local h = fixture.board()
+            steps.create(h, "story", { priority = "p0" })
+            local priority = (fixture.declaration(h.prefix).fields :: { Map })[5]
+            local options = priority.options :: { Map }
+            options[1].order = 10
+            local request = { declaration = { fields = { priority } } }
+            local plan = assert(h.call("plan_schema", request))
+            local applied = assert(h.call("apply_schema", request))
+            local reindexes = steps.count_rows("kickside_work_job", h.id, " AND job_type = 'reindex'")
+            test.eq(plan.class, "semantic", json.encode({ apply_class = applied.class, reindex_jobs = reindexes }))
+            test.eq(applied.class, "semantic")
+            test.is_true(reindexes > 0)
+            options[1].label = "Immediate"
+            test.eq(assert(h.call("plan_schema", request)).class, "cosmetic")
+            test.eq(assert(h.call("apply_schema", request)).class, "cosmetic")
+        end)
+
+        test.it("retains a state held by trash and permits removal after purge", function()
+            local h = fixture.board()
+            local item = steps.create(h, "task")
+            assert(h.call("apply_schema", { declaration = { processes = { { id = "delivery", initial = "open",
+                states = { { id = "open", category = "started" }, { id = "ready", category = "started" } },
+            } } } }))
+            test.eq(steps.one(h, { op = "delete", item = item }).status, "applied")
+            local request = { declaration = { processes = { { id = "delivery", initial = "ready",
+                states = { { id = "ready", category = "started" } },
+            } } } }
+            test.eq(assert(h.call("plan_schema", request)).class, "refused")
+            assert(h.call("trusted_append", { thread_id = h.id, events = {
+                { type = "kickside.work.events:item.purged", subject = "i:" .. item,
+                    body = { item = item, actor = "system:kickside.work.retention", at = clock.now(), source = "retention" } },
+            } }))
+            assert(h.call("settle", {}))
+            test.eq(assert(h.call("plan_schema", request)).class, "semantic")
+            test.eq(assert(h.call("apply_schema", request)).class, "semantic")
+        end)
+
+        test.it("preserves a relation through relabeling and refuses shape changes while linked", function()
+            local h = fixture.board()
+            local from = steps.create(h, "task")
+            local to = steps.create(h, "task")
+            test.eq(steps.one(h, { op = "link", item = from, type = "blocks", target = { item = to } }).status, "applied")
+            local label = { declaration = { relation_types = { { id = "blocks", outward = "waits on", inward = "unblocks" } } } }
+            test.eq(assert(h.call("apply_schema", label)).class, "cosmetic")
+            test.eq(assert(steps.get(h, from, { "links" })).links[1].item, to)
+            local requests = {
+                { declaration = { relation_types = { { id = "blocks", cardinality = "one" } } } },
+                { declaration = { relation_types = { { id = "blocks", symmetric = true } } } },
+                { declaration = { remove = { relation_types = { "blocks" } } } },
+            }
+            for _, request in ipairs(requests) do
+                test.eq(assert(h.call("plan_schema", request)).class, "refused")
+            end
+            test.eq(steps.one(h, { op = "unlink", item = from, type = "blocks", target = { item = to } }).status, "applied")
+            for _, request in ipairs(requests) do
+                test.eq(assert(h.call("plan_schema", request)).class, "semantic")
+            end
+        end)
         test.it("classifies the first schema as initial with an empty change list", function()
             local h = fixture.board({ bare = true })
             local d = fixture.declaration(h.prefix)

@@ -120,6 +120,7 @@ local POSTGRES = {
         seq bigint NOT NULL,
         PRIMARY KEY (board_id, from_id, type, to_board_id, to_id))]],
     [[CREATE INDEX kickside_work_link_target ON kickside_work_link (to_board_id, to_id, board_id, from_id, type)]],
+    [[CREATE INDEX kickside_work_link_type ON kickside_work_link (board_id, type, from_id)]],
     [[CREATE TABLE kickside_work_change (
         board_id text NOT NULL,
         seq bigint NOT NULL,

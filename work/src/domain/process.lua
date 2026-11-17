@@ -101,6 +101,9 @@ local function compile_effect(decl: types.EffectDecl, by_key: { [string]: types.
         if source.type ~= field.type or source.form ~= field.form or source.cardinality ~= field.cardinality then
             return nil, invalid(where .. " copies " .. source.code .. " into " .. field.code .. ", which holds another kind of value")
         end
+        if field.form == "ref" and source.config.target ~= field.config.target then
+            return nil, invalid(where .. " copies " .. source.code .. " into " .. field.code .. ", which has a different reference target")
+        end
         if field.type == "option" and not same_options(source, field) then
             return nil, invalid(where .. " copies " .. source.code .. " into " .. field.code .. ", which lacks some of its options")
         end
@@ -229,8 +232,8 @@ function M.compile(decl: types.ProcessDecl, by_key: { [string]: types.Field }, p
     if #source > consts.LIMITS.states then
         return nil, invalid("a process declares at most " .. consts.LIMITS.states .. " states", "process_limit", { process = decl.id })
     end
-    local transitions = (decl.transitions or {})
-    if #transitions > consts.LIMITS.transitions then
+    local declared_transitions = (decl.transitions or {})
+    if #declared_transitions > consts.LIMITS.transitions then
         return nil, invalid("a process declares at most " .. consts.LIMITS.transitions .. " transitions", "process_limit", { process = decl.id })
     end
     local states: { types.State } = {}
@@ -249,7 +252,7 @@ function M.compile(decl: types.ProcessDecl, by_key: { [string]: types.Field }, p
     end
     local out: { types.Transition } = {}
     local seen: { [string]: types.Transition } = {}
-    for _, t in ipairs(transitions) do
+    for _, t in ipairs(declared_transitions) do
         local transition, terr = compile_transition(t, ids, by_key, decl.id)
         if terr or not transition then return nil, terr end
         if seen[transition.id] then return nil, invalid("duplicate transition " .. transition.id .. " in process " .. decl.id) end
@@ -292,20 +295,21 @@ function M.compile(decl: types.ProcessDecl, by_key: { [string]: types.Field }, p
             for name, id in pairs(routes) do
                 if id then
                     local transition = seen[id]
-                    local leaves = false
-                    if transition then
-                        leaves = transition.any
-                        for _, from in ipairs(transition.from) do if from == s.id then leaves = true end end
-                    end
-                    if not leaves then
-                        return nil, invalid(name .. " names no transition leaving this state", "stage_" .. name .. "_unknown", { state = s.id, transition = id })
+                    if not transition or not transitions.eligible(transition, s.id, false) then
+                        return nil, invalid(name .. " must name a non-automatic transition from this state", "stage_" .. name .. "_unknown", { state = s.id, transition = id })
                     end
                 end
             end
         end
         for _, timer in ipairs(s.timers or {}) do
             local effect = timer["then"] :: types.TimerEffect
-            if effect.transition and not seen[effect.transition] then return nil, invalid("timer names an unknown transition", "timer_transition_unknown") end
+            if effect.transition then
+                local transition = seen[effect.transition]
+                if not transition or not transitions.eligible(transition, s.id, false) then
+                    return nil, invalid("timer must name a non-automatic transition from this state", "timer_transition_unknown",
+                        { state = s.id, transition = effect.transition })
+                end
+            end
         end
     end
     local cycle = state_compile.acyclic(exhausted, "stage_on_exhausted_cycle", "exhaustion")

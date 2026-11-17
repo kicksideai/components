@@ -6,6 +6,7 @@ local sql = require("sql")
 local time = require("time")
 local consts = require("consts")
 local schema = require("schema")
+local tables = require("tables")
 local types = require("types")
 local values = require("values")
 
@@ -401,72 +402,90 @@ end
 
 M.count = count
 
-local function state_rows(dialect: string): string
-    local regions = dialect == sql.type.POSTGRES
-        and "kickside_work_item i CROSS JOIN LATERAL jsonb_each_text(i.process_data::jsonb -> 'regions') r"
-        or "kickside_work_item i, json_each(i.process_data, '$.regions') r"
-    return [[SELECT type, state, item_id, life FROM kickside_work_item WHERE board_id = $1 UNION ALL
-        SELECT i.type, r.value AS state, i.item_id, i.life FROM ]] .. regions .. [[ WHERE i.board_id = $1]]
+function M.state_count(db: storage.Executor, board_id: string, state: string, maximum: integer): (integer?, error?)
+    if maximum <= 0 then return 0, nil end
+    local names = tables.names(board_id)
+    return count(db, "SELECT (SELECT COUNT(*) FROM (SELECT 1 FROM " .. names.item
+        .. " WHERE life = 'live' AND state = $1 ORDER BY item_id LIMIT $2) root)"
+        .. " + (SELECT COUNT(*) FROM (SELECT 1 FROM " .. names.set
+        .. " WHERE col = $3 ORDER BY value_key, item_id LIMIT $2) regional) AS n",
+        { state, maximum, tables.region_column("live", state) })
 end
 
-function M.state_count(db: storage.Executor, board_id: string, state: string, dialect: string): (integer?, error?)
-    return count(db, "SELECT COUNT(DISTINCT item_id) AS n FROM (" .. state_rows(dialect) .. ") held WHERE state = $2 AND life = 'live'", { board_id, state })
+function M.field_usage(db: storage.Executor, board_id: string): ({ [integer]: integer }?, error?)
+    local usage: { [integer]: integer } = {}
+    local rows, err = db:query("SELECT field_id, items FROM kickside_work_field_usage WHERE board_id = $1", { board_id })
+    if err then return nil, errors.wrap(err, "field usage read failed") end
+    for _, row in ipairs(rows or {}) do
+        local items, ierr = need_int(row, "items")
+        if ierr or items == nil then return nil, ierr end
+        local field_id, ferr = need_int(row, "field_id")
+        if ferr or field_id == nil then return nil, ferr end
+        usage[field_id] = items
+    end
+    return usage, nil
 end
 
--- usage counts what a board holds, which decides whether a schema change reinterprets stored data.
-function M.usage(db: sql.DB, board_id: string): (types.Usage?, error?)
-    local usage: types.Usage = { fields = {}, items = 0, types = {}, links = {}, states = {} }
-    local total, terr = count(db, "SELECT COUNT(*) AS n FROM kickside_work_item WHERE board_id = $1", { board_id })
-    if terr or not total then return nil, terr end
-    usage.items = total
-    local by_field, ferr = db:query("SELECT field_id, items FROM kickside_work_field_usage WHERE board_id = $1", { board_id })
-    if ferr then return nil, errors.wrap(ferr, "field usage read failed") end
-    for _, r in ipairs(by_field or {}) do
-        local items, decode_err = need_int(r, "items")
-        if decode_err or items == nil then return nil, decode_err end
+function M.has_items(db: storage.Executor, board_id: string): (boolean, error?)
+    local rows, err = db:query("SELECT 1 FROM " .. tables.names(board_id).item .. " ORDER BY item_id LIMIT 1", {})
+    return rows ~= nil and #rows > 0, err
+end
 
-        local field_id, decode_err = need_int(r, "field_id")
-        if decode_err or field_id == nil then return nil, decode_err end
-
-        usage.fields[field_id] = items
+local function state_usage(db: storage.Executor, names: types.GeneratedNames, targets: { types.StateUsageTarget },
+    usage: { [string]: { [string]: integer } }): error?
+    if #targets == 0 then return nil end
+    local tuples: { string } = {}
+    local params: types.SqlParams = {}
+    for i, target in ipairs(targets) do
+        local before = #params
+        params[before + 1] = target.item_type
+        params[before + 2] = target.state
+        params[before + 3] = tables.region_column("live", target.state)
+        params[before + 4] = tables.region_column("trashed", target.state)
+        tuples[i] = string.format("($%d, $%d, $%d, $%d)", before + 1, before + 2, before + 3, before + 4)
     end
-    local by_type, berr = db:query("SELECT type, COUNT(*) AS n FROM kickside_work_item WHERE board_id = $1 GROUP BY type", { board_id })
-    if berr then return nil, errors.wrap(berr, "usage read failed") end
-    for _, r in ipairs(by_type or {}) do
-        local count, decode_err = need_int(r, "n")
-        if decode_err or count == nil then return nil, decode_err end
-
-        local type_id, decode_err = need(r, "type")
-        if decode_err or type_id == nil then return nil, decode_err end
-
-        usage.types[type_id] = count
+    -- Index order keeps exact counts on the matching range even for common states.
+    local rows, err = db:query("WITH affected(item_type, state, live_col, trashed_col) AS (VALUES " .. table.concat(tuples, ", ")
+        .. ") SELECT a.item_type, a.state, (SELECT COUNT(*) FROM (SELECT 1 FROM " .. names.item
+        .. " WHERE type = a.item_type AND state = a.state ORDER BY item_id) root)"
+        .. " + (SELECT COUNT(*) FROM (SELECT 1 FROM " .. names.set
+        .. " WHERE col = a.live_col AND value_key = a.item_type ORDER BY item_id) live)"
+        .. " + (SELECT COUNT(*) FROM (SELECT 1 FROM " .. names.set
+        .. " WHERE col = a.trashed_col AND value_key = a.item_type ORDER BY item_id) trashed) AS n FROM affected a", params)
+    if err then return errors.wrap(err, "state usage read failed") end
+    for _, row in ipairs(rows or {}) do
+        local item_type, terr = need(row, "item_type")
+        if terr or item_type == nil then return terr end
+        local state, serr = need(row, "state")
+        if serr or state == nil then return serr end
+        local n, nerr = need_int(row, "n")
+        if nerr or n == nil then return nerr end
+        if not usage[item_type] then usage[item_type] = {} end
+        usage[item_type][state] = n
     end
-    local by_state, serr = db:query("SELECT type, state, COUNT(DISTINCT item_id) AS n FROM (" .. state_rows(db:type()) .. ") held GROUP BY type, state", { board_id })
-    if serr then return nil, errors.wrap(serr, "usage read failed") end
-    for _, r in ipairs(by_state or {}) do
-        local type_id, decode_err = need(r, "type")
-        if decode_err or type_id == nil then return nil, decode_err end
+    return nil
+end
 
-        usage.states[type_id] = usage.states[type_id] or {}
-        local count, decode_err = need_int(r, "n")
-        if decode_err or count == nil then return nil, decode_err end
-
-        local state, decode_err = need(r, "state")
-        if decode_err or state == nil then return nil, decode_err end
-
-        usage.states[type_id][state] = count
+-- Usage checks only the schema members which can affect the proposed change.
+function M.usage(db: sql.DB, board_id: string, targets: types.UsageTargets): (types.Usage?, error?)
+    local fields, ferr = M.field_usage(db, board_id)
+    if ferr or not fields then return nil, ferr end
+    local occupied, oerr = M.has_items(db, board_id)
+    if oerr then return nil, oerr end
+    local usage: types.Usage = { fields = fields, items = occupied and 1 or 0, types = {}, links = {}, states = {} }
+    local names = tables.names(board_id)
+    for _, id in ipairs(targets.item_types) do
+        local rows, err = db:query("SELECT 1 FROM " .. names.item .. " WHERE type = $1 ORDER BY state, item_id LIMIT 1", { id })
+        if err then return nil, err end
+        if rows and #rows > 0 then usage.types[id] = 1 end
     end
-    local by_link, lerr = db:query("SELECT type, COUNT(*) AS n FROM kickside_work_link WHERE board_id = $1 GROUP BY type", { board_id })
-    if lerr then return nil, errors.wrap(lerr, "usage read failed") end
-    for _, r in ipairs(by_link or {}) do
-        local count, decode_err = need_int(r, "n")
-        if decode_err or count == nil then return nil, decode_err end
-
-        local type_id, decode_err = need(r, "type")
-        if decode_err or type_id == nil then return nil, decode_err end
-
-        usage.links[type_id] = count
+    for _, id in ipairs(targets.links) do
+        local rows, err = db:query([[SELECT 1 FROM kickside_work_link WHERE board_id = $1 AND type = $2 ORDER BY from_id LIMIT 1]], { board_id, id })
+        if err then return nil, err end
+        if rows and #rows > 0 then usage.links[id] = 1 end
     end
+    local serr = state_usage(db, names, targets.states, usage.states)
+    if serr then return nil, serr end
     return usage, nil
 end
 

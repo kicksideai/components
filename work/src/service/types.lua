@@ -10,6 +10,7 @@ type View = {
     scopes: { domain.ScopeQuery }?, columns: { string }?, card: domain.JsonObject?, config: domain.JsonObject?,
 }
 type ViewContext = { board_id: string, view: View }
+type ViewRequirements = { group_by: { kinds: { string } }? }
 type CreateViewRequest = { board_id: string, view: View, title: string?, personal: boolean? }
 type SaveViewRequest = { view_id: string, view: View, title: string? }
 type RenameViewRequest = { view_id: string, title: string }
@@ -22,4 +23,4 @@ type ListViewsRequest = { board_id: string, after: string?, limit: integer? }
 
 type SyncRequest = { board_id: string, deadline: domain.Deadline, command_key: string? }
 return { AutomationDB = AutomationDB, SyncRequest = SyncRequest, RenameViewRequest = RenameViewRequest, DeleteViewResult = DeleteViewResult, SavedView = SavedView, ViewList = ViewList, ListViewsRequest = ListViewsRequest, Sort = Sort, View = View, ViewContext = ViewContext, CreateViewRequest = CreateViewRequest, SaveViewRequest = SaveViewRequest,
-    RunViewRequest = RunViewRequest, ViewResult = ViewResult }
+    RunViewRequest = RunViewRequest, ViewResult = ViewResult, ViewRequirements = ViewRequirements }
