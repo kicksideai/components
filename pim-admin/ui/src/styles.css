@@ -108,3 +108,23 @@ kickside-pim-catalog-settings { display: block; height: 100%; min-height: 0; }
   .pim-builder .pim-source-permissions { min-width: 0; }
   .pim-builder .pim-bsection-head > button { margin-left: auto; }
 }
+
+.pim-canvas { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px 14px; }
+.pim-lcard { display: grid; gap: 8px; min-width: 0; padding: 10px 12px; border: 1px dashed color-mix(in srgb, var(--p-text-color) 22%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--p-text-color) 3%, transparent); cursor: grab; }
+.pim-lcard.dragging { opacity: .45; }
+.pim-lcard.over { border-color: var(--p-primary-color); border-style: solid; box-shadow: inset 0 0 0 1px var(--p-primary-color); }
+.pim-lcard.fixed { cursor: default; border-style: solid; border-color: var(--p-content-border-color); background: transparent; }
+.pim-lcard-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.pim-lcard .pim-grip { display: inline-flex; color: var(--p-text-muted-color); }
+.pim-lcard .pim-grip svg { width: 14px; height: 14px; }
+.pim-lcard-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pim-lcard-type { font-size: 11.5px; color: var(--p-text-muted-color); white-space: nowrap; }
+.pim-lcard-move { display: inline-flex; gap: 2px; margin-left: auto; }
+
+.pim-layout-help { margin: 0; padding: 16px 20px; }
+.pim-lcard .p-selectbutton { display: flex; flex-wrap: wrap; }
+.pim-lcard .p-togglebutton { flex: 1; min-width: 0; padding-inline: 8px; }
+.pim-history-caption { margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--p-content-border-color); }
+@media (max-width: 600px) {
+  .pim-layout .pim-lcard { grid-column: 1 / -1 !important; }
+}

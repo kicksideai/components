@@ -3,7 +3,7 @@
 // Every call runs as the signed-in user; errors surface as thrown Errors with
 // the server's message, never as silently empty data.
 import { get, post } from './shared/transport'
-import type { ApplyItem, ApplyResult, CatalogRow, Declaration, PluginConfigs, ListTermsResult, SchemaOptions, SchemaPlan, SchemaView } from './types'
+import type { ApplyItem, ApplyResult, HistoryResult, CatalogRow, Declaration, PluginConfigs, ListTermsResult, SchemaOptions, SchemaPlan, SchemaView } from './types'
 
 const BASE = '/api/v1/pim/catalogs'
 const termPages = new Map<string, Promise<ListTermsResult>>()
@@ -13,6 +13,8 @@ export const pim = {
   listCatalogs: (after?: number) => get<{ catalogs: CatalogRow[]; after?: number }>(BASE, 'catalog list', after == null ? undefined : { after: String(after) }),
   createCatalog: (title: string, declaration?: Declaration, pluginConfigs: PluginConfigs = {}) =>
     post<{ catalog_id: string; title: string }>(BASE, { idempotency_key: `ui-${Date.now()}`, title, declaration, plugin_configs: pluginConfigs }, 'catalog create'),
+  history: (id: string, query: { limit?: number; before?: string } = {}) =>
+    get<HistoryResult>(`${BASE}/${encodeURIComponent(id)}/history`, 'catalog history', Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)]))),
   schema: (id: string) => get<SchemaView>(`${BASE}/${encodeURIComponent(id)}/schema`, 'schema'),
   applySchema: (id: string, declaration: Declaration, expectedGeneration: number, pluginConfigs: PluginConfigs = {}) =>
     post<{ generation: number; class: string }>(`${BASE}/${encodeURIComponent(id)}/schema`, { declaration, expected_generation: expectedGeneration, plugin_configs: pluginConfigs }, 'schema apply'),

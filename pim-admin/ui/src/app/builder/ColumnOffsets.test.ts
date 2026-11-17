@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { afterAll, beforeAll, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterAll, beforeAll, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import { chromium, type Browser } from 'playwright'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -10,6 +10,7 @@ import BuilderFamilies from './BuilderFamilies.vue'
 import BuilderVocabularies from './BuilderVocabularies.vue'
 import BuilderChannels from './BuilderChannels.vue'
 import BuilderPlugins from './BuilderPlugins.vue'
+import { pim } from '../../api'
 import { createSchema, definitionFixtures } from '../../test/fixtures'
 
 let browser: Browser
@@ -20,7 +21,8 @@ afterAll(async () => { await browser?.close() })
 const { options } = definitionFixtures()
 const css = ['base.css', 'settings.css'].map(file => readFileSync(resolve('src/shared', file), 'utf8')).join('\n')
   + '\n' + readFileSync(resolve('src/styles.css'), 'utf8').replace(/^@import .*;$/gm, '')
-for (const width of [1500, 1100]) for (const component of [BuilderFields, BuilderDimensions, BuilderFamilies, BuilderVocabularies, BuilderChannels, BuilderPlugins]) for (const rail of [0, 232]) {
+const builders = [BuilderFields, BuilderDimensions, BuilderFamilies, BuilderVocabularies, BuilderChannels, BuilderPlugins]
+for (const width of [1500, 1100]) for (const component of builders) for (const rail of [0, 232]) {
   it(`aligns ${component.__name} columns at ${width}px with a ${rail}px settings rail`, async () => {
     const page = await browser.newPage({ viewport: { width, height: 1000 } })
     const { draft, options } = definitionFixtures()
@@ -85,6 +87,57 @@ for (const width of [1500, 1100]) for (const component of [BuilderFields, Builde
     } finally { wrapper.unmount(); await page.close() }
   })
 }
+for (const component of builders) {
+  it(`stacks ${component.__name} definitions and keeps actions in view at 390px`, async () => {
+    const page = await browser.newPage({ viewport: { width: 390, height: 1000 } })
+    const { draft, options } = definitionFixtures()
+    const wrapper = mount(component, { props: { catalogId: 'cat', draft, schema: createSchema(), options } })
+    try {
+      for (const list of wrapper.findAll('.pim-definition-list')) await list.get('.pim-definition-toggle').trigger('click')
+      await page.setContent(`<style>${css}</style><main style="margin-inline:16px">${wrapper.html()}</main>`)
+      const lists = await page.locator('.pim-definition-list').evaluateAll(nodes => nodes.map(list => ({
+        fits: [...list.querySelectorAll('.pim-definition-scroll')].every(scroll => scroll.scrollWidth <= scroll.clientWidth),
+        headingsHidden: getComputedStyle(list.querySelector('.pim-definition-columns')!).display === 'none',
+        rows: [...list.querySelectorAll('.pim-definition-head')].map(row => {
+          const bounds = row.getBoundingClientRect()
+          const name = row.querySelector('[data-column=name]')!.getBoundingClientRect()
+          const metadata = row.querySelector('.pim-definition-meta')?.getBoundingClientRect()
+          const actions = row.querySelector('[data-column=actions]')!.getBoundingClientRect()
+          return { stacked: !!metadata && metadata.top >= name.bottom, actionsFit: actions.right <= bounds.right }
+        }),
+      })))
+      expect(lists.length).toBeGreaterThan(0)
+      for (const list of lists) {
+        expect(list.fits).toBe(true)
+        expect(list.headingsHidden).toBe(true)
+        expect(list.rows).toHaveLength(4)
+        expect(list.rows.every(row => row.stacked && row.actionsFit)).toBe(true)
+      }
+    } finally { wrapper.unmount(); await page.close() }
+  })
+}
+it('fits hierarchical terms and their actions at 390px with long codes', async () => {
+  const schema = createSchema()
+  schema.vocabularies = { colors: { code: 'colors', hierarchical: true } }
+  const code = 'navy'.repeat(32)
+  vi.spyOn(pim, 'termsPage').mockResolvedValue({ terms: [{ code, labels: { en: 'Night blue' }, parent: 'blue', retired: false }], as_of: 1 })
+  const wrapper = mount(BuilderVocabularies, { props: { catalogId: 'cat', schema, draft: { vocabularies: [{ code: 'colors', hierarchical: true }] } } })
+  const page = await browser.newPage({ viewport: { width: 390, height: 1000 } })
+  try {
+    await wrapper.get('.pim-definition-toggle').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Terms')!.trigger('click')
+    await flushPromises()
+    await page.setContent(`<style>${css}</style><main style="margin-inline:16px">${wrapper.html()}</main>`)
+    expect(await page.locator('.pim-definition-scroll').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    const panel = await page.locator('.pim-terms').boundingBox()
+    const row = page.getByRole('listitem')
+    const label = await row.getByText('Night blue', { exact: true }).boundingBox()
+    const termCode = await row.getByText(code, { exact: true }).boundingBox()
+    const action = await row.getByRole('button', { name: 'Retire', exact: true }).boundingBox()
+    expect(label!.y).toBeLessThan(termCode!.y)
+    expect(action!.x + action!.width).toBeLessThanOrEqual(panel!.x + panel!.width)
+  } finally { wrapper.unmount(); await page.close() }
+})
 it('keeps indexed dimension controls and their remove action on one compact row', async () => {
   const declaration = {
     aspects: [{ namespace: 'core', attributes: [{ code: 'name', type: 'text', scope: ['locale', 'channel'], index: 'text', index_contexts: [{ locale: 'en', channel: 'web' }] }] }],
