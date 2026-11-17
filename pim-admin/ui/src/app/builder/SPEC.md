@@ -3,7 +3,9 @@
 
 The System surface lists only catalogs whose backend response grants ADMIN.
 Pagination and search operate within that list; catalog creation selects the new
-catalog. The standalone settings component accepts `catalog-id` and `embedded`.
+catalog in the schema editor. Creation without a declaration supplies an empty
+generation 1; the editor displays “Define its schema” and lets the administrator
+review and apply the first definitions against that generation. The standalone settings component accepts `catalog-id` and `embedded`.
 Each component instance owns its draft and requests; it does not share routing
 or selection state with other instances.
 

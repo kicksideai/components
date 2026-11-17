@@ -62,8 +62,12 @@ local function define()
         end)
 
         test.it("refuses a product event before any schema", function()
-            local h = fixture.catalog({ bare = true })
-            local _, err = fold(h, { { seq = 1, type = "kickside.pim.events:product.deleted", body = { product_id = "p", actor = "a", at = "2026-01-01T00:00:00Z" } } }, 1, 100)
+            local db = assert(store.open())
+            local tx = assert(db:begin())
+            local _, err = materializer.fold(tx, db:type(), "unprojected", { { seq = 1, type = "kickside.pim.events:product.deleted",
+                body = { product_id = "p", actor = "a", at = "2026-01-01T00:00:00Z" } } }, 1, 100)
+            tx:rollback()
+            db:release()
             test.not_nil(err)
         end)
 

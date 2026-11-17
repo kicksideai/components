@@ -1,4 +1,4 @@
-import { e as Ne, _ as Me, a as He, p as se, g as Je, u as Pe, r as Se, b as Fe, c as We, W as Ge, s as Ze, P as Ye } from "./styles-vHZl2OOQ.js";
+import { e as Ne, _ as Me, a as He, p as se, g as Je, u as De, r as Se, b as Fe, c as We, W as Ge, s as Ze, P as Ye } from "./styles-vHZl2OOQ.js";
 import { defineComponent as Q, ref as E, openBlock as n, createElementBlock as v, Fragment as F, createVNode as o, unref as l, withCtx as r, createTextVNode as j, createCommentVNode as T, createBlock as R, toDisplayString as A, normalizeClass as we, createElementVNode as e, resolveDynamicComponent as Qe, renderSlot as ie, provide as Xe, computed as J, normalizeStyle as el, renderList as G, inject as ll, useModel as tl, mergeModels as je, withKeys as re, withModifiers as X, onMounted as Ie, watch as ve, onUnmounted as Ve } from "vue";
 import L from "primevue/button";
 import ue from "primevue/message";
@@ -9,7 +9,7 @@ import nl from "primevue/tablist";
 import sl from "primevue/tab";
 import { host as il, loadByTagName as ol, on as dl, define as ul } from "@wippy-fe/proxy";
 import rl from "primevue/multiselect";
-import De from "primevue/selectbutton";
+import Pe from "primevue/selectbutton";
 import xe from "primevue/toggleswitch";
 import oe from "primevue/select";
 import ne from "primevue/inputtext";
@@ -368,7 +368,7 @@ async function Nl(t, x) {
   const p = await He(`/api/v1/pim-admin/catalogs/${encodeURIComponent(t)}/principal_labels`, { refs: a }, "People");
   return Object.fromEntries((p.principals ?? []).map((u) => [u.id, be(u.label, "Person")]));
 }
-function Pl(t) {
+function Dl(t) {
   const x = Math.abs(t.m).toString(), a = t.m < 0 ? "-" : "";
   if (t.e >= 0) return a + x + "0".repeat(t.e);
   const p = -t.e, u = x.padStart(p + 1, "0");
@@ -381,7 +381,7 @@ function Y(t) {
 function Oe(t) {
   return t.labels.en ?? Object.values(t.labels)[0] ?? t.code;
 }
-const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
+const Pl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
   __name: "ChipPicker",
   props: {
     modelValue: {},
@@ -393,27 +393,27 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
   emits: ["update:modelValue"],
   setup(t, { emit: x }) {
     const a = t, p = x, u = E("");
-    function h(D) {
-      return a.modelValue.includes(D);
+    function h(P) {
+      return a.modelValue.includes(P);
     }
-    function y(D) {
-      a.disabled || !D || p("update:modelValue", h(D) ? a.modelValue.filter((z) => z !== D) : [...a.modelValue, D]);
+    function y(P) {
+      a.disabled || !P || p("update:modelValue", h(P) ? a.modelValue.filter((z) => z !== P) : [...a.modelValue, P]);
     }
     function w() {
-      const D = u.value.trim();
-      if (!D || h(D)) {
+      const P = u.value.trim();
+      if (!P || h(P)) {
         u.value = "";
         return;
       }
-      p("update:modelValue", [...a.modelValue, D]), u.value = "";
+      p("update:modelValue", [...a.modelValue, P]), u.value = "";
     }
-    function d(D) {
-      p("update:modelValue", a.modelValue.filter((z) => z !== D));
+    function d(P) {
+      p("update:modelValue", a.modelValue.filter((z) => z !== P));
     }
-    function I(D) {
-      return a.options?.find((z) => z.value === D)?.label ?? D;
+    function I(P) {
+      return a.options?.find((z) => z.value === P)?.label ?? P;
     }
-    return (D, z) => (n(), v("div", Dl, [
+    return (P, z) => (n(), v("div", Pl, [
       t.options && t.options.length > 10 ? (n(), v(F, { key: 0 }, [
         (n(!0), v(F, null, G(t.modelValue, (f) => (n(), v("span", {
           key: f,
@@ -447,7 +447,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
           appendTo: "self"
         }, null, 8, ["aria-label", "options"]))
       ], 64)) : t.options ? (n(), v(F, { key: 1 }, [
-        o(l(De), {
+        o(l(Pe), {
           "model-value": t.modelValue.filter((f) => t.options.some((m) => m.value === f)),
           options: t.options.map((f) => ({ value: f.value, label: f.label ?? f.value })),
           "option-label": "label",
@@ -595,7 +595,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
       return d === "bool" ? I = { type: "boolean" } : d === "int" ? I = { type: "integer" } : d === "dec" ? I = { type: "string", pattern: "^-?\\d+(\\.\\d+)?$", description: "Exact number, for example 12.50." } : d === "quantity" ? I = { type: "object", required: ["value", "unit"], properties: { value: { type: "string", title: "Amount" }, unit: { type: "string", title: "Unit", enum: Object.keys(a.attribute.config?.units ?? {}) } }, additionalProperties: !1 } : d === "record" ? I = { type: "object", additionalProperties: !0 } : d === "ref" && (I = { type: "object", required: ["ref"], properties: { ref: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2, description: `Reference kind (${a.type?.target ?? "link kind"}) and identity.` } }, additionalProperties: !1 }), (a.attribute.cardinality ?? "one") !== "one" && (I = { type: "array", items: I, uniqueItems: a.attribute.cardinality === "set" }), { type: "object", properties: { value: { ...I, title: "Default value" } } };
     });
     function h(d) {
-      return d && typeof d == "object" && "m" in d && "e" in d ? Pl(d) : d;
+      return d && typeof d == "object" && "m" in d && "e" in d ? Dl(d) : d;
     }
     function y(d) {
       return a.type?.form === "dec" ? h(d) : a.type?.form === "quantity" && d && typeof d == "object" && "v" in d && "u" in d ? { value: h(d.v), unit: d.u } : d;
@@ -604,7 +604,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
     return (d, I) => (n(), R(Re, {
       schema: u.value,
       "model-value": w.value,
-      "onUpdate:modelValue": I[0] || (I[0] = (D) => p("change", D.value))
+      "onUpdate:modelValue": I[0] || (I[0] = (P) => p("change", P.value))
     }, null, 8, ["schema", "model-value"]));
   }
 }), Ml = { class: "pim-stack" }, Hl = { class: "pim-bsection-head" }, Jl = {
@@ -634,7 +634,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
   },
   emits: ["remove"],
   setup(t, { emit: x }) {
-    const a = t, p = x, u = ["quarter", "third", "half", "full"], h = [{ value: "one", label: "Single value" }, { value: "list", label: "Ordered list" }, { value: "set", label: "Unique set" }], y = J(() => a.draft.aspects ?? []), w = J(() => (a.draft.dimensions ?? []).map((i) => ({ value: i.name, label: Y(i.name) }))), d = J(() => (a.draft.vocabularies ?? []).map((i) => i.code)), I = J(() => (a.draft.sources ?? []).map((i) => ({ value: i.id, label: Y(i.id) }))), D = J(() => [...a.options.types].sort((i, c) => i.form.localeCompare(c.form)).map((i) => ({ value: i.id, label: f(i) })));
+    const a = t, p = x, u = ["quarter", "third", "half", "full"], h = [{ value: "one", label: "Single value" }, { value: "list", label: "Ordered list" }, { value: "set", label: "Unique set" }], y = J(() => a.draft.aspects ?? []), w = J(() => (a.draft.dimensions ?? []).map((i) => ({ value: i.name, label: Y(i.name) }))), d = J(() => (a.draft.vocabularies ?? []).map((i) => i.code)), I = J(() => (a.draft.sources ?? []).map((i) => ({ value: i.id, label: Y(i.id) }))), P = J(() => [...a.options.types].sort((i, c) => i.form.localeCompare(c.form)).map((i) => ({ value: i.id, label: f(i) })));
     function z(i) {
       return a.options.types.find((c) => c.id === i.type);
     }
@@ -693,7 +693,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
     }
     const ee = E(null);
     function ce(i, c) {
-      ee.value?.namespace === i.namespace && P(i.attributes ?? [], ee.value.index, c), ee.value = null;
+      ee.value?.namespace === i.namespace && D(i.attributes ?? [], ee.value.index, c), ee.value = null;
     }
     const ye = E("");
     function $e() {
@@ -715,7 +715,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
       const O = i.attributes ?? [], $ = O.indexOf(c);
       $ >= 0 && O.splice($, 1), s(i.namespace, c) && p("remove", "attributes", i.namespace + "." + c.code);
     }
-    function P(i, c, O) {
+    function D(i, c, O) {
       if (O < 0 || O >= i.length) return;
       const [$] = i.splice(c, 1);
       i.splice(O, 0, $);
@@ -811,8 +811,8 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
             }, ["prevent"])),
             onHeadDrop: X((q) => ce(O, W), ["prevent"]),
             onHeadKeydown: [
-              X((q) => P(O.attributes ?? [], W, W - 1), ["alt", "prevent"]),
-              X((q) => P(O.attributes ?? [], W, W + 1), ["alt", "prevent"])
+              X((q) => D(O.attributes ?? [], W, W - 1), ["alt", "prevent"]),
+              X((q) => D(O.attributes ?? [], W, W + 1), ["alt", "prevent"])
             ]
           }, {
             handle: r(() => [
@@ -875,7 +875,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
                 type: "button",
                 disabled: W === 0,
                 "aria-label": "Move " + $.code + " earlier",
-                onClick: (q) => P(O.attributes, W, W - 1),
+                onClick: (q) => D(O.attributes, W, W - 1),
                 text: "",
                 severity: "secondary",
                 size: "small"
@@ -889,7 +889,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
                 type: "button",
                 disabled: W === (O.attributes?.length ?? 0) - 1,
                 "aria-label": "Move " + $.code + " later",
-                onClick: (q) => P(O.attributes, W, W + 1),
+                onClick: (q) => D(O.attributes, W, W + 1),
                 text: "",
                 severity: "secondary",
                 size: "small"
@@ -920,7 +920,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
                   ], -1)),
                   o(l(oe), {
                     "model-value": $.type,
-                    options: D.value,
+                    options: P.value,
                     "option-label": "label",
                     "option-value": "value",
                     appendTo: "self",
@@ -984,7 +984,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
                     e("label", null, "Width"),
                     e("span", { class: "pim-f-note" }, "of a form row")
                   ], -1)),
-                  o(l(De), {
+                  o(l(Pe), {
                     "model-value": $.width ?? t.schema.attributes[O.namespace + "." + $.code]?.width ?? "half",
                     options: u,
                     "allow-empty": !1,
@@ -1176,7 +1176,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
       if (f.members = m, f.fallback)
         for (const g of Object.keys(f.fallback)) m.includes(g) || delete f.fallback[g];
     }
-    function D(f, m) {
+    function P(f, m) {
       return f.fallback?.[m] ?? [];
     }
     function z(f, m, g) {
@@ -1269,7 +1269,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
                     m[2] || (m[2] = e("span", { class: "pim-f-note" }, "in order, when it has no value", -1))
                   ]),
                   o(de, {
-                    "model-value": D(g, s),
+                    "model-value": P(g, s),
                     options: g.members.filter((C) => C !== s).map((C) => ({ value: C })),
                     "onUpdate:modelValue": (C) => z(g, s, C)
                   }, null, 8, ["model-value", "options", "onUpdate:modelValue"])
@@ -1298,7 +1298,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
 }, zt = { class: "num" }, Nt = {
   key: 2,
   class: "muted small"
-}, Pt = { class: "row" }, Dt = { class: "row wrap pim-add-row" }, Et = { class: "row pim-add-row" }, Bt = /* @__PURE__ */ Q({
+}, Dt = { class: "row" }, Pt = { class: "row wrap pim-add-row" }, Et = { class: "row pim-add-row" }, Bt = /* @__PURE__ */ Q({
   __name: "BuilderVocabularies",
   props: {
     catalogId: {},
@@ -1315,7 +1315,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
     function I(_) {
       y.value.splice(y.value.indexOf(_), 1), a.schema.declaration.vocabularies?.some((N) => N.code === _.code) && p("remove", "vocabularies", _.code);
     }
-    function D(_) {
+    function P(_) {
       return !!a.schema.vocabularies[_];
     }
     const z = E({}), f = E({}), m = E({}), g = E({}), s = E({}), C = E({}), V = E({});
@@ -1435,7 +1435,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
                 }, null, 8, ["aria-label", "model-value", "onUpdate:modelValue"]),
                 N[1] || (N[1] = e("span", null, "Hierarchical", -1))
               ]),
-              D(U.code) ? (n(), R(l(L), {
+              P(U.code) ? (n(), R(l(L), {
                 key: 0,
                 type: "button",
                 onClick: (K) => S(U.code),
@@ -1512,7 +1512,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
                     ], 2))), 128))
                   ])
                 ])) : s.value[U.code] ? T("", !0) : (n(), v("p", Nt, "No terms yet.")),
-                e("div", Pt, [
+                e("div", Dt, [
                   o(l(L), {
                     type: "button",
                     disabled: s.value[U.code] || !g.value[U.code],
@@ -1548,7 +1548,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
                     _: 1
                   }, 8, ["disabled", "onClick"])
                 ]),
-                e("div", Dt, [
+                e("div", Pt, [
                   o(l(ne), {
                     modelValue: b(U.code).code,
                     "onUpdate:modelValue": (K) => b(U.code).code = K,
@@ -1625,7 +1625,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
       const k = d.value.trim();
       !le.test(k) || (a.draft.families ?? []).some((S) => S.code === k) || ((a.draft.families ??= []).push({ code: k, aspects: [] }), d.value = "");
     }
-    function D(k) {
+    function P(k) {
       a.draft.families.splice(a.draft.families.indexOf(k), 1), a.schema.declaration.families?.some((S) => S.code === k.code) && p("remove", "families", k.code);
     }
     function z(k) {
@@ -1695,7 +1695,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
           actions: r(() => [
             o(l(L), {
               type: "button",
-              onClick: (B) => D(b),
+              onClick: (B) => P(b),
               "aria-label": "Remove " + l(Y)(b.code),
               text: "",
               severity: "secondary",
@@ -1937,7 +1937,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
     function I(f) {
       a.disabled || !f.trim() || a.modelValue.includes(f.trim()) || (p("update:modelValue", [...a.modelValue, f.trim()]), h.value = "");
     }
-    function D(f) {
+    function P(f) {
       const m = f.detail;
       if (!m || typeof m != "object") return;
       const g = m, s = g.principal_id ?? g.id;
@@ -1978,7 +1978,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
         config: "{}",
         kinds: "user",
         placeholder: "Add a person…",
-        onConfigChanged: X(D, ["stop"])
+        onConfigChanged: X(P, ["stop"])
       }, null, 32)) : (n(), v("span", ca, "The person picker is unavailable.")),
       e("label", ma, [
         m[3] || (m[3] = e("span", { class: "small muted" }, "Service account", -1)),
@@ -2014,7 +2014,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
   },
   emits: ["remove"],
   setup(t, { emit: x }) {
-    const a = t, p = x, u = J(() => a.draft.channels ?? []), h = J(() => a.draft.sources ?? []), y = J(() => [...new Set((a.draft.families ?? []).flatMap((s) => (s.requirements ?? []).map((C) => C.id)))].map((s) => ({ value: s }))), w = J(() => (a.draft.families ?? []).filter((s) => s.code !== "generic").map((s) => ({ value: s.code, label: Y(s.code) }))), d = J(() => (a.draft.aspects ?? []).map((s) => ({ value: s.namespace, label: Y(s.namespace) }))), I = E(""), D = E("");
+    const a = t, p = x, u = J(() => a.draft.channels ?? []), h = J(() => a.draft.sources ?? []), y = J(() => [...new Set((a.draft.families ?? []).flatMap((s) => (s.requirements ?? []).map((C) => C.id)))].map((s) => ({ value: s }))), w = J(() => (a.draft.families ?? []).filter((s) => s.code !== "generic").map((s) => ({ value: s.code, label: Y(s.code) }))), d = J(() => (a.draft.aspects ?? []).map((s) => ({ value: s.namespace, label: Y(s.namespace) }))), I = E(""), P = E("");
     function z() {
       const s = I.value.trim();
       !le.test(s) || u.value.some((C) => C.id === s) || ((a.draft.channels ??= []).push({ id: s, requirements: [] }), I.value = "");
@@ -2023,8 +2023,8 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
       u.value.splice(u.value.indexOf(s), 1), a.schema.declaration.channels?.some((C) => C.id === s.id) && p("remove", "channels", s.id);
     }
     function m() {
-      const s = D.value.trim();
-      !le.test(s) || h.value.some((C) => C.id === s) || ((a.draft.sources ??= []).push({ id: s, ordering: "none", writes: [] }), D.value = "");
+      const s = P.value.trim();
+      !le.test(s) || h.value.some((C) => C.id === s) || ((a.draft.sources ??= []).push({ id: s, ordering: "none", writes: [] }), P.value = "");
     }
     function g(s) {
       h.value.splice(h.value.indexOf(s), 1), a.schema.declaration.sources?.some((C) => C.id === s.id) && p("remove", "sources", s.id);
@@ -2135,8 +2135,8 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
         add: r(() => [
           e("div", Ua, [
             o(l(ne), {
-              modelValue: D.value,
-              "onUpdate:modelValue": C[1] || (C[1] = (V) => D.value = V),
+              modelValue: P.value,
+              "onUpdate:modelValue": C[1] || (C[1] = (V) => P.value = V),
               type: "text",
               placeholder: "new_source",
               onKeydown: re(X(m, ["prevent"]), ["enter"]),
@@ -2144,7 +2144,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
             }, null, 8, ["modelValue", "onKeydown"]),
             o(l(L), {
               type: "button",
-              disabled: !l(le).test(D.value),
+              disabled: !l(le).test(P.value),
               onClick: m,
               severity: "secondary",
               outlined: "",
@@ -2284,12 +2284,12 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
     function I(m) {
       return Object.entries(a.schema.attributes).filter(([, g]) => g.plugin === m.plugin).map(([g]) => g);
     }
-    const D = J(() => a.draft.scopes ?? []);
+    const P = J(() => a.draft.scopes ?? []);
     function z(m) {
-      return D.value.includes(m.id);
+      return P.value.includes(m.id);
     }
     function f(m, g) {
-      g && !z(m) && (a.draft.scopes ??= []).push(m.id), !g && z(m) && (D.value.splice(D.value.indexOf(m.id), 1), a.schema.declaration.scopes?.includes(m.id) && p("remove", "scopes", m.id));
+      g && !z(m) && (a.draft.scopes ??= []).push(m.id), !g && z(m) && (P.value.splice(P.value.indexOf(m.id), 1), a.schema.declaration.scopes?.includes(m.id) && p("remove", "scopes", m.id));
     }
     return (m, g) => (n(), v("div", Sa, [
       o(ge, {
@@ -2406,7 +2406,7 @@ const Dl = { class: "pim-chips pim-picker-chips" }, de = /* @__PURE__ */ Q({
     ]));
   }
 });
-async function Pa(t) {
+async function Da(t) {
   const x = await Je(`/api/v1/pim-admin/catalogs/${encodeURIComponent(t)}/policy_defaults`, "policy defaults");
   if (x.audit !== "fields" && x.audit !== "off" || !["audit_days", "trash_days", "tombstone_days"].every((a) => typeof x[a] == "number" && Number.isSafeInteger(x[a])))
     throw new Error("Policy defaults are unavailable.");
@@ -2495,7 +2495,7 @@ const Le = {
     title: "Products per import step",
     global: !1
   }
-}, Da = { class: "form" }, Ea = {
+}, Pa = { class: "form" }, Ea = {
   key: 0,
   class: "muted small pim-policy-status",
   role: "status"
@@ -2515,7 +2515,7 @@ const Le = {
       if (!x.defaults) {
         u.value = "", h.value = !0;
         try {
-          a.value = await Pa(x.catalogId ?? "");
+          a.value = await Da(x.catalogId ?? "");
         } catch (V) {
           u.value = V instanceof Error ? V.message : "Could not read policy defaults.";
         } finally {
@@ -2529,7 +2529,7 @@ const Le = {
       { key: "audit_days", title: "Audit retention (days)", hint: "0 uses the 365-day default. History always expires.", kind: "int", min: 0, max: 106751 },
       { key: "trash_days", title: "Trash window (days)", hint: "How long a deleted product stays restorable.", kind: "int", min: 1, max: 106751 },
       { key: "tombstone_days", title: "Deleted product notices (days)", hint: "How long feeds report a purged product as deleted.", kind: "int", min: 1, max: 106751 }
-    ], D = {
+    ], P = {
       proposal_days: "How long proposals stay in this catalog before removal.",
       proposal_count: "Maximum number of stored proposals in this catalog.",
       completed_work_days: "How long finished release work stays in this catalog.",
@@ -2546,7 +2546,7 @@ const Le = {
     };
     function z(V) {
       const k = Le[V];
-      return { key: V, ...k, kind: "int", hint: D[V] };
+      return { key: V, ...k, kind: "int", hint: P[V] };
     }
     I.push(...["completed_work_days", "abandoned_work_days", "import_days"].map(z));
     const f = ["proposal_days", "proposal_count"].map(z), m = ["command_deadline_ms", "rebuild_rows", "job_batches", "import_rows", "proposal_bytes", "maintenance_rows", "maintenance_catalogs", "pending_creation_days"].map(z), g = [
@@ -2562,7 +2562,7 @@ const Le = {
       const S = x.draft.policy ?? (x.draft.policy = {});
       S[V] = k == null || k === "" || k === "inherited" ? !1 : k;
     }
-    return (V, k) => (n(), v("section", Da, [
+    return (V, k) => (n(), v("section", Pa, [
       k[4] || (k[4] = e("p", { class: "muted small pim-policy-intro" }, "Empty fields inherit the deployment settings.", -1)),
       h.value ? (n(), v("p", Ea, "Loading deployment defaults…")) : T("", !0),
       u.value ? (n(), R(l(ue), {
@@ -2748,19 +2748,19 @@ const Le = {
       { id: "plugins", title: "Plugins & scopes" },
       { id: "policy", title: "Policy" },
       { id: "declaration", title: "Declaration" }
-    ], h = E("fields"), y = E(null), w = E(null), d = E({}), I = E({}), D = E({}), z = J(() => Object.fromEntries(Object.entries(D.value).filter(([M]) => d.value.plugins?.some((P) => P.use === M) && !y.value?.plugins.some((P) => P.plugin === M && P.active)))), f = E(""), m = E(!1), g = E(""), s = E(null), C = E(null), V = E(!0), k = Se(), S = J(() => V.value && !!s.value && s.value.class !== "refused" && !!C.value?.matches(ce.value, y.value?.schema_generation ?? -1, z.value)), b = Se(), B = E(!1);
+    ], h = E("fields"), y = E(null), w = E(null), d = E({}), I = E({}), P = E({}), z = J(() => Object.fromEntries(Object.entries(P.value).filter(([M]) => d.value.plugins?.some((D) => D.use === M) && !y.value?.plugins.some((D) => D.plugin === M && D.active)))), f = E(""), m = E(!1), g = E(""), s = E(null), C = E(null), V = E(!0), k = Se(), S = J(() => V.value && !!s.value && s.value.class !== "refused" && !!C.value?.matches(ce.value, y.value?.schema_generation ?? -1, z.value)), b = Se(), B = E(!1);
     let te = 0;
-    ve([d, I, D], () => {
+    ve([d, I, P], () => {
       te++, s.value = null;
     }, { deep: !0, flush: "sync" });
-    async function _(M = !1, P = !1) {
+    async function _(M = !1, D = !1) {
       if (K.value && !M) return;
-      const i = b.begin(), c = te, O = a.catalogId, $ = P ? Object.entries(D.value).filter(([W]) => y.value?.plugins.some((q) => q.plugin === W && q.active)) : [];
+      const i = b.begin(), c = te, O = a.catalogId, $ = D ? Object.entries(P.value).filter(([W]) => y.value?.plugins.some((q) => q.plugin === W && q.active)) : [];
       B.value = !0, f.value = "";
       try {
         const [W, q] = await Promise.all([se.schema(O), se.schemaOptions(O)]);
         if (!b.current(i) || c !== te || O !== a.catalogId) return;
-        y.value = W, w.value = q, d.value = _e(W.declaration), I.value = {}, D.value = Object.fromEntries($.filter(([Ce]) => W.plugins.some((fe) => fe.plugin === Ce && fe.active))), s.value = null, V.value = !0;
+        y.value = W, w.value = q, d.value = _e(W.declaration), I.value = {}, P.value = Object.fromEntries($.filter(([Ce]) => W.plugins.some((fe) => fe.plugin === Ce && fe.active))), s.value = null, V.value = !0;
       } catch (W) {
         b.current(i) && (f.value = W instanceof Error ? W.message : "Could not load the schema.");
       } finally {
@@ -2773,18 +2773,18 @@ const Le = {
       N(), N = dl(`component.${M}`, () => {
         K.value || _();
       });
-    }, { immediate: !0 }), Pe(async () => {
+    }, { immediate: !0 }), De(async () => {
       K.value || await _();
     }), Ve(() => {
       N(), k.begin(), b.begin();
     }), ve(() => a.catalogId, () => {
       k.begin(), m.value = !1, y.value = null, w.value = null, me(), _();
     });
-    const U = J(() => Object.values(qe(d.value, I.value)).reduce((M, P) => M + (P?.length ?? 0), 0)), K = J(() => !!y.value && (JSON.stringify(d.value) !== JSON.stringify(y.value.declaration) || U.value > 0 || Object.keys(D.value).length > 0));
+    const U = J(() => Object.values(qe(d.value, I.value)).reduce((M, D) => M + (D?.length ?? 0), 0)), K = J(() => !!y.value && (JSON.stringify(d.value) !== JSON.stringify(y.value.declaration) || U.value > 0 || Object.keys(P.value).length > 0));
     ve(K, (M) => p("dirty-changed", M), { immediate: !0 });
     const ee = J(() => ![d.value.aspects, d.value.dimensions, d.value.vocabularies, d.value.families, d.value.channels, d.value.sources, d.value.plugins, d.value.scopes].some((M) => M?.length)), ce = J(() => {
-      const M = _e(d.value), P = qe(M, I.value);
-      return Object.keys(P).length && (M.remove = P), M;
+      const M = _e(d.value), D = qe(M, I.value);
+      return Object.keys(D).length && (M.remove = D), M;
     });
     ve(K, (M) => {
       M || (s.value = null);
@@ -2793,12 +2793,12 @@ const Le = {
     }, { deep: !0 });
     async function ye() {
       if (!y.value || !V.value) return;
-      const M = k.begin(), P = wl(ce.value, y.value.schema_generation, z.value);
+      const M = k.begin(), D = wl(ce.value, y.value.schema_generation, z.value);
       m.value = !0, f.value = "";
       try {
-        const i = await se.planSchema(a.catalogId, P.declaration, P.generation, P.pluginConfigs);
-        if (!k.current(M) || !P.matches(ce.value, y.value.schema_generation, z.value) || !V.value) return;
-        C.value = P, s.value = i;
+        const i = await se.planSchema(a.catalogId, D.declaration, D.generation, D.pluginConfigs);
+        if (!k.current(M) || !D.matches(ce.value, y.value.schema_generation, z.value) || !V.value) return;
+        C.value = D, s.value = i;
       } catch (i) {
         if (!k.current(M)) return;
         f.value = i instanceof Error ? i.message : "Could not review the change.", s.value = null, C.value = null;
@@ -2808,28 +2808,28 @@ const Le = {
     }
     async function $e() {
       if (!y.value || !K.value || !S.value || !C.value) return;
-      const M = a.catalogId, P = k.begin();
+      const M = a.catalogId, D = k.begin();
       m.value = !0, f.value = "", g.value = "";
       try {
         const i = await se.applySchema(M, C.value.declaration, C.value.generation, C.value.pluginConfigs);
-        if (M !== a.catalogId || !k.current(P) || (await _(!0, !0), M !== a.catalogId || !k.current(P))) return;
+        if (M !== a.catalogId || !k.current(D) || (await _(!0, !0), M !== a.catalogId || !k.current(D))) return;
         g.value = `Applied as generation ${i.generation} (${i.class})`, p("applied", i.generation);
       } catch (i) {
-        if (M !== a.catalogId || !k.current(P)) return;
+        if (M !== a.catalogId || !k.current(D)) return;
         f.value = i instanceof Error ? i.message : "Could not apply the change.";
       } finally {
-        k.current(P) && (m.value = !1);
+        k.current(D) && (m.value = !1);
       }
     }
-    async function Ue(M, P) {
+    async function Ue(M, D) {
       const i = a.catalogId, c = b.begin(), O = k.begin();
       m.value = !0, f.value = "";
       try {
-        const $ = JSON.stringify(P);
-        if (await se.configurePlugin(i, M, _e(P)), i !== a.catalogId || !b.current(c)) return;
+        const $ = JSON.stringify(D);
+        if (await se.configurePlugin(i, M, _e(D)), i !== a.catalogId || !b.current(c)) return;
         const W = await se.schema(i);
         if (i !== a.catalogId || !b.current(c)) return;
-        y.value && (y.value.plugins = W.plugins), JSON.stringify(D.value[M]) === $ && delete D.value[M], g.value = "Configuration saved";
+        y.value && (y.value.plugins = W.plugins), JSON.stringify(P.value[M]) === $ && delete P.value[M], g.value = "Configuration saved";
       } catch ($) {
         i === a.catalogId && k.current(O) && (f.value = $ instanceof Error ? $.message : "Could not save configuration.");
       } finally {
@@ -2837,13 +2837,13 @@ const Le = {
       }
     }
     function me() {
-      D.value = {}, V.value = !0, y.value && (d.value = _e(y.value.declaration)), I.value = {}, s.value = null, g.value = "";
+      P.value = {}, V.value = !0, y.value && (d.value = _e(y.value.declaration)), I.value = {}, s.value = null, g.value = "";
     }
-    function pe(M, P) {
+    function pe(M, D) {
       const i = I.value[M] ?? [];
-      i.includes(P) || (I.value = { ...I.value, [M]: [...i, P] });
+      i.includes(D) || (I.value = { ...I.value, [M]: [...i, D] });
     }
-    return (M, P) => (n(), v("div", {
+    return (M, D) => (n(), v("div", {
       class: we(["pim-builder", { embedded: t.embedded }])
     }, [
       t.embedded ? (n(), v("div", Qa, [
@@ -2874,7 +2874,7 @@ const Le = {
         subtitle: "Settings · generation " + (y.value?.schema_generation ?? "…"),
         icon: "tabler:settings",
         "back-label": t.backLabel,
-        onBack: P[0] || (P[0] = (i) => p("back"))
+        onBack: D[0] || (D[0] = (i) => p("back"))
       }, {
         default: r(() => [
           ie(M.$slots, "actions", {
@@ -2896,7 +2896,7 @@ const Le = {
       }, 8, ["title", "subtitle", "back-label"])),
       o(l(al), {
         value: h.value,
-        "onUpdate:value": P[1] || (P[1] = (i) => h.value = i),
+        "onUpdate:value": D[1] || (D[1] = (i) => h.value = i),
         class: "pim-section-tabs"
       }, {
         default: r(() => [
@@ -2940,11 +2940,11 @@ const Le = {
           })) : T("", !0),
           B.value && (!y.value || !w.value) ? (n(), v("div", tn, "Loading…")) : (!y.value || !w.value) && f.value ? (n(), R(l(L), {
             key: 3,
-            onClick: P[2] || (P[2] = (i) => _()),
+            onClick: D[2] || (D[2] = (i) => _()),
             severity: "secondary",
             outlined: ""
           }, {
-            default: r(() => [...P[5] || (P[5] = [
+            default: r(() => [...D[5] || (D[5] = [
               j("Retry", -1)
             ])]),
             _: 1
@@ -2958,8 +2958,8 @@ const Le = {
               key: 0,
               severity: "info"
             }, {
-              default: r(() => [...P[6] || (P[6] = [
-                j("No catalog definitions yet. Add a field group to start defining fields.", -1)
+              default: r(() => [...D[6] || (D[6] = [
+                j("Define its schema. Add a field group to start defining fields.", -1)
               ])]),
               _: 1
             })) : T("", !0),
@@ -2996,7 +2996,7 @@ const Le = {
               draft: d.value,
               schema: y.value,
               options: w.value,
-              "plugin-configs": D.value,
+              "plugin-configs": P.value,
               onConfigure: Ue,
               onRemove: pe
             }, null, 8, ["draft", "schema", "options", "plugin-configs"])) : h.value === "policy" ? (n(), R(Wa, {
@@ -3006,8 +3006,8 @@ const Le = {
             }, null, 8, ["catalog-id", "draft"])) : h.value === "declaration" ? (n(), R(Ya, {
               key: 8,
               draft: d.value,
-              onReplace: P[3] || (P[3] = (i) => d.value = i),
-              onValidity: P[4] || (P[4] = (i) => {
+              onReplace: D[3] || (D[3] = (i) => d.value = i),
+              onValidity: D[4] || (D[4] = (i) => {
                 V.value = i, s.value = null;
               })
             }, null, 8, ["draft"])) : T("", !0)
@@ -3015,7 +3015,7 @@ const Le = {
           s.value ? (n(), v("div", nn, [
             e("div", sn, [
               o(l(H), { icon: "tabler:checklist" }),
-              P[7] || (P[7] = e("h3", null, "Review", -1)),
+              D[7] || (D[7] = e("h3", null, "Review", -1)),
               o(l(ae), {
                 class: "kx-tag-sm",
                 severity: s.value.class === "refused" ? "danger" : s.value.class === "semantic" ? "warn" : "info"
@@ -3032,7 +3032,7 @@ const Le = {
                 severity: "error"
               }, {
                 default: r(() => [
-                  P[8] || (P[8] = j("Refused: the draft cannot be compiled as it stands.", -1)),
+                  D[8] || (D[8] = j("Refused: the draft cannot be compiled as it stands.", -1)),
                   s.value.migration ? (n(), v("span", mn, A(s.value.migration), 1)) : T("", !0)
                 ]),
                 _: 1
@@ -3073,7 +3073,7 @@ const Le = {
     }
     return ve(u, () => {
       p.value = "", y();
-    }), Pe(y), Ve(() => {
+    }), De(y), Ve(() => {
       h.begin();
     }), (w, d) => u.value ? (n(), R(yn, {
       key: u.value,
