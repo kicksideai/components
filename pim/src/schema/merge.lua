@@ -98,18 +98,26 @@ function M.merge_attributes(prev: { types.AttributeDecl }?, incoming: { types.At
         at_code[a.code] = a
         if a.id then at_id[a.id] = a end
     end
+    -- Explicit claims vacate their old codes before any incoming code is matched.
     for _, a in ipairs(incoming or {}) do
-        local old = a.id and at_id[a.id] or at_code[a.code]
-        if a.id and not at_id[a.id] then return nil, invalid("unknown attribute id " .. a.id .. " for " .. a.code) end
-        if at_code[a.code] and at_code[a.code] ~= old then return nil, invalid("attribute code already used: " .. a.code) end
-        if old and used[old] then return nil, invalid("attribute declared twice: " .. a.code) end
+        if a.id then
+            local old = at_id[a.id]
+            if not old then return nil, invalid("unknown attribute id " .. a.id .. " for " .. a.code) end
+            if used[old] then return nil, invalid("attribute declared twice: " .. a.code) end
+            used[old] = true
+            at_code[old.code] = nil
+        end
+    end
+    local named: { [string]: boolean } = {}
+    for _, a in ipairs(incoming or {}) do
+        if named[a.code] then return nil, invalid("attribute declared twice: " .. a.code) end
+        local old = at_code[a.code]
+        if a.id and old then return nil, invalid("attribute code already used: " .. a.code) end
         if old then
             a.id = old.id
-            at_code[old.code] = nil
             used[old] = true
         end
-        at_code[a.code] = a
-        used[a] = true
+        named[a.code] = true
         out[#out + 1] = a
     end
     for _, a in ipairs(prev or {}) do

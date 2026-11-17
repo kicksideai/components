@@ -528,6 +528,7 @@ entries:
       fixture: app:fixture
       store: kickside.pim.persist:store
       steps: app:steps
+      types: kickside.pim:types
 
   - name: release_test
     kind: function.lua

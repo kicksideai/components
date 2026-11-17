@@ -4,14 +4,135 @@ local fixture = require("fixture")
 local steps = require("steps")
 local store = require("store")
 local json = require("json")
+local types = require("types")
 
 type Map = { [string]: unknown }
 
 local catalog_fixture = require("catalog_fixture")
 local kind = catalog_fixture.kind
 
+local function change(h: fixture.Handle, declaration: types.Declaration): types.SchemaResult
+    local out, err = h.call("apply_schema", { declaration = declaration })
+    assert(out and not err, tostring(err))
+    return out :: types.SchemaResult
+end
+
+local function head(h: fixture.Handle): types.SchemaView
+    return assert(h.call("get_schema", {})) :: types.SchemaView
+end
+
+local function footwear(): types.FamilyDecl
+    return steps.copy(fixture.DECLARATION.families[1]) :: types.FamilyDecl
+end
+
 local function define()
     test.describe("schema changes", function()
+        test.it("refuses moving an authored field to a different owner even when renamed", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local previous = assert(steps.get(h, "RDG-moss-40")).values["logistics.net_weight"].value
+            test.not_nil(previous)
+            local id = head(h).attributes["logistics.net_weight"].id
+            local family = footwear()
+            assert(family.variation)[2].own = { "core.gtin" }
+            assert(family.requirements)[2].require = { "core.gtin", "logistics.shipping_weight" }
+            local patch = { families = { family }, aspects = { { namespace = "logistics", attributes = {
+                { id = id, code = "shipping_weight", type = "kickside.pim.types:number", index = "number", config = { scale = 3 } },
+            } } } }
+            local plan = assert(h.call("plan_schema", { declaration = patch }))
+            local applied, err = h.call("apply_schema", { declaration = patch })
+            if applied then
+                steps.rebuilt(h)
+                local read = assert(steps.get(h, "RDG-moss-40"))
+                local field = read.values["logistics.shipping_weight"]
+                test.is_nil(applied, "plan " .. plan.class .. " applied the owner change. Existing field now "
+                    .. tostring(field and field.state))
+            end
+            test.eq(err:details().code, "migration_required")
+            test.eq(plan.class, "refused")
+            test.eq(plan.refused[1].what, "logistics.shipping_weight owning level")
+            local current = assert(steps.get(h, "RDG-moss-40")).values["logistics.net_weight"].value
+            test.eq(current.m, previous.m)
+            test.eq(current.e, previous.e)
+        end)
+
+        test.it("keeps a pure axis rename cosmetic on a populated family", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local id = head(h).attributes["core.size"].id
+            local family = footwear()
+            assert(family.variation)[2].axes = { "core.shoe_size" }
+            local patch = { families = { family }, aspects = { { namespace = "core", attributes = {
+                { id = id, code = "shoe_size", type = "kickside.pim.types:integer", index = "number" },
+            } } } }
+            local plan = assert(h.call("plan_schema", { declaration = patch }))
+            local refused = plan.refused[1]
+            test.eq(plan.class, "cosmetic", refused and refused.what or "")
+            local applied = change(h, patch)
+            test.eq(applied.class, "cosmetic")
+            test.eq(head(h).attributes["core.shoe_size"].id, id)
+            test.eq(assert(steps.get(h, "RDG-moss-40")).values["core.shoe_size"].value, 40)
+        end)
+
+        test.it("lists new families, sources, dimensions and members as additive", function()
+            local h = fixture.catalog()
+            local cases = {
+                { code = "family spares", what = "added", declaration = { families = { { code = "spares" } } } },
+                { code = "source warehouse", what = "added", declaration = { sources = { { id = "warehouse" } } } },
+                { code = "dimension region", what = "added", declaration = { dimensions = { { name = "region", members = { "eu" } } } } },
+                { code = "dimension channel", what = "member retail added",
+                    declaration = { dimensions = { { name = "channel", members = { "web", "marketplace", "retail" } } } } },
+            }
+            for _, case in ipairs(cases) do
+                local result = assert(h.call("plan_schema", { declaration = case.declaration }))
+                test.eq(result.class, "additive", case.code)
+                test.eq(#result.changes, 1, case.code)
+                test.eq(result.changes[1].code, case.code)
+                test.eq(result.changes[1].class, "additive")
+                test.eq(result.changes[1].what, case.what)
+            end
+        end)
+
+        test.it("allocates a new id when an attribute name is vacated by a rename in the same generation", function()
+            local text, integer = "kickside.pim.types:text", "kickside.pim.types:integer"
+            for _, reuse_first in ipairs({ false, true }) do
+                local h = fixture.catalog({ bare = true })
+                change(h, { aspects = { { namespace = "core", attributes = { { code = "name", type = text } } } } })
+                local id = head(h).attributes["core.name"].id
+                test.eq(steps.one(h, { product = { sku = "P" }, create = {},
+                    set = { { attr = "core.name", value = "original" } } }).outcome, "created")
+                local renamed = { id = id, code = "legacy_name", type = text }
+                local fresh = { code = "name", type = integer }
+                local attributes = reuse_first and { fresh, renamed } or { renamed, fresh }
+                local patch = { aspects = { { namespace = "core", attributes = attributes } } }
+                local plan = assert(h.call("plan_schema", { declaration = patch }))
+                test.eq(plan.class, "additive")
+                test.eq(#plan.changes, 2)
+                test.eq(change(h, patch).class, "additive")
+                local after = head(h)
+                test.eq(after.attributes["core.legacy_name"].id, id)
+                test.is_true(after.attributes["core.name"].id > id)
+                test.eq(after.declaration.aspects[1].attributes[1].code, attributes[1].code)
+                local item = assert(steps.get(h, "P"))
+                test.eq(item.values["core.legacy_name"].value, "original")
+                test.eq(item.values["core.name"].state, "absent")
+            end
+        end)
+
+        test.it("keeps readiness rules that still point to the same field cosmetic", function()
+            local h = fixture.catalog()
+            local current = head(h)
+            local family = footwear()
+            assert(family.requirements)[2].authored = { "marketing.copy" }
+            local renamed = current.declaration.aspects[2].attributes[1]
+            renamed.code = "copy"
+            local patch = { families = { family }, aspects = { { namespace = "marketing", attributes = { renamed } } } }
+            local plan = assert(h.call("plan_schema", { declaration = patch }))
+            test.eq(plan.class, "cosmetic")
+            test.eq(#plan.changes, 1)
+            test.eq(plan.changes[1].what, "renamed from marketing.description")
+        end)
+
         test.it("renames two attributes in a chain within one apply", function()
             local h = fixture.catalog()
             fixture.boot(h)
@@ -163,7 +284,8 @@ local function define()
             test.not_nil(derr)
             local out, merr = h.call("apply_schema", { declaration = { dimensions = { { name = "channel", members = { "web", "marketplace", "b2b" } } } } })
             test.is_nil(merr)
-            test.eq(out.class, "semantic")
+            test.eq(out.class, "additive")
+            test.eq(out.changes[1].what, "member b2b added")
         end)
 
         test.it("migrates an attribute to a new representation through explicit steps", function()

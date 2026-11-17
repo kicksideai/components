@@ -131,16 +131,6 @@ local function incompatible_index(previous: types.Compiled, compiled: types.Comp
     return nil
 end
 
-local function family_structure_changed(prev: types.Compiled, compiled: types.Compiled, family: types.Family): boolean
-    local after = compiled.families[family.code]
-    if not after or not values.equal(family.levels, after.levels) or not values.equal(family.owner, after.owner) then return true end
-    -- An unchanged coordinate can still name a different attribute identity.
-    for code in pairs(family.owner) do
-        if prev.attributes[code].id ~= compiled.attributes[code].id then return true end
-    end
-    return false
-end
-
 -- plan_schema merges, compiles and classifies a declaration against the catalog
 -- state at the command head; plan_schema returns it, apply_schema appends it.
 local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_id: string, request: types.SchemaRequest): (SchemaPlan?, error?)
@@ -209,15 +199,16 @@ local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_
     local populated = catalog ~= nil and catalog.product_count > 0
     local family_occupied: { [string]: boolean } = {}
     if populated and prev then
-        for code, family in pairs(prev.families) do
-            if family_structure_changed(prev, compiled, family) then
+        for code in pairs(prev.families) do
+            if changes_of.family_needs_occupancy(prev, compiled, code, product_usage) then
                 local occupied, ferr = store.family_occupied(db, catalog_id, code)
                 if ferr then return nil, ferr end
                 family_occupied[code] = occupied
             end
         end
     end
-    local changes = changes_of.changes(prev, compiled, { usage = product_usage, family_occupied = family_occupied, populated = populated })
+    local changes = changes_of.changes(prev, compiled,
+        { usage = product_usage, family_occupied = family_occupied, populated = populated }, prev_declaration, effective)
     if prev and changes_of.highest(changes) ~= "refused" then
         local refusal = incompatible_index(prev, compiled, usage)
         if refusal then changes[#changes + 1] = refusal end

@@ -136,31 +136,30 @@ function M.plugins(declaration: types.Declaration, plugin_check: PluginCheck?): 
     return plugins, nil
 end
 
-local function attribute_ids(c: types.Compiled): { [string]: integer }
-    local ids: { [string]: integer } = {}
-    for code, attr in pairs(c.attributes) do ids[code] = attr.id end
-    return ids
-end
-
-local function id_list(ids: { [string]: integer }, codes: { string }): { integer }
+function M.attribute_ids(attributes: { [string]: types.Attribute }, codes: { string }): { integer }
     local out: { integer } = {}
-    for i, code in ipairs(codes) do out[i] = ids[code] end
+    for i, code in ipairs(codes) do out[i] = attributes[code].id end
     return out
 end
 
 type RequirementRule = { id: string, contexts: { types.Ctx }, require: { integer }, authored: { integer } }
 type CheckRule = { fn: string, digest: string?, reads: { integer }, cost: string, config: types.JsonObject }
 
-local function readiness_rules(f: types.Family, ids: { [string]: integer }): ({ RequirementRule }, { CheckRule })
+function M.requirement_meaning(f: types.Family, attributes: { [string]: types.Attribute }): { RequirementRule }
     local reqs: { RequirementRule } = {}
     for i, r in ipairs(f.requirements) do
-        reqs[i] = { id = r.id, contexts = r.contexts, require = id_list(ids, r.require), authored = id_list(ids, r.authored) }
+        reqs[i] = { id = r.id, contexts = r.contexts, require = M.attribute_ids(attributes, r.require),
+            authored = M.attribute_ids(attributes, r.authored) }
     end
+    return reqs
+end
+
+local function check_meaning(f: types.Family, attributes: { [string]: types.Attribute }): { CheckRule }
     local checks: { CheckRule } = {}
     for i, k in ipairs(f.checks) do
-        checks[i] = { fn = k.fn, digest = k.digest, reads = id_list(ids, k.reads), cost = k.cost, config = k.config }
+        checks[i] = { fn = k.fn, digest = k.digest, reads = M.attribute_ids(attributes, k.reads), cost = k.cost, config = k.config }
     end
-    return reqs, checks
+    return checks
 end
 
 -- A flag aggregates the same set across families. Each family's interactive
@@ -168,13 +167,13 @@ end
 -- the attributes the set or its checks actually read.
 function M.readiness(c: types.Compiled): { [string]: { [string]: unknown } }
     local result: { [string]: { [string]: unknown } } = {}
-    local ids = attribute_ids(c)
     local attrs: { [integer]: types.Attribute } = {}
     local dimensions: { [string]: types.Dimension } = {}
     for _, attr in pairs(c.attributes) do attrs[attr.id] = attr end
     for _, dim in ipairs(c.dimensions) do dimensions[dim.name] = dim end
     for code, f in pairs(c.families) do
-        local requirements, checks = readiness_rules(f, ids)
+        local requirements = M.requirement_meaning(f, c.attributes)
+        local checks = check_meaning(f, c.attributes)
         local interactive: { CheckRule } = {}
         for _, check in ipairs(checks) do
             if check.cost == "interactive" then interactive[#interactive + 1] = check end
@@ -204,7 +203,6 @@ end
 -- stored rows depend on. Its digest changes when resolved values, readiness
 -- or the layout can change, and stays put for a rename.
 function M.meaning(c: types.Compiled): unknown
-    local ids = attribute_ids(c)
     local attrs: { [string]: unknown } = {}
     for _, a in pairs(c.attributes) do
         attrs[tostring(a.id)] = { form = a.form, type = a.type, scope = a.scope, cardinality = a.cardinality, index = a.index,
@@ -213,11 +211,11 @@ function M.meaning(c: types.Compiled): unknown
     local fams: { [string]: unknown } = {}
     for code, f in pairs(c.families) do
         local owner: { [string]: integer } = {}
-        for attr_code, level in pairs(f.owner) do owner[tostring(ids[attr_code])] = level end
+        for attr_code, level in pairs(f.owner) do owner[tostring(c.attributes[attr_code].id)] = level end
         local levels: { unknown } = {}
-        for i, l in ipairs(f.levels) do levels[i] = id_list(ids, l.axes) end
-        local reqs, chk = readiness_rules(f, ids)
-        fams[code] = { owner = owner, levels = levels, item_level = f.item_level, requirements = reqs, checks = chk }
+        for i, l in ipairs(f.levels) do levels[i] = M.attribute_ids(c.attributes, l.axes) end
+        fams[code] = { owner = owner, levels = levels, item_level = f.item_level,
+            requirements = M.requirement_meaning(f, c.attributes), checks = check_meaning(f, c.attributes) }
     end
     return { c.layout, attrs, fams, c.dimensions }
 end

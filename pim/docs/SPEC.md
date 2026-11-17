@@ -1523,16 +1523,22 @@ by code or by `id` for a rename). A request must name each key in a section
 once. Repeated aspects merge their named attributes. Named attributes take
 the incoming declaration order and retain their ids. Omitted previous
 attributes follow in their previous order.
+Explicit IDs claim their previous attributes before code matching. A request
+can rename an attribute and reuse its old code for a fresh ID in any entry order.
 Attribute config must match its type's shape before checking which plugins
 own any seams it references.
 `declaration.remove` destroys; **classify** each change against
 usage facts (an attribute is used while a live product holds a set or cleared
-cell of it):
+cell of it). Family owner levels, ordered axes and readiness field references
+are compared by attribute ID. The plan lists additions to named sections such
+as families, sources, dimensions and members, plus changes to the relative form
+order of retained attributes in each aspect. The highest listed class takes
+precedence when changes are combined:
 
 | Class | Examples | Effect |
 |---|---|---|
-| cosmetic | rename by id, labels, policy, scope adoption, plugin choices | new generation |
-| additive | new attribute, aspect, family, vocabulary, source, member; changes to unused attributes | new generation; rebuild if the compiled digest changes on a populated catalog |
+| cosmetic | rename by id, form order, labels, policy, scope adoption, plugin choices | new generation |
+| additive | new attribute, aspect, family, vocabulary, source, dimension, member; changes to unused attributes | new generation; rebuild if the compiled digest changes on a populated catalog |
 | semantic | defaults, fallback, index, requirements, checks, re-adopted check digest, removal of a used attribute | new generation; rebuild on a populated catalog |
 | refused | form, cardinality, vocabulary, representation config (`scale`, `range`, `case`, `members`, `target`, `units`, `canonical`, `currency`), scope or `unique` on a used attribute; an index that cannot encode a live stored value; axes or owning level in a family with products; removing a family with products; removing a dimension or member while the catalog holds products | `invalid`, `migration_required`, change list |
 
