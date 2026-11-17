@@ -8,19 +8,19 @@ entries:
     title: Kickside Work
     description: Work tracking on Kickside threads - boards of typed items with per-item concurrency, change history and a projected read model.
 - name: dep.kickside.component
-  version: '>=0.3.20'
+  version: '*'
   kind: ns.dependency
   meta:
     comment: Board components, ACL checks and deletion.
   component: kickside/component
 - name: dep.kickside.core
-  version: '>=0.3.17'
+  version: '*'
   kind: ns.dependency
   meta:
     comment: Board threads, subjects, projections and retention.
   component: kickside/core
 - name: dep.kickside.jobs
-  version: '>=0.1.80'
+  version: '*'
   kind: ns.dependency
   meta:
     comment: Follow-migration jobs after schema changes.
@@ -177,9 +177,18 @@ entries:
     types: kickside.work:types
 - name: dep.kickside.automation
   kind: ns.dependency
-  version: '>=0.2.27'
+  version: '*'
   component: kickside/automation
 
 - name: text
   kind: library.lua
   source: file://text.lua
+
+- name: dep.kickside.workflows
+  kind: ns.dependency
+  version: '*'
+  component: kickside/workflows
+- name: dep.kickside.sync
+  kind: ns.dependency
+  version: '*'
+  component: kickside/sync

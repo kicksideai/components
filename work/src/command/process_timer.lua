@@ -1,4 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local flow = require("flow")
+local process = require("process")
 local consts = require("consts")
 local report = require("report")
 local M = require("prepare_context")
@@ -28,9 +30,7 @@ local function retry(ctx: types.PrepareContext, item: domain.StateItem, op: type
     if op.attempt ~= (work.attempt :: integer) + 1 then return context.done(ctx, item, group, {}) end
     local events = recorded(item, op)
     work.waiting, work.attempt = nil, op.attempt
-    events[#events + 1] = M.event(consts.EVENTS.STAGE_ENTERED, group, {
-        item = item.item_id, state = item.state, visit = item.visit, attempt = op.attempt,
-    })
+    events[#events + 1] = flow.stage_entry(ctx.board, item, process.state_of(p, item.state) :: domain.State, op.attempt :: integer)
     item.version = item.version + 1
     return context.settle(ctx, item, events, p)
 end

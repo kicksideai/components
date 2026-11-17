@@ -369,6 +369,16 @@ entries:
     type: object
     additionalProperties: false
     properties:
+      board_id:
+        type: string
+      flow_ref:
+        type: object
+        additionalProperties: false
+        required: [kind, id, version]
+        properties:
+          kind: {type: string, enum: [flow]}
+          id: {type: string}
+          version: {type: integer, minimum: 1}
       actor: *id001
       at: *id002
       source: *id003

@@ -35,6 +35,7 @@ entries:
   source: file://keyed_append.lua
   modules: [sql]
   imports:
+    delivery_probe: app:stage_delivery_probe
     append: kickside.work.persist:append
 - name: placement_folder
   kind: contract.binding

@@ -175,6 +175,7 @@ entries:
       move: kickside.work.service:move
       move_status: kickside.work.service:move_status
       update: kickside.work.service:update
+      delete: kickside.work.service:delete
       list_packs: kickside.work.service:list_packs
       pack_plan: kickside.work.service:pack_plan
       pack_apply: kickside.work.service:pack_apply
@@ -234,6 +235,7 @@ entries:
     - kickside.work.security:plugin_output_publish
 - name: types
   kind: library.lua
+  modules: [sql]
   source: file://types.lua
   imports:
     reads: kickside.work.read:types

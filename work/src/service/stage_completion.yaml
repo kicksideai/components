@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.service
+entries:
+- name: stage_completion
+  kind: library.lua
+  source: file://stage_completion.lua
+  modules: [ctx, uuid]
+  imports: &completion_imports
+    component: kickside.component:component
+    identity: kickside.execution:execution_identity
+    types: kickside.work.sink:types
+    guard: kickside.work.command:guard
+    requests: kickside.work.service:requests
+    apply_ops: kickside.work.command:apply_ops
+    outcomes: kickside.work.domain:outcomes
+- name: complete_stage
+  kind: function.lua
+  source: file://stage_completion.lua
+  method: complete
+  modules: [ctx, uuid]
+  imports: *completion_imports
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:apply_output_publish
+- name: delete
+  kind: function.lua
+  source: file://delete.lua
+  method: delete
+  modules: [sql]
+  imports:
+    service_types: kickside.work.service:types
+    automation_db: kickside.automation:automation_db
+    automation_command: kickside.automation:command
+    component: kickside.component:component
+    envelope: kickside.component:envelope
+    component_types: kickside.component:types
+    identifiers: kickside.work.domain:identifiers
+    automations: kickside.automation:automation
+    guard: kickside.work.command:guard
+    requests: kickside.work.service:requests

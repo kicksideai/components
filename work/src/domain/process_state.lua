@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local flow_ref = require("flow_ref")
 local consts = require("consts")
 local durations = require("durations")
 local types = require("types")
@@ -41,6 +42,10 @@ function M.compile(decl: types.StateDecl, fields: { [string]: types.Field }): er
         local err = keys(run, consts.STAGE_KEYS, "stage_run_invalid")
         if err then return err end
         if type(run.stage) ~= "string" or run.stage == "" then return invalid("stage_required", "automated state declares run.stage") end
+        if run.flow_ref ~= nil then
+            local _, ref_err = flow_ref.validate(run.flow_ref)
+            if ref_err then return invalid("stage_flow_ref_invalid", ref_err:message()) end
+        end
         if run.max_visits ~= nil and (math.type(run.max_visits) ~= "integer" or run.max_visits < 1) then
             return invalid("stage_max_visits_invalid", "max_visits is a positive integer")
         end

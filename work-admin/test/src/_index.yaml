@@ -346,3 +346,34 @@ entries:
     test: wippy.test:test
     session: app:session
     fixture: app:fixture
+- name: dep.workflows
+  kind: ns.dependency
+  component: kickside/workflows
+  version: '*'
+  parameters:
+  - { name: 'kickside.workflows:target_db', value: 'app:db' }
+  - { name: 'kickside.workflows:api_router', value: 'app:api' }
+  - { name: 'kickside.workflows:ui_server', value: 'app:gateway' }
+  - { name: 'kickside.workflows:process_host', value: 'app:processes' }
+- name: dep.sync
+  kind: ns.dependency
+  component: kickside/sync
+  version: '*'
+  parameters:
+  - { name: 'kickside.sync:ui_server', value: 'app:gateway' }
+- name: dep.transform
+  kind: ns.dependency
+  component: kickside/transform
+  version: '*'
+  parameters:
+  - { name: 'kickside.transform:ui_server', value: 'app:gateway' }
+  - { name: 'kickside.transform:api_router', value: 'app:api' }
+- name: dep.blocks
+  kind: ns.dependency
+  component: kickside/blocks
+  version: '*'
+  parameters:
+  - { name: 'kickside.blocks:process_host', value: 'app:processes' }
+  - { name: 'wippy.session:api_router', value: 'app:api' }
+  - { name: 'wippy.session:env_storage', value: 'app:env_storage' }
+  - { name: 'wippy.session:delegation_func_id', value: 'userspace.dataflow.session:delegate' }

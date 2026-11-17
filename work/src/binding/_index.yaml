@@ -166,6 +166,10 @@ entries:
     - component_id
     methods:
       delete: kickside.work.binding:delete_func
+  - contract: kickside.workflows:run_completion
+    context_required: [component_id]
+    methods:
+      complete: kickside.work.service:complete_stage
 - name: view
   kind: contract.binding
   meta:

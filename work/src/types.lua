@@ -153,7 +153,9 @@ type Timer = { id: string, after: string?, at_field: string?, by: string?, table
 type PrincipalSource = { PrincipalDecl } | { group: string } | { field: string }
 type Approvals = { min: integer, from: PrincipalSource, prevent_self: boolean? }
 type Release = { approvals: Approvals?, wait: string?, when: unknown }
-type Stage = { stage: string, timeout: string?, max_visits: integer?, on_exhausted: string?, retry: { max: integer, backoff: string }?, on_fail: string?, on_pass: string?, on_cancel: string? }
+type StageBindingRequest = { board_id: string, compiled: Compiled, install: boolean? }
+type FlowRef = { kind: string, id: string, version: integer }
+type Stage = { flow_ref: FlowRef?, stage: string, timeout: string?, max_visits: integer?, on_exhausted: string?, retry: { max: integer, backoff: string }?, on_fail: string?, on_pass: string?, on_cancel: string? }
 type Region = { id: string, initial: string }
 type Wip = { [string]: { limit: integer, hard: boolean? } }
 type StateDecl = {
@@ -264,7 +266,7 @@ type ChangeRow = {
 type PatchStep = { f: integer, v: Value?, before: Value?, clear: boolean?, unset: boolean? }
 type Target = { board: string, item: string }
 type Receipt = { request_hash: string, result: JsonObject }
-type EventBody = { pack: JsonObject?,
+type EventBody = { board_id: string?, flow_ref: FlowRef?, pack: JsonObject?,
     title: string?, description: string?, icon: string?,
     operation_id: string?, processed: integer?, total: integer?, status: string?, counts: { [string]: integer }?, moved_from: Target?, moved_to: Target?, old_key: string?,
     region: string?, decision: string?, gate: string?, attempt: integer?, outcome: string?, outputs: JsonObject?, progress: JsonObject?, timer: string?, scheduled_at: string?, emitted: string?, force: boolean?,
@@ -313,7 +315,7 @@ type DeleteResult = { success: boolean }
 
 
 type BoardClient = { [string]: (BoardClient, Row) -> (unknown, error?) }
-return { OperationPosition = OperationPosition, OperationalLimits = OperationalLimits, SettingRule = SettingRule, PrincipalSource = PrincipalSource, Memberships = Memberships, Approvals = Approvals, BoardClient = BoardClient, BoardMeta = BoardMeta, BoardAccess = BoardAccess, StateItem = StateItem, AutoBudget = AutoBudget, TimerEffect = TimerEffect, ProcessData = ProcessData, Timer = Timer, Release = Release, Stage = Stage, Region = Region, Wip = Wip, WorkingState = WorkingState, TraceContext = TraceContext,
+return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, OperationPosition = OperationPosition, OperationalLimits = OperationalLimits, SettingRule = SettingRule, PrincipalSource = PrincipalSource, Memberships = Memberships, Approvals = Approvals, BoardClient = BoardClient, BoardMeta = BoardMeta, BoardAccess = BoardAccess, StateItem = StateItem, AutoBudget = AutoBudget, TimerEffect = TimerEffect, ProcessData = ProcessData, Timer = Timer, Release = Release, Stage = Stage, Region = Region, Wip = Wip, WorkingState = WorkingState, TraceContext = TraceContext,
     CommandError = CommandError, Deadline = Deadline, ThreadRequest = ThreadRequest, ThreadClient = ThreadClient, CatchUp = CatchUp, ThreadExpect = ThreadExpect,
     Scalar = Scalar, Record = Record, MemberSpec = MemberSpec, ColumnValue = ColumnValue, LayoutColumn = LayoutColumn, SystemColumn = SystemColumn,
     GeneratedNames = GeneratedNames, GeneratedTable = GeneratedTable, IndexRow = IndexRow, Reader = Reader, Where = Where, Sort = Sort, Cursor = Cursor,
