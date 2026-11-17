@@ -54,6 +54,30 @@ return { run = test.run_cases(function()
             test.eq(shapes.normalize("field invoice_total"), "field invoice_total")
             test.eq(shapes.normalize("Gebühr für Prüfung"), "gebühr für prüfung")
         end)
+        test.it("matches quotes across invisible format characters", function()
+            test.eq(shapes.normalize_literal("Book\226\128\139 12, page 3\226\129\160\194\173 4"), shapes.normalize_literal("Book 12, page 3 4"))
+            test.eq(shapes.normalize_literal("12\226\128\13934"), "1234")
+            test.eq(shapes.normalize_literal("\239\187\191Deed"), "deed")
+            test.is_true(shapes.normalize_literal("12\226\128\13934") ~= shapes.normalize_literal("12 34"))
+            local bodies = { [1] = shapes.normalize("Recorded in Book\226\128\139 12 of the plat.") }
+            test.eq(shapes.locate("Book 12 of the plat.", 1, bodies, { 1 }), 1)
+            test.eq(shapes.locate("Book\194\173 12 of the plat.", 1, bodies, { 1 }), 1)
+            local raw = { ordinal = 1, content = "Recorded in Book\226\128\139 12 of the plat." }
+            test.eq(shapes.locate("Book 12 of the plat.", 1, {}, { 1 }, shapes.quote_context({ raw }, raw.content)), 1)
+        end)
+        test.it("preserves the meaning of invisible operators and script joiners", function()
+            local quote = "Recorded value: 1234."
+            for _, codepoint in ipairs({ 0x2061, 0x2062, 0x2063, 0x2064, 0x200C, 0x200D }) do
+                local source = "Recorded value: 12" .. utf8.char(codepoint) .. "34."
+                local raw = { ordinal = 1, content = source }
+                local bodies = { [1] = shapes.normalize(source) }
+                local context = shapes.quote_context({ raw }, source)
+                test.eq(shapes.normalize_literal(source), source:lower())
+                test.is_nil(shapes.locate(quote, 1, bodies, { 1 }))
+                test.is_nil(shapes.locate(quote, 1, bodies, { 1 }, context))
+                test.eq(shapes.locate(source, 1, bodies, { 1 }, context), 1)
+            end
+        end)
         test.it("preserves escaped pairs, nested spacing braces and code boundaries", function()
             local escaped = [=[$$\$$$\[$\\\]]=]
             test.eq(shapes.normalize(escaped), shapes.normalize_literal(escaped))
