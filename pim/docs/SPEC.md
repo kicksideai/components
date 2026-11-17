@@ -905,6 +905,10 @@ checks:
 - **Vocabularies** hold terms (labels, parent, data, retired) changed by
   `apply` term items; codes unique per vocabulary; no cycles; a term in use
   cannot be retired. `term.merge` (§6) re-points values.
+  Term-reference attributes and record members resolve their vocabulary
+  against the effective catalog schema, including plugin contributions.
+  Planning and applying a schema reject making a vocabulary flat while any
+  stored term in it has a parent, including retired terms.
 
 ## 5. Persistence
 
@@ -1463,9 +1467,13 @@ route inventory for executable conformance checks.
 ## 8. Schema evolution
 
 CRM model: **merge** named entries (dimensions, vocabularies, aspects,
-families, sources, channels by key; plugins by `use`; attributes by code or
-by `id` for a rename). Named attributes take the incoming declaration order
-and retain their ids; omitted previous attributes follow in their previous order.
+families, sources, channels and scopes by key; plugins by `use`; attributes
+by code or by `id` for a rename). A request must name each key in a section
+once. Repeated aspects merge their named attributes. Named attributes take
+the incoming declaration order and retain their ids. Omitted previous
+attributes follow in their previous order.
+Attribute config must match its type's shape before checking which plugins
+own any seams it references.
 `declaration.remove` destroys; **classify** each change against
 usage facts (an attribute is used while a live product holds a set or cleared
 cell of it):

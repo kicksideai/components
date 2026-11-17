@@ -33,6 +33,93 @@ local function define()
             return h.call("get_schema", {}).schema_generation
         end
 
+        test.it("refuses removing the vocabulary of a nested record member", function()
+            local h = fixture.catalog({ bare = true })
+            assert(apply(h, { vocabularies = { { code = "labels" } }, aspects = { { namespace = "core", attributes = {
+                { code = "record", type = "kickside.pim.types:record", config = { members = {
+                    group = { form = "record", members = {
+                        label = { form = "ref", target = "term", vocabulary = "labels" },
+                    } },
+                } } },
+            } } } }))
+            test.eq(steps.one(h, { term = { vocabulary = "labels", code = "blue" }, labels = { en = "Blue" } }).outcome, "created")
+            test.eq(steps.one(h, { product = { sku = "P" }, create = {},
+                set = { { attr = "core.record", value = { group = { label = { ref = { "term", "labels:blue" } } } } } } }).outcome, "created")
+
+            local before = assert(h.call("get_schema", {}))
+            local patch = { remove = { vocabularies = { "labels" } } }
+            local plan, plan_err = h.call("plan_schema", { declaration = patch })
+            local applied, err = h.call("apply_schema", { declaration = patch })
+            if applied then
+                local db = assert(store.open())
+                local term, term_err = store.term(db, h.id, "labels", "blue")
+                assert(db:release())
+                assert(not term_err, tostring(term_err))
+                local links = assert(h.call("list_links", { kind = "term", target = "labels:blue" }))
+                test.is_nil(applied, "generation " .. applied.generation .. " left " .. #links.items
+                    .. " live reference(s) to labels:blue. Term exists " .. tostring(term ~= nil))
+            end
+            test.is_nil(plan)
+            test.eq((plan_err :: error):kind(), errors.INVALID)
+            test.eq((err :: error):kind(), errors.INVALID)
+            test.eq(assert(h.call("get_schema", {})).as_of, before.as_of)
+        end)
+
+        test.it("validates record member config before checking its extension references", function()
+            local h = fixture.catalog({ bare = true })
+            local cases: { unknown } = {
+                { members = "invalid" },
+                { members = { "invalid" } },
+                { members = { group = 42 } },
+                { members = { group = { form = "record", members = "invalid" } } },
+                { members = { group = { form = "ref", target = {} } } },
+            }
+            local before = assert(h.call("get_schema", {}))
+            for _, config in ipairs(cases) do
+                local declaration = { aspects = { { namespace = "core", attributes = {
+                    { code = "record", type = "kickside.pim.types:record", config = config },
+                } } } }
+                for _, operation in ipairs({ "plan_schema", "apply_schema" }) do
+                    local result, err = h.call(operation, { declaration = declaration })
+                    test.is_nil(result)
+                    test.not_nil(err)
+                    test.eq((err :: error):kind(), errors.INVALID, tostring(err))
+                end
+            end
+            test.eq(assert(h.call("get_schema", {})).as_of, before.as_of)
+        end)
+
+        test.it("rejects duplicate named sections instead of applying the final entry", function()
+            local h = fixture.catalog({ bare = true })
+            local cases = {
+                { dimensions = { { name = "locale", members = { "en" } }, { name = "locale", members = { "de" } } } },
+                { vocabularies = { { code = "labels" }, { code = "labels", hierarchical = true } } },
+                { sources = { { id = "erp" }, { id = "erp", ordering = "sequence" } } },
+                { channels = { { id = "shop" }, { id = "shop", families = {} } } },
+                { families = { { code = "spares" }, { code = "spares", aspects = {} } } },
+                { scopes = { "app:stock_scope", "app:stock_scope" } },
+                { plugins = { { use = "app:probe_bare_plugin" }, { use = "app:probe_bare_plugin" } } },
+            }
+            local accepted: { string } = {}
+            for _, declaration in ipairs(cases) do
+                local name = next(declaration) :: string
+                local result, err = h.call("plan_schema", { declaration = declaration })
+                if result then accepted[#accepted + 1] = name else test.eq((err :: error):kind(), errors.INVALID) end
+            end
+            test.eq(table.concat(accepted, ", "), "")
+        end)
+
+        test.it("merges repeated aspects with distinct attributes in the same request", function()
+            local h = fixture.catalog({ bare = true })
+            assert(apply(h, { aspects = {
+                { namespace = "core", attributes = { { code = "title", type = TEXT } } },
+                { namespace = "core", attributes = { { code = "detail", type = TEXT } } },
+            } }))
+            local view = assert(h.call("get_schema", {}))
+            test.not_nil(view.attributes["core.title"])
+            test.not_nil(view.attributes["core.detail"])
+        end)
+
         test.it("adds a dimension to a populated catalog", function()
             local h = booted()
             local out = assert(apply(h, { dimensions = { { name = "market", members = { "eu", "us" } } } }))

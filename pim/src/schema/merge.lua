@@ -24,9 +24,26 @@ function M.copy<T>(v: T): T
     return deep(v) :: T
 end
 
+local function check_unique<T>(entries: { T }?, key: (T) -> string?): error?
+    local seen: { [string]: boolean } = {}
+    for _, item in ipairs(entries or {}) do
+        local name = key(item)
+        if name then
+            if seen[name] then return invalid("duplicate declaration key: " .. name) end
+            seen[name] = true
+        end
+    end
+    return nil
+end
+
 -- merge_list keeps base entries in order, replaces those named again in
--- incoming (through merge when given) and appends new ones.
+-- incoming and appends new ones. Only a section with a merge function can
+-- combine repeated incoming entries.
 function M.merge_list<T>(base: { T }?, incoming: { T }?, key: (T) -> string?, merge: ((T, T) -> (T?, error?))?): ({ T }?, error?)
+    if not merge then
+        local err = check_unique(incoming, key)
+        if err then return nil, err end
+    end
     local order: { string } = {}
     local by: { [string]: T } = {}
     for _, item in ipairs(base or {}) do
@@ -171,6 +188,8 @@ function M.resolve_plugins(incoming: types.Declaration, prev: types.Declaration?
     local out: types.Declaration = M.copy(incoming)
     local entries = out.plugins
     if not entries then return out, nil end
+    local duplicate = check_unique(entries, use_of)
+    if duplicate then return nil, duplicate end
     local previous: { [string]: types.PluginEntry } = {}
     for _, entry in ipairs(prev and prev.plugins or {}) do previous[entry.use] = entry end
     for _, entry in ipairs(entries :: {types.PluginEntry}) do

@@ -44,27 +44,35 @@ end
 
 local CODE = "^[a-z][a-z0-9_]*$"
 
--- shape_problem describes the first unusable value shape in a field, the field
--- itself or a record member at any depth: an unknown form or an incomplete
--- reference declaration.
-local function shape_problem(form: string, config: types.AttributeConfig, path: string, depth: integer): string?
+-- shape_problem validates a field's value shape and recursively checks its
+-- record members against the same effective vocabulary map.
+local function shape_problem(form: string, config: types.AttributeConfig, path: string, depth: integer,
+    vocabularies: { [string]: types.Vocabulary }): string?
     if form == "record" then depth = depth + 1 end
     if depth > 3 then return path .. ": record depth exceeds three" end
     if not values.FORMS[form] then return path .. ": unknown form " .. tostring(form) end
     if form == "ref" and not config.target then return path .. ": references need a target" end
+    local members = config.members
+    if members == nil then return nil end
+    if type(members) ~= "table" then return path .. ": members must be an object" end
     local names: { string } = {}
-    for name in pairs(config.members or {}) do names[#names + 1] = name end
+    for name in pairs(members) do
+        if type(name) ~= "string" then return path .. ": members must map names to value shapes" end
+        names[#names + 1] = name
+    end
     table.sort(names)
-    local members: { [string]: types.MemberSpec } = config.members or {}
     for _, name in ipairs(names) do
         local member = members[name]
-        if member then
-            if member.form == "ref" and member.target == "term" and type(member.vocabulary) ~= "string" then
-                return path .. "." .. name .. ": term references need a vocabulary"
-            end
-            local miss = shape_problem(member.form, member, path .. "." .. name, depth)
-            if miss then return miss end
+        local member_path = path .. "." .. name
+        if type(member) ~= "table" then return member_path .. ": member must be an object" end
+        if member.target ~= nil and type(member.target) ~= "string" then return member_path .. ": target must be a string" end
+        if member.form == "ref" and member.target == "term" then
+            local vocabulary = member.vocabulary
+            if type(vocabulary) ~= "string" then return member_path .. ": term references need a vocabulary" end
+            if not vocabularies[vocabulary] then return member_path .. ": unknown vocabulary " .. vocabulary end
         end
+        local problem = shape_problem(member.form, member, member_path, depth, vocabularies)
+        if problem then return problem end
     end
     return nil
 end
@@ -95,7 +103,8 @@ function M.width_of(a: types.Attribute): string
 end
 
 local function compile_attribute(ns: string, raw: types.AttributeDecl, dims: { types.Dimension },
-    dimset: { [string]: types.Dimension }, lookups: Lookups, prev: types.Attribute?): (types.Attribute?, error?)
+    dimset: { [string]: types.Dimension }, vocabularies: { [string]: types.Vocabulary }, lookups: Lookups,
+    prev: types.Attribute?): (types.Attribute?, error?)
     local type_of = lookups.type_of
     if type(raw.code) ~= "string" or not raw.code:match(CODE) then return nil, invalid("invalid attribute code in " .. ns) end
     local code = ns .. "." .. raw.code
@@ -132,12 +141,14 @@ local function compile_attribute(ns: string, raw: types.AttributeDecl, dims: { t
     local allowed = false
     for _, k in ipairs(meta.indexes or { "none" }) do if k == index then allowed = true end end
     if index ~= "none" and not allowed then return nil, invalid(code .. ": type " .. raw.type .. " cannot be indexed as " .. index) end
-    local config: types.AttributeConfig = {}
-    for k, v in pairs(raw.config or {}) do config[k] = v end
+    if raw.config ~= nil and type(raw.config) ~= "table" then return nil, invalid(code .. ": config must be an object") end
     if meta.config_schema then
         local cerr = shape.check(shape.tolerant(meta.config_schema :: types.JsonObject), raw.config or {}, code .. " config")
         if cerr then return nil, cerr end
     end
+    local config: types.AttributeConfig = {}
+    for k, v in pairs(raw.config or {}) do config[k] = v end
+    if config.target ~= nil and type(config.target) ~= "string" then return nil, invalid(code .. ": target must be a string") end
     if meta.target then config.target = meta.target end
     if meta.form == "ref" and not meta.target then
         local target = config.target
@@ -157,7 +168,7 @@ local function compile_attribute(ns: string, raw: types.AttributeDecl, dims: { t
         vocabulary = raw.vocabulary, index_contexts = {}, id = 0, functions = meta.functions, width = width,
     }
     if meta.target == "term" and type(raw.vocabulary) ~= "string" then return nil, invalid(code .. ": vocabulary required") end
-    local problem = shape_problem(meta.form, config, code, 0)
+    local problem = shape_problem(meta.form, config, code, 0, vocabularies)
     if problem then return nil, invalid(problem) end
     if attr.unique and (#ordered > 0 or cardinality ~= "one") then
         return nil, invalid(code .. ": unique attributes need empty scope and cardinality one")
@@ -292,7 +303,7 @@ local function compile_aspects(declared: { OwnedAspect }, prev: types.Compiled?,
             local before = raw_id and prev_by_id[raw_id] or prev_attrs[code]
             if before and before.aspect ~= ns then return nil, invalid(code .. ": an attribute stays in its aspect") end
             if before and claimed[before.id] then return nil, invalid(code .. ": attribute id is declared twice") end
-            local compiled_attr, aerr = compile_attribute(ns, raw, dimlist, dimset, lookups, before)
+            local compiled_attr, aerr = compile_attribute(ns, raw, dimlist, dimset, vocabularies, lookups, before)
             if aerr or not compiled_attr then return nil, aerr end
             local attr: types.Attribute = compiled_attr
             if attr.vocabulary and not vocabularies[attr.vocabulary] then return nil, invalid(code .. ": unknown vocabulary") end

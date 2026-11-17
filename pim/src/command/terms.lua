@@ -13,6 +13,25 @@ local execution_identity = require("execution_identity")
 local resolve = require("resolve")
 local M = {}
 local EV = consts.EVENTS
+
+-- A vocabulary can become flat once none of its stored terms has a parent.
+function M.check_hierarchy_change(db: types.Executor, catalog_id: string, previous: { [string]: types.Vocabulary },
+    effective: { [string]: types.Vocabulary }): error?
+    for code, vocabulary in pairs(effective) do
+        local before = previous[code]
+        if before and before.hierarchical and not vocabulary.hierarchical then
+            local rows, err = db:query([[SELECT 1 FROM kickside_pim_term
+                WHERE catalog_id = $1 AND vocabulary = $2 AND parent IS NOT NULL LIMIT 1]], { catalog_id, code })
+            if err then return errors.wrap(err, "vocabulary parent link check failed") end
+            if rows and #rows > 0 then
+                return failure.invalid("vocabulary " .. code .. " still has term parent links",
+                    { code = "vocabulary_parent_links_exist", vocabulary = code })
+            end
+        end
+    end
+    return nil
+end
+
 type Edit = (item_state.State, types.ApplyItem, types.Product) -> (types.Event?, types.Outcome?, error?)
 -- plan_merge retires one term and re-points the values referencing it at
 -- another (spec 6): up to merge_inline products in this command, the rest

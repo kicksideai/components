@@ -15,6 +15,42 @@ local function term(h: fixture.Handle, vocabulary: string, code: string, extra: 
 end
 
 local function define()
+    test.describe("vocabulary hierarchy declarations", function()
+        test.it("refuses flattening a vocabulary that still has parent links", function()
+            local h = fixture.catalog()
+            local before = assert(h.call("get_schema", {}))
+            local patch = { vocabularies = { { code = "categories", hierarchical = false } } }
+            local plan, plan_err = h.call("plan_schema", { declaration = patch })
+            local result, err = h.call("apply_schema", { declaration = patch })
+            if result then
+                local terms = assert(h.call("list_terms", { vocabulary = "categories", parent = "footwear" })).terms
+                test.is_nil(result, "flat vocabulary still returns " .. #terms .. " child term(s)")
+            end
+            test.eq((err :: error):kind(), errors.INVALID)
+            test.is_true(plan_err ~= nil or plan.class == "refused")
+            test.eq(assert(h.call("get_schema", {})).as_of, before.as_of)
+        end)
+
+        test.it("still refuses flattening after a linked child is retired", function()
+            local h = fixture.catalog()
+            test.eq(term(h, "categories", "hiking", { retired = true }), "updated")
+            local result, err = h.call("plan_schema", { declaration = { vocabularies = { { code = "categories" } } } })
+            test.is_nil(result)
+            test.eq((err :: error):kind(), errors.INVALID)
+        end)
+
+        test.it("flattens a vocabulary containing only roots even when another vocabulary has children", function()
+            local h = fixture.catalog()
+            assert(h.call("apply_schema", { declaration = { vocabularies = { { code = "labels", hierarchical = true } } } }))
+            test.eq(term(h, "labels", "blue"), "created")
+            local patch = { vocabularies = { { code = "labels", hierarchical = false } } }
+            assert(h.call("plan_schema", { declaration = patch }))
+            assert(h.call("apply_schema", { declaration = patch }))
+            test.is_false(assert(h.call("get_schema", {})).vocabularies.labels.hierarchical)
+            test.eq(term(h, "labels", "red", { parent = "blue" }), "invalid")
+        end)
+    end)
+
     test.describe("term codes and labels", function()
         test.it("accepts bounded codes and refuses others", function()
             local h = fixture.catalog()
