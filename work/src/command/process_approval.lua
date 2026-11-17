@@ -38,7 +38,7 @@ function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
             if t.id == "reject" then return context.record(ctx, item, target.model, t.id, events) end
         end
     end
-    return settle(ctx, item, events, p)
+    return settle(ctx, item, events, p, target.model)
 end
 
 return H

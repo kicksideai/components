@@ -163,13 +163,37 @@ local function compile_fields(prev: types.Compiled?, decl: types.Declaration): (
     return out, next_id, counter, nil
 end
 
+-- A process keeps its generation only while its codes still bind to the same field IDs.
+local function same_process_fields(p: types.Process, before: { [string]: types.Field }, after: { [string]: types.Field }): boolean
+    local used: { [string]: boolean } = {}
+    for _, code in ipairs(process.fields_used(p)) do used[code] = true end
+    for _, state in ipairs(p.states) do
+        for _, timer in ipairs(state.timers or {}) do
+            if timer.at_field then used[timer.at_field] = true end
+            if timer.by then used[timer.by] = true end
+        end
+        local release = state.release_when
+        local source = release and release.approvals and release.approvals.from or state.awaiting
+        if source and source.field then used[source.field] = true end
+        predicates.inspect(release and release.when, used, 1)
+    end
+    for _, transition in ipairs(p.transitions) do predicates.inspect(transition.when, used, 1) end
+    for code in pairs(used) do
+        if (before[code] and before[code].id) ~= (after[code] and after[code].id) then return false end
+    end
+    return true
+end
+
 local function compile_processes(prev: types.Compiled?, decl: types.Declaration, by_key: { [string]: types.Field }, generation: integer): ({ types.Process }?, error?)
     local held: { [string]: types.Process } = {}
     for _, p in ipairs(prev and prev.processes or {}) do held[p.id] = p end
+    local before: { [string]: types.Field } = {}
+    for _, f in ipairs(prev and prev.fields or {}) do before[f.code] = f end
     local out: { types.Process } = {}
     for _, d in ipairs((decl.processes or {})) do
         local p, perr = process.compile(d, by_key, held[d.id], generation)
         if perr or not p then return nil, perr end
+        if p.generation ~= generation and not same_process_fields(p, before, by_key) then p.generation = generation end
         out[#out + 1] = p
     end
     return out, nil

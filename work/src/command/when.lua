@@ -6,9 +6,11 @@ local domain = require("domain")
 local types = require("types")
 local M = {}
 
-function M.check(ctx: types.PrepareContext): domain.WhenCheck
+function M.check(ctx: types.PrepareContext, recorded: domain.Model): domain.WhenCheck
     return function(item: domain.Item, where: unknown): (boolean, error?)
         if where == nil then return true, nil end
+        local where, bind_err = predicates.rebind(where, recorded, ctx.board.model)
+        if bind_err then return false, bind_err end
         local fields: { [string]: boolean } = {}
         local peer, err = predicates.inspect(where, fields, 1)
         if err then return false, err end

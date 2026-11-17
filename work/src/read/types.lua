@@ -98,7 +98,7 @@ type Snapshot<T> = (Executor, domain.Board, string) -> (T?, error?)
 type Redactor = (string, unknown) -> (unknown, error?)
 
 type TransitionCandidate = { item: domain.Item, transition: domain.Transition, region: string? }
-type TransitionGroup = { candidates: { TransitionCandidate }, items: { domain.Item }, where: unknown }
+type TransitionGroup = { candidates: { TransitionCandidate }, items: { domain.Item }, where: unknown, require: { string } }
 return { AwaitingView = AwaitingView, GateView = GateView, ApprovalView = ApprovalView, StageRun = StageRun, StageRunsRequest = StageRunsRequest, StageRunsResult = StageRunsResult, JsonObject = JsonObject, PluginFeedRequest = PluginFeedRequest, PluginFeed = PluginFeed, PluginContext = PluginContext, PluginSelection = PluginSelection, PluginOptions = PluginOptions, PluginContextRequest = PluginContextRequest, TransitionCandidate = TransitionCandidate, TransitionGroup = TransitionGroup, Redactor = Redactor, BudgetUsage = BudgetUsage, ReadBudget = ReadBudget, ReadAllowance = ReadAllowance, SchemaPlugin = SchemaPlugin, QueryGroupRow = QueryGroupRow, QueryGroup = QueryGroup,
     Count = Count, Plan = Plan, BoundedPlan = BoundedPlan, GroupBucket = GroupBucket, CrossCandidate = CrossCandidate,
     ReferenceOrder = ReferenceOrder, CrossCursor = CrossCursor, QueryPage = QueryPage,

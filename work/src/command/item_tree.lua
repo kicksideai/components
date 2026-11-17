@@ -203,7 +203,7 @@ local function plan_life(ctx: types.PrepareContext, op: types.Op, deleting: bool
         local subject = M.item_group(changed.item_id :: string)
         guards[subject] = ctx.base[changed.item_id]
         changed.life = deleting and "trashed" or "live"
-        changed.life_at = deleting and ctx.now or nil
+        changed.life_at = ctx.now
         changed.version = changed.version + 1
         events[#events + 1] = M.event(deleting and EV.ITEM_DELETED or EV.ITEM_RESTORED, subject, { item = changed.item_id :: string })
     end

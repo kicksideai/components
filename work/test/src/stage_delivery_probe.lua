@@ -28,24 +28,43 @@ function M.write(request)
     local d=db()
     assert(d:execute("UPDATE work_delivery_probe SET calls=calls+1,request=$1 WHERE board_id=$2",{assert(json.encode(request)),board}))
     d:release()
+    if row.mode == "lose_ack" then
+        local target = assert(assert(contract.get("kickside.data:writable")):open("kickside.workflows:run"))
+        local result, err = target:write(request)
+        assert(result and result.success, tostring(err or result and result.error))
+        return nil, nil
+    end
     if row.mode=="capacity" then return {success=false,error={code="rate_limited",scope="capacity",retriable=true,retry_after_ms=2000,message="capacity"}} end
     if row.mode=="uncertain" then return {success=false,error={code="provider_unavailable",scope="flow",retriable=true,message="admission acknowledgement lost"}} end
     if row.mode=="no_verdict" then return {success=false} end
     if row.mode=="no_ack" then return nil,nil end
-    if row.mode=="reject" then return {success=false,error={code="not_found",scope="flow",retriable=false,message="Flow unavailable"}} end
+    if row.mode=="reject" or row.mode=="reject_reserved" then return {success=false,error={code="not_found",scope="flow",retriable=false,message="Flow unavailable"}} end
     return {success=true,result="created",dest_ref={run_id="00000000-0000-4000-8000-000000000001"}}
 end
 -- Inject at the existing append boundary, never in production command logic.
-function M.before_append(board,writes)
+function M.before_append(client, board, writes)
     local row=M.read(board)
-    if not row or (row.mode~="crash_before_report" and row.mode~="cas_report") then return nil end
+    if row and row.mode == "pause_before_stage_entry" then
+        for _, write in ipairs(writes) do
+            for _, event in ipairs(write.events) do
+                if event.type == "kickside.work.events:stage.entered" then
+                    M.set(board, "success")
+                    local _, err = client:pause_projection({ thread_id = board, kind = "kickside.work:board_model" })
+                    return err
+                end
+            end
+        end
+    end
+    if not row then return nil end
+    local hold = row.mode == "lose_ack" or row.mode == "reject_reserved"
+    if not hold and row.mode ~= "crash_before_report" and row.mode ~= "cas_report" then return nil end
     local reported=false
     for _,w in ipairs(writes) do
         for _,e in ipairs(w.events) do if e.type=="kickside.work.events:stage.reported" then reported=e.body end end
     end
     if not reported then return nil end
-    M.set(board,"success")
-    if row.mode=="crash_before_report" then
+    if not hold then M.set(board,"success") end
+    if hold or row.mode=="crash_before_report" then
         return errors.new({kind=errors.UNAVAILABLE,retryable=true,message="crash before report append",details={code="completion_interrupted"}})
     end
     local client=assert(assert(contract.get("kickside.work:board")):open())

@@ -69,6 +69,35 @@ local function invalid(code: string, message: string): error
     return errors.new({ kind = errors.INVALID, message = message, details = { code = code } })
 end
 
+-- Rebind a stored process predicate to live field codes before applying live access rules.
+function M.rebind(raw: unknown, recorded: types.Model, live: types.Model): (unknown, error?)
+    if recorded == live or raw == nil then return raw, nil end
+    local node = raw :: { [string]: unknown }
+    local bound: { [string]: unknown } = {}
+    for key, value in pairs(node) do
+        if key == "field" and type(value) == "string" then
+            local historical = recorded.fields[value]
+            local field = historical and live.by_id[historical.id]
+            if historical and not field then return nil, target_invalid("unknown_field", value, "retired process field " .. value) end
+            value = field and field.code or value
+        elseif key == "and" or key == "or" then
+            local children: { unknown } = {}
+            for _, child in ipairs(value :: { unknown }) do
+                local resolved, err = M.rebind(child, recorded, live)
+                if err then return nil, err end
+                children[#children + 1] = resolved
+            end
+            value = children
+        elseif key == "not" or key == "where" or key == "history" then
+            local resolved, err = M.rebind(value, recorded, live)
+            if err then return nil, err end
+            value = resolved
+        end
+        bound[key] = value
+    end
+    return bound, nil
+end
+
 -- inspect bounds traversal and identifies inputs that require projected peer rows.
 function M.inspect(raw: unknown, fields: { [string]: boolean }, depth: integer): (boolean, error?, boolean?)
     if depth > 16 then return false, invalid("invalid_predicate", "predicate nesting exceeds the traversal limit") end

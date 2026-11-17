@@ -11,6 +11,10 @@ function M.run(a)
         db:release()
         return true
     end
+    if a.op == "resume_work_projection" then
+        local threads = assert(assert(require("contract").get("kickside.core:threads")):open())
+        return threads:resume_projection({ thread_id = a.board_id, kind = "kickside.work:board_model" })
+    end
     if a.op == "probe" then return probe.set(a.board_id, a.mode) end
     if a.op == "observed" then return probe.read(a.board_id) end
     if a.op == "complete" then

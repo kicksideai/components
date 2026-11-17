@@ -8,17 +8,22 @@ local deadline = require("deadline")
 local clock = require("clock")
 local types = require("types")
 local commands = require("commands")
+local domain = require("domain")
 local outcomes = require("outcomes")
 local M = {}
 
-
-
+local function current_deadline(item: domain.Item?, input: types.ProcessRequest): string?
+    if not item or item.life ~= "live" or item.life_at ~= input.life_at then return nil end
+    local visit = process.for_visit(item, input.visit)
+    if not visit or visit.state ~= input.state or not visit.work or not visit.work.timer_due then return nil end
+    return visit.work.timer_due[input.timer :: string]
+end
 
 local function batch(input: types.ProcessRequest, timer: boolean): (types.ProcessResult?, error?)
     local until_at, derr = deadline.bound(input.deadline)
     if derr then return nil, derr end
     local op: commands.Op = { op = timer and "timer" or "advance", item = input.item, state = input.state, visit = input.visit,
-        timer = input.timer, attempt = input.attempt, scheduled_at = input.scheduled_at }
+        timer = input.timer, attempt = input.attempt, scheduled_at = input.scheduled_at, timer_life_at = input.life_at }
     local db, err = store.open()
     if not db then return nil, err end
     local current, ierr = store.item(db, input.board_id, input.item)
@@ -26,12 +31,7 @@ local function batch(input: types.ProcessRequest, timer: boolean): (types.Proces
     if ierr then return nil, ierr end
     if not current or current.life=="purged" then return {record={status="completed"}},nil end
     if timer then
-        local item=current
-        if item then item = process.for_visit(item, input.visit) end
-        if not item or item.life ~= "live" or item.state ~= input.state then
-            return { record = { status = "completed" } }, nil
-        end
-        op.scheduled_at = item.work and item.work.timer_due and item.work.timer_due[input.timer :: string]
+        op.scheduled_at = current_deadline(current, input)
         if not op.scheduled_at then return { record = { status = "completed" } }, nil end
         if clock.now() < op.scheduled_at then return { rearm = op.scheduled_at, record = { status = "completed" } }, nil end
     end
@@ -46,10 +46,7 @@ local function batch(input: types.ProcessRequest, timer: boolean): (types.Proces
     local item, ierr = store.item(db, input.board_id, input.item)
     db:release()
     if ierr then return nil, ierr end
-    local rearm: string? = nil
-    if timer and item then item = process.for_visit(item, input.visit) end
-    if timer and item and item.work and item.work.timer_due then rearm = item.work.timer_due[input.timer :: string] end
-    return { rearm = rearm, record = { status = "completed" } }, nil
+    return { rearm = timer and current_deadline(item, input) or nil, record = { status = "completed" } }, nil
 end
 
 function M.process_batch(input: types.ProcessRequest): (types.ProcessResult?, error?) return batch(input, true) end

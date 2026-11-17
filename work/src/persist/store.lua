@@ -143,10 +143,10 @@ function M.process_model(db: storage.Executor, board: types.Board, item: { type:
     return nil, errors.new({ kind = errors.INTERNAL, message = "item process generation is missing", details = { code = "process_generation_missing" } })
 end
 
-function M.process(db: storage.Executor, board: types.Board, item: { type: string, process_generation: integer }): (types.Process?, error?)
+function M.process(db: storage.Executor, board: types.Board, item: { type: string, process_generation: integer }): (types.Process?, error?, types.Model?)
     local model, err = M.process_model(db, board, item)
     if err or not model then return nil, err end
-    return model.processes[model.item_types[item.type].process], nil
+    return model.processes[model.item_types[item.type].process], nil, model
 end
 
 local function item_rows(db: storage.Executor, rows: { types.Row }): ({ types.Item }?, error?)

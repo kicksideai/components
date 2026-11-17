@@ -9,6 +9,8 @@ local store = require("store")
 local principals = require("principals")
 local prepare = require("prepare")
 local report = require("report")
+local limits = require("limits")
+local receipts = require("receipts")
 local guard = require("guard")
 local outcomes = require("outcomes")
 local data_error = require("data_error")
@@ -33,6 +35,10 @@ function M.write(req: types.LaunchRequest): types.WorkflowResult
     local token, terr = completion.token({ board_id = entry.board_id, item = entry.item, visit = entry.visit, attempt = entry.attempt })
     if terr or not token then return data_error.failure(terr :: error) :: types.WorkflowResult end
     if token.board_id ~= board_id then return data_error.failure(guard.invalid("stage entry targets another board")) :: types.WorkflowResult end
+    local deadline, deadline_err = limits.deadline("command_deadline_ms")
+    if not deadline then return data_error.failure(deadline_err :: error) :: types.WorkflowResult end
+    local covered, cover_err = receipts.covered(board_id, deadline)
+    if not covered then return pending(tostring(cover_err)) end
     local db, derr = store.open()
     if derr or not db then return data_error.failure(derr :: error) :: types.WorkflowResult end
     local board, berr = store.board(db, board_id)

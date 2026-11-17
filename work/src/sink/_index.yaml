@@ -80,6 +80,8 @@ entries:
     principals: kickside.work.read:principals
     prepare: kickside.work.command:prepare_context
     report: kickside.work.command:process_report
+    limits: kickside.work.settings:limits
+    receipts: kickside.work.command:receipts
     guard: kickside.work.command:guard
     outcomes: kickside.work.domain:outcomes
     data_error: kickside.work.source:data_error

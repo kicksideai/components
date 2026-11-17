@@ -59,9 +59,20 @@ function M.run(input)
         end
         return { kind = "flow", id = created.id, version = 1 }, nil
     end
+    if input.op == "publish_success_version" then
+        local _, err = workflow.apply(input.id, {
+            { type = "node.update", body = { id = "work", ref = "app:binding_block" } },
+        }, security.actor():id())
+        if err then return nil, err end
+        local result, publish_err = publish.publish(input.id, security.actor():id())
+        if publish_err then return nil, publish_err end
+        assert(result.ok, json.encode(result))
+        return { kind = "flow", id = input.id, version = result.version }, nil
+    end
     local id = assert(identifiers.uuid("kickside.work.launcher.v1\0" .. input.board_id))
     if input.op == "launcher_id" then return id end
     if input.op == "pause_launcher" then return automations.call_action(id,"pause",{}) end
+    if input.op == "resume_launcher" then return automations.call_action(id,"resume",{}) end
     if input.op == "launcher" then
         local context, err = component.get_context(id, component.ACCESS.ADMIN)
         if err then return nil, err end

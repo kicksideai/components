@@ -230,6 +230,7 @@ entries:
   imports:
     outcomes: kickside.work.domain:outcomes
     commands: kickside.work.command:types
+    domain: kickside.work:types
     component: kickside.component:component
     execution_identity: kickside.execution:execution_identity
     process: kickside.work.domain:process
@@ -250,6 +251,7 @@ entries:
   imports:
     outcomes: kickside.work.domain:outcomes
     commands: kickside.work.command:types
+    domain: kickside.work:types
     component: kickside.component:component
     execution_identity: kickside.execution:execution_identity
     process: kickside.work.domain:process
@@ -270,6 +272,7 @@ entries:
   imports:
     outcomes: kickside.work.domain:outcomes
     commands: kickside.work.command:types
+    domain: kickside.work:types
     component: kickside.component:component
     execution_identity: kickside.execution:execution_identity
     process: kickside.work.domain:process
@@ -291,6 +294,7 @@ entries:
   imports:
     outcomes: kickside.work.domain:outcomes
     commands: kickside.work.command:types
+    domain: kickside.work:types
     component: kickside.component:component
     execution_identity: kickside.execution:execution_identity
     process: kickside.work.domain:process
