@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.2](https://github.com/kicksideai/components/compare/work-v0.1.1...work-v0.1.2) (2026-11-17)
+
+
+### Bug Fixes
+
+* run on wippy 0.3.64a with linear whitespace trims ([#120](https://github.com/kicksideai/components/issues/120)) ([edc935d](https://github.com/kicksideai/components/commit/edc935d50078c907bd9d623d8cfb5b4abd8b31fe))
+* **work:** complete administration traits and tool schemas ([#123](https://github.com/kicksideai/components/issues/123)) ([3e9785c](https://github.com/kicksideai/components/commit/3e9785c48822259ac73854e5f6554bbb90fe1a68))
+* **work:** publish comment snapshots in the declared feed shape ([#125](https://github.com/kicksideai/components/issues/125)) ([cd8e49b](https://github.com/kicksideai/components/commit/cd8e49bc3c3843561c605e061dd8c90574ae7791))
+
 ## [0.1.1](https://github.com/kicksideai/components/compare/work-v0.1.0...work-v0.1.1) (2026-11-15)
 
 

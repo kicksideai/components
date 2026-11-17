@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.45](https://github.com/kicksideai/components/compare/sso-v0.1.44...sso-v0.1.45) (2026-11-17)
+
+
+### Bug Fixes
+
+* preserve web component host contracts and eager bundles ([#36](https://github.com/kicksideai/components/issues/36)) ([4384075](https://github.com/kicksideai/components/commit/43840756fd53380d09c80f1743f95b786fd3a5f7))
+* run on wippy 0.3.64a with linear whitespace trims ([#120](https://github.com/kicksideai/components/issues/120)) ([edc935d](https://github.com/kicksideai/components/commit/edc935d50078c907bd9d623d8cfb5b4abd8b31fe))
+
 ## [0.1.44](https://github.com/kicksideai/components/compare/sso-v0.1.43...sso-v0.1.44) (2026-11-15)
 
 

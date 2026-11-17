@@ -1,12 +1,12 @@
 {
-  "dashboard": "0.1.22",
-  "research": "0.1.26",
-  "agent-onboarding": "0.1.11",
-  "sso": "0.1.44",
-  "storage-s3": "0.2.2",
-  "docscout": "0.1.15",
-  "work": "0.1.1",
-  "pim": "0.1.0",
-  "pim-admin": "0.1.0",
-  "work-admin": "0.1.0"
+  "dashboard": "0.1.23",
+  "research": "0.1.27",
+  "agent-onboarding": "0.1.12",
+  "sso": "0.1.45",
+  "storage-s3": "0.2.3",
+  "docscout": "0.1.16",
+  "work": "0.1.2",
+  "pim": "0.1.1",
+  "pim-admin": "0.1.1",
+  "work-admin": "0.1.1"
 }

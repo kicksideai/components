@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.11...agent-onboarding-v0.1.12) (2026-11-17)
+
+
+### Bug Fixes
+
+* preserve web component host contracts and eager bundles ([#36](https://github.com/kicksideai/components/issues/36)) ([4384075](https://github.com/kicksideai/components/commit/43840756fd53380d09c80f1743f95b786fd3a5f7))
+
 ## [0.1.11](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.10...agent-onboarding-v0.1.11) (2026-11-12)
 
 
