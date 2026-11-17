@@ -69,6 +69,26 @@ entries:
   kind: function.lua
   source: file://stage_launch.lua
   method: write
+  modules: [hash]
+  imports:
+    values: kickside.work.domain:values
+    identifiers: kickside.work.domain:identifiers
+    writable_sink: kickside.data:writable_sink
+    workflow_sink: kickside.work.sink:stage_workflow
+    completion: kickside.work.service:stage_completion
+    store: kickside.work.persist:store
+    principals: kickside.work.read:principals
+    prepare: kickside.work.command:prepare_context
+    report: kickside.work.command:process_report
+    guard: kickside.work.command:guard
+    outcomes: kickside.work.domain:outcomes
+    data_error: kickside.work.source:data_error
+    types: kickside.work.sink:types
+    commands: kickside.work.command:types
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:apply_output_publish
 - name: stage_launcher
   kind: contract.binding
   meta: { title: Work stage launcher, delivery: at_least_once, input_shape: record }
@@ -86,3 +106,11 @@ entries:
   config_schema:
     board_id: { type: string, picker: wc-component-picker, class: work_board, role: primary, required: true, title: Board }
   input_schema: { type: object }
+
+- name: stage_workflow
+  kind: library.lua
+  source: file://stage_workflow.lua
+  modules: [contract]
+  imports:
+    admission: kickside.workflows.runs:admission
+    types: kickside.work.sink:types

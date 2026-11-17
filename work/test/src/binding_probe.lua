@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Installer contract seam for Work-owned ordering/retry tests. The integration
--- case without a row delegates to the real selected installer and exposes its
--- inherited-root refusal; no production identity is weakened by this seam.
+-- cases without a row delegate to the real selected installer; no production
+-- identity is weakened by this seam.
 local sql = require("sql")
 local json = require("json")
 local automations = require("automations")

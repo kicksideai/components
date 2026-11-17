@@ -10,6 +10,7 @@ registry:
   enable_history: true
   history_type: memory
 override:
+  kickside.work.sink:stage_launch:imports.workflow_sink: app:stage_delivery_probe
   kickside.work.service:stage_binding_selected:imports.automations: app:binding_probe
   kickside.work.command:schema_commands:imports.append: app:binding_probe
   # Functional suites assert data semantics; deadline tests select their own budget.

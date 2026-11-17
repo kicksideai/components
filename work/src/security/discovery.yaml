@@ -428,6 +428,10 @@ entries:
     - kickside.work.security:stage_binding_actor
     - kickside.work.security:stage_binding_frame
     - kickside.work.sink:stage_launch
+    - kickside.work.sink:stage_workflow
+    - kickside.work.service:stage_completion
+    - kickside.work.service:complete_stage
+    - kickside.work.service:delete
     - kickside.work.sink:stage_launcher
     - kickside.work.sink:stage_launch_port
     - kickside.work:dep.kickside.workflows

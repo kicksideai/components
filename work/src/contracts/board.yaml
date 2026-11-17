@@ -24,6 +24,14 @@ entries:
     output_schemas:
     - format: application/schema+json
       definition: '{"type":"object","properties":{"board_id":{"type":"string","description":"Board component id to pass to subsequent board calls."},"status":{"type":"string","enum":["updated","unchanged"],"description":"Current command or durable-operation status."},"seq":{"type":"integer","description":"Sequence of the command append, absent when nothing is appended."},"as_of":{"type":"integer","description":"Committed sequence covered by the returned snapshot."}},"required":["board_id","status"],"additionalProperties":false}'
+  - name: delete
+    description: Remove the owned stage launcher before requesting board deletion; retry stage_launcher_delete_pending after child cleanup. Requires board DELETE and launcher ADMIN/DELETE.
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","additionalProperties":false,"required":["board_id"],"properties":{"board_id":{"type":"string","format":"uuid"}}}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","additionalProperties":true}'
   - name: list
     description: List boards readable by the caller; requires Work membership and returns board ids, titles, item counts and effective access.
     input_schemas:

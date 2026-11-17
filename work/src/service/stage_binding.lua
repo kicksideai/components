@@ -2,6 +2,10 @@
 -- Schema admission validates both principals; only apply provisions the constant
 -- board child. The selected installer owns interruption recovery and collisions.
 local component = require("component")
+local sql = require("sql")
+local service_types = require("service_types")
+local automation_db = require("automation_db") :: service_types.AutomationDB
+local command = require("automation_command")
 local execution_identity = require("execution_identity")
 local identifiers = require("identifiers")
 local automations = require("automations")
@@ -66,6 +70,17 @@ function M.selected(request: types.StageBindingRequest): (boolean?, error?)
     if not request.install then return true, nil end
     local id, id_err = identifiers.uuid("kickside.work.launcher.v1\0" .. request.board_id)
     if id_err or not id then return nil, id_err end
+    local existing, eerr = component.list_system({ component_ids = { id }, limit = 1 })
+    if eerr then return nil, eerr :: error end
+    if existing and existing[1] then
+        local owned, oerr = automation_db.with_db(function(db: sql.DB): (unknown, error?)
+            return command.read_op(db, id, "work/stage-launcher/v1")
+        end)
+        if oerr then return nil, oerr :: error end
+        if not owned or existing[1].impl_id ~= "kickside.sync:sync" then
+            return nil, errors.new({ kind = errors.CONFLICT, message = "owned launcher ID is occupied", details = { code = "stage_launcher_occupied" } })
+        end
+    end
     local installed, install_err = automations.install_type_selected("kickside.sync:sync", {
         title = "Work stage launcher", enabled = true,
         trigger = { v = 2, source = "kickside.work.ports:stage_entered", config = { thread_id = request.board_id }, backfill = "none" },
@@ -87,6 +102,11 @@ function M.admit(request: types.StageBindingRequest): (boolean?, error?)
     if cerr then return nil, cerr :: error end
     local identity = context and context[execution_identity.CONTEXT_KEY]
     if not identity then return nil, guard.invalid("board holds no execution identity", { code = "board_identity_absent" }) end
+    local valid, ierr = execution_identity.validate(identity)
+    if not valid then return nil, ierr :: error? end
+    if guard.actor_id() ~= execution_identity.actor_key((identity :: { principal: types.PrincipalDecl }).principal) then
+        return nil, errors.new({ kind = errors.PERMISSION_DENIED, message = "launcher requires the stored board principal", details = { code = "stage_launch_principal_denied" } })
+    end
     local result, run_err = execution_identity.run_as(identity, "kickside.work.service:stage_binding_selected", request,
         { deferred_owner = "kickside.work.service:stage_binding", execution_root = request.board_id })
     return result :: boolean?, run_err :: error?

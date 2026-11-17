@@ -46,7 +46,9 @@ local function plan_rank(ctx: types.PrepareContext, op: types.Op): types.OpPlan
 end
 
 local HANDLERS: { [string]: (types.PrepareContext, types.Op) -> types.OpPlan } = {
-    approve = approval.plan, report = report.plan, advance = process_context.advance, timer = timer.plan,
+    approve = approval.plan, report = function(ctx: types.PrepareContext, op: types.Op): types.OpPlan
+        return op.completion and report.complete(ctx, op) or report.plan(ctx, op)
+    end, advance = process_context.advance, timer = timer.plan,
     create = item_fields.plan_create,
     set = item_fields.plan_set,
     transition = item_fields.plan_transition,

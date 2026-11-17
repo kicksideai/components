@@ -11,6 +11,7 @@ local schema_commands = require("schema_commands")
 local security = require("security")
 local M = {}
 function M.run(input)
+    if input.op == nil then return {} end
     if input.op == "pack" then
         local entry = assert(registry.get("app:binding_pack"))
         local d = input.declaration
@@ -28,9 +29,14 @@ function M.run(input)
         local plan, err = schema_commands.prepare_schema(request)
         if err then return nil,err end
         local service = assert(component.get_service())
-        local _, revoke_err = service:revoke_subtree({ root_component_id=input.ref.id,
+        local granted,grant_err=service:grant_subtree({root_component_id=input.ref.id,
+            subject={subject_type="user",subject_id=input.successor},access_mask=15})
+        if grant_err then return nil,grant_err end
+        assert(granted.success,require("json").encode(granted))
+        local revoked, revoke_err = service:revoke_subtree({ root_component_id=input.ref.id,
             subject={subject_type="user",subject_id=security.actor():id()} })
         if revoke_err then return nil,revoke_err end
+        assert(revoked.success,require("json").encode(revoked))
         return schema_commands.apply_schema(request,plan)
     end
     if input.op == "installation" then return require("probe").read(input.board_id) end
@@ -40,7 +46,7 @@ function M.run(input)
         if err then return nil, err end
         local _, aerr = workflow.apply(created.id, {
             { type = "node.add", body = { id = "start", kind = "start", config = { input_schema = input.schema or { type = "object" } } } },
-            { type = "node.add", body = { id = "work", kind = "block", ref = "app:binding_block" } },
+            { type = "node.add", body = { id = "work", kind = "block", ref = input.crash and "app:delivery_crash_block" or "app:binding_block" } },
             { type = "node.add", body = { id = "finish", kind = "finish", config = { output_schema = { type = "object" } } } },
             { type = "edge.add", body = { id = "entry", source_id = "start", target_id = "work" } },
             { type = "edge.add", body = { id = "exit", source_id = "work", target_id = "finish" } },
@@ -54,12 +60,14 @@ function M.run(input)
         return { kind = "flow", id = created.id, version = 1 }, nil
     end
     local id = assert(identifiers.uuid("kickside.work.launcher.v1\0" .. input.board_id))
+    if input.op == "launcher_id" then return id end
+    if input.op == "pause_launcher" then return automations.call_action(id,"pause",{}) end
     if input.op == "launcher" then
         local context, err = component.get_context(id, component.ACCESS.ADMIN)
         if err then return nil, err end
         local identity, ierr = automations.get_execution_identity(id)
         if ierr then return nil, ierr end
-        return { id = id, context = context, identity = identity }, nil
+        return { id = id, context = context, identity = identity, execution_identity=assert(component.get_private_context(id))._execution_identity }, nil
     end
     if input.op == "occupy" then
         return assert(component.get_service()):register({ component_id = id, impl_id = "app:pack_automation", parent_id = input.board_id })

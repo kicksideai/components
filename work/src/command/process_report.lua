@@ -29,6 +29,31 @@ function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     return H.finish(ctx, target, op, {})
 end
 
+-- Both launch delivery and terminal completion fence against the recorded process.
+function H.current(ctx: types.PrepareContext, op: types.Op): (types.ProcessTarget?, types.OpPlan?)
+    local found, err = M.read(ctx, op.item :: string)
+    if err then return nil, M.failed(err) end
+    if not found or found.life ~= "live" then return nil, M.result("unchanged", M.item_group(op.item :: string)) end
+    local target, refusal = locate(ctx, op)
+    if not target then return nil, refusal end
+    local item = target.item
+    local work = item.work :: domain.ProcessData
+    if target.state.kind ~= "automated" or (work.visit or item.visit) ~= op.visit
+        or work.attempt ~= op.attempt or work.waiting then
+        return nil, done(ctx, item, M.item_group(item.item_id), {})
+    end
+    local previous, perr = read_rows.stage_run(ctx.db, ctx.board.board_id, item.item_id, op.visit :: integer, op.attempt :: integer)
+    if perr then return nil, M.failed(perr) end
+    if not previous or previous.outcome then return nil, done(ctx, item, M.item_group(item.item_id), {}) end
+    return target, nil
+end
+
+function H.complete(ctx: types.PrepareContext, op: types.Op): types.OpPlan
+    local target, refusal = H.current(ctx, op)
+    if not target then return refusal :: types.OpPlan end
+    return H.finish(ctx, target, op, {})
+end
+
 function H.finish(ctx: types.PrepareContext, target: types.ProcessTarget, op: types.Op, events: { domain.Event }): types.OpPlan
     local item: domain.StateItem = target.item
     local p: domain.Process = target.definition
