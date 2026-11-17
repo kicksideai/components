@@ -31,6 +31,7 @@ entries:
   key: audit_days
   value_type: int
   default: 365
+  confirm_decrease: { zero: 365 }
   validate_func: kickside.work.settings:validate
   schema:
     type: integer
@@ -51,6 +52,7 @@ entries:
   key: trash_days
   value_type: int
   default: 14
+  confirm_decrease: true
   validate_func: kickside.work.settings:validate
   schema:
     type: integer
@@ -71,6 +73,7 @@ entries:
   key: tombstone_days
   value_type: int
   default: 365
+  confirm_decrease: true
   validate_func: kickside.work.settings:validate
   schema:
     type: integer
@@ -91,6 +94,7 @@ entries:
   key: interval_days
   value_type: int
   default: 365
+  confirm_decrease: { zero: 365 }
   validate_func: kickside.work.settings:validate
   schema:
     type: integer
