@@ -353,13 +353,6 @@ entries:
     rules: kickside.work.domain:access_rules
     predicates: kickside.work.domain:predicates
     domain: kickside.work:types
-- name: query_pages
-  kind: library.lua
-  source: file://query_pages.lua
-  modules:
-  - sql
-  imports:
-    domain: kickside.work:types
 - name: working_rows
   kind: library.lua
   source: file://working_rows.lua

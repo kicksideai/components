@@ -2,9 +2,7 @@
 -- The query compiler: one item query over a board's generated table set, compiled
 -- into one SELECT with sql.builder. Identifiers come only from the layout and admitted
 -- scope declarations; every value is a bound argument, and the builder writes the
--- dialect's placeholders. The filter tree and sorts name fields the resolver maps to
--- generated columns; conditions add clauses over aliases i (generated row) and
--- r (item row).
+-- dialect's placeholders. The generated table covers selection and ordering.
 local sql = require("sql")
 local filter = require("filter")
 local scopes = require("scopes")
@@ -77,12 +75,29 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
     admitted: { domain.AdmittedScope }, conditions: { domain.Condition }, limit: integer): (types.Plan?, error?)
     local names = t.names
     local clauses: { domain.Condition } = {}
-    for _, c in ipairs(conditions) do clauses[#clauses + 1] = c end
+    local residual = false
+    local item_row: { string } = { "r.board_id = ?", "r.item_id = i.item_id" }
+    local item_args: { unknown } = { r.board_id }
+    local board_conditions: { domain.Condition } = {}
+    for _, c in ipairs(conditions) do
+        if c.item_row then
+            item_row[#item_row + 1] = c.sql
+            for _, arg in ipairs(c.args) do item_args[#item_args + 1] = arg end
+        else
+            board_conditions[#board_conditions + 1] = c
+        end
+    end
+    -- Keep the owning-row check a point lookup from the generated index order.
+    -- An EXISTS join lets the planner start from the whole fixed item table.
+    board_conditions[#board_conditions + 1] = { sql = "(SELECT 1 FROM kickside_work_item r WHERE "
+        .. table.concat(item_row, " AND ") .. ") = 1", args = item_args }
+    for _, c in ipairs(board_conditions) do clauses[#clauses + 1] = c end
     if q.where ~= nil then
         local fragment, err = filter.compile(q.where, { reader = r, item_table = names.item, set_table = names.set, dialect = dialect,
             relations = t.relations, resolve = resolve })
         if err or not fragment then return nil, err end
         clauses[#clauses + 1] = fragment
+        residual = fragment.residual == true
     end
     for _, sq in ipairs(admitted) do
         local predicate, args, serr = scope_predicate(r, sq)
@@ -92,7 +107,6 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
     local function matching(columns: { string }): sql.SelectBuilder
         local base = sql.builder.select(table.unpack(columns))
             :from(names.item .. " i")
-            :join("kickside_work_item r ON r.board_id = ? AND r.item_id = i.item_id", r.board_id)
         for _, c in ipairs(clauses) do base = base:where(c.sql, table.unpack(c.args)) end
         return base
     end
@@ -101,16 +115,16 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
         local format = dialect == sql.type.POSTGRES and sql.builder.dollar or sql.builder.question
         local counting = matching({ "1" })
         local beyond: string?, beyond_args: { unknown }? = nil, nil
-        if q.scan then
+        if q.scan and residual then
             local walk = sql.builder.select("i.item_id"):from(names.item .. " i")
-                :join("kickside_work_item r ON r.board_id = ? AND r.item_id = i.item_id", r.board_id)
-            for _, condition in ipairs(conditions) do walk = walk:where(condition.sql, table.unpack(condition.args)) end
+            for _, condition in ipairs(board_conditions) do walk = walk:where(condition.sql, table.unpack(condition.args)) end
             local edge, args = walk:order_by("i.item_id"):offset(q.scan - 1):limit(1):to_sql()
             counting = counting:where("i.item_id <= COALESCE((" .. edge .. "), i.item_id)", table.unpack(args))
             beyond, beyond_args = walk:order_by("i.item_id"):offset(q.scan):limit(1):placeholder_format(format):to_sql()
         end
-        local inner, args = counting:limit(q.count + 1):placeholder_format(format):to_sql()
-        counted = { statement = "SELECT count(*) AS n FROM (" .. inner .. ") matched", args = args, cap = q.count, beyond = beyond, beyond_args = beyond_args }
+        local cap = math.min(q.count, q.scan or q.count)
+        local inner, args = counting:limit(cap + 1):placeholder_format(format):to_sql()
+        counted = { statement = "SELECT count(*) AS n FROM (" .. inner .. ") matched", args = args, cap = cap, beyond = beyond, beyond_args = beyond_args }
     end
     local order: { domain.Sort } = q.sorts or {}
     local columns: { string } = {}
@@ -120,21 +134,16 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
         if target.set then return nil, invalid(sort.field .. " holds several values and cannot sort") end
         columns[#columns + 1] = "i." .. (target.order or target).column
     end
-    local grouped: sql.SelectBuilder? = nil
     local group_columns: { string } = {}
+    local selection: { string } = { "i.item_id" }
     if q.groups then
-        local selections: { string } = { "COUNT(*) AS group_count" }
         for i, field in ipairs(q.groups) do
             local target, err = resolve(field)
             if err or not target then return nil, err or invalid("unknown group field") end
             if target.set then return nil, invalid(field .. " holds several values and cannot group") end
             group_columns[i] = "i." .. target.column
-            selections[#selections + 1] = group_columns[i] .. " AS group_" .. i
+            selection[#selection + 1] = group_columns[i] .. " AS group_" .. i
         end
-        grouped = matching(selections)
-        for _, column in ipairs(group_columns) do grouped = grouped:group_by(column) end
-        for _, column in ipairs(group_columns) do grouped = grouped:order_by("CASE WHEN " .. column .. " IS NULL THEN 1 ELSE 0 END", column) end
-        grouped = grouped:limit(201)
     end
     local function from_cursor(built: sql.SelectBuilder): (sql.SelectBuilder?, error?)
         if not q.after then return built, nil end
@@ -142,27 +151,59 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
         if err or not condition then return nil, err end
         return built:where(condition.sql, table.unpack(condition.args)), nil
     end
-    local built, berr = from_cursor(matching({ "i.item_id" }))
-    if berr or not built then return nil, berr end
-    local query = window.order(built, columns, order):limit(limit + 1)
-    local plan: types.Plan = { query = query, count = counted, grouped = grouped, group_columns = group_columns, order = order, scan = q.scan }
-    if q.scan then
+    local take = q.groups and q.scan or math.min(limit, q.scan or limit)
+    local base = matching(selection)
+    local tails: { sql.SelectBuilder } = {}
+    local query: sql.SelectBuilder
+    if q.after and #columns == 1 and not residual then
+        local required = false
+        for _, column in ipairs(t.system) do
+            if "i." .. column.name == columns[1] then required = true; break end
+        end
+        local ranges = window.ranges(columns[1], order[1].dir == "desc", q.after, required)
+        local first = ranges[1]
+        query = window.order(base:where(first.sql, table.unpack(first.args)), columns, order):limit(take + 1)
+        for i = 2, #ranges do
+            local range = ranges[i]
+            tails[#tails + 1] = window.order(base:where(range.sql, table.unpack(range.args)), columns, order)
+        end
+    else
+        local built, berr = from_cursor(base)
+        if berr or not built then return nil, berr end
+        query = window.order(built, columns, order):limit(take + 1)
+    end
+    local plan: types.Plan = { query = query, tails = tails, count = counted, groups = #group_columns, take = take, scan = q.scan }
+    if q.scan and residual and not q.count then
         local walk = sql.builder.select("i.item_id"):from(names.item .. " i")
-            :join("kickside_work_item r ON r.board_id = ? AND r.item_id = i.item_id", r.board_id)
-        for _, condition in ipairs(conditions) do walk = walk:where(condition.sql, table.unpack(condition.args)) end
+        for _, condition in ipairs(board_conditions) do walk = walk:where(condition.sql, table.unpack(condition.args)) end
         local walked, werr = from_cursor(walk)
         if werr or not walked then return nil, werr end
         plan.walk = window.order(walked, columns, order):offset(q.scan - 1):limit(2)
         local format = dialect == sql.type.POSTGRES and sql.builder.dollar or sql.builder.question
         local population, args = walked:limit(q.scan):placeholder_format(format):to_sql()
         plan.population = { statement = "SELECT COUNT(*) AS n FROM (" .. population .. ") scanned", args = args, cap = q.scan }
-        plan.through = function(edge: domain.Cursor): (sql.SelectBuilder?, error?)
-            local condition, err = window.after(columns, order, edge)
-            if err or not condition then return nil, err end
-            return query:where("(" .. condition.sql .. ") IS NOT TRUE", table.unpack(condition.args)), nil
-        end
+        local candidates, binds = window.order(walked, columns, order, false):limit(q.scan):to_sql()
+        plan.query = query:where("i.item_id IN (" .. candidates .. ")", table.unpack(binds))
     end
     return plan, nil
+end
+
+function M.rows(db: types.Executor, plan: types.Plan): ({ domain.Row }?, error?)
+    local executor, err = plan.query:run_with(db)
+    if err or not executor then return nil, err end
+    local rows, rerr = executor:query()
+    if rerr then return nil, rerr end
+    local result: { domain.Row } = rows or {}
+    for _, tail in ipairs(plan.tails) do
+        local left = plan.take + 1 - #result
+        if left == 0 then break end
+        local execution, err = tail:limit(left):run_with(db)
+        if err or not execution then return nil, err end
+        local page, perr = execution:query()
+        if perr then return nil, perr end
+        for _, row in ipairs(page or {}) do result[#result + 1] = row end
+    end
+    return result, nil
 end
 
 -- total runs the plan's count: the exact number of matches up to its cap. Past the

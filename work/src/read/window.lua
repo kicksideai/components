@@ -45,11 +45,31 @@ function M.after(columns: { string }, order: { domain.Sort }, cursor: domain.Cur
     branches[#branches + 1] = "(" .. table.concat(parts, " AND ") .. ")"
     return { sql = "(" .. table.concat(branches, " OR ") .. ")", args = args }, nil
 end
-function M.order(query: sql.SelectBuilder, columns: { string }, order: { domain.Sort }): sql.SelectBuilder
+
+-- These disjoint ranges follow the index's order. Nulls occupy their own
+-- range, and a descending key still uses ascending item IDs within each tie.
+function M.ranges(column: string, descending: boolean, cursor: domain.Cursor, required: boolean): { domain.Condition }
+    local value = cursor.v
+    if value == nil then
+        return { { sql = column .. " IS NULL AND i.item_id > ?", args = { cursor.id } } }
+    end
+    local ranges: { domain.Condition }
+    if descending then
+        ranges = {
+            { sql = column .. " = ? AND i.item_id > ?", args = { value, cursor.id } },
+            { sql = column .. " < ?", args = { value } },
+        }
+    else
+        ranges = { { sql = "(" .. column .. ", i.item_id) > (?, ?)", args = { value, cursor.id } } }
+    end
+    if not required then ranges[#ranges + 1] = { sql = column .. " IS NULL", args = {} } end
+    return ranges
+end
+function M.order(query: sql.SelectBuilder, columns: { string }, order: { domain.Sort }, keys: boolean?): sql.SelectBuilder
     local out = query
     for i, column in ipairs(columns) do
-        out = out:columns(column .. (i == 1 and " AS sort_value" or " AS sort_value_" .. i))
-            :order_by("CASE WHEN " .. column .. " IS NULL THEN 1 ELSE 0 END", column .. (order[i].dir == "desc" and " DESC" or " ASC"))
+        if keys ~= false then out = out:columns(column .. (i == 1 and " AS sort_value" or " AS sort_value_" .. i)) end
+        out = out:order_by(column .. (order[i].dir == "desc" and " DESC NULLS LAST" or " ASC NULLS LAST"))
     end
     return out:order_by("i.item_id")
 end

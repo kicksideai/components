@@ -45,6 +45,8 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
     if unsupported then return nil, unsupported end
     local limit = request.limit or consts.LIMITS.page
     if limit < 1 or limit > consts.LIMITS.page then return nil, access.invalid("limit must be 1.." .. consts.LIMITS.page) end
+    local allowance = context.allowance :: types.ReadAllowance
+    limit = math.min(limit, allowance.remaining)
     local cursor: types.ChangesCursor = request.cursor or { seq = 0, item_id = "" }
     local catalog: { [string]: domain.Field } = {}
     local result, read_err = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.ChangesResult?, error?)
@@ -63,10 +65,12 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
         end
         local rows, err = read_rows.changes(tx, board, cursor.seq, cursor.item_id, limit + 1)
         if err then return nil, errors.wrap(err, "changes read failed") end
+        local inspected = math.min(#(rows or {}), limit)
+        allowance.remaining = allowance.remaining - inspected
         local selected: { [string]: boolean }? = nil
         if request.selection then
             local ids: { string } = {}
-            for i = 1, math.min(#(rows or {}), limit) do
+            for i = 1, inspected do
                 local id, decode_err = store.need(rows[i], "item_id")
                 if decode_err then return nil, decode_err end
                 ids[i] = id :: string
@@ -78,7 +82,7 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
         local items: { types.ChangeItem } = {}
         local processed = 0
         local comments_left = 10000
-        for i = 1, math.min(#(rows or {}), limit) do
+        for i = 1, inspected do
             processed = i
             local r = rows[i] :: domain.Row
             local decoded_3, decode_err = store.need(r, "item_id")

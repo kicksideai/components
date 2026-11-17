@@ -51,23 +51,27 @@ function M.redactor(catalog: { [string]: domain.Field }): types.Redactor
     end
 end
 
-function M.items<T>(items: { T }, redact: types.Redactor): error?
+function M.items<T>(items: { T }, redact: types.Redactor, seen: { [T]: boolean }?): error?
     for _, raw in ipairs(items) do
-        local item = raw :: { values: { [string]: unknown }? }
-        for code, value in pairs(item.values or {}) do
-            local surface, err = redact(code, value)
-            if err then return err end
-            (item.values :: { [string]: unknown })[code] = surface
+        if not seen or not seen[raw] then
+            if seen then seen[raw] = true end
+            local item = raw :: { values: { [string]: unknown }? }
+            for code, value in pairs(item.values or {}) do
+                local surface, err = redact(code, value)
+                if err then return err end
+                (item.values :: { [string]: unknown })[code] = surface
+            end
         end
     end
     return nil
 end
 
 function M.page(page: types.QueryPage, redact: types.Redactor): error?
-    local err = M.items(page.items, redact)
+    local seen: { [types.ItemView]: boolean } = {}
+    local err = M.items(page.items, redact, seen)
     if err then return err end
     local function group_values(group: types.QueryGroupRow): error?
-        local err = M.items(group.items, redact)
+        local err = M.items(group.items, redact, seen)
         if err then return err end
         local value, verr = redact(group.field, group.value)
         if verr then return verr end

@@ -189,7 +189,9 @@ function M.run(input: unknown): (reads.QueryResult?, error?)
     local context, err = load(request.view_id, component.ACCESS.READ :: integer)
     if err or not context then return nil, err end
     local view = context.view
-    return query.query({ group_by = view.group_by, sub_group_by = view.sub_group_by, board_id = context.board_id, where = view.where, order = view.order, scopes = view.scopes,
+    local first = request.after == nil
+    return query.query({ group_by = first and view.group_by or nil, sub_group_by = first and view.sub_group_by or nil,
+        board_id = context.board_id, where = view.where, order = view.order, scopes = view.scopes,
         limit = request.limit, after = request.after, min_seq = request.min_seq })
 end
 -- get exposes presentation only after both component ACLs admit the caller.

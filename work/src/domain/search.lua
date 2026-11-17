@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local search_text = require("search_text")
 local registry_values = require("registry_values")
 -- Activated search scopes return membership conditions under the caller's authority.
 local registry = require("registry")
@@ -15,6 +16,9 @@ end
 
 function M.compile(reader: types.Reader, alias: string, text: unknown, position: string, resolve: types.Resolver): (types.Condition?, error?)
     if type(text) ~= "string" or #text == 0 or #text > 4096 then return nil, invalid("invalid_match", "match holds 1..4096 bytes") end
+    local folded = search_text.fold(text)
+    if not folded then return nil, invalid("invalid_match", "match is UTF-8 text without NUL bytes") end
+    local residual = false
     local parts: { string } = {}
     local args: { unknown } = {}
     for _, id in ipairs(reader.search or {}) do
@@ -58,18 +62,19 @@ function M.compile(reader: types.Reader, alias: string, text: unknown, position:
             local scope, serr = scopes.load(id)
             if serr or not scope then return nil, serr end
             if type(meta.match) ~= "table" or #meta.match == 0 or #meta.match > 16 then return nil, invalid("unknown_scope", "match declares 1..16 text columns") end
+            residual = true
             local columns: { string } = {}
             args[#args + 1] = reader.board_id
             for _, raw in ipairs(meta.match) do
                 local column = scopes.identifier(raw)
                 if not column then return nil, invalid("unknown_scope", "match columns are identifiers") end
-                columns[#columns + 1] = position .. "(lower(s." .. column .. "), lower(?)) > 0"
-                args[#args + 1] = text
+                columns[#columns + 1] = position .. "(s." .. column .. ", ?) > 0"
+                args[#args + 1] = folded
             end
             parts[#parts + 1] = "EXISTS (SELECT 1 FROM " .. scope.table .. " s WHERE s." .. scope.board_column .. " = ? AND s." .. scope.item_column .. " = " .. alias .. ".item_id AND (" .. table.concat(columns, " OR ") .. "))"
         end
     end
     if #parts == 0 then return nil, invalid("search_unavailable", "board declares no activated search scope") end
-    return { sql = "(" .. table.concat(parts, " OR ") .. ")", args = args }, nil
+    return { sql = "(" .. table.concat(parts, " OR ") .. ")", args = args, residual = residual }, nil
 end
 return M

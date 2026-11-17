@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: bounded_reads_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work, timeout: 300s}
+  source: file://bounded_reads_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    search_text: kickside.work.domain:search_text
+- name: query_plans_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work, timeout: 300s}
+  source: file://query_plans_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
+    tables: kickside.work.domain:layout
+- name: query_text_search_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:work_attachment
+    seams: [app:query_text_search_scope]
+- name: query_text_search_scope
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: app:query_text_search_plugin
+    table: app_work_query_text
+    board_column: board_id
+    item_column: item_id
+    match: [content]
+    filters: {}
+- name: query_plan_read_page
+  kind: function.lua
+  source: |
+    local query = require("query")
+    return { run = function(request) return query.page(request) end }
+  method: run
+  imports:
+    query: kickside.work.read:query

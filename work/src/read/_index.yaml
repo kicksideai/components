@@ -182,10 +182,8 @@ entries:
     consts: kickside.work:consts
     locate: kickside.work.command:locate
     query: kickside.work.read:query
-    store: kickside.work.persist:store
     predicates: kickside.work.domain:predicates
     rules: kickside.work.domain:access_rules
-    pages: kickside.work.persist:query_pages
     domain: kickside.work:types
     types: kickside.work.read:types
 - name: resolve_principal

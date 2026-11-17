@@ -44,7 +44,8 @@ end
 
 function M.of(board_id: string, l: types.Layout, relations: { [string]: types.Relation }?): types.GeneratedTable
     return { names = M.names(board_id), layout = l, system = SYSTEM,
-        indexes = { { "life", "rank", "item_id" }, { "type", "state" }, { "parent_id" }, { "number" }, { "updated_seq" } },
+        indexes = { { "life", "rank", "item_id" }, { "type", "state" }, { "parent_id" }, { "number", "item_id" },
+            { "updated_seq" }, { "rank", "item_id" } },
         relations = relations or {} }
 end
 

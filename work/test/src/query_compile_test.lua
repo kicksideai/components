@@ -80,8 +80,7 @@ local function run(h: sql.DB, t: types.GeneratedTable, q: types.ItemQuery, opts:
     local plan, err = select.items(reader(o.level :: string? or "read"), t, h:type(), q, resolve,
         (o.admitted :: { types.AdmittedScope }?) or {}, (o.conditions :: { types.Condition }?) or {}, (o.limit :: integer?) or 50)
     if err or not plan then return nil, nil, err end
-    local executor = assert(plan.query:run_with(h))
-    local rows = assert(executor:query())
+    local rows = assert(select.rows(h, plan))
     local limit: integer = (o.limit :: integer?) or 50
     local out: { string } = {}
     for i = 1, math.min(#rows, limit) do out[i] = tostring(rows[i].item_id) end
@@ -158,7 +157,7 @@ local function define()
             local h = db()
             local t = fixture(h)
             test.eq(#ids(h, t, {}, { conditions = { { sql = "i.life = ?", args = { "draft" } } } }), 1)
-            test.eq(#ids(h, t, {}, { conditions = { { sql = "i.life = ?", args = { "live" } }, { sql = "r.number <> ?", args = { 3 } } } }), 8)
+            test.eq(#ids(h, t, {}, { conditions = { { sql = "i.life = ?", args = { "live" } }, { sql = "r.number <> ?", args = { 3 }, item_row = true } } }), 8)
             h:release()
         end)
 
