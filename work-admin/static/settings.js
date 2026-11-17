@@ -1,84 +1,84 @@
-import { inject as co, defineComponent as ve, ref as z, useSlots as vo, openBlock as c, createElementBlock as g, createElementVNode as r, createVNode as b, normalizeClass as mt, unref as s, withCtx as L, renderSlot as We, toDisplayString as A, createCommentVNode as E, createBlock as F, withDirectives as Qe, vShow as rt, computed as G, watch as Ce, onMounted as kl, onUnmounted as Ta, resolveComponent as Ea, Fragment as H, renderList as ee, createTextVNode as M, resolveDynamicComponent as Fl, onBeforeUnmount as ft, useId as Xl, withKeys as Ae, withModifiers as be, normalizeStyle as mo, watchEffect as Ua, nextTick as fo, provide as po } from "vue";
-import { Icon as J } from "@iconify/vue";
-import { on as bo, host as ho, define as yo } from "@wippy-fe/proxy";
+import { inject as fo, defineComponent as ue, ref as L, useSlots as po, openBlock as c, createElementBlock as g, createElementVNode as d, createVNode as b, normalizeClass as ft, unref as r, withCtx as F, renderSlot as We, toDisplayString as U, createCommentVNode as D, createBlock as z, withDirectives as Qe, vShow as ut, computed as K, watch as xe, onMounted as kl, onUnmounted as Da, resolveComponent as Ia, Fragment as H, renderList as ee, createTextVNode as M, resolveDynamicComponent as zl, onBeforeUnmount as it, useId as Xl, withKeys as Ae, withModifiers as be, normalizeStyle as bo, watchEffect as Aa, nextTick as ho, provide as yo } from "vue";
+import { Icon as Z } from "@iconify/vue";
+import { api as go, on as ko, host as wo, define as Vo } from "@wippy-fe/proxy";
 import "pinia";
-import { e as vt, u as go, b as ko, c as wo, a as Vo } from "./mount-DyrlIXV_.js";
+import { e as tt, u as $o, b as xo, c as Co, a as So } from "./mount-DyrlIXV_.js";
 import te from "primevue/select";
-import { m as Bl, e as na, s as he, f as $o, t as je, p as Ut, d as Jl, g as Dt, r as sa, w as $t, l as jl, h as Ke, i as Ct, b as lt, u as Da, j as Ia, k as Zl, n as Aa, o as ge, q as wl, v as _t, x as xo, y as Pa, z as Vt, A as Co, _ as Ra, B as So, C as To, D as ra, E as gt, F as Eo, G as da, H as Uo, I as ua, J as Do, K as ca, L as Io, a as Ao, M as va, N as Po, O as Ro } from "./latestRequest-Or3M4zVa.js";
-import Y from "primevue/button";
+import { m as Bl, e as na, s as he, f as To, t as je, p as Ut, d as Jl, g as Dt, r as sa, w as $t, l as jl, h as Ke, i as Ct, b as at, u as Pa, j as Ra, k as Zl, n as Oa, o as ge, q as wl, v as _t, x as Eo, y as Na, z as Uo, A as Vt, B as Do, _ as Ma, C as Io, D as Ao, E as ra, F as gt, G as Po, H as da, I as Ro, J as ua, K as Oo, L as ca, M as No, a as Mo, N as va, O as Fo, P as Lo } from "./latestRequest-DpOFwcMD.js";
+import G from "primevue/button";
 import Re from "primevue/tag";
-import ze from "primevue/toggleswitch";
+import Le from "primevue/toggleswitch";
 import Mt from "primevue/checkbox";
 import re from "primevue/inputtext";
 import ml from "primevue/textarea";
 import Ge from "primevue/inputnumber";
 import Ql from "primevue/selectbutton";
-import Oo from "primevue/chip";
-import No from "primevue/tabs";
-import Mo from "primevue/tablist";
-import Lo from "primevue/tab";
-import zo from "primevue/message";
+import zo from "primevue/chip";
+import Bo from "primevue/tabs";
+import jo from "primevue/tablist";
+import qo from "primevue/tab";
+import Wo from "primevue/message";
 const Dl = (e, l) => e.x > l.x && e.x < l.x + l.width && e.y > l.y && e.y < l.y + l.height;
-function Fo(e, l, t) {
+function Ko(e, l, t) {
   return e.x === l.x ? e.x > t.x && e.x < t.x + t.width && Math.max(e.y, l.y) > t.y && Math.min(e.y, l.y) < t.y + t.height : e.y > t.y && e.y < t.y + t.height && Math.max(e.x, l.x) > t.x && Math.min(e.x, l.x) < t.x + t.width;
 }
 function bt(e, l, t) {
-  const a = [.../* @__PURE__ */ new Set([e.x, l.x, ...t.flatMap(($) => [$.x, $.x + $.width])])].sort(($, I) => $ - I), o = [.../* @__PURE__ */ new Set([e.y, l.y, ...t.flatMap(($) => [$.y, $.y + $.height])])].sort(($, I) => $ - I);
+  const a = [.../* @__PURE__ */ new Set([e.x, l.x, ...t.flatMap(($) => [$.x, $.x + $.width])])].sort(($, A) => $ - A), o = [.../* @__PURE__ */ new Set([e.y, l.y, ...t.flatMap(($) => [$.y, $.y + $.height])])].sort(($, A) => $ - A);
   a.unshift(a[0] - 24), a.push(a.at(-1) + 24), o.unshift(o[0] - 24), o.push(o.at(-1) + 24);
-  const d = a.length, v = o.indexOf(l.y) * d + a.indexOf(l.x), m = o.indexOf(e.y) * d + a.indexOf(e.x), f = ($) => ({ x: a[$ % d], y: o[Math.floor($ / d)] }), i = /* @__PURE__ */ new Map(), n = /* @__PURE__ */ new Map(), u = [];
+  const s = a.length, v = o.indexOf(l.y) * s + a.indexOf(l.x), f = o.indexOf(e.y) * s + a.indexOf(e.x), m = ($) => ({ x: a[$ % s], y: o[Math.floor($ / s)] }), i = /* @__PURE__ */ new Map(), n = /* @__PURE__ */ new Map(), u = [];
   function y($) {
     u.push($);
-    let I = u.length - 1;
-    for (; I; ) {
-      const T = I - 1 >> 1;
-      if (u[T].priority <= $.priority) break;
-      u[I] = u[T], I = T;
+    let A = u.length - 1;
+    for (; A; ) {
+      const x = A - 1 >> 1;
+      if (u[x].priority <= $.priority) break;
+      u[A] = u[x], A = x;
     }
-    u[I] = $;
+    u[A] = $;
   }
   function p() {
-    const $ = u[0], I = u.pop();
+    const $ = u[0], A = u.pop();
     if (u.length) {
-      let T = 0;
-      for (; T * 2 + 1 < u.length; ) {
-        let D = T * 2 + 1;
-        if (D + 1 < u.length && u[D + 1].priority < u[D].priority && D++, I.priority <= u[D].priority) break;
-        u[T] = u[D], T = D;
+      let x = 0;
+      for (; x * 2 + 1 < u.length; ) {
+        let E = x * 2 + 1;
+        if (E + 1 < u.length && u[E + 1].priority < u[E].priority && E++, A.priority <= u[E].priority) break;
+        u[x] = u[E], x = E;
       }
-      u[T] = I;
+      u[x] = A;
     }
     return $;
   }
   const w = ($) => Math.abs($.x - l.x) + Math.abs($.y - l.y);
   for (const $ of [0, 1]) {
-    const I = m * 2 + $;
-    i.set(I, 0), y({ key: I, cost: 0, priority: w(e) });
+    const A = f * 2 + $;
+    i.set(A, 0), y({ key: A, cost: 0, priority: w(e) });
   }
-  const S = /* @__PURE__ */ new Map(), U = /* @__PURE__ */ new Map();
+  const S = /* @__PURE__ */ new Map(), I = /* @__PURE__ */ new Map();
   for (; u.length; ) {
-    const $ = p(), I = Math.floor($.key / 2), T = $.key % 2;
+    const $ = p(), A = Math.floor($.key / 2), x = $.key % 2;
     if ($.cost !== i.get($.key)) continue;
-    if (I === v) {
-      const Z = [];
+    if (A === v) {
+      const X = [];
       let de = $.key;
       for (; de !== void 0; )
-        Z.push(f(Math.floor(de / 2))), de = n.get(de);
-      return Oa(Z.reverse());
+        X.push(m(Math.floor(de / 2))), de = n.get(de);
+      return Fa(X.reverse());
     }
-    const D = f(I), V = I % d, P = Math.floor(I / d);
-    for (const [Z, de] of [[V > 0 ? I - 1 : -1, 0], [V + 1 < d ? I + 1 : -1, 0], [P > 0 ? I - d : -1, 1], [P + 1 < o.length ? I + d : -1, 1]]) {
-      if (Z < 0) continue;
-      const ne = f(Z);
-      if (S.has(Z) || S.set(Z, !t.some((x) => Dl(ne, x))), !S.get(Z)) continue;
-      const B = `${Math.min(I, Z)}:${Math.max(I, Z)}`;
-      if (U.has(B) || U.set(B, !t.some((x) => Fo(D, ne, x))), !U.get(B)) continue;
-      const O = $.cost + Math.abs(D.x - ne.x) + Math.abs(D.y - ne.y) + (T === de ? 0 : 18), oe = Z * 2 + de;
+    const E = m(A), V = A % s, P = Math.floor(A / s);
+    for (const [X, de] of [[V > 0 ? A - 1 : -1, 0], [V + 1 < s ? A + 1 : -1, 0], [P > 0 ? A - s : -1, 1], [P + 1 < o.length ? A + s : -1, 1]]) {
+      if (X < 0) continue;
+      const ne = m(X);
+      if (S.has(X) || S.set(X, !t.some((C) => Dl(ne, C))), !S.get(X)) continue;
+      const B = `${Math.min(A, X)}:${Math.max(A, X)}`;
+      if (I.has(B) || I.set(B, !t.some((C) => Ko(E, ne, C))), !I.get(B)) continue;
+      const O = $.cost + Math.abs(E.x - ne.x) + Math.abs(E.y - ne.y) + (x === de ? 0 : 18), oe = X * 2 + de;
       O >= (i.get(oe) ?? 1 / 0) || (i.set(oe, O), n.set(oe, $.key), y({ key: oe, cost: O, priority: O + w(ne) }));
     }
   }
   throw new Error("Process map has no collision-free route between its ports: " + JSON.stringify({ start: e, end: l, startInside: t.filter(($) => Dl(e, $)), endInside: t.filter(($) => Dl(l, $)) }));
 }
-function Oa(e) {
+function Fa(e) {
   const l = [];
   for (const t of e) {
     const a = l.at(-1), o = l.at(-2);
@@ -91,107 +91,107 @@ function Ot(e, l = 28) {
   const t = [];
   let a = "";
   for (const o of e.split(/\s+/u))
-    for (let d = 0; d < o.length; d += l) {
-      const v = o.slice(d, d + l);
+    for (let s = 0; s < o.length; s += l) {
+      const v = o.slice(s, s + l);
       a && a.length + v.length + 1 > l && (t.push(a), a = ""), a = a ? a + " " + v : v;
     }
   return [...t, a].filter(Boolean);
 }
 function ol(e) {
-  if (e = Oa(e), !e.length) return "";
+  if (e = Fa(e), !e.length) return "";
   let l = `M ${e[0].x} ${e[0].y}`;
   for (let a = 1; a < e.length - 1; a++) {
-    const o = e[a - 1], d = e[a], v = e[a + 1], m = Math.hypot(d.x - o.x, d.y - o.y), f = Math.hypot(v.x - d.x, v.y - d.y), i = Math.min(8, m / 3, f / 3);
-    i && (l += ` L ${d.x + (o.x - d.x) * i / m} ${d.y + (o.y - d.y) * i / m} Q ${d.x} ${d.y} ${d.x + (v.x - d.x) * i / f} ${d.y + (v.y - d.y) * i / f}`);
+    const o = e[a - 1], s = e[a], v = e[a + 1], f = Math.hypot(s.x - o.x, s.y - o.y), m = Math.hypot(v.x - s.x, v.y - s.y), i = Math.min(8, f / 3, m / 3);
+    i && (l += ` L ${s.x + (o.x - s.x) * i / f} ${s.y + (o.y - s.y) * i / f} Q ${s.x} ${s.y} ${s.x + (v.x - s.x) * i / m} ${s.y + (v.y - s.y) * i / m}`);
   }
   const t = e.at(-1);
   return l + ` L ${t.x} ${t.y}`;
 }
-function Bo(e, l = {}, t = { width: 1400, height: 480 }) {
+function Go(e, l = {}, t = { width: 1400, height: 480 }) {
   const a = t.width < 750 || Bl(e).length > 8 ? "TB" : "LR", o = new na.graphlib.Graph({ multigraph: !0 });
   o.setGraph({ rankdir: a, ranker: "network-simplex", acyclicer: "greedy", nodesep: 32, edgesep: 32, ranksep: 24, marginx: 32, marginy: 32 }), o.setDefaultEdgeLabel(() => ({}));
-  const d = Bl(e), v = new Map(d.map((h, C) => [h.id, C])), m = e.states.map((h) => {
-    const C = (e.transitions ?? []).filter((Te) => Te.from === "any" && Te.to === h.id), k = Ot(he(h)), j = Ot($o(h, e)), K = C.flatMap((Te) => Ot(je(Te) + " works from any state")), se = l.policy?.wip?.[h.id]?.limit, fe = se === void 0 ? 0 : jt(" · limit " + se), Se = Math.max(168, ...k.map((Te) => jt(Te) + 58), ...j.map((Te, pt) => jt(Te) + 32 + (pt === j.length - 1 ? fe : 0)), ...K.map((Te) => jt(Te) + 32)), Ne = Math.max(80, 42 + k.length * 18 + j.length * 16 + K.length * 18);
-    return o.setNode(h.id, { width: Se + (a === "LR" ? 36 : 0), height: Ne + (a === "TB" ? 36 : 0) }), { state: h, x: 0, y: 0, width: Se, height: Ne, title: k, caption: j, badges: C, row: v.has(h.id) ? 0 : 1 };
-  }), f = new Set(m.map((h) => h.state.id)), i = (e.transitions ?? []).flatMap((h) => h.from === "any" ? [] : h.from.filter((C) => f.has(C) && f.has(h.to)).map((C) => {
-    const k = `${h.id}-${C}`, j = Ot(je(h)), K = Math.max(72, ...j.map((fe) => jt(fe) + 24)), se = Math.max(24, j.length * 16 + 10);
-    return { transition: h, from: C, key: k, lines: j, width: K, height: se };
-  })), n = /* @__PURE__ */ new Set(), u = /* @__PURE__ */ new Set(), y = new Set(i.filter((h) => h.from === h.transition.to || h.transition.to === e.initial || ["completed", "canceled"].includes(m.find((C) => C.state.id === h.from).state.category)).map((h) => h.key));
+  const s = Bl(e), v = new Map(s.map((h, T) => [h.id, T])), f = e.states.map((h) => {
+    const T = (e.transitions ?? []).filter((Te) => Te.from === "any" && Te.to === h.id), k = Ot(he(h)), j = Ot(To(h, e)), Y = T.flatMap((Te) => Ot(je(Te) + " works from any state")), se = l.policy?.wip?.[h.id]?.limit, fe = se === void 0 ? 0 : jt(" · limit " + se), Se = Math.max(168, ...k.map((Te) => jt(Te) + 58), ...j.map((Te, pt) => jt(Te) + 32 + (pt === j.length - 1 ? fe : 0)), ...Y.map((Te) => jt(Te) + 32)), Ne = Math.max(80, 42 + k.length * 18 + j.length * 16 + Y.length * 18);
+    return o.setNode(h.id, { width: Se + (a === "LR" ? 36 : 0), height: Ne + (a === "TB" ? 36 : 0) }), { state: h, x: 0, y: 0, width: Se, height: Ne, title: k, caption: j, badges: T, row: v.has(h.id) ? 0 : 1 };
+  }), m = new Set(f.map((h) => h.state.id)), i = (e.transitions ?? []).flatMap((h) => h.from === "any" ? [] : h.from.filter((T) => m.has(T) && m.has(h.to)).map((T) => {
+    const k = `${h.id}-${T}`, j = Ot(je(h)), Y = Math.max(72, ...j.map((fe) => jt(fe) + 24)), se = Math.max(24, j.length * 16 + 10);
+    return { transition: h, from: T, key: k, lines: j, width: Y, height: se };
+  })), n = /* @__PURE__ */ new Set(), u = /* @__PURE__ */ new Set(), y = new Set(i.filter((h) => h.from === h.transition.to || h.transition.to === e.initial || ["completed", "canceled"].includes(f.find((T) => T.state.id === h.from).state.category)).map((h) => h.key));
   function p(h) {
     if (!u.has(h)) {
       n.add(h);
-      for (const C of i.filter((k) => k.from === h))
-        y.has(C.key) || (n.has(C.transition.to) ? y.add(C.key) : p(C.transition.to));
+      for (const T of i.filter((k) => k.from === h))
+        y.has(T.key) || (n.has(T.transition.to) ? y.add(T.key) : p(T.transition.to));
       n.delete(h), u.add(h);
     }
   }
   p(e.initial);
-  for (const h of m) p(h.state.id);
+  for (const h of f) p(h.state.id);
   for (const h of i) if (!y.has(h.key)) {
-    const C = v.get(h.from), k = v.get(h.transition.to);
-    o.setEdge(h.from, h.transition.to, { width: h.width, height: h.height, labelpos: "c", weight: C !== void 0 && k === C + 1 ? 100 : 1 }, h.key);
+    const T = v.get(h.from), k = v.get(h.transition.to);
+    o.setEdge(h.from, h.transition.to, { width: h.width, height: h.height, labelpos: "c", weight: T !== void 0 && k === T + 1 ? 100 : 1 }, h.key);
   }
-  for (const h of e.transitions ?? []) if (h.from === "any" && f.has(e.initial) && f.has(h.to) && !v.has(h.to)) {
-    const C = e.states.find((k) => k.id === h.to);
-    o.setEdge(e.initial, h.to, { minlen: ["completed", "canceled"].includes(C.category) ? Math.max(1, d.length - 1) : 1 }, `any:${h.id}`);
+  for (const h of e.transitions ?? []) if (h.from === "any" && m.has(e.initial) && m.has(h.to) && !v.has(h.to)) {
+    const T = e.states.find((k) => k.id === h.to);
+    o.setEdge(e.initial, h.to, { minlen: ["completed", "canceled"].includes(T.category) ? Math.max(1, s.length - 1) : 1 }, `any:${h.id}`);
   }
-  const w = e.states.flatMap((h) => (h.regions ?? []).filter((C) => f.has(C.initial)).map((C, k) => {
+  const w = e.states.flatMap((h) => (h.regions ?? []).filter((T) => m.has(T.initial)).map((T, k) => {
     const j = `lane:${h.id}:${k}`;
-    return o.setEdge(h.id, C.initial, {}, j), { state: h, region: C, key: j };
+    return o.setEdge(h.id, T.initial, {}, j), { state: h, region: T, key: j };
   }));
-  if (!m.length) return { nodes: m, edges: [], parallels: [], main: d, direction: a, width: 320, height: 160 };
+  if (!f.length) return { nodes: f, edges: [], parallels: [], main: s, direction: a, width: 320, height: 160 };
   na.layout(o);
-  for (const h of m) Object.assign(h, { x: o.node(h.state.id).x, y: o.node(h.state.id).y });
-  const S = a === "TB", U = i.filter((h) => !y.has(h.key)).map((h) => o.edge({ v: h.from, w: h.transition.to, name: h.key })), $ = [...m, ...U], I = Math.max(...$.map((h) => h.x + h.width / 2)), T = Math.max(...$.map((h) => h.y + h.height / 2)), D = (h) => m.find((C) => C.state.id === h), V = i.filter((h) => y.has(h.key)).sort((h, C) => {
+  for (const h of f) Object.assign(h, { x: o.node(h.state.id).x, y: o.node(h.state.id).y });
+  const S = a === "TB", I = i.filter((h) => !y.has(h.key)).map((h) => o.edge({ v: h.from, w: h.transition.to, name: h.key })), $ = [...f, ...I], A = Math.max(...$.map((h) => h.x + h.width / 2)), x = Math.max(...$.map((h) => h.y + h.height / 2)), E = (h) => f.find((T) => T.state.id === h), V = i.filter((h) => y.has(h.key)).sort((h, T) => {
     const k = S ? "y" : "x";
-    return Math.abs(D(h.from)[k] - D(h.transition.to)[k]) - Math.abs(D(C.from)[k] - D(C.transition.to)[k]);
-  }), P = /* @__PURE__ */ new Map(), Z = Math.max(0, ...V.map((h) => h.width));
-  let de = T + 32;
-  for (const [h, C] of V.entries()) {
-    const k = D(C.from), j = D(C.transition.to), K = S ? I + 16 + Z + 28 + h * 18 : de + C.height / 2, se = S ? I + 16 + Z / 2 : (k.x + j.x) / 2;
-    let fe = S ? k.y + k.height / 2 + 18 : K;
+    return Math.abs(E(h.from)[k] - E(h.transition.to)[k]) - Math.abs(E(T.from)[k] - E(T.transition.to)[k]);
+  }), P = /* @__PURE__ */ new Map(), X = Math.max(0, ...V.map((h) => h.width));
+  let de = x + 32;
+  for (const [h, T] of V.entries()) {
+    const k = E(T.from), j = E(T.transition.to), Y = S ? A + 16 + X + 28 + h * 18 : de + T.height / 2, se = S ? A + 16 + X / 2 : (k.x + j.x) / 2;
+    let fe = S ? k.y + k.height / 2 + 18 : Y;
     if (S) for (const Se of [...P.values()].sort((Ne, Te) => Ne.y - Te.y))
-      fe + C.height / 2 + 10 > Se.y - Se.height / 2 - 10 && fe - C.height / 2 - 10 < Se.y + Se.height / 2 + 10 && (fe = Se.y + Se.height / 2 + 24 + C.height / 2);
-    P.set(C.key, { x: se, y: fe, corridor: K, height: C.height }), de = K + C.height / 2 + 24;
+      fe + T.height / 2 + 10 > Se.y - Se.height / 2 - 10 && fe - T.height / 2 - 10 < Se.y + Se.height / 2 + 10 && (fe = Se.y + Se.height / 2 + 24 + T.height / 2);
+    P.set(T.key, { x: se, y: fe, corridor: Y, height: T.height }), de = Y + T.height / 2 + 24;
   }
-  const ne = i.map((h) => ({ ...h, ...P.get(h.key) ?? o.edge({ v: h.from, w: h.transition.to, name: h.key }) })), B = (h, C) => ({ x: h.x - h.width / 2 - C, y: h.y - h.height / 2 - C, width: h.width + C * 2, height: h.height + C * 2 }), O = [...m.map((h) => B(h, 12)), ...ne.map((h) => B(h, 10))], oe = (h, C) => ({
+  const ne = i.map((h) => ({ ...h, ...P.get(h.key) ?? o.edge({ v: h.from, w: h.transition.to, name: h.key }) })), B = (h, T) => ({ x: h.x - h.width / 2 - T, y: h.y - h.height / 2 - T, width: h.width + T * 2, height: h.height + T * 2 }), O = [...f.map((h) => B(h, 12)), ...ne.map((h) => B(h, 10))], oe = (h, T) => ({
     start: S ? { x: h.x, y: h.y + h.height / 2 } : { x: h.x + h.width / 2, y: h.y },
-    end: S ? { x: C.x, y: C.y - C.height / 2 } : { x: C.x - C.width / 2, y: C.y }
-  }), x = (h, C) => S ? { x: h.x, y: h.y + C } : { x: h.x + C, y: h.y }, R = ne.map((h) => {
-    const C = m.find((Ye) => Ye.state.id === h.from), k = m.find((Ye) => Ye.state.id === h.transition.to), { start: j, end: K } = oe(C, k), se = y.has(h.key), fe = x(j, 18), Se = x(K, -18), Ne = (se || !S ? h.width : h.height) / 2 + 10, Te = se ? { x: h.x + (S ? -Ne : Ne), y: h.y } : x(h, -Ne), pt = se ? { x: h.x + (S ? Ne : -Ne), y: h.y } : x(h, Ne);
-    let it;
+    end: S ? { x: T.x, y: T.y - T.height / 2 } : { x: T.x - T.width / 2, y: T.y }
+  }), C = (h, T) => S ? { x: h.x, y: h.y + T } : { x: h.x + T, y: h.y }, R = ne.map((h) => {
+    const T = f.find((Ye) => Ye.state.id === h.from), k = f.find((Ye) => Ye.state.id === h.transition.to), { start: j, end: Y } = oe(T, k), se = y.has(h.key), fe = C(j, 18), Se = C(Y, -18), Ne = (se || !S ? h.width : h.height) / 2 + 10, Te = se ? { x: h.x + (S ? -Ne : Ne), y: h.y } : C(h, -Ne), pt = se ? { x: h.x + (S ? Ne : -Ne), y: h.y } : C(h, Ne);
+    let st;
     if (se) {
       const { corridor: Ye } = P.get(h.key), ll = S ? { x: Ye, y: h.y } : { x: fe.x, y: Ye }, Bt = S ? { x: Ye, y: Se.y } : { x: Se.x, y: Ye };
-      it = S ? [
+      st = S ? [
         [j, ...bt(fe, Te, O)],
-        [pt, ll, Bt, ...bt(Bt, Se, O), K]
+        [pt, ll, Bt, ...bt(Bt, Se, O), Y]
       ] : [
         [j, ...bt(fe, ll, O), Te],
-        [pt, ...bt(Bt, Se, O), K]
+        [pt, ...bt(Bt, Se, O), Y]
       ];
-    } else it = [
+    } else st = [
       [j, ...bt(fe, Te, O)],
-      [...bt(pt, Se, O), K]
+      [...bt(pt, Se, O), Y]
     ];
     const Cl = se ? "return" : v.get(h.transition.to) === (v.get(h.from) ?? -2) + 1 ? "main" : "forward";
-    return { ...h, points: it.flat(), segments: it, path: it.map(ol).join(" "), type: Cl, targetOffset: 0 };
+    return { ...h, points: st.flat(), segments: st, path: st.map(ol).join(" "), type: Cl, targetOffset: 0 };
   }), N = w.map((h) => {
-    const C = m.find((fe) => fe.state.id === h.state.id), k = m.find((fe) => fe.state.id === h.region.initial), { start: j, end: K } = oe(C, k), se = [j, ...bt(x(j, 18), x(K, -18), O), K];
+    const T = f.find((fe) => fe.state.id === h.state.id), k = f.find((fe) => fe.state.id === h.region.initial), { start: j, end: Y } = oe(T, k), se = [j, ...bt(C(j, 18), C(Y, -18), O), Y];
     return { state: h.state, key: h.key, points: se, path: ol(se) };
-  }), X = [...m.flatMap((h) => [{ x: h.x - h.width / 2, y: h.y - h.height / 2 }, { x: h.x + h.width / 2, y: h.y + h.height / 2 }]), ...R.flatMap((h) => [...h.points, { x: h.x - h.width / 2, y: h.y - h.height / 2 }, { x: h.x + h.width / 2, y: h.y + h.height / 2 }]), ...N.flatMap((h) => h.points)], ue = 32 - Math.min(...X.map((h) => h.x)), pe = 32 - Math.min(...X.map((h) => h.y)), ke = Math.max(...X.map((h) => h.x)) + ue + 32, Ve = Math.max(...X.map((h) => h.y)) + pe + 32, De = (h) => ({ x: h.x + ue, y: h.y + pe });
-  for (const h of m) Object.assign(h, De(h));
+  }), J = [...f.flatMap((h) => [{ x: h.x - h.width / 2, y: h.y - h.height / 2 }, { x: h.x + h.width / 2, y: h.y + h.height / 2 }]), ...R.flatMap((h) => [...h.points, { x: h.x - h.width / 2, y: h.y - h.height / 2 }, { x: h.x + h.width / 2, y: h.y + h.height / 2 }]), ...N.flatMap((h) => h.points)], ce = 32 - Math.min(...J.map((h) => h.x)), pe = 32 - Math.min(...J.map((h) => h.y)), ke = Math.max(...J.map((h) => h.x)) + ce + 32, Ve = Math.max(...J.map((h) => h.y)) + pe + 32, De = (h) => ({ x: h.x + ce, y: h.y + pe });
+  for (const h of f) Object.assign(h, De(h));
   for (const h of R)
-    Object.assign(h, De(h)), h.segments = h.segments.map((C) => C.map(De)), h.points = h.segments.flat(), h.path = h.segments.map(ol).join(" ");
+    Object.assign(h, De(h)), h.segments = h.segments.map((T) => T.map(De)), h.points = h.segments.flat(), h.path = h.segments.map(ol).join(" ");
   for (const h of N)
     h.points = h.points.map(De), h.path = ol(h.points);
-  return { nodes: m, edges: R, parallels: N, main: d, direction: a, width: ke, height: Ve };
+  return { nodes: f, edges: R, parallels: N, main: s, direction: a, width: ke, height: Ve };
 }
-const Na = Symbol("work-navigation");
-function jo() {
-  return co(Na, () => {
+const La = Symbol("work-navigation");
+function Yo() {
+  return fo(La, () => {
   });
 }
-function qo(e) {
+function Ho(e) {
   if (e.name === "boards") return "";
   const l = encodeURIComponent(e.board);
   return e.name === "settings" ? `${l}/settings` : l;
@@ -203,10 +203,10 @@ const It = (e) => `/api/v1/work/boards/${encodeURIComponent(e)}`, ma = (e) => ({
   apply: (e, l, t) => Ut(`${It(e)}/apply_schema`, { ...ma(l), key: t }, "Apply schema"),
   resume: (e) => Ut(`${It(e)}/resume_migration`, {}, "Resume migration"),
   configure: (e, l, t) => Ut(`${It(e)}/configure_plugin`, { plugin: l, config: t }, "Configure plugin")
-}, Wo = { class: "work-definition" }, Ko = { class: "work-definition-head" }, Go = { class: "work-definition-affordances" }, Yo = ["title"], Ho = { class: "work-definition-code" }, Xo = ["title"], Jo = { class: "work-definition-kind" }, Zo = { class: "work-definition-flags" }, Qo = { class: "work-definition-usage" }, _o = { class: "work-definition-actions" }, ei = {
+}, Xo = { class: "work-definition" }, Jo = { class: "work-definition-head" }, Zo = { class: "work-definition-affordances" }, Qo = ["title"], _o = { class: "work-definition-code" }, ei = ["title"], ti = { class: "work-definition-kind" }, li = { class: "work-definition-flags" }, ai = { class: "work-definition-usage" }, oi = { class: "work-definition-actions" }, ii = {
   key: 0,
   class: "work-definition-description"
-}, ti = { class: "work-definition-body work-stack" }, Vl = /* @__PURE__ */ ve({
+}, ni = { class: "work-definition-body work-stack" }, Vl = /* @__PURE__ */ ue({
   __name: "DefinitionRow",
   props: {
     title: {},
@@ -215,93 +215,93 @@ const It = (e) => `/api/v1/work/boards/${encodeURIComponent(e)}`, ma = (e) => ({
     description: {}
   },
   setup(e) {
-    const l = z(!1), t = vo();
-    return (a, o) => (c(), g("article", Wo, [
-      r("header", Ko, [
+    const l = L(!1), t = po();
+    return (a, o) => (c(), g("article", Xo, [
+      d("header", Jo, [
         b(Jl, {
           as: "article",
-          class: mt(["work-definition-toggle", { "work-definition-has-handle": s(t).handle }]),
+          class: ft(["work-definition-toggle", { "work-definition-has-handle": r(t).handle }]),
           "aria-expanded": l.value,
-          onActivate: o[0] || (o[0] = (d) => l.value = !l.value)
+          onActivate: o[0] || (o[0] = (s) => l.value = !l.value)
         }, {
-          default: L(() => [
-            r("span", Go, [
+          default: F(() => [
+            d("span", Zo, [
               We(a.$slots, "handle"),
-              b(s(J), {
+              b(r(Z), {
                 icon: l.value ? "tabler:chevron-down" : "tabler:chevron-right"
               }, null, 8, ["icon"])
             ]),
-            r("span", {
+            d("span", {
               class: "work-row-title",
               title: e.title
-            }, A(e.title), 9, Yo)
+            }, U(e.title), 9, Qo)
           ]),
           _: 3
         }, 8, ["class", "aria-expanded"]),
-        r("span", Ho, [
+        d("span", _o, [
           e.code ? (c(), g("code", {
             key: 0,
             class: "work-mono",
             title: e.code
-          }, A(e.code), 9, Xo)) : E("", !0)
+          }, U(e.code), 9, ei)) : D("", !0)
         ]),
-        r("span", Jo, [
-          e.kind ? (c(), F(s(Re), {
+        d("span", ti, [
+          e.kind ? (c(), z(r(Re), {
             key: 0,
             severity: "secondary",
             value: e.kind
-          }, null, 8, ["value"])) : E("", !0)
+          }, null, 8, ["value"])) : D("", !0)
         ]),
-        r("span", Zo, [
+        d("span", li, [
           We(a.$slots, "flags")
         ]),
-        r("div", Qo, [
+        d("div", ai, [
           We(a.$slots, "usage")
         ]),
-        r("div", _o, [
+        d("div", oi, [
           We(a.$slots, "actions")
         ]),
-        e.description ? (c(), g("p", ei, A(e.description), 1)) : E("", !0)
+        e.description ? (c(), g("p", ii, U(e.description), 1)) : D("", !0)
       ]),
-      Qe(r("div", ti, [
+      Qe(d("div", ni, [
         We(a.$slots, "default")
       ], 512), [
-        [rt, l.value]
+        [ut, l.value]
       ])
     ]));
   }
-}), li = { class: "work-definition-scroll" }, ai = {
+}), si = { class: "work-definition-scroll" }, ri = {
   key: 0,
   class: "work-definition-columns",
   "aria-hidden": "true"
-}, oi = { key: 0 }, ii = { key: 1 }, ni = {
+}, di = { key: 0 }, ui = { key: 1 }, ci = {
   key: 2,
   class: "work-definition-usage"
-}, $l = /* @__PURE__ */ ve({
+}, $l = /* @__PURE__ */ ue({
   __name: "DefinitionList",
   props: {
     count: {},
     columns: {}
   },
   setup(e) {
-    return (l, t) => (c(), g("div", li, [
-      r("div", {
-        class: mt(["work-field-builder", "work-definitions-" + e.columns])
+    return (l, t) => (c(), g("div", si, [
+      d("div", {
+        class: ft(["work-field-builder", "work-definitions-" + e.columns])
       }, [
-        e.count > 3 ? (c(), g("div", ai, [
-          t[0] || (t[0] = r("span", null, null, -1)),
-          t[1] || (t[1] = r("span", null, "Name", -1)),
-          e.columns !== "plugins" ? (c(), g("span", oi, "Identifier")) : E("", !0),
-          r("span", null, A(e.columns === "plugins" ? "State" : e.columns === "types" ? "Process" : "Kind"), 1),
-          e.columns === "fields" || e.columns === "plugins" ? (c(), g("span", ii, "Details")) : E("", !0),
-          e.columns !== "plugins" ? (c(), g("span", ni, A(e.columns === "fields" ? "Used by" : "Details"), 1)) : E("", !0),
-          t[2] || (t[2] = r("span", null, null, -1))
-        ])) : E("", !0),
+        e.count > 3 ? (c(), g("div", ri, [
+          t[0] || (t[0] = d("span", null, null, -1)),
+          t[1] || (t[1] = d("span", null, "Name", -1)),
+          e.columns !== "plugins" ? (c(), g("span", di, "Identifier")) : D("", !0),
+          d("span", null, U(e.columns === "plugins" ? "State" : e.columns === "types" ? "Process" : "Kind"), 1),
+          e.columns === "fields" || e.columns === "plugins" ? (c(), g("span", ui, "Details")) : D("", !0),
+          e.columns !== "plugins" ? (c(), g("span", ci, U(e.columns === "fields" ? "Used by" : "Details"), 1)) : D("", !0),
+          t[2] || (t[2] = d("span", null, null, -1))
+        ])) : D("", !0),
         We(l.$slots, "default")
       ], 2)
     ]));
   }
-}), si = [
+}), vi = [
   { code: "key", form: "text", index: "key" },
   { code: "type", form: "text", index: "key" },
   { code: "state", form: "text", index: "key" },
@@ -311,38 +311,38 @@ const It = (e) => `/api/v1/work/boards/${encodeURIComponent(e)}`, ma = (e) => ({
   { code: "created_at", form: "time", index: "key" },
   { code: "updated_at", form: "time", index: "key" }
 ];
-function ri(e) {
+function mi(e) {
   const l = e.compiled.processes?.flatMap((t) => t.states.map((a) => ({ id: a.id, label: a.name }))) ?? [];
-  return [...si.filter((t) => t.code !== "rank").map((t) => t.code === "state" ? { ...t, type: "option", options: l } : t.code === "category" ? { ...t, type: "option", options: ["triage", "backlog", "unstarted", "started", "completed", "canceled"].map((a) => ({ id: a })) } : t), ...(e.compiled.fields ?? []).filter((t) => t.index && t.index !== "none")];
+  return [...vi.filter((t) => t.code !== "rank").map((t) => t.code === "state" ? { ...t, type: "option", options: l } : t.code === "category" ? { ...t, type: "option", options: ["triage", "backlog", "unstarted", "started", "completed", "canceled"].map((a) => ({ id: a })) } : t), ...(e.compiled.fields ?? []).filter((t) => t.index && t.index !== "none")];
 }
-function di(e) {
+function fi(e) {
   if (e?.cardinality && e.cardinality !== "one") return ["has", "in", "nin", "is_null", ...e.type === "principal" ? ["member_of"] : []];
   const l = ["eq", "neq", "in", "nin", "is_null", ...e?.type === "principal" ? ["member_of"] : []];
   return e && (["int", "number", "dec", "time", "quantity"].includes(e.form) || e.index === "number") && l.push("lt", "lte", "gt", "gte", "between"), e?.form === "text" && e.type !== "option" && l.push("contains", "starts_with"), l;
 }
-const ui = { class: "work-field-control" }, ci = ["id"], vi = {
+const pi = { class: "work-field-control" }, bi = ["id"], hi = {
   key: 1,
   class: "work-stack work-tight"
-}, mi = { class: "work-chips" }, fi = {
+}, yi = { class: "work-chips" }, gi = {
   key: 5,
   class: "work-row"
-}, pi = ["inert"], bi = ["value"], hi = {
+}, ki = ["inert"], wi = ["value"], Vi = {
   key: 1,
   class: "work-muted"
-}, yi = ["inert"], gi = ["value"], ki = {
+}, $i = ["inert"], xi = ["value"], Ci = {
   key: 1,
   class: "work-muted"
-}, wi = {
+}, Si = {
   key: 11,
   class: "work-stack work-tight"
-}, Vi = {
+}, Ti = {
   class: "work-stack work-tight",
   "aria-label": "Matching items"
-}, $i = { class: "work-mono" }, xi = {
+}, Ei = { class: "work-mono" }, Ui = {
   key: 15,
   class: "work-error work-small",
   role: "alert"
-}, Ma = /* @__PURE__ */ ve({
+}, za = /* @__PURE__ */ ue({
   __name: "FieldControl",
   props: {
     boardId: {},
@@ -355,83 +355,83 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
   },
   emits: ["update:modelValue", "validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = G(() => t.inputId ?? `field-${t.field.code}`), d = G(() => !!t.field.cardinality && t.field.cardinality !== "one"), v = G(() => Array.isArray(t.modelValue) ? t.modelValue : []), m = G(() => t.modelValue == null ? "" : typeof t.modelValue == "object" ? Dt(t.modelValue) : String(t.modelValue)), f = G(() => {
-      const C = t.modelValue;
-      return C && typeof C == "object" && "ref" in C && Array.isArray(C.ref) ? String(C.ref[1] ?? "") : "";
-    }), i = G(() => t.disabled || sa(t.field)), n = z(!1), u = z(!1), y = z(!1), p = z(""), w = z(""), S = z([]), U = jl(), $ = z([]);
-    let I = 0, T;
-    const D = /* @__PURE__ */ new Set();
-    Ce(v, (C) => {
-      $.value = T ?? C.map((k, j) => $.value[j] ?? I++), T = void 0;
+    const t = e, a = l, o = K(() => t.inputId ?? `field-${t.field.code}`), s = K(() => !!t.field.cardinality && t.field.cardinality !== "one"), v = K(() => Array.isArray(t.modelValue) ? t.modelValue : []), f = K(() => t.modelValue == null ? "" : typeof t.modelValue == "object" ? Dt(t.modelValue) : String(t.modelValue)), m = K(() => {
+      const T = t.modelValue;
+      return T && typeof T == "object" && "ref" in T && Array.isArray(T.ref) ? String(T.ref[1] ?? "") : "";
+    }), i = K(() => t.disabled || sa(t.field)), n = L(!1), u = L(!1), y = L(!1), p = L(""), w = L(""), S = L([]), I = jl(), $ = L([]);
+    let A = 0, x;
+    const E = /* @__PURE__ */ new Set();
+    xe(v, (T) => {
+      $.value = x ?? T.map((k, j) => $.value[j] ?? A++), x = void 0;
     }, { immediate: !0 });
-    function V(C) {
-      a("update:modelValue", C);
+    function V(T) {
+      a("update:modelValue", T);
     }
-    function P(C, k) {
+    function P(T, k) {
       const j = [...v.value];
-      j[C] = k, V(j);
+      j[T] = k, V(j);
     }
-    function Z(C, k) {
-      k ? D.delete(C) : D.add(C), a("validity", !D.size);
+    function X(T, k) {
+      k ? E.delete(T) : E.add(T), a("validity", !E.size);
     }
-    function de(C) {
-      D.delete($.value[C]), a("validity", !D.size), T = $.value.filter((k, j) => j !== C), V(v.value.filter((k, j) => j !== C));
+    function de(T) {
+      E.delete($.value[T]), a("validity", !E.size), x = $.value.filter((k, j) => j !== T), V(v.value.filter((k, j) => j !== T));
     }
     function ne() {
-      T = [...$.value, I++], V([...v.value, t.field.form === "bool" ? !1 : t.field.form === "record" ? {} : ""]);
+      x = [...$.value, A++], V([...v.value, t.field.form === "bool" ? !1 : t.field.form === "record" ? {} : ""]);
     }
-    function B(C) {
-      const k = C.detail, j = k?.principal_id ?? k?.id;
+    function B(T) {
+      const k = T.detail, j = k?.principal_id ?? k?.id;
       V(j ? { kind: k.type ?? "user", id: j } : void 0);
     }
-    function O(C) {
-      const k = C.detail;
+    function O(T) {
+      const k = T.detail;
       V(k?.thread_id ? { ref: ["component", k.thread_id] } : void 0);
     }
-    const oe = z("");
-    let x = "";
-    Ce(() => t.modelValue, (C) => {
-      const k = JSON.stringify(C ?? {}, null, 2);
-      k !== x && (x = k, oe.value = k, p.value = "", a("validity", !0));
+    const oe = L("");
+    let C = "";
+    xe(() => t.modelValue, (T) => {
+      const k = JSON.stringify(T ?? {}, null, 2);
+      k !== C && (C = k, oe.value = k, p.value = "", a("validity", !0));
     }, { immediate: !0 });
-    function R(C) {
-      oe.value = C;
+    function R(T) {
+      oe.value = T;
       try {
-        const k = JSON.parse(C);
+        const k = JSON.parse(T);
         if (!k || typeof k != "object" || Array.isArray(k)) throw new Error("Enter a JSON object.");
         if (t.field.type === "rich_text" && !("type" in k && typeof k.type == "string")) throw new Error("The document needs a type.");
-        x = JSON.stringify(k, null, 2), p.value = "", a("validity", !0), V(k);
+        C = JSON.stringify(k, null, 2), p.value = "", a("validity", !0), V(k);
       } catch (k) {
         p.value = k instanceof Error ? k.message : "Invalid JSON.", a("validity", !1);
       }
     }
-    function N(C) {
-      if (!C) {
+    function N(T) {
+      if (!T) {
         a("validity", !0), V(void 0);
         return;
       }
-      const k = Number.isFinite(Number(C)) && (t.field.form !== "int" || Number.isSafeInteger(Number(C)));
-      a("validity", k), k && V(t.field.form === "int" ? Number(C) : C);
+      const k = Number.isFinite(Number(T)) && (t.field.form !== "int" || Number.isSafeInteger(Number(T)));
+      a("validity", k), k && V(t.field.form === "int" ? Number(T) : T);
     }
-    const X = G(() => t.field.config?.format === "date");
-    function ue(C) {
-      V(C ? X.value ? C : new Date(C).toISOString() : void 0);
+    const J = K(() => t.field.config?.format === "date");
+    function ce(T) {
+      V(T ? J.value ? T : new Date(T).toISOString() : void 0);
     }
-    const pe = G(() => {
+    const pe = K(() => {
       if (typeof t.modelValue != "string") return "";
-      if (X.value) return t.modelValue.slice(0, 10);
-      const C = new Date(t.modelValue);
-      return Number.isNaN(C.getTime()) ? "" : new Date(C.getTime() - C.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
+      if (J.value) return t.modelValue.slice(0, 10);
+      const T = new Date(t.modelValue);
+      return Number.isNaN(T.getTime()) ? "" : new Date(T.getTime() - T.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
     });
-    function ke(C) {
-      V(C.detail?.ref);
+    function ke(T) {
+      V(T.detail?.ref);
     }
-    function Ve(C) {
-      V(C.detail?.value);
+    function Ve(T) {
+      V(T.detail?.value);
     }
     let De;
-    Ce(w, () => {
-      const C = U();
+    xe(w, () => {
+      const T = I();
       if (clearTimeout(De), !w.value.trim()) {
         S.value = [];
         return;
@@ -439,47 +439,47 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
       De = setTimeout(async () => {
         try {
           const k = w.value.trim(), j = /^[A-Z][A-Z0-9]{1,9}-[0-9]+$/.test(k) ? [(await $t.item(t.boardId, { key: k })).item] : (await $t.query(t.boardId, { where: { field: "title", op: "contains", value: k }, limit: 8 })).items;
-          C() && (S.value = j, p.value = "");
+          T() && (S.value = j, p.value = "");
         } catch (k) {
-          C() && (p.value = k instanceof Error ? k.message : "Could not search items.");
+          T() && (p.value = k instanceof Error ? k.message : "Could not search items.");
         }
       }, 200);
     });
-    function h(C) {
-      V({ board: t.boardId, item: C.id }), w.value = "", S.value = [];
+    function h(T) {
+      V({ board: t.boardId, item: T.id }), w.value = "", S.value = [];
     }
     kl(async () => {
-      t.field.type === "principal" ? n.value = await vt("wc-principal-picker") : t.field.config?.target === "component" && (n.value = await vt("wc-component-picker"));
+      t.field.type === "principal" ? n.value = await tt("wc-principal-picker") : t.field.config?.target === "component" && (n.value = await tt("wc-component-picker"));
     });
-    for (const [C, k] of [[() => t.editorTag, y], [() => t.linkTag, u]])
-      Ce(C, async (j, K, se) => {
+    for (const [T, k] of [[() => t.editorTag, y], [() => t.linkTag, u]])
+      xe(T, async (j, Y, se) => {
         let fe = !0;
         if (se(() => {
           fe = !1;
         }), k.value = !1, j) {
-          const Se = await vt(j);
+          const Se = await tt(j);
           fe && (k.value = Se);
         }
       }, { immediate: !0 });
-    return Ta(() => {
-      clearTimeout(De), U();
-    }), (C, k) => {
-      const j = Ea("FieldControl", !0);
-      return c(), g("div", ui, [
-        s(sa)(e.field) ? (c(), g("output", {
+    return Da(() => {
+      clearTimeout(De), I();
+    }), (T, k) => {
+      const j = Ia("FieldControl", !0);
+      return c(), g("div", pi, [
+        r(sa)(e.field) ? (c(), g("output", {
           key: 0,
           id: o.value,
           class: "work-read-value"
-        }, A(s(Dt)(e.modelValue, e.field)), 9, ci)) : d.value ? (c(), g("div", vi, [
-          r("div", mi, [
-            (c(!0), g(H, null, ee(v.value, (K, se) => (c(), F(s(Re), {
+        }, U(r(Dt)(e.modelValue, e.field)), 9, bi)) : s.value ? (c(), g("div", hi, [
+          d("div", yi, [
+            (c(!0), g(H, null, ee(v.value, (Y, se) => (c(), z(r(Re), {
               key: $.value[se],
               class: "kx-tag-sm",
               severity: "secondary"
             }, {
-              default: L(() => [
-                M(A(s(Dt)(K, e.field)) + " ", 1),
-                b(s(Y), {
+              default: F(() => [
+                M(U(r(Dt)(Y, e.field)) + " ", 1),
+                b(r(G), {
                   type: "button",
                   class: "work-icon-button",
                   disabled: i.value,
@@ -489,8 +489,8 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
                   text: "",
                   size: "small"
                 }, {
-                  default: L(() => [
-                    b(s(J), {
+                  default: F(() => [
+                    b(r(Z), {
                       icon: "tabler:x",
                       "aria-hidden": "true"
                     })
@@ -501,23 +501,23 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
               _: 2
             }, 1024))), 128))
           ]),
-          (c(!0), g(H, null, ee(v.value, (K, se) => (c(), g("div", {
+          (c(!0), g(H, null, ee(v.value, (Y, se) => (c(), g("div", {
             key: $.value[se],
             class: "work-stack work-tight"
           }, [
             b(j, {
               "board-id": e.boardId,
               field: { ...e.field, cardinality: "one" },
-              "model-value": K,
+              "model-value": Y,
               "input-id": o.value + "-" + $.value[se],
               disabled: i.value,
               "editor-tag": e.editorTag,
               "link-tag": e.linkTag,
               "onUpdate:modelValue": (fe) => P(se, fe),
-              onValidity: (fe) => Z($.value[se], fe)
+              onValidity: (fe) => X($.value[se], fe)
             }, null, 8, ["board-id", "field", "model-value", "input-id", "disabled", "editor-tag", "link-tag", "onUpdate:modelValue", "onValidity"])
           ]))), 128)),
-          b(s(Y), {
+          b(r(G), {
             label: "Add value",
             severity: "secondary",
             size: "small",
@@ -525,70 +525,70 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
             onClick: ne,
             outlined: ""
           }, {
-            icon: L(() => [
-              b(s(J), {
+            icon: F(() => [
+              b(r(Z), {
                 icon: "tabler:plus",
                 "aria-hidden": "true"
               })
             ]),
             _: 1
           }, 8, ["disabled"])
-        ])) : e.editorTag && y.value ? (c(), F(Fl(e.editorTag), {
+        ])) : e.editorTag && y.value ? (c(), z(zl(e.editorTag), {
           key: 2,
           "board-id": e.boardId,
           value: JSON.stringify(e.modelValue ?? null),
           config: JSON.stringify(e.field.config ?? {}),
           readonly: i.value || void 0,
           onChange: Ve
-        }, null, 40, ["board-id", "value", "config", "readonly"])) : e.linkTag && u.value ? (c(), F(Fl(e.linkTag), {
+        }, null, 40, ["board-id", "value", "config", "readonly"])) : e.linkTag && u.value ? (c(), z(zl(e.linkTag), {
           key: 3,
           "board-id": e.boardId,
           kind: e.field.config?.target ?? e.field.type,
           value: JSON.stringify(e.modelValue ?? null),
           readonly: i.value || void 0,
           onChange: ke
-        }, null, 40, ["board-id", "kind", "value", "readonly"])) : e.field.type === "option" ? (c(), F(s(te), {
+        }, null, 40, ["board-id", "kind", "value", "readonly"])) : e.field.type === "option" ? (c(), z(r(te), {
           key: 4,
           placeholder: "Not set",
           inputId: o.value,
           "model-value": e.modelValue ?? "",
           disabled: i.value,
-          "onUpdate:modelValue": k[0] || (k[0] = (K) => V(K || void 0)),
+          "onUpdate:modelValue": k[0] || (k[0] = (Y) => V(Y || void 0)),
           appendTo: "self",
           optionLabel: "label",
           optionValue: "value",
           optionDisabled: "disabled",
-          options: [{ label: "Not set", value: "", disabled: !1 }, ...(e.field.options ?? []).map((K) => ({ label: K.label ?? K.id, value: K.id, disabled: !1 }))]
-        }, null, 8, ["inputId", "model-value", "disabled", "options"])) : e.field.form === "bool" ? (c(), g("label", fi, [
-          b(s(Mt), {
+          options: [{ label: "Not set", value: "", disabled: !1 }, ...(e.field.options ?? []).map((Y) => ({ label: Y.label ?? Y.id, value: Y.id, disabled: !1 }))]
+        }, null, 8, ["inputId", "model-value", "disabled", "options"])) : e.field.form === "bool" ? (c(), g("label", gi, [
+          b(r(Mt), {
             inputId: o.value,
             "model-value": e.modelValue === !0,
             disabled: i.value,
-            "onUpdate:modelValue": k[1] || (k[1] = (K) => V(K)),
+            "onUpdate:modelValue": k[1] || (k[1] = (Y) => V(Y)),
             binary: ""
           }, null, 8, ["inputId", "model-value", "disabled"]),
-          M(A(e.modelValue === !0 ? "Yes" : e.modelValue === !1 ? "No" : "Not set"), 1)
-        ])) : e.field.form === "int" ? (c(), F(s(Ge), {
+          M(U(e.modelValue === !0 ? "Yes" : e.modelValue === !1 ? "No" : "Not set"), 1)
+        ])) : e.field.form === "int" ? (c(), z(r(Ge), {
           key: 6,
           inputId: o.value,
-          "model-value": m.value === "" ? null : Number(m.value),
+          "model-value": f.value === "" ? null : Number(f.value),
           disabled: i.value,
-          "onUpdate:modelValue": k[2] || (k[2] = (K) => N(K == null ? "" : String(K))),
+          "onUpdate:modelValue": k[2] || (k[2] = (Y) => N(Y == null ? "" : String(Y))),
           useGrouping: !1
-        }, null, 8, ["inputId", "model-value", "disabled"])) : e.field.form === "dec" ? (c(), F(s(re), {
+        }, null, 8, ["inputId", "model-value", "disabled"])) : e.field.form === "dec" ? (c(), z(r(re), {
           key: 7,
           id: o.value,
           inputmode: "decimal",
-          "model-value": m.value,
+          "model-value": f.value,
           disabled: i.value,
-          "onUpdate:modelValue": k[3] || (k[3] = (K) => N(K ?? ""))
-        }, null, 8, ["id", "model-value", "disabled"])) : e.field.form === "time" ? (c(), F(s(re), {
+          "onUpdate:modelValue": k[3] || (k[3] = (Y) => N(Y ?? ""))
+        }, null, 8, ["id", "model-value", "disabled"])) : e.field.form === "time" ? (c(), z(r(re), {
           key: 8,
           id: o.value,
-          type: X.value ? "date" : "datetime-local",
+          type: J.value ? "date" : "datetime-local",
           value: pe.value,
           disabled: i.value,
-          onInput: k[4] || (k[4] = (K) => ue(K.target.value))
+          onInput: k[4] || (k[4] = (Y) => ce(Y.target.value))
         }, null, 8, ["id", "type", "value", "disabled"])) : e.field.type === "principal" ? (c(), g("div", {
           key: 9,
           inert: i.value || void 0,
@@ -599,102 +599,102 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
             value: JSON.stringify(e.modelValue ?? {}),
             kinds: "user,group",
             onConfigChanged: B
-          }, null, 40, bi)) : (c(), g("span", hi, A(s(Dt)(e.modelValue, e.field)) + " · Person picker is unavailable.", 1))
-        ], 8, pi)) : e.field.config?.target === "component" ? (c(), g("div", {
+          }, null, 40, wi)) : (c(), g("span", Vi, U(r(Dt)(e.modelValue, e.field)) + " · Person picker is unavailable.", 1))
+        ], 8, ki)) : e.field.config?.target === "component" ? (c(), g("div", {
           key: 10,
           inert: i.value || void 0
         }, [
           n.value ? (c(), g("wc-component-picker", {
             key: 0,
-            value: JSON.stringify({ thread_id: f.value }),
+            value: JSON.stringify({ thread_id: m.value }),
             onChange: O
-          }, null, 40, gi)) : (c(), g("span", ki, "Component picker is unavailable."))
-        ], 8, yi)) : e.field.type === "item" ? (c(), g("div", wi, [
-          b(s(Re), {
+          }, null, 40, xi)) : (c(), g("span", Ci, "Component picker is unavailable."))
+        ], 8, $i)) : e.field.type === "item" ? (c(), g("div", Si, [
+          b(r(Re), {
             class: "kx-tag-sm",
             severity: "secondary"
           }, {
-            default: L(() => [
-              M(A(s(Dt)(e.modelValue, e.field)), 1)
+            default: F(() => [
+              M(U(r(Dt)(e.modelValue, e.field)), 1)
             ]),
             _: 1
           }),
-          b(s(re), {
+          b(r(re), {
             id: o.value,
             modelValue: w.value,
-            "onUpdate:modelValue": k[5] || (k[5] = (K) => w.value = K),
+            "onUpdate:modelValue": k[5] || (k[5] = (Y) => w.value = Y),
             disabled: i.value,
             placeholder: "Search a title or enter an item key",
             "aria-label": "Search items"
           }, null, 8, ["id", "modelValue", "disabled"]),
-          r("div", Vi, [
-            (c(!0), g(H, null, ee(S.value, (K) => (c(), F(Jl, {
-              key: K.id,
+          d("div", Ti, [
+            (c(!0), g(H, null, ee(S.value, (Y) => (c(), z(Jl, {
+              key: Y.id,
               class: "work-match-item",
               disabled: i.value,
-              onActivate: (se) => h(K)
+              onActivate: (se) => h(Y)
             }, {
-              default: L(() => [
-                r("code", $i, A(K.key), 1),
-                r("span", null, A(s(Dt)(K.values.title)), 1)
+              default: F(() => [
+                d("code", Ei, U(Y.key), 1),
+                d("span", null, U(r(Dt)(Y.values.title)), 1)
               ]),
               _: 2
             }, 1032, ["disabled", "onActivate"]))), 128))
           ]),
-          e.modelValue ? (c(), F(s(Y), {
+          e.modelValue ? (c(), z(r(G), {
             key: 0,
             label: "Clear reference",
             severity: "secondary",
             size: "small",
             disabled: i.value,
-            onClick: k[6] || (k[6] = (K) => V(void 0)),
+            onClick: k[6] || (k[6] = (Y) => V(void 0)),
             outlined: ""
           }, {
-            icon: L(() => [
-              b(s(J), {
+            icon: F(() => [
+              b(r(Z), {
                 icon: "tabler:list-check",
                 "aria-hidden": "true"
               })
             ]),
             _: 1
-          }, 8, ["disabled"])) : E("", !0)
-        ])) : e.field.form === "record" || e.field.type === "rich_text" || e.field.form === "quantity" || e.field.form === "ref" ? (c(), F(s(ml), {
+          }, 8, ["disabled"])) : D("", !0)
+        ])) : e.field.form === "record" || e.field.type === "rich_text" || e.field.form === "quantity" || e.field.form === "ref" ? (c(), z(r(ml), {
           key: 12,
           id: o.value,
           "model-value": oe.value,
           rows: "3",
           disabled: i.value,
           "aria-invalid": !!p.value,
-          "onUpdate:modelValue": k[7] || (k[7] = (K) => R(K ?? ""))
-        }, null, 8, ["id", "model-value", "disabled", "aria-invalid"])) : e.field.code === "description" ? (c(), F(s(ml), {
+          "onUpdate:modelValue": k[7] || (k[7] = (Y) => R(Y ?? ""))
+        }, null, 8, ["id", "model-value", "disabled", "aria-invalid"])) : e.field.code === "description" ? (c(), z(r(ml), {
           key: 13,
           id: o.value,
-          "model-value": m.value,
+          "model-value": f.value,
           rows: "4",
           disabled: i.value,
-          "onUpdate:modelValue": k[8] || (k[8] = (K) => V(K))
-        }, null, 8, ["id", "model-value", "disabled"])) : (c(), F(s(re), {
+          "onUpdate:modelValue": k[8] || (k[8] = (Y) => V(Y))
+        }, null, 8, ["id", "model-value", "disabled"])) : (c(), z(r(re), {
           key: 14,
           id: o.value,
-          "model-value": m.value,
+          "model-value": f.value,
           disabled: i.value,
-          "onUpdate:modelValue": k[9] || (k[9] = (K) => V(K))
+          "onUpdate:modelValue": k[9] || (k[9] = (Y) => V(Y))
         }, null, 8, ["id", "model-value", "disabled"])),
-        p.value ? (c(), g("span", xi, A(p.value), 1)) : E("", !0)
+        p.value ? (c(), g("span", Ui, U(p.value), 1)) : D("", !0)
       ]);
     };
   }
-}), Ci = { class: "work-stack work-tight work-operand-control" }, Si = { class: "work-row work-small" }, Ti = {
+}), Di = { class: "work-stack work-tight work-operand-control" }, Ii = { class: "work-row work-small" }, Ai = {
   key: 1,
   class: "work-muted work-small"
-}, Ei = {
+}, Pi = {
   key: 2,
   class: "work-stack work-tight"
-}, Ui = { class: "work-small" }, Di = {
+}, Ri = { class: "work-small" }, Oi = {
   key: 0,
   class: "work-error work-small",
   role: "alert"
-}, qt = /* @__PURE__ */ ve({
+}, qt = /* @__PURE__ */ ue({
   __name: "OperandControl",
   props: {
     boardId: {},
@@ -706,15 +706,15 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
   },
   emits: ["update:modelValue", "validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = G(() => "$actor" in Ke(t.modelValue) ? "actor" : "$now" in Ke(t.modelValue) ? "now" : "literal"), d = z(""), v = z("");
-    Ce(() => t.modelValue, (i) => {
-      d.value = JSON.stringify(i ?? []), v.value = "";
+    const t = e, a = l, o = K(() => "$actor" in Ke(t.modelValue) ? "actor" : "$now" in Ke(t.modelValue) ? "now" : "literal"), s = L(""), v = L("");
+    xe(() => t.modelValue, (i) => {
+      s.value = JSON.stringify(i ?? []), v.value = "";
     }, { immediate: !0 });
-    function m(i) {
+    function f(i) {
       a("update:modelValue", i === "actor" ? { $actor: "id" } : i === "now" ? { $now: "P0D" } : void 0), a("validity", !0);
     }
-    function f(i) {
-      d.value = i;
+    function m(i) {
+      s.value = i;
       try {
         const n = JSON.parse(i);
         if (!Array.isArray(n)) throw new Error("Enter a JSON list.");
@@ -723,14 +723,14 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
         v.value = n instanceof Error ? n.message : "Invalid values.", a("validity", !1);
       }
     }
-    return (i, n) => (c(), g("div", Ci, [
-      r("label", Si, [
-        M(A(e.label), 1),
-        b(s(te), {
+    return (i, n) => (c(), g("div", Di, [
+      d("label", Ii, [
+        M(U(e.label), 1),
+        b(r(te), {
           "aria-label": e.label + " operand",
           "model-value": o.value,
           disabled: e.disabled,
-          "onUpdate:modelValue": n[0] || (n[0] = (u) => m(u)),
+          "onUpdate:modelValue": n[0] || (n[0] = (u) => f(u)),
           appendTo: "self",
           optionLabel: "label",
           optionValue: "value",
@@ -738,27 +738,27 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
           options: [{ label: "Value", value: "literal", disabled: !1 }, { label: "Current actor ($actor)", value: "actor", disabled: !1 }, { label: "Current time ($now)", value: "now", disabled: !1 }]
         }, null, 8, ["aria-label", "model-value", "disabled"])
       ]),
-      o.value === "now" ? (c(), F(s(re), {
+      o.value === "now" ? (c(), z(r(re), {
         key: 0,
         "aria-label": e.label + " time offset",
-        value: s(Ke)(e.modelValue).$now,
+        value: r(Ke)(e.modelValue).$now,
         disabled: e.disabled,
         placeholder: "-P7D",
         onInput: n[1] || (n[1] = (u) => a("update:modelValue", { $now: u.target.value }))
-      }, null, 8, ["aria-label", "value", "disabled"])) : o.value === "actor" ? (c(), g("span", Ti, "The signed-in actor’s id")) : e.multiple ? (c(), g("div", Ei, [
-        r("label", Ui, [
+      }, null, 8, ["aria-label", "value", "disabled"])) : o.value === "actor" ? (c(), g("span", Ai, "The signed-in actor’s id")) : e.multiple ? (c(), g("div", Pi, [
+        d("label", Ri, [
           n[5] || (n[5] = M("Values as JSON (operands may appear in the list)", -1)),
-          b(s(ml), {
+          b(r(ml), {
             class: "work-mono",
             "aria-label": e.label + " values",
-            value: d.value,
+            value: s.value,
             disabled: e.disabled,
             rows: "2",
-            onInput: n[2] || (n[2] = (u) => f(u.target.value))
+            onInput: n[2] || (n[2] = (u) => m(u.target.value))
           }, null, 8, ["aria-label", "value", "disabled"])
         ]),
-        v.value ? (c(), g("p", Di, A(v.value), 1)) : E("", !0)
-      ])) : (c(), F(Ma, {
+        v.value ? (c(), g("p", Oi, U(v.value), 1)) : D("", !0)
+      ])) : (c(), z(za, {
         key: 3,
         "board-id": e.boardId,
         field: { ...e.field, cardinality: "one" },
@@ -770,10 +770,10 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
       }, null, 8, ["board-id", "field", "model-value", "disabled", "input-id"]))
     ]));
   }
-}), Ii = ["disabled"], Ai = { class: "work-small work-mono" }, Pi = { class: "work-row work-small" }, Ri = { class: "work-row work-wrap" }, Oi = { key: 3 }, Ni = { class: "work-row work-wrap" }, Mi = { class: "work-row" }, Li = { class: "work-row" }, zi = { class: "work-row" }, Fi = {
+}), Ni = ["disabled"], Mi = { class: "work-small work-mono" }, Fi = { class: "work-row work-small" }, Li = { class: "work-row work-wrap" }, zi = { key: 3 }, Bi = { class: "work-row work-wrap" }, ji = { class: "work-row" }, qi = { class: "work-row" }, Wi = { class: "work-row" }, Ki = {
   key: 3,
   class: "work-row work-wrap"
-}, Bi = { class: "work-row work-wrap" }, ji = /* @__PURE__ */ ve({
+}, Gi = { class: "work-row work-wrap" }, Yi = /* @__PURE__ */ ue({
   __name: "FilterNode",
   props: {
     boardId: {},
@@ -785,34 +785,34 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
   },
   emits: ["update:modelValue", "validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = G(() => t.path ?? "where"), d = G(() => t.depth ?? 1), v = G(() => ["and", "or", "not", "history", "match", "rel", "children"].find((B) => B in t.modelValue) ?? "field"), m = G(() => ri(t.schema)), f = G(() => m.value.find((B) => B.code === t.modelValue.field) ?? { code: "value", form: "text" }), i = G(() => Ke(t.modelValue.history)), n = G(() => m.value.find((B) => B.code === i.value.field) ?? { code: "history", form: "text" }), u = G(() => Array.isArray(t.modelValue[v.value]) ? t.modelValue[v.value] : []), y = () => ({ field: "category", op: "eq", value: "unstarted" }), p = z(/* @__PURE__ */ new Set());
+    const t = e, a = l, o = K(() => t.path ?? "where"), s = K(() => t.depth ?? 1), v = K(() => ["and", "or", "not", "history", "match", "rel", "children"].find((B) => B in t.modelValue) ?? "field"), f = K(() => mi(t.schema)), m = K(() => f.value.find((B) => B.code === t.modelValue.field) ?? { code: "value", form: "text" }), i = K(() => Ke(t.modelValue.history)), n = K(() => f.value.find((B) => B.code === i.value.field) ?? { code: "history", form: "text" }), u = K(() => Array.isArray(t.modelValue[v.value]) ? t.modelValue[v.value] : []), y = () => ({ field: "category", op: "eq", value: "unstarted" }), p = L(/* @__PURE__ */ new Set());
     function w(B, O) {
       O ? p.value.delete(B) : p.value.add(B), a("validity", p.value.size === 0);
     }
-    Ce(v, () => {
+    xe(v, () => {
       p.value.clear(), a("validity", !0);
     });
     function S(B) {
       const O = /* @__PURE__ */ new Set();
       for (const oe of p.value) {
-        const x = Number(oe);
-        !Number.isNaN(x) && x !== B && O.add(String(x > B ? x - 1 : x));
+        const C = Number(oe);
+        !Number.isNaN(C) && C !== B && O.add(String(C > B ? C - 1 : C));
       }
-      p.value = O, a("validity", O.size === 0), $({ [v.value]: u.value.filter((oe, x) => x !== B) });
+      p.value = O, a("validity", O.size === 0), $({ [v.value]: u.value.filter((oe, C) => C !== B) });
     }
-    function U(B) {
+    function I(B) {
       a("update:modelValue", B);
     }
     function $(B) {
-      U({ ...t.modelValue, ...B });
+      I({ ...t.modelValue, ...B });
     }
-    function I(B) {
-      U(B === "field" ? y() : B === "and" || B === "or" ? { [B]: [y()] } : B === "not" ? { not: y() } : B === "history" ? { history: { field: "state", changed: !0 } } : B === "match" ? { match: "" } : B === "children" ? { children: !0, q: "some", where: y() } : { rel: t.schema.compiled.relation_types?.[0]?.id ?? "", dir: "outward", q: "some", where: y() });
+    function A(B) {
+      I(B === "field" ? y() : B === "and" || B === "or" ? { [B]: [y()] } : B === "not" ? { not: y() } : B === "history" ? { history: { field: "state", changed: !0 } } : B === "match" ? { match: "" } : B === "children" ? { children: !0, q: "some", where: y() } : { rel: t.schema.compiled.relation_types?.[0]?.id ?? "", dir: "outward", q: "some", where: y() });
     }
-    function T(B, O) {
-      $({ [v.value]: u.value.map((oe, x) => x === B ? O : oe) });
+    function x(B, O) {
+      $({ [v.value]: u.value.map((oe, C) => C === B ? O : oe) });
     }
-    function D(B, O) {
+    function E(B, O) {
       const oe = { ...i.value };
       O === void 0 ? (delete oe[B], w(B, !0)) : oe[B] = O, $({ history: oe });
     }
@@ -821,54 +821,54 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
       const O = { ...i.value };
       delete O.was, delete O.changed, delete O.from, delete O.to, O[B] = B === "changed" ? !0 : "", $({ history: O });
     }
-    const P = { code: "actor", form: "text" }, Z = { code: "at", form: "time" }, de = G(() => Array.isArray(i.value.during) ? i.value.during : []);
+    const P = { code: "actor", form: "text" }, X = { code: "at", form: "time" }, de = K(() => Array.isArray(i.value.during) ? i.value.during : []);
     function ne(B, O) {
       const oe = [...de.value];
-      oe[B] = O, D("during", oe);
+      oe[B] = O, E("during", oe);
     }
     return (B, O) => {
-      const oe = Ea("FilterNode", !0);
+      const oe = Ia("FilterNode", !0);
       return c(), g("fieldset", {
         class: "work-filter-node",
         disabled: e.disabled
       }, [
-        r("legend", Ai, A(o.value), 1),
-        r("label", Pi, [
+        d("legend", Mi, U(o.value), 1),
+        d("label", Fi, [
           O[21] || (O[21] = M("Condition", -1)),
-          b(s(te), {
+          b(r(te), {
             "aria-label": o.value + " condition",
             "model-value": v.value,
-            "onUpdate:modelValue": O[0] || (O[0] = (x) => I(x)),
+            "onUpdate:modelValue": O[0] || (O[0] = (C) => A(C)),
             appendTo: "self",
             optionLabel: "label",
             optionValue: "value",
             optionDisabled: "disabled",
-            options: [{ label: "Field", value: "field", disabled: !1 }, ...["and", "or", "not", "history", "rel", "children", "match"].map((x) => ({ label: x, value: x, disabled: d.value >= 6 && ["and", "or", "not", "rel", "children"].includes(x) }))]
+            options: [{ label: "Field", value: "field", disabled: !1 }, ...["and", "or", "not", "history", "rel", "children", "match"].map((C) => ({ label: C, value: C, disabled: s.value >= 6 && ["and", "or", "not", "rel", "children"].includes(C) }))]
           }, null, 8, ["aria-label", "model-value", "options"])
         ]),
         v.value === "and" || v.value === "or" ? (c(), g(H, { key: 0 }, [
-          (c(!0), g(H, null, ee(u.value, (x, R) => (c(), g("div", {
+          (c(!0), g(H, null, ee(u.value, (C, R) => (c(), g("div", {
             key: R,
             class: "work-stack work-tight"
           }, [
             b(oe, {
               "board-id": e.boardId,
               schema: e.schema,
-              "model-value": x,
+              "model-value": C,
               path: o.value + "." + v.value + "[" + R + "]",
-              depth: d.value + 1,
-              "onUpdate:modelValue": (N) => T(R, N),
+              depth: s.value + 1,
+              "onUpdate:modelValue": (N) => x(R, N),
               onValidity: (N) => w(String(R), N)
             }, null, 8, ["board-id", "schema", "model-value", "path", "depth", "onUpdate:modelValue", "onValidity"]),
-            b(s(Y), {
+            b(r(G), {
               label: "Remove condition",
               size: "small",
               severity: "secondary",
               onClick: (N) => S(R),
               outlined: ""
             }, {
-              icon: L(() => [
-                b(s(J), {
+              icon: F(() => [
+                b(r(Z), {
                   icon: "tabler:trash",
                   "aria-hidden": "true"
                 })
@@ -876,94 +876,94 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
               _: 1
             }, 8, ["onClick"])
           ]))), 128)),
-          b(s(Y), {
+          b(r(G), {
             label: "Add condition",
             size: "small",
             severity: "secondary",
-            disabled: d.value >= 6,
-            onClick: O[1] || (O[1] = (x) => $({ [v.value]: [...u.value, y()] })),
+            disabled: s.value >= 6,
+            onClick: O[1] || (O[1] = (C) => $({ [v.value]: [...u.value, y()] })),
             outlined: ""
           }, {
-            icon: L(() => [
-              b(s(J), {
+            icon: F(() => [
+              b(r(Z), {
                 icon: "tabler:plus",
                 "aria-hidden": "true"
               })
             ]),
             _: 1
           }, 8, ["disabled"])
-        ], 64)) : v.value === "not" ? (c(), F(oe, {
+        ], 64)) : v.value === "not" ? (c(), z(oe, {
           key: 1,
           "board-id": e.boardId,
           schema: e.schema,
-          "model-value": s(Ke)(e.modelValue.not),
+          "model-value": r(Ke)(e.modelValue.not),
           path: o.value + ".not",
-          depth: d.value + 1,
-          "onUpdate:modelValue": O[2] || (O[2] = (x) => $({ not: x })),
-          onValidity: O[3] || (O[3] = (x) => w("nested", x))
+          depth: s.value + 1,
+          "onUpdate:modelValue": O[2] || (O[2] = (C) => $({ not: C })),
+          onValidity: O[3] || (O[3] = (C) => w("nested", C))
         }, null, 8, ["board-id", "schema", "model-value", "path", "depth"])) : v.value === "field" ? (c(), g(H, { key: 2 }, [
-          r("div", Ri, [
-            r("label", null, [
+          d("div", Li, [
+            d("label", null, [
               O[22] || (O[22] = M("Field", -1)),
-              b(s(te), {
+              b(r(te), {
                 "aria-label": o.value + " field",
                 "model-value": e.modelValue.field,
-                "onUpdate:modelValue": O[4] || (O[4] = (x) => $({ field: x, op: "eq", value: void 0 })),
+                "onUpdate:modelValue": O[4] || (O[4] = (C) => $({ field: C, op: "eq", value: void 0 })),
                 appendTo: "self",
                 optionLabel: "label",
                 optionValue: "value",
                 optionDisabled: "disabled",
-                options: [...(m.value ?? []).map((x) => ({ label: s(Ct)(x), value: x.code, disabled: !1 }))]
+                options: [...(f.value ?? []).map((C) => ({ label: r(Ct)(C), value: C.code, disabled: !1 }))]
               }, null, 8, ["aria-label", "model-value", "options"])
             ]),
-            r("label", null, [
+            d("label", null, [
               O[23] || (O[23] = M("Operator", -1)),
-              b(s(te), {
+              b(r(te), {
                 "aria-label": o.value + " operator",
                 "model-value": e.modelValue.op,
-                "onUpdate:modelValue": O[5] || (O[5] = (x) => $({ op: x, value: x === "is_null" ? !0 : void 0 })),
+                "onUpdate:modelValue": O[5] || (O[5] = (C) => $({ op: C, value: C === "is_null" ? !0 : void 0 })),
                 appendTo: "self",
-                options: s(di)(f.value)
+                options: r(fi)(m.value)
               }, null, 8, ["aria-label", "model-value", "options"])
             ])
           ]),
           b(qt, {
             "board-id": e.boardId,
-            field: e.modelValue.op === "is_null" ? { code: "null", form: "bool" } : f.value,
+            field: e.modelValue.op === "is_null" ? { code: "null", form: "bool" } : m.value,
             "model-value": e.modelValue.value,
             multiple: ["in", "nin", "between"].includes(String(e.modelValue.op)),
             label: o.value + " value",
-            "onUpdate:modelValue": O[6] || (O[6] = (x) => $({ value: x })),
-            onValidity: O[7] || (O[7] = (x) => w("value", x))
+            "onUpdate:modelValue": O[6] || (O[6] = (C) => $({ value: C })),
+            onValidity: O[7] || (O[7] = (C) => w("value", C))
           }, null, 8, ["board-id", "field", "model-value", "multiple", "label"])
-        ], 64)) : v.value === "match" ? (c(), g("label", Oi, [
+        ], 64)) : v.value === "match" ? (c(), g("label", zi, [
           O[24] || (O[24] = M("Search", -1)),
-          b(s(re), {
+          b(r(re), {
             "aria-label": o.value + " search",
             value: e.modelValue.match,
-            onInput: O[8] || (O[8] = (x) => $({ match: x.target.value }))
+            onInput: O[8] || (O[8] = (C) => $({ match: C.target.value }))
           }, null, 8, ["aria-label", "value"])
         ])) : v.value === "history" ? (c(), g(H, { key: 4 }, [
-          r("div", Ni, [
-            r("label", null, [
+          d("div", Bi, [
+            d("label", null, [
               O[25] || (O[25] = M("Field", -1)),
-              b(s(te), {
+              b(r(te), {
                 "aria-label": o.value + " history field",
                 "model-value": i.value.field,
-                "onUpdate:modelValue": O[9] || (O[9] = (x) => D("field", x)),
+                "onUpdate:modelValue": O[9] || (O[9] = (C) => E("field", C)),
                 appendTo: "self",
                 optionLabel: "label",
                 optionValue: "value",
                 optionDisabled: "disabled",
-                options: [...(m.value ?? []).map((x) => ({ label: s(Ct)(x), value: x.code, disabled: !1 }))]
+                options: [...(f.value ?? []).map((C) => ({ label: r(Ct)(C), value: C.code, disabled: !1 }))]
               }, null, 8, ["aria-label", "model-value", "options"])
             ]),
-            r("label", null, [
+            d("label", null, [
               O[26] || (O[26] = M("History", -1)),
-              b(s(te), {
+              b(r(te), {
                 "aria-label": o.value + " history mode",
                 "model-value": i.value.changed ? "changed" : "was",
-                "onUpdate:modelValue": O[10] || (O[10] = (x) => V(x)),
+                "onUpdate:modelValue": O[10] || (O[10] = (C) => V(C)),
                 appendTo: "self",
                 optionLabel: "label",
                 optionValue: "value",
@@ -972,90 +972,90 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
               }, null, 8, ["aria-label", "model-value"])
             ])
           ]),
-          i.value.changed ? (c(), g(H, { key: 0 }, ee(["from", "to"], (x) => r("div", { key: x }, [
-            r("label", Mi, [
-              b(s(Mt), {
-                "model-value": x in i.value,
-                "aria-label": "Constrain " + x,
-                "onUpdate:modelValue": (R) => D(x, R ? "" : void 0),
+          i.value.changed ? (c(), g(H, { key: 0 }, ee(["from", "to"], (C) => d("div", { key: C }, [
+            d("label", ji, [
+              b(r(Mt), {
+                "model-value": C in i.value,
+                "aria-label": "Constrain " + C,
+                "onUpdate:modelValue": (R) => E(C, R ? "" : void 0),
                 binary: ""
               }, null, 8, ["model-value", "aria-label", "onUpdate:modelValue"]),
-              M(A(x), 1)
+              M(U(C), 1)
             ]),
-            x in i.value ? (c(), F(qt, {
+            C in i.value ? (c(), z(qt, {
               key: 0,
               "board-id": e.boardId,
               field: n.value,
-              "model-value": i.value[x],
-              label: o.value + " history " + x,
-              "onUpdate:modelValue": (R) => D(x, R),
-              onValidity: (R) => w(x, R)
-            }, null, 8, ["board-id", "field", "model-value", "label", "onUpdate:modelValue", "onValidity"])) : E("", !0)
-          ])), 64)) : (c(), F(qt, {
+              "model-value": i.value[C],
+              label: o.value + " history " + C,
+              "onUpdate:modelValue": (R) => E(C, R),
+              onValidity: (R) => w(C, R)
+            }, null, 8, ["board-id", "field", "model-value", "label", "onUpdate:modelValue", "onValidity"])) : D("", !0)
+          ])), 64)) : (c(), z(qt, {
             key: 1,
             "board-id": e.boardId,
             field: n.value,
             "model-value": i.value.was,
             label: o.value + " history was",
-            "onUpdate:modelValue": O[11] || (O[11] = (x) => D("was", x)),
-            onValidity: O[12] || (O[12] = (x) => w("was", x))
+            "onUpdate:modelValue": O[11] || (O[11] = (C) => E("was", C)),
+            onValidity: O[12] || (O[12] = (C) => w("was", C))
           }, null, 8, ["board-id", "field", "model-value", "label"])),
-          r("label", Li, [
-            b(s(Mt), {
+          d("label", qi, [
+            b(r(Mt), {
               "model-value": "by" in i.value,
               "aria-label": "Constrain actor",
-              "onUpdate:modelValue": O[13] || (O[13] = (x) => D("by", x ? { $actor: "id" } : void 0)),
+              "onUpdate:modelValue": O[13] || (O[13] = (C) => E("by", C ? { $actor: "id" } : void 0)),
               binary: ""
             }, null, 8, ["model-value"]),
             O[27] || (O[27] = M("By actor", -1))
           ]),
-          "by" in i.value ? (c(), F(qt, {
+          "by" in i.value ? (c(), z(qt, {
             key: 2,
             "board-id": e.boardId,
             field: P,
             "model-value": i.value.by,
             label: o.value + " history by",
-            "onUpdate:modelValue": O[14] || (O[14] = (x) => D("by", x))
-          }, null, 8, ["board-id", "model-value", "label"])) : E("", !0),
-          r("label", zi, [
-            b(s(Mt), {
+            "onUpdate:modelValue": O[14] || (O[14] = (C) => E("by", C))
+          }, null, 8, ["board-id", "model-value", "label"])) : D("", !0),
+          d("label", Wi, [
+            b(r(Mt), {
               "model-value": "during" in i.value,
               "aria-label": "Constrain time window",
-              "onUpdate:modelValue": O[15] || (O[15] = (x) => D("during", x ? [{ $now: "-P30D" }, { $now: "P0D" }] : void 0)),
+              "onUpdate:modelValue": O[15] || (O[15] = (C) => E("during", C ? [{ $now: "-P30D" }, { $now: "P0D" }] : void 0)),
               binary: ""
             }, null, 8, ["model-value"]),
             O[28] || (O[28] = M("During", -1))
           ]),
-          "during" in i.value ? (c(), g("div", Fi, [
-            (c(), g(H, null, ee(["start", "end"], (x, R) => b(qt, {
-              key: x,
+          "during" in i.value ? (c(), g("div", Ki, [
+            (c(), g(H, null, ee(["start", "end"], (C, R) => b(qt, {
+              key: C,
               "board-id": e.boardId,
-              field: Z,
+              field: X,
               "model-value": de.value[R],
-              label: o.value + " during " + x,
+              label: o.value + " during " + C,
               "onUpdate:modelValue": (N) => ne(R, N)
             }, null, 8, ["board-id", "model-value", "label", "onUpdate:modelValue"])), 64))
-          ])) : E("", !0)
+          ])) : D("", !0)
         ], 64)) : (c(), g(H, { key: 5 }, [
-          r("div", Bi, [
+          d("div", Gi, [
             v.value === "rel" ? (c(), g(H, { key: 0 }, [
-              r("label", null, [
+              d("label", null, [
                 O[29] || (O[29] = M("Relation", -1)),
-                b(s(te), {
+                b(r(te), {
                   "model-value": e.modelValue.rel,
-                  "onUpdate:modelValue": O[16] || (O[16] = (x) => $({ rel: x })),
+                  "onUpdate:modelValue": O[16] || (O[16] = (C) => $({ rel: C })),
                   appendTo: "self",
                   optionLabel: "label",
                   optionValue: "value",
                   optionDisabled: "disabled",
-                  options: [...(e.schema.compiled.relation_types ?? []).map((x) => ({ label: x.outward ?? x.id, value: x.id, disabled: !1 }))]
+                  options: [...(e.schema.compiled.relation_types ?? []).map((C) => ({ label: C.outward ?? C.id, value: C.id, disabled: !1 }))]
                 }, null, 8, ["model-value", "options"])
               ]),
-              r("label", null, [
+              d("label", null, [
                 O[30] || (O[30] = M("Direction", -1)),
-                b(s(te), {
+                b(r(te), {
                   "model-value": e.modelValue.dir,
-                  "onUpdate:modelValue": O[17] || (O[17] = (x) => $({ dir: x })),
+                  "onUpdate:modelValue": O[17] || (O[17] = (C) => $({ dir: C })),
                   appendTo: "self",
                   optionLabel: "label",
                   optionValue: "value",
@@ -1063,12 +1063,12 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
                   options: [{ label: "Outward", value: "outward", disabled: !1 }, { label: "Inward", value: "inward", disabled: !1 }]
                 }, null, 8, ["model-value"])
               ])
-            ], 64)) : E("", !0),
-            r("label", null, [
+            ], 64)) : D("", !0),
+            d("label", null, [
               O[31] || (O[31] = M("Quantifier", -1)),
-              b(s(te), {
+              b(r(te), {
                 "model-value": e.modelValue.q,
-                "onUpdate:modelValue": O[18] || (O[18] = (x) => $({ q: x })),
+                "onUpdate:modelValue": O[18] || (O[18] = (C) => $({ q: C })),
                 appendTo: "self",
                 options: ["some", "every", "none"]
               }, null, 8, ["model-value"])
@@ -1077,17 +1077,17 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
           b(oe, {
             "board-id": e.boardId,
             schema: e.schema,
-            "model-value": s(Ke)(e.modelValue.where),
+            "model-value": r(Ke)(e.modelValue.where),
             path: o.value + ".where",
-            depth: d.value + 1,
-            "onUpdate:modelValue": O[19] || (O[19] = (x) => $({ where: x })),
-            onValidity: O[20] || (O[20] = (x) => w("nested", x))
+            depth: s.value + 1,
+            "onUpdate:modelValue": O[19] || (O[19] = (C) => $({ where: C })),
+            onValidity: O[20] || (O[20] = (C) => w("nested", C))
           }, null, 8, ["board-id", "schema", "model-value", "path", "depth"])
         ], 64))
-      ], 8, Ii);
+      ], 8, Ni);
     };
   }
-}), qi = { class: "work-stack work-tight" }, Wi = { class: "work-row work-small" }, _l = /* @__PURE__ */ ve({
+}), Hi = { class: "work-stack work-tight" }, Xi = { class: "work-row work-small" }, _l = /* @__PURE__ */ ue({
   __name: "ConditionEditor",
   props: {
     modelValue: {},
@@ -1097,52 +1097,52 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
   },
   emits: ["update:modelValue", "validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = G(() => ({ declaration: t.draft, compiled: t.draft, generation: 0, as_of: 0, key_prefix: "" })), d = /* @__PURE__ */ new Set();
-    function v(f, i) {
-      i ? d.delete(f) : d.add(f), a("validity", !d.size);
+    const t = e, a = l, o = K(() => ({ declaration: t.draft, compiled: t.draft, generation: 0, as_of: 0, key_prefix: "" })), s = /* @__PURE__ */ new Set();
+    function v(m, i) {
+      i ? s.delete(m) : s.add(m), a("validity", !s.size);
     }
-    function m(f) {
-      a("update:modelValue", f ? { field: t.draft.fields?.[0]?.code ?? "state", op: "eq" } : void 0), f || (d.clear(), a("validity", !0));
+    function f(m) {
+      a("update:modelValue", m ? { field: t.draft.fields?.[0]?.code ?? "state", op: "eq" } : void 0), m || (s.clear(), a("validity", !0));
     }
-    return ft(() => a("validity", !0)), (f, i) => (c(), g("section", qi, [
-      r("label", Wi, [
-        b(s(ze), {
+    return it(() => a("validity", !0)), (m, i) => (c(), g("section", Hi, [
+      d("label", Xi, [
+        b(r(Le), {
           "model-value": e.modelValue != null,
           "aria-label": e.label,
-          "onUpdate:modelValue": m
+          "onUpdate:modelValue": f
         }, null, 8, ["model-value", "aria-label"]),
-        M(A(e.label), 1)
+        M(U(e.label), 1)
       ]),
-      e.modelValue != null ? (c(), F(ji, {
+      e.modelValue != null ? (c(), z(Yi, {
         key: 0,
         schema: o.value,
         "board-id": e.boardId ?? "",
-        "model-value": s(Ke)(e.modelValue),
+        "model-value": r(Ke)(e.modelValue),
         path: e.label,
         "onUpdate:modelValue": i[0] || (i[0] = (n) => a("update:modelValue", n)),
         onValidity: i[1] || (i[1] = (n) => v("structured", n))
-      }, null, 8, ["schema", "board-id", "model-value", "path"])) : E("", !0),
-      e.modelValue != null ? (c(), F(lt, {
+      }, null, 8, ["schema", "board-id", "model-value", "path"])) : D("", !0),
+      e.modelValue != null ? (c(), z(at, {
         key: 1,
         label: e.label + " predicate",
         "model-value": e.modelValue,
         hint: "Use any predicate accepted by Work, including installed or deeply nested forms.",
         "onUpdate:modelValue": i[2] || (i[2] = (n) => a("update:modelValue", n)),
         onValidity: i[3] || (i[3] = (n) => v("raw", n))
-      }, null, 8, ["label", "model-value"])) : E("", !0)
+      }, null, 8, ["label", "model-value"])) : D("", !0)
     ]));
   }
-}), Ki = {
+}), Ji = {
   key: 0,
   class: "kx-err",
   role: "alert"
-}, Gi = ["aria-label"], Yi = { class: "work-field-label" }, Hi = {
+}, Zi = ["aria-label"], Qi = { class: "work-field-label" }, _i = {
   key: 0,
   class: "work-chips"
-}, Xi = ["kinds"], Ji = {
+}, en = ["kinds"], tn = {
   key: 2,
   class: "work-muted work-small"
-}, ea = /* @__PURE__ */ ve({
+}, ea = /* @__PURE__ */ ue({
   __name: "PrincipalsPicker",
   props: {
     modelValue: {},
@@ -1152,56 +1152,56 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
   },
   emits: ["update:modelValue"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = z(!1), d = z(0), v = G(() => t.modelValue ?? []), { principalLabel: m, rememberPrincipal: f, nameError: i } = Da(() => t.boardId ?? "", () => v.value);
+    const t = e, a = l, o = L(!1), s = L(0), v = K(() => t.modelValue ?? []), { principalLabel: f, rememberPrincipal: m, nameError: i } = Pa(() => t.boardId ?? "", () => v.value);
     kl(async () => {
-      o.value = await vt("wc-principal-picker");
+      o.value = await tt("wc-principal-picker");
     });
     function n(u) {
       const y = u.detail, p = y?.principal_id ?? y?.id;
       if (!p) return;
       const w = { kind: y.type ?? "user", id: p };
-      y.label && f(w, y.label), v.value.some((S) => S.id === p && S.kind === w.kind) || a("update:modelValue", [...v.value, w]), d.value++;
+      y.label && m(w, y.label), v.value.some((S) => S.id === p && S.kind === w.kind) || a("update:modelValue", [...v.value, w]), s.value++;
     }
     return (u, y) => (c(), g(H, null, [
-      s(i) ? (c(), g("p", Ki, A(s(i)), 1)) : E("", !0),
-      r("section", {
+      r(i) ? (c(), g("p", Ji, U(r(i)), 1)) : D("", !0),
+      d("section", {
         class: "work-stack work-tight work-principals-picker",
         "aria-label": e.label
       }, [
-        r("h4", Yi, A(e.label), 1),
-        v.value.length ? (c(), g("div", Hi, [
-          (c(!0), g(H, null, ee(v.value, (p, w) => (c(), F(s(Re), {
+        d("h4", Qi, U(e.label), 1),
+        v.value.length ? (c(), g("div", _i, [
+          (c(!0), g(H, null, ee(v.value, (p, w) => (c(), z(r(Re), {
             key: p.kind + p.id,
             severity: "secondary",
             class: "kx-tag-sm"
           }, {
-            default: L(() => [
-              M(A(s(m)(p)), 1),
-              b(s(Y), {
+            default: F(() => [
+              M(U(r(f)(p)), 1),
+              b(r(G), {
                 text: "",
                 severity: "secondary",
                 size: "small",
-                "aria-label": "Remove " + s(m)(p),
-                onClick: (S) => a("update:modelValue", v.value.filter((U, $) => $ !== w))
+                "aria-label": "Remove " + r(f)(p),
+                onClick: (S) => a("update:modelValue", v.value.filter((I, $) => $ !== w))
               }, {
-                default: L(() => [
-                  b(s(J), { icon: "tabler:x" })
+                default: F(() => [
+                  b(r(Z), { icon: "tabler:x" })
                 ]),
                 _: 1
               }, 8, ["aria-label", "onClick"])
             ]),
             _: 2
           }, 1024))), 128))
-        ])) : E("", !0),
+        ])) : D("", !0),
         o.value ? (c(), g("wc-principal-picker", {
-          key: d.value,
+          key: s.value,
           kinds: e.kinds ?? "user,group",
           onConfigChanged: n
-        }, null, 40, Xi)) : (c(), g("p", Ji, "People and group picker is unavailable."))
-      ], 8, Gi)
+        }, null, 40, en)) : (c(), g("p", tn, "People and group picker is unavailable."))
+      ], 8, Zi)
     ], 64));
   }
-}), Zi = { class: "work-stack work-tight" }, La = /* @__PURE__ */ ve({
+}), ln = { class: "work-stack work-tight" }, Ba = /* @__PURE__ */ ue({
   __name: "HoldersPicker",
   props: {
     modelValue: {},
@@ -1210,25 +1210,25 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
   },
   emits: ["update:modelValue", "validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = G(() => (t.modelValue ?? []).flatMap((v) => "user" in v ? [{ kind: "user", id: v.user }] : "group" in v ? [{ kind: "group", id: v.group }] : []));
-    function d(v) {
-      const m = [...(t.modelValue ?? []).filter((f) => "field" in f || "service" in f), ...v.map((f) => f.kind === "group" ? { group: f.id } : { user: f.id })];
-      a("update:modelValue", m.length ? m : void 0);
+    const t = e, a = l, o = K(() => (t.modelValue ?? []).flatMap((v) => "user" in v ? [{ kind: "user", id: v.user }] : "group" in v ? [{ kind: "group", id: v.group }] : []));
+    function s(v) {
+      const f = [...(t.modelValue ?? []).filter((m) => "field" in m || "service" in m), ...v.map((m) => m.kind === "group" ? { group: m.id } : { user: m.id })];
+      a("update:modelValue", f.length ? f : void 0);
     }
-    return (v, m) => (c(), g("div", Zi, [
+    return (v, f) => (c(), g("div", ln, [
       b(ea, {
         "board-id": e.boardId,
         label: e.label,
         "model-value": o.value,
-        "onUpdate:modelValue": d
+        "onUpdate:modelValue": s
       }, null, 8, ["board-id", "label", "model-value"]),
-      b(lt, {
+      b(at, {
         label: e.label + " rules",
         "model-value": e.modelValue,
         shape: "array",
         example: [{ group: "selected-group" }],
-        "onUpdate:modelValue": m[0] || (m[0] = (f) => a("update:modelValue", f)),
-        onValidity: m[1] || (m[1] = (f) => a("validity", f))
+        "onUpdate:modelValue": f[0] || (f[0] = (m) => a("update:modelValue", m)),
+        onValidity: f[1] || (f[1] = (m) => a("validity", m))
       }, null, 8, ["label", "model-value"])
     ]));
   }
@@ -1239,22 +1239,22 @@ const ui = { class: "work-field-control" }, ci = ["id"], vi = {
  * @author	owenm    <owen23355@gmail.com>
  * @license MIT
  */
-function Qi(e, l, t) {
-  return (l = ln(l)) in e ? Object.defineProperty(e, l, {
+function an(e, l, t) {
+  return (l = rn(l)) in e ? Object.defineProperty(e, l, {
     value: t,
     enumerable: !0,
     configurable: !0,
     writable: !0
   }) : e[l] = t, e;
 }
-function at() {
-  return at = Object.assign ? Object.assign.bind() : function(e) {
+function ot() {
+  return ot = Object.assign ? Object.assign.bind() : function(e) {
     for (var l = 1; l < arguments.length; l++) {
       var t = arguments[l];
       for (var a in t) ({}).hasOwnProperty.call(t, a) && (e[a] = t[a]);
     }
     return e;
-  }, at.apply(null, arguments);
+  }, ot.apply(null, arguments);
 }
 function fa(e, l) {
   var t = Object.keys(e);
@@ -1270,23 +1270,23 @@ function et(e) {
   for (var l = 1; l < arguments.length; l++) {
     var t = arguments[l] != null ? arguments[l] : {};
     l % 2 ? fa(Object(t), !0).forEach(function(a) {
-      Qi(e, a, t[a]);
+      an(e, a, t[a]);
     }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : fa(Object(t)).forEach(function(a) {
       Object.defineProperty(e, a, Object.getOwnPropertyDescriptor(t, a));
     });
   }
   return e;
 }
-function _i(e, l) {
+function on(e, l) {
   if (e == null) return {};
-  var t, a, o = en(e, l);
+  var t, a, o = nn(e, l);
   if (Object.getOwnPropertySymbols) {
-    var d = Object.getOwnPropertySymbols(e);
-    for (a = 0; a < d.length; a++) t = d[a], l.indexOf(t) === -1 && {}.propertyIsEnumerable.call(e, t) && (o[t] = e[t]);
+    var s = Object.getOwnPropertySymbols(e);
+    for (a = 0; a < s.length; a++) t = s[a], l.indexOf(t) === -1 && {}.propertyIsEnumerable.call(e, t) && (o[t] = e[t]);
   }
   return o;
 }
-function en(e, l) {
+function nn(e, l) {
   if (e == null) return {};
   var t = {};
   for (var a in e) if ({}.hasOwnProperty.call(e, a)) {
@@ -1295,7 +1295,7 @@ function en(e, l) {
   }
   return t;
 }
-function tn(e, l) {
+function sn(e, l) {
   if (typeof e != "object" || !e) return e;
   var t = e[Symbol.toPrimitive];
   if (t !== void 0) {
@@ -1305,8 +1305,8 @@ function tn(e, l) {
   }
   return (l === "string" ? String : Number)(e);
 }
-function ln(e) {
-  var l = tn(e, "string");
+function rn(e) {
+  var l = sn(e, "string");
   return typeof l == "symbol" ? l : l + "";
 }
 function ql(e) {
@@ -1317,20 +1317,20 @@ function ql(e) {
     return l && typeof Symbol == "function" && l.constructor === Symbol && l !== Symbol.prototype ? "symbol" : typeof l;
   }, ql(e);
 }
-var an = "1.15.7";
-function tt(e) {
+var dn = "1.15.7";
+function lt(e) {
   if (typeof window < "u" && window.navigator)
     return !!/* @__PURE__ */ navigator.userAgent.match(e);
 }
-var ot = tt(/(?:Trident.*rv[ :]?11\.|msie|iemobile|Windows Phone)/i), el = tt(/Edge/i), pa = tt(/firefox/i), Ht = tt(/safari/i) && !tt(/chrome/i) && !tt(/android/i), ta = tt(/iP(ad|od|hone)/i), za = tt(/chrome/i) && tt(/android/i), Fa = {
+var nt = lt(/(?:Trident.*rv[ :]?11\.|msie|iemobile|Windows Phone)/i), el = lt(/Edge/i), pa = lt(/firefox/i), Ht = lt(/safari/i) && !lt(/chrome/i) && !lt(/android/i), ta = lt(/iP(ad|od|hone)/i), ja = lt(/chrome/i) && lt(/android/i), qa = {
   capture: !1,
   passive: !1
 };
 function me(e, l, t) {
-  e.addEventListener(l, t, !ot && Fa);
+  e.addEventListener(l, t, !nt && qa);
 }
-function ce(e, l, t) {
-  e.removeEventListener(l, t, !ot && Fa);
+function ve(e, l, t) {
+  e.removeEventListener(l, t, !nt && qa);
 }
 function fl(e, l) {
   if (l) {
@@ -1348,7 +1348,7 @@ function fl(e, l) {
     return !1;
   }
 }
-function Ba(e) {
+function Wa(e) {
   return e.host && e !== document && e.host.nodeType && e.host !== e ? e.host : e.parentNode;
 }
 function Je(e, l, t, a) {
@@ -1358,12 +1358,12 @@ function Je(e, l, t, a) {
       if (l != null && (l[0] === ">" ? e.parentNode === t && fl(e, l) : fl(e, l)) || a && e === t)
         return e;
       if (e === t) break;
-    } while (e = Ba(e));
+    } while (e = Wa(e));
   }
   return null;
 }
 var ba = /\s+/g;
-function Fe(e, l, t) {
+function ze(e, l, t) {
   if (e && l)
     if (e.classList)
       e.classList[t ? "add" : "remove"](l);
@@ -1380,7 +1380,7 @@ function le(e, l, t) {
     !(l in a) && l.indexOf("webkit") === -1 && (l = "-webkit-" + l), a[l] = t + (typeof t == "string" ? "" : "px");
   }
 }
-function Lt(e, l) {
+function Ft(e, l) {
   var t = "";
   if (typeof e == "string")
     t = e;
@@ -1392,11 +1392,11 @@ function Lt(e, l) {
   var o = window.DOMMatrix || window.WebKitCSSMatrix || window.CSSMatrix || window.MSCSSMatrix;
   return o && new o(t);
 }
-function ja(e, l, t) {
+function Ka(e, l, t) {
   if (e) {
-    var a = e.getElementsByTagName(l), o = 0, d = a.length;
+    var a = e.getElementsByTagName(l), o = 0, s = a.length;
     if (t)
-      for (; o < d; o++)
+      for (; o < s; o++)
         t(a[o], o);
     return a;
   }
@@ -1408,23 +1408,23 @@ function _e() {
 }
 function Ue(e, l, t, a, o) {
   if (!(!e.getBoundingClientRect && e !== window)) {
-    var d, v, m, f, i, n, u;
-    if (e !== window && e.parentNode && e !== _e() ? (d = e.getBoundingClientRect(), v = d.top, m = d.left, f = d.bottom, i = d.right, n = d.height, u = d.width) : (v = 0, m = 0, f = window.innerHeight, i = window.innerWidth, n = window.innerHeight, u = window.innerWidth), (l || t) && e !== window && (o = o || e.parentNode, !ot))
+    var s, v, f, m, i, n, u;
+    if (e !== window && e.parentNode && e !== _e() ? (s = e.getBoundingClientRect(), v = s.top, f = s.left, m = s.bottom, i = s.right, n = s.height, u = s.width) : (v = 0, f = 0, m = window.innerHeight, i = window.innerWidth, n = window.innerHeight, u = window.innerWidth), (l || t) && e !== window && (o = o || e.parentNode, !nt))
       do
         if (o && o.getBoundingClientRect && (le(o, "transform") !== "none" || t && le(o, "position") !== "static")) {
           var y = o.getBoundingClientRect();
-          v -= y.top + parseInt(le(o, "border-top-width")), m -= y.left + parseInt(le(o, "border-left-width")), f = v + d.height, i = m + d.width;
+          v -= y.top + parseInt(le(o, "border-top-width")), f -= y.left + parseInt(le(o, "border-left-width")), m = v + s.height, i = f + s.width;
           break;
         }
       while (o = o.parentNode);
     if (a && e !== window) {
-      var p = Lt(o || e), w = p && p.a, S = p && p.d;
-      p && (v /= S, m /= w, u /= w, n /= S, f = v + n, i = m + u);
+      var p = Ft(o || e), w = p && p.a, S = p && p.d;
+      p && (v /= S, f /= w, u /= w, n /= S, m = v + n, i = f + u);
     }
     return {
       top: v,
-      left: m,
-      bottom: f,
+      left: f,
+      bottom: m,
       right: i,
       width: u,
       height: n
@@ -1432,22 +1432,22 @@ function Ue(e, l, t, a, o) {
   }
 }
 function ha(e, l, t) {
-  for (var a = ct(e, !0), o = Ue(e)[l]; a; ) {
-    var d = Ue(a)[t], v = void 0;
-    if (v = o >= d, !v) return a;
+  for (var a = mt(e, !0), o = Ue(e)[l]; a; ) {
+    var s = Ue(a)[t], v = void 0;
+    if (v = o >= s, !v) return a;
     if (a === _e()) break;
-    a = ct(a, !1);
+    a = mt(a, !1);
   }
   return !1;
 }
-function Ft(e, l, t, a) {
-  for (var o = 0, d = 0, v = e.children; d < v.length; ) {
-    if (v[d].style.display !== "none" && v[d] !== ae.ghost && (a || v[d] !== ae.dragged) && Je(v[d], t.draggable, e, !1)) {
+function zt(e, l, t, a) {
+  for (var o = 0, s = 0, v = e.children; s < v.length; ) {
+    if (v[s].style.display !== "none" && v[s] !== ae.ghost && (a || v[s] !== ae.dragged) && Je(v[s], t.draggable, e, !1)) {
       if (o === l)
-        return v[d];
+        return v[s];
       o++;
     }
-    d++;
+    s++;
   }
   return null;
 }
@@ -1468,12 +1468,12 @@ function ya(e) {
   var l = 0, t = 0, a = _e();
   if (e)
     do {
-      var o = Lt(e), d = o.a, v = o.d;
-      l += e.scrollLeft * d, t += e.scrollTop * v;
+      var o = Ft(e), s = o.a, v = o.d;
+      l += e.scrollLeft * s, t += e.scrollTop * v;
     } while (e !== a && (e = e.parentNode));
   return [l, t];
 }
-function on(e, l) {
+function un(e, l) {
   for (var t in e)
     if (e.hasOwnProperty(t)) {
       for (var a in l)
@@ -1481,7 +1481,7 @@ function on(e, l) {
     }
   return -1;
 }
-function ct(e, l) {
+function mt(e, l) {
   if (!e || !e.getBoundingClientRect) return _e();
   var t = e, a = !1;
   do
@@ -1496,7 +1496,7 @@ function ct(e, l) {
   while (t = t.parentNode);
   return _e();
 }
-function nn(e, l) {
+function cn(e, l) {
   if (e && l)
     for (var t in l)
       l.hasOwnProperty(t) && (e[t] = l[t]);
@@ -1506,7 +1506,7 @@ function Il(e, l) {
   return Math.round(e.top) === Math.round(l.top) && Math.round(e.left) === Math.round(l.left) && Math.round(e.height) === Math.round(l.height) && Math.round(e.width) === Math.round(l.width);
 }
 var Xt;
-function qa(e, l) {
+function Ga(e, l) {
   return function() {
     if (!Xt) {
       var t = arguments, a = this;
@@ -1516,28 +1516,28 @@ function qa(e, l) {
     }
   };
 }
-function sn() {
+function vn() {
   clearTimeout(Xt), Xt = void 0;
 }
-function Wa(e, l, t) {
+function Ya(e, l, t) {
   e.scrollLeft += l, e.scrollTop += t;
 }
-function Ka(e) {
+function Ha(e) {
   var l = window.Polymer, t = window.jQuery || window.Zepto;
   return l && l.dom ? l.dom(e).cloneNode(!0) : t ? t(e).clone(!0)[0] : e.cloneNode(!0);
 }
-function Ga(e, l, t) {
+function Xa(e, l, t) {
   var a = {};
   return Array.from(e.children).forEach(function(o) {
-    var d, v, m, f;
+    var s, v, f, m;
     if (!(!Je(o, l.draggable, e, !1) || o.animated || o === t)) {
       var i = Ue(o);
-      a.left = Math.min((d = a.left) !== null && d !== void 0 ? d : 1 / 0, i.left), a.top = Math.min((v = a.top) !== null && v !== void 0 ? v : 1 / 0, i.top), a.right = Math.max((m = a.right) !== null && m !== void 0 ? m : -1 / 0, i.right), a.bottom = Math.max((f = a.bottom) !== null && f !== void 0 ? f : -1 / 0, i.bottom);
+      a.left = Math.min((s = a.left) !== null && s !== void 0 ? s : 1 / 0, i.left), a.top = Math.min((v = a.top) !== null && v !== void 0 ? v : 1 / 0, i.top), a.right = Math.max((f = a.right) !== null && f !== void 0 ? f : -1 / 0, i.right), a.bottom = Math.max((m = a.bottom) !== null && m !== void 0 ? m : -1 / 0, i.bottom);
     }
   }), a.width = a.right - a.left, a.height = a.bottom - a.top, a.x = a.left, a.y = a.top, a;
 }
-var Le = "Sortable" + (/* @__PURE__ */ new Date()).getTime();
-function rn() {
+var Fe = "Sortable" + (/* @__PURE__ */ new Date()).getTime();
+function mn() {
   var e = [], l;
   return {
     captureAnimationState: function() {
@@ -1549,12 +1549,12 @@ function rn() {
               target: o,
               rect: Ue(o)
             });
-            var d = et({}, e[e.length - 1].rect);
+            var s = et({}, e[e.length - 1].rect);
             if (o.thisAnimationDuration) {
-              var v = Lt(o, !0);
-              v && (d.top -= v.f, d.left -= v.e);
+              var v = Ft(o, !0);
+              v && (s.top -= v.f, s.left -= v.e);
             }
-            o.fromRect = d;
+            o.fromRect = s;
           }
         });
       }
@@ -1563,7 +1563,7 @@ function rn() {
       e.push(a);
     },
     removeAnimationState: function(a) {
-      e.splice(on(e, {
+      e.splice(un(e, {
         target: a
       }), 1);
     },
@@ -1573,32 +1573,32 @@ function rn() {
         clearTimeout(l), typeof a == "function" && a();
         return;
       }
-      var d = !1, v = 0;
-      e.forEach(function(m) {
-        var f = 0, i = m.target, n = i.fromRect, u = Ue(i), y = i.prevFromRect, p = i.prevToRect, w = m.rect, S = Lt(i, !0);
+      var s = !1, v = 0;
+      e.forEach(function(f) {
+        var m = 0, i = f.target, n = i.fromRect, u = Ue(i), y = i.prevFromRect, p = i.prevToRect, w = f.rect, S = Ft(i, !0);
         S && (u.top -= S.f, u.left -= S.e), i.toRect = u, i.thisAnimationDuration && Il(y, u) && !Il(n, u) && // Make sure animatingRect is on line between toRect & fromRect
-        (w.top - u.top) / (w.left - u.left) === (n.top - u.top) / (n.left - u.left) && (f = un(w, y, p, o.options)), Il(u, n) || (i.prevFromRect = n, i.prevToRect = u, f || (f = o.options.animation), o.animate(i, w, u, f)), f && (d = !0, v = Math.max(v, f), clearTimeout(i.animationResetTimer), i.animationResetTimer = setTimeout(function() {
+        (w.top - u.top) / (w.left - u.left) === (n.top - u.top) / (n.left - u.left) && (m = pn(w, y, p, o.options)), Il(u, n) || (i.prevFromRect = n, i.prevToRect = u, m || (m = o.options.animation), o.animate(i, w, u, m)), m && (s = !0, v = Math.max(v, m), clearTimeout(i.animationResetTimer), i.animationResetTimer = setTimeout(function() {
           i.animationTime = 0, i.prevFromRect = null, i.fromRect = null, i.prevToRect = null, i.thisAnimationDuration = null;
-        }, f), i.thisAnimationDuration = f);
-      }), clearTimeout(l), d ? l = setTimeout(function() {
+        }, m), i.thisAnimationDuration = m);
+      }), clearTimeout(l), s ? l = setTimeout(function() {
         typeof a == "function" && a();
       }, v) : typeof a == "function" && a(), e = [];
     },
-    animate: function(a, o, d, v) {
+    animate: function(a, o, s, v) {
       if (v) {
         le(a, "transition", ""), le(a, "transform", "");
-        var m = Lt(this.el), f = m && m.a, i = m && m.d, n = (o.left - d.left) / (f || 1), u = (o.top - d.top) / (i || 1);
-        a.animatingX = !!n, a.animatingY = !!u, le(a, "transform", "translate3d(" + n + "px," + u + "px,0)"), this.forRepaintDummy = dn(a), le(a, "transition", "transform " + v + "ms" + (this.options.easing ? " " + this.options.easing : "")), le(a, "transform", "translate3d(0,0,0)"), typeof a.animated == "number" && clearTimeout(a.animated), a.animated = setTimeout(function() {
+        var f = Ft(this.el), m = f && f.a, i = f && f.d, n = (o.left - s.left) / (m || 1), u = (o.top - s.top) / (i || 1);
+        a.animatingX = !!n, a.animatingY = !!u, le(a, "transform", "translate3d(" + n + "px," + u + "px,0)"), this.forRepaintDummy = fn(a), le(a, "transition", "transform " + v + "ms" + (this.options.easing ? " " + this.options.easing : "")), le(a, "transform", "translate3d(0,0,0)"), typeof a.animated == "number" && clearTimeout(a.animated), a.animated = setTimeout(function() {
           le(a, "transition", ""), le(a, "transform", ""), a.animated = !1, a.animatingX = !1, a.animatingY = !1;
         }, v);
       }
     }
   };
 }
-function dn(e) {
+function fn(e) {
   return e.offsetWidth;
 }
-function un(e, l, t, a) {
+function pn(e, l, t, a) {
   return Math.sqrt(Math.pow(l.top - e.top, 2) + Math.pow(l.left - e.left, 2)) / Math.sqrt(Math.pow(l.top - t.top, 2) + Math.pow(l.left - t.left, 2)) * a.animation;
 }
 var At = [], Al = {
@@ -1617,9 +1617,9 @@ var At = [], Al = {
     this.eventCanceled = !1, a.cancel = function() {
       o.eventCanceled = !0;
     };
-    var d = l + "Global";
+    var s = l + "Global";
     At.forEach(function(v) {
-      t[v.pluginName] && (t[v.pluginName][d] && t[v.pluginName][d](et({
+      t[v.pluginName] && (t[v.pluginName][s] && t[v.pluginName][s](et({
         sortable: t
       }, a)), t.options[v.pluginName] && t[v.pluginName][l] && t[v.pluginName][l](et({
         sortable: t
@@ -1627,57 +1627,57 @@ var At = [], Al = {
     });
   },
   initializePlugins: function(l, t, a, o) {
-    At.forEach(function(m) {
-      var f = m.pluginName;
-      if (!(!l.options[f] && !m.initializeByDefault)) {
-        var i = new m(l, t, l.options);
-        i.sortable = l, i.options = l.options, l[f] = i, at(a, i.defaults);
+    At.forEach(function(f) {
+      var m = f.pluginName;
+      if (!(!l.options[m] && !f.initializeByDefault)) {
+        var i = new f(l, t, l.options);
+        i.sortable = l, i.options = l.options, l[m] = i, ot(a, i.defaults);
       }
     });
-    for (var d in l.options)
-      if (l.options.hasOwnProperty(d)) {
-        var v = this.modifyOption(l, d, l.options[d]);
-        typeof v < "u" && (l.options[d] = v);
+    for (var s in l.options)
+      if (l.options.hasOwnProperty(s)) {
+        var v = this.modifyOption(l, s, l.options[s]);
+        typeof v < "u" && (l.options[s] = v);
       }
   },
   getEventProperties: function(l, t) {
     var a = {};
     return At.forEach(function(o) {
-      typeof o.eventProperties == "function" && at(a, o.eventProperties.call(t[o.pluginName], l));
+      typeof o.eventProperties == "function" && ot(a, o.eventProperties.call(t[o.pluginName], l));
     }), a;
   },
   modifyOption: function(l, t, a) {
     var o;
-    return At.forEach(function(d) {
-      l[d.pluginName] && d.optionListeners && typeof d.optionListeners[t] == "function" && (o = d.optionListeners[t].call(l[d.pluginName], a));
+    return At.forEach(function(s) {
+      l[s.pluginName] && s.optionListeners && typeof s.optionListeners[t] == "function" && (o = s.optionListeners[t].call(l[s.pluginName], a));
     }), o;
   }
 };
-function cn(e) {
-  var l = e.sortable, t = e.rootEl, a = e.name, o = e.targetEl, d = e.cloneEl, v = e.toEl, m = e.fromEl, f = e.oldIndex, i = e.newIndex, n = e.oldDraggableIndex, u = e.newDraggableIndex, y = e.originalEvent, p = e.putSortable, w = e.extraEventProperties;
-  if (l = l || t && t[Le], !!l) {
-    var S, U = l.options, $ = "on" + a.charAt(0).toUpperCase() + a.substr(1);
-    window.CustomEvent && !ot && !el ? S = new CustomEvent(a, {
+function bn(e) {
+  var l = e.sortable, t = e.rootEl, a = e.name, o = e.targetEl, s = e.cloneEl, v = e.toEl, f = e.fromEl, m = e.oldIndex, i = e.newIndex, n = e.oldDraggableIndex, u = e.newDraggableIndex, y = e.originalEvent, p = e.putSortable, w = e.extraEventProperties;
+  if (l = l || t && t[Fe], !!l) {
+    var S, I = l.options, $ = "on" + a.charAt(0).toUpperCase() + a.substr(1);
+    window.CustomEvent && !nt && !el ? S = new CustomEvent(a, {
       bubbles: !0,
       cancelable: !0
-    }) : (S = document.createEvent("Event"), S.initEvent(a, !0, !0)), S.to = v || t, S.from = m || t, S.item = o || t, S.clone = d, S.oldIndex = f, S.newIndex = i, S.oldDraggableIndex = n, S.newDraggableIndex = u, S.originalEvent = y, S.pullMode = p ? p.lastPutMode : void 0;
-    var I = et(et({}, w), tl.getEventProperties(a, l));
-    for (var T in I)
-      S[T] = I[T];
-    t && t.dispatchEvent(S), U[$] && U[$].call(l, S);
+    }) : (S = document.createEvent("Event"), S.initEvent(a, !0, !0)), S.to = v || t, S.from = f || t, S.item = o || t, S.clone = s, S.oldIndex = m, S.newIndex = i, S.oldDraggableIndex = n, S.newDraggableIndex = u, S.originalEvent = y, S.pullMode = p ? p.lastPutMode : void 0;
+    var A = et(et({}, w), tl.getEventProperties(a, l));
+    for (var x in A)
+      S[x] = A[x];
+    t && t.dispatchEvent(S), I[$] && I[$].call(l, S);
   }
 }
-var vn = ["evt"], Me = function(l, t) {
-  var a = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : {}, o = a.evt, d = _i(a, vn);
+var hn = ["evt"], Me = function(l, t) {
+  var a = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : {}, o = a.evt, s = on(a, hn);
   tl.pluginEvent.bind(ae)(l, t, et({
     dragEl: W,
-    parentEl: xe,
+    parentEl: Ce,
     ghostEl: ie,
     rootEl: we,
     nextEl: wt,
     lastDownEl: dl,
     cloneEl: $e,
-    cloneHidden: ut,
+    cloneHidden: vt,
     dragStarted: Kt,
     putSortable: Ie,
     activeSortable: ae.active,
@@ -1685,26 +1685,26 @@ var vn = ["evt"], Me = function(l, t) {
     oldIndex: Nt,
     oldDraggableIndex: Jt,
     newIndex: Be,
-    newDraggableIndex: dt,
-    hideGhostForTarget: Ja,
-    unhideGhostForTarget: Za,
+    newDraggableIndex: ct,
+    hideGhostForTarget: _a,
+    unhideGhostForTarget: eo,
     cloneNowHidden: function() {
-      ut = !0;
+      vt = !0;
     },
     cloneNowShown: function() {
-      ut = !1;
+      vt = !1;
     },
-    dispatchSortableEvent: function(m) {
+    dispatchSortableEvent: function(f) {
       Oe({
         sortable: t,
-        name: m,
+        name: f,
         originalEvent: o
       });
     }
-  }, d));
+  }, s));
 };
 function Oe(e) {
-  cn(et({
+  bn(et({
     putSortable: Ie,
     cloneEl: $e,
     targetEl: W,
@@ -1712,87 +1712,87 @@ function Oe(e) {
     oldIndex: Nt,
     oldDraggableIndex: Jt,
     newIndex: Be,
-    newDraggableIndex: dt
+    newDraggableIndex: ct
   }, e));
 }
-var W, xe, ie, we, wt, dl, $e, ut, Nt, Be, Jt, dt, il, Ie, Rt = !1, pl = !1, bl = [], ht, Xe, Pl, Rl, ga, ka, Kt, Pt, Zt, Qt = !1, nl = !1, ul, Pe, Ol = [], Wl = !1, hl = [], xl = typeof document < "u", sl = ta, wa = el || ot ? "cssFloat" : "float", mn = xl && !za && !ta && "draggable" in document.createElement("div"), Ya = (function() {
+var W, Ce, ie, we, wt, dl, $e, vt, Nt, Be, Jt, ct, il, Ie, Rt = !1, pl = !1, bl = [], ht, Xe, Pl, Rl, ga, ka, Kt, Pt, Zt, Qt = !1, nl = !1, ul, Pe, Ol = [], Wl = !1, hl = [], xl = typeof document < "u", sl = ta, wa = el || nt ? "cssFloat" : "float", yn = xl && !ja && !ta && "draggable" in document.createElement("div"), Ja = (function() {
   if (xl) {
-    if (ot)
+    if (nt)
       return !1;
     var e = document.createElement("x");
     return e.style.cssText = "pointer-events:auto", e.style.pointerEvents === "auto";
   }
-})(), Ha = function(l, t) {
-  var a = le(l), o = parseInt(a.width) - parseInt(a.paddingLeft) - parseInt(a.paddingRight) - parseInt(a.borderLeftWidth) - parseInt(a.borderRightWidth), d = Ft(l, 0, t), v = Ft(l, 1, t), m = d && le(d), f = v && le(v), i = m && parseInt(m.marginLeft) + parseInt(m.marginRight) + Ue(d).width, n = f && parseInt(f.marginLeft) + parseInt(f.marginRight) + Ue(v).width;
+})(), Za = function(l, t) {
+  var a = le(l), o = parseInt(a.width) - parseInt(a.paddingLeft) - parseInt(a.paddingRight) - parseInt(a.borderLeftWidth) - parseInt(a.borderRightWidth), s = zt(l, 0, t), v = zt(l, 1, t), f = s && le(s), m = v && le(v), i = f && parseInt(f.marginLeft) + parseInt(f.marginRight) + Ue(s).width, n = m && parseInt(m.marginLeft) + parseInt(m.marginRight) + Ue(v).width;
   if (a.display === "flex")
     return a.flexDirection === "column" || a.flexDirection === "column-reverse" ? "vertical" : "horizontal";
   if (a.display === "grid")
     return a.gridTemplateColumns.split(" ").length <= 1 ? "vertical" : "horizontal";
-  if (d && m.float && m.float !== "none") {
-    var u = m.float === "left" ? "left" : "right";
-    return v && (f.clear === "both" || f.clear === u) ? "vertical" : "horizontal";
+  if (s && f.float && f.float !== "none") {
+    var u = f.float === "left" ? "left" : "right";
+    return v && (m.clear === "both" || m.clear === u) ? "vertical" : "horizontal";
   }
-  return d && (m.display === "block" || m.display === "flex" || m.display === "table" || m.display === "grid" || i >= o && a[wa] === "none" || v && a[wa] === "none" && i + n > o) ? "vertical" : "horizontal";
-}, fn = function(l, t, a) {
-  var o = a ? l.left : l.top, d = a ? l.right : l.bottom, v = a ? l.width : l.height, m = a ? t.left : t.top, f = a ? t.right : t.bottom, i = a ? t.width : t.height;
-  return o === m || d === f || o + v / 2 === m + i / 2;
-}, pn = function(l, t) {
+  return s && (f.display === "block" || f.display === "flex" || f.display === "table" || f.display === "grid" || i >= o && a[wa] === "none" || v && a[wa] === "none" && i + n > o) ? "vertical" : "horizontal";
+}, gn = function(l, t, a) {
+  var o = a ? l.left : l.top, s = a ? l.right : l.bottom, v = a ? l.width : l.height, f = a ? t.left : t.top, m = a ? t.right : t.bottom, i = a ? t.width : t.height;
+  return o === f || s === m || o + v / 2 === f + i / 2;
+}, kn = function(l, t) {
   var a;
   return bl.some(function(o) {
-    var d = o[Le].options.emptyInsertThreshold;
-    if (!(!d || la(o))) {
-      var v = Ue(o), m = l >= v.left - d && l <= v.right + d, f = t >= v.top - d && t <= v.bottom + d;
-      if (m && f)
+    var s = o[Fe].options.emptyInsertThreshold;
+    if (!(!s || la(o))) {
+      var v = Ue(o), f = l >= v.left - s && l <= v.right + s, m = t >= v.top - s && t <= v.bottom + s;
+      if (f && m)
         return a = o;
     }
   }), a;
-}, Xa = function(l) {
-  function t(d, v) {
-    return function(m, f, i, n) {
-      var u = m.options.group.name && f.options.group.name && m.options.group.name === f.options.group.name;
-      if (d == null && (v || u))
+}, Qa = function(l) {
+  function t(s, v) {
+    return function(f, m, i, n) {
+      var u = f.options.group.name && m.options.group.name && f.options.group.name === m.options.group.name;
+      if (s == null && (v || u))
         return !0;
-      if (d == null || d === !1)
+      if (s == null || s === !1)
         return !1;
-      if (v && d === "clone")
-        return d;
-      if (typeof d == "function")
-        return t(d(m, f, i, n), v)(m, f, i, n);
-      var y = (v ? m : f).options.group.name;
-      return d === !0 || typeof d == "string" && d === y || d.join && d.indexOf(y) > -1;
+      if (v && s === "clone")
+        return s;
+      if (typeof s == "function")
+        return t(s(f, m, i, n), v)(f, m, i, n);
+      var y = (v ? f : m).options.group.name;
+      return s === !0 || typeof s == "string" && s === y || s.join && s.indexOf(y) > -1;
     };
   }
   var a = {}, o = l.group;
   (!o || ql(o) != "object") && (o = {
     name: o
   }), a.name = o.name, a.checkPull = t(o.pull, !0), a.checkPut = t(o.put), a.revertClone = o.revertClone, l.group = a;
-}, Ja = function() {
-  !Ya && ie && le(ie, "display", "none");
-}, Za = function() {
-  !Ya && ie && le(ie, "display", "");
+}, _a = function() {
+  !Ja && ie && le(ie, "display", "none");
+}, eo = function() {
+  !Ja && ie && le(ie, "display", "");
 };
-xl && !za && document.addEventListener("click", function(e) {
+xl && !ja && document.addEventListener("click", function(e) {
   if (pl)
     return e.preventDefault(), e.stopPropagation && e.stopPropagation(), e.stopImmediatePropagation && e.stopImmediatePropagation(), pl = !1, !1;
 }, !0);
 var yt = function(l) {
   if (W) {
     l = l.touches ? l.touches[0] : l;
-    var t = pn(l.clientX, l.clientY);
+    var t = kn(l.clientX, l.clientY);
     if (t) {
       var a = {};
       for (var o in l)
         l.hasOwnProperty(o) && (a[o] = l[o]);
-      a.target = a.rootEl = t, a.preventDefault = void 0, a.stopPropagation = void 0, t[Le]._onDragOver(a);
+      a.target = a.rootEl = t, a.preventDefault = void 0, a.stopPropagation = void 0, t[Fe]._onDragOver(a);
     }
   }
-}, bn = function(l) {
-  W && W.parentNode[Le]._isOutsideThisEl(l.target);
+}, wn = function(l) {
+  W && W.parentNode[Fe]._isOutsideThisEl(l.target);
 };
 function ae(e, l) {
   if (!(e && e.nodeType && e.nodeType === 1))
     throw "Sortable: `el` must be an HTMLElement, not ".concat({}.toString.call(e));
-  this.el = e, this.options = l = at({}, l), e[Le] = this;
+  this.el = e, this.options = l = ot({}, l), e[Fe] = this;
   var t = {
     group: null,
     sort: !0,
@@ -1808,7 +1808,7 @@ function ae(e, l) {
     // will be set to same as swapThreshold if default
     removeCloneOnHide: !0,
     direction: function() {
-      return Ha(e, this.options);
+      return Za(e, this.options);
     },
     ghostClass: "sortable-ghost",
     chosenClass: "sortable-chosen",
@@ -1818,8 +1818,8 @@ function ae(e, l) {
     preventOnFilter: !0,
     animation: 0,
     easing: null,
-    setData: function(v, m) {
-      v.setData("Text", m.textContent);
+    setData: function(v, f) {
+      v.setData("Text", f.textContent);
     },
     dropBubble: !1,
     dragoverBubble: !1,
@@ -1842,10 +1842,10 @@ function ae(e, l) {
   tl.initializePlugins(this, e, t);
   for (var a in t)
     !(a in l) && (l[a] = t[a]);
-  Xa(l);
+  Qa(l);
   for (var o in this)
     o.charAt(0) === "_" && typeof this[o] == "function" && (this[o] = this[o].bind(this));
-  this.nativeDraggable = l.forceFallback ? !1 : mn, this.nativeDraggable && (this.options.touchStartThreshold = 1), l.supportPointer ? me(e, "pointerdown", this._onTapStart) : (me(e, "mousedown", this._onTapStart), me(e, "touchstart", this._onTapStart)), this.nativeDraggable && (me(e, "dragover", this), me(e, "dragenter", this)), bl.push(this.el), l.store && l.store.get && this.sort(l.store.get(this) || []), at(this, rn());
+  this.nativeDraggable = l.forceFallback ? !1 : yn, this.nativeDraggable && (this.options.touchStartThreshold = 1), l.supportPointer ? me(e, "pointerdown", this._onTapStart) : (me(e, "mousedown", this._onTapStart), me(e, "touchstart", this._onTapStart)), this.nativeDraggable && (me(e, "dragover", this), me(e, "dragenter", this)), bl.push(this.el), l.store && l.store.get && this.sort(l.store.get(this) || []), ot(this, mn());
 }
 ae.prototype = /** @lends Sortable.prototype */
 {
@@ -1858,20 +1858,20 @@ ae.prototype = /** @lends Sortable.prototype */
   },
   _onTapStart: function(l) {
     if (l.cancelable) {
-      var t = this, a = this.el, o = this.options, d = o.preventOnFilter, v = l.type, m = l.touches && l.touches[0] || l.pointerType && l.pointerType === "touch" && l, f = (m || l).target, i = l.target.shadowRoot && (l.path && l.path[0] || l.composedPath && l.composedPath()[0]) || f, n = o.filter;
-      if (xn(a), !W && !(/mousedown|pointerdown/.test(v) && l.button !== 0 || o.disabled) && !i.isContentEditable && !(!this.nativeDraggable && Ht && f && f.tagName.toUpperCase() === "SELECT") && (f = Je(f, o.draggable, a, !1), !(f && f.animated) && dl !== f)) {
-        if (Nt = qe(f), Jt = qe(f, o.draggable), typeof n == "function") {
-          if (n.call(this, l, f, this)) {
+      var t = this, a = this.el, o = this.options, s = o.preventOnFilter, v = l.type, f = l.touches && l.touches[0] || l.pointerType && l.pointerType === "touch" && l, m = (f || l).target, i = l.target.shadowRoot && (l.path && l.path[0] || l.composedPath && l.composedPath()[0]) || m, n = o.filter;
+      if (Un(a), !W && !(/mousedown|pointerdown/.test(v) && l.button !== 0 || o.disabled) && !i.isContentEditable && !(!this.nativeDraggable && Ht && m && m.tagName.toUpperCase() === "SELECT") && (m = Je(m, o.draggable, a, !1), !(m && m.animated) && dl !== m)) {
+        if (Nt = qe(m), Jt = qe(m, o.draggable), typeof n == "function") {
+          if (n.call(this, l, m, this)) {
             Oe({
               sortable: t,
               rootEl: i,
               name: "filter",
-              targetEl: f,
+              targetEl: m,
               toEl: a,
               fromEl: a
             }), Me("filter", t, {
               evt: l
-            }), d && l.preventDefault();
+            }), s && l.preventDefault();
             return;
           }
         } else if (n && (n = n.split(",").some(function(u) {
@@ -1880,29 +1880,29 @@ ae.prototype = /** @lends Sortable.prototype */
               sortable: t,
               rootEl: u,
               name: "filter",
-              targetEl: f,
+              targetEl: m,
               fromEl: a,
               toEl: a
             }), Me("filter", t, {
               evt: l
             }), !0;
         }), n)) {
-          d && l.preventDefault();
+          s && l.preventDefault();
           return;
         }
-        o.handle && !Je(i, o.handle, a, !1) || this._prepareDragStart(l, m, f);
+        o.handle && !Je(i, o.handle, a, !1) || this._prepareDragStart(l, f, m);
       }
     }
   },
   _prepareDragStart: function(l, t, a) {
-    var o = this, d = o.el, v = o.options, m = d.ownerDocument, f;
-    if (a && !W && a.parentNode === d) {
+    var o = this, s = o.el, v = o.options, f = s.ownerDocument, m;
+    if (a && !W && a.parentNode === s) {
       var i = Ue(a);
-      if (we = d, W = a, xe = W.parentNode, wt = W.nextSibling, dl = a, il = v.group, ae.dragged = W, ht = {
+      if (we = s, W = a, Ce = W.parentNode, wt = W.nextSibling, dl = a, il = v.group, ae.dragged = W, ht = {
         target: W,
         clientX: (t || l).clientX,
         clientY: (t || l).clientY
-      }, ga = ht.clientX - i.left, ka = ht.clientY - i.top, this._lastX = (t || l).clientX, this._lastY = (t || l).clientY, W.style["will-change"] = "all", f = function() {
+      }, ga = ht.clientX - i.left, ka = ht.clientY - i.top, this._lastX = (t || l).clientX, this._lastY = (t || l).clientY, W.style["will-change"] = "all", m = function() {
         if (Me("delayEnded", o, {
           evt: l
         }), ae.eventCanceled) {
@@ -1913,19 +1913,19 @@ ae.prototype = /** @lends Sortable.prototype */
           sortable: o,
           name: "choose",
           originalEvent: l
-        }), Fe(W, v.chosenClass, !0);
+        }), ze(W, v.chosenClass, !0);
       }, v.ignore.split(",").forEach(function(n) {
-        ja(W, n.trim(), Nl);
-      }), me(m, "dragover", yt), me(m, "mousemove", yt), me(m, "touchmove", yt), v.supportPointer ? (me(m, "pointerup", o._onDrop), !this.nativeDraggable && me(m, "pointercancel", o._onDrop)) : (me(m, "mouseup", o._onDrop), me(m, "touchend", o._onDrop), me(m, "touchcancel", o._onDrop)), pa && this.nativeDraggable && (this.options.touchStartThreshold = 4, W.draggable = !0), Me("delayStart", this, {
+        Ka(W, n.trim(), Nl);
+      }), me(f, "dragover", yt), me(f, "mousemove", yt), me(f, "touchmove", yt), v.supportPointer ? (me(f, "pointerup", o._onDrop), !this.nativeDraggable && me(f, "pointercancel", o._onDrop)) : (me(f, "mouseup", o._onDrop), me(f, "touchend", o._onDrop), me(f, "touchcancel", o._onDrop)), pa && this.nativeDraggable && (this.options.touchStartThreshold = 4, W.draggable = !0), Me("delayStart", this, {
         evt: l
-      }), v.delay && (!v.delayOnTouchOnly || t) && (!this.nativeDraggable || !(el || ot))) {
+      }), v.delay && (!v.delayOnTouchOnly || t) && (!this.nativeDraggable || !(el || nt))) {
         if (ae.eventCanceled) {
           this._onDrop();
           return;
         }
-        v.supportPointer ? (me(m, "pointerup", o._disableDelayedDrag), me(m, "pointercancel", o._disableDelayedDrag)) : (me(m, "mouseup", o._disableDelayedDrag), me(m, "touchend", o._disableDelayedDrag), me(m, "touchcancel", o._disableDelayedDrag)), me(m, "mousemove", o._delayedDragTouchMoveHandler), me(m, "touchmove", o._delayedDragTouchMoveHandler), v.supportPointer && me(m, "pointermove", o._delayedDragTouchMoveHandler), o._dragStartTimer = setTimeout(f, v.delay);
+        v.supportPointer ? (me(f, "pointerup", o._disableDelayedDrag), me(f, "pointercancel", o._disableDelayedDrag)) : (me(f, "mouseup", o._disableDelayedDrag), me(f, "touchend", o._disableDelayedDrag), me(f, "touchcancel", o._disableDelayedDrag)), me(f, "mousemove", o._delayedDragTouchMoveHandler), me(f, "touchmove", o._delayedDragTouchMoveHandler), v.supportPointer && me(f, "pointermove", o._delayedDragTouchMoveHandler), o._dragStartTimer = setTimeout(m, v.delay);
       } else
-        f();
+        m();
     }
   },
   _delayedDragTouchMoveHandler: function(l) {
@@ -1937,7 +1937,7 @@ ae.prototype = /** @lends Sortable.prototype */
   },
   _disableDelayedDragEvents: function() {
     var l = this.el.ownerDocument;
-    ce(l, "mouseup", this._disableDelayedDrag), ce(l, "touchend", this._disableDelayedDrag), ce(l, "touchcancel", this._disableDelayedDrag), ce(l, "pointerup", this._disableDelayedDrag), ce(l, "pointercancel", this._disableDelayedDrag), ce(l, "mousemove", this._delayedDragTouchMoveHandler), ce(l, "touchmove", this._delayedDragTouchMoveHandler), ce(l, "pointermove", this._delayedDragTouchMoveHandler);
+    ve(l, "mouseup", this._disableDelayedDrag), ve(l, "touchend", this._disableDelayedDrag), ve(l, "touchcancel", this._disableDelayedDrag), ve(l, "pointerup", this._disableDelayedDrag), ve(l, "pointercancel", this._disableDelayedDrag), ve(l, "mousemove", this._delayedDragTouchMoveHandler), ve(l, "touchmove", this._delayedDragTouchMoveHandler), ve(l, "pointermove", this._delayedDragTouchMoveHandler);
   },
   _triggerDragStart: function(l, t) {
     t = t || l.pointerType == "touch" && l, !this.nativeDraggable || t ? this.options.supportPointer ? me(document, "pointermove", this._onTouchMove) : t ? me(document, "touchmove", this._onTouchMove) : me(document, "mousemove", this._onTouchMove) : (me(W, "dragend", this), me(we, "dragstart", this._onDragStart));
@@ -1952,9 +1952,9 @@ ae.prototype = /** @lends Sortable.prototype */
     if (Rt = !1, we && W) {
       Me("dragStarted", this, {
         evt: t
-      }), this.nativeDraggable && me(document, "dragover", bn);
+      }), this.nativeDraggable && me(document, "dragover", wn);
       var a = this.options;
-      !l && Fe(W, a.dragClass, !1), Fe(W, a.ghostClass, !0), ae.active = this, l && this._appendGhost(), Oe({
+      !l && ze(W, a.dragClass, !1), ze(W, a.ghostClass, !0), ae.active = this, l && this._appendGhost(), Oe({
         sortable: this,
         name: "start",
         originalEvent: t
@@ -1964,14 +1964,14 @@ ae.prototype = /** @lends Sortable.prototype */
   },
   _emulateDragOver: function() {
     if (Xe) {
-      this._lastX = Xe.clientX, this._lastY = Xe.clientY, Ja();
+      this._lastX = Xe.clientX, this._lastY = Xe.clientY, _a();
       for (var l = document.elementFromPoint(Xe.clientX, Xe.clientY), t = l; l && l.shadowRoot && (l = l.shadowRoot.elementFromPoint(Xe.clientX, Xe.clientY), l !== t); )
         t = l;
-      if (W.parentNode[Le]._isOutsideThisEl(l), t)
+      if (W.parentNode[Fe]._isOutsideThisEl(l), t)
         do {
-          if (t[Le]) {
+          if (t[Fe]) {
             var a = void 0;
-            if (a = t[Le]._onDragOver({
+            if (a = t[Fe]._onDragOver({
               clientX: Xe.clientX,
               clientY: Xe.clientY,
               target: l,
@@ -1980,15 +1980,15 @@ ae.prototype = /** @lends Sortable.prototype */
               break;
           }
           l = t;
-        } while (t = Ba(t));
-      Za();
+        } while (t = Wa(t));
+      eo();
     }
   },
   _onTouchMove: function(l) {
     if (ht) {
-      var t = this.options, a = t.fallbackTolerance, o = t.fallbackOffset, d = l.touches ? l.touches[0] : l, v = ie && Lt(ie, !0), m = ie && v && v.a, f = ie && v && v.d, i = sl && Pe && ya(Pe), n = (d.clientX - ht.clientX + o.x) / (m || 1) + (i ? i[0] - Ol[0] : 0) / (m || 1), u = (d.clientY - ht.clientY + o.y) / (f || 1) + (i ? i[1] - Ol[1] : 0) / (f || 1);
+      var t = this.options, a = t.fallbackTolerance, o = t.fallbackOffset, s = l.touches ? l.touches[0] : l, v = ie && Ft(ie, !0), f = ie && v && v.a, m = ie && v && v.d, i = sl && Pe && ya(Pe), n = (s.clientX - ht.clientX + o.x) / (f || 1) + (i ? i[0] - Ol[0] : 0) / (f || 1), u = (s.clientY - ht.clientY + o.y) / (m || 1) + (i ? i[1] - Ol[1] : 0) / (m || 1);
       if (!ae.active && !Rt) {
-        if (a && Math.max(Math.abs(d.clientX - this._lastX), Math.abs(d.clientY - this._lastY)) < a)
+        if (a && Math.max(Math.abs(s.clientX - this._lastX), Math.abs(s.clientY - this._lastY)) < a)
           return;
         this._onDragStart(l, !0);
       }
@@ -2002,7 +2002,7 @@ ae.prototype = /** @lends Sortable.prototype */
           f: u
         };
         var y = "matrix(".concat(v.a, ",").concat(v.b, ",").concat(v.c, ",").concat(v.d, ",").concat(v.e, ",").concat(v.f, ")");
-        le(ie, "webkitTransform", y), le(ie, "mozTransform", y), le(ie, "msTransform", y), le(ie, "transform", y), Pl = n, Rl = u, Xe = d;
+        le(ie, "webkitTransform", y), le(ie, "mozTransform", y), le(ie, "msTransform", y), le(ie, "transform", y), Pl = n, Rl = u, Xe = s;
       }
       l.cancelable && l.preventDefault();
     }
@@ -2015,174 +2015,174 @@ ae.prototype = /** @lends Sortable.prototype */
           Pe = Pe.parentNode;
         Pe !== document.body && Pe !== document.documentElement ? (Pe === document && (Pe = _e()), t.top += Pe.scrollTop, t.left += Pe.scrollLeft) : Pe = _e(), Ol = ya(Pe);
       }
-      ie = W.cloneNode(!0), Fe(ie, a.ghostClass, !1), Fe(ie, a.fallbackClass, !0), Fe(ie, a.dragClass, !0), le(ie, "transition", ""), le(ie, "transform", ""), le(ie, "box-sizing", "border-box"), le(ie, "margin", 0), le(ie, "top", t.top), le(ie, "left", t.left), le(ie, "width", t.width), le(ie, "height", t.height), le(ie, "opacity", "0.8"), le(ie, "position", sl ? "absolute" : "fixed"), le(ie, "zIndex", "100000"), le(ie, "pointerEvents", "none"), ae.ghost = ie, l.appendChild(ie), le(ie, "transform-origin", ga / parseInt(ie.style.width) * 100 + "% " + ka / parseInt(ie.style.height) * 100 + "%");
+      ie = W.cloneNode(!0), ze(ie, a.ghostClass, !1), ze(ie, a.fallbackClass, !0), ze(ie, a.dragClass, !0), le(ie, "transition", ""), le(ie, "transform", ""), le(ie, "box-sizing", "border-box"), le(ie, "margin", 0), le(ie, "top", t.top), le(ie, "left", t.left), le(ie, "width", t.width), le(ie, "height", t.height), le(ie, "opacity", "0.8"), le(ie, "position", sl ? "absolute" : "fixed"), le(ie, "zIndex", "100000"), le(ie, "pointerEvents", "none"), ae.ghost = ie, l.appendChild(ie), le(ie, "transform-origin", ga / parseInt(ie.style.width) * 100 + "% " + ka / parseInt(ie.style.height) * 100 + "%");
     }
   },
   _onDragStart: function(l, t) {
-    var a = this, o = l.dataTransfer, d = a.options;
+    var a = this, o = l.dataTransfer, s = a.options;
     if (Me("dragStart", this, {
       evt: l
     }), ae.eventCanceled) {
       this._onDrop();
       return;
     }
-    Me("setupClone", this), ae.eventCanceled || ($e = Ka(W), $e.removeAttribute("id"), $e.draggable = !1, $e.style["will-change"] = "", this._hideClone(), Fe($e, this.options.chosenClass, !1), ae.clone = $e), a.cloneId = cl(function() {
+    Me("setupClone", this), ae.eventCanceled || ($e = Ha(W), $e.removeAttribute("id"), $e.draggable = !1, $e.style["will-change"] = "", this._hideClone(), ze($e, this.options.chosenClass, !1), ae.clone = $e), a.cloneId = cl(function() {
       Me("clone", a), !ae.eventCanceled && (a.options.removeCloneOnHide || we.insertBefore($e, W), a._hideClone(), Oe({
         sortable: a,
         name: "clone"
       }));
-    }), !t && Fe(W, d.dragClass, !0), t ? (pl = !0, a._loopId = setInterval(a._emulateDragOver, 50)) : (ce(document, "mouseup", a._onDrop), ce(document, "touchend", a._onDrop), ce(document, "touchcancel", a._onDrop), o && (o.effectAllowed = "move", d.setData && d.setData.call(a, o, W)), me(document, "drop", a), le(W, "transform", "translateZ(0)")), Rt = !0, a._dragStartId = cl(a._dragStarted.bind(a, t, l)), me(document, "selectstart", a), Kt = !0, window.getSelection().removeAllRanges(), Ht && le(document.body, "user-select", "none");
+    }), !t && ze(W, s.dragClass, !0), t ? (pl = !0, a._loopId = setInterval(a._emulateDragOver, 50)) : (ve(document, "mouseup", a._onDrop), ve(document, "touchend", a._onDrop), ve(document, "touchcancel", a._onDrop), o && (o.effectAllowed = "move", s.setData && s.setData.call(a, o, W)), me(document, "drop", a), le(W, "transform", "translateZ(0)")), Rt = !0, a._dragStartId = cl(a._dragStarted.bind(a, t, l)), me(document, "selectstart", a), Kt = !0, window.getSelection().removeAllRanges(), Ht && le(document.body, "user-select", "none");
   },
   // Returns true - if no further action is needed (either inserted or another condition)
   _onDragOver: function(l) {
-    var t = this.el, a = l.target, o, d, v, m = this.options, f = m.group, i = ae.active, n = il === f, u = m.sort, y = Ie || i, p, w = this, S = !1;
+    var t = this.el, a = l.target, o, s, v, f = this.options, m = f.group, i = ae.active, n = il === m, u = f.sort, y = Ie || i, p, w = this, S = !1;
     if (Wl) return;
-    function U(pe, ke) {
+    function I(pe, ke) {
       Me(pe, w, et({
         evt: l,
         isOwner: n,
         axis: p ? "vertical" : "horizontal",
         revert: v,
         dragRect: o,
-        targetRect: d,
+        targetRect: s,
         canSort: u,
         fromSortable: y,
         target: a,
-        completed: I,
+        completed: A,
         onMove: function(De, h) {
           return rl(we, t, W, o, De, Ue(De), l, h);
         },
-        changed: T
+        changed: x
       }, ke));
     }
     function $() {
-      U("dragOverAnimationCapture"), w.captureAnimationState(), w !== y && y.captureAnimationState();
+      I("dragOverAnimationCapture"), w.captureAnimationState(), w !== y && y.captureAnimationState();
     }
-    function I(pe) {
-      return U("dragOverCompleted", {
+    function A(pe) {
+      return I("dragOverCompleted", {
         insertion: pe
-      }), pe && (n ? i._hideClone() : i._showClone(w), w !== y && (Fe(W, Ie ? Ie.options.ghostClass : i.options.ghostClass, !1), Fe(W, m.ghostClass, !0)), Ie !== w && w !== ae.active ? Ie = w : w === ae.active && Ie && (Ie = null), y === w && (w._ignoreWhileAnimating = a), w.animateAll(function() {
-        U("dragOverAnimationComplete"), w._ignoreWhileAnimating = null;
-      }), w !== y && (y.animateAll(), y._ignoreWhileAnimating = null)), (a === W && !W.animated || a === t && !a.animated) && (Pt = null), !m.dragoverBubble && !l.rootEl && a !== document && (W.parentNode[Le]._isOutsideThisEl(l.target), !pe && yt(l)), !m.dragoverBubble && l.stopPropagation && l.stopPropagation(), S = !0;
+      }), pe && (n ? i._hideClone() : i._showClone(w), w !== y && (ze(W, Ie ? Ie.options.ghostClass : i.options.ghostClass, !1), ze(W, f.ghostClass, !0)), Ie !== w && w !== ae.active ? Ie = w : w === ae.active && Ie && (Ie = null), y === w && (w._ignoreWhileAnimating = a), w.animateAll(function() {
+        I("dragOverAnimationComplete"), w._ignoreWhileAnimating = null;
+      }), w !== y && (y.animateAll(), y._ignoreWhileAnimating = null)), (a === W && !W.animated || a === t && !a.animated) && (Pt = null), !f.dragoverBubble && !l.rootEl && a !== document && (W.parentNode[Fe]._isOutsideThisEl(l.target), !pe && yt(l)), !f.dragoverBubble && l.stopPropagation && l.stopPropagation(), S = !0;
     }
-    function T() {
-      Be = qe(W), dt = qe(W, m.draggable), Oe({
+    function x() {
+      Be = qe(W), ct = qe(W, f.draggable), Oe({
         sortable: w,
         name: "change",
         toEl: t,
         newIndex: Be,
-        newDraggableIndex: dt,
+        newDraggableIndex: ct,
         originalEvent: l
       });
     }
-    if (l.preventDefault !== void 0 && l.cancelable && l.preventDefault(), a = Je(a, m.draggable, t, !0), U("dragOver"), ae.eventCanceled) return S;
+    if (l.preventDefault !== void 0 && l.cancelable && l.preventDefault(), a = Je(a, f.draggable, t, !0), I("dragOver"), ae.eventCanceled) return S;
     if (W.contains(l.target) || a.animated && a.animatingX && a.animatingY || w._ignoreWhileAnimating === a)
-      return I(!1);
-    if (pl = !1, i && !m.disabled && (n ? u || (v = xe !== we) : Ie === this || (this.lastPutMode = il.checkPull(this, i, W, l)) && f.checkPut(this, i, W, l))) {
-      if (p = this._getDirection(l, a) === "vertical", o = Ue(W), U("dragOverValid"), ae.eventCanceled) return S;
+      return A(!1);
+    if (pl = !1, i && !f.disabled && (n ? u || (v = Ce !== we) : Ie === this || (this.lastPutMode = il.checkPull(this, i, W, l)) && m.checkPut(this, i, W, l))) {
+      if (p = this._getDirection(l, a) === "vertical", o = Ue(W), I("dragOverValid"), ae.eventCanceled) return S;
       if (v)
-        return xe = we, $(), this._hideClone(), U("revert"), ae.eventCanceled || (wt ? we.insertBefore(W, wt) : we.appendChild(W)), I(!0);
-      var D = la(t, m.draggable);
-      if (!D || kn(l, p, this) && !D.animated) {
-        if (D === W)
-          return I(!1);
-        if (D && t === l.target && (a = D), a && (d = Ue(a)), rl(we, t, W, o, a, d, l, !!a) !== !1)
-          return $(), D && D.nextSibling ? t.insertBefore(W, D.nextSibling) : t.appendChild(W), xe = t, T(), I(!0);
-      } else if (D && gn(l, p, this)) {
-        var V = Ft(t, 0, m, !0);
+        return Ce = we, $(), this._hideClone(), I("revert"), ae.eventCanceled || (wt ? we.insertBefore(W, wt) : we.appendChild(W)), A(!0);
+      var E = la(t, f.draggable);
+      if (!E || Cn(l, p, this) && !E.animated) {
+        if (E === W)
+          return A(!1);
+        if (E && t === l.target && (a = E), a && (s = Ue(a)), rl(we, t, W, o, a, s, l, !!a) !== !1)
+          return $(), E && E.nextSibling ? t.insertBefore(W, E.nextSibling) : t.appendChild(W), Ce = t, x(), A(!0);
+      } else if (E && xn(l, p, this)) {
+        var V = zt(t, 0, f, !0);
         if (V === W)
-          return I(!1);
-        if (a = V, d = Ue(a), rl(we, t, W, o, a, d, l, !1) !== !1)
-          return $(), t.insertBefore(W, V), xe = t, T(), I(!0);
+          return A(!1);
+        if (a = V, s = Ue(a), rl(we, t, W, o, a, s, l, !1) !== !1)
+          return $(), t.insertBefore(W, V), Ce = t, x(), A(!0);
       } else if (a.parentNode === t) {
-        d = Ue(a);
-        var P = 0, Z, de = W.parentNode !== t, ne = !fn(W.animated && W.toRect || o, a.animated && a.toRect || d, p), B = p ? "top" : "left", O = ha(a, "top", "top") || ha(W, "top", "top"), oe = O ? O.scrollTop : void 0;
-        Pt !== a && (Z = d[B], Qt = !1, nl = !ne && m.invertSwap || de), P = wn(l, a, d, p, ne ? 1 : m.swapThreshold, m.invertedSwapThreshold == null ? m.swapThreshold : m.invertedSwapThreshold, nl, Pt === a);
-        var x;
+        s = Ue(a);
+        var P = 0, X, de = W.parentNode !== t, ne = !gn(W.animated && W.toRect || o, a.animated && a.toRect || s, p), B = p ? "top" : "left", O = ha(a, "top", "top") || ha(W, "top", "top"), oe = O ? O.scrollTop : void 0;
+        Pt !== a && (X = s[B], Qt = !1, nl = !ne && f.invertSwap || de), P = Sn(l, a, s, p, ne ? 1 : f.swapThreshold, f.invertedSwapThreshold == null ? f.swapThreshold : f.invertedSwapThreshold, nl, Pt === a);
+        var C;
         if (P !== 0) {
           var R = qe(W);
           do
-            R -= P, x = xe.children[R];
-          while (x && (le(x, "display") === "none" || x === ie));
+            R -= P, C = Ce.children[R];
+          while (C && (le(C, "display") === "none" || C === ie));
         }
-        if (P === 0 || x === a)
-          return I(!1);
+        if (P === 0 || C === a)
+          return A(!1);
         Pt = a, Zt = P;
-        var N = a.nextElementSibling, X = !1;
-        X = P === 1;
-        var ue = rl(we, t, W, o, a, d, l, X);
-        if (ue !== !1)
-          return (ue === 1 || ue === -1) && (X = ue === 1), Wl = !0, setTimeout(yn, 30), $(), X && !N ? t.appendChild(W) : a.parentNode.insertBefore(W, X ? N : a), O && Wa(O, 0, oe - O.scrollTop), xe = W.parentNode, Z !== void 0 && !nl && (ul = Math.abs(Z - Ue(a)[B])), T(), I(!0);
+        var N = a.nextElementSibling, J = !1;
+        J = P === 1;
+        var ce = rl(we, t, W, o, a, s, l, J);
+        if (ce !== !1)
+          return (ce === 1 || ce === -1) && (J = ce === 1), Wl = !0, setTimeout($n, 30), $(), J && !N ? t.appendChild(W) : a.parentNode.insertBefore(W, J ? N : a), O && Ya(O, 0, oe - O.scrollTop), Ce = W.parentNode, X !== void 0 && !nl && (ul = Math.abs(X - Ue(a)[B])), x(), A(!0);
       }
       if (t.contains(W))
-        return I(!1);
+        return A(!1);
     }
     return !1;
   },
   _ignoreWhileAnimating: null,
   _offMoveEvents: function() {
-    ce(document, "mousemove", this._onTouchMove), ce(document, "touchmove", this._onTouchMove), ce(document, "pointermove", this._onTouchMove), ce(document, "dragover", yt), ce(document, "mousemove", yt), ce(document, "touchmove", yt);
+    ve(document, "mousemove", this._onTouchMove), ve(document, "touchmove", this._onTouchMove), ve(document, "pointermove", this._onTouchMove), ve(document, "dragover", yt), ve(document, "mousemove", yt), ve(document, "touchmove", yt);
   },
   _offUpEvents: function() {
     var l = this.el.ownerDocument;
-    ce(l, "mouseup", this._onDrop), ce(l, "touchend", this._onDrop), ce(l, "pointerup", this._onDrop), ce(l, "pointercancel", this._onDrop), ce(l, "touchcancel", this._onDrop), ce(document, "selectstart", this);
+    ve(l, "mouseup", this._onDrop), ve(l, "touchend", this._onDrop), ve(l, "pointerup", this._onDrop), ve(l, "pointercancel", this._onDrop), ve(l, "touchcancel", this._onDrop), ve(document, "selectstart", this);
   },
   _onDrop: function(l) {
     var t = this.el, a = this.options;
-    if (Be = qe(W), dt = qe(W, a.draggable), Me("drop", this, {
+    if (Be = qe(W), ct = qe(W, a.draggable), Me("drop", this, {
       evt: l
-    }), xe = W && W.parentNode, Be = qe(W), dt = qe(W, a.draggable), ae.eventCanceled) {
+    }), Ce = W && W.parentNode, Be = qe(W), ct = qe(W, a.draggable), ae.eventCanceled) {
       this._nulling();
       return;
     }
-    Rt = !1, nl = !1, Qt = !1, clearInterval(this._loopId), clearTimeout(this._dragStartTimer), Kl(this.cloneId), Kl(this._dragStartId), this.nativeDraggable && (ce(document, "drop", this), ce(t, "dragstart", this._onDragStart)), this._offMoveEvents(), this._offUpEvents(), Ht && le(document.body, "user-select", ""), le(W, "transform", ""), l && (Kt && (l.cancelable && l.preventDefault(), !a.dropBubble && l.stopPropagation()), ie && ie.parentNode && ie.parentNode.removeChild(ie), (we === xe || Ie && Ie.lastPutMode !== "clone") && $e && $e.parentNode && $e.parentNode.removeChild($e), W && (this.nativeDraggable && ce(W, "dragend", this), Nl(W), W.style["will-change"] = "", Kt && !Rt && Fe(W, Ie ? Ie.options.ghostClass : this.options.ghostClass, !1), Fe(W, this.options.chosenClass, !1), Oe({
+    Rt = !1, nl = !1, Qt = !1, clearInterval(this._loopId), clearTimeout(this._dragStartTimer), Kl(this.cloneId), Kl(this._dragStartId), this.nativeDraggable && (ve(document, "drop", this), ve(t, "dragstart", this._onDragStart)), this._offMoveEvents(), this._offUpEvents(), Ht && le(document.body, "user-select", ""), le(W, "transform", ""), l && (Kt && (l.cancelable && l.preventDefault(), !a.dropBubble && l.stopPropagation()), ie && ie.parentNode && ie.parentNode.removeChild(ie), (we === Ce || Ie && Ie.lastPutMode !== "clone") && $e && $e.parentNode && $e.parentNode.removeChild($e), W && (this.nativeDraggable && ve(W, "dragend", this), Nl(W), W.style["will-change"] = "", Kt && !Rt && ze(W, Ie ? Ie.options.ghostClass : this.options.ghostClass, !1), ze(W, this.options.chosenClass, !1), Oe({
       sortable: this,
       name: "unchoose",
-      toEl: xe,
+      toEl: Ce,
       newIndex: null,
       newDraggableIndex: null,
       originalEvent: l
-    }), we !== xe ? (Be >= 0 && (Oe({
-      rootEl: xe,
+    }), we !== Ce ? (Be >= 0 && (Oe({
+      rootEl: Ce,
       name: "add",
-      toEl: xe,
+      toEl: Ce,
       fromEl: we,
       originalEvent: l
     }), Oe({
       sortable: this,
       name: "remove",
-      toEl: xe,
+      toEl: Ce,
       originalEvent: l
     }), Oe({
-      rootEl: xe,
+      rootEl: Ce,
       name: "sort",
-      toEl: xe,
+      toEl: Ce,
       fromEl: we,
       originalEvent: l
     }), Oe({
       sortable: this,
       name: "sort",
-      toEl: xe,
+      toEl: Ce,
       originalEvent: l
     })), Ie && Ie.save()) : Be !== Nt && Be >= 0 && (Oe({
       sortable: this,
       name: "update",
-      toEl: xe,
+      toEl: Ce,
       originalEvent: l
     }), Oe({
       sortable: this,
       name: "sort",
-      toEl: xe,
+      toEl: Ce,
       originalEvent: l
-    })), ae.active && ((Be == null || Be === -1) && (Be = Nt, dt = Jt), Oe({
+    })), ae.active && ((Be == null || Be === -1) && (Be = Nt, ct = Jt), Oe({
       sortable: this,
       name: "end",
-      toEl: xe,
+      toEl: Ce,
       originalEvent: l
     }), this.save()))), this._nulling();
   },
   _nulling: function() {
-    Me("nulling", this), we = W = xe = ie = wt = $e = dl = ut = ht = Xe = Kt = Be = dt = Nt = Jt = Pt = Zt = Ie = il = ae.dragged = ae.ghost = ae.clone = ae.active = null;
+    Me("nulling", this), we = W = Ce = ie = wt = $e = dl = vt = ht = Xe = Kt = Be = ct = Nt = Jt = Pt = Zt = Ie = il = ae.dragged = ae.ghost = ae.clone = ae.active = null;
     var l = this.el;
     hl.forEach(function(t) {
       l.contains(t) && (t.checked = !0);
@@ -2196,7 +2196,7 @@ ae.prototype = /** @lends Sortable.prototype */
         break;
       case "dragenter":
       case "dragover":
-        W && (this._onDragOver(l), hn(l));
+        W && (this._onDragOver(l), Vn(l));
         break;
       case "selectstart":
         l.preventDefault();
@@ -2208,8 +2208,8 @@ ae.prototype = /** @lends Sortable.prototype */
    * @returns {String[]}
    */
   toArray: function() {
-    for (var l = [], t, a = this.el.children, o = 0, d = a.length, v = this.options; o < d; o++)
-      t = a[o], Je(t, v.draggable, this.el, !1) && l.push(t.getAttribute(v.dataIdAttr) || $n(t));
+    for (var l = [], t, a = this.el.children, o = 0, s = a.length, v = this.options; o < s; o++)
+      t = a[o], Je(t, v.draggable, this.el, !1) && l.push(t.getAttribute(v.dataIdAttr) || En(t));
     return l;
   },
   /**
@@ -2218,11 +2218,11 @@ ae.prototype = /** @lends Sortable.prototype */
    */
   sort: function(l, t) {
     var a = {}, o = this.el;
-    this.toArray().forEach(function(d, v) {
-      var m = o.children[v];
-      Je(m, this.options.draggable, o, !1) && (a[d] = m);
-    }, this), t && this.captureAnimationState(), l.forEach(function(d) {
-      a[d] && (o.removeChild(a[d]), o.appendChild(a[d]));
+    this.toArray().forEach(function(s, v) {
+      var f = o.children[v];
+      Je(f, this.options.draggable, o, !1) && (a[s] = f);
+    }, this), t && this.captureAnimationState(), l.forEach(function(s) {
+      a[s] && (o.removeChild(a[s]), o.appendChild(a[s]));
     }), t && this.animateAll();
   },
   /**
@@ -2252,7 +2252,7 @@ ae.prototype = /** @lends Sortable.prototype */
     if (t === void 0)
       return a[l];
     var o = tl.modifyOption(this, l, t);
-    typeof o < "u" ? a[l] = o : a[l] = t, l === "group" && Xa(a);
+    typeof o < "u" ? a[l] = o : a[l] = t, l === "group" && Qa(a);
   },
   /**
    * Destroy
@@ -2260,14 +2260,14 @@ ae.prototype = /** @lends Sortable.prototype */
   destroy: function() {
     Me("destroy", this);
     var l = this.el;
-    l[Le] = null, ce(l, "mousedown", this._onTapStart), ce(l, "touchstart", this._onTapStart), ce(l, "pointerdown", this._onTapStart), this.nativeDraggable && (ce(l, "dragover", this), ce(l, "dragenter", this)), Array.prototype.forEach.call(l.querySelectorAll("[draggable]"), function(t) {
+    l[Fe] = null, ve(l, "mousedown", this._onTapStart), ve(l, "touchstart", this._onTapStart), ve(l, "pointerdown", this._onTapStart), this.nativeDraggable && (ve(l, "dragover", this), ve(l, "dragenter", this)), Array.prototype.forEach.call(l.querySelectorAll("[draggable]"), function(t) {
       t.removeAttribute("draggable");
     }), this._onDrop(), this._disableDelayedDragEvents(), bl.splice(bl.indexOf(this.el), 1), this.el = l = null;
   },
   _hideClone: function() {
-    if (!ut) {
+    if (!vt) {
       if (Me("hideClone", this), ae.eventCanceled) return;
-      le($e, "display", "none"), this.options.removeCloneOnHide && $e.parentNode && $e.parentNode.removeChild($e), ut = !0;
+      le($e, "display", "none"), this.options.removeCloneOnHide && $e.parentNode && $e.parentNode.removeChild($e), vt = !0;
     }
   },
   _showClone: function(l) {
@@ -2275,58 +2275,58 @@ ae.prototype = /** @lends Sortable.prototype */
       this._hideClone();
       return;
     }
-    if (ut) {
+    if (vt) {
       if (Me("showClone", this), ae.eventCanceled) return;
-      W.parentNode == we && !this.options.group.revertClone ? we.insertBefore($e, W) : wt ? we.insertBefore($e, wt) : we.appendChild($e), this.options.group.revertClone && this.animate(W, $e), le($e, "display", ""), ut = !1;
+      W.parentNode == we && !this.options.group.revertClone ? we.insertBefore($e, W) : wt ? we.insertBefore($e, wt) : we.appendChild($e), this.options.group.revertClone && this.animate(W, $e), le($e, "display", ""), vt = !1;
     }
   }
 };
-function hn(e) {
+function Vn(e) {
   e.dataTransfer && (e.dataTransfer.dropEffect = "move"), e.cancelable && e.preventDefault();
 }
-function rl(e, l, t, a, o, d, v, m) {
-  var f, i = e[Le], n = i.options.onMove, u;
-  return window.CustomEvent && !ot && !el ? f = new CustomEvent("move", {
+function rl(e, l, t, a, o, s, v, f) {
+  var m, i = e[Fe], n = i.options.onMove, u;
+  return window.CustomEvent && !nt && !el ? m = new CustomEvent("move", {
     bubbles: !0,
     cancelable: !0
-  }) : (f = document.createEvent("Event"), f.initEvent("move", !0, !0)), f.to = l, f.from = e, f.dragged = t, f.draggedRect = a, f.related = o || l, f.relatedRect = d || Ue(l), f.willInsertAfter = m, f.originalEvent = v, e.dispatchEvent(f), n && (u = n.call(i, f, v)), u;
+  }) : (m = document.createEvent("Event"), m.initEvent("move", !0, !0)), m.to = l, m.from = e, m.dragged = t, m.draggedRect = a, m.related = o || l, m.relatedRect = s || Ue(l), m.willInsertAfter = f, m.originalEvent = v, e.dispatchEvent(m), n && (u = n.call(i, m, v)), u;
 }
 function Nl(e) {
   e.draggable = !1;
 }
-function yn() {
+function $n() {
   Wl = !1;
 }
-function gn(e, l, t) {
-  var a = Ue(Ft(t.el, 0, t.options, !0)), o = Ga(t.el, t.options, ie), d = 10;
-  return l ? e.clientX < o.left - d || e.clientY < a.top && e.clientX < a.right : e.clientY < o.top - d || e.clientY < a.bottom && e.clientX < a.left;
+function xn(e, l, t) {
+  var a = Ue(zt(t.el, 0, t.options, !0)), o = Xa(t.el, t.options, ie), s = 10;
+  return l ? e.clientX < o.left - s || e.clientY < a.top && e.clientX < a.right : e.clientY < o.top - s || e.clientY < a.bottom && e.clientX < a.left;
 }
-function kn(e, l, t) {
-  var a = Ue(la(t.el, t.options.draggable)), o = Ga(t.el, t.options, ie), d = 10;
-  return l ? e.clientX > o.right + d || e.clientY > a.bottom && e.clientX > a.left : e.clientY > o.bottom + d || e.clientX > a.right && e.clientY > a.top;
+function Cn(e, l, t) {
+  var a = Ue(la(t.el, t.options.draggable)), o = Xa(t.el, t.options, ie), s = 10;
+  return l ? e.clientX > o.right + s || e.clientY > a.bottom && e.clientX > a.left : e.clientY > o.bottom + s || e.clientX > a.right && e.clientY > a.top;
 }
-function wn(e, l, t, a, o, d, v, m) {
-  var f = a ? e.clientY : e.clientX, i = a ? t.height : t.width, n = a ? t.top : t.left, u = a ? t.bottom : t.right, y = !1;
+function Sn(e, l, t, a, o, s, v, f) {
+  var m = a ? e.clientY : e.clientX, i = a ? t.height : t.width, n = a ? t.top : t.left, u = a ? t.bottom : t.right, y = !1;
   if (!v) {
-    if (m && ul < i * o) {
-      if (!Qt && (Zt === 1 ? f > n + i * d / 2 : f < u - i * d / 2) && (Qt = !0), Qt)
+    if (f && ul < i * o) {
+      if (!Qt && (Zt === 1 ? m > n + i * s / 2 : m < u - i * s / 2) && (Qt = !0), Qt)
         y = !0;
-      else if (Zt === 1 ? f < n + ul : f > u - ul)
+      else if (Zt === 1 ? m < n + ul : m > u - ul)
         return -Zt;
-    } else if (f > n + i * (1 - o) / 2 && f < u - i * (1 - o) / 2)
-      return Vn(l);
+    } else if (m > n + i * (1 - o) / 2 && m < u - i * (1 - o) / 2)
+      return Tn(l);
   }
-  return y = y || v, y && (f < n + i * d / 2 || f > u - i * d / 2) ? f > n + i / 2 ? 1 : -1 : 0;
+  return y = y || v, y && (m < n + i * s / 2 || m > u - i * s / 2) ? m > n + i / 2 ? 1 : -1 : 0;
 }
-function Vn(e) {
+function Tn(e) {
   return qe(W) < qe(e) ? 1 : -1;
 }
-function $n(e) {
+function En(e) {
   for (var l = e.tagName + e.className + e.src + e.href + e.textContent, t = l.length, a = 0; t--; )
     a += l.charCodeAt(t);
   return a.toString(36);
 }
-function xn(e) {
+function Un(e) {
   hl.length = 0;
   for (var l = e.getElementsByTagName("input"), t = l.length; t--; ) {
     var a = l[t];
@@ -2344,26 +2344,26 @@ xl && me(document, "touchmove", function(e) {
 });
 ae.utils = {
   on: me,
-  off: ce,
+  off: ve,
   css: le,
-  find: ja,
+  find: Ka,
   is: function(l, t) {
     return !!Je(l, t, l, !1);
   },
-  extend: nn,
-  throttle: qa,
+  extend: cn,
+  throttle: Ga,
   closest: Je,
-  toggleClass: Fe,
-  clone: Ka,
+  toggleClass: ze,
+  clone: Ha,
   index: qe,
   nextTick: cl,
   cancelNextTick: Kl,
-  detectDirection: Ha,
-  getChild: Ft,
-  expando: Le
+  detectDirection: Za,
+  getChild: zt,
+  expando: Fe
 };
 ae.get = function(e) {
-  return e[Le];
+  return e[Fe];
 };
 ae.mount = function() {
   for (var e = arguments.length, l = new Array(e), t = 0; t < e; t++)
@@ -2377,9 +2377,9 @@ ae.mount = function() {
 ae.create = function(e, l) {
   return new ae(e, l);
 };
-ae.version = an;
-var Ee = [], Gt, Gl, Yl = !1, Ml, Ll, yl, Yt;
-function Cn() {
+ae.version = dn;
+var Ee = [], Gt, Gl, Yl = !1, Ml, Fl, yl, Yt;
+function Dn() {
   function e() {
     this.defaults = {
       scroll: !0,
@@ -2401,32 +2401,32 @@ function Cn() {
       !this.options.dragOverBubble && !a.rootEl && this._handleAutoScroll(a);
     },
     drop: function() {
-      this.sortable.nativeDraggable ? ce(document, "dragover", this._handleAutoScroll) : (ce(document, "pointermove", this._handleFallbackAutoScroll), ce(document, "touchmove", this._handleFallbackAutoScroll), ce(document, "mousemove", this._handleFallbackAutoScroll)), Va(), vl(), sn();
+      this.sortable.nativeDraggable ? ve(document, "dragover", this._handleAutoScroll) : (ve(document, "pointermove", this._handleFallbackAutoScroll), ve(document, "touchmove", this._handleFallbackAutoScroll), ve(document, "mousemove", this._handleFallbackAutoScroll)), Va(), vl(), vn();
     },
     nulling: function() {
-      yl = Gl = Gt = Yl = Yt = Ml = Ll = null, Ee.length = 0;
+      yl = Gl = Gt = Yl = Yt = Ml = Fl = null, Ee.length = 0;
     },
     _handleFallbackAutoScroll: function(t) {
       this._handleAutoScroll(t, !0);
     },
     _handleAutoScroll: function(t, a) {
-      var o = this, d = (t.touches ? t.touches[0] : t).clientX, v = (t.touches ? t.touches[0] : t).clientY, m = document.elementFromPoint(d, v);
-      if (yl = t, a || this.options.forceAutoScrollFallback || el || ot || Ht) {
-        zl(t, this.options, m, a);
-        var f = ct(m, !0);
-        Yl && (!Yt || d !== Ml || v !== Ll) && (Yt && Va(), Yt = setInterval(function() {
-          var i = ct(document.elementFromPoint(d, v), !0);
-          i !== f && (f = i, vl()), zl(t, o.options, i, a);
-        }, 10), Ml = d, Ll = v);
+      var o = this, s = (t.touches ? t.touches[0] : t).clientX, v = (t.touches ? t.touches[0] : t).clientY, f = document.elementFromPoint(s, v);
+      if (yl = t, a || this.options.forceAutoScrollFallback || el || nt || Ht) {
+        Ll(t, this.options, f, a);
+        var m = mt(f, !0);
+        Yl && (!Yt || s !== Ml || v !== Fl) && (Yt && Va(), Yt = setInterval(function() {
+          var i = mt(document.elementFromPoint(s, v), !0);
+          i !== m && (m = i, vl()), Ll(t, o.options, i, a);
+        }, 10), Ml = s, Fl = v);
       } else {
-        if (!this.options.bubbleScroll || ct(m, !0) === _e()) {
+        if (!this.options.bubbleScroll || mt(f, !0) === _e()) {
           vl();
           return;
         }
-        zl(t, this.options, ct(m, !1), !1);
+        Ll(t, this.options, mt(f, !1), !1);
       }
     }
-  }, at(e, {
+  }, ot(e, {
     pluginName: "scroll",
     initializeByDefault: !0
   });
@@ -2439,35 +2439,35 @@ function vl() {
 function Va() {
   clearInterval(Yt);
 }
-var zl = qa(function(e, l, t, a) {
+var Ll = Ga(function(e, l, t, a) {
   if (l.scroll) {
-    var o = (e.touches ? e.touches[0] : e).clientX, d = (e.touches ? e.touches[0] : e).clientY, v = l.scrollSensitivity, m = l.scrollSpeed, f = _e(), i = !1, n;
-    Gl !== t && (Gl = t, vl(), Gt = l.scroll, n = l.scrollFn, Gt === !0 && (Gt = ct(t, !0)));
+    var o = (e.touches ? e.touches[0] : e).clientX, s = (e.touches ? e.touches[0] : e).clientY, v = l.scrollSensitivity, f = l.scrollSpeed, m = _e(), i = !1, n;
+    Gl !== t && (Gl = t, vl(), Gt = l.scroll, n = l.scrollFn, Gt === !0 && (Gt = mt(t, !0)));
     var u = 0, y = Gt;
     do {
-      var p = y, w = Ue(p), S = w.top, U = w.bottom, $ = w.left, I = w.right, T = w.width, D = w.height, V = void 0, P = void 0, Z = p.scrollWidth, de = p.scrollHeight, ne = le(p), B = p.scrollLeft, O = p.scrollTop;
-      p === f ? (V = T < Z && (ne.overflowX === "auto" || ne.overflowX === "scroll" || ne.overflowX === "visible"), P = D < de && (ne.overflowY === "auto" || ne.overflowY === "scroll" || ne.overflowY === "visible")) : (V = T < Z && (ne.overflowX === "auto" || ne.overflowX === "scroll"), P = D < de && (ne.overflowY === "auto" || ne.overflowY === "scroll"));
-      var oe = V && (Math.abs(I - o) <= v && B + T < Z) - (Math.abs($ - o) <= v && !!B), x = P && (Math.abs(U - d) <= v && O + D < de) - (Math.abs(S - d) <= v && !!O);
+      var p = y, w = Ue(p), S = w.top, I = w.bottom, $ = w.left, A = w.right, x = w.width, E = w.height, V = void 0, P = void 0, X = p.scrollWidth, de = p.scrollHeight, ne = le(p), B = p.scrollLeft, O = p.scrollTop;
+      p === m ? (V = x < X && (ne.overflowX === "auto" || ne.overflowX === "scroll" || ne.overflowX === "visible"), P = E < de && (ne.overflowY === "auto" || ne.overflowY === "scroll" || ne.overflowY === "visible")) : (V = x < X && (ne.overflowX === "auto" || ne.overflowX === "scroll"), P = E < de && (ne.overflowY === "auto" || ne.overflowY === "scroll"));
+      var oe = V && (Math.abs(A - o) <= v && B + x < X) - (Math.abs($ - o) <= v && !!B), C = P && (Math.abs(I - s) <= v && O + E < de) - (Math.abs(S - s) <= v && !!O);
       if (!Ee[u])
         for (var R = 0; R <= u; R++)
           Ee[R] || (Ee[R] = {});
-      (Ee[u].vx != oe || Ee[u].vy != x || Ee[u].el !== p) && (Ee[u].el = p, Ee[u].vx = oe, Ee[u].vy = x, clearInterval(Ee[u].pid), (oe != 0 || x != 0) && (i = !0, Ee[u].pid = setInterval(function() {
+      (Ee[u].vx != oe || Ee[u].vy != C || Ee[u].el !== p) && (Ee[u].el = p, Ee[u].vx = oe, Ee[u].vy = C, clearInterval(Ee[u].pid), (oe != 0 || C != 0) && (i = !0, Ee[u].pid = setInterval(function() {
         a && this.layer === 0 && ae.active._onTouchMove(yl);
-        var N = Ee[this.layer].vy ? Ee[this.layer].vy * m : 0, X = Ee[this.layer].vx ? Ee[this.layer].vx * m : 0;
-        typeof n == "function" && n.call(ae.dragged.parentNode[Le], X, N, e, yl, Ee[this.layer].el) !== "continue" || Wa(Ee[this.layer].el, X, N);
+        var N = Ee[this.layer].vy ? Ee[this.layer].vy * f : 0, J = Ee[this.layer].vx ? Ee[this.layer].vx * f : 0;
+        typeof n == "function" && n.call(ae.dragged.parentNode[Fe], J, N, e, yl, Ee[this.layer].el) !== "continue" || Ya(Ee[this.layer].el, J, N);
       }.bind({
         layer: u
       }), 24))), u++;
-    } while (l.bubbleScroll && y !== f && (y = ct(y, !1)));
+    } while (l.bubbleScroll && y !== m && (y = mt(y, !1)));
     Yl = i;
   }
-}, 30), Qa = function(l) {
-  var t = l.originalEvent, a = l.putSortable, o = l.dragEl, d = l.activeSortable, v = l.dispatchSortableEvent, m = l.hideGhostForTarget, f = l.unhideGhostForTarget;
+}, 30), to = function(l) {
+  var t = l.originalEvent, a = l.putSortable, o = l.dragEl, s = l.activeSortable, v = l.dispatchSortableEvent, f = l.hideGhostForTarget, m = l.unhideGhostForTarget;
   if (t) {
-    var i = a || d;
-    m();
+    var i = a || s;
+    f();
     var n = t.changedTouches && t.changedTouches.length ? t.changedTouches[0] : t, u = document.elementFromPoint(n.clientX, n.clientY);
-    f(), i && !i.el.contains(u) && (v("spill"), this.onSpill({
+    m(), i && !i.el.contains(u) && (v("spill"), this.onSpill({
       dragEl: o,
       putSortable: a
     }));
@@ -2484,12 +2484,12 @@ aa.prototype = {
   onSpill: function(l) {
     var t = l.dragEl, a = l.putSortable;
     this.sortable.captureAnimationState(), a && a.captureAnimationState();
-    var o = Ft(this.sortable.el, this.startIndex, this.options);
+    var o = zt(this.sortable.el, this.startIndex, this.options);
     o ? this.sortable.el.insertBefore(t, o) : this.sortable.el.appendChild(t), this.sortable.animateAll(), a && a.animateAll();
   },
-  drop: Qa
+  drop: to
 };
-at(aa, {
+ot(aa, {
   pluginName: "revertOnSpill"
 });
 function oa() {
@@ -2499,25 +2499,25 @@ oa.prototype = {
     var t = l.dragEl, a = l.putSortable, o = a || this.sortable;
     o.captureAnimationState(), t.parentNode && t.parentNode.removeChild(t), o.animateAll();
   },
-  drop: Qa
+  drop: to
 };
-at(oa, {
+ot(oa, {
   pluginName: "removeOnSpill"
 });
-ae.mount(new Cn());
+ae.mount(new Dn());
 ae.mount(oa, aa);
-function Sn(e, l) {
+function In(e, l) {
   const t = e.oldDraggableIndex ?? e.oldIndex;
   e.item.remove();
   const a = [...e.from.children].filter((o) => o.matches(l));
   e.from.insertBefore(e.item, a[t ?? a.length] ?? null);
 }
-function _a(e) {
+function lo(e) {
   const l = /* @__PURE__ */ new Map();
   function t(a) {
     l.get(a)?.destroy(), l.delete(a);
   }
-  return ft(() => {
+  return it(() => {
     for (const a of l.keys()) t(a);
   }), {
     mounted(a) {
@@ -2528,82 +2528,82 @@ function _a(e) {
         forceFallback: !0,
         fallbackOnBody: !1,
         ghostClass: "work-drag-ghost",
-        onEnd(d) {
-          const v = d.oldDraggableIndex, m = d.newDraggableIndex;
-          Sn(d, ".work-reorder-entry"), v !== void 0 && m !== void 0 && v !== m && e(v, m);
+        onEnd(s) {
+          const v = s.oldDraggableIndex, f = s.newDraggableIndex;
+          In(s, ".work-reorder-entry"), v !== void 0 && f !== void 0 && v !== f && e(v, f);
         }
       }));
     },
     unmounted: t
   };
 }
-const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class: "work-stack work-tight" }, Un = { class: "work-stack work-tight work-small" }, Dn = { class: "work-stack work-tight work-small" }, In = { class: "work-stack work-tight" }, An = { class: "work-stack work-tight work-small" }, Pn = { class: "work-row" }, Rn = { class: "work-stack work-tight work-small" }, On = { class: "work-row" }, Nn = {
+const An = { class: "work-stack work-tight work-option-builder" }, Pn = { class: "work-stack work-tight" }, Rn = { class: "work-stack work-tight work-small" }, On = { class: "work-stack work-tight work-small" }, Nn = { class: "work-stack work-tight" }, Mn = { class: "work-stack work-tight work-small" }, Fn = { class: "work-row" }, Ln = { class: "work-stack work-tight work-small" }, zn = { class: "work-row" }, Bn = {
   key: 0,
   class: "kx-err",
   role: "alert"
-}, Mn = { class: "work-add-option" }, Ln = {
+}, jn = { class: "work-add-option" }, qn = {
   key: 0,
   class: "work-muted work-small"
-}, zn = /* @__PURE__ */ ve({
+}, Wn = /* @__PURE__ */ ue({
   __name: "OptionsEditor",
   props: {
     field: {}
   },
   emits: ["validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = "options:" + Xl(), d = G(() => t.field.options ?? []), v = G(() => d.value.every((u, y) => !!u.id && d.value.findIndex((p) => p.id === u.id) === y));
-    Ce(v, (u) => a("validity", u, o), { immediate: !0 }), ft(() => a("validity", !0, o));
-    function m(u, y) {
-      Aa(d.value, u, y - u), d.value.forEach((p, w) => p.order = w);
+    const t = e, a = l, o = "options:" + Xl(), s = K(() => t.field.options ?? []), v = K(() => s.value.every((u, y) => !!u.id && s.value.findIndex((p) => p.id === u.id) === y));
+    xe(v, (u) => a("validity", u, o), { immediate: !0 }), it(() => a("validity", !0, o));
+    function f(u, y) {
+      Oa(s.value, u, y - u), s.value.forEach((p, w) => p.order = w);
     }
-    const f = _a(m), i = ["primary", "success", "info", "warn", "danger", "secondary"];
+    const m = lo(f), i = ["primary", "success", "info", "warn", "danger", "secondary"];
     function n() {
-      let u = d.value.length + 1;
-      for (; d.value.some((y) => y.id === `option_${u}`); ) u++;
-      (t.field.options ??= []).push({ id: `option_${u}`, label: "New option", order: d.value.length });
+      let u = s.value.length + 1;
+      for (; s.value.some((y) => y.id === `option_${u}`); ) u++;
+      (t.field.options ??= []).push({ id: `option_${u}`, label: "New option", order: s.value.length });
     }
-    return (u, y) => (c(), g("section", Tn, [
-      y[4] || (y[4] = r("header", { class: "work-row" }, [
-        r("h4", null, "Options"),
-        r("span", { class: "work-muted work-small" }, "Stable IDs keep existing values when labels change."),
-        r("span", { class: "work-spacer" })
+    return (u, y) => (c(), g("section", An, [
+      y[4] || (y[4] = d("header", { class: "work-row" }, [
+        d("h4", null, "Options"),
+        d("span", { class: "work-muted work-small" }, "Stable IDs keep existing values when labels change."),
+        d("span", { class: "work-spacer" })
       ], -1)),
-      Qe((c(), g("div", En, [
-        (c(!0), g(H, null, ee(d.value, (p, w) => (c(), g("div", {
+      Qe((c(), g("div", Pn, [
+        (c(!0), g(H, null, ee(s.value, (p, w) => (c(), g("div", {
           key: w,
           class: "work-option-row work-reorder-entry"
         }, [
-          b(s(Y), {
+          b(r(G), {
             type: "button",
             class: "work-icon-button work-reorder-handle",
             "aria-label": "Drag option; arrow keys reorder",
             onKeydown: [
-              Ae(be((S) => m(w, w - 1), ["prevent"]), ["up"]),
-              Ae(be((S) => m(w, w + 1), ["prevent"]), ["down"])
+              Ae(be((S) => f(w, w - 1), ["prevent"]), ["up"]),
+              Ae(be((S) => f(w, w + 1), ["prevent"]), ["down"])
             ],
             severity: "secondary",
             text: "",
             size: "small"
           }, {
-            default: L(() => [
-              b(s(J), {
+            default: F(() => [
+              b(r(Z), {
                 icon: "tabler:grip-vertical",
                 "aria-hidden": "true"
               })
             ]),
             _: 1
           }, 8, ["onKeydown"]),
-          r("label", Un, [
+          d("label", Rn, [
             y[0] || (y[0] = M("Label", -1)),
-            b(s(re), {
+            b(r(re), {
               modelValue: p.label,
               "onUpdate:modelValue": (S) => p.label = S,
               "aria-label": "Option label"
             }, null, 8, ["modelValue", "onUpdate:modelValue"])
           ]),
-          r("label", Dn, [
+          d("label", On, [
             y[1] || (y[1] = M("ID", -1)),
-            b(s(re), {
+            b(r(re), {
               modelValue: p.id,
               "onUpdate:modelValue": (S) => p.id = S,
               class: "work-option-code",
@@ -2611,15 +2611,15 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
               "aria-label": "Option ID"
             }, null, 8, ["modelValue", "onUpdate:modelValue"])
           ]),
-          r("div", In, [
-            r("label", An, [
+          d("div", Nn, [
+            d("label", Mn, [
               y[2] || (y[2] = M("Color", -1)),
-              r("span", Pn, [
-                r("span", {
-                  class: mt(["work-color-swatch", "work-swatch-" + (p.color || "secondary")]),
+              d("span", Fn, [
+                d("span", {
+                  class: ft(["work-color-swatch", "work-swatch-" + (p.color || "secondary")]),
                   "aria-hidden": "true"
                 }, null, 2),
-                b(s(te), {
+                b(r(te), {
                   modelValue: p.color,
                   "onUpdate:modelValue": (S) => p.color = S,
                   "aria-label": "Option color",
@@ -2631,63 +2631,63 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
                 }, null, 8, ["modelValue", "onUpdate:modelValue", "options"])
               ])
             ]),
-            r("label", Rn, [
+            d("label", Ln, [
               y[3] || (y[3] = M("Category", -1)),
-              b(s(te), {
+              b(r(te), {
                 "model-value": p.category,
                 "aria-label": "Option category",
                 appendTo: "self",
                 optionLabel: "label",
                 optionValue: "value",
                 showClear: "",
-                options: ["triage", "backlog", ...s(Ia)].map((S) => ({ label: s(Zl)(S), value: S })),
+                options: ["triage", "backlog", ...r(Ra)].map((S) => ({ label: r(Zl)(S), value: S })),
                 "onUpdate:modelValue": (S) => p.category = S || void 0
               }, null, 8, ["model-value", "options", "onUpdate:modelValue"])
             ])
           ]),
-          r("div", On, [
-            b(s(Y), {
+          d("div", zn, [
+            b(r(G), {
               "aria-label": "Option earlier",
               severity: "secondary",
               size: "small",
               disabled: w === 0,
-              onClick: (S) => m(w, w - 1),
+              onClick: (S) => f(w, w - 1),
               text: ""
             }, {
-              default: L(() => [
-                b(s(J), {
+              default: F(() => [
+                b(r(Z), {
                   icon: "tabler:arrow-up",
                   "aria-hidden": "true"
                 })
               ]),
               _: 1
             }, 8, ["disabled", "onClick"]),
-            b(s(Y), {
+            b(r(G), {
               "aria-label": "Option later",
               severity: "secondary",
               size: "small",
-              disabled: w === d.value.length - 1,
-              onClick: (S) => m(w, w + 1),
+              disabled: w === s.value.length - 1,
+              onClick: (S) => f(w, w + 1),
               text: ""
             }, {
-              default: L(() => [
-                b(s(J), {
+              default: F(() => [
+                b(r(Z), {
                   icon: "tabler:arrow-down",
                   "aria-hidden": "true"
                 })
               ]),
               _: 1
             }, 8, ["disabled", "onClick"]),
-            b(s(Y), {
+            b(r(G), {
               label: "Remove",
               "aria-label": "Remove option",
               severity: "secondary",
               text: "",
               size: "small",
-              onClick: (S) => d.value.splice(w, 1)
+              onClick: (S) => s.value.splice(w, 1)
             }, {
-              icon: L(() => [
-                b(s(J), {
+              icon: F(() => [
+                b(r(Z), {
                   icon: "tabler:trash",
                   "aria-hidden": "true"
                 })
@@ -2696,17 +2696,17 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
             }, 8, ["onClick"])
           ])
         ]))), 128)),
-        v.value ? E("", !0) : (c(), g("p", Nn, "Option IDs must be nonempty and unique.")),
-        r("div", Mn, [
-          b(s(Y), {
+        v.value ? D("", !0) : (c(), g("p", Bn, "Option IDs must be nonempty and unique.")),
+        d("div", jn, [
+          b(r(G), {
             label: "Add option",
             severity: "secondary",
             size: "small",
             onClick: n,
             outlined: ""
           }, {
-            icon: L(() => [
-              b(s(J), {
+            icon: F(() => [
+              b(r(Z), {
                 icon: "tabler:plus",
                 "aria-hidden": "true"
               })
@@ -2715,31 +2715,31 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
           })
         ])
       ])), [
-        [s(f)]
+        [r(m)]
       ]),
-      d.value.length ? E("", !0) : (c(), g("p", Ln, "Add the choices people can select for this field."))
+      s.value.length ? D("", !0) : (c(), g("p", qn, "Add the choices people can select for this field."))
     ]));
   }
-}), Fn = {
+}), Kn = {
   class: "work-stack",
   "aria-label": "Fields editor"
-}, Bn = { class: "work-section-heading" }, jn = {
+}, Gn = { class: "work-section-heading" }, Yn = {
   key: 0,
   class: "work-used-by"
-}, qn = { class: "kx-tag-sm" }, Wn = { class: "work-small work-muted" }, Kn = {
+}, Hn = { class: "kx-tag-sm" }, Xn = { class: "work-small work-muted" }, Jn = {
   key: 0,
   class: "work-error work-small",
   role: "alert"
-}, Gn = { class: "work-settings-grid work-field-properties" }, Yn = { class: "work-stack work-tight" }, Hn = { class: "work-stack work-tight" }, Xn = { class: "work-stack work-tight" }, Jn = { class: "work-stack work-tight" }, Zn = { class: "work-stack work-tight" }, Qn = { class: "work-stack work-tight work-field-history" }, _n = { class: "work-settings-list" }, es = { class: "work-settings-row" }, ts = { class: "work-settings-row" }, ls = {
+}, Zn = { class: "work-settings-grid work-field-properties" }, Qn = { class: "work-stack work-tight" }, _n = { class: "work-stack work-tight" }, es = { class: "work-stack work-tight" }, ts = { class: "work-stack work-tight" }, ls = { class: "work-stack work-tight" }, as = { class: "work-stack work-tight work-field-history" }, os = { class: "work-settings-list" }, is = { class: "work-settings-row" }, ns = { class: "work-settings-row" }, ss = {
   key: 2,
   class: "work-stack work-tight"
-}, as = {
+}, rs = {
   key: 3,
   class: "work-stack work-tight"
-}, os = { class: "work-stack work-tight" }, is = { class: "work-stack work-tight" }, ns = { class: "work-stack work-tight" }, ss = { class: "work-stack work-tight" }, rs = { class: "work-stack" }, ds = {
+}, ds = { class: "work-stack work-tight" }, us = { class: "work-stack work-tight" }, cs = { class: "work-stack work-tight" }, vs = { class: "work-stack work-tight" }, ms = { class: "work-stack" }, fs = {
   key: 0,
   class: "work-stack work-tight"
-}, us = { class: "work-row work-add-definition" }, cs = { class: "work-stack work-tight" }, vs = /* @__PURE__ */ ve({
+}, ps = { class: "work-row work-add-definition" }, bs = { class: "work-stack work-tight" }, hs = /* @__PURE__ */ ue({
   __name: "FieldsEditor",
   props: {
     draft: {},
@@ -2750,89 +2750,89 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
   },
   emits: ["validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = G(() => t.draft.fields ?? []), d = z(""), v = z(""), m = z({}), f = _a(($, I) => w($, I - $));
+    const t = e, a = l, o = K(() => t.draft.fields ?? []), s = L(""), v = L(""), f = L({}), m = lo(($, A) => w($, A - $));
     function i($) {
-      return (t.draft.item_types ?? []).filter((I) => I.fields.includes($)).map((I) => I.title || ge(I.id));
+      return (t.draft.item_types ?? []).filter((A) => A.fields.includes($)).map((A) => A.title || ge(A.id));
     }
     async function n($) {
       if (!v.value) {
         v.value = $.code;
         try {
-          const I = await t.guardRemoval?.("fields", $.code);
-          m.value[$.code] = I ?? "", I || _t(t.draft, "fields", $.code);
+          const A = await t.guardRemoval?.("fields", $.code);
+          f.value[$.code] = A ?? "", A || _t(t.draft, "fields", $.code);
         } finally {
           v.value = "";
         }
       }
     }
-    const u = Object.entries({ text: "Text", int: "Whole number", dec: "Decimal number", quantity: "Measurement", bool: "Yes or no", time: "Date or time", ref: "Reference", record: "Structured data", option: "Choice", principal: "Person or group", item: "Work item", rank: "Order", rich_text: "Formatted text", formula: "Formula", rollup: "Related item calculation", counter: "Counter" }).map(([$, I]) => ({ value: $, label: I }));
+    const u = Object.entries({ text: "Text", int: "Whole number", dec: "Decimal number", quantity: "Measurement", bool: "Yes or no", time: "Date or time", ref: "Reference", record: "Structured data", option: "Choice", principal: "Person or group", item: "Work item", rank: "Order", rich_text: "Formatted text", formula: "Formula", rollup: "Related item calculation", counter: "Counter" }).map(([$, A]) => ({ value: $, label: A }));
     function y($) {
       return $.type && $.type !== "value" ? $.type : $.form;
     }
-    function p($, I) {
-      const T = { option: "text", principal: "ref", item: "ref", rank: "text", rich_text: "text", formula: "int", rollup: "int", counter: "int" };
-      T[I] ? ($.type = I, $.form = T[I]) : (delete $.type, $.form = I), I !== "option" ? delete $.options : $.options ??= [], I === "rich_text" && ($.config = { format: "json" });
+    function p($, A) {
+      const x = { option: "text", principal: "ref", item: "ref", rank: "text", rich_text: "text", formula: "int", rollup: "int", counter: "int" };
+      x[A] ? ($.type = A, $.form = x[A]) : (delete $.type, $.form = A), A !== "option" ? delete $.options : $.options ??= [], A === "rich_text" && ($.config = { format: "json" });
     }
-    function w($, I) {
-      Aa(o.value, $, I);
-      for (const T of t.draft.item_types ?? []) {
-        const D = new Set(T.fields);
-        T.fields = o.value.filter((V) => D.has(V.code)).map((V) => V.code);
+    function w($, A) {
+      Oa(o.value, $, A);
+      for (const x of t.draft.item_types ?? []) {
+        const E = new Set(x.fields);
+        x.fields = o.value.filter((V) => E.has(V.code)).map((V) => V.code);
       }
     }
-    function S($, I) {
+    function S($, A) {
       try {
-        xo(t.draft, $, I.value), delete m.value[$.code];
-      } catch (T) {
-        m.value[$.code] = T.message, I.value = $.code;
+        Eo(t.draft, $, A.value), delete f.value[$.code];
+      } catch (x) {
+        f.value[$.code] = x.message, A.value = $.code;
       }
     }
-    function U() {
-      !/^[a-z][a-z0-9_]*$/.test(d.value) || o.value.some(($) => $.code === d.value) || ((t.draft.fields ??= []).push({ code: d.value, form: "text", cardinality: "one" }), d.value = "");
+    function I() {
+      !/^[a-z][a-z0-9_]*$/.test(s.value) || o.value.some(($) => $.code === s.value) || ((t.draft.fields ??= []).push({ code: s.value, form: "text", cardinality: "one" }), s.value = "");
     }
-    return ($, I) => (c(), g("section", Fn, [
-      r("header", Bn, [
-        I[2] || (I[2] = r("div", null, [
-          r("h2", null, "Fields"),
-          r("p", { class: "work-muted work-small" }, "Shape the information each item carries. Drag the handle or use the arrows to arrange fields.")
+    return ($, A) => (c(), g("section", Kn, [
+      d("header", Gn, [
+        A[2] || (A[2] = d("div", null, [
+          d("h2", null, "Fields"),
+          d("p", { class: "work-muted work-small" }, "Shape the information each item carries. Drag the handle or use the arrows to arrange fields.")
         ], -1)),
-        b(s(Re), {
+        b(r(Re), {
           class: "kx-tag-sm",
           severity: "secondary"
         }, {
-          default: L(() => [
-            M(A(o.value.length) + " " + A(o.value.length === 1 ? "field" : "fields"), 1)
+          default: F(() => [
+            M(U(o.value.length) + " " + U(o.value.length === 1 ? "field" : "fields"), 1)
           ]),
           _: 1
         })
       ]),
-      Qe((c(), F($l, {
+      Qe((c(), z($l, {
         columns: "fields",
         count: o.value.length
       }, {
-        default: L(() => [
-          (c(!0), g(H, null, ee(o.value, (T, D) => (c(), F(Vl, {
-            title: s(Ct)(T),
-            code: T.code,
-            kind: e.installedTypes?.find((V) => V.id === y(T))?.title || s(u).find((V) => V.value === y(T))?.label || s(ge)(y(T)),
-            key: T.id ?? D,
+        default: F(() => [
+          (c(!0), g(H, null, ee(o.value, (x, E) => (c(), z(Vl, {
+            title: r(Ct)(x),
+            code: x.code,
+            kind: e.installedTypes?.find((V) => V.id === y(x))?.title || r(u).find((V) => V.value === y(x))?.label || r(ge)(y(x)),
+            key: x.id ?? E,
             class: "work-field-row work-reorder-entry work-stack"
           }, {
-            handle: L(() => [
-              b(s(Y), {
+            handle: F(() => [
+              b(r(G), {
                 type: "button",
                 class: "work-reorder-handle work-icon-button",
-                "aria-label": "Drag " + T.code + "; arrow keys reorder",
+                "aria-label": "Drag " + x.code + "; arrow keys reorder",
                 onKeydown: [
-                  Ae(be((V) => w(D, -1), ["prevent"]), ["up"]),
-                  Ae(be((V) => w(D, 1), ["prevent"]), ["down"])
+                  Ae(be((V) => w(E, -1), ["prevent"]), ["up"]),
+                  Ae(be((V) => w(E, 1), ["prevent"]), ["down"])
                 ],
                 severity: "secondary",
                 text: "",
                 size: "small"
               }, {
-                default: L(() => [
-                  b(s(J), {
+                default: F(() => [
+                  b(r(Z), {
                     icon: "tabler:grip-vertical",
                     "aria-hidden": "true"
                   })
@@ -2840,69 +2840,69 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
                 _: 1
               }, 8, ["aria-label", "onKeydown"])
             ]),
-            flags: L(() => [
-              T.track ? (c(), F(s(Re), {
+            flags: F(() => [
+              x.track ? (c(), z(r(Re), {
                 key: 0,
                 class: "kx-tag-sm",
                 severity: "secondary",
                 value: "Tracked"
-              })) : E("", !0),
-              T.intervals ? (c(), F(s(Re), {
+              })) : D("", !0),
+              x.intervals ? (c(), z(r(Re), {
                 key: 1,
                 class: "kx-tag-sm",
                 severity: "secondary",
                 value: "Intervals"
-              })) : E("", !0)
+              })) : D("", !0)
             ]),
-            usage: L(() => [
-              i(T.code).length ? (c(), g("details", jn, [
-                r("summary", qn, "Used by " + A(i(T.code).length) + " " + A(i(T.code).length === 1 ? "type" : "types"), 1),
-                r("span", Wn, A(i(T.code).join(", ")), 1)
-              ])) : E("", !0)
+            usage: F(() => [
+              i(x.code).length ? (c(), g("details", Yn, [
+                d("summary", Hn, "Used by " + U(i(x.code).length) + " " + U(i(x.code).length === 1 ? "type" : "types"), 1),
+                d("span", Xn, U(i(x.code).join(", ")), 1)
+              ])) : D("", !0)
             ]),
-            actions: L(() => [
-              b(s(Y), {
-                "aria-label": "Move " + T.code + " earlier",
+            actions: F(() => [
+              b(r(G), {
+                "aria-label": "Move " + x.code + " earlier",
                 severity: "secondary",
-                disabled: D === 0,
-                onClick: (V) => w(D, -1),
+                disabled: E === 0,
+                onClick: (V) => w(E, -1),
                 text: "",
                 size: "small"
               }, {
-                default: L(() => [
-                  b(s(J), {
+                default: F(() => [
+                  b(r(Z), {
                     icon: "tabler:arrow-up",
                     "aria-hidden": "true"
                   })
                 ]),
                 _: 1
               }, 8, ["aria-label", "disabled", "onClick"]),
-              b(s(Y), {
-                "aria-label": "Move " + T.code + " later",
+              b(r(G), {
+                "aria-label": "Move " + x.code + " later",
                 severity: "secondary",
-                disabled: D === o.value.length - 1,
-                onClick: (V) => w(D, 1),
+                disabled: E === o.value.length - 1,
+                onClick: (V) => w(E, 1),
                 text: "",
                 size: "small"
               }, {
-                default: L(() => [
-                  b(s(J), {
+                default: F(() => [
+                  b(r(Z), {
                     icon: "tabler:arrow-down",
                     "aria-hidden": "true"
                   })
                 ]),
                 _: 1
               }, 8, ["aria-label", "disabled", "onClick"]),
-              b(s(Y), {
+              b(r(G), {
                 severity: "secondary",
                 text: "",
                 size: "small",
                 disabled: !!v.value,
-                onClick: (V) => n(T),
+                onClick: (V) => n(x),
                 "aria-label": "Remove field"
               }, {
-                default: L(() => [
-                  b(s(J), {
+                default: F(() => [
+                  b(r(Z), {
                     icon: "tabler:trash",
                     "aria-hidden": "true"
                   })
@@ -2910,61 +2910,61 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
                 _: 1
               }, 8, ["disabled", "onClick"])
             ]),
-            default: L(() => [
-              m.value[T.code] ? (c(), g("p", Kn, A(m.value[T.code]), 1)) : E("", !0),
-              (c(!0), g(H, null, ee(e.issues?.filter((V) => V.code === T.code) ?? [], (V) => (c(), g("p", {
+            default: F(() => [
+              f.value[x.code] ? (c(), g("p", Jn, U(f.value[x.code]), 1)) : D("", !0),
+              (c(!0), g(H, null, ee(e.issues?.filter((V) => V.code === x.code) ?? [], (V) => (c(), g("p", {
                 key: V.what,
                 class: "work-error work-small",
                 role: "alert"
-              }, A(s(wl)(V)) + " · " + A(V.what), 1))), 128)),
-              r("div", Gn, [
-                r("label", Yn, [
-                  I[3] || (I[3] = M("Title", -1)),
-                  b(s(re), {
-                    modelValue: T.title,
-                    "onUpdate:modelValue": (V) => T.title = V,
+              }, U(r(wl)(V)) + " · " + U(V.what), 1))), 128)),
+              d("div", Zn, [
+                d("label", Qn, [
+                  A[3] || (A[3] = M("Title", -1)),
+                  b(r(re), {
+                    modelValue: x.title,
+                    "onUpdate:modelValue": (V) => x.title = V,
                     "aria-label": "Field title",
                     maxlength: "255",
-                    placeholder: s(Ct)(T)
+                    placeholder: r(Ct)(x)
                   }, null, 8, ["modelValue", "onUpdate:modelValue", "placeholder"])
                 ]),
-                r("label", Hn, [
-                  I[4] || (I[4] = M("Field identifier", -1)),
-                  b(s(re), {
-                    value: T.code,
+                d("label", _n, [
+                  A[4] || (A[4] = M("Field identifier", -1)),
+                  b(r(re), {
+                    value: x.code,
                     "aria-label": "Field code",
                     required: "",
                     pattern: "[a-z][a-z0-9_]*",
-                    onInput: (V) => S(T, V.target)
+                    onInput: (V) => S(x, V.target)
                   }, null, 8, ["value", "onInput"])
                 ]),
-                r("label", Xn, [
-                  I[5] || (I[5] = M("Kind", -1)),
-                  b(s(te), {
-                    "model-value": y(T),
-                    "onUpdate:modelValue": (V) => p(T, V),
+                d("label", es, [
+                  A[5] || (A[5] = M("Kind", -1)),
+                  b(r(te), {
+                    "model-value": y(x),
+                    "onUpdate:modelValue": (V) => p(x, V),
                     appendTo: "self",
-                    options: s(u),
+                    options: r(u),
                     optionLabel: "label",
                     optionValue: "value"
                   }, null, 8, ["model-value", "onUpdate:modelValue", "options"])
                 ]),
-                r("label", Jn, [
-                  I[6] || (I[6] = M("Values allowed", -1)),
-                  b(s(te), {
-                    "model-value": T.cardinality ?? "one",
-                    "onUpdate:modelValue": (V) => T.cardinality = V,
+                d("label", ts, [
+                  A[6] || (A[6] = M("Values allowed", -1)),
+                  b(r(te), {
+                    "model-value": x.cardinality ?? "one",
+                    "onUpdate:modelValue": (V) => x.cardinality = V,
                     appendTo: "self",
                     options: [{ label: "One value", value: "one" }, { label: "Multiple unique values", value: "set" }, { label: "Ordered values", value: "list" }],
                     optionLabel: "label",
                     optionValue: "value"
                   }, null, 8, ["model-value", "onUpdate:modelValue"])
                 ]),
-                r("label", Zn, [
-                  I[7] || (I[7] = M("Search support", -1)),
-                  b(s(te), {
-                    "model-value": T.index ?? "none",
-                    "onUpdate:modelValue": (V) => T.index = V,
+                d("label", ls, [
+                  A[7] || (A[7] = M("Search support", -1)),
+                  b(r(te), {
+                    "model-value": x.index ?? "none",
+                    "onUpdate:modelValue": (V) => x.index = V,
                     appendTo: "self",
                     options: [{ label: "None", value: "none" }, { label: "Exact matches", value: "key" }, { label: "Numeric ranges", value: "number" }],
                     optionLabel: "label",
@@ -2972,150 +2972,150 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
                   }, null, 8, ["model-value", "onUpdate:modelValue"])
                 ])
               ]),
-              r("section", Qn, [
-                I[10] || (I[10] = r("h4", { class: "work-group-title" }, "History", -1)),
-                r("div", _n, [
-                  r("div", es, [
-                    I[8] || (I[8] = r("div", { class: "work-row-main" }, [
-                      r("strong", null, "Track changes"),
-                      r("p", { class: "work-muted work-small" }, "Record each value change in the item history.")
+              d("section", as, [
+                A[10] || (A[10] = d("h4", { class: "work-group-title" }, "History", -1)),
+                d("div", os, [
+                  d("div", is, [
+                    A[8] || (A[8] = d("div", { class: "work-row-main" }, [
+                      d("strong", null, "Track changes"),
+                      d("p", { class: "work-muted work-small" }, "Record each value change in the item history.")
                     ], -1)),
-                    b(s(ze), {
-                      modelValue: T.track,
-                      "onUpdate:modelValue": (V) => T.track = V,
+                    b(r(Le), {
+                      modelValue: x.track,
+                      "onUpdate:modelValue": (V) => x.track = V,
                       "aria-label": "Track changes"
                     }, null, 8, ["modelValue", "onUpdate:modelValue"])
                   ]),
-                  r("div", ts, [
-                    I[9] || (I[9] = r("div", { class: "work-row-main" }, [
-                      r("strong", null, "Track intervals"),
-                      r("p", { class: "work-muted work-small" }, "Measure how long each value stays in effect.")
+                  d("div", ns, [
+                    A[9] || (A[9] = d("div", { class: "work-row-main" }, [
+                      d("strong", null, "Track intervals"),
+                      d("p", { class: "work-muted work-small" }, "Measure how long each value stays in effect.")
                     ], -1)),
-                    b(s(ze), {
-                      modelValue: T.intervals,
-                      "onUpdate:modelValue": (V) => T.intervals = V,
+                    b(r(Le), {
+                      modelValue: x.intervals,
+                      "onUpdate:modelValue": (V) => x.intervals = V,
                       "aria-label": "Track intervals"
                     }, null, 8, ["modelValue", "onUpdate:modelValue"])
                   ])
                 ])
               ]),
-              T.type === "option" ? (c(), F(zn, {
+              x.type === "option" ? (c(), z(Wn, {
                 key: 1,
-                field: T,
-                onValidity: I[0] || (I[0] = (V, P) => a("validity", P, V))
-              }, null, 8, ["field"])) : E("", !0),
-              T.type === "formula" || T.type === "rollup" ? (c(), g("label", ls, [
-                I[11] || (I[11] = M("Result type", -1)),
-                b(s(te), {
-                  modelValue: T.form,
-                  "onUpdate:modelValue": (V) => T.form = V,
+                field: x,
+                onValidity: A[0] || (A[0] = (V, P) => a("validity", P, V))
+              }, null, 8, ["field"])) : D("", !0),
+              x.type === "formula" || x.type === "rollup" ? (c(), g("label", ss, [
+                A[11] || (A[11] = M("Result type", -1)),
+                b(r(te), {
+                  modelValue: x.form,
+                  "onUpdate:modelValue": (V) => x.form = V,
                   "aria-label": "Result type",
-                  options: s(u).slice(0, 8),
+                  options: r(u).slice(0, 8),
                   optionLabel: "label",
                   optionValue: "value",
                   appendTo: "self"
                 }, null, 8, ["modelValue", "onUpdate:modelValue", "options"])
-              ])) : E("", !0),
-              T.type === "formula" ? (c(), g("label", as, [
-                I[12] || (I[12] = M("Expression", -1)),
-                b(s(re), {
-                  modelValue: T.expression,
-                  "onUpdate:modelValue": (V) => T.expression = V
+              ])) : D("", !0),
+              x.type === "formula" ? (c(), g("label", rs, [
+                A[12] || (A[12] = M("Expression", -1)),
+                b(r(re), {
+                  modelValue: x.expression,
+                  "onUpdate:modelValue": (V) => x.expression = V
                 }, null, 8, ["modelValue", "onUpdate:modelValue"])
-              ])) : E("", !0),
-              T.type === "rollup" ? (c(), g(H, { key: 4 }, [
-                r("label", os, [
-                  I[13] || (I[13] = M("Of", -1)),
-                  b(s(re), {
-                    modelValue: T.of,
-                    "onUpdate:modelValue": (V) => T.of = V
+              ])) : D("", !0),
+              x.type === "rollup" ? (c(), g(H, { key: 4 }, [
+                d("label", ds, [
+                  A[13] || (A[13] = M("Of", -1)),
+                  b(r(re), {
+                    modelValue: x.of,
+                    "onUpdate:modelValue": (V) => x.of = V
                   }, null, 8, ["modelValue", "onUpdate:modelValue"])
                 ]),
-                r("label", is, [
-                  I[14] || (I[14] = M("Function", -1)),
-                  b(s(re), {
-                    modelValue: T.fn,
-                    "onUpdate:modelValue": (V) => T.fn = V
+                d("label", us, [
+                  A[14] || (A[14] = M("Function", -1)),
+                  b(r(re), {
+                    modelValue: x.fn,
+                    "onUpdate:modelValue": (V) => x.fn = V
                   }, null, 8, ["modelValue", "onUpdate:modelValue"])
                 ]),
-                r("label", ns, [
-                  I[15] || (I[15] = M("Field", -1)),
-                  b(s(re), {
-                    modelValue: T.field,
-                    "onUpdate:modelValue": (V) => T.field = V
+                d("label", cs, [
+                  A[15] || (A[15] = M("Field", -1)),
+                  b(r(re), {
+                    modelValue: x.field,
+                    "onUpdate:modelValue": (V) => x.field = V
                   }, null, 8, ["modelValue", "onUpdate:modelValue"])
                 ]),
-                r("label", ss, [
-                  I[16] || (I[16] = M("Order by", -1)),
-                  b(s(te), {
-                    "model-value": T.by,
+                d("label", vs, [
+                  A[16] || (A[16] = M("Order by", -1)),
+                  b(r(te), {
+                    "model-value": x.by,
                     "aria-label": "Rollup order",
                     options: ["rank", "time"],
                     showClear: "",
                     appendTo: "self",
-                    "onUpdate:modelValue": (V) => T.by = V || void 0
+                    "onUpdate:modelValue": (V) => x.by = V || void 0
                   }, null, 8, ["model-value", "onUpdate:modelValue"])
                 ]),
                 b(_l, {
-                  modelValue: T.where,
-                  "onUpdate:modelValue": (V) => T.where = V,
+                  modelValue: x.where,
+                  "onUpdate:modelValue": (V) => x.where = V,
                   draft: e.draft,
                   "board-id": e.boardId,
                   label: "Include related items when",
-                  onValidity: (V) => a("validity", "rollup-" + D, V)
+                  onValidity: (V) => a("validity", "rollup-" + E, V)
                 }, null, 8, ["modelValue", "onUpdate:modelValue", "draft", "board-id", "onValidity"])
-              ], 64)) : E("", !0),
-              ["dec", "quantity", "ref", "time", "record"].includes(T.form) || T.config ? (c(), F(lt, {
+              ], 64)) : D("", !0),
+              ["dec", "quantity", "ref", "time", "record"].includes(x.form) || x.config ? (c(), z(at, {
                 key: 5,
                 label: "Field configuration",
-                "model-value": T.config,
+                "model-value": x.config,
                 shape: "object",
-                "onUpdate:modelValue": (V) => T.config = V,
-                onValidity: (V) => a("validity", "config-" + D, V)
-              }, null, 8, ["model-value", "onUpdate:modelValue", "onValidity"])) : E("", !0),
-              r("section", rs, [
-                I[18] || (I[18] = r("h4", { class: "work-group-title" }, "Access", -1)),
-                e.installedTypes?.length ? (c(), g("label", ds, [
-                  I[17] || (I[17] = M("Custom field type", -1)),
-                  b(s(te), {
-                    "model-value": T.type,
+                "onUpdate:modelValue": (V) => x.config = V,
+                onValidity: (V) => a("validity", "config-" + E, V)
+              }, null, 8, ["model-value", "onUpdate:modelValue", "onValidity"])) : D("", !0),
+              d("section", ms, [
+                A[18] || (A[18] = d("h4", { class: "work-group-title" }, "Access", -1)),
+                e.installedTypes?.length ? (c(), g("label", fs, [
+                  A[17] || (A[17] = M("Custom field type", -1)),
+                  b(r(te), {
+                    "model-value": x.type,
                     options: e.installedTypes,
                     optionLabel: "title",
                     optionValue: "id",
                     appendTo: "self",
-                    "onUpdate:modelValue": (V) => T.type = V
+                    "onUpdate:modelValue": (V) => x.type = V
                   }, null, 8, ["model-value", "options", "onUpdate:modelValue"])
-                ])) : E("", !0),
-                (c(), g(H, null, ee(["read", "write"], (V) => b(La, {
+                ])) : D("", !0),
+                (c(), g(H, null, ee(["read", "write"], (V) => b(Ba, {
                   "board-id": e.boardId,
                   key: V,
                   label: V === "read" ? "Who can read" : "Who can edit",
-                  "model-value": T.access?.[V],
-                  "onUpdate:modelValue": (P) => T.access = { ...T.access, [V]: P },
-                  onValidity: (P) => a("validity", "access-" + D + V, P)
+                  "model-value": x.access?.[V],
+                  "onUpdate:modelValue": (P) => x.access = { ...x.access, [V]: P },
+                  onValidity: (P) => a("validity", "access-" + E + V, P)
                 }, null, 8, ["board-id", "label", "model-value", "onUpdate:modelValue", "onValidity"])), 64))
               ])
             ]),
             _: 2
           }, 1032, ["title", "code", "kind"]))), 128)),
-          r("div", us, [
-            r("label", cs, [
-              I[19] || (I[19] = M("New field identifier", -1)),
-              b(s(re), {
-                modelValue: d.value,
-                "onUpdate:modelValue": I[1] || (I[1] = (T) => d.value = T),
-                onKeydown: Ae(be(U, ["prevent"]), ["enter"])
+          d("div", ps, [
+            d("label", bs, [
+              A[19] || (A[19] = M("New field identifier", -1)),
+              b(r(re), {
+                modelValue: s.value,
+                "onUpdate:modelValue": A[1] || (A[1] = (x) => s.value = x),
+                onKeydown: Ae(be(I, ["prevent"]), ["enter"])
               }, null, 8, ["modelValue", "onKeydown"])
             ]),
-            b(s(Y), {
+            b(r(G), {
               label: "Add field",
               severity: "secondary",
-              disabled: !d.value.trim(),
-              onClick: U,
+              disabled: !s.value.trim(),
+              onClick: I,
               outlined: ""
             }, {
-              icon: L(() => [
-                b(s(J), {
+              icon: F(() => [
+                b(r(Z), {
                   icon: "tabler:plus",
                   "aria-hidden": "true"
                 })
@@ -3126,14 +3126,14 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
         ]),
         _: 1
       }, 8, ["count"])), [
-        [s(f)]
+        [r(m)]
       ])
     ]));
   }
-}), ms = ["disabled"], fs = { class: "work-chips" }, ps = {
+}), ys = ["disabled"], gs = { class: "work-chips" }, ks = {
   key: 1,
   class: "work-muted work-small"
-}, zt = /* @__PURE__ */ ve({
+}, Lt = /* @__PURE__ */ ue({
   __name: "ChipPicker",
   props: {
     label: {},
@@ -3143,29 +3143,29 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
   },
   emits: ["update:modelValue"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = z(""), d = G(() => t.options.map((f) => typeof f == "string" ? { value: f } : f)), v = G(() => d.value.filter((f) => (f.label ?? ge(f.value)).toLocaleLowerCase().includes(o.value.toLocaleLowerCase())));
-    function m(f) {
+    const t = e, a = l, o = L(""), s = K(() => t.options.map((m) => typeof m == "string" ? { value: m } : m)), v = K(() => s.value.filter((m) => (m.label ?? ge(m.value)).toLocaleLowerCase().includes(o.value.toLocaleLowerCase())));
+    function f(m) {
       if (t.disabled) return;
       const i = t.modelValue ?? [];
-      a("update:modelValue", i.includes(f) ? i.filter((n) => n !== f) : [...i, f]);
+      a("update:modelValue", i.includes(m) ? i.filter((n) => n !== m) : [...i, m]);
     }
-    return (f, i) => (c(), g("fieldset", {
+    return (m, i) => (c(), g("fieldset", {
       class: "work-chip-picker",
       disabled: e.disabled
     }, [
-      r("legend", null, A(e.label), 1),
-      e.options.length > 10 ? (c(), F(s(re), {
+      d("legend", null, U(e.label), 1),
+      e.options.length > 10 ? (c(), z(r(re), {
         key: 0,
         modelValue: o.value,
         "onUpdate:modelValue": i[0] || (i[0] = (n) => o.value = n),
         type: "search",
         "aria-label": "Find " + e.label.toLowerCase(),
         placeholder: "Find a choice…"
-      }, null, 8, ["modelValue", "aria-label"])) : E("", !0),
-      r("div", fs, [
-        b(s(Ql), {
+      }, null, 8, ["modelValue", "aria-label"])) : D("", !0),
+      d("div", gs, [
+        b(r(Ql), {
           "model-value": e.modelValue ?? [],
-          options: v.value.map((n) => ({ value: n.value, label: n.label ?? s(ge)(n.value) })),
+          options: v.value.map((n) => ({ value: n.value, label: n.label ?? r(ge)(n.value) })),
           optionLabel: "label",
           optionValue: "value",
           multiple: "",
@@ -3173,7 +3173,7 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
           "aria-label": e.label,
           "onUpdate:modelValue": i[1] || (i[1] = (n) => a("update:modelValue", n ?? []))
         }, null, 8, ["model-value", "options", "disabled", "aria-label"]),
-        (c(!0), g(H, null, ee(e.modelValue?.filter((n) => !d.value.some((u) => u.value === n)) ?? [], (n) => (c(), F(s(Y), {
+        (c(!0), g(H, null, ee(e.modelValue?.filter((n) => !s.value.some((u) => u.value === n)) ?? [], (n) => (c(), z(r(G), {
           severity: "secondary",
           text: "",
           size: "small",
@@ -3181,34 +3181,34 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
           type: "button",
           class: "work-choice work-unavailable",
           "aria-label": "Remove unavailable " + n,
-          onClick: (u) => m(n)
+          onClick: (u) => f(n)
         }, {
-          default: L(() => [
-            M(A(s(ge)(n)) + " · unavailable ×", 1)
+          default: F(() => [
+            M(U(r(ge)(n)) + " · unavailable ×", 1)
           ]),
           _: 2
         }, 1032, ["aria-label", "onClick"]))), 128))
       ]),
-      e.options.length ? E("", !0) : (c(), g("span", ps, "No choices declared."))
-    ], 8, ms));
+      e.options.length ? D("", !0) : (c(), g("span", ks, "No choices declared."))
+    ], 8, ys));
   }
-}), bs = {
+}), ws = {
   class: "work-stack",
   "aria-label": "Item types editor"
-}, hs = { class: "work-section-heading" }, ys = {
+}, Vs = { class: "work-section-heading" }, $s = {
   key: 0,
   class: "kx-err",
   role: "alert"
-}, gs = { class: "work-definition-meta" }, ks = { class: "work-settings-grid" }, ws = { class: "work-stack work-tight" }, Vs = { class: "work-stack work-tight" }, $s = { class: "work-stack work-tight" }, xs = { class: "work-stack work-tight" }, Cs = {
+}, xs = { class: "work-definition-meta" }, Cs = { class: "work-settings-grid" }, Ss = { class: "work-stack work-tight" }, Ts = { class: "work-stack work-tight" }, Es = { class: "work-stack work-tight" }, Us = { class: "work-stack work-tight" }, Ds = {
   key: 0,
   class: "work-stack work-tight work-small"
-}, Ss = {
+}, Is = {
   key: 0,
   class: "kx-empty"
-}, Ts = { class: "work-row work-add-definition" }, Es = { class: "work-stack work-tight" }, Us = {
+}, As = { class: "work-row work-add-definition" }, Ps = { class: "work-stack work-tight" }, Rs = {
   key: 0,
   class: "work-error work-small"
-}, Ds = /* @__PURE__ */ ve({
+}, Os = /* @__PURE__ */ ue({
   __name: "TypesEditor",
   props: {
     draft: {},
@@ -3216,14 +3216,14 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
     issues: {}
   },
   setup(e) {
-    const l = e, t = G(() => l.draft.item_types ?? []), a = z(""), o = z(""), d = z(""), v = G(() => /^[a-z][a-z0-9_]*$/.test(a.value) && !t.value.some((y) => y.id === a.value));
-    function m() {
+    const l = e, t = K(() => l.draft.item_types ?? []), a = L(""), o = L(""), s = L(""), v = K(() => /^[a-z][a-z0-9_]*$/.test(a.value) && !t.value.some((y) => y.id === a.value));
+    function f() {
       v.value && ((l.draft.item_types ??= []).push({ id: a.value, title: ge(a.value), process: l.draft.processes?.[0]?.id ?? "", fields: [] }), a.value = "");
     }
-    function f(y, p) {
+    function m(y, p) {
       const w = y.id;
       y.id = p;
-      for (const S of t.value) S.parent_types && (S.parent_types = S.parent_types.map((U) => U === w ? p : U));
+      for (const S of t.value) S.parent_types && (S.parent_types = S.parent_types.map((I) => I === w ? p : I));
     }
     function i(y, p) {
       y.fields = p, y.inherit && (y.inherit = y.inherit.filter((w) => p.includes(w)));
@@ -3232,83 +3232,83 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
       return t.value.filter((p) => p.id !== y.id && p.parent_types?.includes(y.id)).map((p) => p.title || ge(p.id));
     }
     async function u(y) {
-      if (!d.value) {
+      if (!s.value) {
         if (n(y).length) {
           o.value = `${y.title || ge(y.id)} is a parent type for ${n(y).join(", ")}. Remove those parent selections first.`;
           return;
         }
-        d.value = y.id, o.value = "";
+        s.value = y.id, o.value = "";
         try {
           const p = await l.guardRemoval?.("item_types", y.id);
           p ? o.value = p : _t(l.draft, "item_types", y.id);
         } finally {
-          d.value = "";
+          s.value = "";
         }
       }
     }
-    return (y, p) => (c(), g("section", bs, [
-      r("header", hs, [
-        p[1] || (p[1] = r("div", null, [
-          r("h2", null, "Item types"),
-          r("p", { class: "work-muted work-small" }, "Choose the fields, parent relationships and process for each kind of work.")
+    return (y, p) => (c(), g("section", ws, [
+      d("header", Vs, [
+        p[1] || (p[1] = d("div", null, [
+          d("h2", null, "Item types"),
+          d("p", { class: "work-muted work-small" }, "Choose the fields, parent relationships and process for each kind of work.")
         ], -1)),
-        b(s(Re), {
+        b(r(Re), {
           class: "kx-tag-sm",
           severity: "secondary"
         }, {
-          default: L(() => [
-            M(A(t.value.length) + " " + A(t.value.length === 1 ? "type" : "types"), 1)
+          default: F(() => [
+            M(U(t.value.length) + " " + U(t.value.length === 1 ? "type" : "types"), 1)
           ]),
           _: 1
         })
       ]),
-      o.value ? (c(), g("p", ys, A(o.value), 1)) : E("", !0),
+      o.value ? (c(), g("p", $s, U(o.value), 1)) : D("", !0),
       b($l, {
         columns: "types",
         count: t.value.length
       }, {
-        default: L(() => [
-          (c(!0), g(H, null, ee(t.value, (w, S) => (c(), F(Vl, {
-            title: w.title || s(ge)(w.id),
+        default: F(() => [
+          (c(!0), g(H, null, ee(t.value, (w, S) => (c(), z(Vl, {
+            title: w.title || r(ge)(w.id),
             code: w.id,
-            kind: e.draft.processes?.find((U) => U.id === w.process)?.name || s(ge)(w.process),
+            kind: e.draft.processes?.find((I) => I.id === w.process)?.name || r(ge)(w.process),
             key: S,
             class: "work-type-card"
           }, {
-            usage: L(() => [
-              r("span", gs, [
-                b(s(Re), {
+            usage: F(() => [
+              d("span", xs, [
+                b(r(Re), {
                   class: "kx-tag-sm",
                   severity: "secondary"
                 }, {
-                  default: L(() => [
-                    M(A(w.fields.length) + " " + A(w.fields.length === 1 ? "field" : "fields"), 1)
+                  default: F(() => [
+                    M(U(w.fields.length) + " " + U(w.fields.length === 1 ? "field" : "fields"), 1)
                   ]),
                   _: 2
                 }, 1024),
-                n(w).length ? (c(), F(s(Re), {
+                n(w).length ? (c(), z(r(Re), {
                   key: 0,
                   class: "kx-tag-sm",
                   severity: "secondary"
                 }, {
-                  default: L(() => [
-                    M("Parent of " + A(n(w).join(", ")), 1)
+                  default: F(() => [
+                    M("Parent of " + U(n(w).join(", ")), 1)
                   ]),
                   _: 2
-                }, 1024)) : E("", !0)
+                }, 1024)) : D("", !0)
               ])
             ]),
-            actions: L(() => [
-              b(s(Y), {
+            actions: F(() => [
+              b(r(G), {
                 severity: "secondary",
                 text: "",
                 size: "small",
-                disabled: !!d.value,
-                onClick: (U) => u(w),
+                disabled: !!s.value,
+                onClick: (I) => u(w),
                 "aria-label": "Remove type"
               }, {
-                default: L(() => [
-                  b(s(J), {
+                default: F(() => [
+                  b(r(Z), {
                     icon: "tabler:trash",
                     "aria-hidden": "true"
                   })
@@ -3316,140 +3316,140 @@ const Tn = { class: "work-stack work-tight work-option-builder" }, En = { class:
                 _: 1
               }, 8, ["disabled", "onClick"])
             ]),
-            default: L(() => [
-              (c(!0), g(H, null, ee(e.issues?.filter((U) => U.code === "item_type " + w.id) ?? [], (U) => (c(), g("p", {
-                key: U.what,
+            default: F(() => [
+              (c(!0), g(H, null, ee(e.issues?.filter((I) => I.code === "item_type " + w.id) ?? [], (I) => (c(), g("p", {
+                key: I.what,
                 class: "work-error work-small",
                 role: "alert"
-              }, A(s(wl)(U)), 1))), 128)),
-              r("div", ks, [
-                r("label", ws, [
+              }, U(r(wl)(I)), 1))), 128)),
+              d("div", Cs, [
+                d("label", Ss, [
                   p[2] || (p[2] = M("Identifier", -1)),
-                  b(s(re), {
+                  b(r(re), {
                     value: w.id,
-                    onChange: (U) => f(w, U.target.value),
+                    onChange: (I) => m(w, I.target.value),
                     required: "",
                     pattern: "[a-z][a-z0-9_]*"
                   }, null, 8, ["value", "onChange"])
                 ]),
-                r("label", Vs, [
+                d("label", Ts, [
                   p[3] || (p[3] = M("Title", -1)),
-                  b(s(re), {
+                  b(r(re), {
                     modelValue: w.title,
-                    "onUpdate:modelValue": (U) => w.title = U,
-                    placeholder: s(ge)(w.id)
+                    "onUpdate:modelValue": (I) => w.title = I,
+                    placeholder: r(ge)(w.id)
                   }, null, 8, ["modelValue", "onUpdate:modelValue", "placeholder"])
                 ]),
-                r("label", $s, [
+                d("label", Es, [
                   p[4] || (p[4] = M("Process", -1)),
-                  b(s(te), {
+                  b(r(te), {
                     modelValue: w.process,
-                    "onUpdate:modelValue": (U) => w.process = U,
+                    "onUpdate:modelValue": (I) => w.process = I,
                     required: "",
                     appendTo: "self",
                     optionLabel: "label",
                     optionValue: "value",
                     optionDisabled: "disabled",
-                    options: [...(e.draft.processes ?? []).map((U) => ({ label: U.name || s(ge)(U.id), value: U.id, disabled: !1 }))]
+                    options: [...(e.draft.processes ?? []).map((I) => ({ label: I.name || r(ge)(I.id), value: I.id, disabled: !1 }))]
                   }, null, 8, ["modelValue", "onUpdate:modelValue", "options"])
                 ])
               ]),
-              b(zt, {
+              b(Lt, {
                 label: "Fields",
-                options: (e.draft.fields ?? []).map((U) => ({ value: U.code, label: s(Ct)(U) })),
+                options: (e.draft.fields ?? []).map((I) => ({ value: I.code, label: r(Ct)(I) })),
                 "model-value": w.fields,
-                "onUpdate:modelValue": (U) => i(w, U)
+                "onUpdate:modelValue": (I) => i(w, I)
               }, null, 8, ["options", "model-value", "onUpdate:modelValue"]),
-              b(zt, {
+              b(Lt, {
                 label: "Parent types",
-                options: t.value.map((U) => ({ value: U.id, label: U.title || s(ge)(U.id) })),
+                options: t.value.map((I) => ({ value: I.id, label: I.title || r(ge)(I.id) })),
                 modelValue: w.parent_types,
-                "onUpdate:modelValue": (U) => w.parent_types = U
+                "onUpdate:modelValue": (I) => w.parent_types = I
               }, null, 8, ["options", "modelValue", "onUpdate:modelValue"]),
-              r("div", xs, [
-                b(zt, {
+              d("div", Us, [
+                b(Lt, {
                   label: "Inherit from parent",
-                  options: w.fields.map((U) => ({ value: U, label: s(Ct)(e.draft.fields?.find(($) => $.code === U) ?? { code: U }) })),
+                  options: w.fields.map((I) => ({ value: I, label: r(Ct)(e.draft.fields?.find(($) => $.code === I) ?? { code: I }) })),
                   modelValue: w.inherit,
-                  "onUpdate:modelValue": (U) => w.inherit = U
+                  "onUpdate:modelValue": (I) => w.inherit = I
                 }, null, 8, ["options", "modelValue", "onUpdate:modelValue"]),
-                p[5] || (p[5] = r("p", { class: "work-muted work-small" }, "These fields resolve from the parent when this item has no own value.", -1))
+                p[5] || (p[5] = d("p", { class: "work-muted work-small" }, "These fields resolve from the parent when this item has no own value.", -1))
               ]),
-              w.parent_types?.length ? (c(), g("label", Cs, [
+              w.parent_types?.length ? (c(), g("label", Ds, [
                 p[6] || (p[6] = M("When the parent moves", -1)),
-                b(s(te), {
+                b(r(te), {
                   modelValue: w.move_children,
-                  "onUpdate:modelValue": (U) => w.move_children = U,
+                  "onUpdate:modelValue": (I) => w.move_children = I,
                   appendTo: "self",
                   optionLabel: "label",
                   optionValue: "value",
                   optionDisabled: "disabled",
                   options: [{ label: "Default", value: void 0, disabled: !1 }, { label: "Move children", value: "move", disabled: !1 }, { label: "Refuse while children exist", value: "refuse", disabled: !1 }]
                 }, null, 8, ["modelValue", "onUpdate:modelValue"])
-              ])) : E("", !0)
+              ])) : D("", !0)
             ]),
             _: 2
           }, 1032, ["title", "code", "kind"]))), 128)),
-          t.value.length ? E("", !0) : (c(), g("p", Ss, "Add an item type to connect fields to a process.")),
-          r("div", Ts, [
-            r("label", Es, [
+          t.value.length ? D("", !0) : (c(), g("p", Is, "Add an item type to connect fields to a process.")),
+          d("div", As, [
+            d("label", Ps, [
               p[7] || (p[7] = M("New type identifier", -1)),
-              b(s(re), {
+              b(r(re), {
                 modelValue: a.value,
                 "onUpdate:modelValue": p[0] || (p[0] = (w) => a.value = w),
                 placeholder: "new_type",
-                onKeydown: Ae(be(m, ["prevent"]), ["enter"])
+                onKeydown: Ae(be(f, ["prevent"]), ["enter"])
               }, null, 8, ["modelValue", "onKeydown"])
             ]),
-            b(s(Y), {
+            b(r(G), {
               label: "Add type",
               severity: "secondary",
               disabled: !v.value,
-              onClick: m,
+              onClick: f,
               outlined: ""
             }, {
-              icon: L(() => [
-                b(s(J), {
+              icon: F(() => [
+                b(r(Z), {
                   icon: "tabler:plus",
                   "aria-hidden": "true"
                 })
               ]),
               _: 1
             }, 8, ["disabled"]),
-            a.value && !v.value ? (c(), g("span", Us, "Use a unique lowercase identifier with letters, numbers and underscores.")) : E("", !0)
+            a.value && !v.value ? (c(), g("span", Rs, "Use a unique lowercase identifier with letters, numbers and underscores.")) : D("", !0)
           ])
         ]),
         _: 1
       }, 8, ["count"])
     ]));
   }
-}), Is = ".work-process-canvas>svg{height:480px;width:100%}.work-process-canvas:focus-visible{outline:var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color);outline-offset:var(--p-focus-ring-offset)}.work-state-card{fill:var(--p-content-background);stroke:var(--p-content-border-color);stroke-width:1.5}.work-graph-node.work-selected .work-state-card{stroke:var(--p-primary-color);stroke-width:2.5;fill:color-mix(in srgb,var(--p-primary-color) 6%,var(--p-content-background))}.work-graph-node:focus-visible .work-state-card{stroke:var(--p-focus-ring-color);stroke-width:var(--p-focus-ring-width)}.work-process-canvas .work-edge-label{font-size:12px;fill:var(--p-text-color)}.work-process-canvas .work-edge-label-bg{fill:var(--p-content-background);stroke:var(--p-content-border-color);stroke-width:1}.work-edge-line{stroke:var(--p-primary-color);stroke-width:1.5}.work-edge-return .work-edge-line{stroke:var(--p-text-muted-color);stroke-dasharray:5 4}.work-graph-arrow{fill:context-stroke}.work-lane-line{fill:none;stroke:var(--p-text-muted-color);stroke-width:1.5;stroke-dasharray:2 4}.work-node-connector{fill:var(--p-content-background);stroke:var(--p-primary-color);stroke-width:1.5}.work-node-connector:hover,.work-node-connector:focus-visible{fill:var(--p-primary-color)}.work-process-legend{position:static;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--p-content-border-color);background:var(--p-content-background)}@media(max-width:700px){.work-process-canvas>svg{height:420px}}.work-process-more{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;border-top:1px solid var(--p-content-border-color);background:var(--p-content-background);color:var(--p-text-muted-color);font-size:12px}.work-process-canvas .work-graph-edge.work-selected .work-edge-label-bg{fill:var(--p-primary-color);stroke:var(--p-primary-color)}.work-process-canvas .work-graph-edge.work-selected .work-edge-label{fill:var(--p-primary-contrast-color)}", $a = /* @__PURE__ */ new WeakSet();
-function As(e) {
+}), Ns = ".work-process-canvas>svg{height:480px;width:100%}.work-process-canvas:focus-visible{outline:var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color);outline-offset:var(--p-focus-ring-offset)}.work-state-card{fill:var(--p-content-background);stroke:var(--p-content-border-color);stroke-width:1.5}.work-graph-node.work-selected .work-state-card{stroke:var(--p-primary-color);stroke-width:2.5;fill:color-mix(in srgb,var(--p-primary-color) 6%,var(--p-content-background))}.work-graph-node:focus-visible .work-state-card{stroke:var(--p-focus-ring-color);stroke-width:var(--p-focus-ring-width)}.work-process-canvas .work-edge-label{font-size:12px;fill:var(--p-text-color)}.work-process-canvas .work-edge-label-bg{fill:var(--p-content-background);stroke:var(--p-content-border-color);stroke-width:1}.work-edge-line{stroke:var(--p-primary-color);stroke-width:1.5}.work-edge-return .work-edge-line{stroke:var(--p-text-muted-color);stroke-dasharray:5 4}.work-graph-arrow{fill:context-stroke}.work-lane-line{fill:none;stroke:var(--p-text-muted-color);stroke-width:1.5;stroke-dasharray:2 4}.work-node-connector{fill:var(--p-content-background);stroke:var(--p-primary-color);stroke-width:1.5}.work-node-connector:hover,.work-node-connector:focus-visible{fill:var(--p-primary-color)}.work-process-legend{position:static;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--p-content-border-color);background:var(--p-content-background)}@media(max-width:700px){.work-process-canvas>svg{height:420px}}.work-process-more{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;border-top:1px solid var(--p-content-border-color);background:var(--p-content-background);color:var(--p-text-muted-color);font-size:12px}.work-process-canvas .work-graph-edge.work-selected .work-edge-label-bg{fill:var(--p-primary-color);stroke:var(--p-primary-color)}.work-process-canvas .work-graph-edge.work-selected .work-edge-label{fill:var(--p-primary-contrast-color)}", $a = /* @__PURE__ */ new WeakSet();
+function Ms(e) {
   const l = e.getRootNode();
   if (l instanceof ShadowRoot && !$a.has(l)) {
     const t = e.ownerDocument.createElement("style");
-    t.textContent = Is, l.append(t), $a.add(l);
+    t.textContent = Ns, l.append(t), $a.add(l);
   }
 }
-const Ps = 0.8;
-function Rs(e, l, t) {
+const Fs = 0.8;
+function Ls(e, l, t) {
   const a = Math.min(1, l.width / e.width, l.height / e.height);
-  if (a >= Ps) return { zoom: a, pan: { x: (e.width - l.width / a) / 2, y: (e.height - l.height / a) / 2 } };
-  const o = e.nodes.find((v) => v.state.id === t) ?? e.nodes[0], d = Math.min(1, l.width / ((o?.width ?? 190) + 64));
-  return { zoom: d, pan: o ? { x: e.direction === "TB" ? o.x - l.width / d / 2 : o.x - o.width / 2 - 32, y: e.direction === "TB" ? o.y - o.height / 2 - 32 : o.y - l.height / d / 2 } : { x: 0, y: 0 } };
+  if (a >= Fs) return { zoom: a, pan: { x: (e.width - l.width / a) / 2, y: (e.height - l.height / a) / 2 } };
+  const o = e.nodes.find((v) => v.state.id === t) ?? e.nodes[0], s = Math.min(1, l.width / ((o?.width ?? 190) + 64));
+  return { zoom: s, pan: o ? { x: e.direction === "TB" ? o.x - l.width / s / 2 : o.x - o.width / 2 - 32, y: e.direction === "TB" ? o.y - o.height / 2 - 32 : o.y - l.height / s / 2 } : { x: 0, y: 0 } };
 }
-const Os = ["onKeydown"], Ns = {
+const zs = ["onKeydown"], Bs = {
   key: 0,
   class: "work-process-instruction",
   role: "status"
-}, Ms = ["viewBox"], Ls = ["id"], zs = ["d", "marker-end"], Fs = ["aria-label", "aria-pressed", "onFocus", "onClick", "onKeydown"], Bs = ["d"], js = ["d", "marker-end"], qs = ["x", "y", "width", "height"], Ws = ["x", "y"], Ks = ["x", "dy"], Gs = ["aria-label", "aria-pressed", "onClick", "onKeydown", "onFocus", "onPointerup"], Ys = ["x", "y", "width", "height"], Hs = ["cx", "cy"], Xs = ["x", "y"], Js = ["x", "dy"], Zs = ["x", "y"], Qs = ["x", "dy"], _s = {
+}, js = ["viewBox"], qs = ["id"], Ws = ["d", "marker-end"], Ks = ["aria-label", "aria-pressed", "onFocus", "onClick", "onKeydown"], Gs = ["d"], Ys = ["d", "marker-end"], Hs = ["x", "y", "width", "height"], Xs = ["x", "y"], Js = ["x", "dy"], Zs = ["aria-label", "aria-pressed", "onClick", "onKeydown", "onFocus", "onPointerup"], Qs = ["x", "y", "width", "height"], _s = ["cx", "cy"], er = ["x", "y"], tr = ["x", "dy"], lr = ["x", "y"], ar = ["x", "dy"], or = {
   key: 0,
   class: "work-limit-text"
-}, er = ["aria-label", "onClick", "onKeydown"], tr = ["x", "y"], lr = ["x", "dy"], ar = ["cx", "cy", "aria-label", "onPointerdown", "onClick", "onKeydown"], or = ["d"], ir = {
+}, ir = ["aria-label", "onClick", "onKeydown"], nr = ["x", "y"], sr = ["x", "dy"], rr = ["cx", "cy", "aria-label", "onPointerdown", "onClick", "onKeydown"], dr = ["d"], ur = {
   key: 1,
   class: "work-process-more",
   role: "status"
-}, nr = { class: "work-process-legend" }, sr = /* @__PURE__ */ ve({
+}, cr = { class: "work-process-legend" }, vr = /* @__PURE__ */ ue({
   __name: "ProcessGraph",
   props: {
     process: {},
@@ -3459,76 +3459,76 @@ const Os = ["onKeydown"], Ns = {
   },
   emits: ["state", "transition", "connect", "clear"],
   setup(e, { expose: l, emit: t }) {
-    const a = e, o = t, d = Xl().replace(/:/g, "_"), v = z(""), m = z(), f = z(), i = z(900), n = z(!1), u = G(() => i.value < 700 ? 420 : 480), y = G(() => Bo(a.process, a.draft, { width: i.value, height: u.value })), p = z(1), w = z({ x: 0, y: 0 }), S = z({ x: 0, y: 0 }), U = G(() => ({ width: i.value, height: n.value ? Math.max(u.value, y.value.height * Math.min(1, i.value / y.value.width)) : u.value })), $ = G(() => y.value.nodes.filter((h) => h.x - h.width / 2 >= w.value.x && h.x + h.width / 2 <= w.value.x + U.value.width / p.value && h.y - h.height / 2 >= w.value.y && h.y + h.height / 2 <= w.value.y + U.value.height / p.value).length);
-    function I() {
+    const a = e, o = t, s = Xl().replace(/:/g, "_"), v = L(""), f = L(), m = L(), i = L(900), n = L(!1), u = K(() => i.value < 700 ? 420 : 480), y = K(() => Go(a.process, a.draft, { width: i.value, height: u.value })), p = L(1), w = L({ x: 0, y: 0 }), S = L({ x: 0, y: 0 }), I = K(() => ({ width: i.value, height: n.value ? Math.max(u.value, y.value.height * Math.min(1, i.value / y.value.width)) : u.value })), $ = K(() => y.value.nodes.filter((h) => h.x - h.width / 2 >= w.value.x && h.x + h.width / 2 <= w.value.x + I.value.width / p.value && h.y - h.height / 2 >= w.value.y && h.y + h.height / 2 <= w.value.y + I.value.height / p.value).length);
+    function A() {
       n.value = !1;
-      const h = Rs(y.value, U.value, a.process.initial);
+      const h = Ls(y.value, I.value, a.process.initial);
       p.value = h.zoom, w.value = h.pan;
     }
-    const T = G(() => `${w.value.x} ${w.value.y} ${U.value.width / p.value} ${U.value.height / p.value}`), D = G(() => y.value.nodes.find((h) => h.state.id === v.value));
+    const x = K(() => `${w.value.x} ${w.value.y} ${I.value.width / p.value} ${I.value.height / p.value}`), E = K(() => y.value.nodes.find((h) => h.state.id === v.value));
     function V() {
-      n.value = !0, p.value = Math.min(1, U.value.width / y.value.width), w.value = { x: (y.value.width - U.value.width / p.value) / 2, y: 0 };
+      n.value = !0, p.value = Math.min(1, I.value.width / y.value.width), w.value = { x: (y.value.width - I.value.width / p.value) / 2, y: 0 };
     }
     function P(h) {
-      const C = Math.max(0.02, Math.min(3, p.value * h)), k = 1 / p.value - 1 / C;
-      w.value = { x: w.value.x + U.value.width * k / 2, y: w.value.y + U.value.height * k / 2 }, p.value = C;
+      const T = Math.max(0.02, Math.min(3, p.value * h)), k = 1 / p.value - 1 / T;
+      w.value = { x: w.value.x + I.value.width * k / 2, y: w.value.y + I.value.height * k / 2 }, p.value = T;
     }
-    function Z(h) {
-      const C = U.value.width / p.value, k = U.value.height / p.value;
-      (h.x - h.width / 2 < w.value.x || h.x + h.width / 2 > w.value.x + C || h.y - h.height / 2 < w.value.y || h.y + h.height / 2 > w.value.y + k) && (w.value = { x: h.x - C / 2, y: h.y - k / 2 });
+    function X(h) {
+      const T = I.value.width / p.value, k = I.value.height / p.value;
+      (h.x - h.width / 2 < w.value.x || h.x + h.width / 2 > w.value.x + T || h.y - h.height / 2 < w.value.y || h.y + h.height / 2 > w.value.y + k) && (w.value = { x: h.x - T / 2, y: h.y - k / 2 });
     }
     function de() {
-      const h = y.value.nodes.find((C) => C.state === a.selectedState) ?? y.value.edges.find((C) => C.transition === a.selectedTransition);
-      h && Z(h);
+      const h = y.value.nodes.find((T) => T.state === a.selectedState) ?? y.value.edges.find((T) => T.transition === a.selectedTransition);
+      h && X(h);
     }
-    Ce([y, () => a.selectedState, () => a.selectedTransition], de, { flush: "post" }), Ce(() => a.process.id, () => {
-      v.value = "", R.clear(), I();
+    xe([y, () => a.selectedState, () => a.selectedTransition], de, { flush: "post" }), xe(() => a.process.id, () => {
+      v.value = "", R.clear(), A();
     }, { flush: "post" });
     function ne(h) {
-      if (h.target !== m.value) return;
+      if (h.target !== f.value) return;
       (h.key === "+" || h.key === "=") && (h.preventDefault(), P(1.2)), h.key === "-" && (h.preventDefault(), P(1 / 1.2)), h.key === "0" && (h.preventDefault(), V());
-      const C = 60 / p.value;
-      h.key.startsWith("Arrow") && (h.preventDefault(), w.value = { x: w.value.x + (h.key === "ArrowRight" ? C : h.key === "ArrowLeft" ? -C : 0), y: w.value.y + (h.key === "ArrowDown" ? C : h.key === "ArrowUp" ? -C : 0) });
+      const T = 60 / p.value;
+      h.key.startsWith("Arrow") && (h.preventDefault(), w.value = { x: w.value.x + (h.key === "ArrowRight" ? T : h.key === "ArrowLeft" ? -T : 0), y: w.value.y + (h.key === "ArrowDown" ? T : h.key === "ArrowUp" ? -T : 0) });
     }
     function B(h) {
       v.value && v.value !== h.id && o("connect", v.value, h.id), v.value = "";
     }
-    function O(h, C) {
-      v.value = C.state.id, S.value = { x: C.x, y: C.y };
+    function O(h, T) {
+      v.value = T.state.id, S.value = { x: T.x, y: T.y };
       const k = h.target;
       k instanceof Element && k.hasPointerCapture?.(h.pointerId) && k.releasePointerCapture(h.pointerId);
     }
-    function oe(h, C) {
-      if ((h.key === "Enter" || h.key === " ") && (h.preventDefault(), v.value ? B(C) : o("state", C)), ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(h.key)) {
+    function oe(h, T) {
+      if ((h.key === "Enter" || h.key === " ") && (h.preventDefault(), v.value ? B(T) : o("state", T)), ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(h.key)) {
         h.preventDefault();
-        const k = Array.from(f.value?.querySelectorAll(".work-graph-node") ?? []), j = y.value.nodes.findIndex((se) => se.state === C), K = ["ArrowRight", "ArrowDown"].includes(h.key) ? 1 : -1;
-        k[(j + K + k.length) % k.length]?.focus();
+        const k = Array.from(m.value?.querySelectorAll(".work-graph-node") ?? []), j = y.value.nodes.findIndex((se) => se.state === T), Y = ["ArrowRight", "ArrowDown"].includes(h.key) ? 1 : -1;
+        k[(j + Y + k.length) % k.length]?.focus();
       }
     }
-    function x() {
+    function C() {
       v.value = "", R.clear(), o("clear");
     }
     const R = /* @__PURE__ */ new Map();
     let N = 0;
-    function X(h) {
-      if (!h.target.closest('[role="button"]') && (R.set(h.pointerId, { x: h.clientX, y: h.clientY }), m.value?.setPointerCapture?.(h.pointerId), R.size === 2)) {
-        const [C, k] = [...R.values()];
-        N = Math.hypot(C.x - k.x, C.y - k.y);
+    function J(h) {
+      if (!h.target.closest('[role="button"]') && (R.set(h.pointerId, { x: h.clientX, y: h.clientY }), f.value?.setPointerCapture?.(h.pointerId), R.size === 2)) {
+        const [T, k] = [...R.values()];
+        N = Math.hypot(T.x - k.x, T.y - k.y);
       }
     }
-    function ue(h) {
-      const C = f.value?.getBoundingClientRect();
-      if (!C?.width) return;
+    function ce(h) {
+      const T = m.value?.getBoundingClientRect();
+      if (!T?.width) return;
       if (v.value) {
-        S.value = { x: w.value.x + (h.clientX - C.left) * U.value.width / p.value / C.width, y: w.value.y + (h.clientY - C.top) * U.value.height / p.value / C.height };
+        S.value = { x: w.value.x + (h.clientX - T.left) * I.value.width / p.value / T.width, y: w.value.y + (h.clientY - T.top) * I.value.height / p.value / T.height };
         return;
       }
       const k = R.get(h.pointerId);
       if (k)
         if (R.set(h.pointerId, { x: h.clientX, y: h.clientY }), R.size === 2) {
-          const [j, K] = [...R.values()], se = Math.hypot(j.x - K.x, j.y - K.y);
+          const [j, Y] = [...R.values()], se = Math.hypot(j.x - Y.x, j.y - Y.y);
           N && P(se / N), N = se;
-        } else w.value = { x: w.value.x - (h.clientX - k.x) * U.value.width / p.value / C.width, y: w.value.y - (h.clientY - k.y) * U.value.height / p.value / C.height };
+        } else w.value = { x: w.value.x - (h.clientX - k.x) * I.value.width / p.value / T.width, y: w.value.y - (h.clientY - k.y) * I.value.height / p.value / T.height };
     }
     function pe(h) {
       R.delete(h.pointerId), N = 0, v.value = "";
@@ -3538,139 +3538,139 @@ const Os = ["onKeydown"], Ns = {
     }
     let Ve;
     kl(() => {
-      if (m.value && As(m.value), typeof ResizeObserver < "u" && f.value) {
+      if (f.value && Ms(f.value), typeof ResizeObserver < "u" && m.value) {
         let h = !0;
         Ve = new ResizeObserver(() => {
-          const C = f.value?.getBoundingClientRect();
-          if (!C?.width || !C.height) return;
-          const k = U.value.width;
-          i.value = C.width, (h || Math.abs(C.width - k) > 1) && (n.value ? V() : I(), h = !1), de();
-        }), Ve.observe(f.value);
+          const T = m.value?.getBoundingClientRect();
+          if (!T?.width || !T.height) return;
+          const k = I.value.width;
+          i.value = T.width, (h || Math.abs(T.width - k) > 1) && (n.value ? V() : A(), h = !1), de();
+        }), Ve.observe(m.value);
       }
-    }), ft(() => Ve?.disconnect()), l({ fit: V, zoomIn: () => P(1.2), zoomOut: () => P(1 / 1.2) });
+    }), it(() => Ve?.disconnect()), l({ fit: V, zoomIn: () => P(1.2), zoomOut: () => P(1 / 1.2) });
     function De(h) {
       return h.category === "completed" ? "check" : h.category === "canceled" ? "x" : h.id === a.process.initial ? "arrow-bar-to-right" : { gate: "shield-check", automated: "bolt", parallel: "arrows-split" }[h.kind ?? ""] ?? "user";
     }
-    return (h, C) => (c(), g("section", {
+    return (h, T) => (c(), g("section", {
       ref_key: "canvas",
-      ref: m,
+      ref: f,
       class: "work-process-canvas",
       "aria-label": "Process map",
       tabindex: "0",
       onKeydown: [
         ne,
-        Ae(be(x, ["stop"]), ["esc"])
+        Ae(be(C, ["stop"]), ["esc"])
       ],
-      onPointerdown: X,
-      onPointermove: ue,
+      onPointerdown: J,
+      onPointermove: ce,
       onPointerup: pe,
-      onPointercancel: x,
+      onPointercancel: C,
       onWheel: ke
     }, [
-      v.value ? (c(), g("p", Ns, "Choose the next stop. Escape cancels.")) : E("", !0),
+      v.value ? (c(), g("p", Bs, "Choose the next stop. Escape cancels.")) : D("", !0),
       (c(), g("svg", {
         ref_key: "svg",
-        ref: f,
-        style: mo({ height: U.value.height + "px" }),
-        viewBox: T.value,
+        ref: m,
+        style: bo({ height: I.value.height + "px" }),
+        viewBox: x.value,
         role: "group",
         "aria-label": "States and transitions"
       }, [
-        r("defs", null, [
-          r("marker", {
-            id: s(d) + "-arrow",
+        d("defs", null, [
+          d("marker", {
+            id: r(s) + "-arrow",
             viewBox: "0 0 8 8",
             refX: "7",
             refY: "4",
             markerWidth: "6",
             markerHeight: "6",
             orient: "auto"
-          }, [...C[1] || (C[1] = [
-            r("path", {
+          }, [...T[1] || (T[1] = [
+            d("path", {
               d: "M0 0 L8 4 L0 8 z",
               class: "work-graph-arrow"
             }, null, -1)
-          ])], 8, Ls)
+          ])], 8, qs)
         ]),
         (c(!0), g(H, null, ee(y.value.parallels, (k) => (c(), g("path", {
           key: k.key,
           d: k.path,
           class: "work-lane-line",
-          "marker-end": `url(#${s(d)}-arrow)`
+          "marker-end": `url(#${r(s)}-arrow)`
         }, [
-          r("title", null, "Parallel lane from " + A(s(he)(k.state)), 1)
-        ], 8, zs))), 128)),
+          d("title", null, "Parallel lane from " + U(r(he)(k.state)), 1)
+        ], 8, Ws))), 128)),
         (c(!0), g(H, null, ee(y.value.edges, (k) => (c(), g("g", {
           key: k.key,
-          class: mt(["work-graph-edge", ["work-edge-" + k.type, { "work-selected": e.selectedTransition === k.transition }]]),
+          class: ft(["work-graph-edge", ["work-edge-" + k.type, { "work-selected": e.selectedTransition === k.transition }]]),
           role: "button",
           tabindex: "0",
-          "aria-label": "Edit transition " + s(je)(k.transition),
+          "aria-label": "Edit transition " + r(je)(k.transition),
           "aria-pressed": e.selectedTransition === k.transition,
-          onFocus: (j) => Z(k),
+          onFocus: (j) => X(k),
           onClick: (j) => o("transition", k.transition),
           onKeydown: [
             Ae(be((j) => o("transition", k.transition), ["prevent"]), ["enter"]),
             Ae(be((j) => o("transition", k.transition), ["prevent"]), ["space"])
           ]
         }, [
-          r("path", {
+          d("path", {
             d: k.path,
             class: "work-edge-hit"
-          }, null, 8, Bs),
-          r("path", {
+          }, null, 8, Gs),
+          d("path", {
             d: k.path,
             class: "work-edge-line",
-            "marker-end": `url(#${s(d)}-arrow)`
-          }, null, 8, js),
-          r("rect", {
+            "marker-end": `url(#${r(s)}-arrow)`
+          }, null, 8, Ys),
+          d("rect", {
             x: k.x - k.width / 2,
             y: k.y - k.height / 2,
             width: k.width,
             height: k.height,
             rx: "6",
             class: "work-edge-label-bg"
-          }, null, 8, qs),
-          r("text", {
+          }, null, 8, Hs),
+          d("text", {
             x: k.x,
             y: k.y - (k.lines.length - 1) * 8 + 4,
             class: "work-edge-label",
             "text-anchor": "middle"
           }, [
-            (c(!0), g(H, null, ee(k.lines, (j, K) => (c(), g("tspan", {
-              key: K,
+            (c(!0), g(H, null, ee(k.lines, (j, Y) => (c(), g("tspan", {
+              key: Y,
               x: k.x,
-              dy: K ? 16 : 0
-            }, A(j), 9, Ks))), 128))
-          ], 8, Ws)
-        ], 42, Fs))), 128)),
+              dy: Y ? 16 : 0
+            }, U(j), 9, Js))), 128))
+          ], 8, Xs)
+        ], 42, Ks))), 128)),
         (c(!0), g(H, null, ee(y.value.nodes, (k) => (c(), g("g", {
           key: k.state.id,
-          class: mt(["work-graph-node", ["work-stop-" + k.state.category, { "work-selected": e.selectedState === k.state }]]),
+          class: ft(["work-graph-node", ["work-stop-" + k.state.category, { "work-selected": e.selectedState === k.state }]]),
           role: "button",
           tabindex: "0",
-          "aria-label": "Edit state " + s(he)(k.state),
+          "aria-label": "Edit state " + r(he)(k.state),
           "aria-pressed": e.selectedState === k.state,
           onClick: (j) => o("state", k.state),
           onKeydown: (j) => oe(j, k.state),
-          onFocus: (j) => Z(k),
+          onFocus: (j) => X(k),
           onPointerup: be((j) => B(k.state), ["stop"])
         }, [
-          r("rect", {
+          d("rect", {
             x: k.x - k.width / 2,
             y: k.y - k.height / 2,
             width: k.width,
             height: k.height,
             rx: "10",
             class: "work-state-card"
-          }, null, 8, Ys),
-          r("circle", {
+          }, null, 8, Qs),
+          d("circle", {
             cx: k.x - k.width / 2 + 22,
             cy: k.y - k.height / 2 + 25,
             r: "10",
             class: "work-stop-ring"
-          }, null, 8, Hs),
-          b(s(J), {
+          }, null, 8, _s),
+          b(r(Z), {
             icon: "tabler:" + De(k.state),
             x: k.x - k.width / 2 + 15,
             y: k.y - k.height / 2 + 18,
@@ -3679,54 +3679,54 @@ const Os = ["onKeydown"], Ns = {
             class: "work-stop-icon",
             "aria-hidden": "true"
           }, null, 8, ["icon", "x", "y"]),
-          r("text", {
+          d("text", {
             x: k.x - k.width / 2 + 42,
             y: k.y - k.height / 2 + 29,
             class: "work-node-name"
           }, [
-            (c(!0), g(H, null, ee(k.title, (j, K) => (c(), g("tspan", {
-              key: K,
+            (c(!0), g(H, null, ee(k.title, (j, Y) => (c(), g("tspan", {
+              key: Y,
               x: k.x - k.width / 2 + 42,
-              dy: K ? 18 : 0
-            }, A(j), 9, Js))), 128))
-          ], 8, Xs),
-          r("text", {
+              dy: Y ? 18 : 0
+            }, U(j), 9, tr))), 128))
+          ], 8, er),
+          d("text", {
             x: k.x - k.width / 2 + 16,
             y: k.y - k.height / 2 + 33 + k.title.length * 18,
             class: "work-node-meta"
           }, [
-            (c(!0), g(H, null, ee(k.caption, (j, K) => (c(), g("tspan", {
-              key: K,
+            (c(!0), g(H, null, ee(k.caption, (j, Y) => (c(), g("tspan", {
+              key: Y,
               x: k.x - k.width / 2 + 16,
-              dy: K ? 16 : 0
-            }, A(j), 9, Qs))), 128)),
-            e.draft.policy?.wip?.[k.state.id] ? (c(), g("tspan", _s, " · limit " + A(e.draft.policy.wip[k.state.id].limit), 1)) : E("", !0)
-          ], 8, Zs),
-          (c(!0), g(H, null, ee(k.badges, (j, K) => (c(), g("g", {
+              dy: Y ? 16 : 0
+            }, U(j), 9, ar))), 128)),
+            e.draft.policy?.wip?.[k.state.id] ? (c(), g("tspan", or, " · limit " + U(e.draft.policy.wip[k.state.id].limit), 1)) : D("", !0)
+          ], 8, lr),
+          (c(!0), g(H, null, ee(k.badges, (j, Y) => (c(), g("g", {
             key: j.id,
             class: "work-any-transition",
             role: "button",
             tabindex: "0",
-            "aria-label": "Edit transition " + s(je)(j),
+            "aria-label": "Edit transition " + r(je)(j),
             onClick: be((se) => o("transition", j), ["stop"]),
             onKeydown: [
               Ae(be((se) => o("transition", j), ["stop", "prevent"]), ["enter"]),
               Ae(be((se) => o("transition", j), ["stop", "prevent"]), ["space"])
             ]
           }, [
-            r("text", {
+            d("text", {
               x: k.x - k.width / 2 + 16,
-              y: k.y - k.height / 2 + 33 + k.title.length * 18 + k.caption.length * 16 + k.badges.slice(0, K).reduce((se, fe) => se + s(Ot)(s(je)(fe) + " works from any state").length * 18, 0),
+              y: k.y - k.height / 2 + 33 + k.title.length * 18 + k.caption.length * 16 + k.badges.slice(0, Y).reduce((se, fe) => se + r(Ot)(r(je)(fe) + " works from any state").length * 18, 0),
               class: "work-node-meta"
             }, [
-              (c(!0), g(H, null, ee(s(Ot)(s(je)(j) + " works from any state"), (se, fe) => (c(), g("tspan", {
+              (c(!0), g(H, null, ee(r(Ot)(r(je)(j) + " works from any state"), (se, fe) => (c(), g("tspan", {
                 key: fe,
                 x: k.x - k.width / 2 + 16,
                 dy: fe ? 18 : 0
-              }, A(se), 9, lr))), 128))
-            ], 8, tr)
-          ], 40, er))), 128)),
-          ["completed", "canceled"].includes(k.state.category) ? E("", !0) : (c(), g("circle", {
+              }, U(se), 9, sr))), 128))
+            ], 8, nr)
+          ], 40, ir))), 128)),
+          ["completed", "canceled"].includes(k.state.category) ? D("", !0) : (c(), g("circle", {
             key: 0,
             cx: y.value.direction === "TB" ? k.x : k.x + k.width / 2,
             cy: y.value.direction === "TB" ? k.y + k.height / 2 : k.y,
@@ -3734,7 +3734,7 @@ const Os = ["onKeydown"], Ns = {
             class: "work-node-connector",
             role: "button",
             tabindex: "0",
-            "aria-label": "Connect from " + s(he)(k.state),
+            "aria-label": "Connect from " + r(he)(k.state),
             onPointerdown: be((j) => O(j, k), ["stop", "prevent"]),
             onClick: be((j) => o("state", k.state), ["stop"]),
             onKeydown: [
@@ -3743,41 +3743,41 @@ const Os = ["onKeydown"], Ns = {
               }, ["stop", "prevent"]), ["enter"]),
               Ae(be((j) => v.value = k.state.id, ["stop", "prevent"]), ["space"])
             ]
-          }, null, 40, ar))
-        ], 42, Gs))), 128)),
-        D.value ? (c(), g("path", {
+          }, null, 40, rr))
+        ], 42, Zs))), 128)),
+        E.value ? (c(), g("path", {
           key: 0,
-          d: `M ${y.value.direction === "TB" ? D.value.x : D.value.x + D.value.width / 2} ${y.value.direction === "TB" ? D.value.y + D.value.height / 2 : D.value.y} L ${S.value.x} ${S.value.y}`,
+          d: `M ${y.value.direction === "TB" ? E.value.x : E.value.x + E.value.width / 2} ${y.value.direction === "TB" ? E.value.y + E.value.height / 2 : E.value.y} L ${S.value.x} ${S.value.y}`,
           class: "work-connect-ghost"
-        }, null, 8, or)) : E("", !0)
-      ], 12, Ms)),
-      !n.value && $.value < e.process.states.length ? (c(), g("div", ir, [
-        r("span", null, A($.value) + " of " + A(e.process.states.length) + " states in view · More " + A(y.value.direction === "TB" ? "below" : "to the right"), 1),
-        b(s(Y), {
+        }, null, 8, dr)) : D("", !0)
+      ], 12, js)),
+      !n.value && $.value < e.process.states.length ? (c(), g("div", ur, [
+        d("span", null, U($.value) + " of " + U(e.process.states.length) + " states in view · More " + U(y.value.direction === "TB" ? "below" : "to the right"), 1),
+        b(r(G), {
           label: "Show full process",
           size: "small",
           text: "",
-          onClick: C[0] || (C[0] = (k) => V())
+          onClick: T[0] || (T[0] = (k) => V())
         })
-      ])) : E("", !0),
-      r("div", nr, [
-        r("span", null, A(e.process.states.length) + " states · " + A(Math.round(p.value * 100)) + "%", 1),
-        C[2] || (C[2] = r("span", null, [
-          r("i"),
+      ])) : D("", !0),
+      d("div", cr, [
+        d("span", null, U(e.process.states.length) + " states · " + U(Math.round(p.value * 100)) + "%", 1),
+        T[2] || (T[2] = d("span", null, [
+          d("i"),
           M("Transition")
         ], -1)),
-        C[3] || (C[3] = r("span", null, [
-          r("i", { class: "work-return-key" }),
+        T[3] || (T[3] = d("span", null, [
+          d("i", { class: "work-return-key" }),
           M("Return / loop")
         ], -1)),
-        C[4] || (C[4] = r("span", null, "Drag to pan · Ctrl + scroll to zoom · Fit for full process", -1))
+        T[4] || (T[4] = d("span", null, "Drag to pan · Ctrl + scroll to zoom · Fit for full process", -1))
       ])
-    ], 40, Os));
+    ], 40, zs));
   }
-}), rr = {
+}), mr = {
   class: "work-process-list work-stack",
   "aria-label": "Process list"
-}, dr = { class: "work-stack work-tight" }, ur = { class: "work-table-scroll" }, cr = { class: "work-settings-table work-process-table" }, vr = ["aria-selected"], mr = { class: "work-process-list-actions" }, fr = { class: "work-table-scroll" }, pr = { class: "work-settings-table work-process-table" }, br = ["aria-selected"], hr = { class: "work-process-list-actions" }, yr = /* @__PURE__ */ ve({
+}, fr = { class: "work-stack work-tight" }, pr = { class: "work-table-scroll" }, br = { class: "work-settings-table work-process-table" }, hr = ["aria-selected"], yr = { class: "work-process-list-actions" }, gr = { class: "work-table-scroll" }, kr = { class: "work-settings-table work-process-table" }, wr = ["aria-selected"], Vr = { class: "work-process-list-actions" }, $r = /* @__PURE__ */ ue({
   __name: "ProcessList",
   props: {
     process: {},
@@ -3786,147 +3786,147 @@ const Os = ["onKeydown"], Ns = {
   },
   emits: ["state", "transition", "removeState", "removeTransition", "addTransition"],
   setup(e) {
-    return (l, t) => (c(), g("section", rr, [
-      r("label", dr, [
+    return (l, t) => (c(), g("section", mr, [
+      d("label", fr, [
         t[2] || (t[2] = M("Process name", -1)),
-        b(s(re), {
+        b(r(re), {
           modelValue: e.process.name,
           "onUpdate:modelValue": t[0] || (t[0] = (a) => e.process.name = a),
           "aria-label": "Process name"
         }, null, 8, ["modelValue"])
       ]),
-      t[5] || (t[5] = r("h3", null, "States", -1)),
-      r("div", ur, [
-        r("table", cr, [
-          t[3] || (t[3] = r("thead", null, [
-            r("tr", null, [
-              r("th", null, "Name"),
-              r("th", null, "Phase"),
-              r("th", null, "Kind"),
-              r("th", null, "Actions")
+      t[5] || (t[5] = d("h3", null, "States", -1)),
+      d("div", pr, [
+        d("table", br, [
+          t[3] || (t[3] = d("thead", null, [
+            d("tr", null, [
+              d("th", null, "Name"),
+              d("th", null, "Phase"),
+              d("th", null, "Kind"),
+              d("th", null, "Actions")
             ])
           ], -1)),
-          r("tbody", null, [
+          d("tbody", null, [
             (c(!0), g(H, null, ee(e.process.states, (a) => (c(), g("tr", {
               key: a.id,
               "aria-selected": e.selectedState === a
             }, [
-              r("td", null, [
-                b(s(re), {
+              d("td", null, [
+                b(r(re), {
                   modelValue: a.name,
                   "onUpdate:modelValue": (o) => a.name = o,
-                  "aria-label": "Name of " + s(he)(a)
+                  "aria-label": "Name of " + r(he)(a)
                 }, null, 8, ["modelValue", "onUpdate:modelValue", "aria-label"])
               ]),
-              r("td", null, A(s(Zl)(a.category)), 1),
-              r("td", null, [
-                b(s(Re), { severity: "secondary" }, {
-                  default: L(() => [
-                    M(A(s(Pa)(a.kind)), 1)
+              d("td", null, U(r(Zl)(a.category)), 1),
+              d("td", null, [
+                b(r(Re), { severity: "secondary" }, {
+                  default: F(() => [
+                    M(U(r(Na)(a.kind)), 1)
                   ]),
                   _: 2
                 }, 1024)
               ]),
-              r("td", mr, [
-                b(s(Y), {
+              d("td", yr, [
+                b(r(G), {
                   size: "small",
                   text: "",
                   severity: "secondary",
                   "aria-label": "Edit state",
                   onClick: (o) => l.$emit("state", a)
                 }, {
-                  default: L(() => [
-                    b(s(J), { icon: "tabler:pencil" })
+                  default: F(() => [
+                    b(r(Z), { icon: "tabler:pencil" })
                   ]),
                   _: 1
                 }, 8, ["onClick"]),
-                b(s(Y), {
+                b(r(G), {
                   size: "small",
                   text: "",
                   severity: "danger",
-                  "aria-label": "Remove state " + s(he)(a),
+                  "aria-label": "Remove state " + r(he)(a),
                   onClick: (o) => l.$emit("removeState", a)
                 }, {
-                  default: L(() => [
-                    b(s(J), { icon: "tabler:trash" })
+                  default: F(() => [
+                    b(r(Z), { icon: "tabler:trash" })
                   ]),
                   _: 1
                 }, 8, ["aria-label", "onClick"])
               ])
-            ], 8, vr))), 128))
+            ], 8, hr))), 128))
           ])
         ])
       ]),
-      t[6] || (t[6] = r("h3", null, "Transitions", -1)),
-      r("div", fr, [
-        r("table", pr, [
-          t[4] || (t[4] = r("thead", null, [
-            r("tr", null, [
-              r("th", null, "Name"),
-              r("th", null, "From"),
-              r("th", null, "To"),
-              r("th", null, "Actions")
+      t[6] || (t[6] = d("h3", null, "Transitions", -1)),
+      d("div", gr, [
+        d("table", kr, [
+          t[4] || (t[4] = d("thead", null, [
+            d("tr", null, [
+              d("th", null, "Name"),
+              d("th", null, "From"),
+              d("th", null, "To"),
+              d("th", null, "Actions")
             ])
           ], -1)),
-          r("tbody", null, [
+          d("tbody", null, [
             (c(!0), g(H, null, ee(e.process.transitions ?? [], (a) => (c(), g("tr", {
               key: a.id,
               "aria-selected": e.selectedTransition === a
             }, [
-              r("td", null, [
-                b(s(re), {
+              d("td", null, [
+                b(r(re), {
                   modelValue: a.name,
                   "onUpdate:modelValue": (o) => a.name = o,
-                  placeholder: s(je)(a),
-                  "aria-label": "Name of " + s(je)(a)
+                  placeholder: r(je)(a),
+                  "aria-label": "Name of " + r(je)(a)
                 }, null, 8, ["modelValue", "onUpdate:modelValue", "placeholder", "aria-label"])
               ]),
-              r("td", null, A(a.from === "any" ? "Any state" : a.from.map((o) => s(he)(e.process.states.find((d) => d.id === o))).join(", ")), 1),
-              r("td", null, A(s(he)(e.process.states.find((o) => o.id === a.to))), 1),
-              r("td", hr, [
-                b(s(Y), {
+              d("td", null, U(a.from === "any" ? "Any state" : a.from.map((o) => r(he)(e.process.states.find((s) => s.id === o))).join(", ")), 1),
+              d("td", null, U(r(he)(e.process.states.find((o) => o.id === a.to))), 1),
+              d("td", Vr, [
+                b(r(G), {
                   size: "small",
                   text: "",
                   severity: "secondary",
                   "aria-label": "Edit transition",
                   onClick: (o) => l.$emit("transition", a)
                 }, {
-                  default: L(() => [
-                    b(s(J), { icon: "tabler:pencil" })
+                  default: F(() => [
+                    b(r(Z), { icon: "tabler:pencil" })
                   ]),
                   _: 1
                 }, 8, ["onClick"]),
-                b(s(Y), {
+                b(r(G), {
                   size: "small",
                   text: "",
                   severity: "danger",
-                  "aria-label": "Remove transition " + s(je)(a),
+                  "aria-label": "Remove transition " + r(je)(a),
                   onClick: (o) => l.$emit("removeTransition", a)
                 }, {
-                  default: L(() => [
-                    b(s(J), { icon: "tabler:trash" })
+                  default: F(() => [
+                    b(r(Z), { icon: "tabler:trash" })
                   ]),
                   _: 1
                 }, 8, ["aria-label", "onClick"])
               ])
-            ], 8, br))), 128))
+            ], 8, wr))), 128))
           ])
         ])
       ]),
-      b(s(Y), {
+      b(r(G), {
         label: "Add transition",
         severity: "secondary",
         outlined: "",
         onClick: t[1] || (t[1] = (a) => l.$emit("addTransition"))
       }, {
-        icon: L(() => [
-          b(s(J), { icon: "tabler:plus" })
+        icon: F(() => [
+          b(r(Z), { icon: "tabler:plus" })
         ]),
         _: 1
       })
     ]));
   }
-}), gr = { class: "work-stack work-transition-settings" }, kr = { class: "work-stack work-tight" }, wr = { class: "work-row" }, Vr = { class: "work-row" }, $r = { class: "work-row" }, xr = { class: "work-stack work-tight" }, Cr = { class: "work-row" }, Sr = { class: "work-stack work-tight" }, Tr = { class: "work-stack work-tight" }, Er = /* @__PURE__ */ ve({
+}), xr = { class: "work-stack work-transition-settings" }, Cr = { class: "work-stack work-tight" }, Sr = { class: "work-row" }, Tr = { class: "work-row" }, Er = { class: "work-row" }, Ur = { class: "work-stack work-tight" }, Dr = { class: "work-row" }, Ir = { class: "work-stack work-tight" }, Ar = { class: "work-stack work-tight" }, Pr = /* @__PURE__ */ ue({
   __name: "TransitionSettings",
   props: {
     transition: {},
@@ -3940,83 +3940,83 @@ const Os = ["onKeydown"], Ns = {
     function o() {
       (t.transition.set ??= []).push({ field: t.draft.fields?.[0]?.code ?? "", value: "" });
     }
-    function d(v, m) {
-      const f = t.transition.set?.[v];
-      !f || !t.transition.set || (t.transition.set[v] = { field: f.field, ...m === "clear" ? { clear: !0 } : m === "copy" ? { copy: "" } : { value: "" } });
+    function s(v, f) {
+      const m = t.transition.set?.[v];
+      !m || !t.transition.set || (t.transition.set[v] = { field: m.field, ...f === "clear" ? { clear: !0 } : f === "copy" ? { copy: "" } : { value: "" } });
     }
-    return (v, m) => (c(), g("div", gr, [
-      r("label", kr, [
-        m[14] || (m[14] = M("To state", -1)),
-        b(s(te), {
+    return (v, f) => (c(), g("div", xr, [
+      d("label", Cr, [
+        f[14] || (f[14] = M("To state", -1)),
+        b(r(te), {
           modelValue: e.transition.to,
-          "onUpdate:modelValue": m[0] || (m[0] = (f) => e.transition.to = f),
+          "onUpdate:modelValue": f[0] || (f[0] = (m) => e.transition.to = m),
           "aria-label": "To state",
           appendTo: "self",
           optionLabel: "label",
           optionValue: "value",
-          options: e.process.states.map((f) => ({ label: s(he)(f), value: f.id }))
+          options: e.process.states.map((m) => ({ label: r(he)(m), value: m.id }))
         }, null, 8, ["modelValue", "options"])
       ]),
-      r("label", wr, [
-        m[15] || (m[15] = r("span", { class: "work-spacer" }, "Happens automatically", -1)),
-        b(s(ze), {
+      d("label", Sr, [
+        f[15] || (f[15] = d("span", { class: "work-spacer" }, "Happens automatically", -1)),
+        b(r(Le), {
           "model-value": e.transition.auto,
-          "onUpdate:modelValue": m[1] || (m[1] = (f) => {
-            e.transition.auto = f, f || delete e.transition.default;
+          "onUpdate:modelValue": f[1] || (f[1] = (m) => {
+            e.transition.auto = m, m || delete e.transition.default;
           }),
           "aria-label": "Automatic transition"
         }, null, 8, ["model-value"])
       ]),
-      r("label", Vr, [
-        m[16] || (m[16] = r("span", { class: "work-spacer" }, "Default automatic transition", -1)),
-        b(s(ze), {
+      d("label", Tr, [
+        f[16] || (f[16] = d("span", { class: "work-spacer" }, "Default automatic transition", -1)),
+        b(r(Le), {
           modelValue: e.transition.default,
-          "onUpdate:modelValue": m[2] || (m[2] = (f) => e.transition.default = f),
+          "onUpdate:modelValue": f[2] || (f[2] = (m) => e.transition.default = m),
           disabled: !e.transition.auto,
           "aria-label": "Default transition"
         }, null, 8, ["modelValue", "disabled"])
       ]),
-      r("label", $r, [
-        m[17] || (m[17] = r("span", { class: "work-spacer" }, "Works from any state", -1)),
-        b(s(ze), {
+      d("label", Er, [
+        f[17] || (f[17] = d("span", { class: "work-spacer" }, "Works from any state", -1)),
+        b(r(Le), {
           "model-value": e.transition.from === "any",
           "aria-label": "Works from any state",
-          "onUpdate:modelValue": m[3] || (m[3] = (f) => e.transition.from = f ? "any" : [])
+          "onUpdate:modelValue": f[3] || (f[3] = (m) => e.transition.from = m ? "any" : [])
         }, null, 8, ["model-value"])
       ]),
-      e.transition.from !== "any" ? (c(), F(zt, {
+      e.transition.from !== "any" ? (c(), z(Lt, {
         key: 0,
         label: "From states",
-        options: e.process.states.map((f) => ({ value: f.id, label: s(he)(f) })),
+        options: e.process.states.map((m) => ({ value: m.id, label: r(he)(m) })),
         modelValue: e.transition.from,
-        "onUpdate:modelValue": m[4] || (m[4] = (f) => e.transition.from = f)
-      }, null, 8, ["options", "modelValue"])) : E("", !0),
-      m[21] || (m[21] = r("h4", { class: "work-process-group" }, "Must be filled", -1)),
-      b(zt, {
+        "onUpdate:modelValue": f[4] || (f[4] = (m) => e.transition.from = m)
+      }, null, 8, ["options", "modelValue"])) : D("", !0),
+      f[21] || (f[21] = d("h4", { class: "work-process-group" }, "Must be filled", -1)),
+      b(Lt, {
         label: "Required fields",
-        options: e.draft.fields?.map((f) => ({ value: f.code, label: f.title || f.code })) ?? [],
+        options: e.draft.fields?.map((m) => ({ value: m.code, label: m.title || m.code })) ?? [],
         modelValue: e.transition.require,
-        "onUpdate:modelValue": m[5] || (m[5] = (f) => e.transition.require = f)
+        "onUpdate:modelValue": f[5] || (f[5] = (m) => e.transition.require = m)
       }, null, 8, ["options", "modelValue"]),
-      m[22] || (m[22] = r("h4", { class: "work-process-group" }, "Also sets", -1)),
-      (c(!0), g(H, null, ee(e.transition.set ?? [], (f, i) => (c(), g("div", {
+      f[22] || (f[22] = d("h4", { class: "work-process-group" }, "Also sets", -1)),
+      (c(!0), g(H, null, ee(e.transition.set ?? [], (m, i) => (c(), g("div", {
         key: i,
         class: "work-process-value work-stack work-tight"
       }, [
-        r("label", xr, [
-          m[18] || (m[18] = M("Field", -1)),
-          b(s(te), {
-            modelValue: f.field,
-            "onUpdate:modelValue": (n) => f.field = n,
+        d("label", Ur, [
+          f[18] || (f[18] = M("Field", -1)),
+          b(r(te), {
+            modelValue: m.field,
+            "onUpdate:modelValue": (n) => m.field = n,
             appendTo: "self",
             optionLabel: "label",
             optionValue: "value",
             options: e.draft.fields?.map((n) => ({ value: n.code, label: n.title || n.code })) ?? []
           }, null, 8, ["modelValue", "onUpdate:modelValue", "options"])
         ]),
-        r("div", Cr, [
-          b(s(te), {
-            "model-value": f.clear ? "clear" : f.copy !== void 0 ? "copy" : "value",
+        d("div", Dr, [
+          b(r(te), {
+            "model-value": m.clear ? "clear" : m.copy !== void 0 ? "copy" : "value",
             "aria-label": "Value action",
             appendTo: "self",
             options: [
@@ -4026,98 +4026,98 @@ const Os = ["onKeydown"], Ns = {
             ],
             optionLabel: "label",
             optionValue: "value",
-            "onUpdate:modelValue": (n) => d(i, n)
+            "onUpdate:modelValue": (n) => s(i, n)
           }, null, 8, ["model-value", "onUpdate:modelValue"]),
-          b(s(Y), {
+          b(r(G), {
             text: "",
             severity: "danger",
             "aria-label": "Remove value " + (i + 1),
             onClick: (n) => e.transition.set?.splice(i, 1)
           }, {
-            default: L(() => [
-              b(s(J), { icon: "tabler:trash" })
+            default: F(() => [
+              b(r(Z), { icon: "tabler:trash" })
             ]),
             _: 1
           }, 8, ["aria-label", "onClick"])
         ]),
-        f.copy !== void 0 ? (c(), F(s(te), {
+        m.copy !== void 0 ? (c(), z(r(te), {
           key: 0,
-          modelValue: f.copy,
-          "onUpdate:modelValue": (n) => f.copy = n,
+          modelValue: m.copy,
+          "onUpdate:modelValue": (n) => m.copy = n,
           "aria-label": "Copy from field",
           appendTo: "self",
           optionLabel: "label",
           optionValue: "value",
           options: e.draft.fields?.map((n) => ({ value: n.code, label: n.title || n.code })) ?? []
-        }, null, 8, ["modelValue", "onUpdate:modelValue", "options"])) : f.clear ? E("", !0) : (c(!0), g(H, { key: 1 }, ee(e.draft.fields?.filter((n) => n.code === f.field) ?? [], (n) => (c(), F(Ma, {
+        }, null, 8, ["modelValue", "onUpdate:modelValue", "options"])) : m.clear ? D("", !0) : (c(!0), g(H, { key: 1 }, ee(e.draft.fields?.filter((n) => n.code === m.field) ?? [], (n) => (c(), z(za, {
           key: n.code,
           "board-id": e.boardId ?? "",
           field: n,
-          modelValue: f.value,
-          "onUpdate:modelValue": (u) => f.value = u,
+          modelValue: m.value,
+          "onUpdate:modelValue": (u) => m.value = u,
           onValidity: (u) => a("validity", "effect-" + i, u)
         }, null, 8, ["board-id", "field", "modelValue", "onUpdate:modelValue", "onValidity"]))), 128))
       ]))), 128)),
-      b(s(Y), {
+      b(r(G), {
         label: "Add value",
         severity: "secondary",
         outlined: "",
         size: "small",
         onClick: o
       }, {
-        icon: L(() => [
-          b(s(J), { icon: "tabler:plus" })
+        icon: F(() => [
+          b(r(Z), { icon: "tabler:plus" })
         ]),
         _: 1
       }),
-      r("label", Sr, [
-        m[19] || (m[19] = M("Offer to people", -1)),
-        b(s(te), {
+      d("label", Ir, [
+        f[19] || (f[19] = M("Offer to people", -1)),
+        b(r(te), {
           "model-value": e.transition.people,
           "aria-label": "Offer to people",
           appendTo: "self",
           optionLabel: "label",
           optionValue: "value",
           options: [{ label: "Work default", value: void 0 }, { label: "Offer explicitly", value: !0 }, { label: "Hide from people", value: !1 }],
-          "onUpdate:modelValue": m[6] || (m[6] = (f) => e.transition.people = f)
+          "onUpdate:modelValue": f[6] || (f[6] = (m) => e.transition.people = m)
         }, null, 8, ["model-value"])
       ]),
-      r("label", Tr, [
-        m[20] || (m[20] = M("Evaluation order", -1)),
-        b(s(Ge), {
+      d("label", Ar, [
+        f[20] || (f[20] = M("Evaluation order", -1)),
+        b(r(Ge), {
           "model-value": e.transition.order ?? null,
           "aria-label": "Transition order",
           min: 0,
           useGrouping: !1,
-          "onUpdate:modelValue": m[7] || (m[7] = (f) => e.transition.order = f ?? void 0)
+          "onUpdate:modelValue": f[7] || (f[7] = (m) => e.transition.order = m ?? void 0)
         }, null, 8, ["model-value"])
       ]),
-      m[23] || (m[23] = r("h4", { class: "work-process-group" }, "Only when", -1)),
+      f[23] || (f[23] = d("h4", { class: "work-process-group" }, "Only when", -1)),
       b(_l, {
         label: "Allow this transition when",
         draft: e.draft,
         "board-id": e.boardId,
         "model-value": e.transition.when,
-        "onUpdate:modelValue": m[8] || (m[8] = (f) => e.transition.when = f),
-        onValidity: m[9] || (m[9] = (f) => a("validity", "when", f))
+        "onUpdate:modelValue": f[8] || (f[8] = (m) => e.transition.when = m),
+        onValidity: f[9] || (f[9] = (m) => a("validity", "when", m))
       }, null, 8, ["draft", "board-id", "model-value"]),
-      b(lt, {
+      b(at, {
         label: "Set values",
         "model-value": e.transition.set,
         shape: "array",
-        "onUpdate:modelValue": m[10] || (m[10] = (f) => e.transition.set = f),
-        onValidity: m[11] || (m[11] = (f) => a("validity", "set", f))
+        "onUpdate:modelValue": f[10] || (f[10] = (m) => e.transition.set = m),
+        onValidity: f[11] || (f[11] = (m) => a("validity", "set", m))
       }, null, 8, ["model-value"]),
-      b(lt, {
+      b(at, {
         label: "Guards",
         "model-value": e.transition.guards,
         shape: "array",
-        "onUpdate:modelValue": m[12] || (m[12] = (f) => e.transition.guards = f),
-        onValidity: m[13] || (m[13] = (f) => a("validity", "guards", f))
+        "onUpdate:modelValue": f[12] || (f[12] = (m) => e.transition.guards = m),
+        onValidity: f[13] || (f[13] = (m) => a("validity", "guards", m))
       }, null, 8, ["model-value"])
     ]));
   }
-}), gl = /* @__PURE__ */ ve({
+}), gl = /* @__PURE__ */ ue({
   __name: "CapacityControl",
   props: {
     draft: {},
@@ -4126,25 +4126,25 @@ const Os = ["onKeydown"], Ns = {
     hard: { type: Boolean }
   },
   setup(e) {
-    const l = e, t = G(() => l.draft.policy?.wip?.[l.state]);
-    function a(d) {
-      if (d === null) {
+    const l = e, t = K(() => l.draft.policy?.wip?.[l.state]);
+    function a(s) {
+      if (s === null) {
         l.draft.policy?.wip && delete l.draft.policy.wip[l.state];
         return;
       }
-      const v = l.draft.policy ??= {}, m = v.wip ??= {};
-      m[l.state] = { ...m[l.state], limit: d };
+      const v = l.draft.policy ??= {}, f = v.wip ??= {};
+      f[l.state] = { ...f[l.state], limit: s };
     }
-    function o(d) {
-      t.value && (t.value.hard = d);
+    function o(s) {
+      t.value && (t.value.hard = s);
     }
-    return (d, v) => e.hard ? (c(), F(s(ze), {
+    return (s, v) => e.hard ? (c(), z(r(Le), {
       key: 0,
       "aria-label": e.label,
       disabled: !t.value,
       "model-value": t.value?.hard ?? !1,
       "onUpdate:modelValue": o
-    }, null, 8, ["aria-label", "disabled", "model-value"])) : (c(), F(s(Ge), {
+    }, null, 8, ["aria-label", "disabled", "model-value"])) : (c(), z(r(Ge), {
       key: 1,
       "aria-label": e.label,
       min: 0,
@@ -4155,29 +4155,163 @@ const Os = ["onKeydown"], Ns = {
       "onUpdate:modelValue": a
     }, null, 8, ["aria-label", "model-value"]));
   }
+});
+async function xa(e) {
+  try {
+    const { data: l } = await go.get(e);
+    if (!l?.success) throw new Error(l?.message || (typeof l?.error == "string" ? l.error : l?.error?.message) || "Could not read published Flow.");
+    return l;
+  } catch (l) {
+    throw Uo(l, "Published Flow");
+  }
+}
+const Ca = (e) => `/api/v1/workflows/${encodeURIComponent(e)}/versions`, Sa = {
+  versions: async (e) => (await xa(Ca(e))).versions ?? [],
+  check: async (e) => {
+    if ((await xa(`${Ca(e.id)}/${e.version}`)).version?.version !== e.version) throw new Error("The published version is unavailable.");
+  }
+}, Rr = {
+  class: "work-stack work-tight",
+  "aria-label": "Stage Flow"
+}, Or = {
+  key: 0,
+  class: "work-small"
+}, Nr = {
+  key: 1,
+  class: "work-muted work-small"
+}, Mr = {
+  key: 2,
+  class: "kx-err",
+  role: "alert"
+}, Fr = ["schema", "config"], Lr = {
+  key: 4,
+  class: "kx-err",
+  role: "alert"
+}, zr = {
+  key: 5,
+  class: "work-stack work-tight"
+}, Br = {
+  key: 6,
+  class: "work-muted work-small",
+  role: "status"
+}, jr = /* @__PURE__ */ ue({
+  __name: "StageFlow",
+  props: {
+    modelValue: {}
+  },
+  emits: ["update:modelValue", "validity"],
+  setup(e, { emit: l }) {
+    const t = e, a = l, o = L(!1), s = L(""), v = L([]), f = L(!1), m = L(""), i = L(!1), n = K(() => s.value || t.modelValue?.id), u = JSON.stringify({ properties: { flow_ref: { title: "Published Flow", picker: "wc-workflow-picker" } } }), y = K(() => JSON.stringify(t.modelValue ? { flow_ref: t.modelValue } : {}));
+    let p = 0;
+    async function w() {
+      o.value = await tt("wc-workflow-picker");
+    }
+    w();
+    async function S() {
+      const x = ++p, E = n.value, V = t.modelValue;
+      if (f.value = !!E, m.value = "", v.value = [], !!E)
+        try {
+          const [P] = await Promise.all([Sa.versions(E), !i.value && V ? Sa.check(V) : Promise.resolve()]);
+          if (x !== p) return;
+          if (v.value = P.filter((X) => Number.isInteger(X.version) && X.version > 0), !i.value && V && !v.value.some((X) => X.version === V.version)) throw new Error("The published version is unavailable.");
+        } catch (P) {
+          x === p && (m.value = P instanceof Error ? P.message : "Could not read published Flow.");
+        } finally {
+          x === p && (f.value = !1);
+        }
+    }
+    xe([n, () => t.modelValue?.version, i], S, { immediate: !0 }), xe(i, (x) => a("validity", !x), { immediate: !0 });
+    function I(x) {
+      const E = x.detail?.flow_ref;
+      E?.kind !== "flow" || !E.id || (i.value = !0, s.value = E.id);
+    }
+    function $(x) {
+      !n.value || !v.value.some((E) => E.version === x) || (a("update:modelValue", { kind: "flow", id: n.value, version: x }), i.value = !1, s.value = "");
+    }
+    function A() {
+      a("update:modelValue", void 0), i.value = !1, s.value = "";
+    }
+    return it(() => {
+      p++, a("validity", !0);
+    }), (x, E) => (c(), g("section", Rr, [
+      E[3] || (E[3] = d("h4", { class: "work-field-label" }, "What runs", -1)),
+      e.modelValue ? (c(), g("p", Or, "Bound Flow: " + U(e.modelValue.id) + " · v" + U(e.modelValue.version), 1)) : (c(), g("p", Nr, "No Flow bound. This stage keeps its existing external execution contract.")),
+      m.value ? (c(), g("p", Mr, [
+        M(U(i.value ? "Flow versions unavailable" : "Flow binding unavailable") + ": " + U(n.value), 1),
+        !i.value && e.modelValue ? (c(), g(H, { key: 0 }, [
+          M(" · v" + U(e.modelValue.version), 1)
+        ], 64)) : D("", !0),
+        M(". " + U(m.value), 1),
+        b(r(G), {
+          label: "Reload Flow",
+          severity: "secondary",
+          text: "",
+          onClick: S
+        })
+      ])) : D("", !0),
+      o.value ? (c(), g("wc-workflow-picker", {
+        key: 3,
+        schema: r(u),
+        config: y.value,
+        onChange: I
+      }, null, 40, Fr)) : (c(), g("p", Lr, [
+        E[1] || (E[1] = M("Published Flow picker unavailable.", -1)),
+        b(r(G), {
+          label: "Reload Flow picker",
+          text: "",
+          severity: "secondary",
+          onClick: w
+        })
+      ])),
+      n.value ? (c(), g("label", zr, [
+        E[2] || (E[2] = M("Published version", -1)),
+        b(r(te), {
+          "model-value": i.value ? void 0 : e.modelValue?.version,
+          options: v.value.map((V) => ({ label: "v" + V.version, value: V.version })),
+          "option-label": "label",
+          "option-value": "value",
+          "aria-label": "Published version",
+          placeholder: "Choose a published version",
+          "append-to": "self",
+          loading: f.value,
+          disabled: f.value || !!m.value,
+          "onUpdate:modelValue": $
+        }, null, 8, ["model-value", "options", "loading", "disabled"])
+      ])) : D("", !0),
+      i.value ? (c(), g("p", Br, "Choose a published version of " + U(n.value) + " to finish selecting the Flow.", 1)) : D("", !0),
+      e.modelValue || i.value ? (c(), z(r(G), {
+        key: 7,
+        label: i.value ? "Cancel Flow selection" : "Remove Flow binding",
+        "aria-label": i.value ? "Cancel Flow selection" : "Remove Flow binding",
+        severity: "secondary",
+        text: "",
+        onClick: E[0] || (E[0] = (V) => i.value ? (i.value = !1, s.value = "") : A())
+      }, null, 8, ["label", "aria-label"])) : D("", !0)
+    ]));
+  }
 }), Hl = { minutes: 60, hours: 3600, days: 86400 };
 function Wt(e, l) {
   const t = /^P(\d+)W$/.exec(e), a = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+\.?\d*)S)?)?$/.exec(e);
   if (!t && (!a || e === "P" || e.endsWith("T"))) return;
   const o = t ? Number(t[1]) * 604800 : Number(a[1] ?? 0) * 86400 + Number(a[2] ?? 0) * 3600 + Number(a[3] ?? 0) * 60 + Number(a[4] ?? 0);
   if (!Number.isFinite(o) || o <= 0) return;
-  const d = l ?? (o % 86400 === 0 ? "days" : o % 3600 === 0 ? "hours" : "minutes");
-  return { amount: o / Hl[d], unit: d };
+  const s = l ?? (o % 86400 === 0 ? "days" : o % 3600 === 0 ? "hours" : "minutes");
+  return { amount: o / Hl[s], unit: s };
 }
-function Ur(e, l) {
+function qr(e, l) {
   if (e == null) return;
   if (!Number.isFinite(e * Hl[l]) || e <= 0) throw new Error("Enter a positive duration.");
   const t = (a) => a.toLocaleString("en-US", { useGrouping: !1, maximumSignificantDigits: 21 });
   return Number.isInteger(e) ? l === "days" ? `P${t(e)}D` : l === "hours" ? `PT${t(e)}H` : `PT${t(e)}M` : `PT${t(e * Hl[l])}S`;
 }
-const Dr = { class: "work-stack work-tight" }, Ir = {
+const Wr = { class: "work-stack work-tight" }, Kr = {
   class: "work-duration-control",
   style: { "max-width": "360px" }
-}, Ar = {
+}, Gr = {
   key: 0,
   class: "work-error",
   role: "alert"
-}, xt = /* @__PURE__ */ ve({
+}, xt = /* @__PURE__ */ ue({
   __name: "DurationControl",
   props: {
     modelValue: {},
@@ -4186,46 +4320,46 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
   },
   emits: ["update:modelValue", "validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = "duration:" + Xl(), d = z("days"), v = z("");
-    Ce(() => t.modelValue, (y) => {
+    const t = e, a = l, o = "duration:" + Xl(), s = L("days"), v = L("");
+    xe(() => t.modelValue, (y) => {
       v.value = "";
       const p = y ? Wt(y) : void 0;
-      p && (d.value = p.unit), a("validity", !y || !!p, o);
+      p && (s.value = p.unit), a("validity", !y || !!p, o);
     }, { immediate: !0 });
-    const m = G(() => t.modelValue ? Wt(t.modelValue, d.value)?.amount ?? null : null);
-    function f(y) {
+    const f = K(() => t.modelValue ? Wt(t.modelValue, s.value)?.amount ?? null : null);
+    function m(y) {
       try {
-        const p = Ur(y, d.value);
+        const p = qr(y, s.value);
         v.value = "", a("update:modelValue", p), a("validity", !0, o);
       } catch (p) {
         v.value = p.message, a("validity", !1, o);
       }
     }
     function i(y) {
-      y == null && v.value || f(y);
+      y == null && v.value || m(y);
     }
     function n(y) {
-      y.formattedValue.trim() && (typeof y.value != "number" || !Number.isFinite(y.value)) ? (v.value = "Enter a positive duration.", a("validity", !1, o)) : f(typeof y.value == "number" ? y.value : null);
+      y.formattedValue.trim() && (typeof y.value != "number" || !Number.isFinite(y.value)) ? (v.value = "Enter a positive duration.", a("validity", !1, o)) : m(typeof y.value == "number" ? y.value : null);
     }
     function u(y) {
-      const p = m.value;
-      d.value = y, !(t.modelValue && !Wt(t.modelValue)) && f(p);
+      const p = f.value;
+      s.value = y, !(t.modelValue && !Wt(t.modelValue)) && m(p);
     }
-    return ft(() => a("validity", !0, o)), (y, p) => (c(), g("label", Dr, [
-      M(A(e.label), 1),
-      r("span", Ir, [
-        b(s(Ge), {
-          "model-value": m.value,
+    return it(() => a("validity", !0, o)), (y, p) => (c(), g("label", Wr, [
+      M(U(e.label), 1),
+      d("span", Kr, [
+        b(r(Ge), {
+          "model-value": f.value,
           "aria-label": e.label,
           min: 0,
-          "aria-invalid": !!v.value || !!e.modelValue && !s(Wt)(e.modelValue),
+          "aria-invalid": !!v.value || !!e.modelValue && !r(Wt)(e.modelValue),
           disabled: e.disabled,
           useGrouping: !1,
           onInput: n,
           "onUpdate:modelValue": p[0] || (p[0] = (w) => i(w))
         }, null, 8, ["model-value", "aria-label", "aria-invalid", "disabled"]),
-        b(s(te), {
-          "model-value": d.value,
+        b(r(te), {
+          "model-value": s.value,
           "aria-label": e.label + " unit",
           disabled: e.disabled,
           options: [{ label: "Minutes", value: "minutes" }, { label: "Hours", value: "hours" }, { label: "Days", value: "days" }],
@@ -4235,16 +4369,16 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
           "onUpdate:modelValue": p[1] || (p[1] = (w) => u(w))
         }, null, 8, ["model-value", "aria-label", "disabled"])
       ]),
-      v.value || e.modelValue && !s(Wt)(e.modelValue) ? (c(), g("span", Ar, A(v.value || `Unsupported duration: ${e.modelValue}`), 1)) : E("", !0)
+      v.value || e.modelValue && !r(Wt)(e.modelValue) ? (c(), g("span", Gr, U(v.value || `Unsupported duration: ${e.modelValue}`), 1)) : D("", !0)
     ]));
   }
-}), Pr = { class: "work-stack" }, Rr = { class: "work-settings-grid" }, Or = { class: "work-stack work-tight" }, Nr = { class: "work-stack work-tight" }, Mr = {
+}), Yr = { class: "work-stack" }, Hr = { class: "work-settings-grid" }, Xr = { class: "work-stack work-tight" }, Jr = { class: "work-stack work-tight" }, Zr = {
   key: 1,
   class: "work-stack work-tight"
-}, Lr = { class: "work-stack work-tight" }, zr = { class: "work-settings-grid" }, Fr = { class: "work-row" }, Br = { class: "work-stack work-tight" }, jr = {
+}, Qr = { class: "work-stack work-tight" }, _r = { class: "work-settings-grid" }, ed = { class: "work-row" }, td = { class: "work-stack work-tight" }, ld = {
   key: 0,
   class: "work-stack work-tight"
-}, qr = /* @__PURE__ */ ve({
+}, ad = /* @__PURE__ */ ue({
   __name: "TimersEditor",
   props: {
     state: {},
@@ -4256,38 +4390,38 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
     function o() {
       return t.state.timers ?? [];
     }
-    function d() {
+    function s() {
       const i = t.state.timers ?? (t.state.timers = []);
       i.push({ id: Vt("timer", i), after: "P1D", then: { emit: "reminder" } });
     }
     function v(i, n) {
       delete i.after, delete i.at_field, n === "after" ? i.after = "P1D" : i.at_field = "";
     }
-    function m(i, n, u) {
+    function f(i, n, u) {
       u ? i[n] = u : (delete i[n], delete i.table);
     }
-    function f(i, n) {
+    function m(i, n) {
       i.then = n === "emit" ? { emit: "" } : { transition: "" };
     }
-    return (i, n) => (c(), g("section", Pr, [
-      n[8] || (n[8] = r("h4", null, "Timers", -1)),
+    return (i, n) => (c(), g("section", Yr, [
+      n[8] || (n[8] = d("h4", null, "Timers", -1)),
       (c(!0), g(H, null, ee(o(), (u, y) => (c(), g("article", {
         key: u.id,
         class: "work-settings-card work-stack"
       }, [
-        r("div", Rr, [
-          r("label", Or, [
+        d("div", Hr, [
+          d("label", Xr, [
             n[2] || (n[2] = M("Timer ID", -1)),
-            b(s(re), {
+            b(r(re), {
               modelValue: u.id,
               "onUpdate:modelValue": (p) => u.id = p,
               required: "",
               pattern: "[a-z][a-z0-9_]*"
             }, null, 8, ["modelValue", "onUpdate:modelValue"])
           ]),
-          r("label", Nr, [
+          d("label", Jr, [
             n[3] || (n[3] = M("Deadline", -1)),
-            b(s(te), {
+            b(r(te), {
               "model-value": u.at_field !== void 0 ? "at_field" : "after",
               "onUpdate:modelValue": (p) => v(u, p),
               appendTo: "self",
@@ -4300,15 +4434,15 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
               ]
             }, null, 8, ["model-value", "onUpdate:modelValue"])
           ]),
-          u.after !== void 0 ? (c(), F(xt, {
+          u.after !== void 0 ? (c(), z(xt, {
             key: 0,
             modelValue: u.after,
             "onUpdate:modelValue": (p) => u.after = p,
             label: "After",
             onValidity: n[0] || (n[0] = (p, w) => a("validity", w, p))
-          }, null, 8, ["modelValue", "onUpdate:modelValue"])) : (c(), g("label", Mr, [
+          }, null, 8, ["modelValue", "onUpdate:modelValue"])) : (c(), g("label", Zr, [
             n[4] || (n[4] = M("At field", -1)),
-            b(s(te), {
+            b(r(te), {
               modelValue: u.at_field,
               "onUpdate:modelValue": (p) => u.at_field = p,
               appendTo: "self",
@@ -4324,11 +4458,11 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
               ]
             }, null, 8, ["modelValue", "onUpdate:modelValue", "options"])
           ])),
-          r("label", Lr, [
+          d("label", Qr, [
             n[5] || (n[5] = M("Duration by field", -1)),
-            b(s(te), {
+            b(r(te), {
               "model-value": u.by ?? "",
-              "onUpdate:modelValue": (p) => m(u, "by", p),
+              "onUpdate:modelValue": (p) => f(u, "by", p),
               appendTo: "self",
               optionLabel: "label",
               optionValue: "value",
@@ -4344,7 +4478,7 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
             }, null, 8, ["model-value", "onUpdate:modelValue", "options"])
           ])
         ]),
-        u.by ? (c(), F(lt, {
+        u.by ? (c(), z(at, {
           key: 0,
           label: "Duration table",
           hint: "Map field values to ISO durations.",
@@ -4352,8 +4486,8 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
           shape: "object",
           "onUpdate:modelValue": (p) => u.table = p,
           onValidity: (p) => a("validity", "table-" + y, p)
-        }, null, 8, ["model-value", "onUpdate:modelValue", "onValidity"])) : E("", !0),
-        r("div", zr, [
+        }, null, 8, ["model-value", "onUpdate:modelValue", "onValidity"])) : D("", !0),
+        d("div", _r, [
           b(xt, {
             modelValue: u.repeat,
             "onUpdate:modelValue": (p) => u.repeat = p,
@@ -4361,19 +4495,19 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
             onValidity: n[1] || (n[1] = (p, w) => a("validity", w, p)),
             disabled: u.interrupting
           }, null, 8, ["modelValue", "onUpdate:modelValue", "disabled"]),
-          r("label", Fr, [
-            b(s(Mt), {
+          d("label", ed, [
+            b(r(Mt), {
               modelValue: u.interrupting,
               "onUpdate:modelValue": [(p) => u.interrupting = p, (p) => u.interrupting && delete u.repeat],
               binary: ""
             }, null, 8, ["modelValue", "onUpdate:modelValue"]),
             n[6] || (n[6] = M("Interrupting", -1))
           ]),
-          r("label", Br, [
+          d("label", td, [
             n[7] || (n[7] = M("Then", -1)),
-            b(s(te), {
+            b(r(te), {
               "model-value": u.then?.transition !== void 0 ? "transition" : "emit",
-              "onUpdate:modelValue": (p) => f(u, p),
+              "onUpdate:modelValue": (p) => m(u, p),
               appendTo: "self",
               optionLabel: "label",
               optionValue: "value",
@@ -4384,28 +4518,28 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
               ]
             }, null, 8, ["model-value", "onUpdate:modelValue"])
           ]),
-          u.then ? (c(), g("label", jr, [
-            M(A(u.then.transition !== void 0 ? "Transition ID" : "Event name"), 1),
-            u.then.transition !== void 0 ? (c(), F(s(re), {
+          u.then ? (c(), g("label", ld, [
+            M(U(u.then.transition !== void 0 ? "Transition ID" : "Event name"), 1),
+            u.then.transition !== void 0 ? (c(), z(r(re), {
               key: 0,
               modelValue: u.then.transition,
               "onUpdate:modelValue": (p) => u.then.transition = p
-            }, null, 8, ["modelValue", "onUpdate:modelValue"])) : (c(), F(s(re), {
+            }, null, 8, ["modelValue", "onUpdate:modelValue"])) : (c(), z(r(re), {
               key: 1,
               modelValue: u.then.emit,
               "onUpdate:modelValue": (p) => u.then.emit = p
             }, null, 8, ["modelValue", "onUpdate:modelValue"]))
-          ])) : E("", !0)
+          ])) : D("", !0)
         ]),
-        b(s(Y), {
+        b(r(G), {
           severity: "secondary",
           onClick: (p) => o().splice(y, 1),
           "aria-label": "Remove timer",
           text: "",
           size: "small"
         }, {
-          default: L(() => [
-            b(s(J), {
+          default: F(() => [
+            b(r(Z), {
               icon: "tabler:trash",
               "aria-hidden": "true"
             })
@@ -4413,14 +4547,14 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
           _: 1
         }, 8, ["onClick"])
       ]))), 128)),
-      b(s(Y), {
+      b(r(G), {
         label: "Add timer",
         severity: "secondary",
-        onClick: d,
+        onClick: s,
         outlined: ""
       }, {
-        icon: L(() => [
-          b(s(J), {
+        icon: F(() => [
+          b(r(Z), {
             icon: "tabler:plus",
             "aria-hidden": "true"
           })
@@ -4429,10 +4563,10 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
       })
     ]));
   }
-}), Wr = ["aria-label"], Kr = { class: "work-stack work-tight" }, Gr = {
+}), od = ["aria-label"], id = { class: "work-stack work-tight" }, nd = {
   key: 0,
   class: "work-stack work-tight"
-}, Yr = /* @__PURE__ */ ve({
+}, sd = /* @__PURE__ */ ue({
   __name: "PrincipalSourceEditor",
   props: {
     modelValue: {},
@@ -4442,20 +4576,20 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
   },
   emits: ["update:modelValue", "validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = G(() => Array.isArray(t.modelValue) ? "principals" : "field" in t.modelValue ? "field" : "group"), d = G(() => Array.isArray(t.modelValue) ? t.modelValue : "group" in t.modelValue && t.modelValue.group ? [{ kind: "group", id: t.modelValue.group }] : []);
-    function v(f) {
-      a("update:modelValue", f === "field" ? { field: "" } : f === "group" ? { group: "" } : []);
+    const t = e, a = l, o = K(() => Array.isArray(t.modelValue) ? "principals" : "field" in t.modelValue ? "field" : "group"), s = K(() => Array.isArray(t.modelValue) ? t.modelValue : "group" in t.modelValue && t.modelValue.group ? [{ kind: "group", id: t.modelValue.group }] : []);
+    function v(m) {
+      a("update:modelValue", m === "field" ? { field: "" } : m === "group" ? { group: "" } : []);
     }
-    function m(f) {
-      a("update:modelValue", o.value === "group" ? { group: f.at(-1)?.id ?? "" } : f);
+    function f(m) {
+      a("update:modelValue", o.value === "group" ? { group: m.at(-1)?.id ?? "" } : m);
     }
-    return Ua(() => a("validity", Array.isArray(t.modelValue) ? t.modelValue.length > 0 : "field" in t.modelValue ? !!t.modelValue.field : !!t.modelValue.group)), ft(() => a("validity", !0)), (f, i) => (c(), g("section", {
+    return Aa(() => a("validity", Array.isArray(t.modelValue) ? t.modelValue.length > 0 : "field" in t.modelValue ? !!t.modelValue.field : !!t.modelValue.group)), it(() => a("validity", !0)), (m, i) => (c(), g("section", {
       class: "work-stack work-tight",
       "aria-label": e.label
     }, [
-      r("label", Kr, [
-        M(A(e.label) + " source", 1),
-        b(s(te), {
+      d("label", id, [
+        M(U(e.label) + " source", 1),
+        b(r(te), {
           "model-value": o.value,
           "aria-label": e.label + " source",
           options: [{ label: "Group", value: "group" }, { label: "People and groups", value: "principals" }, { label: "Principal field", value: "field" }],
@@ -4465,9 +4599,9 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
           "onUpdate:modelValue": v
         }, null, 8, ["model-value", "aria-label"])
       ]),
-      "field" in e.modelValue ? (c(), g("label", Gr, [
+      "field" in e.modelValue ? (c(), g("label", nd, [
         i[1] || (i[1] = M("Principal field", -1)),
-        b(s(te), {
+        b(r(te), {
           "model-value": e.modelValue.field,
           "aria-label": e.label + " field",
           options: e.draft.fields?.filter((n) => n.type === "principal").map((n) => ({ label: n.title || n.code, value: n.code })) ?? [],
@@ -4476,41 +4610,41 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
           appendTo: "self",
           "onUpdate:modelValue": i[0] || (i[0] = (n) => a("update:modelValue", { field: n }))
         }, null, 8, ["model-value", "aria-label", "options"])
-      ])) : (c(), F(ea, {
+      ])) : (c(), z(ea, {
         key: 1,
         "board-id": e.boardId,
         label: e.label,
         kinds: o.value === "group" ? "group" : "user,group,service",
-        "model-value": d.value,
-        "onUpdate:modelValue": m
+        "model-value": s.value,
+        "onUpdate:modelValue": f
       }, null, 8, ["board-id", "label", "kinds", "model-value"]))
-    ], 8, Wr));
+    ], 8, od));
   }
-}), Hr = {
+}), rd = {
   key: 0,
   class: "kx-err",
   role: "alert"
-}, Xr = {
+}, dd = {
   class: "work-stack work-tight",
   "aria-label": "Approval sources"
-}, Jr = { class: "work-row" }, Zr = {
+}, ud = { class: "work-row" }, cd = {
   key: 0,
   class: "work-stack work-tight"
-}, Qr = ["kinds", "value"], _r = {
+}, vd = ["kinds", "value"], md = {
   key: 2,
   class: "work-muted work-small",
   role: "status"
-}, ed = {
+}, fd = {
   key: 3,
   class: "work-chips"
-}, td = { class: "work-row work-small" }, ld = { class: "work-process-options" }, ad = { class: "work-stack work-tight" }, od = {
+}, pd = { class: "work-row work-small" }, bd = { class: "work-process-options" }, hd = { class: "work-stack work-tight" }, yd = {
   key: 4,
   class: "work-error work-small",
   role: "alert"
-}, id = {
+}, gd = {
   key: 5,
   class: "work-muted work-small"
-}, nd = /* @__PURE__ */ ve({
+}, kd = /* @__PURE__ */ ue({
   __name: "ApproversEditor",
   props: {
     approvals: {},
@@ -4518,32 +4652,32 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
   },
   emits: ["validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, { principalLabel: o, rememberPrincipal: d, nameError: v } = Da(() => t.boardId ?? "", () => Array.isArray(t.approvals.from) ? t.approvals.from : "group" in t.approvals.from ? [{ kind: "group", id: t.approvals.from.group }] : []), m = z(!1), f = G(() => Array.isArray(t.approvals.from) ? "principals" : "field" in t.approvals.from ? "field" : "group"), i = G(() => Array.isArray(t.approvals.from) ? t.approvals.from.some((p) => p.kind === "group") || t.approvals.from.length >= t.approvals.min : "field" in t.approvals.from ? !!t.approvals.from.field : !!t.approvals.from.group);
-    Ua(() => a("validity", Number.isSafeInteger(t.approvals.min) && t.approvals.min > 0 && i.value)), ft(() => a("validity", !0)), kl(async () => {
-      m.value = await vt("wc-principal-picker");
+    const t = e, a = l, { principalLabel: o, rememberPrincipal: s, nameError: v } = Pa(() => t.boardId ?? "", () => Array.isArray(t.approvals.from) ? t.approvals.from : "group" in t.approvals.from ? [{ kind: "group", id: t.approvals.from.group }] : []), f = L(!1), m = K(() => Array.isArray(t.approvals.from) ? "principals" : "field" in t.approvals.from ? "field" : "group"), i = K(() => Array.isArray(t.approvals.from) ? t.approvals.from.some((p) => p.kind === "group") || t.approvals.from.length >= t.approvals.min : "field" in t.approvals.from ? !!t.approvals.from.field : !!t.approvals.from.group);
+    Aa(() => a("validity", Number.isSafeInteger(t.approvals.min) && t.approvals.min > 0 && i.value)), it(() => a("validity", !0)), kl(async () => {
+      f.value = await tt("wc-principal-picker");
     });
     function n(p) {
       t.approvals.from = p === "group" ? { group: "" } : p === "field" ? { field: "" } : [];
     }
     function u(p) {
       const w = p.detail, S = w?.principal_id ?? w?.id;
-      if (f.value === "group") {
+      if (m.value === "group") {
         t.approvals.from = { group: S ?? "" };
         return;
       }
       if (!S || !Array.isArray(t.approvals.from)) return;
-      const U = { kind: w.type ?? w.kind ?? "user", id: S };
-      w.label && d(U, w.label), t.approvals.from.some(($) => $.id === S && $.kind === U.kind) || t.approvals.from.push(U);
+      const I = { kind: w.type ?? w.kind ?? "user", id: S };
+      w.label && s(I, w.label), t.approvals.from.some(($) => $.id === S && $.kind === I.kind) || t.approvals.from.push(I);
     }
     function y(p) {
       Array.isArray(t.approvals.from) && t.approvals.from.splice(p, 1);
     }
     return (p, w) => (c(), g(H, null, [
-      s(v) ? (c(), g("p", Hr, A(s(v)), 1)) : E("", !0),
-      r("section", Xr, [
-        r("label", Jr, [
-          w[4] || (w[4] = r("span", { class: "work-spacer" }, "Approvals needed", -1)),
-          b(s(Ge), {
+      r(v) ? (c(), g("p", rd, U(r(v)), 1)) : D("", !0),
+      d("section", dd, [
+        d("label", ud, [
+          w[4] || (w[4] = d("span", { class: "work-spacer" }, "Approvals needed", -1)),
+          b(r(Ge), {
             modelValue: e.approvals.min,
             "onUpdate:modelValue": w[0] || (w[0] = (S) => e.approvals.min = S),
             min: 1,
@@ -4551,37 +4685,37 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
             useGrouping: !1
           }, null, 8, ["modelValue"])
         ]),
-        w[9] || (w[9] = r("span", { class: "work-field-label" }, "Approvers", -1)),
-        "field" in e.approvals.from ? (c(), g("label", Zr, [
+        w[9] || (w[9] = d("span", { class: "work-field-label" }, "Approvers", -1)),
+        "field" in e.approvals.from ? (c(), g("label", cd, [
           w[5] || (w[5] = M("Principal field", -1)),
-          b(s(re), {
+          b(r(re), {
             modelValue: e.approvals.from.field,
             "onUpdate:modelValue": w[1] || (w[1] = (S) => e.approvals.from.field = S),
             "aria-label": "Principal field"
           }, null, 8, ["modelValue"])
-        ])) : m.value ? (c(), g("wc-principal-picker", {
-          key: f.value,
-          kinds: f.value === "group" ? "group" : "user,group,service",
+        ])) : f.value ? (c(), g("wc-principal-picker", {
+          key: m.value,
+          kinds: m.value === "group" ? "group" : "user,group,service",
           value: JSON.stringify("group" in e.approvals.from ? { type: "group", principal_id: e.approvals.from.group } : {}),
           onConfigChanged: u
-        }, null, 40, Qr)) : (c(), g("p", _r, "The principal picker is unavailable.")),
-        Array.isArray(e.approvals.from) ? (c(), g("div", ed, [
-          (c(!0), g(H, null, ee(e.approvals.from, (S, U) => (c(), F(s(Re), {
+        }, null, 40, vd)) : (c(), g("p", md, "The principal picker is unavailable.")),
+        Array.isArray(e.approvals.from) ? (c(), g("div", fd, [
+          (c(!0), g(H, null, ee(e.approvals.from, (S, I) => (c(), z(r(Re), {
             key: S.kind + ":" + S.id,
             class: "kx-tag-sm",
             severity: "secondary"
           }, {
-            default: L(() => [
-              M(A(s(o)(S)), 1),
-              b(s(Y), {
-                "aria-label": "Remove approver " + (U + 1),
+            default: F(() => [
+              M(U(r(o)(S)), 1),
+              b(r(G), {
+                "aria-label": "Remove approver " + (I + 1),
                 text: "",
                 severity: "secondary",
                 size: "small",
-                onClick: ($) => y(U)
+                onClick: ($) => y(I)
               }, {
-                default: L(() => [
-                  b(s(J), {
+                default: F(() => [
+                  b(r(Z), {
                     icon: "tabler:x",
                     "aria-hidden": "true"
                   })
@@ -4591,21 +4725,21 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
             ]),
             _: 2
           }, 1024))), 128))
-        ])) : E("", !0),
-        r("label", td, [
-          w[6] || (w[6] = r("span", { class: "work-spacer" }, "The person who moves the item here cannot approve this visit", -1)),
-          b(s(ze), {
+        ])) : D("", !0),
+        d("label", pd, [
+          w[6] || (w[6] = d("span", { class: "work-spacer" }, "The person who moves the item here cannot approve this visit", -1)),
+          b(r(Le), {
             modelValue: e.approvals.prevent_self,
             "onUpdate:modelValue": w[2] || (w[2] = (S) => e.approvals.prevent_self = S),
             "aria-label": "The person who moves the item here cannot approve this visit"
           }, null, 8, ["modelValue"])
         ]),
-        r("details", ld, [
-          w[8] || (w[8] = r("summary", null, "Approval options", -1)),
-          r("label", ad, [
+        d("details", bd, [
+          w[8] || (w[8] = d("summary", null, "Approval options", -1)),
+          d("label", hd, [
             w[7] || (w[7] = M("Approval source", -1)),
-            b(s(te), {
-              "model-value": f.value,
+            b(r(te), {
+              "model-value": m.value,
               "onUpdate:modelValue": w[3] || (w[3] = (S) => n(S)),
               appendTo: "self",
               optionLabel: "label",
@@ -4614,17 +4748,17 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
             }, null, 8, ["model-value"])
           ])
         ]),
-        Array.isArray(e.approvals.from) && !i.value ? (c(), g("p", od, "Select at least " + A(e.approvals.min) + " distinct principals, or lower the minimum.", 1)) : "group" in e.approvals.from && !e.approvals.from.group ? (c(), g("p", id, "Choose the group that can approve this state.")) : E("", !0)
+        Array.isArray(e.approvals.from) && !i.value ? (c(), g("p", yd, "Select at least " + U(e.approvals.min) + " distinct principals, or lower the minimum.", 1)) : "group" in e.approvals.from && !e.approvals.from.group ? (c(), g("p", gd, "Choose the group that can approve this state.")) : D("", !0)
       ])
     ], 64));
   }
-}), sd = {
+}), wd = {
   class: "work-state-settings work-stack",
   "aria-label": "State settings"
-}, rd = { class: "work-process-kind" }, dd = { class: "work-process-options" }, ud = { class: "work-stack" }, cd = { class: "work-row" }, vd = { class: "work-stack work-tight" }, md = { class: "work-row" }, fd = { class: "work-stack work-tight" }, pd = { class: "work-row" }, bd = { class: "work-row" }, hd = { class: "work-stack work-tight" }, yd = { class: "work-row" }, gd = { class: "work-stack work-tight" }, kd = { class: "work-stack work-tight" }, wd = {
+}, Vd = { class: "work-process-kind" }, $d = { class: "work-process-options" }, xd = { class: "work-stack" }, Cd = { class: "work-row" }, Sd = { class: "work-stack work-tight" }, Td = { class: "work-row" }, Ed = { class: "work-stack work-tight" }, Ud = { class: "work-row" }, Dd = { class: "work-row" }, Id = { class: "work-stack work-tight" }, Ad = { class: "work-row" }, Pd = { class: "work-stack work-tight" }, Rd = { class: "work-stack work-tight" }, Od = {
   key: 0,
   class: "work-row"
-}, Vd = { class: "work-row" }, $d = { class: "work-row" }, xd = { class: "work-stack work-tight" }, Cd = { class: "work-row" }, Sd = /* @__PURE__ */ ve({
+}, Nd = { class: "work-row" }, Md = { class: "work-row" }, Fd = { class: "work-stack work-tight" }, Ld = { class: "work-row" }, zd = /* @__PURE__ */ ue({
   __name: "StateSettings",
   props: {
     state: {},
@@ -4634,22 +4768,22 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
   },
   emits: ["validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = G(() => (t.process.transitions ?? []).filter((f) => f.from === "any" || f.from.includes(t.state.id))), d = [{ value: "human", icon: "user" }, { value: "gate", icon: "shield-check" }, { value: "automated", icon: "bolt" }, { value: "parallel", icon: "arrows-split" }];
-    function v(f) {
+    const t = e, a = l, o = K(() => (t.process.transitions ?? []).filter((m) => m.from === "any" || m.from.includes(t.state.id))), s = [{ value: "human", icon: "user" }, { value: "gate", icon: "shield-check" }, { value: "automated", icon: "bolt" }, { value: "parallel", icon: "arrows-split" }];
+    function v(m) {
       const i = t.state;
-      i.kind = f, delete i.run, delete i.release_when, delete i.regions, delete i.join, delete i.due, (f === "automated" || f === "gate") && delete i.awaiting, f === "automated" && (i.run = { stage: "", retry: { max: 1, backoff: "PT1M" } }), f === "gate" && (i.release_when = { approvals: { min: 1, from: { group: "" }, prevent_self: !0 } }), f === "parallel" && (i.regions = [{ id: "region_1", initial: t.process.states.find((n) => n.id !== i.id)?.id ?? "" }], i.join = "all");
+      i.kind = m, delete i.run, delete i.release_when, delete i.regions, delete i.join, delete i.due, (m === "automated" || m === "gate") && delete i.awaiting, m === "automated" && (i.run = { stage: i.id, retry: { max: 1, backoff: "PT1M" } }), m === "gate" && (i.release_when = { approvals: { min: 1, from: { group: "" }, prevent_self: !0 } }), m === "parallel" && (i.regions = [{ id: "region_1", initial: t.process.states.find((n) => n.id !== i.id)?.id ?? "" }], i.join = "all");
     }
-    function m(f) {
-      t.state.run && (f ? t.state.run.on_fail = f : delete t.state.run.on_fail);
+    function f(m) {
+      t.state.run && (m ? t.state.run.on_fail = m : delete t.state.run.on_fail);
     }
-    return (f, i) => (c(), g("section", sd, [
-      i[50] || (i[50] = r("h4", { class: "work-process-group" }, "Who moves the item on", -1)),
-      b(s(Ql), {
+    return (m, i) => (c(), g("section", wd, [
+      i[52] || (i[52] = d("h4", { class: "work-process-group" }, "Who moves the item on", -1)),
+      b(r(Ql), {
         class: "work-process-kinds",
         "model-value": e.state.kind ?? "human",
-        options: d.map((n) => ({
+        options: s.map((n) => ({
           ...n,
-          label: s(Pa)(n.value)
+          label: r(Na)(n.value)
         })),
         optionLabel: "label",
         optionValue: "value",
@@ -4658,30 +4792,30 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
         "aria-label": "Who moves the item on",
         "onUpdate:modelValue": v
       }, {
-        option: L(({ option: n }) => [
-          r("span", rd, [
-            b(s(J), {
+        option: F(({ option: n }) => [
+          d("span", Vd, [
+            b(r(Z), {
               icon: "tabler:" + n.icon
             }, null, 8, ["icon"]),
-            r("span", null, A(n.label), 1)
+            d("span", null, U(n.label), 1)
           ])
         ]),
         _: 1
       }, 8, ["model-value", "options"]),
       e.state.kind === "gate" && e.state.release_when ? (c(), g(H, { key: 0 }, [
-        i[31] || (i[31] = r("h4", { class: "work-process-group" }, "Approval", -1)),
-        e.state.release_when.approvals ? (c(), F(nd, {
+        i[33] || (i[33] = d("h4", { class: "work-process-group" }, "Approval", -1)),
+        e.state.release_when.approvals ? (c(), z(kd, {
           key: 0,
           "board-id": e.boardId,
           approvals: e.state.release_when.approvals,
           onValidity: i[0] || (i[0] = (n) => a("validity", "approvers", n))
-        }, null, 8, ["board-id", "approvals"])) : E("", !0),
-        r("details", dd, [
-          i[30] || (i[30] = r("summary", null, "Release options", -1)),
-          r("div", ud, [
-            r("label", cd, [
-              i[29] || (i[29] = r("span", { class: "work-spacer" }, "Require approvals", -1)),
-              b(s(ze), {
+        }, null, 8, ["board-id", "approvals"])) : D("", !0),
+        d("details", $d, [
+          i[32] || (i[32] = d("summary", null, "Release options", -1)),
+          d("div", xd, [
+            d("label", Cd, [
+              i[31] || (i[31] = d("span", { class: "work-spacer" }, "Require approvals", -1)),
+              b(r(Le), {
                 "model-value": !!e.state.release_when.approvals,
                 "aria-label": "Require approvals",
                 "onUpdate:modelValue": i[1] || (i[1] = (n) => e.state.release_when.approvals = n ? { min: 1, from: { group: "" }, prevent_self: !0 } : void 0)
@@ -4703,159 +4837,164 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
             }, null, 8, ["draft", "board-id", "modelValue"])
           ])
         ])
-      ], 64)) : E("", !0),
+      ], 64)) : D("", !0),
       e.state.kind === "automated" && e.state.run ? (c(), g(H, { key: 1 }, [
-        i[38] || (i[38] = r("h4", { class: "work-process-group" }, "Automation", -1)),
-        r("label", vd, [
-          i[32] || (i[32] = M("What runs", -1)),
-          b(s(re), {
+        i[40] || (i[40] = d("h4", { class: "work-process-group" }, "Automation", -1)),
+        d("label", Sd, [
+          i[34] || (i[34] = M("Run label", -1)),
+          b(r(re), {
             modelValue: e.state.run.stage,
             "onUpdate:modelValue": i[6] || (i[6] = (n) => e.state.run.stage = n),
-            "aria-label": "Stage",
+            "aria-label": "Run label",
             required: ""
           }, null, 8, ["modelValue"])
         ]),
+        b(jr, {
+          modelValue: e.state.run.flow_ref,
+          "onUpdate:modelValue": i[7] || (i[7] = (n) => e.state.run.flow_ref = n),
+          onValidity: i[8] || (i[8] = (n) => a("validity", "flow", n))
+        }, null, 8, ["modelValue"]),
         b(xt, {
           modelValue: e.state.run.timeout,
-          "onUpdate:modelValue": i[7] || (i[7] = (n) => e.state.run.timeout = n),
+          "onUpdate:modelValue": i[9] || (i[9] = (n) => e.state.run.timeout = n),
           label: "Attempt timeout",
-          onValidity: i[8] || (i[8] = (n, u) => a("validity", u, n))
+          onValidity: i[10] || (i[10] = (n, u) => a("validity", u, n))
         }, null, 8, ["modelValue"]),
-        i[39] || (i[39] = r("small", { class: "work-muted" }, "Blank uses the board timeout, or one hour.", -1)),
-        r("label", md, [
-          i[33] || (i[33] = r("span", { class: "work-spacer" }, "Maximum visits", -1)),
-          b(s(Ge), {
+        i[41] || (i[41] = d("small", { class: "work-muted" }, "Blank uses the board timeout, or one hour.", -1)),
+        d("label", Td, [
+          i[35] || (i[35] = d("span", { class: "work-spacer" }, "Maximum visits", -1)),
+          b(r(Ge), {
             "model-value": e.state.run.max_visits ?? null,
             "aria-label": "Maximum visits",
             min: 1,
             useGrouping: !1,
             placeholder: "Board default",
-            "onUpdate:modelValue": i[9] || (i[9] = (n) => e.state.run.max_visits = n ?? void 0)
+            "onUpdate:modelValue": i[11] || (i[11] = (n) => e.state.run.max_visits = n ?? void 0)
           }, null, 8, ["model-value"])
         ]),
-        r("label", fd, [
-          i[34] || (i[34] = M("When visits are exhausted", -1)),
-          b(s(te), {
+        d("label", Ed, [
+          i[36] || (i[36] = M("When visits are exhausted", -1)),
+          b(r(te), {
             "model-value": e.state.run.on_exhausted,
             "aria-label": "When visits are exhausted",
             appendTo: "self",
             optionLabel: "label",
             optionValue: "value",
             showClear: "",
-            options: (e.process.transitions ?? []).filter((n) => !n.auto).map((n) => ({ label: s(je)(n), value: n.id })),
-            "onUpdate:modelValue": i[10] || (i[10] = (n) => e.state.run.on_exhausted = n || void 0)
+            options: (e.process.transitions ?? []).filter((n) => !n.auto).map((n) => ({ label: r(je)(n), value: n.id })),
+            "onUpdate:modelValue": i[12] || (i[12] = (n) => e.state.run.on_exhausted = n || void 0)
           }, null, 8, ["model-value", "options"])
         ]),
-        i[40] || (i[40] = r("small", { class: "work-muted" }, "Blank records a failed run and stops automation. A route must leave every incoming state or be global.", -1)),
-        r("label", pd, [
-          i[35] || (i[35] = r("span", { class: "work-spacer" }, "Retry if it fails", -1)),
-          b(s(ze), {
+        i[42] || (i[42] = d("small", { class: "work-muted" }, "Blank records a failed run and stops automation. A route must leave every incoming state or be global.", -1)),
+        d("label", Ud, [
+          i[37] || (i[37] = d("span", { class: "work-spacer" }, "Retry if it fails", -1)),
+          b(r(Le), {
             "model-value": !!e.state.run.retry,
             "aria-label": "Retry if it fails",
-            "onUpdate:modelValue": i[11] || (i[11] = (n) => e.state.run.retry = n ? { max: 1, backoff: "PT1M" } : void 0)
+            "onUpdate:modelValue": i[13] || (i[13] = (n) => e.state.run.retry = n ? { max: 1, backoff: "PT1M" } : void 0)
           }, null, 8, ["model-value"])
         ]),
         e.state.run.retry ? (c(), g(H, { key: 0 }, [
-          r("label", bd, [
-            i[36] || (i[36] = r("span", { class: "work-spacer" }, "Maximum attempts", -1)),
-            b(s(Ge), {
+          d("label", Dd, [
+            i[38] || (i[38] = d("span", { class: "work-spacer" }, "Maximum attempts", -1)),
+            b(r(Ge), {
               modelValue: e.state.run.retry.max,
-              "onUpdate:modelValue": i[12] || (i[12] = (n) => e.state.run.retry.max = n),
+              "onUpdate:modelValue": i[14] || (i[14] = (n) => e.state.run.retry.max = n),
               min: 1,
               useGrouping: !1
             }, null, 8, ["modelValue"])
           ]),
           b(xt, {
             modelValue: e.state.run.retry.backoff,
-            "onUpdate:modelValue": i[13] || (i[13] = (n) => e.state.run.retry.backoff = n),
+            "onUpdate:modelValue": i[15] || (i[15] = (n) => e.state.run.retry.backoff = n),
             label: "Wait between attempts",
-            onValidity: i[14] || (i[14] = (n, u) => a("validity", u, n))
+            onValidity: i[16] || (i[16] = (n, u) => a("validity", u, n))
           }, null, 8, ["modelValue"])
-        ], 64)) : E("", !0),
-        (c(), g(H, null, ee([{ key: "on_pass", label: "On success" }, { key: "on_cancel", label: "On cancellation" }], (n) => r("label", {
+        ], 64)) : D("", !0),
+        (c(), g(H, null, ee([{ key: "on_pass", label: "On success" }, { key: "on_cancel", label: "On cancellation" }], (n) => d("label", {
           key: n.key,
           class: "work-stack work-tight"
         }, [
-          M(A(n.label), 1),
-          b(s(te), {
+          M(U(n.label), 1),
+          b(r(te), {
             "model-value": e.state.run[n.key],
             "aria-label": n.label,
             appendTo: "self",
             optionLabel: "label",
             optionValue: "value",
             showClear: "",
-            options: o.value.map((u) => ({ label: s(je)(u), value: u.id })),
+            options: o.value.map((u) => ({ label: r(je)(u), value: u.id })),
             "onUpdate:modelValue": (u) => e.state.run[n.key] = u || void 0
           }, null, 8, ["model-value", "aria-label", "options", "onUpdate:modelValue"])
         ])), 64)),
-        r("label", hd, [
-          i[37] || (i[37] = M("If it fails, go to", -1)),
-          b(s(te), {
+        d("label", Id, [
+          i[39] || (i[39] = M("If it fails, go to", -1)),
+          b(r(te), {
             "model-value": e.state.run.on_fail,
-            "onUpdate:modelValue": m,
+            "onUpdate:modelValue": f,
             appendTo: "self",
             optionLabel: "label",
             optionValue: "value",
             showClear: "",
             options: o.value.map((n) => ({
-              label: s(je)(n) + " → " + s(he)(e.process.states.find((u) => u.id === n.to)),
+              label: r(je)(n) + " → " + r(he)(e.process.states.find((u) => u.id === n.to)),
               value: n.id
             }))
           }, null, 8, ["model-value", "options"])
         ])
-      ], 64)) : E("", !0),
+      ], 64)) : D("", !0),
       e.state.kind === "parallel" && e.state.regions ? (c(), g(H, { key: 2 }, [
-        i[45] || (i[45] = r("h4", { class: "work-process-group" }, "Lanes", -1)),
+        i[47] || (i[47] = d("h4", { class: "work-process-group" }, "Lanes", -1)),
         (c(!0), g(H, null, ee(e.state.regions, (n, u) => (c(), g("div", {
           key: u,
           class: "work-process-value work-stack work-tight"
         }, [
-          r("div", yd, [
-            r("span", null, "Lane " + A(u + 1), 1),
-            i[41] || (i[41] = r("span", { class: "work-spacer" }, null, -1)),
-            b(s(Y), {
+          d("div", Ad, [
+            d("span", null, "Lane " + U(u + 1), 1),
+            i[43] || (i[43] = d("span", { class: "work-spacer" }, null, -1)),
+            b(r(G), {
               severity: "danger",
               text: "",
               size: "small",
               "aria-label": "Remove lane",
               onClick: (y) => e.state.regions.splice(u, 1)
             }, {
-              default: L(() => [
-                b(s(J), { icon: "tabler:trash" })
+              default: F(() => [
+                b(r(Z), { icon: "tabler:trash" })
               ]),
               _: 1
             }, 8, ["onClick"])
           ]),
-          r("label", gd, [
-            i[42] || (i[42] = M("Starts at", -1)),
-            b(s(te), {
+          d("label", Pd, [
+            i[44] || (i[44] = M("Starts at", -1)),
+            b(r(te), {
               modelValue: n.initial,
               "onUpdate:modelValue": (y) => n.initial = y,
               appendTo: "self",
               optionLabel: "label",
               optionValue: "value",
-              options: e.process.states.filter((y) => y.id !== e.state.id).map((y) => ({ label: s(he)(y), value: y.id }))
+              options: e.process.states.filter((y) => y.id !== e.state.id).map((y) => ({ label: r(he)(y), value: y.id }))
             }, null, 8, ["modelValue", "onUpdate:modelValue", "options"])
           ])
         ]))), 128)),
-        b(s(Y), {
+        b(r(G), {
           label: "Add lane",
           severity: "secondary",
           outlined: "",
           size: "small",
-          onClick: i[15] || (i[15] = (n) => e.state.regions.push({
-            id: s(Vt)("region", e.state.regions),
+          onClick: i[17] || (i[17] = (n) => e.state.regions.push({
+            id: r(Vt)("region", e.state.regions),
             initial: e.process.states.find((u) => u.id !== e.state.id)?.id ?? ""
           }))
         }, {
-          icon: L(() => [
-            b(s(J), { icon: "tabler:plus" })
+          icon: F(() => [
+            b(r(Z), { icon: "tabler:plus" })
           ]),
           _: 1
         }),
-        r("label", kd, [
-          i[43] || (i[43] = M("Finish rule", -1)),
-          b(s(te), {
+        d("label", Rd, [
+          i[45] || (i[45] = M("Finish rule", -1)),
+          b(r(te), {
             "model-value": typeof e.state.join == "number" ? "count" : e.state.join ?? "all",
             appendTo: "self",
             options: [
@@ -4865,33 +5004,33 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
             ],
             optionLabel: "label",
             optionValue: "value",
-            "onUpdate:modelValue": i[16] || (i[16] = (n) => e.state.join = n === "count" ? 1 : n)
+            "onUpdate:modelValue": i[18] || (i[18] = (n) => e.state.join = n === "count" ? 1 : n)
           }, null, 8, ["model-value"])
         ]),
-        typeof e.state.join == "number" ? (c(), g("label", wd, [
-          i[44] || (i[44] = r("span", { class: "work-spacer" }, "Lanes needed", -1)),
-          b(s(Ge), {
+        typeof e.state.join == "number" ? (c(), g("label", Od, [
+          i[46] || (i[46] = d("span", { class: "work-spacer" }, "Lanes needed", -1)),
+          b(r(Ge), {
             modelValue: e.state.join,
-            "onUpdate:modelValue": i[17] || (i[17] = (n) => e.state.join = n),
+            "onUpdate:modelValue": i[19] || (i[19] = (n) => e.state.join = n),
             min: 1,
             max: e.state.regions.length,
             useGrouping: !1
           }, null, 8, ["modelValue", "max"])
-        ])) : E("", !0)
-      ], 64)) : E("", !0),
-      i[51] || (i[51] = r("h4", { class: "work-process-group" }, "Limit", -1)),
-      r("label", Vd, [
-        i[46] || (i[46] = r("span", { class: "work-spacer" }, "Items allowed here", -1)),
+        ])) : D("", !0)
+      ], 64)) : D("", !0),
+      i[53] || (i[53] = d("h4", { class: "work-process-group" }, "Limit", -1)),
+      d("label", Nd, [
+        i[48] || (i[48] = d("span", { class: "work-spacer" }, "Items allowed here", -1)),
         b(gl, {
           draft: e.draft,
           state: e.state.id,
           label: "Items allowed here"
         }, null, 8, ["draft", "state"])
       ]),
-      r("label", $d, [
-        i[47] || (i[47] = r("span", { class: "work-spacer" }, [
+      d("label", Md, [
+        i[49] || (i[49] = d("span", { class: "work-spacer" }, [
           M("Refuse moves over the limit"),
-          r("small", { class: "work-muted work-block" }, "Off only warns")
+          d("small", { class: "work-muted work-block" }, "Off only warns")
         ], -1)),
         b(gl, {
           draft: e.draft,
@@ -4900,89 +5039,89 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
           hard: ""
         }, null, 8, ["draft", "state"])
       ]),
-      i[52] || (i[52] = r("h4", { class: "work-process-group" }, "Required on entry", -1)),
-      b(zt, {
+      i[54] || (i[54] = d("h4", { class: "work-process-group" }, "Required on entry", -1)),
+      b(Lt, {
         label: "Required fields",
         options: e.draft.fields?.map((n) => ({ value: n.code, label: n.title || n.code })) ?? [],
         modelValue: e.state.require,
-        "onUpdate:modelValue": i[18] || (i[18] = (n) => e.state.require = n)
+        "onUpdate:modelValue": i[20] || (i[20] = (n) => e.state.require = n)
       }, null, 8, ["options", "modelValue"]),
-      !e.state.kind || e.state.kind === "human" ? (c(), F(xt, {
+      !e.state.kind || e.state.kind === "human" ? (c(), z(xt, {
         key: 3,
         modelValue: e.state.due,
-        "onUpdate:modelValue": i[19] || (i[19] = (n) => e.state.due = n),
+        "onUpdate:modelValue": i[21] || (i[21] = (n) => e.state.due = n),
         label: "Time allowed in this state",
-        onValidity: i[20] || (i[20] = (n, u) => a("validity", u, n))
-      }, null, 8, ["modelValue"])) : E("", !0),
-      i[53] || (i[53] = r("h4", { class: "work-process-group" }, "Assignment and conditions", -1)),
-      r("label", xd, [
-        i[48] || (i[48] = M("Stage label", -1)),
-        b(s(re), {
+        onValidity: i[22] || (i[22] = (n, u) => a("validity", u, n))
+      }, null, 8, ["modelValue"])) : D("", !0),
+      i[55] || (i[55] = d("h4", { class: "work-process-group" }, "Assignment and conditions", -1)),
+      d("label", Fd, [
+        i[50] || (i[50] = M("Stage label", -1)),
+        b(r(re), {
           "model-value": e.state.stage,
           "aria-label": "Stage label",
-          "onUpdate:modelValue": i[21] || (i[21] = (n) => e.state.stage = n || void 0)
+          "onUpdate:modelValue": i[23] || (i[23] = (n) => e.state.stage = n || void 0)
         }, null, 8, ["model-value"])
       ]),
       !e.state.kind || e.state.kind === "human" || e.state.kind === "parallel" ? (c(), g(H, { key: 4 }, [
-        r("label", Cd, [
-          b(s(ze), {
+        d("label", Ld, [
+          b(r(Le), {
             "model-value": !!e.state.awaiting,
             "aria-label": "Awaiting people",
-            "onUpdate:modelValue": i[22] || (i[22] = (n) => e.state.awaiting = n ? { group: "" } : void 0)
+            "onUpdate:modelValue": i[24] || (i[24] = (n) => e.state.awaiting = n ? { group: "" } : void 0)
           }, null, 8, ["model-value"]),
-          i[49] || (i[49] = M("Awaiting people", -1))
+          i[51] || (i[51] = M("Awaiting people", -1))
         ]),
-        e.state.awaiting ? (c(), F(Yr, {
+        e.state.awaiting ? (c(), z(sd, {
           key: 0,
           modelValue: e.state.awaiting,
-          "onUpdate:modelValue": i[23] || (i[23] = (n) => e.state.awaiting = n),
+          "onUpdate:modelValue": i[25] || (i[25] = (n) => e.state.awaiting = n),
           draft: e.draft,
           "board-id": e.boardId,
           label: "Awaiting",
-          onValidity: i[24] || (i[24] = (n) => a("validity", "awaiting", n))
-        }, null, 8, ["modelValue", "draft", "board-id"])) : E("", !0)
-      ], 64)) : E("", !0),
+          onValidity: i[26] || (i[26] = (n) => a("validity", "awaiting", n))
+        }, null, 8, ["modelValue", "draft", "board-id"])) : D("", !0)
+      ], 64)) : D("", !0),
       b(ea, {
         "board-id": e.boardId,
         modelValue: e.state.assign,
-        "onUpdate:modelValue": i[25] || (i[25] = (n) => e.state.assign = n),
+        "onUpdate:modelValue": i[27] || (i[27] = (n) => e.state.assign = n),
         label: "Assign to"
       }, null, 8, ["board-id", "modelValue"]),
-      b(lt, {
+      b(at, {
         label: "State checks",
         example: ["installed-check"],
         "model-value": e.state.invariants,
         shape: "array",
-        "onUpdate:modelValue": i[26] || (i[26] = (n) => e.state.invariants = n),
-        onValidity: i[27] || (i[27] = (n) => a("validity", "invariants", n))
+        "onUpdate:modelValue": i[28] || (i[28] = (n) => e.state.invariants = n),
+        onValidity: i[29] || (i[29] = (n) => a("validity", "invariants", n))
       }, null, 8, ["model-value"]),
-      b(qr, {
+      b(ad, {
         state: e.state,
         draft: e.draft,
-        onValidity: i[28] || (i[28] = (n, u) => a("validity", "timer-" + n, u))
+        onValidity: i[30] || (i[30] = (n, u) => a("validity", "timer-" + n, u))
       }, null, 8, ["state", "draft"])
     ]));
   }
-}), Td = {
+}), Bd = {
   key: 0,
   class: "kx-err",
   role: "alert"
-}, Ed = {
+}, jd = {
   class: "work-process-controls",
   role: "toolbar",
   "aria-label": "Process tools"
-}, Ud = {
+}, qd = {
   key: 1,
   class: "work-process-title"
-}, Dd = { class: "work-muted" }, Id = {
+}, Wd = { class: "work-muted" }, Kd = {
   key: 2,
   class: "work-map-zoom",
   role: "group",
   "aria-label": "Map zoom"
-}, Ad = ["aria-label"], Pd = { class: "work-row" }, Rd = { class: "work-process-meaning" }, Od = { class: "work-stack work-tight" }, Nd = { class: "work-process-inspector-foot" }, Md = { class: "work-row" }, Ld = { class: "work-process-meaning" }, zd = { class: "work-stack work-tight" }, Fd = { class: "work-process-inspector-foot" }, Bd = {
+}, Gd = ["aria-label"], Yd = { class: "work-row" }, Hd = { class: "work-process-meaning" }, Xd = { class: "work-stack work-tight" }, Jd = { class: "work-process-inspector-foot" }, Zd = { class: "work-row" }, Qd = { class: "work-process-meaning" }, _d = { class: "work-stack work-tight" }, eu = { class: "work-process-inspector-foot" }, tu = {
   key: 3,
   class: "work-row"
-}, jd = { class: "work-stack work-tight" }, qd = { class: "work-dialog-actions" }, Wd = /* @__PURE__ */ ve({
+}, lu = { class: "work-stack work-tight" }, au = { class: "work-dialog-actions" }, ou = /* @__PURE__ */ ue({
   __name: "ProcessEditor",
   props: {
     draft: {},
@@ -4992,97 +5131,97 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
   },
   emits: ["validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = G(() => t.draft.processes ?? []), d = z(!1), v = z(""), m = z(""), f = z(""), i = z("Map"), n = z(""), u = z(), y = z(), p = z(), w = z(), S = z(!1);
-    async function U() {
-      S.value = !0, await fo(), w.value?.querySelector('[aria-label="State name"]')?.focus();
+    const t = e, a = l, o = K(() => t.draft.processes ?? []), s = L(!1), v = L(""), f = L(""), m = L(""), i = L("Map"), n = L(""), u = L(), y = L(), p = L(), w = L(), S = L(!1);
+    async function I() {
+      S.value = !0, await ho(), w.value?.querySelector('[aria-label="State name"]')?.focus();
     }
-    const $ = G(() => o.value.find((x) => x.id === m.value) ?? o.value[0]);
-    function I() {
-      S.value = !1, u.value = void 0, y.value = void 0, f.value = "";
+    const $ = K(() => o.value.find((C) => C.id === f.value) ?? o.value[0]);
+    function A() {
+      S.value = !1, u.value = void 0, y.value = void 0, m.value = "";
     }
-    function T(x) {
-      S.value = !1, u.value = x, y.value = void 0, n.value = "", f.value = "";
+    function x(C) {
+      S.value = !1, u.value = C, y.value = void 0, n.value = "", m.value = "";
     }
-    function D(x) {
-      S.value = !1, y.value = x, u.value = void 0, f.value = "";
+    function E(C) {
+      S.value = !1, y.value = C, u.value = void 0, m.value = "";
     }
-    Ce($, I);
-    function V(x) {
-      x === "__new" ? d.value = !0 : m.value = x;
+    xe($, A);
+    function V(C) {
+      C === "__new" ? s.value = !0 : f.value = C;
     }
     function P() {
-      const x = v.value.trim();
-      if (!x) return;
-      const R = x.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "process", N = (/^[a-z]/.test(R) ? R : "process_" + R).slice(0, 40), X = o.value.some((ue) => ue.id === N) ? Vt(N, o.value) : N;
-      (t.draft.processes ??= []).push({ id: X, name: x, initial: "todo", states: [{ id: "todo", name: "To do", category: "unstarted" }], transitions: [] }), m.value = X, v.value = "", d.value = !1;
+      const C = v.value.trim();
+      if (!C) return;
+      const R = C.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "process", N = (/^[a-z]/.test(R) ? R : "process_" + R).slice(0, 40), J = o.value.some((ce) => ce.id === N) ? Vt(N, o.value) : N;
+      (t.draft.processes ??= []).push({ id: J, name: C, initial: "todo", states: [{ id: "todo", name: "To do", category: "unstarted" }], transitions: [] }), f.value = J, v.value = "", s.value = !1;
     }
-    async function Z(x) {
-      const R = { id: Vt("state", x.states), name: "New state", category: "started" }, N = Bl(x), X = N.at(-1), ue = u.value ?? (X?.category === "completed" ? N.at(-2) : X), pe = ue && (x.transitions?.find((ke) => ke.default && ke.from !== "any" && ke.from.includes(ue.id)) ?? x.transitions?.find((ke) => ke.from !== "any" && ke.from.includes(ue.id) && x.states.findIndex((Ve) => Ve.id === ke.to) > x.states.indexOf(ue)));
-      if (x.states.splice(ue ? x.states.indexOf(ue) + 1 : x.states.length, 0, R), ue && ue.category !== "completed" && ue.category !== "canceled")
+    async function X(C) {
+      const R = { id: Vt("state", C.states), name: "New state", category: "started" }, N = Bl(C), J = N.at(-1), ce = u.value ?? (J?.category === "completed" ? N.at(-2) : J), pe = ce && (C.transitions?.find((ke) => ke.default && ke.from !== "any" && ke.from.includes(ce.id)) ?? C.transitions?.find((ke) => ke.from !== "any" && ke.from.includes(ce.id) && C.states.findIndex((Ve) => Ve.id === ke.to) > C.states.indexOf(ce)));
+      if (C.states.splice(ce ? C.states.indexOf(ce) + 1 : C.states.length, 0, R), ce && ce.category !== "completed" && ce.category !== "canceled")
         if (pe) {
           const ke = pe.to;
-          pe.to = R.id, (x.transitions ??= []).push({ id: Vt("transition", x.transitions ?? []), name: "Continue", from: [R.id], to: ke, ...pe.auto && pe.default ? { auto: !0, default: !0 } : {} });
-        } else (x.transitions ??= []).push({ id: Vt("transition", x.transitions ?? []), name: "Continue", from: [ue.id], to: R.id });
-      T(R), await U();
+          pe.to = R.id, (C.transitions ??= []).push({ id: Vt("transition", C.transitions ?? []), name: "Continue", from: [R.id], to: ke, ...pe.auto && pe.default ? { auto: !0, default: !0 } : {} });
+        } else (C.transitions ??= []).push({ id: Vt("transition", C.transitions ?? []), name: "Continue", from: [ce.id], to: R.id });
+      x(R), await I();
     }
-    function de(x, R) {
+    function de(C, R) {
       const N = $.value;
-      if (!N || !R || x === R) return;
-      let X = `to_${R}`, ue = 2;
-      for (; N.transitions?.some((ke) => ke.id === X); ) X = `to_${R}_${ue++}`;
-      const pe = { id: X, name: `To ${he(N.states.find((ke) => ke.id === R)).toLowerCase()}`, from: [x], to: R };
-      (N.transitions ??= []).push(pe), D(pe);
+      if (!N || !R || C === R) return;
+      let J = `to_${R}`, ce = 2;
+      for (; N.transitions?.some((ke) => ke.id === J); ) J = `to_${R}_${ce++}`;
+      const pe = { id: J, name: `To ${he(N.states.find((ke) => ke.id === R)).toLowerCase()}`, from: [C], to: R };
+      (N.transitions ??= []).push(pe), E(pe);
     }
-    function ne(x) {
-      const R = { id: Vt("transition", x.transitions ?? []), name: "To " + he(x.states.at(-1)), from: [x.initial], to: x.states.at(-1)?.id ?? x.initial };
-      (x.transitions ??= []).push(R), D(R);
+    function ne(C) {
+      const R = { id: Vt("transition", C.transitions ?? []), name: "To " + he(C.states.at(-1)), from: [C.initial], to: C.states.at(-1)?.id ?? C.initial };
+      (C.transitions ??= []).push(R), E(R);
     }
-    function B(x, R) {
-      const N = So(x, R);
+    function B(C, R) {
+      const N = Io(C, R);
       if (N.length) {
-        f.value = `Used by ${N.join(", ")}. Update those references first.`;
+        m.value = `Used by ${N.join(", ")}. Update those references first.`;
         return;
       }
-      x.transitions?.splice(x.transitions.indexOf(R), 1), I();
+      C.transitions?.splice(C.transitions.indexOf(R), 1), A();
     }
-    function O(x, R) {
-      const N = To(x, R);
+    function O(C, R) {
+      const N = Ao(C, R);
       if (N.length) {
-        f.value = `${he(R)} is used by ${N.join(", ")}. Update these references first.`;
+        m.value = `${he(R)} is used by ${N.join(", ")}. Update these references first.`;
         return;
       }
-      x.states.splice(x.states.indexOf(R), 1), I();
+      C.states.splice(C.states.indexOf(R), 1), A();
     }
-    async function oe(x) {
-      const R = t.draft.item_types?.filter((X) => X.process === x.id).map((X) => X.title || "Untitled item type") ?? [];
+    async function oe(C) {
+      const R = t.draft.item_types?.filter((J) => J.process === C.id).map((J) => J.title || "Untitled item type") ?? [];
       if (R.length) {
-        f.value = `Used by ${R.join(", ")}. Choose a different process for those item types first.`;
+        m.value = `Used by ${R.join(", ")}. Choose a different process for those item types first.`;
         return;
       }
-      const N = await t.guardRemoval?.("processes", x.id);
+      const N = await t.guardRemoval?.("processes", C.id);
       if (N) {
-        f.value = N;
+        m.value = N;
         return;
       }
-      _t(t.draft, "processes", x.id), m.value = "", I();
+      _t(t.draft, "processes", C.id), f.value = "", A();
     }
-    return (x, R) => (c(), g("section", {
+    return (C, R) => (c(), g("section", {
       class: "work-process-editor work-stack",
       "aria-label": "Process editor",
-      onKeydown: Ae(I, ["esc"])
+      onKeydown: Ae(A, ["esc"])
     }, [
-      f.value ? (c(), g("p", Td, A(f.value), 1)) : E("", !0),
+      m.value ? (c(), g("p", Bd, U(m.value), 1)) : D("", !0),
       (c(!0), g(H, null, ee(e.issues?.filter((N) => N.code === "process " + $.value?.id) ?? [], (N) => (c(), g("p", {
         key: N.what + N.detail,
         class: "work-error work-small",
         role: "alert"
-      }, A(s(wl)(N)) + " · " + A(N.what), 1))), 128)),
+      }, U(r(wl)(N)) + " · " + U(N.what), 1))), 128)),
       $.value ? (c(), g("div", {
         key: 1,
-        class: mt(["work-process-builder", { "work-process-inspecting": u.value || y.value }])
+        class: ft(["work-process-builder", { "work-process-inspecting": u.value || y.value }])
       }, [
-        r("div", Ed, [
-          o.value.length > 1 ? (c(), F(s(te), {
+        d("div", jd, [
+          o.value.length > 1 ? (c(), z(r(te), {
             key: 0,
             "model-value": $.value.id,
             "aria-label": "Process",
@@ -5094,36 +5233,36 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
               { label: "New process…", value: "__new" }
             ],
             "onUpdate:modelValue": V
-          }, null, 8, ["model-value", "options"])) : (c(), g("span", Ud, A($.value.name || "Process"), 1)),
-          b(s(Y), {
+          }, null, 8, ["model-value", "options"])) : (c(), g("span", qd, U($.value.name || "Process"), 1)),
+          b(r(G), {
             label: "Add state",
             severity: "secondary",
             outlined: "",
             size: "small",
-            onClick: R[0] || (R[0] = (N) => Z($.value))
+            onClick: R[0] || (R[0] = (N) => X($.value))
           }, {
-            icon: L(() => [
-              b(s(J), { icon: "tabler:plus" })
+            icon: F(() => [
+              b(r(Z), { icon: "tabler:plus" })
             ]),
             _: 1
           }),
-          b(s(te), {
+          b(r(te), {
             modelValue: $.value.initial,
             "onUpdate:modelValue": R[1] || (R[1] = (N) => $.value.initial = N),
-            "aria-label": "Starts in " + s(he)($.value.states.find((N) => N.id === $.value.initial)),
+            "aria-label": "Starts in " + r(he)($.value.states.find((N) => N.id === $.value.initial)),
             appendTo: "self",
             optionLabel: "label",
             optionValue: "value",
-            options: $.value.states.map((N) => ({ label: s(he)(N), value: N.id }))
+            options: $.value.states.map((N) => ({ label: r(he)(N), value: N.id }))
           }, {
-            value: L(() => [
-              r("span", Dd, "Starts in " + A(s(he)($.value.states.find((N) => N.id === $.value.initial))), 1)
+            value: F(() => [
+              d("span", Wd, "Starts in " + U(r(he)($.value.states.find((N) => N.id === $.value.initial))), 1)
             ]),
             _: 1
           }, 8, ["modelValue", "aria-label", "options"]),
-          R[17] || (R[17] = r("span", { class: "work-spacer" }, null, -1)),
-          i.value === "Map" ? (c(), g("div", Id, [
-            b(s(Y), {
+          R[17] || (R[17] = d("span", { class: "work-spacer" }, null, -1)),
+          i.value === "Map" ? (c(), g("div", Kd, [
+            b(r(G), {
               label: "Fit",
               title: "Fit to width and show the full process",
               text: "",
@@ -5131,12 +5270,12 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
               size: "small",
               onClick: R[2] || (R[2] = (N) => p.value?.fit())
             }, {
-              icon: L(() => [
-                b(s(J), { icon: "tabler:arrows-maximize" })
+              icon: F(() => [
+                b(r(Z), { icon: "tabler:arrows-maximize" })
               ]),
               _: 1
             }),
-            i.value === "Map" ? (c(), F(s(Y), {
+            i.value === "Map" ? (c(), z(r(G), {
               key: 0,
               "aria-label": "Zoom out",
               title: "Zoom out",
@@ -5145,12 +5284,12 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
               size: "small",
               onClick: R[3] || (R[3] = (N) => p.value?.zoomOut())
             }, {
-              default: L(() => [
-                b(s(J), { icon: "tabler:minus" })
+              default: F(() => [
+                b(r(Z), { icon: "tabler:minus" })
               ]),
               _: 1
-            })) : E("", !0),
-            i.value === "Map" ? (c(), F(s(Y), {
+            })) : D("", !0),
+            i.value === "Map" ? (c(), z(r(G), {
               key: 1,
               "aria-label": "Zoom in",
               title: "Zoom in",
@@ -5159,35 +5298,35 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
               size: "small",
               onClick: R[4] || (R[4] = (N) => p.value?.zoomIn())
             }, {
-              default: L(() => [
-                b(s(J), { icon: "tabler:plus" })
+              default: F(() => [
+                b(r(Z), { icon: "tabler:plus" })
               ]),
               _: 1
-            })) : E("", !0)
-          ])) : E("", !0),
-          b(s(Ql), {
+            })) : D("", !0)
+          ])) : D("", !0),
+          b(r(Ql), {
             modelValue: i.value,
             "onUpdate:modelValue": R[5] || (R[5] = (N) => i.value = N),
             options: ["Map", "List"],
             "allow-empty": !1,
             "aria-label": "Process layout"
           }, null, 8, ["modelValue"]),
-          o.value.length === 1 ? (c(), F(s(Y), {
+          o.value.length === 1 ? (c(), z(r(G), {
             key: 3,
             label: "New process",
             "aria-label": "New process",
             text: "",
             severity: "secondary",
             size: "small",
-            onClick: R[6] || (R[6] = (N) => d.value = !0)
+            onClick: R[6] || (R[6] = (N) => s.value = !0)
           }, {
-            icon: L(() => [
-              b(s(J), { icon: "tabler:plus" })
+            icon: F(() => [
+              b(r(Z), { icon: "tabler:plus" })
             ]),
             _: 1
-          })) : E("", !0)
+          })) : D("", !0)
         ]),
-        i.value === "Map" ? (c(), F(sr, {
+        i.value === "Map" ? (c(), z(vr, {
           key: 0,
           ref_key: "graph",
           ref: p,
@@ -5195,17 +5334,17 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
           draft: e.draft,
           "selected-state": u.value,
           "selected-transition": y.value,
-          onState: T,
-          onTransition: D,
+          onState: x,
+          onTransition: E,
           onConnect: de,
-          onClear: I
-        }, null, 8, ["process", "draft", "selected-state", "selected-transition"])) : (c(), F(yr, {
+          onClear: A
+        }, null, 8, ["process", "draft", "selected-state", "selected-transition"])) : (c(), z($r, {
           key: 1,
           process: $.value,
           "selected-state": u.value,
           "selected-transition": y.value,
-          onState: T,
-          onTransition: D,
+          onState: x,
+          onTransition: E,
           onRemoveState: R[7] || (R[7] = (N) => O($.value, N)),
           onRemoveTransition: R[8] || (R[8] = (N) => B($.value, N)),
           onAddTransition: R[9] || (R[9] = (N) => ne($.value))
@@ -5220,91 +5359,91 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
           (c(!0), g(H, null, ee(u.value ? [u.value] : [], (N) => (c(), g(H, {
             key: N.id
           }, [
-            r("header", Pd, [
-              S.value ? (c(), F(s(re), {
+            d("header", Yd, [
+              S.value ? (c(), z(r(re), {
                 key: 1,
                 modelValue: N.name,
-                "onUpdate:modelValue": (X) => N.name = X,
+                "onUpdate:modelValue": (J) => N.name = J,
                 class: "work-process-name",
                 "aria-label": "State name",
-                onBlur: R[10] || (R[10] = (X) => S.value = !1)
-              }, null, 8, ["modelValue", "onUpdate:modelValue"])) : (c(), F(Jl, {
+                onBlur: R[10] || (R[10] = (J) => S.value = !1)
+              }, null, 8, ["modelValue", "onUpdate:modelValue"])) : (c(), z(Jl, {
                 key: 0,
                 class: "work-process-state-title",
                 "aria-label": "Rename state",
-                onActivate: U
+                onActivate: I
               }, {
-                default: L(() => [
-                  r("span", null, A(s(he)(N)), 1)
+                default: F(() => [
+                  d("span", null, U(r(he)(N)), 1)
                 ]),
                 _: 2
               }, 1024)),
-              b(s(Y), {
+              b(r(G), {
                 severity: "secondary",
                 text: "",
                 size: "small",
                 "aria-label": "Close state editor",
-                onClick: I
+                onClick: A
               }, {
-                default: L(() => [
-                  b(s(J), { icon: "tabler:x" })
+                default: F(() => [
+                  b(r(Z), { icon: "tabler:x" })
                 ]),
                 _: 1
               })
             ]),
-            r("p", Rd, A(s(Co)(N, e.draft)), 1),
-            b(Sd, {
+            d("p", Hd, U(r(Do)(N, e.draft)), 1),
+            b(zd, {
               state: N,
               process: $.value,
               draft: e.draft,
               "board-id": e.boardId,
-              onValidity: (X, ue) => a("validity", X.includes("duration:") ? X : $.value.id + ":" + N.id + ":" + X, ue)
+              onValidity: (J, ce) => a("validity", J.includes("duration:") ? J : $.value.id + ":" + N.id + ":" + J, ce)
             }, null, 8, ["state", "process", "draft", "board-id", "onValidity"]),
-            r("label", Od, [
+            d("label", Xd, [
               R[18] || (R[18] = M("Phase", -1)),
-              b(s(te), {
+              b(r(te), {
                 modelValue: N.category,
-                "onUpdate:modelValue": (X) => N.category = X,
+                "onUpdate:modelValue": (J) => N.category = J,
                 appendTo: "self",
                 optionLabel: "label",
                 optionValue: "value",
-                options: ["triage", "backlog", ...s(Ia)].map((X) => ({ label: s(Zl)(X), value: X }))
+                options: ["triage", "backlog", ...r(Ra)].map((J) => ({ label: r(Zl)(J), value: J }))
               }, null, 8, ["modelValue", "onUpdate:modelValue", "options"])
             ]),
-            R[19] || (R[19] = r("h4", { class: "work-process-group" }, "Next stop", -1)),
-            b(s(te), {
+            R[19] || (R[19] = d("h4", { class: "work-process-group" }, "Next stop", -1)),
+            b(r(te), {
               modelValue: n.value,
-              "onUpdate:modelValue": R[11] || (R[11] = (X) => n.value = X),
+              "onUpdate:modelValue": R[11] || (R[11] = (J) => n.value = J),
               "aria-label": "Add transition to…",
               placeholder: "Add transition to…",
               appendTo: "self",
               optionLabel: "label",
               optionValue: "value",
-              options: $.value.states.filter((X) => X !== N).map((X) => ({ label: s(he)(X), value: X.id }))
+              options: $.value.states.filter((J) => J !== N).map((J) => ({ label: r(he)(J), value: J.id }))
             }, null, 8, ["modelValue", "options"]),
-            b(s(Y), {
+            b(r(G), {
               label: "Add transition",
               severity: "secondary",
               outlined: "",
               size: "small",
               disabled: !n.value,
-              onClick: (X) => de(N.id, n.value)
+              onClick: (J) => de(N.id, n.value)
             }, {
-              icon: L(() => [
-                b(s(J), { icon: "tabler:arrow-right" })
+              icon: F(() => [
+                b(r(Z), { icon: "tabler:arrow-right" })
               ]),
               _: 1
             }, 8, ["disabled", "onClick"]),
-            r("footer", Nd, [
-              b(s(Y), {
+            d("footer", Jd, [
+              b(r(G), {
                 label: "Remove state",
                 severity: "danger",
                 text: "",
                 size: "small",
-                onClick: (X) => O($.value, N)
+                onClick: (J) => O($.value, N)
               }, {
-                icon: L(() => [
-                  b(s(J), { icon: "tabler:trash" })
+                icon: F(() => [
+                  b(r(Z), { icon: "tabler:trash" })
                 ]),
                 _: 1
               }, 8, ["onClick"])
@@ -5313,96 +5452,96 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
           (c(!0), g(H, null, ee(y.value ? [y.value] : [], (N) => (c(), g(H, {
             key: N.id
           }, [
-            r("header", Md, [
-              R[20] || (R[20] = r("h3", null, "Transition", -1)),
-              R[21] || (R[21] = r("span", { class: "work-spacer" }, null, -1)),
-              b(s(Y), {
+            d("header", Zd, [
+              R[20] || (R[20] = d("h3", null, "Transition", -1)),
+              R[21] || (R[21] = d("span", { class: "work-spacer" }, null, -1)),
+              b(r(G), {
                 severity: "secondary",
                 text: "",
                 size: "small",
                 "aria-label": "Close transition editor",
-                onClick: I
+                onClick: A
               }, {
-                default: L(() => [
-                  b(s(J), { icon: "tabler:x" })
+                default: F(() => [
+                  b(r(Z), { icon: "tabler:x" })
                 ]),
                 _: 1
               })
             ]),
-            r("p", Ld, A(N.from === "any" ? "Any state" : N.from.map((X) => s(he)($.value.states.find((ue) => ue.id === X))).join(", ")) + " → " + A(s(he)($.value.states.find((X) => X.id === N.to))), 1),
-            r("label", zd, [
+            d("p", Qd, U(N.from === "any" ? "Any state" : N.from.map((J) => r(he)($.value.states.find((ce) => ce.id === J))).join(", ")) + " → " + U(r(he)($.value.states.find((J) => J.id === N.to))), 1),
+            d("label", _d, [
               R[22] || (R[22] = M("Name", -1)),
-              b(s(re), {
+              b(r(re), {
                 modelValue: N.name,
-                "onUpdate:modelValue": (X) => N.name = X,
-                placeholder: s(je)(N),
+                "onUpdate:modelValue": (J) => N.name = J,
+                placeholder: r(je)(N),
                 "aria-label": "Transition name"
               }, null, 8, ["modelValue", "onUpdate:modelValue", "placeholder"])
             ]),
-            b(Er, {
+            b(Pr, {
               transition: N,
               process: $.value,
               draft: e.draft,
               "board-id": e.boardId,
-              onValidity: (X, ue) => a("validity", $.value.id + ":transition-" + N.id + ":" + X, ue)
+              onValidity: (J, ce) => a("validity", $.value.id + ":transition-" + N.id + ":" + J, ce)
             }, null, 8, ["transition", "process", "draft", "board-id", "onValidity"]),
-            r("footer", Fd, [
-              b(s(Y), {
+            d("footer", eu, [
+              b(r(G), {
                 label: "Remove transition",
                 severity: "danger",
                 text: "",
                 size: "small",
-                onClick: (X) => B($.value, N)
+                onClick: (J) => B($.value, N)
               }, {
-                icon: L(() => [
-                  b(s(J), { icon: "tabler:trash" })
+                icon: F(() => [
+                  b(r(Z), { icon: "tabler:trash" })
                 ]),
                 _: 1
               }, 8, ["onClick"])
             ])
           ], 64))), 128))
-        ], 8, Ad)) : E("", !0)
-      ], 2)) : (c(), F(s(Y), {
+        ], 8, Gd)) : D("", !0)
+      ], 2)) : (c(), z(r(G), {
         key: 2,
         label: "New process",
         severity: "secondary",
         outlined: "",
-        onClick: R[12] || (R[12] = (N) => d.value = !0)
+        onClick: R[12] || (R[12] = (N) => s.value = !0)
       }, {
-        icon: L(() => [
-          b(s(J), { icon: "tabler:plus" })
+        icon: F(() => [
+          b(r(Z), { icon: "tabler:plus" })
         ]),
         _: 1
       })),
-      i.value === "List" && $.value ? (c(), g("div", Bd, [
-        b(s(Y), {
+      i.value === "List" && $.value ? (c(), g("div", tu, [
+        b(r(G), {
           label: "Remove process",
           severity: "danger",
           text: "",
           size: "small",
           onClick: R[13] || (R[13] = (N) => oe($.value))
         }, {
-          icon: L(() => [
-            b(s(J), { icon: "tabler:trash" })
+          icon: F(() => [
+            b(r(Z), { icon: "tabler:trash" })
           ]),
           _: 1
         })
-      ])) : E("", !0),
-      b(Ra, {
-        visible: d.value,
+      ])) : D("", !0),
+      b(Ma, {
+        visible: s.value,
         label: "New process",
-        onClose: R[16] || (R[16] = (N) => d.value = !1)
+        onClose: R[16] || (R[16] = (N) => s.value = !1)
       }, {
-        default: L(() => [
-          r("form", {
+        default: F(() => [
+          d("form", {
             class: "work-dialog-box",
             "aria-label": "New process",
             onSubmit: be(P, ["stop", "prevent"])
           }, [
-            R[24] || (R[24] = r("h2", null, "New process", -1)),
-            r("label", jd, [
+            R[24] || (R[24] = d("h2", null, "New process", -1)),
+            d("label", lu, [
               R[23] || (R[23] = M("Name", -1)),
-              b(s(re), {
+              b(r(re), {
                 modelValue: v.value,
                 "onUpdate:modelValue": R[14] || (R[14] = (N) => v.value = N),
                 "aria-label": "New process name",
@@ -5410,14 +5549,14 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
                 required: ""
               }, null, 8, ["modelValue"])
             ]),
-            r("div", qd, [
-              b(s(Y), {
+            d("div", au, [
+              b(r(G), {
                 label: "Cancel",
                 severity: "secondary",
                 outlined: "",
-                onClick: R[15] || (R[15] = (N) => d.value = !1)
+                onClick: R[15] || (R[15] = (N) => s.value = !1)
               }),
-              b(s(Y), {
+              b(r(G), {
                 label: "Create process",
                 type: "submit",
                 disabled: !v.value.trim()
@@ -5429,7 +5568,7 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
       }, 8, ["visible"])
     ], 32));
   }
-}), Kd = ["inert"], Gd = { class: "work-stack work-tight" }, Yd = /* @__PURE__ */ ve({
+}), iu = ["inert"], nu = { class: "work-stack work-tight" }, su = /* @__PURE__ */ ue({
   __name: "ProcessMigration",
   props: {
     draft: {},
@@ -5438,28 +5577,28 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
   },
   setup(e) {
     const l = e;
-    function t(o, d, v) {
-      v ? (o.map ??= {})[d] = v : o.map && delete o.map[d];
+    function t(o, s, v) {
+      v ? (o.map ??= {})[s] = v : o.map && delete o.map[s];
     }
     function a(o) {
-      return l.original.processes?.find((d) => d.id === o.id)?.states.filter((d) => !o.states.some((v) => v.id === d.id)) ?? [];
+      return l.original.processes?.find((s) => s.id === o.id)?.states.filter((s) => !o.states.some((v) => v.id === s.id)) ?? [];
     }
-    return (o, d) => (c(), g("section", {
+    return (o, s) => (c(), g("section", {
       class: "work-stack work-settings-card",
       "aria-label": "Existing items",
       inert: e.disabled || void 0
     }, [
-      d[0] || (d[0] = r("h3", null, "Existing items", -1)),
-      d[1] || (d[1] = r("p", { class: "work-muted work-small" }, " Choose how existing items follow these changes, then review the impact before applying. ", -1)),
+      s[0] || (s[0] = d("h3", null, "Existing items", -1)),
+      s[1] || (s[1] = d("p", { class: "work-muted work-small" }, " Choose how existing items follow these changes, then review the impact before applying. ", -1)),
       (c(!0), g(H, null, ee(e.draft.processes ?? [], (v) => (c(), g("div", {
         key: v.id,
         class: "work-stack"
       }, [
-        r("label", Gd, [
-          M(A(v.name || "Untitled process"), 1),
-          b(s(te), {
+        d("label", nu, [
+          M(U(v.name || "Untitled process"), 1),
+          b(r(te), {
             disabled: e.disabled,
-            "model-value": s(ra)(v),
+            "model-value": r(ra)(v),
             "aria-label": "Existing items in " + (v.name || "this process"),
             appendTo: "self",
             optionLabel: "label",
@@ -5468,91 +5607,91 @@ const Dr = { class: "work-stack work-tight" }, Ir = {
               { label: "Follow new process", value: "follow" },
               { label: "Keep current process", value: "pin" }
             ],
-            "onUpdate:modelValue": (m) => v.migration = m
+            "onUpdate:modelValue": (f) => v.migration = f
           }, null, 8, ["disabled", "model-value", "aria-label", "onUpdate:modelValue"])
         ]),
-        s(ra)(v) !== "pin" ? (c(!0), g(H, { key: 0 }, ee(a(v), (m) => (c(), g("label", {
-          key: m.id,
+        r(ra)(v) !== "pin" ? (c(!0), g(H, { key: 0 }, ee(a(v), (f) => (c(), g("label", {
+          key: f.id,
           class: "work-stack work-tight"
         }, [
-          M("Move items from " + A(s(he)(m)) + " to", 1),
-          b(s(te), {
+          M("Move items from " + U(r(he)(f)) + " to", 1),
+          b(r(te), {
             disabled: e.disabled,
-            "model-value": v.map?.[m.id],
+            "model-value": v.map?.[f.id],
             placeholder: "Choose a surviving state",
             appendTo: "self",
             showClear: "",
             optionLabel: "label",
             optionValue: "value",
-            options: v.states.map((f) => ({ label: s(he)(f), value: f.id })),
-            "onUpdate:modelValue": (f) => t(v, m.id, f)
+            options: v.states.map((m) => ({ label: r(he)(m), value: m.id })),
+            "onUpdate:modelValue": (m) => t(v, f.id, m)
           }, null, 8, ["disabled", "model-value", "options", "onUpdate:modelValue"])
-        ]))), 128)) : E("", !0)
+        ]))), 128)) : D("", !0)
       ]))), 128))
-    ], 8, Kd));
+    ], 8, iu));
   }
 });
-function eo(e) {
+function ao(e) {
   return Object.entries(Ke(e.properties)).map(([l, t]) => {
     const a = Ke(t);
     return { key: l, title: typeof a.title == "string" && a.title.trim() ? a.title : ge(l), description: typeof a.description == "string" ? a.description : "", schema: a };
   });
 }
-const to = (e) => e.type === "array" && Ke(e.items).type === "string";
-function Hd(e, l) {
+const oo = (e) => e.type === "array" && Ke(e.items).type === "string";
+function ru(e, l) {
   const t = {};
-  for (const a of eo(e)) {
-    const o = l[a.key] ?? a.schema.default, d = a.schema;
+  for (const a of ao(e)) {
+    const o = l[a.key] ?? a.schema.default, s = a.schema;
     let v = "";
     if (o == null)
       Array.isArray(e.required) && e.required.includes(a.key) && (v = "A value is required.");
-    else if (Array.isArray(d.enum) && !d.enum.includes(o)) v = "Choose one of the available values.";
-    else if (d.type === "integer" || d.type === "number")
-      typeof o != "number" || !Number.isFinite(o) || d.type === "integer" && !Number.isInteger(o) ? v = d.type === "integer" ? "Enter a whole number." : "Enter a number." : typeof d.minimum == "number" && o < d.minimum ? v = `Enter at least ${d.minimum}.` : typeof d.maximum == "number" && o > d.maximum && (v = `Enter at most ${d.maximum}.`);
-    else if (d.type === "boolean" && typeof o != "boolean") v = "Choose on or off.";
-    else if (d.type === "string") {
+    else if (Array.isArray(s.enum) && !s.enum.includes(o)) v = "Choose one of the available values.";
+    else if (s.type === "integer" || s.type === "number")
+      typeof o != "number" || !Number.isFinite(o) || s.type === "integer" && !Number.isInteger(o) ? v = s.type === "integer" ? "Enter a whole number." : "Enter a number." : typeof s.minimum == "number" && o < s.minimum ? v = `Enter at least ${s.minimum}.` : typeof s.maximum == "number" && o > s.maximum && (v = `Enter at most ${s.maximum}.`);
+    else if (s.type === "boolean" && typeof o != "boolean") v = "Choose on or off.";
+    else if (s.type === "string") {
       if (typeof o != "string") v = "Enter text.";
-      else if (typeof d.minLength == "number" && o.length < d.minLength) v = `Enter at least ${d.minLength} characters.`;
-      else if (typeof d.maxLength == "number" && o.length > d.maxLength) v = `Enter at most ${d.maxLength} characters.`;
-      else if (typeof d.pattern == "string")
+      else if (typeof s.minLength == "number" && o.length < s.minLength) v = `Enter at least ${s.minLength} characters.`;
+      else if (typeof s.maxLength == "number" && o.length > s.maxLength) v = `Enter at most ${s.maxLength} characters.`;
+      else if (typeof s.pattern == "string")
         try {
-          new RegExp(d.pattern).test(o) || (v = "Use the required format.");
+          new RegExp(s.pattern).test(o) || (v = "Use the required format.");
         } catch {
           v = "The declared format is unavailable.";
         }
-    } else if (d.type === "array") {
+    } else if (s.type === "array") {
       if (!Array.isArray(o)) v = "Enter a list.";
-      else if (typeof d.maxItems == "number" && o.length > d.maxItems) v = `Use at most ${d.maxItems} entries.`;
-      else if (typeof d.minItems == "number" && o.length < d.minItems) v = `Use at least ${d.minItems} entries.`;
-      else if (d.uniqueItems && new Set(o).size !== o.length) v = "Remove duplicate entries.";
-      else if (to(d)) {
-        const m = Ke(d.items);
-        o.some((f) => typeof f != "string" || typeof m.minLength == "number" && f.length < m.minLength || typeof m.maxLength == "number" && f.length > m.maxLength) && (v = "Each entry must match the declared text length.");
+      else if (typeof s.maxItems == "number" && o.length > s.maxItems) v = `Use at most ${s.maxItems} entries.`;
+      else if (typeof s.minItems == "number" && o.length < s.minItems) v = `Use at least ${s.minItems} entries.`;
+      else if (s.uniqueItems && new Set(o).size !== o.length) v = "Remove duplicate entries.";
+      else if (oo(s)) {
+        const f = Ke(s.items);
+        o.some((m) => typeof m != "string" || typeof f.minLength == "number" && m.length < f.minLength || typeof f.maxLength == "number" && m.length > f.maxLength) && (v = "Each entry must match the declared text length.");
       }
-    } else d.type === "object" && (typeof o != "object" || Array.isArray(o)) && (v = "Enter an object.");
+    } else s.type === "object" && (typeof o != "object" || Array.isArray(o)) && (v = "Enter an object.");
     v && (t[a.key] = v);
   }
   return t;
 }
-const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
+const du = { class: "work-stack" }, uu = ["schema", "config"], cu = {
   key: 1,
   role: "status",
   class: "work-muted work-small"
-}, Qd = {
+}, vu = {
   key: 2,
   role: "alert",
   class: "kx-err"
-}, _d = { class: "work-config-fields" }, eu = ["for"], tu = {
+}, mu = { class: "work-config-fields" }, fu = ["for"], pu = {
   key: 1,
   class: "work-config-chips"
-}, lu = {
+}, bu = {
   key: 6,
   class: "work-muted work-small"
-}, au = {
+}, hu = {
   key: 7,
   role: "alert",
   class: "work-error work-small"
-}, lo = /* @__PURE__ */ ve({
+}, io = /* @__PURE__ */ ue({
   __name: "ConfigForm",
   props: {
     schema: {},
@@ -5561,58 +5700,58 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
   },
   emits: ["update:modelValue", "validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = z({}), d = z(/* @__PURE__ */ new Set()), v = z(!1), m = z(!1), f = G(() => eo(t.schema)), i = G(() => Hd(t.schema, t.modelValue)), n = G(() => f.value.filter((D) => typeof D.schema.picker == "string")), u = G(() => f.value.filter((D) => typeof D.schema.picker != "string")), y = G(() => ({ ...t.schema, properties: Object.fromEntries(n.value.map((D) => [D.key, { ...D.schema, title: D.title }])), required: Array.isArray(t.schema.required) ? t.schema.required.filter((D) => n.value.some((V) => V.key === D)) : [] })), p = G(() => Object.fromEntries(n.value.map((D) => [D.key, t.modelValue[D.key]])));
-    Ce([i, d, () => n.value.length > 0 && !v.value], () => a("validity", !Object.keys(i.value).length && !d.value.size && (!n.value.length || v.value)), { immediate: !0, deep: !0 });
+    const t = e, a = l, o = L({}), s = L(/* @__PURE__ */ new Set()), v = L(!1), f = L(!1), m = K(() => ao(t.schema)), i = K(() => ru(t.schema, t.modelValue)), n = K(() => m.value.filter((E) => typeof E.schema.picker == "string")), u = K(() => m.value.filter((E) => typeof E.schema.picker != "string")), y = K(() => ({ ...t.schema, properties: Object.fromEntries(n.value.map((E) => [E.key, { ...E.schema, title: E.title }])), required: Array.isArray(t.schema.required) ? t.schema.required.filter((E) => n.value.some((V) => V.key === E)) : [] })), p = K(() => Object.fromEntries(n.value.map((E) => [E.key, t.modelValue[E.key]])));
+    xe([i, s, () => n.value.length > 0 && !v.value], () => a("validity", !Object.keys(i.value).length && !s.value.size && (!n.value.length || v.value)), { immediate: !0, deep: !0 });
     async function w() {
-      m.value = !0, v.value = await vt("wc-schema-form"), m.value = !1;
+      f.value = !0, v.value = await tt("wc-schema-form"), f.value = !1;
     }
-    Ce(() => n.value.length > 0, (D) => {
-      D && w();
-    }, { immediate: !0 }), ft(() => a("validity", !0));
-    function S(D, V) {
+    xe(() => n.value.length > 0, (E) => {
+      E && w();
+    }, { immediate: !0 }), it(() => a("validity", !0));
+    function S(E, V) {
       const P = { ...t.modelValue };
-      V == null ? delete P[D] : P[D] = V, a("update:modelValue", P);
+      V == null ? delete P[E] : P[E] = V, a("update:modelValue", P);
     }
-    function U(D) {
-      const V = t.modelValue[D];
+    function I(E) {
+      const V = t.modelValue[E];
       return Array.isArray(V) ? V.filter((P) => typeof P == "string") : [];
     }
-    function $(D) {
-      const V = o.value[D]?.trim();
-      V && (S(D, [...U(D), V]), o.value[D] = "");
+    function $(E) {
+      const V = o.value[E]?.trim();
+      V && (S(E, [...I(E), V]), o.value[E] = "");
     }
-    function I(D, V) {
-      V ? d.value.delete(D) : d.value.add(D);
+    function A(E, V) {
+      V ? s.value.delete(E) : s.value.add(E);
     }
-    function T(D) {
-      a("update:modelValue", { ...t.modelValue, ...Ke(D.detail) });
+    function x(E) {
+      a("update:modelValue", { ...t.modelValue, ...Ke(E.detail) });
     }
-    return (D, V) => (c(), g("div", Xd, [
+    return (E, V) => (c(), g("div", du, [
       n.value.length && v.value ? (c(), g("wc-schema-form", {
         key: 0,
         class: "work-config-widget",
         schema: JSON.stringify(y.value),
         config: JSON.stringify(p.value),
-        onConfigChanged: T
-      }, null, 40, Jd)) : n.value.length && m.value ? (c(), g("p", Zd, "The configuration widget is loading.")) : n.value.length ? (c(), g("p", Qd, [
+        onConfigChanged: x
+      }, null, 40, uu)) : n.value.length && f.value ? (c(), g("p", cu, "The configuration widget is loading.")) : n.value.length ? (c(), g("p", vu, [
         V[0] || (V[0] = M("The configuration widget is unavailable.", -1)),
-        b(s(Y), {
+        b(r(G), {
           label: "Reload configuration widget",
           severity: "secondary",
           outlined: "",
           onClick: w
         })
-      ])) : E("", !0),
-      r("div", _d, [
+      ])) : D("", !0),
+      d("div", mu, [
         (c(!0), g(H, null, ee(u.value, (P) => (c(), g("div", {
           key: P.key,
           class: "work-config-field"
         }, [
-          r("label", {
+          d("label", {
             class: "work-config-label",
             for: "config-" + P.key
-          }, A(P.title), 9, eu),
-          Array.isArray(P.schema.enum) ? (c(), F(s(te), {
+          }, U(P.title), 9, fu),
+          Array.isArray(P.schema.enum) ? (c(), z(r(te), {
             key: 0,
             "input-id": "config-" + P.key,
             "model-value": e.modelValue[P.key] ?? P.schema.default,
@@ -5620,25 +5759,25 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
             appendTo: "self",
             "aria-label": P.title,
             disabled: e.disabled,
-            "onUpdate:modelValue": (Z) => S(P.key, Z)
-          }, null, 8, ["input-id", "model-value", "options", "aria-label", "disabled", "onUpdate:modelValue"])) : s(to)(P.schema) ? (c(), g("div", tu, [
-            (c(!0), g(H, null, ee(U(P.key), (Z, de) => (c(), F(s(Oo), {
+            "onUpdate:modelValue": (X) => S(P.key, X)
+          }, null, 8, ["input-id", "model-value", "options", "aria-label", "disabled", "onUpdate:modelValue"])) : r(oo)(P.schema) ? (c(), g("div", pu, [
+            (c(!0), g(H, null, ee(I(P.key), (X, de) => (c(), z(r(zo), {
               key: de,
-              label: Z,
+              label: X,
               removable: !e.disabled,
-              onRemove: (ne) => S(P.key, U(P.key).filter((B, O) => O !== de))
+              onRemove: (ne) => S(P.key, I(P.key).filter((B, O) => O !== de))
             }, null, 8, ["label", "removable", "onRemove"]))), 128)),
-            b(s(re), {
+            b(r(re), {
               id: "config-" + P.key,
               modelValue: o.value[P.key],
-              "onUpdate:modelValue": (Z) => o.value[P.key] = Z,
+              "onUpdate:modelValue": (X) => o.value[P.key] = X,
               "aria-label": "Add " + P.title.toLocaleLowerCase(),
               disabled: e.disabled,
               placeholder: "Type and press Enter",
-              onKeydown: Ae(be((Z) => $(P.key), ["stop", "prevent"]), ["enter"]),
-              onBlur: (Z) => $(P.key)
+              onKeydown: Ae(be((X) => $(P.key), ["stop", "prevent"]), ["enter"]),
+              onBlur: (X) => $(P.key)
             }, null, 8, ["id", "modelValue", "onUpdate:modelValue", "aria-label", "disabled", "onKeydown", "onBlur"])
-          ])) : ["integer", "number"].includes(String(P.schema.type)) ? (c(), F(s(Ge), {
+          ])) : ["integer", "number"].includes(String(P.schema.type)) ? (c(), z(r(Ge), {
             key: 2,
             "input-id": "config-" + P.key,
             "model-value": e.modelValue[P.key] ?? P.schema.default,
@@ -5647,70 +5786,70 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
             "aria-label": P.title,
             disabled: e.disabled,
             invalid: !!i.value[P.key],
-            "onUpdate:modelValue": (Z) => S(P.key, Z)
-          }, null, 8, ["input-id", "model-value", "max-fraction-digits", "aria-label", "disabled", "invalid", "onUpdate:modelValue"])) : P.schema.type === "boolean" ? (c(), F(s(ze), {
+            "onUpdate:modelValue": (X) => S(P.key, X)
+          }, null, 8, ["input-id", "model-value", "max-fraction-digits", "aria-label", "disabled", "invalid", "onUpdate:modelValue"])) : P.schema.type === "boolean" ? (c(), z(r(Le), {
             key: 3,
             "input-id": "config-" + P.key,
             "model-value": !!(e.modelValue[P.key] ?? P.schema.default),
             "aria-label": P.title,
             disabled: e.disabled,
-            "onUpdate:modelValue": (Z) => S(P.key, Z)
-          }, null, 8, ["input-id", "model-value", "aria-label", "disabled", "onUpdate:modelValue"])) : ["array", "object"].includes(String(P.schema.type)) ? (c(), F(lt, {
+            "onUpdate:modelValue": (X) => S(P.key, X)
+          }, null, 8, ["input-id", "model-value", "aria-label", "disabled", "onUpdate:modelValue"])) : ["array", "object"].includes(String(P.schema.type)) ? (c(), z(at, {
             key: 4,
             label: P.title,
             "model-value": e.modelValue[P.key],
             shape: P.schema.type === "array" ? "array" : "object",
             example: P.schema.default ?? (P.schema.type === "array" ? [] : {}),
-            "onUpdate:modelValue": (Z) => S(P.key, Z),
-            onValidity: (Z) => I(P.key, Z)
-          }, null, 8, ["label", "model-value", "shape", "example", "onUpdate:modelValue", "onValidity"])) : (c(), F(s(re), {
+            "onUpdate:modelValue": (X) => S(P.key, X),
+            onValidity: (X) => A(P.key, X)
+          }, null, 8, ["label", "model-value", "shape", "example", "onUpdate:modelValue", "onValidity"])) : (c(), z(r(re), {
             key: 5,
             id: "config-" + P.key,
             "model-value": e.modelValue[P.key] ?? P.schema.default ?? "",
             disabled: e.disabled,
             invalid: !!i.value[P.key],
             "aria-label": P.title,
-            "onUpdate:modelValue": (Z) => S(P.key, Z)
+            "onUpdate:modelValue": (X) => S(P.key, X)
           }, null, 8, ["id", "model-value", "disabled", "invalid", "aria-label", "onUpdate:modelValue"])),
-          P.description ? (c(), g("p", lu, A(P.description), 1)) : E("", !0),
-          i.value[P.key] ? (c(), g("p", au, A(i.value[P.key]), 1)) : E("", !0)
+          P.description ? (c(), g("p", bu, U(P.description), 1)) : D("", !0),
+          i.value[P.key] ? (c(), g("p", hu, U(i.value[P.key]), 1)) : D("", !0)
         ]))), 128))
       ])
     ]));
   }
-}), ou = {
+}), yu = {
   class: "work-stack",
   "aria-label": "Policy editor"
-}, iu = { class: "work-settings-list" }, nu = { class: "work-settings-row" }, su = { class: "work-row-control" }, ru = { class: "work-settings-list work-wip-container" }, du = { class: "work-wip-table" }, uu = { class: "work-mono" }, cu = { class: "work-row-main" }, vu = { class: "work-row" }, mu = { class: "work-row" }, fu = { class: "work-settings-list" }, pu = { class: "work-settings-row" }, bu = { class: "work-row-control" }, hu = { class: "work-row-main" }, yu = { class: "work-row-title" }, gu = { class: "work-muted work-small" }, ku = { class: "work-row-control" }, wu = /* @__PURE__ */ ve({
+}, gu = { class: "work-settings-list" }, ku = { class: "work-settings-row" }, wu = { class: "work-row-control" }, Vu = { class: "work-settings-list work-wip-container" }, $u = { class: "work-wip-table" }, xu = { class: "work-mono" }, Cu = { class: "work-row-main" }, Su = { class: "work-row" }, Tu = { class: "work-row" }, Eu = { class: "work-settings-list" }, Uu = { class: "work-settings-row" }, Du = { class: "work-row-control" }, Iu = { class: "work-row-main" }, Au = { class: "work-row-title" }, Pu = { class: "work-muted work-small" }, Ru = { class: "work-row-control" }, Ou = /* @__PURE__ */ ue({
   __name: "PolicyEditor",
   props: {
     draft: {}
   },
   emits: ["validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = G(() => t.draft.policy ?? {}), d = G(() => [...new Set(t.draft.processes?.flatMap((n) => n.states.map((u) => u.id)) ?? [])]), v = ["audit_days", "trash_days", "tombstone_days", "interval_days"], m = { audit_days: "Zero selects 365 days.", interval_days: "Zero selects 365 days.", trash_days: "Zero allows immediate cleanup of trashed items.", tombstone_days: "Zero allows immediate cleanup of deletion records." };
-    function f(n, u) {
+    const t = e, a = l, o = K(() => t.draft.policy ?? {}), s = K(() => [...new Set(t.draft.processes?.flatMap((n) => n.states.map((u) => u.id)) ?? [])]), v = ["audit_days", "trash_days", "tombstone_days", "interval_days"], f = { audit_days: "Zero selects 365 days.", interval_days: "Zero selects 365 days.", trash_days: "Zero allows immediate cleanup of trashed items.", tombstone_days: "Zero allows immediate cleanup of deletion records." };
+    function m(n, u) {
       u === void 0 ? t.draft.policy && delete t.draft.policy[n] : (t.draft.policy ??= {})[n] = u;
     }
     function i(n, u) {
-      f(n, u ?? void 0);
+      m(n, u ?? void 0);
     }
-    return (n, u) => (c(), g("section", ou, [
-      u[13] || (u[13] = r("header", { class: "work-section-heading" }, [
-        r("div", null, [
-          r("h2", null, "Policy"),
-          r("p", { class: "work-muted work-small" }, "Set capacity and how long the board keeps its history.")
+    return (n, u) => (c(), g("section", yu, [
+      u[13] || (u[13] = d("header", { class: "work-section-heading" }, [
+        d("div", null, [
+          d("h2", null, "Policy"),
+          d("p", { class: "work-muted work-small" }, "Set capacity and how long the board keeps its history.")
         ])
       ], -1)),
-      u[14] || (u[14] = r("h3", { class: "work-group-title" }, "Item keys", -1)),
-      r("div", iu, [
-        r("div", nu, [
-          u[7] || (u[7] = r("div", { class: "work-row-main" }, [
-            r("strong", { class: "work-row-title" }, "Item key prefix"),
-            r("p", { class: "work-muted work-small" }, "Work reviews and claims prefix changes when you apply the schema.")
+      u[14] || (u[14] = d("h3", { class: "work-group-title" }, "Item keys", -1)),
+      d("div", gu, [
+        d("div", ku, [
+          u[7] || (u[7] = d("div", { class: "work-row-main" }, [
+            d("strong", { class: "work-row-title" }, "Item key prefix"),
+            d("p", { class: "work-muted work-small" }, "Work reviews and claims prefix changes when you apply the schema.")
           ], -1)),
-          r("div", su, [
-            b(s(re), {
+          d("div", wu, [
+            b(r(re), {
               modelValue: e.draft.key_prefix,
               "onUpdate:modelValue": u[0] || (u[0] = (y) => e.draft.key_prefix = y),
               "aria-label": "Item key prefix",
@@ -5721,31 +5860,31 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
           ])
         ])
       ]),
-      u[15] || (u[15] = r("h3", { class: "work-group-title" }, "Work in progress", -1)),
-      u[16] || (u[16] = r("p", { class: "work-muted work-small" }, "A blank limit sets no restriction. A hard limit rejects transitions over capacity.", -1)),
-      r("div", ru, [
-        r("table", du, [
-          u[8] || (u[8] = r("thead", null, [
-            r("tr", null, [
-              r("th", null, "State"),
-              r("th", null, "Limit"),
-              r("th", null, "Hard limit")
+      u[15] || (u[15] = d("h3", { class: "work-group-title" }, "Work in progress", -1)),
+      u[16] || (u[16] = d("p", { class: "work-muted work-small" }, "A blank limit sets no restriction. A hard limit rejects transitions over capacity.", -1)),
+      d("div", Vu, [
+        d("table", $u, [
+          u[8] || (u[8] = d("thead", null, [
+            d("tr", null, [
+              d("th", null, "State"),
+              d("th", null, "Limit"),
+              d("th", null, "Hard limit")
             ])
           ], -1)),
-          r("tbody", null, [
-            (c(!0), g(H, null, ee(d.value, (y) => (c(), g("tr", { key: y }, [
-              r("td", null, [
-                r("strong", null, A(e.draft.processes?.flatMap((p) => p.states).find((p) => p.id === y)?.name || s(ge)(y)), 1),
-                r("code", uu, A(y), 1)
+          d("tbody", null, [
+            (c(!0), g(H, null, ee(s.value, (y) => (c(), g("tr", { key: y }, [
+              d("td", null, [
+                d("strong", null, U(e.draft.processes?.flatMap((p) => p.states).find((p) => p.id === y)?.name || r(ge)(y)), 1),
+                d("code", xu, U(y), 1)
               ]),
-              r("td", null, [
+              d("td", null, [
                 b(gl, {
                   draft: e.draft,
                   state: y,
                   label: y + " WIP limit"
                 }, null, 8, ["draft", "state", "label"])
               ]),
-              r("td", null, [
+              d("td", null, [
                 b(gl, {
                   draft: e.draft,
                   state: y,
@@ -5756,76 +5895,76 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
             ]))), 128))
           ])
         ]),
-        (c(!0), g(H, null, ee(Object.keys(o.value.wip ?? {}).filter((y) => !d.value.includes(y)), (y) => (c(), g("div", {
+        (c(!0), g(H, null, ee(Object.keys(o.value.wip ?? {}).filter((y) => !s.value.includes(y)), (y) => (c(), g("div", {
           key: y,
           class: "work-settings-row"
         }, [
-          r("div", cu, [
-            M(A(s(ge)(y)) + " ", 1),
-            u[9] || (u[9] = r("span", { class: "work-muted" }, "Removed state", -1))
+          d("div", Cu, [
+            M(U(r(ge)(y)) + " ", 1),
+            u[9] || (u[9] = d("span", { class: "work-muted" }, "Removed state", -1))
           ]),
-          b(s(Y), {
+          b(r(G), {
             label: "Remove stale limit",
             severity: "secondary",
             outlined: "",
             onClick: (p) => delete o.value.wip[y]
           }, {
-            icon: L(() => [
-              b(s(J), { icon: "tabler:trash" })
+            icon: F(() => [
+              b(r(Z), { icon: "tabler:trash" })
             ]),
             _: 1
           }, 8, ["onClick"])
         ]))), 128))
       ]),
-      u[17] || (u[17] = r("h3", { class: "work-group-title" }, "Automated stages", -1)),
+      u[17] || (u[17] = d("h3", { class: "work-group-title" }, "Automated stages", -1)),
       b(xt, {
         "model-value": o.value.stage_timeout,
-        "onUpdate:modelValue": u[1] || (u[1] = (y) => f("stage_timeout", y)),
+        "onUpdate:modelValue": u[1] || (u[1] = (y) => m("stage_timeout", y)),
         label: "Default attempt timeout",
         onValidity: u[2] || (u[2] = (y, p) => a("validity", p, y))
       }, null, 8, ["model-value"]),
-      u[18] || (u[18] = r("p", { class: "work-muted work-small" }, "Blank uses one hour. Each retry gets a new deadline.", -1)),
-      r("label", vu, [
-        u[10] || (u[10] = r("span", { class: "work-spacer" }, "Default maximum visits", -1)),
-        b(s(Ge), {
+      u[18] || (u[18] = d("p", { class: "work-muted work-small" }, "Blank uses one hour. Each retry gets a new deadline.", -1)),
+      d("label", Su, [
+        u[10] || (u[10] = d("span", { class: "work-spacer" }, "Default maximum visits", -1)),
+        b(r(Ge), {
           "model-value": o.value.stage_max_visits ?? null,
           "aria-label": "Default maximum visits",
           min: 1,
           useGrouping: !1,
           placeholder: "5",
-          "onUpdate:modelValue": u[3] || (u[3] = (y) => f("stage_max_visits", y ?? void 0))
+          "onUpdate:modelValue": u[3] || (u[3] = (y) => m("stage_max_visits", y ?? void 0))
         }, null, 8, ["model-value"])
       ]),
-      u[19] || (u[19] = r("h3", { class: "work-group-title" }, "Comments", -1)),
-      r("label", mu, [
-        u[11] || (u[11] = r("span", { class: "work-spacer" }, "Comments per item", -1)),
-        b(s(Ge), {
+      u[19] || (u[19] = d("h3", { class: "work-group-title" }, "Comments", -1)),
+      d("label", Tu, [
+        u[11] || (u[11] = d("span", { class: "work-spacer" }, "Comments per item", -1)),
+        b(r(Ge), {
           "model-value": o.value.comments_per_item ?? null,
           "aria-label": "Comments per item",
           min: 1,
           max: 1e5,
           useGrouping: !1,
           placeholder: "Application default",
-          "onUpdate:modelValue": u[4] || (u[4] = (y) => f("comments_per_item", y ?? void 0))
+          "onUpdate:modelValue": u[4] || (u[4] = (y) => m("comments_per_item", y ?? void 0))
         }, null, 8, ["model-value"])
       ]),
-      u[20] || (u[20] = r("p", { class: "work-muted work-small" }, "Blank follows the application default.", -1)),
-      u[21] || (u[21] = r("h3", { class: "work-group-title" }, "Saved query filters", -1)),
-      u[22] || (u[22] = r("p", { class: "work-muted work-small" }, "Choose which installed query filters this board can use.", -1)),
-      b(lo, {
+      u[20] || (u[20] = d("p", { class: "work-muted work-small" }, "Blank follows the application default.", -1)),
+      u[21] || (u[21] = d("h3", { class: "work-group-title" }, "Saved query filters", -1)),
+      u[22] || (u[22] = d("p", { class: "work-muted work-small" }, "Choose which installed query filters this board can use.", -1)),
+      b(io, {
         schema: { type: "object", properties: { scopes: { type: "array", title: "Query filter identifiers", items: { type: "string" } } } },
         "model-value": { scopes: e.draft.scopes },
         "onUpdate:modelValue": u[5] || (u[5] = (y) => e.draft.scopes = y.scopes)
       }, null, 8, ["model-value"]),
-      u[23] || (u[23] = r("h3", { class: "work-group-title" }, "Audit and retention", -1)),
-      r("div", fu, [
-        r("div", pu, [
-          u[12] || (u[12] = r("div", { class: "work-row-main" }, [
-            r("strong", { class: "work-row-title" }, "Audit trail"),
-            r("p", { class: "work-muted work-small" }, "Choose which item changes appear in history.")
+      u[23] || (u[23] = d("h3", { class: "work-group-title" }, "Audit and retention", -1)),
+      d("div", Eu, [
+        d("div", Uu, [
+          u[12] || (u[12] = d("div", { class: "work-row-main" }, [
+            d("strong", { class: "work-row-title" }, "Audit trail"),
+            d("p", { class: "work-muted work-small" }, "Choose which item changes appear in history.")
           ], -1)),
-          r("div", bu, [
-            b(s(te), {
+          d("div", Du, [
+            b(r(te), {
               "model-value": o.value.audit ?? "",
               "aria-label": "Audit trail",
               placeholder: "Installation default",
@@ -5833,22 +5972,22 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
               optionLabel: "label",
               optionValue: "value",
               options: [{ label: "Installation default", value: "" }, { label: "Off", value: "off" }, { label: "Fields", value: "fields" }],
-              "onUpdate:modelValue": u[6] || (u[6] = (y) => f("audit", y || void 0))
+              "onUpdate:modelValue": u[6] || (u[6] = (y) => m("audit", y || void 0))
             }, null, 8, ["model-value"])
           ])
         ]),
-        (c(), g(H, null, ee(v, (y) => r("div", {
+        (c(), g(H, null, ee(v, (y) => d("div", {
           key: y,
           class: "work-settings-row"
         }, [
-          r("div", hu, [
-            r("strong", yu, A(s(ge)(y)), 1),
-            r("p", gu, "Blank follows the application default. " + A(m[y]), 1)
+          d("div", Iu, [
+            d("strong", Au, U(r(ge)(y)), 1),
+            d("p", Pu, "Blank follows the application default. " + U(f[y]), 1)
           ]),
-          r("label", ku, [
-            b(s(Ge), {
+          d("label", Ru, [
+            b(r(Ge), {
               min: 0,
-              "aria-label": s(ge)(y),
+              "aria-label": r(ge)(y),
               "model-value": o.value[y] ?? null,
               placeholder: "Installation default",
               useGrouping: !1,
@@ -5859,81 +5998,81 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
       ])
     ]));
   }
-}), Vu = {
+}), Nu = {
   class: "work-stack",
   "aria-label": "Relation types editor"
-}, $u = { class: "work-section-heading" }, xu = {
+}, Mu = { class: "work-section-heading" }, Fu = {
   key: 0,
   class: "kx-err",
   role: "alert"
-}, Cu = { class: "work-definition-meta work-muted work-small" }, Su = { class: "work-settings-grid" }, Tu = { class: "work-stack work-tight" }, Eu = { class: "work-stack work-tight" }, Uu = { class: "work-stack work-tight" }, Du = { class: "work-stack work-tight" }, Iu = { class: "work-row" }, Au = { class: "work-relation-preview work-small" }, Pu = { class: "work-muted" }, Ru = {
+}, Lu = { class: "work-definition-meta work-muted work-small" }, zu = { class: "work-settings-grid" }, Bu = { class: "work-stack work-tight" }, ju = { class: "work-stack work-tight" }, qu = { class: "work-stack work-tight" }, Wu = { class: "work-stack work-tight" }, Ku = { class: "work-row" }, Gu = { class: "work-relation-preview work-small" }, Yu = { class: "work-muted" }, Hu = {
   key: 0,
   class: "kx-empty"
-}, Ou = { class: "work-row work-add-definition" }, Nu = { class: "work-stack work-tight" }, Mu = /* @__PURE__ */ ve({
+}, Xu = { class: "work-row work-add-definition" }, Ju = { class: "work-stack work-tight" }, Zu = /* @__PURE__ */ ue({
   __name: "RelationsEditor",
   props: {
     draft: {},
     guardRemoval: { type: Function }
   },
   setup(e) {
-    const l = e, t = G(() => l.draft.relation_types ?? []), a = z(""), o = z(""), d = z(!1), v = G(() => /^[a-z][a-z0-9_]*$/.test(a.value) && !t.value.some((i) => i.id === a.value));
-    function m() {
+    const l = e, t = K(() => l.draft.relation_types ?? []), a = L(""), o = L(""), s = L(!1), v = K(() => /^[a-z][a-z0-9_]*$/.test(a.value) && !t.value.some((i) => i.id === a.value));
+    function f() {
       v.value && ((l.draft.relation_types ??= []).push({ id: a.value, outward: ge(a.value).toLowerCase(), inward: ge(a.value).toLowerCase(), cardinality: "many" }), a.value = "");
     }
-    async function f(i) {
-      if (!d.value) {
-        d.value = !0, o.value = "";
+    async function m(i) {
+      if (!s.value) {
+        s.value = !0, o.value = "";
         try {
           const n = await l.guardRemoval?.("relation_types", i);
           n ? o.value = n : _t(l.draft, "relation_types", i);
         } finally {
-          d.value = !1;
+          s.value = !1;
         }
       }
     }
-    return (i, n) => (c(), g("section", Vu, [
-      r("header", $u, [
-        n[1] || (n[1] = r("div", null, [
-          r("h2", null, "Relation types"),
-          r("p", { class: "work-muted work-small" }, "Give each direction a clear label. A used relation keeps its identity and shape.")
+    return (i, n) => (c(), g("section", Nu, [
+      d("header", Mu, [
+        n[1] || (n[1] = d("div", null, [
+          d("h2", null, "Relation types"),
+          d("p", { class: "work-muted work-small" }, "Give each direction a clear label. A used relation keeps its identity and shape.")
         ], -1)),
-        b(s(Re), {
+        b(r(Re), {
           class: "kx-tag-sm",
           severity: "secondary"
         }, {
-          default: L(() => [
-            M(A(t.value.length) + " " + A(t.value.length === 1 ? "relation" : "relations"), 1)
+          default: F(() => [
+            M(U(t.value.length) + " " + U(t.value.length === 1 ? "relation" : "relations"), 1)
           ]),
           _: 1
         })
       ]),
-      o.value ? (c(), g("p", xu, A(o.value), 1)) : E("", !0),
+      o.value ? (c(), g("p", Fu, U(o.value), 1)) : D("", !0),
       b($l, {
         columns: "relations",
         count: t.value.length
       }, {
-        default: L(() => [
-          (c(!0), g(H, null, ee(t.value, (u, y) => (c(), F(Vl, {
-            title: s(ge)(u.id),
+        default: F(() => [
+          (c(!0), g(H, null, ee(t.value, (u, y) => (c(), z(Vl, {
+            title: r(ge)(u.id),
             code: u.id,
             kind: u.symmetric ? "Same both ways" : "Different each way",
             key: y,
             class: "work-stack"
           }, {
-            usage: L(() => [
-              r("span", Cu, A(u.outward || "Related work") + " · " + A(u.inward || "Reverse relation"), 1)
+            usage: F(() => [
+              d("span", Lu, U(u.outward || "Related work") + " · " + U(u.inward || "Reverse relation"), 1)
             ]),
-            actions: L(() => [
-              b(s(Y), {
+            actions: F(() => [
+              b(r(G), {
                 severity: "secondary",
                 text: "",
-                disabled: d.value,
-                onClick: (p) => f(u.id),
+                disabled: s.value,
+                onClick: (p) => m(u.id),
                 "aria-label": "Remove relation",
                 size: "small"
               }, {
-                default: L(() => [
-                  b(s(J), {
+                default: F(() => [
+                  b(r(Z), {
                     icon: "tabler:trash",
                     "aria-hidden": "true"
                   })
@@ -5941,11 +6080,11 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
                 _: 1
               }, 8, ["disabled", "onClick"])
             ]),
-            default: L(() => [
-              r("div", Su, [
-                r("label", Tu, [
+            default: F(() => [
+              d("div", zu, [
+                d("label", Bu, [
                   n[2] || (n[2] = M("Identifier ", -1)),
-                  b(s(re), {
+                  b(r(re), {
                     modelValue: u.id,
                     "onUpdate:modelValue": (p) => u.id = p,
                     required: "",
@@ -5953,25 +6092,25 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
                     "aria-label": "Relation ID"
                   }, null, 8, ["modelValue", "onUpdate:modelValue"])
                 ]),
-                r("label", Eu, [
+                d("label", ju, [
                   n[3] || (n[3] = M("Outward label ", -1)),
-                  b(s(re), {
+                  b(r(re), {
                     modelValue: u.outward,
                     "onUpdate:modelValue": (p) => u.outward = p,
                     "aria-label": "Outward label"
                   }, null, 8, ["modelValue", "onUpdate:modelValue"])
                 ]),
-                r("label", Uu, [
+                d("label", qu, [
                   n[4] || (n[4] = M("Inward label ", -1)),
-                  b(s(re), {
+                  b(r(re), {
                     modelValue: u.inward,
                     "onUpdate:modelValue": (p) => u.inward = p,
                     "aria-label": "Inward label"
                   }, null, 8, ["modelValue", "onUpdate:modelValue"])
                 ]),
-                r("label", Du, [
+                d("label", Wu, [
                   n[5] || (n[5] = M("Links allowed ", -1)),
-                  b(s(te), {
+                  b(r(te), {
                     "model-value": u.cardinality ?? "many",
                     "onUpdate:modelValue": (p) => u.cardinality = p,
                     "aria-label": "Links allowed",
@@ -5982,8 +6121,8 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
                     options: [{ label: "One link", value: "one", disabled: !1 }, { label: "Many links", value: "many", disabled: !1 }]
                   }, null, 8, ["model-value", "onUpdate:modelValue"])
                 ]),
-                r("label", Iu, [
-                  b(s(Mt), {
+                d("label", Ku, [
+                  b(r(Mt), {
                     modelValue: u.symmetric,
                     "onUpdate:modelValue": (p) => u.symmetric = p,
                     "aria-label": "Same meaning in both directions",
@@ -5992,35 +6131,35 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
                   n[6] || (n[6] = M("Same meaning in both directions ", -1))
                 ])
               ]),
-              r("p", Au, [
-                n[7] || (n[7] = r("strong", null, "This item", -1)),
-                M(" " + A(u.outward || "relates to") + " ", 1),
-                n[8] || (n[8] = r("strong", null, "another item", -1)),
-                r("span", Pu, " · reverse: " + A(u.symmetric ? u.outward : u.inward), 1)
+              d("p", Gu, [
+                n[7] || (n[7] = d("strong", null, "This item", -1)),
+                M(" " + U(u.outward || "relates to") + " ", 1),
+                n[8] || (n[8] = d("strong", null, "another item", -1)),
+                d("span", Yu, " · reverse: " + U(u.symmetric ? u.outward : u.inward), 1)
               ])
             ]),
             _: 2
           }, 1032, ["title", "code", "kind"]))), 128)),
-          t.value.length ? E("", !0) : (c(), g("p", Ru, "No relation types yet. Add one to link related work.")),
-          r("div", Ou, [
-            r("label", Nu, [
+          t.value.length ? D("", !0) : (c(), g("p", Hu, "No relation types yet. Add one to link related work.")),
+          d("div", Xu, [
+            d("label", Ju, [
               n[9] || (n[9] = M("New relation ID ", -1)),
-              b(s(re), {
+              b(r(re), {
                 modelValue: a.value,
                 "onUpdate:modelValue": n[0] || (n[0] = (u) => a.value = u),
                 placeholder: "related_to",
-                onKeydown: Ae(be(m, ["prevent"]), ["enter"])
+                onKeydown: Ae(be(f, ["prevent"]), ["enter"])
               }, null, 8, ["modelValue", "onKeydown"])
             ]),
-            b(s(Y), {
+            b(r(G), {
               label: "Add relation",
               severity: "secondary",
               disabled: !v.value,
-              onClick: m,
+              onClick: f,
               outlined: ""
             }, {
-              icon: L(() => [
-                b(s(J), {
+              icon: F(() => [
+                b(r(Z), {
                   icon: "tabler:plus",
                   "aria-hidden": "true"
                 })
@@ -6034,43 +6173,43 @@ const Xd = { class: "work-stack" }, Jd = ["schema", "config"], Zd = {
     ]));
   }
 });
-function Lu(e, l) {
+function Qu(e, l) {
   return e.parked ? "Stopped: " + (typeof e.error == "string" ? e.error : e.error?.message ?? "Projection is parked") : e.bootstrapping ? "Initializing" : e.last_seq >= l ? "Up to date" : "Catching up";
 }
-const zu = {
+const _u = {
   class: "work-stack",
   "aria-label": "Plugins editor"
-}, Fu = { class: "work-section-heading" }, Bu = {
+}, ec = { class: "work-section-heading" }, tc = {
   key: 0,
   class: "kx-loading"
-}, ju = {
+}, lc = {
   key: 1,
   class: "kx-err",
   role: "alert"
-}, qu = {
+}, ac = {
   key: 2,
   class: "work-notice",
   role: "status"
-}, Wu = { class: "work-row" }, Ku = {
+}, oc = { class: "work-row" }, ic = {
   key: 0,
   class: "work-muted work-small"
-}, Gu = {
+}, nc = {
   key: 1,
   class: "kx-err"
-}, Yu = {
+}, sc = {
   key: 2,
   class: "work-notice"
-}, Hu = {
+}, rc = {
   key: 3,
   class: "work-stack work-tight work-plugin-status",
   role: "status"
-}, Xu = {
+}, dc = {
   key: 0,
   class: "kx-err"
-}, Ju = { class: "work-muted work-small" }, Zu = { class: "work-form-actions" }, Qu = {
+}, uc = { class: "work-muted work-small" }, cc = { class: "work-form-actions" }, vc = {
   key: 0,
   class: "work-muted work-small"
-}, xa = /* @__PURE__ */ ve({
+}, Ta = /* @__PURE__ */ ue({
   __name: "PluginsEditor",
   props: {
     boardId: {},
@@ -6083,59 +6222,59 @@ const zu = {
   },
   emits: ["configured", "refresh", "validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = z({}), d = z(""), v = z(""), m = z(""), f = z(/* @__PURE__ */ new Set()), i = {};
-    function n(T) {
-      return t.schema.plugins?.find((D) => D.plugin === T);
+    const t = e, a = l, o = L({}), s = L(""), v = L(""), f = L(""), m = L(/* @__PURE__ */ new Set()), i = {};
+    function n(x) {
+      return t.schema.plugins?.find((E) => E.plugin === x);
     }
-    function u(T) {
-      return n(T)?.active === !0;
+    function u(x) {
+      return n(x)?.active === !0;
     }
-    function y(T) {
-      return n(T)?.lifecycle.state === "ready";
+    function y(x) {
+      return n(x)?.lifecycle.state === "ready";
     }
-    function p(T) {
-      return t.draft.plugins?.some((D) => D.use === T) === !0;
+    function p(x) {
+      return t.draft.plugins?.some((E) => E.use === x) === !0;
     }
-    function w(T, D) {
+    function w(x, E) {
       const V = t.draft.plugins ?? [];
-      D && !p(T) && (t.draft.plugins = [...V, { use: T }]), D || (t.draft.plugins = V.filter((P) => P.use !== T), delete t.configs[T], f.value.delete(T), a("validity", T, !0));
+      E && !p(x) && (t.draft.plugins = [...V, { use: x }]), E || (t.draft.plugins = V.filter((P) => P.use !== x), delete t.configs[x], m.value.delete(x), a("validity", x, !0));
     }
-    function S(T) {
-      return u(T) ? o.value[T] ?? n(T)?.config ?? i : t.configs[T] ?? i;
+    function S(x) {
+      return u(x) ? o.value[x] ?? n(x)?.config ?? i : t.configs[x] ?? i;
     }
-    function U(T, D) {
-      u(T) ? o.value[T] = D : t.configs[T] = D;
+    function I(x, E) {
+      u(x) ? o.value[x] = E : t.configs[x] = E;
     }
-    function $(T, D) {
-      D ? f.value.delete(T) : f.value.add(T), u(T) || a("validity", T, D);
+    function $(x, E) {
+      E ? m.value.delete(x) : m.value.add(x), u(x) || a("validity", x, E);
     }
-    async function I(T) {
-      if (!(d.value || f.value.has(T))) {
-        d.value = T, v.value = "", m.value = "";
+    async function A(x) {
+      if (!(s.value || m.value.has(x))) {
+        s.value = x, v.value = "", f.value = "";
         try {
-          await kt.configure(t.boardId, T, S(T)), delete o.value[T], m.value = "Plugin configuration saved.", a("configured");
-        } catch (D) {
-          v.value = D instanceof Error ? D.message : "Could not configure plugin.";
+          await kt.configure(t.boardId, x, S(x)), delete o.value[x], f.value = "Plugin configuration saved.", a("configured");
+        } catch (E) {
+          v.value = E instanceof Error ? E.message : "Could not configure plugin.";
         } finally {
-          d.value = "";
+          s.value = "";
         }
       }
     }
-    return (T, D) => (c(), g("section", zu, [
-      r("header", Fu, [
-        D[1] || (D[1] = r("div", null, [
-          r("h2", null, "Plugins"),
-          r("p", { class: "work-muted work-small" }, "Add capabilities from installed modules.")
+    return (x, E) => (c(), g("section", _u, [
+      d("header", ec, [
+        E[1] || (E[1] = d("div", null, [
+          d("h2", null, "Plugins"),
+          d("p", { class: "work-muted work-small" }, "Add capabilities from installed modules.")
         ], -1)),
-        b(s(Y), {
+        b(r(G), {
           label: "Refresh status",
           severity: "secondary",
           outlined: "",
-          disabled: !!d.value || e.disabled,
-          onClick: D[0] || (D[0] = (V) => a("refresh"))
+          disabled: !!s.value || e.disabled,
+          onClick: E[0] || (E[0] = (V) => a("refresh"))
         }, {
-          icon: L(() => [
-            b(s(J), {
+          icon: F(() => [
+            b(r(Z), {
               icon: "tabler:refresh",
               "aria-hidden": "true"
             })
@@ -6143,84 +6282,84 @@ const zu = {
           _: 1
         }, 8, ["disabled"])
       ]),
-      D[5] || (D[5] = r("p", { class: "work-muted work-small" }, "Activation joins the schema draft and requires review. Active plugin configuration saves separately. Status reflects the last read; refresh to check progress.", -1)),
-      e.options.length ? E("", !0) : (c(), g("p", Bu, "No installed plugins are visible to you.")),
-      v.value ? (c(), g("div", ju, A(v.value), 1)) : E("", !0),
-      m.value ? (c(), g("p", qu, A(m.value), 1)) : E("", !0),
+      E[5] || (E[5] = d("p", { class: "work-muted work-small" }, "Activation joins the schema draft and requires review. Active plugin configuration saves separately. Status reflects the last read; refresh to check progress.", -1)),
+      e.options.length ? D("", !0) : (c(), g("p", tc, "No installed plugins are visible to you.")),
+      v.value ? (c(), g("div", lc, U(v.value), 1)) : D("", !0),
+      f.value ? (c(), g("p", ac, U(f.value), 1)) : D("", !0),
       b($l, {
         columns: "plugins",
         count: e.options.length
       }, {
-        default: L(() => [
-          (c(!0), g(H, null, ee(e.options, (V) => (c(), F(Vl, {
+        default: F(() => [
+          (c(!0), g(H, null, ee(e.options, (V) => (c(), z(Vl, {
             key: V.plugin,
             title: V.title || "Unavailable capability",
             description: V.description,
             kind: u(V.plugin) ? "Active" : p(V.plugin) ? "Pending review" : "Inactive",
             class: "work-stack"
           }, {
-            actions: L(() => [
-              D[3] || (D[3] = r("span", { class: "work-spacer" }, null, -1)),
-              r("label", Wu, [
-                b(s(ze), {
+            actions: F(() => [
+              E[3] || (E[3] = d("span", { class: "work-spacer" }, null, -1)),
+              d("label", oc, [
+                b(r(Le), {
                   "model-value": p(V.plugin),
-                  disabled: !!d.value || e.disabled || e.activationLocked || !!V.problem,
+                  disabled: !!s.value || e.disabled || e.activationLocked || !!V.problem,
                   "onUpdate:modelValue": (P) => w(V.plugin, P)
                 }, null, 8, ["model-value", "disabled", "onUpdate:modelValue"]),
-                D[2] || (D[2] = M("Activate on this board", -1))
+                E[2] || (E[2] = M("Activate on this board", -1))
               ])
             ]),
-            default: L(() => [
-              V.requires.length ? (c(), g("p", Ku, "Requires " + A(V.requires.map((P) => e.options.find((Z) => Z.plugin === P)?.title || "Another capability").join(", ")), 1)) : E("", !0),
-              V.problem ? (c(), g("p", Gu, A(V.problem.message), 1)) : E("", !0),
-              n(V.plugin)?.outdated ? (c(), g("p", Yu, "The stored declaration differs from the installed plugin. Review activation to update it.")) : E("", !0),
-              u(V.plugin) ? (c(), g("div", Hu, [
-                r("p", null, A(y(V.plugin) ? "Attachment configured" : n(V.plugin)?.lifecycle.state === "failed" ? "Configuration failed" : "Configuring attachment"), 1),
-                n(V.plugin)?.lifecycle.error ? (c(), g("p", Xu, A(n(V.plugin)?.lifecycle.error?.message), 1)) : E("", !0),
-                (c(!0), g(H, null, ee(n(V.plugin)?.projections, (P, Z) => (c(), g("div", { key: Z }, [
-                  r("p", null, A(s(Lu)(P, e.schema.as_of)), 1),
-                  r("p", Ju, "Position " + A(P.last_seq) + " · Board head " + A(e.schema.as_of), 1)
+            default: F(() => [
+              V.requires.length ? (c(), g("p", ic, "Requires " + U(V.requires.map((P) => e.options.find((X) => X.plugin === P)?.title || "Another capability").join(", ")), 1)) : D("", !0),
+              V.problem ? (c(), g("p", nc, U(V.problem.message), 1)) : D("", !0),
+              n(V.plugin)?.outdated ? (c(), g("p", sc, "The stored declaration differs from the installed plugin. Review activation to update it.")) : D("", !0),
+              u(V.plugin) ? (c(), g("div", rc, [
+                d("p", null, U(y(V.plugin) ? "Attachment configured" : n(V.plugin)?.lifecycle.state === "failed" ? "Configuration failed" : "Configuring attachment"), 1),
+                n(V.plugin)?.lifecycle.error ? (c(), g("p", dc, U(n(V.plugin)?.lifecycle.error?.message), 1)) : D("", !0),
+                (c(!0), g(H, null, ee(n(V.plugin)?.projections, (P, X) => (c(), g("div", { key: X }, [
+                  d("p", null, U(r(Qu)(P, e.schema.as_of)), 1),
+                  d("p", uc, "Position " + U(P.last_seq) + " · Board head " + U(e.schema.as_of), 1)
                 ]))), 128))
-              ])) : E("", !0),
+              ])) : D("", !0),
               !V.problem && (p(V.plugin) || u(V.plugin)) ? (c(), g(H, { key: 4 }, [
-                b(lo, {
-                  disabled: !!d.value || e.disabled,
+                b(io, {
+                  disabled: !!s.value || e.disabled,
                   schema: V.config_schema,
                   "model-value": S(V.plugin),
-                  "onUpdate:modelValue": (P) => U(V.plugin, P),
+                  "onUpdate:modelValue": (P) => I(V.plugin, P),
                   onValidity: (P) => $(V.plugin, P)
                 }, null, 8, ["disabled", "schema", "model-value", "onUpdate:modelValue", "onValidity"]),
-                r("div", Zu, [
-                  b(s(Y), {
+                d("div", cc, [
+                  b(r(G), {
                     label: "Reset",
                     severity: "secondary",
                     outlined: "",
-                    disabled: !!d.value || e.disabled,
-                    onClick: (P) => U(V.plugin, u(V.plugin) ? s(gt)(n(V.plugin)?.config ?? {}) : {})
+                    disabled: !!s.value || e.disabled,
+                    onClick: (P) => I(V.plugin, u(V.plugin) ? r(gt)(n(V.plugin)?.config ?? {}) : {})
                   }, {
-                    icon: L(() => [
-                      b(s(J), { icon: "tabler:restore" })
+                    icon: F(() => [
+                      b(r(Z), { icon: "tabler:restore" })
                     ]),
                     _: 1
                   }, 8, ["disabled", "onClick"]),
-                  u(V.plugin) ? (c(), F(s(Y), {
+                  u(V.plugin) ? (c(), z(r(G), {
                     key: 0,
                     label: "Save configuration",
-                    disabled: !!d.value || e.disabled || f.value.has(V.plugin),
-                    loading: d.value === V.plugin,
-                    onClick: (P) => I(V.plugin)
+                    disabled: !!s.value || e.disabled || m.value.has(V.plugin),
+                    loading: s.value === V.plugin,
+                    onClick: (P) => A(V.plugin)
                   }, {
-                    icon: L(() => [
-                      b(s(J), {
+                    icon: F(() => [
+                      b(r(Z), {
                         icon: "tabler:device-floppy",
                         "aria-hidden": "true"
                       })
                     ]),
                     _: 1
-                  }, 8, ["disabled", "loading", "onClick"])) : E("", !0)
+                  }, 8, ["disabled", "loading", "onClick"])) : D("", !0)
                 ]),
-                u(V.plugin) ? E("", !0) : (c(), g("p", Qu, "Initial configuration is included in Review and Apply."))
-              ], 64)) : E("", !0)
+                u(V.plugin) ? D("", !0) : (c(), g("p", vc, "Initial configuration is included in Review and Apply."))
+              ], 64)) : D("", !0)
             ]),
             _: 2
           }, 1032, ["title", "description", "kind"]))), 128))
@@ -6231,15 +6370,15 @@ const zu = {
         key: V.use,
         class: "work-settings-card"
       }, [
-        D[4] || (D[4] = r("p", null, "Unavailable plugin", -1)),
-        b(s(Y), {
+        E[4] || (E[4] = d("p", null, "Unavailable plugin", -1)),
+        b(r(G), {
           label: "Deactivate plugin",
           severity: "secondary",
           onClick: (P) => w(V.use, !1),
           outlined: ""
         }, {
-          icon: L(() => [
-            b(s(J), {
+          icon: F(() => [
+            b(r(Z), {
               icon: "tabler:trash",
               "aria-hidden": "true"
             })
@@ -6249,13 +6388,13 @@ const zu = {
       ]))), 128))
     ]));
   }
-}), _u = {
+}), mc = {
   class: "work-stack",
   "aria-label": "Board visibility"
-}, ec = { class: "work-stack work-tight" }, tc = {
+}, fc = { class: "work-stack work-tight" }, pc = {
   key: 0,
   class: "work-row"
-}, lc = { class: "work-stack work-tight" }, ac = { class: "work-settings-list" }, oc = { class: "work-row-main" }, ic = { class: "work-small work-muted" }, nc = { class: "work-row-control" }, sc = { class: "work-row" }, rc = /* @__PURE__ */ ve({
+}, bc = { class: "work-stack work-tight" }, hc = { class: "work-settings-list" }, yc = { class: "work-row-main" }, gc = { class: "work-small work-muted" }, kc = { class: "work-row-control" }, wc = { class: "work-row" }, Vc = /* @__PURE__ */ ue({
   __name: "VisibilityEditor",
   props: {
     draft: {},
@@ -6263,8 +6402,8 @@ const zu = {
   },
   emits: ["validity"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = G(() => t.draft.visibility), d = G(() => (t.draft.fields ?? []).filter((u) => u.form === "text" && (!u.cardinality || u.cardinality === "one") && u.type !== "rollup" && u.index !== "number" && u.config?.case !== "insensitive")), v = z(""), m = G(() => d.value.find((u) => u.code === o.value?.field)?.type !== "option");
-    function f() {
+    const t = e, a = l, o = K(() => t.draft.visibility), s = K(() => (t.draft.fields ?? []).filter((u) => u.form === "text" && (!u.cardinality || u.cardinality === "one") && u.type !== "rollup" && u.index !== "number" && u.config?.case !== "insensitive")), v = L(""), f = K(() => s.value.find((u) => u.code === o.value?.field)?.type !== "option");
+    function m() {
       !v.value || !o.value || o.value.levels.some((u) => u.id === v.value) || (o.value.levels.push({ id: v.value, holders: [] }), v.value = "");
     }
     function i(u) {
@@ -6272,23 +6411,23 @@ const zu = {
         delete t.draft.visibility;
         return;
       }
-      const y = d.value.find((p) => p.code === u);
+      const y = s.value.find((p) => p.code === u);
       t.draft.visibility = { field: u, levels: (y?.options ?? []).map((p) => ({ id: p.id, holders: [] })) };
     }
     function n(u, y) {
       const p = o.value?.levels.find((w) => w.id === u);
       p && (p.holders = y ?? []);
     }
-    return (u, y) => (c(), g("section", _u, [
-      y[10] || (y[10] = r("h3", { class: "work-group-title" }, "Board visibility", -1)),
-      y[11] || (y[11] = r("p", { class: "work-small work-muted" }, "Restrict items by their visibility level. People still need access to the board.", -1)),
-      r("label", ec, [
+    return (u, y) => (c(), g("section", mc, [
+      y[10] || (y[10] = d("h3", { class: "work-group-title" }, "Board visibility", -1)),
+      y[11] || (y[11] = d("p", { class: "work-small work-muted" }, "Restrict items by their visibility level. People still need access to the board.", -1)),
+      d("label", fc, [
         y[7] || (y[7] = M("Visibility field", -1)),
-        b(s(te), {
+        b(r(te), {
           "aria-label": "Visibility field",
           placeholder: "No additional restriction",
           "model-value": o.value?.field ?? "",
-          options: [{ label: "No additional restriction", value: "" }, ...d.value.map((p) => ({ label: s(Ct)(p), value: p.code }))],
+          options: [{ label: "No additional restriction", value: "" }, ...s.value.map((p) => ({ label: r(Ct)(p), value: p.code }))],
           optionLabel: "label",
           optionValue: "value",
           appendTo: "self",
@@ -6296,35 +6435,35 @@ const zu = {
         }, null, 8, ["model-value", "options"])
       ]),
       o.value ? (c(), g(H, { key: 0 }, [
-        m.value ? (c(), g("div", tc, [
-          r("label", lc, [
+        f.value ? (c(), g("div", pc, [
+          d("label", bc, [
             y[8] || (y[8] = M("Level ID", -1)),
-            b(s(re), {
+            b(r(re), {
               modelValue: v.value,
               "onUpdate:modelValue": y[1] || (y[1] = (p) => v.value = p),
               "aria-label": "New visibility level",
-              onKeydown: Ae(be(f, ["prevent"]), ["enter"])
+              onKeydown: Ae(be(m, ["prevent"]), ["enter"])
             }, null, 8, ["modelValue", "onKeydown"])
           ]),
-          b(s(Y), {
+          b(r(G), {
             label: "Add level",
             severity: "secondary",
             outlined: "",
             disabled: !v.value || o.value.levels.some((p) => p.id === v.value),
-            onClick: f
+            onClick: m
           }, null, 8, ["disabled"])
-        ])) : E("", !0),
-        r("div", ac, [
+        ])) : D("", !0),
+        d("div", hc, [
           (c(!0), g(H, null, ee(o.value.levels, (p, w) => (c(), g("div", {
             key: p.id,
             class: "work-settings-row"
           }, [
-            r("div", oc, [
-              r("strong", null, A(d.value.find((S) => S.code === o.value.field)?.options?.find((S) => S.id === p.id)?.label || p.id), 1),
-              r("p", ic, "Level " + A(w + 1), 1)
+            d("div", yc, [
+              d("strong", null, U(s.value.find((S) => S.code === o.value.field)?.options?.find((S) => S.id === p.id)?.label || p.id), 1),
+              d("p", gc, "Level " + U(w + 1), 1)
             ]),
-            r("div", nc, [
-              b(La, {
+            d("div", kc, [
+              b(Ba, {
                 "board-id": e.boardId,
                 label: "Who can see these items",
                 "model-value": p.holders,
@@ -6334,21 +6473,21 @@ const zu = {
             ])
           ]))), 128))
         ]),
-        r("label", sc, [
-          b(s(ze), {
+        d("label", wc, [
+          b(r(Le), {
             "model-value": o.value.bypass === "admin",
             "onUpdate:modelValue": y[3] || (y[3] = (p) => p ? o.value.bypass = "admin" : delete o.value.bypass)
           }, null, 8, ["model-value"]),
           y[9] || (y[9] = M("Board administrators can see every level", -1))
         ]),
-        b(s(Y), {
+        b(r(G), {
           label: "Remove visibility restriction",
           severity: "secondary",
           text: "",
           onClick: y[4] || (y[4] = (p) => delete e.draft.visibility)
         })
-      ], 64)) : E("", !0),
-      b(lt, {
+      ], 64)) : D("", !0),
+      b(at, {
         label: "Visibility rules",
         "model-value": o.value,
         shape: "object",
@@ -6358,7 +6497,7 @@ const zu = {
       }, null, 8, ["model-value"])
     ]));
   }
-}), dc = { class: "kx-head" }, uc = { class: "kx-head-icon" }, cc = { class: "kx-head-text" }, vc = { class: "kx-title" }, mc = ["title"], fc = { class: "kx-head-actions" }, pc = /* @__PURE__ */ ve({
+}), $c = { class: "kx-head" }, xc = { class: "kx-head-icon" }, Cc = { class: "kx-head-text" }, Sc = { class: "kx-title" }, Tc = ["title"], Ec = { class: "kx-head-actions" }, Uc = /* @__PURE__ */ ue({
   __name: "PageHead",
   props: {
     title: {},
@@ -6368,58 +6507,58 @@ const zu = {
   },
   emits: ["back"],
   setup(e) {
-    return (l, t) => (c(), g("header", dc, [
-      e.backLabel ? (c(), F(s(Y), {
+    return (l, t) => (c(), g("header", $c, [
+      e.backLabel ? (c(), z(r(G), {
         key: 0,
         "aria-label": e.backLabel,
         severity: "secondary",
         text: "",
         onClick: t[0] || (t[0] = (a) => l.$emit("back"))
       }, {
-        default: L(() => [
-          b(s(J), {
+        default: F(() => [
+          b(r(Z), {
             icon: "tabler:arrow-left",
             "aria-hidden": "true"
           })
         ]),
         _: 1
-      }, 8, ["aria-label"])) : E("", !0),
-      r("div", uc, [
-        b(s(J), {
+      }, 8, ["aria-label"])) : D("", !0),
+      d("div", xc, [
+        b(r(Z), {
           icon: e.icon,
           "aria-hidden": "true"
         }, null, 8, ["icon"])
       ]),
-      r("div", cc, [
+      d("div", Cc, [
         We(l.$slots, "identity", {}, () => [
-          r("h1", vc, A(e.title), 1),
+          d("h1", Sc, U(e.title), 1),
           e.subtitle ? (c(), g("p", {
             key: 0,
             class: "kx-head-sub",
             title: e.subtitle
-          }, A(e.subtitle), 9, mc)) : E("", !0)
+          }, U(e.subtitle), 9, Tc)) : D("", !0)
         ])
       ]),
-      r("div", fc, [
+      d("div", Ec, [
         We(l.$slots, "default")
       ])
     ]));
   }
-}), bc = { class: "work-board-identity work-stack work-tight" }, hc = { class: "work-stack work-tight" }, yc = { class: "work-stack work-tight" }, gc = { class: "work-stack work-tight" }, kc = ["value", "inert"], wc = {
+}), Dc = { class: "work-board-identity work-stack work-tight" }, Ic = { class: "work-stack work-tight" }, Ac = { class: "work-stack work-tight" }, Pc = { class: "work-stack work-tight" }, Rc = ["value", "inert"], Oc = {
   key: 1,
   class: "work-muted work-small"
-}, Vc = { class: "work-row" }, $c = { class: "work-row" }, xc = {
+}, Nc = { class: "work-row" }, Mc = { class: "work-row" }, Fc = {
   key: 2,
   class: "work-identity-actions"
-}, Cc = ["title"], Sc = {
+}, Lc = ["title"], zc = {
   key: 2,
   class: "kx-err work-inline",
   role: "alert"
-}, Tc = {
+}, Bc = {
   key: 3,
   class: "work-muted work-small",
   role: "status"
-}, Ca = /* @__PURE__ */ ve({
+}, Ea = /* @__PURE__ */ ue({
   __name: "BoardIdentity",
   props: {
     board: {},
@@ -6429,94 +6568,94 @@ const zu = {
   },
   emits: ["saved"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = z(!1), d = z(""), v = z(""), m = z(""), f = z(!1), i = z(!1), n = z(""), u = z(""), y = G(() => t.board?.access?.admin === !0);
+    const t = e, a = l, o = L(!1), s = L(""), v = L(""), f = L(""), m = L(!1), i = L(!1), n = L(""), u = L(""), y = K(() => t.board?.access?.admin === !0);
     function p() {
-      d.value = t.board?.title ?? "", m.value = t.board?.icon ?? "", vt("wc-icon-picker").then((S) => f.value = S), v.value = t.board?.description ?? "", n.value = "", u.value = "", o.value = !0;
+      s.value = t.board?.title ?? "", f.value = t.board?.icon ?? "", tt("wc-icon-picker").then((S) => m.value = S), v.value = t.board?.description ?? "", n.value = "", u.value = "", o.value = !0;
     }
-    Ce(y, (S) => {
+    xe(y, (S) => {
       S || (o.value = !1);
     });
     async function w() {
-      if (!y.value || !t.board || i.value || !d.value.trim()) return;
+      if (!y.value || !t.board || i.value || !s.value.trim()) return;
       const S = {};
-      if (d.value.trim() !== t.board.title && (S.title = d.value.trim()), v.value !== (t.board.description ?? "") && (S.description = v.value), m.value !== (t.board.icon ?? "") && (S.icon = m.value), !Object.keys(S).length) {
+      if (s.value.trim() !== t.board.title && (S.title = s.value.trim()), v.value !== (t.board.description ?? "") && (S.description = v.value), f.value !== (t.board.icon ?? "") && (S.icon = f.value), !Object.keys(S).length) {
         o.value = !1, u.value = "Nothing changed.";
         return;
       }
       i.value = !0, n.value = "";
       try {
-        const U = await $t.updateBoard(t.board.board_id, S);
-        o.value = !1, u.value = U.status === "unchanged" ? "Nothing changed." : "Board saved.", a("saved");
-      } catch (U) {
-        n.value = U instanceof Error ? U.message : "Could not save the board.";
+        const I = await $t.updateBoard(t.board.board_id, S);
+        o.value = !1, u.value = I.status === "unchanged" ? "Nothing changed." : "Board saved.", a("saved");
+      } catch (I) {
+        n.value = I instanceof Error ? I.message : "Could not save the board.";
       } finally {
         i.value = !1;
       }
     }
-    return (S, U) => (c(), g("div", bc, [
+    return (S, I) => (c(), g("div", Dc, [
       o.value ? (c(), g("form", {
         key: 0,
         class: "work-identity-edit",
         "aria-label": "Edit board",
-        onClick: U[4] || (U[4] = be(() => {
+        onClick: I[4] || (I[4] = be(() => {
         }, ["stop"])),
         onSubmit: be(w, ["prevent"])
       }, [
-        r("label", hc, [
-          U[5] || (U[5] = M("Title", -1)),
-          b(s(re), {
-            modelValue: d.value,
-            "onUpdate:modelValue": U[0] || (U[0] = ($) => d.value = $),
+        d("label", Ic, [
+          I[5] || (I[5] = M("Title", -1)),
+          b(r(re), {
+            modelValue: s.value,
+            "onUpdate:modelValue": I[0] || (I[0] = ($) => s.value = $),
             required: "",
             autofocus: "",
             disabled: i.value
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        r("label", yc, [
-          U[6] || (U[6] = M("Description", -1)),
-          b(s(ml), {
+        d("label", Ac, [
+          I[6] || (I[6] = M("Description", -1)),
+          b(r(ml), {
             modelValue: v.value,
-            "onUpdate:modelValue": U[1] || (U[1] = ($) => v.value = $),
+            "onUpdate:modelValue": I[1] || (I[1] = ($) => v.value = $),
             rows: "1",
             disabled: i.value
           }, null, 8, ["modelValue", "disabled"])
         ]),
-        r("div", gc, [
-          U[7] || (U[7] = r("span", null, "Board icon", -1)),
-          f.value ? (c(), g("wc-icon-picker", {
+        d("div", Pc, [
+          I[7] || (I[7] = d("span", null, "Board icon", -1)),
+          m.value ? (c(), g("wc-icon-picker", {
             key: 0,
-            value: m.value,
+            value: f.value,
             fallback: "tabler:layout-kanban",
             inert: i.value || void 0,
-            onSelect: U[2] || (U[2] = ($) => m.value = $.detail)
-          }, null, 40, kc)) : (c(), g("p", wc, "The icon picker is unavailable."))
+            onSelect: I[2] || (I[2] = ($) => f.value = $.detail)
+          }, null, 40, Rc)) : (c(), g("p", Oc, "The icon picker is unavailable."))
         ]),
-        r("div", Vc, [
-          b(s(Y), {
+        d("div", Nc, [
+          b(r(G), {
             label: "Save",
             severity: "secondary",
             type: "submit",
-            disabled: !d.value.trim() || i.value,
+            disabled: !s.value.trim() || i.value,
             loading: i.value,
             outlined: ""
           }, {
-            icon: L(() => [
-              b(s(J), {
+            icon: F(() => [
+              b(r(Z), {
                 icon: "tabler:device-floppy",
                 "aria-hidden": "true"
               })
             ]),
             _: 1
           }, 8, ["disabled", "loading"]),
-          b(s(Y), {
+          b(r(G), {
             label: "Cancel",
             severity: "secondary",
             disabled: i.value,
-            onClick: U[3] || (U[3] = ($) => o.value = !1),
+            onClick: I[3] || (I[3] = ($) => o.value = !1),
             outlined: ""
           }, {
-            icon: L(() => [
-              b(s(J), {
+            icon: F(() => [
+              b(r(Z), {
                 icon: "tabler:x",
                 "aria-hidden": "true"
               })
@@ -6525,23 +6664,23 @@ const zu = {
           }, 8, ["disabled"])
         ])
       ], 32)) : (c(), g(H, { key: 1 }, [
-        r("div", $c, [
-          e.board?.icon ? (c(), F(s(J), {
+        d("div", Mc, [
+          e.board?.icon ? (c(), z(r(Z), {
             key: 0,
             icon: e.board.icon,
             "aria-hidden": "true"
-          }, null, 8, ["icon"])) : E("", !0),
-          (c(), F(Fl(e.compact || e.detail ? "h2" : "h1"), {
-            class: mt(e.detail ? "work-detail-title" : e.compact ? "kx-card-name" : "kx-title")
+          }, null, 8, ["icon"])) : D("", !0),
+          (c(), z(zl(e.compact || e.detail ? "h2" : "h1"), {
+            class: ft(e.detail ? "work-detail-title" : e.compact ? "kx-card-name" : "kx-title")
           }, {
-            default: L(() => [
-              M(A(e.board?.title || "Untitled board"), 1)
+            default: F(() => [
+              M(U(e.board?.title || "Untitled board"), 1)
             ]),
             _: 1
           }, 8, ["class"])),
-          e.compact ? We(S.$slots, "title-end", {}, void 0, void 0, 1) : E("", !0),
-          e.compact ? (c(), g("span", xc, [
-            y.value ? (c(), F(s(Y), {
+          e.compact ? We(S.$slots, "title-end", {}, void 0, void 0, 1) : D("", !0),
+          e.compact ? (c(), g("span", Fc, [
+            y.value ? (c(), z(r(G), {
               key: 0,
               severity: "secondary",
               text: "",
@@ -6549,16 +6688,16 @@ const zu = {
               onClick: be(p, ["stop"]),
               "aria-label": "Edit board"
             }, {
-              default: L(() => [
-                b(s(J), {
+              default: F(() => [
+                b(r(Z), {
                   icon: "tabler:pencil",
                   "aria-hidden": "true"
                 })
               ]),
               _: 1
-            })) : E("", !0),
+            })) : D("", !0),
             We(S.$slots, "actions")
-          ])) : y.value ? (c(), F(s(Y), {
+          ])) : y.value ? (c(), z(r(G), {
             key: 3,
             severity: "secondary",
             text: "",
@@ -6566,30 +6705,30 @@ const zu = {
             onClick: be(p, ["stop"]),
             "aria-label": "Edit board"
           }, {
-            default: L(() => [
-              b(s(J), {
+            default: F(() => [
+              b(r(Z), {
                 icon: "tabler:pencil",
                 "aria-hidden": "true"
               })
             ]),
             _: 1
-          })) : E("", !0),
-          e.compact ? E("", !0) : We(S.$slots, "title-end", {}, void 0, void 0, 4)
+          })) : D("", !0),
+          e.compact ? D("", !0) : We(S.$slots, "title-end", {}, void 0, void 0, 4)
         ]),
         !e.compact && (e.subtitle || e.board?.description) ? (c(), g("p", {
           key: 0,
           class: "kx-head-sub",
           title: e.subtitle || e.board?.description
-        }, A(e.subtitle || e.board?.description), 9, Cc)) : E("", !0)
+        }, U(e.subtitle || e.board?.description), 9, Lc)) : D("", !0)
       ], 64)),
-      n.value ? (c(), g("p", Sc, A(n.value), 1)) : E("", !0),
-      u.value ? (c(), g("p", Tc, A(u.value), 1)) : E("", !0)
+      n.value ? (c(), g("p", zc, U(n.value), 1)) : D("", !0),
+      u.value ? (c(), g("p", Bc, U(u.value), 1)) : D("", !0)
     ]));
   }
-}), Ec = {
+}), jc = {
   key: 0,
   class: "work-dirty"
-}, Sa = /* @__PURE__ */ ve({
+}, Ua = /* @__PURE__ */ ue({
   __name: "SettingsActions",
   props: {
     dirty: { type: Boolean },
@@ -6601,20 +6740,20 @@ const zu = {
   emits: ["discard", "primary"],
   setup(e) {
     return (l, t) => (c(), g(H, null, [
-      e.dirty ? (c(), g("span", Ec, "Unsaved changes")) : E("", !0),
-      b(s(Y), {
+      e.dirty ? (c(), g("span", jc, "Unsaved changes")) : D("", !0),
+      b(r(G), {
         label: "Discard",
         severity: "secondary",
         outlined: "",
         disabled: !e.dirty || e.busy || e.checkingRemoval,
         onClick: t[0] || (t[0] = (a) => l.$emit("discard"))
       }, {
-        icon: L(() => [
-          b(s(J), { icon: "tabler:restore" })
+        icon: F(() => [
+          b(r(Z), { icon: "tabler:restore" })
         ]),
         _: 1
       }, 8, ["disabled"]),
-      b(s(Y), {
+      b(r(G), {
         label: e.reviewed ? "Apply" : "Review changes",
         disabled: e.disabled,
         loading: e.busy,
@@ -6622,17 +6761,17 @@ const zu = {
       }, null, 8, ["label", "disabled", "loading"])
     ], 64));
   }
-}), Uc = {
+}), qc = {
   key: 0,
   class: "work-detail-head"
-}, Dc = {
+}, Wc = {
   key: 0,
   class: "work-row work-wrap work-draft-actions"
-}, Ic = {
+}, Kc = {
   key: 2,
   class: "kx-err",
   role: "alert"
-}, Ac = ["config"], Pc = /* @__PURE__ */ ve({
+}, Gc = ["config"], Yc = /* @__PURE__ */ ue({
   __name: "SettingsHead",
   props: {
     pack: {},
@@ -6652,32 +6791,32 @@ const zu = {
   },
   emits: ["back", "discard", "primary", "saved", "upgrade", "install"],
   setup(e) {
-    const l = e, t = z(!1), a = z(!1), o = z("");
-    async function d() {
-      !l.authorized || !l.board || (o.value = "", a.value = await vt("kickside-share"), a.value ? t.value = !0 : o.value = "The sharing widget is unavailable. Try Share board again.");
+    const l = e, t = L(!1), a = L(!1), o = L("");
+    async function s() {
+      !l.authorized || !l.board || (o.value = "", a.value = await tt("kickside-share"), a.value ? t.value = !0 : o.value = "The sharing widget is unavailable. Try Share board again.");
     }
-    Ce(() => l.authorized, (i) => {
+    xe(() => l.authorized, (i) => {
       i || (t.value = !1);
     });
-    const v = G(() => JSON.stringify({ resource_id: l.board?.board_id, title: l.board?.title, access_url: `/api/v1/component-access/grants/${encodeURIComponent(l.board?.board_id ?? "")}`, share_url: `/api/v1/component-access/share/${encodeURIComponent(l.board?.board_id ?? "")}` })), m = G(() => l.pack ? `${l.packTitle} ${l.pack.version}${l.outdated ? " · Outdated" : ""}` : ""), f = G(() => "Settings · generation " + (l.generation ?? "…") + (m.value ? " · " + m.value : ""));
+    const v = K(() => JSON.stringify({ resource_id: l.board?.board_id, title: l.board?.title, access_url: `/api/v1/component-access/grants/${encodeURIComponent(l.board?.board_id ?? "")}`, share_url: `/api/v1/component-access/share/${encodeURIComponent(l.board?.board_id ?? "")}` })), f = K(() => l.pack ? `${l.packTitle} ${l.pack.version}${l.outdated ? " · Outdated" : ""}` : ""), m = K(() => "Settings · generation " + (l.generation ?? "…") + (f.value ? " · " + f.value : ""));
     return (i, n) => (c(), g(H, null, [
-      e.embedded ? (c(), g("header", Uc, [
-        b(Ca, {
+      e.embedded ? (c(), g("header", qc, [
+        b(Ea, {
           board: e.board,
-          subtitle: m.value || void 0,
+          subtitle: f.value || void 0,
           detail: "",
           onSaved: n[0] || (n[0] = (u) => i.$emit("saved"))
         }, {
-          "title-end": L(() => [
-            b(s(Re), {
+          "title-end": F(() => [
+            b(r(Re), {
               severity: "secondary",
               value: "Generation " + (e.generation ?? "…")
             }, null, 8, ["value"])
           ]),
           _: 1
         }, 8, ["board", "subtitle"]),
-        e.authorized ? (c(), g("div", Dc, [
-          e.authorized && e.outdated && e.pack ? (c(), F(s(Y), {
+        e.authorized ? (c(), g("div", Wc, [
+          e.authorized && e.outdated && e.pack ? (c(), z(r(G), {
             key: 0,
             disabled: !e.canUpgrade,
             title: e.upgradeReason,
@@ -6686,36 +6825,36 @@ const zu = {
             outlined: "",
             onClick: n[1] || (n[1] = (u) => i.$emit("upgrade"))
           }, {
-            icon: L(() => [
-              b(s(J), { icon: "tabler:refresh" })
+            icon: F(() => [
+              b(r(Z), { icon: "tabler:refresh" })
             ]),
             _: 1
-          }, 8, ["disabled", "title"])) : E("", !0),
-          e.authorized && e.board ? (c(), F(s(Y), {
+          }, 8, ["disabled", "title"])) : D("", !0),
+          e.authorized && e.board ? (c(), z(r(G), {
             key: 1,
             label: "Share board",
             severity: "secondary",
             outlined: "",
             disabled: e.busy,
-            onClick: d
+            onClick: s
           }, {
-            icon: L(() => [
-              b(s(J), {
+            icon: F(() => [
+              b(r(Z), {
                 icon: "tabler:share",
                 "aria-hidden": "true"
               })
             ]),
             _: 1
-          }, 8, ["disabled"])) : E("", !0),
-          e.authorized && !e.pack ? (c(), F(s(Y), {
+          }, 8, ["disabled"])) : D("", !0),
+          e.authorized && !e.pack ? (c(), z(r(G), {
             key: 2,
             label: "Install pack",
             severity: "secondary",
             outlined: "",
             disabled: e.busy || e.dirty,
             onClick: n[2] || (n[2] = (u) => i.$emit("install"))
-          }, null, 8, ["disabled"])) : E("", !0),
-          b(Sa, {
+          }, null, 8, ["disabled"])) : D("", !0),
+          b(Ua, {
             dirty: e.dirty,
             busy: e.busy,
             "checking-removal": e.checkingRemoval,
@@ -6724,24 +6863,24 @@ const zu = {
             onDiscard: n[3] || (n[3] = (u) => i.$emit("discard")),
             onPrimary: n[4] || (n[4] = (u) => i.$emit("primary"))
           }, null, 8, ["dirty", "busy", "checking-removal", "reviewed", "disabled"])
-        ])) : E("", !0)
-      ])) : (c(), F(pc, {
+        ])) : D("", !0)
+      ])) : (c(), z(Uc, {
         key: 1,
         title: e.board?.title || "Board",
-        subtitle: f.value,
+        subtitle: m.value,
         "back-label": "Back to board",
         icon: "tabler:adjustments",
         onBack: n[10] || (n[10] = (u) => i.$emit("back"))
       }, {
-        identity: L(() => [
-          b(Ca, {
+        identity: F(() => [
+          b(Ea, {
             board: e.board,
-            subtitle: f.value,
+            subtitle: m.value,
             onSaved: n[5] || (n[5] = (u) => i.$emit("saved"))
           }, null, 8, ["board", "subtitle"])
         ]),
-        default: L(() => [
-          e.authorized && e.outdated && e.pack ? (c(), F(s(Y), {
+        default: F(() => [
+          e.authorized && e.outdated && e.pack ? (c(), z(r(G), {
             key: 0,
             disabled: !e.canUpgrade,
             title: e.upgradeReason,
@@ -6750,36 +6889,36 @@ const zu = {
             outlined: "",
             onClick: n[6] || (n[6] = (u) => i.$emit("upgrade"))
           }, {
-            icon: L(() => [
-              b(s(J), { icon: "tabler:refresh" })
+            icon: F(() => [
+              b(r(Z), { icon: "tabler:refresh" })
             ]),
             _: 1
-          }, 8, ["disabled", "title"])) : E("", !0),
-          e.authorized && e.board ? (c(), F(s(Y), {
+          }, 8, ["disabled", "title"])) : D("", !0),
+          e.authorized && e.board ? (c(), z(r(G), {
             key: 1,
             label: "Share board",
             severity: "secondary",
             outlined: "",
             disabled: e.busy,
-            onClick: d
+            onClick: s
           }, {
-            icon: L(() => [
-              b(s(J), {
+            icon: F(() => [
+              b(r(Z), {
                 icon: "tabler:share",
                 "aria-hidden": "true"
               })
             ]),
             _: 1
-          }, 8, ["disabled"])) : E("", !0),
-          e.authorized && !e.pack ? (c(), F(s(Y), {
+          }, 8, ["disabled"])) : D("", !0),
+          e.authorized && !e.pack ? (c(), z(r(G), {
             key: 2,
             label: "Install pack",
             severity: "secondary",
             outlined: "",
             disabled: e.busy || e.dirty,
             onClick: n[7] || (n[7] = (u) => i.$emit("install"))
-          }, null, 8, ["disabled"])) : E("", !0),
-          e.authorized ? (c(), F(Sa, {
+          }, null, 8, ["disabled"])) : D("", !0),
+          e.authorized ? (c(), z(Ua, {
             key: 3,
             dirty: e.dirty,
             busy: e.busy,
@@ -6788,38 +6927,43 @@ const zu = {
             disabled: e.disabled,
             onDiscard: n[8] || (n[8] = (u) => i.$emit("discard")),
             onPrimary: n[9] || (n[9] = (u) => i.$emit("primary"))
-          }, null, 8, ["dirty", "busy", "checking-removal", "reviewed", "disabled"])) : E("", !0)
+          }, null, 8, ["dirty", "busy", "checking-removal", "reviewed", "disabled"])) : D("", !0)
         ]),
         _: 1
       }, 8, ["title", "subtitle"])),
-      o.value ? (c(), g("p", Ic, A(o.value), 1)) : E("", !0),
+      o.value ? (c(), g("p", Kc, U(o.value), 1)) : D("", !0),
       t.value && a.value && e.authorized ? (c(), g("kickside-share", {
         key: 3,
         config: v.value,
         onClose: n[11] || (n[11] = (u) => t.value = !1),
         onChanged: n[12] || (n[12] = (u) => i.$emit("saved"))
-      }, null, 40, Ac)) : E("", !0)
+      }, null, 40, Gc)) : D("", !0)
     ], 64));
   }
-}), Rc = {
+}), Hc = {
   key: 0,
   class: "work-settings-card work-schema-plan work-stack",
   "aria-label": "Schema review"
-}, Oc = { key: 0 }, Nc = { class: "work-row" }, Mc = { class: "work-muted work-small" }, Lc = { class: "work-muted" }, zc = {
+}, Xc = { key: 0 }, Jc = { class: "work-row" }, Zc = { class: "work-muted work-small" }, Qc = { class: "work-muted" }, _c = {
   key: 0,
   class: "work-notice"
-}, Fc = {
+}, ev = {
   key: 1,
   class: "work-notice"
-}, Bc = {
+}, tv = {
   key: 2,
   class: "work-muted work-small"
-}, jc = { key: 3 }, qc = { key: 0 }, Wc = {
-  key: 4,
+}, lv = {
+  key: 3,
+  class: "work-stack work-tight",
+  "aria-label": "Reviewed Flow bindings"
+}, av = { key: 4 }, ov = { key: 0 }, iv = {
+  key: 5,
   class: "work-settings-table"
-}, Kc = { key: 0 }, Gc = { key: 1 }, Yc = { key: 2 }, Hc = { key: 5 }, Xc = /* @__PURE__ */ ve({
+}, nv = { key: 0 }, sv = { key: 1 }, rv = { key: 2 }, dv = { key: 6 }, uv = /* @__PURE__ */ ue({
   __name: "SchemaReview",
   props: {
+    declaration: {},
     plan: {},
     generation: {},
     follows: {},
@@ -6827,79 +6971,87 @@ const zu = {
     packReview: { type: Boolean }
   },
   setup(e) {
-    return (l, t) => e.plan ? (c(), g("section", Rc, [
-      !e.plan.changes.length && !e.plan.refused.length && !e.configCount && !e.packReview ? (c(), g("p", Oc, "No changes to apply.")) : (c(), g(H, { key: 1 }, [
-        r("header", Nc, [
-          t[0] || (t[0] = r("h2", null, "Review", -1)),
-          b(s(Re), {
+    const l = e, t = K(() => l.declaration?.processes?.flatMap((a) => a.states.filter((o) => o.run?.flow_ref).map((o) => ({ process: a.name || a.id, state: o.name || o.id, reference: o.run.flow_ref }))) ?? []);
+    return (a, o) => e.plan ? (c(), g("section", Hc, [
+      !e.plan.changes.length && !e.plan.refused.length && !e.configCount && !e.packReview ? (c(), g("p", Xc, "No changes to apply.")) : (c(), g(H, { key: 1 }, [
+        d("header", Jc, [
+          o[0] || (o[0] = d("h2", null, "Review", -1)),
+          b(r(Re), {
             class: "kx-tag-sm",
             severity: e.plan.class === "refused" ? "danger" : e.plan.class === "semantic" ? "warn" : e.plan.class === "additive" ? "success" : "secondary"
           }, {
-            default: L(() => [
-              M(A(e.plan.class), 1)
+            default: F(() => [
+              M(U(e.plan.class), 1)
             ]),
             _: 1
           }, 8, ["severity"]),
-          r("span", Mc, "Generation " + A(e.generation) + " → " + A(e.plan.generation), 1)
+          d("span", Zc, "Generation " + U(e.generation) + " → " + U(e.plan.generation), 1)
         ]),
-        r("p", Lc, A(s(Eo)[e.plan.class] || "Review the classified changes below."), 1),
-        e.plan.migration ? (c(), g("p", zc, "Migration needed: " + A(e.plan.migration), 1)) : e.follows.length ? (c(), g("p", Fc, "Follow migration: " + A(e.follows.join(", ")) + ". Existing items move to the new process generation; declared state maps apply.", 1)) : (c(), g("p", Bc, "No follow process migration is indicated by these changes.")),
-        We(l.$slots, "default"),
-        e.plan.refused.length ? (c(), g("h3", jc, "Refused changes")) : E("", !0),
-        (c(!0), g(H, null, ee(e.plan.refused, (a, o) => (c(), F(s(zo), {
-          key: o,
+        d("p", Qc, U(r(Po)[e.plan.class] || "Review the classified changes below."), 1),
+        e.plan.migration ? (c(), g("p", _c, "Migration needed: " + U(e.plan.migration), 1)) : e.follows.length ? (c(), g("p", ev, "Follow migration: " + U(e.follows.join(", ")) + ". Existing items move to the new process generation; declared state maps apply.", 1)) : (c(), g("p", tv, "No follow process migration is indicated by these changes.")),
+        t.value.length ? (c(), g("section", lv, [
+          o[1] || (o[1] = d("h3", null, "Flow bindings", -1)),
+          (c(!0), g(H, null, ee(t.value, (s) => (c(), g("p", {
+            key: s.process + ":" + s.state
+          }, U(s.process) + " / " + U(s.state) + ": " + U(s.reference.id) + " · v" + U(s.reference.version), 1))), 128)),
+          o[2] || (o[2] = d("p", { class: "work-muted work-small" }, "New entries use these exact published versions. Before replacing a binding, stop new entries, drain existing attempts and deliveries, pause the old launcher, save, then resume entries.", -1))
+        ])) : D("", !0),
+        We(a.$slots, "default"),
+        e.plan.refused.length ? (c(), g("h3", av, "Refused changes")) : D("", !0),
+        (c(!0), g(H, null, ee(e.plan.refused, (s, v) => (c(), z(r(Wo), {
+          key: v,
           severity: "error",
           role: "alert"
         }, {
-          default: L(() => [
-            M(A(a.code) + " · " + A(a.what) + " · " + A(s(wl)(a)), 1),
-            a.to ? (c(), g("span", qc, " → " + A(a.to), 1)) : E("", !0)
+          default: F(() => [
+            M(U(s.code) + " · " + U(s.what) + " · " + U(r(wl)(s)), 1),
+            s.to ? (c(), g("span", ov, " → " + U(s.to), 1)) : D("", !0)
           ]),
           _: 2
         }, 1024))), 128)),
-        e.plan.changes.length ? (c(), g("table", Wc, [
-          t[1] || (t[1] = r("thead", null, [
-            r("tr", null, [
-              r("th", null, "Entry"),
-              r("th", null, "Class"),
-              r("th", null, "Change")
+        e.plan.changes.length ? (c(), g("table", iv, [
+          o[3] || (o[3] = d("thead", null, [
+            d("tr", null, [
+              d("th", null, "Entry"),
+              d("th", null, "Class"),
+              d("th", null, "Change")
             ])
           ], -1)),
-          r("tbody", null, [
-            (c(!0), g(H, null, ee(e.plan.changes, (a, o) => (c(), g("tr", { key: o }, [
-              r("td", null, A(a.code), 1),
-              r("td", null, [
-                b(s(Re), {
+          d("tbody", null, [
+            (c(!0), g(H, null, ee(e.plan.changes, (s, v) => (c(), g("tr", { key: v }, [
+              d("td", null, U(s.code), 1),
+              d("td", null, [
+                b(r(Re), {
                   class: "kx-tag-sm",
-                  severity: a.class === "refused" ? "danger" : a.class === "semantic" ? "warn" : a.class === "additive" ? "success" : "secondary"
+                  severity: s.class === "refused" ? "danger" : s.class === "semantic" ? "warn" : s.class === "additive" ? "success" : "secondary"
                 }, {
-                  default: L(() => [
-                    M(A(a.class), 1)
+                  default: F(() => [
+                    M(U(s.class), 1)
                   ]),
                   _: 2
                 }, 1032, ["severity"])
               ]),
-              r("td", null, [
-                M(A(a.what) + " ", 1),
-                a.detail ? (c(), g("span", Kc, " · " + A(a.detail), 1)) : E("", !0),
-                a.to ? (c(), g("span", Gc, " → " + A(a.to), 1)) : E("", !0),
-                a.count ? (c(), g("span", Yc, " · " + A(a.count) + " items", 1)) : E("", !0)
+              d("td", null, [
+                M(U(s.what) + " ", 1),
+                s.detail ? (c(), g("span", nv, " · " + U(s.detail), 1)) : D("", !0),
+                s.to ? (c(), g("span", sv, " → " + U(s.to), 1)) : D("", !0),
+                s.count ? (c(), g("span", rv, " · " + U(s.count) + " items", 1)) : D("", !0)
               ])
             ]))), 128))
           ])
-        ])) : (c(), g("p", Hc, "No declaration changes are reported."))
+        ])) : (c(), g("p", dv, "No declaration changes are reported."))
       ], 64))
-    ])) : E("", !0);
+    ])) : D("", !0);
   }
-}), Jc = {
+}), cv = {
   key: 0,
   class: "work-stack",
   "aria-label": "Pack conflicts"
-}, Zc = { class: "work-stack work-tight work-pack-review-field" }, Qc = { class: "work-json-disclosure" }, _c = { class: "work-config-fields" }, ev = { class: "work-json-example" }, tv = { class: "work-json-example" }, lv = {
+}, vv = { class: "work-stack work-tight work-pack-review-field" }, mv = { class: "work-json-disclosure" }, fv = { class: "work-config-fields" }, pv = { class: "work-json-example" }, bv = { class: "work-json-example" }, hv = {
   key: 1,
   class: "work-stack",
   "aria-label": "Pack state maps"
-}, av = /* @__PURE__ */ ve({
+}, yv = /* @__PURE__ */ ue({
   __name: "PackReview",
   props: {
     plan: {},
@@ -6913,131 +7065,131 @@ const zu = {
     function o(i) {
       return t.original.processes?.find((n) => n.id === i)?.name || ge(i);
     }
-    function d(i) {
+    function s(i) {
       const [n, ...u] = i.split("."), y = u.join(".");
       return n === "processes" ? o(y) : n === "fields" ? t.original.fields?.find((p) => p.code === y)?.title || ge(y) : n === "item_types" ? t.original.item_types?.find((p) => p.id === y)?.title || ge(y) : ge(n);
     }
     function v(i) {
       return JSON.stringify(i ?? null, null, 2);
     }
-    function m(i, n) {
+    function f(i, n) {
       (t.request.resolutions ??= {})[i] = n, a("change");
     }
-    function f(i, n, u) {
+    function m(i, n, u) {
       ((t.request.maps ??= {})[i] ??= {})[n] = u, a("change");
     }
     return (i, n) => (c(), g(H, null, [
-      e.plan.conflicts.length ? (c(), g("section", Jc, [
-        n[3] || (n[3] = r("h3", null, "Local edits conflict", -1)),
-        n[4] || (n[4] = r("p", { class: "work-muted work-small" }, "Choose which declaration to keep for each conflict, then review again.", -1)),
+      e.plan.conflicts.length ? (c(), g("section", cv, [
+        n[3] || (n[3] = d("h3", null, "Local edits conflict", -1)),
+        n[4] || (n[4] = d("p", { class: "work-muted work-small" }, "Choose which declaration to keep for each conflict, then review again.", -1)),
         (c(!0), g(H, null, ee(e.plan.conflicts, (u) => (c(), g("div", {
           key: u.path,
           class: "work-stack work-tight"
         }, [
-          r("label", Zc, [
-            M(A(d(u.path)), 1),
-            b(s(te), {
+          d("label", vv, [
+            M(U(s(u.path)), 1),
+            b(r(te), {
               "model-value": e.request.resolutions?.[u.path],
-              "aria-label": "Resolution for " + d(u.path),
+              "aria-label": "Resolution for " + s(u.path),
               disabled: e.disabled,
               appendTo: "self",
               placeholder: "Choose a resolution",
               optionLabel: "label",
               optionValue: "value",
               options: [{ label: "Keep local edits", value: "local" }, { label: "Use pack changes", value: "incoming" }],
-              "onUpdate:modelValue": (y) => m(u.path, y)
+              "onUpdate:modelValue": (y) => f(u.path, y)
             }, null, 8, ["model-value", "aria-label", "disabled", "onUpdate:modelValue"])
           ]),
-          r("details", Qc, [
-            n[2] || (n[2] = r("summary", null, "Compare declarations", -1)),
-            r("div", _c, [
-              r("section", null, [
-                n[0] || (n[0] = r("h4", null, "Local edits", -1)),
-                r("pre", ev, A(v(u.local_value)), 1)
+          d("details", mv, [
+            n[2] || (n[2] = d("summary", null, "Compare declarations", -1)),
+            d("div", fv, [
+              d("section", null, [
+                n[0] || (n[0] = d("h4", null, "Local edits", -1)),
+                d("pre", pv, U(v(u.local_value)), 1)
               ]),
-              r("section", null, [
-                n[1] || (n[1] = r("h4", null, "Pack changes", -1)),
-                r("pre", tv, A(v(u.incoming)), 1)
+              d("section", null, [
+                n[1] || (n[1] = d("h4", null, "Pack changes", -1)),
+                d("pre", bv, U(v(u.incoming)), 1)
               ])
             ])
           ])
         ]))), 128))
-      ])) : E("", !0),
-      Object.keys(e.plan.maps).length ? (c(), g("section", lv, [
-        n[5] || (n[5] = r("h3", null, "Required state maps", -1)),
-        n[6] || (n[6] = r("p", { class: "work-muted work-small" }, "Review the proposed destinations for existing items. Each destination is editable.", -1)),
+      ])) : D("", !0),
+      Object.keys(e.plan.maps).length ? (c(), g("section", hv, [
+        n[5] || (n[5] = d("h3", null, "Required state maps", -1)),
+        n[6] || (n[6] = d("p", { class: "work-muted work-small" }, "Review the proposed destinations for existing items. Each destination is editable.", -1)),
         (c(!0), g(H, null, ee(e.plan.maps, (u, y) => (c(), g("div", {
           key: y,
           class: "work-stack"
         }, [
-          r("h4", null, A(o(y)), 1),
+          d("h4", null, U(o(y)), 1),
           (c(!0), g(H, null, ee(u, (p, w) => (c(), g("label", {
             key: w,
             class: "work-stack work-tight work-pack-review-field"
           }, [
-            M("Move items from " + A(s(he)(e.original.processes?.find((S) => S.id === y)?.states.find((S) => S.id === w))), 1),
-            b(s(te), {
+            M("Move items from " + U(r(he)(e.original.processes?.find((S) => S.id === y)?.states.find((S) => S.id === w))), 1),
+            b(r(te), {
               "model-value": e.request.maps?.[y]?.[w],
-              "aria-label": "Move items from " + s(he)(e.original.processes?.find((S) => S.id === y)?.states.find((S) => S.id === w)),
+              "aria-label": "Move items from " + r(he)(e.original.processes?.find((S) => S.id === y)?.states.find((S) => S.id === w)),
               disabled: e.disabled,
               appendTo: "self",
               optionLabel: "label",
               optionValue: "value",
-              options: e.plan.declaration.processes?.find((S) => S.id === y)?.states.map((S) => ({ label: s(he)(S), value: S.id })) ?? [],
-              "onUpdate:modelValue": (S) => f(y, w, S)
+              options: e.plan.declaration.processes?.find((S) => S.id === y)?.states.map((S) => ({ label: r(he)(S), value: S.id })) ?? [],
+              "onUpdate:modelValue": (S) => m(y, w, S)
             }, null, 8, ["model-value", "aria-label", "disabled", "options", "onUpdate:modelValue"])
           ]))), 128))
         ]))), 128))
-      ])) : E("", !0)
+      ])) : D("", !0)
     ], 64));
   }
-}), ov = {
+}), gv = {
   key: 0,
   class: "work-settings-tabs"
-}, iv = { class: "work-section-navigation" }, nv = {
+}, kv = { class: "work-section-navigation" }, wv = {
   key: 1,
   class: "kx-err",
   role: "alert"
-}, sv = {
+}, Vv = {
   key: 2,
   class: "kx-err",
   role: "alert"
-}, rv = {
+}, $v = {
   key: 3,
   class: "work-notice",
   role: "status"
-}, dv = {
+}, xv = {
   key: 4,
   class: "kx-loading",
   role: "status"
-}, uv = {
+}, Cv = {
   key: 5,
   class: "work-notice",
   role: "alert"
-}, cv = {
+}, Sv = {
   key: 6,
   class: "work-settings-content work-pane"
-}, vv = {
+}, Tv = {
   key: 0,
   class: "work-notice",
   role: "alert"
-}, mv = {
+}, Ev = {
   key: 1,
   class: "work-notice"
-}, fv = { key: 0 }, pv = ["disabled", "inert"], bv = {
+}, Uv = { key: 0 }, Dv = ["disabled", "inert"], Iv = {
   key: 6,
   class: "work-settings-card work-stack"
-}, hv = {
+}, Av = {
   key: 5,
   class: "kx-empty"
-}, yv = {
+}, Pv = {
   key: 6,
   class: "work-muted work-small",
   role: "status"
-}, gv = { class: "work-stack work-tight" }, kv = {
+}, Rv = { class: "work-stack work-tight" }, Ov = {
   key: 0,
   class: "work-muted"
-}, wv = { class: "work-dialog-actions" }, Vv = /* @__PURE__ */ ve({
+}, Nv = { class: "work-dialog-actions" }, Mv = /* @__PURE__ */ ue({
   __name: "BoardSettings",
   props: {
     boardId: {},
@@ -7045,13 +7197,13 @@ const zu = {
   },
   emits: ["dirty-change"],
   setup(e, { emit: l }) {
-    const t = e, a = l, o = jo();
-    let d, v = "";
-    const m = () => JSON.stringify([k.value, $.value, B.value, [...Ve.value]]), f = ["Fields", "Item types", "Process", "Policy", "Relation types", "Plugins", "Review"], i = z("Fields"), n = z(!1), u = z(""), y = z(/* @__PURE__ */ new Set(["Fields"]));
-    Ce(i, (Q) => y.value.add(Q));
-    const p = z(), w = z(), S = z(), U = z({}), $ = z({}), I = z(), T = z(!1), D = z(!0), V = z(!1), P = z(""), Z = z(""), de = z(""), ne = z([]), B = z(), O = z(), oe = z(), x = z(), R = z(), N = z(""), X = z([]), ue = G(() => [...X.value, ...x.value?.refused ?? []]), pe = z(!1), ke = z(0), Ve = z(/* @__PURE__ */ new Set()), De = z(), h = jl(), C = jl(), k = G(() => da(U.value, p.value?.declaration ?? {})), j = G(() => Ve.value.size > 0 || !!B.value || !!p.value && (JSON.stringify(k.value) !== JSON.stringify(p.value.declaration) || Object.keys($.value).length > 0));
-    Ce(j, (Q) => a("dirty-change", Q), { immediate: !0, flush: "sync" });
-    const K = G(() => !!p.value && !!w.value && p.value.generation !== w.value.generation), se = G(() => T.value && !V.value && !pe.value && !St.value && !K.value && !Ve.value.size && x.value && (x.value.changes.length > 0 || Object.keys($.value).length > 0) && x.value.class !== "refused" && !x.value.refused.length && R.value?.matches(k.value, p.value?.generation ?? -1, $.value)), fe = G(() => ne.value.find((Q) => Q.id === B.value?.pack)?.plugins.filter((Q) => !p.value?.plugins?.some((q) => q.plugin === Q.plugin && q.active)).map((Q) => ({ use: Q.plugin })) ?? []), Se = G(() => !!oe.value && JSON.stringify(oe.value) === JSON.stringify(B.value)), Ne = G(() => B.value ? T.value && !V.value && !Ve.value.size && !K.value && !St.value && Se.value && x.value?.class !== "refused" && !x.value?.refused.length && O.value?.conflicts.every((Q) => !!B.value?.resolutions?.[Q.path]) : se.value), Te = G(() => !!x.value && (!B.value || Se.value)), pt = G(() => ne.value.find((Q) => Q.id === p.value?.pack?.id)?.title || "Installed pack"), it = G(() => !de.value && !!p.value?.outdated && !!ne.value.find((Q) => Q.id === p.value?.pack?.id)), Cl = G(() => de.value ? "Reload packs to check available upgrades." : it.value ? j.value ? "Discard the current draft before upgrading." : St.value ? "Finish the current migration before upgrading." : V.value ? "Wait for the current request to finish." : void 0 : "Install an available version of this pack to upgrade.");
+    const t = e, a = l, o = Yo();
+    let s, v = "";
+    const f = () => JSON.stringify([k.value, $.value, B.value, [...Ve.value]]), m = ["Fields", "Item types", "Process", "Policy", "Relation types", "Plugins", "Review"], i = L("Fields"), n = L(!1), u = L(""), y = L(/* @__PURE__ */ new Set(["Fields"]));
+    xe(i, (Q) => y.value.add(Q));
+    const p = L(), w = L(), S = L(), I = L({}), $ = L({}), A = L(), x = L(!1), E = L(!0), V = L(!1), P = L(""), X = L(""), de = L(""), ne = L([]), B = L(), O = L(), oe = L(), C = L(), R = L(), N = L(""), J = L([]), ce = K(() => [...J.value, ...C.value?.refused ?? []]), pe = L(!1), ke = L(0), Ve = L(/* @__PURE__ */ new Set()), De = L(), h = jl(), T = jl(), k = K(() => da(I.value, p.value?.declaration ?? {})), j = K(() => Ve.value.size > 0 || !!B.value || !!p.value && (JSON.stringify(k.value) !== JSON.stringify(p.value.declaration) || Object.keys($.value).length > 0));
+    xe(j, (Q) => a("dirty-change", Q), { immediate: !0, flush: "sync" });
+    const Y = K(() => !!p.value && !!w.value && p.value.generation !== w.value.generation), se = K(() => x.value && !V.value && !pe.value && !St.value && !Y.value && !Ve.value.size && C.value && (C.value.changes.length > 0 || Object.keys($.value).length > 0) && C.value.class !== "refused" && !C.value.refused.length && R.value?.matches(k.value, p.value?.generation ?? -1, $.value)), fe = K(() => ne.value.find((Q) => Q.id === B.value?.pack)?.plugins.filter((Q) => !p.value?.plugins?.some((q) => q.plugin === Q.plugin && q.active)).map((Q) => ({ use: Q.plugin })) ?? []), Se = K(() => !!oe.value && JSON.stringify(oe.value) === JSON.stringify(B.value)), Ne = K(() => B.value ? x.value && !V.value && !Ve.value.size && !Y.value && !St.value && Se.value && C.value?.class !== "refused" && !C.value?.refused.length && O.value?.conflicts.every((Q) => !!B.value?.resolutions?.[Q.path]) : se.value), Te = K(() => !!C.value && (!B.value || Se.value)), pt = K(() => ne.value.find((Q) => Q.id === p.value?.pack?.id)?.title || "Installed pack"), st = K(() => !de.value && !!p.value?.outdated && !!ne.value.find((Q) => Q.id === p.value?.pack?.id)), Cl = K(() => de.value ? "Reload packs to check available upgrades." : st.value ? j.value ? "Discard the current draft before upgrading." : St.value ? "Finish the current migration before upgrading." : V.value ? "Wait for the current request to finish." : void 0 : "Install an available version of this pack to upgrade.");
     function Ye() {
       B.value = void 0, O.value = void 0, oe.value = void 0;
     }
@@ -7065,95 +7217,95 @@ const zu = {
       !p.value || !Q || Q.plugins.some((q) => !q.installed) || V.value || j.value || (B.value = ua(Q, p.value.generation), n.value = !1, i.value = "Review", await Sl());
     }
     async function Sl() {
-      if (!B.value || V.value || !T.value || K.value || Ve.value.size) return;
-      const Q = C(), q = gt(B.value), _ = JSON.stringify(B.value);
-      V.value = !0, P.value = "", Z.value = "";
+      if (!B.value || V.value || !x.value || Y.value || Ve.value.size) return;
+      const Q = T(), q = gt(B.value), _ = JSON.stringify(B.value);
+      V.value = !0, P.value = "", X.value = "";
       try {
-        const ye = await Do(q, (Et) => kt.packPlan(t.boardId, Et));
+        const ye = await Oo(q, (Et) => kt.packPlan(t.boardId, Et));
         if (!Q() || _ !== JSON.stringify(B.value)) return;
-        O.value = ye.plan, x.value = ye.plan, B.value = ye.request, oe.value = gt(B.value), N.value = crypto.randomUUID(), i.value = "Review";
+        O.value = ye.plan, C.value = ye.plan, B.value = ye.request, oe.value = gt(B.value), N.value = crypto.randomUUID(), i.value = "Review";
       } catch (ye) {
         Q() && (oe.value = void 0, P.value = ye instanceof Error ? ye.message : "Could not plan the pack upgrade.");
       } finally {
         V.value = !1;
       }
     }
-    const ao = G(() => x.value ? Uo(x.value, k.value) : []), St = G(() => !!w.value?.migration_error || S.value?.status === "migrating");
-    function nt() {
-      X.value = [], C(), x.value = void 0, R.value = void 0, oe.value = void 0, N.value = "";
+    const no = K(() => C.value ? Ro(C.value, k.value) : []), St = K(() => !!w.value?.migration_error || S.value?.status === "migrating");
+    function rt() {
+      J.value = [], T(), C.value = void 0, R.value = void 0, oe.value = void 0, N.value = "";
     }
-    Ce([k, $], nt, { deep: !0, flush: "sync" }), Ce($, (Q) => {
+    xe([k, $], rt, { deep: !0, flush: "sync" }), xe($, (Q) => {
       B.value && (Object.keys(Q).length ? B.value.plugin_configs = gt(Q) : delete B.value.plugin_configs);
     }, { deep: !0, flush: "sync" });
     function Tt(Q, q) {
-      q ? Ve.value.delete(Q) : Ve.value.add(Q), nt();
+      q ? Ve.value.delete(Q) : Ve.value.add(Q), rt();
     }
     function Tl(Q) {
-      Ye(), ke.value++, p.value = Q, U.value = gt(Q.declaration), $.value = {}, Ve.value.clear(), nt();
+      Ye(), ke.value++, p.value = Q, I.value = gt(Q.declaration), $.value = {}, Ve.value.clear(), rt();
     }
     async function Ze(Q = !1) {
       const q = h();
       try {
-        const [_, ye, Et] = await Promise.all([$t.schema(t.boardId, void 0, !0).catch((st) => {
-          if (st instanceof ca && st.details?.code === "board_schema_missing") return { generation: 0, declaration: {}, compiled: {}, key_prefix: "", as_of: 0 };
-          throw st;
+        const [_, ye, Et] = await Promise.all([$t.schema(t.boardId, void 0, !0).catch((dt) => {
+          if (dt instanceof ca && dt.details?.code === "board_schema_missing") return { generation: 0, declaration: {}, compiled: {}, key_prefix: "", as_of: 0 };
+          throw dt;
         }), $t.options(t.boardId), $t.boards()]);
         if (!q()) return;
-        if (T.value = ye.access.admin, I.value = ye, S.value = Et.find((st) => st.board_id === t.boardId), !T.value) {
-          p.value = void 0, U.value = {}, nt();
+        if (x.value = ye.access.admin, A.value = ye, S.value = Et.find((dt) => dt.board_id === t.boardId), !x.value) {
+          p.value = void 0, I.value = {}, rt();
           return;
         }
         P.value = "";
-        const He = Io(_);
-        w.value = He, d !== void 0 && He.generation >= d ? (d = void 0, v === m() && Tl(He), v = "") : (Q || !p.value || !j.value && He.generation !== p.value.generation) && Tl(He), K.value && nt(), await ia(q);
+        const He = No(_);
+        w.value = He, s !== void 0 && He.generation >= s ? (s = void 0, v === f() && Tl(He), v = "") : (Q || !p.value || !j.value && He.generation !== p.value.generation) && Tl(He), Y.value && rt(), await ia(q);
       } catch (_) {
         if (!q()) return;
-        _ instanceof ca && (_.status === 403 || _.kind?.toLowerCase() === "permission_denied") && (T.value = !1), nt(), P.value = _ instanceof Error ? _.message : "Could not load board settings.";
+        _ instanceof ca && (_.status === 403 || _.kind?.toLowerCase() === "permission_denied") && (x.value = !1), rt(), P.value = _ instanceof Error ? _.message : "Could not load board settings.";
       } finally {
-        q() && (D.value = !1);
+        q() && (E.value = !1);
       }
     }
     async function ia(Q = () => !0) {
       de.value = "";
       try {
         const q = await $t.packs();
-        Q() && (ne.value = q.filter(Ao));
+        Q() && (ne.value = q.filter(Mo));
       } catch (q) {
         Q() && (de.value = q instanceof Error ? q.message : "Could not load packs.");
       }
     }
-    function oo() {
+    function so() {
       for (const Q of De.value?.querySelectorAll("input, select, textarea") ?? [])
         if (!(Q.form !== De.value || Q.closest('[style*="display: none"]')) && !Q.reportValidity())
           return !1;
       return !0;
     }
-    function io(Q) {
-      i.value = Q, Q === "Review" && !x.value && El();
+    function ro(Q) {
+      i.value = Q, Q === "Review" && !C.value && El();
     }
     async function El() {
       if (B.value) return Sl();
-      if (!p.value || V.value || !T.value || K.value || Ve.value.size || !oo()) return;
-      const Q = C(), q = va(k.value, p.value.generation, $.value);
-      V.value = !0, P.value = "", Z.value = "";
+      if (!p.value || V.value || !x.value || Y.value || Ve.value.size || !so()) return;
+      const Q = T(), q = va(k.value, p.value.generation, $.value);
+      V.value = !0, P.value = "", X.value = "";
       try {
         const _ = await kt.plan(t.boardId, q);
         if (!Q() || Ve.value.size || !q.matches(k.value, p.value.generation, $.value)) return;
-        x.value = _, R.value = q, N.value = crypto.randomUUID(), i.value = "Review";
+        C.value = _, R.value = q, N.value = crypto.randomUUID(), i.value = "Review";
       } catch (_) {
-        Q() && (nt(), P.value = _ instanceof Error ? _.message : "Could not review changes.", X.value = Po(_, k.value));
+        Q() && (rt(), P.value = _ instanceof Error ? _.message : "Could not review changes.", J.value = Fo(_, k.value));
       } finally {
         V.value = !1;
       }
     }
-    async function no() {
+    async function uo() {
       if (!Ne.value) return;
       if (B.value && oe.value) {
         V.value = !0, P.value = "";
-        const q = m();
+        const q = f();
         try {
           const _ = await kt.packApply(t.boardId, gt(oe.value), N.value);
-          d = _.generation, v = q, await Ze(), Z.value = _.status === "done" ? `Pack applied at generation ${_.generation}.` : "Pack installation continues in the background.";
+          s = _.generation, v = q, await Ze(), X.value = _.status === "done" ? `Pack applied at generation ${_.generation}.` : "Pack installation continues in the background.";
         } catch (_) {
           P.value = _ instanceof Error ? _.message : "Could not apply the pack upgrade.";
         } finally {
@@ -7162,23 +7314,23 @@ const zu = {
         return;
       }
       if (!R.value) return;
-      V.value = !0, P.value = "", Z.value = "";
-      const Q = m();
+      V.value = !0, P.value = "", X.value = "";
+      const Q = f();
       try {
         const q = await kt.apply(t.boardId, R.value, N.value);
-        d = q.generation, v = Q, await Ze(), Z.value = `Applied generation ${q.generation} (${q.class}).`;
+        s = q.generation, v = Q, await Ze(), X.value = `Applied generation ${q.generation} (${q.class}).`;
       } catch (q) {
         P.value = q instanceof Error ? q.message : "Could not apply schema.";
       } finally {
         V.value = !1;
       }
     }
-    async function so() {
+    async function co() {
       if (!V.value) {
         V.value = !0, P.value = "";
         try {
           const Q = await kt.resume(t.boardId);
-          Z.value = Q.resumed ? "Migration resumes." : "Migration is already running.", await Ze();
+          X.value = Q.resumed ? "Migration resumes." : "Migration is already running.", await Ze();
         } catch (Q) {
           P.value = Q instanceof Error ? Q.message : "Could not resume migration.";
         } finally {
@@ -7187,15 +7339,15 @@ const zu = {
       }
     }
     async function al(Q, q) {
-      if (!p.value || !T.value || V.value || pe.value) return "Wait for the current change to finish.";
-      if (K.value) return "Discard the stale draft before removing a definition.";
-      const _ = p.value.generation, ye = JSON.stringify(k.value), Et = gt(U.value);
+      if (!p.value || !x.value || V.value || pe.value) return "Wait for the current change to finish.";
+      if (Y.value) return "Discard the stale draft before removing a definition.";
+      const _ = p.value.generation, ye = JSON.stringify(k.value), Et = gt(I.value);
       _t(Et, Q, q), pe.value = !0;
       try {
         const He = await kt.plan(t.boardId, va(da(Et, p.value.declaration), _, $.value));
-        if (!T.value || K.value || p.value.generation !== _ || JSON.stringify(k.value) !== ye) return "The draft changes during the check. Try the removal again.";
-        const st = Ro(He, Q, q);
-        if (st) return st;
+        if (!x.value || Y.value || p.value.generation !== _ || JSON.stringify(k.value) !== ye) return "The draft changes during the check. Try the removal again.";
+        const dt = Lo(He, Q, q);
+        if (dt) return dt;
         if (He.class === "refused") return "Resolve the refused draft changes in Review before removing this definition.";
       } catch (He) {
         return He instanceof Error ? He.message : "Could not check this removal.";
@@ -7203,31 +7355,31 @@ const zu = {
         pe.value = !1;
       }
     }
-    async function ro() {
-      j.value && !await ho.confirm({ header: "Discard changes?", message: "Your unsaved board settings will be discarded.", acceptLabel: "Discard", rejectLabel: "Keep editing" }) || o({ name: "board", board: t.boardId });
+    async function vo() {
+      j.value && !await wo.confirm({ header: "Discard changes?", message: "Your unsaved board settings will be discarded.", acceptLabel: "Discard", rejectLabel: "Keep editing" }) || o({ name: "board", board: t.boardId });
     }
-    function uo() {
-      d = void 0, w.value && Tl(w.value), Z.value = "", P.value = "";
+    function mo() {
+      s = void 0, w.value && Tl(w.value), X.value = "", P.value = "";
     }
-    Ce(() => t.boardId, () => {
-      d = void 0, Ye(), ne.value = [], p.value = void 0, w.value = void 0, S.value = void 0, $.value = {}, Ve.value.clear(), y.value = /* @__PURE__ */ new Set(["Fields"]), i.value = "Fields", T.value = !1, D.value = !0, Ze(!0);
+    xe(() => t.boardId, () => {
+      s = void 0, Ye(), ne.value = [], p.value = void 0, w.value = void 0, S.value = void 0, $.value = {}, Ve.value.clear(), y.value = /* @__PURE__ */ new Set(["Fields"]), i.value = "Fields", x.value = !1, E.value = !0, Ze(!0);
     });
     let Ul = () => {
     };
-    return Ce(() => t.boardId, (Q) => {
-      Ul(), Ul = bo(`component.${Q}`, () => {
+    return xe(() => t.boardId, (Q) => {
+      Ul(), Ul = ko(`component.${Q}`, () => {
         Ze();
       });
-    }, { immediate: !0 }), go(Ze), Ta(() => {
-      Ul(), h(), C();
+    }, { immediate: !0 }), $o(Ze), Da(() => {
+      Ul(), h(), T();
     }), (Q, q) => (c(), g("section", {
-      class: mt(["work-settings-shell", { "work-embedded": e.embedded }])
+      class: ft(["work-settings-shell", { "work-embedded": e.embedded }])
     }, [
-      b(Pc, {
+      b(Yc, {
         board: S.value,
         embedded: e.embedded,
         generation: p.value?.generation,
-        authorized: T.value,
+        authorized: x.value,
         dirty: j.value,
         busy: V.value,
         "checking-removal": pe.value,
@@ -7236,30 +7388,30 @@ const zu = {
         "pack-title": pt.value,
         outdated: p.value?.outdated,
         "upgrade-reason": Cl.value,
-        "can-upgrade": it.value && !j.value && !V.value && !St.value && T.value,
+        "can-upgrade": st.value && !j.value && !V.value && !St.value && x.value,
         onUpgrade: ll,
         onInstall: q[0] || (q[0] = (_) => n.value = !0),
-        disabled: !j.value || V.value || pe.value || St.value || K.value || !!Ve.value.size || Te.value && !Ne.value,
-        onBack: ro,
-        onDiscard: uo,
-        onPrimary: q[1] || (q[1] = (_) => Te.value ? no() : El()),
+        disabled: !j.value || V.value || pe.value || St.value || Y.value || !!Ve.value.size || Te.value && !Ne.value,
+        onBack: vo,
+        onDiscard: mo,
+        onPrimary: q[1] || (q[1] = (_) => Te.value ? uo() : El()),
         onSaved: q[2] || (q[2] = (_) => Ze())
       }, null, 8, ["board", "embedded", "generation", "authorized", "dirty", "busy", "checking-removal", "reviewed", "pack", "pack-title", "outdated", "upgrade-reason", "can-upgrade", "disabled"]),
-      T.value && p.value ? (c(), g("div", ov, [
-        r("div", iv, [
-          b(s(No), {
+      x.value && p.value ? (c(), g("div", gv, [
+        d("div", kv, [
+          b(r(Bo), {
             value: i.value,
-            "onUpdate:value": q[3] || (q[3] = (_) => io(_))
+            "onUpdate:value": q[3] || (q[3] = (_) => ro(_))
           }, {
-            default: L(() => [
-              b(s(Mo), { "aria-label": "Settings sections" }, {
-                default: L(() => [
-                  (c(), g(H, null, ee(f, (_) => b(s(Lo), {
+            default: F(() => [
+              b(r(jo), { "aria-label": "Settings sections" }, {
+                default: F(() => [
+                  (c(), g(H, null, ee(m, (_) => b(r(qo), {
                     key: _,
                     value: _
                   }, {
-                    default: L(() => [
-                      M(A(_), 1)
+                    default: F(() => [
+                      M(U(_), 1)
                     ]),
                     _: 2
                   }, 1032, ["value"])), 64))
@@ -7270,64 +7422,64 @@ const zu = {
             _: 1
           }, 8, ["value"])
         ])
-      ])) : E("", !0),
-      P.value ? (c(), g("div", nv, [
-        M(A(P.value) + " ", 1),
-        b(s(Y), {
+      ])) : D("", !0),
+      P.value ? (c(), g("div", wv, [
+        M(U(P.value) + " ", 1),
+        b(r(G), {
           label: "Retry",
           severity: "secondary",
           onClick: q[4] || (q[4] = (_) => Ze()),
           outlined: ""
         }, {
-          icon: L(() => [
-            b(s(J), {
+          icon: F(() => [
+            b(r(Z), {
               icon: "tabler:refresh",
               "aria-hidden": "true"
             })
           ]),
           _: 1
         })
-      ])) : E("", !0),
-      de.value ? (c(), g("p", sv, [
-        M(A(de.value), 1),
-        b(s(Y), {
+      ])) : D("", !0),
+      de.value ? (c(), g("p", Vv, [
+        M(U(de.value), 1),
+        b(r(G), {
           label: "Reload packs",
           severity: "secondary",
           outlined: "",
           onClick: q[5] || (q[5] = (_) => ia())
         }, {
-          icon: L(() => [
-            b(s(J), { icon: "tabler:refresh" })
+          icon: F(() => [
+            b(r(Z), { icon: "tabler:refresh" })
           ]),
           _: 1
         })
-      ])) : E("", !0),
-      Z.value ? (c(), g("p", rv, A(Z.value), 1)) : E("", !0),
-      D.value ? (c(), g("p", dv, "Loading settings…")) : !T.value && !P.value ? (c(), g("p", uv, "Board administrator access is required.")) : E("", !0),
-      T.value && p.value ? (c(), g("div", cv, [
-        K.value ? (c(), g("div", vv, "The board advances to generation " + A(w.value?.generation) + " while you edit. Your draft keeps generation " + A(p.value.generation) + ". Discard to load the latest schema before reviewing again.", 1)) : E("", !0),
-        St.value ? (c(), g("div", mv, [
-          r("p", null, [
+      ])) : D("", !0),
+      X.value ? (c(), g("p", $v, U(X.value), 1)) : D("", !0),
+      E.value ? (c(), g("p", xv, "Loading settings…")) : !x.value && !P.value ? (c(), g("p", Cv, "Board administrator access is required.")) : D("", !0),
+      x.value && p.value ? (c(), g("div", Sv, [
+        Y.value ? (c(), g("div", Tv, "The board advances to generation " + U(w.value?.generation) + " while you edit. Your draft keeps generation " + U(p.value.generation) + ". Discard to load the latest schema before reviewing again.", 1)) : D("", !0),
+        St.value ? (c(), g("div", Ev, [
+          d("p", null, [
             q[18] || (q[18] = M("Migration pending", -1)),
-            w.value?.migration_error ? (c(), g("span", fv, ": " + A(w.value.migration_error), 1)) : E("", !0)
+            w.value?.migration_error ? (c(), g("span", Uv, ": " + U(w.value.migration_error), 1)) : D("", !0)
           ]),
-          b(s(Y), {
+          b(r(G), {
             label: "Resume migration",
             severity: "secondary",
             disabled: V.value,
-            onClick: so,
+            onClick: co,
             outlined: ""
           }, {
-            icon: L(() => [
-              b(s(J), {
+            icon: F(() => [
+              b(r(Z), {
                 icon: "tabler:refresh",
                 "aria-hidden": "true"
               })
             ]),
             _: 1
           }, 8, ["disabled"])
-        ])) : E("", !0),
-        r("form", {
+        ])) : D("", !0),
+        d("form", {
           ref_key: "editor",
           ref: De,
           onSubmit: be(El, ["prevent"])
@@ -7338,103 +7490,104 @@ const zu = {
             disabled: V.value || pe.value,
             inert: V.value || pe.value || void 0
           }, [
-            y.value.has("Fields") ? Qe((c(), F(vs, {
+            y.value.has("Fields") ? Qe((c(), z(hs, {
               key: 0,
               "board-id": e.boardId,
-              "installed-types": I.value?.installed_types,
-              draft: U.value,
+              "installed-types": A.value?.installed_types,
+              draft: I.value,
               "guard-removal": al,
-              issues: ue.value,
+              issues: ce.value,
               onValidity: q[6] || (q[6] = (_, ye) => Tt("fields:" + _, ye))
             }, null, 8, ["board-id", "installed-types", "draft", "issues"])), [
-              [rt, i.value === "Fields"]
-            ]) : E("", !0),
-            y.value.has("Item types") ? Qe((c(), F(Ds, {
+              [ut, i.value === "Fields"]
+            ]) : D("", !0),
+            y.value.has("Item types") ? Qe((c(), z(Os, {
               key: 1,
-              draft: U.value,
+              draft: I.value,
               "guard-removal": al,
-              issues: ue.value
+              issues: ce.value
             }, null, 8, ["draft", "issues"])), [
-              [rt, i.value === "Item types"]
-            ]) : E("", !0),
-            y.value.has("Process") ? Qe((c(), F(Wd, {
+              [ut, i.value === "Item types"]
+            ]) : D("", !0),
+            y.value.has("Process") ? Qe((c(), z(ou, {
               key: 2,
               "board-id": e.boardId,
-              draft: U.value,
+              draft: I.value,
               "guard-removal": al,
-              issues: ue.value,
+              issues: ce.value,
               onValidity: q[7] || (q[7] = (_, ye) => Tt("process:" + _, ye))
             }, null, 8, ["board-id", "draft", "issues"])), [
-              [rt, i.value === "Process"]
-            ]) : E("", !0),
-            y.value.has("Policy") ? Qe((c(), F(wu, {
+              [ut, i.value === "Process"]
+            ]) : D("", !0),
+            y.value.has("Policy") ? Qe((c(), z(Ou, {
               key: 3,
-              draft: U.value,
+              draft: I.value,
               onValidity: q[8] || (q[8] = (_, ye) => Tt("policy:" + _, ye))
             }, null, 8, ["draft"])), [
-              [rt, i.value === "Policy"]
-            ]) : E("", !0),
-            y.value.has("Relation types") ? Qe((c(), F(Mu, {
+              [ut, i.value === "Policy"]
+            ]) : D("", !0),
+            y.value.has("Relation types") ? Qe((c(), z(Zu, {
               key: 4,
-              draft: U.value,
+              draft: I.value,
               "guard-removal": al
             }, null, 8, ["draft"])), [
-              [rt, i.value === "Relation types"]
-            ]) : E("", !0),
-            y.value.has("Plugins") ? Qe((c(), F(xa, {
+              [ut, i.value === "Relation types"]
+            ]) : D("", !0),
+            y.value.has("Plugins") ? Qe((c(), z(Ta, {
               key: 5,
               "board-id": e.boardId,
-              draft: U.value,
+              draft: I.value,
               schema: w.value ?? p.value,
-              options: I.value?.schema_options.plugins ?? [],
+              options: A.value?.schema_options.plugins ?? [],
               configs: $.value,
               disabled: V.value,
               onConfigured: q[9] || (q[9] = (_) => {
-                nt(), Ze();
+                rt(), Ze();
               }),
               onRefresh: q[10] || (q[10] = (_) => Ze()),
               onValidity: q[11] || (q[11] = (_, ye) => Tt("plugin:" + _, ye))
             }, null, 8, ["board-id", "draft", "schema", "options", "configs", "disabled"])), [
-              [rt, i.value === "Plugins"]
-            ]) : E("", !0),
-            y.value.has("Policy") ? Qe((c(), g("section", bv, [
-              b(rc, {
+              [ut, i.value === "Plugins"]
+            ]) : D("", !0),
+            y.value.has("Policy") ? Qe((c(), g("section", Iv, [
+              b(Vc, {
                 "board-id": e.boardId,
-                draft: U.value,
+                draft: I.value,
                 onValidity: q[12] || (q[12] = (_) => Tt("visibility", _))
               }, null, 8, ["board-id", "draft"])
             ], 512)), [
-              [rt, i.value === "Policy"]
-            ]) : E("", !0)
-          ], 8, pv))
+              [ut, i.value === "Policy"]
+            ]) : D("", !0)
+          ], 8, Dv))
         ], 544),
-        i.value === "Review" && !B.value ? (c(), F(Yd, {
+        i.value === "Review" && !B.value ? (c(), z(su, {
           key: 2,
-          draft: U.value,
+          draft: I.value,
           original: p.value.declaration,
           disabled: V.value || pe.value
-        }, null, 8, ["draft", "original", "disabled"])) : E("", !0),
-        i.value === "Review" && B.value && fe.value.length ? (c(), F(xa, {
+        }, null, 8, ["draft", "original", "disabled"])) : D("", !0),
+        i.value === "Review" && B.value && fe.value.length ? (c(), z(Ta, {
           key: 3,
           "board-id": e.boardId,
           draft: { plugins: fe.value },
           schema: w.value ?? p.value,
-          options: I.value?.schema_options.plugins.filter((_) => fe.value.some((ye) => ye.use === _.plugin)) ?? [],
+          options: A.value?.schema_options.plugins.filter((_) => fe.value.some((ye) => ye.use === _.plugin)) ?? [],
           configs: $.value,
           disabled: V.value,
           "activation-locked": "",
           onValidity: q[13] || (q[13] = (_, ye) => Tt("pack-plugin:" + _, ye))
-        }, null, 8, ["board-id", "draft", "schema", "options", "configs", "disabled"])) : E("", !0),
-        i.value === "Review" ? (c(), F(Xc, {
+        }, null, 8, ["board-id", "draft", "schema", "options", "configs", "disabled"])) : D("", !0),
+        i.value === "Review" ? (c(), z(uv, {
           key: 4,
-          plan: x.value,
+          declaration: R.value?.declaration,
+          plan: C.value,
           generation: p.value.generation,
-          follows: ao.value,
+          follows: no.value,
           "config-count": Object.keys($.value).length,
           "pack-review": !!O.value
         }, {
-          default: L(() => [
-            O.value && B.value ? (c(), F(av, {
+          default: F(() => [
+            O.value && B.value ? (c(), z(yv, {
               key: 0,
               plan: O.value,
               request: B.value,
@@ -7443,30 +7596,30 @@ const zu = {
               onChange: q[14] || (q[14] = (_) => {
                 oe.value = void 0, N.value = "";
               })
-            }, null, 8, ["plan", "request", "original", "disabled"])) : E("", !0)
+            }, null, 8, ["plan", "request", "original", "disabled"])) : D("", !0)
           ]),
           _: 1
-        }, 8, ["plan", "generation", "follows", "config-count", "pack-review"])) : E("", !0),
-        i.value === "Review" && !x.value ? (c(), g("p", hv, "Review your draft to see the changes, their impact and any migration required.")) : E("", !0),
-        pe.value ? (c(), g("p", yv, "Checking existing values and dependencies…")) : E("", !0)
-      ])) : E("", !0),
-      T.value ? (c(), F(Ra, {
+        }, 8, ["declaration", "plan", "generation", "follows", "config-count", "pack-review"])) : D("", !0),
+        i.value === "Review" && !C.value ? (c(), g("p", Av, "Review your draft to see the changes, their impact and any migration required.")) : D("", !0),
+        pe.value ? (c(), g("p", Pv, "Checking existing values and dependencies…")) : D("", !0)
+      ])) : D("", !0),
+      x.value ? (c(), z(Ma, {
         key: 7,
         visible: n.value,
         label: "Install pack",
         busy: V.value,
         onClose: q[17] || (q[17] = (_) => n.value = !1)
       }, {
-        default: L(() => [
-          r("form", {
+        default: F(() => [
+          d("form", {
             class: "work-dialog-box work-stack",
             onSubmit: be(Bt, ["prevent"])
           }, [
-            q[20] || (q[20] = r("h2", null, "Install a pack", -1)),
-            q[21] || (q[21] = r("p", { class: "work-muted work-small" }, "Packs can be installed on an empty board. Review checks whether this board is eligible.", -1)),
-            r("label", gv, [
+            q[20] || (q[20] = d("h2", null, "Install a pack", -1)),
+            q[21] || (q[21] = d("p", { class: "work-muted work-small" }, "Packs can be installed on an empty board. Review checks whether this board is eligible.", -1)),
+            d("label", Rv, [
               q[19] || (q[19] = M("Pack", -1)),
-              b(s(te), {
+              b(r(te), {
                 modelValue: u.value,
                 "onUpdate:modelValue": q[15] || (q[15] = (_) => u.value = _),
                 "aria-label": "Pack to install",
@@ -7477,15 +7630,15 @@ const zu = {
                 options: ne.value.map((_) => ({ ..._, disabled: _.plugins.some((ye) => !ye.installed) }))
               }, null, 8, ["modelValue", "options"])
             ]),
-            ne.value.length ? E("", !0) : (c(), g("p", kv, "No available packs were found.")),
-            r("footer", wv, [
-              b(s(Y), {
+            ne.value.length ? D("", !0) : (c(), g("p", Ov, "No available packs were found.")),
+            d("footer", Nv, [
+              b(r(G), {
                 label: "Cancel",
                 severity: "secondary",
                 outlined: "",
                 onClick: q[16] || (q[16] = (_) => n.value = !1)
               }),
-              b(s(Y), {
+              b(r(G), {
                 type: "submit",
                 label: "Review pack",
                 disabled: !u.value || V.value || j.value
@@ -7494,25 +7647,25 @@ const zu = {
           ], 32)
         ]),
         _: 1
-      }, 8, ["visible", "busy"])) : E("", !0)
+      }, 8, ["visible", "busy"])) : D("", !0)
     ], 2));
   }
-}), $v = /* @__PURE__ */ ve({
+}), Fv = /* @__PURE__ */ ue({
   __name: "SettingsRoot",
   setup(e) {
-    const l = ko(), t = wo();
-    return po(Na, (a) => t("navigate", { route: qo(a) })), (a, o) => (c(), F(Vv, {
-      "board-id": s(l).boardId ?? "",
-      embedded: s(l).embedded,
-      onDirtyChange: o[0] || (o[0] = (d) => s(t)("dirty-change", { dirty: d }))
+    const l = xo(), t = Co();
+    return yo(La, (a) => t("navigate", { route: Ho(a) })), (a, o) => (c(), z(Mv, {
+      "board-id": r(l).boardId ?? "",
+      embedded: r(l).embedded,
+      onDirtyChange: o[0] || (o[0] = (s) => r(t)("dirty-change", { dirty: s }))
     }, null, 8, ["board-id", "embedded"]));
   }
-}), xv = Vo($v, {
+}), Lv = So(Fv, {
   type: "object",
   properties: {
     "board-id": { type: "string", default: "", description: "Board to administer." },
     embedded: { type: "boolean", default: !1, description: "Fits in a System detail pane." }
   }
 });
-yo(import.meta.url, xv);
+Vo(import.meta.url, Lv);
 //# sourceMappingURL=settings.js.map

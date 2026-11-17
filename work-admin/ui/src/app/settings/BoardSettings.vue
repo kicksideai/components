@@ -327,7 +327,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview() })
       </form>
       <ProcessMigration v-if="tab === 'Review' && !packRequest" :draft="draft" :original="schema.declaration" :disabled="busy || checkingRemoval" />
       <PluginsEditor v-if="tab === 'Review' && packRequest && packPlugins.length" :board-id="boardId" :draft="{ plugins: packPlugins }" :schema="latest ?? schema" :options="options?.schema_options.plugins.filter(plugin => packPlugins.some(selected => selected.use === plugin.plugin)) ?? []" :configs="configs" :disabled="busy" activation-locked @validity="(key, valid) => validity('pack-plugin:' + key, valid)" />
-      <SchemaReview v-if="tab === 'Review'" :plan="plan" :generation="schema.generation" :follows="follows" :config-count="Object.keys(configs).length" :pack-review="!!packPlan">
+      <SchemaReview :declaration="reviewed?.declaration" v-if="tab === 'Review'" :plan="plan" :generation="schema.generation" :follows="follows" :config-count="Object.keys(configs).length" :pack-review="!!packPlan">
         <PackReview v-if="packPlan && packRequest" :plan="packPlan" :request="packRequest" :original="schema.declaration" :disabled="busy" @change="packReviewed = undefined; applyKey = ''" />
       </SchemaReview>
       <p
