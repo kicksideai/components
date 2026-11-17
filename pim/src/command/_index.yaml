@@ -68,7 +68,9 @@ entries:
     source: file://item_patch.lua
     modules: [hash, json]
     imports:
+      document: kickside.pim.domain:document
       references: kickside.pim.domain:references
+      shape: kickside.pim:shape
       type_functions: kickside.pim.extensions:type_functions
       links: kickside.pim.extensions:links
       types: kickside.pim:types

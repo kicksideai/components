@@ -1,5 +1,8 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local test = require("test")
+local consts = require("consts")
+local json = require("json")
+local types = require("types")
 local sql = require("sql")
 local fixture = require("fixture")
 local requests = require("requests")
@@ -155,6 +158,44 @@ local function define()
     end)
 
     test.describe("catalog contract", function()
+        test.it("keeps a stored product reference set when apply sends a non-array replacement", function()
+            local h = fixture.catalog()
+            local target = assert(steps.one(h, { product = { sku = "TARGET" }, create = {} }).product_id)
+            local ref = { ref = { "product", target } }
+            test.eq(steps.one(h, { product = { sku = "HOLDER" }, create = {},
+                set = { { attr = "core.related", value = { ref } } } }).outcome, "created")
+            local outcome = steps.set(h, "HOLDER", "core.related", { related = ref })
+            local got = assert(steps.get(h, "HOLDER")).values["core.related"].value :: { types.Ref }
+            test.eq(#got, 1, "malformed reference set outcome was " .. outcome.outcome)
+            test.eq(outcome.outcome, "invalid")
+            test.eq(steps.set(h, "HOLDER", "core.related", {}).outcome, "updated")
+            test.eq(#(assert(steps.get(h, "HOLDER")).values["core.related"].value :: { types.Ref }), 0)
+        end)
+
+        test.it("includes persisted source attribution in the document byte budget", function()
+            local h = fixture.catalog()
+            local schema = assert(h.call("get_schema", {})) :: types.SchemaView
+            local attribute = tostring(schema.attributes["core.care"].id)
+            local length_without_source = #json.encode({ [attribute] = { [""] = { p = "" } } })
+            local payload = string.rep("x", consts.LIMITS.document_bytes - length_without_source)
+            local persisted_bytes = #json.encode({ [attribute] = { [""] = { p = payload, s = "erp" } } })
+            test.is_true(persisted_bytes > consts.LIMITS.document_bytes)
+            local out = assert(h.call("apply", { source = "erp", items = {
+                { product = { sku = "DOCUMENT-LIMIT" }, create = {}, set = { { attr = "core.care", value = payload } } },
+            } })) :: types.ApplyResult
+            test.eq(out.outcomes[1].outcome, "invalid", "the attributed document needs " .. persisted_bytes .. " bytes")
+            test.is_nil((steps.get(h, "DOCUMENT-LIMIT")))
+
+            local exact = payload:sub(1, #payload - (persisted_bytes - consts.LIMITS.document_bytes))
+            local accepted = assert(h.call("apply", { source = "erp", items = {
+                { product = { sku = "DOCUMENT-LIMIT" }, create = {}, set = { { attr = "core.care", value = exact } } },
+            } })) :: types.ApplyResult
+            test.eq(accepted.outcomes[1].outcome, "created")
+            local committed = assert(steps.get(h, "DOCUMENT-LIMIT"))
+            test.eq(committed.values["core.care"].source, "erp")
+            test.eq(#(committed.values["core.care"].value :: string), #exact)
+        end)
+
         test.it("reads committed summary state before public metadata is published", function()
             local h = fixture.catalog({ bare = true })
             summary_component.metadata({ title = "New catalog" })

@@ -3,9 +3,11 @@
 -- write rights and the index, and turns it into patch steps.
 local hash = require("hash")
 local json = require("json")
+local documents = require("document")
 local item_state = require("item_state")
 local consts = require("consts")
 local schema = require("schema")
+local shape = require("shape")
 local store = require("store")
 local values = require("values")
 local links = require("links")
@@ -20,16 +22,18 @@ type Built = { patch: { types.PatchStep }, document: types.Document, unique: { [
 M.Built = Built
 
 -- coerce turns term codes into term references for term-typed attributes.
-function M.coerce(attr: types.Attribute, raw: unknown): unknown
+local function coerce(attr: types.Attribute, raw: unknown): unknown
     if attr.config.target ~= "term" then return raw end
     local function one(v: unknown): unknown
         if type(v) == "string" then return { ref = { "term", attr.vocabulary .. ":" .. v } } end
         return v
     end
     if attr.cardinality == "one" then return one(raw) end
-    if type(raw) ~= "table" then return raw end
+    local length = shape.array_length(raw)
+    if length == nil then return raw end
+    local members = raw :: { unknown }
     local out: { unknown } = {}
-    for i, v in ipairs(raw :: { unknown }) do out[i] = one(v) end
+    for i = 1, length do out[i] = one(members[i]) end
     return out
 end
 
@@ -48,7 +52,7 @@ function M.refine(st: item_state.State): error?
             for _, e in ipairs(item.set or {}) do
                 local attr = compiled.attributes[e.attr]
                 if attr and attr.functions then
-                    local raw = M.coerce(attr, e.value)
+                    local raw = coerce(attr, e.value)
                     local key = values.canonical(raw)
                     local batch = batches[attr.id]
                     if not batch then
@@ -125,7 +129,7 @@ end
 -- requested takes the value the command sets: what the type's functions made
 -- of it when the type declares any, else the form's normalization.
 local function requested(st: item_state.State, attr: types.Attribute, raw: unknown): (types.Value?, types.Outcome?, error?)
-    local value = M.coerce(attr, raw)
+    local value = coerce(attr, raw)
     if attr.functions and not st.import then
         local refined = (st.refined[attr.id] or {})[values.canonical(value)]
         if not refined then return nil, nil, errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = attr.code .. ": value was not refined before the patch" }) end
@@ -333,8 +337,10 @@ function M.build_patch(st: item_state.State, p: types.Product, item: types.Apply
     local family = compiled.families[p.family]
     local document: types.Document = item_state.copy_document(p.document)
     local patch: { types.PatchStep } = {}
-    local touched_unique: { [string]: types.Value } = {}
+    local touched_unique: { [string]: types.Attribute } = {}
+    local unique: { [string]: types.Value } = {}
     local released: { string } = {}
+    local source = st.source and st.source.id or nil
     local axes: { [string]: boolean } = {}
     for _, l in ipairs(family.levels) do for _, a in ipairs(l.axes) do axes[a] = true end end
     local entries: { { op: string, e: types.ValueEntry } } = {}
@@ -366,7 +372,6 @@ function M.build_patch(st: item_state.State, p: types.Product, item: types.Apply
             if refail then return nil, refail, nil end
             local kerr = M.index_error(attr, value :: types.Value, axes[attr.code] == true)
             if kerr then return nil, item_state.fail("invalid", attr.code .. ": " .. tostring(kerr), { attribute = attr.code }), nil end
-            if attr.unique then touched_unique[attr.code] = value end
             cell = { p = value }
         else
             for _, axis in ipairs(family.levels[p.level + 1].axes) do
@@ -376,37 +381,42 @@ function M.build_patch(st: item_state.State, p: types.Product, item: types.Apply
         end
         local unchanged = (cell == nil and current == nil)
             or (cell ~= nil and current ~= nil and values.equal(cell.p, current.p) and cell.c == current.c)
-        if not unchanged and attr.unique and current and current.p ~= nil then
-            local old = values.key(attr.form, values.scalar(current.p :: types.Value), attr.config)
-            if old then released[#released + 1] = attr.id .. "|" .. old end
-        end
         if not unchanged then
             local step: types.PatchStep = { a = attr.id, c = ctx :: string }
             if current and current.p ~= nil then step.before = current.p end
             if entry.op == "set" then step.v = (cell :: types.Cell).p elseif entry.op == "clear" then step.clear = true else step.unset = true end
             if st.import and e.source then step.s = e.source end
             patch[#patch + 1] = step
-            coords[ctx :: string] = cell
-            document[tostring(attr.id)] = next(coords) and coords or nil
+            documents.apply_step(document, step, source)
+            if attr.unique then touched_unique[attr.code] = attr end
         end
     end
     local encoded = json.encode(document)
     if #encoded > consts.LIMITS.document_bytes then return nil, item_state.fail("invalid", "product document exceeds 256 KB"), nil end
-    for code, value in pairs(touched_unique) do
-        local attr = compiled.attributes[code] :: types.Attribute
-        local key = values.key(attr.form, values.scalar(value), attr.config) or ""
-        local slot = attr.id .. "|" .. key
-        local held: string? = st.uniques[slot]
-        if held == nil and not st.released[slot] then
-            local owner, err = store.unique_owner(st.db, st.catalog_id, attr.id, key)
-            if err then return nil, nil, err end
-            held = owner
-        end
-        if held and held ~= p.product_id and not st.gone[held] then
-            return nil, item_state.fail("conflict", code .. " value is already used by another product", { attribute = code, holder = held }), nil
+    for code, attr in pairs(touched_unique) do
+        local id = tostring(attr.id)
+        local before = (p.document[id] or {})[""]
+        local after = (document[id] or {})[""]
+        local old = before and before.p ~= nil and values.key(attr.form, values.scalar(before.p :: types.Value), attr.config) or nil
+        local key = after and after.p ~= nil and values.key(attr.form, values.scalar(after.p :: types.Value), attr.config) or nil
+        if old ~= key then
+            if old then released[#released + 1] = id .. "|" .. old end
+            if key then
+                local slot = id .. "|" .. key
+                local held = st.uniques[slot]
+                if held == nil and not st.released[slot] then
+                    local owner, err = store.unique_owner(st.db, st.catalog_id, attr.id, key)
+                    if err then return nil, nil, err end
+                    held = owner
+                end
+                if held and held ~= p.product_id and not st.gone[held] then
+                    return nil, item_state.fail("conflict", code .. " value is already used by another product", { attribute = code, holder = held }), nil
+                end
+                unique[code] = (after :: types.Cell).p
+            end
         end
     end
-    return { patch = patch, document = document, unique = touched_unique, released = released }, nil, nil
+    return { patch = patch, document = document, unique = unique, released = released }, nil, nil
 end
 
 return M

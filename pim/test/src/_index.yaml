@@ -1048,6 +1048,7 @@ entries:
     modules: [json, http_client]
     imports:
       scope_fixture: app:scope_fixture
+      types: kickside.pim:types
       test: wippy.test:test
       fixture: app:fixture
       scoped: app:scoped
@@ -1134,8 +1135,10 @@ entries:
     meta: { type: test, suite: kickside_pim, timeout: 300s, comment: The catalog contract - create, list, schema plan, history, min_seq and decisions. }
     source: file://contract_test.lua
     method: run
-    modules: [registry, time, sql]
+    modules: [registry, time, sql, json]
     imports:
+      consts: kickside.pim:consts
+      types: kickside.pim:types
       summary_component: app:summary_component
       summary_locate: app:summary_locate
       requests: kickside.pim:requests

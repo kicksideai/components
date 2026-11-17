@@ -1,6 +1,10 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Third-Party Notices
 
+PIM uses the common and full case-folding mappings from the Unicode Character
+Database 17.0.0. The data and Unicode License v3 are included in
+[case_folding.lua](pim/src/domain/case_folding.lua).
+
 <!-- BEGIN GENERATED DEPENDENCY NOTICES -->
 
 ## Locked npm and Cargo dependencies

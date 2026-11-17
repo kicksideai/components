@@ -17,6 +17,16 @@ local trash, restore, exec, product, run_owner = trash_fixture.trash, trash_fixt
 
 local function define()
     test.describe("trash and restore", function()
+        test.it("refuses a create that also requests trash", function()
+            local h = fixture.catalog()
+            local outcome = steps.one(h, { product = { sku = "CONTRADICTORY" }, create = {}, delete = true })
+            test.eq(outcome.outcome, "invalid")
+            test.is_nil((steps.get(h, "CONTRADICTORY")))
+            local upsert = steps.one(h, { product = { sku = "CONTRADICTORY" }, create = {}, upsert = true, delete = true })
+            test.eq(upsert.outcome, "invalid")
+            test.is_nil((steps.get(h, "CONTRADICTORY")))
+        end)
+
         test.it("frees the sku, unique values and axis slot of a trashed item", function()
             local h = fixture.catalog()
             fixture.boot(h)
