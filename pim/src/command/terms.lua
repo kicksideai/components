@@ -39,10 +39,12 @@ function M.plan_merge(st: item_state.State, item: types.ApplyItem, edit: Edit, p
         return nil,item_state.fail("conflict","outstanding term merge has another destination",{code="term_merge_conflict"}),nil
     end
     local from_key, into_key = m.vocabulary .. ":" .. m.from, m.vocabulary .. ":" .. m.into
-    local rows, total, rerr = item_state.merge_references(st, from_key,preflight and 20000 or nil)
+    local rows, total, rerr = item_state.merge_references(st, from_key, preflight and consts.LIMITS.merge_holders or nil)
     if rerr or not rows or total == nil then return nil, nil, rerr end
+    if total > consts.LIMITS.merge_holders then
+        return nil, item_state.fail("invalid", "term merge exceeds the 20000-holder validation budget", { code = "term_merge_limit" }), nil
+    end
     if not from_row.retired and total>consts.LIMITS.merge_inline and not preflight then
-        if total>20000 then return nil,item_state.fail("invalid","term merge exceeds the 20000-holder validation budget",{code="term_merge_limit"}),nil end
         local _,validated,verr=M.plan_merge(item_state.fork(st),item,edit,true)
         if verr then return nil,nil,verr end
         if not validated or validated.outcome~="updated" then return nil,validated,nil end

@@ -34,6 +34,8 @@ type FoldResult = { rebuild_job: string?, jobs: { string }, last_seq: integer }
 type Batch = {
     cache: { [string]: types.Product }, ids: IdSet, rows: integer, derived: IdSet, usage: { [integer]: integer },
     history: { types.SqlParams }, products: integer, items: integer, trashed: integer,
+    product_writes: { [string]: types.Product }, product_inserts: boolean,
+    prefetched: { [string]: types.Product }, prefetched_through: integer,
 }
 M.FoldResult = FoldResult
 
@@ -213,6 +215,38 @@ local function apply_schema(tx: sql.Transaction, dialect: string, catalog: types
     return refreshed, job, rerr
 end
 
+local function flush_products(tx: types.Executor, catalog_id: string, batch: Batch): error?
+    if next(batch.product_writes) == nil then return nil end
+    local rows: { types.Product } = {}
+    for _, product in pairs(batch.product_writes) do rows[#rows + 1] = product end
+    batch.product_writes = {}
+    return store.write_products(tx, catalog_id, rows, batch.product_inserts)
+end
+
+-- Read consecutive edits together. Structural events use the live fold cache
+-- and database. A model stamp invalidates any still-unused prefetched rows.
+local function prefetch_edits(tx: types.Executor, catalog_id: string, batch: Batch, events: { types.RawEvent }, first: integer): error?
+    local ids: { string } = {}
+    local seen: IdSet = {}
+    batch.prefetched = {}
+    for index = first, #events do
+        local event = events[index]
+        if event.type ~= EV.PRODUCT_CHANGED then break end
+        batch.prefetched_through = index
+        local body = event.body
+        if type(body) == "string" then body = json.decode(body) end
+        local id = type(body) == "table" and narrow.text((body :: types.JsonObject).product_id) or nil
+        if id and not batch.cache[id] and not seen[id] then
+            ids[#ids + 1] = id
+            seen[id] = true
+        end
+    end
+    local products, err = store.products(tx, catalog_id, ids)
+    if err or not products then return err end
+    for _, product in ipairs(products) do batch.prefetched[product.product_id] = product end
+    return nil
+end
+
 local function apply_product(tx: sql.Transaction, catalog: types.Catalog, event: types.CreatedEvent | types.ProductEvent, batch: Batch): error?
     local body = event.body
     local catalog_id = catalog.catalog_id
@@ -233,11 +267,22 @@ local function apply_product(tx: sql.Transaction, catalog: types.Catalog, event:
             root_id = root_id, level = created.level, is_item = created.is_item and 1 or 0, axis_key = created.axis_key,
             version = 0, status = created.status, state = "live", document = {}, source_seq = {}, created_seq = seq }
     else
-        product, err = store.load(tx, catalog_id, batch.cache, body.product_id)
+        product = batch.cache[body.product_id]
+        if not product and event.type == EV.PRODUCT_CHANGED then
+            product = batch.prefetched[body.product_id]
+            batch.prefetched[body.product_id] = nil
+        end
+        if not product then product, err = store.load(tx, catalog_id, batch.cache, body.product_id) end
         if err then return err end
         if not product then return failure.corrupt("event names a missing product") end
     end
     local p: types.Product = product :: types.Product
+    local insert = event.kind == "created"
+    local buffered = p.is_item == 1 and (insert or (event.type == EV.PRODUCT_CHANGED and body.axis_key == nil))
+    if not buffered or batch.product_inserts ~= insert or (insert and batch.product_writes[p.product_id]) then
+        err = flush_products(tx, catalog_id, batch)
+        if err then return err end
+    end
     local state_before: string? = nil
     if event.kind ~= "created" then state_before = p.state end
     local before: { [integer]: boolean } = p.state == "live" and document.attribute_ids(compiled, p.document) or {}
@@ -262,7 +307,14 @@ local function apply_product(tx: sql.Transaction, catalog: types.Catalog, event:
     end
     p.version = p.version + 1
     p.updated_seq = seq
-    err = store.save_product(tx, catalog_id, p, event.type == EV.PRODUCT_CREATED)
+    if buffered then
+        batch.product_inserts = insert
+        batch.product_writes[p.product_id] = p
+    elseif insert then
+        err = store.write_products(tx, catalog_id, { p }, true)
+    else
+        err = store.save_product(tx, catalog_id, p)
+    end
     if err then return err end
     batch.cache[p.product_id] = p
     batch.derived[p.product_id] = true
@@ -278,6 +330,7 @@ local function apply_product(tx: sql.Transaction, catalog: types.Catalog, event:
         err = exec(tx, "UPDATE kickside_pim_product SET updated_seq = $1 WHERE catalog_id = $2 AND "
             .. descendants_column(p) .. " = $3 AND product_id <> $4 AND state <> 'purged'", { seq, catalog_id, p.product_id, p.product_id })
         if err then return err end
+        batch.prefetched = {}
     end
     return mark_affected(tx, catalog_id, p, batch)
 end
@@ -414,14 +467,22 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
     if err then return nil, err end
     local result: FoldResult = { last_seq = to_seq, jobs = {} }
     local applied = catalog and catalog.applied_seq or 0
-    local batch: Batch = { cache = {}, ids = {}, rows = 0, derived = {}, usage = {}, history = {}, products = 0, items = 0, trashed = 0 }
+    local batch: Batch = { cache = {}, ids = {}, rows = 0, derived = {}, usage = {}, history = {}, products = 0, items = 0, trashed = 0,
+        product_writes = {}, product_inserts = false, prefetched = {}, prefetched_through = 0 }
     local pending = false
     local stopped, ferr = driver.run(events, { applied = applied, budget = row_budget, accepts = FOLDED,
         rows = function(): integer return batch.rows end,
         pending = function(): boolean return pending end,
-        apply = function(step: driver.Step): error?
+        apply = function(step: driver.Step, index: integer): error?
             local event = typed(step)
             local herr: error?
+            if event.kind ~= "created" and event.kind ~= "product" then
+                herr = flush_products(tx, catalog_id, batch)
+                if herr then return herr end
+            elseif event.type == EV.PRODUCT_CHANGED and index > batch.prefetched_through then
+                herr = prefetch_edits(tx, catalog_id, batch, events, index)
+                if herr then return herr end
+            end
             if event.kind == "schema" then
                 if catalog then
                     local cleaned, cerr = schema_cleanup.run(tx, dialect, catalog, event, math.max(0, row_budget - batch.rows))
@@ -473,6 +534,8 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
     if stopped then result.last_seq = stopped :: integer end
     if not catalog then return result, nil end
     local current: types.Catalog = catalog
+    err = flush_products(tx, catalog_id, batch)
+    if err then return nil, err end
     local active: { [integer]: boolean } = {}
     for _, attr in pairs(current.compiled.attributes) do active[attr.id] = true end
     for id in pairs(batch.usage) do if not active[id] then batch.usage[id] = nil end end

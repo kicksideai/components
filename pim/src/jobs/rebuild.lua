@@ -56,7 +56,7 @@ local function rewrite(catalog_id: string): (boolean?, error?)
             if perr or not p then return nil, perr end
             document.compact(current.compiled, p.document :: types.Document)
             if (p.updated_seq or 0) < rebuild_seq then p.updated_seq = rebuild_seq end
-            local serr = store.save_product(tx, catalog_id, p, false)
+            local serr = store.save_product(tx, catalog_id, p)
             if serr then return nil, serr end
             cache[p.product_id] = p
             ids[p.product_id] = true

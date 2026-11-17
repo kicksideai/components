@@ -7,6 +7,7 @@ local consts = require("consts")
 local schema = require("schema")
 local narrow = require("narrow")
 local types = require("types")
+local bulk = require("bulk")
 
 local persisted_json = require("persisted_json")
 local error_envelope = require("error_envelope")
@@ -202,27 +203,43 @@ function M.lineage(db: types.Executor, catalog_id: string, product: types.Produc
     return out, nil
 end
 
-function M.save_product(db: types.Executor, catalog_id: string, p: types.Product, insert: boolean): error?
+local function product_fields(p: types.Product): types.SqlParams
     local document = next(p.document) == nil and "{}" or json.encode(p.document)
     local source_seq = next(p.source_seq) == nil and "{}" or json.encode(p.source_seq)
-    local fields: types.SqlParams = { p.sku, p.family, p.parent_id or sql.NULL, p.root_id, p.level, p.is_item, p.axis_key or sql.NULL,
+    return { p.sku, p.family, p.parent_id or sql.NULL, p.root_id, p.level, p.is_item, p.axis_key or sql.NULL,
         p.version, p.status, p.state, p.state_at or sql.NULL, document, source_seq, p.release_id or sql.NULL, p.created_seq, p.updated_seq }
-    local params: types.SqlParams = {}
-    local statement: string
-    if insert then
-        params = { catalog_id, p.product_id }
-        for _, v in ipairs(fields) do params[#params + 1] = v end
-        statement = [[INSERT INTO kickside_pim_product (catalog_id, product_id, sku, family, parent_id, root_id, level, is_item,
-            axis_key, version, status, state, state_at, document, source_seq, release_id, created_seq, updated_seq)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)]]
-    else
-        for _, v in ipairs(fields) do params[#params + 1] = v end
-        params[#params + 1] = catalog_id
-        params[#params + 1] = p.product_id
-        statement = [[UPDATE kickside_pim_product SET sku = $1, family = $2, parent_id = $3, root_id = $4, level = $5,
+end
+
+local product_columns: { bulk.Column } = {
+    { name = "catalog_id" }, { name = "product_id" }, { name = "sku" }, { name = "family" },
+    { name = "parent_id" }, { name = "root_id" }, { name = "level" }, { name = "is_item" },
+    { name = "axis_key" }, { name = "version" }, { name = "status" }, { name = "state" },
+    { name = "state_at" }, { name = "document" }, { name = "source_seq" }, { name = "release_id" },
+    { name = "created_seq" }, { name = "updated_seq" },
+}
+
+-- write_products persists independent creations or leaf edits in one batch.
+-- Leaf edits preserve the product row's identity and hierarchy keys.
+function M.write_products(db: types.Executor, catalog_id: string, products: { types.Product }, insert: boolean): error?
+    local rows: { types.SqlParams } = {}
+    for _, p in ipairs(products) do
+        local params: types.SqlParams = { catalog_id, p.product_id }
+        for _, value in ipairs(product_fields(p)) do params[#params + 1] = value end
+        rows[#rows + 1] = params
+    end
+    local conflict = not insert and [[ ON CONFLICT (catalog_id, product_id) DO UPDATE SET
+        version = excluded.version, status = excluded.status, document = excluded.document,
+        source_seq = excluded.source_seq, updated_seq = excluded.updated_seq]] or nil
+    return bulk.insert(db, "kickside_pim_product", product_columns, rows, conflict)
+end
+
+function M.save_product(db: types.Executor, catalog_id: string, p: types.Product): error?
+    local params = product_fields(p)
+    params[#params + 1] = catalog_id
+    params[#params + 1] = p.product_id
+    local statement = [[UPDATE kickside_pim_product SET sku = $1, family = $2, parent_id = $3, root_id = $4, level = $5,
             is_item = $6, axis_key = $7, version = $8, status = $9, state = $10, state_at = $11, document = $12, source_seq = $13,
             release_id = $14, created_seq = $15, updated_seq = $16 WHERE catalog_id = $17 AND product_id = $18]]
-    end
     local _, err = db:execute(statement, params)
     if err then return errors.wrap(err, "product write failed") end
     return nil

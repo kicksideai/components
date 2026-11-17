@@ -17,10 +17,11 @@ local M = {}
 -- Step is a parsed event: its position, type and a body that matches its schema.
 type Step = { seq: integer, type: string, body: unknown, trace_context: types.TraceContext? }
 -- Driver is what the fold supplies: its applied position, its row budget, the
--- event types it folds, its row count so far and its handler.
+-- event types it folds, its row count so far and its handler. The handler gets
+-- the event's position in the prefetched batch for product read-ahead.
 type Driver = {
     applied: integer, budget: integer, accepts: { [string]: boolean },
-    rows: () -> integer, pending: (() -> boolean)?, apply: (Step) -> error?,
+    rows: () -> integer, pending: (() -> boolean)?, apply: (Step, integer) -> error?,
 }
 M.Step = Step
 
@@ -69,12 +70,12 @@ end
 -- also returns the seq of the event that failed.
 function M.run(events: { types.RawEvent }, d: Driver): (integer?, error?, integer?)
     local schemas: { [string]: types.JsonObject } = {}
-    for _, raw in ipairs(events) do
+    for index, raw in ipairs(events) do
         if d.accepts[raw.type] then
             local step, perr = parse(raw, schemas)
             if perr or not step then return nil, perr, narrow.int(raw.seq) end
             if step.seq > d.applied then
-                local err = d.apply(step)
+                local err = d.apply(step, index)
                 if err then return nil, errors.wrap(err, "fold of event " .. step.seq .. " failed"), step.seq end
                 if d.pending and d.pending() then return step.seq - 1, nil end
                 if d.rows() >= d.budget then return step.seq, nil end

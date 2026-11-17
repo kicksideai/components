@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-"""Measure the production publication queries against the actual initial migration."""
+"""Measure production queries against the actual initial migration."""
 import re
 import sqlite3
 import unittest
@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def named(values):
     """Binds positional values to the $1..$n placeholders the production queries use."""
     return {str(index): value for index, value in enumerate(values, 1)}
-class PublicationPlans(unittest.TestCase):
+class QueryPlans(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(":memory:")
         migration = (ROOT / "src/migrations/01_catalog.lua").read_text().split("local POSTGRES = {", 1)[1].split("local SQLITE", 1)[0]
@@ -82,5 +82,29 @@ class PublicationPlans(unittest.TestCase):
             self.assertIn("(level,product_id)>", plan.replace(" ", ""))
         print("product export steps:", costs)
         self.assertLess(max(costs), 40000)
+
+    def test_merge_page_seeks_only_selected_holders(self):
+        self.db.executemany("INSERT INTO kickside_pim_ref VALUES (?, ?, ?, '', ?, 'term', ?)", (
+            (catalog, f"{product:05}", 2 if target == "v:other" else 1, path, target)
+            for catalog, target in (("catalog", "v:from"), ("catalog", "v:other"), ("other", "v:from"))
+            for product in range(25000)
+            for path in ("1", "2")
+        ))
+        self.db.execute("ANALYZE")
+        source = (ROOT / "src/persist/merge_rows.lua").read_text()
+        holders = re.search(r"\[\[(SELECT DISTINCT product_id.*?)\]\]", source, re.S).group(1)
+        page = re.search(r"\[\[(SELECT product_id, attribute_id, ctx, path.*?)\]\]", source, re.S).group(1)
+        excluded = " AND product_id NOT IN ($4)"
+        holders += excluded + " ORDER BY product_id LIMIT $5"
+        query = page + holders + ") holders)" + excluded + " ORDER BY product_id"
+        params = ("catalog", "term", "v:from", "00000", 500)
+        plan = str(self.db.execute("EXPLAIN QUERY PLAN " + query, named(params)).fetchall())
+        self.assertIn("kickside_pim_ref_target (catalog_id=? AND kind=? AND target=? AND product_id<?)", plan)
+        rows, steps = self.measure(query, params)
+        self.assertEqual([row[0] for row in rows], [f"{i:05}" for i in range(1, 501) for _ in range(2)])
+        self.assertLess(steps, 60000)
+        count, _ = self.measure("SELECT COUNT(*) FROM (" + holders + ") holders", (*params[:4], 20001))
+        self.assertEqual(count, [(20001,)])
+
 if __name__ == "__main__":
     unittest.main()

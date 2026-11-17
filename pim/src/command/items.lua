@@ -389,46 +389,48 @@ function M.plan(db: types.Executor, catalog: types.Catalog, request: types.Apply
     local events: { types.Event } = {}
     local ok = true
     for index, item in ipairs(request.items) do
-        local candidate = item_state.fork(st)
         local event: types.Event?
         local outcome: types.Outcome?
         local err: error?
         if type(item) ~= "table" then
             outcome = item_state.fail("invalid", "item must be an object")
         elseif item.term_merge then
+            -- Ordinary items validate before changing state. A merge can change
+            -- several products before a later holder fails validation.
+            local candidate = item_state.fork(st)
             local list: { types.Event }?
             list, outcome, err = terms.plan_merge(candidate, item, plan_edit)
+            if outcome and outcome.outcome == "updated" then st = candidate end
             for _, e in ipairs(list or {}) do events[#events + 1] = e end
         elseif item.term then
-            event, outcome, err = terms.plan_term(candidate, item)
+            event, outcome, err = terms.plan_term(st, item)
         elseif item.restore then
-            event, outcome, err = plan_restore(candidate, item)
+            event, outcome, err = plan_restore(st, item)
         elseif item.create and item.upsert and item.product and type(item.product.sku) == "string" then
             -- An upsert creates the sku when it is absent at the command head and
             -- otherwise updates it (by source seq, else last writer wins).
             local existing: types.Product?
-            existing, err = item_state.by_sku(candidate, item.product.sku)
+            existing, err = item_state.by_sku(st, item.product.sku)
             if not err then
                 if existing and existing.state == "live" then
                     if item.seq == nil then item.expect_version = "any" end
-                    event, outcome, err = plan_existing(candidate, item, existing)
+                    event, outcome, err = plan_existing(st, item, existing)
                 else
-                    event, outcome, err = plan_create(candidate, item)
+                    event, outcome, err = plan_create(st, item)
                 end
             end
         elseif item.create then
-            event, outcome, err = plan_create(candidate, item)
+            event, outcome, err = plan_create(st, item)
         else
             local p: types.Product?
-            p, err = item_state.address(candidate, item.product)
+            p, err = item_state.address(st, item.product)
             if not err then
                 if not p then outcome = item_state.fail("invalid", "product not found", { code = "invalid_reference" })
-                else event, outcome, err = plan_existing(candidate, item, p) end
+                else event, outcome, err = plan_existing(st, item, p) end
             end
         end
         if err then return nil, err end
         if not outcome then return nil, errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "item " .. index .. " was planned without an outcome" }) end
-        if outcome.outcome == "created" or outcome.outcome == "updated" or outcome.outcome == "unchanged" then st = candidate end
         local result: types.Outcome = outcome
         result.index = index
         outcomes[index] = result
