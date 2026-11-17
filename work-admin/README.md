@@ -7,7 +7,7 @@ interfaces. This module publishes administration only.
 
 Administrators create boards from installed packs or an empty declaration, edit
 board names and descriptions, and configure fields, options, item types,
-relations, visibility, policy, plugins and pack upgrades. The process builder
+relations, visibility, policy, plugins and pack installation/upgrades. The process builder
 edits states, transitions, conditions, approvers, timers, automated stages,
 parallel regions and capacity. Changes pass through Work's plan/review/apply
 boundary with generation checks and a stable request key; migrations can be
@@ -71,3 +71,24 @@ diagram layout/route geometry, viewport navigation and browser layout checks.
 The vendored Dagre and Graphlib licenses and provenance are retained in
 `ui/src/app/settings/vendor/`. Release Please owns release versions and
 changelogs; publication follows the repository workflow.
+
+
+Board headers expose ADMIN-only sharing through the platform `kickside-share`
+widget. Identity editing uses the shared icon picker. All settings controls live
+in their ordinary sections; human-readable labels leave stored identifiers and
+values unchanged. Native dialogs are retained as the documented owner-approved
+ShadowRoot overlay exception, with browser modality and focus restoration.
+
+System → Work edits individual boards; its Application defaults link opens
+System → Settings. The Work block there keeps every `kickside.work` setting in
+the shared `kickside-settings-provider` and links back to Board settings. Board
+policy overrides are optional: blank uses the application default. Zero audit
+and interval days selects 365 days, while zero trash/deletion-record days permits
+immediate cleanup. Comments per item supports a board override of 1–100000.
+
+An existing empty board can use Install pack and review the backend's plan before
+applying. Required plugins use exact manifest IDs and the existing configuration
+form during pack review. Packed creation offers initial configuration as JSON
+objects keyed by those IDs, includes them in the retry identity, and lets Work
+validate required configuration. Refresh status explicitly reloads plugin
+lifecycle/projection progress while preserving a schema draft.

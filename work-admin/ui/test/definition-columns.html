@@ -24,7 +24,7 @@
         { code: 'third', form: 'text' },
         { code: 'fourth', form: 'text' },
       ] }
-      createApp({ render: () => h(FieldsEditor, { draft, advanced: false }) })
+      createApp({ render: () => h(FieldsEditor, { draft }) })
         .use(PrimeVuePlugin).mount(root)
     </script>
   </body>

@@ -20,7 +20,7 @@ vi.mock('../../api', () => ({ work: { schema: vi.fn() } }))
 vi.mock('./api', () => ({ settings: { configure: vi.fn() } }))
 it('keeps Work field kinds canonical and persists display reordering in item types', async () => {
   const draft = reactive<Declaration>({ fields: [{ id: 1, code: 'title', form: 'text' }, { id: 2, code: 'priority', type: 'option', form: 'text', options: [{ id: 'low', order: 0 }, { id: 'high', order: 1 }] }], item_types: [{ id: 'task', fields: ['title', 'priority'], process: 'flow' }] })
-  const w = mount(FieldsEditor, { props: { draft, advanced: false } })
+  const w = mount(FieldsEditor, { props: { draft } })
   await w.findAll('article')[0].findAllComponents(Select)[0].setValue('principal')
   expect(draft.fields![0]).toMatchObject({ type: 'principal', form: 'ref' })
   await w.get('[aria-label="Move title later"]').trigger('click')
@@ -30,12 +30,12 @@ it('keeps Work field kinds canonical and persists display reordering in item typ
   expect(draft.fields![0].options?.map(o => [o.id, o.order])).toEqual([['high', 0], ['low', 1]])
   w.unmount()
 })
-it('edits per-kind stage, approval, parallel and timer settings behind Advanced', async () => {
+it('edits per-kind stage, approval, parallel and timer settings in their process section', async () => {
   const process = reactive<Process>({ id: 'flow', initial: 'review', states: [{ id: 'review', category: 'started' }, { id: 'done', category: 'completed' }] })
   const state = process.states[0], draft: Declaration = { fields: [{ code: 'due', form: 'time' }], processes: [process] }
-  const w = mount(StateSettings, { props: { state, process, draft, advanced: false } })
+  const w = mount(StateSettings, { props: { state, process, draft } })
   expect(w.find('option[value=gate]').exists()).toBe(false)
-  await w.setProps({ advanced: true }); await w.getComponent(SelectButton).setValue('gate')
+  await w.getComponent(SelectButton).setValue('gate')
   expect(state.release_when?.approvals).toMatchObject({ min: 1, prevent_self: true })
   expect(state.run).toBeUndefined()
   await w.getComponent(SelectButton).setValue('automated')
@@ -52,7 +52,7 @@ it('edits per-kind stage, approval, parallel and timer settings behind Advanced'
 })
 it('edits transition source, target, auto, default and effect values through the selected transition form', async () => {
   const draft = reactive(schema().declaration)
-  const w = mount(ProcessEditor, { props: { draft, advanced: true } })
+  const w = mount(ProcessEditor, { props: { draft } })
   await w.get('.work-graph-edge').trigger('click')
   expect(w.findAll('.work-process-sideform')).toHaveLength(1)
   await w.get('input[aria-label="Automatic transition"]').setValue(true)
@@ -127,7 +127,7 @@ it('keeps an attachment pending until Work reports lifecycle completion', async 
 it('edits stage safety limits and their board defaults', async () => {
   const process = reactive<Process>({ id: 'flow', initial: 'build', states: [{ id: 'build', category: 'started', kind: 'automated', run: { stage: 'build' } }, { id: 'stopped', category: 'canceled' }], transitions: [{ id: 'stop', from: 'any', to: 'stopped' }] })
   const draft = reactive<Declaration>({ processes: [process] })
-  const w = mount(StateSettings, { props: { state: process.states[0], process, draft, advanced: true } })
+  const w = mount(StateSettings, { props: { state: process.states[0], process, draft } })
   const timeout = w.findAllComponents(DurationControl).find(c => c.props('label') === 'Attempt timeout')!
   expect(timeout).toBeDefined()
   timeout.vm.$emit('update:modelValue', 'PT2H')

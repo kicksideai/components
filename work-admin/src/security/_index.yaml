@@ -16,7 +16,9 @@ entries:
     resources:
     - kickside.work.admin:admin
     - kickside.work.admin:board_settings
+    - kickside.work.admin:defaults
     - kickside.work.admin:settings_tab
+    - kickside.work.admin:defaults_block
     actions:
     - registry.get
     - registry.find
@@ -31,6 +33,7 @@ entries:
     - kickside.work.admin:ui_static
     - kickside.work.admin:admin
     - kickside.work.admin:board_settings
+    - kickside.work.admin:defaults
     - kickside.work.admin.api:options.endpoint
     - kickside.work.admin.api:principals.endpoint
     actions: access
