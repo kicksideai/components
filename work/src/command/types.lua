@@ -60,6 +60,7 @@ type ListResult = { boards: { BoardSummary }, next: integer? }
 type OpPlan = {
     error: domain.CommandError?, status: string, events: { Event }, group: string, item: string?, comment: string?, version: integer?, findings: { Finding }?,
     guards: { [string]: integer }?, expected: integer?, head: integer?,
+    route: { id: string, definition: domain.Process, region: string? }?,
 }
 -- Write is one append: the events of a group and the subject version it expects, on the
 -- board thread unless thread_id names another.

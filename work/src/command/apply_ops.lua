@@ -162,14 +162,22 @@ local function claim(ctx: types.ApplyContext, writes: { types.Write }): boolean
     return false
 end
 
--- seal marks each write's events with the command key and its group, and gives
--- the first event of every write the receipt of the command.
+-- Seal each write with an external identity and the receipt for its committed sequence.
 local function seal(ctx: types.ApplyContext, writes: { types.Write }, result_of: (types.Write) -> domain.JsonObject)
     local base = ctx.base
     if not base then return end
     for _, w in ipairs(writes) do
         receipts.mark(w.events, base .. "/" .. w.group, { request_hash = ctx.hashed, result = result_of(w) }, base .. "/" .. ctx.generation .. "/" .. w.group)
     end
+end
+
+-- Each atomic receipt carries all outcomes. Select the final committed write group.
+local function atomic_receipt(found: { [string]: types.Durable }): types.Durable?
+    local last: types.Durable? = nil
+    for _, hit in pairs(found) do
+        if not last or hit.seq > last.seq then last = hit end
+    end
+    return last
 end
 
 local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
@@ -179,11 +187,8 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
         if clock.passed(ctx.until_at) then break end
         local found, ferr = stored(ctx, all)
         if ferr or not found then return nil, ferr end
-        for _, hit in pairs(found) do
-            local by_op: { [integer]: types.Outcome } = {}
-            for _, o in ipairs(stored_outcomes(hit)) do by_op[o.op] = o end
-            return finish(ctx, by_op, true, hit.seq, true)
-        end
+        local hit = atomic_receipt(found)
+        if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
         local last_seq, cu_err = receipts.covered(ctx.board_id, ctx.until_at)
         if cu_err or not last_seq then return nil, cu_err end
         local db, derr = store.open()
@@ -201,11 +206,8 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
         end
         local recovered, recovery_err = stored(ctx, all)
         if recovery_err then return nil, recovery_err end
-        for _, hit in pairs(recovered or {}) do
-            local by_op: { [integer]: types.Outcome } = {}
-            for _, o in ipairs(stored_outcomes(hit)) do by_op[o.op] = o end
-            return finish(ctx, by_op, true, hit.seq, true)
-        end
+        local hit = atomic_receipt(recovered or {})
+        if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
         if failed then
             for i = 1, #ctx.ops do
                 if plans[i].status == "applied" or plans[i].status == "unchanged" then roll_back(outcomes[i]) end
@@ -231,20 +233,14 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
         if not aerr then
             local found, ferr = stored(ctx, all)
             if ferr then return nil, ferr end
-            for _, hit in pairs(found or {}) do
-                local by_op: { [integer]: types.Outcome } = {}
-                for _, o in ipairs(stored_outcomes(hit)) do by_op[o.op] = o end
-                return finish(ctx, by_op, true, max_seq, nil)
-            end
+            local hit = atomic_receipt(found or {})
+            if hit then return finish(ctx, stored_outcomes(hit), true, max_seq, nil) end
             return finish(ctx, outcomes, true, max_seq, nil)
         end
         local found, ferr = stored(ctx, all)
         if ferr then return nil, ferr end
-        for _, hit in pairs(found or {}) do
-            local by_op: { [integer]: types.Outcome } = {}
-            for _, o in ipairs(stored_outcomes(hit)) do by_op[o.op] = o end
-            return finish(ctx, by_op, true, hit.seq, true)
-        end
+        local hit = atomic_receipt(found or {})
+        if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
         local subject = mismatch_subject(aerr)
         if not subject and not threads.mismatch(aerr, "head_mismatch") then return nil, errors.wrap(aerr, "board append failed") end
         for _, w in ipairs(writes) do

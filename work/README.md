@@ -114,6 +114,10 @@ Work declares Workflows, Sync and Automation dependencies as `*` in `src/_index.
 
 Transition listings for people omit automatic transitions and transitions named only as `run.on_pass`, `on_fail`, `on_cancel` or `on_exhausted` targets. A transition declares `people: true` to offer such an action explicitly; `people: false` hides an ordinary exit. Point reads and awaiting query pages use the same Work rule and the recorded process generation.
 
+Automatic default edges are considered after the other automatic edges and must pass their own `when` predicate and guards. Process commands validate references in transition patches against the live targets available to the caller. When a transition leaves a stage or parallel state, Work closes each unfinished attempt in the departing visits as canceled before recording the exit. Attempts that already finished retain their outcomes.
+
+The stage visit limit applies at entry. An admitted visit uses `run.retry.max` to count attempts, with each eligible retry due at the failed attempt's finish time plus backoff. A failed report, terminal Flow completion or stage timeout records the attempt outcome even when its route is refused. An eligible gate rejection similarly records the reviewer's decision when its reject route is refused. Work admits the route through the ordinary transition checks and uses the same item CAS for the decision and any admitted transition. Keyed reports and approvals replay their original outcomes and final committed sequence after the item leaves the visit.
+
 Sink configuration names an exact registered `kickside.work.write_source` resource. Its caller requires `work.source.write` and declaration discovery on that resource as well as the board's ordinary read/write authority. Fleet reads accept `limit` (at most 50) and `after`, and return a `next` continuation.
 
 Work settings in namespace `kickside.work` include these operational controls:

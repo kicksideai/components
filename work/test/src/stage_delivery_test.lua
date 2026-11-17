@@ -5,6 +5,8 @@ local steps=require("steps")
 local rows=require("rows")
 local uuid=require("uuid")
 local json=require("json")
+local channel = require("channel")
+local time = require("time")
 local function actor(h,a)
     a.board_id=h.id
     return h.call("direct",{target="app:stage_delivery_actor",input=a})
@@ -29,10 +31,18 @@ local function setup(opts)
         p.states[#p.states+1]={id="parallel",kind="parallel",category="started",join="all",regions={{id="lane",initial="build"}}}
         p.transitions[1].to="parallel"
     end
+    if opts.ineligible_failure then
+        d.fields = { { code = "points", form = "int", index = "number" } }
+        d.item_types[1].fields = { "points" }
+        d.processes[1].transitions[3].when = { field = "points", op = "gte", value = 1 }
+    end
+    if opts.backoff then
+        d.processes[1].states[2].run.retry = { max = 2, backoff = opts.backoff }
+    end
     assert(h.call("apply_schema",{declaration=d}))
     if opts.manual then assert(binding(h,{op="pause_launcher"})) end
     assert(actor(h,{op="probe",mode=opts.real and "real" or "success"}))
-    local item=steps.create(h,"task")
+    local item=steps.create(h,"task",opts.ineligible_failure and { points = 0 } or nil)
     steps.one(h,{op="transition",item=item,transition="start"})
     local entry
     for _,e in ipairs(steps.events(h)) do if e.type=="kickside.work.events:stage.entered" then entry=e.body end end
@@ -65,6 +75,15 @@ local function define()
             test.is_nil(second.input.at)
             test.eq(second.config.completion.component_id,h.id)
             test.eq(#second.config.completion.token_fields,4)
+        end)
+        test.it("acknowledges terminal failure when the named outcome transition is ineligible", function()
+            local h, entry, ref = setup({ ineligible_failure = true })
+            local result, err = actor(h, { op = "complete", envelope = envelope(entry, ref, "failed") })
+            assert(result, steps.detail(err))
+            test.is_true(result.acknowledged)
+            local run = assert(h.call("list_stage_runs", { item = { id = entry.item } })).stage_runs[1]
+            test.eq(run.outcome, "failed")
+            test.eq(assert(h.call("get", { item = { id = entry.item } })).item.state, "build")
         end)
         test.it("keeps capacity and uncertain admission retryable while board reports can commit",function()
             for _,mode in ipairs({"capacity","uncertain"}) do
@@ -143,6 +162,50 @@ local function define()
             assert(actor(h,{op="complete",envelope=envelope(e,ref)}))
             local runs=assert(h.call("list_stage_runs",{item={id=e.item}})).stage_runs
             test.eq(#runs,1);test.eq(runs[1].outcome,"passed");test.eq(runs[1].outputs.answer,42)
+        end)
+        test.it("acknowledges two competing terminal callbacks and commits only the winning route", function()
+            local h, entry, ref = setup()
+            local pending = {}
+            for i, status in ipairs({ "completed", "failed" }) do
+                pending[i] = assert(h.executor:async("app:work_call", { op = "direct", board_id = h.id,
+                    request = { target = "app:stage_delivery_actor",
+                        input = { op = "complete", board_id = h.id, envelope = envelope(entry, ref, status) } } }))
+            end
+            for _, callback in ipairs(pending) do
+                local deadline = time.after("120s")
+                local selected = channel.select({ callback:response():case_receive(), deadline:case_receive() })
+                assert(selected.channel ~= deadline, "terminal callback timed out")
+                local payload, err = callback:result()
+                assert(payload, steps.detail(err))
+                test.is_true(assert(payload:data()).acknowledged)
+            end
+            local stage = assert(h.call("list_stage_runs", { item = { id = entry.item } })).stage_runs[1]
+            test.is_true(stage.outcome == "passed" or stage.outcome == "failed")
+            test.eq(reports(h, entry.item), 1)
+            local transitions = 0
+            for _, event in ipairs(steps.events(h)) do
+                if event.type == "kickside.work.events:item.transitioned" and event.body.item == entry.item
+                    and event.body.from == "build" then
+                    transitions = transitions + 1
+                    test.eq(event.body.transition, stage.outcome)
+                end
+            end
+            test.eq(transitions, 1)
+        end)
+        test.it("anchors a failing callback's retry at its finish plus backoff", function()
+            local h, entry, ref = setup({ backoff = "PT1H" })
+            local result = assert(actor(h, { op = "complete", envelope = envelope(entry, ref, "failed") }))
+            test.is_true(result.acknowledged)
+            local runs = assert(h.call("list_stage_runs", { item = { id = entry.item } })).stage_runs
+            test.eq(#runs, 1)
+            test.eq(runs[1].outcome, "failed")
+            local finished = assert(time.parse(time.RFC3339, runs[1].finished_at))
+            test.eq(runs[1].retry_at, finished:utc():add(3600000000000):format("2006-01-02T15:04:05.000000000Z"))
+            for _, event in ipairs(steps.events(h)) do
+                if event.type == "kickside.work.events:stage.entered" and event.body.item == entry.item then
+                    test.eq(event.body.attempt, 1)
+                end
+            end
         end)
         test.it("acknowledges a retired stage row while its item locator still exists",function()
             local h,e,ref=setup()

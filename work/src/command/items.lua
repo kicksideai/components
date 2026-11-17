@@ -8,6 +8,7 @@ local flow = require("flow")
 local fields = require("fields")
 local when = require("when")
 local process = require("process")
+local references = require("references")
 
 local M = require("prepare_context")
 local item_fields = require("item_fields")
@@ -85,14 +86,21 @@ local function plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan
             end
         end
     end
-    if #plan.events > 0 then
-        for _, event in ipairs(plan.events) do
-            for _, step in ipairs(event.body.patch or {}) do
-                local field = ctx.board.model.by_id[step.f]
-                if field and step.v ~= nil then
-                    local err = fields.validate(field, step.v :: domain.Value)
-                    if err then return M.invalid("invalid_value", err:message(), field.code) end
-                end
+    return plan
+end
+
+local function admit_patches(ctx: types.PrepareContext, plan: types.OpPlan): types.OpPlan
+    for _, event in ipairs(plan.events) do
+        local patch = event.body.patch or {}
+        if not ctx.importing then
+            local refusal = references.patch(ctx, patch)
+            if refusal then return refusal end
+        end
+        for _, step in ipairs(patch) do
+            local field = ctx.board.model.by_id[step.f]
+            if field and step.v ~= nil then
+                local err = fields.validate(field, step.v :: domain.Value)
+                if err then return M.invalid("invalid_value", err:message(), field.code) end
             end
         end
     end
@@ -130,7 +138,27 @@ end
 
 function M.plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     local work = M.fork(ctx)
-    local plan = wip(work, ctx, plan_op(work, op))
+    local plan = plan_op(work, op)
+    local route = plan.route
+    if route then
+        -- Admit the route on its own working copy. A refused route leaves the recorded
+        -- attempt or decision eligible to commit against the original item version.
+        local routed = M.fork(work)
+        local root = routed.items[plan.item :: string] :: domain.Item
+        local item = route.region and process.region(root, route.region, route.definition) or root
+        local routed_plan = process_context.route(routed, item :: domain.StateItem, route.definition, route.id, {})
+        routed_plan = wip(routed, work, admit_patches(routed, routed_plan))
+        if routed_plan.status == "applied" then
+            for _, event in ipairs(routed_plan.events) do plan.events[#plan.events + 1] = event end
+            routed_plan.events, plan, work = plan.events, routed_plan, routed
+        elseif (routed_plan.status == "invalid" or routed_plan.status == "denied") and not (routed_plan.error and routed_plan.error.retryable) then
+            plan.findings = routed_plan.findings
+        else
+            return routed_plan
+        end
+    else
+        plan = wip(work, ctx, admit_patches(work, plan))
+    end
     local dependent = false
     for _, field in ipairs(work.board.compiled.fields) do if field.rollup then dependent = true end end
     if dependent and plan.status == "applied" then

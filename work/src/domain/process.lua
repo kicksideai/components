@@ -364,6 +364,15 @@ M.named_refusal = transitions.named_refusal
 M.leaving = transitions.leaving
 M.people = transitions.people
 
+function M.retry_delay(state: types.State, work: types.ProcessData, attempt: integer, outcome: string): string?
+    local retry = state.run and state.run.retry
+    -- Only an admitted attempt can retry. Visit exhaustion can emit a report without an entry.
+    if outcome == "failed" and work.attempt == attempt and retry and attempt < retry.max then
+        return retry.backoff
+    end
+    return nil
+end
+
 -- initialize records a state entry and its declared region values.
 function M.initialize(item: types.Item, state: types.State, actor: string, at: string, p: types.Process, pending: boolean?)
     local root = (item :: types.StateItem).root

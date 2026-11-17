@@ -7,7 +7,7 @@ local context = require("process_context")
 local types = require("types")
 local domain = require("domain")
 local H = {}
-local locate, done, take, settle = context.locate, context.done, context.take, context.settle
+local locate, done, settle = context.locate, context.done, context.settle
 
 function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     local target, err = locate(ctx, op)
@@ -34,11 +34,8 @@ function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     item.version = item.version + 1
     if decision == "reject" then
         work.rejected = true
-        local transition: domain.Transition? = nil
-        for _, t in ipairs(process.leaving(p, item.state, false)) do if t.id == "reject" then transition = t end end
-        if transition then
-            local refused = take(ctx, item, p, "reject", events)
-            if refused then return refused end
+        for _, t in ipairs(process.leaving(p, item.state, false)) do
+            if t.id == "reject" then return context.record(ctx, item, p, t.id, events) end
         end
     end
     return settle(ctx, item, events, p)

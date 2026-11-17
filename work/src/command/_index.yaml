@@ -18,6 +18,7 @@ entries:
     comment: Prepare - turns ops into events against the projection, with per-item expectations.
   source: file://items.lua
   imports:
+    references: kickside.work.command:references
     domain: kickside.work:types
     rollup_rows: kickside.work.persist:rollup_rows
     process: kickside.work.domain:process
@@ -246,7 +247,6 @@ entries:
   - uuid
   imports:
     seams: kickside.work.domain:seams
-    references: kickside.work.command:references
     rules: kickside.work.domain:access_rules
     flow: kickside.work.command:flow
     consts: kickside.work:consts
