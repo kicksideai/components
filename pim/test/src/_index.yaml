@@ -369,7 +369,9 @@ entries:
     source: file://idempotency_test.lua
     method: run
     imports:
+      clock: kickside.pim:clock
       store: kickside.pim.persist:store
+      prune: kickside.core.retention:prune
       test: wippy.test:test
       fixture: app:fixture
       types: kickside.pim:types

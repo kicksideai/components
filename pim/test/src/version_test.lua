@@ -61,6 +61,52 @@ local function define()
             test.eq(src(1, "12.00"), "unchanged")
         end)
 
+        test.it("leaves a variant at the destination of the newest source sequence", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local variant = { sku = "ORDERED" }
+            test.eq(steps.one(h, { product = variant, create = { parent = { sku = "RDG-slate" } },
+                set = { { attr = "core.size", value = 46 } } }).outcome, "created")
+            local expected_parent = assert(steps.get(h, "RDG-moss")).product.product_id
+            local newest = assert(h.call("apply", { source = "pricing", items = {
+                { product = variant, seq = 10, move = { parent = { sku = "RDG-moss" } } },
+            } })) :: types.ApplyResult
+            test.eq(newest.outcomes[1].outcome, "updated")
+            local older = assert(h.call("apply", { source = "pricing", items = {
+                { product = variant, seq = 9, move = { parent = { sku = "RDG-slate" } } },
+            } })) :: types.ApplyResult
+            test.eq(assert(steps.get(h, "ORDERED")).product.parent_id, expected_parent,
+                "older source move outcome was " .. older.outcomes[1].outcome)
+            test.eq(older.outcomes[1].outcome, "unchanged")
+            local batch = assert(h.call("apply", { source = "pricing", items = {
+                { product = variant, seq = 12, move = { parent = { sku = "RDG-moss" } } },
+                { product = variant, seq = 11, move = { parent = { sku = "RDG-slate" } } },
+            } })) :: types.ApplyResult
+            test.eq(batch.outcomes[2].outcome, "unchanged")
+            test.eq(assert(steps.get(h, "ORDERED")).product.parent_id, expected_parent)
+        end)
+
+        test.it("uses the same sequence for trash and restore within and across commands", function()
+            local h = fixture.catalog()
+            local created = steps.one(h, { product = { sku = "ORDERED-TRASH" }, create = {} })
+            local product = { id = assert(created.product_id) }
+            local batch = assert(h.call("apply", { source = "pricing", items = {
+                { product = product, seq = 10, delete = true },
+                { product = product, seq = 9, restore = true },
+            } })) :: types.ApplyResult
+            test.eq(batch.outcomes[1].trashed, true)
+            test.eq(batch.outcomes[2].outcome, "unchanged")
+            local restored = assert(h.call("apply", { source = "pricing", items = {
+                { product = product, seq = 11, restore = true },
+            } })) :: types.ApplyResult
+            test.eq(restored.outcomes[1].restored, true)
+            local old_trash = assert(h.call("apply", { source = "pricing", items = {
+                { product = product, seq = 10, delete = true },
+            } })) :: types.ApplyResult
+            test.eq(old_trash.outcomes[1].outcome, "unchanged")
+            test.eq(steps.version(h, "ORDERED-TRASH"), restored.outcomes[1].version)
+        end)
+
         test.it("records the seq of a product created by an ordered source", function()
             local h = fixture.catalog()
             local _, err = h.call("apply_schema", { declaration = { sources = { { id = "pricing", ordering = "sequence", writes = { "pricing", "core" } } } } })

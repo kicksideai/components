@@ -185,7 +185,7 @@ local POSTGRES = {
         origin text,
         at text NOT NULL,
         PRIMARY KEY (catalog_id, seq, n))]],
-    [[CREATE INDEX kickside_pim_change_subject ON kickside_pim_change (catalog_id, subject, seq)]],
+    [[CREATE INDEX kickside_pim_change_subject ON kickside_pim_change (catalog_id, subject, seq, n)]],
     [[CREATE INDEX kickside_pim_change_at ON kickside_pim_change (catalog_id, at, seq, n)]],
     [[CREATE TABLE kickside_pim_attribute_usage (
         catalog_id text NOT NULL,

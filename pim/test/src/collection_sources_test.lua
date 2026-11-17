@@ -119,6 +119,43 @@ local function define()
             test.eq(page.items[1].item_key, applied.outcomes[1].product_id)
             test.eq(page.items[1].op, "delete")
         end)
+        test.it("pages contextual product values by family and aspect, then emits matching deletes", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local excluded = assert(h.call("apply", { items = { { product = { sku = "GENERIC" }, create = {} } } }))
+            test.eq(excluded.outcomes[1].outcome, "created")
+            local config = { families = { "footwear" }, aspects = { "core" } }
+            local cursor: unknown = nil
+            local seen: { [string]: boolean } = {}
+            local count = 0
+            repeat
+                local page = assert(h.call("pull_products", { config = config, cursor = cursor, limit = 1 }))
+                test.is_true(page.success)
+                test.eq(#page.items, 1)
+                local item = page.items[1]
+                test.is_nil(seen[item.item_key])
+                seen[item.item_key] = true
+                count = count + 1
+                test.eq(item.op, "upsert")
+                test.eq(item.payload.family, "footwear")
+                test.eq(item.payload.values["core.name"]["locale=en"], "Ridgeline hiking boot")
+                for code in pairs(item.payload.values) do test.eq(code:sub(1, 5), "core.") end
+                cursor = page.next_cursor
+            until not page.has_more or count == 10
+            test.eq(count, 9)
+            local deleted = assert(h.call("apply", { items = {
+                { product = { sku = "GENERIC" }, expect_version = 1, delete = true },
+                { product = { sku = "RDG-moss-40" }, expect_version = 1, delete = true },
+            } }))
+            local page = assert(h.call("pull_products", { config = config, cursor = cursor, limit = 1 }))
+            test.is_true(page.success)
+            test.eq(#page.items, 1)
+            test.eq(page.items[1].item_key, deleted.outcomes[2].product_id)
+            test.eq(page.items[1].op, "delete")
+            test.is_nil(page.items[1].payload)
+            test.eq(#assert(h.call("pull_products", { config = config, cursor = page.next_cursor, limit = 1 })).items, 0)
+        end)
+
         test.it("resumes pending proposals in creation order without losing timestamp ties", function()
             local h = fixture.catalog()
             fixture.boot(h)

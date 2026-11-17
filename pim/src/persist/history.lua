@@ -67,6 +67,13 @@ function M.cursor(text: string): (integer?, integer?)
     return math.tointeger(tonumber(a)), math.tointeger(tonumber(b))
 end
 
+function M.has_subject(db: types.Executor, catalog_id: string, subject: string): (boolean?, error?)
+    local rows, err = db:query("SELECT 1 FROM " .. TABLE .. " WHERE catalog_id = $1 AND subject = $2 LIMIT 1",
+        { catalog_id, subject })
+    if err then return nil, errors.wrap(err, "history subject read failed") end
+    return #(rows or {}) > 0, nil
+end
+
 -- page reads one page of catalog_id's rows newest first and returns the cursor
 -- of the next page when the page is full.
 function M.page(db: types.Executor, catalog_id: string, p: Page): ({ Entry }?, string?, error?)
@@ -80,11 +87,9 @@ function M.page(db: types.Executor, catalog_id: string, p: Page): ({ Entry }?, s
     if p.before ~= nil then
         local seq, n = M.cursor(p.before :: string)
         if not seq or not n then return nil, nil, errors.new({ details = { code = "history_cursor_invalid" }, kind = errors.INVALID, message = "before must be a history cursor" }) end
-        params[#params + 1] = seq
-        local a = #params
-        params[#params + 1] = seq
-        params[#params + 1] = n
-        statement[#statement + 1] = "AND (seq < $" .. a .. " OR (seq = $" .. (a + 1) .. " AND n < $" .. (a + 2) .. "))"
+        local a = #params + 1
+        params[a], params[a + 1] = seq, n
+        statement[#statement + 1] = "AND (seq, n) < ($" .. a .. ", $" .. (a + 1) .. ")"
     end
     params[#params + 1] = p.limit
     statement[#statement + 1] = "ORDER BY seq DESC, n DESC LIMIT $" .. #params

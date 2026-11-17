@@ -10,6 +10,7 @@ local scoped = require("scoped")
 local store = require("store")
 local types = require("types")
 local time = require("time")
+local scoped = require("scoped")
 
 local OLD = "2000-01-01T00:00:00Z"
 
@@ -386,15 +387,24 @@ local function define()
             assert(h.call("apply_schema", { declaration = { remove = { channels = { "web" } } } }))
             local seen = {}
             local after = nil
-            for i = 1, 4 do
+            for _ = 1, 4 do
                 local page, err = h.call("list_publications", { channel = "web", after = after, limit = 1 })
                 test.is_nil(err)
+                local response = owner.invoke(h.id, "list_publications", { channel = "web", after = after, limit = 1 })
+                test.eq(response.status, 200)
+                local http_page = response.body.data
+                test.eq(#http_page.items, #page.items)
+                test.eq(http_page.has_more, page.has_more)
                 for _, item in ipairs(page.items) do
                     test.is_nil(seen[item.product_id])
                     seen[item.product_id] = true
                     test.eq(item.state, "withdrawn")
+                    test.eq(http_page.items[1].state, item.state)
+                    test.eq(http_page.items[1].product_id, item.product_id)
+                    test.eq(http_page.next.product_id, page.next.product_id)
+                    test.eq(http_page.next.seq, page.next.seq)
                 end
-                after = page.next
+                after = http_page.next
                 if not page.has_more then break end
             end
             local count = 0

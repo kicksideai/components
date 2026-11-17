@@ -936,9 +936,9 @@ used for authorization).
 | `plugin.rebuild` catalog fact | plugin | plugin id and changed projection revision |
 | `pim.product.created` | `p:<id>` | sku, family, parent, level, axis values, patch |
 | `pim.product.changed` | `p:<id>` | patch, status?, previous_status? (with status), axis_key?, source_seq? |
-| `pim.product.moved` | `p:<id>` | parent, axis_key |
-| `pim.product.deleted` | `p:<id>` | — |
-| `pim.product.restored` | `p:<id>` | current axis_key |
+| `pim.product.moved` | `p:<id>` | parent, axis_key, source_seq? |
+| `pim.product.deleted` | `p:<id>` | source_seq? |
+| `pim.product.restored` | `p:<id>` | current axis_key, source_seq? |
 | `pim.product.purged` | `p:<id>` | — |
 | `pim.term.changed` | `t:<vocabulary>:<code>` | labels, parent, data, retired |
 | `pim.product.released` | `r:<id>` | release_id, product_id, version, generation, snapshot, hash, channels |
@@ -946,6 +946,7 @@ used for authorization).
 
 A patch is `[{a, c, before?, v | clear | unset, s?}]`. A product's version
 counts its product events and equals Core's `subject_version` of `p:<id>`.
+Apply product events carry the command's source and any supplied provenance.
 Events ≤ 4 MB; a release snapshot ≤ 512 KB.
 
 Idempotency: successful commands, including successful no-ops, record receipts
@@ -960,7 +961,8 @@ idempotency_conflict`. Receipts expire after the catalog event-retention window 
 binding's 90 days); retention removes at most the shared bounded page budget. No-op responses retain an absent domain `seq` and report the
 covering `as_of`. Failed atomic commands create no receipt. Concurrent deliveries
 replay the winner before returning a Core identity conflict. The UI and plugins
-send one frozen key and body for each command.
+send one frozen key and body for each command. Apply binds its key to the
+source, origin, reported provenance and approval item as well as the edits.
 
 ### 5.3 Fixed tables (migration 01, both dialects)
 
@@ -1043,7 +1045,7 @@ head.
 
 ### 5.6 Change history
 
-`origin` is Core's canonical `{ type, id }` provenance (`kickside.core.provenance:source_ref`), `provenance` carries reported detail beside it (model, confidence, evidence), and `approval_item_id` names the accepted proposal. History rows store them together.
+`origin` is Core's canonical `{ type, id }` provenance (`kickside.core.provenance:source_ref`), `provenance` carries reported detail beside it (model, confidence, evidence), and `approval_item_id` names the accepted proposal. Each is optional. The history row's provenance envelope includes whichever fields the command supplied.
 
 `change` is the catalog's history and audit trail; it outlives event
 retention and `list_history` reads only it. Rows are keyed `(seq, n)` with
@@ -1063,8 +1065,8 @@ stamped into every event body by the writer).
   batches are skipped by `applied_seq`); rebuilds never touch them. Rows per
   event are bounded by the command limits (§16).
 - `list_history` pages newest first per product or per catalog with a `(seq, n)`
-  cursor; queries by actor or attribute are not served. Retention comes
-  from §5.9.
+  cursor. Product IDs can address retained history after the product tombstone
+  expires. SKU lookup requires a current SKU holder. Retention comes from §5.9.
 
 ### 5.7 Trash
 
@@ -1335,7 +1337,9 @@ retired term continues the rewrite without retiring it again). The command
 refuses a merge that would rewrite a variation axis, and one whose values sit
 in an aspect the command's source may not write; a set keeps one copy of
 `into`. Touched products gain a version like any change. Ordered sources (`ordering: sequence`) send `seq` per external key;
-an older one is `unchanged` (`stale_source`).
+an older one is `unchanged` (`stale_source`). Move, trash and restore advance
+the same per-product source sequence. A newer move to the current parent
+advances the sequence without recording a move in history.
 
 ### Event schema evolution
 
@@ -1571,13 +1575,15 @@ withdrawals. Channel plugins consume the publications feed (§12).
 A proposal is PIM-owned state (Core requires WRITE for any append):
 
 - `propose` (READ) stores items and base versions after prepare and enforced
-  checks; attributes of source-restricted aspects cannot be proposed.
+  checks. Admission validates the proposal's source and its write scope.
+  Attributes of source-restricted aspects cannot be proposed.
 - `decide` (WRITE): accept claims the proposal with a conditional
   transition, runs `apply` (atomic) with the base versions, its source and
   `origin` with `approval_item_id` set to the proposal, idempotency `proposal/<id>`, then settles
   `accepted`, `conflict` (only stale versions stopped it; decidable again)
-  or `failed` (an item refused outright; final); reject works from
-  `pending`/`conflict`.
+  or `failed` (an item is refused outright or the source was removed).
+  A reviewer denied access to the source leaves the proposal available for
+  another decision. Reject works from `pending` or `conflict`.
 - Proposals are reviewed in the shell's proposals view by WRITE holders;
   public meta carries `pending_proposal_count`. Inbox routing is optional
   and built from platform parts: `pim-flow` exposes a `list_proposals` pullable,
@@ -1851,8 +1857,8 @@ only its replay receipt.
 
 Superseded release snapshots (no channel currently publishes them), publication
 tombstones, unreferenced obsolete schema generations and unreferenced retired
-terms expire after the catalog audit window. A zero audit window retains that
-explicit keep-history policy. Current channel publications protect their release
+terms expire after the catalog audit window (§5.9). A zero audit window uses
+the built-in 365-day window. Current channel publications protect their release
 and its generation. Current/rebuilding/pending schema state protects its
 required generations. Live value references, term children, pending merges and
 current schema defaults protect terms. Release snapshots contain their own term

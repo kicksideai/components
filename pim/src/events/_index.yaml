@@ -82,6 +82,12 @@ entries:
         product_id: { type: string }
         parent_id: { type: string }
         axis_key: { type: string }
+        source: { type: string }
+        source_seq: { type: integer }
+        origin: { type: object, description: "Canonical provenance {type, id}: what produced this change." }
+        provenance: { type: object, description: "Reported detail beside origin: model, confidence, evidence." }
+        approval_item_id: { type: string }
+        audit: { type: boolean, description: Whether this event's value steps enter the change history. }
         actor: { type: string }
         at: { type: string, description: Command time, RFC3339 UTC. }
         receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
@@ -95,6 +101,12 @@ entries:
       additionalProperties: false
       properties:
         product_id: { type: string }
+        source: { type: string }
+        source_seq: { type: integer }
+        origin: { type: object, description: "Canonical provenance {type, id}: what produced this change." }
+        provenance: { type: object, description: "Reported detail beside origin: model, confidence, evidence." }
+        approval_item_id: { type: string }
+        audit: { type: boolean, description: Whether this event's value steps enter the change history. }
         actor: { type: string }
         at: { type: string, description: Command time, RFC3339 UTC. }
         receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
@@ -109,6 +121,12 @@ entries:
       properties:
         product_id: { type: string }
         axis_key: { type: string }
+        source: { type: string }
+        source_seq: { type: integer }
+        origin: { type: object, description: "Canonical provenance {type, id}: what produced this change." }
+        provenance: { type: object, description: "Reported detail beside origin: model, confidence, evidence." }
+        approval_item_id: { type: string }
+        audit: { type: boolean, description: Whether this event's value steps enter the change history. }
         actor: { type: string }
         at: { type: string, description: Command time, RFC3339 UTC. }
         receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }

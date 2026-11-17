@@ -280,7 +280,9 @@ local function execute(catalog_id: string, request: types.ApplyRequest, deadline
     if serr or not settings then return nil, serr end
     local prepared: items.Prepared = { refined = {}, links = {} }
     local out, err = run(catalog_id, request.idempotency,
-        { op = "apply", items = request.items, mode = mode, source = request.source or "" }, request.trace_context,
+        { op = "apply", items = request.items, mode = mode, source = request.source or "", import = request.import == true or nil,
+            origin = request.origin, provenance = request.provenance, approval_item_id = request.approval_item_id },
+        request.trace_context,
         function(db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
             local planned, perr = items.plan(db, catalog, request, actor_id(), settings, prepared)
             if perr or not planned then return nil, perr end
@@ -401,6 +403,16 @@ function M.decide(catalog_id: string, request: types.DecideRequest): (types.Deci
     local prepared,err=store.with_db(function(db): (PreparedDecision?,error?)
         local proposal,perr=proposal_rows.get(db,catalog_id,request.proposal_id)
         if perr or not proposal then return nil,perr or errors.new({kind=errors.NOT_FOUND,message="proposal not found",details={code="proposal_not_found"}}) end
+        if request.decision == "accept" and proposal.source
+            and (proposal.status == "pending" or proposal.status == "conflict" or proposal.status == "accepting") then
+            local catalog, cerr = store.catalog(db, catalog_id)
+            if cerr then return nil, cerr end
+            local source = catalog and catalog.compiled.sources[proposal.source]
+            if source then
+                local denied = items.source_access(source, actor_id())
+                if denied then return nil, denied end
+            end
+        end
         local moved,merr=proposal_rows.transition(db,catalog_id,proposal.proposal_id,
             request.decision=="reject" and {"pending","conflict"} or {"pending","conflict","accepting"},
             request.decision=="reject" and "rejected" or "accepting",nil,actor_id())
@@ -423,14 +435,21 @@ function M.decide(catalog_id: string, request: types.DecideRequest): (types.Deci
         return {proposal_id=proposal.proposal_id,status=proposal.status,result=proposal.result},nil
     end
     local applied,aerr=M.apply(catalog_id,proposals.accept_request(proposal,request.trace_context))
-    if aerr or not applied then return nil,aerr end
-    local status=settled(applied)
+    local status: string
+    if applied then
+        status = settled(applied)
+    elseif aerr and (aerr:details() or {}).code == "unknown_source" then
+        status = "failed"
+    else
+        return nil, aerr
+    end
     local _,serr=store.with_db(function(db): (boolean?,error?)
         return proposal_rows.transition(db,catalog_id,proposal.proposal_id,{"accepting"},status,applied,actor_id())
     end)
     if serr then return nil,serr end
     local merr=publish_meta(catalog_id)
     if merr then return nil,merr end
+    if aerr then return nil, aerr end
     return {proposal_id=proposal.proposal_id,status=status,result=applied},nil
 end
 

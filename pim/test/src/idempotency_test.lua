@@ -4,6 +4,8 @@ local test = require("test")
 local fixture = require("fixture")
 local store = require("store")
 local types = require("types")
+local clock = require("clock")
+local prune = require("prune")
 
 local function apply(h: fixture.Handle, items: { types.ApplyItem }, ns: string, key: string, extra: { [string]: unknown }?): (types.ApplyResult?, error?)
     local request: { [string]: unknown } = { items = items, idempotency = { namespace = ns, key = key } }
@@ -51,6 +53,33 @@ local function define()
             test.not_nil(rel)
         end)
 
+        test.it("returns an idempotency conflict when retried with another producer", function()
+            local h = fixture.catalog()
+            test.eq(assert(h.call("apply", { items = { create("KEYED") } })).outcomes[1].outcome, "created")
+            local request: types.ApplyRequest = {
+                idempotency = { namespace = "audit", key = "change" },
+                origin = { type = "feed", id = "first" },
+                provenance = { evidence = "counted" },
+                items = { { product = { sku = "KEYED" }, expect_version = 1, status = "draft" } },
+            }
+            local first = assert(h.call("apply", request)) :: types.ApplyResult
+            test.eq(first.outcomes[1].outcome, "updated")
+            local replay = assert(h.call("apply", request)) :: types.ApplyResult
+            test.is_true(replay.replayed)
+            test.eq(replay.seq, first.seq)
+            local function conflict()
+                local outcome, err = h.call("apply", request)
+                test.is_nil(outcome)
+                test.eq(assert(err):kind(), errors.CONFLICT)
+                test.eq(assert(err):details().code, "idempotency_conflict")
+            end
+            request.origin = { type = "feed", id = "different" }
+            conflict()
+            request.origin = { type = "feed", id = "first" }
+            request.provenance = { evidence = "estimated" }
+            conflict()
+        end)
+
         test.it("keeps refusals retryable and receipts successful unchanged commands", function()
             local h = fixture.catalog()
             fixture.boot(h)
@@ -92,6 +121,35 @@ local function define()
             local kept = assert(h.call("get", { product = { sku = "RECEIPT-A" } })).product
             test.eq(kept.product_id, product.product_id)
             test.eq(kept.version, product.version)
+        end)
+
+        test.it("expires keyed no-ops and eventful receipts while preserving product state", function()
+            local h = fixture.catalog({ bare = true })
+            local first = assert(apply(h, { create("ORIGINAL") }, "expiry", "event"))
+            local unchanged = { { product = { sku = "ORIGINAL" }, expect_version = 1, status = "active" } }
+            test.is_nil(assert(apply(h, unchanged, "expiry", "noop")).seq)
+            test.is_true(assert(apply(h, { create("ORIGINAL") }, "expiry", "event")).replayed)
+            test.is_true(assert(apply(h, unchanged, "expiry", "noop")).replayed)
+
+            local db = assert(store.open())
+            local expired = assert(db:execute("UPDATE kickside_pim_receipt SET expires_at = $1 WHERE catalog_id = $2 AND marker IN ($3, $4)",
+                { clock.ago(1), h.id, "r:6:expiry5:event", "r:6:expiry4:noop" }))
+            test.eq(tonumber(expired.rows_affected), 2)
+            local cutoff = "2090-01-01T00:00:00Z"
+            if db:type() == "sqlite" then cutoff = "2090-01-01 00:00:00" end
+            local pruned = assert(prune.prune_thread(db, h.id, { cutoff = cutoff }))
+            test.eq(pruned.max_pruned_seq, first.seq)
+            assert(db:release())
+            test.is_true(assert(fixture.retain()).success)
+
+            for _, key in ipairs({ "event", "noop" }) do
+                local reused = assert(apply(h, { create("REUSED-" .. key) }, "expiry", key))
+                test.eq(reused.outcomes[1].outcome, "created")
+                test.is_nil(reused.replayed)
+            end
+            local original = assert(h.call("get", { product = { sku = "ORIGINAL" } })) :: types.GetResult
+            test.eq(original.product.product_id, first.outcomes[1].product_id)
+            test.eq(original.product.version, 1)
         end)
 
         test.it("replays independent failures and marks every event of the command", function()

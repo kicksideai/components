@@ -58,6 +58,21 @@ local function as_written(p: types.Product, document: types.Document, status: st
     return out :: types.Product
 end
 
+-- Every product mutation carries the same source ordering and attribution.
+local function stamp(st: item_state.State, p: types.Product, body: types.ProductBody, seq: integer?): types.ProductBody
+    local source = st.source
+    if source then
+        body.source = source.id
+        body.source_seq = seq
+        if seq then p.source_seq[source.id] = seq end
+    end
+    body.origin = st.origin
+    body.provenance = st.provenance
+    body.approval_item_id = st.approval_item_id
+    body.audit = st.audit
+    return body
+end
+
 local function plan_create(st: item_state.State, item: types.ApplyItem): (types.Event?, types.Outcome?, error?)
     local c = item.create :: types.CreateSpec
     local compiled = st.compiled
@@ -110,7 +125,6 @@ local function plan_create(st: item_state.State, item: types.ApplyItem): (types.
     if source and source.ordering == "sequence" then
         seq = math.tointeger(item.seq)
         if seq == nil then return nil, item_state.fail("invalid", "source " .. source.id .. " requires seq"), nil end
-        p.source_seq[source.id] = seq
     end
     item_state.take_axis(st, p, p.parent_id, key)
     p.axis_key = key
@@ -122,13 +136,12 @@ local function plan_create(st: item_state.State, item: types.ApplyItem): (types.
     st.freed[sku] = nil
     item_state.claim_uniques(st, p, built.unique)
     return { type = EV.PRODUCT_CREATED, subject = "p:" .. p.product_id,
-        body = { product_id = p.product_id, sku = sku, family = family_code, parent_id = p.parent_id, level = level,
-            is_item = p.is_item == 1, axis_key = key, status = status, patch = built.patch, source = source and source.id or nil,
-            source_seq = seq, origin = st.origin, provenance = st.provenance, approval_item_id = st.approval_item_id, audit = st.audit } },
+        body = stamp(st, p, { product_id = p.product_id, sku = sku, family = family_code, parent_id = p.parent_id, level = level,
+            is_item = p.is_item == 1, axis_key = key, status = status, patch = built.patch }, seq) },
         { outcome = "created", product_id = p.product_id, sku = sku, version = 1 }, nil
 end
 
-local function plan_delete(st: item_state.State, p: types.Product): (types.Event?, types.Outcome?, error?)
+local function plan_delete(st: item_state.State, p: types.Product, seq: integer?): (types.Event?, types.Outcome?, error?)
     local has, herr = item_state.has_children(st, p.product_id)
     if herr then return nil, nil, herr end
     if has then return nil, item_state.fail("invalid", "products with descendants cannot be deleted"), nil end
@@ -140,11 +153,11 @@ local function plan_delete(st: item_state.State, p: types.Product): (types.Event
     p.version = p.version + 1
     st.freed[p.sku] = true
     st.skus[p.sku] = nil
-    return { type = EV.PRODUCT_DELETED, subject = "p:" .. p.product_id, body = { product_id = p.product_id } },
+    return { type = EV.PRODUCT_DELETED, subject = "p:" .. p.product_id, body = stamp(st, p, { product_id = p.product_id }, seq) },
         { outcome = "updated", product_id = p.product_id, version = p.version, trashed = true }, nil
 end
 
-local function plan_move(st: item_state.State, item: types.ApplyItem, p: types.Product): (types.Event?, types.Outcome?, error?)
+local function plan_move(st: item_state.State, item: types.ApplyItem, p: types.Product, seq: integer?): (types.Event?, types.Outcome?, error?)
     local compiled = st.compiled
     local has, herr = item_state.has_children(st, p.product_id)
     if herr then return nil, nil, herr end
@@ -154,7 +167,14 @@ local function plan_move(st: item_state.State, item: types.ApplyItem, p: types.P
     if not parent or parent.level ~= p.level - 1 or parent.root_id ~= p.root_id then
         return nil, item_state.fail("invalid", "a variant moves to a product one level up under the same root"), nil
     end
-    if parent.product_id == p.parent_id then return nil, { outcome = "unchanged", product_id = p.product_id, version = p.version }, nil end
+    if parent.product_id == p.parent_id then
+        if seq == nil then return nil, { outcome = "unchanged", product_id = p.product_id, version = p.version }, nil end
+        -- A newer delivery still advances the sequence when the parent already matches.
+        p.version = p.version + 1
+        return { type = EV.PRODUCT_CHANGED, subject = "p:" .. p.product_id,
+            body = stamp(st, p, { product_id = p.product_id, patch = {} }, seq) },
+            { outcome = "updated", product_id = p.product_id, version = p.version }, nil
+    end
     local family = compiled.families[p.family]
     local key, axis_err = item_patch.axis_key(compiled, family, p.level, p.document)
     if axis_err or not key then return nil, item_state.fail("invalid", axis_err or "variant has no axis values"), nil end
@@ -166,15 +186,14 @@ local function plan_move(st: item_state.State, item: types.ApplyItem, p: types.P
     p.axis_key = key
     p.version = p.version + 1
     return { type = EV.PRODUCT_MOVED, subject = "p:" .. p.product_id,
-        body = { product_id = p.product_id, parent_id = parent.product_id, axis_key = key } },
+        body = stamp(st, p, { product_id = p.product_id, parent_id = parent.product_id, axis_key = key }, seq) },
         { outcome = "updated", product_id = p.product_id, version = p.version }, nil
 end
 
 local function plan_edit(st: item_state.State, item: types.ApplyItem, p: types.Product, seq: integer?): (types.Event?, types.Outcome?, error?)
     local compiled = st.compiled
-    local source = st.source
-    if item.delete then return plan_delete(st, p) end
-    if item.move then return plan_move(st, item, p) end
+    if item.delete then return plan_delete(st, p, seq) end
+    if item.move then return plan_move(st, item, p, seq) end
     if item.status ~= nil and not consts.STATUSES[item.status] then return nil, item_state.fail("invalid", "unknown status"), nil end
     local patched, outcome, berr = item_patch.build_patch(st, p, item)
     if berr then return nil, nil, berr end
@@ -200,7 +219,6 @@ local function plan_edit(st: item_state.State, item: types.ApplyItem, p: types.P
     p.document = built.document
     p.version = p.version + 1
     if status_change then p.status = item.status :: string end
-    if seq and source then p.source_seq[source.id] = seq end
     item_state.release(st, p, built.released)
     item_state.claim_uniques(st, p, built.unique)
     local body: types.ProductBody = { product_id = p.product_id, patch = built.patch }
@@ -212,32 +230,31 @@ local function plan_edit(st: item_state.State, item: types.ApplyItem, p: types.P
         body.axis_key = key
         p.axis_key = key
     end
-    if source then body.source = source.id end
-    if seq then body.source_seq = seq end
-    body.origin = st.origin
-    body.provenance = st.provenance
-    body.approval_item_id = st.approval_item_id
-    body.audit = st.audit
-    return { type = EV.PRODUCT_CHANGED, subject = "p:" .. p.product_id, body = body },
+    return { type = EV.PRODUCT_CHANGED, subject = "p:" .. p.product_id, body = stamp(st, p, body, seq) },
         { outcome = "updated", product_id = p.product_id, version = p.version }, nil
 end
 
-local function plan_existing(st: item_state.State, item: types.ApplyItem, p: types.Product): (types.Event?, types.Outcome?, error?)
-    local compiled = st.compiled
+local function check_version(st: item_state.State, item: types.ApplyItem, p: types.Product): (integer?, types.Outcome?)
     local source = st.source
     local seq: integer? = nil
     if source and source.ordering == "sequence" then
         seq = math.tointeger(item.seq)
-        if seq == nil then return nil, item_state.fail("invalid", "source " .. source.id .. " requires seq"), nil end
+        if seq == nil then return nil, item_state.fail("invalid", "source " .. source.id .. " requires seq") end
         local stored = math.tointeger(p.source_seq[source.id]) or 0
         if seq <= stored then return nil, { outcome = "unchanged", product_id = p.product_id, version = p.version,
-            findings = { { message = "stale_source: seq " .. seq .. " is not after " .. stored } } }, nil end
+            findings = { { message = "stale_source: seq " .. seq .. " is not after " .. stored } } } end
     elseif item.expect_version ~= "any" then
         local wanted = item.expect_version
         local expected = type(wanted) == "number" and math.tointeger(wanted) or nil
-        if expected == nil then return nil, item_state.fail("invalid", "expect_version is required"), nil end
-        if expected ~= p.version then return nil, item_state.fail("conflict", "product changed", { version = p.version }), nil end
+        if expected == nil then return nil, item_state.fail("invalid", "expect_version is required") end
+        if expected ~= p.version then return nil, item_state.fail("conflict", "product changed", { version = p.version }) end
     end
+    return seq, nil
+end
+
+local function plan_existing(st: item_state.State, item: types.ApplyItem, p: types.Product): (types.Event?, types.Outcome?, error?)
+    local seq, outcome = check_version(st, item, p)
+    if outcome then return nil, outcome, nil end
     return plan_edit(st, item, p, seq)
 end
 
@@ -252,12 +269,8 @@ local function plan_restore(st: item_state.State, item: types.ApplyItem): (types
     if not p then return nil, item_state.fail("invalid", "only trashed products restore"), nil end
     local state = p.state
     if state ~= "trashed" then return nil, item_state.fail("invalid", "only trashed products restore"), nil end
-    if item.expect_version ~= "any" then
-        local wanted = item.expect_version
-        local expected = type(wanted) == "number" and math.tointeger(wanted) or nil
-        if expected == nil then return nil, item_state.fail("invalid", "expect_version is required"), nil end
-        if expected ~= p.version then return nil, item_state.fail("conflict", "product changed", { version = p.version }), nil end
-    end
+    local seq, outcome = check_version(st, item, p)
+    if outcome then return nil, outcome, nil end
     local compiled = st.compiled
     local family = compiled.families[p.family]
     if not family then return nil, item_state.fail("invalid", "family " .. p.family .. " no longer exists"), nil end
@@ -321,7 +334,8 @@ local function plan_restore(st: item_state.State, item: types.ApplyItem): (types
     st.skus[p.sku] = p.product_id
     st.gone[p.product_id] = nil
     item_state.claim_uniques(st, p, unique)
-    return { type = EV.PRODUCT_RESTORED, subject = "p:" .. p.product_id, body = { product_id = p.product_id,axis_key=axis_key } },
+    return { type = EV.PRODUCT_RESTORED, subject = "p:" .. p.product_id,
+        body = stamp(st, p, { product_id = p.product_id, axis_key = axis_key }, seq) },
         { outcome = "updated", product_id = p.product_id, version = p.version, restored = true }, nil
 end
 
@@ -351,14 +365,21 @@ local function referenced_skus(list: { types.ApplyItem }): { string }
     return out
 end
 
+function M.source_access(source: types.Source, actor: string): error?
+    if next(source.principals) and not source.principals[actor] then
+        return errors.new({ details = { code = "source_access_denied" }, kind = errors.PERMISSION_DENIED,
+            message = "principal is not bound to source " .. source.id })
+    end
+    return nil
+end
+
 function M.plan(db: types.Executor, catalog: types.Catalog, request: types.ApplyRequest, actor: string, defaults: types.Policy, prepared: Prepared?): (PlanResult?, error?)
     local source: types.Source?
     if request.source ~= nil then
         source = catalog.compiled.sources[request.source]
         if not source then return nil, failure.unknown_source(request.source) end
-        if next(source.principals) and not source.principals[actor] then
-            return nil, errors.new({ details = { code = "source_access_denied" }, kind = errors.PERMISSION_DENIED, message = "principal is not bound to source " .. source.id })
-        end
+        local access_err = M.source_access(source, actor)
+        if access_err then return nil, access_err end
     end
     local st = item_state.new_state(db, catalog, actor, source)
     st.items = request.items
