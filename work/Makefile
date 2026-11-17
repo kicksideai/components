@@ -4,8 +4,10 @@ WIPPY ?= wippy
 SHELL := bash
 .SHELLFLAGS := -o pipefail -ec
 
-.PHONY: setup lint typecheck check-module test test-pg verify
+.PHONY: setup lockrefresh lint typecheck check-module test test-pg verify
 setup:
+	cd test && $(WIPPY) install
+lockrefresh:
 	cd test && $(WIPPY) update
 lint:
 	cd test && $(WIPPY) lint
