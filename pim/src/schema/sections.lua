@@ -163,7 +163,9 @@ function M.meaning(c: types.Compiled): unknown
             reqs[i] = { id = r.id, contexts = r.contexts, require = id_list(r.require), authored = id_list(r.authored) }
         end
         local chk: { unknown } = {}
-        for i, k in ipairs(f.checks) do chk[i] = { fn = k.fn, reads = id_list(k.reads), cost = k.cost, config = k.config } end
+        for i, k in ipairs(f.checks) do
+            chk[i] = { fn = k.fn, digest = k.digest, reads = id_list(k.reads), cost = k.cost, config = k.config }
+        end
         fams[code] = { owner = owner, levels = levels, item_level = f.item_level, requirements = reqs, checks = chk }
     end
     return { c.layout, attrs, fams, c.dimensions }

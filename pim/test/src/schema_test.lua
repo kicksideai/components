@@ -66,7 +66,7 @@ local function define()
             local dims: { types.DimensionDecl } = {}
             for _, name in ipairs({ "a", "b", "c", "d" }) do dims[#dims + 1] = { name = name, members = members } end
             local function refused(decl: types.Declaration)
-                test.not_nil(select(2, schema.compile(nil, decl, { type_of = type_of, is_check = function() return true end })))
+                test.not_nil(select(2, schema.compile(nil, decl, { type_of = type_of, check_digest = function() return "fixture-digest" end })))
             end
             refused({ dimensions = dims, aspects = { { namespace = "core", attributes = { { code = "v", type = "text", scope = { "a", "b", "c", "d" } } } } } })
             refused({ dimensions = dims, aspects = { { namespace = "core", attributes = { { code = "v", type = "text", scope = { "a", "b" } } } } } })
@@ -99,7 +99,7 @@ local function define()
             test.eq(c.families.generic.item_level, 0)
             local again = assert(schema.compile(schema.with_index(c), DECL, { type_of = type_of }))
             test.eq(again.attributes["core.size"].id, c.attributes["core.size"].id)
-            local facts = { usage = { [1] = 1, [2] = 1, [3] = 1, [4] = 1 }, family_products = { shoe = 1 }, populated = true }
+            local facts = { usage = { [1] = 1, [2] = 1, [3] = 1, [4] = 1 }, family_occupied = { shoe = true }, populated = true }
             test.eq(changes.classify(c, again, changes.changes(c, again, facts)), "cosmetic")
         end)
         test.it("lays attributes out by width: defaults by form, declared widths, a cosmetic change and a refused value", function()
@@ -115,7 +115,7 @@ local function define()
             test.eq(again.attributes["core.rank"].width, "quarter")
             test.eq(again.attributes["core.notes"].width, "full")
             test.eq(again.attributes["core.tags"].width, "full")
-            local facts = { usage = { [1] = 1, [2] = 1, [3] = 1, [4] = 1 }, family_products = { shoe = 1 }, populated = true }
+            local facts = { usage = { [1] = 1, [2] = 1, [3] = 1, [4] = 1 }, family_occupied = { shoe = true }, populated = true }
             local width_change: types.SchemaChange? = nil
             for _, ch in ipairs(changes.changes(c, again, facts)) do
                 if ch.code == "core.rank" and ch.what == "width" then width_change = ch end
@@ -139,9 +139,9 @@ local function define()
                     { code = "rank", type = "text" },
                 } } } }
             local next_c = assert(schema.compile(c, changed, { type_of = type_of }))
-            local facts = { usage = { [4] = 3 }, family_products = { shoe = 1 }, populated = true }
+            local facts = { usage = { [4] = 3 }, family_occupied = { shoe = true }, populated = true }
             test.eq(changes.classify(c, next_c, changes.changes(c, next_c, facts)), "refused")
-            test.eq(changes.classify(c, next_c, changes.changes(c, next_c, { usage = {}, family_products = {}, populated = false })), "additive")
+            test.eq(changes.classify(c, next_c, changes.changes(c, next_c, { usage = {}, family_occupied = {}, populated = false })), "additive")
         end)
     end)
     test.describe("quantity attributes", function()
@@ -335,9 +335,9 @@ local function define()
             test.eq(#c.channels.web.families, 0)
             local d = json.decode((json.encode(DECL))) :: types.Declaration
             d.families[1].checks = { { check = "app:x", cost = "lazy" } }
-            test.not_nil(select(2, schema.compile(nil, d, { type_of = type_of, is_check = function() return true, nil end })))
+            test.not_nil(select(2, schema.compile(nil, d, { type_of = type_of, check_digest = function() return "fixture-digest", nil end })))
             d.families[1].checks = { { check = "app:x", reads = { "core.nope" } } }
-            test.not_nil(select(2, schema.compile(nil, d, { type_of = type_of, is_check = function() return true, nil end })))
+            test.not_nil(select(2, schema.compile(nil, d, { type_of = type_of, check_digest = function() return "fixture-digest", nil end })))
             d.families[1].checks = { { check = "app:x" } }
             test.not_nil(select(2, schema.compile(nil, d, { type_of = type_of })))
         end)
@@ -355,7 +355,7 @@ local function define()
             local base = schema.with_index(assert(schema.compile(nil, DECL, { type_of = type_of })))
             test.is_nil(next(base.scopes))
             local adopted = assert(schema.compile(base, d, { type_of = type_of, scope = known }))
-            test.eq(changes.classify(base, adopted, changes.changes(base, adopted, { usage = {}, family_products = {}, populated = true })), "cosmetic")
+            test.eq(changes.classify(base, adopted, changes.changes(base, adopted, { usage = {}, family_occupied = {}, populated = true })), "cosmetic")
             d.scopes = { "app:nope" }
             test.not_nil(select(2, schema.compile(nil, d, { type_of = type_of, scope = known })))
             d.scopes = { "app:stock", "app:stock" }
@@ -374,7 +374,7 @@ local function define()
             test.eq(c.plugins["app:shelf"].use, "app:shelf")
             local base = schema.with_index(assert(schema.compile(nil, DECL, { type_of = type_of })))
             test.is_nil(next(base.plugins))
-            local facts = { usage = {}, family_products = {}, populated = true }
+            local facts = { usage = {}, family_occupied = {}, populated = true }
             test.eq(changes.classify(base, c, changes.changes(base, c, facts)), "cosmetic")
             d.plugins = { { use = "app:shelf" }, { use = "app:shelf" } }
             test.not_nil(select(2, schema.compile(nil, d, { type_of = type_of, plugin = manifest })))

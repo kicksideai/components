@@ -37,9 +37,9 @@ local function define()
 
         test.it("knows a declared check", function()
             for _, id in ipairs({ "app:probe_check", "app:probe_no_seam", "app:probe_text_type", "app:nope" }) do
-                local present, err = seams.is_check(id)
+                local digest, err = seams.check_digest(id)
                 test.is_nil(err, tostring(err))
-                test.eq(present, id == "app:probe_check", id)
+                test.eq(digest ~= nil, id == "app:probe_check", id)
             end
         end)
     end)

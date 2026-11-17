@@ -1,7 +1,8 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
--- Product documents: the patch steps an event applies and the attributes a
--- document holds under a compiled schema.
+-- Product documents: the patch steps an event applies and the usage of the
+-- attributes a document holds under a compiled schema.
 local types = require("types")
+local values = require("values")
 
 local M = {}
 
@@ -24,13 +25,29 @@ function M.apply_patch(document: types.Document, patch: { types.PatchStep }, sou
     for _, step in ipairs(patch) do M.apply_step(document, step, source) end
 end
 
--- attribute_ids lists the live attributes a document holds values for.
-function M.attribute_ids(compiled: types.Compiled, document: types.Document): { [integer]: boolean }
-    local out: { [integer]: boolean } = {}
+-- usage records whether any authored cell fails either index rule, including
+-- on models and in contexts that a current index does not resolve.
+function M.usage(compiled: types.Compiled, document: types.Document): { [integer]: types.AttributeUsage }
+    local out: { [integer]: types.AttributeUsage } = {}
     local by_id = compiled.by_id or {}
-    for key in pairs(document) do
-        local id = math.tointeger(tonumber(key)) or 0
-        if by_id[id] then out[id] = true end
+    for key, coords in pairs(document) do
+        local attr = by_id[math.tointeger(tonumber(key)) or 0]
+        if attr then
+            local usage: types.AttributeUsage = { products = 1, key_violations = 0, order_violations = 0 }
+            local ordered = attr.cardinality == "one" and (attr.form == "int" or attr.form == "dec" or attr.form == "quantity")
+            for _, cell in pairs(coords) do
+                if cell.c == nil and cell.p ~= nil then
+                    if usage.key_violations == 0 and values.key_error(attr, cell.p) then
+                        usage.key_violations = 1
+                    end
+                    if ordered and usage.order_violations == 0 then
+                        local _, err = values.order(attr.form, values.scalar(cell.p), attr.config)
+                        if err then usage.order_violations = 1 end
+                    end
+                end
+            end
+            out[attr.id] = usage
+        end
     end
     return out
 end

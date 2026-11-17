@@ -64,6 +64,27 @@ class QueryPlans(unittest.TestCase):
             costs.append(steps)
         print("maintenance catalog page VM steps:", costs)
         self.assertLess(max(costs), 200, "catalog discovery must not walk a prefix to fill the page")
+
+    def test_live_family_occupancy_is_an_indexed_existence_seek(self):
+        source = (ROOT / "src/persist/store.lua").read_text()
+        query = re.search(r"function M.family_occupied.*?db:query\(\[\[(.*?)\]\]", source, re.S).group(1)
+        self.db.executemany(
+            """INSERT INTO kickside_pim_product(catalog_id,product_id,sku,root_id,family,level,is_item,state,status,version,document,source_seq,created_seq,updated_seq)
+            VALUES('catalog',?,?,?,?,0,1,?,'active',1,'{}','{}',1,1)""",
+            [(str(n), str(n), str(n), "occupied" if n else "trashed", "live" if n else "trashed") for n in range(10000)],
+        )
+        present, hit = self.measure(query, ("catalog", "occupied"))
+        absent, miss = self.measure(query, ("catalog", "trashed"))
+        print("family occupancy VM steps for hit and miss:", hit, miss)
+        self.assertLess(max(hit, miss), 100)
+        self.assertEqual(len(present), 1)
+        self.assertEqual(absent, [])
+        self.assertEqual(self.measure(query, ("catalog", "before_occupied"))[0], [])
+        plan = str(self.db.execute("EXPLAIN QUERY PLAN " + query, named(("catalog", "occupied"))).fetchall())
+        print("family occupancy plan:", plan)
+        self.assertIn("catalog_id=? AND family>?", plan)
+        self.assertNotIn("TEMP B-TREE", plan)
+
     def test_publication_tuple_seek(self):
         self.db.execute("UPDATE kickside_pim_publication SET state='withdrawn'")
         self.db.executemany("INSERT INTO kickside_pim_publication VALUES('catalog','web',?,?,'withdrawn',1,'2000')", [(f"{n:05}", f"{n:05}") for n in range(4000,8000)])

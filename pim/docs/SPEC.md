@@ -1375,9 +1375,18 @@ ends as `invalid` there. Parsing goes through the record engine's tolerant
 schemas, which read an empty Lua table as both an empty list and an empty
 object, the one place where JSON's `[]`/`{}` distinction is lost.
 
-A layout column added by a schema change is write-only until the rebuild
-that fills it completes: filters, sorts, readiness filters and text search
-naming it answer `unavailable` (retryable) instead of serving a partial index.
+A generated index added or replaced by a schema change is write-only until
+backfill completes. Filters, sorts, readiness filters and text search that
+use it return retryable `unavailable` with `details.code = index_rebuilding`.
+Later schema changes carry forward any backfill still owed for indexes they keep.
+
+Before applying a key or number index, schema admission checks the live
+attribute-usage counts for values incompatible with its key or scalar order
+rule. The projection maintains those counts from every authored context and
+list member, including values on models. A refusal identifies the attribute
+and the number of live products with incompatible values. The compiler checks
+defaults, and restoring a trashed product checks its values against the active
+schema.
 
 Reads serve committed read-model state and never wait on the projection. A read
 naming a `min_seq` the projection has yet to reach answers `unavailable`
@@ -1519,7 +1528,16 @@ cell of it):
 | cosmetic | rename by id, labels, policy, scope adoption, plugin choices | new generation |
 | additive | new attribute, aspect, family, vocabulary, source, member; changes to unused attributes | new generation; layout altered in place |
 | semantic | defaults, fallback, index, requirements, checks, re-adopted check digest, removal of a used attribute | new generation; layout altered; rebuild |
-| refused | form, cardinality, vocabulary, representation config (`scale`, `range`, `case`, `members`, `target`, `units`, `canonical`, `currency`), scope or `unique` on a used attribute; axes or owning level in a family with products; removing a family with products; removing a dimension or member while the catalog holds products | `invalid`, `migration_required`, change list |
+| refused | form, cardinality, vocabulary, representation config (`scale`, `range`, `case`, `members`, `target`, `units`, `canonical`, `currency`), scope or `unique` on a used attribute; an index that cannot encode a live stored value; axes or owning level in a family with products; removing a family with products; removing a dimension or member while the catalog holds products | `invalid`, `migration_required`, change list |
+
+A schema plan checks live authored cells against new key and order constraints
+before apply can append a generation. Checks include authored cells on models
+and in contexts outside the current index. The compiler checks defaults, and
+restore checks the cells of trashed products against the schema at restore time.
+
+A generation records each adopted check's implementation digest. Applying the
+same declaration after the check is revised under its existing registry ID
+advances the generation and rebuilds readiness.
 
 A refused change migrates explicitly: new attribute, copy through `apply`,
 remove old, rename by id. The fold alters generated tables in place, deletes

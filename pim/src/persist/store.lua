@@ -404,36 +404,32 @@ function M.declaration(db: types.Executor, catalog_id: string, generation: integ
     return g.declaration, nil
 end
 
--- usage maps attribute id to the number of live products holding a value for it.
-function M.usage(db: types.Executor, catalog_id: string): ({ [integer]: integer }?, error?)
-    local rows, err = db:query("SELECT attribute_id, products FROM kickside_pim_attribute_usage WHERE catalog_id = $1 AND products > 0",
-        { catalog_id })
+-- usage reads live product and index incompatibility counts per attribute.
+function M.usage(db: types.Executor, catalog_id: string): ({ [integer]: types.AttributeUsage }?, error?)
+    local rows, err = db:query([[SELECT attribute_id, products, key_violations, order_violations
+        FROM kickside_pim_attribute_usage WHERE catalog_id = $1 AND products > 0]], { catalog_id })
     if err then return nil, errors.wrap(err, "attribute usage read failed") end
-    local out: { [integer]: integer } = {}
+    local out: { [integer]: types.AttributeUsage } = {}
     for _, r in ipairs(rows or {}) do
-        local row: Row = r
-    local decoded, decode_err = M.decode_row(row, { attribute_id = "int", products = "int" })
-    if decode_err or not decoded then return nil, decode_err end
-    row = decoded
-        out[(row.attribute_id :: integer)] = row.products :: integer
+        local row, decode_err = M.decode_row(r, { attribute_id = "int", products = "int",
+            key_violations = "int", order_violations = "int" })
+        if decode_err or not row then return nil, decode_err end
+        out[row.attribute_id :: integer] = { products = row.products :: integer,
+            key_violations = row.key_violations :: integer, order_violations = row.order_violations :: integer }
     end
     return out, nil
 end
 
--- family_products maps family code to its number of live products.
-function M.family_products(db: types.Executor, catalog_id: string): ({ [string]: integer }?, error?)
-    local rows, err = db:query([[SELECT family, COUNT(*) AS n FROM kickside_pim_product
-        WHERE catalog_id = $1 AND state = 'live' GROUP BY family]], { catalog_id })
-    if err then return nil, errors.wrap(err, "family count failed") end
-    local out: { [string]: integer } = {}
-    for _, r in ipairs(rows or {}) do
-        local row: Row = r
-    local decoded, decode_err = M.decode_row(row, { family = "text", n = "int" })
-    if decode_err or not decoded then return nil, decode_err end
-    row = decoded
-        out[(row.family :: string)] = row.n :: integer
-    end
-    return out, nil
+-- PostgreSQL can choose a sequential scan for a common family with equality
+-- and LIMIT alone. The ordered lower bound seeks the partial index on both engines,
+-- and the outer equality discards a different family.
+function M.family_occupied(db: types.Executor, catalog_id: string, family: string): (boolean, error?)
+    local rows, err = db:query([[SELECT 1 FROM (
+        SELECT family FROM kickside_pim_product WHERE catalog_id = $1 AND family >= $2 AND state = 'live'
+        ORDER BY family LIMIT 1
+    ) candidate WHERE family = $2]], { catalog_id, family })
+    if err then return false, errors.wrap(err, "family occupancy read failed") end
+    return rows ~= nil and rows[1] ~= nil, nil
 end
 
 type Publication = { channel: string, release_id: string?, state: string, seq: integer }

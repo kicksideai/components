@@ -117,6 +117,29 @@ local function by_column(list: { types.Column }): { [string]: types.Column }
     return out
 end
 
+local function same_column(previous: types.Column?, current: types.Column): boolean
+    return previous ~= nil and previous.kind == current.kind
+        and previous.attribute_id == current.attribute_id and previous.ctx == current.ctx
+end
+
+-- pending_columns identifies new or replaced storage and retains backfill still
+-- owed by the previous generation. An index's layout list identifies its storage.
+function M.pending_columns(before: types.Layout, after: types.Layout, pending: { string }): { string }
+    local owed: { [string]: boolean } = {}
+    for _, name in ipairs(pending) do owed[name] = true end
+    local out: { string } = {}
+    for _, pair in ipairs({ { before.columns, after.columns }, { before.sets, after.sets },
+        { before.search, after.search }, { before.flags, after.flags } }) do
+        local previous = by_column(pair[1])
+        for _, column in ipairs(pair[2]) do
+            local name = column.column
+            if owed[name] or not same_column(previous[name], column) then out[#out + 1] = name end
+        end
+    end
+    table.sort(out)
+    return out
+end
+
 -- alter moves the generated tables of t from layout before to t.layout in
 -- place. New columns start empty; the caller schedules the rebuild that fills them.
 function M.alter(db: types.Executor, dialect: string, t: types.Table, before: types.Layout): error?
@@ -125,7 +148,7 @@ function M.alter(db: types.Executor, dialect: string, t: types.Table, before: ty
     local stmts: { string } = {}
     local old, new = by_column(typed(before)), by_column(typed(after))
     for name, c in pairs(old) do
-        if not new[name] or new[name].kind ~= c.kind then
+        if not same_column(new[name], c) then
             local index = ident(names.item .. "_" .. name)
             stmts[#stmts + 1] = "DROP INDEX IF EXISTS " .. index
             if c.kind ~= "flag" then stmts[#stmts + 1] = "DROP INDEX IF EXISTS " .. ident(index .. "_desc") end
@@ -133,14 +156,16 @@ function M.alter(db: types.Executor, dialect: string, t: types.Table, before: ty
         end
     end
     for name, c in pairs(new) do
-        if not old[name] or old[name].kind ~= c.kind then
+        if not same_column(old[name], c) then
             stmts[#stmts + 1] = "ALTER TABLE " .. names.item .. " ADD COLUMN " .. ident(name) .. " " .. column_type(c.kind, pg)
             scalar_indexes(stmts, names.item, c)
         end
     end
     local new_sets = by_column(after.sets)
-    for name in pairs(by_column(before.sets)) do
-        if not new_sets[name] then stmts[#stmts + 1] = "DELETE FROM " .. names.set .. " WHERE col = '" .. ident(name) .. "'" end
+    for name, c in pairs(by_column(before.sets)) do
+        if not same_column(new_sets[name], c) then
+            stmts[#stmts + 1] = "DELETE FROM " .. names.set .. " WHERE col = '" .. ident(name) .. "'"
+        end
     end
     local had, has = #before.search > 0, #after.search > 0
     if had and not has then

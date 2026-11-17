@@ -30,8 +30,8 @@ local function define()
                     test.is_false(err:retryable())
                     test.eq(err:details().code, "registry_probe")
                 end
-                local present, err = seams.is_check("private:entry")
-                test.is_false(present)
+                local digest, err = seams.check_digest("private:entry")
+                test.is_nil(digest)
                 test.eq(err:kind(), kind)
                 for _, list in ipairs({ seams.find_types, plugins.list, scopes.find }) do
                     local value, lerr = list()
@@ -49,8 +49,8 @@ local function define()
                     test.eq(err:kind(), errors.INVALID)
                     test.not_nil(err:details().code)
                 end
-                local present, err = seams.is_check("private:entry")
-                test.is_false(present)
+                local digest, err = seams.check_digest("private:entry")
+                test.is_nil(digest)
                 test.is_nil(err)
             end
         end)

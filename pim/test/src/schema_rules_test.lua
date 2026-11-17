@@ -67,7 +67,7 @@ local function define()
             local before = schema.with_index(assert(schema.compile(nil, DECL, { type_of = type_of })))
             local merged = assert(declaration.merge(DECL, { vocabularies = { { code = "sizes" } } }))
             local after = assert(schema.compile(before, merged, { type_of = type_of }))
-            local changeset = changes.changes(before, after, { usage = {}, family_products = {}, populated = false })
+            local changeset = changes.changes(before, after, { usage = {}, family_occupied = {}, populated = false })
             test.eq(changes.classify(before, after, changeset), "additive")
         end)
 
@@ -85,7 +85,7 @@ local function define()
             end
             local before = schema.with_index(assert(schema.compile(nil, decl(0), { type_of = type_of })))
             local after = assert(schema.compile(before, decl(2), { type_of = type_of }))
-            local facts = { usage = { [1] = 2 }, family_products = {}, populated = true }
+            local facts = { usage = { [1] = 2 }, family_occupied = {}, populated = true }
             test.eq(changes.classify(before, after, changes.changes(before, after, facts)), "refused")
             test.eq(changes.changes(before, after, facts)[1].what, "config.scale")
         end)
@@ -113,8 +113,8 @@ local function define()
             fn(d)
             return schema.with_index(assert(schema.compile(prev, d, { type_of = type_of })))
         end
-        local USED = { usage = { [1] = 1, [2] = 1, [3] = 1, [4] = 1 }, family_products = { shoe = 1 }, populated = true }
-        local EMPTY = { usage = {}, family_products = {}, populated = false }
+        local USED = { usage = { [1] = 1, [2] = 1, [3] = 1, [4] = 1 }, family_occupied = { shoe = true }, populated = true }
+        local EMPTY = { usage = {}, family_occupied = {}, populated = false }
         local function class(prev: types.Compiled, nxt: types.Compiled, facts: changes.Facts): string
             return changes.classify(prev, nxt, changes.changes(prev, nxt, facts))
         end

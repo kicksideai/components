@@ -374,6 +374,19 @@ end
 -- dec_string renders a canonical decimal as plain decimal text.
 M.dec_string = dec_string
 
+-- key_error checks each member that would contribute an equality key.
+function M.key_error(shape: types.ValueShape, value: types.Value): error?
+    if shape.cardinality == "one" then
+        local _, err = M.key(shape.form, M.scalar(value), shape.config)
+        return err
+    end
+    for _, member in ipairs(M.members(shape, value)) do
+        local _, err = M.key(shape.form, member, shape.config)
+        if err then return err end
+    end
+    return nil
+end
+
 function M.index_error(attr: types.Attribute, value: types.Value, axis: boolean): error?
     if attr.cardinality == "one" then
         if attr.index == "number" then
@@ -381,16 +394,10 @@ function M.index_error(attr: types.Attribute, value: types.Value, axis: boolean)
             if err then return err end
         end
         if attr.unique or attr.index == "key" or axis then
-            local _, err = M.key(attr.form, M.scalar(value), attr.config)
-            if err then return err end
+            return M.key_error(attr, value)
         end
-        return nil
-    end
-    if attr.index == "key" or attr.index == "number" then
-        for _, member in ipairs(M.members(attr, value)) do
-            local _, err = M.key(attr.form, member, attr.config)
-            if err then return err end
-        end
+    elseif attr.index == "key" or attr.index == "number" then
+        return M.key_error(attr, value)
     end
     return nil
 end

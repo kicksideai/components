@@ -32,7 +32,7 @@ type FoldResult = { rebuild_job: string?, jobs: { string }, last_seq: integer }
 -- change, attribute usage deltas, history rows, and the counter changes it
 -- commits with applied_seq.
 type Batch = {
-    cache: { [string]: types.Product }, ids: IdSet, rows: integer, derived: IdSet, usage: { [integer]: integer },
+    cache: { [string]: types.Product }, ids: IdSet, rows: integer, derived: IdSet, usage: derived.Usage,
     history: { types.SqlParams }, products: integer, items: integer, trashed: integer,
     product_writes: { [string]: types.Product }, product_inserts: boolean,
     prefetched: { [string]: types.Product }, prefetched_through: integer,
@@ -118,30 +118,6 @@ local function unpublish_where(tx: types.Executor, catalog_id: string, column: s
     return nil
 end
 
--- columns_of lists every generated column a layout holds, search sources included.
-local function columns_of(l: types.Layout): { [string]: boolean }
-    local out: { [string]: boolean } = {}
-    for _, list in ipairs({ l.columns, l.sets, l.search, l.flags }) do
-        for _, c in ipairs(list) do out[c.column] = true end
-    end
-    return out
-end
-
--- pending_after lists the columns a rebuild must fill before reads may use
--- them: the columns the new layout adds, and the columns an unfinished rebuild
--- still owes, among those the new layout keeps.
-local function pending_after(catalog: types.Catalog, before: types.Layout, after: types.Layout): { string }
-    local old, new = columns_of(before), columns_of(after)
-    local owed: { [string]: boolean } = {}
-    for _, c in ipairs(catalog.pending_columns) do owed[c] = true end
-    local out: { string } = {}
-    for c in pairs(new) do
-        if not old[c] or owed[c] then out[#out + 1] = c end
-    end
-    table.sort(out)
-    return out
-end
-
 -- schedule_rebuild marks the catalog for rebuild from the schema event at seq and
 -- demands the rebuild slot in the fold's transaction; the caller wakes the job
 -- after commit.
@@ -183,7 +159,10 @@ local function apply_schema(tx: sql.Transaction, dialect: string, catalog: types
         if not err and prev.digest ~= compiled.digest then
             local populated, perr = store.populated(tx, catalog_id)
             if perr then return nil, nil, perr end
-            if populated then job, err = schedule_rebuild(tx, dialect, catalog_id, event.seq, pending_after(catalog, prev.layout, compiled.layout)) end
+            if populated then
+                local pending = layout.pending_columns(prev.layout, compiled.layout, catalog.pending_columns)
+                job, err = schedule_rebuild(tx, dialect, catalog_id, event.seq, pending)
+            end
         end
     end
     if err then return nil, nil, err end
@@ -285,7 +264,7 @@ local function apply_product(tx: sql.Transaction, catalog: types.Catalog, event:
     end
     local state_before: string? = nil
     if event.kind ~= "created" then state_before = p.state end
-    local before: { [integer]: boolean } = p.state == "live" and document.attribute_ids(compiled, p.document) or {}
+    local before = p.state == "live" and document.usage(compiled, p.document) or {}
     document.compact(compiled, p.document)
     document.apply_patch(p.document, body.patch or {}, body.source)
     if body.status then p.status = body.status end
@@ -318,7 +297,7 @@ local function apply_product(tx: sql.Transaction, catalog: types.Catalog, event:
     if err then return err end
     batch.cache[p.product_id] = p
     batch.derived[p.product_id] = true
-    local after: { [integer]: boolean } = p.state == "live" and document.attribute_ids(compiled, p.document) or {}
+    local after = p.state == "live" and document.usage(compiled, p.document) or {}
     derived.usage_delta(batch.usage, before, after)
     if event.type == EV.PRODUCT_DELETED then
         err = unpublish_where(tx, catalog_id, "product_id", p.product_id, nil, seq)

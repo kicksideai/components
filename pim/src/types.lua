@@ -27,6 +27,8 @@ type Ctx = { [string]: string }
 type Cell = { p: Value?, c: integer?, s: string? }
 type Coordinates = { [string]: Cell }
 type Document = { [string]: Coordinates }
+-- Product counts for one attribute, including products with incompatible authored cells.
+type AttributeUsage = { products: integer, key_violations: integer, order_violations: integer }
 
 -- Attribute configuration a form reads: decimal scale and range, text case and
 -- pattern, reference target, record members, quantity units and currency.
@@ -87,7 +89,7 @@ type Level = { axes: { string } }
 type Requirement = { id: string, contexts: { Ctx }, require: { string }, authored: { string } }
 -- A compiled family check; an enforced check rejects writes of the products at
 -- level, the one level owning everything it reads.
-type Check = { fn: string, reads: { string }, cost: string, config: JsonObject, enforce: boolean, level: integer? }
+type Check = { fn: string, digest: string, reads: { string }, cost: string, config: JsonObject, enforce: boolean, level: integer? }
 type Family = { code: string, owner: { [string]: integer }, levels: { Level }, item_level: integer, requirements: { Requirement }, checks: { Check } }
 type Channel = { id: string, requirements: { string }, families: { string }? }
 -- A compiled aspect; plugin names the plugin whose resolved schema contributes it.
@@ -446,6 +448,7 @@ type Plan = { result: CommandResult, events: { Event } }
 return {
     Json = Json, JsonObject = JsonObject, SqlParams = SqlParams, Row = Row, Dec = Dec, Quantity = Quantity, Ref = Ref, Record = Record,
     Scalar = Scalar, Value = Value, Ctx = Ctx, Cell = Cell, Coordinates = Coordinates, Document = Document,
+    AttributeUsage = AttributeUsage,
     AttributeConfig = AttributeConfig, MemberSpec = MemberSpec, ValueShape = ValueShape,
     PolicyOverrides = PolicyOverrides, Policy = Policy, DimensionDecl = DimensionDecl, VocabularyDecl = VocabularyDecl,
     AttributeDecl = AttributeDecl, WriteRule = WriteRule, AspectDecl = AspectDecl,
