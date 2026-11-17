@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.16](https://github.com/kicksideai/components/compare/docscout-v0.1.15...docscout-v0.1.16) (2026-11-17)
+
+
+### Bug Fixes
+
+* preserve web component host contracts and eager bundles ([#36](https://github.com/kicksideai/components/issues/36)) ([4384075](https://github.com/kicksideai/components/commit/43840756fd53380d09c80f1743f95b786fd3a5f7))
+
 ## [0.1.15](https://github.com/kicksideai/components/compare/docscout-v0.1.14...docscout-v0.1.15) (2026-11-15)
 
 
