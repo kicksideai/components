@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.2](https://github.com/kicksideai/components/compare/work-admin-v0.1.1...work-admin-v0.1.2) (2026-11-17)
+
+
+### Features
+
+* **work-admin:** select published Flows for automated stages ([#134](https://github.com/kicksideai/components/issues/134)) ([48fec7f](https://github.com/kicksideai/components/commit/48fec7fc6ad32c45ddffd4a83bcd4ff28a71d36b))
+
+
+### Bug Fixes
+
+* **work-admin:** complete board setup and pack configuration ([#135](https://github.com/kicksideai/components/issues/135)) ([5c537a4](https://github.com/kicksideai/components/commit/5c537a47f730a4ae6a303e8517740fbddeceaa9c))
+* **work-admin:** correct board creation and settings workflows ([#124](https://github.com/kicksideai/components/issues/124)) ([a89f79f](https://github.com/kicksideai/components/commit/a89f79fb67aad3ce2fa69c948e32ee6beaa96f32))
+
 ## [0.1.1](https://github.com/kicksideai/components/compare/work-admin-v0.1.0...work-admin-v0.1.1) (2026-11-17)
 
 
