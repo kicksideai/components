@@ -357,12 +357,10 @@ function M.effective(plugin: types.Plugin, own: types.JsonObject?): (types.JsonO
     return M.merged(plugin, app, own)
 end
 
--- admit checks dependencies and ownership against the merged declaration.
-function M.admit(declaration: types.Declaration, previous: types.Declaration?): error?
-    local active: { [string]: boolean } = {}
-    for _, entry in ipairs(declaration.plugins or {}) do active[entry.use] = true end
-    local was: { [string]: boolean } = {}
-    for _, entry in ipairs(previous and previous.plugins or {}) do was[entry.use] = true end
+-- admit checks dependencies and ownership after compilation resolves type metadata.
+function M.admit(compiled: types.Compiled, previous: types.Compiled?): error?
+    local active = compiled.plugins
+    local was = previous and previous.plugins or {}
     local owners: { [string]: string } = {}
     local installed, err = M.find()
     if err or not installed then return err end
@@ -388,43 +386,28 @@ function M.admit(declaration: types.Declaration, previous: types.Declaration?): 
         end
         return nil
     end
-    local function target(config: types.AttributeConfig?): error?
-        if not config then return nil end
+    local function target(config: types.AttributeConfig): error?
         if config.target then
             local err = seam(config.target)
             if err then return err end
         end
-        for _,member in pairs(config.members or {}) do
+        for _, member in pairs(config.members or {}) do
             local err = target(member)
             if err then return err end
         end
         return nil
     end
-    local function fields(aspects: { types.AspectDecl }?): error?
-        for _, aspect in ipairs(aspects or {}) do
-            for _, attribute in ipairs(aspect.attributes or {}) do
-                local err = seam(attribute.type) or target(attribute.config)
-                if err then return err end
-            end
-        end
-        return nil
+    for _, attribute in pairs(compiled.attributes) do
+        local err = seam(attribute.type) or target(attribute.config)
+        if err then return err end
     end
-    local ferr = fields(declaration.aspects)
-    if ferr then return ferr end
-    for _, entry in ipairs(declaration.plugins or {}) do
-        if entry.schema then
-            local fragment = entry.schema.fragment :: types.Fragment
-            local err = fields(fragment.aspects)
-            if err then return err end
-        end
-    end
-    for _,scope in ipairs(declaration.scopes or {}) do
+    for scope in pairs(compiled.scopes) do
         local err = seam(scope)
         if err then return err end
     end
-    for _,family in ipairs(declaration.families or {}) do
-        for _,check in ipairs(family.checks or {}) do
-            local err = seam(check.check)
+    for _, family in pairs(compiled.families) do
+        for _, check in ipairs(family.checks) do
+            local err = seam(check.fn)
             if err then return err end
         end
     end

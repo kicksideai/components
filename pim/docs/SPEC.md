@@ -450,8 +450,9 @@ configuration command, not a running activation's services or workers.
 
 Deactivation (the plugin leaves the list) is refused with `plugin_required`
 while another active plugin requires it, and with `plugin_seam_in_use` while
-any effective schema field names one of its seams, including fields from retained
-and newly resolved plugin fragments. Secrets never enter plugin configuration:
+the compiled schema uses one of its seams. This includes fields from retained
+and newly resolved plugin fragments, link targets fixed by type metadata, and
+targets in nested record members. Secrets never enter plugin configuration:
 `format: password` and `writeOnly` annotations mark secrets. Credentials live
 in the attachment (`credential_schema`) or a connection component that config
 names by id.

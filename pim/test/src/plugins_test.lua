@@ -108,6 +108,42 @@ local function define()
             test.eq(schema(h).schema_generation, initial.generation)
         end)
 
+        test.it("refuses removing the owner of a retained type's fixed link target", function()
+            local h = fixture.catalog({ bare = true })
+            local initial = assert(h.call("apply_schema", { declaration = {
+                plugins = { { use = SEAM_OWNER }, { use = "app:location_contributor_plugin" } },
+            } }))
+            test.eq(schema(h).attributes["locations.reference"].config.target, "app.managed_location")
+            local before = #fixture.events(h)
+            local request = { declaration = { remove = { plugins = { SEAM_OWNER } } } }
+            for _, op in ipairs({ "plan_schema", "apply_schema" }) do
+                local result, err = h.call(op, request)
+                test.is_nil(result, op .. " accepted removal of the fixed link target's owner")
+                test.eq(err:details().code, "plugin_seam_in_use")
+                test.eq(err:details().plugin, SEAM_OWNER)
+                test.eq(err:details().seam, "app.managed_location")
+            end
+            test.eq(#fixture.events(h), before)
+            test.eq(schema(h).schema_generation, initial.generation)
+        end)
+
+        test.it("refuses removing the link target owner used by a nested record member", function()
+            local h = fixture.catalog({ bare = true })
+            local initial = assert(h.call("apply_schema", { declaration = {
+                plugins = { { use = SEAM_OWNER } },
+                aspects = { { namespace = "locations", attributes = { {
+                    code = "details", type = "kickside.pim.types:record", config = { members = {
+                        nested = { form = "record", members = { location = { form = "ref", target = "app.managed_location" } } },
+                    } },
+                } } } },
+            } }))
+            local result, err = h.call("apply_schema", { declaration = { remove = { plugins = { SEAM_OWNER } } } })
+            test.is_nil(result)
+            test.eq(err:details().code, "plugin_seam_in_use")
+            test.eq(err:details().seam, "app.managed_location")
+            test.eq(schema(h).schema_generation, initial.generation)
+        end)
+
         test.it("checks seam ownership for fields newly resolved by a provider", function()
             local h = fixture.catalog({ bare = true })
             declare_fields(h.id, { { "text", OWNED_TYPE, "none" } })
