@@ -10,10 +10,14 @@ local function invalid(message: string): error
     return errors.new({ details = { code = "invalid_schema" }, kind = errors.INVALID, message = message })
 end
 
-function M.check(declaration: unknown): error?
+function M.check_shape(declaration: unknown): error?
     local definition, derr = declaration_shape.get()
     if derr or not definition then return derr end
-    local err = shape.check(shape.tolerant(definition), declaration, "declaration")
+    return shape.check(shape.tolerant(definition), declaration, "declaration")
+end
+
+function M.check(declaration: unknown): error?
+    local err = M.check_shape(declaration)
     if err then return err end
     return policy.check((declaration :: types.Declaration).policy)
 end

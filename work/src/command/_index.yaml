@@ -178,7 +178,6 @@ entries:
     packs: kickside.work.command:packs
     plugins: kickside.work.domain:plugins
     catalog: kickside.work.domain:pack_catalog
-    planner: kickside.work.command:pack_plan
 - name: when
   kind: library.lua
   source: file://when.lua
@@ -451,13 +450,13 @@ entries:
     commands: kickside.work.command:types
     catalog: kickside.work.domain:pack_catalog
     merge: kickside.work.domain:pack_merge
-    declaration: kickside.work.domain:declaration
     schema_commands: kickside.work.command:schema_commands
     guard: kickside.work.command:guard
     store: kickside.work.persist:store
     types: kickside.work.domain:types
     domain: kickside.work:types
     resources: kickside.work.command:pack_resources
+    views: kickside.work.service:pack_views
 - name: packs
   kind: library.lua
   source: file://packs.lua

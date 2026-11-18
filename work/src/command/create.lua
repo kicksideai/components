@@ -14,7 +14,6 @@ local types = require("types")
 local domain = require("domain")
 local plugins = require("plugins")
 local catalog = require("catalog")
-local planner = require("planner")
 local receipts = require("receipts")
 local envelope = require("envelope")
 local component_types = require("component_types")
@@ -56,7 +55,7 @@ local function validate_initial(input: types.CreateRequest): error?
     if input.pack then
         local pack, perr = catalog.load(input.pack, input.version)
         if perr or not pack then return perr end
-        initial = planner.declaration(pack.data)
+        initial = catalog.declaration(pack.data)
     end
     if initial then
         local _, err = plugins.compile(initial.plugins, input.plugin_configs)

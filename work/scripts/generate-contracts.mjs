@@ -60,7 +60,7 @@ for (const [path, replacements] of Object.entries(vocabulary.adapters)) {
 function structure(schema) {
   if (schema.anyOf?.[1]?.maxItems === 0) return structure(schema.anyOf[0])
   const result = {}
-  for (const key of ['type', 'required', 'additionalProperties']) {
+  for (const key of ['type', 'required', 'additionalProperties', 'maxProperties']) {
     if (schema[key] !== undefined) result[key] = schema[key]
   }
   if (schema.properties) result.properties = Object.fromEntries(

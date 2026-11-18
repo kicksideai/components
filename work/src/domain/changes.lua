@@ -32,7 +32,8 @@ local function diff_options(out: { types.SchemaChange }, old: types.Field, new: 
         if not n then
             change(out, "field", "options.remove", old.code, (usage.fields[old.id] or 0) > 0 and "refused" or "semantic", o.id)
         elseif not same(o, n) then
-            change(out, "field", "options.change", old.code, o.category ~= n.category and "semantic" or "cosmetic", o.id)
+            local indexed_order_changed = (old.index == "number" or new.index == "number") and o.order ~= n.order
+            change(out, "field", "options.change", old.code, (o.category ~= n.category or indexed_order_changed) and "semantic" or "cosmetic", o.id)
         end
     end
     for _, o in ipairs(new.options or {}) do
@@ -76,6 +77,22 @@ local function diff_item_types(out: { types.SchemaChange }, prev: types.Compiled
     end
 end
 
+local function relation_shape_changed(old: types.Relation, new: types.Relation): boolean
+    return old.symmetric ~= new.symmetric or old.cardinality ~= new.cardinality
+end
+
+function M.usage_targets(prev: types.Model, next: types.Model): types.UsageTargets
+    local targets: types.UsageTargets = { item_types = {}, links = {}, states = process_changes.usage_targets(prev, next) }
+    for _, old in ipairs(prev.compiled.item_types) do
+        if not next.item_types[old.id] then targets.item_types[#targets.item_types + 1] = old.id end
+    end
+    for _, old in ipairs(prev.compiled.relation_types) do
+        local new = next.relations[old.id]
+        if not new or relation_shape_changed(old, new) then targets.links[#targets.links + 1] = old.id end
+    end
+    return targets
+end
+
 local function diff_relations(out: { types.SchemaChange }, prev: types.Compiled, next: types.Compiled, usage: types.Usage)
     local old_by: { [string]: types.Relation } = {}
     local new_by: { [string]: types.Relation } = {}
@@ -86,7 +103,7 @@ local function diff_relations(out: { types.SchemaChange }, prev: types.Compiled,
         local used = (usage.links[old.id] or 0) > 0
         if not new then
             change(out, "relation", "remove", old.id, used and "refused" or "semantic")
-        elseif old.symmetric ~= new.symmetric or old.cardinality ~= new.cardinality then
+        elseif relation_shape_changed(old, new) then
             change(out, "relation", "shape", old.id, used and "refused" or "semantic")
         elseif old.outward ~= new.outward or old.inward ~= new.inward then
             change(out, "relation", "label", old.id, "cosmetic")

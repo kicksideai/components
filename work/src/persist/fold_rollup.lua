@@ -32,6 +32,7 @@ function M.filtered(board: types.Board): boolean
 end
 
 local function checks(tx: sql.DB | sql.Transaction, board: types.Board, item: types.Item): ({ string }?, error?)
+    if item.life == "purged" then return {}, nil end
     local definition, err = store.process(tx, board, item)
     if err or not definition then return nil, err end
     local state = process.state_of(definition, item.state)

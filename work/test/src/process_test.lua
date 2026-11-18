@@ -2,6 +2,7 @@
 -- Process compile: states, categories, transitions and the refusals that keep a process well formed.
 local test = require("test")
 local fixture = require("fixture")
+local steps = require("steps")
 
 type Map = { [string]: unknown }
 
@@ -35,6 +36,69 @@ end
 
 local function define()
     test.describe("process compile", function()
+        test.it("rejects a declared stage outcome route marked automatic", function()
+            local h = fixture.board({ bare = true })
+            local decl = flow(h.prefix)
+            decl.processes[1].states[2].kind = "automated"
+            decl.processes[1].states[2].run = { stage = "build", on_pass = "finish" }
+            decl.processes[1].transitions[2].auto = true
+            local plan, err = h.call("plan_schema", { declaration = decl })
+            test.is_nil(plan)
+            assert(err, "planning refused the route without a typed error")
+            test.eq(err:kind(), errors.INVALID)
+            test.eq(err:details().code, "stage_on_pass_unknown")
+        end)
+        test.it("rejects a timer route that cannot leave its holding state", function()
+            local h = fixture.board({ bare = true })
+            local decl = flow(h.prefix)
+            decl.processes[1].states[1].timers = {
+                { id = "deadline", after = "PT1S", interrupting = true, ["then"] = { transition = "finish" } },
+            }
+            local plan, err = h.call("plan_schema", { declaration = decl })
+            test.is_nil(plan)
+            assert(err, "planning refused the route without a typed error")
+            test.eq(err:kind(), errors.INVALID)
+            test.eq(err:details().code, "timer_transition_unknown")
+            decl.processes[1].transitions[2].from = "any"
+            assert(h.call("plan_schema", { declaration = decl }))
+            decl.processes[1].transitions[2].auto = true
+            local _, automatic = h.call("plan_schema", { declaration = decl })
+            test.eq(automatic:kind(), errors.INVALID)
+            test.eq(automatic:details().code, "timer_transition_unknown")
+        end)
+        test.it("refuses copies between references with different declared targets", function()
+            local h = fixture.board({ bare = true })
+            local request = { declaration = {
+                key_prefix = h.prefix,
+                fields = {
+                    { code = "before", form = "ref", config = { target = "example_asset" } },
+                    { code = "after", form = "ref", config = { target = "example_term" } },
+                },
+                item_types = { { id = "task", process = "delivery", fields = { "before", "after" } } },
+                processes = { { id = "delivery", initial = "open",
+                    states = { { id = "open", category = "started" }, { id = "done", category = "completed" } },
+                    transitions = { { id = "finish", from = { "open" }, to = "done",
+                        set = { { field = "after", copy = "before" } } } },
+                } },
+            } }
+            local result, err = h.call("plan_schema", request)
+            local stored_target: string? = nil
+            if result then
+                assert(h.call("apply_schema", request))
+                local id = steps.create(h, "task", { before = { ref = { "example_asset", "fixture" } } })
+                test.eq(steps.one(h, { op = "transition", item = id, transition = "finish" }).status, "applied")
+                stored_target = assert(steps.get(h, id)).item.values.after.ref[1]
+            end
+            test.is_nil(result, "plan admitted a reference copy whose destination stored target " .. tostring(stored_target))
+            test.eq((err :: error):kind(), errors.INVALID)
+            request.declaration.fields[2].config.target = "example_asset"
+            assert(h.call("apply_schema", request))
+            local id = steps.create(h, "task", { before = { ref = { "example_asset", "fixture" } } })
+            test.eq(steps.one(h, { op = "transition", item = id, transition = "finish" }).status, "applied")
+            local ref = assert(steps.get(h, id)).item.values.after.ref
+            test.eq(ref[1], "example_asset")
+            test.eq(ref[2], "fixture")
+        end)
         test.it("defaults human entry to follow and automated or parallel entry to pin", function()
             for _, kind in ipairs({ "human", "automated", "parallel" }) do
                 local h = fixture.board({ bare = true })

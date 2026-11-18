@@ -37,6 +37,22 @@ local function define()
             test.eq((err :: error):kind(), errors.PERMISSION_DENIED, steps.detail(err))
         end)
 
+        test.it("distinguishes board schema ADMIN from authority to claim a prefix", function()
+            local owner, member = scoped.admin(), scoped.member()
+            local h = scoped.board(owner)
+            assert(h.call("grant", { subject_id = member.id, mask = 8 }))
+            local applied = assert(member.call("apply_schema", { declaration = { key_prefix = h.prefix,
+                fields = { { code = "memo", form = "text" } },
+            } }, h.id))
+            test.eq(applied.generation, 2)
+            local _, denied = member.call("apply_schema", { declaration = { key_prefix = fixture.fresh_prefix() } }, h.id)
+            test.not_nil(denied)
+            test.eq(denied:kind(), errors.PERMISSION_DENIED)
+            local current = assert(h.call("get_schema", {}))
+            test.eq(current.generation, 2)
+            test.eq(current.compiled.key_prefix, h.prefix)
+        end)
+
         test.it("rolls back a registry write when the other thread's write conflicts", function()
             local h = fixture.board({ bare = true })
             local prefix = fixture.fresh_prefix()

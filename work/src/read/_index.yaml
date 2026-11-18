@@ -117,6 +117,7 @@ entries:
   imports:
     cursor_codec: kickside.work.read:cursor_codec
     awaiting: kickside.work.read:awaiting
+    principals: kickside.work.read:principals
     planner: kickside.work.read:planner
     window: kickside.work.read:window
     budget: kickside.work.read:budget

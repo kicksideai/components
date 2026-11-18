@@ -225,6 +225,8 @@ type Model = {
 type SchemaChange = { code: string, class: string, what: string, detail: string?, to: string?, count: integer? }
 -- states counts the items holding each state, by item type.
 type Usage = { fields: { [integer]: integer }, items: integer, types: { [string]: integer }, links: { [string]: integer }, states: { [string]: { [string]: integer } } }
+type StateUsageTarget = { item_type: string, state: string }
+type UsageTargets = { item_types: { string }, links: { string }, states: { StateUsageTarget } }
 
 -- Rows.
 type Board = { memberships: Memberships?, pack: string?, pack_version: string?, pack_digest: string?, pack_base: JsonObject?, caller_error: error?,
@@ -332,7 +334,8 @@ return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, Operation
     RelationDecl = RelationDecl, PrincipalDecl = PrincipalDecl, StateDecl = StateDecl, EffectDecl = EffectDecl,
     TransitionDecl = TransitionDecl, ProcessDecl = ProcessDecl, PolicyDecl = PolicyDecl,
     StateMaps = StateMaps, RemoveDecl = RemoveDecl, Declaration = Declaration, Option = Option, Field = Field, ItemType = ItemType, Relation = Relation, State = State,
-    Effect = Effect, Transition = Transition, Process = Process, Policy = Policy, Compiled = Compiled, Model = Model, SchemaChange = SchemaChange, Usage = Usage,
+    Effect = Effect, Transition = Transition, Process = Process, Policy = Policy, Compiled = Compiled, Model = Model, SchemaChange = SchemaChange,
+    Usage = Usage, StateUsageTarget = StateUsageTarget, UsageTargets = UsageTargets,
     Board = Board, Cell = Cell, Document = Document, Item = Item, LinkRow = LinkRow, InboundLink = InboundLink, CommentRow = CommentRow, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
     PatchStep = PatchStep, Target = Target, Receipt = Receipt, EventBody = EventBody, External = External, Event = Event,
     FoldBatch = FoldBatch, FoldResult = FoldResult, RawEvent = RawEvent, FoldEvent = FoldEvent, ProjectionRange = ProjectionRange, ProjectionBody = ProjectionBody,

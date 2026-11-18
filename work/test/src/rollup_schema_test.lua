@@ -87,9 +87,9 @@ local function define()
             steps.wait_for("600 rollup values", function()
                 local db = assert(store.open())
                 local board = assert(store.board(db, h.id))
-                local usage = assert(store.usage(db, h.id))
+                local usage = assert(store.field_usage(db, h.id))
                 db:release()
-                return usage.fields[board.model.fields.count.id] == 600
+                return usage[board.model.fields.count.id] == 600
             end)
             local db = assert(store.open())
             local events = assert(h.call("events", { from_seq = 602 }))

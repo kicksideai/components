@@ -17,21 +17,28 @@ local limits = require("limits")
 local M = {}
 local PREFIX = "kickside.work.plugin:"
 
-local function converge(board_id: string, row: types.PluginState, plugin: types.Plugin, settings: types.OperationalLimits): (boolean?, error?)
+local function converge(board_id: string, row: types.PluginState, settings: types.OperationalLimits): (boolean?, error?)
+    local projections: { types.PluginProjection } = {}
+    local config: types.JsonObject? = nil
+    if row.active then
+        local plugin, err = manifests.load(row.plugin)
+        if err or not plugin then return nil, err end
+        local effective, cerr = plugins.effective(plugin, row.config)
+        if cerr or not effective then return nil, cerr end
+        config, projections = effective, plugin.projections
+    end
     local client, err = threads.open()
     if err or not client then return nil, err end
-    local config, cerr = plugins.effective(plugin, row.config)
-    if cerr or not config then return nil, cerr end
     local progress = row.progress or {}
     row.progress = progress
     if not progress.scanned then
         local expected: { [string]: boolean } = {}
-        for _, p in ipairs(plugin.projections) do expected[p.kind] = true end
+        for _, p in ipairs(projections) do expected[p.kind] = true end
         local raw, lerr = client:list_projections({ thread_id = board_id, limit = settings.plugin_discovery_batch, projections_cursor = progress.projection_after })
         if lerr then return nil, lerr end
         local page = raw :: local_types.Page
         for _, p in ipairs(page.projections) do
-            if p.projection_key == PREFIX .. row.plugin and (not row.active or not expected[p.kind]) then
+            if p.projection_key == PREFIX .. row.plugin and not expected[p.kind] then
                 local _, rerr = client:remove_projection({ thread_id = board_id, projection_id = p.id })
                 if rerr then return nil, rerr end
             end
@@ -47,8 +54,8 @@ local function converge(board_id: string, row: types.PluginState, plugin: types.
     local aerr = attachments.ensure(board_id, row)
     if aerr then return nil, aerr end
     local first = (progress.registered or 0) + 1
-    for index = first, math.min(#plugin.projections, first + settings.plugin_projection_batch - 1) do
-        local p = plugin.projections[index]
+    for index = first, math.min(#projections, first + settings.plugin_projection_batch - 1) do
+        local p = projections[index]
         local mode = p.input == "state" and "cursor_only" or "prefetch_events"
         local previous: local_types.Config? = nil
         local previous_mode: string? = nil
@@ -88,7 +95,7 @@ local function converge(board_id: string, row: types.PluginState, plugin: types.
         end
         progress.registered = index
     end
-    return (progress.registered or 0) >= #plugin.projections, nil
+    return (progress.registered or 0) >= #projections, nil
 end
 
 function M.batch(input: { board_id: string }): ({ done: boolean }?, error?)
@@ -104,9 +111,7 @@ function M.batch(input: { board_id: string }): ({ done: boolean }?, error?)
     local pending = #(rows or {}) > settings.plugin_batch
     for i = 1, math.min(#(rows or {}), settings.plugin_batch) do
         local row = rows[i]
-        local plugin, err = manifests.load(row.plugin)
-        local complete = false
-        if plugin then complete, err = converge(input.board_id, row, plugin, settings) end
+        local complete, err = converge(input.board_id, row, settings)
         pending = pending or (not complete and not err)
         local lifecycle: types.PluginLifecycle = { state = complete and "ready" or "pending" }
         if err then lifecycle = { state = "failed", error = plugins.failure(err) } end

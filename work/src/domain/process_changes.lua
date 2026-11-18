@@ -17,11 +17,44 @@ local function change(out: { types.SchemaChange }, what: string, id: string, cla
     out[#out + 1] = { code = "process " .. id, what = what, class = class, detail = detail, to = to, count = count }
 end
 
+local function state_change(old: types.State, new: types.State?): string?
+    if not new then return "state.remove" end
+    if new.kind ~= old.kind then return "state.kind" end
+    if new.category ~= old.category then return "state.category" end
+    if process.behavior(new) ~= process.behavior(old) then return "state.change" end
+    if new.name ~= old.name then return "state.name" end
+    return nil
+end
+
+-- Only changes which return a held count or depend on one select a state.
+function M.usage_targets(prev: types.Model, next: types.Model): { types.StateUsageTarget }
+    local targets: { types.StateUsageTarget } = {}
+    local affected: { [string]: { string } } = {}
+    for _, old in ipairs(prev.compiled.processes) do
+        local new = next.processes[old.id]
+        if new then
+            local states: { string } = {}
+            for _, state in ipairs(old.states) do
+                local what = state_change(state, process.state_of(new, state.id))
+                if what and what ~= "state.name" then states[#states + 1] = state.id end
+            end
+            affected[old.id] = states
+        end
+    end
+    for _, item_type in ipairs(next.compiled.item_types) do
+        for _, state in ipairs(affected[item_type.process] or {}) do
+            targets[#targets + 1] = { item_type = item_type.id, state = state }
+        end
+    end
+    return targets
+end
+
 local function diff_states(out: { types.SchemaChange }, old: types.Process, new: types.Process, next: types.Compiled, usage: types.Usage, map: { [string]: string })
     for _, s in ipairs(old.states) do
-        local n = held_by(old.id, next, usage, s.id)
         local kept = process.state_of(new, s.id)
+        local what = state_change(s, kept)
         if not kept then
+            local n = held_by(old.id, next, usage, s.id)
             if n == 0 then
                 change(out, "state.remove", old.id, "semantic", s.id)
             elseif new.migration == "follow" and map[s.id] then
@@ -29,16 +62,12 @@ local function diff_states(out: { types.SchemaChange }, old: types.Process, new:
             else
                 change(out, "state.remove", old.id, "refused", s.id, nil, n)
             end
-        else
-            if kept.kind ~= s.kind then
-                change(out, "state.kind", old.id, "refused", s.id, kept.kind, n)
-            elseif kept.category ~= s.category then
-                change(out, "state.category", old.id, "semantic", s.id, kept.category, n)
-            elseif process.behavior(kept) ~= process.behavior(s) then
-                change(out, "state.change", old.id, "semantic", s.id, nil, n)
-            elseif kept.name ~= s.name then
-                change(out, "state.name", old.id, "cosmetic", s.id)
-            end
+        elseif what == "state.name" then
+            change(out, what, old.id, "cosmetic", s.id)
+        elseif what then
+            local class = what == "state.kind" and "refused" or "semantic"
+            local to = what == "state.kind" and kept.kind or (what == "state.category" and kept.category or nil)
+            change(out, what, old.id, class, s.id, to, held_by(old.id, next, usage, s.id))
         end
     end
     for _, s in ipairs(new.states) do

@@ -310,6 +310,8 @@ entries:
     values: kickside.work.domain:values
     shape: kickside.work.domain:shape
     manifests: kickside.work.domain:manifests
+    declaration: kickside.work.domain:declaration
+    requests: kickside.work.service:requests
 - name: pack_merge
   kind: library.lua
   source: file://pack_merge.lua

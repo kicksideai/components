@@ -51,10 +51,11 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
     local catalog: { [string]: domain.Field } = {}
     local result, read_err = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.ChangesResult?, error?)
         catalog = peers.catalog(board)
-        local stamp: string? = nil
-        if board.caller or request.selection then
+        local stamp = board.key_prefix
+        local caller_specific = board.caller ~= nil or request.selection ~= nil
+        if caller_specific then
             local actor = security.actor()
-            stamp = tostring(hash.sha256(values.canonical({ board.digest, board.caller, memberships = board.memberships, selection = request.selection,
+            stamp = tostring(hash.sha256(values.canonical({ board.digest, board.caller, key_prefix = board.key_prefix, memberships = board.memberships, selection = request.selection,
                 actor = request.selection and actor and actor:id() or nil })))
         end
         if cursor.seq > 0 and stamp ~= cursor.access then

@@ -12,7 +12,15 @@ local probe = require("probe")
 local provider = require("provider")
 local steps = require("steps")
 
+type Map = { [string]: unknown }
+
+local PACK = "app:kanban_pack"
 local originals = {}
+local function put(entry: registry.Entry)
+    local changes = assert(registry.snapshot()):changes()
+    changes:update(entry)
+    assert(changes:apply())
+end
 local owned = {}
 local function track(admin, id)
     owned[#owned + 1] = { admin = admin, id = id }
@@ -39,12 +47,22 @@ end
 local function field(declaration, code)
     for _, value in ipairs(declaration.fields) do if value.code == code then return value end end
 end
+local function invalid_in_catalog(admin, id)
+    local pack
+    for _, entry in ipairs(assert(admin.call("list_packs", {})).packs) do
+        if entry.id == PACK then pack = entry end
+    end
+    test.eq(assert(pack).problem.code, "invalid_pack")
+    local plan, err = admin.call("pack_plan", { board_id = id, pack = PACK, expected_generation = 0 })
+    test.is_nil(plan)
+    test.eq(err:kind(), errors.INVALID)
+    test.eq(err:details().code, "invalid_pack")
+end
 local function define()
     test.describe("packs", function()
         test.after_each(function()
             for _, entry in ipairs(originals) do
-                local changes = assert(registry.snapshot()):changes()
-                changes:update(entry); assert(changes:apply())
+                put(entry)
             end
             originals = {}
             for _, board in ipairs(owned) do
@@ -57,6 +75,113 @@ local function define()
                 steps.deleted(board.id)
             end
             owned = {}
+        end)
+        test.it("rejects a malformed saved-view definition before committing a pack", function()
+            originals[#originals + 1] = assert(registry.get(PACK))
+            local invalid = assert(registry.get(PACK))
+            local data = invalid.data :: Map
+            local first = (data.views :: { Map })[1]
+            local view = first.view :: Map
+            view.extra_option = true
+            put(invalid)
+
+            local admin = scoped.admin()
+            local id = empty(admin)
+            local request = { board_id = id, pack = PACK, expected_generation = 0, key = "invalid-view", starter = false }
+            local result, err = admin.call("pack_apply", request)
+            local current = admin.call("get_schema", {}, id)
+            test.is_nil(current and current.generation, "malformed pack committed a schema: " .. json.encode({
+                status = result and result.status, error = steps.detail(err),
+            }))
+            test.is_nil(result)
+            test.eq((err :: error):kind(), errors.INVALID)
+            invalid_in_catalog(admin, id)
+        end)
+        test.it("rejects an unavailable saved-view type before planning or committing a pack", function()
+            originals[#originals + 1] = assert(registry.get(PACK))
+            local entry = assert(registry.get(PACK))
+            local data = entry.data :: Map
+            local view = (data.views :: { Map })[1].view :: Map
+            view.type = "unregistered"
+            put(entry)
+
+            local admin = scoped.admin()
+            local id = empty(admin)
+            local result, err = install(admin, id, PACK, false, "unavailable-view")
+            local current = admin.call("get_schema", {}, id)
+            test.is_nil(current and current.generation, "an unavailable saved-view type committed the pack schema")
+            test.is_nil(result)
+            test.eq((err :: error):details().code, "invalid_view")
+            local plan, plan_err = admin.call("pack_plan", { board_id = id, pack = PACK, expected_generation = 0 })
+            test.is_nil(plan)
+            test.eq((plan_err :: error):details().code, "invalid_view")
+        end)
+        test.it("validates a saved view against the indexed fields introduced by the pack", function()
+            originals[#originals + 1] = assert(registry.get(PACK))
+            local entry = assert(registry.get(PACK))
+            local data = entry.data :: Map
+            local proposed = data.schema :: Map
+            local fields = proposed.fields :: { Map }
+            fields[#fields + 1] = { code = "points", form = "int", index = "number" }
+            local view = (data.views :: { Map })[1].view :: Map
+            view.order = { field = "points", dir = "desc" }
+            view.where = { field = "points", op = "gte", value = 1 }
+            put(entry)
+
+            local admin = scoped.admin()
+            local id = empty(admin)
+            local plan = assert(admin.call("pack_plan", { board_id = id, pack = PACK, expected_generation = 0 }))
+            test.eq(plan.class, "initial")
+            test.eq(assert(install(admin, id, PACK, false)).status, "done")
+        end)
+        test.it("rejects a malformed top-level process list before planning a pack upgrade", function()
+            local admin = scoped.admin()
+            local id = empty(admin)
+            test.eq(assert(install(admin, id, PACK, false)).status, "done")
+            originals[#originals + 1] = assert(registry.get(PACK))
+            local entry = assert(registry.get(PACK))
+            entry.meta.version = "2.0.0"
+            local data = entry.data :: Map
+            local nested = data.schema :: Map
+            nested.processes = data.processes
+            data.processes = { { states = {} } }
+            put(entry)
+
+            local request = { board_id = id, pack = PACK, expected_generation = 1, key = "invalid-process" }
+            local plan, plan_err = admin.call("pack_plan", request)
+            local result, err = admin.call("pack_apply", request)
+            test.eq(schema(admin, id).generation, 1)
+            test.is_nil(plan)
+            test.is_nil(result)
+            test.eq((plan_err :: error):details().code, "invalid_pack")
+            test.eq((err :: error):details().code, "invalid_pack")
+            local pack
+            for _, candidate in ipairs(assert(admin.call("list_packs", {})).packs) do
+                if candidate.id == PACK then pack = candidate end
+            end
+            test.eq(assert(pack).problem.code, "invalid_pack")
+        end)
+        test.it("rejects a named object in a registry pack's field list", function()
+            originals[#originals + 1] = assert(registry.get(PACK))
+            local invalid = assert(registry.get(PACK))
+            invalid.data = {
+                schema = { fields = { note = { code = "note", form = "text" } } },
+                views = {}, automations = {}, traits = {}, requires = {},
+                starter = { items = {}, default = false },
+            }
+            put(invalid)
+
+            local admin = scoped.admin()
+            local id = empty(admin)
+            local result, err = admin.call("pack_apply", { board_id = id, pack = PACK, expected_generation = 0, key = "mapped-fields" })
+            local current = admin.call("get_schema", {}, id)
+            test.is_nil(current and current.generation, "malformed field list committed a schema: " .. json.encode({
+                status = result and result.status,
+                fields = current and current.declaration.fields, error = steps.detail(err),
+            }))
+            test.is_nil(result)
+            test.eq((err :: error):kind(), errors.INVALID)
+            invalid_in_catalog(admin, id)
         end)
         test.it("discovers only scoped pack entries and reports exact plugin availability", function()
             local ready, rerr = reconcile.trigger({ source = "pack_test" })
@@ -248,6 +373,33 @@ local function define()
             assert(admin.call("pack_apply", request))
             local views = admin.http("POST", "/" .. id .. "/list_views", {}).body.data.views
             test.eq(#views, 1); test.eq(views[1].view_id, view.view_id); test.eq(views[1].title, "Work items")
+        end)
+        test.it("requires removal through the view contract before dropping a managed view", function()
+            local admin = scoped.admin()
+            local id = empty(admin)
+            assert(install(admin, id, PACK, false))
+            local view_id = admin.http("POST", "/" .. id .. "/list_views", {}).body.data.views[1].view_id :: string
+            originals[#originals + 1] = assert(registry.get(PACK))
+            local incoming = assert(registry.get(PACK))
+            incoming.meta.version = "1.1.0"
+            incoming.data.views = {}
+            put(incoming)
+            local request = { board_id = id, pack = PACK, expected_generation = 1, key = "remove-view" }
+            local plan = assert(admin.call("pack_plan", request))
+            test.eq(plan.class, "refused")
+            test.eq(plan.refused[1].code, "views.all")
+            test.not_nil(plan.migration)
+            local _, err = admin.call("pack_apply", request)
+            test.eq(err:details().code, "migration_required")
+            test.eq(schema(admin, id).pack.version, "1.0.0")
+            assert(admin.call("delete_view", { view_id = view_id }))
+            steps.deleted(view_id)
+            test.eq(assert(admin.call("pack_apply", request)).status, "done")
+            local current = schema(admin, id)
+            test.eq(current.generation, 2)
+            test.eq(current.pack.version, "1.1.0")
+            test.eq(current.pack.digest, plan.digest)
+            test.eq(#admin.http("POST", "/" .. id .. "/list_views", {}).body.data.views, 0)
         end)
         test.it("proposes state maps without applying them and retains refused migration paths", function()
             local admin = scoped.admin()
@@ -456,6 +608,25 @@ local function define()
                 test.is_true(pages <= 3)
             until not after
             for id in pairs(expected) do test.is_true(seen[id]) end
+        end)
+        test.it("continues a filtered fleet after an empty page", function()
+            local admin = scoped.admin()
+            local first, second = empty(admin), empty(admin)
+            if first > second then first, second = second, first end
+            assert(install(admin, first, "app:policy_pack", false))
+            assert(install(admin, second, PACK, false))
+            local url = "/api/work/packs/boards?limit=1&pack=app%3Akanban_pack"
+            local response = admin.http("GET", url)
+            test.eq(response.status, 200, json.encode(response.body))
+            local page = response.body.data
+            test.eq(#page.boards, 0)
+            test.not_nil(page.next)
+            response = admin.http("GET", url .. "&after=" .. page.next)
+            test.eq(response.status, 200, json.encode(response.body))
+            page = response.body.data
+            test.eq(#page.boards, 1)
+            test.eq(page.boards[1].board_id, second)
+            test.is_nil(page.next)
         end)
         test.it("lists fleet provenance only for boards administered by the caller", function()
             local admin, member = scoped.admin(), scoped.member()

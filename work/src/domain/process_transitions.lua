@@ -11,19 +11,22 @@ function M.named_refusal(state: types.State, transition: types.Transition): type
     return nil
 end
 
+function M.eligible(transition: types.Transition, state: string, auto: boolean?): boolean
+    if auto ~= nil and transition.auto ~= auto then return false end
+    if transition.any then return true end
+    for _, source in ipairs(transition.from) do
+        if source == state then return true end
+    end
+    return false
+end
+
 -- leaving lists the transitions that leave state, in declared order.
 function M.leaving(p: types.Process, state: string, auto: boolean?): { types.Transition }
     local out: { types.Transition } = {}
     local positions: { [string]: integer } = {}
     for i, t in ipairs(p.transitions) do
         positions[t.id] = i
-        if auto == nil or t.auto == auto then
-            local from = t.any
-            for _, s in ipairs(t.from) do
-                if s == state then from = true end
-            end
-            if from then out[#out + 1] = t end
-        end
+        if M.eligible(t, state, auto) then out[#out + 1] = t end
     end
     table.sort(out, function(a: types.Transition, b: types.Transition): boolean
         return a.order < b.order or (a.order == b.order and positions[a.id] < positions[b.id])
