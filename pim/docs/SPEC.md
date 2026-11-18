@@ -1187,7 +1187,7 @@ the settings UI):
 | `proposal_bytes` | int, 1024–262144 | 262144 | Proposal size (bytes) |
 | `command_deadline_ms` | int, 100–5000 | 5000 | Command execution budget (ms) |
 | `maintenance_rows` | int, 20–500 | 500 | Maintenance work per callback |
-| `maintenance_catalogs` | int, 1–10 | 10 | Catalogs per maintenance callback |
+| `maintenance_catalogs` | int, 1–10 | 10 | Catalog sweep slots per maintenance callback |
 | `rebuild_rows` | int, 1–500 | 500 | Products per rebuild transaction |
 | `job_batches` | int, 1–20 | 20 | Batches per job execution |
 | `import_rows` | int, 1–200 | 200 | Rows per import batch |
@@ -1210,6 +1210,11 @@ by themselves; the catalog settings Policy section shows effective deployment
 defaults and catalog overrides through shared controls. Event retention stays the deploy-time requirement
 `catalog_event_retention_days`, because it is fixed in the binding's
 `meta.retention`.
+
+Maintenance shares catalog slots between teardown visits and the ordinary catalog
+sweep. The sweep seeks a bounded page of catalog keys from its durable checkpoint.
+A key queued for teardown consumes a slot and advances the checkpoint without
+ordinary retention. One lookahead key indicates whether the sweep should continue.
 
 ## 6. Commands
 

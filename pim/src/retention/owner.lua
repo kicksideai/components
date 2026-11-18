@@ -229,39 +229,48 @@ function M.run(_input:unknown): Result
     local deleted=abandoned+expired+cleaned.deleted
     spent=spent+cleaned.deleted
     local visited=cleaned.catalogs
-    local active_limit=CATALOGS-visited
+    local scan_limit=CATALOGS-visited
     -- Keep one archive scan cycle across installation pages and repeat sweeps.
     -- The singleton's former product cursor is unused by per-catalog trash scans.
     local cycle=position.product_after~="" and position.product_after or tostring(clock.deadline(0).ns)
-    local next_position:retention_rows.Position=position
+    local last_catalog_id: string? = nil
     local deadline=position.deadline_ms
     if global_deadline then deadline=deadline and math.min(deadline,global_deadline) or global_deadline end
-    local scan_more=#page>active_limit
+    local scan_more=#page>scan_limit
     local backlog,deferred=position.pending==1 or abandon_more==true or expire_more,false
-    for i=1,math.min(#page,active_limit) do
+    for i=1,math.min(#page,scan_limit) do
         if BATCH-spent<MIN_RETENTION_ROWS then scan_more=true;break end
         local row=page[i]
         local catalog_id,iderr=store.need(row,"catalog_id")
         if iderr or not catalog_id then return {success=false,error=iderr} end
-        local limit=math.min(50,BATCH-spent)
-        local retained,rerr=retain(c,base,catalog_id,row,limit,cycle)
-        visited=visited+1
-        next_position={catalog_id=catalog_id,inclusive=0,product_after=""}
-        if rerr then
-            blocked[#blocked+1]={component_id=catalog_id,error=rerr}
-            spent=spent+limit
-        elseif retained then
-            deleted=deleted+retained.removed;spent=spent+retained.spent
-            backlog=backlog or retained.more
-            deferred=deferred or retained.skipped==true
-            if retained.deadline_ms then deadline=deadline and math.min(deadline,retained.deadline_ms) or retained.deadline_ms end
+        local teardown,qerr=store.need_int(row,"teardown")
+        if qerr then return {success=false,error=qerr} end
+        last_catalog_id=catalog_id
+        if teardown==0 then
+            local limit=math.min(50,BATCH-spent)
+            local retained,rerr=retain(c,base,catalog_id,row,limit,cycle)
+            visited=visited+1
+            if rerr then
+                blocked[#blocked+1]={component_id=catalog_id,error=rerr}
+                spent=spent+limit
+            elseif retained then
+                deleted=deleted+retained.removed;spent=spent+retained.spent
+                backlog=backlog or retained.more
+                deferred=deferred or retained.skipped==true
+                if retained.deadline_ms then deadline=deadline and math.min(deadline,retained.deadline_ms) or retained.deadline_ms end
+            end
         end
     end
-    if not scan_more then next_position={catalog_id="",inclusive=0,product_after=""} end
+    local next_position:retention_rows.Position=position
+    if not scan_more then
+        next_position={catalog_id="",inclusive=0,product_after=""}
+    elseif last_catalog_id then
+        next_position={catalog_id=last_catalog_id,inclusive=0,product_after=""}
+    end
     local more=scan_more or backlog or deferred or cleaned.needs_continue
     if deadline and deadline<=clock.millis() then deadline=nil;more=true end
     next_position.product_after=more and cycle or ""
-    next_position.cleanup_turn=CATALOGS==1 and visited>cleaned.catalogs and cleaned.needs_continue and 1 or 0
+    next_position.cleanup_turn=CATALOGS==1 and last_catalog_id~=nil and cleaned.needs_continue and 1 or 0
     if scan_more then next_position.deadline_ms=deadline;next_position.pending=backlog and 1 or 0 end
     local _,aerr=store.transaction("retention position",function(tx:types.Executor,_dialect:string): (boolean?,error?)
         local err=retention_rows.advance(tx,next_position)

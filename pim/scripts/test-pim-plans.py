@@ -51,6 +51,19 @@ class QueryPlans(unittest.TestCase):
         rows = self.db.execute(query, named(params)).fetchall()
         self.db.set_progress_handler(None, 0)
         return rows, steps[0]
+    def test_catalog_maintenance_page_work_is_bounded(self):
+        self.db.executemany("INSERT INTO kickside_pim_catalog(catalog_id,generation,compiled,digest,layout_digest,item_table,applied_seq,product_count,item_count,trashed_count,tombstone_floor_seq,created_at,updated_at) VALUES(?,1,'{}','','','',1,0,0,0,0,'','')",
+                            [(f"{n:06}",) for n in range(100001)])
+        self.db.execute("INSERT INTO kickside_pim_cleanup(catalog_id,cleaned) SELECT catalog_id,0 FROM kickside_pim_catalog WHERE catalog_id < '100000'")
+        source = (ROOT / "src/persist/retention_rows.lua").read_text()
+        query = re.search(r"function M.catalogs.*?db:query\(\[\[(.*?)\]\]", source, re.S).group(1)
+        costs = []
+        for cursor, inclusive in [("000000", 1), ("049999", 0), ("099999", 0)]:
+            # One catalog slot plus one lookahead.
+            _, steps = self.measure(query, (cursor, inclusive, 2))
+            costs.append(steps)
+        print("maintenance catalog page VM steps:", costs)
+        self.assertLess(max(costs), 200, "catalog discovery must not walk a prefix to fill the page")
     def test_publication_tuple_seek(self):
         self.db.execute("UPDATE kickside_pim_publication SET state='withdrawn'")
         self.db.executemany("INSERT INTO kickside_pim_publication VALUES('catalog','web',?,?,'withdrawn',1,'2000')", [(f"{n:05}", f"{n:05}") for n in range(4000,8000)])

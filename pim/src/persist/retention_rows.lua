@@ -126,11 +126,13 @@ function M.advance(db: types.Executor, position: Position): error?
     return err
 end
 
--- catalogs returns a bounded page from the durable sweep position.
+-- Take the key page before probing teardown so queued keys can advance the sweep.
 function M.catalogs(db: types.Executor, position: Position, limit: integer): ({ types.Row }?, error?)
-    local rows, err = db:query([[SELECT catalog_id, compiled,retention_after FROM kickside_pim_catalog
-        WHERE (catalog_id > $1 OR (catalog_id = $1 AND $2 = 1))
-        AND catalog_id NOT IN (SELECT catalog_id FROM kickside_pim_cleanup) ORDER BY catalog_id LIMIT $3]],
+    local rows, err = db:query([[SELECT page.catalog_id, page.compiled, page.retention_after,
+        COALESCE((SELECT 1 FROM kickside_pim_cleanup AS q WHERE q.catalog_id = page.catalog_id), 0) AS teardown
+        FROM (SELECT catalog_id, compiled, retention_after FROM kickside_pim_catalog
+            WHERE catalog_id >= $1 AND (catalog_id > $1 OR $2 = 1)
+            ORDER BY catalog_id LIMIT $3) AS page ORDER BY page.catalog_id]],
         { position.catalog_id, position.inclusive, limit })
     if err then return nil, errors.wrap(err, "catalog scan failed") end
     return rows or {}, nil

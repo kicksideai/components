@@ -181,6 +181,62 @@ local function define()
             assert(ran, tostring(err))
         end)
 
+        test.it("checkpoints teardown keys within the catalog budget and reaches the next active catalog", function()
+            local h = fixture.catalog({ bare = true })
+            local db = assert(store.open())
+            local settings = assert(assert(contract.get("kickside.settings:settings")):open())
+            local original = assert(defaults.read()).maintenance_catalogs
+            local function set_cap(value: integer)
+                local result, err = settings:set({ namespace = "kickside.pim", key = "maintenance_catalogs", value = value, actor_id = "harness" })
+                assert(result and result.success, tostring(err or (result and result.error)))
+            end
+            local first = "0-retention-scan-1"
+            local second = "0-retention-scan-2"
+            local active = "0-retention-scan-3"
+            local deleting = "0-retention-scan-work"
+            for _, id in ipairs({ first, second, active }) do
+                execute(db, [[INSERT INTO kickside_pim_catalog(catalog_id,generation,compiled,digest,layout_digest,item_table,
+                    applied_seq,product_count,item_count,trashed_count,tombstone_floor_seq,created_at,updated_at)
+                    SELECT $1,generation,compiled,digest,layout_digest,item_table,applied_seq,0,0,0,0,created_at,updated_at
+                    FROM kickside_pim_catalog WHERE catalog_id=$2]], { id, h.id })
+            end
+            -- Give teardown its own backlog so neither skipped catalog disappears between scans.
+            execute(db, [[INSERT INTO kickside_pim_cleanup(catalog_id,cleaned,attempted_at)
+                VALUES($1,0,'9999'),($2,0,'9999'),($3,0,'')]], { first, second, deleting })
+            execute(db, series(120) .. [[INSERT INTO kickside_pim_change(catalog_id,seq,n,subject,kind,actor,at)
+                SELECT $1,n,1,'schema','schema','fixture','1900-01-01T00:00:00Z' FROM nums]], { deleting })
+            execute(db, [[INSERT INTO kickside_pim_change(catalog_id,seq,n,subject,kind,actor,at)
+                VALUES($1,1,1,'schema','schema','fixture','1900-01-01T00:00:00Z')]], { active })
+            local function remaining(id: string): integer
+                return count(db, "SELECT COUNT(*) AS n FROM kickside_pim_change WHERE catalog_id=$1", { id })
+            end
+
+            start_at(db, first)
+            set_cap(1)
+            local ran, err = pcall(function()
+                for i, id in ipairs({ first, second }) do
+                    local sweep = owner()
+                    test.is_true(sweep.needs_continue)
+                    test.eq(assert(retention_rows.position(db)).catalog_id, id)
+                    test.eq(remaining(active), 1)
+                    test.eq(remaining(deleting), 120 - 50 * (i - 1))
+
+                    test.eq(owner().catalogs, 1)
+                    test.eq(assert(retention_rows.position(db)).catalog_id, id)
+                    test.eq(remaining(deleting), 120 - 50 * i)
+                end
+                test.eq(owner().catalogs, 1)
+                test.eq(remaining(active), 0)
+            end)
+            set_cap(original)
+            execute(db, "DELETE FROM kickside_pim_change WHERE catalog_id IN ($1,$2)", { active, deleting })
+            execute(db, "DELETE FROM kickside_pim_cleanup WHERE catalog_id IN ($1,$2,$3)", { first, second, deleting })
+            execute(db, "DELETE FROM kickside_pim_catalog WHERE catalog_id IN ($1,$2,$3)", { first, second, active })
+            reset_position(db)
+            assert(db:release())
+            assert(ran, tostring(err))
+        end)
+
         test.it("rotates past a replenished early catalog",function()
             local h=fixture.catalog()
             local db=assert(store.open())
