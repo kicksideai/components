@@ -19,9 +19,10 @@ responsive layout, keyboard selection, zoom and pan.
 Bind `kickside.work.admin:ui_server` to the host HTTP service and
 `kickside.work.admin:api_router` to its authenticated router running
 `token_auth` and `endpoint_firewall`. Install and bind `kickside/work` and
-`kickside/widgets` as usual. Automated stage Flow bindings require Work 0.1.3
-or later. Visibility removal uses Work's reviewed `remove.visibility` schema
-operation.
+`kickside/widgets` as usual. Work Admin requires Work 0.1.5 or later for
+board ADMIN schema options, typed board admission, and the reviewed
+`remove.visibility` schema operation. This floor also supports automated stage
+Flow bindings.
 
 `kickside.work.admin:admin` announces `kickside-work-admin` and the
 `ui.settings_tab` mount. The platform checks
@@ -63,9 +64,11 @@ make test-pg WORK_ADMIN_PG_PORT=5434
 ```
 
 The standalone harness uses the real authenticated platform stack and the
-sibling Work source. It validates the advertised schemas for all 41 static Work
-tools using the published MCP endpoint. The published Work probe installs the
-locked minimum release and plans, applies and reloads a published Flow binding.
+sibling Work source. It validates `structuredContent` against the advertised
+output schemas for all 41 static Work tools through MCP 0.2.14 or later. The
+published Work probe installs the exact minimum Work release and exercises a
+published Flow binding, ADMIN-only schema options, visibility removal, and
+saved-view rejection.
 The custom scope probe exercises both helpers with a host-selected group. The
 harness fails for empty suites and failed cases. PostgreSQL
 uses the `postgres` profile; supply a fresh database through

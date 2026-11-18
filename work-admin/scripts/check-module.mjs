@@ -68,9 +68,6 @@ assert.equal(harness.workspace.replacements['kickside/work-admin'], '..')
 assert.equal(harness.workspace.replacements['kickside/work'], '../../work')
 assert(Object.keys(harness.workspace.replacements).every(id => ['kickside/work-admin', 'kickside/work', 'kickside/agent-onboarding', 'kickside/sso', 'kickside/dashboard'].includes(id)))
 const lock = parse(read('test/wippy.lock'))
-const publishedWork = lock.modules.find(module => module.name === 'kickside/work')
-assert.equal(publishedWork.version, minimumWork, 'the published harness exercises the minimum Work release')
-assert.match(publishedWork.hash, /^[a-f0-9]{64}$/)
 const floors = { 'kickside/component': '0.3.20', 'kickside/core': '0.3.17', 'kickside/jobs': '0.1.80' }
 const version = value => value.split('.').map(Number)
 for (const [name, floor] of Object.entries(floors)) {

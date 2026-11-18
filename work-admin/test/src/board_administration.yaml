@@ -17,7 +17,7 @@ entries:
     meta:
       type: kickside.work.plugin
       attachment: app:ui_attachment
-      seams: [app:settings_integer_field]
+      seams: [app:settings_integer_field, app:settings_reference_field, app:settings_quantity_field]
   - name: settings_integer_field
     kind: registry.entry
     meta:
@@ -26,6 +26,31 @@ entries:
       plugin: app:settings_plugin
       form: int
       indexes: [none, number]
+  - name: settings_reference_field
+    kind: registry.entry
+    meta:
+      type: kickside.work.type
+      title: Installed reference field
+      plugin: app:settings_plugin
+      form: ref
+      config_schema:
+        type: object
+        properties:
+          target: { type: string }
+        required: [target]
+  - name: settings_quantity_field
+    kind: registry.entry
+    meta:
+      type: kickside.work.type
+      title: Installed measurement field
+      plugin: app:settings_plugin
+      form: quantity
+      config_schema:
+        type: object
+        properties:
+          canonical: { type: string }
+          units: { type: object }
+        required: [canonical, units]
   - name: settings_view_type
     kind: registry.entry
     meta:
@@ -36,6 +61,6 @@ entries:
     kind: security.policy
     groups: [kickside.security.groups:members]
     policy:
-      resources: [app:settings_plugin, app:settings_integer_field, app:settings_view_type]
+      resources: [app:settings_plugin, app:settings_integer_field, app:settings_reference_field, app:settings_quantity_field, app:settings_view_type]
       actions: [registry.get, registry.find]
       effect: allow

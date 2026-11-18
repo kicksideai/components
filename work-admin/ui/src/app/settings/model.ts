@@ -63,6 +63,9 @@ export function renameField(draft: Declaration, field: Field, code: string) {
 }
 export function requestDeclaration(draft: Declaration, original: Declaration): Declaration {
   const out = clone(draft)
+  for (const field of out.fields ?? []) {
+    if (field.type?.includes(':')) delete field.form
+  }
   const removed = { ...out.remove }
   if (original.visibility && !out.visibility) removed.visibility = true
   else delete removed.visibility

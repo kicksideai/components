@@ -76,10 +76,12 @@ local function checked_tools(rpc, exercised)
         local result = rpc("tools/call", { name = name, arguments = args or table.create(0, 1) })
         local payload = result.content[1].text
         assert(not result.isError, name .. ": " .. payload)
-        local valid, validation_err = json.validate_string(descriptor.outputSchema, payload)
+        local structured = result.structuredContent
+        test.not_nil(structured, name .. " omitted structuredContent")
+        local valid, validation_err = json.validate_string(descriptor.outputSchema, assert(json.encode(structured)))
         test.is_true(valid, name .. ": " .. tostring(validation_err))
         exercised[name] = true
-        return assert(json.decode(payload))
+        return structured
     end
 end
 

@@ -14,10 +14,12 @@ import InputText from 'primevue/inputtext'
 import { fieldTitle, humanize } from '../../forms'
 import { useReorder } from './reorder'
 import OptionsEditor from './OptionsEditor.vue'
-import type { Declaration, Field } from '../../types'
+import type { Declaration, Field, FieldTypeOption } from '../../types'
 import { move, renameField, removeEntry, type RemovalGuard, type SchemaChange, changeReason } from './model'
+import ConfigForm from './ConfigForm.vue'
 import JsonInput from './JsonInput.vue'
-const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[]; boardId?: string; installedTypes?: { id: string; title: string }[] }>()
+import { configFields } from './config'
+const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[]; boardId?: string; installedTypes?: FieldTypeOption[] }>()
 const emit = defineEmits<{ validity: [key: string, valid: boolean] }>()
 const fields = computed(() => props.draft.fields ?? [])
 const code = ref(''), removing = ref(''), reason = ref<Record<string, string>>({})
@@ -31,6 +33,16 @@ async function remove(field: Field) {
 }
 const forms = Object.entries({ text: 'Text', int: 'Whole number', dec: 'Decimal number', quantity: 'Measurement', bool: 'Yes or no', time: 'Date or time', ref: 'Reference', record: 'Structured data', option: 'Choice', principal: 'Person or group', item: 'Work item', rank: 'Order', rich_text: 'Formatted text', formula: 'Formula', rollup: 'Related item calculation', counter: 'Counter' }).map(([value, label]) => ({ value, label }))
 function kind(field: Field) { return field.type && field.type !== 'value' ? field.type : field.form ?? 'text' }
+const installed = computed(() => new Map(props.installedTypes?.map(type => [type.id, type])))
+function configSchema(field: Field) {
+  const schema = installed.value.get(kind(field))?.config_schema
+  return schema && configFields(schema).length ? schema : undefined
+}
+function hasFormConfig(field: Field) {
+  const type = installed.value.get(kind(field))
+  const form = type?.form ?? field.form
+  return !!type?.config_schema || ['dec', 'quantity', 'ref', 'time', 'record'].includes(form ?? '') || !!field.config
+}
 function setCustomType(field: Field, type: string) {
   field.type = type
   delete field.form
@@ -57,7 +69,7 @@ function add() { if (!/^[a-z][a-z0-9_]*$/.test(code.value) || fields.value.some(
   <section class="work-stack" aria-label="Fields editor">
     <header class="work-section-heading"><div><h2>Fields</h2><p class="work-muted work-small">Shape the information each item carries. Drag the handle or use the arrows to arrange fields.</p></div><Tag class="kx-tag-sm" severity="secondary">{{ fields.length }} {{ fields.length === 1 ? 'field' : 'fields' }}</Tag></header>
     <DefinitionList v-reorder columns="fields" :count="fields.length">
-    <DefinitionRow :title="fieldTitle(field)" :code="field.code" :kind="installedTypes?.find(t => t.id === kind(field))?.title || forms.find(f => f.value === kind(field))?.label || humanize(kind(field))" v-for="(field, index) in fields" :key="field.id ?? index" class="work-field-row work-reorder-entry work-stack">
+    <DefinitionRow :title="fieldTitle(field)" :code="field.code" :kind="installed.get(kind(field))?.title || forms.find(f => f.value === kind(field))?.label || humanize(kind(field))" v-for="(field, index) in fields" :key="field.id ?? index" class="work-field-row work-reorder-entry work-stack">
       <template #handle><Button type="button" class="work-reorder-handle work-icon-button" :aria-label="'Drag ' + field.code + '; arrow keys reorder'" @keydown.up.prevent="reorder(index, -1)" @keydown.down.prevent="reorder(index, 1)" severity="secondary" text size="small"><Icon icon="tabler:grip-vertical" aria-hidden="true" /></Button></template>
       <template #flags><Tag v-if="field.track" class="kx-tag-sm" severity="secondary" value="Tracked" /><Tag v-if="field.intervals" class="kx-tag-sm" severity="secondary" value="Intervals" /></template>
       <template #usage><details v-if="usedBy(field.code).length" class="work-used-by"><summary class="kx-tag-sm">Used by {{ usedBy(field.code).length }} {{ usedBy(field.code).length === 1 ? 'type' : 'types' }}</summary><span class="work-small work-muted">{{ usedBy(field.code).join(', ') }}</span></details></template>
@@ -78,7 +90,8 @@ function add() { if (!/^[a-z][a-z0-9_]*$/.test(code.value) || fields.value.some(
       <label v-if="field.type === 'formula' || field.type === 'rollup'" class="work-stack work-tight">Result type<Select v-model="field.form" aria-label="Result type" :options="forms.slice(0, 8)" optionLabel="label" optionValue="value" appendTo="self" /></label>
       <label v-if="field.type === 'formula'" class="work-stack work-tight">Expression<InputText v-model="field.expression" /></label>
       <template v-if="field.type === 'rollup'"><label class="work-stack work-tight">Of<InputText v-model="field.of" /></label><label class="work-stack work-tight">Function<InputText v-model="field.fn" /></label><label class="work-stack work-tight">Field<InputText v-model="field.field" /></label><label class="work-stack work-tight">Order by<Select :model-value="field.by" aria-label="Rollup order" :options="['rank', 'time']" showClear appendTo="self" @update:model-value="field.by = $event || undefined" /></label><ConditionEditor v-model="field.where" :draft="draft" :board-id="boardId" label="Include related items when" @validity="emit('validity', 'rollup-' + index, $event)" /></template>
-      <JsonInput v-if="['dec', 'quantity', 'ref', 'time', 'record'].includes(field.form ?? '') || field.config" label="Field configuration" :model-value="field.config" shape="object" @update:model-value="field.config = $event as Field['config']" @validity="emit('validity', 'config-' + index, $event)" />
+      <ConfigForm v-if="configSchema(field)" :key="field.type" :schema="configSchema(field)!" :model-value="field.config ?? {}" @update:model-value="field.config = $event" @validity="emit('validity', 'config-' + index, $event)" />
+      <JsonInput v-else-if="hasFormConfig(field)" label="Field configuration" :model-value="field.config" shape="object" @update:model-value="field.config = $event as Field['config']" @validity="emit('validity', 'config-' + index, $event)" />
       <section class="work-stack"><h4 class="work-group-title">Access</h4><label v-if="installedTypes?.length" class="work-stack work-tight">Custom field type<Select aria-label="Custom field type" :model-value="field.type" :options="installedTypes" optionLabel="title" optionValue="id" appendTo="self" @update:model-value="setCustomType(field, $event)" /></label><HoldersPicker :board-id="boardId" v-for="mode in (['read', 'write'] as const)" :key="mode" :label="mode === 'read' ? 'Who can read' : 'Who can edit'" :model-value="field.access?.[mode]" @update:model-value="field.access = { ...field.access, [mode]: $event }" @validity="emit('validity', 'access-' + index + mode, $event)" /></section>
     </DefinitionRow>
     <div class="work-row work-add-definition"><label class="work-stack work-tight">New field identifier<InputText v-model="code" @keydown.enter.prevent="add" /></label><Button label="Add field" severity="secondary" :disabled="!code.trim()" @click="add" outlined><template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template></Button></div>

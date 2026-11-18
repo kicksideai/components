@@ -8,6 +8,7 @@ import { expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
 import FieldsEditor from './FieldsEditor.vue'
+import ConfigForm from './ConfigForm.vue'
 import StateSettings from './StateSettings.vue'
 import DurationControl from './DurationControl.vue'
 import PolicyEditor from './PolicyEditor.vue'
@@ -33,10 +34,45 @@ it('keeps Work field kinds canonical and persists display reordering in item typ
 })
 it('submits a newly selected installed field type without the primitive form', async () => {
   const draft = reactive<Declaration>({ fields: [{ code: 'quantity', form: 'text', cardinality: 'one' }] })
-  const iron = { id: 'app:integer_field', title: 'Whole units' }
+  const iron = { id: 'app:integer_field', title: 'Whole units', form: 'int' } as const
   const w = mount(FieldsEditor, { props: { draft, installedTypes: [iron] } })
   await w.findAllComponents(Select).at(-1)!.setValue(iron.id)
   expect(requestDeclaration(draft, {}).fields).toEqual([{ code: 'quantity', type: iron.id, cardinality: 'one' }])
+  w.unmount()
+})
+it.each([
+  {
+    form: 'ref',
+    properties: { target: { type: 'string', title: 'Reference target' } },
+    config: { target: 'app:record' },
+  },
+  {
+    form: 'quantity',
+    properties: { canonical: { type: 'string', title: 'Canonical unit' }, units: { type: 'object' } },
+    config: { canonical: 'kg', units: { kg: '1' } },
+  },
+] as const)('edits configuration for a newly selected installed $form field', async ({ form, properties, config }) => {
+  const draft = reactive<Declaration>({ fields: [{ code: 'custom', form: 'text', cardinality: 'one' }] })
+  const type = { id: 'app:custom_field', title: 'Custom', form, config_schema: {
+    type: 'object', properties, required: Object.keys(properties),
+  } }
+  const w = mount(FieldsEditor, { props: { draft, installedTypes: [type] } })
+  await w.findAllComponents(Select).at(-1)!.setValue(type.id)
+  await w.get('input[aria-label="' + (form === 'ref' ? 'Reference target' : 'Canonical unit') + '"]').setValue(
+    form === 'ref' ? config.target : config.canonical,
+  )
+  if (form === 'quantity') await w.get('textarea[aria-label="Units"]').setValue(JSON.stringify(config.units))
+  expect(w.getComponent(ConfigForm).props('schema')).toEqual(type.config_schema)
+  expect(requestDeclaration(draft, {}).fields).toEqual([{ code: 'custom', type: type.id, cardinality: 'one', config }])
+  w.unmount()
+})
+it('uses the installed form for configuration when the type has no schema', async () => {
+  const draft = reactive<Declaration>({ fields: [{ code: 'custom', form: 'text' }] })
+  const type = { id: 'app:reference', title: 'Custom reference', form: 'ref' } as const
+  const w = mount(FieldsEditor, { props: { draft, installedTypes: [type] } })
+  await w.findAllComponents(Select).at(-1)!.setValue(type.id)
+  await w.get('textarea[aria-label="Field configuration"]').setValue('{"target":"app:record"}')
+  expect(requestDeclaration(draft, {}).fields).toEqual([{ code: 'custom', type: type.id, config: { target: 'app:record' } }])
   w.unmount()
 })
 it('edits per-kind stage, approval, parallel and timer settings in their process section', async () => {

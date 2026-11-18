@@ -36,6 +36,10 @@ local function cases()
             local options, err = administrator.call("schema_options", {}, id)
             test.is_nil(err, tostring(err))
             test.not_nil(options)
+            local response = administrator.get("/work-admin/boards/" .. id .. "/options")
+            test.eq(response.status, 200, json.encode(response.body))
+            test.is_true(response.body.data.access.admin)
+            test.is_false(response.body.data.access.read)
             local _, read_err = administrator.call("get_schema", {}, id)
             test.not_nil(read_err)
             test.eq(read_err:kind(), errors.PERMISSION_DENIED)
@@ -155,6 +159,31 @@ local function cases()
             local loaded = owner.post(path .. "/get_schema", {})
             test.eq(loaded.status, 200, json.encode(loaded.body))
             test.eq(loaded.body.data.compiled.fields[2].form, "int")
+        end)
+
+        test.it("advertises the configuration for installed reference and measurement fields", function()
+            local owner = session.admin()
+            local id = board(owner)
+            local path = "/work/boards/" .. id
+            local activated = owner.post(path .. "/apply_schema", {
+                declaration = { plugins = { { use = "app:settings_plugin" } } },
+                expected_generation = 1, key = (uuid.v4()),
+            })
+            test.eq(activated.status, 200, json.encode(activated.body))
+            local options = owner.get("/work-admin/boards/" .. id .. "/options")
+            test.eq(options.status, 200, json.encode(options.body))
+            local types = {}
+            for _, field in ipairs(options.body.data.installed_types) do types[field.id] = field end
+            local ref, measure = types["app:settings_reference_field"], types["app:settings_quantity_field"]
+            test.eq(ref.form, "ref")
+            test.eq(ref.config_schema.properties.target.type, "string")
+            test.eq(measure.form, "quantity")
+            test.eq(measure.config_schema.properties.units.type, "object")
+            local selected = owner.post(path .. "/plan_schema", { expected_generation = 2, declaration = { fields = {
+                { code = "external_ref", type = ref.id, config = { target = "app:record" } },
+                { code = "mass", type = measure.id, config = { canonical = "kg", units = { kg = "1" } } },
+            } } })
+            test.eq(selected.status, 200, json.encode(selected.body))
         end)
     end)
 end

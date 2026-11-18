@@ -2311,7 +2311,10 @@ function gt(e, d, c) {
   }
 }
 function wt(e, d) {
-  const c = J(e), f = { ...c.remove };
+  const c = J(e);
+  for (const h of c.fields ?? [])
+    h.type?.includes(":") && delete h.form;
+  const f = { ...c.remove };
   d.visibility && !c.visibility ? f.visibility = !0 : delete f.visibility;
   for (const h of ["fields", "item_types", "processes", "relation_types"]) {
     const p = (d[h] ?? []).filter((l) => {
@@ -2442,4 +2445,4 @@ export {
   ct as y,
   Ee as z
 };
-//# sourceMappingURL=latestRequest-C9n6N5u0.js.map
+//# sourceMappingURL=latestRequest-C7gISMH8.js.map

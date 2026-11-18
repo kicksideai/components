@@ -8,8 +8,13 @@ function M.field_types(): ({ types.FieldTypeOption }?, error?)
     if err then return nil, errors.wrap(err, "field type discovery failed") end
     local out: { types.FieldTypeOption } = {}
     for _, entry in ipairs(entries or {}) do
-        local meta = entry.meta :: { [string]: unknown }
-        out[#out + 1] = { id = entry.id, title = type(meta.title) == "string" and meta.title :: string or "Custom field type" }
+        local meta = entry.meta :: types.Map
+        if type(meta.form) == "string" then
+            out[#out + 1] = {
+                id = entry.id, title = type(meta.title) == "string" and meta.title :: string or "Custom field type",
+                form = meta.form :: string, config_schema = type(meta.config_schema) == "table" and meta.config_schema :: types.Map or nil,
+            }
+        end
     end
     table.sort(out, function(a: types.FieldTypeOption, b: types.FieldTypeOption): boolean return a.title < b.title end)
     return out, nil
