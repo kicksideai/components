@@ -275,17 +275,87 @@ local function define()
     end)
 
     test.describe("text search", function()
+        test.it("uses Unicode case folding for literal SKU prefixes", function()
+            local h = fixture.catalog({ bare = true })
+            for _, sku in ipairs({ "CAFÉ-01", "Straße-01", "%_one", "XYone" }) do
+                test.eq(steps.one(h, { product = { sku = sku }, create = { family = "generic" } }).outcome, "created")
+            end
+            test.eq(count(h, { text = "CAFÉ-" }), 1)
+            test.eq(count(h, { text = "café-" }), 1)
+            test.eq(count(h, { text = "cafe-" }), 0)
+            test.eq(count(h, { text = "STRASSE-" }), 1)
+            test.eq(count(h, { text = "%_" }), 1)
+        end)
+
+        test.it("finds long Unicode tokens and requires every search token", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            test.eq(count(h, { text = "boot" }), 6)
+            test.eq(count(h, { text = string.rep("x", 2100) .. " boot" }), 0)
+            local token = string.rep("é", 1100)
+            local outcome = steps.one(h, { product = { sku = "RDG" }, expect_version = 1,
+                set = { { attr = "core.name", ctx = { locale = "en" }, value = token .. " boot" } } })
+            test.eq(outcome.outcome, "updated")
+            test.eq(count(h, { text = token }), 6)
+            test.eq(count(h, { text = string.rep("É", 1100) .. " boot" }), 6)
+            local counted = assert(query(h, { text = token .. " boot", count = true, limit = 1 }))
+            test.eq(counted.total, 6)
+            test.is_false(counted.estimated)
+            test.eq(count(h, { text = token .. "x boot" }), 0)
+            test.eq(count(h, { text = string.rep("e", 1100) .. " boot" }), 0)
+        end)
+
+        test.it("folds and searches large Unicode documents across all three lineage levels", function()
+            local h = fixture.catalog({ bare = true })
+            assert(h.call("apply_schema", { declaration = {
+                aspects = { { namespace = "search", attributes = {
+                    { code = "root", type = "kickside.pim.types:text", index = "text" },
+                    { code = "middle", type = "kickside.pim.types:text", index = "text" },
+                    { code = "leaf", type = "kickside.pim.types:text", index = "text" },
+                    { code = "color", type = "kickside.pim.types:integer" },
+                    { code = "size", type = "kickside.pim.types:integer" },
+                } } },
+                families = { { code = "searchable", aspects = { "search" }, variation = {
+                    { axes = { "search.color" }, own = { "search.middle" } },
+                    { axes = { "search.size" }, own = { "search.leaf" } },
+                } } },
+            } }))
+            local function token(n: integer, prefix: string): string
+                return prefix .. string.format("%04d", n)
+            end
+            local lower, upper = string.rep("é", 492), string.rep("É", 492)
+            local function document(first: integer): string
+                local words = {}
+                for n = 1, 220 do words[n] = token(first + n - 1, lower) end
+                return table.concat(words, " ")
+            end
+            test.eq(steps.one(h, { product = { sku = "ROOT" }, create = { family = "searchable" },
+                set = { { attr = "search.root", value = document(1) } } }).outcome, "created")
+            test.eq(steps.one(h, { product = { sku = "MID" }, create = { parent = { sku = "ROOT" } },
+                set = { { attr = "search.color", value = 1 }, { attr = "search.middle", value = document(221) } } }).outcome, "created")
+            local out, err = steps.apply(h, { { product = { sku = "LEAF" }, create = { parent = { sku = "MID" } },
+                set = { { attr = "search.size", value = 1 }, { attr = "search.leaf", value = document(441) } } } })
+            assert(out and not err, tostring(err))
+            test.eq(out.outcomes[1].outcome, "created")
+            local terms = token(660, upper) .. " " .. token(221, lower) .. " " .. token(1, lower)
+            local found = assert(query(h, { text = terms, count = true }))
+            test.eq(found.total, 1)
+            test.eq(found.items[1].sku, "LEAF")
+            test.eq(count(h, { text = terms .. " " .. token(661, lower) }), 0)
+        end)
+
         test.it("matches all tokens in any order with punctuation and Unicode case", function()
             local h = fixture.catalog()
             fixture.boot(h)
             steps.one(h, { product = { sku = "RDG" }, expect_version = "any",
-                set = { { attr = "core.name", ctx = { locale = "en" }, value = "red leather boot CAFÉ ΜΠΟΤΑ БОТИНОК hello@example.org" } } })
+                set = { { attr = "core.name", ctx = { locale = "en" }, value = "red leather boot CAFÉ ΜΠΟΤΑ БОТИНОК hello@example.org %_" } } })
             for _, text in ipairs({ "red boot", "boot red", "red,boot", '"red boot"', 'red "boot',
                 "café", "CAFÉ", "μποτα", "ботинок", "hello example org" }) do
                 test.eq(count(h, { text = text }), 6, text)
             end
             test.eq(count(h, { text = "cafe" }), 0)
             test.eq(count(h, { text = "!!!" }), 0)
+            test.eq(count(h, { text = "%_" }), 0)
         end)
 
         test.it("ignores empty text, tolerates quotes and finds indexed words", function()

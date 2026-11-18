@@ -615,8 +615,8 @@ generates the SQL with its dialect compiler, so no plugin SQL text exists:
 A query names it: `scopes: [{ id: "inventory.pim:stock", where: { available:
 { gt: 0 }, location: { eq: "WH1" } } }]`. PIM validates identifiers against
 `^[a-z_][a-z0-9_]{0,62}$`, values against the declared types and ops, and
-ANDs `item.product_id IN (SELECT product_column FROM table WHERE
-catalog_column = ? AND …)`. Predicates within one scope combine with AND.
+requires a row matching the candidate's catalog and product ID and all
+predicates in the scope. Predicates within one scope combine with AND.
 An unknown scope or a missing table is `invalid`; a database error is
 `unavailable`. The plugin owns the table, its retention and an index leading
 with `(catalog_column, product_column)`; PIM cannot verify the index, so the
@@ -1349,9 +1349,19 @@ changes a property's type. A frozen baseline in the test suite enforces this.
 Text search requires every maximal Unicode letter/number token, in any order,
 across indexed text. Indexing and queries use that same token grammar on both
 engines. Punctuation, including quotes, separates tokens; quotes do not request
-phrases. Matching ignores Unicode letter case and preserves accents. An input
-with no tokens has no text matches. SKU prefix matching also applies to the
-original input, independently of text tokens.
+phrases. Both engines use default Unicode case folding for text and SKU prefixes
+and preserve accents. Each distinct token uses a lexeme of at most 65 bytes,
+with a digest for longer encodings. PostgreSQL stores these lexemes in an indexed
+array so the search representation can hold every token across the lineage.
+An input with no tokens has no text matches. SKU prefix matching uses the entire
+input, including punctuation.
+
+An item sort puts nulls last in both directions and breaks ties by ascending
+product ID. A filtered page admits candidates in that order before applying
+filters. The scan budget covers all ranges of the page, including ties and
+nulls. The count uses its own bounded walk in ascending product ID, independent
+of sort and continuation. The same walk reads one extra key to identify a count
+that exhausted its scan budget. Filters apply only within that budget.
 
 Reads run in one read snapshot and return `as_of`. PostgreSQL snapshots use
 a read-only repeatable-read transaction; SQLite uses one read transaction.
@@ -1602,6 +1612,9 @@ pullable. Consumers that receive this error rebuild their replicas from cursor
 zero and pass each new continuation unchanged. This allows a fresh consumer to
 page through live publications older than the observed boundary. A position at
 the boundary remains valid, including when several withdrawals share a sequence.
+
+A family-filtered change feed seeks directly into each requested family's
+ordered changes and merges bounded pages in the feed's `(updated_seq, product_id)` order.
 
 | Surface | Kind | Contract |
 |---|---|---|

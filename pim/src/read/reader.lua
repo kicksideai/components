@@ -165,7 +165,7 @@ function M.query(catalog_id: string, request: types.QueryRequest?): (types.Query
             if perr or not parent then return nil, perr end
             item_filter.parent_id = parent.product_id
         end
-        local conditions = read_model.item_conditions(item_filter)
+        local conditions = read_model.item_conditions(catalog_id, item_filter)
         if q.published then
             conditions[#conditions + 1] = read_model.published_condition(catalog_id, q.published.channel)
         end
@@ -204,7 +204,7 @@ function M.query(catalog_id: string, request: types.QueryRequest?): (types.Query
         local page: types.ItemQuery = { where = q.where, text = q.text, sort = q.sort, after = q.after,
             count = q.count and consts.LIMITS.count or nil, scan = consts.LIMITS.scan }
         local plan, berr = select.items(caller, layout.of(catalog.item_table, compiled.layout), dialect, page, resolve_field, admitted,
-            conditions, { "version", "status", "family" }, limit)
+            conditions, { "version", "status", "family" })
         if berr or not plan then return nil, berr end
         local rows, total, estimated, stopped, ierr = read_model.items(tx, dialect, plan, limit)
         if ierr or not rows then return nil, ierr end
@@ -440,8 +440,8 @@ function M.links(catalog_id: string, request: types.LinksRequest): (types.LinksR
         or type(after.ctx) ~= "string" or type(after.path) ~= "string") then
         return nil, invalid("after must be a links cursor")
     end
-    return with_snapshot(caller, function(tx: types.Executor, catalog: types.Catalog, _dialect: string): (types.LinksResult?, error?)
-        local rows, err = read_model.links(tx, catalog_id, request.kind, request.target, request.after, limit + 1)
+    return with_snapshot(caller, function(tx: types.Executor, catalog: types.Catalog, dialect: string): (types.LinksResult?, error?)
+        local rows, err = read_model.links(tx, dialect, catalog_id, request.kind, request.target, request.after, limit + 1)
         if err then return nil, err end
         local by_id = catalog.compiled.by_id or {}
         local items: { types.LinkRow } = {}

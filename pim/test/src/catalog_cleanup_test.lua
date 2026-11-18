@@ -98,7 +98,7 @@ local function define()
                 local key = "cleanup-" .. i
                 assert(tx:execute([[INSERT INTO kickside_pim_release_job (catalog_id, request_id, model_id, root, identity, job_id, after_product, done)
                     VALUES ($1, $2, $2, 1, '{}', $2, '', 0)]], { h.id, key }))
-                assert(tx:execute("INSERT INTO " .. current.item_table .. "_item (product_id, root_id, family, status, version, updated_seq, findings) VALUES ($1, $1, 'generic', 'active', 1, 1, '{}')", { key }))
+                assert(tx:execute("INSERT INTO " .. current.item_table .. "_item (product_id, root_id, family, status, version, updated_seq, findings, sku_fold) VALUES ($1, $1, 'generic', 'active', 1, 1, '{}', $1)", { key }))
                 assert(tx:execute("INSERT INTO " .. current.item_table .. "_set (product_id, col, value_key) VALUES ($1, 'cleanup', 'value')", { key }))
                 assert(tx:execute([[INSERT INTO kickside_pim_change (catalog_id, seq, n, subject, kind, actor, at) VALUES ($1, $2, 1, 'schema', 'schema', 'actor', 'now')]], { h.id, 10000 + i }))
                 assert(tx:execute([[INSERT INTO kickside_pim_merge (catalog_id, vocabulary, from_code, into_code, identity, requested_by, created_at) VALUES ($1, 'v', $2, 'b', '{}', 'actor', 'now')]], { h.id, key }))

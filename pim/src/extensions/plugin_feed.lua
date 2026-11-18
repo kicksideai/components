@@ -55,7 +55,7 @@ function M.page(catalog_id: string, request: types.PluginFeedRequest): (types.Pl
             body=decoded :: Body?
         end
     end
-    local result,_,serr=store.snapshot(catalog_id,function(tx: types.Executor,catalog: types.Catalog,_dialect: string): (types.PluginFeed?,error?)
+    local result,_,serr=store.snapshot(catalog_id,function(tx: types.Executor,catalog: types.Catalog,dialect: string): (types.PluginFeed?,error?)
     local intent = catalog.plugin_state[request.plugin]
     if not intent or not intent.active then
         return nil, errors.new({ kind = errors.NOT_FOUND, message = "plugin is inactive", details = { code = "plugin_inactive" } })
@@ -78,11 +78,11 @@ function M.page(catalog_id: string, request: types.PluginFeedRequest): (types.Pl
     if registration.start_seq~=intent.seq or not values.equal(registration.config,intent.config) or registration.attachment_id~=intent.attachment_id or registration.revision~=declared.revision then
         return nil,errors.new({kind=errors.UNAVAILABLE,retryable=true,message="plugin registration differs from captured intent",details={code="plugin_registration_pending"}})
     end
-    local page, ferr = feeds.changes_snapshot(tx,catalog,{cursor=token.cursor},200)
+    local page, ferr = feeds.changes_snapshot(tx,dialect,catalog,{cursor=token.cursor},200)
     if ferr or not page then return nil, ferr end
     if page.gap then
         token.cursor, token.bootstrapping = nil, true
-        page, ferr = feeds.changes_snapshot(tx,catalog,{},200)
+        page, ferr = feeds.changes_snapshot(tx,dialect,catalog,{},200)
         if ferr or not page then return nil, ferr end
     end
     page.as_of=catalog.applied_seq

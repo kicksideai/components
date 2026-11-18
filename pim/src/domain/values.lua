@@ -258,7 +258,7 @@ function M.key(form: string, value: types.Scalar, config: types.AttributeConfig?
     if form == "text" then
         local text = value :: string
         -- Match each UTF-8 code point in a normalized text value.
-        key = cfg.case == "insensitive" and text:gsub("[\1-\127\194-\244][\128-\191]*", case_folding) or text
+        key = cfg.case == "insensitive" and case_folding.fold(text) or text
     elseif form == "int" then
         key = tostring(value :: integer)
     elseif form == "dec" then

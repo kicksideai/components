@@ -99,6 +99,7 @@ local POSTGRES = {
     [[CREATE INDEX kickside_pim_product_retention ON kickside_pim_product (catalog_id, state, state_at, product_id) WHERE state <> 'live']],
     [[CREATE INDEX kickside_pim_product_root ON kickside_pim_product (catalog_id, root_id)]],
     [[CREATE INDEX kickside_pim_product_changes ON kickside_pim_product (catalog_id, updated_seq, product_id)]],
+    [[CREATE INDEX kickside_pim_product_family_changes ON kickside_pim_product (catalog_id, family, updated_seq, product_id)]],
     [[CREATE INDEX kickside_pim_product_parent ON kickside_pim_product (catalog_id, parent_id)]],
     [[CREATE TABLE kickside_pim_ref (
         catalog_id text NOT NULL,
@@ -110,7 +111,7 @@ local POSTGRES = {
         target text NOT NULL,
         PRIMARY KEY (catalog_id, product_id, attribute_id, ctx, path))]],
     [[CREATE INDEX kickside_pim_ref_attribute ON kickside_pim_ref(catalog_id, attribute_id, product_id, ctx, path)]],
-    [[CREATE INDEX kickside_pim_ref_target ON kickside_pim_ref (catalog_id, kind, target, product_id)]],
+    [[CREATE INDEX kickside_pim_ref_target ON kickside_pim_ref (catalog_id, kind, target, product_id, attribute_id, ctx, path)]],
     [[CREATE TABLE kickside_pim_unique_value (
         catalog_id text NOT NULL,
         attribute_id integer NOT NULL,
@@ -185,7 +186,7 @@ local POSTGRES = {
         origin text,
         at text NOT NULL,
         PRIMARY KEY (catalog_id, seq, n))]],
-    [[CREATE INDEX kickside_pim_change_subject ON kickside_pim_change (catalog_id, subject, seq)]],
+    [[CREATE INDEX kickside_pim_change_subject ON kickside_pim_change (catalog_id, subject, seq, n)]],
     [[CREATE INDEX kickside_pim_change_at ON kickside_pim_change (catalog_id, at, seq, n)]],
     [[CREATE TABLE kickside_pim_attribute_usage (
         catalog_id text NOT NULL,

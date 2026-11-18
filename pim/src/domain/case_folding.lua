@@ -43,7 +43,7 @@ dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 ]]
 
-return {
+local mappings = {
     ["A"] = "a", ["B"] = "b", ["C"] = "c", ["D"] = "d", ["E"] = "e", ["F"] = "f",
     ["G"] = "g", ["H"] = "h", ["I"] = "i", ["J"] = "j", ["K"] = "k", ["L"] = "l",
     ["M"] = "m", ["N"] = "n", ["O"] = "o", ["P"] = "p", ["Q"] = "q", ["R"] = "r",
@@ -310,3 +310,11 @@ return {
     ["𞤛"] = "𞤽", ["𞤜"] = "𞤾", ["𞤝"] = "𞤿", ["𞤞"] = "𞥀", ["𞤟"] = "𞥁", ["𞤠"] = "𞥂",
     ["𞤡"] = "𞥃",
 }
+
+local M = {}
+
+function M.fold(value: string): string
+    return (value:gsub("[A-Z\194-\244][\128-\191]*", mappings))
+end
+
+return M

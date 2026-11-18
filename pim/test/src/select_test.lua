@@ -56,8 +56,8 @@ local function exec(h: sql.DB, statement: string, params: { unknown }?)
     assert(not err, tostring(err))
 end
 
-local function system(status: string, version: integer): { [string]: types.ColumnValue }
-    return { root_id = "r", family = "f", status = status, version = version, updated_seq = 1, findings = "{}" }
+local function system(status: string, version: integer, sku_fold: string): { [string]: types.ColumnValue }
+    return { root_id = "r", family = "f", status = status, version = version, updated_seq = 1, findings = "{}", sku_fold = sku_fold }
 end
 
 -- fixture builds a fresh table set and ten items r01..r10.
@@ -74,7 +74,7 @@ local function fixture(h: sql.DB): types.Table
             { CATALOG, id, "C-" .. i, id })
         local values: { [string]: types.ColumnValue } = { f1 = i % 2 == 0 and "moss" or "slate" }
         if i <= 8 then values.f2 = 100 - i * 10 end
-        rows[#rows + 1] = { id = id, system = system(i == 10 and "draft" or "active", 1), values = values,
+        rows[#rows + 1] = { id = id, system = system(i == 10 and "draft" or "active", 1, "c-" .. i), values = values,
             sets = { f3 = i <= 3 and { "a", "b" } or { "c" } }, text = i == 5 and "red hiking boot" or "plain item",
             flags = { g1 = i % 3 == 0 and 1 or 0 } }
     end
@@ -85,11 +85,11 @@ end
 local function run(h: sql.DB, t: types.Table, q: types.ItemQuery, opts: Map?): ({ string }?, types.Cursor?, error?)
     local o: Map = opts or {}
     local plan, err = select.items(reader(o.level :: string? or "read"), t, h:type(), q, resolve,
-        (o.admitted :: { types.AdmittedScope }?) or {}, (o.conditions :: { types.Condition }?) or {}, { "status" }, (o.limit :: integer?) or 50)
+        (o.admitted :: { types.AdmittedScope }?) or {}, (o.conditions :: { types.Condition }?) or {}, { "status" })
     if err or not plan then return nil, nil, err end
-    local executor = assert(plan.query:run_with(h))
-    local rows = assert(executor:query())
     local limit: integer = (o.limit :: integer?) or 50
+    local rows, _, qerr = select.rows(h, plan, limit)
+    assert(rows, tostring(qerr))
     local out: { string } = {}
     for i = 1, math.min(#rows, limit) do out[i] = tostring(rows[i].product_id) end
     local after: types.Cursor? = nil
@@ -273,7 +273,7 @@ local function define()
         test.it("replaces an item's rows on rewrite", function()
             local h = db()
             local t = fixture(h)
-            assert(not layout.write_rows(h, h:type(), t, { { id = "r01", system = system("active", 2), values = { f1 = "clay" },
+            assert(not layout.write_rows(h, h:type(), t, { { id = "r01", system = system("active", 2, "c-1"), values = { f1 = "clay" },
                 sets = { f3 = { "z" } }, text = "fresh words", flags = { g1 = 1 } } }))
             test.eq(#ids(h, t, { where = { field = "color", op = "eq", value = "clay" } }), 1)
             test.eq(#ids(h, t, { where = { field = "tags", op = "has", value = "a" } }), 2)
@@ -365,8 +365,8 @@ local function define()
         test.it("selects the sku and named system columns", function()
             local h = db()
             local t = fixture(h)
-            local plan = assert(select.items(reader("read"), t, h:type(), {}, resolve, {}, {}, { "status", "version" }, 1))
-            local rows = assert(assert(plan.query:run_with(h)):query())
+            local plan = assert(select.items(reader("read"), t, h:type(), {}, resolve, {}, {}, { "status", "version" }))
+            local rows = assert((select.rows(h, plan, 1)))
             test.eq(rows[1].sku, "C-1")
             test.eq(rows[1].status, "active")
             test.eq(narrow.int(rows[1].version), 1)
@@ -389,9 +389,9 @@ local function define()
             exec(h, "DROP TABLE IF EXISTS rt_stock")
             exec(h, "CREATE TABLE rt_stock (catalog_id TEXT NOT NULL, product_id TEXT NOT NULL, available INTEGER NOT NULL)")
             local admitted = assert(scopes.admit(reader("read"), { { id = "app:probe_stock", where = {} } }))
-            local plan = assert(select.items(reader("read"), t, h:type(), {}, resolve, admitted, {}, {}, 5))
+            local plan = assert(select.items(reader("read"), t, h:type(), {}, resolve, admitted, {}, {}))
             test.eq(plan.tables[1], "rt_stock")
-            local bare = assert(select.items(reader("read"), t, h:type(), {}, resolve, {}, {}, {}, 5))
+            local bare = assert(select.items(reader("read"), t, h:type(), {}, resolve, {}, {}, {}))
             test.eq(#bare.tables, 0)
             h:release()
         end)

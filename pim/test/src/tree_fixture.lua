@@ -72,7 +72,7 @@ function M.table(h: sql.DB): types.Table
         exec(h, [[INSERT INTO kickside_pim_product (catalog_id, product_id, sku, family, root_id, level, is_item, version, status, state,
             document, source_seq, created_seq, updated_seq) VALUES ($1, $2, $3, 'f', $4, 0, 1, 1, 'active', 'live', '{}', '{}', 1, 1)]],
             { CATALOG, id, "C-" .. i, id })
-        rows[i] = { id = id, system = { root_id = id, family = "f", status = "active", version = 1, updated_seq = 1, findings = "{}" },
+        rows[i] = { id = id, system = { root_id = id, family = "f", status = "active", version = 1, updated_seq = 1, findings = "{}", sku_fold = "c-" .. i },
             values = { f1 = r.color :: string?, f2 = r.size :: integer?,
                 f5 = r.at and (assert((values.key("time", r.at :: string, {})))) or nil },
             sets = { f3 = r.tags :: { string } }, flags = {} }
@@ -84,10 +84,10 @@ end
 -- run_as answers where for a reader with the given actor.
 function M.run_as(h: sql.DB, t: types.Table, where: Map, actor: string?): (string?, error?)
     local reader: types.Reader = { catalog_id = CATALOG, actor = actor, allows = M.READER.allows }
-    local plan, err = select.items(reader, t, h:type(), { where = where }, resolve, {}, {}, { "status" }, 50)
+    local plan, err = select.items(reader, t, h:type(), { where = where }, resolve, {}, {}, { "status" })
     if err or not plan then return nil, err end
-    local executor = assert(plan.query:run_with(h))
-    local rows = assert(executor:query())
+    local rows, _, qerr = select.rows(h, plan, 50)
+    if qerr or not rows then return nil, qerr end
     local out: { string } = {}
     for i, r in ipairs(rows) do out[i] = tostring(r.product_id) end
     table.sort(out)

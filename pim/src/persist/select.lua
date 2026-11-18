@@ -1,10 +1,10 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- The query compiler: one item query over a catalog's generated table set,
--- compiled into one SELECT with sql.builder. Identifiers come only from the
+-- compiled with sql.builder. Identifiers come only from the
 -- layout and admitted scope declarations; every value is a bound argument, and
 -- the builder writes the dialect's placeholders. The filter tree and sorts name
 -- fields the resolver maps to generated columns; conditions add clauses over
--- aliases i (generated row) and r (product row).
+-- alias i (generated row).
 local failure = require("failure")
 local sql = require("sql")
 local tree = require("tree")
@@ -15,16 +15,13 @@ local search = require("search")
 
 local M = {}
 
--- Plan is the built statement, the sort column its keyset cursor reads, and
--- the scope tables it reads, which the caller confirms exist.
--- Count is the statement that counts the matches up to cap + 1, before any page
--- or cursor applies. beyond, for a bounded scan, finds rows past the walk.
-type Count = { statement: string, args: { unknown }, cap: integer, beyond: string? }
--- boundary, when set, finds the last row a bounded scan may walk; page rebuilds the
--- query to stop at that row.
+type Statement = { statement: string, args: types.SqlParams }
+type Count = Statement & { cap: integer }
+type Range = { condition: types.Condition?, direction: string? }
+-- A filtered page spends one scan budget across all its ordered ranges.
 type Plan = {
-    query: sql.SelectBuilder, sort_column: string?, tables: { string }, count: Count?,
-    boundary: sql.SelectBuilder?, page: (types.Cursor?) -> sql.SelectBuilder,
+    sort_column: string?, tables: { string }, count: Count?, after: types.Cursor?, scan: integer?,
+    ranges: (types.Cursor?) -> { Range }, page: (Range, integer?, integer) -> Statement,
 }
 M.Plan = Plan
 M.Count = Count
@@ -78,18 +75,59 @@ local function scope_predicate(r: types.Reader, sq: types.AdmittedScope): (strin
             end
         end
     end
-    return "i.product_id IN (SELECT " .. scope.product_column .. " FROM " .. scope.table .. " WHERE " .. table.concat(parts, " AND ") .. ")",
+    parts[#parts + 1] = scope.product_column .. " = i.product_id"
+    return "EXISTS (SELECT 1 FROM " .. scope.table .. " WHERE " .. table.concat(parts, " AND ") .. ")",
         args, nil
 end
 
+-- A sort always breaks ties by ascending product ID and puts nulls last.
+-- An ascending tuple seeks both keys. Descending mixes directions, so it
+-- seeks the remainder of the tie and the following values separately.
+local function ranges(column: string?, direction: string, after: types.Cursor?): { Range }
+    if not column then
+        return { { condition = after and { sql = "i.product_id > ?", args = { after.id } } or nil } }
+    end
+    local c = column :: string
+    local out: { Range } = {}
+    if after and after.v ~= nil then
+        if direction == "DESC" then
+            out[#out + 1] = { condition = { sql = c .. " = ? AND i.product_id > ?", args = { after.v, after.id } } }
+            out[#out + 1] = { direction = direction, condition = { sql = c .. " < ?", args = { after.v } } }
+        else
+            out[#out + 1] = { direction = direction,
+                condition = { sql = "(" .. c .. ", i.product_id) > (?, ?)", args = { after.v, after.id } } }
+        end
+    elseif not after then
+        out[#out + 1] = { direction = direction, condition = { sql = c .. " IS NOT NULL", args = {} } }
+    end
+    local nulls: types.Condition = { sql = c .. " IS NULL", args = {} }
+    if after and after.v == nil then
+        nulls = { sql = c .. " IS NULL AND i.product_id > ?", args = { after.id } }
+    end
+    out[#out + 1] = { condition = nulls }
+    return out
+end
+
+local function order(range: Range, reverse: boolean): string
+    local id = reverse and "product_id DESC" or "product_id ASC"
+    if range.direction == nil then return id end
+    local descending = range.direction == "DESC"
+    return ("sort_value " .. (descending ~= reverse and "DESC" or "ASC") .. ", " .. id)
+end
+
+local function restrict(base: sql.SelectBuilder, range: Range): sql.SelectBuilder
+    local condition = range.condition
+    if not condition then return base end
+    return base:where(condition.sql, table.unpack(condition.args))
+end
+
 -- items builds the page query of q over t for reader r. returning names the
--- system columns to select besides product_id and sku; the query fetches
--- limit + 1 rows so the caller knows whether another page follows. q.count, when
+-- system columns to select besides product_id and sku. q.count, when
 -- set, is the cap of the count the plan also carries.
 function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.ItemQuery, resolve: types.Resolver,
-    admitted: { types.AdmittedScope }, conditions: { types.Condition }, returning: { string }, limit: integer): (Plan?, error?)
+    admitted: { types.AdmittedScope }, conditions: { types.Condition }, returning: { string }): (Plan?, error?)
     local names = t.names
-    local selected: { string } = { "i.product_id" }
+    local selected: { string } = { "i.product_id AS product_id" }
     for _, name in ipairs(returning) do selected[#selected + 1] = "i." .. name end
     selected[#selected + 1] = "r.sku"
     local clauses: { types.Condition } = {}
@@ -103,20 +141,17 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
     if type(q.text) == "string" and q.text ~= "" then
         -- Free text finds items whose sku starts with it or whose searchable
         -- values contain its words.
-        local escaped = q.text:gsub("[\\%%_]", "\\%0")
-        local like = dialect == sql.type.POSTGRES and "ILIKE" or "LIKE"
-        local key_sql = "r.sku " .. like .. " ? ESCAPE '\\'"
-        local key_arg = escaped .. "%"
-        local tokens = search.tokens(q.text)
-        if #t.layout.search == 0 or #tokens == 0 then
+        local key_arg = search.fold(q.text)
+        local position = dialect == sql.type.POSTGRES and "strpos" or "instr"
+        local key_sql = position .. "(i.sku_fold, ?) = 1"
+        local tokens = #t.layout.search > 0 and search.tokens(q.text) or {}
+        if #tokens == 0 then
             clauses[#clauses + 1] = { sql = key_sql, args = { key_arg } }
         elseif dialect == sql.type.POSTGRES then
-            clauses[#clauses + 1] = { sql = "(i.search @@ plainto_tsquery('simple', ?) OR " .. key_sql .. ")", args = { table.concat(tokens, " "), key_arg } }
+            clauses[#clauses + 1] = { sql = "(i.search @> string_to_array(?, ' ') OR " .. key_sql .. ")", args = { table.concat(tokens, " "), key_arg } }
         else
-            local words: { string } = {}
-            for i, token in ipairs(tokens) do words[i] = '"' .. token .. '"' end
-            clauses[#clauses + 1] = { sql = "(i.product_id IN (SELECT product_id FROM " .. names.fts .. " WHERE " .. names.fts .. " MATCH ?) OR " .. key_sql .. ")",
-                args = { table.concat(words, " AND "), key_arg } }
+            clauses[#clauses + 1] = { sql = "(EXISTS (SELECT 1 FROM " .. names.fts .. " WHERE rowid = i.rowid AND " .. names.fts .. " MATCH ?) OR "
+                .. key_sql .. ")", args = { table.concat(tokens, " AND "), key_arg } }
         end
     end
     local tables: { string } = {}
@@ -126,27 +161,6 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
         clauses[#clauses + 1] = { sql = predicate, args = args }
         tables[#tables + 1] = sq.scope.table
     end
-    local function matching(columns: { string }): sql.SelectBuilder
-        local base = sql.builder.select(table.unpack(columns))
-            :from(names.item .. " i")
-            :join("kickside_pim_product r ON r.catalog_id = ? AND r.product_id = i.product_id", r.catalog_id)
-        for _, c in ipairs(clauses) do base = base:where(c.sql, table.unpack(c.args)) end
-        return base
-    end
-    local query = matching(selected)
-    local counted: Count? = nil
-    if q.count then
-        local format = dialect == sql.type.POSTGRES and sql.builder.dollar or sql.builder.question
-        local within = matching({ "1" })
-        local beyond: string? = nil
-        if q.scan and #clauses > 0 then
-            within = within:where("i.product_id <= COALESCE((SELECT product_id FROM " .. names.item .. " ORDER BY product_id LIMIT 1 OFFSET "
-                .. math.tointeger(q.scan - 1) .. "), i.product_id)")
-            beyond = "SELECT 1 AS present FROM " .. names.item .. " ORDER BY product_id LIMIT 1 OFFSET " .. math.tointeger(q.scan)
-        end
-        local inner, args = within:limit(q.count + 1):placeholder_format(format):to_sql()
-        counted = { statement = "SELECT count(*) AS n FROM (" .. inner .. ") matched", args = args, cap = q.count, beyond = beyond }
-    end
     local sort_column: string? = nil
     if q.sort then
         local target, err = resolve(q.sort.field, q.sort.ctx)
@@ -154,44 +168,96 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
         if target.set then return nil, invalid(q.sort.field .. " holds several values and cannot sort") end
         sort_column = target.column
     end
-    local desc = q.sort ~= nil and q.sort.dir == "desc"
-    local c = sort_column and ("i." .. sort_column) or nil
-    local function from_cursor(base: sql.SelectBuilder): sql.SelectBuilder
-        local after = q.after
-        if not after then return base end
-        if not c then return base:where("i.product_id > ?", after.id) end
-        if after.v == nil then return base:where("(" .. c .. " IS NULL AND i.product_id > ?)", after.id) end
-        return base:where("((" .. c .. (desc and " < " or " > ") .. "?) OR (" .. c .. " = ? AND i.product_id > ?) OR " .. c .. " IS NULL)",
-            after.v, after.v, after.id)
-    end
-    local function ordered(base: sql.SelectBuilder): sql.SelectBuilder
-        if not c then return base:order_by("i.product_id") end
-        return base:order_by("CASE WHEN " .. c .. " IS NULL THEN 1 ELSE 0 END", c .. (desc and " DESC" or " ASC"), "i.product_id")
-    end
-    local function page(through: types.Cursor?): sql.SelectBuilder
-        local built = from_cursor(matching(selected))
-        if c then built = built:columns(c .. " AS sort_value") end
-        if through then
-            if not c then
-                built = built:where("i.product_id <= ?", through.id)
-            elseif through.v == nil then
-                built = built:where("(" .. c .. " IS NOT NULL OR i.product_id <= ?)", through.id)
-            else
-                built = built:where("(" .. c .. (desc and " > " or " < ") .. "? OR (" .. c .. " = ? AND i.product_id <= ?))",
-                    through.v, through.v, through.id)
-            end
+    local sort_sql = sort_column and "i." .. sort_column or nil
+    local sort_value = (sort_sql or "NULL") .. " AS sort_value"
+    local direction = q.sort and q.sort.dir == "desc" and "DESC" or "ASC"
+    local pg = dialect == sql.type.POSTGRES
+    local format = pg and sql.builder.dollar or sql.builder.question
+    local scan = #clauses > 0 and q.scan or nil
+
+    local function filtered(base: sql.SelectBuilder, lookahead: string?): sql.SelectBuilder
+        local include = lookahead and ("WHEN " .. lookahead .. " THEN 1 ") or ""
+        for _, c in ipairs(clauses) do
+            -- Keep correlated scope and publication checks on the candidate row.
+            base = base:where("CASE " .. include .. "WHEN " .. c.sql .. " THEN 1 ELSE 0 END = 1", table.unpack(c.args))
         end
-        return ordered(built):limit(limit + 1)
+        return base
     end
-    local plan: Plan = { query = page(nil), sort_column = sort_column, tables = tables, count = counted, page = page }
-    -- A filter walks rows it may refuse, so its walk is bounded; a plain page reads only what it returns.
-    if q.scan and #clauses > 0 then
-        local walked = sql.builder.select("i.product_id")
-            :from(names.item .. " i")
-        if c then walked = walked:columns(c .. " AS sort_value") end
-        plan.boundary = ordered(from_cursor(walked)):offset(q.scan - 1):limit(1)
+
+    local function matching(columns: { string }, source: string, keys_only: boolean): sql.SelectBuilder
+        local base = sql.builder.select(table.concat(columns, ", "))
+        if pg then
+            if keys_only then
+                base = base:from(source .. " w"):join("LATERAL (SELECT * FROM " .. names.item
+                    .. " WHERE product_id = w.product_id OFFSET 0) i ON TRUE")
+            else
+                base = base:from(source .. " i")
+            end
+            base = base:join("LATERAL (SELECT sku FROM kickside_pim_product "
+                .. "WHERE catalog_id = ? AND product_id = i.product_id OFFSET 0) r ON TRUE", r.catalog_id)
+        else
+            local from = source .. " i"
+            if keys_only then from = source .. " w CROSS JOIN " .. names.item .. " i ON i.product_id = w.product_id" end
+            base = base:from(from .. " CROSS JOIN kickside_pim_product r")
+                :where("r.catalog_id = ? AND r.product_id = i.product_id", r.catalog_id)
+        end
+        return filtered(base)
     end
-    return plan, nil
+
+    local function candidate(range: Range, size: integer): sql.SelectBuilder
+        return restrict(sql.builder.select("i.product_id", sort_value):from(names.item .. " i"), range)
+            :order_by(order(range, false)):limit(size)
+    end
+
+    local function compiled(outer: sql.SelectBuilder, first: types.SqlParams, second: types.SqlParams): Statement
+        for _, arg in ipairs(second) do first[#first + 1] = arg end
+        local statement = outer:placeholder_format(format):to_sql()
+        return { statement = statement, args = first }
+    end
+
+    local counted: Count? = nil
+    if q.count then
+        local function bounded_count(budget: integer): sql.SelectBuilder
+            -- Stream the prefix and one lookahead from the same index. The last
+            -- row reports whether the budget was exceeded without testing it.
+            local candidates = sql.builder.select("i.*", "row_number() OVER (ORDER BY i.product_id) AS walk_pos")
+                :from(names.item .. " i")
+            if not pg then candidates = candidates:columns("i.rowid AS rowid") end
+            local walk = candidates:order_by("i.product_id"):limit(budget + 1):to_sql()
+            local edge = "i.walk_pos > " .. budget
+            return filtered(sql.builder.select("CASE WHEN " .. edge .. " THEN 1 ELSE 0 END AS beyond")
+                :from("(" .. walk .. ") i"), edge)
+        end
+        local matched = scan and bounded_count(scan) or filtered(sql.builder.select("0 AS beyond"):from(names.item .. " i"))
+        local within, args = matched:limit(q.count + 1):to_sql()
+        local outer = sql.builder.select("count(*) FILTER (WHERE beyond = 0) AS n", "coalesce(max(beyond), 0) AS beyond")
+            :from("(" .. within .. ") matched")
+        local built = compiled(outer, {}, args)
+        counted = { statement = built.statement, args = built.args, cap = q.count }
+    end
+
+    local function page(range: Range, size: integer?, wanted: integer): Statement
+        if not size then
+            local query, args = restrict(matching(selected, names.item, false):columns(sort_value), range)
+                :order_by(order(range, false)):limit(wanted):placeholder_format(format):to_sql()
+            return { statement = query, args = args }
+        end
+        local walk, keys = candidate(range, size):to_sql()
+        local hits, args = matching(selected, "candidates", true):columns("w.sort_value", "0 AS walk_count")
+            :order_by(order(range, false)):limit(wanted):to_sql()
+        -- Include the last candidate independently of whether it matched, so
+        -- even an empty page can resume without revisiting rejected items.
+        local empty = string.rep(", NULL", #selected - 1)
+        local statement = "WITH candidates AS MATERIALIZED (" .. walk .. ") "
+            .. "SELECT * FROM (" .. hits .. ") matched UNION ALL "
+            .. "SELECT product_id" .. empty .. ", sort_value, (SELECT count(*) FROM candidates) AS walk_count "
+            .. "FROM (SELECT product_id, sort_value FROM candidates ORDER BY " .. order(range, true) .. " LIMIT 1) edge"
+        local outer = sql.builder.select("*"):from("(" .. statement .. ") page"):order_by("walk_count", order(range, false))
+        return compiled(outer, keys, args)
+    end
+
+    return { sort_column = sort_column, tables = tables, count = counted, after = q.after, scan = scan,
+        ranges = function(after: types.Cursor?): { Range } return ranges(sort_sql, direction, after) end, page = page }, nil
 end
 
 -- cursor_of reads a row's position as a keyset cursor.
@@ -207,25 +273,40 @@ end
 -- rows runs the plan's page under its scan bound. When the walk ends before the
 -- page fills it answers the cursor to continue from.
 function M.rows(db: types.Executor, plan: Plan, limit: integer): ({ types.Row }?, types.Cursor?, error?)
-    local query = plan.query
-    local stopped: types.Cursor? = nil
-    if plan.boundary then
-        local walk, werr = (plan.boundary :: sql.SelectBuilder):run_with(db)
-        if werr or not walk then return nil, nil, werr or errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "scan boundary has no executor" }) end
-        local edge, eerr = walk:query()
-        if eerr then return nil, nil, eerr end
-        if edge and edge[1] then
-            stopped = M.cursor_of(edge[1], plan.sort_column)
-            query = plan.page(stopped)
+    local hits: { types.Row } = {}
+    local after, remaining = plan.after, plan.scan
+    local wanted = limit + 1
+    local batch = wanted
+    while true do
+        local resume: types.Cursor? = nil
+        for _, range in ipairs(plan.ranges(after)) do
+            local size = remaining and math.tointeger(math.min(remaining, batch)) or nil
+            local page = plan.page(range, size, wanted - #hits)
+            local rows, err = db:query(page.statement, page.args)
+            if err then return nil, nil, err end
+            if not rows then return nil, nil, errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "query returned no rows" }) end
+            if not size then
+                for _, row in ipairs(rows) do hits[#hits + 1] = row end
+            elseif #rows > 0 then
+                local edge = rows[#rows]
+                for i = 1, #rows - 1 do hits[#hits + 1] = rows[i] end
+                if #hits >= wanted then return hits, nil, nil end
+                local used = narrow.int(edge.walk_count) :: integer
+                remaining = (remaining :: integer) - used
+                if remaining == 0 then return hits, M.cursor_of(edge, plan.sort_column), nil end
+                if used == size then
+                    resume = M.cursor_of(edge, plan.sort_column)
+                    break
+                end
+            end
+            if #hits >= wanted then return hits, nil, nil end
         end
+        if not resume then return hits, nil, nil end
+        after = resume
+        -- Probe a modest prefix before spending the rest of the budget in one
+        -- pass. Sparse pages still need only a few database round trips.
+        batch = batch < 2048 and 2048 or (remaining :: integer)
     end
-    local executor, xerr = query:run_with(db)
-    if xerr or not executor then return nil, nil, xerr or errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "query has no executor" }) end
-    local rows, err = executor:query()
-    if err then return nil, nil, err end
-    if not rows then return nil, nil, errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "query returned no rows" }) end
-    if #rows > limit then stopped = nil end
-    return rows, stopped, nil
 end
 
 -- total runs the plan's count: the exact number of matches up to its cap. Past the
@@ -236,12 +317,7 @@ function M.total(db: types.Executor, count: Count): (integer?, boolean?, error?)
     local n = rows and rows[1] and narrow.int(rows[1].n)
     if not n then return nil, nil, errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "count returned no number" }) end
     if n > count.cap then return count.cap, true, nil end
-    if count.beyond then
-        local past, perr = db:query(count.beyond :: string, {})
-        if perr then return nil, nil, perr end
-        if past and past[1] then return n, true, nil end
-    end
-    return n, false, nil
+    return n, narrow.int(rows[1].beyond) == 1, nil
 end
 
 return M

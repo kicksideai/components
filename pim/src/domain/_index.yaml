@@ -68,7 +68,9 @@ entries:
   - name: search
     kind: library.lua
     source: file://search.lua
-    modules: [text]
+    modules: [hash, text]
+    imports:
+      case_folding: kickside.pim.domain:case_folding
 
   - name: references
     kind: library.lua

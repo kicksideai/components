@@ -29,13 +29,12 @@ function M.changes(catalog_id: string, request: types.ChangesRequest): (types.Ch
     if access_err or not caller then return nil, access_err end
     local limit, lerr = page_limit(request.limit)
     if lerr or not limit then return nil, lerr end
-    local cursor: types.ChangesCursor = request.cursor or { seq = 0, product_id = "" }
-    return access.with_snapshot(caller, function(tx: types.Executor,catalog: types.Catalog,_dialect: string): (types.ChangesResult?,error?)
-        return M.changes_snapshot(tx,catalog,request,limit)
+    return access.with_snapshot(caller, function(tx: types.Executor,catalog: types.Catalog,dialect: string): (types.ChangesResult?,error?)
+        return M.changes_snapshot(tx,dialect,catalog,request,limit)
     end)
 end
 
-function M.changes_snapshot(tx: types.Executor,catalog: types.Catalog,request: types.ChangesRequest,limit: integer): (types.ChangesResult?,error?)
+function M.changes_snapshot(tx: types.Executor,dialect: string,catalog: types.Catalog,request: types.ChangesRequest,limit: integer): (types.ChangesResult?,error?)
     local catalog_id=catalog.catalog_id
     local cursor=request.cursor or {seq=0,product_id=""}
         if cursor.seq > 0 and cursor.seq < catalog.tombstone_floor_seq then
@@ -43,7 +42,7 @@ function M.changes_snapshot(tx: types.Executor,catalog: types.Catalog,request: t
         end
         local ceiling = catalog.applied_seq
         if catalog.rebuild_after ~= nil and catalog.rebuild_seq then ceiling = (catalog.rebuild_seq :: integer) - 1 end
-        local rows, err = read_model.changed_products(tx, catalog_id, ceiling, cursor, request.families, limit + 1)
+        local rows, err = read_model.changed_products(tx, dialect, catalog_id, ceiling, cursor, request.families, limit + 1)
         if err then return nil, err end
         local items: { types.ChangeItem } = {}
         local page: { types.Product } = {}
