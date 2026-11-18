@@ -91,7 +91,7 @@ local function parse(reader: types.Reader, resolve: types.Resolver, raw: unknown
 end
 
 -- predicate writes the SQL of a parsed condition over the row at alias.
-local function predicate(reader: types.Reader, alias_of_item: string, asked: types.HistoryAsked): types.Condition
+local function predicate(reader: types.Reader, alias_of_item: string, asked: types.HistoryAsked, dialect: string): types.Condition
     local target, by, from, to, held = asked.target, asked.by, asked.from, asked.to, asked.held
     local args: { unknown } = {}
     -- rows opens the change rows of this field of this item under alias.
@@ -112,6 +112,8 @@ local function predicate(reader: types.Reader, alias_of_item: string, asked: typ
         local q = "SELECT 1 FROM kickside_work_interval v WHERE v.board_id = ? AND v.item_id = " .. alias_of_item .. ".item_id AND v.field_id = ? AND v.value_key = ?"
         local identity = (target.field_id == -1 or target.field_id == -2) and held:sub(2, -2) or held
         args = { reader.board_id, field, identity }
+        -- Seek the bounded index key, then compare the full value for exact equality.
+        if dialect == "postgres" then q = q .. bind(" AND md5(v.value_key) = md5(CAST(? AS text))", identity) end
         if from then q = q .. bind(" AND v.started_at <= ?", to) .. bind(" AND (v.ended_at IS NULL OR v.ended_at > ?)", from) end
         if by then q = q .. bind(" AND v.actor = ?", by) end
         return { sql = "EXISTS (" .. q .. ")", args = args }
@@ -163,10 +165,10 @@ local function predicate(reader: types.Reader, alias_of_item: string, asked: typ
 end
 
 -- compile builds the condition's fragment over the row at alias_of_item.
-function M.compile(reader: types.Reader, alias_of_item: string, resolve: types.Resolver, raw: unknown): (types.Condition?, error?)
+function M.compile(reader: types.Reader, alias_of_item: string, resolve: types.Resolver, raw: unknown, dialect: string): (types.Condition?, error?)
     local asked, err = parse(reader, resolve, raw)
     if err or not asked then return nil, err end
-    return predicate(reader, alias_of_item, asked), nil
+    return predicate(reader, alias_of_item, asked, dialect), nil
 end
 
 return M

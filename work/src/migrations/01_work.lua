@@ -151,7 +151,6 @@ local POSTGRES = {
         end_value text,
         ended_at text,
         PRIMARY KEY (board_id, item_id, field_id, start_seq))]],
-    [[CREATE INDEX kickside_work_interval_value ON kickside_work_interval (board_id, field_id, value_key, started_at)]],
     [[CREATE INDEX kickside_work_interval_expiry ON kickside_work_interval (board_id, ended_at, item_id, field_id, start_seq) WHERE ended_at IS NOT NULL]],
     [[CREATE TABLE kickside_work_comment (
         board_id text NOT NULL,
@@ -202,6 +201,9 @@ for _, statement in ipairs(POSTGRES) do
 end
 
 for dialect, statements in pairs({ postgres = POSTGRES, sqlite = SQLITE }) do
+    local interval_value = dialect == "postgres" and "md5(value_key)" or "value_key"
+    statements[#statements + 1] = "CREATE INDEX kickside_work_interval_value ON kickside_work_interval (board_id, field_id, " ..
+        interval_value .. ", started_at)"
     statements[#statements + 1] = "CREATE INDEX kickside_work_operation_expiry ON kickside_work_operation (board_id, " ..
         operation_expiry.at(dialect) .. ", operation_id) WHERE " .. operation_expiry.TERMINAL
 end

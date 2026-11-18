@@ -10,7 +10,7 @@ end
 type Map = { [string]: unknown }
 type Change = { updated_seq: integer, op: string }
 type Body = { worker_config: { plugin: string, input: string }, token: string? }
-type Input = { thread_id: string, projection: { kind: string, body: Body }, range: { from_seq: integer, to_seq: integer }, events: { Map } }
+type Input = { thread_id: string, projection: { kind: string, body: Body }, range: { from_seq: integer, to_seq: integer }, events: { Map }?, worker_input_mode: string }
 type Feed = { config: { fail: boolean?, marker: string? }, changes: { Change }, token: string, done: boolean }
 function M.run(input: Input): (Map?, error?)
     local body = input.projection.body
@@ -35,7 +35,16 @@ function M.run(input: Input): (Map?, error?)
     local _, rerr = db:release()
     if cerr or rerr then return nil, cerr or rerr end
     body.token = feed.token
-    return { body = body, last_seq = feed.done and input.range.to_seq or input.range.from_seq - 1 }, nil
+    local output: Map = { worker_config = body.worker_config, token = body.token,
+        observed_mode = input.worker_input_mode, received_events = input.events ~= nil }
+    return { body = output, last_seq = feed.done and input.range.to_seq or input.range.from_seq - 1 }, nil
+end
+
+function M.events(input: Input): (Map?, error?)
+    local delivered: { unknown } = {}
+    for _, event in ipairs(input.events or {}) do delivered[#delivered + 1] = event.type end
+    return { body = { observed_mode = input.worker_input_mode, delivered = delivered },
+        last_seq = input.range.to_seq }, nil
 end
 
 function M.delete(): ({ success: boolean }?, error?)

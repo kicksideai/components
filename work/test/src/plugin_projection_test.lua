@@ -3,6 +3,7 @@ local test = require("test")
 local fixture = require("fixture")
 local steps = require("steps")
 local sql = require("sql")
+local json = require("json")
 local component = require("component")
 local scoped = require("scoped")
 type Map = { [string]: unknown }
@@ -44,8 +45,84 @@ local function attachments(h: fixture.Handle): { Map }
     assert(not err, steps.detail(err))
     return (found or {}) :: { Map }
 end
+local function projection(h: fixture.Handle, kind: string): (string, Map)
+    for _, p in ipairs(assert(h.call("plugin_projections", {})).projections) do
+        if p.kind == kind then return p.id, assert(json.decode(p.body)) :: Map end
+    end
+    error("projection is missing: " .. kind)
+end
+
 local function define()
     test.describe("declared plugin projections", function()
+        test.it("registers state projections without raw board events and converges existing cursors", function()
+            local h = fixture.board()
+            activate(h, true)
+            local item = steps.create(h, "task", { title = "before convergence" })
+            ready(h, false)
+            local configured = assert(h.call("configure_plugin", { plugin = PLUGIN, config = {} }))
+            steps.wait_for("unchanged configuration reaches the state cursor", function(): boolean
+                return view(h).projections["app:item_fold"].last_seq >= configured.seq
+            end)
+            local before = ready(h, false)
+            local id, body = projection(h, "app:item_fold")
+            test.is_true(body.worker_config.start_seq < configured.seq)
+            test.eq(body.meta.worker_input_mode, "cursor_only")
+            test.eq(body.observed_mode, "cursor_only")
+            test.is_false(body.received_events)
+
+            body.meta.worker_input_mode = "prefetch_events"
+            local db = assert(sql.get("app:db"))
+            assert(db:execute("UPDATE kickside_projection SET body=$1 WHERE id=$2", { assert(json.encode(body)), id }))
+            db:release()
+            assert(h.call("plugin_sync", {}))
+            steps.wait_for("state registration converges", function(): boolean
+                local _, converged = projection(h, "app:item_fold")
+                return converged.meta.worker_input_mode == "cursor_only"
+            end)
+            local after_id, after_body = projection(h, "app:item_fold")
+            test.eq(after_id, id)
+            test.eq(after_body.meta.worker_input_mode, "cursor_only")
+            test.eq(after_body.worker_config.start_seq, body.worker_config.start_seq)
+            test.eq(after_body.token, body.token)
+            test.eq(view(h).projections["app:item_fold"].last_seq, before.last_seq)
+
+            steps.one(h, { op = "set", item = item, values = { title = "after convergence" } })
+            steps.wait_for("converged state worker follows changes", function(): boolean return #rows(h) == 2 end)
+            steps.wait_for("converged state cursor", function(): boolean return view(h).projections["app:item_fold"].last_seq > before.last_seq end)
+            local _, latest = projection(h, "app:item_fold")
+            test.eq(latest.observed_mode, "cursor_only")
+            test.is_false(latest.received_events)
+            test.eq(tonumber(rows(h)[1].deliveries), 1)
+        end)
+
+        test.it("delivers declared events and advances past unselected facts", function()
+            local h = fixture.board()
+            local plugin = "app:event_projection_plugin"
+            local kind = "app:event_fold"
+            local function cursor(): integer
+                local out = assert(h.call("get_schema", {}))
+                for _, p in ipairs(out.plugins) do
+                    if p.plugin == plugin and p.projections[kind] then return p.projections[kind].last_seq end
+                end
+                return 0
+            end
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = plugin } } } }))
+            local item = steps.create(h, "task", { title = "selected" })
+            local seq = assert(steps.get(h, item)).item.updated_seq
+            steps.wait_for("selected event delivery", function(): boolean return cursor() >= seq end)
+            local _, body = projection(h, kind)
+            test.eq(body.meta.worker_input_mode, "prefetch_events")
+            test.eq(body.observed_mode, "prefetch_events")
+            test.eq(#body.delivered, 1)
+            test.eq(body.delivered[1], "kickside.work.events:item.created")
+            steps.one(h, { op = "set", item = item, values = { title = "unselected" } })
+            local later = assert(steps.get(h, item)).item.updated_seq
+            steps.wait_for("cursor passes unselected fact", function(): boolean return cursor() >= later end)
+            local _, after = projection(h, kind)
+            test.eq(#after.delivered, 1)
+            test.eq(after.delivered[1], body.delivered[1])
+        end)
+
         test.it("dispatches native state workers on idle member boards and follows changes and deletes", function()
             local member = scoped.member()
             local h = fixture.board({ actor = member.actor })
@@ -177,9 +254,12 @@ local function define()
             steps.create(h, "task", {})
             activate(h, true)
             ready(h, false)
+            local _, original = projection(h, "app:item_fold")
             test.eq(rows(h)[1].marker, "initial")
             assert(h.call("configure_plugin", { plugin = PLUGIN, config = { marker = "reconfigured" } }))
             steps.wait_for("config replay", function(): boolean return #rows(h) > 0 and rows(h)[1].marker == "reconfigured" end)
+            local _, stale = h.call("plugin_feed", { plugin = PLUGIN, kind = "app:item_fold", token = original.token })
+            test.eq(stale:kind(), errors.INVALID)
             test.eq(#rows(h), 1)
             test.eq(tonumber(rows(h)[1].deliveries), 2)
         end)

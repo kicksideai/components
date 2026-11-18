@@ -49,7 +49,9 @@ local function converge(board_id: string, row: types.PluginState, plugin: types.
     local first = (progress.registered or 0) + 1
     for index = first, math.min(#plugin.projections, first + settings.plugin_projection_batch - 1) do
         local p = plugin.projections[index]
-        local previous: types.JsonObject? = nil
+        local mode = p.input == "state" and "cursor_only" or "prefetch_events"
+        local previous: local_types.Config? = nil
+        local previous_mode: string? = nil
         local raw, perr = client:get_projection_cursor({ thread_id = board_id, kind = p.kind, projection_key = PREFIX .. row.plugin })
         if perr and perr:kind() ~= errors.NOT_FOUND then return nil, perr end
         if raw then
@@ -59,7 +61,9 @@ local function converge(board_id: string, row: types.PluginState, plugin: types.
                 if jerr then return nil, jerr end
                 body = decoded
             end
-            previous = (body :: types.JsonObject).worker_config :: types.JsonObject
+            local definition = body :: local_types.Body
+            previous = definition.worker_config
+            previous_mode = definition.meta and definition.meta.worker_input_mode
         end
         local reset = previous ~= nil and (not values.equal(previous.config, config) or previous.revision ~= p.revision)
         if previous and previous.revision ~= p.revision and previous.start_seq == row.revision then
@@ -67,7 +71,8 @@ local function converge(board_id: string, row: types.PluginState, plugin: types.
                 subject = "plugin:" .. row.plugin, body = { plugin = row.plugin } } } } } })
             return rerr == nil, rerr
         end
-        if not previous or reset then
+        if not previous or reset or previous_mode ~= mode then
+            local start_seq = previous and not reset and previous.start_seq or row.revision
             local events: { { type: string } } = {}
             if p.input == "state" then
                 for _, event_type in pairs(consts.EVENTS) do events[#events + 1] = { type = event_type } end
@@ -75,10 +80,10 @@ local function converge(board_id: string, row: types.PluginState, plugin: types.
                 for _, event_type in ipairs(p.events) do events[#events + 1] = { type = event_type } end
             end
             local _, rerr = client:register_projection({ thread_id = board_id, kind = p.kind, projection_key = PREFIX .. row.plugin,
-                worker_ref = p.worker_ref, worker_input_mode = "prefetch_events",
-                events = { input = events }, start_seq = row.revision - 1, reset = reset,
+                worker_ref = p.worker_ref, worker_input_mode = mode,
+                events = { input = events }, start_seq = start_seq - 1, reset = reset,
                 worker_config = { plugin = row.plugin, board_id = board_id, attachment_id = row.attachment_id, config = config,
-                    input = p.input, revision = p.revision, start_seq = row.revision } })
+                    input = p.input, revision = p.revision, start_seq = start_seq } })
             if rerr then return nil, rerr end
         end
         progress.registered = index
