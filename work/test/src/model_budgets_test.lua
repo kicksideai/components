@@ -34,12 +34,16 @@ local function define()
             test.eq(assert(h.call("get_schema", {})).as_of, before)
         end)
         test.it("continues a sparse filtered scan from its last examined visible item", function()
-            local h = fixture.board()
+            local declaration = fixture.declaration(fixture.fresh_prefix())
+            declaration.fields[1].index = "key"
+            local h = fixture.board({ declaration = declaration })
             local ids = {}
-            for i = 1, 5 do ids[i] = steps.create(h, "task", { estimate = i }) end
+            for i = 1, 5 do
+                ids[i] = steps.create(h, "task", { estimate = i, title = i == 5 and "find the needle here" or "ordinary" })
+            end
             local after, found, pages = nil, {}, 0
             repeat
-                local page = assert(h.call("query", { where = { field = "estimate", op = "eq", value = 5 },
+                local page = assert(h.call("query", { where = { field = "title", op = "contains", value = "needle" },
                     order = { field = "estimate" }, limit = 200, budget = { rows = 2 }, after = after }))
                 for _, item in ipairs(page.items) do found[#found + 1] = item.id end
                 pages = pages + 1

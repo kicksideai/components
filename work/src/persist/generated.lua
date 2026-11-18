@@ -50,7 +50,12 @@ end
 
 local function column_type(kind: string, pg: boolean): string
     if kind == "number" or kind == "int" then return pg and "bigint" or "INTEGER" end
-    return pg and "text" or "TEXT"
+    return pg and 'text COLLATE "C"' or "TEXT"
+end
+
+local function descending_index(item: string, column: string, pg: boolean): string
+    return "CREATE INDEX " .. item .. "_" .. column .. "_desc ON " .. item .. " ("
+        .. column .. " DESC" .. (pg and " NULLS LAST" or "") .. ", item_id, life)"
 end
 
 -- create builds the generated tables of t.
@@ -61,21 +66,31 @@ function M.create(db: storage.Executor, dialect: string, t: types.GeneratedTable
     local names, layout = t.names, t.layout
     local text_t = pg and "text" or "TEXT"
     local cols: { string } = { "item_id " .. text_t .. " NOT NULL PRIMARY KEY" }
-    for _, s in ipairs(t.system) do cols[#cols + 1] = s.name .. " " .. column_type(s.kind, pg) .. " NOT NULL" end
+    local has_rank = false
+    for _, s in ipairs(t.system) do
+        cols[#cols + 1] = s.name .. " " .. column_type(s.kind, pg) .. " NOT NULL"
+        if s.name == "rank" then has_rank = true end
+    end
     for _, c in ipairs(layout.columns) do cols[#cols + 1] = c.column .. " " .. column_type(c.kind, pg) end
     local stmts: { string } = {
         "CREATE TABLE " .. names.item .. " (" .. table.concat(cols, ", ") .. ")" .. (pg and "" or " STRICT"),
         "CREATE TABLE " .. names.set .. " (item_id " .. text_t .. " NOT NULL, col " .. text_t .. " NOT NULL, value_key "
             .. text_t .. " NOT NULL, PRIMARY KEY (item_id, col, value_key))" .. (pg and "" or " STRICT"),
-        "CREATE INDEX " .. names.set .. "_lookup ON " .. names.set .. " (col, value_key)",
+        "CREATE INDEX " .. names.set .. "_lookup ON " .. names.set .. " (col, value_key, item_id)",
     }
     for n, index in ipairs(t.indexes) do
         local parts: { string } = {}
         for i, name in ipairs(index) do parts[i] = name end
         stmts[#stmts + 1] = "CREATE INDEX " .. (names.item .. "_s" .. n) .. " ON " .. names.item .. " (" .. table.concat(parts, ", ") .. ")"
     end
+    if has_rank then
+        stmts[#stmts + 1] = "CREATE INDEX " .. names.item .. "_rank_desc ON " .. names.item
+            .. " (life, rank DESC" .. (pg and " NULLS LAST" or "") .. ", item_id)"
+    end
     for _, c in ipairs(layout.columns) do
-        stmts[#stmts + 1] = "CREATE INDEX " .. (names.item .. "_" .. c.column) .. " ON " .. names.item .. " (" .. c.column .. ", item_id)"
+        local suffix = c.kind == "number" and ", item_id, life)" or ", item_id)"
+        stmts[#stmts + 1] = "CREATE INDEX " .. (names.item .. "_" .. c.column) .. " ON " .. names.item .. " (" .. c.column .. suffix
+        if c.kind == "number" then stmts[#stmts + 1] = descending_index(names.item, c.column, pg) end
     end
     for _, s in ipairs(stmts) do
         local err = exec(db, s)
@@ -102,13 +117,16 @@ function M.alter(db: storage.Executor, dialect: string, t: types.GeneratedTable,
     for name, c in pairs(old) do
         if not new[name] or new[name].kind ~= c.kind then
             stmts[#stmts + 1] = "DROP INDEX IF EXISTS " .. (names.item .. "_" .. name)
+            if c.kind == "number" then stmts[#stmts + 1] = "DROP INDEX " .. names.item .. "_" .. name .. "_desc" end
             stmts[#stmts + 1] = "ALTER TABLE " .. names.item .. " DROP COLUMN " .. name
         end
     end
     for name, c in pairs(new) do
         if not old[name] or old[name].kind ~= c.kind then
             stmts[#stmts + 1] = "ALTER TABLE " .. names.item .. " ADD COLUMN " .. name .. " " .. column_type(c.kind, pg)
-            stmts[#stmts + 1] = "CREATE INDEX " .. (names.item .. "_" .. name) .. " ON " .. names.item .. " (" .. name .. ", item_id)"
+            local suffix = c.kind == "number" and ", item_id, life)" or ", item_id)"
+            stmts[#stmts + 1] = "CREATE INDEX " .. (names.item .. "_" .. name) .. " ON " .. names.item .. " (" .. name .. suffix
+            if c.kind == "number" then stmts[#stmts + 1] = descending_index(names.item, name, pg) end
         end
     end
     local new_sets = by_column(after.sets)

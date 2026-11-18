@@ -8,9 +8,9 @@ entries:
     comment: Scope declarations - plugin tables items may be filtered by, checked from their registry entries and admitted
       per reader.
   source: file://scopes.lua
-  modules:
-  - registry
+  modules: [registry, sql]
   imports:
+    search_text: kickside.work.domain:search_text
     registry_values: kickside.work.domain:registry_values
     types: kickside.work:types
 - name: select
@@ -105,13 +105,17 @@ entries:
     item_view: kickside.work.read:item_view
     access_rows: kickside.work.persist:access_rows
     budget: kickside.work.read:budget
+- name: cursor_codec
+  kind: library.lua
+  source: file://cursor_codec.lua
+  modules: [base64, crypto, env]
 - name: query
   kind: library.lua
   source: file://query.lua
   modules:
   - security
-  - sql
   imports:
+    cursor_codec: kickside.work.read:cursor_codec
     awaiting: kickside.work.read:awaiting
     planner: kickside.work.read:planner
     window: kickside.work.read:window
@@ -175,17 +179,19 @@ entries:
 - name: cross_board
   kind: library.lua
   source: file://cross_board.lua
+  modules: [hash, security]
   imports:
+    access: kickside.work.read:access
+    access_rows: kickside.work.persist:access_rows
+    principals: kickside.work.read:principals
+    store: kickside.work.persist:store
     budget: kickside.work.read:budget
     values: kickside.work.domain:values
     component: kickside.component:component
     consts: kickside.work:consts
     locate: kickside.work.command:locate
     query: kickside.work.read:query
-    store: kickside.work.persist:store
     predicates: kickside.work.domain:predicates
-    rules: kickside.work.domain:access_rules
-    pages: kickside.work.persist:query_pages
     domain: kickside.work:types
     types: kickside.work.read:types
 - name: resolve_principal

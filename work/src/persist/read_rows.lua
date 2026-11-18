@@ -5,9 +5,9 @@ local domain = require("domain")
 local M = {}
 
 function M.changes(tx: sql.DB | sql.Transaction, board: domain.Board, seq: integer, item_id: string, limit: integer): ({ domain.Row }?, error?)
-    return tx:query([[SELECT * FROM kickside_work_item WHERE board_id = $1 AND updated_seq <= $2
-        AND (updated_seq > $3 OR (updated_seq = $4 AND item_id > $5)) ORDER BY updated_seq, item_id LIMIT $6]],
-        { board.board_id, board.applied_seq, seq, seq, item_id, limit })
+    return tx:query([[SELECT updated_seq, item_id FROM kickside_work_item WHERE board_id = $1 AND updated_seq <= $2
+        AND (updated_seq, item_id) > ($3, $4) ORDER BY updated_seq, item_id LIMIT $5]],
+        { board.board_id, board.applied_seq, seq, item_id, limit })
 end
 
 function M.history(tx: sql.DB | sql.Transaction, board_id: string, subject: string?, before_seq: integer?, before_n: integer?, limit: integer): ({ domain.Row }?, error?)

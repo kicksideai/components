@@ -4,6 +4,8 @@ local registry_values = require("registry_values")
 -- the board database and the columns items may be filtered by. Declarations hold
 -- identifiers only; Work writes the SQL.
 local registry = require("registry")
+local sql = require("sql")
+local search_text = require("search_text")
 local types = require("types")
 
 local M = {}
@@ -24,8 +26,6 @@ local function identifier(v: unknown): string?
     if not v:match("^[a-z_][a-z0-9_]*$") or #v > 63 then return nil end
     return v
 end
-
-M.identifier = identifier
 
 -- load reads and checks the scope entry id.
 function M.load(id: string): (types.Scope?, error?)
@@ -60,8 +60,46 @@ function M.load(id: string): (types.Scope?, error?)
         end
         filters[key] = { column = column, type = value_type, ops = ops }
     end
+    local match: { string } = {}
+    if m.match ~= nil then
+        if type(m.match) ~= "table" or #m.match == 0 or #m.match > 16 then
+            return nil, invalid("match declares 1..16 text columns")
+        end
+        local seen: { [string]: boolean } = {}
+        for _, raw in ipairs(m.match) do
+            local column = identifier(raw)
+            if not column or seen[column] then return nil, invalid("match columns are distinct identifiers") end
+            match[#match + 1], seen[column] = column, true
+        end
+    end
     return { id = id, table = table_name, board_column = board_column, item_column = item_column, filters = filters,
-        access = access }, nil
+        access = access, match = match }, nil
+end
+
+-- write_search replaces one plugin-owned search projection row. The plugin
+-- owns the table and supplies its transaction and original text.
+function M.write_search(tx: sql.DB | sql.Transaction, id: string, board_id: string, item_id: string,
+    text: { [string]: string }): error?
+    local scope, err = M.load(id)
+    if err or not scope then return err end
+    if #scope.match == 0 then return invalid(id .. " has no SQL search columns") end
+    local columns = { scope.board_column, scope.item_column }
+    local bindings: { unknown } = { board_id, item_id }
+    local marks = { "$1", "$2" }
+    local assignments: { string } = {}
+    for _, column in ipairs(scope.match) do
+        if column == scope.board_column or column == scope.item_column then return invalid("search projection text uses separate columns") end
+        local raw = text[column]
+        local folded = type(raw) == "string" and search_text.fold(raw) or nil
+        if not folded then return invalid(column .. " takes UTF-8 text without NUL bytes") end
+        columns[#columns + 1], bindings[#bindings + 1] = column, folded
+        marks[#marks + 1] = "$" .. #bindings
+        assignments[#assignments + 1] = column .. " = excluded." .. column
+    end
+    local _, write_err = tx:execute("INSERT INTO " .. scope.table .. " (" .. table.concat(columns, ", ") .. ") VALUES ("
+        .. table.concat(marks, ", ") .. ") ON CONFLICT (" .. scope.board_column .. ", " .. scope.item_column
+        .. ") DO UPDATE SET " .. table.concat(assignments, ", "), bindings)
+    return write_err
 end
 
 -- admit loads every scope a query names and checks the reader's access to

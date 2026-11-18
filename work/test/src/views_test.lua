@@ -129,6 +129,33 @@ local function define()
             test.eq(context._execution_identity.principal.id, admin.id)
         end)
 
+        test.it("continues the item page of a saved grouped view as its viewer", function()
+            local admin, member = scoped.admin(), scoped.member()
+            local h = scoped.board(admin)
+            local first = steps.create(h, "task", { estimate = 5 })
+            local second = steps.create(h, "task", { estimate = 5 })
+            local third = steps.create(h, "task", { estimate = 1 })
+            assert(h.call("grant", { subject_id = member.id, mask = 1 }))
+            local id = assert(admin.call("create_view", { board_id = h.id, view = { type = "list" } })).view_id
+            assert(admin.call("save_view", { view_id = id, view = {
+                type = "list", group_by = "state", sub_group_by = "estimate",
+                order = { { field = "estimate", dir = "desc" }, { field = "number" } },
+            } }))
+            local page = assert(member.call("run_view", { view_id = id, limit = 1 }))
+            test.eq(page.groups[1].count, 3)
+            local group = page.groups[1].groups[2]
+            test.eq(group.value, 5)
+            test.eq(group.count, 2)
+            test.eq(group.items[1].id, first)
+            test.not_nil(group.after)
+            test.eq(page.items[1].id, first)
+            page = assert(member.call("run_view", { view_id = id, limit = 1, after = page.after }))
+            test.eq(page.items[1].id, second)
+            page = assert(member.call("run_view", { view_id = id, limit = 1, after = page.after }))
+            test.eq(page.items[1].id, third)
+            test.is_nil(page.after)
+        end)
+
         test.it("keeps personal views at root and validates saved trees and presentation", function()
             local admin, member = scoped.admin(), scoped.member()
             local h = scoped.board(admin)

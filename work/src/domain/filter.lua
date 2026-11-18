@@ -86,7 +86,7 @@ local function set_leaf(c: types.FilterCompilation, target: types.ColumnTarget, 
     local rows = "SELECT 1 FROM " .. c.set_table .. " s WHERE s.item_id = " .. c.alias .. ".item_id AND s.col = ?"
     if op == "is_null" then
         if type(raw) ~= "boolean" then return nil, invalid(label .. " takes true or false") end
-        return { sql = ((raw :: boolean) and "NOT EXISTS (" or "EXISTS (") .. rows .. ")", args = { target.column } }, nil
+        return { sql = ((raw :: boolean) and "NOT EXISTS (" or "EXISTS (") .. rows .. ")", args = { target.column }, residual = true }, nil
     end
     local list: { unknown }
     if op == "has" then
@@ -102,7 +102,25 @@ local function set_leaf(c: types.FilterCompilation, target: types.ColumnTarget, 
     end
     local args: { unknown } = { target.column }
     for _, v in ipairs(list) do args[#args + 1] = v end
-    return { sql = (op == "nin" and "NOT EXISTS (" or "EXISTS (") .. rows .. " AND s.value_key IN (" .. marks(#list) .. "))", args = args }, nil
+    if op == "nin" then
+        return { sql = "NOT EXISTS (" .. rows .. " AND s.value_key IN (" .. marks(#list) .. "))", args = args, residual = true }, nil
+    end
+    local membership = c.alias .. ".item_id IN (SELECT s.item_id FROM " .. c.set_table
+        .. " s WHERE s.col = ? AND s.value_key IN (" .. marks(#list) .. "))"
+    return { sql = membership, args = args }, nil
+end
+
+-- The exclusive upper bound is the next Unicode scalar prefix in binary order.
+local function prefix_end(prefix: string): string?
+    local last = #prefix + 1
+    while last > 1 do
+        last = utf8.offset(prefix, -1, last) :: integer
+        local scalar = utf8.codepoint(prefix, last)
+        if scalar < 0x10FFFF then
+            return prefix:sub(1, last - 1) .. utf8.char(scalar == 0xD7FF and 0xE000 or scalar + 1)
+        end
+    end
+    return nil
 end
 
 local function column_leaf(c: types.FilterCompilation, target: types.ColumnTarget, op: string, label: string, raw: unknown): (types.Condition?, error?)
@@ -114,12 +132,12 @@ local function column_leaf(c: types.FilterCompilation, target: types.ColumnTarge
         local v, err = one(c, target, label, raw)
         if err or v == nil then return nil, err end
         if op == "eq" then return { sql = col .. " = ?", args = { v } }, nil end
-        return { sql = "(" .. col .. " IS NULL OR " .. col .. " <> ?)", args = { v } }, nil
+        return { sql = "(" .. col .. " IS NULL OR " .. col .. " <> ?)", args = { v }, residual = true }, nil
     elseif op == "in" or op == "nin" then
         local vs, err = many(c, target, label, raw)
         if err or not vs then return nil, err end
         if op == "in" then return { sql = col .. " IN (" .. marks(#vs) .. ")", args = vs }, nil end
-        return { sql = "(" .. col .. " IS NULL OR " .. col .. " NOT IN (" .. marks(#vs) .. "))", args = vs }, nil
+        return { sql = "(" .. col .. " IS NULL OR " .. col .. " NOT IN (" .. marks(#vs) .. "))", args = vs, residual = true }, nil
     elseif RANGE[op] or op == "between" then
         if target.kind ~= "number" and target.shape.form ~= "time" then return nil, invalid(label .. " applies to ordered fields") end
         if op ~= "between" then
@@ -135,7 +153,12 @@ local function column_leaf(c: types.FilterCompilation, target: types.ColumnTarge
     elseif op == "starts_with" or op == "contains" then
         local v, err = text_operand(c, target, label, raw)
         if err or v == nil then return nil, err end
-        return { sql = c.position .. "(" .. col .. ", ?) " .. (op == "starts_with" and "= 1" or "> 0"), args = { v } }, nil
+        if op == "starts_with" then
+            local upper = prefix_end(v :: string)
+            if upper then return { sql = "(" .. col .. " >= ? AND " .. col .. " < ?)", args = { v, upper } }, nil end
+            return { sql = col .. " >= ?", args = { v } }, nil
+        end
+        return { sql = c.position .. "(" .. col .. ", ?) > 0", args = { v }, residual = true }, nil
     end
     return nil, invalid("unknown filter op " .. op)
 end
@@ -169,7 +192,8 @@ local function member_of(c: types.FilterCompilation, target: types.ColumnTarget,
     if target.set then
         local args: { unknown } = { target.column }
         for _, key in ipairs(keys) do args[#args + 1] = key end
-        return { sql = "EXISTS (SELECT 1 FROM " .. c.set_table .. " s WHERE s.item_id=" .. c.alias .. ".item_id AND s.col=? AND s.value_key IN (" .. marks(#keys) .. "))", args = args }, nil
+        return { sql = c.alias .. ".item_id IN (SELECT s.item_id FROM " .. c.set_table
+            .. " s WHERE s.col = ? AND s.value_key IN (" .. marks(#keys) .. "))", args = args }, nil
     end
     return { sql = c.alias .. "." .. target.column .. " IN (" .. marks(#keys) .. ")", args = keys }, nil
 end
@@ -198,6 +222,11 @@ local function leaf(c: types.FilterCompilation, n: { [string]: unknown }): (type
     return column_leaf(c, target, op, label, n.value)
 end
 
+local function residual(out: types.Condition?, err: error?): (types.Condition?, error?)
+    if err or not out then return nil, err end
+    return { sql = out.sql, args = out.args, item_row = out.item_row, residual = true }, nil
+end
+
 local node: (types.FilterCompilation, unknown, integer) -> (types.Condition?, error?)
 
 function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.Condition?, error?)
@@ -218,7 +247,9 @@ function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.
             if c.leaves < 1 then return nil, invalid("too many filter leaves") end
             c.leaves = c.leaves - 1
             if not c.reader.awaiting then return nil, invalid("awaiting requires an item query") end
-            return c.reader.awaiting(c.alias)
+            local out, err = c.reader.awaiting(c.alias)
+            local condition, rerr = residual(out, err)
+            return condition, rerr
         end
         if n.match ~= nil then
             if next(n, next(n)) ~= nil then return nil, invalid("match stands alone in its node") end
@@ -230,7 +261,9 @@ function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.
             if next(n, next(n)) ~= nil then return nil, invalid("a history condition stands alone in its node") end
             if c.leaves < 1 then return nil, invalid("a filter tree holds at most " .. M.LIMITS.leaves .. " leaves") end
             c.leaves = c.leaves - 1
-            return filter_history.compile(c.reader, c.alias, c.resolve, n.history, c.dialect)
+            local out, err = filter_history.compile(c.reader, c.alias, c.resolve, n.history, c.dialect)
+            local condition, rerr = residual(out, err)
+            return condition, rerr
         end
         if n.rel ~= nil or n.children ~= nil then
             if c.leaves < 1 then return nil, invalid("a filter tree holds at most " .. M.LIMITS.leaves .. " leaves") end
@@ -243,26 +276,29 @@ function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.
                     c.alias, c.hop = alias, hop
                     return inner, ierr
                 end }, n)
-            return out, err
+            local condition, rerr = residual(out, err)
+            return condition, rerr
         end
         return leaf(c, n)
     end
     if connective == "not" then
         local inner, err = node(c, n["not"], depth + 1)
         if err or not inner then return nil, err end
-        return { sql = "((" .. inner.sql .. ") IS NOT TRUE)", args = inner.args }, nil
+        return { sql = "((" .. inner.sql .. ") IS NOT TRUE)", args = inner.args, residual = true }, nil
     end
     local list = n[connective]
     if type(list) ~= "table" or #(list :: { unknown }) == 0 then return nil, invalid(connective .. " needs a list of nodes") end
     local parts: { string } = {}
     local args: { unknown } = {}
+    local residual = false
     for i, child in ipairs(list :: { unknown }) do
         local inner, err = node(c, child, depth + 1)
         if err or not inner then return nil, err end
         parts[i] = inner.sql
         for _, a in ipairs(inner.args) do args[#args + 1] = a end
+        if inner.residual then residual = true end
     end
-    return { sql = "(" .. table.concat(parts, connective == "and" and " AND " or " OR ") .. ")", args = args }, nil
+    return { sql = "(" .. table.concat(parts, connective == "and" and " AND " or " OR ") .. ")", args = args, residual = residual }, nil
 end
 
 -- compile turns a tree into a fragment over alias i.

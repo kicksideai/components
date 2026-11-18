@@ -71,7 +71,7 @@ type Reader = { awaiting: ((string) -> (Condition?, error?))?, search: { string 
 -- Where is a filter tree as requested; kickside.work.domain:filter reads it.
 type Where = { [string]: unknown }
 type Sort = { field: string, ctx: { [string]: string }?, dir: string? }
-type Cursor = { id: string, v: ColumnValue?, keys: { { v: ColumnValue? } }? }
+type Cursor = { id: string, phase: string?, position: string?, v: ColumnValue?, keys: { { v: ColumnValue? } }? }
 type ItemQuery = { scan: integer?, groups: { string }?, sorts: { Sort }?, where: Where?, after: Cursor?, count: integer? }
 -- ColumnTarget is the generated column a filter or sort names: the value shape normalizes
 -- request values, coerce maps a request shorthand onto the canonical form first, and
@@ -80,7 +80,7 @@ type Memberships = { [string]: { [string]: boolean } }
 type ColumnTarget = { principal: boolean?, memberships: Memberships?, column: string, kind: string, set: boolean, shape: ValueShape, coerce: ((unknown) -> (unknown, error?))?, field_id: integer?, state_column: string?, order: ColumnTarget?, intervals: boolean? }
 type Resolver = (string, { [string]: string }?) -> (ColumnTarget?, error?)
 -- Condition is compiled SQL and its arguments in placeholder order, over alias i (generated row) and r (item row).
-type Condition = { sql: string, args: { unknown } }
+type Condition = { sql: string, args: { unknown }, residual: boolean?, item_row: boolean? }
 -- FilterEnvironment is what a filter tree compiles against; FilterCompilation adds the
 -- leaves and values the tree may still use and the row it stands on.
 type FilterEnvironment = { reader: Reader, item_table: string, set_table: string, dialect: string, relations: { [string]: Relation }, resolve: Resolver }
@@ -95,7 +95,7 @@ type HistoryAsked = { target: ColumnTarget, by: string?, from: string?, to: stri
 
 -- Scopes: declarative filters over plugin tables in the board database.
 type ScopeFilter = { column: string, type: string, ops: { [string]: boolean } }
-type Scope = { id: string, table: string, board_column: string, item_column: string, filters: { [string]: ScopeFilter }, access: string }
+type Scope = { id: string, table: string, board_column: string, item_column: string, filters: { [string]: ScopeFilter }, access: string, match: { string } }
 type ScopeQuery = { id: string, where: { [string]: { [string]: unknown } } }
 -- AdmittedScope is a scope query whose scope the reader's access allows.
 type AdmittedScope = { scope: Scope, where: { [string]: { [string]: unknown } } }

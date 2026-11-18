@@ -39,6 +39,11 @@ function M.non_item(request: unknown): error?
     return nil
 end
 
+function M.changed(): error
+    return errors.new({ kind = errors.UNAVAILABLE, retryable = false, message = "board access rules changed during the read",
+        details = { code = "access_projection_changed" } })
+end
+
 -- admit checks that the ambient caller can read board_id.
 function M.admit(board_id: string): error?
     if board_id == "" then return M.invalid("board_id required") end
@@ -106,7 +111,7 @@ function M.with_snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?
         ferr = errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "board has not reached seq " .. min_seq,
             details = { code = "projection_pending", min_seq = min_seq, applied_seq = board.applied_seq } })
     elseif board.digest ~= admitted.digest then
-        ferr = errors.new({ kind = errors.UNAVAILABLE, retryable = false, message = "board access rules changed during the read", details = { code = "access_projection_changed" } })
+        ferr = M.changed()
     else
         board.caller, board.memberships = admitted.caller, admitted.memberships
         board.dialect = db:type()
