@@ -15,6 +15,7 @@ local narrow = require("narrow")
 local resolve = require("resolve")
 local pio = require("portable_io")
 local input=require("input")
+local term_line=require("term_line")
 local types = require("types")
 local references = require("references")
 local portable_result = require("portable_result")
@@ -95,9 +96,9 @@ function M.handler(args: types.PortableArgs): types.PortableResult
                     local decoded,derr2=store.decode_row(row,{vocabulary="text",code="text",labels="json",retired="int"})
                     if derr2 or not decoded then return derr2 end
                     local term:types.ExportedTerm={vocabulary=vocabulary,code=decoded.code :: string,parent=narrow.text(row.parent),labels=decoded.labels :: {[string]:string},retired=decoded.retired==1}
-                    local line,lerr=json.encode(term)
-                    if lerr then return lerr end
-                    local _,werr2=term_file:write((line :: string).."\n")
+                    local line,lerr=term_line.encode(term)
+                    if lerr or not line then return lerr end
+                    local _,werr2=term_file:write(line)
                     if werr2 then return werr2 end
                     term_count=term_count+1
                     frame.after=term.code

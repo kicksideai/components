@@ -11,6 +11,7 @@ local merge_rows = require("merge_rows")
 local clock = require("clock")
 local execution_identity = require("execution_identity")
 local resolve = require("resolve")
+local term_line = require("term_line")
 local M = {}
 local EV = consts.EVENTS
 
@@ -208,6 +209,11 @@ function M.plan_term(st: item_state.State, item: types.ApplyItem): (types.Event?
     if current and values.equal(current.labels, next_term.labels) and current.parent == next_term.parent
         and (current.retired == true) == next_term.retired then
         return nil, { outcome = "unchanged", term = key }, nil
+    end
+    local portable, perr = term_line.encode({ vocabulary = t.vocabulary, code = t.code,
+        labels = next_term.labels, parent = next_term.parent, retired = retired })
+    if perr or not portable then
+        return nil, item_state.fail("invalid", tostring(perr)), nil
     end
     st.terms[key] = next_term
     return { type = EV.TERM_CHANGED, subject = "t:" .. key,

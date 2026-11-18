@@ -3,6 +3,8 @@
 -- revalidates at the head, and the retention owner purges past the window,
 -- leaves tombstones, prunes them and the change history, and raises the floor.
 local test = require("test")
+local funcs = require("funcs")
+local json = require("json")
 local steps = require("steps")
 local fixture = require("fixture")
 local store = require("store")
@@ -19,6 +21,44 @@ local trash, restore, exec, product, run_owner = trash_fixture.trash, trash_fixt
 
 local function define()
     test.describe("retention across catalogs", function()
+        test.it("persists the first full trash page when no other class changes", function()
+            local h = fixture.catalog({ bare = true })
+            local create: { types.ApplyItem }, deletes: { types.ApplyItem } = {}, {}
+            for i = 1, 26 do
+                local product = { sku = "RETENTION-TRASH-" .. i }
+                create[i] = { product = product, create = { family = "generic" } }
+                deletes[i] = { product = product, expect_version = 1, delete = true }
+            end
+            test.is_true(assert(h.call("apply", { items = create })).applied)
+            test.is_true(assert(h.call("apply", { items = deletes })).applied)
+            local db = assert(store.open())
+            assert(db:execute("UPDATE kickside_pim_product SET state_at=$1 WHERE catalog_id=$2", { clock.ago(1000), h.id }))
+            local tied = assert(db:query([[SELECT product_id FROM kickside_pim_product
+                WHERE catalog_id=$1 ORDER BY state_at,product_id LIMIT 1 OFFSET 24]], { h.id }))
+            local last = tied[1].product_id
+            assert(not retention_rows.advance(db, { catalog_id = h.id, inclusive = 1, product_after = "" }))
+            assert(db:release())
+            local sweep = assert(funcs.call("kickside.pim.retention:owner", {}))
+            test.is_true(sweep.success, tostring(sweep.error))
+            test.is_true(sweep.needs_continue)
+            local read = assert(store.open())
+            local purges = tonumber(assert(read:query("SELECT COUNT(*) AS n FROM kickside_event WHERE thread_id=$1 AND type='kickside.pim.events:product.purged'", { h.id }))[1].n)
+            local cursor = assert(json.decode(assert(read:query("SELECT retention_after FROM kickside_pim_catalog WHERE catalog_id=$1", { h.id }))[1].retention_after))
+            assert(read:release())
+            test.eq(purges, 25)
+            test.not_nil(cursor.trash, "full trash page left no durable keyset")
+            test.eq(assert(json.decode(cursor.trash)).id, last)
+            local settled = assert(h.call("settle", {}))
+            test.is_true(settled.done)
+            run_owner(h)
+            local check = assert(store.open())
+            local after = assert(check:query("SELECT retention_after FROM kickside_pim_catalog WHERE catalog_id=$1", { h.id }))[1]
+            local left = assert(check:query("SELECT product_id FROM kickside_pim_product WHERE catalog_id=$1 AND state='trashed'", { h.id }))
+            assert(check:release())
+            test.is_nil(assert(json.decode(after.retention_after)).trash, "a partial page clears the durable keyset")
+            test.eq(#left, 0)
+        end)
+
         test.it("keeps retaining the other catalogs when one fails, and reports the failure", function()
             local broken = fixture.catalog()
             fixture.boot(broken)

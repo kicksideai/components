@@ -164,6 +164,7 @@ entries:
     meta: { comment: Sequential term edits and validated merge planning. }
     source: file://terms.lua
     imports:
+      term_line: kickside.pim:term_line
       failure: kickside.pim:failure
       references: kickside.pim.domain:references
       clock: kickside.pim:clock

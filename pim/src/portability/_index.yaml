@@ -11,6 +11,7 @@ entries:
     method: handler
     modules: [fs, ctx, json]
     imports:
+      term_line: kickside.pim:term_line
       input: kickside.pim.portability:input
       error_envelope: kickside.contract:error_envelope
       references: kickside.pim.domain:references
@@ -63,6 +64,7 @@ entries:
     source: file://import_work.lua
     modules: [fs, json, hash, sql]
     imports:
+      term_line: kickside.pim:term_line
       input: kickside.pim.portability:input
       defaults: kickside.pim.settings:defaults
       error_envelope: kickside.contract:error_envelope

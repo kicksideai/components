@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
--- Each invocation visits at most ten catalogs and shares one 500-row budget across trash scans, history pruning and tombstone pruning.
+-- One callback budget covers global work, catalog teardown and active retention.
 local security = require("security")
 local consts = require("consts")
 local clock = require("clock")
@@ -21,6 +21,9 @@ local references=require("references")
 local failure=require("failure")
 local creations=require("creations")
 local M = {}
+
+-- A half share for trash still leaves a full four-unit tombstone retirement.
+local MIN_RETENTION_ROWS = 8
 
 -- Pruned is what one prune transaction removed and whether more remains.
 type Pruned = { removed: integer, spent:integer, more: boolean, tombstones: {retention_rows.Tombstone}? }
@@ -95,6 +98,12 @@ local function prune(catalog_id:string,effective:types.Policy,limit:integer,curs
                 end
             elseif name=="history" then
                 if effective.audit_days>0 then removed,err=history.prune(tx,catalog_id,clock.ago(effective.audit_days),quota);spent=removed;more=removed==quota end
+            elseif name=="publication" then
+                if effective.audit_days>0 then
+                    removed,err=retention_rows.prune_publications(tx,catalog_id,clock.ago(effective.audit_days),quota)
+                    spent=removed
+                    more=removed==quota
+                end
             elseif name=="tombstone" then
                 -- Three exact subject seeks plus one owner deletion per product.
                 local capacity=math.min(33,quota//4)
@@ -111,7 +120,6 @@ local function prune(catalog_id:string,effective:types.Policy,limit:integer,curs
                 elseif name=="proposal" then table_name="kickside_pim_proposal";keys="created_at,proposal_id";where="created_at<$2";params[2]=clock.ago(effective.proposal_days)
                 elseif name=="import_map" then table_name="kickside_pim_import_map";keys="old_id";where="EXISTS(SELECT 1 FROM kickside_pim_import_work w WHERE w.catalog_id=$1 AND w.done=1 AND w.completed_at<$2)";params[2]=clock.ago(effective.import_days)
                 elseif name=="import_work" then table_name="kickside_pim_import_work";keys="catalog_id";where="done=1 AND completed_at<$2 AND NOT EXISTS(SELECT 1 FROM kickside_pim_import_map m WHERE m.catalog_id=$1)";params[2]=clock.ago(effective.import_days)
-                elseif name=="publication" and effective.audit_days>0 then table_name="kickside_pim_publication";keys="updated_at,channel,product_id";where="state<>'published' AND updated_at<$2";params[2]=clock.ago(effective.audit_days)
                 elseif name=="usage" then table_name="kickside_pim_attribute_usage";keys="attribute_id";where="products=0"
                 end
                 if table_name~="" then removed,more,err=cleanup_rows.page(tx,table_name,keys,"catalog_id=$1 AND "..where,params,quota);spent=removed end
@@ -123,7 +131,7 @@ local function prune(catalog_id:string,effective:types.Policy,limit:integer,curs
             if spent>0 and out.spent==limit then cursor.next=n%#classes+1 end
         end
         -- Cycle/completion metadata alone does not make an idle checkpoint dirty.
-        if out.spent==0 and not had_cursor and not out.more then return out,nil end
+        if out.spent==0 and not had_cursor and cursor.trash==nil and not out.more then return out,nil end
         local encoded=json.encode(cursor)
         local _,uerr=tx:execute("UPDATE kickside_pim_catalog SET retention_after=$1 WHERE catalog_id=$2 AND retention_after<>$1",{encoded,catalog_id})
         if uerr then return nil,uerr end
@@ -192,9 +200,6 @@ function M.run(_input:unknown): Result
         return n,err
     end)
     if expire_err or not expired then return {success=false,error=expire_err} end
-    local cleaned,cerr=cleanup.run(BATCH//2)
-    if cerr then return {success=false,error=cerr} end
-    local blocked:{{component_id:string,error:error}}=cleaned and cleaned.blocked or {}
     local db,err=store.open()
     if not db then return {success=false,error=err} end
     local global_deadline,gerr=retention_rows.global_deadline(db,base.pending_creation_days)
@@ -204,38 +209,68 @@ function M.run(_input:unknown): Result
     if not perr and position then rows,perr=retention_rows.catalogs(db,position,CATALOGS+1) end
     perr=store.release(db,perr)
     if perr or not position then return {success=false,error=perr} end
+    local page=rows or {}
+    local spent=examined+expired
+    local cleanup_limit=BATCH-spent
+    local cleanup_catalogs=CATALOGS
+    if #page>0 then
+        if CATALOGS==1 then
+            cleanup_catalogs=position.cleanup_turn or 0
+        else
+            cleanup_catalogs=math.max(CATALOGS//2,CATALOGS-#page)
+            cleanup_limit=math.min(BATCH//2,cleanup_limit-MIN_RETENTION_ROWS)
+        end
+    end
+    local cleaned,cerr=cleanup.run(cleanup_limit,cleanup_catalogs)
+    if cerr or not cleaned then return {success=false,error=cerr} end
+    local blocked=cleaned.blocked
     local c,terr=threads.open()
     if terr or not c then return {success=false,error=terr} end
-    local deleted,spent,visited=abandoned+expired+(cleaned and cleaned.deleted or 0),examined+expired+(cleaned and cleaned.deleted or 0),0
+    local deleted=abandoned+expired+cleaned.deleted
+    spent=spent+cleaned.deleted
+    local visited=cleaned.catalogs
+    local scan_limit=CATALOGS-visited
     -- Keep one archive scan cycle across installation pages and repeat sweeps.
     -- The singleton's former product cursor is unused by per-catalog trash scans.
     local cycle=position.product_after~="" and position.product_after or tostring(clock.deadline(0).ns)
-    local next_position:retention_rows.Position=position
+    local last_catalog_id: string? = nil
     local deadline=position.deadline_ms
     if global_deadline then deadline=deadline and math.min(deadline,global_deadline) or global_deadline end
-    local page=rows or {}
-    local scan_more=#page>CATALOGS
+    local scan_more=#page>scan_limit
     local backlog,deferred=position.pending==1 or abandon_more==true or expire_more,false
-    for i=1,math.min(#page,CATALOGS) do
-        if spent==BATCH then scan_more=true;break end
+    for i=1,math.min(#page,scan_limit) do
+        if BATCH-spent<MIN_RETENTION_ROWS then scan_more=true;break end
         local row=page[i]
         local catalog_id,iderr=store.need(row,"catalog_id")
         if iderr or not catalog_id then return {success=false,error=iderr} end
-        local retained,rerr=retain(c,base,catalog_id,row,math.min(50,BATCH-spent),cycle)
-        visited=visited+1
-        next_position={catalog_id=catalog_id,inclusive=0,product_after=""}
-        if rerr then blocked[#blocked+1]={component_id=catalog_id,error=rerr}
-        elseif retained then
-            deleted=deleted+retained.removed;spent=spent+retained.spent
-            backlog=backlog or retained.more
-            deferred=deferred or retained.skipped==true
-            if retained.deadline_ms then deadline=deadline and math.min(deadline,retained.deadline_ms) or retained.deadline_ms end
+        local teardown,qerr=store.need_int(row,"teardown")
+        if qerr then return {success=false,error=qerr} end
+        last_catalog_id=catalog_id
+        if teardown==0 then
+            local limit=math.min(50,BATCH-spent)
+            local retained,rerr=retain(c,base,catalog_id,row,limit,cycle)
+            visited=visited+1
+            if rerr then
+                blocked[#blocked+1]={component_id=catalog_id,error=rerr}
+                spent=spent+limit
+            elseif retained then
+                deleted=deleted+retained.removed;spent=spent+retained.spent
+                backlog=backlog or retained.more
+                deferred=deferred or retained.skipped==true
+                if retained.deadline_ms then deadline=deadline and math.min(deadline,retained.deadline_ms) or retained.deadline_ms end
+            end
         end
     end
-    if not scan_more then next_position={catalog_id="",inclusive=0,product_after=""} end
-    local more=scan_more or backlog or deferred or (cleaned and cleaned.needs_continue==true) or false
+    local next_position:retention_rows.Position=position
+    if not scan_more then
+        next_position={catalog_id="",inclusive=0,product_after=""}
+    elseif last_catalog_id then
+        next_position={catalog_id=last_catalog_id,inclusive=0,product_after=""}
+    end
+    local more=scan_more or backlog or deferred or cleaned.needs_continue
     if deadline and deadline<=clock.millis() then deadline=nil;more=true end
     next_position.product_after=more and cycle or ""
+    next_position.cleanup_turn=CATALOGS==1 and last_catalog_id~=nil and cleaned.needs_continue and 1 or 0
     if scan_more then next_position.deadline_ms=deadline;next_position.pending=backlog and 1 or 0 end
     local _,aerr=store.transaction("retention position",function(tx:types.Executor,_dialect:string): (boolean?,error?)
         local err=retention_rows.advance(tx,next_position)

@@ -58,6 +58,27 @@ function M.prune_tombstones(tx: types.Executor, catalog_id: string, tombs: {Tomb
     return #tombs, nil
 end
 
+-- The owner holds the catalog lock. A reader's snapshot sees both the
+-- withdrawals and their expiry floor before or after this transaction.
+function M.prune_publications(tx: types.Executor, catalog_id: string, before: string, limit: integer): (integer?, error?)
+    local rows, err = tx:query([[SELECT channel, product_id, seq FROM kickside_pim_publication
+        WHERE catalog_id = $1 AND state <> 'published' AND updated_at < $2
+        ORDER BY updated_at, channel, product_id LIMIT $3]], { catalog_id, before, limit })
+    if err or not rows then return nil, err end
+    for _, row in ipairs(rows) do
+        local _, derr = tx:execute([[DELETE FROM kickside_pim_publication
+            WHERE catalog_id = $1 AND channel = $2 AND product_id = $3]], { catalog_id, row.channel, row.product_id })
+        if derr then return nil, derr end
+        local _, ferr = tx:execute([[INSERT INTO kickside_pim_publication_floor (catalog_id, channel, seq, product_id)
+            VALUES ($1, $2, $3, $4) ON CONFLICT (catalog_id, channel) DO UPDATE
+            SET seq = excluded.seq, product_id = excluded.product_id
+            WHERE (kickside_pim_publication_floor.seq, kickside_pim_publication_floor.product_id) < (excluded.seq, excluded.product_id)]],
+            { catalog_id, row.channel, row.seq, row.product_id })
+        if ferr then return nil, ferr end
+    end
+    return #rows, nil
+end
+
 function M.orphan_receipts(tx:types.Executor,limit:integer): (integer?,boolean?,error?)
     -- All expired receipts are eligible, regardless of catalog existence.
     local rows,err=tx:query("SELECT catalog_id,marker FROM kickside_pim_receipt WHERE expires_at<$1 ORDER BY expires_at,catalog_id,marker LIMIT $2",{clock.now(),limit})
@@ -83,28 +104,35 @@ function M.global_deadline(db:types.Executor,pending_days:integer): (integer?,er
     return earliest,nil
 end
 
-type Position = { catalog_id: string, inclusive: integer, product_after: string, deadline_ms: integer?,pending:integer? }
+type Position = { catalog_id: string, inclusive: integer, product_after: string, deadline_ms: integer?, pending: integer?, cleanup_turn: integer? }
 M.Position = Position
 
 function M.position(db: types.Executor): (Position?, error?)
-    local rows, err = db:query("SELECT catalog_id, inclusive, product_after, deadline_ms,pending FROM kickside_pim_retention WHERE owner_id = 'pim'", {})
+    local rows, err = db:query("SELECT catalog_id, inclusive, product_after, deadline_ms, pending, cleanup_turn FROM kickside_pim_retention WHERE owner_id = 'pim'", {})
     if err then return nil, err end
     if not rows or not rows[1] then return nil, failure.corrupt("retention position is missing") end
-    local row, derr = store.decode_row(rows[1], { catalog_id = "text", inclusive = "int", product_after = "text" })
+    local row, derr = store.decode_row(rows[1], { catalog_id = "text", inclusive = "int", product_after = "text", cleanup_turn = "int" })
     if derr or not row then return nil, derr end
-    return { catalog_id = row.catalog_id :: string, inclusive = row.inclusive :: integer, product_after = row.product_after :: string, deadline_ms = tonumber(row.deadline_ms) :: integer?,pending=tonumber(row.pending) :: integer? }, nil
+    return { catalog_id = row.catalog_id :: string, inclusive = row.inclusive :: integer, product_after = row.product_after :: string,
+        deadline_ms = tonumber(row.deadline_ms) :: integer?, pending = tonumber(row.pending) :: integer?, cleanup_turn = row.cleanup_turn :: integer }, nil
 end
 
 function M.advance(db: types.Executor, position: Position): error?
-    local _, err = db:execute("UPDATE kickside_pim_retention SET catalog_id = $1, inclusive = $2, product_after = $3, deadline_ms = $4,pending=$5 WHERE owner_id = 'pim' AND (catalog_id<>$1 OR inclusive<>$2 OR product_after<>$3 OR COALESCE(deadline_ms,0)<>COALESCE(CAST($4 AS BIGINT),0) OR pending<>$5)", { position.catalog_id, position.inclusive, position.product_after, position.deadline_ms or sql.NULL,position.pending or 0 })
+    local _, err = db:execute([[UPDATE kickside_pim_retention SET catalog_id = $1, inclusive = $2, product_after = $3,
+        deadline_ms = $4, pending = $5, cleanup_turn = $6 WHERE owner_id = 'pim'
+        AND (catalog_id<>$1 OR inclusive<>$2 OR product_after<>$3 OR COALESCE(deadline_ms,0)<>COALESCE(CAST($4 AS BIGINT),0)
+            OR pending<>$5 OR cleanup_turn<>$6)]],
+        { position.catalog_id, position.inclusive, position.product_after, position.deadline_ms or sql.NULL, position.pending or 0, position.cleanup_turn or 0 })
     return err
 end
 
--- catalogs returns a bounded page from the durable sweep position.
+-- Take the key page before probing teardown so queued keys can advance the sweep.
 function M.catalogs(db: types.Executor, position: Position, limit: integer): ({ types.Row }?, error?)
-    local rows, err = db:query([[SELECT catalog_id, compiled,retention_after FROM kickside_pim_catalog
-        WHERE (catalog_id > $1 OR (catalog_id = $1 AND $2 = 1))
-        AND catalog_id NOT IN (SELECT catalog_id FROM kickside_pim_cleanup) ORDER BY catalog_id LIMIT $3]],
+    local rows, err = db:query([[SELECT page.catalog_id, page.compiled, page.retention_after,
+        COALESCE((SELECT 1 FROM kickside_pim_cleanup AS q WHERE q.catalog_id = page.catalog_id), 0) AS teardown
+        FROM (SELECT catalog_id, compiled, retention_after FROM kickside_pim_catalog
+            WHERE catalog_id >= $1 AND (catalog_id > $1 OR $2 = 1)
+            ORDER BY catalog_id LIMIT $3) AS page ORDER BY page.catalog_id]],
         { position.catalog_id, position.inclusive, limit })
     if err then return nil, errors.wrap(err, "catalog scan failed") end
     return rows or {}, nil

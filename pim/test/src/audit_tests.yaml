@@ -150,43 +150,12 @@ entries:
       projection: app:projection_audit_probe
       test: wippy.test:test
 
-  - name: retention_fair_owner
-    kind: function.lua
-    meta:
-      comment: Purges trash past its window, prunes change history and tombstones past theirs, and advances each catalog's tombstone floor.
-    source: file://retention_fair_owner.lua
-    method: run
-    modules: [security, json]
-    security:
-      actor: { id: system:kickside.pim.retention }
-      policies: [kickside.pim.security:module_runtime, kickside.pim.security:retention_db_access, kickside.pim.security:purge_output_publish, kickside.pim.security:catalog_delete_report, kickside.pim.security:subject_retirement]
-    imports:
-      creations: kickside.pim.persist:creations
-      archive_rows: kickside.pim.persist:archive_rows
-      references: kickside.pim.domain:references
-      failure: kickside.pim:failure
-      cleanup_rows: kickside.pim.persist:cleanup_rows
-      error_envelope: kickside.contract:error_envelope
-      cleanup: app:retention_fair_fixture
-      history: kickside.pim.persist:history
-      clock: kickside.pim:clock
-      consts: kickside.pim:consts
-      store: kickside.pim.persist:store
-      retention_rows: kickside.pim.persist:retention_rows
-      threads: kickside.pim.command:threads
-      policy: kickside.pim.domain:policy
-      defaults: kickside.pim.settings:defaults
-      types: kickside.pim:types
-
-  - name: retention_fair_fixture
-    kind: library.lua
-    source: file://retention_fair_fixture.lua
-
   - name: import_work_probe
     kind: library.lua
     source: file://import_work_probe.lua
     modules: [json, hash, sql]
     imports:
+      term_line: kickside.pim:term_line
       input: kickside.pim.portability:input
       defaults: kickside.pim.settings:defaults
       error_envelope: kickside.contract:error_envelope

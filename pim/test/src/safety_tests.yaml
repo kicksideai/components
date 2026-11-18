@@ -23,6 +23,8 @@ entries:
     method: run
     modules: [funcs, time]
     imports:
+      defaults: kickside.pim.settings:defaults
+      retention_rows: kickside.pim.persist:retention_rows
       test: wippy.test:test
       fixture: app:fixture
       store: kickside.pim.persist:store

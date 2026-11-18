@@ -192,6 +192,7 @@ entries:
     method: run
     modules: [time]
     imports:
+      scoped: app:scoped
       steps: app:steps
       test: wippy.test:test
       fixture: app:fixture
@@ -368,6 +369,7 @@ entries:
     source: file://idempotency_test.lua
     method: run
     imports:
+      store: kickside.pim.persist:store
       test: wippy.test:test
       fixture: app:fixture
       types: kickside.pim:types
@@ -1804,6 +1806,8 @@ entries:
     method: run
     modules: [funcs, json, time]
     imports:
+      retention_rows: kickside.pim.persist:retention_rows
+      types: kickside.pim:types
       test: wippy.test:test
       fixture: app:fixture
       scoped: app:scoped
@@ -1870,9 +1874,11 @@ entries:
     meta: { type: test, suite: kickside_pim, timeout: 300s }
     source: file://retention_budget_test.lua
     method: run
-    modules: [funcs, json]
+    modules: [funcs, json, contract]
     imports:
-      fair: app:retention_fair_fixture
+      defaults: kickside.pim.settings:defaults
+      retention_rows: kickside.pim.persist:retention_rows
+      types: kickside.pim:types
       test: wippy.test:test
       fixture: app:fixture
       store: kickside.pim.persist:store
@@ -2006,8 +2012,9 @@ entries:
     meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Catalog lifecycle, projection counters and replay, portability and read views. }
     source: file://portable_roundtrip_test.lua
     method: run
-    modules: [uuid, json]
+    modules: [uuid, json, fs]
     imports:
+      types: kickside.pim:types
       catalog_fixture: app:catalog_fixture
       test: wippy.test:test
       fixture: app:fixture
@@ -2250,6 +2257,7 @@ entries:
     meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Trash, restore, purge, tombstones and change-history retention. }
     source: file://trash_retention_test.lua
     method: run
+    modules: [funcs, json]
     imports:
       trash_fixture: app:trash_fixture
       steps: app:steps

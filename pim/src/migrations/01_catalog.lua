@@ -147,6 +147,12 @@ local POSTGRES = {
     [[CREATE INDEX kickside_pim_publication_feed ON kickside_pim_publication (catalog_id, channel, seq, product_id)]],
     [[CREATE INDEX kickside_pim_publication_current ON kickside_pim_publication(catalog_id,release_id) WHERE state='published']],
     [[CREATE INDEX kickside_pim_publication_expiry ON kickside_pim_publication(catalog_id,updated_at,channel,product_id) WHERE state<>'published']],
+    [[CREATE TABLE kickside_pim_publication_floor (
+        catalog_id text NOT NULL,
+        channel text NOT NULL,
+        seq bigint NOT NULL,
+        product_id text NOT NULL,
+        PRIMARY KEY (catalog_id, channel))]],
     [[CREATE TABLE kickside_pim_proposal (
         catalog_id text NOT NULL,
         proposal_id text NOT NULL,
@@ -200,7 +206,8 @@ local POSTGRES = {
         PRIMARY KEY (catalog_id, vocabulary, from_code))]],
     [[CREATE INDEX kickside_pim_merge_into ON kickside_pim_merge(catalog_id,vocabulary,into_code)]],
     [[CREATE TABLE kickside_pim_retention (
-        owner_id text NOT NULL PRIMARY KEY, catalog_id text NOT NULL, inclusive integer NOT NULL, product_after text NOT NULL, deadline_ms bigint,pending integer NOT NULL DEFAULT 0)]],
+        owner_id text NOT NULL PRIMARY KEY, catalog_id text NOT NULL, inclusive integer NOT NULL, product_after text NOT NULL,
+        deadline_ms bigint, pending integer NOT NULL DEFAULT 0, cleanup_turn integer NOT NULL DEFAULT 0)]],
     [[INSERT INTO kickside_pim_retention (owner_id, catalog_id, inclusive, product_after) VALUES ('pim', '', 0, '')]],
     [[CREATE TABLE kickside_pim_release_job (
         catalog_id text NOT NULL, request_id text NOT NULL, model_id text NOT NULL,
@@ -235,6 +242,7 @@ local DROP = {
     "DROP TABLE kickside_pim_merge",
     "DROP TABLE kickside_pim_change",
     "DROP TABLE kickside_pim_proposal",
+    "DROP TABLE kickside_pim_publication_floor",
     "DROP TABLE kickside_pim_publication",
     "DROP TABLE kickside_pim_release",
     "DROP TABLE kickside_pim_attribute_usage",

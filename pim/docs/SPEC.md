@@ -978,6 +978,7 @@ Prefix `kickside_pim_`; every key leads with `catalog_id`.
 | `attribute_usage` | catalog_id, attribute_id | products |
 | `release` | catalog_id, release_id | product_id, version, generation, snapshot, hash, channels, seq |
 | `publication` | catalog_id, channel, product_id | release_id, state, seq |
+| `publication_floor` | catalog_id, channel | greatest expired withdrawal key (seq, product_id) |
 | `proposal` | catalog_id, proposal_id | items, base, source, origin, status, result, created_by, decided_by |
 | `job` | catalog_id, job_id | job_type, key, identity (captured row), status, error, created_at |
 
@@ -1111,11 +1112,13 @@ reads stay `rebuilding: true`, and the next
 cursor. Failure state lives only on the Jobs row (`last_error`, read with
 `jobs.get_job` through `catalog.rebuild_job`); public meta shows it as
 `rebuild_error` while the rebuild is pending. `kickside.pim.retention:owner` (`kickside.retention.owner`) purges trash past
-its window, change rows and tombstones past theirs. Each invocation visits at
-most ten catalogs and spends one 500-row budget across trash scans, audit pruning
-and tombstone pruning. Teardown shares that budget, with a reserved half, and
-one catalog receives at most 50 rows. The singleton `retention` row persists
-the catalog scan position, pending-work aggregate and minimum future deadline;
+its window, change rows and tombstones past theirs. Each invocation shares the
+configured row budget (500 by default) across global creation and receipt expiry,
+teardown, and active catalog retention. Teardown and active retention also share
+the configured visit limit (ten by default). Both phases get a share when work
+is queued in both, and they alternate when the limit is one. One catalog receives
+at most 50 rows. The singleton `retention` row persists the catalog scan
+position, the next phase at a one-catalog limit, pending work and the minimum future deadline;
 each catalog retains its trash/archive keysets and row-class rotation. A version conflict keeps
 the product and advances the scan so other rows and catalogs still progress.
 `sweep_complete` marks the end of one sweep; `needs_continue` also signals work
@@ -1187,7 +1190,7 @@ the settings UI):
 | `proposal_bytes` | int, 1024–262144 | 262144 | Proposal size (bytes) |
 | `command_deadline_ms` | int, 100–5000 | 5000 | Command execution budget (ms) |
 | `maintenance_rows` | int, 20–500 | 500 | Maintenance work per callback |
-| `maintenance_catalogs` | int, 1–10 | 10 | Catalogs per maintenance callback |
+| `maintenance_catalogs` | int, 1–10 | 10 | Catalog sweep slots per maintenance callback |
 | `rebuild_rows` | int, 1–500 | 500 | Products per rebuild transaction |
 | `job_batches` | int, 1–20 | 20 | Batches per job execution |
 | `import_rows` | int, 1–200 | 200 | Rows per import batch |
@@ -1210,6 +1213,11 @@ by themselves; the catalog settings Policy section shows effective deployment
 defaults and catalog overrides through shared controls. Event retention stays the deploy-time requirement
 `catalog_event_retention_days`, because it is fixed in the binding's
 `meta.retention`.
+
+Maintenance shares catalog slots between teardown visits and the ordinary catalog
+sweep. The sweep seeks a bounded page of catalog keys from its durable checkpoint.
+A key queued for teardown consumes a slot and advances the checkpoint without
+ordinary retention. One lookahead key indicates whether the sweep should continue.
 
 ## 6. Commands
 
@@ -1578,10 +1586,20 @@ A proposal is PIM-owned state (Core requires WRITE for any append):
 
 The catalog contract exposes the feeds as methods (`list_changes({ catalog_id,
 cursor, limit, families? })`, `list_publications({ catalog_id, channel,
-after: { seq, product_id }, limit })`); a plugin may call them directly. The sink, the sources,
+after: { seq, product_id, expiry_floor? }, limit })`); a plugin may call them directly. The sink, the sources,
 the event ports, the Blocks and the agent tools live in `kickside/pim` as thin
 bindings over the catalog contract (the `kickside/pim-flow` split of §17
 moves them unchanged).
+
+Publication retention removes expired withdrawals and advances the channel's
+expiry boundary to the greatest deleted `(seq, product_id)` in one transaction.
+Continuations carry the expiry boundary seen by the issuing page. A newer
+boundary strictly beyond the continuation's position returns a non-retryable
+`CONFLICT` with code `cursor_expired` through both the catalog method and the
+pullable. Consumers that receive this error rebuild their replicas from cursor
+zero and pass each new continuation unchanged. This allows a fresh consumer to
+page through live publications older than the observed boundary. A position at
+the boundary remains valid, including when several withdrawals share a sequence.
 
 | Surface | Kind | Contract |
 |---|---|---|
@@ -1736,6 +1754,7 @@ Proposals expire after 30 days, including pending proposals.
 | scopes per query / predicates per scope | 4 / 8 |
 | link targets resolved per command | 2,000 |
 | term merge inline / job batch | 500 / 500 products |
+| portable term row | 3,000,000 encoded JSONL bytes including the newline, checked when writing, exporting, and importing |
 | change rows per event | bounded by apply items × patch steps (4 MB request) |
 | Core projection page / affected-row fold budget / rebuild batch | 200 events / 20,000 rows / 500 products |
 | command deadline | 5 s |

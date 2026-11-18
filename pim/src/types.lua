@@ -363,12 +363,13 @@ type ChangeItem = {
     level: integer, status: string, version: integer, values: { [string]: ContextValues }?, terms: { ChangeTerm }?,
 }
 type ChangesResult = ReadStamp & { items: { ChangeItem }, next: ChangesCursor?, has_more: boolean, gap: FeedGap? }
-type PublicationsRequest = { channel: string, after: ChangesCursor?, limit: integer? }
+type PublicationCursor = ChangesCursor & { expiry_floor: ChangesCursor? }
+type PublicationsRequest = { channel: string, after: PublicationCursor?, limit: integer? }
 type PublicationItem = {
     product_id: string, state: string, seq: integer, updated_at: string, release_id: string?, hash: string?,
     version: integer?, snapshot: Snapshot?,
 }
-type PublicationsResult = ReadStamp & { items: { PublicationItem }, next: ChangesCursor, has_more: boolean }
+type PublicationsResult = ReadStamp & { items: { PublicationItem }, next: PublicationCursor, has_more: boolean }
 
 -- Further reads (spec 7).
 type LinksCursor = { product_id: string, attribute_id: integer, ctx: string, path: string }
@@ -479,7 +480,7 @@ return {
         TermMerge = TermMerge, Merge = Merge, TermRefRow = TermRefRow, AdmittedScope = AdmittedScope, FeedGap = FeedGap, ChangesCursor = ChangesCursor,
         ChangesRequest = ChangesRequest,
     ChangeTerm = ChangeTerm, ChangeItem = ChangeItem, ChangesResult = ChangesResult, PublicationsRequest = PublicationsRequest,
-    PublicationItem = PublicationItem, PublicationsResult = PublicationsResult, LinksCursor = LinksCursor,
+    PublicationCursor = PublicationCursor, PublicationItem = PublicationItem, PublicationsResult = PublicationsResult, LinksCursor = LinksCursor,
     LinksRequest = LinksRequest, LinkRow = LinkRow, LinksResult = LinksResult, ReleaseRecord = ReleaseRecord,
     TermView = TermView, ListTermsRequest = ListTermsRequest, ListTermsResult = ListTermsResult,
     GetReleaseRequest = GetReleaseRequest, GetReleaseResult = GetReleaseResult, ReleasesRequest = ReleasesRequest,
