@@ -2,8 +2,6 @@
 -- Schema fan-out resumes from the rows left by each committed bounded page.
 local cleanup_rows = require("cleanup_rows")
 local types = require("types")
-local sql = require("sql")
-local layout = require("layout")
 local M = {}
 type Result = { rows: integer, more: boolean }
 
@@ -17,7 +15,7 @@ function M.complete(tx: types.Executor, catalog_id: string): error?
     return err
 end
 
-function M.run(tx: types.Executor, dialect: string, catalog: types.Catalog, event: types.SchemaEvent, budget: integer): (Result?, error?)
+function M.run(tx: types.Executor, catalog: types.Catalog, event: types.SchemaEvent, budget: integer): (Result?, error?)
     local before, after = catalog.compiled, event.body.compiled
     local catalog_id = catalog.catalog_id
     local spent = 0
@@ -39,21 +37,6 @@ function M.run(tx: types.Executor, dialect: string, catalog: types.Catalog, even
             if err then return nil, err end
             if more then return { rows = spent, more = true }, nil end
         end
-    end
-    local names = layout.from_base(catalog.item_table)
-    local kept_sets: { [string]: boolean } = {}
-    for _, column in ipairs(after.layout.sets) do kept_sets[column.column] = true end
-    for _, column in ipairs(before.layout.sets) do
-        if not kept_sets[column.column] then
-            local more, err = remove(names.set, "col, value_key, product_id", "col = $1", { column.column })
-            if err then return nil, err end
-            if more then return { rows = spent, more = true }, nil end
-        end
-    end
-    if dialect ~= sql.type.POSTGRES and #before.layout.search > 0 and #after.layout.search == 0 then
-        local more, err = remove(names.fts, "rowid", "1 = 1", {})
-        if err then return nil, err end
-        if more then return { rows = spent, more = true }, nil end
     end
     local channels: { string } = {}
     for id in pairs(before.channels or {}) do if not (after.channels or {})[id] then channels[#channels + 1] = id end end

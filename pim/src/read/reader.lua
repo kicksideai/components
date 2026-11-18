@@ -25,19 +25,26 @@ local M = {}
 local invalid = access.invalid
 local with_snapshot = access.with_snapshot
 
+local function pending_indexes(catalog: types.Catalog): { [string]: boolean }
+    local pending: { [string]: boolean } = {}
+    for _, c in ipairs(catalog.pending_columns) do pending[c] = true end
+    return pending
+end
+
 -- readiness reads an item's readiness from its generated row, as the fold
 -- computed it: one entry per requirement set the row holds a flag for, with
 -- the open findings of that set.
 local function readiness(tx: types.Executor, catalog: types.Catalog, item: types.Product): ({ [string]: { types.Finding } }?, error?)
-    local row, err = layout.read_row(tx, layout.of(catalog.item_table, catalog.compiled.layout), item.product_id)
+    local row, err = layout.read_row(tx, layout.active(catalog), item.product_id)
     if err then return nil, err end
     if not row then return nil, failure.corrupt("item " .. item.product_id .. " has no generated row") end
     local decoded, oerr = store.decode_row(row, { findings = "json" })
     if oerr or not decoded then return nil, oerr end
     local open = decoded.findings :: { [string]: { types.Finding } }
     local out: { [string]: { types.Finding } } = {}
+    local pending = pending_indexes(catalog)
     for _, c in ipairs(catalog.compiled.layout.flags) do
-        if row[c.column] ~= nil then out[c.ctx] = open[c.ctx] or {} end
+        if not pending[c.column] and row[c.column] ~= nil then out[c.ctx] = open[c.ctx] or {} end
     end
     return out, nil
 end
@@ -149,8 +156,7 @@ function M.query(catalog_id: string, request: types.QueryRequest?): (types.Query
     if scope_err or not admitted then return nil, scope_err end
     return with_snapshot(caller, function(tx: types.Executor, catalog: types.Catalog, dialect: string): (types.QueryResult?, error?)
         local compiled = catalog.compiled
-        local pending: { [string]: boolean } = {}
-        for _, c in ipairs(catalog.pending_columns) do pending[c] = true end
+        local pending = pending_indexes(catalog)
         local item_filter: read_model.ItemFilter = { family = q.family, status = q.status }
         if q.root then
             local root, rerr = anchor(tx, catalog_id, q.root :: types.ProductRef)

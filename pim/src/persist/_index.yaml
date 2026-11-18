@@ -123,6 +123,7 @@ entries:
       consts: kickside.pim:consts
       values: kickside.pim.domain:values
       layout: kickside.pim.persist:layout
+      sections: kickside.pim.schema:sections
       store: kickside.pim.persist:store
       types: kickside.pim:types
       jobs: kickside.core.jobs:jobs
@@ -243,8 +244,11 @@ entries:
     meta:
       comment: Rebuild statements - the next page of products and the rebuild cursor.
     source: file://rebuild_rows.lua
+    modules: [json, sql]
     imports:
       types: kickside.pim:types
+      layout: kickside.pim.persist:layout
+      cleanup_rows: kickside.pim.persist:cleanup_rows
 
   - name: merge_rows
     kind: library.lua
@@ -272,10 +276,8 @@ entries:
   - name: schema_cleanup
     kind: library.lua
     source: file://schema_cleanup.lua
-    modules: [sql]
     imports:
       cleanup_rows: kickside.pim.persist:cleanup_rows
-      layout: kickside.pim.persist:layout
       types: kickside.pim:types
 
   - name: release_jobs

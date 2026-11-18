@@ -40,9 +40,14 @@ local function pause_rebuild(h: fixture.Handle): () -> ()
     write_document("{broken")
     return function()
         write_document("{}")
-        local batch = assert(h.call("rebuild_batch", { deadline = "2090-01-01T00:00:00Z" }))
-        test.is_true(batch.done)
-        test.is_false(steps.query(h, {}).rebuilding)
+        for _ = 1, 6 do
+            local batch = assert(h.call("rebuild_batch", { deadline = "2090-01-01T00:00:00Z" }))
+            if batch.done then
+                test.is_false(steps.query(h, {}).rebuilding)
+                return
+            end
+        end
+        error("rebuild and its storage cleanup did not finish")
     end
 end
 
@@ -203,44 +208,64 @@ local function define()
 
         test.it("marks a physically replaced index column pending until rebuilt", function()
             local h = fixture.catalog({ bare = true })
-            change(h, { aspects = { { namespace = "core", attributes = { { code = "quantity", type = INTEGER, index = "key" } } } } })
-            test.eq(steps.one(h, { product = { sku = "P" }, create = {},
-                set = { { attr = "core.quantity", value = 7 } } }).outcome, "created")
+            change(h, { aspects = { { namespace = "core", attributes = {
+                { code = "quantity", type = INTEGER, index = "key" }, { code = "label", type = TEXT, index = "key" },
+            } } } })
+            local product = steps.one(h, { product = { sku = "P" }, create = {},
+                set = { { attr = "core.quantity", value = 7 }, { attr = "core.label", value = "before" } } }).product_id
+            test.not_nil(product)
 
             -- Inspect the fold before commit so the rebuild worker cannot win the race.
             local db = assert(store.open())
             local tx = assert(db:begin())
             local previous = assert(store.catalog(tx, h.id))
-            local declaration: types.Declaration = { aspects = { { namespace = "core", attributes = {
+            local attributes: { types.AttributeDecl } = {
                 { id = previous.compiled.attributes["core.quantity"].id, code = "quantity", type = INTEGER, index = "number" },
-            } } } }
+                { id = previous.compiled.attributes["core.label"].id, code = "label", type = TEXT, index = "key" },
+            }
+            local declaration: types.Declaration = { aspects = { { namespace = "core", attributes = attributes } } }
             local compiled = assert(schema.compile(previous.compiled, declaration, { type_of = seams.load_type }))
             local seq = previous.applied_seq + 1
             local body = { generation = previous.generation + 1, declaration = declaration, compiled = compiled,
                 class = "semantic", changes = {}, actor = h.actor:id(), at = clock.now() }
+            local column = compiled.layout.columns[1].column
+            local original = "SELECT " .. column .. " AS value FROM " .. previous.item_table .. "_item"
+            local before_rows = assert(tx:query(original, {}))
             local folded = assert(materializer.fold(tx, db:type(), h.id,
                 { { seq = seq, type = "kickside.pim.events:schema.applied", body = body } }, seq, 20000))
             local after = assert(store.catalog(tx, h.id))
-            local column = compiled.layout.columns[1].column
-            local rows = assert(tx:query("SELECT COUNT(*) AS n FROM " .. after.item_table
-                .. "_item WHERE " .. column .. " IS NOT NULL", {}))
+            local after_rows = assert(tx:query(original, {}))
             assert(tx:rollback())
             assert(db:release())
             test.eq(folded.last_seq, seq)
             test.not_nil(after.rebuild_after)
             test.eq(previous.compiled.layout.columns[1].column, column)
-            test.eq(tonumber(rows[1].n), 0)
-            test.eq(after.pending_columns[1], column, "replacement column is empty")
+            test.not_nil(before_rows[1].value)
+            test.eq(after_rows[1].value, before_rows[1].value, "the fold leaves populated index storage intact")
+            test.eq(after.pending_columns[1], column)
 
             local resume = pause_rebuild(h)
             change(h, declaration)
-            local filter: types.QueryRequest = { where = { field = "core.quantity", op = "eq", value = 7 } }
+            local filter: types.QueryRequest = { where = { field = "core.quantity", op = "eq", value = 8 } }
             local sorted: types.QueryRequest = { sort = { field = "core.quantity" } }
+            local unchanged: types.QueryRequest = { where = { field = "core.label", op = "eq", value = "before" } }
             expect_rebuilding(h, filter)
             expect_rebuilding(h, sorted)
+            test.eq(steps.query(h, unchanged).items[1].sku, "P")
+            test.eq(steps.one(h, { product = { id = product }, expect_version = 1,
+                set = { { attr = "core.quantity", value = 8 }, { attr = "core.label", value = "after" } } }).outcome, "updated")
+            test.eq(steps.count(h, unchanged), 0)
+            unchanged.where = { field = "core.label", op = "eq", value = "after" }
+            test.eq(steps.query(h, unchanged).items[1].sku, "P")
             resume()
             test.eq(steps.query(h, filter).items[1].sku, "P")
             test.eq(steps.query(h, sorted).items[1].sku, "P")
+            test.eq(steps.query(h, unchanged).items[1].sku, "P")
+            db = assert(store.open())
+            local rebuilt = assert(store.catalog(db, h.id))
+            test.is_false(rebuilt.item_table == previous.item_table)
+            test.is_false(store.table_exists(db, db:type(), previous.item_table .. "_item"))
+            assert(db:release())
         end)
 
         test.it("keeps four new indexes unavailable through a second schema change until backfill", function()
@@ -293,11 +318,14 @@ local function define()
             local h = fixture.catalog({ bare = true })
             local declaration: types.Declaration = { aspects = { { namespace = "core", attributes = { { code = "name", type = TEXT } } } },
                 families = { { code = "apparel", aspects = { "core" }, requirements = { { id = "web" } },
-                    checks = { { check = CHECK, reads = { "core.name" } } } } } }
+                    checks = { { check = CHECK, reads = { "core.name" } } } },
+                    { code = "other", aspects = { "core" }, requirements = { { id = "internal" } } } } }
             test.eq(change(h, declaration).generation, 2)
             test.eq(steps.one(h, { product = { sku = "SHIRT" }, create = { family = "apparel" } }).outcome, "created")
+            test.eq(steps.one(h, { product = { sku = "OTHER" }, create = { family = "other" } }).outcome, "created")
             test.eq(#assert(funcs.call(CHECK, {})).findings, 0)
             test.eq(#steps.query(h, { ready = { set = "web", value = true } }).items, 1)
+            local resume = pause_rebuild(h)
 
             local entry = assert(registry.get(CHECK))
             local data = {}
@@ -317,7 +345,11 @@ local function define()
                 local applied = assert(h.call("apply_schema", request))
                 test.eq(plan.class .. "/" .. applied.class, "semantic/semantic")
                 test.eq(applied.generation, 3)
-                steps.rebuilt(h)
+                expect_rebuilding(h, { ready = { set = "web", value = true } })
+                expect_rebuilding(h, { ready = { set = "web", value = false } })
+                test.eq(steps.query(h, { ready = { set = "internal", value = true } }).items[1].sku, "OTHER")
+                test.is_nil(assert(steps.get(h, "SHIRT")).readiness.web)
+                resume()
                 test.eq(#steps.query(h, { ready = { set = "web", value = true } }).items, 0)
                 test.eq(#steps.query(h, { ready = { set = "web", value = false } }).items, 1)
                 local shirt = assert(steps.get(h, "SHIRT"))

@@ -968,7 +968,7 @@ Prefix `kickside_pim_`; every key leads with `catalog_id`.
 
 | Table | Key | Content |
 |---|---|---|
-| `catalog` | catalog_id | plugin_state (current intent and draining removals), retention_after (trash/archive keysets and row-class rotation), generation, compiled, digest, layout_digest, item_table, applied_seq, rebuild_after, rebuild_seq, rebuild_job, product_count, item_count, trashed_count, tombstone_floor_seq |
+| `catalog` | catalog_id | plugin_state (current intent and draining removals), retention_after (trash/archive keysets and row-class rotation), generation, compiled, digest, layout_digest, item_table, applied_seq, rebuild_after, rebuild_seq, rebuild_job, rebuild_storage, pending_columns, product_count, item_count, trashed_count, tombstone_floor_seq |
 | `generation` | catalog_id, generation | declaration, digest, class, actor, applied_seq |
 | `term` | catalog_id, vocabulary, code | parent, labels, data, retired, retired_at, updated_seq |
 | `product` | catalog_id, product_id | sku, family, parent_id, root_id, level, is_item, axis_key, version, status, state (`live`/`trashed`/`purged`), state_at (time of the last state change), document, source_seq, release_id, created_seq, updated_seq |
@@ -1022,8 +1022,8 @@ creations and edits in batches. Operations that change hierarchy, state or
 indexed identity keys still persist in event order within the transaction.
 
 The fold has a 20,000-row budget. Item recomputation and schema fan-out both
-consume it. Removed attribute references, unique claims, usage rows, generated
-set/search rows and vocabulary terms are deleted in bounded pages; channel
+consume it. Removed attribute references, unique claims, usage rows and
+vocabulary terms are deleted in bounded pages; channel
 withdrawals consume one row each. A schema event keeps its checkpoint before
 the event until every page finishes. `schema_work(catalog_id, seq)` records
 that phase with each partial commit; snapshot reads and export answer native
@@ -1378,7 +1378,9 @@ object, the one place where JSON's `[]`/`{}` distinction is lost.
 A generated index added or replaced by a schema change is write-only until
 backfill completes. Filters, sorts, readiness filters and text search that
 use it return retryable `unavailable` with `details.code = index_rebuilding`.
-Later schema changes carry forward any backfill still owed for indexes they keep.
+Readiness sets whose calculation changes have the same restriction. Product
+reads omit pending readiness sets. Later schema changes carry forward any
+backfill still owed for indexes they keep.
 
 Before applying a key or number index, schema admission checks the live
 attribute-usage counts for values incompatible with its key or scalar order
@@ -1526,8 +1528,8 @@ cell of it):
 | Class | Examples | Effect |
 |---|---|---|
 | cosmetic | rename by id, labels, policy, scope adoption, plugin choices | new generation |
-| additive | new attribute, aspect, family, vocabulary, source, member; changes to unused attributes | new generation; layout altered in place |
-| semantic | defaults, fallback, index, requirements, checks, re-adopted check digest, removal of a used attribute | new generation; layout altered; rebuild |
+| additive | new attribute, aspect, family, vocabulary, source, member; changes to unused attributes | new generation; rebuild if the compiled digest changes on a populated catalog |
+| semantic | defaults, fallback, index, requirements, checks, re-adopted check digest, removal of a used attribute | new generation; rebuild on a populated catalog |
 | refused | form, cardinality, vocabulary, representation config (`scale`, `range`, `case`, `members`, `target`, `units`, `canonical`, `currency`), scope or `unique` on a used attribute; an index that cannot encode a live stored value; axes or owning level in a family with products; removing a family with products; removing a dimension or member while the catalog holds products | `invalid`, `migration_required`, change list |
 
 A schema plan checks live authored cells against new key and order constraints
@@ -1540,13 +1542,21 @@ same declaration after the check is revised under its existing registry ID
 advances the generation and rebuilds readiness.
 
 A refused change migrates explicitly: new attribute, copy through `apply`,
-remove old, rename by id. The fold alters generated tables in place, deletes
-rows of removed attributes and vocabularies, withdraws publications of
-removed channels, and schedules `rebuild` when the compiled digest changed.
-The rebuild walks live and trashed products in key order, 500 per
-transaction, re-arming after 20 batches; it stamps every product it rewrites
-with the `schema.applied` seq (`catalog.rebuild_seq`) unless a later event
-already stamped it, and never touches `change`. Reads report `rebuilding` until it finishes.
+remove old, rename by id. The fold deletes rows of removed attributes and
+vocabularies, withdraws publications of removed channels, and schedules
+`rebuild` when the compiled digest changes. On a populated catalog, physical
+layout changes leave the active generated tables in place. The rebuild creates
+empty replacement tables with their indexes and backfills them by product key.
+Product writes keep the active tables and any in-progress replacement current.
+The job switches the active tables and clears pending indexes in one commit,
+then reclaims the old rows in bounded pages. A superseded replacement is
+reclaimed before a new one starts, so a catalog uses at most two table sets.
+
+The rebuild visits up to 500 product keys per transaction and re-arms after 20
+batches by default. It rewrites live and trashed products and stamps them with
+the `schema.applied` seq (`catalog.rebuild_seq`) unless a later event already
+stamped them. It leaves `change` untouched. Reads report `rebuilding` until the
+backfill commits.
 
 ## 9. Readiness and release
 

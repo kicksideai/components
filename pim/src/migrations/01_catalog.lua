@@ -41,6 +41,7 @@ local POSTGRES = {
         rebuild_after text,
         rebuild_seq bigint,
         rebuild_job text,
+        rebuild_storage text,
         pending_columns text,
         product_count bigint NOT NULL,
         item_count bigint NOT NULL,

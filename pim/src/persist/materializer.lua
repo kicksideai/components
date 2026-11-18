@@ -8,6 +8,7 @@ local consts = require("consts")
 local clock = require("clock")
 local values = require("values")
 local layout = require("layout")
+local sections = require("sections")
 local history = require("history")
 local driver = require("driver")
 local store = require("store")
@@ -152,17 +153,36 @@ local function apply_schema(tx: sql.Transaction, dialect: string, catalog: types
             { catalog_id, body.generation, encoded, compiled.digest, compiled.layout_digest, names.base, event.seq, 0, 0, 0, 0, stamp, stamp })
     else
         local prev = catalog.compiled
-        err = layout.alter(tx, dialect, layout.of(catalog.item_table, compiled.layout), prev.layout)
-        if err then return nil, nil, err end
-        err = exec(tx, [[UPDATE kickside_pim_catalog SET generation = $1, compiled = $2, digest = $3, layout_digest = $4,
-            updated_at = $5 WHERE catalog_id = $6]], { body.generation, encoded, compiled.digest, compiled.layout_digest, stamp, catalog_id })
-        if not err and prev.digest ~= compiled.digest then
-            local populated, perr = store.populated(tx, catalog_id)
+        local populated = false
+        if prev.digest ~= compiled.digest then
+            local present, perr = store.populated(tx, catalog_id)
             if perr then return nil, nil, perr end
-            if populated then
-                local pending = layout.pending_columns(prev.layout, compiled.layout, catalog.pending_columns)
-                job, err = schedule_rebuild(tx, dialect, catalog_id, event.seq, pending)
+            populated = present == true
+        end
+        local storage = catalog.rebuild_storage
+        if not layout.same(prev.layout, compiled.layout) then
+            if not populated and not storage then
+                -- An empty catalog can adopt the new layout immediately.
+                err = layout.drop(tx, layout.from_base(catalog.item_table))
+                if not err then err = layout.create(tx, dialect, layout.of(catalog.item_table, compiled.layout)) end
+                if err then return nil, nil, err end
+            else
+                storage = storage or { active = prev.layout }
+                local other = storage.other
+                if other and not layout.same(other.layout, compiled.layout) then other.retired = true end
             end
+        end
+        err = exec(tx, [[UPDATE kickside_pim_catalog SET generation = $1, compiled = $2, digest = $3, layout_digest = $4,
+            rebuild_storage = $5, updated_at = $6 WHERE catalog_id = $7]],
+            { body.generation, encoded, compiled.digest, compiled.layout_digest, storage and json.encode(storage) or sql.NULL, stamp, catalog_id })
+        if not err and prev.digest ~= compiled.digest and (populated or storage) then
+            local previous, current = sections.readiness(prev), sections.readiness(compiled)
+            local changed: { [string]: boolean } = {}
+            for id, rules in pairs(current) do
+                changed[id] = values.canonical(rules) ~= values.canonical(previous[id])
+            end
+            local pending = layout.pending_columns(prev.layout, compiled.layout, catalog.pending_columns, changed)
+            job, err = schedule_rebuild(tx, dialect, catalog_id, event.seq, pending)
         end
     end
     if err then return nil, nil, err end
@@ -464,7 +484,7 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
             end
             if event.kind == "schema" then
                 if catalog then
-                    local cleaned, cerr = schema_cleanup.run(tx, dialect, catalog, event, math.max(0, row_budget - batch.rows))
+                    local cleaned, cerr = schema_cleanup.run(tx, catalog, event, math.max(0, row_budget - batch.rows))
                     if cerr or not cleaned then return cerr end
                     batch.rows = batch.rows + cleaned.rows
                     if cleaned.more then

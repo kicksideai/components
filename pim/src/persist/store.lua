@@ -94,7 +94,7 @@ function M.catalog(db: types.Executor, catalog_id: string, lock_dialect: string?
     if err then return nil, errors.wrap(err, "catalog read failed") end
     local row: Row? = rows and rows[1]
     if not row then return nil, nil end
-    local decoded, decode_err = M.decode_row(row, { catalog_id = "text", generation = "int", applied_seq = "int", item_table = "text", digest = "text", layout_digest = "text", product_count = "int", item_count = "int", trashed_count = "int", tombstone_floor_seq = "int", compiled = "json", plugin_state = "json", pending_columns = "json?" })
+    local decoded, decode_err = M.decode_row(row, { catalog_id = "text", generation = "int", applied_seq = "int", item_table = "text", digest = "text", layout_digest = "text", product_count = "int", item_count = "int", trashed_count = "int", tombstone_floor_seq = "int", compiled = "json", plugin_state = "json", pending_columns = "json?", rebuild_storage = "json?" })
     if decode_err or not decoded then return nil, decode_err end
     row = decoded
     local compiled = row.compiled :: types.Compiled
@@ -102,7 +102,8 @@ function M.catalog(db: types.Executor, catalog_id: string, lock_dialect: string?
         plugin_after = row.plugin_after :: string?, plugin_state = row.plugin_state :: { [string]: types.PluginIntent }, catalog_id = row.catalog_id :: string, generation = row.generation :: integer, applied_seq = row.applied_seq :: integer,
         compiled = schema.with_index(compiled), item_table = row.item_table :: string, digest = row.digest :: string,
         layout_digest = row.layout_digest :: string, rebuild_after = narrow.text(row.rebuild_after), rebuild_seq = narrow.int(row.rebuild_seq),
-        rebuild_job = narrow.text(row.rebuild_job), pending_columns = (row.pending_columns or {}) :: {string},
+        rebuild_job = narrow.text(row.rebuild_job), rebuild_storage = row.rebuild_storage :: types.RebuildStorage?,
+        pending_columns = (row.pending_columns or {}) :: {string},
             product_count = row.product_count :: integer, item_count = row.item_count :: integer,
         trashed_count = row.trashed_count :: integer,
         tombstone_floor_seq = row.tombstone_floor_seq :: integer,

@@ -76,7 +76,6 @@ end
 -- already loaded or changed; the rest are read in bulk.
 function M.recompute(tx: types.Executor, dialect: string, catalog: types.Catalog, ids: IdSet, cache: { [string]: types.Product }?): error?
     local compiled = catalog.compiled
-    local t = layout.of(catalog.item_table, compiled.layout)
     local known: { [string]: types.Product } = cache or {}
     local missing: { string } = {}
     for id in pairs(ids) do if not known[id] then missing[#missing + 1] = id end end
@@ -100,8 +99,14 @@ function M.recompute(tx: types.Executor, dialect: string, catalog: types.Catalog
             gone[#gone + 1] = id
         end
     end
-    local err = layout.delete_rows(tx, dialect, t, gone)
-    if not err then err = layout.write_rows(tx, dialect, t, rows) end
+    local function write(t: types.Table): error?
+        local err = layout.delete_rows(tx, dialect, t, gone)
+        if not err then err = layout.write_rows(tx, dialect, t, rows, compiled.layout) end
+        return err
+    end
+    local err = write(layout.active(catalog))
+    local other = catalog.rebuild_storage and catalog.rebuild_storage.other
+    if not err and other and not other.retired then err = write(layout.of(other.base, other.layout)) end
     return err
 end
 

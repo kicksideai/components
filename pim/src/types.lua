@@ -134,6 +134,7 @@ type PluginView = { plugin: string, title: string?, description: string?, icon: 
 -- columns hold a value's key or order value; flag columns an int computed per item.
 type Column = { attribute_id: integer, ctx: string, kind: string, column: string }
 type Layout = { columns: { Column }, sets: { Column }, search: { Column }, flags: { Column } }
+type RebuildStorage = { active: Layout, other: { base: string, layout: Layout, retired: boolean }? }
 type Compiled = {
     policy: PolicyOverrides,
     dimensions: { Dimension }, vocabularies: { [string]: Vocabulary }, aspects: { [string]: Aspect },
@@ -145,7 +146,8 @@ type Compiled = {
 type Catalog = {
     catalog_id: string, generation: integer, applied_seq: integer, compiled: Compiled,
     plugin_state: { [string]: PluginIntent }, plugin_after: string?, item_table: string, digest: string, layout_digest: string, rebuild_after: string?, rebuild_seq: integer?,
-    rebuild_job: string?, pending_columns: { string }, product_count: integer, item_count: integer, trashed_count: integer, tombstone_floor_seq: integer,
+    rebuild_job: string?, rebuild_storage: RebuildStorage?, pending_columns: { string },
+    product_count: integer, item_count: integer, trashed_count: integer, tombstone_floor_seq: integer,
 }
 type Product = {
     product_id: string, sku: string, family: string, parent_id: string?, root_id: string, level: integer,
@@ -456,7 +458,7 @@ return {
     FamilyDecl = FamilyDecl, SourceDecl = SourceDecl, ChannelDecl = ChannelDecl, RemoveDecl = RemoveDecl,
     PolicyDecl = PolicyDecl, Declaration = Declaration, Attribute = Attribute, Dimension = Dimension,
     Level = Level, Requirement = Requirement, Check = Check, Family = Family, Channel = Channel,
-    Aspect = Aspect, Source = Source, Vocabulary = Vocabulary, Column = Column, Layout = Layout,
+    Aspect = Aspect, Source = Source, Vocabulary = Vocabulary, Column = Column, Layout = Layout, RebuildStorage = RebuildStorage,
     Compiled = Compiled, Catalog = Catalog, Product = Product, Lineage = Lineage, Resolution = Resolution,
     PatchStep = PatchStep, Receipt = Receipt, SchemaBody = SchemaBody, ProductBody = ProductBody,
     ModelReleaseBody = ModelReleaseBody, ModelReleaseEvent = ModelReleaseEvent, TermBody = TermBody, ReleaseBody = ReleaseBody, WithdrawBody = WithdrawBody, EventBody = EventBody,

@@ -2,7 +2,7 @@
 -- Generated tables and the query compiler on both engines: create a table set
 -- from a layout, write rows, filter by key, number and set columns, search
 -- text, sort with nulls last and keyset paging, add conditions, apply
--- scopes, and alter the layout in place.
+-- scopes, and build a replacement table set.
 local test = require("test")
 local sql = require("sql")
 local layout = require("layout")
@@ -229,26 +229,25 @@ local function define()
             h:release()
         end)
 
-        test.it("alters a layout in place and drops the table set", function()
+        test.it("creates an empty replacement and drops the old table set independently", function()
             local h = db()
             local t = fixture(h)
-            local after: types.Layout = {
-                columns = { { attribute_id = 1, ctx = "", kind = "key", column = "f1" }, { attribute_id = 5, ctx = "", kind = "number", column = "f5" } },
+            local next_table = layout.of(layout.names(CATALOG, 2).base, {
+                columns = { LAYOUT.columns[1], { attribute_id = 5, ctx = "", kind = "number", column = "f5" } },
                 sets = {}, search = {}, flags = {},
-            }
-            local before = t.layout
-            t.layout = after
-            assert(not layout.alter(h, h:type(), t, before))
+            })
+            assert(not layout.create(h, h:type(), next_table))
             test.eq(#ids(h, t, { where = { field = "color", op = "eq", value = "moss" } }), 5)
-            local _, gone = h:query("SELECT f2 FROM " .. t.names.item, {})
+            test.eq(#ids(h, next_table, {}), 0)
+            local _, gone = h:query("SELECT f2 FROM " .. next_table.names.item, {})
             test.not_nil(gone)
-            exec(h, "UPDATE " .. t.names.item .. " SET f5 = 7")
-            assert(not layout.delete_rows(h, h:type(), t, { "r01", "r02" }))
-            local rows = assert(h:query("SELECT COUNT(*) AS n FROM " .. t.names.item, {}))
-            test.eq(math.tointeger(tonumber(rows[1].n)), 8)
+            assert(not layout.write_rows(h, h:type(), next_table, { { id = "r02", system = system("active", 1, "c-2"),
+                values = { f1 = "moss", f5 = 7 }, sets = {}, flags = {} } }))
             assert(not layout.drop(h, t.names))
             local _, dropped = h:query("SELECT 1 FROM " .. t.names.item, {})
             test.not_nil(dropped)
+            test.eq(#ids(h, next_table, { where = { field = "color", op = "eq", value = "moss" } }), 1)
+            assert(not layout.drop(h, next_table.names))
             h:release()
         end)
     end)
@@ -300,30 +299,42 @@ local function define()
             h:release()
         end)
 
-        test.it("adds and removes search in place", function()
+        test.it("creates replacement search storage only when the layout needs it", function()
             local h = db()
             local t = fixture(h)
             local before: types.Layout = t.layout
             local without: types.Layout = { columns = before.columns, sets = before.sets, search = {}, flags = before.flags }
-            local off: types.Table = { names = t.names, layout = without }
-            assert(not layout.alter(h, h:type(), off, before))
+            local off = layout.of(layout.names(CATALOG, 2).base, without)
+            assert(not layout.create(h, h:type(), off))
+            assert(not layout.write_rows(h, h:type(), off, { { id = "r05", system = system("active", 1, "c-5"),
+                values = {}, sets = {}, text = "hiking", flags = {} } }))
             test.eq(#ids(h, off, { text = "hiking" }), 0)
             test.eq(#ids(h, off, { text = "C-5" }), 1)
-            assert(not layout.alter(h, h:type(), t, without))
-            test.eq(#ids(h, t, { text = "hiking" }), 0)
+            test.eq(#ids(h, t, { text = "hiking" }), 1)
+            assert(not layout.drop(h, off.names))
             h:release()
         end)
 
-        test.it("keeps a column whose kind stays and rebuilds one whose kind changes", function()
+        test.it("writes compatible values to active storage while a changed kind is pending", function()
             local h = db()
             local t = fixture(h)
             local before = t.layout
-            t.layout = { columns = { { attribute_id = 1, ctx = "", kind = "number", column = "f1" }, before.columns[2] }, sets = before.sets, search = before.search, flags = before.flags }
-            assert(not layout.alter(h, h:type(), t, before))
-            local rows = assert(h:query("SELECT COUNT(*) AS n FROM " .. t.names.item .. " WHERE f1 IS NOT NULL", {}))
-            test.eq(math.tointeger(tonumber(rows[1].n)), 0)
-            local kept = assert(h:query("SELECT COUNT(*) AS n FROM " .. t.names.item .. " WHERE f2 IS NOT NULL", {}))
-            test.eq(math.tointeger(tonumber(kept[1].n)), 8)
+            local after: types.Layout = { columns = { { attribute_id = 1, ctx = "", kind = "number", column = "f1" }, before.columns[2] },
+                sets = before.sets, search = before.search, flags = before.flags }
+            local pending = layout.pending_columns(before, after, {}, {})
+            test.eq(#pending, 1)
+            test.eq(pending[1], "f1")
+            local rows: { types.ItemRow } = { { id = "r01", system = system("active", 1, "c-1"),
+                values = { f1 = 7, f2 = 8 }, sets = {}, flags = {} } }
+            assert(not layout.write_rows(h, h:type(), t, rows, after))
+            local active = assert(layout.read_row(h, t, "r01"))
+            test.is_nil(active.f1)
+            test.eq(tonumber(active.f2), 8)
+            local replacement = layout.of(layout.names(CATALOG, 2).base, after)
+            assert(not layout.create(h, h:type(), replacement))
+            assert(not layout.write_rows(h, h:type(), replacement, rows))
+            test.eq(tonumber(assert(layout.read_row(h, replacement, "r01")).f1), 7)
+            assert(not layout.drop(h, replacement.names))
             h:release()
         end)
     end)

@@ -38,6 +38,7 @@ local function define()
                     { code = "tags", type = "kickside.pim.types:text", cardinality = "set", index = "key" },
                     { code = "body", type = "kickside.pim.types:rich_text", index = "text" },
                 } } } } }))
+            assert(h.call("apply", { items = { { product = { sku = "SEED" }, create = {} } } }))
             local db = assert(store.open())
             local current = assert(store.catalog(db, h.id))
             local next_compiled = assert(schema.compile(current.compiled, {}, { type_of = seams.load_type }))
@@ -61,7 +62,6 @@ local function define()
                     n = n + assert(tonumber(assert(db:query("SELECT COUNT(*) AS n FROM kickside_pim_" .. name .. " WHERE catalog_id = $1", { h.id }))[1].n))
                 end
                 n = n + assert(tonumber(assert(db:query("SELECT COUNT(*) AS n FROM kickside_pim_publication WHERE catalog_id = $1 AND state = 'published'", { h.id }))[1].n))
-                n = n + assert(tonumber(assert(db:query("SELECT COUNT(*) AS n FROM " .. current.item_table .. "_set", {}))[1].n))
                 return assert(math.tointeger(n))
             end
             local before = remaining()
@@ -70,6 +70,14 @@ local function define()
                 local tx = assert(db:begin())
                 local result, err = materializer.fold(tx, db:type(), h.id, { event }, seq, 2)
                 test.is_nil(err, tostring(err))
+                if result.last_seq == seq then
+                    local applied = assert(store.catalog(tx, h.id))
+                    test.eq(applied.generation, current.generation + 1)
+                    test.not_nil(applied.rebuild_after)
+                    test.eq(applied.item_table, current.item_table)
+                    local sets = assert(tx:query("SELECT COUNT(*) AS n FROM " .. current.item_table .. "_set", {}))
+                    test.eq(tonumber(sets[1].n), 5, "the rebuild owns generated row cleanup")
+                end
                 assert(tx:commit())
                 local after = remaining()
                 test.is_true(before - after <= 2, "schema fan-out spends the row budget")
@@ -89,7 +97,6 @@ local function define()
                 before = after
             end
             test.is_true(complete)
-            test.eq(assert(store.catalog(db, h.id)).generation, current.generation + 1)
             db:release()
         end)
     end)

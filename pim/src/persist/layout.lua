@@ -32,12 +32,11 @@ local function exec(db: types.Executor, statement: string): error?
     return err
 end
 
--- names(catalog_id) returns the table names of one catalog's generated table
--- set. A layout change alters the set in place, so a catalog keeps one set for
--- its lifetime.
-function M.names(catalog_id: string): types.Names
+-- Each layout replacement builds under a fresh base.
+function M.names(catalog_id: string, generation: integer?): types.Names
     local token = tostring(hash.sha256(catalog_id)):gsub("[^a-fA-F0-9]", ""):lower():sub(1, 16)
-    return M.from_base("pim_" .. token)
+    local suffix = generation and ("_g" .. generation) or ""
+    return M.from_base("pim_" .. token .. suffix)
 end
 
 -- from_base derives the table names of a stored table-set base.
@@ -122,72 +121,47 @@ local function same_column(previous: types.Column?, current: types.Column): bool
         and previous.attribute_id == current.attribute_id and previous.ctx == current.ctx
 end
 
--- pending_columns identifies new or replaced storage and retains backfill still
--- owed by the previous generation. An index's layout list identifies its storage.
-function M.pending_columns(before: types.Layout, after: types.Layout, pending: { string }): { string }
+local function same_columns(before: { types.Column }, after: { types.Column }): boolean
+    if #before ~= #after then return false end
+    local previous = by_column(before)
+    for _, column in ipairs(after) do
+        if not same_column(previous[column.column], column) then return false end
+    end
+    return true
+end
+
+function M.same(before: types.Layout, after: types.Layout): boolean
+    return same_columns(before.columns, after.columns) and same_columns(before.sets, after.sets)
+        and same_columns(before.search, after.search) and same_columns(before.flags, after.flags)
+end
+
+function M.active(catalog: types.Catalog): types.Table
+    local storage = catalog.rebuild_storage
+    return M.of(catalog.item_table, storage and storage.active or catalog.compiled.layout)
+end
+
+-- A shared text index must be rebuilt even when a contributor is removed.
+-- The other index types are matched by their logical identity and storage.
+function M.pending_columns(before: types.Layout, after: types.Layout, pending: { string },
+    changed_readiness: { [string]: boolean }): { string }
     local owed: { [string]: boolean } = {}
     for _, name in ipairs(pending) do owed[name] = true end
     local out: { string } = {}
-    for _, pair in ipairs({ { before.columns, after.columns }, { before.sets, after.sets },
-        { before.search, after.search }, { before.flags, after.flags } }) do
+    for _, pair in ipairs({ { before.columns, after.columns }, { before.sets, after.sets }, { before.flags, after.flags } }) do
         local previous = by_column(pair[1])
         for _, column in ipairs(pair[2]) do
             local name = column.column
-            if owed[name] or not same_column(previous[name], column) then out[#out + 1] = name end
+            if owed[name] or not same_column(previous[name], column) or (column.kind == "flag" and changed_readiness[column.ctx]) then
+                out[#out + 1] = name
+            end
         end
+    end
+    local search_changed = not same_columns(before.search, after.search)
+    for _, column in ipairs(after.search) do
+        if search_changed or owed[column.column] then out[#out + 1] = column.column end
     end
     table.sort(out)
     return out
-end
-
--- alter moves the generated tables of t from layout before to t.layout in
--- place. New columns start empty; the caller schedules the rebuild that fills them.
-function M.alter(db: types.Executor, dialect: string, t: types.Table, before: types.Layout): error?
-    local pg = is_pg(dialect)
-    local names, after = t.names, t.layout
-    local stmts: { string } = {}
-    local old, new = by_column(typed(before)), by_column(typed(after))
-    for name, c in pairs(old) do
-        if not same_column(new[name], c) then
-            local index = ident(names.item .. "_" .. name)
-            stmts[#stmts + 1] = "DROP INDEX IF EXISTS " .. index
-            if c.kind ~= "flag" then stmts[#stmts + 1] = "DROP INDEX IF EXISTS " .. ident(index .. "_desc") end
-            stmts[#stmts + 1] = "ALTER TABLE " .. names.item .. " DROP COLUMN " .. ident(name)
-        end
-    end
-    for name, c in pairs(new) do
-        if not same_column(old[name], c) then
-            stmts[#stmts + 1] = "ALTER TABLE " .. names.item .. " ADD COLUMN " .. ident(name) .. " " .. column_type(c.kind, pg)
-            scalar_indexes(stmts, names.item, c)
-        end
-    end
-    local new_sets = by_column(after.sets)
-    for name, c in pairs(by_column(before.sets)) do
-        if not same_column(new_sets[name], c) then
-            stmts[#stmts + 1] = "DELETE FROM " .. names.set .. " WHERE col = '" .. ident(name) .. "'"
-        end
-    end
-    local had, has = #before.search > 0, #after.search > 0
-    if had and not has then
-        if pg then
-            stmts[#stmts + 1] = "DROP INDEX IF EXISTS " .. names.item .. "_search"
-            stmts[#stmts + 1] = "ALTER TABLE " .. names.item .. " DROP COLUMN search"
-        else
-            stmts[#stmts + 1] = "DROP TABLE IF EXISTS " .. names.fts
-        end
-    elseif has and not had then
-        if pg then
-            stmts[#stmts + 1] = "ALTER TABLE " .. names.item .. " ADD COLUMN search text[]"
-            stmts[#stmts + 1] = "CREATE INDEX " .. names.item .. "_search ON " .. names.item .. " USING GIN (search)"
-        else
-            stmts[#stmts + 1] = fts_create(names)
-        end
-    end
-    for _, statement in ipairs(stmts) do
-        local err = exec(db, statement)
-        if err then return errors.wrap(err, "generated table alter failed") end
-    end
-    return nil
 end
 
 -- drop removes a catalog's generated tables.
@@ -227,18 +201,28 @@ end
 
 -- write_rows replaces the generated rows of a batch of items: one bulk
 -- delete, then bulk inserts of item, set and search rows.
-function M.write_rows(db: types.Executor, dialect: string, t: types.Table, rows: { types.ItemRow }): error?
+function M.write_rows(db: types.Executor, dialect: string, t: types.Table, rows: { types.ItemRow },
+    computed: types.Layout?): error?
     local ids: { string } = {}
     for i, row in ipairs(rows) do ids[i] = row.id end
     local err = M.delete_rows(db, dialect, t, ids)
     if err then return err end
     local pg = is_pg(dialect)
-    local names, layout = t.names, t.layout
+    local names, physical = t.names, t.layout
+    local desired = computed or physical
     local columns: { bulk.Column } = { { name = "product_id" } }
     for _, s in ipairs(SYSTEM) do columns[#columns + 1] = { name = s.name } end
-    local typed_columns = typed(layout)
-    for _, c in ipairs(typed_columns) do columns[#columns + 1] = { name = c.column } end
-    local searchable = #layout.search > 0
+    local typed_columns: { types.Column } = {}
+    local available = by_column(typed(desired))
+    for _, c in ipairs(typed(physical)) do
+        if same_column(available[c.column], c) then
+            typed_columns[#typed_columns + 1] = c
+            columns[#columns + 1] = { name = c.column }
+        end
+    end
+    local set_columns = by_column(physical.sets)
+    local desired_sets = by_column(desired.sets)
+    local searchable = #physical.search > 0 and same_columns(physical.search, desired.search)
     if pg and searchable then columns[#columns + 1] = { name = "search", expr = "string_to_array(%s, ' ')" } end
     local item_rows: { types.SqlParams } = {}
     local set_rows: { types.SqlParams } = {}
@@ -259,7 +243,9 @@ function M.write_rows(db: types.Executor, dialect: string, t: types.Table, rows:
         if pg and searchable then params[#params + 1] = body end
         item_rows[#item_rows + 1] = params
         for column, keys in pairs(row.sets) do
-            for _, key in ipairs(keys) do set_rows[#set_rows + 1] = { row.id, column, key } end
+            if desired_sets[column] and same_column(set_columns[column], desired_sets[column]) then
+                for _, key in ipairs(keys) do set_rows[#set_rows + 1] = { row.id, column, key } end
+            end
         end
         if not pg and searchable and body ~= "" then fts_rows[#fts_rows + 1] = { row.id, body } end
     end
