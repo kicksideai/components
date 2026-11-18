@@ -35,7 +35,7 @@ function C.take(ctx: types.PrepareContext, item: domain.StateItem, p: domain.Pro
     if gerr then return M.failed(gerr) end
     if not admitted then return { status = "denied", events = {}, group = M.item_group(item.item_id), findings = findings } end
     process.sync(item)
-    local event, finding, terr = flow.take(ctx.board, item.root or item, transition, {}, ctx.actor, ctx.now, false, p, item.region, when.check(ctx))
+    local event, finding, terr = flow.take(ctx.board, item.root or item, transition, {}, ctx.actor, ctx.now, false, p, item.region, when.check(ctx), events)
     if terr then return M.failed(terr) end
     if finding then return M.refused(M.item_group(item.item_id), finding) end
     events[#events + 1] = event :: domain.Event
@@ -46,6 +46,17 @@ function C.take(ctx: types.PrepareContext, item: domain.StateItem, p: domain.Pro
     return nil
 end
 
+function C.record(ctx: types.PrepareContext, item: domain.StateItem, model: domain.Model, id: string, events: { domain.Event }): types.OpPlan
+    local plan = C.done(ctx, item, M.item_group(item.item_id), events)
+    plan.route = { id = id, region = item.region, model = model }
+    return plan
+end
+
+function C.route(ctx: types.PrepareContext, item: domain.StateItem, p: domain.Process, id: string, events: { domain.Event }): types.OpPlan
+    local refused = C.take(ctx, item, p, id, events)
+    if refused then return refused end
+    return C.settle(ctx, item, events, p)
+end
 
 function C.locate(ctx: types.PrepareContext, op: types.Op): (types.ProcessTarget?, types.OpPlan?)
     local found, perr = M.locate(ctx, op.item)

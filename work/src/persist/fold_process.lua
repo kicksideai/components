@@ -96,14 +96,15 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
         local p, perr = store.process(tx, board, item)
         if perr then return perr end
         local state = process.state_of(p :: types.Process, item.state) :: types.State
-        if not err and (work.stage_visit :: integer) <= (state.run.max_visits or board.compiled.policy.stage_max_visits :: integer)
-            and body.outcome == "failed" and state.run.retry and body.attempt < state.run.retry.max then
-            local deadline, derr = durations.after(body.at :: string, state.run.retry.backoff)
+        local attempt = body.attempt :: integer
+        local backoff = process.retry_delay(state, work, attempt, body.outcome :: string)
+        if not err and backoff then
+            local deadline, derr = durations.after(body.at :: string, backoff)
             if derr or not deadline then return derr end
             work.timer_due = work.timer_due or {}
-            local key = consts.RETRY_TIMER_PREFIX .. (body.attempt + 1)
+            local key = consts.RETRY_TIMER_PREFIX .. (attempt + 1)
             work.timer_due[key] = deadline
-            err = M.schedule(tx, dialect, board, item, key, deadline, body.attempt + 1, batch.trace_context)
+            err = M.schedule(tx, dialect, board, item, key, deadline, attempt + 1, batch.trace_context)
         end
     elseif event.type == consts.EVENTS.APPROVAL_RECORDED then
         work.approvals = work.approvals or {}

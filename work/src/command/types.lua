@@ -60,6 +60,7 @@ type ListResult = { boards: { BoardSummary }, next: integer? }
 type OpPlan = {
     error: domain.CommandError?, status: string, events: { Event }, group: string, item: string?, comment: string?, version: integer?, findings: { Finding }?,
     guards: { [string]: integer }?, expected: integer?, head: integer?,
+    route: { id: string, model: domain.Model, region: string? }?,
 }
 -- Write is one append: the events of a group and the subject version it expects, on the
 -- board thread unless thread_id names another.
@@ -70,7 +71,7 @@ type PrepareContext = {
     importing: boolean?,
     auto: domain.AutoBudget,
     db: sql.DB | sql.Transaction, dialect: string, board: domain.Board, items: { [string]: domain.Item }, base: { [string]: integer },
-    peer_boards: { [string]: domain.Board }?,
+    peer_boards: { [string]: domain.Board }?, peer_errors: { [string]: error }?,
     comments: { [string]: domain.CommentRow }, comment_base: { [string]: integer }, links: { [string]: boolean },
     head_guard: integer?, child_delta: { [string]: integer }, moves: { PathMove }, access: { [string]: boolean }, actor: string, now: string,
 }

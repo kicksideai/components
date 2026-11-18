@@ -9,7 +9,7 @@ local context = require("process_context")
 local types = require("types")
 local domain = require("domain")
 local H = {}
-local locate, done, take, settle = context.locate, context.done, context.take, context.settle
+local locate, done = context.locate, context.done
 
 function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     local target, err = locate(ctx, op)
@@ -61,9 +61,8 @@ function H.finish(ctx: types.PrepareContext, target: types.ProcessTarget, op: ty
     events[#events + 1] = flow.report(item, op.outcome :: string, op.outputs, op.progress)
     item.version = item.version + 1
     local run = state.run :: domain.Stage
-    local retry = run.retry
-    if op.outcome == "failed" and retry then
-        if (op.attempt :: integer) < retry.max then return done(ctx, item, M.item_group(item.item_id), events) end
+    if process.retry_delay(state, item.work, op.attempt :: integer, op.outcome :: string) then
+        return done(ctx, item, M.item_group(item.item_id), events)
     end
     local id = op.outcome == "failed" and run.on_fail or op.outcome
     if op.outcome == "passed" then id = run.on_pass or "passed"
@@ -76,9 +75,8 @@ function H.finish(ctx: types.PrepareContext, target: types.ProcessTarget, op: ty
         if not id then return done(ctx, item, M.item_group(item.item_id), events) end
     end
     if not id then return M.invalid("stage_outcome_transition_missing", "stage declares no transition for its outcome") end
-    local refused = take(ctx, item, p, id, events)
-    if refused then return refused end
-    return settle(ctx, item, events, p)
+    if op.outcome == "failed" or op.completion then return context.record(ctx, item, target.model, id, events) end
+    return context.route(ctx, item, p, id, events)
 end
 
 return H

@@ -66,7 +66,8 @@ local function define()
                 local item = { item_id = "task", type = "task", state = "doing", category = "started", visit = 1,
                     version = 1, document = {}, process_generation = 1 } :: domain.Item
                 local transition = assert(p.transitions[3])
-                local event, err = flow.take(board, item, transition, {}, "principal:" .. kind .. ":worker", "2026-11-08T00:00:00.000000000Z", false, p, nil, function(_item: unknown, _where: unknown): (boolean, error?) return true, nil end)
+                local event, err = flow.take(board, item, transition, {}, "principal:" .. kind .. ":worker", "2026-11-08T00:00:00.000000000Z",
+                    false, p, nil, function(_item: unknown, _where: unknown): (boolean, error?) return true, nil end, {})
                 test.is_nil(err)
                 test.not_nil(event)
                 local closer = assert(board.model.fields.closer)

@@ -8,6 +8,7 @@ local flow = require("flow")
 local fields = require("fields")
 local when = require("when")
 local process = require("process")
+local references = require("references")
 
 local M = require("prepare_context")
 local item_fields = require("item_fields")
@@ -85,14 +86,21 @@ local function plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan
             end
         end
     end
-    if #plan.events > 0 then
-        for _, event in ipairs(plan.events) do
-            for _, step in ipairs(event.body.patch or {}) do
-                local field = ctx.board.model.by_id[step.f]
-                if field and step.v ~= nil then
-                    local err = fields.validate(field, step.v :: domain.Value)
-                    if err then return M.invalid("invalid_value", err:message(), field.code) end
-                end
+    return plan
+end
+
+local function admit_patches(ctx: types.PrepareContext, plan: types.OpPlan): types.OpPlan
+    for _, event in ipairs(plan.events) do
+        local patch = event.body.patch or {}
+        if not ctx.importing then
+            local refusal = references.patch(ctx, patch)
+            if refusal then return refusal end
+        end
+        for _, step in ipairs(patch) do
+            local field = ctx.board.model.by_id[step.f]
+            if field and step.v ~= nil then
+                local err = fields.validate(field, step.v :: domain.Value)
+                if err then return M.invalid("invalid_value", err:message(), field.code) end
             end
         end
     end
@@ -128,12 +136,11 @@ local function wip(ctx: types.PrepareContext, before: types.PrepareContext, plan
     return plan
 end
 
-function M.plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan
-    local work = M.fork(ctx)
-    local plan = wip(work, ctx, plan_op(work, op))
+local function admit_rollups(work: types.PrepareContext, plan: types.OpPlan): types.OpPlan
+    if plan.status ~= "applied" then return plan end
     local dependent = false
     for _, field in ipairs(work.board.compiled.fields) do if field.rollup then dependent = true end end
-    if dependent and plan.status == "applied" then
+    if dependent then
         local affected: { { [string]: integer } } = {}
         for _, event in ipairs(plan.events) do
             local seeds: { [string]: integer } = {}
@@ -145,6 +152,37 @@ function M.plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan
         end
         local err = rollup_rows.admit(work.db, work.board, affected, consts.LIMITS.fold_rows, work.links)
         if err then return M.failed(err) end
+    end
+    return plan
+end
+
+function M.plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan
+    local work = M.fork(ctx)
+    local plan = plan_op(work, op)
+    local route = plan.route
+    if route then
+        -- Route admission uses a separate working copy so its failures leave the fact and its item CAS intact.
+        local routed = M.fork(work)
+        local root = routed.items[plan.item :: string] :: domain.Item
+        local definition = route.model.processes[route.model.item_types[root.type].process]
+        local item = route.region and process.region(root, route.region, definition) or root
+        local routed_plan = process_context.route(routed, item :: domain.StateItem, definition, route.id, {})
+        routed_plan = wip(routed, work, admit_patches(routed, routed_plan))
+        if routed_plan.status == "applied" then
+            local events: { domain.Event } = {}
+            for _, event in ipairs(plan.events) do events[#events + 1] = event end
+            for _, event in ipairs(routed_plan.events) do events[#events + 1] = event end
+            routed_plan.events = events
+            routed_plan = admit_rollups(routed, routed_plan)
+        end
+        if routed_plan.status == "applied" then
+            plan, work = routed_plan, routed
+        else
+            plan.findings = routed_plan.findings
+            plan = admit_rollups(work, plan)
+        end
+    else
+        plan = admit_rollups(work, wip(work, ctx, admit_patches(work, plan)))
     end
     if plan.status == "applied" or plan.status == "unchanged" then M.adopt(ctx, work) end
     return plan

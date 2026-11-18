@@ -1,5 +1,4 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local references = require("references")
 local consts = require("consts")
 local domain = require("domain")
 local store = require("store")
@@ -135,10 +134,6 @@ local function plan_create(ctx: types.PrepareContext, op: types.Op): types.OpPla
     if werr then return M.failed(werr) end
     if ferr then return M.refused(M.FREE, ferr) end
     for _, e in ipairs(settled :: { domain.Event }) do events[#events + 1] = e end
-    for _, event in ipairs(events) do
-        local reference_err = not ctx.importing and references.patch(ctx, event.body.patch or {}) or nil
-        if reference_err then return reference_err end
-    end
     ctx.items[id] = virtual
     ctx.base[id] = 0
     M.reserve_child(ctx, parent and parent.item_id, 1)
@@ -170,10 +165,6 @@ local function plan_set(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     if werr then return M.failed(werr) end
     if ferr then return M.refused(group, ferr) end
     for _, event in ipairs(settled or {}) do events[#events + 1] = event end
-    for _, event in ipairs(events) do
-        local reference_err = not ctx.importing and references.patch(ctx, event.body.patch or {}) or nil
-        if reference_err then return reference_err end
-    end
     item.work = work.work
     item.document, item.state, item.category, item.visit, item.version = work.document, work.state, work.category, work.visit, work.version
     return M.done(ctx, item, group, events)
@@ -231,19 +222,7 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
     if serr or not steps then return serr or M.invalid("invalid_value", "invalid values") end
     document.apply_patch(work.document, steps)
     local events: { domain.Event } = {}
-    local function cancel(active: domain.Item)
-        local state = process.state_of(p, active.state) :: domain.State
-        if state.kind == "automated" and active.work.attempt and not active.work.waiting then
-            events[#events + 1] = flow.report(active, "canceled", { reason = "transition", by = ctx.actor })
-            work.version = work.version + 1
-        end
-    end
-    if op.region then cancel(process.region(work, op.region, p))
-    else
-        cancel(work)
-        for id in pairs(work.work.region_data or {}) do cancel(process.region(work, id, p)) end
-    end
-    local taken, ferr, terr = flow.take(ctx.board, work, t, steps, ctx.actor, ctx.now, false, p, op.region, check)
+    local taken, ferr, terr = flow.take(ctx.board, work, t, steps, ctx.actor, ctx.now, false, p, op.region, check, events)
     if terr then return M.failed(terr) end
     if ferr then return M.refused(group, ferr) end
     local settled, serr2, aerr = flow.settle(ctx.board, work, ctx.actor, ctx.now, check, p, ctx.auto)
@@ -252,10 +231,6 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
     if taken and op.force then taken.body.force = true end
     events[#events + 1] = taken :: domain.Event
     for _, e in ipairs(settled :: { domain.Event }) do events[#events + 1] = e end
-    for _, event in ipairs(events) do
-        local reference_err = not ctx.importing and references.patch(ctx, event.body.patch or {}) or nil
-        if reference_err then return reference_err end
-    end
     item.work = work.work
     item.document, item.state, item.category, item.visit, item.version = work.document, work.state, work.category, work.visit, work.version
     return M.done(ctx, item, group, events)

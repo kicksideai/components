@@ -91,15 +91,16 @@ function M.decorate(event: domain.Event, actor: string, at: string, source: stri
     event.body.origin = origin
 end
 
--- mark gives every event of a command its external identity; the first also carries the receipt.
+-- mark gives every event its external identity and records the receipt at the write's final sequence.
 function M.mark(events: { domain.Event }, marker: string, receipt: domain.Receipt?, stored_key: string?)
     local delivery = uuid.v4()
     for n, event in ipairs(events) do
         event.external = { external_source = consts.EXTERNAL_SOURCE .. "/" .. delivery, external_id = n == 1 and marker or (marker .. "/" .. n) }
     end
-    if receipt and events[1] then
-        events[1].body.receipt = receipt
-        events[1].body.command_key = stored_key or marker
+    local last = events[#events]
+    if receipt and last then
+        last.body.receipt = receipt
+        last.body.command_key = stored_key or marker
     end
 end
 

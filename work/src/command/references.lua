@@ -21,11 +21,17 @@ function R.target(raw: unknown, board_id: string): (domain.Target?, types.OpPlan
     return { item = ref.item, board = ref.board or board_id }, nil
 end
 
+local function access_changed(): types.OpPlan
+    return M.failed(errors.new({ kind = errors.UNAVAILABLE, message = "target board rules changed", details = { code = "access_projection_changed" } }))
+end
+
 -- All local and cross-board references use the command's admitted peer snapshots.
 function R.resolve(ctx: types.PrepareContext, target: domain.Target): (domain.Item?, types.OpPlan?)
     if target.board ~= ctx.board.board_id then
-        local allowed, err = M.allows(ctx, target.board, component.ACCESS.READ :: integer)
-        if err then return nil, M.failed(err) end
+        local refused = ctx.peer_errors and ctx.peer_errors[target.board]
+        if refused then return nil, M.failed(refused) end
+        local allowed = ctx.access[target.board .. ":" .. (component.ACCESS.READ :: integer)]
+        if allowed == nil then return nil, access_changed() end
         if not allowed then return nil, M.result("denied", M.FREE, "target_denied", "target board is unavailable", "target") end
     end
     local peer: domain.Item?, err: error?
@@ -39,7 +45,7 @@ function R.resolve(ctx: types.PrepareContext, target: domain.Target): (domain.It
         if not loaded then return nil, M.invalid("invalid_reference", "target board is unavailable", "target") end
         local admitted = ctx.peer_boards and ctx.peer_boards[target.board]
         if not admitted or admitted.digest ~= loaded.digest then
-            return nil, M.failed(errors.new({ kind = errors.UNAVAILABLE, message = "target board rules changed", details = { code = "access_projection_changed" } }))
+            return nil, access_changed()
         end
         board = loaded
         board.caller = admitted.caller

@@ -102,7 +102,7 @@ entries:
         type: string
       receipt: &id006
         type: object
-        description: Command receipt carried by the first event of an idempotent command.
+        description: Command receipt carried by the final event of each idempotent write group.
       audit: &id007
         type: string
         enum:

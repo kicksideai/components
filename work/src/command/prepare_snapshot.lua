@@ -46,10 +46,19 @@ function M.read(db: sql.DB, board_id: string, ops: { types.Op }, indices: { inte
     local targets: { [string]: boolean } = {}
     local approval_groups: { string } = {}
     local proposed: { unknown } = { ops }
+    local models: { [integer]: { [string]: domain.Model } } = {}
     local function canonical(value: domain.Value, field: domain.Field)
         for _, member in ipairs(values.members(fields.shape(field), value)) do
             local target = (member :: domain.Ref).ref[2]:match("^([^/]+)/")
             if target then targets[target] = true end
+        end
+    end
+    local function route_peers(definition: domain.Process, model: domain.Model)
+        for _, transition in ipairs(definition.transitions) do
+            for _, effect in ipairs(transition.set) do
+                local field = model.fields[effect.field]
+                if field and field.type == "item" and effect.value ~= nil then canonical(effect.value, field) end
+            end
         end
     end
     if admitted then
@@ -70,9 +79,22 @@ function M.read(db: sql.DB, board_id: string, ops: { types.Op }, indices: { inte
                 if err then return nil, {}, err end
                 if item then
                     proposed[#proposed + 1] = item.document
-                    if op.op == "approve" and id == op.item then
-                        local definition, derr = store.process(db, admitted, item)
-                        if derr or not definition then return nil, {}, derr end
+                    local model = admitted.model
+                    local item_type = model.item_types[item.type]
+                    local definition = item_type and model.processes[item_type.process]
+                    if item.life ~= "purged" and (not definition or definition.generation ~= item.process_generation) then
+                        local recorded = models[item.process_generation] or {}
+                        models[item.process_generation] = recorded
+                        if not recorded[item.type] then
+                            local loaded, lerr = store.process_model(db, admitted, item)
+                            if lerr or not loaded then return nil, {}, lerr end
+                            recorded[item.type] = loaded
+                            route_peers(loaded.processes[loaded.item_types[item.type].process] :: domain.Process, loaded)
+                        end
+                        model = recorded[item.type]
+                        definition = model.processes[model.item_types[item.type].process]
+                    end
+                    if definition and op.op == "approve" and id == op.item then
                         local target = op.visit and process.for_visit(item, op.visit, definition) or item
                         local state = target and process.state_of(definition, target.state)
                         local approvals = state and state.release_when and state.release_when.approvals
@@ -85,14 +107,7 @@ function M.read(db: sql.DB, board_id: string, ops: { types.Op }, indices: { inte
                 end
             end
         end
-        for _, process in ipairs(admitted.compiled.processes) do
-            for _, transition in ipairs(process.transitions) do
-                for _, effect in ipairs(transition.set) do
-                    local field = admitted.model.fields[effect.field]
-                    if field and field.type == "item" and effect.value ~= nil then canonical(effect.value, field) end
-                end
-            end
-        end
+        for _, definition in ipairs(admitted.compiled.processes) do route_peers(definition, admitted.model) end
     end
     for _, i in ipairs(indices) do
         local op = ops[i]
@@ -115,17 +130,17 @@ function M.read(db: sql.DB, board_id: string, ops: { types.Op }, indices: { inte
         end
     end
     local peers: { [string]: domain.Board } = {}
+    local peer_errors: { [string]: error } = {}
     for id in pairs(targets) do
         if id ~= board_id then
             local err = cache(id, component.ACCESS.READ :: integer)
-            if err then return nil, {}, err end
-            if access[id .. ":" .. (component.ACCESS.READ :: integer)] then
+            if err then peer_errors[id] = err
+            elseif access[id .. ":" .. (component.ACCESS.READ :: integer)] then
                 local peer, perr = store.board(db, id)
-                if perr then return nil, {}, perr end
-                if peer then
+                if perr then peer_errors[id] = perr
+                elseif peer then
                     local aerr = principals.resolve(peer)
-                    if aerr then return nil, {}, aerr end
-                    peers[id] = peer
+                    if aerr then peer_errors[id] = aerr else peers[id] = peer end
                 end
             end
         end
@@ -148,6 +163,7 @@ function M.read(db: sql.DB, board_id: string, ops: { types.Op }, indices: { inte
         local ctx = items.context(tx, board, actor, at, db:type())
         ctx.access = access
         ctx.peer_boards = peers
+        ctx.peer_errors = peer_errors
         for _, i in ipairs(indices) do if ops[i].moved_from then ctx.importing = true end end
         for _, i in ipairs(indices) do plans[i] = items.plan_op(ctx, ops[i]) end
         if ctx.importing then

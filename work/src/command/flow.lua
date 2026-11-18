@@ -98,10 +98,19 @@ local function admit(board: types.Board, item: types.Item, transition: types.Tra
     return nil, nil
 end
 
+-- Every exit closes its admitted attempt before the visit is replaced.
+function M.cancel_attempt(active: types.StateItem, actor: string, reason: string, events: { types.Event })
+    local work = active.work
+    if work and work.attempt and not work.waiting then
+        events[#events + 1] = M.report(active, "canceled", { reason = reason, by = actor })
+        local root = (active.root or active) :: types.Item
+        root.version = root.version + 1
+    end
+end
+
 -- take moves the working item through t: it applies the effects, checks that the fields t and the target
 -- state require are present, and returns the transition event. The item holds the new state only on success.
-function M.take(board: types.Board, item: types.Item, t: types.Transition, steps: { types.PatchStep }, actor: string, at: string, auto: boolean, definition: types.Process?, region: string?, check: types.WhenCheck): (types.Event?, types.Finding?, error?)
-    local p = (definition or board.model.processes[board.model.item_types[item.type].process]) :: types.Process
+function M.take(board: types.Board, item: types.Item, t: types.Transition, steps: { types.PatchStep }, actor: string, at: string, auto: boolean, p: types.Process, region: string?, check: types.WhenCheck, events: { types.Event }): (types.Event?, types.Finding?, error?)
     local source = region and item.work.regions[region] or item.state
     local target = process.state_of(p :: types.Process, t.to)
     while target and target.run and target.run.on_exhausted
@@ -126,6 +135,15 @@ function M.take(board: types.Board, item: types.Item, t: types.Transition, steps
     end
     local entry_err = M.entry(board, target, doc, p)
     if entry_err then return nil, entry_err end
+    if region then
+        M.cancel_attempt(process.region(item, region, p), actor, "transition", events)
+    else
+        M.cancel_attempt(item, actor, "transition", events)
+        local state = process.state_of(p, item.state) :: types.State
+        for _, declared in ipairs(state.regions or {}) do
+            M.cancel_attempt(process.region(item, declared.id, p), actor, "transition", events)
+        end
+    end
     item.document = doc
     item.visit = item.visit + 1
     if region then
@@ -177,22 +195,25 @@ local function ready(state: types.State, item: types.Item, check: types.WhenChec
     return true, nil
 end
 
+local function matches_auto(board: types.Board, item: types.Item, candidate: types.Transition, check: types.WhenCheck): (boolean, error?)
+    local allowed, err = check(item, candidate.when)
+    if err or not allowed then return false, err end
+    local admitted, _, gerr = seams.guard(board, item, candidate, candidate.guards)
+    return admitted, gerr
+end
+
 local function next_auto(board: types.Board, p: types.Process, item: types.Item, check: types.WhenCheck): (types.Transition?, error?)
     local default: types.Transition? = nil
     for _, candidate in ipairs(process.leaving(p, item.state, true)) do
         if candidate.default then default = candidate
         else
-            local allowed, err = check(item, candidate.when)
+            local allowed, err = matches_auto(board, item, candidate, check)
             if err then return nil, err end
-            if allowed then
-                local admitted, _, gerr = seams.guard(board, item, candidate, candidate.guards)
-                if gerr then return nil, gerr end
-                if admitted then return candidate, nil end
-            end
+            if allowed then return candidate, nil end
         end
     end
     if default then
-        local allowed, _, err = seams.guard(board, item, default, default.guards)
+        local allowed, err = matches_auto(board, item, default, check)
         if err then return nil, err end
         if not allowed then return nil, nil end
     end
@@ -279,7 +300,7 @@ function M.settle(board: types.Board, item: types.Item, actor: string, at: strin
             local refused, err = admit(board, region and process.region(item, region, p) or item, candidate, check)
             if err or refused then return nil, refused, err end
         end
-        local event, ferr, terr = M.take(board, item, candidate, {}, actor, at, true, p, region, check)
+        local event, ferr, terr = M.take(board, item, candidate, {}, actor, at, true, p, region, check, events)
         if terr then return nil, nil, terr end
         if ferr or not event then return nil, ferr, nil end
         events[#events + 1] = event
