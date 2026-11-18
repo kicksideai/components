@@ -1,78 +1,101 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local failure=require("failure")
--- The catalogs a caller can read, and the rule that picks one: an explicit id,
--- otherwise the caller's only readable catalog.
+-- A catalog is discoverable once its first schema generation commits.
 local component = require("component")
 local access = require("access")
 local consts = require("consts")
-local types = require("types")
+local failure = require("failure")
 local store = require("store")
+local types = require("types")
 
 local M = {}
 
-
--- trim returns the text of v with surrounding space removed; non-text is empty.
 local trim = require("trim_text").trim
+M.trim = trim
 
--- readable lists the catalogs the caller can read, oldest first.
-function M.readable(limit:integer?,offset:integer?,exact:string?): ({ types.CatalogSummary }?, error?)
-    local rows, err = component.query({ impl_ids = { consts.CATALOG_IMPL }, access_mask = component.ACCESS.READ,
-        component_ids = exact and {exact} or nil,
-        include = { meta = true, access = true }, order_by = { field = "component_id", direction = "ASC" }, limit = limit or 50,offset=offset or 0 })
-    if err then return nil, errors.wrap(err, "catalog lookup failed") end
-    local out: { types.CatalogSummary } = {}
-    for _, raw in ipairs(type(rows) == "table" and (rows :: { unknown }) or {}) do
-        if type(raw) ~= "table" then return nil, failure.corrupt("catalog component row is malformed") end
-        local row = raw :: types.ComponentRow
-        local id = trim(row.component_id)
-        if id ~= "" then
-            local granted, gerr = access.describe(row.access_level)
-            if gerr or not granted then return nil, gerr end
-            local meta: types.ComponentMeta = row.meta or {}
-            out[#out + 1] = { catalog_id = id, access = granted, title = trim(meta.title) ~= "" and trim(meta.title) or "Catalog",
-                product_count = meta.product_count and math.tointeger(meta.product_count) or nil,
-                item_count = meta.item_count and math.tointeger(meta.item_count) or nil,
-                generation = meta.generation and math.tointeger(meta.generation) or nil, status = meta.status }
+local function committed(ids: { string }): ({ [string]: types.Row }?, error?)
+    if #ids == 0 then return {}, nil end
+    local params: { string } = {}
+    for i = 1, #ids do params[i] = "$" .. tostring(i) end
+    return store.with_db(function(db: types.Executor): ({ [string]: types.Row }?, error?)
+        local rows, err = db:query("SELECT catalog_id, generation, product_count, item_count, rebuild_after"
+            .. " FROM kickside_pim_catalog WHERE catalog_id IN (" .. table.concat(params, ",") .. ") AND generation > 0", ids)
+        if err then return nil, errors.wrap(err, "catalog discovery failed") end
+        local by_id: { [string]: types.Row } = {}
+        for _, row in ipairs(rows or {}) do
+            local decoded, derr = store.decode_row(row, { catalog_id = "text", generation = "int",
+                product_count = "int", item_count = "int" })
+            if derr or not decoded then return nil, derr end
+            by_id[decoded.catalog_id :: string] = decoded
         end
-    end
-    return out, nil
-end
-
--- Identity, title and access come from the actor-scoped component lookup.
--- Mutable summary state comes from the committed PIM row: post-commit public
--- metadata publication can still be pending after a command is acknowledged.
-function M.summary(id:string): (types.CatalogSummary?,error?)
-    local rows,err=M.readable(1,0,id)
-    if err or not rows then return nil,err end
-    if not rows[1] then return nil,errors.new({kind=errors.NOT_FOUND,message="catalog not found",details={code="catalog_not_found"}}) end
-    return store.with_db(function(db: types.Executor): (types.CatalogSummary?,error?)
-        local catalog,cerr=store.catalog(db,id)
-        if cerr then return nil,cerr end
-        if not catalog then return nil,errors.new({kind=errors.NOT_FOUND,message="catalog has no schema",details={code="catalog_not_found"}}) end
-        local summary=rows[1]
-        summary.generation=catalog.generation
-        summary.product_count=catalog.product_count
-        summary.item_count=catalog.item_count
-        summary.status=catalog.rebuild_after~=nil and "rebuilding" or "ready"
-        return summary,nil
+        return by_id, nil
     end)
 end
 
--- resolve answers the catalog a request addresses.
+-- Page the actor-scoped component directory and look up committed state by id.
+-- The continuation counts directory rows, including those still initializing.
+function M.readable(limit: integer, offset: integer?, exact: string?): ({ types.CatalogSummary }?, error?, integer?)
+    local start = offset or 0
+    local window = exact and 1 or math.max(32, limit + 1)
+    local rows, err = component.query({ impl_ids = { consts.CATALOG_IMPL }, access_mask = component.ACCESS.READ,
+        component_ids = exact and { exact } or nil, include = { meta = true, access = true },
+        order_by = { field = "component_id", direction = "ASC" }, limit = exact and 1 or window + 1, offset = start })
+    if err then return nil, errors.wrap(err, "catalog lookup failed") end
+    local ids: { string } = {}
+    for i, raw in ipairs(rows or {}) do
+        if i > window then break end
+        local id = type(raw) == "table" and raw.component_id or nil
+        if not id or id == "" then return nil, failure.corrupt("catalog component row is malformed") end
+        ids[i] = id
+    end
+    local by_id, cerr = committed(ids)
+    if cerr or not by_id then return nil, cerr end
+    local out: { types.CatalogSummary } = {}
+    for i, id in ipairs(ids) do
+        local state = by_id[id]
+        if state then
+            if #out == limit then return out, nil, start + i - 1 end
+            local row = (rows :: { types.ComponentRow })[i]
+            local granted, gerr = access.describe(row.access_level)
+            if gerr or not granted then return nil, gerr end
+            local title = trim((row.meta or {}).title)
+            out[#out + 1] = { catalog_id = id, access = granted, title = title ~= "" and title or "Catalog",
+                generation = state.generation :: integer, product_count = state.product_count :: integer,
+                item_count = state.item_count :: integer, status = type(state.rebuild_after) == "string" and "rebuilding" or "ready" }
+        end
+    end
+    local next_offset = rows and #rows > window and start + window or nil
+    return out, nil, next_offset
+end
+
+function M.summary(id: string): (types.CatalogSummary?, error?)
+    local rows, err = M.readable(1, 0, id)
+    if err or not rows then return nil, err end
+    if not rows[1] then return nil, errors.new({ kind = errors.NOT_FOUND, message = "catalog not found", details = { code = "catalog_not_found" } }) end
+    return rows[1], nil
+end
+
+-- An implicit request addresses the caller's only initialized readable catalog.
 function M.resolve(explicit: string?): (string?, error?)
     local id = trim(explicit)
     if id ~= "" then return id, nil end
-    local catalogs, err = M.readable(2)
-    if not catalogs then return nil, err end
-    if #catalogs == 1 then return catalogs[1].catalog_id, nil end
-    if #catalogs == 0 then return nil, errors.new({ kind = errors.NOT_FOUND, message = "no catalog is available; create one first", details = { code = "catalog_not_found" } }) end
-    local named: { string } = {}
-    for _, c in ipairs(catalogs) do named[#named + 1] = c.catalog_id .. " (" .. c.title .. ")" end
-    return nil, errors.new({ kind = errors.CONFLICT,
-        message = "several catalogs are available; pass catalog_id as one of: " .. table.concat(named, ", "),
-        details = { code = "catalog_ambiguous" } })
+    local first: types.CatalogSummary? = nil
+    local offset: integer? = 0
+    repeat
+        local page, err, next_offset = M.readable(first and 1 or 2, offset)
+        if err or not page then return nil, err end
+        for _, catalog in ipairs(page) do
+            if first then
+                return nil, errors.new({ kind = errors.CONFLICT,
+                    message = "several catalogs are available; pass catalog_id as one of: "
+                        .. first.catalog_id .. " (" .. first.title .. "), " .. catalog.catalog_id .. " (" .. catalog.title .. ")",
+                    details = { code = "catalog_ambiguous" } })
+            end
+            first = catalog
+        end
+        offset = next_offset
+    until offset == nil
+    if first then return first.catalog_id, nil end
+    return nil, errors.new({ kind = errors.NOT_FOUND, message = "no catalog is available; create one first", details = { code = "catalog_not_found" } })
 end
-
-M.trim = trim
 
 return M

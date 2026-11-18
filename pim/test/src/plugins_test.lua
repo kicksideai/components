@@ -13,6 +13,9 @@ local uuid = require("uuid")
 local SHELF = "app:shelf_plugin"
 local DYNAMIC = "app:dynamic_plugin"
 local ZONES = "app:zones_plugin"
+local SEAM_OWNER = "app:seam_owner_plugin"
+local SEAM_CONTRIBUTOR = "app:seam_contributor_plugin"
+local OWNED_TYPE = "app:contributed_text_type"
 
 type Map = { [string]: unknown }
 
@@ -93,6 +96,92 @@ local function define()
             test.is_nil(err, tostring(err))
             local _, removed = h.call("apply_schema", { declaration = { remove = { plugins = { "app:probe_bare_plugin" } } } })
             test.eq(removed:details().code, "plugin_required")
+        end)
+
+        test.it("checks seam ownership for retained plugin-contributed fields", function()
+            local h = fixture.catalog({ bare = true })
+            local initial = assert(h.call("apply_schema", { declaration = { plugins = { { use = SEAM_OWNER }, { use = SEAM_CONTRIBUTOR } } } }))
+            test.not_nil(schema(h).attributes["contributed.text"])
+            local result, err = h.call("apply_schema", { declaration = { remove = { plugins = { SEAM_OWNER } } } })
+            test.is_nil(result, "removed the seam owner at generation " .. tostring(result and result.generation))
+            test.eq(err:details().code, "plugin_seam_in_use")
+            test.eq(schema(h).schema_generation, initial.generation)
+        end)
+
+        test.it("refuses removing the owner of a retained type's fixed link target", function()
+            local h = fixture.catalog({ bare = true })
+            local initial = assert(h.call("apply_schema", { declaration = {
+                plugins = { { use = SEAM_OWNER }, { use = "app:location_contributor_plugin" } },
+            } }))
+            test.eq(schema(h).attributes["locations.reference"].config.target, "app.managed_location")
+            local before = #fixture.events(h)
+            local request = { declaration = { remove = { plugins = { SEAM_OWNER } } } }
+            for _, op in ipairs({ "plan_schema", "apply_schema" }) do
+                local result, err = h.call(op, request)
+                test.is_nil(result, op .. " accepted removal of the fixed link target's owner")
+                test.eq(err:details().code, "plugin_seam_in_use")
+                test.eq(err:details().plugin, SEAM_OWNER)
+                test.eq(err:details().seam, "app.managed_location")
+            end
+            test.eq(#fixture.events(h), before)
+            test.eq(schema(h).schema_generation, initial.generation)
+        end)
+
+        test.it("refuses removing the link target owner used by a nested record member", function()
+            local h = fixture.catalog({ bare = true })
+            local initial = assert(h.call("apply_schema", { declaration = {
+                plugins = { { use = SEAM_OWNER } },
+                aspects = { { namespace = "locations", attributes = { {
+                    code = "details", type = "kickside.pim.types:record", config = { members = {
+                        nested = { form = "record", members = { location = { form = "ref", target = "app.managed_location" } } },
+                    } },
+                } } } },
+            } }))
+            local result, err = h.call("apply_schema", { declaration = { remove = { plugins = { SEAM_OWNER } } } })
+            test.is_nil(result)
+            test.eq(err:details().code, "plugin_seam_in_use")
+            test.eq(err:details().seam, "app.managed_location")
+            test.eq(schema(h).schema_generation, initial.generation)
+        end)
+
+        test.it("checks seam ownership for fields newly resolved by a provider", function()
+            local h = fixture.catalog({ bare = true })
+            declare_fields(h.id, { { "text", OWNED_TYPE, "none" } })
+            local result, err = h.call("plan_schema", { declaration = { plugins = { { use = DYNAMIC } } } })
+            test.is_nil(result)
+            test.eq(err:details().code, "plugin_seam_unowned")
+        end)
+
+        test.it("plans provider-backed activation with explicit config before applying the same change", function()
+            local h = fixture.catalog({ bare = true })
+            declare_fields(h.id, { { "text", "kickside.pim.types:text", "none" } })
+            local declaration = { plugins = { { use = DYNAMIC } } }
+            local before = schema(h).schema_generation
+            local event_count = #fixture.events(h)
+            local before_choice = assert(view(h)[DYNAMIC])
+            test.is_false(before_choice.active)
+            local invalid, err = h.call("plan_schema", { declaration = declaration,
+                plugin_configs = { [DYNAMIC] = { namespace = "9bad" } } })
+            test.is_nil(invalid)
+            test.eq(err:details().code, "plugin_config_invalid")
+
+            local request = { declaration = declaration, plugin_configs = { [DYNAMIC] = { namespace = "custom" } } }
+            local plan = assert(h.call("plan_schema", request)) :: types.SchemaPlanResult
+            test.eq(plan.generation, before + 1)
+            test.eq(plan.class, "additive")
+            test.eq(codes(plan.changes, "added")[1], "custom.text")
+            test.eq(#fixture.events(h), event_count)
+            test.eq(schema(h).schema_generation, before)
+            test.is_nil(choice(h, DYNAMIC))
+            test.is_false(assert(view(h)[DYNAMIC]).active)
+
+            local applied = assert(h.call("apply_schema", request)) :: types.SchemaResult
+            test.eq(applied.generation, plan.generation)
+            test.eq(applied.class, plan.class)
+            test.eq(json.encode(applied.changes), json.encode(plan.changes))
+            test.not_nil(schema(h).attributes["custom.text"])
+            test.is_nil(schema(h).attributes["dynamic.text"])
+            test.eq(assert(assert(view(h)[DYNAMIC]).config).namespace, "custom")
         end)
 
         test.it("validates activation configuration before append and configures active plugins as ADMIN", function()

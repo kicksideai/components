@@ -118,7 +118,7 @@ local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_
         end,
     })
     if cerr or not next_compiled then return nil, cerr end
-    local aerr = plugins.admit(effective, prev_declaration)
+    local aerr = plugins.admit(next_compiled, prev)
     if aerr then return nil, aerr end
     if prev then
         local herr = terms.check_hierarchy_change(db, catalog_id, prev.vocabularies, next_compiled.vocabularies)

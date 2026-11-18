@@ -86,6 +86,7 @@ entries:
         - app:weight_check
         - app:actor_check
         - app:location_target
+        - app:managed_location_target
         - app:offline_target
       actions: [registry.get, funcs.call]
       effect: allow
@@ -664,6 +665,53 @@ entries:
         template:
           vocabularies: [ { code: zones } ]
           aspects: [ { namespace: placement, attributes: [ { code: zone, type: kickside.pim.types:select, vocabulary: zones, index: key } ] } ]
+
+  - name: contributed_text_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, form: text, title: Plugin-owned text }
+
+  - name: fixed_location_type
+    kind: registry.entry
+    meta: { type: kickside.pim.type, form: ref, target: app.managed_location }
+
+  - name: managed_location_target
+    kind: contract.binding
+    meta: { kind: app.managed_location }
+    contracts:
+      - contract: kickside.pim:link_target
+        methods:
+          resolve: app:location_resolve
+          describe: app:location_describe
+
+  - name: seam_owner_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      seams: [app:contributed_text_type, app.managed_location]
+
+  - name: location_contributor_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      seams: [app:fixed_location_type]
+      schema:
+        template:
+          aspects:
+            - namespace: locations
+              attributes: [{ code: reference, type: 'app:fixed_location_type' }]
+
+  - name: seam_contributor_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      schema:
+        template:
+          aspects:
+            - namespace: contributed
+              attributes: [{ code: text, type: 'app:contributed_text_type' }]
 
   - name: dynamic_plugin
     kind: registry.entry
