@@ -89,7 +89,7 @@ local function define()
             for _, board in ipairs({ deleting, live }) do
                 assert(db:execute("UPDATE kickside_work_receipt SET at='2000-01-01T00:00:00.000000000Z' WHERE board_id=$1", { board.id }))
             end
-            assert(db:execute("UPDATE kickside_work_retention SET board_after='',inclusive=0,board_scan='all',deadline_ms=NULL WHERE owner_id='work'", {}))
+            assert(db:execute("UPDATE kickside_work_retention SET board_after='',inclusive=0,board_scan='all',board_through=NULL,discovery_turn=0 WHERE owner_id='work'", {}))
             db:release()
             assert(deleting.call("delete", {}))
             local before = rows_of(deleting.id, "kickside_work_receipt")

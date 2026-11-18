@@ -2,6 +2,7 @@
 -- Folds board events into the work tables. Runs inside the projection
 -- transaction; board.applied_seq covers every event at or below it.
 local json = require("json")
+local clock = require("clock")
 local sql = require("sql")
 local consts = require("consts")
 local bulk = require("bulk")
@@ -172,8 +173,13 @@ function M.fold(tx: sql.Transaction, dialect: string, board_id: string, events: 
     if not err then err = index_rows.changed(tx, dialect, board, applied, result.last_seq) end
     if err then return nil, err end
     if result.last_seq > board.applied_seq then
-        err = fold_batch.exec(tx, [[UPDATE kickside_work_board SET applied_seq = $1, counter = $2
-            WHERE board_id = $3]], { result.last_seq, board.counter, board_id })
+        local due = clock.deadline(0).ns // 1000000
+        -- This checkpoint commits with the rows that can change eligibility.
+        -- A coalesced Core wake can therefore recover their board from storage.
+        err = fold_batch.exec(tx, [[UPDATE kickside_work_board SET applied_seq = $1, counter = $2,
+            retention_due_ms = CASE WHEN retention_due_ms IS NULL OR retention_due_ms > $3
+                THEN $3 ELSE retention_due_ms END
+            WHERE board_id = $4]], { result.last_seq, board.counter, due, board_id })
         if err then return nil, err end
     end
     return result, nil

@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: aa_retention_fleet_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 120s
+  source: file://retention_fleet_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    store: kickside.work.persist:store
+    steps: app:steps

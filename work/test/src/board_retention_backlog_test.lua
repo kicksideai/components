@@ -21,7 +21,7 @@ local function define()
                     VALUES ($1,$2,0,$3,'approve',$4)]], { board.id, item, tostring(i), OLD }))
             end
             assert(tx:commit())
-            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,board_scan='all',deadline_ms=NULL WHERE owner_id='work'",
+            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,board_scan='all',board_through=NULL,discovery_turn=0 WHERE owner_id='work'",
                 { board.id }))
             db:release()
             local runs = 0

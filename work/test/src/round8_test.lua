@@ -5,7 +5,6 @@ local steps=require("steps")
 local store=require("store")
 local limits=require("limits")
 local threads=require("threads")
-local rows=require("rows")
 local defaults=require("defaults")
 local time=require("time")
 local sql=require("sql")
@@ -95,7 +94,7 @@ local function define()
             local cursor=""
             local seen=false
             for _=1,4 do
-                local page=assert(rows.prune(h.id,base,100,cursor))
+                local page=assert(steps.retention_prune(h.id,base,100,cursor))
                 test.is_true((page.spent or page.removed)<=100)
                 test.is_true((page.examined or 0)>0,"retained candidates consume inspection budget")
                 test.is_true(page.more,"a full protected page continues")

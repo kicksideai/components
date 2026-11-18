@@ -50,6 +50,67 @@ print(json.dumps(db.execute("SELECT name FROM sqlite_master WHERE type='table' A
   assert.deepEqual(JSON.parse(result), [])
 })
 
+test('board retention seeks directly to a deep cursor with a bounded page', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const source = await readFile(resolve(root, 'src/retention/rows.lua'), 'utf8')
+  const fields = source.match(/local BOARD_FIELDS = "[^"]+"/)[0]
+  const body = source.match(/function M\.board_page[^\n]*\n([\s\S]*?)\nend/)[1]
+  const captured = await run('lua', ['-'], {}, `
+${fields}
+local function page(inclusive)
+${body}
+end
+for inclusive=0,1 do io.write(page(inclusive),'\\0') end
+`)
+  const pages = captured.split('\0').filter(Boolean).map(query => ({ query, args: ['20000', 8] }))
+  const sqlite = await run('python3', ['-c', `
+import json,sqlite3,sys
+pages=json.load(sys.stdin)
+db=sqlite3.connect(':memory:')
+db.execute('CREATE TABLE kickside_work_board(board_id text PRIMARY KEY, compiled text, applied_seq bigint, tombstone_floor_seq bigint, retention_after text, retention_due_ms bigint)')
+db.executemany('INSERT INTO kickside_work_board(board_id) VALUES (?)', [(f'{n:06d}',) for n in range(1,20001)])
+db.execute('ANALYZE')
+for inclusive,page in enumerate(pages):
+ for anchor in (10,19000):
+  args=[f'{anchor:06d}',*page['args']]
+  ticks=[0]
+  def step(): ticks[0]+=1;return 0
+  db.set_progress_handler(step,1)
+  rows=db.execute(page['query'],args).fetchall()
+  db.set_progress_handler(None,0)
+  start=anchor+1-inclusive
+  assert [row[0] for row in rows]==[f'{n:06d}' for n in range(start,start+8)],rows
+  assert ticks[0]<150,(inclusive,anchor,ticks)
+  print(inclusive,anchor,ticks[0])
+`], {}, JSON.stringify(pages))
+  console.log('SQLite board seeks (inclusive, cursor, VM instructions)', sqlite.trim())
+
+  if (!process.env.WORK_MIGRATION_POSTGRES) return
+  const args = ['exec', '-i', 'kickside-test-pg', 'psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-U', 'kickside', '-d', 'kickside_test_work']
+  const sql = `
+CREATE TEMP TABLE kickside_work_board(board_id text PRIMARY KEY, compiled text, applied_seq bigint, tombstone_floor_seq bigint, retention_after text, retention_due_ms bigint);
+INSERT INTO kickside_work_board(board_id) SELECT lpad(n::text,6,'0') FROM generate_series(1,20000) n;
+ANALYZE kickside_work_board;
+${pages.map(({ query }, i) => `PREPARE board_page_${i} AS ${query};`).join('\n')}
+${['force_custom_plan', 'force_generic_plan'].map(mode =>
+    `SET plan_cache_mode = ${mode};\n` + pages.flatMap(({ args }, page) => [10, 19000].map(anchor =>
+      `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) EXECUTE board_page_${page}('${String(anchor).padStart(6, '0')}','${args[0]}',${args[1]});`
+    )).join('\n')
+  ).join('\n')}`
+  const output = process.env.WORK_MIGRATION_SSH
+    ? await run('ssh', [process.env.WORK_MIGRATION_SSH, 'docker', ...args], {}, sql)
+    : await run('docker', args, {}, sql)
+  const plans = JSON.parse(`[${output.trim().replace(/\]\s*\[/g, '],[')}]`)
+  assert.equal(plans.length, 8)
+  for (const [{ Plan }] of plans) {
+    const [seek] = Plan.Plans
+    assert.equal(Plan['Actual Rows'], 8)
+    assert.match(seek['Index Cond'] ?? '', /board_id.*AND.*board_id/, JSON.stringify(seek))
+    assert.ok((seek['Rows Removed by Filter'] ?? 0) <= 1, JSON.stringify(seek))
+  }
+  console.log('PostgreSQL board seeks examined eight rows in all eight plans')
+})
+
 test('purged comments and incoming board links have bounded ordered seeks on a populated board', async () => {
   const initial = await statements('01_work', 'up')
   const { readFile } = await import('node:fs/promises')
@@ -312,7 +373,7 @@ end
 local function past_visit(name,dialect,counters)
 ${past}
 end
-local effective={tombstone_days=1,audit_days=1,interval_days=1}
+local cuts={tombstone='2026',audit='2026',interval='2026'}
 local cutoff,dialect='2026','${dialect}'
 local pages=${entries}
 for _,e in ipairs(pages) do
@@ -481,38 +542,34 @@ END $plans$;`)
 })
 
 
-test('round 8 every future deadline is one bounded populated index seek', async () => {
+test('batched retention eligibility uses one bounded index seek for each populated row class', async () => {
   const {readFile}=await import('node:fs/promises')
   const source=await readFile(resolve(root,'src/retention/rows.lua'),'utf8')
   const expiry=await readFile(resolve(root,'src/persist/operation_expiry.lua'),'utf8')
   const constants=expiry.slice(expiry.indexOf('M.TERMINAL ='),expiry.indexOf('function M.at'))
   const at=expiry.match(/function M.at[^\n]*\n([\s\S]*?)\nend/)[1]
-  const deadline=source.slice(source.indexOf('function M.deadline'),source.lastIndexOf('return M'))
-    .replace(/^function M.deadline[^\n]*/,'function M.deadline(db,board_id,effective,window)')
-    .replace(/local earliest: integer\?/,'local earliest')
-    .replace(/local params: domain.SqlParams/,'local params')
-    .replace(/ :: integer/g,'')
-  const captured=await run('lua',['-'],{},`
+  const classes=source.match(/local function age_classes[^\n]*\n([\s\S]*?)\nend/)[1]
+  const statement=source.match(/function M.eligibility_statement[^\n]*\n([\s\S]*?)\nend/)[1]
+    .replace(/local future: \{ string \}/,'local future')
+  const sql=await run('lua',['-'],{},`
 local M={}
 ${constants}
 function M.at(dialect)
 ${at}
 end
 local operation_expiry=M
-local clock={deadline=function()return {at='2026'} end}
-${deadline}
-local db={type=function()return 'sqlite' end,query=function(_,q,params)
- io.write(q,'\\0',params[3] or '', '\\0');return {},nil
-end}
-M.deadline(db,'future',{trash_days=1,tombstone_days=1,audit_days=1,interval_days=1},{ms=129600000,before='2026'})
+local function age_classes(dialect)
+${classes}
+end
+function M.eligibility_statement(dialect)
+${statement}
+end
+io.write(M.eligibility_statement('sqlite'))
 `)
-  const bits=captured.split('\0');const queries=[]
-  for(let i=0;i<bits.length-1;i+=2)queries.push([bits[i],bits[i+1]])
-  assert.equal(queries.length,13)
   const initial=await statements('01_work','up')
   const result=await run('python3',['-c',`
 import json,sqlite3,sys
-initial,queries=json.load(sys.stdin)
+initial,query=json.load(sys.stdin)
 db=sqlite3.connect(':memory:')
 for q in initial:db.execute(q)
 def insert(table,values):
@@ -538,21 +595,25 @@ for n in range(20000):
   ('job',dict(job_id=key,status='failed',failed_at='2099')),
  ]:insert('kickside_work_'+name,dict(board_id='future',**values))
 metrics=[]
+cut=dict(trash='2026',tombstone='2026',audit='2026',interval='2026',event='2026',floor=-1)
+args=[json.dumps([dict(cut,board_id='future'),dict(cut,board_id='empty')])]
 for analyzed in (False,True):
  if analyzed:db.execute('ANALYZE')
- for q,state in queries:
-  args=['future','2026']+([state] if state else [])
-  plan=db.execute('EXPLAIN QUERY PLAN '+q,args).fetchall()
-  assert not any('TEMP B-TREE' in p[3] or p[3].startswith('SCAN kickside_work') for p in plan),(q,plan)
-  ticks=[0]
-  def tick():ticks[0]+=1;return 0
-  db.set_progress_handler(tick,1);rows=db.execute(q,args).fetchall();db.set_progress_handler(None,0)
-  assert len(rows)==1 and ticks[0]<1000,(q,ticks,plan)
-  metrics.append([analyzed,q,ticks[0]])
+ plan=db.execute('EXPLAIN QUERY PLAN '+query,args).fetchall()
+ seeks=[p[3] for p in plan if p[3].startswith('SEARCH kickside_work')]
+ assert len(seeks)==31,(len(seeks),plan)
+ assert not any('TEMP B-TREE' in p[3] or p[3].startswith('SCAN kickside_work') for p in plan),plan
+ ticks=[0]
+ def tick():ticks[0]+=1;return 0
+ db.set_progress_handler(tick,1);rows=db.execute(query,args).fetchall();db.set_progress_handler(None,0)
+ assert rows[0]==('future',0,*(['2099']*9), '2099-01-01T00:00:00.000000000Z',*(['2099']*3)),rows[0]
+ assert rows[1]==('empty',0,*([None]*13)),rows[1]
+ assert ticks[0]<2500,(ticks,plan)
+ metrics.append([analyzed,ticks[0]])
 print(json.dumps(metrics))
-`],{},JSON.stringify([initial,queries]))
-  console.log("round8 deadline maximum instructions",Math.max(...JSON.parse(result).map(m=>m[2])))
-  assert.equal(JSON.parse(result).length,26)
+`],{},JSON.stringify([initial,sql]))
+  console.log("Batched retention eligibility instructions", JSON.parse(result))
+  assert.equal(JSON.parse(result).length,2)
 })
 
 // The runtime fixture exercises precisely the batch source in production, with
@@ -640,7 +701,9 @@ test('round 8 remaining retention selectors use bounded seeks through 20000 reta
   const associated=rows.match(/local associated = (\{[\s\S]*?\n        \})/)[1]
   const owned=lifecycle.match(/local TABLES[^=]*= (\{[\s\S]*?\n\})/)[1]
   const selection=lifecycle.match(/local selection = ([^\n]+)/)[1]
-  const boards=rows.match(/function M.boards[^\n]*\n([\s\S]*?)\nend/)[1]
+  const fields=rows.match(/local BOARD_FIELDS = "[^"]+"/)[0]
+  const boards=rows.match(/function M.board_page[^\n]*\n([\s\S]*?)\nend/)[1]
+  const ready=rows.match(/function M.ready_page[^\n]*\n([\s\S]*?)\nend/)[1]
   const captured=await run('lua',['-'],{},`
 local board_id,id='board','missing'
 local names={set='retention_test_set',item='retention_test_item'}
@@ -661,15 +724,20 @@ for _,e in ipairs(classes) do
  local selection=${selection}
  io.write(selection,'\\0',#params,'\\0')
 end
-local PENDING='retention_after IS NOT NULL'
-local function scan(db,position,limit)
-${boards}
-end
-local db={query=function(_,q) io.write(q,'\\0',2,'\\0') end}
-for _,phase in ipairs({'all','pending'}) do scan(db,{inclusive=0,board_scan=phase,board_after='009999'},1) end
 `)
   const bits=captured.split('\0'),queries=[]
   for(let i=0;i<bits.length-1;i+=2)queries.push([bits[i],Number(bits[i+1])===3?['board','missing',1]:Number(bits[i+1])===2?['board',1]:[1]])
+  const pageQueries=(await run('lua',['-'],{},`
+${fields}
+local function boards(inclusive)
+${boards}
+end
+local function ready()
+${ready}
+end
+io.write(boards(0),'\\0',ready())
+`)).split('\0')
+  queries.push([pageQueries[0],['009999','019999',1]], [pageQueries[1],[1,1]])
   for(const [fn,args] of [['trash',['board','2026',1]],['collect',['board']]]) {
     const section=rows.slice(rows.indexOf(`function M.${fn}(`))
     queries.push([section.match(/db:query\(\[\[([\s\S]*?)\]\]/)[1],args])
@@ -690,7 +758,8 @@ def insert(table,values):
  db.execute('INSERT INTO '+table+' ('+','.join(data)+') VALUES ('+','.join('?' for _ in data)+')',list(data.values()))
 for n in range(20000):
  key=f'{n:06d}'
- insert('kickside_work_board',dict(board_id=key,retention_after='' if n==19000 else None))
+ due_ms=1 if n==19000 else None
+ insert('kickside_work_board',{'board_id':key,'retention_due_ms':due_ms})
  insert('kickside_work_board_meta',dict(board_id=key))
  for name,values in [
   ('receipt',dict(command_key=key,at='2099')),
@@ -719,10 +788,9 @@ metrics=[]
 for analyzed in (False,True):
  if analyzed:db.execute('ANALYZE')
  for q,args in queries:
-  if 'SELECT board_id, retention_after' in q: args=['009999',1]
   plan=db.execute('EXPLAIN QUERY PLAN '+q,args).fetchall()
-  if 'retention_after IS NOT NULL' in q:
-   assert any('kickside_work_board_retention_pending' in row[3] for row in plan),plan
+  if 'retention_due_ms <=' in q:
+   assert any('kickside_work_board_retention_due' in row[3] for row in plan),plan
   assert not any('TEMP B-TREE' in row[3] for row in plan),(q,plan)
   ticks=[0]
   def tick():ticks[0]+=1;return 0

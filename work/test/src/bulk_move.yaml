@@ -19,7 +19,6 @@ entries:
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
-    retention: kickside.work.retention:rows
     defaults: kickside.work.settings:defaults
 - name: deferred_probe
   kind: library.lua

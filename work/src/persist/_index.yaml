@@ -139,6 +139,7 @@ entries:
   - json
   - sql
   imports:
+    clock: kickside.work.domain:clock
     fold_process: kickside.work.persist:fold_process
     consts: kickside.work:consts
     bulk: kickside.work.persist:bulk

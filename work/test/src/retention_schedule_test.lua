@@ -1,12 +1,55 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local test = require("test")
 local process = require("process")
+local channel = require("channel")
+local time = require("time")
+local runner = require("runner")
 local fixture = require("fixture")
 local store = require("store")
 local steps = require("steps")
 local clock = require("clock")
+local append_probe = require("append_probe")
 local M = {}
 local NAME = "kickside.core.retention.service:sweeper_process"
+local TOPIC = "kickside.core.retention.changed"
+local function trash_board(): fixture.Handle
+    local declaration = fixture.declaration(fixture.fresh_prefix())
+    declaration.policy = { trash_days = 0 }
+    return fixture.board({ declaration = declaration })
+end
+
+local function first_of_trash_boards(): fixture.Handle
+    local first = trash_board()
+    for _ = 1, 8 do
+        local other = trash_board()
+        if other.id < first.id then first = other end
+    end
+    return first
+end
+
+local function trash_at(board: fixture.Handle, item: string, at: string)
+    assert(board.call("trusted_append", { thread_id = board.id, events = {
+        { type = "kickside.work.events:item.deleted", subject = "i:" .. item,
+            body = { item = item, actor = board.actor:id(), at = at, source = "retention_schedule_test" } },
+    } }))
+    assert(board.call("settle", {}))
+end
+
+local function life(board: fixture.Handle, item: string): string
+    assert(board.call("settle", {}))
+    local db = assert(store.open())
+    local row = assert(store.item(db, board.id, item))
+    db:release()
+    return row.life
+end
+
+local function start_at(board: fixture.Handle)
+    local db = assert(store.open())
+    assert(db:execute([[UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,
+        board_scan='all',pending_page_budget=0,board_through=NULL,discovery_turn=0 WHERE owner_id='work']], { board.id }))
+    db:release()
+end
+
 local function define()
     test.describe("retention scheduling", function()
         local child: string?
@@ -43,47 +86,100 @@ local function define()
                 return item.life=="purged"
             end)
         end)
-        test.it("reports committed trash eligibility and collects it at the owner deadline", function()
-            local function trash_board(): fixture.Handle
-                local declaration = fixture.declaration(fixture.fresh_prefix())
-                declaration.policy = { trash_days = 0 }
-                return fixture.board({ declaration = declaration })
-            end
-            local h, later = trash_board(), trash_board()
-            if h.id > later.id then h, later = later, h end
-            batch_board = h
-            assert(h.call("set_setting", { namespace = "kickside.work", key = "cleanup_batch", value = 1 }))
-            local id = steps.create(h, "task", { title = "Retained" })
-            local other_id = steps.create(later, "task")
-            local function trash_at(board: fixture.Handle, item: string, at: string)
-                assert(board.call("trusted_append", { thread_id = board.id, events = {
-                    { type = "kickside.work.events:item.deleted", subject = "i:" .. item,
-                        body = { item = item, actor = board.actor:id(), at = at, source = "retention_schedule_test" } },
-                } }))
-                assert(board.call("settle", {}))
-            end
-            local future = clock.deadline(60000)
-            trash_at(later, other_id, clock.deadline(30000).at)
+        test.it("reports the deadline and quiesces with future-eligible trash", function()
+            local h = trash_board()
+            local id = steps.create(h, "task")
+            steps.retention_sweep()
+            local future = clock.deadline(15000)
             trash_at(h, id, future.at)
-            for pass = 1, 2 do
-                local db = assert(store.open())
-                assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,board_scan='all',deadline_ms=NULL WHERE owner_id='work'", { h.id }))
-                db:release()
-                local result = steps.retention_run()
+            start_at(h)
+            local _, waiting = steps.retention_sweep()
+            test.is_false(waiting.needs_continue)
+            test.eq(life(h, id), "trashed")
+            test.eq(waiting.deadline_ms, future.ns // 1000000 + 1)
+            steps.wait_for("owner eligibility deadline", function(): boolean
+                return clock.deadline(0).ns // 1000000 >= waiting.deadline_ms
+            end)
+            local _, done = steps.retention_sweep(function(): boolean return life(h, id) == "purged" end)
+            if done.needs_continue == true then _, done = steps.retention_sweep() end
+            test.is_false(done.needs_continue)
+            test.eq(life(h, id), "purged")
+        end)
+
+        test.it("serves an elapsed board deadline ahead of the rest of discovery", function()
+            local h = first_of_trash_boards()
+            batch_board = h
+            local id = steps.create(h, "task")
+            steps.retention_sweep()
+            assert(h.call("set_setting", { namespace = "kickside.work", key = "cleanup_batch", value = 1 }))
+            local future = clock.deadline(5000)
+            trash_at(h, id, future.at)
+            start_at(h)
+            local visited = steps.retention_run()
+            test.is_true(visited.needs_continue)
+            test.eq(visited.deadline_ms, future.ns // 1000000 + 1)
+            test.eq(life(h, id), "trashed")
+            steps.wait_for("deadline during discovery", function(): boolean
+                return clock.deadline(0).ns // 1000000 >= visited.deadline_ms
+            end)
+            steps.retention_run()
+            test.eq(life(h, id), "purged", "the next callback must serve the elapsed deadline")
+        end)
+
+        test.it("keeps committed eligibility behind a coalesced discovery continuation", function()
+            local h = first_of_trash_boards()
+            batch_board = h
+            local id = steps.create(h, "task")
+            steps.retention_sweep()
+            assert(h.call("set_setting", { namespace = "kickside.work", key = "cleanup_batch", value = 1 }))
+            start_at(h)
+            test.is_true(steps.retention_run().needs_continue)
+            local db = assert(store.open())
+            local position = assert(db:query("SELECT board_after,pending_page_budget FROM kickside_work_retention WHERE owner_id='work'", {}))[1]
+            db:release()
+            test.eq(position.board_after, h.id, "discovery has passed the target")
+            test.is_true((tonumber(position.pending_page_budget) or 0) > 0)
+            local mailbox = assert(process.listen(TOPIC))
+            assert(process.registry.register(NAME, nil, process.registry.CONSISTENT))
+            local ok, err = pcall(function()
+                test.eq(steps.one(h, { op = "delete", item = id }).status, "applied")
                 assert(h.call("settle", {}))
-                db = assert(store.open())
-                local item = assert(store.item(db, h.id, id))
-                db:release()
-                if pass == 1 then
-                    test.eq(item.life, "trashed")
-                    test.eq(result.deadline_ms, future.ns // 1000000 + 1)
-                    steps.wait_for("owner eligibility deadline", function(): boolean
-                        return clock.deadline(0).ns // 1000000 >= result.deadline_ms
-                    end)
-                else
-                    test.eq(item.life, "purged")
+                local timer = time.after("5s")
+                local wake: { [string]: unknown }? = nil
+                while not wake do
+                    local message = channel.select({ mailbox:case_receive(), timer:case_receive() })
+                    assert(message.channel == mailbox, "committed projection did not deliver the retention wake")
+                    local change = message.value :: { [string]: unknown }
+                    if change.kind == "projection_eligibility_changed" and change.thread_id == h.id then
+                        wake = change
+                    end
                 end
-            end
+                local db = assert(store.open())
+                local result, pass_err = runner.on_wakes(db, tostring(process.pid()), { { kind = "continue" }, wake })
+                db:release()
+                assert(result, steps.detail(pass_err))
+                test.eq(#result.owner_failures, 0)
+                steps.retention_run()
+            end)
+            assert(process.registry.unregister(NAME, process.registry.CONSISTENT))
+            process.unlisten(mailbox)
+            assert(ok, tostring(err))
+            test.eq(life(h, id), "purged", "the wake must reach the target within two callbacks")
+        end)
+
+        test.it("reports eligibility that crosses the cutoff while another item is being purged", function()
+            local h = trash_board()
+            local expired, next_item = steps.create(h, "task"), steps.create(h, "task")
+            steps.retention_sweep()
+            trash_at(h, expired, clock.offset(-60))
+            local future = clock.deadline(5000)
+            trash_at(h, next_item, future.at)
+            append_probe.wait_on_purge(h.id, expired, future.at)
+            start_at(h)
+            local result = steps.retention_run()
+            test.eq(life(h, expired), "purged")
+            test.eq(life(h, next_item), "trashed", "the target was future-eligible at collection")
+            test.eq(result.deadline_ms, future.ns // 1000000 + 1)
         end)
         test.it("collects future-eligible trash at the reported deadline without another change", function()
             local pid,err=process.spawn_monitored(NAME,"app:processes")

@@ -6,6 +6,10 @@ local sql = require("sql")
 local channel = require("channel")
 local funcs = require("funcs")
 local fixture = require("fixture")
+local retention = require("retention")
+local retention_types = require("retention_types")
+local domain = require("domain")
+local clock = require("clock")
 
 local M = {}
 
@@ -23,6 +27,19 @@ function M.retention_run(): Map
     local result = out :: Map
     assert(result.success == true, M.detail(result.error))
     return result
+end
+
+function M.retention_visit(db: sql.DB, board_id: string, base: domain.Policy): retention_types.Visit
+    local board = assert(retention.boards(db, { board_after = board_id, board_through = board_id,
+        inclusive = 1, board_scan = "all", discovery_turn = 0, pending_page_budget = 0 }, 1))[1]
+    return assert(retention.prepare(board, base, clock.deadline(0), {}))
+end
+
+function M.retention_prune(board_id: string, base: domain.Policy, limit: integer, cursor: string?): retention_types.Pruned
+    local db = assert(sql.get("app:db"))
+    local visit = M.retention_visit(db, board_id, base)
+    db:release()
+    return assert(retention.prune(board_id, limit, cursor, visit.cutoffs))
 end
 
 function M.count_rows(name: string, board_id: string, suffix: string?): integer

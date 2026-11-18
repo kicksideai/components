@@ -4,6 +4,7 @@ local types = require("types")
 local sql = require("sql")
 local time = require("time")
 local store = require("store")
+local codec = require("codec")
 local lifecycle = require("lifecycle")
 local clock = require("clock")
 local policy = require("policy")
@@ -16,55 +17,133 @@ local M = {}
 
 
 function M.position(db: sql.DB): (types.Position?, error?)
-    local rows, err = db:query("SELECT board_after, inclusive, board_scan, deadline_ms FROM kickside_work_retention WHERE owner_id = 'work'", {})
+    local rows, err = db:query([[SELECT board_after, inclusive, board_scan, board_through, discovery_turn, pending_page_budget
+        FROM kickside_work_retention WHERE owner_id = 'work']], {})
     if err then return nil, err end
     if not rows or not rows[1] then return nil, errors.new({ kind = errors.INTERNAL, message = "retention position is missing", details = { code = "row_corrupt" } }) end
-    local board_after, berr = store.need(rows[1], "board_after")
-    if berr or not board_after then return nil, berr end
-    local inclusive, ierr = store.need_int(rows[1], "inclusive")
-    if ierr or not inclusive then return nil, ierr end
-    local board_scan, perr = store.need(rows[1], "board_scan")
-    if perr or not board_scan then return nil, perr end
-    return { board_after = board_after, inclusive = inclusive, board_scan = board_scan, deadline_ms = store.int(rows[1].deadline_ms) }, nil
+    local row = rows[1]
+    return {
+        board_after = row.board_after :: string, inclusive = row.inclusive :: integer,
+        board_scan = row.board_scan :: string, board_through = store.text(row.board_through),
+        discovery_turn = row.discovery_turn :: integer, pending_page_budget = row.pending_page_budget :: integer,
+    }, nil
 end
 
-local PENDING = "retention_after IS NOT NULL"
-
--- Save the row continuations with the board scan position so another board
--- gets its turn even when the same board needs several collection pages.
-function M.advance(position: types.Position, checkpoints: { types.Checkpoint }?, at_end: boolean?): (error?, boolean?)
-    local pending, err = lifecycle.transaction(function(tx: sql.Transaction, _dialect: string): (boolean?, error?)
+-- The owner commits each cursor with the board visits it represents. A fold
+-- that committed after the visit's read leaves the board immediately due.
+function M.advance(position: types.Position, checkpoints: { types.Checkpoint }?, at_end: boolean?,
+    orphan_more: boolean?): (error?, integer?)
+    local deadline, err = lifecycle.transaction(function(tx: sql.Transaction, _dialect: string): (integer?, error?)
         for _, checkpoint in ipairs(checkpoints or {}) do
-            local _, err = tx:execute("UPDATE kickside_work_board SET retention_after = $1 WHERE board_id = $2",
-                { checkpoint.after or sql.NULL, checkpoint.board_id })
+            local _, err = tx:execute([[UPDATE kickside_work_board SET retention_after = $1,
+                retention_due_ms = CASE WHEN applied_seq = $2 OR CAST($3 AS bigint) <= $4
+                    THEN CAST($3 AS bigint) ELSE $4 END
+                WHERE board_id = $5]], { checkpoint.after or sql.NULL, checkpoint.applied_seq,
+                checkpoint.due_ms or sql.NULL, clock.deadline(0).ns // 1000000, checkpoint.board_id })
             if err then return nil, err end
         end
-        local resume = false
-        if at_end then
-            local rows, pending_err = tx:query("SELECT board_id FROM kickside_work_board WHERE " .. PENDING .. " ORDER BY board_id LIMIT 1", {})
-            if pending_err then return nil, pending_err end
-            resume = rows ~= nil and rows[1] ~= nil
-            position.board_after, position.inclusive, position.board_scan = "", 0, resume and "pending" or "all"
-            if not resume then
-                position.deadline_ms = nil
+        local now = clock.deadline(0).ns // 1000000
+        local next_due, read_err = M.next_deadline(tx)
+        if read_err then return nil, read_err end
+        if at_end and (not next_due or next_due > now) then
+            position.board_scan, position.pending_page_budget = "all", 0
+            if not orphan_more then
                 local _, orphan_err = tx:execute("UPDATE kickside_work_retention SET orphan_after = '' WHERE owner_id = 'work' AND orphan_after <> ''", {})
                 if orphan_err then return nil, orphan_err end
             end
         end
-        local _, err = tx:execute([[UPDATE kickside_work_retention SET board_after = $1, inclusive = $2, board_scan = $3, deadline_ms = $4
+        local _, err = tx:execute([[UPDATE kickside_work_retention SET board_after = $1, inclusive = $2, board_scan = $3,
+            board_through = $4, discovery_turn = $5, pending_page_budget = $6
             WHERE owner_id = 'work' AND (board_after <> $1 OR inclusive <> $2 OR board_scan <> $3
-                OR COALESCE(deadline_ms, -1) <> COALESCE(CAST($4 AS bigint), -1))]],
-            { position.board_after, position.inclusive, position.board_scan, position.deadline_ms or sql.NULL })
-        return resume, err
+                OR COALESCE(board_through, '') <> COALESCE(CAST($4 AS text), '') OR discovery_turn <> $5 OR pending_page_budget <> $6)]],
+            { position.board_after, position.inclusive, position.board_scan, position.board_through or sql.NULL,
+                position.discovery_turn, position.pending_page_budget })
+        return next_due, err
     end)
-    return err, pending
+    return err, deadline
+end
+
+function M.end_key(db: sql.DB): (string?, error?)
+    local found, err = db:query("SELECT board_id FROM kickside_work_board ORDER BY board_id DESC LIMIT 1", {})
+    return found and found[1] and store.text(found[1].board_id), err
+end
+
+-- Limit the ordered page before probing Core's same-database thread and
+-- policy state. The thread side retains the class fence of prune_boundary.
+local function board_state(db: sql.DB, page: string): string
+    local thread = db:type() == "postgres" and "CAST(b.board_id AS uuid)" or "b.board_id"
+    return [[SELECT b.*,
+        (SELECT max_pruned_seq FROM kickside_thread WHERE id = ]] .. thread .. [[ AND thread_class = 'work.board') AS boundary,
+        (SELECT enabled FROM kickside_retention_policy WHERE thread_id = ]] .. thread .. [[) AS enabled,
+        (SELECT event_hot_retention_days FROM kickside_retention_policy WHERE thread_id = ]] .. thread .. [[) AS event_hot_retention_days
+        FROM (]] .. page .. [[) b]]
+end
+
+local BOARD_FIELDS = "board_id, compiled, applied_seq, tombstone_floor_seq, retention_after, retention_due_ms"
+
+function M.board_page(inclusive: integer): string
+    local seek = inclusive == 1 and " >= $1" or " > $1"
+    return "SELECT " .. BOARD_FIELDS .. " FROM kickside_work_board WHERE board_id" .. seek ..
+        " AND board_id <= $2 ORDER BY board_id LIMIT $3"
 end
 
 function M.boards(db: sql.DB, position: types.Position, limit: integer): ({ domain.Row }?, error?)
-    local seek = position.inclusive == 1 and " >= $1" or " > $1"
-    local filter = position.board_scan ~= "all" and (" AND " .. PENDING) or ""
-    return db:query("SELECT board_id, retention_after FROM kickside_work_board WHERE board_id" .. seek .. filter ..
-        " ORDER BY board_id LIMIT $2", { position.board_after, limit })
+    return db:query(board_state(db, M.board_page(position.inclusive)) .. " ORDER BY b.board_id",
+        { position.board_after, position.board_through, limit })
+end
+
+function M.ready_page(): string
+    return "SELECT " .. BOARD_FIELDS .. " FROM kickside_work_board WHERE retention_due_ms <= $1 " ..
+        "ORDER BY retention_due_ms, board_id LIMIT $2"
+end
+
+function M.ready(db: sql.DB, now_ms: integer, limit: integer): ({ domain.Row }?, error?)
+    return db:query(board_state(db, M.ready_page()) .. " ORDER BY b.retention_due_ms, b.board_id", { now_ms, limit })
+end
+
+function M.next_deadline(db: sql.DB | sql.Transaction): (integer?, error?)
+    local rows, err = db:query([[SELECT retention_due_ms FROM kickside_work_board WHERE retention_due_ms IS NOT NULL
+        ORDER BY retention_due_ms, board_id LIMIT 1]], {})
+    return rows and rows[1] and store.int(rows[1].retention_due_ms), err
+end
+
+local function cutoffs(effective: domain.Policy, event_ms: integer?, snapshot: domain.Deadline,
+    cached: { [integer]: string }): (types.Cutoffs?, { [string]: integer }?, error?)
+    local windows = {
+        trash = (effective.trash_days :: integer) * 86400000,
+        tombstone = (effective.tombstone_days :: integer) * 86400000,
+        audit = (effective.audit_days :: integer) * 86400000,
+        interval = (effective.interval_days :: integer) * 86400000,
+        event = event_ms,
+    }
+    local cut: { [string]: string } = {}
+    for name, ms in pairs(windows) do
+        local at = cached[ms]
+        if not at then
+            local shifted, err = clock.shift(snapshot, -ms)
+            if err or not shifted then return nil, nil, err end
+            at = shifted
+            cached[ms] = at
+        end
+        cut[name] = at
+    end
+    return cut :: types.Cutoffs, windows, nil
+end
+
+function M.prepare(row: domain.Row, base: domain.Policy, snapshot: domain.Deadline,
+    cached: { [integer]: string }): (types.Visit?, error?)
+    local compiled, err = codec.compiled(row.compiled)
+    if err or not compiled then return nil, err end
+    local effective, effective_err = policy.effective(base :: domain.JsonObject, compiled.policy_overrides)
+    if effective_err or not effective then return nil, effective_err end
+    local event_ms, window_err = policy.event_window_ms(row)
+    if window_err then return nil, window_err end
+    local cut, windows, cut_err = cutoffs(effective, event_ms, snapshot, cached)
+    if cut_err or not cut or not windows then return nil, cut_err end
+    local boundary = store.int(row.boundary)
+    if boundary == nil then return nil, errors.new({ kind = errors.NOT_FOUND, message = "Work board thread not found" }) end
+    return { board_id = row.board_id :: string, floor = row.tombstone_floor_seq :: integer, boundary = boundary,
+        after = store.text(row.retention_after), cutoffs = cut, windows = windows }, nil
 end
 
 function M.record_floor(db: sql.DB | sql.Transaction, board_id: string, floor: integer): error?
@@ -73,9 +152,9 @@ function M.record_floor(db: sql.DB | sql.Transaction, board_id: string, floor: i
     return err
 end
 
-function M.trash(db: sql.DB, board_id: string, days: integer, limit: integer): ({ domain.Row }?, error?)
+function M.trash(db: sql.DB, board_id: string, before: string, limit: integer): ({ domain.Row }?, error?)
     return db:query([[SELECT item_id, version FROM kickside_work_item WHERE board_id = $1 AND life <> 'live' AND life = 'trashed'
-        AND life_at < $2 ORDER BY life_at, item_id LIMIT $3]], { board_id, clock.offset(-days * 86400), limit })
+        AND life_at < $2 ORDER BY life_at, item_id LIMIT $3]], { board_id, before, limit })
 end
 
 local function past_visit(name: string, dialect: string): string
@@ -246,18 +325,11 @@ function M.collect(board_id: string, limit: integer): (types.Pruned?, error?)
 end
 
 
-function M.prune(board_id: string, defaults: domain.Policy, limit: integer, cursor: string?, window: domain.EventWindow?): (types.Pruned?, error?)
-    if not window then
-        local db, err = store.open()
-        if not db then return nil, err end
-        window, err = policy.event_window(db, board_id)
-        db:release()
-        if err or not window then return nil, err end
-    end
+function M.prune(board_id: string, limit: integer, cursor: string?, cuts: types.Cutoffs): (types.Pruned?, error?)
     local collected, collection_err = M.collect(board_id,limit)
     if collection_err or not collected then return nil,collection_err end
     if collected.more then collected.cursor = cursor; return collected,nil end
-    local cutoff = window.before
+    local cutoff = cuts.event
     local comment_removed, comments_more = 0, false
     if cutoff then
         local comment_page, cerr = comments(board_id, limit, nil, cutoff)
@@ -267,11 +339,12 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
     limit = limit - comment_removed
     if limit == 0 then return { removed = comment_removed, more = true, cursor = cursor }, nil end
     local pruned: types.Pruned?, prune_err: error? = lifecycle.transaction(function(tx: sql.Transaction, dialect: string): (types.Pruned?, error?)
-        local board, err = store.board(tx, board_id, dialect)
-        if err then return nil, err end
-        if not board then return { removed = 0, more = false }, nil end
-        local effective, perr = policy.effective(defaults :: domain.JsonObject, board.compiled.policy_overrides)
-        if perr or not effective then return nil, perr end
+        local lock = dialect == "postgres" and " FOR UPDATE" or ""
+        local found, read_err = tx:query("SELECT tombstone_floor_seq FROM kickside_work_board WHERE board_id = $1" .. lock, { board_id })
+        if read_err then return nil, read_err end
+        if not found or not found[1] then return { removed = 0, more = false }, nil end
+        local floor, floor_err = store.need_int(found[1], "tombstone_floor_seq")
+        if floor_err or not floor then return nil, floor_err end
         local left = limit
         local examined=0
         local in_visibility=cursor and cursor:sub(1,11)=="visibility:"
@@ -282,7 +355,7 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
             row_anchor=decoded
         end
         if cutoff and not in_visibility and not row_anchor then
-            local anchor: types.VisibilityPosition={seq=board.tombstone_floor_seq,item=""}
+            local anchor: types.VisibilityPosition={seq=floor,item=""}
             if cursor and cursor:sub(1,4)=="age:" then
                 local decoded,decode_err=store.stored(cursor:sub(5),{} :: types.VisibilityPosition)
                 if decode_err or not decoded then return nil,decode_err end
@@ -293,9 +366,9 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
             local bound=left
             local aged, age_err = tx:query([[SELECT item_id,seq,at FROM kickside_work_visibility
                 WHERE board_id=$1 AND seq>$2 AND (seq,item_id)>($3,$4)
-                ORDER BY seq,item_id LIMIT $5]],{board_id,board.tombstone_floor_seq,anchor.seq,anchor.item,bound})
+                ORDER BY seq,item_id LIMIT $5]],{board_id,floor,anchor.seq,anchor.item,bound})
             if age_err then return nil,age_err end
-            local age_floor=board.tombstone_floor_seq
+            local age_floor=floor
             for _,row in ipairs(aged or {}) do
                 local seq,serr=store.need_int(row,"seq")
                 if serr or not seq then return nil,serr end
@@ -306,10 +379,10 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
                 if at<cutoff then age_floor=math.max(age_floor,seq) end
                 anchor={seq=seq,item=id}
             end
-            if age_floor>board.tombstone_floor_seq then
+            if age_floor>floor then
                 local uerr = M.record_floor(tx, board_id, age_floor)
                 if uerr then return nil,uerr end
-                board.tombstone_floor_seq=age_floor
+                floor=age_floor
             end
             examined=#(aged or {})
             left=left-examined
@@ -326,22 +399,22 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
         local pages: {types.Collection} = {
             { name = "kickside_work_receipt", keys = "command_key", where = "board_id = $1 AND at < $2",
                 protection = "NOT (" .. operation_expiry.PROTECTED_RECEIPT .. ")", before = cutoff, age = "at", order = "at, command_key" },
-            { name = "kickside_work_key_alias", keys = "key", where = "board_id = $1 AND at < $2", days = effective.tombstone_days, age="at", order = "at, key" },
-            { name = "kickside_work_change", keys = "seq, n", where = "board_id = $1 AND at < $2", days = effective.audit_days, age="at", order = "at, seq, n" },
-            { name = "kickside_work_interval", keys = "item_id, field_id, start_seq", where = "board_id = $1 AND ended_at < $2", days = effective.interval_days, age="ended_at", order = "ended_at, item_id, field_id, start_seq" },
+            { name = "kickside_work_key_alias", keys = "key", where = "board_id = $1 AND at < $2", before = cuts.tombstone, age="at", order = "at, key" },
+            { name = "kickside_work_change", keys = "seq, n", where = "board_id = $1 AND at < $2", before = cuts.audit, age="at", order = "at, seq, n" },
+            { name = "kickside_work_interval", keys = "item_id, field_id, start_seq", where = "board_id = $1 AND ended_at < $2", before = cuts.interval, age="ended_at", order = "ended_at, item_id, field_id, start_seq" },
             { name = "kickside_work_generation", keys = "generation", where = "board_id = $1 AND applied_at < $2", protection=[[generation < (SELECT generation FROM kickside_work_board WHERE board_id = $1)
                 AND NOT EXISTS (SELECT 1 FROM kickside_work_item i WHERE i.board_id = $1 AND i.life IN ('live','trashed') AND i.process_generation <= kickside_work_generation.generation)
-                AND NOT EXISTS (SELECT 1 FROM kickside_work_job j WHERE j.board_id = $1 AND j.status BETWEEN 'pending' AND 'running')]], days = effective.audit_days, age="applied_at", order = "applied_at, generation" },
-            { name="kickside_work_approval", keys="item_id, visit, actor", where="board_id=$1 AND at<$2", protection=past_visit("kickside_work_approval",dialect), days=effective.audit_days, age="at", order="at, item_id, visit, actor" },
-            { name="kickside_work_stage_run", keys="item_id, visit, attempt", where="board_id=$1 AND COALESCE(finished, started)<$2", protection=past_visit("kickside_work_stage_run",dialect), days=effective.audit_days, age="COALESCE(finished, started)", order="COALESCE(finished, started), item_id, visit, attempt" },
-            { name="kickside_work_job", keys="job_id", where="board_id=$1 AND status='failed' AND failed_at<$2", days=effective.audit_days, age="failed_at", order="failed_at, job_id" },
+                AND NOT EXISTS (SELECT 1 FROM kickside_work_job j WHERE j.board_id = $1 AND j.status BETWEEN 'pending' AND 'running')]], before = cuts.audit, age="applied_at", order = "applied_at, generation" },
+            { name="kickside_work_approval", keys="item_id, visit, actor", where="board_id=$1 AND at<$2", protection=past_visit("kickside_work_approval",dialect), before=cuts.audit, age="at", order="at, item_id, visit, actor" },
+            { name="kickside_work_stage_run", keys="item_id, visit, attempt", where="board_id=$1 AND COALESCE(finished, started)<$2", protection=past_visit("kickside_work_stage_run",dialect), before=cuts.audit, age="COALESCE(finished, started)", order="COALESCE(finished, started), item_id, visit, attempt" },
+            { name="kickside_work_job", keys="job_id", where="board_id=$1 AND status='failed' AND failed_at<$2", before=cuts.audit, age="failed_at", order="failed_at, job_id" },
         }
         if not in_visibility then
             local reached = row_anchor == nil
             for _,entry in ipairs(pages) do
                 if row_anchor and row_anchor.name==entry.name then reached=true end
                 if reached then
-                    local before = entry.days and clock.offset(-entry.days * 86400) or entry.before
+                    local before = entry.before
                     if before then
                         local result,err=protected_page(tx,board_id,entry,before,left,row_anchor)
                         if err or not result then return nil,err end
@@ -377,7 +450,7 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
             if bound==0 then return {removed=limit-left-examined,spent=limit-left,examined=examined,more=true,cursor="visibility:" .. store.encode(anchor)},nil end
             local candidates,candidate_err=tx:query([[SELECT item_id,seq FROM kickside_work_visibility
                 WHERE board_id=$1 AND seq<=$2 AND (seq,item_id)>($3,$4)
-                ORDER BY seq,item_id LIMIT $5]],{board_id,board.tombstone_floor_seq,anchor.seq,anchor.item,bound})
+                ORDER BY seq,item_id LIMIT $5]],{board_id,floor,anchor.seq,anchor.item,bound})
             if candidate_err then return nil,candidate_err end
             for _,row in ipairs(candidates or {}) do
                 local id,ierr=store.need(row,"item_id")
@@ -389,7 +462,7 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
                     AND (NOT EXISTS (SELECT 1 FROM kickside_work_item i WHERE i.board_id=$1 AND i.item_id=$2)
                         OR seq<(SELECT MAX(v.seq) FROM kickside_work_visibility v
                             WHERE v.board_id=$1 AND v.item_id=$2 AND v.seq<=$4)) RETURNING seq]],
-                    {board_id,id,seq,board.tombstone_floor_seq})
+                    {board_id,id,seq,floor})
                 if delete_err then return nil,delete_err end
                 examined=examined+1
                 left=left-1-#(deleted or {})
@@ -400,9 +473,9 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
             end
         end
         local tombs, terr = tx:query([[SELECT item_id, updated_seq FROM kickside_work_item WHERE board_id = $1 AND life <> 'live' AND life = 'purged'
-            AND purge_pending=0 AND life_at < $2 ORDER BY life_at, item_id LIMIT $3]], { board_id, clock.offset(-(effective.tombstone_days :: integer) * 86400), left })
+            AND purge_pending=0 AND life_at < $2 ORDER BY life_at, item_id LIMIT $3]], { board_id, cuts.tombstone, left })
         if terr then return nil, terr end
-        local floor = board.tombstone_floor_seq
+        local next_floor = floor
         for _, tomb in ipairs(tombs or {}) do
             local id, ierr = store.need(tomb, "item_id")
             if ierr then return nil, ierr end
@@ -410,10 +483,10 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
             if serr or not seq then return nil, serr end
             local _, derr = tx:execute("DELETE FROM kickside_work_item WHERE board_id = $1 AND item_id = $2", { board_id, id })
             if derr then return nil, derr end
-            floor = math.max(floor, seq)
+            next_floor = math.max(next_floor, seq)
         end
-        if floor > board.tombstone_floor_seq then
-            local uerr = M.record_floor(tx, board_id, floor)
+        if next_floor > floor then
+            local uerr = M.record_floor(tx, board_id, next_floor)
             if uerr then return nil, uerr end
         end
         local n = #(tombs or {})
@@ -426,43 +499,89 @@ function M.prune(board_id: string, defaults: domain.Policy, limit: integer, curs
     pruned.more = pruned.more or comments_more
     return pruned, nil
 end
--- deadline reads the earliest future eligibility for each retained row class.
-function M.deadline(db: sql.DB, board_id: string, effective: domain.Policy, window: domain.EventWindow): (integer?, error?)
-    local classes = {
-        { name = "kickside_work_item", column = "life_at", state = "trashed", days = effective.trash_days },
-        { name = "kickside_work_item", column = "life_at", state = "purged", days = effective.tombstone_days },
-        { name = "kickside_work_key_alias", column = "at", days = effective.tombstone_days },
-        { name = "kickside_work_change", column = "at", days = effective.audit_days },
-        { name = "kickside_work_interval", column = "ended_at", where = " AND ended_at IS NOT NULL", days = effective.interval_days },
-        { name = "kickside_work_generation", column = "applied_at", days = effective.audit_days },
-        { name = "kickside_work_visibility", column = "at", ms = window.ms, before = window.before },
-        { name = "kickside_work_comment", column = "edited_at", where = " AND deleted=1", ms = window.ms, before = window.before },
-        { name = "kickside_work_receipt", column = "at", ms = window.ms, before = window.before },
-        { name = "kickside_work_operation", column = operation_expiry.at(db:type()), where = " AND " .. operation_expiry.TERMINAL, ms = window.ms, before = window.before },
-        { name="kickside_work_approval", column="at", days=effective.audit_days },
-        { name="kickside_work_stage_run", column="COALESCE(finished, started)", days=effective.audit_days },
-        { name="kickside_work_job", column="failed_at", where=" AND status='failed'", days=effective.audit_days },
+-- Every branch uses the leading board key of an age or partial index. A
+-- protected candidate still counts as work for a collection visit; a future
+-- timestamp is read independently so a protected old row cannot hide it.
+local function age_classes(dialect: string): { { name: string, column: string, window: string, filter: string? } }
+    return {
+        { name = "kickside_work_item", column = "life_at", window = "trash", filter = "life <> 'live' AND life = 'trashed'" },
+        { name = "kickside_work_item", column = "life_at", window = "tombstone", filter = "life <> 'live' AND life = 'purged'" },
+        { name = "kickside_work_key_alias", column = "at", window = "tombstone" },
+        { name = "kickside_work_change", column = "at", window = "audit" },
+        { name = "kickside_work_interval", column = "ended_at", window = "interval", filter = "ended_at IS NOT NULL" },
+        { name = "kickside_work_generation", column = "applied_at", window = "audit" },
+        { name = "kickside_work_visibility", column = "at", window = "event" },
+        { name = "kickside_work_comment", column = "edited_at", window = "event", filter = "deleted = 1" },
+        { name = "kickside_work_receipt", column = "at", window = "event" },
+        { name = "kickside_work_operation", column = operation_expiry.at(dialect), window = "event", filter = operation_expiry.TERMINAL },
+        { name = "kickside_work_approval", column = "at", window = "audit" },
+        { name = "kickside_work_stage_run", column = "COALESCE(finished, started)", window = "audit" },
+        { name = "kickside_work_job", column = "failed_at", window = "audit", filter = "status = 'failed'" },
     }
-    local earliest: integer? = nil
-    for _, class in ipairs(classes) do
-        local window_ms = class.ms or (class.days and class.days * 86400000)
-        if window_ms then
-            local params: domain.SqlParams = { board_id, class.before or clock.deadline(-window_ms).at }
-            if class.state then params[3] = class.state end
-            local filter = class.state and " AND life <> 'live' AND life = $3" or (class.where or "")
-            local rows, err = db:query("SELECT " .. class.column .. " AS at FROM " .. class.name ..
-                " WHERE board_id = $1 AND " .. class.column .. " >= $2" .. filter .. " ORDER BY " .. class.column .. " LIMIT 1", params)
-            if err then return nil, err end
-            local at = rows and rows[1] and store.text(rows[1].at)
-            if at then
+end
+
+function M.eligibility_statement(dialect: string): string
+    local source = [[jsonb_to_recordset(CAST($1 AS jsonb)) AS v(board_id text, floor bigint, trash text,
+        tombstone text, audit text, interval text, event text)]]
+    if dialect ~= "postgres" then
+        source = [[(SELECT json_extract(value,'$.board_id') AS board_id, json_extract(value,'$.floor') AS floor,
+            json_extract(value,'$.trash') AS trash, json_extract(value,'$.tombstone') AS tombstone,
+            json_extract(value,'$.audit') AS audit, json_extract(value,'$.interval') AS interval,
+            json_extract(value,'$.event') AS event FROM json_each($1)) v]]
+    end
+    local future: { string } = {}
+    local due = {
+        "(SELECT 1 FROM kickside_work_item WHERE board_id=v.board_id AND life='purged' AND purge_pending=1" ..
+            " ORDER BY life_at,item_id LIMIT 1) IS NOT NULL",
+        "(SELECT 1 FROM kickside_work_field_usage WHERE board_id=v.board_id AND items=0 ORDER BY field_id LIMIT 1) IS NOT NULL",
+        "(SELECT 1 FROM kickside_work_plugin WHERE board_id=v.board_id AND active=0 AND revision=applied_revision" ..
+            " ORDER BY plugin LIMIT 1) IS NOT NULL",
+        "(SELECT 1 FROM kickside_work_job WHERE board_id=v.board_id AND status='done' ORDER BY job_id LIMIT 1) IS NOT NULL",
+        "(SELECT 1 FROM kickside_work_visibility WHERE board_id=v.board_id AND seq<=v.floor ORDER BY seq DESC LIMIT 1) IS NOT NULL",
+    }
+    for i, class in ipairs(age_classes(dialect)) do
+        local head = " FROM " .. class.name .. " WHERE board_id=v.board_id AND "
+            .. (class.filter and (class.filter .. " AND ") or "") .. class.column
+        local bound = "v." .. class.window
+        due[#due + 1] = "(SELECT 1" .. head .. "<" .. bound ..
+            " ORDER BY " .. class.column .. " DESC LIMIT 1) IS NOT NULL"
+        future[i] = "(SELECT " .. class.column .. head .. ">=" .. bound ..
+            " ORDER BY " .. class.column .. " LIMIT 1) AS future_" .. i
+    end
+    return "SELECT v.board_id, CASE WHEN " .. table.concat(due, " OR ") .. " THEN 1 ELSE 0 END AS due, " ..
+        table.concat(future, ", ") .. " FROM " .. source
+end
+
+function M.eligibility(db: sql.DB, visits: { types.Visit }): ({ [string]: types.Eligibility }?, error?)
+    local params: { domain.Row } = {}
+    local by_id: { [string]: types.Visit } = {}
+    for i, visit in ipairs(visits) do
+        local cut = visit.cutoffs
+        params[i] = { board_id = visit.board_id, floor = math.max(visit.floor, visit.boundary),
+            trash = cut.trash, tombstone = cut.tombstone, audit = cut.audit, interval = cut.interval, event = cut.event }
+        by_id[visit.board_id] = visit
+    end
+    local dialect = db:type()
+    local rows, err = db:query(M.eligibility_statement(dialect), { store.encode(params) })
+    if err then return nil, err end
+    local classes = age_classes(dialect)
+    local result: { [string]: types.Eligibility } = {}
+    for _, row in ipairs(rows or {}) do
+        local board_id = row.board_id :: string
+        local earliest: integer? = nil
+        for i, class in ipairs(classes) do
+            local at = store.text(row["future_" .. i])
+            local ms = by_id[board_id].windows[class.window]
+            if at and ms then
                 local instant, perr = time.parse(time.RFC3339, at)
                 if perr or not instant then return nil, perr end
-                local due = instant:unix_nano() // 1000000 + window_ms + 1
-                earliest = earliest and math.min(earliest, due) or due
+                local due_ms = instant:unix_nano() // 1000000 + ms + 1
+                earliest = earliest and math.min(earliest, due_ms) or due_ms
             end
         end
+        result[board_id] = { due = store.int(row.due) == 1, deadline_ms = earliest }
     end
-    return earliest, nil
+    return result, nil
 end
 
 return M

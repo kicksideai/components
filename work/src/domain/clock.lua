@@ -14,6 +14,13 @@ function M.deadline(ms: integer): types.Deadline
     return { at = instant:format(STAMP), ns = instant:unix_nano() }
 end
 
+-- shift derives a cutoff from a captured instant.
+function M.shift(snapshot: types.Deadline, ms: integer): (string?, error?)
+    local instant, err = time.parse(time.RFC3339, snapshot.at)
+    if err or not instant then return nil, err end
+    return instant:add(ms * time.MILLISECOND):format(STAMP), nil
+end
+
 -- passed reports whether the deadline is behind us.
 function M.passed(d: types.Deadline): boolean
     return time.now():unix_nano() >= d.ns

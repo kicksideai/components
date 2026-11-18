@@ -8,26 +8,26 @@ local core_policy = require("core_policy")
 local clock = require("clock")
 local M = {}
 M.DEFAULTS = { audit = "fields", audit_days = 365, trash_days = 14, tombstone_days = 365, interval_days = 365, stage_timeout = "PT1H", stage_max_visits = 5, comments_per_item = 10000 }
-function M.event_window(db: sql.DB, board_id: string): (types.EventWindow?, error?)
-    local rows, err = db:query("SELECT event_hot_retention_days, enabled FROM kickside_retention_policy WHERE thread_id = $1", { board_id })
-    if err then return nil, errors.wrap(err, "failed to load board event retention policy") end
-    local stored = rows and rows[1]
-    if stored and (stored.enabled == false or stored.enabled == 0) then return {}, nil end
-
-    local window_ms: integer
+function M.event_window_ms(stored: types.Row?): (integer?, error?)
+    if stored and (stored.enabled == false or stored.enabled == 0) then return nil, nil end
     if stored and stored.event_hot_retention_days ~= nil then
         local days = math.tointeger(tonumber(stored.event_hot_retention_days))
         if not days or days < 1 or days > consts.MAX_DURATION_DAYS then
             return nil, errors.new({ kind = errors.INTERNAL, message = "board event retention requires days in 1.." .. consts.MAX_DURATION_DAYS, details = { code = "invalid_retention_policy" } })
         end
-        window_ms = days * 86400000
-    else
-        -- A missing override inherits the same millisecond value the Core sweeper uses.
-        local defaults, defaults_err = core_policy.policy()
-        if defaults_err or not defaults then return nil, defaults_err end
-        window_ms = defaults.events_ms :: integer
+        return days * 86400000, nil
     end
-    return { ms = window_ms, before = clock.deadline(-window_ms).at }, nil
+    local defaults, err = core_policy.policy()
+    if err or not defaults then return nil, err end
+    return defaults.events_ms :: integer, nil
+end
+
+function M.event_window(db: sql.DB, board_id: string): (types.EventWindow?, error?)
+    local rows, err = db:query("SELECT event_hot_retention_days, enabled FROM kickside_retention_policy WHERE thread_id = $1", { board_id })
+    if err then return nil, errors.wrap(err, "failed to load board event retention policy") end
+    local ms, window_err = M.event_window_ms(rows and rows[1])
+    if window_err then return nil, window_err end
+    return { ms = ms, before = ms and clock.deadline(-ms).at }, nil
 end
 
 function M.check(own: unknown): error?
