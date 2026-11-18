@@ -14,6 +14,7 @@ local M = {}
 local SYSTEM: { types.SystemColumn } = {
     { name = "root_id", kind = "text" }, { name = "family", kind = "text" }, { name = "status", kind = "text" },
     { name = "version", kind = "int" }, { name = "updated_seq", kind = "int" }, { name = "findings", kind = "text" },
+    { name = "sku_fold", kind = "text" },
 }
 local INDEXES: { { string } } = { { "root_id" }, { "family", "status" } }
 
@@ -63,7 +64,18 @@ local function typed(layout: types.Layout): { types.Column }
 end
 
 local function fts_create(names: types.Names): string
-    return "CREATE VIRTUAL TABLE " .. names.fts .. " USING fts5(product_id UNINDEXED, body, tokenize = 'unicode61 remove_diacritics 0')"
+    return "CREATE VIRTUAL TABLE " .. names.fts .. " USING fts5(body, tokenize = 'ascii')"
+end
+
+local function scalar_indexes(stmts: { string }, item: string, column: types.Column)
+    local name = ident(item .. "_" .. column.column)
+    local key = ident(column.column)
+    stmts[#stmts + 1] = "CREATE INDEX " .. name .. " ON " .. item .. " (" .. key .. ", product_id)"
+    -- Descending values still break ties by ascending product ID.
+    if column.kind ~= "flag" then
+        stmts[#stmts + 1] = "CREATE INDEX " .. ident(name .. "_desc") .. " ON " .. item .. " (" .. key
+            .. " DESC, product_id) WHERE " .. key .. " IS NOT NULL"
+    end
 end
 
 -- create builds the generated tables of t.
@@ -87,7 +99,7 @@ function M.create(db: types.Executor, dialect: string, t: types.Table): error?
         stmts[#stmts + 1] = "CREATE INDEX " .. ident(names.item .. "_s" .. n) .. " ON " .. names.item .. " (" .. table.concat(parts, ", ") .. ")"
     end
     for _, c in ipairs(typed(layout)) do
-        stmts[#stmts + 1] = "CREATE INDEX " .. ident(names.item .. "_" .. c.column) .. " ON " .. names.item .. " (" .. c.column .. ", product_id)"
+        scalar_indexes(stmts, names.item, c)
     end
     if #layout.search > 0 then
         stmts[#stmts + 1] = pg and ("CREATE INDEX " .. names.item .. "_search ON " .. names.item .. " USING GIN (search)") or fts_create(names)
@@ -114,14 +126,16 @@ function M.alter(db: types.Executor, dialect: string, t: types.Table, before: ty
     local old, new = by_column(typed(before)), by_column(typed(after))
     for name, c in pairs(old) do
         if not new[name] or new[name].kind ~= c.kind then
-            stmts[#stmts + 1] = "DROP INDEX IF EXISTS " .. ident(names.item .. "_" .. name)
+            local index = ident(names.item .. "_" .. name)
+            stmts[#stmts + 1] = "DROP INDEX IF EXISTS " .. index
+            if c.kind ~= "flag" then stmts[#stmts + 1] = "DROP INDEX IF EXISTS " .. ident(index .. "_desc") end
             stmts[#stmts + 1] = "ALTER TABLE " .. names.item .. " DROP COLUMN " .. ident(name)
         end
     end
     for name, c in pairs(new) do
         if not old[name] or old[name].kind ~= c.kind then
             stmts[#stmts + 1] = "ALTER TABLE " .. names.item .. " ADD COLUMN " .. ident(name) .. " " .. column_type(c.kind, pg)
-            stmts[#stmts + 1] = "CREATE INDEX " .. ident(names.item .. "_" .. name) .. " ON " .. names.item .. " (" .. name .. ", product_id)"
+            scalar_indexes(stmts, names.item, c)
         end
     end
     local new_sets = by_column(after.sets)
@@ -222,11 +236,11 @@ function M.write_rows(db: types.Executor, dialect: string, t: types.Table, rows:
         for column, keys in pairs(row.sets) do
             for _, key in ipairs(keys) do set_rows[#set_rows + 1] = { row.id, column, key } end
         end
-        if not pg and searchable and body ~= "" then fts_rows[#fts_rows + 1] = { row.id, row.id, body } end
+        if not pg and searchable and body ~= "" then fts_rows[#fts_rows + 1] = { row.id, body } end
     end
     err = bulk.insert(db, names.item, columns, item_rows)
     if not err then err = bulk.insert(db, names.set, { { name = "product_id" }, { name = "col" }, { name = "value_key" } }, set_rows) end
-    if not err then err = bulk.insert(db, names.fts, { { name="rowid",expr="(SELECT rowid FROM "..names.item.." WHERE product_id=%s)" }, { name = "product_id" }, { name = "body" } }, fts_rows) end
+    if not err then err = bulk.insert(db, names.fts, { { name="rowid",expr="(SELECT rowid FROM "..names.item.." WHERE product_id=%s)" }, { name = "body" } }, fts_rows) end
     return err
 end
 

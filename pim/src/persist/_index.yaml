@@ -194,6 +194,7 @@ entries:
     meta:
       comment: Read statements - the pages behind feeds, links, releases and export.
     source: file://read_model.lua
+    modules: [sql]
     imports:
       store: kickside.pim.persist:store
       select: kickside.pim.persist:select
@@ -230,6 +231,7 @@ entries:
     imports:
       resolve: kickside.pim.domain:resolve
       values: kickside.pim.domain:values
+      search: kickside.pim.domain:search
       evaluate: kickside.pim.domain:evaluate
       checks: kickside.pim.extensions:checks
       layout: kickside.pim.persist:layout

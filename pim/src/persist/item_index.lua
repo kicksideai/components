@@ -7,6 +7,7 @@ local checks = require("checks")
 local layout = require("layout")
 local store = require("store")
 local types = require("types")
+local search = require("search")
 
 local M = {}
 
@@ -27,7 +28,7 @@ local function item_row(compiled: types.Compiled, item: types.Product, lineage: 
         end
     end
     row.system = { root_id = item.root_id, family = item.family, status = item.status, version = item.version,
-        updated_seq = item.updated_seq or 0, findings = values.canonical(open) }
+        updated_seq = item.updated_seq or 0, findings = values.canonical(open), sku_fold = search.fold(item.sku) }
     for _, c in ipairs(columns.columns) do
         local attr = by_id[c.attribute_id]
         local r = resolve.resolve(compiled, item, lineage, attr, resolve.parse_ctx(c.ctx))

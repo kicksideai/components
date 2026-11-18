@@ -275,17 +275,48 @@ local function define()
     end)
 
     test.describe("text search", function()
+        test.it("uses Unicode case folding for literal SKU prefixes", function()
+            local h = fixture.catalog({ bare = true })
+            for _, sku in ipairs({ "CAFÉ-01", "Straße-01", "%_one", "XYone" }) do
+                test.eq(steps.one(h, { product = { sku = sku }, create = { family = "generic" } }).outcome, "created")
+            end
+            test.eq(count(h, { text = "CAFÉ-" }), 1)
+            test.eq(count(h, { text = "café-" }), 1)
+            test.eq(count(h, { text = "cafe-" }), 0)
+            test.eq(count(h, { text = "STRASSE-" }), 1)
+            test.eq(count(h, { text = "%_" }), 1)
+        end)
+
+        test.it("finds long Unicode tokens and requires every search token", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            test.eq(count(h, { text = "boot" }), 6)
+            test.eq(count(h, { text = string.rep("x", 2100) .. " boot" }), 0)
+            local token = string.rep("é", 1100)
+            local outcome = steps.one(h, { product = { sku = "RDG" }, expect_version = 1,
+                set = { { attr = "core.name", ctx = { locale = "en" }, value = token .. " boot" } } })
+            test.eq(outcome.outcome, "updated")
+            test.eq(count(h, { text = token }), 6)
+            test.eq(count(h, { text = string.rep("É", 1100) .. " boot" }), 6)
+            local counted = assert(query(h, { text = token .. " boot", count = true, limit = 1 }))
+            test.eq(counted.total, 6)
+            test.is_false(counted.estimated)
+            test.eq(count(h, { text = token .. "x boot" }), 0)
+            test.eq(count(h, { text = string.rep("e", 1100) .. " boot" }), 0)
+        end)
+
         test.it("matches all tokens in any order with punctuation and Unicode case", function()
             local h = fixture.catalog()
             fixture.boot(h)
             steps.one(h, { product = { sku = "RDG" }, expect_version = "any",
-                set = { { attr = "core.name", ctx = { locale = "en" }, value = "red leather boot CAFÉ ΜΠΟΤΑ БОТИНОК hello@example.org" } } })
+                set = { { attr = "core.name", ctx = { locale = "en" }, value = "red leather boot CAFÉ ΜΠΟΤΑ БОТИНОК hello@example.org %_" } } })
             for _, text in ipairs({ "red boot", "boot red", "red,boot", '"red boot"', 'red "boot',
                 "café", "CAFÉ", "μποτα", "ботинок", "hello example org" }) do
                 test.eq(count(h, { text = text }), 6, text)
             end
             test.eq(count(h, { text = "cafe" }), 0)
             test.eq(count(h, { text = "!!!" }), 0)
+            test.eq(count(h, { text = "%_" }), 0)
         end)
 
         test.it("ignores empty text, tolerates quotes and finds indexed words", function()

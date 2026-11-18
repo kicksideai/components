@@ -1367,6 +1367,20 @@ entries:
       test: wippy.test:test
       fixtures: app:tree_fixture
 
+  - name: ordered_pages_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim }
+    source: file://ordered_pages_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      store: kickside.pim.persist:store
+      read_model: kickside.pim.persist:read_model
+      history: kickside.pim.persist:history
+      types: kickside.pim:types
+      layout: kickside.pim.persist:layout
+      select: kickside.pim.persist:select
+
   - name: select_test
     kind: function.lua
     meta: { type: test, suite: kickside_pim, comment: Generated tables and the query compiler on both engines. }

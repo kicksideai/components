@@ -82,9 +82,8 @@ function M.page(db: types.Executor, catalog_id: string, p: Page): ({ Entry }?, s
         if not seq or not n then return nil, nil, errors.new({ details = { code = "history_cursor_invalid" }, kind = errors.INVALID, message = "before must be a history cursor" }) end
         params[#params + 1] = seq
         local a = #params
-        params[#params + 1] = seq
         params[#params + 1] = n
-        statement[#statement + 1] = "AND (seq < $" .. a .. " OR (seq = $" .. (a + 1) .. " AND n < $" .. (a + 2) .. "))"
+        statement[#statement + 1] = "AND (seq, n) < ($" .. a .. ", $" .. (a + 1) .. ")"
     end
     params[#params + 1] = p.limit
     statement[#statement + 1] = "ORDER BY seq DESC, n DESC LIMIT $" .. #params

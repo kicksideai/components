@@ -3,6 +3,7 @@
 -- the executor of the caller's read snapshot and answers rows.
 local store = require("store")
 local select = require("select")
+local sql = require("sql")
 local types = require("types")
 
 local M = {}
@@ -16,9 +17,9 @@ end
 -- changed_products pages products changed after cursor up to ceiling.
 function M.changed_products(db: types.Executor, catalog_id: string, ceiling: integer, cursor: types.ChangesCursor,
     families: { string }?, limit: integer): ({ types.Row }?, error?)
-    local params: types.SqlParams = { catalog_id, ceiling, cursor.seq, cursor.seq, cursor.product_id }
+    local params: types.SqlParams = { catalog_id, ceiling, cursor.seq, cursor.product_id }
     local statement = [[SELECT * FROM kickside_pim_product WHERE catalog_id = $1 AND updated_seq <= $2
-        AND (updated_seq > $3 OR (updated_seq = $4 AND product_id > $5))]]
+        AND (updated_seq, product_id) > ($3, $4)]]
     if families and #families > 0 then
         local marks: { string } = {}
         for _, f in ipairs(families) do
@@ -113,22 +114,18 @@ function M.published_condition(catalog_id: string, channel: string?): types.Cond
 end
 
 -- links pages the references to a target after a cursor.
-function M.links(db: types.Executor, catalog_id: string, kind: string, target: string, after: types.LinksCursor?, limit: integer): ({ types.Row }?, error?)
+function M.links(db: types.Executor, dialect: string, catalog_id: string, kind: string, target: string, after: types.LinksCursor?, limit: integer): ({ types.Row }?, error?)
     local params: types.SqlParams = { catalog_id, kind, target }
-    local statement = [[SELECT r.product_id, p.sku, r.attribute_id, r.ctx, r.path FROM kickside_pim_ref r
-        JOIN kickside_pim_product p ON p.catalog_id = r.catalog_id AND p.product_id = r.product_id
-        WHERE r.catalog_id = $1 AND r.kind = $2 AND r.target = $3]]
+    -- Keep the reference seek as the driver and resolve each SKU by primary key.
+    local join = dialect == sql.type.POSTGRES
+        and [[ JOIN LATERAL (SELECT sku FROM kickside_pim_product p
+            WHERE p.catalog_id = r.catalog_id AND p.product_id = r.product_id OFFSET 0) p ON TRUE]]
+        or [[ CROSS JOIN kickside_pim_product p ON p.catalog_id = r.catalog_id AND p.product_id = r.product_id]]
+    local statement = [[SELECT r.product_id, p.sku, r.attribute_id, r.ctx, r.path FROM kickside_pim_ref r]]
+        .. join .. " WHERE r.catalog_id = $1 AND r.kind = $2 AND r.target = $3"
     if after then
-        params[#params + 1] = after.product_id
-        local a = #params
-        params[#params + 1] = after.product_id
-        params[#params + 1] = after.attribute_id
-        params[#params + 1] = after.attribute_id
-        params[#params + 1] = after.ctx
-        params[#params + 1] = after.ctx
-        params[#params + 1] = after.path
-        statement = statement .. " AND (r.product_id > $" .. a .. " OR (r.product_id = $" .. (a + 1) .. " AND (r.attribute_id > $" .. (a + 2)
-            .. " OR (r.attribute_id = $" .. (a + 3) .. " AND (r.ctx > $" .. (a + 4) .. " OR (r.ctx = $" .. (a + 5) .. " AND r.path > $" .. (a + 6) .. "))))))"
+        params = { catalog_id, kind, target, after.product_id, after.attribute_id, after.ctx, after.path }
+        statement = statement .. " AND (r.product_id, r.attribute_id, r.ctx, r.path) > ($4, $5, $6, $7)"
     end
     params[#params + 1] = limit
     statement = statement .. " ORDER BY r.product_id, r.attribute_id, r.ctx, r.path LIMIT $" .. #params
