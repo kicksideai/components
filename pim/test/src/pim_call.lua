@@ -93,6 +93,17 @@ function M.run(input: unknown): (unknown, error?)
         if err then return nil, err end
         return rows[1].meta, nil
     end
+    if op == "catalog_registrations" then
+        local ids = {}
+        local limit = 32
+        repeat
+            local rows, err = component.query({ impl_ids = { "kickside.pim.binding:catalog" }, access_mask = component.ACCESS.READ,
+                order_by = { field = "component_id", direction = "ASC" }, offset = #ids, limit = limit })
+            if err then return nil, err end
+            for _, row in ipairs(rows or {}) do ids[#ids + 1] = row.component_id end
+        until not rows or #rows < limit
+        return ids, nil
+    end
     if op == "delete_component" then
         return assert(component.get_service()):delete({ component_id = id })
     end

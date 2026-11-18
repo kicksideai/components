@@ -5,7 +5,6 @@ local values = require("values")
 local clock = require("clock")
 local registry = require("registry")
 local types = require("types")
-local sql=require("sql")
 local M = {}
 type Receipt = {request_hash: string?, result: types.JsonObject?, event_count: integer?, noop: boolean?, marker: string?}
 M.Receipt = Receipt
@@ -52,12 +51,9 @@ local function reserve(catalog_id: string,marker: string,hashed: string,seq: int
     return store.transaction("command key reservation",function(tx: types.Executor,dialect: string): (boolean?,error?)
         local catalog,cerr=store.catalog(tx,catalog_id,dialect)
         if cerr then return nil,cerr end
-        local suffix=dialect==sql.type.POSTGRES and " FOR UPDATE" or ""
-        local creation,qerr=tx:query("SELECT component_id FROM kickside_pim_creation WHERE catalog_id=$1 AND component_id=$1 AND reserved_at IS NULL"..suffix,{catalog_id})
-        if qerr then return nil,qerr end
         local deleting,derr=tx:query("SELECT catalog_id FROM kickside_pim_cleanup WHERE catalog_id=$1",{catalog_id})
         if derr then return nil,derr end
-        if #(deleting or {})>0 or (not catalog and (result~=nil or seq~=0 or #(creation or {})==0)) then
+        if #(deleting or {})>0 or not catalog then
             return nil,errors.new({kind=errors.NOT_FOUND,message="catalog is absent or deleting",details={code="catalog_not_found"}})
         end
         local prior,_,rerr=get(tx,catalog_id,marker)
@@ -66,18 +62,11 @@ local function reserve(catalog_id: string,marker: string,hashed: string,seq: int
             return nil,errors.new({kind=errors.CONFLICT,message="idempotency key reused with a different request",details={code="idempotency_conflict"}})
         end
         if prior and (prior.noop or prior.event_count~=0) then return false,nil end
-        if catalog and catalog.applied_seq~=seq then return false,nil end
+        if catalog.applied_seq~=seq then return false,nil end
         if prior and not result then return true,nil end
         local err=record(tx,catalog_id,{marker=marker,request_hash=hashed,result=result or {},event_count=0,noop=result~=nil},seq,at)
         if err then return nil,err end
-        -- The first schema has no catalog row to lock yet. The receipt's unique
-        -- key arbitrates that case; read the insert winner before appending.
-        local winner,_,werr=get(tx,catalog_id,marker)
-        if werr then return nil,werr end
-        if not winner or winner.request_hash~=hashed then
-            return nil,errors.new({kind=errors.CONFLICT,message="idempotency key reused with a different request",details={code="idempotency_conflict"}})
-        end
-        return result~=nil or (not winner.noop and winner.event_count==0),nil
+        return true,nil
     end)
 end
 function M.reserve(catalog_id: string,marker: string,hashed: string,seq: integer,at: string): (boolean?,error?)

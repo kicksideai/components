@@ -36,7 +36,7 @@ local release_jobs = require("release_jobs")
 local receipts = require("receipts")
 local M = {}
 
-type Build = (types.Executor, types.Catalog?, integer) -> (types.Plan?, error?)
+type Build = (types.Executor, types.Catalog, integer) -> (types.Plan?, error?)
 
 local EV = consts.EVENTS
 local invalid = failure.invalid
@@ -58,8 +58,14 @@ end
 -- head guard: build(db, catalog, S) -> { events, result } | error, at thread head S.
 local function run(catalog_id: string, idempotency: types.Idempotency?, fingerprint: unknown, trace_context: types.TraceContext?,
     build: Build, deadline: clock.Deadline?): (types.CommandResult?, error?)
-    local operating,oerr=defaults.catalog(catalog_id)
-    if oerr or not operating then return nil,oerr end
+    local base, oerr = defaults.read()
+    if oerr or not base then return nil, oerr end
+    local current, rerr = store.with_db(function(db: types.Executor): (types.Catalog?, error?)
+        return store.catalog(db, catalog_id)
+    end)
+    if rerr then return nil, rerr end
+    if not current then return nil, failure.catalog_not_initialized() end
+    local operating = policy.effective(base, current.compiled.policy)
     local c, cerr = threads.open()
     if not c then return nil, cerr end
     local out, err = pipeline.run({
@@ -73,7 +79,8 @@ local function run(catalog_id: string, idempotency: types.Idempotency?, fingerpr
             return store.with_db(function(db): (pipeline.Attempt?,error?)
                 local catalog,rerr=store.catalog(db,catalog_id)
                 if rerr then return nil,rerr end
-                local head=math.max(catalog and catalog.applied_seq or 0,last_seq)
+                if not catalog then return nil,failure.catalog_not_initialized() end
+                local head=math.max(catalog.applied_seq,last_seq)
                 local plan,berr=build(db,catalog,head)
                 if berr or not plan then return nil,berr end
                 return {result=plan.result :: types.JsonObject,events=plan.events,expect={head=head},as_of=head},nil
@@ -144,10 +151,16 @@ local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_
     if prev_declaration and values.equal(prev_declaration, effective) then
         return { generation = generation, class = "unchanged", changes = {}, refused = {}, effective = effective, compiled = compiled, configs = configs, unchanged = true }, nil
     end
-    local usage, uerr = store.usage(db, catalog_id)
-    if uerr or not usage then return nil, uerr end
-    local family_products, ferr = store.family_products(db, catalog_id)
-    if ferr or not family_products then return nil, ferr end
+    local usage: { [integer]: integer } = {}
+    local family_products: { [string]: integer } = {}
+    if catalog then
+        local used, uerr = store.usage(db, catalog_id)
+        if uerr or not used then return nil, uerr end
+        usage = used
+        local families, ferr = store.family_products(db, catalog_id)
+        if ferr or not families then return nil, ferr end
+        family_products = families
+    end
     local changes = changes_of.changes(prev, compiled, { usage = usage, family_products = family_products, populated = next(family_products) ~= nil })
     local refused: { types.SchemaChange } = {}
     for _, c in ipairs(changes) do if c.class == "refused" then refused[#refused + 1] = c end end
@@ -157,6 +170,47 @@ end
 
 local MIGRATION = "add a new attribute, copy values to it with apply commands, remove the old attribute, then rename the new one by id"
 
+local function schema_command(plan: SchemaPlan): (types.Plan?, error?)
+    if plan.unchanged then
+        return { result = { generation = plan.generation, class = "unchanged", changes = {} }, events = {} }, nil
+    end
+    if #plan.refused > 0 then
+        return nil, invalid("schema change reinterprets stored values", { code = "migration_required",
+            changes = plan.refused :: { types.JsonObject }, migration = MIGRATION })
+    end
+    local body: types.SchemaBody = { generation = plan.generation, declaration = plan.effective, compiled = plan.compiled,
+        class = plan.class, changes = plan.changes, plugin_configs = next(plan.configs) ~= nil and plan.configs or nil }
+    local event: types.Event = { type = EV.SCHEMA_APPLIED, subject = "schema", body = body }
+    local result: types.SchemaResult = { generation = plan.generation, class = plan.class, changes = plan.changes }
+    return { result = result, events = { event } }, nil
+end
+
+-- Creation prepares generation one before reserving or registering its component.
+function M.prepare_initial_schema(catalog_id: string, request: types.SchemaRequest): (types.Plan?, error?)
+    return store.with_db(function(db: types.Executor): (types.Plan?, error?)
+        local plan, err = plan_schema(db, nil, catalog_id, request)
+        if err or not plan then return nil, err end
+        return schema_command(plan)
+    end)
+end
+
+-- Only the registration winner can append the prepared first schema.
+function M.commit_initial_schema(client: threads.Client, catalog_id: string, plan: types.Plan): error?
+    local access_err = require_access(catalog_id, component.ACCESS.ADMIN)
+    if access_err then return access_err end
+    local operating, err = defaults.read()
+    if err or not operating then return err end
+    local _, commit_err = pipeline.run({
+        client = client, actor = actor_id(), deadline_ms = operating.command_deadline_ms,
+        thread = { id = catalog_id, kind = consts.PROJECTION_KIND, source = consts.EXTERNAL_SOURCE },
+        build = function(head: integer): (pipeline.Attempt?, error?)
+            if head ~= 0 then return nil, failure.catalog_not_initialized() end
+            return { result = plan.result :: types.JsonObject, events = plan.events, expect = { head = 0 }, as_of = 0 }, nil
+        end,
+    })
+    return commit_err
+end
+
 -- plan_schema(catalog_id, { declaration, expected_generation? }) classifies a
 -- declaration; apply_schema applies it. Needs ADMIN.
 function M.plan_schema(catalog_id: string, request: types.SchemaRequest): (types.SchemaPlanResult?, error?)
@@ -165,6 +219,7 @@ function M.plan_schema(catalog_id: string, request: types.SchemaRequest): (types
     local plan,err=store.with_db(function(db): (SchemaPlan?,error?)
         local catalog,cerr=store.catalog(db,catalog_id)
         if cerr then return nil,cerr end
+        if not catalog then return nil,failure.catalog_not_initialized() end
         return plan_schema(db,catalog,catalog_id,request)
     end)
     if err or not plan then return nil,err end
@@ -179,21 +234,10 @@ function M.apply_schema(catalog_id: string, request: types.SchemaRequest): (type
     local access_err = require_access(catalog_id, component.ACCESS.ADMIN)
     if access_err then return nil, access_err end
     local out, err = run(catalog_id, request.idempotency, { op = "apply_schema", declaration = request.declaration, expected_generation = request.expected_generation, plugin_configs = request.plugin_configs }, request.trace_context,
-        function(db: types.Executor, catalog: types.Catalog?, _head: integer): (types.Plan?, error?)
+        function(db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
             local plan, perr = plan_schema(db, catalog, catalog_id, request)
             if perr or not plan then return nil, perr end
-            if plan.unchanged then
-                return { result = { generation = plan.generation, class = "unchanged", changes = {} }, events = {} }, nil
-            end
-            if #plan.refused > 0 then
-                return nil, invalid("schema change reinterprets stored values", { code = "migration_required",
-                    changes = plan.refused :: { types.JsonObject }, migration = MIGRATION })
-            end
-            local body: types.SchemaBody = { generation = plan.generation, declaration = plan.effective, compiled = plan.compiled,
-                class = plan.class, changes = plan.changes, plugin_configs = next(plan.configs) ~= nil and plan.configs or nil }
-            local event: types.Event = { type = EV.SCHEMA_APPLIED, subject = "schema", body = body }
-            local result: types.SchemaResult = { generation = plan.generation, class = plan.class, changes = plan.changes }
-            return { result = result, events = { event } }, nil
+            return schema_command(plan)
         end)
     if err or not out then return nil, err end
     return out :: types.SchemaResult, nil
@@ -203,8 +247,8 @@ end
 function M.configure_plugin(catalog_id: string, request: { plugin: string, config: types.JsonObject }): (types.CommandResult?, error?)
     local access_err = require_access(catalog_id, component.ACCESS.ADMIN)
     if access_err then return nil, access_err end
-    return run(catalog_id, nil, request, nil, function(_db: types.Executor, catalog: types.Catalog?, _head: integer): (types.Plan?, error?)
-        if not catalog or not catalog.compiled.plugins[request.plugin] then
+    return run(catalog_id, nil, request, nil, function(_db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
+        if not catalog.compiled.plugins[request.plugin] then
             return nil, errors.new({ kind = errors.NOT_FOUND, retryable = false, message = "plugin is inactive", details = { code = "plugin_inactive", plugin = request.plugin } })
         end
         local plugin, lerr = plugins.load(request.plugin)
@@ -221,8 +265,8 @@ end
 function M.rebuild_plugin(catalog_id: string, plugin: string): (types.CommandResult?, error?)
     local aerr = require_access(catalog_id, component.ACCESS.WRITE)
     if aerr then return nil, aerr end
-    return run(catalog_id, nil, { plugin = plugin }, nil, function(_db: types.Executor, catalog: types.Catalog?, _head: integer): (types.Plan?, error?)
-        if not catalog or not catalog.compiled.plugins[plugin] then return nil, errors.new({ kind = errors.NOT_FOUND, message = "plugin is inactive", details = { code = "plugin_inactive" } }) end
+    return run(catalog_id, nil, { plugin = plugin }, nil, function(_db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
+        if not catalog.compiled.plugins[plugin] then return nil, errors.new({ kind = errors.NOT_FOUND, message = "plugin is inactive", details = { code = "plugin_inactive" } }) end
         return { result = {}, events = { { type = EV.PLUGIN_REBUILD, subject = "plugin:" .. plugin, body = { plugin = plugin } } } }, nil
     end)
 end
@@ -237,8 +281,7 @@ local function execute(catalog_id: string, request: types.ApplyRequest, deadline
     local prepared: items.Prepared = { refined = {}, links = {} }
     local out, err = run(catalog_id, request.idempotency,
         { op = "apply", items = request.items, mode = mode, source = request.source or "" }, request.trace_context,
-        function(db: types.Executor, catalog: types.Catalog?, _head: integer): (types.Plan?, error?)
-            if not catalog then return nil, errors.new({ details = { code = "catalog_not_found" }, kind = errors.NOT_FOUND, message = "catalog has no schema" }) end
+        function(db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
             local planned, perr = items.plan(db, catalog, request, actor_id(), settings, prepared)
             if perr or not planned then return nil, perr end
             local result = { outcomes = planned.outcomes, applied = planned.ok or mode == "independent" }
@@ -277,8 +320,7 @@ local function run_plan(catalog_id: string, request: types.ReleaseRequest, op: s
     if #request.items == 0 then return nil, invalid("items required") end
     if #request.items > consts.LIMITS.release_items then return nil, invalid("too many items") end
     local out, err = run(catalog_id, request.idempotency, { op = op, items = request.items }, request.trace_context,
-        function(db: types.Executor, catalog: types.Catalog?, _head: integer): (types.Plan?, error?)
-            if not catalog then return nil, errors.new({ details = { code = "catalog_not_found" }, kind = errors.NOT_FOUND, message = "catalog has no schema" }) end
+        function(db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
             local planned, perr = plan(db, catalog, request)
             if perr or not planned then return nil, perr end
             return { result = { outcomes = planned.outcomes, applied = #planned.events > 0 }, events = planned.events }, nil
@@ -304,7 +346,8 @@ function M.propose(catalog_id: string, request: types.ProposeRequest): (types.Pr
     if serr or not settings then return nil,serr end
     local base,err=store.with_db(function(db): ({[string]:integer}?,error?)
         local catalog,cerr=store.catalog(db,catalog_id)
-        if cerr or not catalog then return nil,cerr or errors.new({kind=errors.NOT_FOUND,message="catalog has no schema",details={code="catalog_not_found"}}) end
+        if cerr then return nil, cerr end
+        if not catalog then return nil, failure.catalog_not_initialized() end
         if request.source and not catalog.compiled.sources[request.source] then return nil,failure.unknown_source(request.source) end
         local effective=policy.effective(settings,catalog.compiled.policy)
         if #values.canonical(request)>effective.proposal_bytes then return nil,invalid("proposal exceeds configured byte budget",{code="proposal_budget_exceeded"}) end
@@ -398,7 +441,8 @@ function M.rebuild(catalog_id: string): (types.RebuildResult?, error?)
     if access_err then return nil, access_err end
     local catalog,err=store.with_db(function(db): (types.Catalog?,error?) return store.catalog(db,catalog_id) end)
     if err then return nil,err end
-    if not catalog or catalog.rebuild_after == nil or not catalog.rebuild_job then return { rebuilding = false }, nil end
+    if not catalog then return nil, failure.catalog_not_initialized() end
+    if catalog.rebuild_after == nil or not catalog.rebuild_job then return { rebuilding = false }, nil end
     local _, werr = jobs.wake_job(catalog.rebuild_job :: string, { control = true, ensure_due = true })
     if werr then return nil, errors.wrap(werr, "rebuild wake failed") end
     return { rebuilding = true }, nil

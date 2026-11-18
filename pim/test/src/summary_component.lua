@@ -6,6 +6,7 @@ local M = {}
 M.ACCESS = { READ = 1 }
 local meta: types.ComponentMeta = {}
 local candidates: { string } = {}
+local queries = 0
 
 function M.metadata(value: types.ComponentMeta)
     meta = value
@@ -13,9 +14,15 @@ end
 
 function M.directory(ids: { string })
     candidates = ids
+    queries = 0
+end
+
+function M.query_count(): integer
+    return queries
 end
 
 function M.query(input: { component_ids: { string }?, offset: integer, limit: integer }): ({ types.ComponentRow }?, error?)
+    queries = queries + 1
     if input.component_ids then
         return { { component_id = input.component_ids[1], access_level = 11, meta = meta } }, nil
     end

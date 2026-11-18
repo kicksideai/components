@@ -324,7 +324,8 @@ function M.schema_options(catalog_id: string, _request: types.SchemaOptionsReque
     if derr or not db then return nil, derr end
     local catalog, cerr = store.catalog(db, catalog_id)
     cerr = store.release(db, cerr)
-    if cerr or not catalog then return nil, cerr end
+    if cerr then return nil, cerr end
+    if not catalog then return nil, failure.catalog_not_initialized() end
     local plugin_list, perr = plugin_views(catalog_id, catalog.plugin_state, catalog.compiled.plugins)
     if perr or not plugin_list then return nil, perr end
     local kinds, kerr = links.kinds()

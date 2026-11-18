@@ -1,9 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- The catalog creation authority. A request owns one actor-scoped,
--- deterministic component id; the component and its thread are created through
--- the threads contract, then its initial declaration (empty when omitted) is
--- applied as a schema command keyed by the catalog id, so a retried request
--- converges on the same catalog and schema.
+-- deterministic component id. Only a fully validated declaration can reach
+-- registration, and only the registration winner can commit it.
 local failure = require("failure")
 local component = require("component")
 local hash = require("hash")
@@ -14,8 +12,9 @@ local component_types=require("component_types")
 local json = require("json")
 local threads = require("threads")
 local writer = require("writer")
-local locate = require("locate")
+local store = require("store")
 local types = require("types")
+local values = require("values")
 
 local creations=require("creations")
 local M = {}
@@ -23,7 +22,7 @@ local M = {}
 local ID_NAMESPACE = "kickside.pim.create.v1"
 local ICON = "tabler:packages"
 
-local trim = locate.trim
+local trim = require("trim_text").trim
 
 local invalid = failure.invalid
 
@@ -43,8 +42,8 @@ function M.catalog_id(key: string): (string?, error?)
     return uuid_from_digest(tostring(digest)), nil
 end
 
-local function existing(catalog_id: string, title: string, parent_id: string): (boolean?, error?)
-    local rows, err = component.query({ component_ids = { catalog_id }, include = { meta = true, placement = true }, limit = 1 })
+local function existing(catalog_id: string, request: types.JsonObject): (boolean?, error?)
+    local rows, err = component.query({ component_ids = { catalog_id }, limit = 1 })
     if err then return nil, errors.wrap(err, "catalog idempotency lookup failed") end
     local first: unknown = type(rows) == "table" and (rows :: { unknown })[1] or nil
     if first == nil then return false, nil end
@@ -52,12 +51,17 @@ local function existing(catalog_id: string, title: string, parent_id: string): (
     local context,cerr=component.get_private_context(catalog_id)
     if cerr then return nil,cerr end
     context=context or {}
-    local proven,perr=creations.proves(catalog_id,catalog_id,{title=title,parent_id=parent_id},context.pim_creation)
+    local proven,perr=creations.proves(catalog_id,catalog_id,request,context.pim_creation)
     if perr then return nil,perr end
     if not proven then
         return nil, errors.new({kind=errors.CONFLICT,retryable=false,message="catalog id has no matching PIM creation provenance",details={code="idempotency_conflict"}})
     end
-    return true, nil
+    return store.with_db(function(db: types.Executor): (boolean?, error?)
+        local rows, err = db:query("SELECT catalog_id FROM kickside_pim_catalog WHERE catalog_id=$1", { catalog_id })
+        if err then return nil, err end
+        if not rows or not rows[1] then return nil, failure.catalog_not_initialized() end
+        return true, nil
+    end)
 end
 
 function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
@@ -70,25 +74,34 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
     local catalog_id, id_err = M.catalog_id(key)
     if not catalog_id then return nil, id_err end
 
-    local found, ferr = existing(catalog_id, title, parent_id)
+    local schema_request: types.SchemaRequest = { declaration = input.declaration or {}, plugin_configs = input.plugin_configs }
+    local digest, herr = hash.sha256(values.canonical(schema_request))
+    if herr or not digest then return nil, herr or failure.corrupt("initial schema request hash is missing") end
+    local request: types.JsonObject = { title = title, parent_id = parent_id, schema_hash = tostring(digest) }
+    local found, ferr = existing(catalog_id, request)
     if ferr then return nil, ferr end
-    if not found then
-        local service,oerr=component.get_service()
-        if oerr or not service then return nil,oerr end
-        local token,perr=creations.prepare(catalog_id,catalog_id,{title=title,parent_id=parent_id})
-        if perr or not token then return nil,perr end
-        local raw,rawerr=service:register({component_id=catalog_id,impl_id=consts.CATALOG_IMPL,
-            parent_id=parent_id~="" and parent_id or nil,private_context={pim_creation=token},
-            thread={thread_class=consts.THREAD_CLASS,attrs=json.encode({owner_principal={kind="user",id=(security.actor() :: security.Actor):id()},user_ids={(security.actor() :: security.Actor):id()}}),parent_id=parent_id~="" and parent_id or nil},
-            meta={title=title,icon=ICON,type="thread",thread_class=consts.THREAD_CLASS}})
-        local result=raw :: component_types.ServiceEnvelope?
-        local cerr=rawerr :: error?
-        if not cerr then cerr=envelope.error_of(result,"register") end
-        local created=result~=nil and result.success==true and cerr==nil
-        if not created then
-            local winner, werr = existing(catalog_id, title, parent_id)
-            if not winner then return nil, errors.wrap(cerr or werr or "missing", "catalog create failed") end
-        end
+    if found then return { catalog_id = catalog_id, title = title, generation = 1, replayed = true }, nil end
+
+    local plan, serr = writer.prepare_initial_schema(catalog_id, schema_request)
+    if serr or not plan then return nil, serr end
+
+    local service,oerr=component.get_service()
+    if oerr or not service then return nil,oerr end
+    local token,perr=creations.prepare(catalog_id,catalog_id,request)
+    if perr or not token then return nil,perr end
+    local raw,rawerr=service:register({component_id=catalog_id,impl_id=consts.CATALOG_IMPL,
+        parent_id=parent_id~="" and parent_id or nil,private_context={pim_creation=token},
+        thread={thread_class=consts.THREAD_CLASS,attrs=json.encode({owner_principal={kind="user",id=(security.actor() :: security.Actor):id()},user_ids={(security.actor() :: security.Actor):id()}}),parent_id=parent_id~="" and parent_id or nil},
+        meta={title=title,icon=ICON,type="thread",thread_class=consts.THREAD_CLASS}})
+    local result=raw :: component_types.ServiceEnvelope?
+    local cerr=rawerr :: error?
+    if not cerr then cerr=envelope.error_of(result,"register") end
+    local created=result~=nil and result.success==true and cerr==nil
+    if not created then
+        local winner, werr = existing(catalog_id, request)
+        if werr then return nil, werr end
+        if not winner then return nil, errors.wrap(cerr or "missing", "catalog create failed") end
+        return { catalog_id = catalog_id, title = title, generation = 1, replayed = true }, nil
     end
 
     local confirmed=creations.confirm(catalog_id)
@@ -99,11 +112,9 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
     local terr=threads.ensure(client,{component_id=catalog_id,impl_id=consts.CATALOG_IMPL,thread_class=consts.THREAD_CLASS})
     if terr then return nil,terr end
 
-    local applied, serr = writer.apply_schema(catalog_id, { declaration = input.declaration or {}, plugin_configs = input.plugin_configs,
-        idempotency = { namespace = "create", key = catalog_id } })
-    if serr then return nil, errors.wrap(serr, "initial schema failed") end
-    if not applied then return nil, errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "initial schema returned no result" }) end
-    return { catalog_id = catalog_id, title = title, generation = applied.generation, replayed = found == true }, nil
+    local commit_err = writer.commit_initial_schema(client, catalog_id, plan)
+    if commit_err then return nil, errors.wrap(commit_err, "initial schema failed") end
+    return { catalog_id = catalog_id, title = title, generation = 1, replayed = false }, nil
 end
 
 return M

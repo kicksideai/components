@@ -291,7 +291,7 @@ entries:
   - name: receipts
     kind: library.lua
     source: file://receipts.lua
-    modules: [registry, sql]
+    modules: [registry]
     imports:
       store: kickside.pim.persist:store
       values: kickside.pim.domain:values

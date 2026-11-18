@@ -248,7 +248,9 @@ entries:
       component_types: kickside.component:types
       threads: app:r3_creation_threads
       writer: kickside.pim.command:writer
-      locate: kickside.pim.read:locate
+      store: kickside.pim.persist:store
+      trim_text: kickside.pim:text
+      values: kickside.pim.domain:values
       types: kickside.pim:types
       creations: app:r3_creations
 

@@ -225,28 +225,6 @@ local function define()
             test.eq(current.title, "Renamed catalog")
         end)
 
-        test.it("continues discovery past a page of uninitialized components", function()
-            local h = fixture.catalog({ bare = true })
-            local other = fixture.catalog({ bare = true })
-            local ids: { string } = {}
-            for i = 1, 40 do ids[i] = "pending-" .. tostring(i) end
-            ids[#ids + 1] = h.id
-            summary_component.directory(ids)
-            local empty, err, after = summary_locate.readable(1)
-            test.is_nil(err, tostring(err))
-            test.eq(#assert(empty), 0)
-            local next_page, next_err, final = summary_locate.readable(1, assert(after))
-            test.is_nil(next_err, tostring(next_err))
-            test.eq(assert(next_page)[1].catalog_id, h.id)
-            test.is_nil(final)
-            test.eq(assert(summary_locate.resolve()), h.id)
-
-            ids[#ids + 1] = other.id
-            summary_component.directory(ids)
-            local _, ambiguous = summary_locate.resolve()
-            test.eq(ambiguous:details().code, "catalog_ambiguous")
-        end)
-
         test.it("binds every method to a registered service function", function()
             local binding = assert(registry.get("kickside.pim.binding:catalog_service"))
             local methods = binding.data.contracts[1].methods
@@ -327,6 +305,9 @@ local function define()
             test.eq(again.catalog_id, h.id)
             local _, cerr = h.call("create", { idempotency_key = "fixture", title = "Another title" })
             test.not_nil(cerr)
+            local _, schema_conflict = h.call("create", { idempotency_key = "fixture", title = "Fixture catalog",
+                declaration = { aspects = { { namespace = "other" } } } })
+            test.eq(schema_conflict:details().code, "idempotency_conflict")
             test.eq(#h.call("list", {}).catalogs, 1)
             local implicit, ierr = h.executor:call("app:pim_call", { op = "get_schema", request = {} })
             test.is_nil(ierr, tostring(ierr))
@@ -338,13 +319,15 @@ local function define()
             test.eq((ambiguous :: error):details().code, "catalog_ambiguous", tostring(ambiguous))
         end)
 
-        test.it("keeps rejected initial schemas out of discovery until creation is retried", function()
+        test.it("rejects an initial schema without registering its catalog", function()
             local h = fixture.catalog({ bare = true })
-            for _, key in ipairs({ "invalid-one", "invalid-two" }) do
-                local _, err = h.call("create", { idempotency_key = key, title = "Initial schema",
-                    declaration = { families = { { code = "Invalid code" } } } })
-                test.eq(err:kind(), errors.INVALID)
-            end
+            local _, err = h.call("create", { idempotency_key = "invalid-one", title = "Initial schema",
+                declaration = { families = { { code = "Invalid code" } } } })
+            test.eq(err:kind(), errors.INVALID)
+            test.eq(err:details().code, "invalid_schema")
+            local ids = assert(h.call("catalog_registrations", {})) :: { string }
+            test.eq(#ids, 1)
+            test.eq(ids[1], h.id)
             local listed = assert(h.call("list", { limit = 1 }))
             local implicit, lookup_err = h.executor:call("app:pim_call", { op = "get_schema", request = {} })
             test.eq(#listed.catalogs, 1, "implicit lookup " .. tostring(lookup_err))
@@ -354,7 +337,7 @@ local function define()
             test.eq(implicit.schema_generation, 1)
 
             local retried = assert(h.call("create", { idempotency_key = "invalid-one", title = "Initial schema" }))
-            test.is_true(retried.replayed)
+            test.is_false(retried.replayed)
             test.eq(retried.generation, 1)
             local first = assert(h.call("list", { limit = 1 }))
             local second = assert(h.call("list", { limit = 1, after = assert(first.after) }))
@@ -364,6 +347,19 @@ local function define()
             test.is_true(first.catalogs[1].catalog_id ~= second.catalogs[1].catalog_id)
             local _, ambiguous = h.executor:call("app:pim_call", { op = "get_schema", request = {} })
             test.eq(ambiguous:details().code, "catalog_ambiguous")
+        end)
+
+        test.it("resolves the only catalog in one directory query after rejected creations", function()
+            local h = fixture.catalog({ bare = true })
+            for i = 1, 128 do
+                local _, err = h.call("create", { idempotency_key = "rejected-" .. tostring(i),
+                    declaration = { families = { { code = "Invalid code" } } } })
+                test.eq(err:kind(), errors.INVALID)
+                test.eq(err:details().code, "invalid_schema")
+            end
+            summary_component.directory(assert(h.call("catalog_registrations", {})) :: { string })
+            test.eq(assert(summary_locate.resolve()), h.id)
+            test.eq(summary_component.query_count(), 1)
         end)
 
         test.it("plans a schema change without applying it", function()
