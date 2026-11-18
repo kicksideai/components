@@ -524,10 +524,12 @@ entries:
     modules: [json]
     imports:
       catalog_fixture: app:catalog_fixture
+      changes: kickside.pim.schema:classify
       test: wippy.test:test
       fixture: app:fixture
       store: kickside.pim.persist:store
       steps: app:steps
+      types: kickside.pim:types
 
   - name: release_test
     kind: function.lua

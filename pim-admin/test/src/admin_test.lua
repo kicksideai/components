@@ -98,7 +98,60 @@ local function cases()
             local after = owner.get(path(id, "/schema"))
             test.not_nil(after.body.data.attributes["core.season"])
             test.is_true(after.body.data.schema_generation > before.body.data.schema_generation)
+            local stale = owner.post(path(id, "/schema/plan"), request)
+            test.eq(stale.status, 409)
+            test.eq(stale.body.details.code, "schema_generation_conflict")
+            test.eq(stale.body.details.generation, after.body.data.schema_generation)
+            test.eq(owner.get(path(id, "/schema")).body.data.as_of, after.body.data.as_of)
             test.eq(owner.post(path(id, "/schema"), request).status, 409)
+        end)
+        test.it("a readiness change remains semantic when the same draft adds a vocabulary", function()
+            local owner = session.admin()
+            local id = catalog(owner)
+            local product = owner.post(path(id, "/apply"), { items = { { product = { sku = "SHIRT" }, create = { family = "apparel" } } } })
+            test.eq(product.status, 200, json.encode(product.body))
+            test.eq(product.body.data.outcomes[1].outcome, "created")
+            local requirements = { { code = "apparel", aspects = { "core" }, requirements = { { id = "web", require = { "core.name" } } } } }
+            local control = owner.post(path(id, "/schema/plan"), { expected_generation = 1, declaration = { families = requirements } })
+            test.eq(control.status, 200, json.encode(control.body))
+            test.eq(control.body.data.class, "semantic", json.encode(control.body))
+            local request = { expected_generation = 1, declaration = { families = requirements, vocabularies = { { code = "seasons" } } } }
+            local plan = owner.post(path(id, "/schema/plan"), request)
+            local applied = owner.post(path(id, "/schema"), request)
+            test.eq(plan.status, 200, json.encode(plan.body))
+            test.eq(applied.status, 200, json.encode(applied.body))
+            test.eq(plan.body.data.class .. "/" .. applied.body.data.class, "semantic/semantic",
+                json.encode({ plan = plan.body.data, applied = applied.body.data }))
+            for _, result in ipairs({ plan.body.data, applied.body.data }) do
+                test.eq(#result.changes, 2)
+                test.eq(result.changes[1].code, "family apparel")
+                test.eq(result.changes[1].what, "requirements")
+                test.eq(result.changes[1].class, "semantic")
+                test.eq(result.changes[2].code, "vocabulary seasons")
+                test.eq(result.changes[2].class, "additive")
+            end
+        end)
+        test.it("a layout reorder alone appears in the schema review findings", function()
+            local owner = session.admin()
+            local id = catalog(owner)
+            local added = owner.post(path(id, "/schema"), { expected_generation = 1,
+                declaration = { aspects = { { namespace = "core", attributes = {
+                    { code = "name", type = "kickside.pim.types:text" },
+                    { code = "color", type = "kickside.pim.types:text" },
+                } } } } })
+            test.eq(added.status, 200, json.encode(added.body))
+            local before = owner.get(path(id, "/schema")).body.data
+            local attributes = before.declaration.aspects[1].attributes
+            before.declaration.aspects[1].attributes = { attributes[2], attributes[1] }
+            local request = { expected_generation = before.schema_generation, declaration = before.declaration }
+            local plan = owner.post(path(id, "/schema/plan"), request)
+            test.eq(plan.status, 200, json.encode(plan.body))
+            test.eq(plan.body.data.class, "cosmetic")
+            test.eq(plan.body.data.generation, before.schema_generation + 1)
+            test.eq(#plan.body.data.changes, 1, json.encode(plan.body))
+            test.eq(plan.body.data.changes[1].code, "aspect core")
+            test.eq(plan.body.data.changes[1].what, "attribute order")
+            test.eq(plan.body.data.changes[1].class, "cosmetic")
         end)
         test.it("persists layout widths and order and pages the schema history through existing PIM endpoints", function()
             local owner, stranger = session.admin(), session.member()
@@ -107,6 +160,11 @@ local function cases()
             local added = owner.post(path(id, "/schema"), { expected_generation = initial.body.data.schema_generation,
                 declaration = { aspects = { { namespace = "core", attributes = { { code = "name", type = "kickside.pim.types:text" }, { code = "color", type = "kickside.pim.types:text" } } } } } })
             test.eq(added.status, 200, json.encode(added.body))
+            local product = owner.post(path(id, "/apply"), { items = {
+                { product = { sku = "SHIRT" }, create = { family = "apparel" } },
+            } })
+            test.eq(product.status, 200, json.encode(product.body))
+            test.eq(product.body.data.outcomes[1].outcome, "created")
             local view = owner.get(path(id, "/schema")).body.data
             local by_code = {}
             for _, attribute in ipairs(view.declaration.aspects[1].attributes) do by_code[attribute.code] = attribute end
@@ -124,6 +182,17 @@ local function cases()
             test.eq(after.declaration.aspects[1].attributes[1].code, "color")
             test.eq(after.declaration.aspects[1].attributes[1].width, "quarter")
             test.eq(after.attributes["core.name"].width, "full")
+            test.eq(after.attributes["core.name"].id, view.attributes["core.name"].id)
+            test.eq(after.attributes["core.color"].id, view.attributes["core.color"].id)
+            local queried = owner.post(path(id, "/query"), {})
+            test.eq(queried.status, 200, json.encode(queried.body))
+            test.is_false(queried.body.data.rebuilding == true)
+            local previous = owner.get(path(id, "/schema?generation=" .. view.schema_generation))
+            test.eq(previous.status, 200, json.encode(previous.body))
+            test.eq(previous.body.data.declaration.aspects[1].attributes[1].code, "name")
+            test.eq(previous.body.data.declaration.aspects[1].attributes[2].code, "color")
+            test.eq(previous.body.data.attributes["core.name"].width, view.attributes["core.name"].width)
+            test.eq(previous.body.data.attributes["core.color"].width, view.attributes["core.color"].width)
             local history = owner.get(path(id, "/history?limit=1"))
             test.eq(history.status, 200, json.encode(history.body))
             test.eq(#history.body.data.entries, 1)

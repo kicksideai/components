@@ -45,6 +45,7 @@ entries:
       comment: Schema change classification against catalog usage.
     source: file://classify.lua
     imports:
+      sections: kickside.pim.schema:sections
       values: kickside.pim.domain:values
       types: kickside.pim:types
 

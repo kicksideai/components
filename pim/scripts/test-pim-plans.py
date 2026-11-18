@@ -70,20 +70,32 @@ class QueryPlans(unittest.TestCase):
         query = re.search(r"function M.family_occupied.*?db:query\(\[\[(.*?)\]\]", source, re.S).group(1)
         self.db.executemany(
             """INSERT INTO kickside_pim_product(catalog_id,product_id,sku,root_id,family,level,is_item,state,status,version,document,source_seq,created_seq,updated_seq)
-            VALUES('catalog',?,?,?,?,0,1,?,'active',1,'{}','{}',1,1)""",
-            [(str(n), str(n), str(n), "occupied" if n else "trashed", "live" if n else "trashed") for n in range(10000)],
+            VALUES('catalog',?1,?1,?1,?2,0,1,?3,'active',1,'{}','{}',1,1)""",
+            ((f"{state}-{n}", family, state)
+             for family, state in (("occupied", "live"), ("trashed", "trashed")) for n in range(10000)),
         )
+        self.db.execute("ANALYZE")
         present, hit = self.measure(query, ("catalog", "occupied"))
-        absent, miss = self.measure(query, ("catalog", "trashed"))
-        print("family occupancy VM steps for hit and miss:", hit, miss)
-        self.assertLess(max(hit, miss), 100)
+        missing, miss = self.measure(query, ("catalog", "before_occupied"))
+        trashed, trashed_miss = self.measure(query, ("catalog", "trashed"))
+        print("family occupancy VM steps for hit, miss, and trashed-only family:", hit, miss, trashed_miss)
+        self.assertLess(max(hit, miss, trashed_miss), 100)
         self.assertEqual(len(present), 1)
-        self.assertEqual(absent, [])
-        self.assertEqual(self.measure(query, ("catalog", "before_occupied"))[0], [])
+        self.assertEqual(missing, [])
+        self.assertEqual(trashed, [])
         plan = str(self.db.execute("EXPLAIN QUERY PLAN " + query, named(("catalog", "occupied"))).fetchall())
         print("family occupancy plan:", plan)
-        self.assertIn("catalog_id=? AND family>?", plan)
+        self.assertIn("kickside_pim_product_live_family ((catalog_id,family)>(?,?))", plan)
         self.assertNotIn("TEMP B-TREE", plan)
+        # Keep the one-catalog statistics above and check a candidate in the next catalog.
+        self.db.execute(
+            """INSERT INTO kickside_pim_product(catalog_id,product_id,sku,root_id,family,level,is_item,state,status,version,document,source_seq,created_seq,updated_seq)
+            VALUES('next_catalog','other','other','other','trashed',0,1,'live','active',1,'{}','{}',1,1)"""
+        )
+        other_catalog, cross_catalog_miss = self.measure(query, ("catalog", "trashed"))
+        print("family occupancy VM steps for a cross-catalog miss:", cross_catalog_miss)
+        self.assertEqual(other_catalog, [])
+        self.assertLess(cross_catalog_miss, 100)
 
     def test_publication_tuple_seek(self):
         self.db.execute("UPDATE kickside_pim_publication SET state='withdrawn'")

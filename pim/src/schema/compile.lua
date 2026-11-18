@@ -287,6 +287,13 @@ local function compile_aspects(declared: { OwnedAspect }, prev: types.Compiled?,
     local aspects: { [string]: types.Aspect } = {}
     local by_aspect: { [string]: { string } } = {}
     local claimed: { [integer]: boolean } = {}
+    local reserved: { [integer]: boolean } = {}
+    for _, owned in ipairs(declared) do
+        for _, raw in ipairs(owned.decl.attributes or {}) do
+            local id = math.tointeger(raw.id)
+            if id then reserved[id] = true end
+        end
+    end
     for _, owned in ipairs(declared) do
         local a = owned.decl
         local ns = a.namespace
@@ -299,8 +306,13 @@ local function compile_aspects(declared: { OwnedAspect }, prev: types.Compiled?,
             local code = ns .. "." .. tostring(raw.code)
             if attributes[code] then return nil, invalid("duplicate attribute " .. code) end
             local raw_id = math.tointeger(raw.id)
-            if raw_id and not prev_by_id[raw_id] then return nil, invalid(code .. ": unknown attribute id " .. raw_id) end
-            local before = raw_id and prev_by_id[raw_id] or prev_attrs[code]
+            local before = prev_attrs[code]
+            if raw_id then
+                before = prev_by_id[raw_id]
+                if not before then return nil, invalid(code .. ": unknown attribute id " .. raw_id) end
+            elseif before and reserved[before.id] then
+                before = nil
+            end
             if before and before.aspect ~= ns then return nil, invalid(code .. ": an attribute stays in its aspect") end
             if before and claimed[before.id] then return nil, invalid(code .. ": attribute id is declared twice") end
             local compiled_attr, aerr = compile_attribute(ns, raw, dimlist, dimset, vocabularies, lookups, before)
