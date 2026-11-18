@@ -16,6 +16,7 @@ local threads = require("threads")
 local pipeline = require("pipeline")
 local jobs = require("jobs")
 local items = require("items")
+local terms = require("terms")
 local releases = require("releases")
 local proposals = require("proposals")
 local schema = require("schema")
@@ -109,8 +110,6 @@ local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_
     if rerr or not incoming then return nil, rerr end
     local effective, merr = declaration.merge(prev_declaration, incoming)
     if merr or not effective then return nil, merr end
-    local aerr = plugins.admit(effective, prev_declaration)
-    if aerr then return nil, aerr end
     local next_compiled, cerr = schema.compile(prev, effective, {
         type_of = seams.load_type, is_check = seams.is_check, plugin = plugins.check, link_kind = links.has_kind,
         scope = function(id: string): (boolean, error?)
@@ -119,6 +118,12 @@ local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_
         end,
     })
     if cerr or not next_compiled then return nil, cerr end
+    local aerr = plugins.admit(effective, prev_declaration)
+    if aerr then return nil, aerr end
+    if prev then
+        local herr = terms.check_hierarchy_change(db, catalog_id, prev.vocabularies, next_compiled.vocabularies)
+        if herr then return nil, herr end
+    end
     local compiled: types.Compiled = next_compiled
     local configs: { [string]: types.JsonObject } = {}
     for id, own in pairs(request.plugin_configs or {}) do

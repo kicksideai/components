@@ -42,6 +42,25 @@ local function define()
                 test.not_nil(valid)
             end)
         end
+        test.it("resolves a term member against a vocabulary contributed by a plugin", function()
+            local decl: types.Declaration = {
+                aspects = { { namespace = "core", attributes = {
+                    { code = "bundle", type = "record", config = { members = {
+                        zone = { form = "ref", target = "term", vocabulary = "zones" },
+                    } } },
+                } } },
+                plugins = { { use = "app:zones", schema = { digest = "zones", fragment = {
+                    vocabularies = { { code = "zones" } },
+                } } } },
+            }
+            local lookups: schema.Lookups = { type_of = type_of, plugin = function() return nil end }
+            local compiled = assert(schema.compile(nil, decl, lookups))
+            test.not_nil(compiled.vocabularies.zones)
+            decl.plugins = nil
+            local result, err = schema.compile(compiled, decl, lookups)
+            test.is_nil(result)
+            test.eq((err :: error):message(), "core.bundle.zone: unknown vocabulary zones")
+        end)
     end)
     test.describe("schema changes", function()
         test.it("classifies a newly declared vocabulary as additive", function()

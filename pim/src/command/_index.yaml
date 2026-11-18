@@ -103,6 +103,7 @@ entries:
       threads: kickside.pim.command:threads
       jobs: kickside.core.jobs:jobs
       items: kickside.pim.command:items
+      terms: kickside.pim.command:terms
       releases: kickside.pim.command:releases
       proposals: kickside.pim.command:proposals
       schema: kickside.pim.schema:compile
