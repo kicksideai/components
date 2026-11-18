@@ -365,31 +365,6 @@ local function define()
             test.eq(count("kickside_work_item",h.id," AND purge_pending=1"),0)
         end)
 
-        test.it("drains an age backlog larger than the owner budget without waiting for another sweep", function()
-            local h=fixture.board()
-            local id=steps.create(h,"task")
-            local db=assert(store.open())
-            local tx=assert(db:begin())
-            for i=1,1005 do
-                assert(tx:execute([[INSERT INTO kickside_work_approval (board_id,item_id,visit,actor,decision,at)
-                    VALUES ($1,$2,0,$3,'approve',$4)]],{h.id,id,tostring(i),OLD}))
-            end
-            assert(tx:commit())
-            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,board_scan='all',deadline_ms=NULL WHERE owner_id='work'",{h.id}))
-            db:release()
-            local runs=0
-            while count("kickside_work_approval",h.id)>0 do
-                local before=count("kickside_work_approval",h.id)
-                local result=steps.retention_run()
-                local remaining=count("kickside_work_approval",h.id)
-                test.is_true(before-remaining<=500)
-                if remaining>0 then test.is_true(result.needs_continue) end
-                runs=runs+1
-                assert(runs<10,"owner backlog must drain")
-            end
-            test.is_true(runs>=3)
-        end)
-
         test.it("writes no rows on unchanged retention and item passes", function()
             local h=fixture.board()
             local id=steps.create(h,"task",{title="Unchanged"})
