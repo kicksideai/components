@@ -181,15 +181,19 @@ function M.run(_input: unknown): types.Result
         end
     end
 
-    -- Finish the lap before restarting discovery. Productive pending laps
-    -- rediscover other boards that became eligible while the backlog drained.
-    if not more then
-        local due = deadline and deadline <= clock.deadline(0).ns // 1000000
-        if due then deadline = nil end
-        if due or position.board_scan == "pending_then_all" then
-            more = true
-            position.board_after, position.inclusive, position.board_scan = "", 0, "all"
+    if not visit_err then
+        if position.board_scan == "all" then
+            position.pending_page_budget = position.pending_page_budget + 1
+        else
+            position.pending_page_budget = math.max(0, position.pending_page_budget - 1)
         end
+    end
+    -- A deadline may fall behind the scan while we drain other boards.
+    if not more and deadline and deadline <= clock.deadline(0).ns // 1000000 then
+        deadline = nil
+        more = true
+        position.board_after, position.inclusive, position.board_scan = "", 0, "all"
+        position.pending_page_budget = 0
     end
     position.deadline_ms = deadline
     local saved, pending = rows.advance(position, checkpoints, not more)

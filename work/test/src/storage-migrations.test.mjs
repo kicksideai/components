@@ -50,6 +50,76 @@ print(json.dumps(db.execute("SELECT name FROM sqlite_master WHERE type='table' A
   assert.deepEqual(JSON.parse(result), [])
 })
 
+test('board retention seeks directly to a deep cursor with a bounded page', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const source = await readFile(resolve(root, 'src/retention/rows.lua'), 'utf8')
+  const body = source.match(/function M\.boards[^\n]*\n([\s\S]*?)\nend/)[1]
+  const captured = await run('lua', ['-'], {}, `
+local M={}
+function M.boards(db,position,limit)
+${body}
+end
+local db={query=function(_,statement,params)
+  io.write(statement,'\\0')
+  for _,param in ipairs(params) do io.write(param,'\\0') end
+  io.write('\\0')
+end}
+for inclusive=0,1 do
+  M.boards(db,{board_after='cursor',inclusive=inclusive,board_scan='all'},8)
+end
+`)
+  const pages = captured.trim().split('\0\0').filter(Boolean).map(page => {
+    const [query, ...params] = page.split('\0')
+    return { query, args: params.map(param => param === 'cursor' ? param : Number(param)) }
+  })
+  const sqlite = await run('python3', ['-c', `
+import json,sqlite3,sys
+pages=json.load(sys.stdin)
+db=sqlite3.connect(':memory:')
+db.execute('CREATE TABLE kickside_work_board(board_id text PRIMARY KEY, retention_after text)')
+db.executemany('INSERT INTO kickside_work_board(board_id) VALUES (?)', [(f'{n:06d}',) for n in range(1,20001)])
+db.execute('ANALYZE')
+for inclusive,page in enumerate(pages):
+ for anchor in (10,19000):
+  args=[f'{anchor:06d}',*page['args'][1:]]
+  ticks=[0]
+  def step(): ticks[0]+=1;return 0
+  db.set_progress_handler(step,1)
+  rows=db.execute(page['query'],args).fetchall()
+  db.set_progress_handler(None,0)
+  start=anchor+1-inclusive
+  assert [row[0] for row in rows]==[f'{n:06d}' for n in range(start,start+8)],rows
+  assert ticks[0]<150,(inclusive,anchor,ticks)
+  print(inclusive,anchor,ticks[0])
+`], {}, JSON.stringify(pages))
+  console.log('SQLite board seeks (inclusive, cursor, VM instructions)', sqlite.trim())
+
+  if (!process.env.WORK_MIGRATION_POSTGRES) return
+  const args = ['exec', '-i', 'kickside-test-pg', 'psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-U', 'kickside', '-d', 'kickside_test_work']
+  const sql = `
+CREATE TEMP TABLE kickside_work_board(board_id text PRIMARY KEY, retention_after text);
+INSERT INTO kickside_work_board(board_id) SELECT lpad(n::text,6,'0') FROM generate_series(1,20000) n;
+ANALYZE kickside_work_board;
+${pages.map(({ query }, i) => `PREPARE board_page_${i} AS ${query};`).join('\n')}
+${['force_custom_plan', 'force_generic_plan'].map(mode =>
+    `SET plan_cache_mode = ${mode};\n` + pages.flatMap(({ args }, page) => [10, 19000].map(anchor =>
+      `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) EXECUTE board_page_${page}('${String(anchor).padStart(6, '0')}',${args.slice(1).join(',')});`
+    )).join('\n')
+  ).join('\n')}`
+  const output = process.env.WORK_MIGRATION_SSH
+    ? await run('ssh', [process.env.WORK_MIGRATION_SSH, 'docker', ...args], {}, sql)
+    : await run('docker', args, {}, sql)
+  const plans = JSON.parse(`[${output.trim().replace(/\]\s*\[/g, '],[')}]`)
+  assert.equal(plans.length, 8)
+  for (const [{ Plan }] of plans) {
+    const [seek] = Plan.Plans
+    assert.equal(Plan['Actual Rows'], 8)
+    assert.match(seek['Index Cond'] ?? '', /board_id/, JSON.stringify(seek))
+    assert.ok((seek['Rows Removed by Filter'] ?? 0) <= 1, JSON.stringify(seek))
+  }
+  console.log('PostgreSQL board seeks examined eight rows in all eight plans')
+})
+
 test('purged comments and incoming board links have bounded ordered seeks on a populated board', async () => {
   const initial = await statements('01_work', 'up')
   const { readFile } = await import('node:fs/promises')

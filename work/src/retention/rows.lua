@@ -16,7 +16,7 @@ local M = {}
 
 
 function M.position(db: sql.DB): (types.Position?, error?)
-    local rows, err = db:query("SELECT board_after, inclusive, board_scan, deadline_ms FROM kickside_work_retention WHERE owner_id = 'work'", {})
+    local rows, err = db:query("SELECT board_after, inclusive, board_scan, pending_page_budget, deadline_ms FROM kickside_work_retention WHERE owner_id = 'work'", {})
     if err then return nil, err end
     if not rows or not rows[1] then return nil, errors.new({ kind = errors.INTERNAL, message = "retention position is missing", details = { code = "row_corrupt" } }) end
     local board_after, berr = store.need(rows[1], "board_after")
@@ -25,7 +25,10 @@ function M.position(db: sql.DB): (types.Position?, error?)
     if ierr or not inclusive then return nil, ierr end
     local board_scan, perr = store.need(rows[1], "board_scan")
     if perr or not board_scan then return nil, perr end
-    return { board_after = board_after, inclusive = inclusive, board_scan = board_scan, deadline_ms = store.int(rows[1].deadline_ms) }, nil
+    local budget, budget_err = store.need_int(rows[1], "pending_page_budget")
+    if budget_err or not budget then return nil, budget_err end
+    return { board_after = board_after, inclusive = inclusive, board_scan = board_scan,
+        pending_page_budget = budget, deadline_ms = store.int(rows[1].deadline_ms) }, nil
 end
 
 local PENDING = "retention_after IS NOT NULL"
@@ -44,17 +47,28 @@ function M.advance(position: types.Position, checkpoints: { types.Checkpoint }?,
             local rows, pending_err = tx:query("SELECT board_id FROM kickside_work_board WHERE " .. PENDING .. " ORDER BY board_id LIMIT 1", {})
             if pending_err then return nil, pending_err end
             resume = rows ~= nil and rows[1] ~= nil
-            position.board_after, position.inclusive, position.board_scan = "", 0, resume and "pending" or "all"
+            position.board_after, position.inclusive = "", 0
+            -- Spend one pending callback per discovery callback before opening
+            -- another lap. Check once more when productive pending work drains.
+            local rediscover = position.board_scan == "pending_then_all"
+                and (position.pending_page_budget == 0 or not resume)
+            if rediscover or not resume then
+                position.board_scan, position.pending_page_budget = "all", 0
+            elseif position.board_scan == "all" then
+                position.board_scan = "pending"
+            end
+            resume = resume or rediscover
             if not resume then
                 position.deadline_ms = nil
                 local _, orphan_err = tx:execute("UPDATE kickside_work_retention SET orphan_after = '' WHERE owner_id = 'work' AND orphan_after <> ''", {})
                 if orphan_err then return nil, orphan_err end
             end
         end
-        local _, err = tx:execute([[UPDATE kickside_work_retention SET board_after = $1, inclusive = $2, board_scan = $3, deadline_ms = $4
+        local _, err = tx:execute([[UPDATE kickside_work_retention SET board_after = $1, inclusive = $2, board_scan = $3,
+            pending_page_budget = $4, deadline_ms = $5
             WHERE owner_id = 'work' AND (board_after <> $1 OR inclusive <> $2 OR board_scan <> $3
-                OR COALESCE(deadline_ms, -1) <> COALESCE(CAST($4 AS bigint), -1))]],
-            { position.board_after, position.inclusive, position.board_scan, position.deadline_ms or sql.NULL })
+                OR pending_page_budget <> $4 OR COALESCE(deadline_ms, -1) <> COALESCE(CAST($5 AS bigint), -1))]],
+            { position.board_after, position.inclusive, position.board_scan, position.pending_page_budget, position.deadline_ms or sql.NULL })
         return resume, err
     end)
     return err, pending
