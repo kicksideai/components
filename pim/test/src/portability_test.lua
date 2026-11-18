@@ -39,23 +39,32 @@ local function define()
             for page=0,1 do
                 local batch={}
                 for n=1,500 do batch[n]={product={sku="RESUME-"..(page*500+n)},create={}} end
-                assert(source.call("apply",{items=batch}).applied)
+                local applied, err = source.call("apply", { items = batch })
+                test.is_nil(err, tostring(err))
+                test.is_true(assert(applied).applied)
             end
             test.eq(steps.one(source,{product={sku="RESUME-LAST"},create={}}).outcome,"created")
             local path="partial-"..source.id
             assert(source.call("portable",{method="export",args={storage_id="app:exports",path=path}}).success)
             local storage=assert(fs.get("app:exports"))
+            local first_file = assert(storage:readfile(path .. "/data/products-000001.jsonl"))
+            local first = assert(json.decode(assert(first_file:match("^[^\n]+"))))
             local file=path.."/data/products-000002.jsonl"
             local saved=assert(storage:readfile(file))
-            assert(storage:writefile(file,"broken"))
+            assert(storage:writefile(file,"42"))
             local target=fixture.catalog({bare=true})
             local args={storage_id="app:exports",path=path}
             local stopped=assert(target.call("portable",{method="import_into",args=args}))
             assert(storage:writefile(file,saved))
             test.is_false(stopped.success)
+            test.eq(stopped.kind, errors.INVALID, json.encode(stopped))
+            test.eq(stopped.details.code, "invalid_request")
+            local committed = assert(steps.get(target, first.sku)).product.product_id
             local resumed=assert(target.call("portable",{method="import_into",args=args}))
             test.is_true(resumed.success,json.encode(resumed))
+            test.eq(resumed.id_map.rows.pim_product[first.product_id], committed)
             test.not_nil(steps.get(target,"RESUME-LAST"))
+            test.eq(assert(target.call("query", { count = true, limit = 1 })).total, 1001)
             local other=target.call("portable",{method="import_into",args={storage_id="app:exports",path="resume-"..source.id}})
             test.is_false(other.success)
         end)

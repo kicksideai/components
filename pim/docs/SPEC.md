@@ -1006,6 +1006,10 @@ whose resolved view changes gets `updated_seq` = the event seq: a model edit
 stamps each recomputed descendant (≤ 20,000), so the `list_changes` feed reports
 inherited changes.
 
+The fold reads consecutive product edits together and writes independent leaf
+creations and edits in batches. Operations that change hierarchy, state or
+indexed identity keys still persist in event order within the transaction.
+
 The fold has a 20,000-row budget. Item recomputation and schema fan-out both
 consume it. Removed attribute references, unique claims, usage rows, generated
 set/search rows and vocabulary terms are deleted in bounded pages; channel
@@ -1291,14 +1295,16 @@ Steps:
 
 Outcomes: `created | updated | unchanged | conflict | invalid | forbidden`
 with findings. Merge reference paging first selects distinct live holders under
-the product limit, then returns all matching references for those holders. A
+the product limit using the reference target and product id index, then returns
+all matching references for those holders. A
 500-holder page completes within the 5 s command deadline.
 Merge-generated edits use the ordinary product-edit validation,
 including unique claims and enforced checks. Deferred merge identity and metadata
 travel in the accepted term event and persist in its fold transaction.
 `term_merge` validates every affected holder before retiring `from`, using the
 ordinary product-edit rules and a 20,000-holder admission cap; exceeding that cap
-refuses without changing state. An outstanding merge cannot be retargeted to a
+refuses without changing state. The holder count stops at one above the cap.
+An outstanding merge cannot be retargeted to a
 second destination; intervening term-label edits retain the pending destination
 within the same command. It then retires `from` (blocking new references),
 then rewrites every value referencing it: up to 500 products in the command

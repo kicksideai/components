@@ -22,6 +22,7 @@ entries:
       consts: kickside.pim:consts
       schema: kickside.pim.schema:compile
       types: kickside.pim:types
+      bulk: kickside.pim.persist:bulk
 
   - name: bulk
     kind: library.lua

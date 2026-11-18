@@ -19,7 +19,7 @@ type Edit = (item_state.State, types.ApplyItem, types.Product) -> (types.Event?,
 -- through the term merge job, which repeats this command as the asking actor
 -- until no reference remains. A merge of a term already retired by an earlier
 -- merge continues the rewrite without retiring it again.
-function M.plan_merge(st: item_state.State, item: types.ApplyItem, edit: Edit, preflight: boolean?): ({ types.Event }?, types.Outcome?, error?)
+function M.plan_merge(st: item_state.State, item: types.ApplyItem, edit: Edit): ({ types.Event }?, types.Outcome?, error?)
     local m = item.term_merge :: types.TermMerge
     local exclusive = item.set or item.clear or item.unset or item.status or item.move or item.delete or item.create or item.restore or item.term or item.product
     if exclusive then return nil, item_state.fail("invalid", "term_merge is a separate item"), nil end
@@ -39,13 +39,10 @@ function M.plan_merge(st: item_state.State, item: types.ApplyItem, edit: Edit, p
         return nil,item_state.fail("conflict","outstanding term merge has another destination",{code="term_merge_conflict"}),nil
     end
     local from_key, into_key = m.vocabulary .. ":" .. m.from, m.vocabulary .. ":" .. m.into
-    local rows, total, rerr = item_state.merge_references(st, from_key,preflight and 20000 or nil)
+    local rows, total, rerr = item_state.merge_references(st, from_key, not from_row.retired)
     if rerr or not rows or total == nil then return nil, nil, rerr end
-    if not from_row.retired and total>consts.LIMITS.merge_inline and not preflight then
-        if total>20000 then return nil,item_state.fail("invalid","term merge exceeds the 20000-holder validation budget",{code="term_merge_limit"}),nil end
-        local _,validated,verr=M.plan_merge(item_state.fork(st),item,edit,true)
-        if verr then return nil,nil,verr end
-        if not validated or validated.outcome~="updated" then return nil,validated,nil end
+    if total > consts.LIMITS.merge_holders then
+        return nil, item_state.fail("invalid", "term merge exceeds the 20000-holder validation budget", { code = "term_merge_limit" }), nil
     end
     local by_id = compiled.by_id or {}
     -- Every referencing attribute must be writable by this command's source,
@@ -87,8 +84,13 @@ function M.plan_merge(st: item_state.State, item: types.ApplyItem, edit: Edit, p
         table.insert(per_product[r.product_id], r)
     end
     local rewritten = 0
-    for _, id in ipairs(order) do
-        local p, lerr = item_state.load(st, id)
+    local planning = st
+    local inline = consts.LIMITS.merge_inline
+    for index, id in ipairs(order) do
+        -- Deferred holders validate against the accepted prefix and each other.
+        -- Only the inline edits join the enclosing command's state and events.
+        if index == inline + 1 then planning = item_state.fork(st) end
+        local p, lerr = item_state.load(planning, id)
         if lerr then return nil, nil, lerr end
         if p and p.state == "live" then
             local edits: { types.ValueEntry } = {}
@@ -113,17 +115,17 @@ function M.plan_merge(st: item_state.State, item: types.ApplyItem, edit: Edit, p
                 end
             end
             if #edits > 0 then
-                local event, outcome, eerr = edit(st, { product = { id = id }, expect_version = p.version, set = edits, seq = item.seq }, p)
+                local event, outcome, eerr = edit(planning, { product = { id = id }, expect_version = p.version, set = edits, seq = item.seq }, p)
                 if eerr then return nil, nil, eerr end
                 if not outcome or (outcome.outcome ~= "updated" and outcome.outcome ~= "unchanged") then return nil, outcome, nil end
-                if event then
+                if event and index <= inline then
                     events[#events + 1] = event
                     rewritten = rewritten + 1
                 end
             end
         end
     end
-    local deferred = math.max((total :: integer) - #order, 0)
+    local deferred = math.max(total - math.min(#order, inline), 0)
     if deferred > 0 then
         local identity, cerr = execution_identity.capture()
         if cerr or not identity then return nil, nil, cerr :: error? end

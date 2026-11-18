@@ -44,13 +44,20 @@ function M.delete(db: types.Executor, catalog_id: string, vocabulary: string, fr
     return nil
 end
 
--- count_products counts the live products holding a reference to target.
-function M.count_products(db: types.Executor, catalog_id: string, kind: string, target: string, pending: { [string]: types.Product }?): (integer?, error?)
+local function holder_page(params: types.SqlParams, limit: integer, pending: { [string]: types.Product }?): (string, string)
+    -- The fold only retains references for live products.
+    local extra = store.exclusions(params, pending, "product_id")
+    params[#params + 1] = limit
+    return [[SELECT DISTINCT product_id FROM kickside_pim_ref
+        WHERE catalog_id = $1 AND kind = $2 AND target = $3]] .. extra .. " ORDER BY product_id LIMIT $" .. #params, extra
+end
+
+-- count_products counts live holders up to the caller's admission threshold.
+function M.count_products(db: types.Executor, catalog_id: string, kind: string, target: string, limit: integer,
+    pending: { [string]: types.Product }?): (integer?, error?)
     local params: types.SqlParams = { catalog_id, kind, target }
-    local extra = store.exclusions(params, pending, "r.product_id")
-    return store.count(db, [[SELECT COUNT(DISTINCT r.product_id) AS n FROM kickside_pim_ref r
-        JOIN kickside_pim_product p ON p.catalog_id = r.catalog_id AND p.product_id = r.product_id AND p.state = 'live'
-        WHERE r.catalog_id = $1 AND r.kind = $2 AND r.target = $3]] .. extra, params, "reference count failed")
+    local page = holder_page(params, limit, pending)
+    return store.count(db, "SELECT COUNT(*) AS n FROM (" .. page .. ") holders", params, "reference count failed")
 end
 
 -- references lists where the first limit live products (by id) reference
@@ -58,16 +65,12 @@ end
 function M.references(db: types.Executor, catalog_id: string, kind: string, target: string, limit: integer,
     pending: { [string]: types.Product }?): ({ types.TermRefRow }?, error?)
     local params: types.SqlParams = { catalog_id, kind, target }
-    local extra = store.exclusions(params, pending, "r2.product_id")
-    params[#params + 1] = limit
-    local rows, err = db:query([[WITH selected_products AS MATERIALIZED (
-            SELECT DISTINCT r2.product_id FROM kickside_pim_ref r2
-            JOIN kickside_pim_product p2 ON p2.catalog_id = r2.catalog_id AND p2.product_id = r2.product_id AND p2.state = 'live'
-            WHERE r2.catalog_id = $1 AND r2.kind = $2 AND r2.target = $3]] .. extra .. " ORDER BY r2.product_id LIMIT $" .. #params .. [[)
-        SELECT r.product_id, r.attribute_id, r.ctx, r.path FROM selected_products selected
-        JOIN kickside_pim_ref r ON r.product_id = selected.product_id
-        WHERE r.catalog_id = $1 AND r.kind = $2 AND r.target = $3
-        ORDER BY r.product_id, r.attribute_id, r.ctx, r.path]], params)
+    local page, extra = holder_page(params, limit, pending)
+    -- The last holder bounds the second seek without splitting its references.
+    local rows, err = db:query([[SELECT product_id, attribute_id, ctx, path FROM kickside_pim_ref
+        WHERE catalog_id = $1 AND kind = $2 AND target = $3
+        AND product_id <= (SELECT MAX(product_id) FROM (]] .. page .. ") holders)" .. extra
+        .. " ORDER BY product_id", params)
     if err then return nil, errors.wrap(err, "reference read failed") end
     local out: { types.TermRefRow } = {}
     for _, r in ipairs(rows or {}) do

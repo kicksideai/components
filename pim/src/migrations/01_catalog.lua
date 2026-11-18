@@ -110,7 +110,7 @@ local POSTGRES = {
         target text NOT NULL,
         PRIMARY KEY (catalog_id, product_id, attribute_id, ctx, path))]],
     [[CREATE INDEX kickside_pim_ref_attribute ON kickside_pim_ref(catalog_id, attribute_id, product_id, ctx, path)]],
-    [[CREATE INDEX kickside_pim_ref_target ON kickside_pim_ref (catalog_id, kind, target)]],
+    [[CREATE INDEX kickside_pim_ref_target ON kickside_pim_ref (catalog_id, kind, target, product_id)]],
     [[CREATE TABLE kickside_pim_unique_value (
         catalog_id text NOT NULL,
         attribute_id integer NOT NULL,

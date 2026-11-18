@@ -61,6 +61,7 @@ M.LIMITS = {
     snapshot_bytes = 524288,
     release_items = 100,
     fold_rows = 20000,
+    merge_holders = 20000,
     sku_bytes = 128,
 }
 
