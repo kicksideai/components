@@ -516,7 +516,7 @@ function M.snapshot<T>(catalog_id: string, fn: (types.Executor, types.Catalog, s
     local result: T?
     local ferr: error?
     if cerr then ferr = cerr
-    elseif not catalog then ferr = errors.new({ kind = errors.NOT_FOUND, message = "catalog has no schema", details = { code = "catalog_not_found" } })
+    elseif not catalog then ferr = failure.catalog_not_initialized()
     else
         local work, werr = tx:query("SELECT seq FROM kickside_pim_schema_work WHERE catalog_id = $1", { catalog_id })
         if werr then ferr = werr

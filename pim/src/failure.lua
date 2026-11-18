@@ -20,6 +20,13 @@ end
 function M.corrupt(message: string, field: string?): error
     return errors.new({kind=errors.INTERNAL,retryable=false,message=message,details={code="row_corrupt",field=field}})
 end
+
+function M.catalog_not_initialized(): error
+    return errors.new({ kind = errors.CONFLICT, retryable = false,
+        message = "catalog initialization did not complete; retry creation with a new idempotency key",
+        details = { code = "catalog_not_initialized" } })
+end
+
 function M.unknown_source(source: string): error
     return M.invalid("unknown source " .. source, {code="unknown_source",source=source})
 end

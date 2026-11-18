@@ -27,7 +27,7 @@ type Command = {
     client: threads.Client, thread: Thread, actor: string, deadline_ms: integer, deadline: clock.Deadline?, fingerprint: unknown,
     reserve: ((string,string,integer,string) -> (boolean?,error?))?,
     noop: ((string,string,types.JsonObject,integer,string) -> (boolean?,error?))?,
-    receipt: (string) -> (Receipt?, integer?, error?), idempotency: types.Idempotency?, trace_context: types.TraceContext?, build: Build,
+    receipt: ((string) -> (Receipt?, integer?, error?))?, idempotency: types.Idempotency?, trace_context: types.TraceContext?, build: Build,
 }
 type Receipt = { request_hash: string?, result: types.JsonObject?, event_count: integer?, noop: boolean? }
 M.Thread = Thread
@@ -62,7 +62,9 @@ end
 -- nil when there is none. A receipt with another request hash means the key was
 -- reused for a different request.
 local function replay(c: Command, marker: string, hashed: string, deadline: clock.Deadline): (types.JsonObject?, error?)
-    local receipt, seq, ferr = c.receipt(marker)
+    local read_receipt = c.receipt
+    if not read_receipt then return nil, failure.corrupt("idempotent command has no receipt reader") end
+    local receipt, seq, ferr = read_receipt(marker)
     if ferr then return nil, ferr end
     if not receipt or not seq then return nil, nil end
     if receipt.request_hash ~= hashed then

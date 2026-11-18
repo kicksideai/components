@@ -155,7 +155,9 @@ entries:
       component: kickside.component:component
       consts: kickside.pim:consts
       writer: kickside.pim.command:writer
-      locate: kickside.pim.read:locate
+      store: kickside.pim.persist:store
+      trim_text: kickside.pim:text
+      values: kickside.pim.domain:values
       types: kickside.pim:types
       threads: kickside.pim.command:threads
 

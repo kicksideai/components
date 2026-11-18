@@ -1386,10 +1386,12 @@ The catalog contract's `list` rows and `get_schema` response include required
 `access: { read: boolean, write: boolean, admin: boolean }` for the ambient
 caller. The HTTP reads `GET /pim/catalogs` and
 `GET /pim/catalogs/{id}/schema` preserve that shape in `data`. Each boolean
-reports its own component grant: ADMIN does not imply WRITE. `list` contains
-only readable catalogs with a committed schema generation. Implicit lookup
-selects the caller's sole initialized readable catalog. A failed initial
-schema can be retried with the original creation key. `get_schema`, including a past generation, requires
+reports its own component grant: ADMIN does not imply WRITE. `list` reads one
+page of the actor-scoped directory and uses committed state for its summaries.
+Implicit lookup selects the caller's sole readable catalog with one directory
+query. Catalog creation validates the first schema before registering, so a
+validation rejection leaves the creation key available for a corrected request.
+`get_schema`, including a past generation, requires
 current READ and reports current caller access. The shell consumes these
 booleans directly: ADMIN controls Settings, Form layout and schema mutation
 controls; WRITE controls product creation and editing. A refresh that removes
@@ -1675,21 +1677,23 @@ Malformed bytes return `INTERNAL / contract_schema_invalid`.
   | `plugin_context { catalog_id, plugin }` | READ | contract only; active plugin context (§3.2) |
   | `plugin_feed { catalog_id, plugin, kind, token? }` | READ | contract only; bounded durable state page and opaque token (§3.11) |
 
-Successful `create` always establishes the initial schema through `apply_schema`
-and waits for its projection before returning the required `generation`. Omitting
+Successful `create` validates and prepares the initial schema using the same
+planner as `apply_schema` before registration. The registration winner appends
+the prepared schema and waits for its projection before returning `generation`. Omitting
 `declaration` is equivalent to `{}`: generation 1 has no custom definitions and
 includes the built-in `generic` family. `get_schema`, `query` and the catalog
 summary immediately read that head with current caller access and zero counts.
 The exact catalog summary reads generation, counts and rebuild status from the
 committed PIM catalog row, retaining title and access from the actor-scoped
-component lookup. Catalog lists use public component metadata; its post-commit
-publication can lag command acknowledgement and does not gate creation.
+component lookup. Catalog lists use the same sources, so they work before
+post-commit publication of generation, counts and rebuild status.
 Commands before user definitions validate against this empty schema: generic
 products are allowed; undeclared families or fields produce ordinary item
 validation findings, never `catalog_not_found`. Applying definitions then advances
-the head normally with `expected_generation = 1`. While its command receipt is
-retained, a matching creation retry returns its original generation and does not
-reset a later schema head.
+the head normally with `expected_generation = 1`. A matching creation retry
+returns generation 1 from the registered instance's provenance. A registered
+catalog without a committed schema is refused with `CONFLICT / catalog_not_initialized`
+when encountered. The caller can retry creation with a fresh idempotency key.
 Administration opens the new catalog's schema editor with “Define its schema”.
 
 - Contract `kickside.pim:link_target` (3.3) bound by plugins.
@@ -1824,8 +1828,8 @@ mappings after its receipt, under one captured requesting identity and Jobs leas
 
 PIM creation provenance identifies a component creation instance, using a random
 token reserved durably in PIM before registration and placed atomically in
-private context at registration. A retry reuses that reservation and repeats
-thread convergence, including recovery after a committed registration. Reuse requires the matching token and request. A replacement
+private context at registration. The catalog reservation includes the initial
+schema request hash. Reuse requires the matching token and request. A replacement
 component at a previously owned predictable ID is refused. Intentional PIM
 attachment removal retires that instance's creation record; external repair
 deletion preserves the record so a replacement still fails comparison.
@@ -1896,17 +1900,13 @@ attempt. Preparing a matching retry renews the pending age while preserving its
 token; registration confirmation clears that age permanently. Before expiry,
 the retention owner checks the exact component IDs through the component contract.
 Registered instances retain their provenance even if registration was interrupted
-before confirmation, and catalog/thread convergence remains retryable. A single
+before confirmation. A single
 registration call still running after its renewed 90-day lifetime is a known
 operator repair race. Provenance for registered instances remains until accepted
 PIM removal or catalog teardown; it is not an abandonment candidate.
 
-Receipt admission shares the catalog fold/teardown lock and refuses pending
-catalog cleanup. Eventless admission requires an existing catalog. The first
-schema's eventful reservation instead requires sequence zero and confirmed catalog
-creation provenance, locked against its removal. After teardown removes both
-catalog and provenance, initial-schema admission cannot reopen receipt storage.
-Folded receipts require a live catalog. Global expiry seeks reclaim receipts
+Receipt admission shares the catalog fold/teardown lock, requires a live
+catalog, and refuses pending catalog cleanup. Global expiry seeks reclaim receipts
 including absent catalogs; their future eligibility and pending creation ages
 contribute indexed deadline seeks. These bounded pages share the existing 500-row
 owner budget. No write-path retention notification is introduced.
