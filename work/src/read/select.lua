@@ -95,7 +95,7 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
     for _, c in ipairs(board_conditions) do clauses[#clauses + 1] = c end
     if q.where ~= nil then
         local fragment, err = filter.compile(q.where, { reader = r, item_table = names.item, set_table = names.set, dialect = dialect,
-            relations = t.relations, resolve = resolve })
+            relations = t.relations, resolve = resolve, peer_visibility = q.peer_visibility })
         if err or not fragment then return nil, err end
         clauses[#clauses + 1] = fragment
         residual = fragment.residual == true

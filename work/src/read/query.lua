@@ -115,10 +115,9 @@ local function compile(tx: types.Executor, dialect: string, board: domain.Board,
     end
     local admitted, admission_err = scopes.admit(caller, request.scopes)
     if admission_err or not admitted then return nil, admission_err end
-    local visibility, verr = access_rows.condition(board, dialect)
+    local visible = access_rows.visibility(board, dialect)
+    local visibility, verr = visible("i")
     if verr or not visibility then return nil, verr end
-    local where, werr = access_rows.where(board, request.where)
-    if werr then return nil, werr end
     local conditions: { domain.Condition } = { read_rows.life_condition(request.include_trashed), visibility }
     for _, condition in ipairs(additional or {}) do conditions[#conditions + 1] = condition end
     local groups: { string }? = nil
@@ -128,7 +127,8 @@ local function compile(tx: types.Executor, dialect: string, board: domain.Board,
         groups[#groups + 1] = request.sub_group_by
     end
     return select.items(caller, tables.of(board.board_id, tables.layout(board.compiled), board.model.relations), dialect,
-        { scan = scan or (request.budget and request.budget.rows or 200000), groups = groups, where = where, sorts = order or sort, after = request.after, count = counted and 10000 or nil }, access_rows.resolver(board, resolve.resolver(tx, board)), admitted,
+        { scan = scan or (request.budget and request.budget.rows or 200000), groups = groups, where = request.where, sorts = order or sort,
+            after = request.after, count = counted and 10000 or nil, peer_visibility = visible }, access_rows.resolver(board, resolve.resolver(tx, board)), admitted,
         conditions,
         request.limit or 50)
 end

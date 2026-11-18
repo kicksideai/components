@@ -20,6 +20,12 @@ end
 
 local function quantified(s: types.RelationScope, raw: { [string]: unknown }, target: string, statement: string, args: { unknown }): (types.Condition?, error?)
     local q = raw.q
+    if s.peer_visibility then
+        local visibility, err = s.peer_visibility(target)
+        if err or not visibility then return nil, err end
+        statement = statement .. " AND (" .. visibility.sql .. ")"
+        for _, arg in ipairs(visibility.args) do args[#args + 1] = arg end
+    end
     if raw.where ~= nil then
         local inner, err = s.nested(raw.where, target)
         if err or not inner then return nil, err end

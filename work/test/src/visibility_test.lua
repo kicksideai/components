@@ -5,6 +5,7 @@ local fixture = require("fixture")
 local steps = require("steps")
 local registry = require("registry")
 local sql = require("sql")
+local json = require("json")
 
 local function declaration(): { [string]: unknown }
     return {
@@ -88,6 +89,21 @@ local function define()
             steps.one(h, { op = "delete", item = hidden })
             test.eq(summary().item_count, 1)
             test.eq(summary().trashed_count, 0)
+        end)
+
+        test.it("admits plugin options with board ADMIN independently of READ", function()
+            local owner, admin = scoped.admin(), scoped.member()
+            local h = scoped.board(owner)
+            assert(h.call("grant", { subject_id = admin.id, mask = 8 }))
+            local _, read_err = admin.call("get_schema", {}, h.id)
+            test.not_nil(read_err)
+            test.eq(read_err:kind(), errors.PERMISSION_DENIED)
+
+            local options, err = admin.call("contract_request", {
+                contract = "kickside.work:board", method = "schema_options", value = { board_id = h.id },
+            })
+            test.is_nil(err, steps.detail(err))
+            test.not_nil(options.plugins)
         end)
 
         test.it("requires source and predicate field authority for rollups and dependent formulas", function()
@@ -283,6 +299,40 @@ local function define()
             test.eq(gap.next.seq, 0)
         end)
 
+        test.it("resumes a change feed past hidden items without exposing their identity", function()
+            local admin, reader = scoped.admin(), scoped.member()
+            local d = declaration()
+            d.fields[#d.fields + 1] = { code = "child_count", type = "rollup", of = "children", fn = "count", form = "int" }
+            d.item_types[1].fields[#d.item_types[1].fields + 1] = "child_count"
+            local h = scoped.board(admin, d)
+            assert(h.call("grant", { subject_id = reader.id, mask = 1 }))
+            local hidden = steps.create(h, "task", { level = "internal" })
+            local hidden_child = steps.create(h, "task", { level = "internal" }, hidden)
+            test.eq(assert(h.call("get", { item = { id = hidden } })).item.values.child_count, 1)
+            local visible = steps.create(h, "task")
+            local first = assert(reader.call("list_changes", { limit = 1 }, h.id))
+            test.eq(#first.items, 0)
+            test.is_true(first.has_more)
+            local next_page = assert(reader.call("list_changes", { cursor = first.next, limit = 1 }, h.id))
+            test.eq(#next_page.items, 0)
+            test.eq(next_page.next.seq, first.next.seq)
+            test.is_true(next_page.has_more)
+            local final = assert(reader.call("list_changes", { cursor = next_page.next, limit = 1 }, h.id))
+            test.eq(#final.items, 1)
+            test.eq(final.items[1].item_id, visible)
+            test.is_false(final.has_more)
+            for _, response in ipairs({ first, next_page, final }) do
+                local encoded = json.encode(response)
+                test.is_nil((encoded:find(hidden, 1, true)))
+                test.is_nil((encoded:find(hidden_child, 1, true)))
+            end
+            local cursor = first.next
+            cursor.seq = cursor.seq + 1
+            local page, err = reader.call("list_changes", { cursor = cursor, limit = 1 }, h.id)
+            test.is_nil(page)
+            test.eq(err:details().code, "invalid_feed_cursor")
+        end)
+
         test.it("rejects visibility indexes that collapse distinct level ids", function()
             local admin = scoped.admin()
             for _, field in ipairs({
@@ -365,6 +415,56 @@ local function define()
                 test.eq(#assert(member.call("query", {}, h.id)).items, 1)
                 test.eq(assert(outside.call("count", {}, h.id)).total, 0)
                 test.eq(outside.http("POST", "/" .. h.id .. "/get", { item = { id = id } }).status, 404)
+            end
+        end)
+
+        test.it("uses a private holder to select visible children", function()
+            local admin, reader = scoped.admin(), scoped.member()
+            local d = declaration()
+            d.fields[3].access = { read = { { user = admin.id } } }
+            local h = scoped.board(admin, d)
+            assert(h.call("grant", { subject_id = reader.id, mask = 1 }))
+            local parent = steps.create(h, "task")
+            local child = steps.create(h, "task", { title = "Visible peer", level = "internal", owner = { kind = "user", id = reader.id } }, parent)
+            local hidden = steps.create(h, "task", { title = "Hidden peer", level = "internal" }, parent)
+            steps.one(h, { op = "link", item = parent, type = "blocks", target = { item = child } })
+            steps.one(h, { op = "link", item = parent, type = "blocks", target = { item = hidden } })
+
+            local visible = assert(reader.call("get", { item = { id = parent }, include = { "children" } }, h.id))
+            test.eq(#visible.children, 1)
+            test.eq(visible.children[1].id, child)
+            test.is_nil(visible.children[1].values.owner)
+
+            local page, err = reader.call("query", { where = { children = true, q = "some" } }, h.id)
+            test.is_nil(err, steps.detail(err))
+            test.eq(#page.items, 1)
+            test.eq(page.items[1].id, parent)
+            local parent_key = assert(h.call("get", { item = { id = parent } })).item.key
+            for _, where in ipairs({
+                { children = true, q = "some" },
+                { rel = "blocks", q = "some" },
+                { children = true, q = "every", where = { field = "title", op = "eq", value = "Visible peer" } },
+                { rel = "blocks", q = "none", where = { field = "title", op = "eq", value = "Hidden peer" } },
+            }) do
+                local count = assert(reader.call("count", { where = { ["and"] = { where, { field = "key", op = "eq",
+                    value = parent_key } } } }, h.id))
+                test.eq(count.total, 1)
+                local explain = assert(reader.call("explain", { where = where }, h.id))
+                test.is_true(#explain.plan.indexes > 0)
+            end
+            local relation = assert(reader.call("query", { where = { rel = "blocks", q = "some" } }, h.id))
+            test.eq(#relation.items, 1)
+            test.eq(relation.items[1].id, parent)
+            for _, where in ipairs({
+                { field = "owner", op = "is_null", value = true },
+                { children = true, q = "some", where = { field = "owner", op = "is_null", value = true } },
+                { rel = "blocks", q = "some", where = { field = "owner", op = "is_null", value = true } },
+            }) do
+                local denied, refusal = reader.call("query", { where = where }, h.id)
+                test.is_nil(denied)
+                test.eq(refusal:kind(), errors.PERMISSION_DENIED)
+                test.eq(refusal:details().code, "field_denied")
+                test.eq(refusal:details().field, "owner")
             end
         end)
 

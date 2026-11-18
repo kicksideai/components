@@ -10,7 +10,7 @@ type Result = { success: boolean, result: string?, dest_ref: { item_id: string? 
 type Board = { get: (Board, read_types.GetRequest) -> (read_types.GetResult?, error?),
     apply: (Board, types.ApplyRequest) -> (types.ApplyResult?, error?) }
 type Token = { board_id: string, item: string, visit: integer, attempt: integer }
-type StageEntry = { board_id: string?, item: string?, visit: integer?, attempt: integer?, state: string?, flow_ref: domain.FlowRef? }
+type StageEntry = { board_id: string?, item: string?, visit: integer?, attempt: integer? }
 type Completion = { token: Token, run_id: string, dataflow_id: string, flow_ref: domain.FlowRef, status: string,
     started_at: string?, ended_at: string, error: { code: string, message: string }? }
 type LaunchRequest = { config: { board_id: string?, flow_ref: domain.FlowRef?, completion: { component_id: string, token_fields: { string } }? }?,

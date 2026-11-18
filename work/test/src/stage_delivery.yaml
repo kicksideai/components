@@ -17,7 +17,7 @@ entries:
   kind: function.lua
   source: file://stage_delivery_actor.lua
   method: run
-  modules: [funcs, contract, sql]
+  modules: [funcs, contract, security, sql]
   imports:
     component: kickside.component:component
     identifiers: kickside.work.domain:identifiers
@@ -32,7 +32,7 @@ entries:
   kind: function.lua
   source: file://stage_delivery_actor.lua
   method: crash
-  modules: [funcs, contract, sql]
+  modules: [funcs, contract, security, sql]
   imports:
     component: kickside.component:component
     identifiers: kickside.work.domain:identifiers

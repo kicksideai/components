@@ -1,6 +1,9 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Reads use one committed snapshot and report its projection position.
 local component = require("component")
+local component_types = require("component_types")
+local envelope = require("envelope")
+local consts = require("consts")
 local sql = require("sql")
 local store = require("store")
 local types = require("types")
@@ -20,10 +23,20 @@ function M.describe(raw: unknown): (domain.BoardAccess?, error?)
         admin = (mask & component.ACCESS.ADMIN) ~= 0 }, nil
 end
 
-function M.effective(board_id: string): (domain.BoardAccess?, error?)
-    local mask, err = component.validate_access(board_id, component.ACCESS.READ :: integer)
-    if err then return nil, errors.wrap(err :: error, "board access denied") end
-    return M.describe(mask)
+function M.effective(board_id: string, required_access: integer?): (domain.BoardAccess?, error?)
+    if board_id == "" then return nil, M.invalid("board_id required") end
+    local service, service_err = component.get_service()
+    if not service then return nil, service_err :: error? end
+    local result, call_err = service:get_access_context({
+        component_id = board_id, access_mask = required_access or component.ACCESS.READ, include_context = false,
+    })
+    local err = call_err :: error? or envelope.error_of(result :: component_types.ServiceEnvelope, "get_access_context")
+    if err then return nil, errors.wrap(err, "board access denied") end
+    local row = result :: component_types.AccessContextResult
+    if row.impl_id ~= consts.BOARD_IMPL then
+        return nil, errors.new({ details = { code = "board_not_found" }, kind = errors.NOT_FOUND, message = "component is not a Work board" })
+    end
+    return M.describe(row.access_level)
 end
 
 function M.invalid(message: string): error
@@ -44,16 +57,15 @@ function M.changed(): error
         details = { code = "access_projection_changed" } })
 end
 
--- admit checks that the ambient caller can read board_id.
-function M.admit(board_id: string): error?
-    if board_id == "" then return M.invalid("board_id required") end
-    local _, err = M.effective(board_id)
+-- admit checks the component kind and the ambient caller's required capability.
+function M.admit(board_id: string, required_access: integer?): error?
+    local _, err = M.effective(board_id, required_access)
     return err
 end
 
 -- with_snapshot runs fn for an admitted caller inside one read transaction over
 -- the board. Context carries the selection's admission and live caller authority.
-function M.with_snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?, fn: types.Snapshot<T>, context: types.ReadContext?, asked: types.ReadBudget?, where: unknown?): (T?, error?)
+function M.with_snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?, fn: types.Snapshot<T>, context: types.ReadContext?, asked: types.ReadBudget?, where: unknown?, required_access: integer?): (T?, error?)
     local allowance = context and context.allowance
     if not allowance then
         local started, allowance_err = budget.start(asked)
@@ -61,7 +73,7 @@ function M.with_snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?
         allowance = started
     end
     local aerr: error? = nil
-    if not context or not context.admitted[board_id] then aerr = M.admit(board_id) end
+    if required_access or not context or not context.admitted[board_id] then aerr = M.admit(board_id, required_access) end
     if aerr then return nil, aerr end
     local deadline_err = not (context and context.partial) and budget.check(allowance)
     if deadline_err then return nil, deadline_err end

@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local budget = require("budget")
+local feed_cursor = require("feed_cursor")
 local peers = require("peers")
 -- The changes feed: cursor-resumable pages over durable state, so a consumer can
 -- build its read model from cursor zero at any time and follow it.
@@ -68,7 +69,9 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
         if cursor.seq > 0 and cursor.seq < floor and (cursor.floor or 0) < floor then
             return { items = {}, next = cursor, has_more = false, gap = { floor = floor } }, nil
         end
-        local rows, err = read_rows.changes(tx, board, cursor.seq, cursor.item_id, limit + 1)
+        local anchor, anchor_err = feed_cursor.anchor(board.board_id, cursor)
+        if anchor_err or anchor == nil then return nil, anchor_err end
+        local rows, err = read_rows.changes(tx, board, cursor.seq, anchor, limit + 1)
         if err then return nil, errors.wrap(err, "changes read failed") end
         local inspected = math.min(#(rows or {}), limit)
         allowance.remaining = allowance.remaining - inspected
@@ -86,6 +89,7 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
         end
         local items: { types.ChangeItem } = {}
         local processed = 0
+        local disclosed = false
         local comments_left = 10000
         for i = 1, inspected do
             processed = i
@@ -132,21 +136,27 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
                 end
                 items[#items + 1] = item
             end
+            disclosed = visible or previous
             if comments_left == 0 then break end
         end
         local last = rows and rows[processed]
-        local next_cursor: types.ChangesCursor = { seq = cursor.seq, item_id = cursor.item_id }
+        local next_cursor: types.ChangesCursor = { seq = cursor.seq, item_id = cursor.item_id, position = cursor.position,
+            access = stamp, floor = floor }
         if last then
-        local decoded_1, decode_err = store.need(last, "item_id")
-        if decode_err then return nil, decode_err end
-        local decoded_1 = decoded_1 :: string
-        local decoded_2, decode_err = store.need_int(last, "updated_seq")
-        if decode_err then return nil, decode_err end
-        local decoded_2 = decoded_2 :: integer
-            next_cursor.seq, next_cursor.item_id = decoded_2, decoded_1
+            local item_id, id_err = store.need(last, "item_id")
+            if id_err or not item_id then return nil, id_err end
+            local seq, seq_err = store.need_int(last, "updated_seq")
+            if seq_err or not seq then return nil, seq_err end
+            next_cursor.seq = seq
+            if disclosed then next_cursor.item_id, next_cursor.position = item_id, nil
+            else
+                local conceal_err = feed_cursor.conceal(board.board_id, next_cursor, item_id)
+                if conceal_err then return nil, conceal_err end
+            end
+        elseif cursor.position and (cursor.floor or 0) ~= next_cursor.floor then
+            local conceal_err = feed_cursor.conceal(board.board_id, next_cursor, anchor)
+            if conceal_err then return nil, conceal_err end
         end
-        next_cursor.access = stamp
-        next_cursor.floor = floor
         return { items = items, next = next_cursor, has_more = #(rows or {}) > processed }, nil
     end, context, nil, request.selection)
     if read_err or not result then return nil, read_err end

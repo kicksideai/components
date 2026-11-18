@@ -32,8 +32,6 @@ function M.context(request: types.PluginContextRequest): (types.PluginContext?, 
 end
 
 function M.options(request: types.SchemaGetRequest): (types.PluginOptions?, error?)
-    local _, err = component.validate_access(request.board_id, component.ACCESS.ADMIN)
-    if err then return nil, err end
     return budget.run(request, function(context: types.ReadContext): (types.PluginOptions?, error?)
         local result, err = access.with_snapshot(request.board_id, nil, function(tx: types.Executor, board: domain.Board, _dialect: string): (types.PluginOptions?, error?)
             local desired, derr = rows.list(tx, board.board_id)
@@ -41,7 +39,7 @@ function M.options(request: types.SchemaGetRequest): (types.PluginOptions?, erro
             local listed, lerr = plugins.list(board.board_id, desired or {}, board.compiled.plugins or {}, false, true)
             if lerr then return nil, lerr end
             return { plugins = listed }, nil
-        end, context)
+        end, context, nil, nil, component.ACCESS.ADMIN :: integer)
         if err or not result then return nil, err end
         plugins.projections(request.board_id, result.plugins)
         return result, nil

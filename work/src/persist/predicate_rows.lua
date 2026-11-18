@@ -61,9 +61,8 @@ function M.matching(tx: sql.DB | sql.Transaction, board: domain.Board, items: { 
         if allowed then eligible[#eligible + 1] = item.item_id end
     end
     if #eligible == 0 then return matched, nil end
-    local secured, serr = access_rows.where(board, where)
-    if serr then return nil, serr end
-    local fragment, err = predicates.compile(board.compiled, board.board_id, actor, secured, dialect, base)
+    local fragment, err = predicates.compile(board.compiled, board.board_id, actor, where, dialect, base,
+        { peer_visibility = access_rows.visibility(board, dialect) })
     if err or not fragment then return nil, err end
     local working_items: { [string]: domain.Item } = {}
     for id, item in pairs(working and working.items or {}) do working_items[id] = item end
