@@ -1582,8 +1582,9 @@ A proposal is PIM-owned state (Core requires WRITE for any append):
   `origin` with `approval_item_id` set to the proposal, idempotency `proposal/<id>`, then settles
   `accepted`, `conflict` (only stale versions stopped it; decidable again)
   or `failed` (an item is refused outright or the source was removed).
-  A reviewer denied access to the source leaves the proposal available for
-  another decision. Reject works from `pending` or `conflict`.
+  Admission checks the reviewer's source access before claiming. A source
+  permission change during acceptance can leave an `accepting` claim for an
+  authorized reviewer to resume. Reject works from `pending` or `conflict`.
 - Proposals are reviewed in the shell's proposals view by WRITE holders;
   public meta carries `pending_proposal_count`. Inbox routing is optional
   and built from platform parts: `pim-flow` exposes a `list_proposals` pullable,
