@@ -423,6 +423,7 @@ entries:
     - kickside.work.settings:trash_days
     - kickside.work.settings:validate
     - kickside.work.service:stage_binding
+    - kickside.work.service:stage_binding_preflight
     - kickside.work.service:stage_binding_selected
     - kickside.work.security:stage_binding_defer
     - kickside.work.security:stage_binding_actor
