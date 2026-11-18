@@ -4,7 +4,7 @@
 -- layout and admitted scope declarations; every value is a bound argument, and
 -- the builder writes the dialect's placeholders. The filter tree and sorts name
 -- fields the resolver maps to generated columns; conditions add clauses over
--- aliases i (generated row) and r (product row).
+-- alias i (generated row).
 local failure = require("failure")
 local sql = require("sql")
 local tree = require("tree")
@@ -16,7 +16,7 @@ local search = require("search")
 local M = {}
 
 type Statement = { statement: string, args: types.SqlParams }
-type Count = Statement & { cap: integer, beyond: string? }
+type Count = Statement & { cap: integer }
 type Range = { condition: types.Condition?, direction: string? }
 -- A filtered page spends one scan budget across all its ordered ranges.
 type Plan = {
@@ -148,7 +148,7 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
         if #tokens == 0 then
             clauses[#clauses + 1] = { sql = key_sql, args = { key_arg } }
         elseif dialect == sql.type.POSTGRES then
-            clauses[#clauses + 1] = { sql = "(i.search @@ plainto_tsquery('simple', ?) OR " .. key_sql .. ")", args = { table.concat(tokens, " "), key_arg } }
+            clauses[#clauses + 1] = { sql = "(i.search @> string_to_array(?, ' ') OR " .. key_sql .. ")", args = { table.concat(tokens, " "), key_arg } }
         else
             clauses[#clauses + 1] = { sql = "(EXISTS (SELECT 1 FROM " .. names.fts .. " WHERE rowid = i.rowid AND " .. names.fts .. " MATCH ?) OR "
                 .. key_sql .. ")", args = { table.concat(tokens, " AND "), key_arg } }
@@ -175,6 +175,15 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
     local format = pg and sql.builder.dollar or sql.builder.question
     local scan = #clauses > 0 and q.scan or nil
 
+    local function filtered(base: sql.SelectBuilder, lookahead: string?): sql.SelectBuilder
+        local include = lookahead and ("WHEN " .. lookahead .. " THEN 1 ") or ""
+        for _, c in ipairs(clauses) do
+            -- Keep correlated scope and publication checks on the candidate row.
+            base = base:where("CASE " .. include .. "WHEN " .. c.sql .. " THEN 1 ELSE 0 END = 1", table.unpack(c.args))
+        end
+        return base
+    end
+
     local function matching(columns: { string }, source: string, keys_only: boolean): sql.SelectBuilder
         local base = sql.builder.select(table.concat(columns, ", "))
         if pg then
@@ -184,7 +193,7 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
             else
                 base = base:from(source .. " i")
             end
-            base = base:join("LATERAL (SELECT sku, parent_id FROM kickside_pim_product "
+            base = base:join("LATERAL (SELECT sku FROM kickside_pim_product "
                 .. "WHERE catalog_id = ? AND product_id = i.product_id OFFSET 0) r ON TRUE", r.catalog_id)
         else
             local from = source .. " i"
@@ -192,11 +201,7 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
             base = base:from(from .. " CROSS JOIN kickside_pim_product r")
                 :where("r.catalog_id = ? AND r.product_id = i.product_id", r.catalog_id)
         end
-        for _, c in ipairs(clauses) do
-            -- Keep correlated scope and publication checks on the candidate row.
-            base = base:where("CASE WHEN " .. c.sql .. " THEN 1 ELSE 0 END = 1", table.unpack(c.args))
-        end
-        return base
+        return filtered(base)
     end
 
     local function candidate(range: Range, size: integer): sql.SelectBuilder
@@ -212,20 +217,23 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
 
     local counted: Count? = nil
     if q.count then
-        local source = names.item
-        local beyond: string? = nil
-        if scan then
-            -- The count can stream its item rows from the primary index and
-            -- apply the filters without a second item lookup for every key.
-            local candidates = sql.builder.select("i.*"):from(names.item .. " i")
+        local function bounded_count(budget: integer): sql.SelectBuilder
+            -- Stream the prefix and one lookahead from the same index. The last
+            -- row reports whether the budget was exceeded without testing it.
+            local candidates = sql.builder.select("i.*", "row_number() OVER (ORDER BY i.product_id) AS walk_pos")
+                :from(names.item .. " i")
             if not pg then candidates = candidates:columns("i.rowid AS rowid") end
-            local walk = candidates:order_by("i.product_id"):limit(scan):to_sql()
-            source = "(" .. walk .. ")"
-            beyond = "SELECT 1 AS present FROM " .. names.item .. " ORDER BY product_id LIMIT 1 OFFSET " .. scan
+            local walk = candidates:order_by("i.product_id"):limit(budget + 1):to_sql()
+            local edge = "i.walk_pos > " .. budget
+            return filtered(sql.builder.select("CASE WHEN " .. edge .. " THEN 1 ELSE 0 END AS beyond")
+                :from("(" .. walk .. ") i"), edge)
         end
-        local within, args = matching({ "1" }, source, false):limit(q.count + 1):to_sql()
-        local built = compiled(sql.builder.select("count(*) AS n"):from("(" .. within .. ") matched"), {}, args)
-        counted = { statement = built.statement, args = built.args, cap = q.count, beyond = beyond }
+        local matched = scan and bounded_count(scan) or filtered(sql.builder.select("0 AS beyond"):from(names.item .. " i"))
+        local within, args = matched:limit(q.count + 1):to_sql()
+        local outer = sql.builder.select("count(*) FILTER (WHERE beyond = 0) AS n", "coalesce(max(beyond), 0) AS beyond")
+            :from("(" .. within .. ") matched")
+        local built = compiled(outer, {}, args)
+        counted = { statement = built.statement, args = built.args, cap = q.count }
     end
 
     local function page(range: Range, size: integer?, wanted: integer): Statement
@@ -309,12 +317,7 @@ function M.total(db: types.Executor, count: Count): (integer?, boolean?, error?)
     local n = rows and rows[1] and narrow.int(rows[1].n)
     if not n then return nil, nil, errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "count returned no number" }) end
     if n > count.cap then return count.cap, true, nil end
-    if count.beyond then
-        local past, perr = db:query(count.beyond :: string, {})
-        if perr then return nil, nil, perr end
-        if past and past[1] then return n, true, nil end
-    end
-    return n, false, nil
+    return n, narrow.int(rows[1].beyond) == 1, nil
 end
 
 return M

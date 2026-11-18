@@ -99,6 +99,7 @@ local POSTGRES = {
     [[CREATE INDEX kickside_pim_product_retention ON kickside_pim_product (catalog_id, state, state_at, product_id) WHERE state <> 'live']],
     [[CREATE INDEX kickside_pim_product_root ON kickside_pim_product (catalog_id, root_id)]],
     [[CREATE INDEX kickside_pim_product_changes ON kickside_pim_product (catalog_id, updated_seq, product_id)]],
+    [[CREATE INDEX kickside_pim_product_family_changes ON kickside_pim_product (catalog_id, family, updated_seq, product_id)]],
     [[CREATE INDEX kickside_pim_product_parent ON kickside_pim_product (catalog_id, parent_id)]],
     [[CREATE TABLE kickside_pim_ref (
         catalog_id text NOT NULL,

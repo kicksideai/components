@@ -86,7 +86,7 @@ function M.create(db: types.Executor, dialect: string, t: types.Table): error?
     local cols: { string } = { "product_id " .. text_t .. " NOT NULL PRIMARY KEY" }
     for _, s in ipairs(SYSTEM) do cols[#cols + 1] = ident(s.name) .. " " .. column_type(s.kind, pg) .. " NOT NULL" end
     for _, c in ipairs(typed(layout)) do cols[#cols + 1] = ident(c.column) .. " " .. column_type(c.kind, pg) end
-    if pg and #layout.search > 0 then cols[#cols + 1] = "search tsvector" end
+    if pg and #layout.search > 0 then cols[#cols + 1] = "search text[]" end
     local stmts: { string } = {
         "CREATE TABLE " .. names.item .. " (" .. table.concat(cols, ", ") .. ")" .. (pg and "" or " STRICT"),
         "CREATE TABLE " .. names.set .. " (product_id " .. text_t .. " NOT NULL, col " .. text_t .. " NOT NULL, value_key "
@@ -152,7 +152,7 @@ function M.alter(db: types.Executor, dialect: string, t: types.Table, before: ty
         end
     elseif has and not had then
         if pg then
-            stmts[#stmts + 1] = "ALTER TABLE " .. names.item .. " ADD COLUMN search tsvector"
+            stmts[#stmts + 1] = "ALTER TABLE " .. names.item .. " ADD COLUMN search text[]"
             stmts[#stmts + 1] = "CREATE INDEX " .. names.item .. "_search ON " .. names.item .. " USING GIN (search)"
         else
             stmts[#stmts + 1] = fts_create(names)
@@ -214,7 +214,7 @@ function M.write_rows(db: types.Executor, dialect: string, t: types.Table, rows:
     local typed_columns = typed(layout)
     for _, c in ipairs(typed_columns) do columns[#columns + 1] = { name = c.column } end
     local searchable = #layout.search > 0
-    if pg and searchable then columns[#columns + 1] = { name = "search", expr = "to_tsvector('simple', %s)" } end
+    if pg and searchable then columns[#columns + 1] = { name = "search", expr = "string_to_array(%s, ' ')" } end
     local item_rows: { types.SqlParams } = {}
     local set_rows: { types.SqlParams } = {}
     local fts_rows: { types.SqlParams } = {}

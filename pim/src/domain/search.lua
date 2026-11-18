@@ -10,12 +10,12 @@ local function hex_byte(byte: string): string
     return string.format("%02x", byte:byte())
 end
 
--- Disjoint ASCII lexemes give both text indexes the same token boundaries.
--- A digest keeps words that would exceed PostgreSQL's lexeme limit searchable.
+-- Keep every encoded lexeme at most 65 bytes for both text indexes.
 local function lexeme(token: string): string
-    if #token > 1000 then return "h" .. assert(hash.sha256(token)) end
-    if token:find("[^a-z0-9]") then return "u" .. token:gsub(".", hex_byte) end
-    return "t" .. token
+    local ascii = token:match("^[a-z0-9]+$")
+    if ascii and #token <= 64 then return "t" .. token end
+    if not ascii and #token <= 32 then return "u" .. token:gsub(".", hex_byte) end
+    return "h" .. assert(hash.sha256(token))
 end
 
 function M.tokens(value: string): { string }

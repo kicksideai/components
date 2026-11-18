@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Read statements: the pages behind feeds, links, releases and export. Each takes
 -- the executor of the caller's read snapshot and answers rows.
+local json = require("json")
 local store = require("store")
 local select = require("select")
 local sql = require("sql")
@@ -15,21 +16,41 @@ local function rows_of(rows: { types.Row }?, err: error?, what: string): ({ type
 end
 
 -- changed_products pages products changed after cursor up to ceiling.
-function M.changed_products(db: types.Executor, catalog_id: string, ceiling: integer, cursor: types.ChangesCursor,
+function M.changed_products(db: types.Executor, dialect: string, catalog_id: string, ceiling: integer, cursor: types.ChangesCursor,
     families: { string }?, limit: integer): ({ types.Row }?, error?)
-    local params: types.SqlParams = { catalog_id, ceiling, cursor.seq, cursor.product_id }
-    local statement = [[SELECT * FROM kickside_pim_product WHERE catalog_id = $1 AND updated_seq <= $2
+    local params: types.SqlParams = { catalog_id, ceiling, cursor.seq, cursor.product_id, limit }
+    local seek = [[ FROM kickside_pim_product WHERE catalog_id = $1 AND updated_seq <= $2
         AND (updated_seq, product_id) > ($3, $4)]]
+    local order = " ORDER BY updated_seq, product_id LIMIT $5"
+    local statement = "SELECT *" .. seek .. order
     if families and #families > 0 then
-        local marks: { string } = {}
-        for _, f in ipairs(families) do
-            params[#params + 1] = f
-            marks[#marks + 1] = "$" .. #params
+        local wanted: { [string]: boolean } = {}
+        for _, family in ipairs(families) do wanted[family] = true end
+        local encoded, err = json.encode(wanted)
+        if err then return nil, err end
+        params[6] = encoded
+        -- Seek each family's ordered keys and merge only the bounded prefixes.
+        -- Read the documents by primary key after choosing the global page.
+        local family_seek = [[ FROM kickside_pim_product WHERE catalog_id = $1
+            AND (family, updated_seq, product_id) > (f.key, $3, $4)
+            AND (family, updated_seq) <= (f.key, $2)
+            ORDER BY family, updated_seq, product_id LIMIT $5]]
+        local pages = "SELECT k.product_id, k.updated_seq FROM json_each($6) f CROSS JOIN "
+        local products: string
+        if dialect == sql.type.POSTGRES then
+            pages = pages .. "LATERAL (SELECT product_id, updated_seq" .. family_seek .. ") k"
+            products = [[LATERAL (SELECT * FROM kickside_pim_product
+                WHERE catalog_id = $1 AND product_id = page.product_id OFFSET 0) p]]
+        else
+            pages = pages .. "kickside_pim_product k ON k.catalog_id = $1 AND k.product_id IN (SELECT product_id"
+                .. family_seek .. ")"
+            products = "kickside_pim_product p ON p.catalog_id = $1 AND p.product_id = page.product_id"
         end
-        statement = statement .. " AND family IN (" .. table.concat(marks, ", ") .. ")"
+        statement = "SELECT p.* FROM (" .. pages .. " ORDER BY k.updated_seq, k.product_id LIMIT $5) page"
+            .. " CROSS JOIN " .. products .. " ORDER BY page.updated_seq, page.product_id"
+        -- SQLite assigns named parameters by appearance. Use explicit slots.
+        if dialect ~= sql.type.POSTGRES then statement = statement:gsub("%$(%d+)", "?%1") end
     end
-    params[#params + 1] = limit
-    statement = statement .. " ORDER BY updated_seq, product_id LIMIT $" .. #params
     local rows, err = db:query(statement, params)
     return rows_of(rows, err, "changes read")
 end
@@ -69,12 +90,15 @@ type ItemFilter = { family: string?, status: string?, root_id: string?, parent_i
 M.ItemFilter = ItemFilter
 
 -- item_conditions are the query clauses of a filter.
-function M.item_conditions(f: ItemFilter): { types.Condition }
+function M.item_conditions(catalog_id: string, f: ItemFilter): { types.Condition }
     local out: { types.Condition } = {}
     if f.family then out[#out + 1] = { sql = "i.family = ?", args = { f.family } } end
     if f.status then out[#out + 1] = { sql = "i.status = ?", args = { f.status } } end
     if f.root_id then out[#out + 1] = { sql = "i.root_id = ?", args = { f.root_id } } end
-    if f.parent_id then out[#out + 1] = { sql = "r.parent_id = ?", args = { f.parent_id } } end
+    if f.parent_id then
+        out[#out + 1] = { sql = "(SELECT parent_id FROM kickside_pim_product WHERE catalog_id = ? AND product_id = i.product_id) = ?",
+            args = { catalog_id, f.parent_id } }
+    end
     return out
 end
 

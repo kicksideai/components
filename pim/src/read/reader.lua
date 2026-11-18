@@ -165,7 +165,7 @@ function M.query(catalog_id: string, request: types.QueryRequest?): (types.Query
             if perr or not parent then return nil, perr end
             item_filter.parent_id = parent.product_id
         end
-        local conditions = read_model.item_conditions(item_filter)
+        local conditions = read_model.item_conditions(catalog_id, item_filter)
         if q.published then
             conditions[#conditions + 1] = read_model.published_condition(catalog_id, q.published.channel)
         end

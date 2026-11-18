@@ -305,6 +305,45 @@ local function define()
             test.eq(count(h, { text = string.rep("e", 1100) .. " boot" }), 0)
         end)
 
+        test.it("folds and searches large Unicode documents across all three lineage levels", function()
+            local h = fixture.catalog({ bare = true })
+            assert(h.call("apply_schema", { declaration = {
+                aspects = { { namespace = "search", attributes = {
+                    { code = "root", type = "kickside.pim.types:text", index = "text" },
+                    { code = "middle", type = "kickside.pim.types:text", index = "text" },
+                    { code = "leaf", type = "kickside.pim.types:text", index = "text" },
+                    { code = "color", type = "kickside.pim.types:integer" },
+                    { code = "size", type = "kickside.pim.types:integer" },
+                } } },
+                families = { { code = "searchable", aspects = { "search" }, variation = {
+                    { axes = { "search.color" }, own = { "search.middle" } },
+                    { axes = { "search.size" }, own = { "search.leaf" } },
+                } } },
+            } }))
+            local function token(n: integer, prefix: string): string
+                return prefix .. string.format("%04d", n)
+            end
+            local lower, upper = string.rep("é", 492), string.rep("É", 492)
+            local function document(first: integer): string
+                local words = {}
+                for n = 1, 220 do words[n] = token(first + n - 1, lower) end
+                return table.concat(words, " ")
+            end
+            test.eq(steps.one(h, { product = { sku = "ROOT" }, create = { family = "searchable" },
+                set = { { attr = "search.root", value = document(1) } } }).outcome, "created")
+            test.eq(steps.one(h, { product = { sku = "MID" }, create = { parent = { sku = "ROOT" } },
+                set = { { attr = "search.color", value = 1 }, { attr = "search.middle", value = document(221) } } }).outcome, "created")
+            local out, err = steps.apply(h, { { product = { sku = "LEAF" }, create = { parent = { sku = "MID" } },
+                set = { { attr = "search.size", value = 1 }, { attr = "search.leaf", value = document(441) } } } })
+            assert(out and not err, tostring(err))
+            test.eq(out.outcomes[1].outcome, "created")
+            local terms = token(660, upper) .. " " .. token(221, lower) .. " " .. token(1, lower)
+            local found = assert(query(h, { text = terms, count = true }))
+            test.eq(found.total, 1)
+            test.eq(found.items[1].sku, "LEAF")
+            test.eq(count(h, { text = terms .. " " .. token(661, lower) }), 0)
+        end)
+
         test.it("matches all tokens in any order with punctuation and Unicode case", function()
             local h = fixture.catalog()
             fixture.boot(h)

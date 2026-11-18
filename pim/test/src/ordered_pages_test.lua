@@ -27,7 +27,8 @@ local function define()
         local measured_plans: { string } = {}
         local measured = { query = function(_self: unknown, statement: string, args: types.SqlParams)
             local prefix = pg and "EXPLAIN (ANALYZE, TIMING OFF) " or "EXPLAIN QUERY PLAN "
-            local lines = assert(db:query(prefix .. statement, args))
+            local lines, err = db:query(prefix .. statement, args)
+            assert(lines, tostring(err))
             local parts = {}
             for i, line in ipairs(lines) do parts[i] = tostring(line["QUERY PLAN"] or line.detail) end
             plan = table.concat(parts, "\n")
@@ -40,6 +41,9 @@ local function define()
             execute(SERIES .. [[INSERT INTO kickside_pim_product
                 (catalog_id,product_id,sku,family,root_id,level,is_item,version,status,state,document,source_seq,created_seq,updated_seq)
                 SELECT $1, ]] .. id .. ", " .. id .. ", 'generic','root',0,1,1,'active','live','{}','{}',1,1 FROM series")
+            execute([[UPDATE kickside_pim_product SET family = 'rare_a' WHERE catalog_id = $1 AND product_id IN ('00011', '11001')]])
+            execute([[UPDATE kickside_pim_product SET family = 'rare_b' WHERE catalog_id = $1 AND product_id IN ('00012', '12000')]])
+            execute([[UPDATE kickside_pim_product SET updated_seq = 2 WHERE catalog_id = $1 AND product_id = '12000']])
             execute(SERIES .. [[INSERT INTO kickside_pim_ref (catalog_id,product_id,attribute_id,ctx,path,kind,target)
                 SELECT $1, ]] .. id .. ", 7, '', 'a', 'term', CASE WHEN n > 11000 OR n % 7 = 0 THEN 'target' ELSE 'other' END FROM series")
             execute("INSERT INTO kickside_pim_ref VALUES ($1,'11500',7,'','b','term','target')")
@@ -52,14 +56,32 @@ local function define()
         end)
 
         test.it("seeks directly within a tied sequence and respects the change ceiling", function()
-            local rows = assert((read_model.changed_products(measured, CATALOG, 1, { seq = 1, product_id = "11500" }, { "generic" }, 5)))
+            local rows = assert((read_model.changed_products(measured, db:type(), CATALOG, 1, { seq = 1, product_id = "11500" }, nil, 5)))
             test.eq(#rows, 5)
             test.eq(rows[1].product_id, "11501")
             test.eq(rows[5].product_id, "11505")
             test.not_nil(plan:find("kickside_pim_product_changes", 1, true), plan)
             test.not_nil(plan:gsub("%s", ""):find(pg and "ROW(updated_seq,product_id)>" or "(updated_seq,product_id)>", 1, true), plan)
-            local past = assert((read_model.changed_products(db, CATALOG, 0, { seq = 0, product_id = "" }, nil, 5)))
+            local past = assert((read_model.changed_products(db, db:type(), CATALOG, 0, { seq = 0, product_id = "" }, nil, 5)))
             test.eq(#past, 0)
+        end)
+
+        test.it("seeks sparse family pages and merges tied changes in cursor order", function()
+            local first, err = read_model.changed_products(measured, db:type(), CATALOG, 1, { seq = 0, product_id = "" },
+                { "rare_b", "missing", "rare_a", "rare_a" }, 2)
+            assert(first, tostring(err))
+            test.eq(#first, 2)
+            test.eq(first[1].product_id, "00011")
+            test.eq(first[2].product_id, "00012")
+            local next_page = assert((read_model.changed_products(measured, db:type(), CATALOG, 1, { seq = 1, product_id = "00012" },
+                { "rare_b", "rare_a" }, 2)))
+            test.eq(#next_page, 1)
+            test.eq(next_page[1].product_id, "11001")
+            local empty = assert((read_model.changed_products(measured, db:type(), CATALOG, 1, { seq = 0, product_id = "" }, { "missing" }, 2)))
+            test.eq(#empty, 0)
+            test.not_nil(plan:find("kickside_pim_product_family_changes", 1, true), plan)
+            test.not_nil(plan:gsub("%s", ""):find("(family,updated_seq,product_id)>", 1, true), plan)
+            if pg then test.is_nil(plan:find("Rows Removed by Filter", 1, true), plan) end
         end)
 
         test.it("seeks old subject history within a tied event", function()
@@ -118,14 +140,16 @@ local function define()
             local total, estimated = select.total(measured, compiled.count :: select.Count)
             test.eq(total, 0)
             test.is_true(estimated)
+            test.eq(#measured_plans, 1, "the count returns its lookahead in the same database walk")
             local count_plan = measured_plans[1]
             if pg then
-                test.not_nil(count_plan:find("(actual rows=50 loops=1)", 1, true), count_plan)
+                test.not_nil(count_plan:find("(actual rows=51 loops=1)", 1, true), count_plan)
                 test.not_nil(count_plan:find("Index Scan using " .. t.names.item .. "_pkey", 1, true), count_plan)
                 test.is_nil(count_plan:find("Seq Scan on kickside_pim_product", 1, true), count_plan)
             else
                 test.not_nil(count_plan:find("SCAN i USING INDEX sqlite_autoindex_" .. t.names.item, 1, true), count_plan)
             end
+            test.is_nil(count_plan:find("kickside_pim_product", 1, true), count_plan)
             assert(not layout.drop(db, t.names))
         end)
 
