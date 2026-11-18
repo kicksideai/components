@@ -341,7 +341,6 @@ entries:
   source: file://process_timer.lua
   imports:
     flow: kickside.work.command:flow
-    process: kickside.work.domain:process
     report: kickside.work.command:process_report
     consts: kickside.work:consts
     prepare_context: kickside.work.command:prepare_context

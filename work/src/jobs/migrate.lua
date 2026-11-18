@@ -93,21 +93,21 @@ local function migration_events(db: sql.DB, board: domain.Board, item: domain.It
     if state ~= item.state then
         work.state, work.category, work.visit = state, target.category, work.visit + 1
         flow.initialize(work, target, actor, at, p)
-        local finding = flow.entry(board, target, work.document, p)
+        local finding = flow.entry(board.model, target, work.document, p)
         if finding then return nil, errors.new({ kind = errors.INVALID, message = finding.message, details = { code = finding.code, field = finding.field } }) end
     else
         local entered, rerr = process.migrate_regions(work, p, state_map, actor, at, true)
         if rerr then return nil, rerr end
         for _, region in ipairs(entered or {}) do
             local target = process.state_of(p, work.work.regions[region]) :: domain.State
-            local finding = flow.entry(board, target, work.document, p)
+            local finding = flow.entry(board.model, target, work.document, p)
             if finding then return nil, errors.new({ kind = errors.INVALID, message = finding.message, details = { code = finding.code, field = finding.field } }) end
         end
     end
     work.category = process.category(p, work)
     local ctx = prepare.context(db, board, actor, at, db:type())
     ctx.items[item.item_id], ctx.base[item.item_id] = work, item.version
-    local settled, finding, err = flow.settle(board, work, actor, at, when.check(ctx), p, ctx.auto)
+    local settled, finding, err = flow.settle(board, work, actor, at, when.check(ctx, board.model), p, board.model, ctx.auto)
     if err then return nil, err end
     if finding then return nil, errors.new({ kind = errors.INVALID, message = finding.message, details = { code = finding.code, field = finding.field } }) end
     for _, event in ipairs(settled or {}) do events[#events + 1] = event end

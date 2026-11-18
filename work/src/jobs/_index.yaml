@@ -226,15 +226,19 @@ entries:
   meta:
     private: true
   source: file://process.lua
+  modules: [sql]
   method: process
   imports:
     outcomes: kickside.work.domain:outcomes
     commands: kickside.work.command:types
+    domain: kickside.work:types
     component: kickside.component:component
     execution_identity: kickside.execution:execution_identity
     process: kickside.work.domain:process
     apply_ops: kickside.work.command:apply_ops
     store: kickside.work.persist:store
+    lifecycle: kickside.work.persist:lifecycle
+    jobs: kickside.core.jobs:jobs
     deadline: kickside.work.jobs:deadline
     clock: kickside.work.domain:clock
     types: kickside.work.jobs:types
@@ -246,15 +250,19 @@ entries:
   meta:
     private: true
   source: file://process.lua
+  modules: [sql]
   method: advance
   imports:
     outcomes: kickside.work.domain:outcomes
     commands: kickside.work.command:types
+    domain: kickside.work:types
     component: kickside.component:component
     execution_identity: kickside.execution:execution_identity
     process: kickside.work.domain:process
     apply_ops: kickside.work.command:apply_ops
     store: kickside.work.persist:store
+    lifecycle: kickside.work.persist:lifecycle
+    jobs: kickside.core.jobs:jobs
     deadline: kickside.work.jobs:deadline
     clock: kickside.work.domain:clock
     types: kickside.work.jobs:types
@@ -266,15 +274,19 @@ entries:
   meta:
     private: true
   source: file://process.lua
+  modules: [sql]
   method: process_batch
   imports:
     outcomes: kickside.work.domain:outcomes
     commands: kickside.work.command:types
+    domain: kickside.work:types
     component: kickside.component:component
     execution_identity: kickside.execution:execution_identity
     process: kickside.work.domain:process
     apply_ops: kickside.work.command:apply_ops
     store: kickside.work.persist:store
+    lifecycle: kickside.work.persist:lifecycle
+    jobs: kickside.core.jobs:jobs
     deadline: kickside.work.jobs:deadline
     clock: kickside.work.domain:clock
     types: kickside.work.jobs:types
@@ -287,15 +299,19 @@ entries:
   meta:
     private: true
   source: file://process.lua
+  modules: [sql]
   method: advance_batch
   imports:
     outcomes: kickside.work.domain:outcomes
     commands: kickside.work.command:types
+    domain: kickside.work:types
     component: kickside.component:component
     execution_identity: kickside.execution:execution_identity
     process: kickside.work.domain:process
     apply_ops: kickside.work.command:apply_ops
     store: kickside.work.persist:store
+    lifecycle: kickside.work.persist:lifecycle
+    jobs: kickside.core.jobs:jobs
     deadline: kickside.work.jobs:deadline
     clock: kickside.work.domain:clock
     types: kickside.work.jobs:types

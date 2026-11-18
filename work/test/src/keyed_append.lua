@@ -2,8 +2,8 @@
 local append = require("append")
 local sql = require("sql")
 local M = {}
-function M.writes(client, board_id, writes)
-    local injected = require("delivery_probe").before_append(board_id,writes)
+function M.writes(client, board_id, writes): (integer?, error?)
+    local injected = require("delivery_probe").before_append(client, board_id, writes)
     if injected then return nil,injected end
     local db = assert(sql.get("app:db"))
     assert(db:execute("CREATE TABLE IF NOT EXISTS work_keyed_churn (board_id TEXT PRIMARY KEY,item_id TEXT NOT NULL)"))

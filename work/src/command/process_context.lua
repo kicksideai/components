@@ -14,28 +14,28 @@ function C.done(ctx: types.PrepareContext, item: domain.StateItem, group: string
     return M.done(ctx, item.root or item, group, events)
 end
 
-function C.settle(ctx: types.PrepareContext, item: domain.StateItem, events: { domain.Event }, p: domain.Process): types.OpPlan
+function C.settle(ctx: types.PrepareContext, item: domain.StateItem, events: { domain.Event }, p: domain.Process, model: domain.Model): types.OpPlan
     process.sync(item)
     item = item.root or item
-    local settled, finding, err = flow.settle(ctx.board, item, ctx.actor, ctx.now, when.check(ctx), p, ctx.auto)
+    local settled, finding, err = flow.settle(ctx.board, item, ctx.actor, ctx.now, when.check(ctx, model), p, model, ctx.auto)
     if err then return M.failed(err) end
     if finding then return M.refused(M.item_group(item.item_id), finding) end
     for _, e in ipairs(settled or {}) do events[#events + 1] = e end
     return C.done(ctx, item, M.item_group(item.item_id), events)
 end
 
-function C.take(ctx: types.PrepareContext, item: domain.StateItem, p: domain.Process, id: string, events: { domain.Event }): types.OpPlan?
+function C.take(ctx: types.PrepareContext, item: domain.StateItem, p: domain.Process, id: string, events: { domain.Event }, model: domain.Model): types.OpPlan?
     local transition: domain.Transition? = nil
     for _, t in ipairs(process.leaving(p, item.state, false)) do if t.id == id then transition = t end end
     if not transition then return M.invalid("process_transition_missing", "state has no transition " .. id) end
-    local allowed, err = when.check(ctx)(item, transition.when)
+    local allowed, err = when.check(ctx, model)(item, transition.when)
     if err then return M.failed(err) end
     if not allowed then return M.result("denied", M.item_group(item.item_id), "when_failed", "transition condition fails") end
     local admitted, findings, gerr = seams.guard(ctx.board, item, transition, transition.guards)
     if gerr then return M.failed(gerr) end
     if not admitted then return { status = "denied", events = {}, group = M.item_group(item.item_id), findings = findings } end
     process.sync(item)
-    local event, finding, terr = flow.take(ctx.board, item.root or item, transition, {}, ctx.actor, ctx.now, false, p, item.region, when.check(ctx), events)
+    local event, finding, terr = flow.take(ctx.board, item.root or item, transition, {}, ctx.actor, ctx.now, false, p, model, item.region, when.check(ctx, model), events)
     if terr then return M.failed(terr) end
     if finding then return M.refused(M.item_group(item.item_id), finding) end
     events[#events + 1] = event :: domain.Event
@@ -52,16 +52,16 @@ function C.record(ctx: types.PrepareContext, item: domain.StateItem, model: doma
     return plan
 end
 
-function C.route(ctx: types.PrepareContext, item: domain.StateItem, p: domain.Process, id: string, events: { domain.Event }): types.OpPlan
-    local refused = C.take(ctx, item, p, id, events)
+function C.route(ctx: types.PrepareContext, item: domain.StateItem, p: domain.Process, id: string, events: { domain.Event }, model: domain.Model): types.OpPlan
+    local refused = C.take(ctx, item, p, id, events, model)
     if refused then return refused end
-    return C.settle(ctx, item, events, p)
+    return C.settle(ctx, item, events, p, model)
 end
 
-function C.locate(ctx: types.PrepareContext, op: types.Op): (types.ProcessTarget?, types.OpPlan?)
+function C.locate(ctx: types.PrepareContext, op: types.Op, retained: boolean?): (types.ProcessTarget?, types.OpPlan?)
     local found, perr = M.locate(ctx, op.item)
     if not found then return nil, perr end
-    if found.life ~= "live" then return nil, M.invalid("item_trashed", "process commands require a live item") end
+    if found.life ~= "live" and not retained then return nil, M.invalid("item_trashed", "process commands require a live item") end
     local conflict = M.stale(op, found)
     if conflict then return nil, conflict end
     local model, err = store.process_model(ctx.db, ctx.board, found)
@@ -80,7 +80,7 @@ end
 function C.advance(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     local target, err = C.locate(ctx, op)
     if not target then return err :: types.OpPlan end
-    return C.settle(ctx, target.item, {}, target.definition)
+    return C.settle(ctx, target.item, {}, target.definition, target.model)
 end
 
 return C

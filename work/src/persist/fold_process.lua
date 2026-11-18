@@ -9,26 +9,28 @@ local fold_batch = require("fold_batch")
 local types = require("types")
 local M = {}
 
-function M.schedule(tx: sql.Transaction, dialect: string, board: types.Board, item: types.Item, timer: string, deadline: string, attempt: integer?, trace_context: types.TraceContext?): error?
-    local _, err = jobs.enqueue_tx(tx, dialect, { namespace = "kickside.work", scope = board.board_id,
-        key = "t:" .. item.item_id .. ":" .. item.state .. ":" .. (item.work.visit or item.visit) .. ":" .. timer,
+local function schedule(tx: sql.Transaction, dialect: string, board: types.Board, item: types.Item, timer: string, deadline: string, attempt: integer?, trace_context: types.TraceContext?): error?
+    local visit = item.work.visit or item.visit
+    local key = "t:" .. item.item_id .. ":" .. item.state .. ":" .. visit .. ":" .. timer
+    local _, err = jobs.enqueue_tx(tx, dialect, { namespace = "kickside.work", scope = board.board_id, key = key,
         owner_locator = { kind = "component", id = board.board_id }, job_type = consts.PROCESS_JOB,
-        immutable_payload = { board_id = board.board_id, item = item.item_id, state = item.state, visit = item.work.visit or item.visit, timer = timer, attempt = attempt },
+        immutable_payload = { board_id = board.board_id, item = item.item_id, state = item.state,
+            visit = visit, timer = timer, attempt = attempt },
         scheduled_at = deadline, trace_context = trace_context })
     return err
 end
 
-local function arm_state(tx: sql.Transaction, dialect: string, board: types.Board, item: types.Item, p: types.Process, trace_context: types.TraceContext?): error?
+local function arm_state(tx: sql.Transaction, dialect: string, board: types.Board, item: types.Item, p: types.Process, model: types.Model, trace_context: types.TraceContext?): error?
     local state = process.state_of(p, item.state)
     if not state then return fold_batch.corrupt("entered state is absent from the recorded process") end
     local work = item.work :: types.ProcessData
     for _, timer in ipairs(state.timers or {}) do
-        local deadline, derr = durations.deadline(timer, item, board, work.entered_at :: string)
+        local deadline, derr = durations.deadline(timer, item, model, work.entered_at :: string)
         if derr then return derr end
         if deadline then
             work.timer_due = work.timer_due or {}
             work.timer_due[timer.id] = deadline
-            local serr = M.schedule(tx, dialect, board, item, timer.id, deadline, nil, trace_context)
+            local serr = schedule(tx, dialect, board, item, timer.id, deadline, nil, trace_context)
             if serr then return serr end
         end
     end
@@ -38,20 +40,40 @@ local function arm_state(tx: sql.Transaction, dialect: string, board: types.Boar
         if derr or not deadline then return derr end
         work.timer_due = work.timer_due or {}
         work.timer_due[consts.WAIT_TIMER] = deadline
-        return M.schedule(tx, dialect, board, item, consts.WAIT_TIMER, deadline, nil, trace_context)
+        return schedule(tx, dialect, board, item, consts.WAIT_TIMER, deadline, nil, trace_context)
     end
     return nil
 end
 
 function M.arm(tx: sql.Transaction, dialect: string, board: types.Board, item: types.Item, region: string?, trace_context: types.TraceContext?): error?
-    local p, err = store.process(tx, board, item)
-    if err or not p then return err end
-    if region then return arm_state(tx, dialect, board, process.region(item, region, p), p, trace_context) end
-    local aerr = arm_state(tx, dialect, board, item, p, trace_context)
+    local p, err, model = store.process(tx, board, item)
+    if err or not p or not model then return err end
+    if region then return arm_state(tx, dialect, board, process.region(item, region, p), p, model, trace_context) end
+    local aerr = arm_state(tx, dialect, board, item, p, model, trace_context)
     if aerr then return aerr end
     for id in pairs(item.work.region_data or {}) do
-        local rerr = arm_state(tx, dialect, board, process.region(item, id, p), p, trace_context)
+        local rerr = arm_state(tx, dialect, board, process.region(item, id, p), p, model, trace_context)
         if rerr then return rerr end
+    end
+    return nil
+end
+
+local function resume_state(tx: sql.Transaction, dialect: string, board: types.Board, item: types.Item, trace_context: types.TraceContext?): error?
+    for timer, deadline in pairs(item.work.timer_due or {}) do
+        local attempt = timer:match("^%$stage:(%d+)$") or timer:match("^%$retry:(%d+)$")
+        local err = schedule(tx, dialect, board, item, timer, deadline, attempt and math.tointeger(tonumber(attempt)), trace_context)
+        if err then return err end
+    end
+    return nil
+end
+
+function M.resume(tx: sql.Transaction, dialect: string, board: types.Board, item: types.Item, trace_context: types.TraceContext?): error?
+    if not item.work then return nil end
+    local err = resume_state(tx, dialect, board, item, trace_context)
+    if err then return err end
+    for id in pairs(item.work.region_data or {}) do
+        local err = resume_state(tx, dialect, board, process.region(item, id), trace_context)
+        if err then return err end
     end
     return nil
 end
@@ -80,7 +102,7 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
         work.timer_due = work.timer_due or {}
         local key = consts.STAGE_TIMER_PREFIX .. body.attempt
         work.timer_due[key] = deadline
-        local serr = M.schedule(tx, dialect, board, item, key, deadline, body.attempt, batch.trace_context)
+        local serr = schedule(tx, dialect, board, item, key, deadline, body.attempt, batch.trace_context)
         if serr then return serr end
         err = fold_batch.exec(tx, [[INSERT INTO kickside_work_stage_run (board_id,item_id,visit,attempt,state,started)
             VALUES ($1,$2,$3,$4,$5,$6)]], { board.board_id, item.item_id, body.visit, body.attempt, body.state, body.at })
@@ -104,7 +126,7 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
             work.timer_due = work.timer_due or {}
             local key = consts.RETRY_TIMER_PREFIX .. (attempt + 1)
             work.timer_due[key] = deadline
-            err = M.schedule(tx, dialect, board, item, key, deadline, attempt + 1, batch.trace_context)
+            if item.life == "live" then err = schedule(tx, dialect, board, item, key, deadline, attempt + 1, batch.trace_context) end
         end
     elseif event.type == consts.EVENTS.APPROVAL_RECORDED then
         work.approvals = work.approvals or {}

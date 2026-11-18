@@ -235,6 +235,7 @@ entries:
     store: kickside.work.persist:store
     process: kickside.work.domain:process
     conditions: kickside.work.persist:predicate_rows
+    predicates: kickside.work.domain:predicates
     domain: kickside.work:types
     types: kickside.work.read:types
 - name: interval_views

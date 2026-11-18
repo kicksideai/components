@@ -22,7 +22,7 @@ local function setup(opts)
     if not opts.real then assert(binding(h,{op="fault",fault="success"})) end
     local d={key_prefix=h.prefix,fields={},item_types={{id="task",process="p",fields={}}},processes={{id="p",initial="ready",migration="pin",states={
         {id="ready",category="unstarted"},
-        {id="build",category="started",kind="automated",run={stage="Build",flow_ref=ref,on_pass="passed",on_fail="failed",on_cancel="canceled",retry=opts.retry and {max=2,backoff="PT0.1S"} or nil}},
+        {id="build",category="started",kind="automated",run={stage="Build",flow_ref=ref,on_pass="passed",on_fail="failed",on_cancel="canceled",retry=opts.retry and {max=2,backoff=opts.backoff or "PT0.1S"} or nil}},
         {id="done",category="completed"},{id="failed",category="canceled"},{id="canceled",category="canceled"}},transitions={
         {id="start",from={"ready"},to="build"},{id="passed",from={"build"},to="done"},{id="failed",from={"build"},to="failed"},
         {id="canceled",from={"build"},to="canceled"},{id="again",from={"done","failed","canceled"},to="build"}}}}}
@@ -42,8 +42,16 @@ local function setup(opts)
     assert(h.call("apply_schema",{declaration=d}))
     if opts.manual then assert(binding(h,{op="pause_launcher"})) end
     assert(actor(h,{op="probe",mode=opts.real and "real" or "success"}))
+    if opts.unstarted then return h,nil,ref,d end
     local item=steps.create(h,"task",opts.ineligible_failure and { points = 0 } or nil)
-    steps.one(h,{op="transition",item=item,transition="start"})
+    if opts.projection_lag then
+        assert(actor(h, { op = "probe", mode = "pause_before_stage_entry" }))
+        local result, err = steps.apply(h, { { op = "transition", item = item, transition = "start" } })
+        assert(not result and err, "projection pause did not block command catch-up")
+    else
+        local result = steps.one(h,{op="transition",item=item,transition="start"})
+        test.eq(result.status, "applied")
+    end
     local entry
     for _,e in ipairs(steps.events(h)) do if e.type=="kickside.work.events:stage.entered" then entry=e.body end end
     assert(entry)
@@ -85,6 +93,24 @@ local function define()
             test.eq(run.outcome, "failed")
             test.eq(assert(h.call("get", { item = { id = entry.item } })).item.state, "build")
         end)
+        test.it("keeps a committed stage delivery pending while Work projection lags", function()
+            local h, entry = setup({ projection_lag = true })
+            local projected = rows.scalar("SELECT COUNT(*) AS n FROM kickside_work_stage_run WHERE board_id = $1 AND item_id = $2",
+                { h.id, entry.item })
+            local first, err = launch(h, entry)
+            assert(actor(h, { op = "resume_work_projection" }))
+            test.eq(projected, 0, "the committed stage must be absent from the paused projection")
+            steps.wait_for("stage entry projection", function()
+                return rows.scalar("SELECT COUNT(*) AS n FROM kickside_work_stage_run WHERE board_id = $1 AND item_id = $2",
+                    { h.id, entry.item }) == 1
+            end)
+            local recovered = assert(launch(h, entry))
+            test.is_true(recovered.success)
+            test.eq(assert(actor(h, { op = "observed" })).calls, 1)
+            assert(first, steps.detail(err))
+            test.is_false(first.success, "acknowledging a pending stage as " .. tostring(first.result) .. " discards its delivery")
+            test.is_true(first.error.retriable)
+        end)
         test.it("keeps capacity and uncertain admission retryable while board reports can commit",function()
             for _,mode in ipairs({"capacity","uncertain"}) do
                 local h,e=setup()
@@ -105,6 +131,23 @@ local function define()
                 test.is_false(out.success);test.is_true(out.error.retriable)
                 test.eq(reports(h,e.item),0)
             end
+        end)
+        test.it("keeps an existing Flow reservation open after a lost acknowledgement and a refusal", function()
+            local h, entry, ref = setup({ real = true, manual = true })
+            assert(actor(h, { op = "probe", mode = "lose_ack" }))
+            local first = assert(launch(h, entry))
+            test.is_false(first.success)
+            test.is_true(first.error.retriable)
+            test.eq(rows.scalar("SELECT COUNT(*) AS n FROM workflow_runs WHERE workflow_id = $1", { ref.id }), 1)
+            assert(actor(h, { op = "probe", mode = "reject_reserved" }))
+            local second = assert(launch(h, entry, 2))
+            test.is_false(second.success)
+            test.is_true(second.error.retriable)
+            test.eq(reports(h, entry.item), 0)
+            assert(actor(h, { op = "probe", mode = "real" }))
+            steps.wait_for("completion from the reserved Flow", function() return reports(h, entry.item) == 1 end)
+            test.eq(rows.scalar("SELECT COUNT(*) AS n FROM workflow_runs WHERE workflow_id = $1", { ref.id }), 1)
+            test.eq(assert(steps.get(h, entry.item)).item.state, "done")
         end)
         test.it("closes a definite pre-admission rejection through the finisher",function()
             local h,e=setup()
@@ -214,17 +257,62 @@ local function define()
             assert(actor(h,{op="complete",envelope=envelope(e,ref)}))
             test.eq(#steps.events(h),n)
         end)
-        test.it("ignores stale visits attempts missing and trashed items",function()
-            for _,mode in ipairs({"visit","attempt","missing","trashed"}) do
+        test.it("ignores stale visits, stale attempts and missing items",function()
+            for _,mode in ipairs({"visit","attempt","missing"}) do
                 local h,e,ref=setup()
                 local env=envelope(e,ref)
                 if mode=="visit" then env.token.visit=e.visit+100
                 elseif mode=="attempt" then env.token.attempt=e.attempt+1
-                elseif mode=="missing" then env.token.item=uuid.v4()
-                else steps.one(h,{op="delete",item=e.item}) end
+                else env.token.item=uuid.v4() end
                 local n=#steps.events(h)
                 assert(actor(h,{op="complete",envelope=env}))
                 test.eq(#steps.events(h),n)
+            end
+        end)
+        test.it("preserves a stage delivery in trash and launches the retained attempt on restore", function()
+            local h, entry = setup()
+            test.eq(steps.one(h, { op = "delete", item = entry.item }).status, "applied")
+            local deferred = assert(launch(h, entry))
+            test.eq(assert(actor(h, { op = "observed" })).calls, 0)
+            test.eq(steps.one(h, { op = "restore", item = entry.item }).status, "applied")
+            test.is_false(deferred.success, "the launcher acknowledged its only delivery while the visit was in trash")
+            test.is_true(deferred.error.retriable)
+            test.is_true(assert(launch(h, entry)).success)
+            test.eq(assert(actor(h, { op = "observed" })).calls, 1)
+            test.eq(rows.scalar("SELECT COUNT(*) AS n FROM kickside_work_stage_run WHERE board_id = $1 AND item_id = $2",
+                { h.id, entry.item }), 1)
+        end)
+        test.it("redelivers a trashed attempt through the owned launcher after restore", function()
+            local h, entry, ref = setup({ real = true, manual = true })
+            test.eq(steps.one(h, { op = "delete", item = entry.item }).status, "applied")
+            local launcher = assert(binding(h, { op = "launcher_id" }))
+            assert(binding(h, { op = "resume_launcher" }))
+            steps.wait_for("durable stage delivery while the item is trashed", function()
+                return rows.scalar("SELECT COUNT(*) AS n FROM kickside_trigger_item_ledger WHERE owner_id = $1 AND state = 'retrying'",
+                    { launcher }) == 1
+            end)
+            test.eq(rows.scalar("SELECT COUNT(*) AS n FROM workflow_runs WHERE workflow_id = $1", { ref.id }), 0)
+            test.eq(steps.one(h, { op = "restore", item = entry.item }).status, "applied")
+            steps.wait_for("the retained Flow to complete after restore", function() return reports(h, entry.item) == 1 end)
+            test.eq(rows.scalar("SELECT COUNT(*) AS n FROM workflow_runs WHERE workflow_id = $1", { ref.id }), 1)
+            test.eq(assert(steps.get(h, entry.item)).item.state, "done")
+        end)
+        test.it("records a terminal callback in trash and preserves it on restore", function()
+            for _, regional in ipairs({ false, true }) do
+                local h, entry, ref = setup({ regional = regional })
+                test.is_true(assert(launch(h, entry)).success)
+                test.eq(steps.one(h, { op = "delete", item = entry.item }).status, "applied")
+                local completion = envelope(entry, ref, "completed")
+                test.is_true(assert(actor(h, { op = "complete", envelope = completion })).acknowledged)
+                test.eq(reports(h, entry.item), 1)
+                local head = #steps.events(h)
+                test.is_true(assert(actor(h, { op = "complete", envelope = completion })).acknowledged)
+                test.eq(#steps.events(h), head)
+                test.eq(steps.one(h, { op = "restore", item = entry.item }).status, "applied")
+                local stage = assert(h.call("list_stage_runs", { item = { id = entry.item } })).stage_runs[1]
+                test.eq(stage.outcome, "passed")
+                test.is_true(assert(launch(h, entry)).success)
+                test.eq(assert(actor(h, { op = "observed" })).calls, 1)
             end
         end)
         test.it("fences regional visits and completes the active region",function()
@@ -249,6 +337,25 @@ local function define()
             env.token.attempt=2
             assert(actor(h,{op="complete",envelope=env}))
             test.eq(assert(h.call("get",{item={id=e.item}})).item.state,"failed")
+        end)
+        test.it("anchors callback retry to the first attempt's recorded finish", function()
+            local h, entry, ref = setup({ retry = true, backoff = "PT0.2S" })
+            assert(actor(h, { op = "complete", envelope = envelope(entry, ref) }))
+            local function runs()
+                return assert(h.call("list_stage_runs", { item = { id = entry.item } })).stage_runs
+            end
+            steps.wait_for("retry after callback", function() return #runs() == 2 end)
+            local attempts = runs()
+            local finished = assert(time.parse(time.RFC3339, attempts[2].finished_at))
+            local expected = finished:utc():add(200 * time.MILLISECOND):format("2006-01-02T15:04:05.000000000Z")
+            test.is_true(attempts[1].started_at >= expected)
+            local scheduled
+            for _, event in ipairs(steps.events(h)) do
+                if event.type == "kickside.work.events:timer.fired" and event.body.timer == "$retry:2" then
+                    scheduled = event.body.scheduled_at
+                end
+            end
+            test.eq(scheduled, expected)
         end)
         test.it("rejects foreign board tokens unknown fields and invalid locators",function()
             local h,e,ref=setup()
@@ -282,6 +389,26 @@ local function define()
             local out,err=other("direct",{target="app:stage_delivery_actor",input={op="complete",board_id=h.id,envelope=envelope(e,ref)}})
             test.is_nil(out);test.not_nil(err);test.eq(err:details().code,"stage_launch_principal_denied")
             test.eq(reports(h,e.item),0)
+        end)
+        test.it("launches the pinned Flow version on retry and the rebound version for a new item", function()
+            local h, _, v1, decl = setup({ real = true, manual = true, unstarted = true, retry = true, crash = true })
+            local old = steps.create(h, "task")
+            local v2 = assert(binding(h, { op = "publish_success_version", id = v1.id }))
+            test.eq(v2.version, 2)
+            decl.processes[1].states[2].run.flow_ref = v2
+            assert(h.call("apply_schema", { declaration = decl }))
+            local fresh = steps.create(h, "task")
+            assert(binding(h, { op = "resume_launcher" }))
+            for _, item in ipairs({ old, fresh }) do
+                test.eq(steps.one(h, { op = "transition", item = item, transition = "start" }).status, "applied")
+            end
+            steps.wait_for("launcher completion of both generations", function()
+                return assert(steps.get(h, old)).item.state == "failed" and assert(steps.get(h, fresh)).item.state == "done"
+            end)
+            for version, count in ipairs({ 2, 1 }) do
+                test.eq(rows.scalar("SELECT COUNT(*) AS n FROM workflow_runs WHERE workflow_id = $1 AND version = $2",
+                    { v1.id, version }), count)
+            end
         end)
         test.it("admits one real run across delivery replay and publishes completion without a report",function()
             local h,e,ref=setup({real=true,manual=true})

@@ -126,11 +126,11 @@ local function plan_create(ctx: types.PrepareContext, op: types.Op): types.OpPla
         created_seq = 0, updated_seq = 0, created_at = ctx.now, updated_at = ctx.now }
     flow.initialize(virtual, entered :: domain.State, ctx.actor, ctx.now, p)
     document.apply_patch(virtual.document, steps :: { domain.PatchStep })
-    local entry_err = entered and flow.entry(board, entered, virtual.document, p)
+    local entry_err = entered and flow.entry(board.model, entered, virtual.document, p)
     if entry_err then return M.refused(M.FREE, entry_err) end
     local field, verr = fields.document(board.compiled, virtual.document)
     if verr then return M.invalid("invalid_value", verr:message(), field) end
-    local settled, ferr, werr = flow.settle(board, virtual, ctx.actor, ctx.now, when.check(ctx), nil, ctx.auto)
+    local settled, ferr, werr = flow.settle(board, virtual, ctx.actor, ctx.now, when.check(ctx, board.model), p, board.model, ctx.auto)
     if werr then return M.failed(werr) end
     if ferr then return M.refused(M.FREE, ferr) end
     for _, e in ipairs(settled :: { domain.Event }) do events[#events + 1] = e end
@@ -159,9 +159,9 @@ local function plan_set(ctx: types.PrepareContext, op: types.Op): types.OpPlan
         work.version = work.version + 1
         events[#events + 1] = M.event(EV.ITEM_CHANGED, group, { item = item.item_id, patch = steps })
     end
-    local p, process_err = store.process(ctx.db, ctx.board, item)
-    if process_err then return M.failed(process_err) end
-    local settled, ferr, werr = flow.settle(ctx.board, work, ctx.actor, ctx.now, when.check(ctx), p, ctx.auto)
+    local p, process_err, model = store.process(ctx.db, ctx.board, item)
+    if process_err or not p or not model then return M.failed(process_err :: error) end
+    local settled, ferr, werr = flow.settle(ctx.board, work, ctx.actor, ctx.now, when.check(ctx, model), p, model, ctx.auto)
     if werr then return M.failed(werr) end
     if ferr then return M.refused(group, ferr) end
     for _, event in ipairs(settled or {}) do events[#events + 1] = event end
@@ -179,9 +179,8 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
     if item.life ~= "live" then return M.result("invalid", group, "item_trashed", "item " .. item.item_id .. " is in the trash", "item") end
     local item_type = ctx.board.model.item_types[item.type]
     if not item_type then return M.result("invalid", group, "unknown_type", "item type " .. item.type .. " is no longer declared", "item") end
-    local p, process_err = store.process(ctx.db, ctx.board, item)
-    if process_err then return M.failed(process_err) end
-    local p = p :: domain.Process
+    local p, process_err, model = store.process(ctx.db, ctx.board, item)
+    if process_err or not p or not model then return M.failed(process_err :: error) end
     local t: domain.Transition? = nil
     for _, candidate in ipairs(p.transitions) do
         if candidate.id == op.transition then t = candidate end
@@ -209,7 +208,7 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
     local allowed = t.any
     for _, s in ipairs(t.from) do if s == source then allowed = true end end
     if not allowed then return M.result("invalid", group, "transition_not_allowed", "transition " .. t.id .. " does not leave state " .. source, "transition") end
-    local check = when.check(ctx)
+    local check = when.check(ctx, model)
     local active = op.region and process.region(item, op.region, p) or item
     local permitted, werr = check(active, t.when)
     if werr then return M.failed(werr) end
@@ -222,10 +221,10 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
     if serr or not steps then return serr or M.invalid("invalid_value", "invalid values") end
     document.apply_patch(work.document, steps)
     local events: { domain.Event } = {}
-    local taken, ferr, terr = flow.take(ctx.board, work, t, steps, ctx.actor, ctx.now, false, p, op.region, check, events)
+    local taken, ferr, terr = flow.take(ctx.board, work, t, steps, ctx.actor, ctx.now, false, p, model, op.region, check, events)
     if terr then return M.failed(terr) end
     if ferr then return M.refused(group, ferr) end
-    local settled, serr2, aerr = flow.settle(ctx.board, work, ctx.actor, ctx.now, check, p, ctx.auto)
+    local settled, serr2, aerr = flow.settle(ctx.board, work, ctx.actor, ctx.now, check, p, model, ctx.auto)
     if aerr then return M.failed(aerr) end
     if serr2 then return M.refused(group, serr2) end
     if taken and op.force then taken.body.force = true end

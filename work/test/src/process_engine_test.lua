@@ -27,6 +27,71 @@ local function event_count(h: fixture.Handle, event: string): integer
     return count
 end
 
+local function deadline_definition()
+    return {
+        key_prefix = fixture.fresh_prefix(),
+        fields = { { code = "points", form = "int", index = "number" }, { code = "due", form = "time" } },
+        item_types = { { id = "task", process = "flow", fields = { "points", "due" } } },
+        processes = { {
+            id = "flow", initial = "ready", migration = "pin",
+            states = {
+                { id = "ready", category = "unstarted" },
+                { id = "build", category = "started", kind = "automated", run = { stage = "build", on_pass = "pass", on_fail = "fail" } },
+                { id = "done", category = "completed" },
+                { id = "stopped", category = "canceled" },
+            },
+            transitions = {
+                { id = "start", from = { "ready" }, to = "build" },
+                { id = "pass", from = { "build" }, to = "done" },
+                { id = "fail", from = { "build" }, to = "stopped" },
+                { id = "again", from = { "done" }, to = "build" },
+            },
+        } },
+    }
+end
+
+local function start(h: fixture.Handle): string
+    local item = steps.create(h, "task")
+    test.eq(steps.one(h, { op = "transition", item = item, transition = "start" }).status, "applied")
+    return item
+end
+
+local function runs(h: fixture.Handle, item: string)
+    local out, err = h.call("list_stage_runs", { item = { id = item } })
+    assert(out, steps.detail(err))
+    return out.stage_runs
+end
+
+local function deadline_state(h: fixture.Handle, item: string)
+    return assert(steps.get(h, item)).item.state
+end
+
+local function process_jobs(h: fixture.Handle, predicate: string): integer
+    return rows.scalar("SELECT COUNT(*) AS n FROM kickside_job WHERE owner_id = $1 AND job_type = $2 AND " .. predicate,
+        { h.id, "kickside.work.jobs:process" })
+end
+
+local function waiting_timer(decl, field: string)
+    decl.processes[1].states[2] = { id = "build", category = "started", timers = {
+        { id = "deadline", at_field = field, interrupting = true, ["then"] = { transition = "pass" } },
+    } }
+end
+
+local function pinned_field_definition(prefix: string): Map
+    return {
+        key_prefix = prefix,
+        fields = { { code = "note", form = "text", index = "key" }, { code = "other", form = "text", index = "key" },
+            { code = "result", form = "text" } },
+        item_types = { { id = "task", process = "delivery", fields = { "note", "other", "result" } } },
+        processes = { { id = "delivery", migration = "pin", initial = "open",
+            states = { { id = "open", category = "started" }, { id = "done", category = "completed", require = { "note" } } },
+            transitions = { { id = "finish", from = { "open" }, to = "done", require = { "note" },
+                when = { ["and"] = { { field = "note", op = "eq", value = "original" } } },
+                set = { { field = "result", copy = "note" }, { field = "note", value = "finished" } } } },
+        } },
+    }
+end
+
 local function define()
     test.describe("gate execution", function()
         test.it("requires every gate condition and records eligible decisions once per visit", function()
@@ -297,6 +362,112 @@ local function define()
     end)
 
     test.describe("timer ownership", function()
+        test.it("normalizes date-only field deadlines to UTC midnight before writing Jobs", function()
+            local decl = deadline_definition()
+            waiting_timer(decl, "due")
+            local h = fixture.board({ declaration = decl })
+            local item = steps.create(h, "task", { due = "2035-01-01" })
+            local output, err = steps.apply(h, { { op = "transition", item = item, transition = "start" } })
+            test.eq(assert(output, steps.detail(err)).outcomes[1].status, "applied")
+            test.eq(deadline_state(h, item), "build")
+            test.eq(process_jobs(h, "status = 'pending'"), 1)
+            test.eq(rows.scalar([[SELECT COUNT(*) AS n FROM kickside_work_item
+                WHERE board_id = $1 AND item_id = $2 AND process_data LIKE $3]],
+                { h.id, item, '%"deadline":"2035-01-01T00:00:00.000000000Z"%' }), 1)
+        end)
+
+        test.it("refuses a deadline outside the timestamp range before append", function()
+            local decl = deadline_definition()
+            waiting_timer(decl, "due")
+            local h = fixture.board({ declaration = decl })
+            local item = steps.create(h, "task", { due = "0000-01-01" })
+            local result = steps.one(h, { op = "transition", item = item, transition = "start" })
+            test.eq(result.status, "invalid")
+            test.eq(result.findings[1].code, "timer_deadline_invalid")
+            test.eq(event_count(h, "item.transitioned"), 0)
+            test.eq(deadline_state(h, item), "ready")
+        end)
+
+        test.it("resolves pinned absolute and lookup timer fields after their codes are renamed", function()
+            local decl = deadline_definition()
+            waiting_timer(decl, "due")
+            local timers = decl.processes[1].states[2].timers
+            timers[2] = { id = "lookup", after = "PT1H", by = "points", table = { ["1"] = "PT1H" },
+                ["then"] = { emit = "sla.breached" } }
+            local h = fixture.board({ declaration = decl })
+            local item = steps.create(h, "task", { due = "2035-01-01T00:00:00Z", points = 1 })
+            for _, field in ipairs(assert(h.call("get_schema", {})).compiled.fields) do
+                if field.code == "points" then decl.fields[1].id = field.id end
+                if field.code == "due" then decl.fields[2].id = field.id end
+            end
+            decl.fields[1].code, decl.fields[2].code = "estimate", "deadline"
+            decl.item_types[1].fields = { "estimate", "deadline" }
+            timers[1].at_field, timers[2].by = "deadline", "estimate"
+            assert(h.call("apply_schema", { declaration = decl }))
+            test.eq(steps.one(h, { op = "transition", item = item, transition = "start" }).status, "applied")
+            test.eq(process_jobs(h, "status = 'pending'"), 2)
+        end)
+
+        test.it("fires a stage deadline that elapsed in trash at its original scheduled instant", function()
+            local decl = deadline_definition()
+            decl.processes[1].states[2].run.timeout = "PT8S"
+            local h = fixture.board({ declaration = decl })
+            local item = start(h)
+            local started = assert(time.parse(time.RFC3339, runs(h, item)[1].started_at))
+            local expected = started:utc():add(8 * time.SECOND):format("2006-01-02T15:04:05.000000000Z")
+            test.eq(steps.one(h, { op = "delete", item = item }).status, "applied")
+            steps.wait_for("the native deadline to settle while the item is trashed", function()
+                return process_jobs(h, "status IN ('done','dead','cancelled')") == 1
+            end)
+            test.eq(event_count(h, "timer.fired"), 0)
+            test.eq(steps.one(h, { op = "restore", item = item }).status, "applied")
+            steps.wait_for("the restored deadline to fire", function() return deadline_state(h, item) == "stopped" end)
+            local run = runs(h, item)[1]
+            test.eq(run.outcome, "failed")
+            test.eq(run.outputs.error, "stage_timeout")
+            test.eq(event_count(h, "timer.fired"), 1)
+            for _, event in ipairs(steps.events(h)) do
+                if event.type == "kickside.work.events:timer.fired" then test.eq(event.body.scheduled_at, expected) end
+            end
+        end)
+
+        test.it("reuses a single durable timer enrollment across repeated trash and restore", function()
+            local decl = deadline_definition()
+            decl.processes[1].states[2].run.timeout = "PT1H"
+            decl.processes[1].states[2].timers = { { id = "reminder", after = "PT2H", ["then"] = { emit = "sla.breached" } } }
+            local h = fixture.board({ declaration = decl })
+            local item = start(h)
+            test.eq(process_jobs(h, "status IN ('pending', 'running')"), 2)
+            for _ = 1, 3 do
+                test.eq(steps.one(h, { op = "delete", item = item }).status, "applied")
+                test.eq(steps.one(h, { op = "restore", item = item }).status, "applied")
+            end
+            test.eq(process_jobs(h, "status IN ('pending', 'running')"), 2)
+            test.eq(event_count(h, "timer.fired"), 0)
+        end)
+
+        test.it("anchors timeout retry to the first attempt's recorded finish", function()
+            local decl = deadline_definition()
+            local run = decl.processes[1].states[2].run
+            run.timeout = "PT0.05S"
+            run.retry = { max = 2, backoff = "PT0.2S" }
+            local h = fixture.board({ declaration = decl })
+            local item = start(h)
+            steps.wait_for("retry after stage timeout", function() return #runs(h, item) == 2 end)
+            local attempts = runs(h, item)
+            local finished = assert(time.parse(time.RFC3339, attempts[2].finished_at))
+            local expected = finished:utc():add(200 * time.MILLISECOND):format("2006-01-02T15:04:05.000000000Z")
+            test.eq(attempts[2].outputs.error, "stage_timeout")
+            test.is_true(attempts[1].started_at >= expected)
+            local scheduled
+            for _, event in ipairs(steps.events(h)) do
+                if event.type == "kickside.work.events:timer.fired" and event.body.timer == "$retry:2" then
+                    scheduled = event.body.scheduled_at
+                end
+            end
+            test.eq(scheduled, expected)
+        end)
+
         test.it("retains the entering command's causal trace through a timer job", function()
             local d = definition()
             d.processes[1].states[1].timers = { { id = "trace", after = "PT0.05S", ["then"] = { emit = "sla.breached" } } }
@@ -438,6 +609,53 @@ local function define()
     end)
 
     test.describe("pinned migration ownership", function()
+        test.it("executes pinned copies, predicates and writes by their recorded field IDs", function()
+            local decl = pinned_field_definition(fixture.fresh_prefix())
+            local h = fixture.board({ declaration = decl })
+            local old = steps.create(h, "task", { note = "original", other = "unrelated" })
+            local fields = assert(h.call("get_schema", {})).compiled.fields
+            for i, field in ipairs(fields) do decl.fields[i].id = field.id end
+            -- Keep the process declaration identical and give its old code to another field.
+            decl.fields[1].code, decl.fields[2].code = "memo", "note"
+            decl.item_types[1].fields = { "note", "memo", "result" }
+            test.eq(assert(h.call("apply_schema", { declaration = decl })).generation, 2)
+            local fresh = steps.create(h, "task", { note = "original", memo = "unrelated" })
+            test.eq(steps.one(h, { op = "transition", item = fresh, transition = "finish" }).status, "applied")
+            test.eq(view(h, fresh).process_generation, 2)
+            test.eq(view(h, fresh).values.note, "finished")
+
+            local available = assert(steps.get(h, old, { "transitions" })).transitions
+            test.eq(available[1].require[1], "memo")
+            test.eq(steps.one(h, { op = "transition", item = old, transition = "finish" }).status, "applied")
+            local item = view(h, old)
+            test.eq(item.state, "done")
+            test.eq(item.process_generation, 1)
+            test.eq(item.values.result, "original")
+            test.eq(item.values.memo, "finished")
+            test.eq(item.values.note, "unrelated")
+        end)
+
+        test.it("resolves a pinned custom predicate after its field is renamed to a built-in code", function()
+            local decl = definition()
+            local p = decl.processes[1]
+            p.migration = "pin"
+            p.transitions[1].when = { ["and"] = { { field = "points", op = "eq", value = 7 },
+                { field = "number", op = "eq", value = 1 } } }
+            local h = fixture.board({ declaration = decl })
+            local item = steps.create(h, "task", { points = 7 })
+            for _, field in ipairs(assert(h.call("get_schema", {})).compiled.fields) do
+                if field.code == "points" then decl.fields[2].id = field.id end
+            end
+            decl.fields[2].code = "number"
+            decl.item_types[1].fields[2] = "number"
+            p.transitions[1].when = { field = "state", op = "eq", value = "todo" }
+            assert(h.call("apply_schema", { declaration = decl }))
+            local available = assert(steps.get(h, item, { "transitions" })).transitions
+            test.eq(#available, 1)
+            test.eq(available[1].id, "start")
+            test.eq(steps.one(h, { op = "transition", item = item, transition = "start" }).status, "applied")
+        end)
+
         test.it("keeps existing pinned items on their generation when new items follow", function()
             local d = definition()
             d.processes[1].migration = "pin"

@@ -1,6 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local flow = require("flow")
-local process = require("process")
 local consts = require("consts")
 local report = require("report")
 local M = require("prepare_context")
@@ -23,23 +22,24 @@ local function declared(state: domain.State, id: string): domain.Timer?
     return nil
 end
 
-local function retry(ctx: types.PrepareContext, item: domain.StateItem, op: types.Op, p: domain.Process): types.OpPlan
+local function retry(ctx: types.PrepareContext, item: domain.StateItem, op: types.Op, target: types.ProcessTarget): types.OpPlan
     local work = item.work :: domain.ProcessData
     local group = M.item_group(item.item_id)
     if not work.waiting then return context.done(ctx, item, group, {}) end
     if op.attempt ~= (work.attempt :: integer) + 1 then return context.done(ctx, item, group, {}) end
     local events = recorded(item, op)
     work.waiting, work.attempt = nil, op.attempt
-    events[#events + 1] = flow.stage_entry(ctx.board, item, process.state_of(p, item.state) :: domain.State, op.attempt :: integer)
+    events[#events + 1] = flow.stage_entry(ctx.board, item, target.state, op.attempt :: integer)
     item.version = item.version + 1
-    return context.settle(ctx, item, events, p)
+    return context.settle(ctx, item, events, target.definition, target.model)
 end
 
 function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
-    local target, err = context.locate(ctx, op)
+    local target, err = context.locate(ctx, op, true)
     if not target then return err :: types.OpPlan end
     local item = target.item
     local group = M.item_group(item.item_id)
+    if item.life ~= "live" or item.life_at ~= op.timer_life_at then return context.done(ctx, item, group, {}) end
     local work = item.work :: domain.ProcessData
     if (work.visit or item.visit) ~= op.visit then return context.done(ctx, item, group, {}) end
     if item.state ~= op.state then return context.done(ctx, item, group, {}) end
@@ -56,10 +56,10 @@ function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     if id == consts.WAIT_TIMER then
         local events = recorded(item, op)
         work.wait_done = true
-        return context.settle(ctx, item, events, target.definition)
+        return context.settle(ctx, item, events, target.definition, target.model)
     end
     if id:sub(1, #consts.RETRY_TIMER_PREFIX) == consts.RETRY_TIMER_PREFIX then
-        return retry(ctx, item, op, target.definition)
+        return retry(ctx, item, op, target)
     end
     local timer = declared(target.state, id)
     if not timer then return M.invalid("timer_unknown", "timer is absent from the recorded process") end
@@ -67,9 +67,9 @@ function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     local events = recorded(item, op)
     events[1].body.emitted = effect.emit
     if effect.transition then
-        local refused = context.take(ctx, item, target.definition, effect.transition, events)
+        local refused = context.take(ctx, item, target.definition, effect.transition, events, target.model)
         if refused then return refused end
     end
-    return context.settle(ctx, item, events, target.definition)
+    return context.settle(ctx, item, events, target.definition, target.model)
 end
 return H

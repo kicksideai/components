@@ -9,6 +9,8 @@ local store = require("store")
 local principals = require("principals")
 local prepare = require("prepare")
 local report = require("report")
+local limits = require("limits")
+local receipts = require("receipts")
 local guard = require("guard")
 local outcomes = require("outcomes")
 local data_error = require("data_error")
@@ -28,6 +30,10 @@ function M.write(req: types.LaunchRequest): types.WorkflowResult
     if req.sink_op ~= "upsert" then return data_error.failure(guard.invalid("stage launcher supports upsert")) :: types.WorkflowResult end
     local aerr = guard.require_access(board_id, guard.write_access())
     if aerr then return data_error.failure(aerr) :: types.WorkflowResult end
+    local deadline, deadline_err = limits.deadline("command_deadline_ms")
+    if not deadline then return data_error.failure(deadline_err :: error) :: types.WorkflowResult end
+    local covered, cover_err = receipts.covered(board_id, deadline)
+    if not covered then return pending(tostring(cover_err)) end
     local entry = req.input or {}
     if not entry.flow_ref then return { success = true, result = "noop" } end
     local token, terr = completion.token({ board_id = entry.board_id, item = entry.item, visit = entry.visit, attempt = entry.attempt })
@@ -49,6 +55,7 @@ function M.write(req: types.LaunchRequest): types.WorkflowResult
         if refusal and refusal.status ~= "unchanged" then return data_error.failure(outcomes.error(refusal.status, refusal.findings, refusal.error) :: error) :: types.WorkflowResult end
         return { success = true, result = "noop" }
     end
+    if target.item.life == "trashed" then return pending("stage visit is in trash") end
     local key, kerr = hash.sha256(values.canonical({ board_id, token.item, token.visit, token.attempt }))
     if kerr then return pending(tostring(kerr)) end
     local result, err = workflow_sink.write({ config = { flow_ref = entry.flow_ref,

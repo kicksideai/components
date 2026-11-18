@@ -73,9 +73,9 @@ local function plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     if plan.status == "applied" and plan.item and (op.op == "parent" or op.op == "link" or op.op == "unlink" or op.op == "restore" or op.op == "rank") then
         local item = ctx.items[plan.item]
         if item and item.life == "live" then
-            local definition, perr = store.process(ctx.db, ctx.board, item)
-            if perr then return M.failed(perr) end
-            local settled, ferr, err = flow.settle(ctx.board, item, ctx.actor, ctx.now, when.check(ctx), definition, ctx.auto)
+            local definition, perr, model = store.process(ctx.db, ctx.board, item)
+            if perr or not definition or not model then return M.failed(perr :: error) end
+            local settled, ferr, err = flow.settle(ctx.board, item, ctx.actor, ctx.now, when.check(ctx, model), definition, model, ctx.auto)
             if err then return M.failed(err) end
             if ferr then return M.refused(plan.group, ferr) end
             if #(settled or {}) > 0 then
@@ -166,7 +166,7 @@ function M.plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan
         local root = routed.items[plan.item :: string] :: domain.Item
         local definition = route.model.processes[route.model.item_types[root.type].process]
         local item = route.region and process.region(root, route.region, definition) or root
-        local routed_plan = process_context.route(routed, item :: domain.StateItem, definition, route.id, {})
+        local routed_plan = process_context.route(routed, item :: domain.StateItem, definition, route.id, {}, route.model)
         routed_plan = wip(routed, work, admit_patches(routed, routed_plan))
         if routed_plan.status == "applied" then
             local events: { domain.Event } = {}

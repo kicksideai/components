@@ -16,7 +16,7 @@ type BatchResult = { candidates: integer, moved: integer, stranded: integer }
 type MigrationResult = { self_completed: boolean?, migrated: boolean?, completion: unknown }
 
 type ProcessRequest = { board_id: string, item: string, state: string?, visit: integer?, timer: string?, attempt: integer?, scheduled_at: string?, deadline: string?, trace_context: domain.TraceContext? }
-type ProcessResult = { rearm: string?, record: { status: string } }
+type ProcessResult = { rearm: string?, record: { status: string }?, settle: boolean?, self_completed: boolean?, completion: unknown }
 type ProcessInput = { payload: ProcessRequest, job: SlotJob }
 return { ProcessRequest = ProcessRequest, ProcessResult = ProcessResult, ProcessInput = ProcessInput, BoardBatchResult = BoardBatchResult, Deadline = Deadline, JobLease = JobLease, SlotJob = SlotJob, SlotInput = SlotInput, SlotResult = SlotResult, RecomputeRequest = RecomputeRequest,
     RecomputeResult = RecomputeResult, RebalanceRequest = RebalanceRequest, RebalanceResult = RebalanceResult,

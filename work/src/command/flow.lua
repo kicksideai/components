@@ -28,31 +28,31 @@ function M.copy(item: types.Item): types.Item
 end
 
 -- present reports whether a field holds a value after the transition; the board assigns counters.
-local function present(board: types.Board, doc: types.Document, key: string): boolean
-    local f = board.model.fields[key]
+local function present(model: types.Model, doc: types.Document, key: string): boolean
+    local f = model.fields[key]
     return f ~= nil and (f.type == "counter" or f.type == "rank" or document.value(doc, f.id) ~= nil)
 end
 
-local function effect_value(board: types.Board, doc: types.Document, e: types.Effect, actor: string, at: string): (types.Value?, error?)
-    local f = board.model.fields[e.field]
+local function effect_value(field: types.Field, model: types.Model, doc: types.Document, e: types.Effect, actor: string, at: string): (types.Value?, error?)
     if e.op == "now" then return at, nil end
     if e.op == "actor" then
         local principal, err = identity.principal_of_key(actor)
         if err then return nil, err :: error end
-        return fields.normalize(f, principal)
+        return fields.normalize(field, principal)
     end
-    if e.op == "copy" then return document.value(doc, (board.model.fields[e.from :: string] :: types.Field).id), nil end
+    if e.op == "copy" then return document.value(doc, (model.fields[e.from :: string] :: types.Field).id), nil end
     return e.value, nil
 end
 
 -- effect_steps applies the effects of t to doc and returns the patch steps they make. steps already hold
 -- the fields the caller writes.
-local function effect_steps(board: types.Board, doc: types.Document, t: types.Transition, steps: { types.PatchStep }, actor: string, at: string): ({ types.PatchStep }?, types.Finding?)
+local function effect_steps(board: types.Board, model: types.Model, doc: types.Document, t: types.Transition, steps: { types.PatchStep }, actor: string, at: string): ({ types.PatchStep }?, types.Finding?)
     local touched: { [integer]: boolean } = {}
     for _, s in ipairs(steps) do touched[s.f] = true end
     local out: { types.PatchStep } = {}
     for _, e in ipairs(t.set) do
-        local f = board.model.fields[e.field]
+        local recorded = model.fields[e.field]
+        local f = board.model.by_id[recorded.id]
         if not f then return nil, finding("unknown_field", "transition " .. t.id .. " sets field " .. e.field .. ", which the board no longer declares", e.field) end
         if touched[f.id] then
             return nil, finding("effect_field", "field " .. f.code .. " is set by transition " .. t.id, f.code)
@@ -61,7 +61,7 @@ local function effect_steps(board: types.Board, doc: types.Document, t: types.Tr
         if e.op == "clear" then
             step = document.remove_step(doc, f.id, "clear")
         else
-            local value, err = effect_value(board, doc, e, actor, at)
+            local value, err = effect_value(f, model, doc, e, actor, at)
             if err then return nil, finding("invalid_value", tostring(err), f.code) end
             if value == nil then
                 step = document.remove_step(doc, f.id, "unset")
@@ -77,12 +77,12 @@ local function effect_steps(board: types.Board, doc: types.Document, t: types.Tr
     return out, nil
 end
 
-function M.entry(board: types.Board, state: types.State, doc: types.Document, p: types.Process): types.Finding?
+function M.entry(model: types.Model, state: types.State, doc: types.Document, p: types.Process): types.Finding?
     local entering = { state }
     for _, region in ipairs(state.regions or {}) do entering[#entering + 1] = process.state_of(p, region.initial) :: types.State end
     for _, target in ipairs(entering) do
         for _, key in ipairs(target.require) do
-            if not present(board, doc, key) then return finding("required_field", "state " .. target.id .. " needs " .. key, key) end
+            if not present(model, doc, key) then return finding("required_field", "state " .. target.id .. " needs " .. key, key) end
         end
     end
     return nil
@@ -110,7 +110,7 @@ end
 
 -- take moves the working item through t: it applies the effects, checks that the fields t and the target
 -- state require are present, and returns the transition event. The item holds the new state only on success.
-function M.take(board: types.Board, item: types.Item, t: types.Transition, steps: { types.PatchStep }, actor: string, at: string, auto: boolean, p: types.Process, region: string?, check: types.WhenCheck, events: { types.Event }): (types.Event?, types.Finding?, error?)
+function M.take(board: types.Board, item: types.Item, t: types.Transition, steps: { types.PatchStep }, actor: string, at: string, auto: boolean, p: types.Process, model: types.Model, region: string?, check: types.WhenCheck, events: { types.Event }): (types.Event?, types.Finding?, error?)
     local source = region and item.work.regions[region] or item.state
     local target = process.state_of(p :: types.Process, t.to)
     while target and target.run and target.run.on_exhausted
@@ -123,17 +123,17 @@ function M.take(board: types.Board, item: types.Item, t: types.Transition, steps
     if not target then return nil, finding("unknown_state", "transition " .. t.id .. " goes to state " .. t.to .. ", which the process no longer declares") end
     local doc: types.Document = {}
     for k, v in pairs(item.document) do doc[k] = v end
-    local effects, ferr = effect_steps(board, doc, t, steps, actor, at)
+    local effects, ferr = effect_steps(board, model, doc, t, steps, actor, at)
     if ferr or not effects then return nil, ferr end
     local patch: { types.PatchStep } = {}
     for _, s in ipairs(steps) do patch[#patch + 1] = s end
     for _, s in ipairs(effects) do patch[#patch + 1] = s end
     for _, key in ipairs(t.require) do
-        if not present(board, doc, key) then
+        if not present(model, doc, key) then
             return nil, finding("required_field", "transition " .. t.id .. " needs " .. key, key)
         end
     end
-    local entry_err = M.entry(board, target, doc, p)
+    local entry_err = M.entry(model, target, doc, p)
     if entry_err then return nil, entry_err end
     if region then
         M.cancel_attempt(process.region(item, region, p), actor, "transition", events)
@@ -234,11 +234,11 @@ function M.stage_entry(board: types.Board, item: types.Item, state: types.State,
             board_id = ref and board.board_id or nil, flow_ref = ref and declaration.copy(ref) or nil } }
 end
 
-local function entry_event(board: types.Board, item: types.Item, state: types.State, p: types.Process): (types.Event?, error?, types.Transition?)
+local function entry_event(board: types.Board, item: types.Item, state: types.State, p: types.Process, model: types.Model): (types.Event?, error?, types.Transition?)
     local work = item.work
     if not work or not work.pending_entry then return nil, nil end
     for _, timer in ipairs(state.timers or {}) do
-        local _, err = durations.deadline(timer, item, board, work.entered_at :: string)
+        local _, err = durations.deadline(timer, item, model, work.entered_at :: string)
         if err then return nil, err end
     end
     if state.kind == "automated" and (work.stage_visit :: integer) > (state.run.max_visits or board.compiled.policy.stage_max_visits :: integer)
@@ -255,15 +255,14 @@ local function entry_event(board: types.Board, item: types.Item, state: types.St
 end
 
 -- settle shares one automatic-step budget across items and regions in the command.
-function M.settle(board: types.Board, item: types.Item, actor: string, at: string, check: types.WhenCheck, definition: types.Process?, budget: types.AutoBudget?): ({ types.Event }?, types.Finding?, error?)
-    local p = (definition or board.model.processes[board.model.item_types[item.type].process]) :: types.Process
+function M.settle(board: types.Board, item: types.Item, actor: string, at: string, check: types.WhenCheck, p: types.Process, model: types.Model, budget: types.AutoBudget?): ({ types.Event }?, types.Finding?, error?)
     local events: { types.Event } = {}
     local budget = budget or { steps = 0, chain = {} }
     local chain = budget.chain
     chain[#chain + 1] = item.state
     while true do
         local state = process.state_of(p, item.state) :: types.State
-        local entered, eerr, route = entry_event(board, item, state, p)
+        local entered, eerr, route = entry_event(board, item, state, p, model)
         if eerr then return nil, nil, eerr end
         if entered then events[#events + 1] = entered; item.version = item.version + 1 end
         local candidate: types.Transition? = route
@@ -272,7 +271,7 @@ function M.settle(board: types.Board, item: types.Item, actor: string, at: strin
         for _, declared in ipairs(state.regions or {}) do
             local regional = process.region(item, declared.id, p)
             local regional_state = process.state_of(p, regional.state) :: types.State
-            local entered, eerr, route = entry_event(board, regional :: types.Item, regional_state, p)
+            local entered, eerr, route = entry_event(board, regional :: types.Item, regional_state, p, model)
             if eerr then return nil, nil, eerr end
             if entered then events[#events + 1] = entered; item.version = item.version + 1 end
             if route and not candidate then candidate, region, exhausted = route, declared.id, true end
@@ -300,7 +299,7 @@ function M.settle(board: types.Board, item: types.Item, actor: string, at: strin
             local refused, err = admit(board, region and process.region(item, region, p) or item, candidate, check)
             if err or refused then return nil, refused, err end
         end
-        local event, ferr, terr = M.take(board, item, candidate, {}, actor, at, true, p, region, check, events)
+        local event, ferr, terr = M.take(board, item, candidate, {}, actor, at, true, p, model, region, check, events)
         if terr then return nil, nil, terr end
         if ferr or not event then return nil, ferr, nil end
         events[#events + 1] = event

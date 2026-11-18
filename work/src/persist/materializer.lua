@@ -146,9 +146,9 @@ function M.fold(tx: sql.Transaction, dialect: string, board_id: string, events: 
             elseif event.type == EV.ITEM_PURGED then
                 err = fold_items.apply_purged(tx, board, event, batch)
             elseif event.type == EV.ITEM_DELETED then
-                err = fold_items.apply_life(tx, board, event, batch, true)
+                err = fold_items.apply_life(tx, board, event, batch, true, dialect)
             elseif event.type == EV.ITEM_RESTORED then
-                err = fold_items.apply_life(tx, board, event, batch, false)
+                err = fold_items.apply_life(tx, board, event, batch, false, dialect)
             else
                 err = fold_items.apply_comment(tx, board, event, batch)
             end

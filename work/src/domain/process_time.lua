@@ -55,16 +55,23 @@ function M.after(at: string, duration: string): (string?, error?)
     return instant:utc():add(math.floor(seconds * 1000000000)):format(STAMP), nil
 end
 
-function M.deadline(timer: types.Timer, item: types.Item, board: types.Board, entered: string): (string?, error?)
+function M.deadline(timer: types.Timer, item: types.Item, model: types.Model, entered: string): (string?, error?)
     if timer.at_field then
-        local f = board.model.fields[timer.at_field]
+        local f = model.fields[timer.at_field]
         local value = document.value(item.document, f.id)
         if value == nil then return nil, nil end
-        return value :: string, nil
+        local at = value :: string
+        if at:match("^%d%d%d%d%-%d%d%-%d%d$") then at = at .. "T00:00:00Z" end
+        local instant, err = time.parse(time.RFC3339, at)
+        if not instant or err or at:sub(1, 4) == "0000" then
+            return nil, errors.new({ kind = errors.INVALID, message = "timer field must hold a calendar date or UTC instant in years 0001–9999",
+                details = { code = "timer_deadline_invalid", field = f.code } })
+        end
+        return instant:utc():format(STAMP), nil
     end
     local duration = timer.after
     if timer.by then
-        local f = board.model.fields[timer.by]
+        local f = model.fields[timer.by]
         local value = document.value(item.document, f.id)
         local key = type(value) == "string" and value or tostring(value)
         duration = timer.table[key]

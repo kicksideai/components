@@ -300,12 +300,13 @@ M.apply_link = apply_link
 
 -- Each lifecycle event changes one guarded item; prepare expands the bounded subtree.
 
-local function apply_life(tx: storage.Executor, board: types.Board, event: types.FoldEvent, batch: types.FoldBatch, deleting: boolean): error?
+local function apply_life(tx: sql.Transaction, board: types.Board, event: types.FoldEvent, batch: types.FoldBatch, deleting: boolean, dialect: string): error?
     local body = event.body
     local item, err = fold_batch.load(tx, board.board_id, batch, body.item)
     if err or not item then return err end
     item.life = deleting and "trashed" or "live"
-    item.life_at = deleting and body.at or nil
+    -- A timer command carries the lifecycle instant it observed before planning.
+    item.life_at = body.at
     fold_batch.touch(batch, item, event.seq)
     local at = body.at or ""
     if deleting then
@@ -324,6 +325,10 @@ local function apply_life(tx: storage.Executor, board: types.Board, event: types
         end
     end
     if err then return err end
+    if not deleting then
+        local timer_err = fold_process.resume(tx, dialect, board, item, batch.trace_context)
+        if timer_err then return timer_err end
+    end
     fold_batch.record(batch, board.board_id, event, "i:" .. item.item_id, deleting and "deleted" or "restored", nil, nil, nil)
     batch.rows = batch.rows + 1
     return nil
