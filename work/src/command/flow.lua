@@ -98,6 +98,16 @@ local function admit(board: types.Board, item: types.Item, transition: types.Tra
     return nil, nil
 end
 
+-- Every exit closes its admitted attempt before the visit is replaced.
+function M.cancel_attempt(active: types.StateItem, actor: string, reason: string, events: { types.Event })
+    local work = active.work
+    if work and work.attempt and not work.waiting then
+        events[#events + 1] = M.report(active, "canceled", { reason = reason, by = actor })
+        local root = (active.root or active) :: types.Item
+        root.version = root.version + 1
+    end
+end
+
 -- take moves the working item through t: it applies the effects, checks that the fields t and the target
 -- state require are present, and returns the transition event. The item holds the new state only on success.
 function M.take(board: types.Board, item: types.Item, t: types.Transition, steps: { types.PatchStep }, actor: string, at: string, auto: boolean, p: types.Process, region: string?, check: types.WhenCheck, events: { types.Event }): (types.Event?, types.Finding?, error?)
@@ -125,19 +135,14 @@ function M.take(board: types.Board, item: types.Item, t: types.Transition, steps
     end
     local entry_err = M.entry(board, target, doc, p)
     if entry_err then return nil, entry_err end
-    local function cancel(active: types.Item)
-        local state = process.state_of(p, active.state) :: types.State
-        if state.kind == "automated" and active.work.attempt and not active.work.waiting then
-            events[#events + 1] = M.report(active, "canceled", { reason = "transition", by = actor })
-            item.version = item.version + 1
-        end
-    end
     if region then
-        cancel(process.region(item, region, p))
+        M.cancel_attempt(process.region(item, region, p), actor, "transition", events)
     else
-        cancel(item)
+        M.cancel_attempt(item, actor, "transition", events)
         local state = process.state_of(p, item.state) :: types.State
-        for _, declared in ipairs(state.regions or {}) do cancel(process.region(item, declared.id, p)) end
+        for _, declared in ipairs(state.regions or {}) do
+            M.cancel_attempt(process.region(item, declared.id, p), actor, "transition", events)
+        end
     end
     item.document = doc
     item.visit = item.visit + 1

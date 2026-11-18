@@ -67,19 +67,30 @@ local function route(db: sql.DB, board: domain.Board, item: domain.Item, p: doma
     return state_map, nil
 end
 
-local function migrated_event(item: domain.Item, p: domain.Process, state_map: { [string]: string }, actor: string, at: string, trace_context: domain.TraceContext?): domain.Event
-    return { trace_context = trace_context, type = consts.EVENTS.ITEM_MIGRATED, subject = "i:" .. item.item_id, body = { item = item.item_id, from_generation = item.process_generation,
-        to_generation = p.generation, state_map = state_map, actor = actor, at = at, source = "migration" } }
+local function close_departed(item: domain.Item, target: domain.State, state_map: { [string]: string }, actor: string, events: { domain.Event })
+    local retained: { [string]: boolean } = {}
+    if item.state == target.id then
+        for _, region in ipairs(target.regions or {}) do retained[region.id] = true end
+    else flow.cancel_attempt(item, actor, "migration", events) end
+    local departed: { string } = {}
+    for region, held in pairs(item.work and item.work.regions or {}) do
+        if not retained[region] or (state_map[held] or held) ~= held then departed[#departed + 1] = region end
+    end
+    table.sort(departed)
+    for _, region in ipairs(departed) do flow.cancel_attempt(process.region(item, region), actor, "migration", events) end
 end
 
 local function migration_events(db: sql.DB, board: domain.Board, item: domain.Item, p: domain.Process, state_map: { [string]: string },
     actor: string, at: string, trace_context: domain.TraceContext?): ({ domain.Event }?, error?)
-    local events = { migrated_event(item, p, state_map, actor, at, trace_context) }
+    local events: { domain.Event } = {}
     local work = flow.copy(item)
-    work.process_generation, work.version = p.generation, work.version + 1
     local state = state_map[item.state] or item.state
+    local target = process.state_of(p, state) :: domain.State
+    close_departed(work, target, state_map, actor, events)
+    events[#events + 1] = { type = consts.EVENTS.ITEM_MIGRATED, subject = "i:" .. item.item_id, body = {
+        item = item.item_id, from_generation = item.process_generation, to_generation = p.generation, state_map = state_map } }
+    work.process_generation, work.version = p.generation, work.version + 1
     if state ~= item.state then
-        local target = process.state_of(p, state) :: domain.State
         work.state, work.category, work.visit = state, target.category, work.visit + 1
         flow.initialize(work, target, actor, at, p)
         local finding = flow.entry(board, target, work.document, p)
@@ -99,11 +110,8 @@ local function migration_events(db: sql.DB, board: domain.Board, item: domain.It
     local settled, finding, err = flow.settle(board, work, actor, at, when.check(ctx), p, ctx.auto)
     if err then return nil, err end
     if finding then return nil, errors.new({ kind = errors.INVALID, message = finding.message, details = { code = finding.code, field = finding.field } }) end
-    for _, event in ipairs(settled or {}) do
-        event.body.actor, event.body.at, event.body.source = actor, at, "migration"
-        event.trace_context = trace_context
-        events[#events + 1] = event
-    end
+    for _, event in ipairs(settled or {}) do events[#events + 1] = event end
+    for _, event in ipairs(events) do receipts.decorate(event, actor, at, "migration", nil, trace_context) end
     return events, nil
 end
 

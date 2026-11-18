@@ -125,18 +125,23 @@ local function groups_of(ops: { types.Op }, indices: { integer }): ({ string }, 
     return order, groups
 end
 
--- stored looks up the receipts earlier runs of this keyed command left, one per
--- write group, and refuses a key reused for a different request.
-local function stored(ctx: types.ApplyContext, indices: { integer }): ({ [string]: types.Durable }?, error?)
-    local found: { [string]: types.Durable } = {}
-    if not ctx.base then return found, nil end
+local function stored_claim(ctx: types.ApplyContext): (types.Durable?, error?)
+    if not ctx.base then return nil, nil end
     local version, version_err = receipts.version(ctx.board_id, ctx.base, ctx.until_at)
     if version_err or not version then return nil, version_err end
     ctx.claim_version = version
     local command, err = receipts.command(ctx.board_id, ctx.base)
     if err then return nil, err end
-    ctx.claimed = command ~= nil
     if command and command.receipt.request_hash ~= ctx.hashed then return nil, receipts.conflict_of() end
+    return command, nil
+end
+
+-- Independent commands leave one receipt per committed group.
+local function stored(ctx: types.ApplyContext, indices: { integer }): ({ [string]: types.Durable }?, error?)
+    local found: { [string]: types.Durable } = {}
+    local command, err = stored_claim(ctx)
+    if err then return nil, err end
+    ctx.claimed = command ~= nil
     if not command then return found, nil end
     ctx.generation = command.receipt.result.generation :: string
     local order = groups_of(ctx.ops, indices)
@@ -148,36 +153,31 @@ local function stored(ctx: types.ApplyContext, indices: { integer }): ({ [string
     return found, nil
 end
 
+local function claim_write(ctx: types.ApplyContext, result: domain.JsonObject): types.Write
+    local write = receipts.claim(ctx.board_id, ctx.base :: string, ctx.hashed, result, nil, ctx.claim_version)
+    receipts.decorate(write.events[1], guard.actor_id(), guard.stamp_now(), ctx.source, ctx.request.origin, ctx.request.trace_context)
+    return write
+end
+
 local function claim(ctx: types.ApplyContext, writes: { types.Write }): boolean
     local required = not ctx.claimed
     -- Existing item/comment subjects already serialize replay of their group.
     -- Free groups need the key claim even after another group claimed the key.
     for _, write in ipairs(writes) do if write.group == items.FREE then required = true end end
     if ctx.base and required and #writes > 0 then
-        local write = receipts.claim(ctx.board_id, ctx.base, ctx.hashed, { generation = ctx.generation }, nil, ctx.claim_version)
-        receipts.decorate(write.events[1], guard.actor_id(), guard.stamp_now(), ctx.source, ctx.request.origin, ctx.request.trace_context)
-        table.insert(writes, 1, write)
+        table.insert(writes, 1, claim_write(ctx, { generation = ctx.generation }))
         return true
     end
     return false
 end
 
--- Seal each write with an external identity and the receipt for its committed sequence.
-local function seal(ctx: types.ApplyContext, writes: { types.Write }, result_of: (types.Write) -> domain.JsonObject)
-    local base = ctx.base
-    if not base then return end
-    for _, w in ipairs(writes) do
-        receipts.mark(w.events, base .. "/" .. w.group, { request_hash = ctx.hashed, result = result_of(w) }, base .. "/" .. ctx.generation .. "/" .. w.group)
+local function seal_atomic(ctx: types.ApplyContext, writes: { types.Write }, outcomes: { types.Outcome })
+    if not ctx.base then return end
+    for _, write in ipairs(writes) do
+        receipts.mark(write.events, ctx.base .. "/" .. write.group)
     end
-end
-
--- Each atomic receipt carries all outcomes. Select the final committed write group.
-local function atomic_receipt(found: { [string]: types.Durable }): types.Durable?
-    local last: types.Durable? = nil
-    for _, hit in pairs(found) do
-        if not last or hit.seq > last.seq then last = hit end
-    end
-    return last
+    -- The claim is the only receipt. Projection can publish it only after every group.
+    writes[#writes + 1] = claim_write(ctx, { outcomes = outcomes } :: domain.JsonObject)
 end
 
 local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
@@ -185,9 +185,8 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
     for i = 1, #ctx.ops do all[i] = i end
     for _ = 1, consts.LIMITS.prepare_retries + 1 do
         if clock.passed(ctx.until_at) then break end
-        local found, ferr = stored(ctx, all)
-        if ferr or not found then return nil, ferr end
-        local hit = atomic_receipt(found)
+        local hit, ferr = stored_claim(ctx)
+        if ferr then return nil, ferr end
         if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
         local last_seq, cu_err = receipts.covered(ctx.board_id, ctx.until_at)
         if cu_err or not last_seq then return nil, cu_err end
@@ -204,9 +203,8 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
             outcomes[i] = outcome_of(i, plans[i] :: types.OpPlan)
             if plans[i].status ~= "applied" and plans[i].status ~= "unchanged" then failed = true end
         end
-        local recovered, recovery_err = stored(ctx, all)
+        local hit, recovery_err = stored_claim(ctx)
         if recovery_err then return nil, recovery_err end
-        local hit = atomic_receipt(recovered or {})
         if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
         if failed then
             for i = 1, #ctx.ops do
@@ -227,19 +225,11 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
                 event.body.audit = board.compiled.policy.audit
             end
         end
-        seal(ctx, writes, function(_: types.Write): domain.JsonObject return { outcomes = outcomes } :: domain.JsonObject end)
-        claim(ctx, writes)
+        seal_atomic(ctx, writes, outcomes)
         local max_seq, aerr = append.writes(ctx.c, ctx.board_id, writes)
-        if not aerr then
-            local found, ferr = stored(ctx, all)
-            if ferr then return nil, ferr end
-            local hit = atomic_receipt(found or {})
-            if hit then return finish(ctx, stored_outcomes(hit), true, max_seq, nil) end
-            return finish(ctx, outcomes, true, max_seq, nil)
-        end
-        local found, ferr = stored(ctx, all)
+        if not aerr then return finish(ctx, outcomes, true, max_seq, nil) end
+        local hit, ferr = stored_claim(ctx)
         if ferr then return nil, ferr end
-        local hit = atomic_receipt(found or {})
         if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
         local subject = mismatch_subject(aerr)
         if not subject and not threads.mismatch(aerr, "head_mismatch") then return nil, errors.wrap(aerr, "board append failed") end
@@ -315,7 +305,11 @@ local function run_independent(ctx: types.ApplyContext): (types.ApplyResult?, er
                 receipts.decorate(event, actor, at, ctx.source, ctx.request.origin, ctx.request.trace_context)
                 event.body.audit = board.compiled.policy.audit
             end
-            seal(ctx, { w }, function(_: types.Write): domain.JsonObject return { outcomes = w_outcomes } :: domain.JsonObject end)
+            if ctx.base then
+                receipts.mark(w.events, ctx.base .. "/" .. w.group, {
+                    request_hash = ctx.hashed, result = { outcomes = w_outcomes } :: domain.JsonObject,
+                }, ctx.base .. "/" .. ctx.generation .. "/" .. w.group)
+            end
             local batch: { types.Write } = { w }
             local claimed = claim(ctx, batch)
             local max_seq, aerr = append.writes(ctx.c, ctx.board_id, batch)

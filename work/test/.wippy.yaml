@@ -20,6 +20,7 @@ override:
   kickside.work.settings:limits:imports.clock: app:read_budget_clock
   kickside.work.retention:rows:imports.threads: app:retirement_threads
   kickside.work.command:apply_ops:imports.append: app:keyed_append
+  kickside.work.command:apply_ops:imports.receipts: app:receipt_probe
   kickside.work.jobs:reindex_batch:imports.append: app:reindex_append
   kickside.work.jobs:pack_commands:imports.schema_commands: app:pack_schema_probe
   kickside.work.jobs:pack_commands:imports.views: app:pack_view_probe

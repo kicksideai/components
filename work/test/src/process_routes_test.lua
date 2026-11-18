@@ -4,6 +4,8 @@ local fixture = require("fixture")
 local steps = require("steps")
 local rows = require("rows")
 local time = require("time")
+local authorization_probe = require("authorization_probe")
+local receipt_probe = require("receipt_probe")
 
 local function declaration()
     return {
@@ -82,6 +84,21 @@ local function assert_replay(h: fixture.Handle, method: string, request, first)
     end
 end
 
+local function cross_board_route()
+    local peer_decl = declaration()
+    local peer = fixture.board({ declaration = peer_decl })
+    local target = steps.create(peer, "task")
+    local decl = declaration()
+    decl.fields[2] = { code = "peer", type = "item", index = "key" }
+    decl.item_types[1].fields[2] = "peer"
+    decl.processes[1].transitions[3].set = {
+        { field = "peer", value = { board = peer.id, item = target } },
+    }
+    local h = fixture.board({ declaration = decl })
+    assert(peer.call("grant", { subject_id = h.actor:id(), mask = 1 }))
+    return h, decl, peer.id, target
+end
+
 local function define()
     test.describe("Work process routes", function()
         test.it("records a timeout whose failure transition is ineligible", function()
@@ -154,6 +171,78 @@ local function define()
             test.eq(assert(h.call("report", input)).outcomes[1].status, "applied")
             test.eq(state(h, reported_item), "done")
         end)
+
+        test.it("records a terminal attempt when a route peer cannot be admitted", function()
+            local h, _, peer = cross_board_route()
+            local item = start(h)
+            authorization_probe.fail(peer, 1, errors.UNAVAILABLE)
+            local result, err = h.call("report", { item = item, visit = 2, attempt = 1, outcome = "failed" })
+            authorization_probe.clear(peer)
+
+            assert(result, steps.detail(err))
+            test.eq(result.outcomes[1].status, "applied")
+            test.eq(result.outcomes[1].findings[1].code, "contract_unavailable")
+            test.eq(runs(h, item)[1].outcome, "failed")
+            test.eq(state(h, item), "build")
+        end)
+
+        for _, scenario in ipairs({ "root", "regional", "parallel root" }) do
+            test.it("cancels a departed " .. scenario .. " attempt during follow migration", function()
+                local decl = declaration()
+                local p = decl.processes[1]
+                p.migration = "follow"
+                if scenario ~= "root" then
+                    p.initial = "lanes"
+                    p.states[5] = { id = "lanes", category = "started", kind = "parallel", join = "all",
+                        regions = { { id = "first", initial = "build" }, { id = "second", initial = "other" } } }
+                    p.states[6] = { id = "other", category = "started", kind = "automated", run = { stage = "other" } }
+                end
+                local h = fixture.board({ declaration = decl })
+                local item = scenario == "root" and start(h) or steps.create(h, "task")
+                local before = runs(h, item)
+                test.eq(#before, scenario == "root" and 1 or 2)
+
+                if scenario == "parallel root" then
+                    p.initial = "ready"
+                    table.remove(p.states, 5)
+                    p.map = { lanes = "ready" }
+                else
+                    p.states[2] = { id = "replacement", category = "started" }
+                    p.transitions = { { id = "start", from = { "ready" }, to = "replacement" } }
+                    p.map = { build = "replacement" }
+                    if scenario == "regional" then p.states[5].regions[1].initial = "replacement" end
+                end
+                local applied, err = h.call("apply_schema", { declaration = decl })
+                assert(applied, steps.detail(err))
+                steps.wait_for("follow migration", function() return rows.stale(h.id) == 0 end)
+
+                local current = state(h, item)
+                if scenario == "regional" then
+                    test.eq(current.first, "replacement")
+                    test.eq(current.second, "other")
+                else test.eq(current, scenario == "root" and "replacement" or "ready") end
+                local stages = runs(h, item)
+                test.eq(#stages, #before)
+                for _, run in ipairs(stages) do
+                    if scenario == "regional" and run.state == "other" then test.is_nil(run.outcome)
+                    else
+                        test.eq(run.outcome, "canceled")
+                        test.not_nil(run.finished_at)
+                    end
+                end
+                local canceled, migrated = 0, false
+                for _, event in ipairs(steps.events(h)) do
+                    if event.body.item == item then
+                        if event.type == "kickside.work.events:stage.reported" then
+                            test.is_false(migrated)
+                            canceled = canceled + 1
+                        elseif event.type == "kickside.work.events:item.migrated" then migrated = true end
+                    end
+                end
+                test.is_true(migrated)
+                test.eq(canceled, scenario == "parallel root" and 2 or 1)
+            end)
+        end
 
         test.it("closes an unfinished sibling when a join-any parallel state exits", function()
             local decl = declaration()
@@ -269,6 +358,42 @@ local function define()
             assert_replay(h, "apply", input, result)
             test.eq(facts(h, first, "kickside.work.events:stage.reported"), 1)
             test.eq(facts(h, second, "kickside.work.events:stage.reported"), 1)
+        end)
+
+        test.it("replays the final atomic sequence when lookup sees only the first projected group", function()
+            local h = fixture.board({ declaration = declaration() })
+            local first, second = start(h), start(h)
+            local input = { key = receipt_probe.key, ops = {
+                { op = "report", item = first, visit = 2, attempt = 1, outcome = "failed" },
+                { op = "report", item = second, visit = 2, attempt = 1, outcome = "passed" },
+            } }
+            local result = assert(h.call("apply", input))
+            local prefix
+            for _, event in ipairs(steps.events(h)) do
+                if event.type == "kickside.work.events:item.transitioned" and event.body.item == first and event.body.to == "stopped" then
+                    prefix = event.seq
+                end
+            end
+            test.is_true(prefix and prefix < result.seq)
+            receipt_probe.project_prefix(h.id, prefix)
+            assert_replay(h, "apply", input, result)
+            test.eq(facts(h, first, "kickside.work.events:stage.reported"), 1)
+            test.eq(facts(h, second, "kickside.work.events:stage.reported"), 1)
+        end)
+
+        test.it("admits a pinned outcome route with a peer absent from the current schema routes", function()
+            local h, decl, peer, target = cross_board_route()
+            local item = start(h)
+            decl.processes[1].transitions[3].set = nil
+            assert(h.call("apply_schema", { declaration = decl }))
+
+            local result = assert(h.call("report", { item = item, visit = 2, attempt = 1, outcome = "failed" })).outcomes[1]
+            test.eq(result.status, "applied")
+            test.eq(runs(h, item)[1].outcome, "failed")
+            local current = assert(steps.get(h, item)).item
+            test.eq(current.state, "stopped")
+            test.eq(current.values.peer.board, peer)
+            test.eq(current.values.peer.item, target)
         end)
     end)
 end

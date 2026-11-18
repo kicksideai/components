@@ -13,3 +13,11 @@ entries:
     fixture: app:fixture
     steps: app:steps
     rows: app:rows
+    authorization_probe: app:authorization_probe
+    receipt_probe: app:receipt_probe
+- name: receipt_probe
+  kind: library.lua
+  source: file://receipt_probe.lua
+  modules: [sql]
+  imports:
+    receipts: kickside.work.command:receipts

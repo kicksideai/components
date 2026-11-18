@@ -136,32 +136,11 @@ local function wip(ctx: types.PrepareContext, before: types.PrepareContext, plan
     return plan
 end
 
-function M.plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan
-    local work = M.fork(ctx)
-    local plan = plan_op(work, op)
-    local route = plan.route
-    if route then
-        -- Admit the route on its own working copy. A refused route leaves the recorded
-        -- attempt or decision eligible to commit against the original item version.
-        local routed = M.fork(work)
-        local root = routed.items[plan.item :: string] :: domain.Item
-        local item = route.region and process.region(root, route.region, route.definition) or root
-        local routed_plan = process_context.route(routed, item :: domain.StateItem, route.definition, route.id, {})
-        routed_plan = wip(routed, work, admit_patches(routed, routed_plan))
-        if routed_plan.status == "applied" then
-            for _, event in ipairs(routed_plan.events) do plan.events[#plan.events + 1] = event end
-            routed_plan.events, plan, work = plan.events, routed_plan, routed
-        elseif (routed_plan.status == "invalid" or routed_plan.status == "denied") and not (routed_plan.error and routed_plan.error.retryable) then
-            plan.findings = routed_plan.findings
-        else
-            return routed_plan
-        end
-    else
-        plan = wip(work, ctx, admit_patches(work, plan))
-    end
+local function admit_rollups(work: types.PrepareContext, plan: types.OpPlan): types.OpPlan
+    if plan.status ~= "applied" then return plan end
     local dependent = false
     for _, field in ipairs(work.board.compiled.fields) do if field.rollup then dependent = true end end
-    if dependent and plan.status == "applied" then
+    if dependent then
         local affected: { { [string]: integer } } = {}
         for _, event in ipairs(plan.events) do
             local seeds: { [string]: integer } = {}
@@ -173,6 +152,37 @@ function M.plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan
         end
         local err = rollup_rows.admit(work.db, work.board, affected, consts.LIMITS.fold_rows, work.links)
         if err then return M.failed(err) end
+    end
+    return plan
+end
+
+function M.plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan
+    local work = M.fork(ctx)
+    local plan = plan_op(work, op)
+    local route = plan.route
+    if route then
+        -- Route admission uses a separate working copy so its failures leave the fact and its item CAS intact.
+        local routed = M.fork(work)
+        local root = routed.items[plan.item :: string] :: domain.Item
+        local definition = route.model.processes[route.model.item_types[root.type].process]
+        local item = route.region and process.region(root, route.region, definition) or root
+        local routed_plan = process_context.route(routed, item :: domain.StateItem, definition, route.id, {})
+        routed_plan = wip(routed, work, admit_patches(routed, routed_plan))
+        if routed_plan.status == "applied" then
+            local events: { domain.Event } = {}
+            for _, event in ipairs(plan.events) do events[#events + 1] = event end
+            for _, event in ipairs(routed_plan.events) do events[#events + 1] = event end
+            routed_plan.events = events
+            routed_plan = admit_rollups(routed, routed_plan)
+        end
+        if routed_plan.status == "applied" then
+            plan, work = routed_plan, routed
+        else
+            plan.findings = routed_plan.findings
+            plan = admit_rollups(work, plan)
+        end
+    else
+        plan = admit_rollups(work, wip(work, ctx, admit_patches(work, plan)))
     end
     if plan.status == "applied" or plan.status == "unchanged" then M.adopt(ctx, work) end
     return plan

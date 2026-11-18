@@ -46,9 +46,9 @@ function C.take(ctx: types.PrepareContext, item: domain.StateItem, p: domain.Pro
     return nil
 end
 
-function C.record(ctx: types.PrepareContext, item: domain.StateItem, p: domain.Process, id: string, events: { domain.Event }): types.OpPlan
+function C.record(ctx: types.PrepareContext, item: domain.StateItem, model: domain.Model, id: string, events: { domain.Event }): types.OpPlan
     local plan = C.done(ctx, item, M.item_group(item.item_id), events)
-    plan.route = { id = id, region = item.region, definition = p }
+    plan.route = { id = id, region = item.region, model = model }
     return plan
 end
 

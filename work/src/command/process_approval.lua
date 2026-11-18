@@ -35,7 +35,7 @@ function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     if decision == "reject" then
         work.rejected = true
         for _, t in ipairs(process.leaving(p, item.state, false)) do
-            if t.id == "reject" then return context.record(ctx, item, p, t.id, events) end
+            if t.id == "reject" then return context.record(ctx, item, target.model, t.id, events) end
         end
     end
     return settle(ctx, item, events, p)

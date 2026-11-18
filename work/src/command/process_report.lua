@@ -75,7 +75,7 @@ function H.finish(ctx: types.PrepareContext, target: types.ProcessTarget, op: ty
         if not id then return done(ctx, item, M.item_group(item.item_id), events) end
     end
     if not id then return M.invalid("stage_outcome_transition_missing", "stage declares no transition for its outcome") end
-    if op.outcome == "failed" or op.completion then return context.record(ctx, item, p, id, events) end
+    if op.outcome == "failed" or op.completion then return context.record(ctx, item, target.model, id, events) end
     return context.route(ctx, item, p, id, events)
 end
 
