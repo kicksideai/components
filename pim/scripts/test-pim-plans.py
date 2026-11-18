@@ -85,8 +85,17 @@ class QueryPlans(unittest.TestCase):
         self.assertEqual(trashed, [])
         plan = str(self.db.execute("EXPLAIN QUERY PLAN " + query, named(("catalog", "occupied"))).fetchall())
         print("family occupancy plan:", plan)
-        self.assertIn("kickside_pim_product_live_family (catalog_id=? AND family>?)", plan)
+        self.assertIn("kickside_pim_product_live_family ((catalog_id,family)>(?,?))", plan)
         self.assertNotIn("TEMP B-TREE", plan)
+        # Keep the one-catalog statistics above and check a candidate in the next catalog.
+        self.db.execute(
+            """INSERT INTO kickside_pim_product(catalog_id,product_id,sku,root_id,family,level,is_item,state,status,version,document,source_seq,created_seq,updated_seq)
+            VALUES('next_catalog','other','other','other','trashed',0,1,'live','active',1,'{}','{}',1,1)"""
+        )
+        other_catalog, cross_catalog_miss = self.measure(query, ("catalog", "trashed"))
+        print("family occupancy VM steps for a cross-catalog miss:", cross_catalog_miss)
+        self.assertEqual(other_catalog, [])
+        self.assertLess(cross_catalog_miss, 100)
 
     def test_publication_tuple_seek(self):
         self.db.execute("UPDATE kickside_pim_publication SET state='withdrawn'")

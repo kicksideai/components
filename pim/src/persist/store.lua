@@ -421,14 +421,14 @@ function M.usage(db: types.Executor, catalog_id: string): ({ [integer]: types.At
     return out, nil
 end
 
--- PostgreSQL can choose a sequential scan for a common family with equality
--- and LIMIT alone. The ordered lower bound seeks the partial index on both engines,
--- and the outer equality discards a different family.
+-- Seek on both columns of the partial index. A family-only lower bound can
+-- make SQLite skip the catalog key and sort before applying LIMIT.
 function M.family_occupied(db: types.Executor, catalog_id: string, family: string): (boolean, error?)
     local rows, err = db:query([[SELECT 1 FROM (
-        SELECT family FROM kickside_pim_product WHERE catalog_id = $1 AND family >= $2 AND state = 'live'
-        ORDER BY family LIMIT 1
-    ) candidate WHERE family = $2]], { catalog_id, family })
+        SELECT catalog_id, family FROM kickside_pim_product
+        WHERE (catalog_id, family) >= ($1, $2) AND state = 'live'
+        ORDER BY catalog_id, family LIMIT 1
+    ) candidate WHERE catalog_id = $1 AND family = $2]], { catalog_id, family })
     if err then return false, errors.wrap(err, "family occupancy read failed") end
     return rows ~= nil and rows[1] ~= nil, nil
 end
