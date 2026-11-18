@@ -237,7 +237,7 @@ end
 local function check_version(st: item_state.State, item: types.ApplyItem, p: types.Product): (integer?, types.Outcome?)
     local source = st.source
     local seq: integer? = nil
-    if source and source.ordering == "sequence" then
+    if source and source.ordering == "sequence" and not st.proposal then
         seq = math.tointeger(item.seq)
         if seq == nil then return nil, item_state.fail("invalid", "source " .. source.id .. " requires seq") end
         local stored = math.tointeger(p.source_seq[source.id]) or 0
@@ -373,7 +373,8 @@ function M.source_access(source: types.Source, actor: string): error?
     return nil
 end
 
-function M.plan(db: types.Executor, catalog: types.Catalog, request: types.ApplyRequest, actor: string, defaults: types.Policy, prepared: Prepared?): (PlanResult?, error?)
+function M.plan(db: types.Executor, catalog: types.Catalog, request: types.ApplyRequest, actor: string, defaults: types.Policy,
+    prepared: Prepared?, proposal: boolean?): (PlanResult?, error?)
     local source: types.Source?
     if request.source ~= nil then
         source = catalog.compiled.sources[request.source]
@@ -386,6 +387,7 @@ function M.plan(db: types.Executor, catalog: types.Catalog, request: types.Apply
     local perr = item_state.read_skus(st, referenced_skus(request.items))
     if perr then return nil, perr end
     st.import = request.import == true
+    st.proposal = proposal == true
     if prepared then
         if prepared.generation ~= catalog.generation then
             prepared.generation, prepared.refined, prepared.links = catalog.generation, {}, {}

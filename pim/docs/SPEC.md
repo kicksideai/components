@@ -1576,15 +1576,17 @@ A proposal is PIM-owned state (Core requires WRITE for any append):
 
 - `propose` (READ) stores items and base versions after prepare and enforced
   checks. Admission validates the proposal's source and its write scope.
-  Attributes of source-restricted aspects cannot be proposed.
+  Attributes of source-restricted aspects cannot be proposed. Proposal edits
+  use the captured product versions for every source, including sequence-ordered
+  sources, and leave each source's delivery sequence unchanged.
 - `decide` (WRITE): accept claims the proposal with a conditional
-  transition, runs `apply` (atomic) with the base versions, its source and
+  transition at the same catalog head that authorizes the reviewer and plans the
+  edit. It runs `apply` (atomic) with the base versions, its source and
   `origin` with `approval_item_id` set to the proposal, idempotency `proposal/<id>`, then settles
   `accepted`, `conflict` (only stale versions stopped it; decidable again)
   or `failed` (an item is refused outright or the source was removed).
-  Admission checks the reviewer's source access before claiming. A source
-  permission change during acceptance can leave an `accepting` claim for an
-  authorized reviewer to resume. Reject works from `pending` or `conflict`.
+  If the reviewer loses source access before the write, acceptance releases that
+  reviewer's uncommitted claim. Reject works from `pending` or `conflict`.
 - Proposals are reviewed in the shell's proposals view by WRITE holders;
   public meta carries `pending_proposal_count`. Inbox routing is optional
   and built from platform parts: `pim-flow` exposes a `list_proposals` pullable,

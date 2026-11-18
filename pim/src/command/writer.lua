@@ -37,6 +37,7 @@ local receipts = require("receipts")
 local M = {}
 
 type Build = (types.Executor, types.Catalog, integer) -> (types.Plan?, error?)
+type Admit = (types.Executor, types.Catalog) -> error?
 
 local EV = consts.EVENTS
 local invalid = failure.invalid
@@ -57,7 +58,7 @@ end
 -- run executes one command through the command pipeline under the
 -- head guard: build(db, catalog, S) -> { events, result } | error, at thread head S.
 local function run(catalog_id: string, idempotency: types.Idempotency?, fingerprint: unknown, trace_context: types.TraceContext?,
-    build: Build, deadline: clock.Deadline?): (types.CommandResult?, error?)
+    build: Build, deadline: clock.Deadline?, admit: Admit?): (types.CommandResult?, error?)
     local base, oerr = defaults.read()
     if oerr or not base then return nil, oerr end
     local current, rerr = store.with_db(function(db: types.Executor): (types.Catalog?, error?)
@@ -76,14 +77,27 @@ local function run(catalog_id: string, idempotency: types.Idempotency?, fingerpr
         noop = function(marker: string,hashed: string,result: types.JsonObject,seq: integer,at: string) return receipts.noop(catalog_id,marker,hashed,result,seq,at) end,
         thread = { id = catalog_id, kind = consts.PROJECTION_KIND, source = consts.EXTERNAL_SOURCE },
         build = function(last_seq: integer): (pipeline.Attempt?, error?)
-            return store.with_db(function(db): (pipeline.Attempt?,error?)
-                local catalog,rerr=store.catalog(db,catalog_id)
-                if rerr then return nil,rerr end
-                if not catalog then return nil,failure.catalog_not_initialized() end
+            local function attempt(db: types.Executor, catalog: types.Catalog?): (pipeline.Attempt?, error?)
+                if not catalog then return nil, failure.catalog_not_initialized() end
                 local head=math.max(catalog.applied_seq,last_seq)
                 local plan,berr=build(db,catalog,head)
                 if berr or not plan then return nil,berr end
                 return {result=plan.result :: types.JsonObject,events=plan.events,expect={head=head},as_of=head},nil
+            end
+            if admit then
+                -- Authorize and claim using the same catalog row the plan uses.
+                local catalog, aerr = store.transaction("proposal acceptance", function(tx, dialect): (types.Catalog?, error?)
+                    local current, rerr = store.catalog(tx, catalog_id, dialect)
+                    if rerr or not current then return nil, rerr end
+                    return current, admit(tx, current)
+                end)
+                if aerr then return nil, aerr end
+                return store.with_db(function(db) return attempt(db, catalog) end)
+            end
+            return store.with_db(function(db): (pipeline.Attempt?, error?)
+                local catalog, rerr = store.catalog(db, catalog_id)
+                if rerr then return nil, rerr end
+                return attempt(db, catalog)
             end)
         end,
     })
@@ -273,7 +287,7 @@ end
 
 -- execute runs an apply request through the write path; import requests come
 -- only from catalog import.
-local function execute(catalog_id: string, request: types.ApplyRequest, deadline: clock.Deadline?): (types.ApplyResult?, error?)
+local function execute(catalog_id: string, request: types.ApplyRequest, deadline: clock.Deadline?, admit: Admit?): (types.ApplyResult?, error?)
     local mode = request.mode or "atomic"
     if mode ~= "atomic" and mode ~= "independent" then return nil, invalid("mode must be atomic or independent") end
     local settings, serr = defaults.read()
@@ -284,12 +298,12 @@ local function execute(catalog_id: string, request: types.ApplyRequest, deadline
             origin = request.origin, provenance = request.provenance, approval_item_id = request.approval_item_id },
         request.trace_context,
         function(db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
-            local planned, perr = items.plan(db, catalog, request, actor_id(), settings, prepared)
+            local planned, perr = items.plan(db, catalog, request, actor_id(), settings, prepared, admit ~= nil)
             if perr or not planned then return nil, perr end
             local result = { outcomes = planned.outcomes, applied = planned.ok or mode == "independent" }
             if mode == "atomic" and not planned.ok then return { result = result, events = {} }, nil end
             return { result = result, events = planned.events }, nil
-        end, deadline)
+        end, deadline, admit)
     if err then return nil, err end
     return out :: types.ApplyResult, nil
 end
@@ -355,7 +369,7 @@ function M.propose(catalog_id: string, request: types.ProposeRequest): (types.Pr
         if #values.canonical(request)>effective.proposal_bytes then return nil,invalid("proposal exceeds configured byte budget",{code="proposal_budget_exceeded"}) end
         local base,berr=proposals.base(db,catalog,request)
         if berr or not base then return nil,berr end
-        local planned,perr=items.plan(db,catalog,proposals.plan_request(request,base),actor_id(),settings)
+        local planned,perr=items.plan(db,catalog,proposals.plan_request(request,base),actor_id(),settings,nil,true)
         if perr or not planned then return nil,perr end
         if not planned.ok then return nil,invalid("proposal items are invalid at the catalog head",{outcomes=planned.outcomes :: {types.JsonObject}}) end
         return base,nil
@@ -390,67 +404,124 @@ local function settled(applied: types.ApplyResult): string
     return "conflict"
 end
 
--- decide(catalog_id, { proposal_id, decision = accept | reject }) needs WRITE.
--- Accept first claims the proposal (accepting), applies it expecting its base
--- versions under the idempotency key proposal/<id>, then settles accepted,
--- conflict or failed; reject only decides a pending or conflicted proposal. A decision
--- that loses to another returns the stored one.
-function M.decide(catalog_id: string, request: types.DecideRequest): (types.DecideResult?, error?)
-    local access_err = require_access(catalog_id, component.ACCESS.WRITE)
-    if access_err then return nil, access_err end
-    if request.decision ~= "accept" and request.decision ~= "reject" then return nil, invalid("decision is accept or reject") end
-    type PreparedDecision={proposal: types.Proposal,accept: boolean,changed: boolean}
-    local prepared,err=store.with_db(function(db): (PreparedDecision?,error?)
-        local proposal,perr=proposal_rows.get(db,catalog_id,request.proposal_id)
-        if perr or not proposal then return nil,perr or errors.new({kind=errors.NOT_FOUND,message="proposal not found",details={code="proposal_not_found"}}) end
-        if request.decision == "accept" and proposal.source
-            and (proposal.status == "pending" or proposal.status == "conflict" or proposal.status == "accepting") then
-            local catalog, cerr = store.catalog(db, catalog_id)
-            if cerr then return nil, cerr end
-            local source = catalog and catalog.compiled.sources[proposal.source]
-            if source then
-                local denied = items.source_access(source, actor_id())
-                if denied then return nil, denied end
-            end
+local function get_proposal(db: types.Executor, catalog_id: string, id: string): (types.Proposal?, error?)
+    local proposal, err = proposal_rows.get(db, catalog_id, id)
+    if err then return nil, err end
+    if not proposal then return nil, errors.new({ kind = errors.NOT_FOUND, message = "proposal not found", details = { code = "proposal_not_found" } }) end
+    return proposal, nil
+end
+
+local function decision(proposal: types.Proposal): types.DecideResult
+    return { proposal_id = proposal.proposal_id, status = proposal.status, result = proposal.result }
+end
+
+local function decided(status: string): error
+    return errors.new({ kind = errors.CONFLICT, message = "proposal is " .. status, details = { code = "proposal_decided", status = status } })
+end
+
+local function can_accept(status: string): boolean
+    return status == "pending" or status == "conflict" or status == "accepting"
+end
+
+local function accept(catalog_id: string, proposal: types.Proposal, trace_context: types.TraceContext?): (types.DecideResult?, error?)
+    local id = proposal.proposal_id
+    if not can_accept(proposal.status) then return decision(proposal), nil end
+    local actor = actor_id()
+    local request = proposals.accept_request(proposal, trace_context)
+    local claimed_at = proposal.status == "accepting" and proposal.decided_by == actor and proposal.decided_at or nil
+    local prior: types.Proposal?
+    local applied, aerr = execute(catalog_id, request, nil, function(tx: types.Executor, catalog: types.Catalog): error?
+        local current, err = get_proposal(tx, catalog_id, id)
+        if err or not current then return err end
+        if not can_accept(current.status) then return decided(current.status) end
+        local source: types.Source? = nil
+        if proposal.source then source = catalog.compiled.sources[proposal.source] end
+        if source then
+            local denied = items.source_access(source, actor)
+            if denied then return denied end
         end
-        local moved,merr=proposal_rows.transition(db,catalog_id,proposal.proposal_id,
-            request.decision=="reject" and {"pending","conflict"} or {"pending","conflict","accepting"},
-            request.decision=="reject" and "rejected" or "accepting",nil,actor_id())
-        if merr then return nil,merr end
-        if moved then
-            proposal.status=request.decision=="reject" and "rejected" or "accepting"
-            return {proposal=proposal,accept=request.decision=="accept",changed=true},nil
+        if current.status == "accepting" and current.decided_by == actor and claimed_at and current.decided_at == claimed_at then
+            return nil
         end
-        local stored,serr=proposal_rows.get(db,catalog_id,proposal.proposal_id)
-        if serr or not stored then return nil,serr or errors.new({kind=errors.NOT_FOUND,message="proposal not found",details={code="proposal_not_found"}}) end
-        if stored.status=="accepting" or (stored.status~="rejected" and request.decision=="reject") then
-            return nil,errors.new({kind=errors.CONFLICT,message="proposal is "..stored.status,details={code="proposal_decided",status=stored.status}})
-        end
-        return {proposal=stored,accept=false,changed=false},nil
+        local at = clock.now_precise()
+        local moved, merr = proposal_rows.transition(tx, catalog_id, id, { current.status }, "accepting", nil, actor, at)
+        if merr then return merr end
+        if not moved then return decided(current.status) end
+        prior = current.status ~= "accepting" and current or nil
+        claimed_at = at
+        return nil
     end)
-    if err or not prepared then return nil,err end
-    local proposal=prepared.proposal
-    if not prepared.accept then
-        if prepared.changed then local merr=publish_meta(catalog_id);if merr then return nil,merr end end
-        return {proposal_id=proposal.proposal_id,status=proposal.status,result=proposal.result},nil
+    local code = aerr and (aerr:details() or {}).code
+    if code == "proposal_decided" then
+        local stored, err = store.with_db(function(db) return get_proposal(db, catalog_id, id) end)
+        if err or not stored then return nil, err end
+        return decision(stored), nil
     end
-    local applied,aerr=M.apply(catalog_id,proposals.accept_request(proposal,request.trace_context))
+    if code == "source_access_denied" and claimed_at then
+        local marker = pipeline.marker(assert(request.idempotency))
+        local released, err = store.transaction("proposal claim release", function(tx, dialect): (boolean?, error?)
+            local catalog, cerr = store.catalog(tx, catalog_id, dialect)
+            if cerr or not catalog then return nil, cerr end
+            return proposal_rows.release_claim(tx, catalog_id, id, actor, claimed_at :: string, marker, prior)
+        end)
+        if err then return nil, err end
+        if released then
+            local merr = publish_meta(catalog_id)
+            if merr then return nil, merr end
+        end
+        return nil, aerr
+    end
     local status: string
     if applied then
         status = settled(applied)
-    elseif aerr and (aerr:details() or {}).code == "unknown_source" then
+    elseif code == "unknown_source" then
         status = "failed"
     else
         return nil, aerr
     end
-    local _,serr=store.with_db(function(db): (boolean?,error?)
-        return proposal_rows.transition(db,catalog_id,proposal.proposal_id,{"accepting"},status,applied,actor_id())
+    -- A successful apply has a receipt. An attempt with no committed result
+    -- can only settle while it still owns the claim.
+    local expected_claim = status ~= "accepted" and claimed_at or nil
+    local moved, serr = store.with_db(function(db): (boolean?,error?)
+        return proposal_rows.transition(db, catalog_id, id, { "accepting" }, status, applied, actor, nil, expected_claim)
     end)
     if serr then return nil,serr end
+    if not moved and not aerr then
+        local stored, err = store.with_db(function(db) return get_proposal(db, catalog_id, id) end)
+        if err or not stored then return nil, err end
+        return decision(stored), nil
+    end
     local merr=publish_meta(catalog_id)
     if merr then return nil,merr end
     if aerr then return nil, aerr end
-    return {proposal_id=proposal.proposal_id,status=status,result=applied},nil
+    return { proposal_id = id, status = status, result = applied }, nil
+end
+
+-- Accept claims at the command head and settles the guarded apply. Reject
+-- conditionally decides a pending or conflicted proposal.
+function M.decide(catalog_id: string, request: types.DecideRequest): (types.DecideResult?, error?)
+    local access_err = require_access(catalog_id, component.ACCESS.WRITE)
+    if access_err then return nil, access_err end
+    local id = request.proposal_id
+    if request.decision == "accept" then
+        local proposal, err = store.with_db(function(db) return get_proposal(db, catalog_id, id) end)
+        if err or not proposal then return nil, err end
+        return accept(catalog_id, proposal, request.trace_context)
+    end
+    if request.decision ~= "reject" then return nil, invalid("decision is accept or reject") end
+    local moved, err = store.with_db(function(db)
+        return proposal_rows.transition(db, catalog_id, id, { "pending", "conflict" }, "rejected", nil, actor_id())
+    end)
+    if err then return nil, err end
+    if moved then
+        local merr = publish_meta(catalog_id)
+        if merr then return nil, merr end
+        return { proposal_id = id, status = "rejected" }, nil
+    end
+    local stored, serr = store.with_db(function(db) return get_proposal(db, catalog_id, id) end)
+    if serr or not stored then return nil, serr end
+    if stored.status ~= "rejected" then return nil, decided(stored.status) end
+    return decision(stored), nil
 end
 
 -- rebuild(catalog_id) wakes the catalog's rebuild slot, parked after a failed
