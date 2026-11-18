@@ -30,44 +30,53 @@ type Input = { job: Job?, payload: { catalog_id: string? }? }
 
 type BatchInput = { catalog_id: string, deadline: string? }
 type BatchResult = { done: boolean }
+type Progress = { done: boolean, published: boolean? }
 type RunResult = { self_completed: boolean?, rebuilt: boolean?, completion: unknown }
 
 
 -- rewrite rebuilds the next products in one transaction; it answers true when the
 -- rebuild is complete.
-local function rewrite(catalog_id: string): (boolean?, error?)
+local function rewrite(catalog_id: string): (Progress?, error?)
     local operating,oerr=defaults.catalog(catalog_id)
     if oerr or not operating then return nil,oerr end
     local BATCH=operating.rebuild_rows
-    return store.transaction("rebuild batch", function(tx: types.Executor, dialect: string): (boolean?, error?)
-        local catalog, cerr = store.catalog(tx, catalog_id, dialect)
+    return store.transaction("rebuild batch", function(tx: types.Executor, dialect: string): (Progress?, error?)
+        local current, cerr = store.catalog(tx, catalog_id, dialect)
         if cerr then return nil, cerr end
-        if not catalog or catalog.rebuild_after == nil then return true, nil end
-        local current: types.Catalog = catalog
+        if not current then return { done = true }, nil end
+        local ready, rerr = rebuild_rows.prepare(tx, dialect, current, BATCH)
+        if rerr then return nil, rerr end
+        if not ready then return { done = false }, nil end
+        if current.rebuild_after == nil then return { done = true }, nil end
         local rebuild_seq = current.rebuild_seq
         if not rebuild_seq then return nil, failure.corrupt("rebuild has no schema seq") end
         local rows, qerr = rebuild_rows.page(tx, catalog_id, current.rebuild_after :: string, BATCH)
         if qerr or not rows then return nil, qerr end
         local ids: { [string]: boolean } = {}
         local cache: { [string]: types.Product } = {}
-        local last: string? = nil
+        local products: { types.Product } = {}
         for _, r in ipairs(rows) do
-            local p, perr = store.from_row(r)
-            if perr or not p then return nil, perr end
-            document.compact(current.compiled, p.document :: types.Document)
-            if (p.updated_seq or 0) < rebuild_seq then p.updated_seq = rebuild_seq end
-            local serr = store.save_product(tx, catalog_id, p)
-            if serr then return nil, serr end
-            cache[p.product_id] = p
-            ids[p.product_id] = true
-            last = p.product_id
+            if r.state ~= "purged" then
+                local p, perr = store.from_row(r)
+                if perr or not p then return nil, perr end
+                document.compact(current.compiled, p.document :: types.Document)
+                if (p.updated_seq or 0) < rebuild_seq then p.updated_seq = rebuild_seq end
+                products[#products + 1] = p
+                cache[p.product_id] = p
+                ids[p.product_id] = true
+            end
         end
-        local err = item_index.recompute(tx, dialect, current, ids, cache)
+        local err = store.write_products(tx, catalog_id, products, false)
+        if not err then err = item_index.recompute(tx, dialect, current, ids, cache) end
         if err then return nil, err end
-        local done = #rows < BATCH
-        local aerr = rebuild_rows.advance(tx, catalog_id, not done and last or nil, rebuild_seq)
-        if aerr then return nil, aerr end
-        return done, nil
+        if #rows == BATCH then
+            local aerr = rebuild_rows.advance(tx, catalog_id, rows[#rows].product_id :: string)
+            if aerr then return nil, aerr end
+            return { done = false }, nil
+        end
+        local done, ferr = rebuild_rows.finish(tx, current)
+        if ferr then return nil, ferr end
+        return { done = done, published = true }, nil
     end)
 end
 
@@ -94,13 +103,13 @@ function M.batch(input: BatchInput): (BatchResult?, error?)
     local deadline, derr = budget.deadline(input.deadline)
     if derr or not deadline then return nil, derr end
     if not budget.enough(deadline, operating.command_deadline_ms) then return { done = false }, nil end
-    local done, berr = rewrite(input.catalog_id)
-    if berr then return nil, berr :: error end
-    if done then
+    local progress, berr = rewrite(input.catalog_id)
+    if berr or not progress then return nil, berr end
+    if progress.done or progress.published then
         local _, merr = funcs.call("kickside.pim.persist:publish_meta", { thread_id = input.catalog_id,projection_only=true })
         if merr then return nil, merr end
     end
-    return { done = done == true }, nil
+    return { done = progress.done }, nil
 end
 
 -- work runs the rebuild batches of one invocation.

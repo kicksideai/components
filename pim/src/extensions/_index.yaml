@@ -94,10 +94,11 @@ entries:
     meta:
       comment: Declared seams a schema names by id - attribute types (form, indexes, target, config schema, functions) and checks.
     source: file://seams.lua
-    modules: [registry]
+    modules: [registry, hash]
     imports:
       failure: kickside.pim:failure
       types: kickside.pim:types
+      values: kickside.pim.domain:values
 
   - name: type_functions
     kind: library.lua

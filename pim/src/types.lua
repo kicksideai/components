@@ -27,6 +27,8 @@ type Ctx = { [string]: string }
 type Cell = { p: Value?, c: integer?, s: string? }
 type Coordinates = { [string]: Cell }
 type Document = { [string]: Coordinates }
+-- Product counts for one attribute, including products with incompatible authored cells.
+type AttributeUsage = { products: integer, key_violations: integer, order_violations: integer }
 
 -- Attribute configuration a form reads: decimal scale and range, text case and
 -- pattern, reference target, record members, quantity units and currency.
@@ -87,7 +89,7 @@ type Level = { axes: { string } }
 type Requirement = { id: string, contexts: { Ctx }, require: { string }, authored: { string } }
 -- A compiled family check; an enforced check rejects writes of the products at
 -- level, the one level owning everything it reads.
-type Check = { fn: string, reads: { string }, cost: string, config: JsonObject, enforce: boolean, level: integer? }
+type Check = { fn: string, digest: string, reads: { string }, cost: string, config: JsonObject, enforce: boolean, level: integer? }
 type Family = { code: string, owner: { [string]: integer }, levels: { Level }, item_level: integer, requirements: { Requirement }, checks: { Check } }
 type Channel = { id: string, requirements: { string }, families: { string }? }
 -- A compiled aspect; plugin names the plugin whose resolved schema contributes it.
@@ -132,6 +134,7 @@ type PluginView = { plugin: string, title: string?, description: string?, icon: 
 -- columns hold a value's key or order value; flag columns an int computed per item.
 type Column = { attribute_id: integer, ctx: string, kind: string, column: string }
 type Layout = { columns: { Column }, sets: { Column }, search: { Column }, flags: { Column } }
+type RebuildStorage = { active: Layout, other: { base: string, layout: Layout, retired_after: string? }? }
 type Compiled = {
     policy: PolicyOverrides,
     dimensions: { Dimension }, vocabularies: { [string]: Vocabulary }, aspects: { [string]: Aspect },
@@ -143,7 +146,8 @@ type Compiled = {
 type Catalog = {
     catalog_id: string, generation: integer, applied_seq: integer, compiled: Compiled,
     plugin_state: { [string]: PluginIntent }, plugin_after: string?, item_table: string, digest: string, layout_digest: string, rebuild_after: string?, rebuild_seq: integer?,
-    rebuild_job: string?, pending_columns: { string }, product_count: integer, item_count: integer, trashed_count: integer, tombstone_floor_seq: integer,
+    rebuild_job: string?, rebuild_storage: RebuildStorage?, pending_columns: { string },
+    product_count: integer, item_count: integer, trashed_count: integer, tombstone_floor_seq: integer,
 }
 type Product = {
     product_id: string, sku: string, family: string, parent_id: string?, root_id: string, level: integer,
@@ -446,6 +450,7 @@ type Plan = { result: CommandResult, events: { Event } }
 return {
     Json = Json, JsonObject = JsonObject, SqlParams = SqlParams, Row = Row, Dec = Dec, Quantity = Quantity, Ref = Ref, Record = Record,
     Scalar = Scalar, Value = Value, Ctx = Ctx, Cell = Cell, Coordinates = Coordinates, Document = Document,
+    AttributeUsage = AttributeUsage,
     AttributeConfig = AttributeConfig, MemberSpec = MemberSpec, ValueShape = ValueShape,
     PolicyOverrides = PolicyOverrides, Policy = Policy, DimensionDecl = DimensionDecl, VocabularyDecl = VocabularyDecl,
     AttributeDecl = AttributeDecl, WriteRule = WriteRule, AspectDecl = AspectDecl,
@@ -453,7 +458,7 @@ return {
     FamilyDecl = FamilyDecl, SourceDecl = SourceDecl, ChannelDecl = ChannelDecl, RemoveDecl = RemoveDecl,
     PolicyDecl = PolicyDecl, Declaration = Declaration, Attribute = Attribute, Dimension = Dimension,
     Level = Level, Requirement = Requirement, Check = Check, Family = Family, Channel = Channel,
-    Aspect = Aspect, Source = Source, Vocabulary = Vocabulary, Column = Column, Layout = Layout,
+    Aspect = Aspect, Source = Source, Vocabulary = Vocabulary, Column = Column, Layout = Layout, RebuildStorage = RebuildStorage,
     Compiled = Compiled, Catalog = Catalog, Product = Product, Lineage = Lineage, Resolution = Resolution,
     PatchStep = PatchStep, Receipt = Receipt, SchemaBody = SchemaBody, ProductBody = ProductBody,
     ModelReleaseBody = ModelReleaseBody, ModelReleaseEvent = ModelReleaseEvent, TermBody = TermBody, ReleaseBody = ReleaseBody, WithdrawBody = WithdrawBody, EventBody = EventBody,

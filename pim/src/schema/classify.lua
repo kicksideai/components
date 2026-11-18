@@ -16,7 +16,7 @@ local INDEX = { "index_contexts" }
 local RANK: { [string]: integer } = { cosmetic = 1, additive = 2, semantic = 3, refused = 4 }
 
 -- Facts are the catalog state a change is judged against.
-type Facts = { usage: { [integer]: integer }, family_products: { [string]: integer }, populated: boolean }
+type Facts = { usage: { [integer]: integer }, family_occupied: { [string]: boolean }, populated: boolean }
 M.Facts = Facts
 
 local function add(out: { types.SchemaChange }, code: string, class: string, what: string)
@@ -83,16 +83,27 @@ function M.changes(prev: types.Compiled?, next: types.Compiled, facts: Facts): {
     end
     for code, family in pairs(prev.families) do
         local after = next.families[code]
-        local products = facts.family_products[code] or 0
+        local occupied = facts.family_occupied[code]
         if not after then
-            add(out, "family " .. code, products > 0 and "refused" or "additive", "removed")
-        elseif products > 0 then
+            add(out, "family " .. code, occupied and "refused" or "additive", "removed")
+        elseif occupied then
             if not values.equal(family.levels, after.levels) then add(out, "family " .. code, "refused", "variation axes") end
             for attr_code, level in pairs(after.owner) do
                 local attr = next.attributes[attr_code]
                 local before = family.owner[attr_code]
                 if before ~= nil and before ~= level and attr and (facts.usage[attr.id] or 0) > 0 then
                     add(out, "family " .. code, "refused", attr_code .. " owning level")
+                end
+            end
+        end
+        if after then
+            local revisions: { [string]: string } = {}
+            for _, check in ipairs(family.checks) do revisions[check.fn] = check.digest end
+            for _, check in ipairs(after.checks) do
+                local revision = revisions[check.fn]
+                if revision and revision ~= check.digest then
+                    add(out, "family " .. code, "semantic", "check implementation revised")
+                    break
                 end
             end
         end

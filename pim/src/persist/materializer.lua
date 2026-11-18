@@ -8,6 +8,7 @@ local consts = require("consts")
 local clock = require("clock")
 local values = require("values")
 local layout = require("layout")
+local sections = require("sections")
 local history = require("history")
 local driver = require("driver")
 local store = require("store")
@@ -32,7 +33,7 @@ type FoldResult = { rebuild_job: string?, jobs: { string }, last_seq: integer }
 -- change, attribute usage deltas, history rows, and the counter changes it
 -- commits with applied_seq.
 type Batch = {
-    cache: { [string]: types.Product }, ids: IdSet, rows: integer, derived: IdSet, usage: { [integer]: integer },
+    cache: { [string]: types.Product }, ids: IdSet, rows: integer, derived: IdSet, usage: derived.Usage,
     history: { types.SqlParams }, products: integer, items: integer, trashed: integer,
     product_writes: { [string]: types.Product }, product_inserts: boolean,
     prefetched: { [string]: types.Product }, prefetched_through: integer,
@@ -118,30 +119,6 @@ local function unpublish_where(tx: types.Executor, catalog_id: string, column: s
     return nil
 end
 
--- columns_of lists every generated column a layout holds, search sources included.
-local function columns_of(l: types.Layout): { [string]: boolean }
-    local out: { [string]: boolean } = {}
-    for _, list in ipairs({ l.columns, l.sets, l.search, l.flags }) do
-        for _, c in ipairs(list) do out[c.column] = true end
-    end
-    return out
-end
-
--- pending_after lists the columns a rebuild must fill before reads may use
--- them: the columns the new layout adds, and the columns an unfinished rebuild
--- still owes, among those the new layout keeps.
-local function pending_after(catalog: types.Catalog, before: types.Layout, after: types.Layout): { string }
-    local old, new = columns_of(before), columns_of(after)
-    local owed: { [string]: boolean } = {}
-    for _, c in ipairs(catalog.pending_columns) do owed[c] = true end
-    local out: { string } = {}
-    for c in pairs(new) do
-        if not old[c] or owed[c] then out[#out + 1] = c end
-    end
-    table.sort(out)
-    return out
-end
-
 -- schedule_rebuild marks the catalog for rebuild from the schema event at seq and
 -- demands the rebuild slot in the fold's transaction; the caller wakes the job
 -- after commit.
@@ -176,14 +153,36 @@ local function apply_schema(tx: sql.Transaction, dialect: string, catalog: types
             { catalog_id, body.generation, encoded, compiled.digest, compiled.layout_digest, names.base, event.seq, 0, 0, 0, 0, stamp, stamp })
     else
         local prev = catalog.compiled
-        err = layout.alter(tx, dialect, layout.of(catalog.item_table, compiled.layout), prev.layout)
-        if err then return nil, nil, err end
-        err = exec(tx, [[UPDATE kickside_pim_catalog SET generation = $1, compiled = $2, digest = $3, layout_digest = $4,
-            updated_at = $5 WHERE catalog_id = $6]], { body.generation, encoded, compiled.digest, compiled.layout_digest, stamp, catalog_id })
-        if not err and prev.digest ~= compiled.digest then
-            local populated, perr = store.populated(tx, catalog_id)
+        local populated = false
+        if prev.digest ~= compiled.digest then
+            local present, perr = store.populated(tx, catalog_id)
             if perr then return nil, nil, perr end
-            if populated then job, err = schedule_rebuild(tx, dialect, catalog_id, event.seq, pending_after(catalog, prev.layout, compiled.layout)) end
+            populated = present == true
+        end
+        local storage = catalog.rebuild_storage
+        if not layout.same(prev.layout, compiled.layout) then
+            if not populated and not storage then
+                -- An empty catalog can adopt the new layout immediately.
+                err = layout.drop(tx, layout.from_base(catalog.item_table))
+                if not err then err = layout.create(tx, dialect, layout.of(catalog.item_table, compiled.layout)) end
+                if err then return nil, nil, err end
+            else
+                storage = storage or { active = prev.layout }
+                local other = storage.other
+                if other and not layout.same(other.layout, compiled.layout) then other.retired_after = other.retired_after or "" end
+            end
+        end
+        err = exec(tx, [[UPDATE kickside_pim_catalog SET generation = $1, compiled = $2, digest = $3, layout_digest = $4,
+            rebuild_storage = $5, updated_at = $6 WHERE catalog_id = $7]],
+            { body.generation, encoded, compiled.digest, compiled.layout_digest, storage and json.encode(storage) or sql.NULL, stamp, catalog_id })
+        if not err and prev.digest ~= compiled.digest and (populated or storage) then
+            local previous, current = sections.readiness(prev), sections.readiness(compiled)
+            local changed: { [string]: boolean } = {}
+            for id, rules in pairs(current) do
+                changed[id] = values.canonical(rules) ~= values.canonical(previous[id])
+            end
+            local pending = layout.pending_columns(prev.layout, compiled.layout, catalog.pending_columns, changed)
+            job, err = schedule_rebuild(tx, dialect, catalog_id, event.seq, pending)
         end
     end
     if err then return nil, nil, err end
@@ -285,7 +284,7 @@ local function apply_product(tx: sql.Transaction, catalog: types.Catalog, event:
     end
     local state_before: string? = nil
     if event.kind ~= "created" then state_before = p.state end
-    local before: { [integer]: boolean } = p.state == "live" and document.attribute_ids(compiled, p.document) or {}
+    local before = p.state == "live" and document.usage(compiled, p.document) or {}
     document.compact(compiled, p.document)
     document.apply_patch(p.document, body.patch or {}, body.source)
     if body.status then p.status = body.status end
@@ -318,7 +317,7 @@ local function apply_product(tx: sql.Transaction, catalog: types.Catalog, event:
     if err then return err end
     batch.cache[p.product_id] = p
     batch.derived[p.product_id] = true
-    local after: { [integer]: boolean } = p.state == "live" and document.attribute_ids(compiled, p.document) or {}
+    local after = p.state == "live" and document.usage(compiled, p.document) or {}
     derived.usage_delta(batch.usage, before, after)
     if event.type == EV.PRODUCT_DELETED then
         err = unpublish_where(tx, catalog_id, "product_id", p.product_id, nil, seq)
@@ -487,7 +486,7 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
             end
             if event.kind == "schema" then
                 if catalog then
-                    local cleaned, cerr = schema_cleanup.run(tx, dialect, catalog, event, math.max(0, row_budget - batch.rows))
+                    local cleaned, cerr = schema_cleanup.run(tx, catalog, event, math.max(0, row_budget - batch.rows))
                     if cerr or not cleaned then return cerr end
                     batch.rows = batch.rows + cleaned.rows
                     if cleaned.more then

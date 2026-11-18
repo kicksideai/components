@@ -1766,10 +1766,12 @@ entries:
   - name: seams_failure_probe
     kind: library.lua
     source: file://seams_failure_probe.lua
+    modules: [hash]
     imports:
       registry: app:registry_failure_fixture
       failure: kickside.pim:failure
       types: kickside.pim:types
+      values: kickside.pim.domain:values
 
   - name: scopes_failure_probe
     kind: library.lua

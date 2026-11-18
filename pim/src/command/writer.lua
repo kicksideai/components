@@ -108,6 +108,39 @@ end
 type SchemaPlan = { generation: integer, class: string, changes: { types.SchemaChange }, refused: { types.SchemaChange },
     effective: types.Declaration, compiled: types.Compiled, configs: { [string]: types.JsonObject }, unchanged: boolean }
 
+-- Called after classification has refused changes to the representation of
+-- used attributes. Their existing counts therefore apply to a new index.
+local function incompatible_index(previous: types.Compiled, compiled: types.Compiled,
+    usage: { [integer]: types.AttributeUsage }): types.SchemaChange?
+    local by_id = previous.by_id or {}
+    local refused: types.Attribute? = nil
+    local count = 0
+    for _, attr in pairs(compiled.attributes) do
+        local before, used = by_id[attr.id], usage[attr.id]
+        if before and used and before.index ~= attr.index and (attr.index == "key" or attr.index == "number") then
+            local violations = attr.index == "number" and attr.cardinality == "one" and used.order_violations or used.key_violations
+            if violations > 0 and (not refused or attr.id < refused.id) then
+                refused, count = attr, violations
+            end
+        end
+    end
+    if refused then
+        return { code = refused.code, class = "refused",
+            what = "incompatible stored values for the " .. refused.index .. " index in " .. count .. " live product(s)" }
+    end
+    return nil
+end
+
+local function family_structure_changed(prev: types.Compiled, compiled: types.Compiled, family: types.Family): boolean
+    local after = compiled.families[family.code]
+    if not after or not values.equal(family.levels, after.levels) or not values.equal(family.owner, after.owner) then return true end
+    -- An unchanged coordinate can still name a different attribute identity.
+    for code in pairs(family.owner) do
+        if prev.attributes[code].id ~= compiled.attributes[code].id then return true end
+    end
+    return false
+end
+
 -- plan_schema merges, compiles and classifies a declaration against the catalog
 -- state at the command head; plan_schema returns it, apply_schema appends it.
 local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_id: string, request: types.SchemaRequest): (SchemaPlan?, error?)
@@ -132,7 +165,7 @@ local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_
     local effective, merr = declaration.merge(prev_declaration, incoming)
     if merr or not effective then return nil, merr end
     local next_compiled, cerr = schema.compile(prev, effective, {
-        type_of = seams.load_type, is_check = seams.is_check, plugin = plugins.check, link_kind = links.has_kind,
+        type_of = seams.load_type, check_digest = seams.check_digest, plugin = plugins.check, link_kind = links.has_kind,
         scope = function(id: string): (boolean, error?)
             local scope, err = scopes.load(id)
             return scope ~= nil, err
@@ -162,20 +195,33 @@ local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_
         end
     end
     declaration.stamp(effective, compiled)
-    if prev_declaration and values.equal(prev_declaration, effective) then
+    if prev and prev_declaration and prev.digest == compiled.digest and values.equal(prev_declaration, effective) then
         return { generation = generation, class = "unchanged", changes = {}, refused = {}, effective = effective, compiled = compiled, configs = configs, unchanged = true }, nil
     end
-    local usage: { [integer]: integer } = {}
-    local family_products: { [string]: integer } = {}
+    local usage: { [integer]: types.AttributeUsage } = {}
     if catalog then
         local used, uerr = store.usage(db, catalog_id)
         if uerr or not used then return nil, uerr end
         usage = used
-        local families, ferr = store.family_products(db, catalog_id)
-        if ferr or not families then return nil, ferr end
-        family_products = families
     end
-    local changes = changes_of.changes(prev, compiled, { usage = usage, family_products = family_products, populated = next(family_products) ~= nil })
+    local product_usage: { [integer]: integer } = {}
+    for id, used in pairs(usage) do product_usage[id] = used.products end
+    local populated = catalog ~= nil and catalog.product_count > 0
+    local family_occupied: { [string]: boolean } = {}
+    if populated and prev then
+        for code, family in pairs(prev.families) do
+            if family_structure_changed(prev, compiled, family) then
+                local occupied, ferr = store.family_occupied(db, catalog_id, code)
+                if ferr then return nil, ferr end
+                family_occupied[code] = occupied
+            end
+        end
+    end
+    local changes = changes_of.changes(prev, compiled, { usage = product_usage, family_occupied = family_occupied, populated = populated })
+    if prev and changes_of.highest(changes) ~= "refused" then
+        local refusal = incompatible_index(prev, compiled, usage)
+        if refusal then changes[#changes + 1] = refusal end
+    end
     local refused: { types.SchemaChange } = {}
     for _, c in ipairs(changes) do if c.class == "refused" then refused[#refused + 1] = c end end
     return { generation = generation + 1, class = #refused > 0 and "refused" or changes_of.classify(prev, compiled, changes),
@@ -189,7 +235,7 @@ local function schema_command(plan: SchemaPlan): (types.Plan?, error?)
         return { result = { generation = plan.generation, class = "unchanged", changes = {} }, events = {} }, nil
     end
     if #plan.refused > 0 then
-        return nil, invalid("schema change reinterprets stored values", { code = "migration_required",
+        return nil, invalid("schema change requires migrating stored values", { code = "migration_required",
             changes = plan.refused :: { types.JsonObject }, migration = MIGRATION })
     end
     local body: types.SchemaBody = { generation = plan.generation, declaration = plan.effective, compiled = plan.compiled,

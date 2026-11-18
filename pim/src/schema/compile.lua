@@ -15,7 +15,7 @@ local contexts = require("contexts")
 local M = { ctx_key = contexts.ctx_key, chain = contexts.chain, check_context = contexts.check_context }
 
 type TypeLookup = (string) -> (types.TypeMeta?, error?)
-type CheckLookup = (string) -> (boolean, error?)
+type CheckLookup = (string) -> (string?, error?)
 -- ScopeLookup answers whether a registry id is a well-formed scope declaration.
 type ScopeLookup = (string) -> (boolean, error?)
 -- LinkLookup answers whether a link kind is bound.
@@ -26,7 +26,7 @@ type PluginCheck = (string, types.JsonObject) -> error?
 -- Lookups are the registry answers compile needs: the type of an attribute,
 -- whether an id is a check, a scope or a plugin accepting its config, and
 -- whether a link kind is bound. Compile itself reads no registry.
-type Lookups = { type_of: TypeLookup, is_check: CheckLookup?, scope: ScopeLookup?, plugin: PluginCheck?, link_kind: LinkLookup? }
+type Lookups = { type_of: TypeLookup, check_digest: CheckLookup?, scope: ScopeLookup?, plugin: PluginCheck?, link_kind: LinkLookup? }
 M.Lookups = Lookups
 M.CheckLookup = CheckLookup
 
@@ -391,9 +391,9 @@ local function compile_family(f: types.FamilyDecl, set: AspectSet, dimlist: { ty
     for _, c in ipairs(f.checks or {}) do
         if type(c.check) ~= "string" then return invalid(f.code .. ": a check names its function") end
         if not check_lookup then return invalid(f.code .. ": checks need a function registry") end
-        local known, kerr = check_lookup(c.check)
+        local digest, kerr = check_lookup(c.check)
         if kerr then return errors.wrap(kerr, f.code .. ": check lookup failed") end
-        if not known then return invalid(f.code .. ": " .. c.check .. " is not a kickside.pim.check entry") end
+        if not digest then return invalid(f.code .. ": " .. c.check .. " is not a kickside.pim.check entry") end
         local cost = c.cost or "interactive"
         if cost ~= "interactive" and cost ~= "release" then return invalid(f.code .. ": check cost is interactive or release") end
         local reads: { string } = {}
@@ -413,7 +413,7 @@ local function compile_family(f: types.FamilyDecl, set: AspectSet, dimlist: { ty
                 level = owner
             end
         end
-        checks[#checks + 1] = { fn = c.check, reads = reads, cost = cost, config = c.config or {}, enforce = enforce == "write", level = level }
+        checks[#checks + 1] = { fn = c.check, digest = digest, reads = reads, cost = cost, config = c.config or {}, enforce = enforce == "write", level = level }
     end
     families[f.code] = { code = f.code, owner = members, levels = levels, item_level = #levels - 1, requirements = requirements,
         checks = checks }
@@ -452,7 +452,7 @@ function M.compile(prev: types.Compiled?, declaration: types.Declaration, lookup
     if verr or not vocabularies then return nil, verr end
     local set, aerr = compile_aspects(declared.aspects, prev, dimlist, dimset, vocabularies, lookups)
     if aerr or not set then return nil, aerr end
-    local families, ferr = compile_families(declaration, set, dimlist, lookups.is_check)
+    local families, ferr = compile_families(declaration, set, dimlist, lookups.check_digest)
     if ferr or not families then return nil, ferr end
     local sources, serr = sections.sources(declaration, set.aspects)
     if serr or not sources then return nil, serr end

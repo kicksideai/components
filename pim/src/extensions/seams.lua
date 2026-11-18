@@ -4,8 +4,10 @@
 -- references, what it targets. A kickside.pim.check entry is a function PIM runs
 -- over a product and turns into findings.
 local failure = require("failure")
+local hash = require("hash")
 local registry = require("registry")
 local types = require("types")
+local values = require("values")
 
 local M = {}
 
@@ -74,15 +76,15 @@ function M.find_types(): ({ types.TypeOption }?, error?)
     return out, nil
 end
 
--- is_check reports whether id names a declared check.
-function M.is_check(id: string): (boolean, error?)
+-- check_digest identifies the executable registry entry adopted by a schema.
+function M.check_digest(id: string): (string?, error?)
     local entry, err = registry.get(id)
     if err then
-        if err:kind() == errors.NOT_FOUND then return false, nil end
-        return false, errors.wrap(err, "check lookup " .. id)
+        if err:kind() == errors.NOT_FOUND then return nil, nil end
+        return nil, errors.wrap(err, "check lookup " .. id)
     end
-    if not entry or type(entry.meta) ~= "table" then return false, nil end
-    return (entry.meta :: { [string]: unknown }).type == M.CHECK, nil
+    if not entry or type(entry.meta) ~= "table" or (entry.meta :: { [string]: unknown }).type ~= M.CHECK then return nil, nil end
+    return hash.sha256(values.canonical({ kind = entry.kind, data = entry.data }))
 end
 
 return M

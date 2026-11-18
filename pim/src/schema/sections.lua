@@ -136,34 +136,87 @@ function M.plugins(declaration: types.Declaration, plugin_check: PluginCheck?): 
     return plugins, nil
 end
 
+local function attribute_ids(c: types.Compiled): { [string]: integer }
+    local ids: { [string]: integer } = {}
+    for code, attr in pairs(c.attributes) do ids[code] = attr.id end
+    return ids
+end
+
+local function id_list(ids: { [string]: integer }, codes: { string }): { integer }
+    local out: { integer } = {}
+    for i, code in ipairs(codes) do out[i] = ids[code] end
+    return out
+end
+
+type RequirementRule = { id: string, contexts: { types.Ctx }, require: { integer }, authored: { integer } }
+type CheckRule = { fn: string, digest: string?, reads: { integer }, cost: string, config: types.JsonObject }
+
+local function readiness_rules(f: types.Family, ids: { [string]: integer }): ({ RequirementRule }, { CheckRule })
+    local reqs: { RequirementRule } = {}
+    for i, r in ipairs(f.requirements) do
+        reqs[i] = { id = r.id, contexts = r.contexts, require = id_list(ids, r.require), authored = id_list(ids, r.authored) }
+    end
+    local checks: { CheckRule } = {}
+    for i, k in ipairs(f.checks) do
+        checks[i] = { fn = k.fn, digest = k.digest, reads = id_list(ids, k.reads), cost = k.cost, config = k.config }
+    end
+    return reqs, checks
+end
+
+-- A flag aggregates the same set across families. Each family's interactive
+-- checks apply to every one of its sets. Include the inputs to resolution for
+-- the attributes the set or its checks actually read.
+function M.readiness(c: types.Compiled): { [string]: { [string]: unknown } }
+    local result: { [string]: { [string]: unknown } } = {}
+    local ids = attribute_ids(c)
+    local attrs: { [integer]: types.Attribute } = {}
+    local dimensions: { [string]: types.Dimension } = {}
+    for _, attr in pairs(c.attributes) do attrs[attr.id] = attr end
+    for _, dim in ipairs(c.dimensions) do dimensions[dim.name] = dim end
+    for code, f in pairs(c.families) do
+        local requirements, checks = readiness_rules(f, ids)
+        local interactive: { CheckRule } = {}
+        for _, check in ipairs(checks) do
+            if check.cost == "interactive" then interactive[#interactive + 1] = check end
+        end
+        for _, req in ipairs(requirements) do
+            local inputs: { [string]: unknown } = {}
+            local function add(dependencies: { integer })
+                for _, id in ipairs(dependencies) do
+                    local attr = attrs[id]
+                    local scope: { types.Dimension } = {}
+                    for i, name in ipairs(attr.scope) do scope[i] = dimensions[name] end
+                    inputs[tostring(id)] = { owner = f.owner[attr.code], scope = scope, default = attr.default }
+                end
+            end
+            add(req.require)
+            add(req.authored)
+            for _, check in ipairs(interactive) do add(check.reads) end
+            local by_family = result[req.id] or {}
+            by_family[code] = { requirement = req, checks = interactive, inputs = inputs }
+            result[req.id] = by_family
+        end
+    end
+    return result
+end
+
 -- meaning is the compiled model with attribute codes replaced by ids: what
 -- stored rows depend on. Its digest changes when resolved values, readiness
 -- or the layout can change, and stays put for a rename.
 function M.meaning(c: types.Compiled): unknown
-    local ids: { [string]: integer } = {}
+    local ids = attribute_ids(c)
     local attrs: { [string]: unknown } = {}
-    for code, a in pairs(c.attributes) do
-        ids[code] = a.id
+    for _, a in pairs(c.attributes) do
         attrs[tostring(a.id)] = { form = a.form, type = a.type, scope = a.scope, cardinality = a.cardinality, index = a.index,
             unique = a.unique, config = a.config, default = a.default, vocabulary = a.vocabulary, index_contexts = a.index_contexts }
-    end
-    local function id_list(codes: { string }): { integer }
-        local out: { integer } = {}
-        for i, code in ipairs(codes) do out[i] = ids[code] end
-        return out
     end
     local fams: { [string]: unknown } = {}
     for code, f in pairs(c.families) do
         local owner: { [string]: integer } = {}
         for attr_code, level in pairs(f.owner) do owner[tostring(ids[attr_code])] = level end
         local levels: { unknown } = {}
-        for i, l in ipairs(f.levels) do levels[i] = id_list(l.axes) end
-        local reqs: { unknown } = {}
-        for i, r in ipairs(f.requirements) do
-            reqs[i] = { id = r.id, contexts = r.contexts, require = id_list(r.require), authored = id_list(r.authored) }
-        end
-        local chk: { unknown } = {}
-        for i, k in ipairs(f.checks) do chk[i] = { fn = k.fn, reads = id_list(k.reads), cost = k.cost, config = k.config } end
+        for i, l in ipairs(f.levels) do levels[i] = id_list(ids, l.axes) end
+        local reqs, chk = readiness_rules(f, ids)
         fams[code] = { owner = owner, levels = levels, item_level = f.item_level, requirements = reqs, checks = chk }
     end
     return { c.layout, attrs, fams, c.dimensions }

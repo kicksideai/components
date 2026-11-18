@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app
+entries:
+  - name: index_rebuild_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://index_rebuild_test.lua
+    method: run
+    modules: [funcs, registry]
+    imports:
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      fixture: app:fixture
+      materializer: kickside.pim.persist:materializer
+      schema: kickside.pim.schema:compile
+      seams: kickside.pim.extensions:seams
+      steps: app:steps
+      store: kickside.pim.persist:store
+      test: wippy.test:test
+      types: kickside.pim:types
+  - name: rebuild_readiness_check
+    kind: function.lua
+    meta: { type: kickside.pim.check }
+    source: 'return { run = function() return { findings = {} } end }'
+    method: run
+  - name: rebuild_readiness_check_access
+    kind: security.policy
+    groups: [kickside.security.groups:members]
+    policy:
+      resources: [app:rebuild_readiness_check]
+      actions: [registry.get, funcs.call]
+      effect: allow

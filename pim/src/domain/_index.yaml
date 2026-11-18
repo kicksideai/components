@@ -63,6 +63,7 @@ entries:
     source: file://document.lua
     imports:
       types: kickside.pim:types
+      values: kickside.pim.domain:values
 
 
   - name: search

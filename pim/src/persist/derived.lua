@@ -13,10 +13,25 @@ type UniqueRow = { attribute_id: integer, key: string }
 -- Touched names the products whose derived rows change, in their final state.
 type Touched = { derived: { [string]: boolean }, cache: { [string]: types.Product } }
 
--- usage_delta adds a product's change of held attributes to the batch.
-function M.usage_delta(usage: { [integer]: integer }, before: { [integer]: boolean }, after: { [integer]: boolean })
-    for id in pairs(before) do if not after[id] then usage[id] = (usage[id] or 0) - 1 end end
-    for id in pairs(after) do if not before[id] then usage[id] = (usage[id] or 0) + 1 end end
+type Usage = { [integer]: types.AttributeUsage }
+M.Usage = Usage
+
+-- usage_delta adds a product's change of held and incompatible attributes to the batch.
+function M.usage_delta(usage: Usage, before: Usage, after: Usage)
+    local zero: types.AttributeUsage = { products = 0, key_violations = 0, order_violations = 0 }
+    local function add(id: integer, previous: types.AttributeUsage, current: types.AttributeUsage)
+        local products = current.products - previous.products
+        local keys = current.key_violations - previous.key_violations
+        local orders = current.order_violations - previous.order_violations
+        if products == 0 and keys == 0 and orders == 0 then return end
+        local delta = usage[id] or { products = 0, key_violations = 0, order_violations = 0 }
+        delta.products = delta.products + products
+        delta.key_violations = delta.key_violations + keys
+        delta.order_violations = delta.order_violations + orders
+        usage[id] = delta
+    end
+    for id, previous in pairs(before) do add(id, previous, after[id] or zero) end
+    for id, current in pairs(after) do if not before[id] then add(id, zero, current) end end
 end
 
 function M.derived_rows(compiled: types.Compiled, product: types.Product): ({ RefRow }?, { UniqueRow }?, error?)
@@ -76,13 +91,19 @@ function M.flush_derived(tx: types.Executor, catalog_id: string, compiled: types
 end
 
 -- flush_usage applies the batch's usage deltas, one upsert per chunk.
-function M.flush_usage(tx: types.Executor, catalog_id: string, usage: { [integer]: integer }): error?
+function M.flush_usage(tx: types.Executor, catalog_id: string, usage: Usage): error?
     local rows: { types.SqlParams } = {}
     for id, delta in pairs(usage) do
-        if delta ~= 0 then rows[#rows + 1] = { catalog_id, id, delta } end
+        if delta.products ~= 0 or delta.key_violations ~= 0 or delta.order_violations ~= 0 then
+            rows[#rows + 1] = { catalog_id, id, delta.products, delta.key_violations, delta.order_violations }
+        end
     end
-    return bulk.insert(tx, "kickside_pim_attribute_usage", { { name = "catalog_id" }, { name = "attribute_id" }, { name = "products" } },
-        rows, " ON CONFLICT (catalog_id, attribute_id) DO UPDATE SET products = kickside_pim_attribute_usage.products + excluded.products")
+    return bulk.insert(tx, "kickside_pim_attribute_usage", { { name = "catalog_id" }, { name = "attribute_id" },
+        { name = "products" }, { name = "key_violations" }, { name = "order_violations" } },
+        rows, [[ ON CONFLICT (catalog_id, attribute_id) DO UPDATE SET
+            products = kickside_pim_attribute_usage.products + excluded.products,
+            key_violations = kickside_pim_attribute_usage.key_violations + excluded.key_violations,
+            order_violations = kickside_pim_attribute_usage.order_violations + excluded.order_violations]])
 end
 
 return M

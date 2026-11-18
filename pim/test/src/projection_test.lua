@@ -80,7 +80,7 @@ local function define()
                 local db = assert(store.open())
                 local usage = assert(store.usage(db, h.id))
                 db:release()
-                return usage[attr] or 0
+                return usage[attr] and usage[attr].products or 0
             end
             local function rescope(): string
                 local plan, err = h.call("plan_schema", { declaration = { aspects = { { namespace = "marketing", attributes = {
