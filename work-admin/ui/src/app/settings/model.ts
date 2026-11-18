@@ -64,6 +64,8 @@ export function renameField(draft: Declaration, field: Field, code: string) {
 export function requestDeclaration(draft: Declaration, original: Declaration): Declaration {
   const out = clone(draft)
   const removed = { ...out.remove }
+  if (original.visibility && !out.visibility) removed.visibility = true
+  else delete removed.visibility
   for (const kind of ['fields', 'item_types', 'processes', 'relation_types'] as const) {
     const missing = (original[kind] ?? []).filter(entry => {
       if (kind === 'fields') {
@@ -92,7 +94,7 @@ export function normalizeSchema(view: Schema): Schema {
   for (const field of out.declaration.fields ?? []) {
     const compiled = out.compiled.fields?.find(f => f.code === field.code)
     field.id ??= compiled?.id
-    field.form ??= compiled?.form ?? 'text'
+    field.form ??= compiled?.form
   }
   for (const process of out.declaration.processes ?? []) process.migration ??= out.compiled.processes?.find(compiled => compiled.id === process.id)?.migration ?? effectiveMigration(process)
   return out

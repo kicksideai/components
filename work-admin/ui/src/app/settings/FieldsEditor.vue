@@ -30,7 +30,11 @@ async function remove(field: Field) {
   finally { removing.value = '' }
 }
 const forms = Object.entries({ text: 'Text', int: 'Whole number', dec: 'Decimal number', quantity: 'Measurement', bool: 'Yes or no', time: 'Date or time', ref: 'Reference', record: 'Structured data', option: 'Choice', principal: 'Person or group', item: 'Work item', rank: 'Order', rich_text: 'Formatted text', formula: 'Formula', rollup: 'Related item calculation', counter: 'Counter' }).map(([value, label]) => ({ value, label }))
-function kind(field: Field) { return field.type && field.type !== 'value' ? field.type : field.form }
+function kind(field: Field) { return field.type && field.type !== 'value' ? field.type : field.form ?? 'text' }
+function setCustomType(field: Field, type: string) {
+  field.type = type
+  delete field.form
+}
 function setKind(field: Field, value: string) {
   const special: Record<string, Field['form']> = { option: 'text', principal: 'ref', item: 'ref', rank: 'text', rich_text: 'text', formula: 'int', rollup: 'int', counter: 'int' }
   if (special[value]) { field.type = value; field.form = special[value] }
@@ -74,8 +78,8 @@ function add() { if (!/^[a-z][a-z0-9_]*$/.test(code.value) || fields.value.some(
       <label v-if="field.type === 'formula' || field.type === 'rollup'" class="work-stack work-tight">Result type<Select v-model="field.form" aria-label="Result type" :options="forms.slice(0, 8)" optionLabel="label" optionValue="value" appendTo="self" /></label>
       <label v-if="field.type === 'formula'" class="work-stack work-tight">Expression<InputText v-model="field.expression" /></label>
       <template v-if="field.type === 'rollup'"><label class="work-stack work-tight">Of<InputText v-model="field.of" /></label><label class="work-stack work-tight">Function<InputText v-model="field.fn" /></label><label class="work-stack work-tight">Field<InputText v-model="field.field" /></label><label class="work-stack work-tight">Order by<Select :model-value="field.by" aria-label="Rollup order" :options="['rank', 'time']" showClear appendTo="self" @update:model-value="field.by = $event || undefined" /></label><ConditionEditor v-model="field.where" :draft="draft" :board-id="boardId" label="Include related items when" @validity="emit('validity', 'rollup-' + index, $event)" /></template>
-      <JsonInput v-if="['dec', 'quantity', 'ref', 'time', 'record'].includes(field.form) || field.config" label="Field configuration" :model-value="field.config" shape="object" @update:model-value="field.config = $event as Field['config']" @validity="emit('validity', 'config-' + index, $event)" />
-      <section class="work-stack"><h4 class="work-group-title">Access</h4><label v-if="installedTypes?.length" class="work-stack work-tight">Custom field type<Select :model-value="field.type" :options="installedTypes" optionLabel="title" optionValue="id" appendTo="self" @update:model-value="field.type = $event" /></label><HoldersPicker :board-id="boardId" v-for="mode in (['read', 'write'] as const)" :key="mode" :label="mode === 'read' ? 'Who can read' : 'Who can edit'" :model-value="field.access?.[mode]" @update:model-value="field.access = { ...field.access, [mode]: $event }" @validity="emit('validity', 'access-' + index + mode, $event)" /></section>
+      <JsonInput v-if="['dec', 'quantity', 'ref', 'time', 'record'].includes(field.form ?? '') || field.config" label="Field configuration" :model-value="field.config" shape="object" @update:model-value="field.config = $event as Field['config']" @validity="emit('validity', 'config-' + index, $event)" />
+      <section class="work-stack"><h4 class="work-group-title">Access</h4><label v-if="installedTypes?.length" class="work-stack work-tight">Custom field type<Select aria-label="Custom field type" :model-value="field.type" :options="installedTypes" optionLabel="title" optionValue="id" appendTo="self" @update:model-value="setCustomType(field, $event)" /></label><HoldersPicker :board-id="boardId" v-for="mode in (['read', 'write'] as const)" :key="mode" :label="mode === 'read' ? 'Who can read' : 'Who can edit'" :model-value="field.access?.[mode]" @update:model-value="field.access = { ...field.access, [mode]: $event }" @validity="emit('validity', 'access-' + index + mode, $event)" /></section>
     </DefinitionRow>
     <div class="work-row work-add-definition"><label class="work-stack work-tight">New field identifier<InputText v-model="code" @keydown.enter.prevent="add" /></label><Button label="Add field" severity="secondary" :disabled="!code.trim()" @click="add" outlined><template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template></Button></div>
     </DefinitionList>

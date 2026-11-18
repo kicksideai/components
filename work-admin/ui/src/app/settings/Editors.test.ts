@@ -13,6 +13,7 @@ import DurationControl from './DurationControl.vue'
 import PolicyEditor from './PolicyEditor.vue'
 import ProcessEditor from './ProcessEditor.vue'
 import PluginsEditor from './PluginsEditor.vue'
+import { requestDeclaration } from './model'
 import { settings } from './api'
 import { schema } from '../../test/fixtures'
 import type { Declaration, Process } from '../../types'
@@ -28,6 +29,14 @@ it('keeps Work field kinds canonical and persists display reordering in item typ
   expect(draft.fields![0].code).toBe('priority')
   await w.get('button[aria-label="Option later"]').trigger('click')
   expect(draft.fields![0].options?.map(o => [o.id, o.order])).toEqual([['high', 0], ['low', 1]])
+  w.unmount()
+})
+it('submits a newly selected installed field type without the primitive form', async () => {
+  const draft = reactive<Declaration>({ fields: [{ code: 'quantity', form: 'text', cardinality: 'one' }] })
+  const iron = { id: 'app:integer_field', title: 'Whole units' }
+  const w = mount(FieldsEditor, { props: { draft, installedTypes: [iron] } })
+  await w.findAllComponents(Select).at(-1)!.setValue(iron.id)
+  expect(requestDeclaration(draft, {}).fields).toEqual([{ code: 'quantity', type: iron.id, cardinality: 'one' }])
   w.unmount()
 })
 it('edits per-kind stage, approval, parallel and timer settings in their process section', async () => {

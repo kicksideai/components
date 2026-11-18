@@ -19,8 +19,9 @@ responsive layout, keyboard selection, zoom and pan.
 Bind `kickside.work.admin:ui_server` to the host HTTP service and
 `kickside.work.admin:api_router` to its authenticated router running
 `token_auth` and `endpoint_firewall`. Install and bind `kickside/work` and
-`kickside/widgets` as usual. Dependencies declare `*`; the committed harness
-lock selects published Work 0.1.1 and compatible platform releases.
+`kickside/widgets` as usual. Automated stage Flow bindings require Work 0.1.3
+or later. Visibility removal uses Work's reviewed `remove.visibility` schema
+operation.
 
 `kickside.work.admin:admin` announces `kickside-work-admin` and the
 `ui.settings_tab` mount. The platform checks
@@ -41,7 +42,8 @@ administration rights. Its two helper routes are:
   administrators receive plugin and installed field-type choices.
 - `POST /api/v1/work-admin/boards/{id}/principal_labels`: requires board ADMIN
   and resolves up to 200 user/group references through the scoped Directory
-  contract. It accepts `{ "refs": [{ "type": "user", "id": "…" }] }`.
+  contract. It accepts `{ "refs": [{ "type": "user", "id": "…" }] }` and returns
+  `invalid_principal_refs` for malformed batches.
 
 Board listing, metadata, schema plans/applies, plugin configuration, pack
 discovery/plans/applies and migration resume use Work's published endpoints.
@@ -56,13 +58,16 @@ entry points and shared chunks live in `static/`, served at
 `/kickside-work-admin` and embedded in the published module.
 
 ```sh
-make setup build typecheck ui-test lint strict check test pack
+make setup build typecheck ui-test lint strict check test test-published test-scope pack
 make test-pg WORK_ADMIN_PG_PORT=5434
 ```
 
-The standalone harness uses the real authenticated platform stack, published
-Work and only repository-local replacements for this module and the existing
-platform UI siblings. It fails for empty suites and failed cases. PostgreSQL
+The standalone harness uses the real authenticated platform stack and the
+sibling Work source. It validates the advertised schemas for all 41 static Work
+tools using the published MCP endpoint. The published Work probe installs the
+locked minimum release and plans, applies and reloads a published Flow binding.
+The custom scope probe exercises both helpers with a host-selected group. The
+harness fails for empty suites and failed cases. PostgreSQL
 uses the `postgres` profile; supply a fresh database through
 `WIPPY_ARGS="--set vars.pg_database=work_admin_test"`.
 
