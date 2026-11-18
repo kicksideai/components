@@ -106,7 +106,7 @@ function M.recompute(tx: types.Executor, dialect: string, catalog: types.Catalog
     end
     local err = write(layout.active(catalog))
     local other = catalog.rebuild_storage and catalog.rebuild_storage.other
-    if not err and other and not other.retired then err = write(layout.of(other.base, other.layout)) end
+    if not err and other and other.retired_after == nil then err = write(layout.of(other.base, other.layout)) end
     return err
 end
 

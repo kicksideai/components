@@ -248,7 +248,6 @@ entries:
     imports:
       types: kickside.pim:types
       layout: kickside.pim.persist:layout
-      cleanup_rows: kickside.pim.persist:cleanup_rows
 
   - name: merge_rows
     kind: library.lua

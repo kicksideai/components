@@ -169,7 +169,7 @@ local function apply_schema(tx: sql.Transaction, dialect: string, catalog: types
             else
                 storage = storage or { active = prev.layout }
                 local other = storage.other
-                if other and not layout.same(other.layout, compiled.layout) then other.retired = true end
+                if other and not layout.same(other.layout, compiled.layout) then other.retired_after = other.retired_after or "" end
             end
         end
         err = exec(tx, [[UPDATE kickside_pim_catalog SET generation = $1, compiled = $2, digest = $3, layout_digest = $4,

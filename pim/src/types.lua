@@ -134,7 +134,7 @@ type PluginView = { plugin: string, title: string?, description: string?, icon: 
 -- columns hold a value's key or order value; flag columns an int computed per item.
 type Column = { attribute_id: integer, ctx: string, kind: string, column: string }
 type Layout = { columns: { Column }, sets: { Column }, search: { Column }, flags: { Column } }
-type RebuildStorage = { active: Layout, other: { base: string, layout: Layout, retired: boolean }? }
+type RebuildStorage = { active: Layout, other: { base: string, layout: Layout, retired_after: string? }? }
 type Compiled = {
     policy: PolicyOverrides,
     dimensions: { Dimension }, vocabularies: { [string]: Vocabulary }, aspects: { [string]: Aspect },

@@ -45,7 +45,7 @@ function M.page(tx: types.Executor, name: string, keys: string, where: string, p
     return n, n == limit, nil
 end
 
-function M.generated(tx: types.Executor, dialect: string, t: types.Table, limit: integer): (boolean?, error?, integer?)
+local function generated_page(tx: types.Executor, dialect: string, t: types.Table, limit: integer): (boolean?, error?, integer?)
     local names = t.names
     local remaining = limit
     local generated: { Table } = { { name = names.set, keys = "product_id, col, value_key" }, { name = names.item, keys = "product_id" } }
@@ -70,7 +70,7 @@ function M.catalog(tx: types.Executor, dialect: string, catalog_id: string, limi
         local other = current.rebuild_storage and current.rebuild_storage.other
         if other then generated[#generated + 1] = layout.of(other.base, other.layout) end
         for _, t in ipairs(generated) do
-            local done, err, n = M.generated(tx, dialect, t, remaining)
+            local done, err, n = generated_page(tx, dialect, t, remaining)
             if err or not n then return nil, err end
             remaining = remaining - n
             if not done then return false, nil, limit - remaining end
