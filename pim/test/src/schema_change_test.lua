@@ -3,6 +3,7 @@ local test = require("test")
 local fixture = require("fixture")
 local steps = require("steps")
 local store = require("store")
+local changes = require("changes")
 local json = require("json")
 local types = require("types")
 
@@ -60,6 +61,7 @@ local function define()
             local h = fixture.catalog()
             fixture.boot(h)
             local id = head(h).attributes["core.size"].id
+            local previous = catalog_fixture.catalog(h).compiled
             local family = footwear()
             assert(family.variation)[2].axes = { "core.shoe_size" }
             local patch = { families = { family }, aspects = { { namespace = "core", attributes = {
@@ -70,6 +72,8 @@ local function define()
             test.eq(plan.class, "cosmetic", refused and refused.what or "")
             local applied = change(h, patch)
             test.eq(applied.class, "cosmetic")
+            local current = catalog_fixture.catalog(h).compiled
+            test.is_false(changes.family_needs_occupancy(previous, current, "footwear", { [id] = 1 }))
             test.eq(head(h).attributes["core.shoe_size"].id, id)
             test.eq(assert(steps.get(h, "RDG-moss-40")).values["core.shoe_size"].value, 40)
         end)
@@ -117,6 +121,61 @@ local function define()
                 test.eq(item.values["core.legacy_name"].value, "original")
                 test.eq(item.values["core.name"].state, "absent")
             end
+        end)
+
+        test.it("reserves attribute IDs across repeated aspect entries", function()
+            local text, integer = "kickside.pim.types:text", "kickside.pim.types:integer"
+            for _, reuse_first in ipairs({ true, false }) do
+                local h = fixture.catalog({ bare = true })
+                change(h, { aspects = { { namespace = "core", attributes = { { code = "name", type = text } } } } })
+                local id = head(h).attributes["core.name"].id
+                test.eq(steps.one(h, { product = { sku = "P" }, create = {},
+                    set = { { attr = "core.name", value = "original" } } }).outcome, "created")
+                local fresh = { namespace = "core", attributes = { { code = "name", type = integer } } }
+                local renamed = { namespace = "core", attributes = { { id = id, code = "legacy_name", type = text } } }
+                local patch = { aspects = reuse_first and { fresh, renamed } or { renamed, fresh } }
+                local plan = assert(h.call("plan_schema", { declaration = patch }))
+                test.eq(plan.class, "additive")
+                test.eq(#plan.changes, 2)
+                test.eq(change(h, patch).class, "additive")
+                local current = head(h)
+                test.eq(current.attributes["core.legacy_name"].id, id)
+                test.is_true(current.attributes["core.name"].id > id)
+                test.eq(current.declaration.aspects[1].attributes[1].code, patch.aspects[1].attributes[1].code)
+                local item = assert(steps.get(h, "P"))
+                test.eq(item.values["core.legacy_name"].value, "original")
+                test.eq(item.values["core.name"].state, "absent")
+            end
+        end)
+
+        test.it("reports a check change alongside a source addition", function()
+            local h = fixture.catalog()
+            local family = footwear()
+            family.checks = { { check = "app:weight_check", reads = { "logistics.net_weight" }, config = { max = 2 } } }
+            change(h, { families = { family } })
+            assert(family.checks)[1].config = { max = 1 }
+            local patch = { families = { family }, sources = { { id = "warehouse" } } }
+            for _, operation in ipairs({ "plan_schema", "apply_schema" }) do
+                local result = assert(h.call(operation, { declaration = patch }))
+                test.eq(result.class, "semantic")
+                test.eq(#result.changes, 2)
+                test.eq(result.changes[1].code, "family footwear")
+                test.eq(result.changes[1].what, "checks")
+                test.eq(result.changes[1].class, "semantic")
+                test.eq(result.changes[2].code, "source warehouse")
+                test.eq(result.changes[2].class, "additive")
+            end
+
+            local renamed = head(h).declaration.aspects[3].attributes[1]
+            renamed.code = "shipping_weight"
+            assert(family.variation)[2].own = { "core.gtin", "logistics.shipping_weight" }
+            assert(family.requirements)[2].require = { "core.gtin", "logistics.shipping_weight" }
+            assert(family.checks)[1].reads = { "logistics.shipping_weight" }
+            local plan = assert(h.call("plan_schema", { declaration = { families = { family },
+                aspects = { { namespace = "logistics", attributes = { renamed } } } } }))
+            test.eq(plan.class, "cosmetic")
+            test.eq(#plan.changes, 1)
+            test.eq(plan.changes[1].what, "renamed from logistics.net_weight")
         end)
 
         test.it("keeps readiness rules that still point to the same field cosmetic", function()

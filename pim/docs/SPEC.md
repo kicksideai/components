@@ -1520,17 +1520,20 @@ route inventory for executable conformance checks.
 CRM model: **merge** named entries (dimensions, vocabularies, aspects,
 families, sources, channels and scopes by key; plugins by `use`; attributes
 by code or by `id` for a rename). A request must name each key in a section
-once. Repeated aspects merge their named attributes. Named attributes take
-the incoming declaration order and retain their ids. Omitted previous
-attributes follow in their previous order.
-Explicit IDs claim their previous attributes before code matching. A request
-can rename an attribute and reuse its old code for a fresh ID in any entry order.
+once. Repeated aspects combine their distinct named attributes. Named attributes
+take the incoming declaration order and retain their IDs. Omitted previous
+attributes follow in their previous order. Explicit IDs across all entries for
+a namespace claim their previous attributes before code matching. A request can
+rename an attribute and reuse its old code for a fresh ID in any entry order.
 Attribute config must match its type's shape before checking which plugins
 own any seams it references.
 `declaration.remove` destroys; **classify** each change against
 usage facts (an attribute is used while a live product holds a set or cleared
 cell of it). Family owner levels, ordered axes and readiness field references
-are compared by attribute ID. The plan lists additions to named sections such
+are compared by attribute ID. Planning uses the catalog's live product count
+and seeks live products only for families whose removal, axis change or authored
+owner move could be refused. The plan reports changed checks and requirements as
+semantic findings. It lists additions to named sections such
 as families, sources, dimensions and members, plus changes to the relative form
 order of retained attributes in each aspect. The highest listed class takes
 precedence when changes are combined:

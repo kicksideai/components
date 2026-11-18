@@ -154,10 +154,11 @@ function M.requirement_meaning(f: types.Family, attributes: { [string]: types.At
     return reqs
 end
 
-local function check_meaning(f: types.Family, attributes: { [string]: types.Attribute }): { CheckRule }
+function M.check_meaning(f: types.Family, attributes: { [string]: types.Attribute }, include_digest: boolean): { CheckRule }
     local checks: { CheckRule } = {}
     for i, k in ipairs(f.checks) do
-        checks[i] = { fn = k.fn, digest = k.digest, reads = M.attribute_ids(attributes, k.reads), cost = k.cost, config = k.config }
+        checks[i] = { fn = k.fn, digest = include_digest and k.digest or nil,
+            reads = M.attribute_ids(attributes, k.reads), cost = k.cost, config = k.config }
     end
     return checks
 end
@@ -173,7 +174,7 @@ function M.readiness(c: types.Compiled): { [string]: { [string]: unknown } }
     for _, dim in ipairs(c.dimensions) do dimensions[dim.name] = dim end
     for code, f in pairs(c.families) do
         local requirements = M.requirement_meaning(f, c.attributes)
-        local checks = check_meaning(f, c.attributes)
+        local checks = M.check_meaning(f, c.attributes, true)
         local interactive: { CheckRule } = {}
         for _, check in ipairs(checks) do
             if check.cost == "interactive" then interactive[#interactive + 1] = check end
@@ -215,7 +216,7 @@ function M.meaning(c: types.Compiled): unknown
         local levels: { unknown } = {}
         for i, l in ipairs(f.levels) do levels[i] = M.attribute_ids(c.attributes, l.axes) end
         fams[code] = { owner = owner, levels = levels, item_level = f.item_level,
-            requirements = M.requirement_meaning(f, c.attributes), checks = check_meaning(f, c.attributes) }
+            requirements = M.requirement_meaning(f, c.attributes), checks = M.check_meaning(f, c.attributes, true) }
     end
     return { c.layout, attrs, fams, c.dimensions }
 end

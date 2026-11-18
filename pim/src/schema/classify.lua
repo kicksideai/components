@@ -120,6 +120,9 @@ local function family_changes(out: { types.SchemaChange }, prev: types.Compiled,
             if not values.equal(sections.requirement_meaning(family, prev.attributes), sections.requirement_meaning(after, next.attributes)) then
                 add(out, label, "semantic", "requirements")
             end
+            if not values.equal(sections.check_meaning(family, prev.attributes, false), sections.check_meaning(after, next.attributes, false)) then
+                add(out, label, "semantic", "checks")
+            end
             local revisions: { [string]: string } = {}
             for _, check in ipairs(family.checks) do revisions[check.fn] = check.digest end
             for _, check in ipairs(after.checks) do

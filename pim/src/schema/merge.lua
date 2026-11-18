@@ -132,6 +132,27 @@ local function merge_aspect(prev: types.AspectDecl, incoming: types.AspectDecl):
     return { namespace = incoming.namespace, write = incoming.write or prev.write, attributes = attributes }, nil
 end
 
+-- Treat all entries for a namespace as one patch before resolving attribute IDs.
+local function group_aspects(incoming: { types.AspectDecl }?): { types.AspectDecl }
+    local grouped: { types.AspectDecl } = {}
+    local by_namespace: { [string]: types.AspectDecl } = {}
+    for _, aspect in ipairs(incoming or {}) do
+        local entry = by_namespace[aspect.namespace]
+        if entry then
+            entry.write = aspect.write or entry.write
+            if aspect.attributes then
+                local attributes = entry.attributes or {}
+                for _, attr in ipairs(aspect.attributes) do attributes[#attributes + 1] = attr end
+                entry.attributes = attributes
+            end
+        else
+            by_namespace[aspect.namespace] = aspect
+            grouped[#grouped + 1] = aspect
+        end
+    end
+    return grouped
+end
+
 -- merge_policy merges key by key: a named key replaces, omitted keys stay, and a
 -- key set to false returns to the deployment default.
 local function merge_policy(prev: types.PolicyDecl?, incoming: types.PolicyDecl?): (types.PolicyDecl?, error?)
@@ -238,7 +259,7 @@ function M.merge(prev: types.Declaration?, incoming: types.Declaration): (types.
     if err then return nil, err end
     out.vocabularies, err = M.merge_list(base.vocabularies, named.vocabularies, code_of_vocabulary)
     if err then return nil, err end
-    out.aspects, err = M.merge_list(base.aspects, named.aspects, namespace_of, merge_aspect)
+    out.aspects, err = M.merge_list(base.aspects, group_aspects(named.aspects), namespace_of, merge_aspect)
     if err then return nil, err end
     out.families, err = M.merge_list(base.families, named.families, code_of_family)
     if err then return nil, err end

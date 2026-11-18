@@ -524,6 +524,7 @@ entries:
     modules: [json]
     imports:
       catalog_fixture: app:catalog_fixture
+      changes: kickside.pim.schema:classify
       test: wippy.test:test
       fixture: app:fixture
       store: kickside.pim.persist:store
