@@ -434,7 +434,9 @@ local function record_history(catalog_id: string, event: types.FoldEvent, rows: 
     local origin: types.JsonObject? = nil
     if event.kind == "product" or event.kind == "created" then
         source = event.body.source
-        if event.body.origin then origin = { origin = event.body.origin, provenance = event.body.provenance, approval_item_id = event.body.approval_item_id } end
+        if event.body.origin or event.body.provenance or event.body.approval_item_id then
+            origin = { origin = event.body.origin, provenance = event.body.provenance, approval_item_id = event.body.approval_item_id }
+        end
     end
     history.collect(rows, { catalog_id = catalog_id, seq = event.seq, subject = subject, actor = actor, at = at, source = source,
         origin = origin }, changes)

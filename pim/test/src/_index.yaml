@@ -369,7 +369,9 @@ entries:
     source: file://idempotency_test.lua
     method: run
     imports:
+      clock: kickside.pim:clock
       store: kickside.pim.persist:store
+      prune: kickside.core.retention:prune
       test: wippy.test:test
       fixture: app:fixture
       types: kickside.pim:types
@@ -2265,6 +2267,7 @@ entries:
       store: kickside.pim.persist:store
       values: kickside.pim.domain:values
       pipeline: kickside.pim.command:pipeline
+      writer: kickside.pim.command:writer
 
   - name: trash_retention_test
     kind: function.lua

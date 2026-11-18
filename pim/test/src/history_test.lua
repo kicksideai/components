@@ -163,6 +163,79 @@ local function define()
             test.eq(channels[1], published[1])
         end)
 
+        test.it("keeps source and producer attribution on a trash event", function()
+            local h = fixture.catalog()
+            local id = assert(steps.one(h, { product = { sku = "AUDITED-DELETE" }, create = {} }).product_id)
+            local result = assert(h.call("apply", { source = "erp", origin = { type = "feed", id = "cycle-count" }, items = {
+                { product = { id = id }, delete = true, expect_version = 1 },
+            } })) :: types.ApplyResult
+            test.eq(result.outcomes[1].outcome, "updated")
+            local history = assert(h.call("list_history", { product = { id = id }, limit = 1 })) :: types.HistoryResult
+            local entry = history.entries[1]
+            test.eq(entry.kind, "deleted")
+            test.eq(entry.source, "erp")
+            test.eq(obj(obj(entry.origin).origin).id, "cycle-count")
+        end)
+
+        test.it("keeps reported provenance when an apply has no origin", function()
+            local h = fixture.catalog()
+            local id = assert(steps.one(h, { product = { sku = "EVIDENCE" }, create = {} }).product_id)
+            local out = assert(h.call("apply", { provenance = { evidence = "inventory count" }, items = {
+                { product = { id = id }, expect_version = 1, status = "draft" },
+            } })) :: types.ApplyResult
+            test.eq(out.outcomes[1].outcome, "updated")
+            local view = assert(h.call("list_history", { product = { id = id }, limit = 1 })) :: types.HistoryResult
+            test.eq(view.entries[1].kind, "status")
+            test.not_nil(view.entries[1].origin, "history lost independently supplied provenance")
+            local origin = view.entries[1].origin :: types.JsonObject
+            test.eq((origin.provenance :: types.JsonObject).evidence, "inventory count")
+        end)
+
+        test.it("keeps reported provenance when the editor provides no origin", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local editor, editor_id = fixture.user(h)
+            assert(h.call("grant", { subject_id = editor_id, mask = 3 }))
+            local applied = assert(editor("apply", { provenance = { detail = "Reviewed copy" }, items = {
+                { product = { sku = "RDG" }, expect_version = version(h, "RDG"),
+                    set = { { attr = "core.care", value = "Updated care instructions" } } },
+            } })) :: types.ApplyResult
+            test.eq(applied.outcomes[1].outcome, "updated")
+            local page = assert(h.call("list_history", { product = { sku = "RDG" }, limit = 1 })) :: types.HistoryResult
+            local row = page.entries[1]
+            test.eq(row.actor, editor_id)
+            test.eq(row.kind, "set")
+            test.not_nil(row.origin, "reported provenance should be present in history")
+            test.eq(obj(obj(row.origin).provenance).detail, "Reviewed copy")
+        end)
+
+        test.it("keeps the authenticated actor and named source on trash and restore rows", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local sku = "RDG-moss-40"
+            local id = assert(steps.get(h, sku)).product.product_id
+            local origin = { type = "feed", id = "erp-catalog" }
+            local trashed = assert(h.call("apply", { source = "erp", origin = origin, items = {
+                { product = { id = id }, expect_version = "any", delete = true },
+            } })) :: types.ApplyResult
+            test.is_true(trashed.outcomes[1].trashed == true)
+            local restored = assert(h.call("apply", { source = "erp", origin = origin, items = {
+                { product = { id = id }, expect_version = "any", restore = true },
+            } })) :: types.ApplyResult
+            test.is_true(restored.outcomes[1].restored == true)
+
+            local page = assert(h.call("list_history", { product = { id = id }, limit = 2 })) :: types.HistoryResult
+            test.eq(page.entries[1].kind, "restored")
+            test.eq(page.entries[2].kind, "deleted")
+            test.eq(page.entries[1].actor, h.actor:id())
+            test.eq(page.entries[2].actor, h.actor:id())
+            test.eq(table.concat({ page.entries[1].source or "missing", page.entries[2].source or "missing" }, ","),
+                "erp,erp", "source on restore and trash rows")
+            for _, row in ipairs(page.entries) do
+                test.eq(obj(obj(row.origin).origin).id, origin.id)
+            end
+        end)
+
         test.it("hands out a cursor on a full last page and an empty page after it", function()
             local h = fixture.catalog()
             fixture.boot(h)

@@ -18,7 +18,7 @@ type State = {
     freed: { [string]: boolean }, gone: { [string]: boolean }, uniques: { [string]: string }, released: { [string]: boolean }, axes: { [string]: string },
     vacated: { [string]: boolean }, stored_skus: { [string]: boolean }, siblings: { [string]: { [string]: string } },
         terms: { [string]: PendingTerm }, counted: { [string]: integer }, added: { [string]: integer }, origin: types.Origin?, provenance: types.JsonObject?, approval_item_id: string?,
-        import: boolean,
+        import: boolean, proposal: boolean,
     audit: boolean, stored_terms: { [string]: PendingTerm | false },
     -- items are the command's items; links holds, per link kind the command
     -- names, the ids its owner resolved, filled on first use so each kind is
@@ -55,7 +55,7 @@ function M.new_state(db: types.Executor, catalog: types.Catalog, actor: string, 
     return { db = db, catalog = catalog, compiled = catalog.compiled, catalog_id = catalog.catalog_id, actor = actor,
         source = source, products = {}, skus = {}, freed = {}, gone = {}, uniques = {}, released = {}, axes = {}, vacated = {},
             stored_skus = {}, siblings = {}, terms = {}, counted = {}, added = {},
-        import = false,
+        import = false, proposal = false,
         audit = false, stored_terms = {}, items = {}, links = {}, refined = {} }
 end
 

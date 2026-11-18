@@ -190,6 +190,7 @@ end
 function M.withdraw(db: types.Executor, catalog: types.Catalog, request: types.ReleaseRequest): (Planned?, error?)
     local outcomes: { types.Outcome } = {}
     local events: { types.Event } = {}
+    local publications: { [string]: { store.Publication } } = {}
     for index, item in ipairs(request.items) do
         local outcome: types.Outcome
         local p, err = load(db, catalog.catalog_id, item.product)
@@ -200,13 +201,21 @@ function M.withdraw(db: types.Executor, catalog: types.Catalog, request: types.R
         elseif not p then
             outcome = { outcome = "invalid", findings = { { message = "product not found" } } }
         else
-            local rows, derr = store.publications(db, catalog.catalog_id, p.product_id)
-            if derr or not rows then return nil, derr end
+            local rows = publications[p.product_id]
+            if not rows then
+                local loaded, derr = store.publications(db, catalog.catalog_id, p.product_id)
+                if derr or not loaded then return nil, derr end
+                rows = loaded
+                publications[p.product_id] = rows
+            end
             local channels: { string } = {}
             for _, d in ipairs(rows) do
                 local wanted = item.channels == nil
                 for _, c in ipairs(item.channels or {}) do if c == d.channel then wanted = true end end
-                if wanted and d.state == "published" then channels[#channels + 1] = d.channel end
+                if wanted and d.state == "published" then
+                    channels[#channels + 1] = d.channel
+                    d.state = "withdrawn"
+                end
             end
             if #channels == 0 then
                 outcome = { outcome = "unchanged", product_id = p.product_id }

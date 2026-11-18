@@ -3,15 +3,47 @@
 local store = require("store")
 local values = require("values")
 local pipeline = require("pipeline")
+local writer = require("writer")
 local M = {}
 type Attempt = pipeline.Attempt
 M.Attempt = Attempt
+M.marker = pipeline.marker
 local catalog_id = ""
 local generation_changes = false
+local revocation: { [string]: unknown }? = nil
+local revocation_timing = ""
 function M.configure(id: string, changed: boolean)
-    catalog_id, generation_changes = id, changed
+    catalog_id, generation_changes, revocation = id, changed, nil
+end
+function M.revoke_source(id: string, declaration: { [string]: unknown }, timing: string)
+    catalog_id, revocation, revocation_timing = id, declaration, timing
 end
 function M.run(command: pipeline.Command): (unknown, error?)
+    local declaration = revocation
+    if declaration then
+        local function revoke()
+            assert(writer.apply_schema(catalog_id, { declaration = declaration }))
+        end
+        if revocation_timing == "before append" then
+            local reserve = assert(command.reserve)
+            local revoked = false
+            command.reserve = function(marker, hashed, seq, at)
+                local ok, err = reserve(marker, hashed, seq, at)
+                if ok and not revoked then
+                    revoke()
+                    revoked = true
+                end
+                return ok, err
+            end
+        else
+            if revocation_timing == "during conflict review" then
+                local catalog = assert(store.with_db(function(db) return store.catalog(db, catalog_id) end))
+                assert(command.build(catalog.applied_seq))
+            end
+            revoke()
+        end
+        return pipeline.run(command)
+    end
     local db, err = store.open()
     if err or not db then return nil, err end
     local catalog, cerr = store.catalog(db, catalog_id)

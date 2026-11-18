@@ -43,6 +43,10 @@ function M.run(input: unknown): (unknown, error?)
         conflict_fixture.configure(id, req.changed_generation == true)
         return conflict_writer.apply(id, req.request)
     end
+    if op == "decide_with_source_revocation" then
+        conflict_fixture.revoke_source(id, req.declaration, req.timing)
+        return conflict_writer.decide(id, req.request)
+    end
     if op == "plan_fold_merge" then return merge_fixture.plan(id, req.source) end
     if op == "batch" then
         local service = open("kickside.pim:catalog")

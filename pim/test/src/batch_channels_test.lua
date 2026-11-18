@@ -3,6 +3,22 @@ local test = require("test")
 local fixture = require("fixture")
 local function define()
     test.describe("per-item channel validation", function()
+        test.it("records one withdrawal when the same channel occurs twice in a batch", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local product = { sku = "RDG-moss-40" }
+            local released = assert(h.call("release", { items = {
+                { product = product, expect_version = 1, channels = { "web" } },
+            } }))
+            test.eq(released.outcomes[1].outcome, "released")
+            local item = { product = product, channels = { "web" } }
+            local result = assert(h.call("withdraw", { items = { item, item } }))
+            test.eq(result.outcomes[1].outcome, "withdrawn")
+            local history = assert(h.call("list_history", { product = product, limit = 2 }))
+            test.eq(history.entries[2].kind, "released", "second withdrawal returned " .. result.outcomes[2].outcome)
+            test.eq(result.outcomes[2].outcome, "unchanged")
+        end)
+
         for _, method in ipairs({ "release", "withdraw" }) do
             for _, case in ipairs({ { name = "object", value = {} }, { name = "true", value = true }, { name = "false", value = false } }) do
                 test.it("keeps valid " .. method .. " items beside an invalid " .. case.name .. " channel", function()

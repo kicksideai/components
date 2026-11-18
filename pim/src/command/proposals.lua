@@ -59,7 +59,7 @@ end
 -- proposed against: propose plans it without appending, so values, references
 -- and enforced checks are judged as the proposer, before the proposal exists.
 function M.plan_request(request: types.ProposeRequest, base: { [string]: integer }): types.ApplyRequest
-    return { items = apply_items(request.items, base), mode = "atomic" }
+    return { items = apply_items(request.items, base), mode = "atomic", source = request.source }
 end
 
 -- accept_request turns a proposal into the apply request that accepts it.

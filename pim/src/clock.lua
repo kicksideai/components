@@ -2,6 +2,7 @@
 -- Instants PIM compares: command deadlines and the canonical
 -- RFC3339 UTC timestamps stored as TEXT so they compare as text.
 local time = require("time")
+local precise_format = "2006-01-02T15:04:05.000000000Z07:00"
 
 local M = {}
 
@@ -13,7 +14,7 @@ M.Deadline = Deadline
 -- deadline is the instant ms milliseconds from now.
 function M.deadline(ms: integer): Deadline
     local instant = time.now():utc():add(ms * time.MILLISECOND)
-    return { at = instant:format("2006-01-02T15:04:05.000000000Z07:00"), ns = instant:unix_nano() }
+    return { at = instant:format(precise_format), ns = instant:unix_nano() }
 end
 
 -- passed reports whether the deadline is behind us.
@@ -24,6 +25,10 @@ end
 -- now is the canonical RFC3339 UTC timestamp.
 function M.now(): string
     return time.now():utc():format(time.RFC3339)
+end
+
+function M.now_precise(): string
+    return time.now():utc():format(precise_format)
 end
 
 -- offset is the canonical timestamp seconds from now.

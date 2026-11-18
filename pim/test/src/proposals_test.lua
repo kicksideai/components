@@ -193,13 +193,164 @@ local function define()
             test.eq(h.call("get", { product = { sku = "RDG-moss-40" } }).product.status, "draft")
         end)
 
-        test.it("fails a proposal whose source may not write the attribute", function()
+        test.it("accepts a sequence source proposal at its base version without advancing the source sequence", function()
             local h = fixture.catalog()
             fixture.boot(h)
-            local p = assert(propose(h, { { product = { sku = "RDG" }, set = { { attr = "marketing.description", ctx = { locale = "de" }, value = "x" } } } }, "erp"))
+            assert(h.call("apply_schema", { declaration = { sources = {
+                { id = "erp", writes = { "core", "logistics" }, ordering = "sequence" },
+            } } }))
+            local function ordered_edit(seq: integer, value: string): types.Outcome
+                local out = assert(h.call("apply", { source = "erp", items = {
+                    { product = { sku = "RDG" }, seq = seq, set = { { attr = "core.care", value = value } } },
+                } })) :: types.ApplyResult
+                return out.outcomes[1]
+            end
+            test.eq(ordered_edit(10, "Imported").outcome, "updated")
+            local function suggest(value: string): types.ProposeResult
+                return assert(propose(h, {
+                    { product = { sku = "RDG" }, set = { { attr = "core.care", value = value } } },
+                }, "erp"))
+            end
+            local current = suggest("Reviewed")
+            local stale = suggest("Stale")
+            test.eq(assert(decide(h, current.proposal_id, "accept")).status, "accepted")
+            test.eq(assert(decide(h, stale.proposal_id, "accept")).status, "conflict")
+            test.eq(ordered_edit(10, "Repeated").outcome, "unchanged")
+            test.eq(h.call("get", { product = { sku = "RDG" } }).values["core.care"].value, "Reviewed")
+            test.eq(ordered_edit(11, "New delivery").outcome, "updated")
+        end)
+
+        test.it("fails a proposal that lost its source's write permission after submission", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local p = assert(propose(h, {
+                { product = { sku = "RDG" }, set = { { attr = "core.care", value = "Pending" } } },
+            }, "erp"))
+            assert(h.call("apply_schema", { declaration = { sources = { { id = "erp", writes = { "logistics" } } } } }))
             local d = assert(decide(h, p.proposal_id, "accept"))
             test.eq(d.status, "failed")
             test.eq((d.result :: types.ApplyResult).outcomes[1].outcome, "forbidden")
+        end)
+
+        test.it("refuses a proposal for an aspect outside its declared source writes", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local proposal, err = h.call("propose", { source = "erp", items = {
+                { product = { sku = "RDG" }, set = {
+                    { attr = "marketing.tagline", ctx = { channel = "web", locale = "en" }, value = "Campaign" },
+                } },
+            } })
+            test.is_nil(proposal, json.encode(proposal))
+            test.eq(assert(err):kind(), errors.INVALID)
+            test.eq(#assert(h.call("list_proposals", {})).proposals, 0)
+        end)
+
+        test.it("settles a proposal when its source was removed before decision", function()
+            local h = fixture.catalog()
+            test.eq(steps.one(h, { product = { sku = "REVIEW" }, create = {} }).outcome, "created")
+            local proposal = assert(h.call("propose", { source = "erp", items = {
+                { product = { sku = "REVIEW" }, set = { { attr = "core.care", value = "Pending" } } },
+            } })) :: types.ProposeResult
+            assert(h.call("apply_schema", { declaration = { remove = { sources = { "erp" } } } }))
+            local _, err = h.call("decide", { proposal_id = proposal.proposal_id, decision = "accept" })
+            local listed = assert(h.call("list_proposals", {})) :: types.ProposalsResult
+            test.eq(listed.proposals[1].status, "failed", tostring(err))
+            test.eq(assert(err):details().code, "unknown_source")
+            test.eq(assert(decide(h, proposal.proposal_id, "accept")).status, "failed")
+        end)
+
+        test.it("leaves a proposal pending after a reviewer is denied source access", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local reviewer, reviewer_id = fixture.user(h)
+            assert(h.call("grant", { subject_id = reviewer_id, mask = 3 }))
+            assert(h.call("apply_schema", { declaration = { sources = {
+                { id = "erp", writes = { "core", "logistics" }, principals = { h.actor:id() } },
+            } } }))
+            local p = assert(propose(h, {
+                { product = { sku = "RDG" }, set = { { attr = "core.care", value = "Review copy" } } },
+            }, "erp"))
+            local prior_version = version(h, "RDG")
+
+            local out, err = reviewer("decide", { proposal_id = p.proposal_id, decision = "accept" })
+            test.is_nil(out)
+            local denied = assert(err)
+            test.eq(denied:kind(), errors.PERMISSION_DENIED)
+            test.eq(denied:details().code, "source_access_denied")
+            test.eq(version(h, "RDG"), prior_version)
+            local listed = assert(h.call("list_proposals", {})) :: types.ProposalsResult
+            test.eq(#listed.proposals, 1)
+            local stored = listed.proposals[1]
+            local rejected, reject_err = decide(h, p.proposal_id, "reject")
+            test.eq(stored.status, "pending", json.encode({
+                denied_reviewer_recorded = stored.decided_by == reviewer_id,
+                rejection_error = reject_err and reject_err:details().code,
+            }))
+            test.is_nil(stored.decided_by)
+            test.is_nil(reject_err)
+            test.eq(assert(rejected).status, "rejected")
+        end)
+
+        for _, scenario in ipairs({
+            { timing = "before catch-up", status = "pending" },
+            { timing = "before append", status = "pending" },
+            { timing = "during conflict review", status = "conflict" },
+        }) do
+            test.it("keeps a proposal rejectable when source permission is revoked " .. scenario.timing, function()
+                local h = fixture.catalog()
+                fixture.boot(h)
+                local p = assert(propose(h, {
+                    { product = { sku = "RDG" }, set = { { attr = "core.care", value = "Review copy" } } },
+                }, "erp"))
+                if scenario.status == "conflict" then
+                    assert(h.call("apply", { items = {
+                        { product = { sku = "RDG" }, expect_version = version(h, "RDG"), set = { { attr = "core.care", value = "New version" } } },
+                    } }))
+                    test.eq(assert(decide(h, p.proposal_id, "accept")).status, "conflict")
+                end
+                local prior_version = version(h, "RDG")
+                local prior = (assert(h.call("list_proposals", {})) :: types.ProposalsResult).proposals[1]
+
+                local out, err = h.call("decide_with_source_revocation", {
+                    request = { proposal_id = p.proposal_id, decision = "accept" },
+                    declaration = { sources = { { id = "erp", writes = { "core", "logistics" }, principals = { "another-reviewer" } } } },
+                    timing = scenario.timing,
+                })
+                test.is_nil(out)
+                test.eq(assert(err):details().code, "source_access_denied")
+                test.eq(version(h, "RDG"), prior_version)
+                local listed = assert(h.call("list_proposals", {})) :: types.ProposalsResult
+                local stored = listed.proposals[1]
+                test.eq(stored.status, scenario.status)
+                test.eq(stored.decided_by, prior.decided_by)
+                test.eq(stored.decided_at, prior.decided_at)
+                test.eq(assert(decide(h, p.proposal_id, "reject")).status, "rejected")
+            end)
+        end
+
+        test.it("leaves another reviewer's acceptance claim intact after source access is denied", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local reviewer, reviewer_id = fixture.user(h)
+            assert(h.call("grant", { subject_id = reviewer_id, mask = 3 }))
+            assert(h.call("apply_schema", { declaration = { sources = {
+                { id = "erp", writes = { "core", "logistics" }, principals = { h.actor:id() } },
+            } } }))
+            local p = assert(propose(h, {
+                { product = { sku = "RDG" }, set = { { attr = "core.care", value = "Claimed" } } },
+            }, "erp"))
+            local db = assert(store.open())
+            assert(db:execute([[UPDATE kickside_pim_proposal SET status = 'accepting', decided_by = $1, decided_at = $2
+                WHERE catalog_id = $3 AND proposal_id = $4]], { h.actor:id(), "2026-11-17T12:00:00Z", h.id, p.proposal_id }))
+            db:release()
+
+            local out, err = reviewer("decide", { proposal_id = p.proposal_id, decision = "accept" })
+            test.is_nil(out)
+            test.eq(assert(err):details().code, "source_access_denied")
+            local listed = assert(h.call("list_proposals", {})) :: types.ProposalsResult
+            test.eq(listed.proposals[1].status, "accepting")
+            test.eq(listed.proposals[1].decided_by, h.actor:id())
+            test.eq(assert(decide(h, p.proposal_id, "accept")).status, "accepted")
         end)
 
         test.it("rejects once, rejects a conflicted proposal, and keeps a conflict decidable", function()

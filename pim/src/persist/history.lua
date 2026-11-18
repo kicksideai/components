@@ -67,6 +67,13 @@ function M.cursor(text: string): (integer?, integer?)
     return math.tointeger(tonumber(a)), math.tointeger(tonumber(b))
 end
 
+function M.has_subject(db: types.Executor, catalog_id: string, subject: string): (boolean?, error?)
+    local rows, err = db:query("SELECT 1 FROM " .. TABLE .. " WHERE catalog_id = $1 AND subject = $2 LIMIT 1",
+        { catalog_id, subject })
+    if err then return nil, errors.wrap(err, "history subject read failed") end
+    return #(rows or {}) > 0, nil
+end
+
 -- page reads one page of catalog_id's rows newest first and returns the cursor
 -- of the next page when the page is full.
 function M.page(db: types.Executor, catalog_id: string, p: Page): ({ Entry }?, string?, error?)

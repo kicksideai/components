@@ -437,6 +437,7 @@ function M.family_products(db: types.Executor, catalog_id: string): ({ [string]:
 end
 
 type Publication = { channel: string, release_id: string?, state: string, seq: integer }
+M.Publication = Publication
 
 -- publications lists a product's publication state per channel.
 function M.publications(db: types.Executor, catalog_id: string, product_id: string): ({ Publication }?, error?)

@@ -373,20 +373,38 @@ function M.history(catalog_id: string, request: types.HistoryRequest?): (types.H
     end
     return with_snapshot(caller, function(tx: types.Executor, catalog: types.Catalog, _dialect: string): (types.HistoryResult?, error?)
         local subject: string? = nil
+        local product_id: string? = nil
+        local skus: { [string]: string | false } = {}
+        local function product_not_found(): error
+            return errors.new({ kind = errors.NOT_FOUND, message = "product not found", details = { code = "product_not_found" } })
+        end
         if q.product then
             local ref: types.ProductRef = q.product :: types.ProductRef
-            local p: types.Product?
-            local perr: error?
-            if type(ref.id) == "string" then p, perr = store.product(tx, catalog_id, ref.id)
-            elseif type(ref.sku) == "string" then p, perr = store.product_by_sku(tx, catalog_id, ref.sku) end
-            if perr then return nil, perr end
-            if not p then return nil, errors.new({ kind = errors.NOT_FOUND, message = "product not found", details = { code = "product_not_found" } }) end
-            subject = "p:" .. (p :: types.Product).product_id
+            if type(ref.id) == "string" then
+                product_id = ref.id
+            elseif type(ref.sku) == "string" then
+                local p, perr = store.product_by_sku(tx, catalog_id, ref.sku)
+                if perr then return nil, perr end
+                if not p then return nil, product_not_found() end
+                product_id = p.product_id
+                skus[product_id] = p.sku
+            else
+                return nil, product_not_found()
+            end
+            subject = "p:" .. product_id
         end
         local rows, next_cursor, err = history.page(tx, catalog_id, { subject = subject, before = q.before, limit = limit })
         if err or not rows then return nil, err end
+        if product_id and subject and #rows == 0 and skus[product_id] == nil then
+            local p, perr = store.product(tx, catalog_id, product_id)
+            if perr then return nil, perr end
+            if not p then
+                local retained, herr = history.has_subject(tx, catalog_id, subject)
+                if herr then return nil, herr end
+                if not retained then return nil, product_not_found() end
+            end
+        end
         local by_id = catalog.compiled.by_id or {}
-        local skus: { [string]: string | false } = {}
         local entries: { types.HistoryEntry } = {}
         for _, r in ipairs(rows) do
             local attr = r.attribute_id and by_id[r.attribute_id :: integer] or nil

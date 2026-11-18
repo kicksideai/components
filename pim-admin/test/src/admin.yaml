@@ -7,7 +7,7 @@ entries:
     meta: { type: test, suite: kickside_pim_admin, timeout: 300s }
     source: file://admin_test.lua
     method: run
-    modules: [json, uuid, registry, fs, http_client]
+    modules: [json, uuid, registry, fs, http_client, contract]
     imports:
       test: wippy.test:test
       session: app:session

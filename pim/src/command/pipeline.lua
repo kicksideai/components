@@ -39,6 +39,10 @@ local function request_hash(value: unknown): string
     return tostring(hash.sha256(values.canonical(value)))
 end
 
+function M.marker(idempotency: types.Idempotency): string
+    return "r:" .. #idempotency.namespace .. ":" .. idempotency.namespace .. #idempotency.key .. ":" .. idempotency.key
+end
+
 -- covered waits until the projection reaches the thread head; missing the
 -- deadline is a retryable unavailability.
 local function covered(c: Command, deadline: clock.Deadline): (integer?, error?)
@@ -97,7 +101,7 @@ function M.run(c: Command): (types.JsonObject?, error?)
         if idempotency.namespace == "" or idempotency.key == "" then
             return nil, errors.new({ details = { code = "idempotency_key_invalid" }, kind = errors.INVALID, message = "idempotency needs namespace and key" })
         end
-        marker = "r:" .. #idempotency.namespace .. ":" .. idempotency.namespace .. #idempotency.key .. ":" .. idempotency.key
+        marker = M.marker(idempotency)
         hashed = request_hash(c.fingerprint)
     end
     while not clock.passed(until_at) do

@@ -67,13 +67,15 @@ function M.overrides(decl: types.PolicyDecl?): (types.PolicyOverrides?, string?)
     return out, nil
 end
 
+-- An explicit zero in either policy layer selects the built-in audit window.
+function M.audit_window(days: integer): integer
+    return days == 0 and 365 or days
+end
+
 -- effective(defaults, overrides) applies a catalog's policy overrides.
 function M.effective(defaults: types.Policy, overrides: types.PolicyOverrides?): types.Policy
     local o: types.PolicyOverrides = overrides or {}
-    local audit_days = o.audit_days or defaults.audit_days
-    -- Zero selects the same finite default as Work, including legacy policies.
-    if audit_days == 0 then audit_days = 365 end
-    return { audit = o.audit or defaults.audit, audit_days = audit_days,
+    return { audit = o.audit or defaults.audit, audit_days = M.audit_window(o.audit_days or defaults.audit_days),
         trash_days = o.trash_days or defaults.trash_days, tombstone_days = o.tombstone_days or defaults.tombstone_days,
         proposal_days = o.proposal_days or defaults.proposal_days,
         completed_work_days = o.completed_work_days or defaults.completed_work_days,

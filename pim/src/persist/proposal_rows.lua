@@ -68,16 +68,34 @@ end
 -- transition moves a proposal from one of the listed states to status; it
 -- returns false when the proposal was in another state (decided concurrently).
 function M.transition(db: types.Executor, catalog_id: string, proposal_id: string, from: { string }, status: string,
-    result: types.ApplyResult?, actor: string): (boolean?, error?)
+    result: types.ApplyResult?, actor: string, at: string?, claimed_at: string?): (boolean?, error?)
     local marks: { string } = {}
-    local params: types.SqlParams = { status, result and values.canonical(result) or sql.NULL, actor, clock.now(), catalog_id, proposal_id }
+    local params: types.SqlParams = { status, result and values.canonical(result) or sql.NULL, actor, at or clock.now(), catalog_id, proposal_id }
     for _, s in ipairs(from) do
         params[#params + 1] = s
         marks[#marks + 1] = "$" .. #params
     end
+    local owned = ""
+    if claimed_at then
+        params[#params + 1] = claimed_at
+        owned = " AND decided_by = $3 AND decided_at = $" .. #params
+    end
     local out, err = db:execute([[UPDATE kickside_pim_proposal SET status = $1, result = $2, decided_by = $3, decided_at = $4
-        WHERE catalog_id = $5 AND proposal_id = $6 AND status IN (]] .. table.concat(marks, ", ") .. ")", params)
+        WHERE catalog_id = $5 AND proposal_id = $6 AND status IN (]] .. table.concat(marks, ", ") .. ")" .. owned, params)
     if err then return nil, errors.wrap(err, "proposal decision write failed") end
+    return (math.tointeger(tonumber(out and out.rows_affected)) or 0) == 1, nil
+end
+
+-- Only undo the matching claim while the command has no completed receipt.
+-- The caller holds the same catalog lock as the receipt fold.
+function M.release_claim(db: types.Executor, catalog_id: string, proposal_id: string, actor: string, claimed_at: string,
+    marker: string, prior: types.Proposal?): (boolean?, error?)
+    local out, err = db:execute([[UPDATE kickside_pim_proposal SET status = $1, result = $2, decided_by = $3, decided_at = $4
+        WHERE catalog_id = $5 AND proposal_id = $6 AND status = 'accepting' AND decided_by = $7 AND decided_at = $8
+        AND NOT EXISTS (SELECT 1 FROM kickside_pim_receipt WHERE catalog_id = $5 AND marker = $9 AND (event_count > 0 OR noop = 1))]],
+        { prior and prior.status or "pending", prior and prior.result and values.canonical(prior.result) or sql.NULL,
+            prior and prior.decided_by or sql.NULL, prior and prior.decided_at or sql.NULL, catalog_id, proposal_id, actor, claimed_at, marker })
+    if err then return nil, errors.wrap(err, "proposal claim release failed") end
     return (math.tointeger(tonumber(out and out.rows_affected)) or 0) == 1, nil
 end
 

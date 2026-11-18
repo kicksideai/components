@@ -120,6 +120,44 @@ local function define()
             test.eq(#h.call("list_history", { product = { sku = "RDG-moss-40" }, limit = 50 }).entries, 0)
         end)
 
+        test.it("returns retained product history after tombstone removal", function()
+            local h = fixture.catalog()
+            assert(h.call("apply_schema", { declaration = { policy = { trash_days = 1, tombstone_days = 1, audit_days = 365 } } }))
+            test.eq(steps.one(h, { product = { sku = "AUDIT-TRAIL" }, create = {} }).outcome, "created")
+            local id = trash(h, "AUDIT-TRAIL")
+            local function expire()
+                exec("UPDATE kickside_pim_product SET state_at = $1 WHERE catalog_id = $2 AND product_id = $3",
+                    { clock.ago(2), h.id, id })
+                run_owner(h)
+            end
+            expire()
+            test.eq(assert(product(h, id)).state, "purged")
+            expire()
+            test.is_nil(product(h, id))
+            local all = assert(h.call("list_history", {})) :: types.HistoryResult
+            local subject = "p:" .. id
+            local retained = 0
+            for _, row in ipairs(all.entries) do
+                if row.subject == subject then retained = retained + 1 end
+            end
+            test.eq(retained, 3)
+            local specific, err = h.call("list_history", { product = { id = id } })
+            test.is_nil(err, tostring(err))
+            test.eq(#(specific :: types.HistoryResult).entries, retained)
+            local before: string? = nil
+            for _, kind in ipairs({ "purged", "deleted", "created" }) do
+                local page = assert(h.call("list_history", { product = { id = id }, before = before, limit = 1 })) :: types.HistoryResult
+                test.eq(page.entries[1].kind, kind)
+                before = assert(page.next)
+            end
+            local last = assert(h.call("list_history", { product = { id = id }, before = before })) :: types.HistoryResult
+            test.eq(#last.entries, 0)
+            exec("UPDATE kickside_pim_change SET at = $1 WHERE catalog_id = $2 AND subject = $3", { clock.ago(366), h.id, subject })
+            run_owner(h)
+            local _, missing = h.call("list_history", { product = { id = id } })
+            test.eq(assert(missing):details().code, "product_not_found")
+        end)
+
         test.it("prunes old change rows in bounded catalog shares", function()
             local h = fixture.catalog()
             fixture.boot(h)
