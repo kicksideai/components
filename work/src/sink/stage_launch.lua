@@ -54,10 +54,11 @@ function M.write(req: types.LaunchRequest): types.WorkflowResult
     local covered, cover_err = receipts.covered(board_id, deadline)
     if not covered then return pending(tostring(cover_err)) end
     local entry = req.input or {}
-    if not entry.flow_ref then return { success = true, result = "noop" } end
-    local token, terr = completion.token({ board_id = entry.board_id, item = entry.item, visit = entry.visit, attempt = entry.attempt })
+    if entry.board_id ~= nil and entry.board_id ~= board_id then
+        return data_error.failure(guard.invalid("stage entry targets another board")) :: types.WorkflowResult
+    end
+    local token, terr = completion.token({ board_id = board_id, item = entry.item, visit = entry.visit, attempt = entry.attempt })
     if terr or not token then return data_error.failure(terr :: error) :: types.WorkflowResult end
-    if token.board_id ~= board_id then return data_error.failure(guard.invalid("stage entry targets another board")) :: types.WorkflowResult end
     local db, derr = store.open()
     if derr or not db then return data_error.failure(derr :: error) :: types.WorkflowResult end
     local board, berr = store.board(db, board_id)

@@ -47,6 +47,9 @@ entries:
     memberships: kickside.work.persist:memberships
     budget: kickside.work.read:budget
     component: kickside.component:component
+    component_types: kickside.component:types
+    envelope: kickside.component:envelope
+    consts: kickside.work:consts
     store: kickside.work.persist:store
     types: kickside.work.read:types
     principals: kickside.work.read:principals

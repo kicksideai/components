@@ -38,6 +38,12 @@ local function setup(opts)
     if opts.backoff then
         d.processes[1].states[2].run.retry = { max = 2, backoff = opts.backoff }
     end
+    if opts.unbound then
+        local states = d.processes[1].states
+        states[2].run.flow_ref = nil
+        states[#states + 1] = { id = "bound", category = "started", kind = "automated",
+            run = { stage = "Bound", flow_ref = ref } }
+    end
     assert(h.call("apply_schema",{declaration=d}))
     if not opts.real or opts.manual then assert(binding(h,{op="pause_launcher"})) end
     assert(actor(h,{op="probe",mode=opts.real and "real" or "success"}))
@@ -193,13 +199,35 @@ local function define()
             test.eq(runs[1].outputs.error,"flow_launch_rejected")
             test.eq(assert(h.call("get",{item={id=e.item}})).item.state,"failed")
         end)
-        test.it("fences unbound and obsolete entries before calling Workflows",function()
-            local h,e=setup()
-            local old=e.visit;e.visit=old+100
-            test.is_true(assert(launch(h,e)).success)
-            e.visit=old;e.flow_ref=nil
-            test.is_true(assert(launch(h,e)).success)
-            test.eq(assert(actor(h,{op="observed"})).calls,0)
+        test.it("launches a bound attempt when the delivery omits its Flow reference", function()
+            local h, entry, ref = setup()
+            entry.flow_ref = nil
+            test.is_true(assert(launch(h, entry)).success)
+            local observation = assert(actor(h, { op = "observed" }))
+            test.eq(observation.calls, 1)
+            local launched = assert(json.decode(observation.request)).config.flow_ref
+            test.eq(launched.id, ref.id)
+            test.eq(launched.version, ref.version)
+        end)
+        test.it("acknowledges a genuinely unbound attempt without calling Workflows", function()
+            local h, entry, ref = setup({ unbound = true })
+            test.is_nil(entry.board_id)
+            test.is_nil(entry.flow_ref)
+            local unbound = assert(launch(h, entry))
+            test.eq(unbound.result, "noop")
+            entry.flow_ref = ref
+            local result = assert(launch(h, entry))
+            test.is_true(result.success, result.error and result.error.code)
+            test.eq(result.result, "noop")
+            test.eq(assert(actor(h, { op = "observed" })).calls, 0)
+        end)
+        test.it("acknowledges an obsolete attempt without calling Workflows", function()
+            local h, entry = setup()
+            entry.visit = entry.visit + 100
+            local result = assert(launch(h, entry))
+            test.is_true(result.success)
+            test.eq(result.result, "noop")
+            test.eq(assert(actor(h, { op = "observed" })).calls, 0)
         end)
         for _,status in ipairs({"completed","failed","cancelled","terminated"}) do
             test.it("finishes silent "..status.." through the matching stage route",function()
