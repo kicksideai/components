@@ -33,8 +33,8 @@ end
 function H.current(ctx: types.PrepareContext, op: types.Op): (types.ProcessTarget?, types.OpPlan?)
     local found, err = M.read(ctx, op.item :: string)
     if err then return nil, M.failed(err) end
-    if not found or found.life ~= "live" then return nil, M.result("unchanged", M.item_group(op.item :: string)) end
-    local target, refusal = locate(ctx, op)
+    if not found or found.life == "purged" then return nil, M.result("unchanged", M.item_group(op.item :: string)) end
+    local target, refusal = locate(ctx, op, true)
     if not target then return nil, refusal end
     local item = target.item
     local work = item.work :: domain.ProcessData
@@ -61,7 +61,7 @@ function H.finish(ctx: types.PrepareContext, target: types.ProcessTarget, op: ty
     events[#events + 1] = flow.report(item, op.outcome :: string, op.outputs, op.progress)
     item.version = item.version + 1
     local run = state.run :: domain.Stage
-    if process.retry_delay(state, item.work, op.attempt :: integer, op.outcome :: string) then
+    if item.life == "trashed" or process.retry_delay(state, item.work, op.attempt :: integer, op.outcome :: string) then
         return done(ctx, item, M.item_group(item.item_id), events)
     end
     local id = op.outcome == "failed" and run.on_fail or op.outcome

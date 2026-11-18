@@ -12,11 +12,10 @@ local M = {}
 local function schedule(tx: sql.Transaction, dialect: string, board: types.Board, item: types.Item, timer: string, deadline: string, attempt: integer?, trace_context: types.TraceContext?): error?
     local visit = item.work.visit or item.visit
     local key = "t:" .. item.item_id .. ":" .. item.state .. ":" .. visit .. ":" .. timer
-    if item.life_at then key = key .. "/" .. item.life_at end
     local _, err = jobs.enqueue_tx(tx, dialect, { namespace = "kickside.work", scope = board.board_id, key = key,
         owner_locator = { kind = "component", id = board.board_id }, job_type = consts.PROCESS_JOB,
         immutable_payload = { board_id = board.board_id, item = item.item_id, state = item.state,
-            visit = visit, timer = timer, attempt = attempt, life_at = item.life_at },
+            visit = visit, timer = timer, attempt = attempt },
         scheduled_at = deadline, trace_context = trace_context })
     return err
 end
@@ -127,7 +126,7 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
             work.timer_due = work.timer_due or {}
             local key = consts.RETRY_TIMER_PREFIX .. (attempt + 1)
             work.timer_due[key] = deadline
-            err = schedule(tx, dialect, board, item, key, deadline, attempt + 1, batch.trace_context)
+            if item.life == "live" then err = schedule(tx, dialect, board, item, key, deadline, attempt + 1, batch.trace_context) end
         end
     elseif event.type == consts.EVENTS.APPROVAL_RECORDED then
         work.approvals = work.approvals or {}

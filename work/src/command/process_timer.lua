@@ -35,11 +35,11 @@ local function retry(ctx: types.PrepareContext, item: domain.StateItem, op: type
 end
 
 function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
-    local target, err = context.locate(ctx, op)
+    local target, err = context.locate(ctx, op, true)
     if not target then return err :: types.OpPlan end
     local item = target.item
     local group = M.item_group(item.item_id)
-    if item.life_at ~= op.timer_life_at then return context.done(ctx, item, group, {}) end
+    if item.life ~= "live" or item.life_at ~= op.timer_life_at then return context.done(ctx, item, group, {}) end
     local work = item.work :: domain.ProcessData
     if (work.visit or item.visit) ~= op.visit then return context.done(ctx, item, group, {}) end
     if item.state ~= op.state then return context.done(ctx, item, group, {}) end

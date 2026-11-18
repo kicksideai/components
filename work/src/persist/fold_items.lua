@@ -305,7 +305,7 @@ local function apply_life(tx: sql.Transaction, board: types.Board, event: types.
     local item, err = fold_batch.load(tx, board.board_id, batch, body.item)
     if err or not item then return err end
     item.life = deleting and "trashed" or "live"
-    -- The latest lifecycle instant also fences jobs for visits retained through restore.
+    -- A timer command carries the lifecycle instant it observed before planning.
     item.life_at = body.at
     fold_batch.touch(batch, item, event.seq)
     local at = body.at or ""

@@ -15,7 +15,7 @@ function M.check(ctx: types.PrepareContext, recorded: domain.Model): domain.When
         local peer, err = predicates.inspect(where, fields, 1)
         if err then return false, err end
         if peer then ctx.head_guard = ctx.board.applied_seq end
-        return conditions.point(ctx.db, ctx.board, item, where, ctx.actor, ctx.dialect, { items = ctx.items, links = ctx.links })
+        return conditions.point(ctx.db, ctx.board, item, where, ctx.actor, ctx.dialect, { items = ctx.items, links = ctx.links }, true)
     end
 end
 

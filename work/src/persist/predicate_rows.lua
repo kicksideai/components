@@ -15,13 +15,13 @@ local M = {}
 
 -- Key resolution adds retained prefixes to the shared field predicates.
 
-function M.resolver(tx: sql.DB | sql.Transaction, board: domain.Board): domain.Resolver
+function M.resolver(tx: sql.DB | sql.Transaction, board: domain.Board, bound: boolean?): domain.Resolver
     return predicates.targets(board.compiled, function(raw: unknown): (unknown, error?)
         if type(raw) ~= "string" then return {} end
         local item, err = store.item_by_key(tx, raw)
         if err then return nil, err end
         return item and item.board_id == board.board_id and item.number or -1
-    end, board.memberships)
+    end, board.memberships, bound)
 end
 
 -- Predicate execution reads generated rows through a bound plan.
@@ -40,18 +40,18 @@ function M.compile(tx: sql.DB | sql.Transaction, board: domain.Board, where: unk
     return predicates.compile(board.compiled, board.board_id, actor, where, dialect, M.resolver(tx, board))
 end
 
-function M.matching(tx: sql.DB | sql.Transaction, board: domain.Board, items: { domain.Item }, where: unknown, actor: string?, dialect: string, working: domain.WorkingState?, deny_unreadable: boolean?): ({ [string]: boolean }?, error?)
+function M.matching(tx: sql.DB | sql.Transaction, board: domain.Board, items: { domain.Item }, where: unknown, actor: string?, dialect: string, working: domain.WorkingState?, deny_unreadable: boolean?, bound: boolean?): ({ [string]: boolean }?, error?)
     local matched: { [string]: boolean } = {}
     if #items == 0 then return matched, nil end
     local used: { [string]: boolean } = {}
     local _, ierr = predicates.inspect(where, used, 1)
     if ierr then return nil, ierr end
-    local base = M.resolver(tx, board)
+    local base = M.resolver(tx, board, bound)
     local eligible: { string } = {}
     for _, item in ipairs(items) do
         local doc: domain.Document? = item.document
         if predicates.related(where) then doc = nil end
-        local resolve = access_rows.resolver(board, base, doc)
+        local resolve = access_rows.resolver(board, base, doc, bound)
         local allowed = true
         for code in pairs(used) do
             local _, err = resolve(code)
@@ -90,8 +90,8 @@ function M.matching(tx: sql.DB | sql.Transaction, board: domain.Board, items: { 
     return matched, nil
 end
 
-function M.point(tx: sql.DB | sql.Transaction, board: domain.Board, item: domain.Item, where: unknown, actor: string?, dialect: string, working: domain.WorkingState?): (boolean, error?)
-    local matched, err = M.matching(tx, board, { item }, where, actor, dialect, working, true)
+function M.point(tx: sql.DB | sql.Transaction, board: domain.Board, item: domain.Item, where: unknown, actor: string?, dialect: string, working: domain.WorkingState?, bound: boolean?): (boolean, error?)
+    local matched, err = M.matching(tx, board, { item }, where, actor, dialect, working, true, bound)
     if err or not matched then return false, err end
     return matched[item.item_id] == true, nil
 end

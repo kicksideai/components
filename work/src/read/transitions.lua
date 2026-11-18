@@ -64,7 +64,7 @@ function M.list(tx: types.Executor, board: domain.Board, items: { domain.Item },
     for _, group in ipairs(groups) do
         local matches: { [string]: boolean }? = nil
         if group.where ~= nil then
-            local selected, err = conditions.matching(tx, board, group.items, group.where, conditions.actor(), dialect)
+            local selected, err = conditions.matching(tx, board, group.items, group.where, conditions.actor(), dialect, nil, nil, true)
             if err or not selected then return nil, err end
             matches = selected
         end

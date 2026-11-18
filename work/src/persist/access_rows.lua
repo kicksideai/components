@@ -120,12 +120,13 @@ function M.permits(tx: sql.DB | sql.Transaction, board: domain.Board, id: string
     return rows ~= nil and rows[1] ~= nil, err
 end
 
-function M.resolver(board: domain.Board, base: domain.Resolver, doc: domain.Document?): domain.Resolver
+function M.resolver(board: domain.Board, base: domain.Resolver, doc: domain.Document?, bound: boolean?): domain.Resolver
     return function(code: string, ctx: { [string]: string }?): (domain.ColumnTarget?, error?)
         local visibility = board.compiled.visibility
         if (code == "parent" or code == "path_under") and visibility and not (visibility.bypass == "admin" and board.caller and board.caller.admin) then return nil, rules.denied(code) end
-        local field = board.model.fields[code]
-        if field and not rules.field(board, field, "read", doc) then return nil, rules.denied(code) end
+        local id = bound and predicates.field_id(code) or nil
+        local field = id and board.model.by_id[id] or (not (bound and predicates.builtin(code)) and board.model.fields[code] or nil)
+        if field and not rules.field(board, field, "read", doc) then return nil, rules.denied(field.code) end
         return base(code, ctx)
     end
 end

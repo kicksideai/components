@@ -448,6 +448,7 @@ entries:
 - name: process_deadline_batch
   kind: function.lua
   source: file://process_deadline_batch.lua
+  modules: [sql]
   method: advance_batch
   imports:
     outcomes: kickside.work.domain:outcomes
@@ -456,6 +457,8 @@ entries:
     process: kickside.work.domain:process
     apply_ops: app:deadline_apply_probe
     store: app:deadline_store_probe
+    lifecycle: kickside.work.persist:lifecycle
+    jobs: kickside.core.jobs:jobs
     deadline: kickside.work.jobs:deadline
     clock: kickside.work.domain:clock
     types: kickside.work.jobs:types

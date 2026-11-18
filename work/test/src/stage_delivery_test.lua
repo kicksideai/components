@@ -257,17 +257,62 @@ local function define()
             assert(actor(h,{op="complete",envelope=envelope(e,ref)}))
             test.eq(#steps.events(h),n)
         end)
-        test.it("ignores stale visits attempts missing and trashed items",function()
-            for _,mode in ipairs({"visit","attempt","missing","trashed"}) do
+        test.it("ignores stale visits, stale attempts and missing items",function()
+            for _,mode in ipairs({"visit","attempt","missing"}) do
                 local h,e,ref=setup()
                 local env=envelope(e,ref)
                 if mode=="visit" then env.token.visit=e.visit+100
                 elseif mode=="attempt" then env.token.attempt=e.attempt+1
-                elseif mode=="missing" then env.token.item=uuid.v4()
-                else steps.one(h,{op="delete",item=e.item}) end
+                else env.token.item=uuid.v4() end
                 local n=#steps.events(h)
                 assert(actor(h,{op="complete",envelope=env}))
                 test.eq(#steps.events(h),n)
+            end
+        end)
+        test.it("preserves a stage delivery in trash and launches the retained attempt on restore", function()
+            local h, entry = setup()
+            test.eq(steps.one(h, { op = "delete", item = entry.item }).status, "applied")
+            local deferred = assert(launch(h, entry))
+            test.eq(assert(actor(h, { op = "observed" })).calls, 0)
+            test.eq(steps.one(h, { op = "restore", item = entry.item }).status, "applied")
+            test.is_false(deferred.success, "the launcher acknowledged its only delivery while the visit was in trash")
+            test.is_true(deferred.error.retriable)
+            test.is_true(assert(launch(h, entry)).success)
+            test.eq(assert(actor(h, { op = "observed" })).calls, 1)
+            test.eq(rows.scalar("SELECT COUNT(*) AS n FROM kickside_work_stage_run WHERE board_id = $1 AND item_id = $2",
+                { h.id, entry.item }), 1)
+        end)
+        test.it("redelivers a trashed attempt through the owned launcher after restore", function()
+            local h, entry, ref = setup({ real = true, manual = true })
+            test.eq(steps.one(h, { op = "delete", item = entry.item }).status, "applied")
+            local launcher = assert(binding(h, { op = "launcher_id" }))
+            assert(binding(h, { op = "resume_launcher" }))
+            steps.wait_for("durable stage delivery while the item is trashed", function()
+                return rows.scalar("SELECT COUNT(*) AS n FROM kickside_trigger_item_ledger WHERE owner_id = $1 AND state = 'retrying'",
+                    { launcher }) == 1
+            end)
+            test.eq(rows.scalar("SELECT COUNT(*) AS n FROM workflow_runs WHERE workflow_id = $1", { ref.id }), 0)
+            test.eq(steps.one(h, { op = "restore", item = entry.item }).status, "applied")
+            steps.wait_for("the retained Flow to complete after restore", function() return reports(h, entry.item) == 1 end)
+            test.eq(rows.scalar("SELECT COUNT(*) AS n FROM workflow_runs WHERE workflow_id = $1", { ref.id }), 1)
+            test.eq(assert(steps.get(h, entry.item)).item.state, "done")
+        end)
+        test.it("records a terminal callback in trash and preserves it on restore", function()
+            for _, regional in ipairs({ false, true }) do
+                local h, entry, ref = setup({ regional = regional })
+                test.is_true(assert(launch(h, entry)).success)
+                test.eq(steps.one(h, { op = "delete", item = entry.item }).status, "applied")
+                local completion = envelope(entry, ref, "completed")
+                test.is_true(assert(actor(h, { op = "complete", envelope = completion })).acknowledged)
+                test.eq(reports(h, entry.item), 1)
+                local head = #steps.events(h)
+                test.is_true(assert(actor(h, { op = "complete", envelope = completion })).acknowledged)
+                test.eq(#steps.events(h), head)
+                test.eq(steps.one(h, { op = "restore", item = entry.item }).status, "applied")
+                local stage = assert(h.call("list_stage_runs", { item = { id = entry.item } })).stage_runs[1]
+                test.eq(stage.outcome, "passed")
+                test.is_true(assert(launch(h, entry)).success)
+                test.eq(assert(actor(h, { op = "observed" })).calls, 1)
             end
         end)
         test.it("fences regional visits and completes the active region",function()

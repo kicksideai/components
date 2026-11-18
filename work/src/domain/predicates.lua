@@ -14,10 +14,23 @@ end
 local SYSTEM: { [string]: string } = { type = "type", state = "state", category = "category", parent = "parent_id", rank = "rank",
     number = "number", life = "life", created_seq = "created_seq", updated_seq = "updated_seq", created_at = "created_at", updated_at = "updated_at" }
 
-function M.targets(compiled: types.Compiled, key: ((unknown) -> (unknown, error?))?, memberships: types.Memberships?): types.Resolver
+function M.builtin(code: string): boolean
+    return SYSTEM[code] ~= nil or code == "key" or code == "path_under"
+end
+
+function M.field_id(code: string): integer?
+    local id = code:match("^@field:(%d+)$")
+    return id and math.tointeger(tonumber(id)) or nil
+end
+
+function M.targets(compiled: types.Compiled, key: ((unknown) -> (unknown, error?))?, memberships: types.Memberships?, bound: boolean?): types.Resolver
     local l = tables.layout(compiled)
     local fields: { [string]: types.Field } = {}
-    for _, f in ipairs(compiled.fields) do fields[f.code] = f end
+    local by_id: { [integer]: types.Field } = {}
+    for _, f in ipairs(compiled.fields) do
+        fields[f.code] = f
+        if bound then by_id[f.id] = f end
+    end
     return function(code: string, ctx: { [string]: string }?): (types.ColumnTarget?, error?)
         if ctx and next(ctx) then return nil, target_invalid("field_context", code, "field " .. code .. " takes the empty context") end
         if code == "key" then
@@ -39,7 +52,8 @@ function M.targets(compiled: types.Compiled, key: ((unknown) -> (unknown, error?
                 shape = { form = numeric and "int" or moment and "time" or "text", cardinality = "one", config = {} },
                 intervals = code == "state" or code == "category", field_id = code == "state" and -1 or code == "category" and -2 or nil }, nil
         end
-        local f = fields[code]
+        local id = bound and M.field_id(code) or nil
+        local f = id and by_id[id] or fields[code]
         if not f then return nil, target_invalid("unknown_field", code, "unknown or retired field " .. code) end
         for _, list in ipairs({ l.columns, l.sets }) do
             for _, c in ipairs(list) do
@@ -69,17 +83,17 @@ local function invalid(code: string, message: string): error
     return errors.new({ kind = errors.INVALID, message = message, details = { code = code } })
 end
 
--- Rebind a stored process predicate to live field codes before applying live access rules.
+-- Bind recorded custom fields before compiling against the live layout and access rules.
 function M.rebind(raw: unknown, recorded: types.Model, live: types.Model): (unknown, error?)
     if recorded == live or raw == nil then return raw, nil end
     local node = raw :: { [string]: unknown }
     local bound: { [string]: unknown } = {}
     for key, value in pairs(node) do
         if key == "field" and type(value) == "string" then
-            local historical = recorded.fields[value]
+            local historical = not M.builtin(value) and recorded.fields[value] or nil
             local field = historical and live.by_id[historical.id]
             if historical and not field then return nil, target_invalid("unknown_field", value, "retired process field " .. value) end
-            value = field and field.code or value
+            value = field and ("@field:" .. field.id) or value
         elseif key == "and" or key == "or" then
             local children: { unknown } = {}
             for _, child in ipairs(value :: { unknown }) do

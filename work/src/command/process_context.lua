@@ -58,10 +58,10 @@ function C.route(ctx: types.PrepareContext, item: domain.StateItem, p: domain.Pr
     return C.settle(ctx, item, events, p, model)
 end
 
-function C.locate(ctx: types.PrepareContext, op: types.Op): (types.ProcessTarget?, types.OpPlan?)
+function C.locate(ctx: types.PrepareContext, op: types.Op, retained: boolean?): (types.ProcessTarget?, types.OpPlan?)
     local found, perr = M.locate(ctx, op.item)
     if not found then return nil, perr end
-    if found.life ~= "live" then return nil, M.invalid("item_trashed", "process commands require a live item") end
+    if found.life ~= "live" and not retained then return nil, M.invalid("item_trashed", "process commands require a live item") end
     local conflict = M.stale(op, found)
     if conflict then return nil, conflict end
     local model, err = store.process_model(ctx.db, ctx.board, found)

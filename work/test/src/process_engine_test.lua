@@ -431,6 +431,21 @@ local function define()
             end
         end)
 
+        test.it("reuses a single durable timer enrollment across repeated trash and restore", function()
+            local decl = deadline_definition()
+            decl.processes[1].states[2].run.timeout = "PT1H"
+            decl.processes[1].states[2].timers = { { id = "reminder", after = "PT2H", ["then"] = { emit = "sla.breached" } } }
+            local h = fixture.board({ declaration = decl })
+            local item = start(h)
+            test.eq(process_jobs(h, "status IN ('pending', 'running')"), 2)
+            for _ = 1, 3 do
+                test.eq(steps.one(h, { op = "delete", item = item }).status, "applied")
+                test.eq(steps.one(h, { op = "restore", item = item }).status, "applied")
+            end
+            test.eq(process_jobs(h, "status IN ('pending', 'running')"), 2)
+            test.eq(event_count(h, "timer.fired"), 0)
+        end)
+
         test.it("anchors timeout retry to the first attempt's recorded finish", function()
             local decl = deadline_definition()
             local run = decl.processes[1].states[2].run
@@ -618,6 +633,27 @@ local function define()
             test.eq(item.values.result, "original")
             test.eq(item.values.memo, "finished")
             test.eq(item.values.note, "unrelated")
+        end)
+
+        test.it("resolves a pinned custom predicate after its field is renamed to a built-in code", function()
+            local decl = definition()
+            local p = decl.processes[1]
+            p.migration = "pin"
+            p.transitions[1].when = { ["and"] = { { field = "points", op = "eq", value = 7 },
+                { field = "number", op = "eq", value = 1 } } }
+            local h = fixture.board({ declaration = decl })
+            local item = steps.create(h, "task", { points = 7 })
+            for _, field in ipairs(assert(h.call("get_schema", {})).compiled.fields) do
+                if field.code == "points" then decl.fields[2].id = field.id end
+            end
+            decl.fields[2].code = "number"
+            decl.item_types[1].fields[2] = "number"
+            p.transitions[1].when = { field = "state", op = "eq", value = "todo" }
+            assert(h.call("apply_schema", { declaration = decl }))
+            local available = assert(steps.get(h, item, { "transitions" })).transitions
+            test.eq(#available, 1)
+            test.eq(available[1].id, "start")
+            test.eq(steps.one(h, { op = "transition", item = item, transition = "start" }).status, "applied")
         end)
 
         test.it("keeps existing pinned items on their generation when new items follow", function()
