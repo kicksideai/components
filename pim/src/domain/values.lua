@@ -1,8 +1,10 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Canonical value forms, equality keys and order values. Key and order are
 -- defined only by forms, so every attribute of a form indexes and compares alike.
+local case_folding = require("case_folding")
 local failure = require("failure")
 local json = require("json")
+local shape = require("shape")
 local types = require("types")
 
 local M = {}
@@ -101,7 +103,7 @@ local function parse_dec(raw: unknown): (types.Dec?, error?)
         return nil, invalid("decimal value required")
     end
     m, e = reduce_dec(m, e)
-    if math.abs(m) >= 1000000000000000 or e < -12 or e > 12 then
+    if m <= -1000000000000000 or m >= 1000000000000000 or e < -12 or e > 12 then
         return nil, invalid("decimal out of range")
     end
     return { m = m, e = e }, nil
@@ -133,7 +135,8 @@ end
 local function valid_time(s: string): boolean
     local y, mo, d = s:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
     if y then return valid_date(math.tointeger(tonumber(y)) :: integer, math.tointeger(tonumber(mo)) :: integer, math.tointeger(tonumber(d)) :: integer) end
-    local ty, tmo, td, h, mi, sec = s:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)T(%d%d):(%d%d):(%d%d)%.?%d*Z$")
+    local whole_second = s:gsub("%.%d+Z$", "Z")
+    local ty, tmo, td, h, mi, sec = whole_second:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)T(%d%d):(%d%d):(%d%d)Z$")
     if not ty then return false end
     if not valid_date(math.tointeger(tonumber(ty)) :: integer, math.tointeger(tonumber(tmo)) :: integer, math.tointeger(tonumber(td)) :: integer) then
         return false
@@ -254,7 +257,8 @@ function M.key(form: string, value: types.Scalar, config: types.AttributeConfig?
     local key: string
     if form == "text" then
         local text = value :: string
-        key = cfg.case == "insensitive" and text:lower() or text
+        -- Match each UTF-8 code point in a normalized text value.
+        key = cfg.case == "insensitive" and text:gsub("[\1-\127\194-\244][\128-\191]*", case_folding) or text
     elseif form == "int" then
         key = tostring(value :: integer)
     elseif form == "dec" then
@@ -325,11 +329,13 @@ end
 
 normalize_form = function(form: string, cardinality: string, raw: unknown, config: types.AttributeConfig): (types.Value?, error?)
     if cardinality == "one" then return normalize_scalar(form, raw, config) end
-    if type(raw) ~= "table" then return nil, invalid(cardinality .. " value must be an array") end
-    if #raw > MAX_MEMBERS then return nil, invalid("too many members") end
+    local length = shape.array_length(raw)
+    if length == nil then return nil, invalid(cardinality .. " value must be an array") end
+    if length > MAX_MEMBERS then return nil, invalid("too many members") end
+    local members = raw :: { unknown }
     local out, keys = {}, {}
-    for i = 1, #raw do
-        local v, err = normalize_scalar(form, raw[i], config)
+    for i = 1, length do
+        local v, err = normalize_scalar(form, members[i], config)
         if err then return nil, err end
         if cardinality == "set" then
             local k, kerr = M.key(form, v, config)

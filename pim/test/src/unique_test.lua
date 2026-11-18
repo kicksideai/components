@@ -24,6 +24,50 @@ local function define()
     end)
 
     test.describe("unique values", function()
+        test.it("lets a later item claim a unique value the preceding item set and unset", function()
+            local h = fixture.catalog()
+            test.eq(create(h, "FIRST").outcome, "created")
+            test.eq(create(h, "SECOND").outcome, "created")
+            local out = assert(steps.apply(h, {
+                { product = { sku = "FIRST" }, expect_version = 1, set = { { attr = "core.gtin", value = "TEMP" } },
+                    unset = { { attr = "core.gtin" } } },
+                { product = { sku = "SECOND" }, expect_version = 1, set = { { attr = "core.gtin", value = "TEMP" } } },
+            }, "independent"))
+            test.eq(out.outcomes[1].outcome, "updated")
+            test.eq(out.outcomes[2].outcome, "updated")
+            test.eq(assert(steps.get(h, "SECOND")).values["core.gtin"].value, "TEMP")
+        end)
+
+        test.it("releases the original unique key and leaves intermediate keys with their holders", function()
+            local h = fixture.catalog()
+            test.eq(create(h, "FIRST", { { attr = "core.gtin", value = "OLD" } }).outcome, "created")
+            test.eq(create(h, "SECOND", { { attr = "core.gtin", value = "HELD" } }).outcome, "created")
+            local out = assert(steps.apply(h, {
+                { product = { sku = "FIRST" }, expect_version = 1, set = {
+                    { attr = "core.gtin", value = "HELD" }, { attr = "core.gtin", value = "NEW" },
+                } },
+                { product = { sku = "THIRD" }, create = {}, set = { { attr = "core.gtin", value = "OLD" } } },
+                { product = { sku = "FOURTH" }, create = {}, set = { { attr = "core.gtin", value = "HELD" } } },
+            }, "independent"))
+            test.eq(out.outcomes[1].outcome, "updated")
+            test.eq(out.outcomes[2].outcome, "created")
+            test.eq(out.outcomes[3].outcome, "conflict")
+        end)
+
+        test.it("applies Unicode case folding to case-insensitive unique keys", function()
+            local h = fixture.catalog()
+            assert(h.call("apply_schema", { declaration = { aspects = { { namespace = "core", attributes = {
+                { code = "folded", type = "kickside.pim.types:identifier", index = "key", unique = true,
+                    config = { case = "insensitive" } },
+            } } } } }))
+            test.eq(create(h, "UPPER", { { attr = "core.folded", value = "Σ" } }).outcome, "created")
+            test.eq(create(h, "LOWER", { { attr = "core.folded", value = "ς" } }).outcome, "conflict")
+            local result = steps.query(h, { where = { field = "core.folded", op = "eq", value = "σ" } })
+            test.eq(#result.items, 1)
+            test.eq(result.items[1].sku, "UPPER")
+            test.eq(assert(steps.get(h, "UPPER")).values["core.folded"].value, "Σ")
+        end)
+
         test.it("compares identifiers exactly and reports the holder", function()
             local h = fixture.catalog()
             test.eq(create(h, "A", { { attr = "core.gtin", value = "ABC" } }).outcome, "created")

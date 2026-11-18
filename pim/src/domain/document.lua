@@ -5,20 +5,23 @@ local types = require("types")
 
 local M = {}
 
+-- apply_step is shared by command planning and the event fold.
+function M.apply_step(document: types.Document, step: types.PatchStep, source: string?)
+    local key = tostring(step.a)
+    local coords: types.Coordinates = document[key] or {}
+    if step.unset then
+        coords[step.c] = nil
+    elseif step.clear then
+        coords[step.c] = { c = 1, s = step.s or source }
+    else
+        coords[step.c] = { p = step.v, s = step.s or source }
+    end
+    document[key] = next(coords) and coords or nil
+end
+
 -- apply_patch applies one event patch to a decoded document.
 function M.apply_patch(document: types.Document, patch: { types.PatchStep }, source: string?)
-    for _, p in ipairs(patch) do
-        local key = tostring(p.a)
-        local coords: types.Coordinates = document[key] or {}
-        if p.unset then
-            coords[p.c] = nil
-        elseif p.clear then
-            coords[p.c] = { c = 1, s = p.s or source }
-        else
-            coords[p.c] = { p = p.v, s = p.s or source }
-        end
-        if next(coords) == nil then document[key] = nil else document[key] = coords end
-    end
+    for _, step in ipairs(patch) do M.apply_step(document, step, source) end
 end
 
 -- attribute_ids lists the live attributes a document holds values for.

@@ -42,6 +42,38 @@ local function define()
     end)
 
     test.describe("release and publications", function()
+        test.it("preserves false through writes, key filters, releases and the product feed", function()
+            local h = fixture.catalog()
+            assert(h.call("apply_schema", { declaration = {
+                aspects = { { namespace = "core", attributes = {
+                    { code = "flag", type = "kickside.pim.types:boolean", index = "key" },
+                } } },
+                channels = { { id = "boolean_test", families = { "generic" } } },
+            } }))
+            for _, sku in ipairs({ "FALSE", "TRUE" }) do
+                local out = assert(h.call("apply", { items = {
+                    { product = { sku = sku }, create = {}, set = { { attr = "core.flag", value = sku == "TRUE" } } },
+                } }))
+                test.eq(out.outcomes[1].outcome, "created")
+            end
+            test.eq(item(h, "FALSE").values["core.flag"].value, false)
+            local result = assert(h.call("query", { where = { field = "core.flag", op = "eq", value = false } }))
+            test.eq(#result.items, 1)
+            test.eq(result.items[1].sku, "FALSE")
+
+            local released = release(h, "FALSE", { channels = { "boolean_test" } }).outcomes[1]
+            test.eq(released.outcome, "released")
+            local published = pull(h, "boolean_test")
+            test.eq(published.items[1].payload.snapshot.values["core.flag"][""], false)
+
+            local products = assert(h.call("pull_products", { limit = 2 }))
+            test.eq(#products.items, 2)
+            for _, entry in ipairs(products.items) do
+                test.eq(entry.op, "upsert")
+                test.eq(entry.payload.values["core.flag"][""], entry.payload.sku == "TRUE")
+            end
+        end)
+
         test.it("publishes to ready channels and feeds the snapshot", function()
             local h = fixture.catalog()
             fixture.boot(h)

@@ -5,6 +5,20 @@ local types = require("types")
 
 local function define()
     test.describe("value forms", function()
+        test.it("rejects the minimum int64 mantissa as an out-of-range decimal", function()
+            local number: types.ValueShape = { form = "dec", cardinality = "one", config = {} }
+            local value, err = values.normalize(number, { m = math.mininteger, e = 0 })
+            test.is_nil(value)
+            test.not_nil(err)
+        end)
+
+        test.it("rejects a timestamp with an empty fractional part", function()
+            local timestamp: types.ValueShape = { form = "time", cardinality = "one", config = {} }
+            local value, err = values.normalize(timestamp, "2026-11-17T12:00:00.Z")
+            test.is_nil(value)
+            test.not_nil(err)
+        end)
+
         test.it("reduces decimals and renders exact keys", function()
             local v = (assert(values.normalize({ form = "dec", cardinality = "one", config = {} }, "12.500") :: types.Dec))
             test.eq(v.m, 125)
@@ -113,9 +127,13 @@ local function define()
             test.eq(ok(TEXT, ""), "")
         end)
 
-        test.it("folds ASCII case for insensitive keys and limits keys to 256 bytes", function()
+        test.it("folds Unicode case for insensitive keys and limits keys to 256 bytes", function()
             local cfg: types.AttributeConfig = { case = "insensitive" }
             test.eq((values.key("text", "AB", cfg)), (values.key("text", "ab", cfg)))
+            test.eq((values.key("text", "Straße", cfg)), "strasse")
+            test.eq((values.key("text", "İK", cfg)), "i̇k")
+            test.eq((values.key("text", "Straße")), "Straße")
+            test.eq((values.key("text", string.rep("K", 256), cfg)), string.rep("k", 256))
             test.eq(values.key("text", string.rep("a", 256)), string.rep("a", 256))
             test.not_nil(select(2, values.key("text", string.rep("a", 257))))
         end)
@@ -190,6 +208,11 @@ local function define()
             test.eq(list[1], "b")
             test.eq(#values.members(SET, ok(SET, {})), 0)
             bad(SET, "a")
+            bad(SET, { member = "a" })
+            bad(SET, { [1] = "a", member = "b" })
+            bad(LIST, { [1] = "a", [3] = "c" })
+            local FOLDED_SET: types.ValueShape = { form = "text", cardinality = "set", config = { case = "insensitive" } }
+            test.eq(#values.members(FOLDED_SET, ok(FOLDED_SET, { "Σ", "σ", "ς", "ß", "SS" })), 2)
             local big: { string } = {}
             for i = 1, 1000 do big[i] = "m" .. i end
             ok(SET, big)

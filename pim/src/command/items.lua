@@ -173,9 +173,6 @@ end
 local function plan_edit(st: item_state.State, item: types.ApplyItem, p: types.Product, seq: integer?): (types.Event?, types.Outcome?, error?)
     local compiled = st.compiled
     local source = st.source
-    local exclusive = (item.move and 1 or 0) + (item.delete and 1 or 0)
-    local edits = item.set or item.clear or item.unset or item.status
-    if exclusive > 1 or (exclusive == 1 and edits) then return nil, item_state.fail("invalid", "move and delete are separate items"), nil end
     if item.delete then return plan_delete(st, p) end
     if item.move then return plan_move(st, item, p) end
     if item.status ~= nil and not consts.STATUSES[item.status] then return nil, item_state.fail("invalid", "unknown status"), nil end
@@ -250,8 +247,6 @@ end
 local function plan_restore(st: item_state.State, item: types.ApplyItem): (types.Event?, types.Outcome?, error?)
     local ref = item.product
     if type(ref) ~= "table" or type(ref.id) ~= "string" then return nil, item_state.fail("invalid", "restore addresses a product by id"), nil end
-    local exclusive = item.set or item.clear or item.unset or item.status or item.move or item.delete or item.create
-    if exclusive then return nil, item_state.fail("invalid", "restore is a separate item"), nil end
     local p, err = item_state.load(st, ref.id)
     if err then return nil, nil, err end
     if not p then return nil, item_state.fail("invalid", "only trashed products restore"), nil end
@@ -394,6 +389,12 @@ function M.plan(db: types.Executor, catalog: types.Catalog, request: types.Apply
         local err: error?
         if type(item) ~= "table" then
             outcome = item_state.fail("invalid", "item must be an object")
+        elseif item.restore and (item.delete or item.move or item.create or item.set or item.clear or item.unset or item.status
+            or item.term or item.term_merge) then
+            outcome = item_state.fail("invalid", "restore is a separate item")
+        elseif (item.move or item.delete) and ((item.move and item.delete) or item.create or item.set or item.clear or item.unset
+            or item.status or item.term or item.term_merge) then
+            outcome = item_state.fail("invalid", "move and delete are separate items")
         elseif item.term_merge then
             -- Ordinary items validate before changing state. A merge can change
             -- several products before a later holder fails validation.

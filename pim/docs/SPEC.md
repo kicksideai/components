@@ -179,7 +179,8 @@ fallback, ≤ 64 resolution candidates per attribute, ≤ 256 served contexts an
 ```
 
 Attribute id → context key → `p` (canonical value) or `c` (cleared); `s` =
-source that wrote it. Absent coordinates are not stored. ≤ 256 KB.
+source that wrote it. Absent coordinates are not stored. The stored JSON,
+including source stamps, is limited to 256 KiB.
 
 ### 2.3 Forms
 
@@ -190,7 +191,7 @@ source that wrote it. Absent coordinates are not stored. ≤ 256 KB.
 | `dec` | `{"m": int, "e": int}` reduced, \|m\| < 10^15, −12 ≤ e ≤ 12 |
 | `quantity` | `{"v": dec, "u": unit}` with the attribute's unit table |
 | `bool` | `true` / `false` |
-| `time` | `YYYY-MM-DD` or RFC3339 UTC `…Z` |
+| `time` | `YYYY-MM-DD` or RFC3339 UTC `…Z`, with at least one digit after a fractional separator |
 | `ref` | `{"ref": [kind, id]}`; kinds: `term`, `product`, `asset`, `component`, and link kinds (3.3) |
 | `record` | object of named members whose values are forms; depth ≤ 3 |
 
@@ -199,7 +200,8 @@ containers do not add record levels. Compilation admits depth three and rejects
 depth four before storing the declaration.
 
 No JSON floats. Cardinality `one | list | set` is an attribute property; lists
-and sets replace as a whole; sets are stored in key order without duplicates.
+and sets take dense arrays and replace as a whole. An empty table denotes an
+empty array. Sets are stored in key order without duplicates.
 
 ### 2.4 Keys and order
 
@@ -208,7 +210,8 @@ Forms, never plugins, define:
 - **key** — the equality string (≤ 256 bytes) for sets, uniqueness, axes and
   key indexes. `dec`: normalized decimal; `quantity`: the exact amount in the
   canonical unit plus the unit, so `1 lb` equals `453.59237 g`; `text`: the
-  string (case-folded when `case: insensitive`); `ref`: `kind:id`.
+  string (using Unicode default full case folding when `case: insensitive`);
+  `ref`: `kind:id`.
 - **order** — for `index: number`, an int64 at the declared `scale` within the
   declared `range` (else rejected at write); quantities order by the
   canonical amount rounded half-up at that scale.
@@ -1279,6 +1282,8 @@ Steps:
 3. Catch up the projection; `S` = `catalog.applied_seq`.
 4. Validate every item at `S`: `expect_version`, hierarchy and ownership,
    term and product references, SKU, unique values, axes, enforced checks.
+   Move, delete and restore each take a separate item. Unique claims are based
+   on the cells before the item and the cells after all its patch steps.
    Each item sees earlier accepted items in the command, including pending
    term labels and references used by merges and relationship checks. A refused
    item contributes no state to later items.

@@ -9,6 +9,7 @@ local scoped = require("scoped")
 local access_cases = require("access_cases")
 local store = require("store")
 local steps = require("steps")
+local types = require("types")
 
 type Map = { [string]: unknown }
 
@@ -33,6 +34,24 @@ end
 
 local function define()
     test.describe("members through the endpoints", function()
+        test.it("keeps a stored term set when HTTP sends a non-array replacement", function()
+            local owner = scoped.member()
+            local h = scoped.catalog(owner)
+            fixture.boot(h)
+            local reply = owner.invoke(h.id, "apply", { mode = "independent", items = {
+                { product = { sku = "RDG-moss" }, expect_version = 1, set = {
+                    { attr = "core.materials", value = { code = "nylon" } },
+                } },
+                { product = { sku = "RDG-slate-40" }, expect_version = 1, status = "draft" },
+            } })
+            test.eq(reply.status, 200, json.encode(reply.body))
+            local out = reply.body.data :: types.ApplyResult
+            test.eq(out.outcomes[2].outcome, "updated")
+            local got = assert(steps.get(h, "RDG-moss")).values["core.materials"].value :: { types.Ref }
+            test.eq(#got, 2, "malformed term set outcome was " .. out.outcomes[1].outcome)
+            test.eq(out.outcomes[1].outcome, "invalid")
+        end)
+
         test.it("create a catalog, write through the projection and read back", function()
             local owner = scoped.member()
             local created = data(owner.http("POST", "", { idempotency_key = owner.id, title = "HTTP catalog", declaration = fixture.DECLARATION }), "create")
