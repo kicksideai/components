@@ -16,7 +16,7 @@ local function define()
                 INSERT INTO kickside_work_receipt (board_id,command_key,request_hash,principal,at,result,seq)
                 SELECT $1,'fleet-' || CAST(n AS text),'hash','fixture','2000-01-01T00:00:00.000000000Z','{}',n FROM ids]], { hot.id }))
             assert(db:execute([[UPDATE kickside_work_retention SET orphan_after='~',board_after='',inclusive=0,
-                board_scan='all',deadline_ms=NULL WHERE owner_id='work']], {}))
+                board_scan='all',pending_page_budget=0,deadline_ms=NULL WHERE owner_id='work']], {}))
             db:release()
 
             for _, setting in ipairs({ { key = "cleanup_batch", value = 1 }, { key = "retention_batch", value = 205 } }) do
