@@ -7,6 +7,7 @@ local access = require("access")
 local consts = require("consts")
 local store = require("store")
 local read_rows = require("read_rows")
+local thread_reader = require("thread_reader")
 local domain = require("domain")
 local types = require("types")
 
@@ -36,7 +37,7 @@ local function selection(raw: unknown, depth: integer): error?
 end
 
 -- changes pages items in (updated_seq, item_id) order up to the projection
--- position. Trashed items are deletes. A cursor below the tombstone floor gets a
+-- position. Trashed items are deletes. A cursor below the durable floor gets a
 -- gap: the consumer resyncs from zero.
 local function list_changes(request: types.ChangesRequest, context: types.ReadContext): (types.ChangesResult?, error?)
     local filter_err = selection(request.selection, 1)
@@ -61,8 +62,11 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
         if cursor.seq > 0 and stamp ~= cursor.access then
             return { items = {}, next = { seq = 0, item_id = "", access = stamp }, has_more = false, gap = { floor = board.applied_seq } }, nil
         end
-        if cursor.seq > 0 and cursor.seq < board.tombstone_floor_seq and (cursor.floor or 0) < board.tombstone_floor_seq then
-            return { items = {}, next = cursor, has_more = false, gap = { floor = board.tombstone_floor_seq } }, nil
+        local boundary, boundary_err = thread_reader.prune_boundary(tx, board.board_id)
+        if boundary_err or not boundary then return nil, boundary_err end
+        local floor: integer = math.max(board.tombstone_floor_seq, boundary.max_pruned_seq :: integer)
+        if cursor.seq > 0 and cursor.seq < floor and (cursor.floor or 0) < floor then
+            return { items = {}, next = cursor, has_more = false, gap = { floor = floor } }, nil
         end
         local rows, err = read_rows.changes(tx, board, cursor.seq, cursor.item_id, limit + 1)
         if err then return nil, errors.wrap(err, "changes read failed") end
@@ -142,7 +146,7 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
             next_cursor.seq, next_cursor.item_id = decoded_2, decoded_1
         end
         next_cursor.access = stamp
-        next_cursor.floor = board.tombstone_floor_seq
+        next_cursor.floor = floor
         return { items = items, next = next_cursor, has_more = #(rows or {}) > processed }, nil
     end, context, nil, request.selection)
     if read_err or not result then return nil, read_err end

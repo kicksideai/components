@@ -435,18 +435,19 @@ function M.deadline(db: sql.DB, board_id: string, effective: domain.Policy, wind
         { name = "kickside_work_change", column = "at", days = effective.audit_days },
         { name = "kickside_work_interval", column = "ended_at", where = " AND ended_at IS NOT NULL", days = effective.interval_days },
         { name = "kickside_work_generation", column = "applied_at", days = effective.audit_days },
-        { name = "kickside_work_visibility", column = "at", days = window.days, before = window.before },
-        { name = "kickside_work_comment", column = "edited_at", where = " AND deleted=1", days = window.days, before = window.before },
-        { name = "kickside_work_receipt", column = "at", days = window.days, before = window.before },
-        { name = "kickside_work_operation", column = operation_expiry.at(db:type()), where = " AND " .. operation_expiry.TERMINAL, days = window.days, before = window.before },
+        { name = "kickside_work_visibility", column = "at", ms = window.ms, before = window.before },
+        { name = "kickside_work_comment", column = "edited_at", where = " AND deleted=1", ms = window.ms, before = window.before },
+        { name = "kickside_work_receipt", column = "at", ms = window.ms, before = window.before },
+        { name = "kickside_work_operation", column = operation_expiry.at(db:type()), where = " AND " .. operation_expiry.TERMINAL, ms = window.ms, before = window.before },
         { name="kickside_work_approval", column="at", days=effective.audit_days },
         { name="kickside_work_stage_run", column="COALESCE(finished, started)", days=effective.audit_days },
         { name="kickside_work_job", column="failed_at", where=" AND status='failed'", days=effective.audit_days },
     }
     local earliest: integer? = nil
     for _, class in ipairs(classes) do
-        if class.days then
-            local params: domain.SqlParams = { board_id, class.before or clock.offset(-class.days * 86400) }
+        local window_ms = class.ms or (class.days and class.days * 86400000)
+        if window_ms then
+            local params: domain.SqlParams = { board_id, class.before or clock.deadline(-window_ms).at }
             if class.state then params[3] = class.state end
             local filter = class.state and " AND life <> 'live' AND life = $3" or (class.where or "")
             local rows, err = db:query("SELECT " .. class.column .. " AS at FROM " .. class.name ..
@@ -456,7 +457,7 @@ function M.deadline(db: sql.DB, board_id: string, effective: domain.Policy, wind
             if at then
                 local instant, perr = time.parse(time.RFC3339, at)
                 if perr or not instant then return nil, perr end
-                local due = math.floor(instant:unix_nano() / 1000000) + (class.days :: integer) * 86400000 + 1
+                local due = instant:unix_nano() // 1000000 + window_ms + 1
                 earliest = earliest and math.min(earliest, due) or due
             end
         end

@@ -499,12 +499,12 @@ function M.at(dialect)
 ${at}
 end
 local operation_expiry=M
-local clock={offset=function()return '2026' end}
+local clock={deadline=function()return {at='2026'} end}
 ${deadline}
 local db={type=function()return 'sqlite' end,query=function(_,q,params)
  io.write(q,'\\0',params[3] or '', '\\0');return {},nil
 end}
-M.deadline(db,'future',{trash_days=1,tombstone_days=1,audit_days=1,interval_days=1},{days=1,before='2026'})
+M.deadline(db,'future',{trash_days=1,tombstone_days=1,audit_days=1,interval_days=1},{ms=129600000,before='2026'})
 `)
   const bits=captured.split('\0');const queries=[]
   for(let i=0;i<bits.length-1;i+=2)queries.push([bits[i],bits[i+1]])

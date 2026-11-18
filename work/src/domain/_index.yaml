@@ -198,7 +198,7 @@ entries:
     durations: kickside.work.domain:process_time
     consts: kickside.work:consts
     types: kickside.work:types
-    retention: kickside.core.retention.persist:repo
+    core_policy: kickside.core:policy_config
     clock: kickside.work.domain:clock
 - name: plugins
   kind: library.lua

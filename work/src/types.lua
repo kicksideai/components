@@ -213,7 +213,7 @@ type Process = {
     id: string, name: string, initial: string, migration: string, generation: integer, states: { State }, transitions: { Transition },
 }
 type Policy = { stage_timeout: string?, stage_max_visits: integer?, comments_per_item: integer?, wip: Wip?, audit: string, audit_days: integer?, trash_days: integer?, tombstone_days: integer?, interval_days: integer? }
-type EventWindow = { days: integer?, before: string? }
+type EventWindow = { ms: integer?, before: string? }
 type Compiled = {
     visibility: Visibility?, key_prefix: string, fields: { Field }, item_types: { ItemType }, relation_types: { Relation }, processes: { Process },
     plugins: { PluginDecl }?, scopes: { string }?, policy_overrides: PolicyDecl?, policy: Policy, next_field_id: integer, counter_field: integer?,

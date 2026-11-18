@@ -104,6 +104,7 @@ entries:
     read_rows: kickside.work.persist:read_rows
     item_view: kickside.work.read:item_view
     access_rows: kickside.work.persist:access_rows
+    thread_reader: kickside.core.threads.persist:reader
     budget: kickside.work.read:budget
 - name: cursor_codec
   kind: library.lua
