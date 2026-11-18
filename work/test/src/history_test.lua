@@ -8,6 +8,11 @@ local steps = require("steps")
 local store = require("store")
 local materializer = require("materializer")
 
+local rows = require("rows")
+local clock = require("clock")
+local core_prune = require("core_prune")
+local OLD = "2000-01-01T00:00:00.000000000Z"
+
 local function define()
     test.describe("list_history", function()
         test.it("records lifecycle rows and tracked value rows with before and after", function()
@@ -129,6 +134,101 @@ local function define()
             local resumed = assert(h.call("list_changes", { cursor = page.next }))
             test.eq(resumed.items[1].item_id, item)
             test.eq(resumed.items[1].key, prefix .. "-1")
+        end)
+
+        test.it("reports a gap when Core prunes past a board the Work scan already visited", function()
+            local first, second = fixture.board(), fixture.board()
+            if first.id > second.id then first, second = second, first end
+            steps.create(first, "task")
+            local cursor = assert(first.call("list_changes", { limit = 1 })).next
+            steps.create(first, "task")
+            local db = assert(store.open())
+            local partial = assert(core_prune.prune_thread(db, first.id, { cutoff = clock.offset(86400), max_total = 1 }))
+            test.is_true(partial.max_pruned_seq <= cursor.seq)
+            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,board_scan='all',deadline_ms=NULL WHERE owner_id='work'", { first.id }))
+            db:release()
+            assert(first.call("set_setting", { namespace = "kickside.work", key = "cleanup_batch", value = 1 }))
+            local ok, err = pcall(function()
+                test.is_true(steps.retention_run().needs_continue)
+                db = assert(store.open())
+                local position = assert(rows.position(db))
+                db:release()
+                test.eq(position.board_after, first.id)
+                test.eq(position.inclusive, 0)
+                test.is_nil(assert(first.call("list_changes", { cursor = cursor, limit = 1 })).gap)
+
+                db = assert(store.open())
+                local final = assert(core_prune.prune_thread(db, first.id, { cutoff = clock.offset(86400) }))
+                db:release()
+                test.is_true(final.max_pruned_seq > cursor.seq)
+                steps.retention_sweep()
+
+                local stale = assert(first.call("list_changes", { cursor = cursor, limit = 1 }))
+                test.not_nil(stale.gap, "the finished Work scan must not admit the obsolete cursor")
+                test.eq(stale.gap.floor, final.max_pruned_seq)
+                test.eq(#stale.items, 0)
+            end)
+            assert(first.call("unset_setting", { namespace = "kickside.work", key = "cleanup_batch" }))
+            assert(ok, tostring(err))
+        end)
+
+        test.it("marks an ordinary board cursor stale after the event window", function()
+            local board = fixture.board()
+            local first = steps.create(board, "task")
+            local first_page = assert(board.call("list_changes", { limit = 1 }))
+            test.eq(first_page.next.item_id, first)
+            steps.create(board, "task")
+            local db = assert(store.open())
+            assert(db:execute("UPDATE kickside_work_item SET created_at=$1,updated_at=$1 WHERE board_id=$2", { OLD, board.id }))
+            -- Simulate a later eligibility cutoff without modifying immutable Core events.
+            local pruned = assert(core_prune.prune_thread(db, board.id, { cutoff = clock.offset(86400) }))
+            test.is_true(pruned.max_pruned_seq > first_page.next.seq, "Core must have pruned through the cursor")
+            test.is_nil((rows.advance({ board_after = board.id, inclusive = 1, board_scan = "all" })))
+            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~' WHERE owner_id='work'", {}))
+            db:release()
+            steps.retention_sweep()
+            local next_page = assert(board.call("list_changes", { cursor = first_page.next }))
+            test.not_nil(next_page.gap, "an expired cursor must request resync even with no item-visibility policy")
+        end)
+
+        test.it("resyncs all live items after pruning past a split change sequence", function()
+            local board = fixture.board()
+            local target = steps.create(board, "task")
+            local root = steps.create(board, "task")
+            local child = steps.create(board, "task", nil, root)
+            local anchor = assert(board.call("list_changes", {})).next
+            local moved = assert(steps.apply(board, { { op = "parent", item = root, parent = target } }))
+            local moved_seq = assert(store.int(moved.seq))
+            local first = assert(board.call("list_changes", { cursor = anchor, limit = 1 }))
+            test.eq(first.next.seq, moved_seq)
+            test.is_true(first.has_more)
+            local second = assert(board.call("list_changes", { cursor = first.next, limit = 1 }))
+            test.eq(second.next.seq, first.next.seq)
+            test.is_true(first.items[1].item_id ~= second.items[1].item_id)
+
+            local latest = steps.create(board, "task")
+            local db = assert(store.open())
+            local pruned = assert(core_prune.prune_thread(db, board.id, { cutoff = clock.offset(86400) }))
+            test.is_true(pruned.max_pruned_seq > first.next.seq)
+            db:release()
+            test.is_nil((rows.advance({ board_after = board.id, inclusive = 1, board_scan = "all" })))
+            steps.retention_sweep()
+            local stale = assert(board.call("list_changes", { cursor = first.next }))
+            test.eq(stale.gap.floor, pruned.max_pruned_seq)
+            test.eq(#stale.items, 0)
+
+            local seen: { [string]: boolean } = {}
+            local cursor
+            for i = 1, 4 do
+                local page = assert(board.call("list_changes", { cursor = cursor, limit = 1 }))
+                test.is_nil(page.gap)
+                test.eq(#page.items, 1)
+                local id = page.items[1].item_id
+                test.is_nil(seen[id])
+                seen[id], cursor = true, page.next
+                test.eq(page.has_more, i < 4)
+            end
+            for _, id in ipairs({ target, root, child, latest }) do test.is_true(seen[id]) end
         end)
 
         test.it("reports a source gap below the tombstone floor", function()

@@ -158,6 +158,13 @@ entries:
     resources: [work.board]
     actions: threads.subjects.retire
     effect: allow
+- name: prune_boundary_read
+  kind: security.policy
+  meta: {private: true, service_only: true, producers: [kickside.work.retention:owner]}
+  policy:
+    resources: [work.board]
+    actions: threads.prune_boundary.read
+    effect: allow
 - name: operation_retirement_call
   kind: security.policy
   meta: {private: true, service_only: true, producers: [kickside.work.service:bulk, kickside.work.service:move, kickside.work.service:create, kickside.work.service:pack_apply]}

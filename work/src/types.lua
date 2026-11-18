@@ -38,6 +38,7 @@ type Deadline = { at: string, ns: integer }
 -- The Core threads contract as boards use it.
 type ThreadRequest = { [string]: unknown }
 type ThreadClient = {
+    prune_boundary: (self: ThreadClient, request: {thread_id: string}) -> ({thread_id: string, max_pruned_seq: integer}?, error?),
     retire_subjects: (self: ThreadClient, request: {thread_id: string, subjects: {string}}) -> ({thread_id: string, retired: integer}?, error?),
     find: (self: ThreadClient, request: ThreadRequest) -> (unknown, error?),
     ensure_thread: (self: ThreadClient, request: ThreadRequest) -> (unknown, error?),
@@ -212,6 +213,7 @@ type Process = {
     id: string, name: string, initial: string, migration: string, generation: integer, states: { State }, transitions: { Transition },
 }
 type Policy = { stage_timeout: string?, stage_max_visits: integer?, comments_per_item: integer?, wip: Wip?, audit: string, audit_days: integer?, trash_days: integer?, tombstone_days: integer?, interval_days: integer? }
+type EventWindow = { ms: integer?, before: string? }
 type Compiled = {
     visibility: Visibility?, key_prefix: string, fields: { Field }, item_types: { ItemType }, relation_types: { Relation }, processes: { Process },
     plugins: { PluginDecl }?, scopes: { string }?, policy_overrides: PolicyDecl?, policy: Policy, next_field_id: integer, counter_field: integer?,
@@ -257,6 +259,7 @@ type CommentRow = {
     comment_id: string, item_id: string, body: string, mentions: { PrincipalDecl }, author: string, version: integer,
     deleted: boolean, created_at: string, edited_at: string?,
 }
+type CommentPosition = { created_at: string, comment_id: string }
 type IntervalRow = { field_id: string, start_seq: integer, value_key: string, started_at: string, ended_at: string? }
 type ChangeRow = {
     seq: integer, n: integer, subject: string, kind: string, field_id: integer?, before: Json, after: Json, actor: string,
@@ -334,9 +337,11 @@ return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, Operation
     RelationDecl = RelationDecl, PrincipalDecl = PrincipalDecl, StateDecl = StateDecl, EffectDecl = EffectDecl,
     TransitionDecl = TransitionDecl, ProcessDecl = ProcessDecl, PolicyDecl = PolicyDecl,
     StateMaps = StateMaps, RemoveDecl = RemoveDecl, Declaration = Declaration, Option = Option, Field = Field, ItemType = ItemType, Relation = Relation, State = State,
-    Effect = Effect, Transition = Transition, Process = Process, Policy = Policy, Compiled = Compiled, Model = Model, SchemaChange = SchemaChange,
+    Effect = Effect, Transition = Transition, Process = Process, Policy = Policy, EventWindow = EventWindow, Compiled = Compiled, Model = Model, SchemaChange = SchemaChange,
     Usage = Usage, StateUsageTarget = StateUsageTarget, UsageTargets = UsageTargets,
-    Board = Board, Cell = Cell, Document = Document, Item = Item, LinkRow = LinkRow, InboundLink = InboundLink, CommentRow = CommentRow, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
+    Board = Board, Cell = Cell, Document = Document, Item = Item, LinkRow = LinkRow, InboundLink = InboundLink,
+    CommentRow = CommentRow, CommentPosition = CommentPosition, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
+
     PatchStep = PatchStep, Target = Target, Receipt = Receipt, EventBody = EventBody, External = External, Event = Event,
     FoldBatch = FoldBatch, FoldResult = FoldResult, RawEvent = RawEvent, FoldEvent = FoldEvent, ProjectionRange = ProjectionRange, ProjectionBody = ProjectionBody,
     ProjectionInput = ProjectionInput, ComponentMeta = ComponentMeta, ComponentRow = ComponentRow,

@@ -407,8 +407,10 @@ entries:
   source: file://read_surface_test.lua
   method: run
   imports:
+    store: kickside.work.persist:store
     clock: kickside.work.domain:clock
     test: wippy.test:test
+    fixture: app:fixture
     scoped: app:scoped
     steps: app:steps
 - name: configuration_test

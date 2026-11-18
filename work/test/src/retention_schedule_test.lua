@@ -11,10 +11,15 @@ local function define()
     test.describe("retention scheduling", function()
         local child: string?
         local settings_board: fixture.Handle?
+        local batch_board: fixture.Handle?
         test.after_each(function()
             if settings_board then
                 assert(settings_board.call("unset_setting",{namespace="kickside.work",key="trash_days"}))
                 settings_board=nil
+            end
+            if batch_board then
+                assert(batch_board.call("unset_setting", { namespace = "kickside.work", key = "cleanup_batch" }))
+                batch_board = nil
             end
             if child then
                 assert(process.terminate(child))
@@ -39,22 +44,32 @@ local function define()
             end)
         end)
         test.it("reports committed trash eligibility and collects it at the owner deadline", function()
-            local declaration = fixture.declaration(fixture.fresh_prefix())
-            declaration.policy = { trash_days = 0 }
-            local h = fixture.board({ declaration = declaration })
+            local function trash_board(): fixture.Handle
+                local declaration = fixture.declaration(fixture.fresh_prefix())
+                declaration.policy = { trash_days = 0 }
+                return fixture.board({ declaration = declaration })
+            end
+            local h, later = trash_board(), trash_board()
+            if h.id > later.id then h, later = later, h end
+            batch_board = h
+            assert(h.call("set_setting", { namespace = "kickside.work", key = "cleanup_batch", value = 1 }))
             local id = steps.create(h, "task", { title = "Retained" })
+            local other_id = steps.create(later, "task")
+            local function trash_at(board: fixture.Handle, item: string, at: string)
+                assert(board.call("trusted_append", { thread_id = board.id, events = {
+                    { type = "kickside.work.events:item.deleted", subject = "i:" .. item,
+                        body = { item = item, actor = board.actor:id(), at = at, source = "retention_schedule_test" } },
+                } }))
+                assert(board.call("settle", {}))
+            end
             local future = clock.deadline(60000)
-            assert(h.call("trusted_append", { thread_id = h.id, events = {
-                { type = "kickside.work.events:item.deleted", subject = "i:" .. id,
-                    body = { item = id, actor = h.actor:id(), at = future.at, source = "retention_schedule_test" } },
-            } }))
-            assert(h.call("settle", {}))
+            trash_at(later, other_id, clock.deadline(30000).at)
+            trash_at(h, id, future.at)
             for pass = 1, 2 do
                 local db = assert(store.open())
-                assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,item_after='',deadline_ms=NULL WHERE owner_id='work'", { h.id }))
+                assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,board_scan='all',deadline_ms=NULL WHERE owner_id='work'", { h.id }))
                 db:release()
-                local _, result = steps.retention_sweep()
-                test.is_false(result.needs_continue)
+                local result = steps.retention_run()
                 assert(h.call("settle", {}))
                 db = assert(store.open())
                 local item = assert(store.item(db, h.id, id))

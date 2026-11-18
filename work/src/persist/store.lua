@@ -301,9 +301,16 @@ function M.comment(db: storage.Executor, board_id: string, comment_id: string): 
 end
 
 -- comments lists an item's live comments, oldest first.
-function M.comments(db: storage.Executor, board_id: string, item_id: string, limit: integer, offset: integer?): ({ types.CommentRow }?, error?)
-    local rows, err = db:query([[SELECT * FROM kickside_work_comment WHERE board_id = $1 AND item_id = $2 AND deleted = 0
-        ORDER BY created_at, comment_id LIMIT $3 OFFSET $4]], { board_id, item_id, limit, offset or 0 })
+function M.comments(db: storage.Executor, board_id: string, item_id: string, limit: integer, after: types.CommentPosition?): ({ types.CommentRow }?, error?)
+    local params: types.SqlParams = { board_id, item_id }
+    local seek = ""
+    if after then
+        params[3], params[4] = after.created_at, after.comment_id
+        seek = " AND (created_at, comment_id) > ($3, $4)"
+    end
+    params[#params + 1] = limit
+    local rows, err = db:query("SELECT * FROM kickside_work_comment WHERE board_id = $1 AND item_id = $2 AND deleted = 0"
+        .. seek .. " ORDER BY created_at, comment_id LIMIT $" .. #params, params)
     if err then return nil, errors.wrap(err, "comment read failed") end
     local out: { types.CommentRow } = {}
     for _, row in ipairs(rows or {}) do

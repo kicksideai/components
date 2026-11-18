@@ -306,6 +306,7 @@ entries:
   modules: [uuid, funcs]
   imports:
     operations: app:operation_steps
+    clock: kickside.work.domain:clock
     race: app:retention_append
     test: wippy.test:test
     fixture: app:fixture
@@ -316,6 +317,19 @@ entries:
     policy: kickside.work.domain:policy
     jobs: kickside.core.jobs:jobs
     tables: kickside.work.domain:layout
+- name: board_retention_backlog_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    timeout: 300s
+  source: file://../board_retention_backlog_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    store: kickside.work.persist:store
 - name: zz_retention_schedule_test
   kind: function.lua
   meta:

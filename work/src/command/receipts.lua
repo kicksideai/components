@@ -11,7 +11,6 @@ local types = require("types")
 local store = require("store")
 local trace = require("trace")
 local guard = require("guard")
-local clock = require("clock")
 local policy = require("policy")
 local expiry = require("expiry")
 local uuid = require("uuid")
@@ -25,11 +24,17 @@ function M.trace(raw: domain.TraceContext?, kind: string): (domain.TraceContext?
 end
 
 function M.command(board_id: string, key: string): (types.Durable?, error?)
-    local days, derr = policy.event_days()
-    if derr or not days then return nil, derr end
     local db, err = store.open()
     if not db then return nil, err end
-    local rows, rerr = db:query("SELECT request_hash, principal, result, seq FROM kickside_work_receipt WHERE board_id = $1 AND command_key = $2 AND (at >= $3 OR " .. expiry.PROTECTED_RECEIPT .. ")", { board_id, key, clock.offset(-days * 86400) })
+    local window, werr = policy.event_window(db, board_id)
+    if werr or not window then db:release(); return nil, werr end
+    local params: domain.SqlParams = { board_id, key }
+    local age = ""
+    if window.before then
+        params[3] = window.before
+        age = " AND (at >= $3 OR " .. expiry.PROTECTED_RECEIPT .. ")"
+    end
+    local rows, rerr = db:query("SELECT request_hash, principal, result, seq FROM kickside_work_receipt WHERE board_id = $1 AND command_key = $2" .. age, params)
     db:release()
     if rerr then return nil, rerr end
     local row = rows and rows[1]

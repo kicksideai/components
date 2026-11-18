@@ -7,14 +7,20 @@ local identity = require("identity")
 local store = require("store")
 local types = require("types")
 local expiry = require("expiry")
+local policy = require("policy")
 local M = {}
 
 function M.get(db: sql.DB, board_id: string, id: string?, kind: string?, key: string?): (types.Owner?, error?)
-    local before, berr = expiry.before()
-    if berr or not before then return nil, berr end
-    local params: { unknown } = id and { board_id, id, before } or { board_id, kind, key, before }
+    local window, werr = policy.event_window(db, board_id)
+    if werr or not window then return nil, werr end
+    local params: { unknown } = id and { board_id, id } or { board_id, kind, key }
+    local age = ""
+    if window.before then
+        params[#params + 1] = window.before
+        age = " AND NOT (" .. expiry.RETIRABLE .. " AND " .. expiry.at(db:type()) .. " < $" .. #params .. ")"
+    end
     local rows, err = db:query("SELECT * FROM kickside_work_operation WHERE board_id = $1 AND " .. (id and "operation_id = $2" or "kind = $2 AND key = $3") ..
-        " AND NOT (" .. expiry.RETIRABLE .. " AND " .. expiry.at(db:type()) .. " < $" .. #params .. ")", params)
+        age, params)
     if err then return nil, err end
     if not rows or not rows[1] then return nil, nil end
     local row = rows[1]

@@ -193,11 +193,13 @@ entries:
 - name: policy
   kind: library.lua
   source: file://policy.lua
-  modules: [registry]
+  modules: [sql]
   imports:
     durations: kickside.work.domain:process_time
     consts: kickside.work:consts
     types: kickside.work:types
+    core_policy: kickside.core:policy_config
+    clock: kickside.work.domain:clock
 - name: plugins
   kind: library.lua
   source: file://plugins.lua

@@ -384,7 +384,7 @@ local function define()
             steps.one(h, { op = "delete", item = id })
             local db = assert(store.open())
             assert(db:execute("UPDATE kickside_work_item SET life_at = $1 WHERE board_id = $2 AND item_id = $3", { "2000-01-01T00:00:00Z", h.id, id }))
-            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~', board_after = $1, inclusive = 1, item_after = '', deadline_ms = NULL WHERE owner_id = 'work'", { h.id }))
+            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~', board_after = $1, inclusive = 1, board_scan='all', deadline_ms = NULL WHERE owner_id = 'work'", { h.id }))
             db:release()
             steps.retention_sweep(function(): boolean
                 assert(h.call("settle", {}))

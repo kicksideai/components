@@ -74,7 +74,6 @@ entries:
   imports:
     expiry: kickside.work.persist:operation_expiry
     guard: kickside.work.command:guard
-    clock: kickside.work.domain:clock
     policy: kickside.work.domain:policy
     consts: kickside.work:consts
     values: kickside.work.domain:values

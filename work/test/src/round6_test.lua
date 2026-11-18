@@ -137,7 +137,7 @@ local function define()
                 assert(tx:execute([[INSERT INTO kickside_work_receipt (board_id,command_key,request_hash,principal,at,result,seq)
                     VALUES ($1,$2,'hash','fixture','2000-01-01T00:00:00.000000000Z','{}',1)]],{h.id,"limits-" .. i}))
             end
-            assert(tx:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,item_after='',deadline_ms=NULL WHERE owner_id='work'",{h.id}))
+            assert(tx:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=1,board_scan='all',deadline_ms=NULL WHERE owner_id='work'",{h.id}))
             assert(tx:commit());db:release()
             local result=steps.retention_run()
             db=assert(store.open())
