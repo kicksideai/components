@@ -3,7 +3,6 @@ local test = require("test")
 local fixture = require("fixture")
 local steps = require("steps")
 local store = require("store")
-local search_text = require("search_text")
 
 local function define()
     test.describe("Work bounded reads", function()
@@ -55,17 +54,100 @@ local function define()
             for i, item in ipairs(expected) do test.eq(actual[i], item.id) end
         end)
 
+        test.it("admits every selected schema before spending the item budget", function()
+            local left = fixture.board()
+            local declaration = fixture.declaration(fixture.fresh_prefix())
+            declaration.fields[2] = { code = "estimate", form = "text", index = "key" }
+            local right = fixture.board({ declaration = declaration })
+            assert(right.call("grant", { subject_id = left.actor:id(), mask = 1 }))
+            steps.create(left, "task", { estimate = 2 })
+            steps.create(right, "task", { estimate = "one" })
+            for _, rows in ipairs({ 1, 10 }) do
+                local page, err = left.call("query", {
+                    boards = { left.id, right.id }, order = { field = "estimate" }, budget = { rows = rows },
+                })
+                test.is_nil(page)
+                test.eq(err:details().code, "invalid_query")
+            end
+        end)
+
+        test.it("binds cross-board continuations to the admitted query", function()
+            local board = fixture.board()
+            for i = 1, 2 do steps.create(board, "task", { estimate = i }) end
+            local request = { boards = { board.id }, order = { field = "estimate" }, limit = 1 }
+            request.cross_after = assert(board.call("query", request)).cross_after
+            test.not_nil(request.cross_after)
+            request.order = { field = "rank" }
+            local page, err = board.call("query", request)
+            test.is_nil(page)
+            test.eq(err:details().code, "invalid_query")
+            request.order = { field = "estimate" }
+            assert(board.call("apply_schema", { declaration = { fields = { { code = "bonus", form = "int" } } } }))
+            page, err = board.call("query", request)
+            test.is_nil(page)
+            test.eq(err:details().code, "invalid_query")
+        end)
+
+        test.it("orders unavailable references with nulls without publishing target keys", function()
+            local declaration = fixture.declaration(fixture.fresh_prefix())
+            declaration.fields[#declaration.fields + 1] = { code = "peer", type = "item", index = "key" }
+            local fields = declaration.item_types[3].fields
+            fields[#fields + 1] = "peer"
+            local board, target = fixture.board({ declaration = declaration }), fixture.board()
+            declaration.key_prefix = fixture.fresh_prefix()
+            local other = fixture.board({ declaration = declaration })
+            assert(other.call("grant", { subject_id = board.actor:id(), mask = 1 }))
+            assert(target.call("grant", { subject_id = board.actor:id(), mask = 1 }))
+            local visible = steps.create(board, "task")
+            local hidden = steps.create(target, "task")
+            local marked = steps.create(board, "task", { peer = { board = board.id, item = visible } })
+            local unavailable = steps.create(board, "task", { peer = { board = target.id, item = hidden } })
+            local neighbor = steps.create(other, "task")
+            assert(target.call("revoke", { subject_id = board.actor:id() }))
+            local suffix = { { id = visible, board = board.id }, { id = unavailable, board = board.id }, { id = neighbor, board = other.id } }
+            table.sort(suffix, function(a, b) return a.board == b.board and a.id < b.id or a.board < b.board end)
+            local sealed = false
+            for _, direction in ipairs({ "asc", "desc" }) do
+                local request = { boards = { board.id, other.id }, order = { field = "peer", dir = direction },
+                    budget = { rows = 1 }, limit = 1 }
+                local found = {}
+                for _ = 1, 18 do
+                    local page = assert(board.call("query", request))
+                    for _, item in ipairs(page.items) do found[#found + 1] = item end
+                    request.cross_after = page.cross_after
+                    if not request.cross_after then break end
+                    for _, positions in ipairs({ request.cross_after.frontiers, request.cross_after.boards }) do
+                        for _, position in pairs(positions) do
+                            if type(position) == "table" then
+                                if type(position.v) == "string" then
+                                    test.is_nil(position.v:find(hidden, 1, true), "hidden target appears in the continuation")
+                                end
+                                sealed = sealed or position.position ~= nil
+                            end
+                        end
+                    end
+                end
+                test.is_nil(request.cross_after)
+                test.eq(#found, 4)
+                test.eq(found[1].id, marked)
+                for i, expected in ipairs(suffix) do
+                    local item = found[i + 1]
+                    test.eq(item.id, expected.id)
+                    if item.id == unavailable then test.is_true(item.values.peer.unavailable) end
+                end
+            end
+            test.is_true(sealed, "the hidden raw index position is sealed when it ends a scan")
+        end)
+
         test.it("uses case-insensitive search for non-ASCII plugin scope text", function()
             local declaration = fixture.declaration(fixture.fresh_prefix())
             declaration.plugins = { { use = "app:query_text_search_plugin" } }
             declaration.scopes = { "app:query_text_search_scope" }
             local board = fixture.board({ declaration = declaration })
             local item = steps.create(board, "task")
-            local db = assert(store.open())
-            assert(db:execute([[CREATE TABLE IF NOT EXISTS app_work_query_text
-                (board_id text NOT NULL, item_id text NOT NULL, content text NOT NULL, PRIMARY KEY (board_id, item_id))]], {}))
-            assert(db:execute("INSERT INTO app_work_query_text VALUES ($1,$2,$3)", { board.id, item, assert(search_text.fold("École Straße ΟΣ")) }))
-            db:release()
+            assert(board.call("direct", { target = "app:query_text_search_write",
+                input = { board = board.id, item = item, text = "Needle École Straße ΟΣ" } }))
+            test.eq(#assert(board.call("query", { where = { match = "nEEDLE" } })).items, 1)
             test.eq(#assert(board.call("query", { where = { match = "École" } })).items, 1)
             test.eq(#assert(board.call("query", { where = { match = "école" } })).items, 1)
             test.eq(#assert(board.call("query", { where = { match = "STRASSE ος" } })).items, 1)

@@ -75,6 +75,7 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
     admitted: { domain.AdmittedScope }, conditions: { domain.Condition }, limit: integer): (types.Plan?, error?)
     local names = t.names
     local clauses: { domain.Condition } = {}
+    local format = dialect == sql.type.POSTGRES and sql.builder.dollar or sql.builder.question
     local residual = false
     local item_row: { string } = { "r.board_id = ?", "r.item_id = i.item_id" }
     local item_args: { unknown } = { r.board_id }
@@ -104,26 +105,36 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
         if serr or not predicate or not args then return nil, serr end
         clauses[#clauses + 1] = { sql = predicate, args = args }
     end
-    local function matching(columns: { string }): sql.SelectBuilder
-        local base = sql.builder.select(table.unpack(columns))
-            :from(names.item .. " i")
-        for _, c in ipairs(clauses) do base = base:where(c.sql, table.unpack(c.args)) end
+    local function apply(base: sql.SelectBuilder, conditions: { domain.Condition }): sql.SelectBuilder
+        for _, c in ipairs(conditions) do base = base:where(c.sql, table.unpack(c.args)) end
         return base
+    end
+    local function generated(columns: { string }, conditions: { domain.Condition }): sql.SelectBuilder
+        return apply(sql.builder.select(table.unpack(columns)):from(names.item .. " i"), conditions)
+    end
+    -- LIMIT in the derived table keeps the optimizer from placing residual
+    -- predicates ahead of the candidate allowance.
+    local predicates_only: { domain.Condition } = {}
+    for i = #board_conditions + 1, #clauses do predicates_only[#predicates_only + 1] = clauses[i] end
+    local function bounded(walk: sql.SelectBuilder, outer: sql.SelectBuilder, cap: integer): (string, { unknown })
+        local inner, args = walk:limit(cap):placeholder_format(sql.builder.question):to_sql()
+        local statement, binds = outer:from("(" .. inner .. ") i"):placeholder_format(format):to_sql()
+        for _, arg in ipairs(binds) do args[#args + 1] = arg end
+        return statement, args
     end
     local counted: types.Count? = nil
     if q.count then
-        local format = dialect == sql.type.POSTGRES and sql.builder.dollar or sql.builder.question
-        local counting = matching({ "1" })
+        local cap = math.min(q.count, q.scan or q.count)
+        local inner, args = "", {} :: { unknown }
         local beyond: string?, beyond_args: { unknown }? = nil, nil
         if q.scan and residual then
-            local walk = sql.builder.select("i.item_id"):from(names.item .. " i")
-            for _, condition in ipairs(board_conditions) do walk = walk:where(condition.sql, table.unpack(condition.args)) end
-            local edge, args = walk:order_by("i.item_id"):offset(q.scan - 1):limit(1):to_sql()
-            counting = counting:where("i.item_id <= COALESCE((" .. edge .. "), i.item_id)", table.unpack(args))
-            beyond, beyond_args = walk:order_by("i.item_id"):offset(q.scan):limit(1):placeholder_format(format):to_sql()
+            local walk = generated({ "i.*" }, board_conditions):order_by("i.item_id")
+            inner, args = bounded(walk, apply(sql.builder.select("1"), predicates_only):limit(cap + 1), q.scan)
+            beyond, beyond_args = generated({ "i.item_id" }, board_conditions):order_by("i.item_id")
+                :offset(q.scan):limit(1):placeholder_format(format):to_sql()
+        else
+            inner, args = generated({ "1" }, clauses):limit(cap + 1):placeholder_format(format):to_sql()
         end
-        local cap = math.min(q.count, q.scan or q.count)
-        local inner, args = counting:limit(cap + 1):placeholder_format(format):to_sql()
         counted = { statement = "SELECT count(*) AS n FROM (" .. inner .. ") matched", args = args, cap = cap, beyond = beyond, beyond_args = beyond_args }
     end
     local order: { domain.Sort } = q.sorts or {}
@@ -145,61 +156,106 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
             selection[#selection + 1] = group_columns[i] .. " AS group_" .. i
         end
     end
-    local function from_cursor(built: sql.SelectBuilder): (sql.SelectBuilder?, error?)
-        if not q.after then return built, nil end
-        local condition, err = window.after(columns, order, q.after)
-        if err or not condition then return nil, err end
-        return built:where(condition.sql, table.unpack(condition.args)), nil
+    local ranges: { domain.Condition } = { { sql = "1 = 1", args = {} } }
+    if q.after then
+        if #columns == 1 then
+            local required = false
+            for _, column in ipairs(t.system) do
+                if "i." .. column.name == columns[1] then required = true; break end
+            end
+            ranges = window.ranges(columns[1], order[1].dir == "desc", q.after, required)
+        else
+            local condition, err = window.after(columns, order, q.after)
+            if err or not condition then return nil, err end
+            ranges = { condition }
+        end
     end
     local take = q.groups and q.scan or math.min(limit, q.scan or limit)
-    local base = matching(selection)
-    local tails: { sql.SelectBuilder } = {}
-    local query: sql.SelectBuilder
-    if q.after and #columns == 1 and not residual then
-        local required = false
-        for _, column in ipairs(t.system) do
-            if "i." .. column.name == columns[1] then required = true; break end
+    local pages: { sql.SelectBuilder } = {}
+    local scans: { sql.SelectBuilder } = {}
+    for i, range in ipairs(ranges) do
+        local base = generated(selection, clauses):where(range.sql, table.unpack(range.args))
+        pages[i] = window.order(base, columns, order)
+        if q.scan and residual and not q.count then
+            local walk = generated({ "i.*" }, board_conditions):where(range.sql, table.unpack(range.args))
+            scans[i] = window.order(walk, columns, order)
         end
-        local ranges = window.ranges(columns[1], order[1].dir == "desc", q.after, required)
-        local first = ranges[1]
-        query = window.order(base:where(first.sql, table.unpack(first.args)), columns, order):limit(take + 1)
-        for i = 2, #ranges do
-            local range = ranges[i]
-            tails[#tails + 1] = window.order(base:where(range.sql, table.unpack(range.args)), columns, order)
-        end
-    else
-        local built, berr = from_cursor(base)
-        if berr or not built then return nil, berr end
-        query = window.order(built, columns, order):limit(take + 1)
     end
-    local plan: types.Plan = { query = query, tails = tails, count = counted, groups = #group_columns, take = take, scan = q.scan }
-    if q.scan and residual and not q.count then
-        local walk = sql.builder.select("i.item_id"):from(names.item .. " i")
-        for _, condition in ipairs(board_conditions) do walk = walk:where(condition.sql, table.unpack(condition.args)) end
-        local walked, werr = from_cursor(walk)
-        if werr or not walked then return nil, werr end
-        plan.walk = window.order(walked, columns, order):offset(q.scan - 1):limit(2)
-        local format = dialect == sql.type.POSTGRES and sql.builder.dollar or sql.builder.question
-        local population, args = walked:limit(q.scan):placeholder_format(format):to_sql()
-        plan.population = { statement = "SELECT COUNT(*) AS n FROM (" .. population .. ") scanned", args = args, cap = q.scan }
-        local candidates, binds = window.order(walked, columns, order, false):limit(q.scan):to_sql()
-        plan.query = query:where("i.item_id IN (" .. candidates .. ")", table.unpack(binds))
+    local first = table.remove(pages, 1)
+    local plan: types.Plan = { query = first:limit(take + 1), tails = pages, count = counted, groups = #group_columns, take = take }
+    if #scans > 0 then
+        -- The walk already checked ownership and board visibility.
+        local outer = window.order(apply(sql.builder.select(table.unpack(selection)), predicates_only), columns, order)
+        plan.bounded = { scans = scans, scan = q.scan :: integer, dialect = dialect, order = order,
+            statement = function(walk: sql.SelectBuilder, scan: integer, matches: integer): (string, { unknown })
+                local statement, args = bounded(walk, outer:limit(matches), scan)
+                return statement, args
+            end }
     end
     return plan, nil
 end
 
-function M.rows(db: types.Executor, plan: types.Plan): ({ domain.Row }?, error?)
-    local executor, err = plan.query:run_with(db)
-    if err or not executor then return nil, err end
-    local rows, rerr = executor:query()
+function M.statement(plan: types.Plan, dialect: string): (string, { unknown })
+    if plan.bounded then
+        local statement, args = plan.bounded.statement(plan.bounded.scans[1], plan.bounded.scan, plan.take + 1)
+        return statement, args
+    end
+    local statement, args = plan.query:placeholder_format(dialect == sql.type.POSTGRES and sql.builder.dollar or sql.builder.question):to_sql()
+    return statement, args
+end
+
+local function fetch(db: types.Executor, query: sql.SelectBuilder): ({ domain.Row }?, error?)
+    local execution, err = query:run_with(db)
+    if err or not execution then return nil, err end
+    return execution:query()
+end
+
+local function bounded_rows(db: types.Executor, plan: types.BoundedPlan, take: integer): ({ domain.Row }?, error?, integer?, domain.Cursor?)
+    local remaining = plan.scan
+    local result: { domain.Row } = {}
+    local last: domain.Cursor? = nil
+    for _, walk in ipairs(plan.scans) do
+        if remaining == 0 then
+            local next_rows, err = fetch(db, walk:limit(1))
+            if err then return nil, err end
+            if #(next_rows or {}) > 0 then return result, nil, plan.scan, last end
+        else
+            local edge, err = fetch(db, walk:offset(remaining - 1):limit(2))
+            if err then return nil, err end
+            local scanned = remaining
+            if not edge or not edge[1] then
+                local format = plan.dialect == sql.type.POSTGRES and sql.builder.dollar or sql.builder.question
+                local inner, args = walk:limit(remaining):placeholder_format(format):to_sql()
+                local n, _, nerr = M.total(db, { statement = "SELECT count(*) AS n FROM (" .. inner .. ") candidates", args = args, cap = remaining })
+                if nerr then return nil, nerr end
+                scanned = n :: integer
+            end
+            if scanned > 0 then
+                local statement, args = plan.statement(walk, scanned, take + 1 - #result)
+                local matched, err = db:query(statement, args)
+                if err then return nil, err end
+                for _, row in ipairs(matched or {}) do result[#result + 1] = row end
+                remaining = remaining - scanned
+            end
+            if #result > take then return result, nil, plan.scan - remaining, nil end
+            if edge and edge[1] then
+                last = window.cursor(edge[1], plan.order)
+                if edge[2] then return result, nil, plan.scan, last end
+            end
+        end
+    end
+    return result, nil, plan.scan - remaining, nil
+end
+
+function M.rows(db: types.Executor, plan: types.Plan): ({ domain.Row }?, error?, integer?, domain.Cursor?)
+    if plan.bounded then return bounded_rows(db, plan.bounded, plan.take) end
+    local rows, rerr = fetch(db, plan.query)
     if rerr then return nil, rerr end
     local result: { domain.Row } = rows or {}
     for _, tail in ipairs(plan.tails) do
         local left = plan.take + 1 - #result
         if left == 0 then break end
-        local execution, err = tail:limit(left):run_with(db)
-        if err or not execution then return nil, err end
-        local page, perr = execution:query()
+        local page, perr = fetch(db, tail:limit(left))
         if perr then return nil, perr end
         for _, row in ipairs(page or {}) do result[#result + 1] = row end
     end

@@ -1,11 +1,16 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Cross-board pages merge at most one bounded keyset page from each board.
 local component = require("component")
+local security = require("security")
+local hash = require("hash")
+local access = require("access")
+local access_rows = require("access_rows")
+local principals = require("principals")
+local store = require("store")
 local consts = require("consts")
 local locate = require("locate")
 local query = require("query")
 local predicates = require("predicates")
-local rules = require("rules")
 local domain = require("domain")
 local types = require("types")
 local values = require("values")
@@ -77,33 +82,69 @@ function M.query(request: types.QueryRequest): (types.QueryResult?, error?)
     local used: { [string]: boolean } = {}
     local _, ierr = predicates.inspect(request.where, used, 1)
     if ierr then return nil, ierr end
-    local sort: domain.Sort = { field = "rank" }
-    if request.order then
-        if request.order.field then sort = request.order :: domain.Sort
-        else
-            local orders = request.order :: { domain.Sort }
-            if #orders ~= 1 then return nil, invalid("order takes one indexed field") end
-            sort = orders[1]
-        end
-    end
+    local orders, sort_err = query.order(request.order)
+    if sort_err or not orders then return nil, sort_err end
+    if #orders ~= 1 then return nil, invalid("order takes one indexed field") end
+    local sort = orders[1]
     used[sort.field] = true
     local forms: { [string]: string } = {}
     local origins: { [string]: string } = {}
+    local admissions: { [string]: { generation: integer, digest: string, caller: domain.AccessCaller? } } = {}
     local context: types.ReadContext = { admitted = {}, holders = {}, allowance = allowance }
-    for _, id in ipairs(ids) do context.admitted[id] = true end
-    local function compatible(board: domain.Board): error?
-        local id = board.board_id
+    local reference = false
+    local db, db_err = store.open()
+    if db_err or not db then return nil, db_err end
+    local function admit(id: string): error?
+        local board, err = store.board(db, id)
+        if err then return err end
+        if not board then
+            return errors.new({ kind = errors.NOT_FOUND, message = "board has no schema", details = { code = "board_schema_missing" } })
+        end
+        local perr = principals.resolve(board, context)
+        if perr then return perr end
+        local resolve = access_rows.resolver(board, predicates.targets(board.compiled))
         for code in pairs(used) do
             local field = board.model.fields[code]
-            if field and not rules.field(board, field, "read") then return rules.denied(code) end
-            local target, terr = predicates.targets(board.compiled)(code)
+            local target, terr = resolve(code, code == sort.field and sort.ctx or nil)
+            if terr and terr:kind() == errors.PERMISSION_DENIED then return terr end
             if terr or not target then return invalid("field " .. code .. " is unavailable on board " .. id, { id }) end
+            if code == sort.field then
+                if target.set then return invalid(code .. " holds several values and cannot sort", { id }) end
+                reference = field ~= nil and field.type == "item"
+            end
             local options: { [string]: integer } = {}
             for _, option in ipairs(field and field.options or {}) do options[option.id] = option.order end
             local form = values.canonical({ form = field and field.form or target.shape.form, cardinality = field and field.cardinality or "one",
-                kind = target.kind, config = field and field.config or target.shape.config, options = options })
+                kind = target.kind, config = field and field.config or target.shape.config, options = options,
+                reference = field ~= nil and field.type == "item" })
             if forms[code] and forms[code] ~= form then return invalid("field " .. code .. " has different forms on boards " .. origins[code] .. " and " .. id, { origins[code] :: string, id }) end
             forms[code], origins[code] = form, id
+        end
+        context.admitted[id] = true
+        admissions[id] = { generation = board.generation, digest = board.digest, caller = board.caller }
+        return nil
+    end
+    for _, id in ipairs(ids) do
+        local aerr = admit(id)
+        if aerr then db:release(); return nil, aerr end
+    end
+    db:release()
+    local actor = security.actor()
+    local admission, digest_err = hash.sha256(values.canonical({
+        actor = actor and actor:id(), boards = admissions, where = request.where, scopes = request.scopes,
+        order = { field = sort.field, dir = sort.dir or "asc" }, include_trashed = request.include_trashed == true,
+    }))
+    if digest_err or not admission then return nil, digest_err end
+    if cursor and cursor.id ~= admission then return nil, invalid("cross_after belongs to the admitted query") end
+    for id, held in pairs(cursor and cursor.boards or {}) do
+        if (reference and held.phase ~= "keys" and held.phase ~= "nulls") or (not reference and held.phase ~= nil) then
+            return nil, invalid("cross_after holds an invalid board position", { id })
+        end
+    end
+    local function admitted(board: domain.Board): error?
+        local expected = admissions[board.board_id]
+        if board.generation ~= expected.generation or board.digest ~= expected.digest then
+            return access.changed()
         end
         return nil
     end
@@ -119,7 +160,7 @@ function M.query(request: types.QueryRequest): (types.QueryResult?, error?)
         return a.id < b.id
     end
 
-    local next_cursor: types.CrossCursor = { id = "cross", boards = table.create(0, 1),
+    local next_cursor: types.CrossCursor = { id = admission, boards = table.create(0, 1),
         frontiers = table.create(0, 1), selection = ids }
     for id, held in pairs(cursor and cursor.boards or {}) do next_cursor.boards[id] = held end
     for id, held in pairs(cursor and cursor.frontiers or {}) do next_cursor.frontiers[id] = held end
@@ -142,15 +183,21 @@ function M.query(request: types.QueryRequest): (types.QueryResult?, error?)
         if budget.expired(allowance) then incomplete = true; break end
         -- Reserve a row for each other board that can still establish a bound.
         local rows = math.max(1, allowance.remaining - (#active - i))
+        local position = next_cursor.boards[id]
         local page, perr = query.page({ budget = { rows = rows }, include = request.include, board_id = id,
-            where = request.where, scopes = request.scopes, order = sort, after = next_cursor.boards[id],
-            limit = limit, min_seq = request.min_seq, include_trashed = request.include_trashed }, context, compatible)
+            where = request.where, scopes = request.scopes, order = sort, after = not reference and position or nil,
+            limit = limit, min_seq = request.min_seq, include_trashed = request.include_trashed }, context, admitted,
+            reference and { after = position, admission = admission } or nil)
         if perr or not page then return nil, perr end
         positions[id] = { as_of = page.as_of, generation = page.generation }
         if page.reindexing then return { items = {}, positions = positions, reindexing = true }, nil end
         if page.scanned ~= nil then
             pages[id] = page
-            next_cursor.frontiers[id] = page.following or page.after or true
+            if reference then
+                next_cursor.frontiers[id] = page.following or (not page.after and true or nil)
+            else
+                next_cursor.frontiers[id] = page.following or page.after or true
+            end
             for n, item in ipairs(page.items) do
                 candidates[#candidates + 1] = { board = id, index = n, key = page.cursors[n], item = item }
             end

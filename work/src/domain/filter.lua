@@ -222,6 +222,11 @@ local function leaf(c: types.FilterCompilation, n: { [string]: unknown }): (type
     return column_leaf(c, target, op, label, n.value)
 end
 
+local function residual(out: types.Condition?, err: error?): (types.Condition?, error?)
+    if err or not out then return nil, err end
+    return { sql = out.sql, args = out.args, item_row = out.item_row, residual = true }, nil
+end
+
 local node: (types.FilterCompilation, unknown, integer) -> (types.Condition?, error?)
 
 function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.Condition?, error?)
@@ -242,7 +247,9 @@ function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.
             if c.leaves < 1 then return nil, invalid("too many filter leaves") end
             c.leaves = c.leaves - 1
             if not c.reader.awaiting then return nil, invalid("awaiting requires an item query") end
-            return c.reader.awaiting(c.alias)
+            local out, err = c.reader.awaiting(c.alias)
+            local condition, rerr = residual(out, err)
+            return condition, rerr
         end
         if n.match ~= nil then
             if next(n, next(n)) ~= nil then return nil, invalid("match stands alone in its node") end
@@ -254,7 +261,9 @@ function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.
             if next(n, next(n)) ~= nil then return nil, invalid("a history condition stands alone in its node") end
             if c.leaves < 1 then return nil, invalid("a filter tree holds at most " .. M.LIMITS.leaves .. " leaves") end
             c.leaves = c.leaves - 1
-            return filter_history.compile(c.reader, c.alias, c.resolve, n.history, c.dialect)
+            local out, err = filter_history.compile(c.reader, c.alias, c.resolve, n.history, c.dialect)
+            local condition, rerr = residual(out, err)
+            return condition, rerr
         end
         if n.rel ~= nil or n.children ~= nil then
             if c.leaves < 1 then return nil, invalid("a filter tree holds at most " .. M.LIMITS.leaves .. " leaves") end
@@ -267,7 +276,8 @@ function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.
                     c.alias, c.hop = alias, hop
                     return inner, ierr
                 end }, n)
-            return out, err
+            local condition, rerr = residual(out, err)
+            return condition, rerr
         end
         return leaf(c, n)
     end
@@ -280,14 +290,13 @@ function node(c: types.FilterCompilation, raw: unknown, depth: integer): (types.
     if type(list) ~= "table" or #(list :: { unknown }) == 0 then return nil, invalid(connective .. " needs a list of nodes") end
     local parts: { string } = {}
     local args: { unknown } = {}
-    local residual = connective == "and"
+    local residual = false
     for i, child in ipairs(list :: { unknown }) do
         local inner, err = node(c, child, depth + 1)
         if err or not inner then return nil, err end
         parts[i] = inner.sql
         for _, a in ipairs(inner.args) do args[#args + 1] = a end
-        if connective == "and" and not inner.residual then residual = false end
-        if connective == "or" and inner.residual then residual = true end
+        if inner.residual then residual = true end
     end
     return { sql = "(" .. table.concat(parts, connective == "and" and " AND " or " OR ") .. ")", args = args, residual = residual }, nil
 end

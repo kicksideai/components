@@ -61,13 +61,10 @@ function M.compile(reader: types.Reader, alias: string, text: unknown, position:
         elseif meta.match ~= nil then
             local scope, serr = scopes.load(id)
             if serr or not scope then return nil, serr end
-            if type(meta.match) ~= "table" or #meta.match == 0 or #meta.match > 16 then return nil, invalid("unknown_scope", "match declares 1..16 text columns") end
             residual = true
             local columns: { string } = {}
             args[#args + 1] = reader.board_id
-            for _, raw in ipairs(meta.match) do
-                local column = scopes.identifier(raw)
-                if not column then return nil, invalid("unknown_scope", "match columns are identifiers") end
+            for _, column in ipairs(scope.match) do
                 columns[#columns + 1] = position .. "(s." .. column .. ", ?) > 0"
                 args[#args + 1] = folded
             end

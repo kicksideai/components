@@ -12,7 +12,6 @@ entries:
     fixture: app:fixture
     steps: app:steps
     store: kickside.work.persist:store
-    search_text: kickside.work.domain:search_text
 - name: query_plans_test
   kind: function.lua
   meta: {type: test, suite: kickside_work, timeout: 300s}
@@ -40,6 +39,24 @@ entries:
     item_column: item_id
     match: [content]
     filters: {}
+- name: query_text_search_write
+  kind: function.lua
+  method: run
+  source: |
+    local store = require("store")
+    local scopes = require("scopes")
+    return { run = function(input)
+        local db = assert(store.open())
+        assert(db:execute([[CREATE TABLE IF NOT EXISTS app_work_query_text
+            (board_id text NOT NULL, item_id text NOT NULL, content text NOT NULL, PRIMARY KEY (board_id, item_id))]], {}))
+        local err = scopes.write_search(db, "app:query_text_search_scope", input.board, input.item, { content = input.text })
+        db:release()
+        if err then return nil, err end
+        return true
+    end }
+  imports:
+    store: kickside.work.persist:store
+    scopes: kickside.work.read:scopes
 - name: query_plan_read_page
   kind: function.lua
   source: |

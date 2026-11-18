@@ -25,6 +25,8 @@ local function define()
             declaration.scopes = { "app:query_text_search_scope" }
             board = fixture.board({ declaration = declaration })
             local seed = steps.create(board, "task", { title = "seed", estimate = 1 })
+            local parent = steps.create(board, "task")
+            local child = steps.create(board, "task", nil, parent)
             db = assert(store.open())
             local held = assert(store.board(db, board.id))
             local names = tables.names(board.id)
@@ -34,15 +36,17 @@ local function define()
             title = "f" .. held.model.fields.title.id .. "_key"
             set_lookup = names.set .. "_lookup"
             local tx = assert(db:begin())
+            assert(tx:execute("UPDATE " .. table_name .. " SET rank = 'zz-parent' WHERE item_id = $1", {parent}))
+            assert(tx:execute("UPDATE " .. table_name .. " SET rank = 'zz-child' WHERE item_id = $1", {child}))
             local numbers = "WITH RECURSIVE numbers(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM numbers WHERE n<19999) "
             assert(tx:execute(numbers .. [[INSERT INTO kickside_work_item
                 (board_id,item_id,number,type,state,category,process_generation,visit,path,rank,version,life,document,created_seq,updated_seq,created_at,updated_at)
-                SELECT i.board_id,'sample-' || (100000+n),n+1,i.type,i.state,i.category,i.process_generation,i.visit,i.path,
+                SELECT i.board_id,'sample-' || (100000+n),n+3,i.type,i.state,i.category,i.process_generation,i.visit,i.path,
                     CAST((100000+n) AS text),i.version,i.life,i.document,i.created_seq,n+10,i.created_at,i.updated_at
                 FROM numbers CROSS JOIN kickside_work_item i WHERE i.board_id=$1 AND i.item_id=$2]], {board.id, seed}))
             assert(tx:execute(numbers .. "INSERT INTO " .. table_name .. [[
                 (item_id,type,state,category,path,rank,number,life,version,created_seq,updated_seq,created_at,updated_at,]] .. estimate .. "," .. title .. [[)
-                SELECT 'sample-' || (100000+n),i.type,i.state,i.category,i.path,CAST((100000+n) AS text),n+1,i.life,
+                SELECT 'sample-' || (100000+n),i.type,i.state,i.category,i.path,CAST((100000+n) AS text),n+3,i.life,
                     i.version,i.created_seq,n+10,i.created_at,i.updated_at,n,CASE WHEN n=19999 THEN 'needle' ELSE 'common-' || n END
                 FROM numbers CROSS JOIN ]] .. table_name .. " i WHERE i.item_id=$1", {seed}))
             assert(tx:execute(numbers .. "INSERT INTO " .. names.set .. [[
@@ -129,6 +133,33 @@ local function define()
                 test.eq(page.items[1].id, "sample-119999")
                 test.is_true(page.scanned <= 16)
             end
+        end)
+
+        local function below_window(where)
+            local page = assert(board.call("direct", { target = "app:query_plan_read_page",
+                input = { board_id = board.id, where = where, limit = 1, budget = { rows = 1 } } }))
+            test.eq(#page.items, 0, "the sparse match lies outside the candidate allowance")
+            test.eq(page.scanned, 1)
+            test.not_nil(page.after)
+        end
+        test.it("charges leading candidates before evaluating children", function()
+            below_window({ children = true, q = "some" })
+        end)
+        test.it("charges leading candidates before evaluating mixed conjunctions", function()
+            below_window({ ["and"] = {
+                { field = "type", op = "eq", value = "task" },
+                { field = "title", op = "contains", value = "needle" },
+            } })
+        end)
+
+        test.it("uses a composite rank seek inside a bounded substring continuation", function()
+            local plan = assert(board.call("explain", { limit = 10, budget = { rows = 16 },
+                where = { field = "title", op = "contains", value = "needle" },
+                after = { id = "sample-119000", v = "119000" } })).plan
+            local output = explain(db, plan.statement, plan.args)
+            print("BOUNDED RANK SQL " .. plan.statement .. "\n" .. output)
+            test.is_true(output:find("(rank,item_id)>(?,?)", 1, true) ~= nil
+                or output:find("ROW(rank, item_id) >", 1, true) ~= nil, output)
         end)
 
     end)

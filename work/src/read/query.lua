@@ -1,12 +1,12 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local peers = require("peers")
+local cursor_codec = require("cursor_codec")
 local window = require("window")
 local budget = require("budget")
 local planner = require("planner")
 local transitions = require("transitions")
 -- The query compiler builds the predicate, ordering, keyset page and capped count.
 local security = require("security")
-local sql = require("sql")
 local access = require("access")
 local tables = require("tables")
 local store = require("store")
@@ -67,7 +67,7 @@ local function validate(request: types.QueryRequest, counted: boolean): error?
     return nil
 end
 
-local function order_of(order: types.Order?): ({ domain.Sort }?, error?)
+function M.order(order: types.Order?): ({ domain.Sort }?, error?)
     if not order then return { { field = "rank" } }, nil end
     if type(order) ~= "table" then return nil, access.invalid("order takes up to three indexed fields") end
     local list = (order :: domain.Sort).field and { order :: domain.Sort } or order :: { domain.Sort }
@@ -87,7 +87,7 @@ local function pending(tx: types.Executor, board: domain.Board, request: types.Q
     local _, ierr = predicates.inspect(request.where, used, 1)
     if ierr then return false, ierr end
     if not counted then
-        local sort, serr = order_of(request.order)
+        local sort, serr = M.order(request.order)
         if serr then return false, serr end
         for _, key in ipairs(sort or {}) do used[key.field] = true end
         if request.group_by then used[request.group_by] = true end
@@ -96,10 +96,10 @@ local function pending(tx: types.Executor, board: domain.Board, request: types.Q
     return job_rows.rebuilding(tx, board, used)
 end
 
-local function compile(tx: types.Executor, dialect: string, board: domain.Board, request: types.QueryRequest, counted: boolean, grants: { [string]: boolean }?, additional: { domain.Condition }?, scan: integer?): (types.Plan?, error?)
+local function compile(tx: types.Executor, dialect: string, board: domain.Board, request: types.QueryRequest, counted: boolean, grants: { [string]: boolean }?, additional: { domain.Condition }?, scan: integer?, order: { domain.Sort }?): (types.Plan?, error?)
     local berr = predicates.bounds(request.where)
     if berr then return nil, berr end
-    local sort, serr = order_of(request.order)
+    local sort, serr = M.order(request.order)
     if serr then return nil, serr end
     local actor = security.actor()
     local caller: domain.Reader = { board_id = board.board_id, actor = actor and actor:id(), search = board.compiled.scopes, plugins = board.compiled.plugins, allows = function(level: string): boolean return level == "read" or (grants ~= nil and grants[level] == true) end }
@@ -123,7 +123,7 @@ local function compile(tx: types.Executor, dialect: string, board: domain.Board,
         groups[#groups + 1] = request.sub_group_by
     end
     return select.items(caller, tables.of(board.board_id, tables.layout(board.compiled), board.model.relations), dialect,
-        { scan = scan or (request.budget and request.budget.rows or 200000), groups = groups, where = where, sorts = sort, after = request.after, count = counted and 10000 or nil }, access_rows.resolver(board, resolve.resolver(tx, board)), admitted,
+        { scan = scan or (request.budget and request.budget.rows or 200000), groups = groups, where = where, sorts = order or sort, after = request.after, count = counted and 10000 or nil }, access_rows.resolver(board, resolve.resolver(tx, board)), admitted,
         conditions,
         request.limit or 50)
 end
@@ -194,28 +194,12 @@ end
 local function read_page(tx: types.Executor, board: domain.Board, plan: types.Plan, allowance: types.ReadAllowance,
     order: { domain.Sort }, request: types.QueryRequest, listing: boolean?): (types.QueryPage?, error?)
     local limit = request.limit or 50
-    local stopped: domain.Cursor? = nil
-    local scanned = 0
-    if plan.walk then
-        local walk, err = plan.walk:run_with(tx)
-        if err or not walk then return nil, err end
-        local edge, eerr = walk:query()
-        if eerr then return nil, eerr end
-        if edge and #edge > 0 then
-            scanned = plan.scan :: integer
-            if #edge > 1 then stopped = window.cursor(edge[1], order) end
-        else
-            local n, _, err = select.total(tx, plan.population :: types.Count)
-            if err or not n then return nil, err end
-            scanned = n
-        end
-    end
     if budget.check(allowance) then return { items = {}, cursors = {}, reindexing = false, incomplete = true }, nil end
-    local rows, qerr = select.rows(tx, plan)
+    local rows, qerr, inspected, stopped = select.rows(tx, plan)
     if qerr or not rows then return nil, qerr end
     local clipped = #rows > plan.take
     local admitted = math.min(#rows, plan.take)
-    scanned = math.max(scanned, admitted)
+    local scanned = inspected or admitted
     allowance.remaining = allowance.remaining - scanned
 
     local flat: { domain.Row } = {}
@@ -312,9 +296,7 @@ function M.matching(tx: types.Executor, board: domain.Board, dialect: string, wh
     local plan, err = compile(tx, dialect, board, request, false, { read = true },
         { { sql = #ids == 0 and "1 = 0" or "i.item_id IN (" .. table.concat(marks, ",") .. ")", args = args } })
     if err or not plan then return nil, err end
-    local execution, exec_err = plan.query:run_with(tx)
-    if exec_err or not execution then return nil, exec_err end
-    local rows, read_err = execution:query()
+    local rows, read_err = select.rows(tx, plan)
     if read_err then return nil, read_err end
     local selected: { [string]: boolean } = {}
     for _, row in ipairs(rows or {}) do
@@ -325,7 +307,71 @@ function M.matching(tx: types.Executor, board: domain.Board, dialect: string, wh
     return selected, nil
 end
 
-function M.page(request: types.QueryRequest, context: types.ReadContext?, check: types.PageCheck?): (types.QueryPage?, error?)
+-- Reference order has two indexed passes. The first walks stored keys and
+-- offers only readable targets. The second walks item IDs and offers the null
+-- keys (missing and redacted references), in the same tie order.
+local NULL_START = "!"
+
+local function reference_context(board_id: string, admission: string, item_id: string): string
+    return "kickside.work.reference.v1\0" .. board_id .. "\0" .. admission .. "\0" .. item_id
+end
+
+local function reference_plan(board: domain.Board, request: types.QueryRequest, order: { domain.Sort },
+    position: types.ReferenceOrder): ({ domain.Condition }?, error?)
+    local held = position.after
+    if held and held.phase == "nulls" then
+        if held.id ~= NULL_START then request.after = { id = held.id } end
+        return {}, nil
+    end
+    local target, err = predicates.targets(board.compiled)(order[1].field)
+    if err or not target then return nil, err end
+    if held then
+        local key = held.v
+        if held.position then
+            local open_err: error?
+            key, open_err = cursor_codec.open(held.position, reference_context(board.board_id, position.admission, held.id))
+            if open_err then return nil, open_err end
+        end
+        if type(key) ~= "string" then return nil, access.invalid("reference order requires a position") end
+        request.after = { id = held.id, v = key }
+    end
+    return { { sql = "i." .. target.column .. " IS NOT NULL", args = {} } }, nil
+end
+
+local function reference_result(page: types.QueryPage, request: types.QueryRequest, field: string, nulls: boolean, admission: string): error?
+    local phase = nulls and "nulls" or "keys"
+    local items: { types.ItemView } = {}
+    local keys: { domain.Cursor } = {}
+    for i, item in ipairs(page.items) do
+        local value = item.values[field]
+        local available = type(value) == "table" and value.unavailable ~= true
+        if available ~= nulls then
+            local key = page.cursors[i]
+            key.phase = phase
+            items[#items + 1], keys[#keys + 1] = item, key
+        end
+    end
+    local raw = page.after
+    page.after = raw and { id = raw.id, phase = phase } or nil
+    if nulls then page.following = page.after
+    elseif raw then
+        local last = keys[#keys]
+        page.following = last
+        if last and last.id == raw.id then page.after = last
+        else
+            local token, err = cursor_codec.seal(raw.v :: string, reference_context(request.board_id, admission, raw.id))
+            if err or not token then return err end
+            page.after = { id = raw.id, phase = phase, position = token }
+        end
+    else
+        page.after = { id = NULL_START, phase = "nulls" }
+        page.following = page.after
+    end
+    page.items, page.cursors = items, keys
+    return nil
+end
+
+function M.page(request: types.QueryRequest, context: types.ReadContext?, check: types.PageCheck?, reference: types.ReferenceOrder?): (types.QueryPage?, error?)
     local verr = validate(request, false)
     if verr then return nil, verr end
     local listing: boolean? = nil
@@ -345,6 +391,10 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
     local scan = math.max(1, math.min(allowance.remaining, request.budget and request.budget.rows or 200000))
     local grants, gerr = scope_grants(request)
     if gerr or not grants then return nil, gerr end
+    local order, serr = M.order(request.order)
+    if serr or not order then return nil, serr end
+    local nulls = reference ~= nil and reference.after ~= nil and reference.after.phase == "nulls"
+    local sort = nulls and {} or order
     local catalog: { [string]: domain.Field } = {}
     local result, read_err = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.QueryPage?, error?)
         if budget.expired(allowance) then return { items = {}, cursors = {}, reindexing = false, incomplete = true }, nil end
@@ -353,17 +403,26 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
             local cerr = check(board)
             if cerr then return nil, cerr end
         end
-        local plan, err = compile(tx, dialect, board, request, false, grants, nil, scan)
-        if err or not plan then return nil, err end
         local rebuilding, perr = pending(tx, board, request, false)
         if perr then return nil, perr end
         if rebuilding then return { items = {}, cursors = {}, reindexing = true }, nil end
-        local order = order_of(request.order) :: { domain.Sort }
-        return read_page(tx, board, plan, allowance, order, request, listing)
+        local extra: { domain.Condition }? = nil
+        if reference then
+            local ref_err: error?
+            extra, ref_err = reference_plan(board, request, order, reference)
+            if ref_err then return nil, ref_err end
+        end
+        local plan, err = compile(tx, dialect, board, request, false, grants, extra, scan, sort)
+        if err or not plan then return nil, err end
+        return read_page(tx, board, plan, allowance, sort, request, listing)
     end, shared, nil, request.where)
     if read_err or not result then return nil, read_err end
     local err = peers.page(result, peers.redactor(catalog))
     if err then return nil, err end
+    if reference and result.scanned ~= nil then
+        local err = reference_result(result, request, order[1].field, nulls, reference.admission)
+        if err then return nil, err end
+    end
     if budget.check(allowance) then result.incomplete = true end
     return result :: types.QueryPage, nil
 end
@@ -383,9 +442,7 @@ function M.freeze(request: types.QueryRequest): ({ string }?, error?)
         request.limit = 200000
         local plan, cerr = compile(tx, dialect, board, request, false, grants)
         if cerr or not plan then return nil, cerr end
-        local execution, xerr = plan.query:run_with(tx)
-        if xerr or not execution then return nil, xerr end
-        local rows, rerr = execution:query()
+        local rows, rerr = select.rows(tx, plan)
         if rerr then return nil, rerr end
         local ids: { string } = {}
         for _, row in ipairs(rows or {}) do
@@ -439,8 +496,7 @@ function M.explain(request: types.QueryRequest): (types.ExplainResult?, error?)
     local result, rerr = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.ExplainResult?, error?)
         local plan, err = compile(tx, dialect, board, request, false, grants)
         if err or not plan then return nil, err end
-        local format = dialect == sql.type.POSTGRES and sql.builder.dollar or sql.builder.question
-        local statement, args = plan.query:placeholder_format(format):to_sql()
+        local statement, args = select.statement(plan, dialect)
         local indexes, ierr = planner.indexes(tx, dialect, statement, args)
         if ierr or not indexes then return nil, ierr end
         local admitted: { string } = {}
