@@ -63,7 +63,7 @@ type TimeInStateResult = ReadStamp & { after: integer?, field: string, periods: 
 
 type Order = domain.Sort | { domain.Sort }
 type CrossCursor = { id: string, boards: { [string]: domain.Cursor }, frontiers: { [string]: domain.Cursor | boolean }, selection: { string } }
-type QueryPage = ReadStamp & { incomplete: boolean?, scanned: integer?, groups: { QueryGroup }?, items: { ItemView }, cursors: { domain.Cursor }, following: domain.Cursor?, after: domain.Cursor?, reindexing: boolean, form: string?, kind: string? }
+type QueryPage = ReadStamp & { incomplete: boolean?, scanned: integer?, groups: { QueryGroup }?, items: { ItemView }, cursors: { domain.Cursor }, following: domain.Cursor?, after: domain.Cursor?, reindexing: boolean }
 type ReadBudget = { rows: integer?, deadline: string? }
 type ReadAllowance = { rows: integer, remaining: integer, deadline: domain.Deadline }
 type QueryRequest = { budget: ReadBudget?, include: { string }?, group_by: string?, sub_group_by: string?, boards: { string } | string | nil, cross_after: CrossCursor?, board_id: string, where: domain.Where?, scopes: { domain.ScopeQuery }?, order: Order?, after: domain.Cursor?, limit: integer?, min_seq: integer?, include_trashed: boolean? }

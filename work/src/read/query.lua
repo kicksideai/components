@@ -359,13 +359,7 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
         if perr then return nil, perr end
         if rebuilding then return { items = {}, cursors = {}, reindexing = true }, nil end
         local order = order_of(request.order) :: { domain.Sort }
-        local result, rerr = read_page(tx, board, plan, allowance, order, request, listing)
-        if rerr or not result then return nil, rerr end
-        local target, target_err = resolve.resolver(tx, board)(order[1].field)
-        if target_err then return nil, target_err end
-        if target and target.order then target = target.order end
-        result.form, result.kind = target and target.shape.form, target and target.kind
-        return result :: types.QueryPage, nil
+        return read_page(tx, board, plan, allowance, order, request, listing)
     end, shared, nil, request.where)
     if read_err or not result then return nil, read_err end
     local err = peers.page(result, peers.redactor(catalog))
