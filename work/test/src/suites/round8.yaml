@@ -22,7 +22,6 @@ entries:
     store: kickside.work.persist:store
     limits: kickside.work.settings:limits
     threads: kickside.work.persist:threads
-    rows: kickside.work.retention:rows
     defaults: kickside.work.settings:defaults
     clock: kickside.work.domain:clock
     probe: app:round8_probe

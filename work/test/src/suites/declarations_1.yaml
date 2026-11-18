@@ -338,8 +338,10 @@ entries:
     timeout: 300s
   source: file://../retention_schedule_test.lua
   method: run
-  modules: [process]
+  modules: [process, channel, time]
   imports:
+    append_probe: app:retention_append
+    runner: kickside.core.retention.service:runner
     clock: kickside.work.domain:clock
     test: wippy.test:test
     fixture: app:fixture

@@ -14,7 +14,7 @@ entries:
     comment: Purges expired trash and collects board data and orphan prefixes in bounded resumable batches.
   source: file://owner.lua
   method: run
-  modules: [sql]
+  modules: [security]
   security:
     actor:
       id: system:kickside.work.retention
@@ -30,7 +30,6 @@ entries:
     rows: kickside.work.retention:rows
     clock: kickside.work.domain:clock
     defaults: kickside.work.settings:defaults
-    policy: kickside.work.domain:policy
     store: kickside.work.persist:store
     threads: kickside.work.persist:threads
     registry: kickside.work.persist:registry
@@ -44,6 +43,7 @@ entries:
   source: file://rows.lua
   modules: [sql, time]
   imports:
+    codec: kickside.work.persist:row_decode
     jobs: kickside.core.jobs:jobs
     threads: kickside.work.persist:threads
     types: kickside.work.retention:types

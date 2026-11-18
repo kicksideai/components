@@ -70,14 +70,17 @@ local function define()
             assert(tx:execute("UPDATE kickside_work_board SET tombstone_floor_seq=22000 WHERE board_id=$1",{h.id}))
             assert(tx:commit());db:release()
             local base=assert(defaults.read())
-            local first=assert(rows.prune(h.id,base,100,""))
-            local second=assert(rows.prune(h.id,base,100,first.cursor))
+            local first=assert(steps.retention_prune(h.id,base,100,""))
+            local second=assert(steps.retention_prune(h.id,base,100,first.cursor))
             test.is_true(first.more);test.is_true(second.more)
             test.is_true(first.examined<=50);test.is_true(second.examined<=50)
             test.is_true(first.cursor~=second.cursor,"keyset advances through surviving baselines")
             test.is_true(first.spent<=100);test.is_true(second.spent<=100)
-            local position = { board_after = h.id, inclusive = 1, board_scan = "all", pending_page_budget = 0 }
-            test.is_nil((rows.advance(position, {{board_id=h.id,after=second.cursor}})))
+            db=assert(store.open())
+            local snapshot=assert(store.board(db,h.id))
+            db:release()
+            local position = { board_after = h.id, inclusive = 1, board_scan = "all", discovery_turn = 0, pending_page_budget = 0 }
+            test.is_nil((rows.advance(position, {{board_id=h.id,applied_seq=snapshot.applied_seq,after=second.cursor,due_ms=0}})))
             db=assert(store.open())
             assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~' WHERE owner_id='work'",{}))
             db:release()
@@ -107,7 +110,7 @@ local function define()
             local cursor=""
             local scanned=0
             for _=1,20 do
-                local page=assert(rows.prune(h.id,base,100,cursor)) :: {examined: integer?, cursor: string?, more: boolean}
+                local page=assert(steps.retention_prune(h.id,base,100,cursor)) :: {examined: integer?, cursor: string?, more: boolean}
                 test.is_true((page.examined or 0)<=100)
                 scanned=scanned+(page.examined or 0)
                 cursor=page.cursor or ""

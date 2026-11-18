@@ -283,6 +283,10 @@ entries:
   - funcs
   imports:
     fixture: app:fixture
+    retention: kickside.work.retention:rows
+    retention_types: kickside.work.retention:types
+    domain: kickside.work:types
+    clock: kickside.work.domain:clock
 - name: work_call
   kind: function.lua
   meta:

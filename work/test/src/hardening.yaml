@@ -9,7 +9,6 @@ entries:
   method: run
   modules: [sql, json, registry, security, uuid]
   imports:
-    retention: kickside.work.retention:rows
     policy: kickside.work.domain:policy
     tables: kickside.work.domain:layout
     identifiers: kickside.work.domain:identifiers

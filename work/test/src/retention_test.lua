@@ -52,19 +52,25 @@ end
 local function define()
     test.describe("prefix retention", function()
         test.it("carries an earlier page's deadline through sweep completion", function()
-            local deadline = clock.deadline(86400000).ns // 1000000
+            local board = fixture.board()
+            drain()
+            local deadline = clock.deadline(300000).ns // 1000000
             local db = assert(store.open())
             local last = assert(db:query("SELECT MAX(board_id) AS board_id FROM kickside_work_board", {}))[1].board_id
-            assert(db:execute("UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,inclusive=0,board_scan='all',deadline_ms=$2 WHERE owner_id='work'", { last or "", deadline }))
+            assert(db:execute("UPDATE kickside_work_board SET retention_due_ms=$1 WHERE board_id=$2", { deadline, board.id }))
+            assert(db:execute([[UPDATE kickside_work_retention SET orphan_after='~',board_after=$1,
+                inclusive=0,board_scan='all',board_through=$1,discovery_turn=0 WHERE owner_id='work']], { last }))
             db:release()
             local out = run_owner()
             test.is_false(out.needs_continue)
             test.eq(out.deadline_ms, deadline)
             db = assert(store.open())
-            local position = assert(db:query("SELECT board_after, deadline_ms FROM kickside_work_retention WHERE owner_id='work'", {}))[1]
+            local position = assert(db:query("SELECT board_after, board_through FROM kickside_work_retention WHERE owner_id='work'", {}))[1]
+            local saved = assert(db:query("SELECT retention_due_ms FROM kickside_work_board WHERE board_id=$1", { board.id }))[1]
             db:release()
             test.eq(position.board_after, "")
-            test.is_nil(store.int(position.deadline_ms))
+            test.is_nil(store.text(position.board_through))
+            test.eq(store.int(saved.retention_due_ms), deadline)
         end)
         test.it("expires completed operations under the inherited Core window", function()
             local h = fixture.board()
@@ -118,7 +124,7 @@ local function define()
             for i = 1, 5 do assert(steps.apply(h, { { op = "create", type = "task" } }, { key = "expires-" .. i })) end
             local db = assert(store.open())
             assert(db:execute("UPDATE kickside_work_receipt SET at = '2000-01-01T00:00:00.000000000Z' WHERE board_id = $1", { h.id }))
-            assert(db:execute("UPDATE kickside_work_retention SET board_after = (SELECT MAX(board_id) FROM kickside_work_board), inclusive = 0, board_scan='all', deadline_ms = NULL WHERE owner_id = 'work'", {}))
+            assert(db:execute("UPDATE kickside_work_retention SET board_after = (SELECT MAX(board_id) FROM kickside_work_board), inclusive = 0, board_scan='all', board_through=NULL,discovery_turn=0 WHERE owner_id = 'work'", {}))
             db:release()
             drain(function(): boolean return steps.count_rows("kickside_work_receipt", h.id) == 0 end)
             db = assert(store.open())

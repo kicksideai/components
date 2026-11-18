@@ -72,7 +72,7 @@ entries:
 - name: retention_append
   kind: library.lua
   source: file://retention_append.lua
-  modules: [sql, funcs]
+  modules: [sql, funcs, time]
   imports:
     append: kickside.work.persist:append
     domain: kickside.work:types
