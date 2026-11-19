@@ -6,6 +6,7 @@ local sql = require("sql")
 local registry = require("registry")
 local json = require("json")
 local defaults = require("defaults")
+local jobs = require("jobs")
 
 type Map = { [string]: unknown }
 local operation_steps = require("operation_steps")
@@ -212,11 +213,19 @@ local function define()
             db:release()
             test.eq(#attempts, 1)
             local rejected = attempts[1].operation_id
+            local previous = call(a, "move_status", { move_id = rejected })
+            local job_id = previous.job_id :: string
+            local job = assert(jobs.get_job(job_id))
+            test.eq(job.status, "cancelled")
+            test.eq(job.execution_seq, 0)
+            local wake = assert(jobs.wake_job(job_id, { control = true, ensure_due = true }))
+            test.is_false(wake.woken)
 
             local result = moved(a, request)
+            test.is_true(result.move_id ~= rejected)
             test.eq(call(b, "get", { item = { id = result.item } }).item.values.title, "after planning")
             test.eq(call(b, "count", {}).total, 1)
-            local previous = call(a, "move_status", { move_id = rejected })
+            previous = call(a, "move_status", { move_id = rejected })
             test.eq(previous.status, "failed")
             test.eq(previous.error_code, "head_mismatch")
         end)

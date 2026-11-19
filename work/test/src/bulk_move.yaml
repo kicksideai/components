@@ -20,6 +20,7 @@ entries:
     fixture: app:fixture
     steps: app:steps
     defaults: kickside.work.settings:defaults
+    jobs: kickside.core.jobs:jobs
 - name: deferred_probe
   kind: library.lua
   source: file://deferred_probe.lua
