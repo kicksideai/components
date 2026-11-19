@@ -3,6 +3,7 @@
 local test = require("test")
 local fixture = require("fixture")
 local steps = require("steps")
+local apply_ack_probe = require("apply_ack_probe")
 
 type Map = { [string]: unknown }
 
@@ -108,6 +109,33 @@ local function define()
     end)
 
     test.describe("idempotency", function()
+        test.it("acknowledges an atomic apply before projecting a later append", function()
+            local h = fixture.board()
+            local result, err = steps.apply(h, { create("A"), create("B") }, { key = "ack-append" })
+            local seq = apply_ack_probe.release(h.id, "ack-append")
+            assert(result, steps.detail(err))
+            test.eq(result.seq, seq)
+            test.is_true(result.as_of >= seq)
+            test.eq(result.outcomes[1].status, "applied")
+            test.eq(result.outcomes[2].key, h.prefix .. "-2")
+        end)
+
+        test.it("replays an atomic receipt before projecting a later append", function()
+            local h = fixture.board()
+            local ops = { create("A"), create("B") }
+            local first, first_err = steps.apply(h, ops, { key = "ack-replay" })
+            local result, err = steps.apply(h, ops, { key = "ack-replay" })
+            local seq = apply_ack_probe.release(h.id, "ack-replay")
+            assert(result, steps.detail(err))
+            assert(first, steps.detail(first_err))
+            test.is_true(result.replayed)
+            test.eq(result.seq, seq)
+            test.is_true(result.as_of >= seq)
+            test.eq(result.outcomes[1].item, first.outcomes[1].item)
+            test.eq(result.outcomes[2].item, first.outcomes[2].item)
+            test.eq(result.outcomes[2].key, first.outcomes[2].key)
+        end)
+
         test.it("replays the stored result of an atomic command", function()
             local h = fixture.board()
             local first = assert(steps.apply(h, { create("A"), create("B") }, { key = "k1" }))
