@@ -17,6 +17,8 @@ entries:
     - kickside.work.planning:date_order
     - kickside.work.planning:attachment
     - kickside.work.planning:schema_provider
+    - kickside.work.planning:sprints
+    - kickside.work.planning:plan_close
     actions: [registry.get, registry.find]
     effect: allow
 - name: module_runtime
@@ -29,7 +31,10 @@ entries:
     - kickside.work.planning:attachment
     - kickside.work.planning:delete
     - kickside.work.planning:schema_provider
+    - kickside.work.planning:sprints
+    - kickside.work.planning:plan_close
     - kickside.work.planning:adopt_fields
+    - kickside.work.planning:sprints_binding
     actions: [contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
     effect: allow
 - name: user_security_scope

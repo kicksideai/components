@@ -75,6 +75,8 @@ type QueryGroup = QueryGroupRow & { groups: { QueryGroupRow }? }
 type GroupBucket = { key: domain.ColumnValue?, count: integer, rows: { domain.Row }, children: { GroupBucket }? }
 type CrossCandidate = { board: string, index: integer, key: domain.Cursor, item: ItemView }
 type QueryResult = ReadStamp & { incomplete: boolean?, groups: { QueryGroup }?, positions: { [string]: ReadStamp }?, cross_after: CrossCursor?, items: { ItemView }, after: domain.Cursor?, reindexing: boolean }
+type EditMember = { item_id: string, version: integer }
+type EditSelection = ReadStamp & { members: { EditMember }, over_limit: boolean? }
 type CountResult = ReadStamp & { incomplete: boolean?, total: integer?, estimated: boolean?, reindexing: boolean }
 
 type LinksRequest = { budget: ReadBudget?, board_id: string, item: ItemRef?, target: domain.Target?, direction: string?, after: string?, limit: integer?, min_seq: integer? }
@@ -108,7 +110,7 @@ return { AwaitingView = AwaitingView, GateView = GateView, ApprovalView = Approv
     Snapshot = Snapshot, PrincipalResult = PrincipalResult, ReadContext = ReadContext, PageCheck = PageCheck,
     Executor = Executor,
     Order = Order, QueryRequest = QueryRequest, QueryResult = QueryResult, CountResult = CountResult,
-    ReadStamp = ReadStamp, SchemaGetRequest = SchemaGetRequest, SchemaView = SchemaView, ItemRef = ItemRef, GetRequest = GetRequest,
+    EditMember = EditMember, EditSelection = EditSelection, ReadStamp = ReadStamp, SchemaGetRequest = SchemaGetRequest, SchemaView = SchemaView, ItemRef = ItemRef, GetRequest = GetRequest,
     ItemView = ItemView, LinkView = LinkView, CommentView = CommentView, GetResult = GetResult, ChangesCursor = ChangesCursor,
     ChangesRequest = ChangesRequest, ChangeItem = ChangeItem, FeedGap = FeedGap, ChangesResult = ChangesResult,
     HistoryRequest = HistoryRequest, HistoryEntry = HistoryEntry, HistoryResult = HistoryResult, TransitionView = TransitionView,

@@ -24,6 +24,7 @@ local component = require("component")
 
 local access_rows = require("access_rows")
 local guard = require("guard")
+local rules = require("rules")
 local awaiting = require("awaiting")
 local principals = require("principals")
 local M = {}
@@ -98,7 +99,7 @@ local function pending(tx: types.Executor, board: domain.Board, request: types.Q
 end
 
 local function compile(tx: types.Executor, dialect: string, board: domain.Board, request: types.QueryRequest, counted: boolean, grants: { [string]: boolean }?, additional: { domain.Condition }?, scan: integer?, order: { domain.Sort }?,
-    definition_only: boolean?): (types.Plan?, error?)
+    definition_only: boolean?, unfiltered: boolean?): (types.Plan?, error?)
     local berr = predicates.bounds(request.where)
     if berr then return nil, berr end
     local sort, serr = M.order(request.order)
@@ -130,7 +131,8 @@ local function compile(tx: types.Executor, dialect: string, board: domain.Board,
     local visible = access_rows.visibility(board, dialect)
     local visibility, verr = visible("i")
     if verr or not visibility then return nil, verr end
-    local conditions: { domain.Condition } = { read_rows.life_condition(request.include_trashed), visibility }
+    local conditions: { domain.Condition } = { read_rows.life_condition(request.include_trashed) }
+    if not unfiltered then conditions[#conditions + 1] = visibility end
     for _, condition in ipairs(additional or {}) do conditions[#conditions + 1] = condition end
     local groups: { string }? = nil
     if request.group_by then groups = { request.group_by } end
@@ -442,6 +444,64 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
     end
     if budget.check(allowance) then result.incomplete = true end
     return result :: types.QueryPage, nil
+end
+
+local function restricted(): error
+    return errors.new({ kind = errors.PERMISSION_DENIED, message = "Selection is unavailable under the caller's access.",
+        details = { code = "selection_restricted" } })
+end
+
+-- An edit can affect a subset of a scope, while visibility must cover the whole
+-- scope. Both filters use the ordinary indexed query compiler in one snapshot.
+function M.select_for_edit(request: types.QueryRequest, scope: domain.Where, field_code: string): (types.EditSelection?, error?)
+    local err = validate(request, false)
+    if err then return nil, err end
+    local mask = (component.ACCESS.READ :: integer) | (component.ACCESS.WRITE :: integer)
+    return access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.EditSelection?, error?)
+        local field = board.model.fields[field_code]
+        if not field or not rules.field(board, field, "read") then return nil, restricted() end
+        local rebuilding, rerr = pending(tx, board, request, false)
+        if rerr then return nil, rerr end
+        if rebuilding then
+            return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Selection awaits its indexes.",
+                details = { code = "projection_pending" } })
+        end
+        local visibility = board.compiled.visibility
+        if visibility and not (visibility.bypass == "admin" and board.caller and board.caller.admin) then
+            local all: types.QueryRequest = { board_id = board.board_id, where = scope }
+            local raw, raw_err = compile(tx, dialect, board, all, true, nil, nil, nil, nil, nil, true)
+            if raw_err or not raw or not raw.count then return nil, raw_err end
+            local total, capped, total_err = select.total(tx, raw.count)
+            if total_err then return nil, total_err end
+            if capped then return nil, restricted() end
+            local visible, visible_err = compile(tx, dialect, board, all, true)
+            if visible_err or not visible or not visible.count then return nil, visible_err end
+            local admitted, _, count_err = select.total(tx, visible.count)
+            if count_err then return nil, count_err end
+            if total ~= admitted then return nil, restricted() end
+        end
+        local plan, plan_err = compile(tx, dialect, board, request, false)
+        if plan_err or not plan then return nil, plan_err end
+        local rows, rows_err, _, stopped = select.rows(tx, plan)
+        if rows_err or not rows then return nil, rows_err end
+        if stopped then return nil, restricted() end
+        if #rows > plan.take then return { members = {}, over_limit = true }, nil end
+        local ids: { string } = {}
+        for _, row in ipairs(rows) do ids[#ids + 1] = row.item_id :: string end
+        local items, items_err = store.items(tx, board.board_id, ids)
+        if items_err or not items then return nil, items_err end
+        if #items ~= #ids then
+            return nil, errors.new({ kind = errors.INTERNAL, message = "Selection index names a missing item.", details = { code = "row_corrupt" } })
+        end
+        local by_id: { [string]: integer } = {}
+        for _, item in ipairs(items) do
+            if not rules.field(board, field, "write", item.document) then return nil, restricted() end
+            by_id[item.item_id] = item.version
+        end
+        local members: { types.EditMember } = table.create(0, 1)
+        for _, id in ipairs(ids) do members[#members + 1] = { item_id = id, version = by_id[id] } end
+        return { members = members }, nil
+    end, nil, request.budget, request.where, mask)
 end
 
 function M.freeze(request: types.QueryRequest): ({ string }?, error?)

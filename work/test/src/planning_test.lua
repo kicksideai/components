@@ -7,6 +7,7 @@ local steps = require("steps")
 
 local PACK = "kickside.work.planning:pack"
 local PLUGIN = "kickside.work.planning:plugin"
+local SPRINTS = "kickside.work.planning:sprints"
 
 local function create_board(admin: scoped.Session): fixture.Handle
     local created, err = admin.call("create", { idempotency_key = uuid.v4(), pack = PACK })
@@ -32,6 +33,22 @@ end
 
 local function find(entries, name, key)
     for _, entry in ipairs(entries) do if entry[key] == name then return entry end end
+end
+
+local function planning(caller, method, input)
+    return caller.call("contract_request", { contract = SPRINTS, method = method, value = input })
+end
+
+local function sprint(board, type_id, active)
+    local id = steps.create(board, type_id or "sprint", {
+        name = "Period", planning_start = "2026-11-01", planning_end = "2026-11-14",
+    })
+    if active then test.eq(steps.one(board, { op = "transition", item = id, transition = "start" }).status, "applied") end
+    return id
+end
+
+local function issue(board, sprint_id)
+    return steps.create(board, "issue", { current_sprint = { board = board.id, item = sprint_id } })
 end
 
 local function define()
@@ -107,6 +124,109 @@ local function define()
             test.eq(conflict:details().code, "pack_conflicts")
         end)
     end)
+    test.describe("close sprint preview", function()
+        test.it("previews only unfinished live members at one head and binds the rollover", function()
+            local owner = scoped.admin()
+            local board = create_board(owner)
+            local source = sprint(board, "sprint", true)
+            local next_sprint = sprint(board, "sprint", false)
+            local open = issue(board, source)
+            local done = issue(board, source)
+            local canceled = issue(board, source)
+            local trashed = issue(board, source)
+            issue(board, next_sprint)
+            test.eq(steps.one(board, { op = "transition", item = done, transition = "complete" }).status, "applied")
+            test.eq(steps.one(board, { op = "transition", item = canceled, transition = "cancel" }).status, "applied")
+            test.eq(steps.one(board, { op = "delete", item = trashed }).status, "applied")
+            local ready, err = planning(owner, "plan_close", { board_id = board.id, sprint_id = source, rollover_id = next_sprint })
+            assert(ready, steps.detail(err))
+            local live = assert(steps.get(board, source))
+            test.eq(ready.snapshot.head, live.as_of)
+            test.eq(ready.snapshot.generation, live.generation)
+            test.eq(ready.snapshot.sprint_version, live.item.version)
+            test.eq(ready.snapshot.rollover_id, next_sprint)
+            test.eq(#ready.snapshot.members, 1)
+            test.eq(ready.snapshot.members[1].item_id, open)
+            test.eq(ready.snapshot.members[1].version, steps.version(board, open))
+            test.not_nil(ready.token)
+            test.eq(live.item.state, "active")
+        end)
+
+        test.it("rejects inactive plugins, read-only callers and ineligible destinations", function()
+            local owner, reader = scoped.admin(), scoped.member()
+            local board = create_board(owner)
+            local source = sprint(board, "sprint", true)
+            local target = sprint(board, "sprint", true)
+            test.eq(steps.one(board, { op = "transition", item = target, transition = "close" }).status, "applied")
+            local milestone = sprint(board, "milestone", false)
+            local unplanned = custom_board(owner)
+            local other = sprint(create_board(owner), "sprint", false)
+            assert(board.call("grant", { subject_id = reader.id, mask = 1 }))
+            local result, err = planning(reader, "plan_close", { board_id = board.id, sprint_id = source })
+            test.is_nil(result)
+            test.eq(err:kind(), errors.PERMISSION_DENIED)
+            for _, rollover in ipairs({ source, target, other, milestone }) do
+                local result, err = planning(owner, "plan_close", { board_id = board.id, sprint_id = source, rollover_id = rollover })
+                test.is_nil(result)
+                test.eq(err:details().code, "planning_rollover_ineligible")
+            end
+            local result, err = planning(owner, "plan_close", { board_id = unplanned.id, sprint_id = source })
+            test.is_nil(result)
+            test.eq(err:details().code, "plugin_inactive")
+        end)
+
+        test.it("refuses a hidden completed member without returning a selection", function()
+            local owner, writer = scoped.admin(), scoped.member()
+            local board = create_board(owner)
+            local source = sprint(board, "sprint", true)
+            issue(board, source)
+            local hidden = issue(board, source)
+            assert(board.call("apply_schema", { declaration = {
+                fields = { { code = "level", form = "text", index = "key" } },
+                item_types = { { id = "issue", process = "planning_issue", fields = { "title", "current_sprint", "milestone", "level" } } },
+                visibility = { field = "level", bypass = "admin", levels = { { id = "private", holders = { { user = owner.id } } } } },
+            } }))
+            steps.rebuilt(board.id, "reindex")
+            test.eq(steps.one(board, { op = "set", item = hidden, values = { level = "private" } }).status, "applied")
+            test.eq(steps.one(board, { op = "transition", item = hidden, transition = "complete" }).status, "applied")
+            assert(board.call("grant", { subject_id = writer.id, mask = 3 }))
+            local result, err = planning(writer, "plan_close", { board_id = board.id, sprint_id = source })
+            test.is_nil(result)
+            test.eq(err:details().code, "selection_restricted")
+            local ready, owner_err = planning(owner, "plan_close", { board_id = board.id, sprint_id = source })
+            assert(ready, steps.detail(owner_err))
+            test.eq(#ready.snapshot.members, 1)
+        end)
+
+        test.it("requires write access to the sprint reference on every affected item", function()
+            local owner, writer = scoped.admin(), scoped.member()
+            local board = create_board(owner)
+            local source = sprint(board, "sprint", true)
+            issue(board, source)
+            assert(board.call("apply_schema", { declaration = { fields = {
+                { code = "current_sprint", type = "item", index = "key", track = true, access = { write = { { user = owner.id } } } },
+            } } }))
+            assert(board.call("grant", { subject_id = writer.id, mask = 3 }))
+            local result, err = planning(writer, "plan_close", { board_id = board.id, sprint_id = source })
+            test.is_nil(result)
+            test.eq(err:details().code, "selection_restricted")
+        end)
+
+        test.it("stops at 200 unfinished members and directs callers to Work bulk", function()
+            local owner = scoped.admin()
+            local board = create_board(owner)
+            local source = sprint(board, "sprint", true)
+            local ops = {}
+            for _ = 1, 200 do
+                ops[#ops + 1] = { op = "create", type = "issue", values = { current_sprint = { board = board.id, item = source } } }
+            end
+            test.is_true(assert(steps.apply(board, ops)).applied)
+            local result, err = planning(owner, "plan_close", { board_id = board.id, sprint_id = source })
+            test.is_nil(result)
+            test.eq(err:details().code, "planning_rollover_limit")
+        end)
+    end)
+
 end
 
 return { run = test.run_cases(define) }

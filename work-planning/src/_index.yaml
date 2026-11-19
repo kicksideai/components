@@ -66,6 +66,7 @@ entries:
     icon: tabler:calendar
     attachment: kickside.work.planning:attachment
     seams: ['kickside.work.planning:date_order']
+    tools: ['kickside.work.planning:plan_close']
     schema:
       provider: kickside.work.planning:schema_provider
     config_schema:

@@ -142,6 +142,7 @@ entries:
     predicates: kickside.work.domain:predicates
     select: kickside.work.read:select
     access_rows: kickside.work.persist:access_rows
+    rules: kickside.work.domain:access_rules
     resolve: kickside.work.persist:predicate_rows
     item_view: kickside.work.read:item_view
     domain: kickside.work:types
