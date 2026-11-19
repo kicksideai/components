@@ -28,7 +28,7 @@ function M.get(db: sql.DB, board_id: string, id: string?, kind: string?, key: st
     if derr then return nil, derr end
     local counts, cerr = store.stored(row.counts, {} :: { [string]: integer })
     if cerr then return nil, cerr end
-    return { board_id = board_id, operation_id = row.operation_id :: string, kind = row.kind :: string, key = row.key :: string,
+    return { board_id = board_id, operation_id = row.operation_id :: string, kind = row.kind :: string,
         request_hash = row.request_hash :: string, actor_id = row.actor_id :: string, actor_context = row.actor_context :: string,
         data = data :: types.Map, counts = counts :: { [string]: integer }, processed = store.int(row.processed) :: integer,
         status = row.status :: string, error_code = store.text(row.error_code), job_id = row.job_id :: string }, nil
@@ -62,15 +62,28 @@ function M.create(board_id: string, kind: string, key: string, hashed: string, d
     end
     local _, cerr = tx:commit()
     if cerr then db:release(); return nil, cerr end
-    local owner, oerr = M.get(db, board_id, nil, kind, key)
+    local inserted = rows and rows[1] and id or nil
+    local owner, oerr = M.get(db, board_id, inserted, kind, key)
     db:release()
-    if oerr or not owner then return nil, oerr end
+    if oerr then return nil, oerr end
+    if not owner then
+        return nil, errors.new({ kind = errors.CONFLICT, message = "operation key was released during admission", details = { code = "operation_key_released" } })
+    end
     if owner.request_hash ~= hashed then return nil, errors.new({ kind = errors.CONFLICT, message = "operation key names another request", details = { code = "idempotency_conflict" } }) end
     if not parked then
         local _, werr = jobs.wake_job(owner.job_id, { control = true, ensure_due = true })
         if werr then return nil, werr end
     end
     return owner, nil
+end
+
+function M.reject_move_prepare(owner: types.Owner): error?
+    local db, err = store.open()
+    if not db then return err end
+    local _, uerr = db:execute([[UPDATE kickside_work_operation SET status = 'failed', error_code = 'head_mismatch', key = NULL
+        WHERE board_id = $1 AND operation_id = $2 AND status = 'pending']], { owner.board_id, owner.operation_id })
+    db:release()
+    return uerr
 end
 
 function M.update(owner: types.Owner, status: string, code: string?, save_data: boolean?): error?

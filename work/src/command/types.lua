@@ -97,7 +97,7 @@ type ConfigureResult = { attachment_id: string, seq: integer?, as_of: integer? }
 type Map = { [string]: unknown }
 type BulkRequest = { board_id: string, key: string, query: reads.QueryRequest, ops_template: { Op } }
 type Locator = { deadline: string?, board_id: string, operation_id: string?, bulk_id: string?, move_id: string? }
-type Owner = { deadline: domain.Deadline?, board_id: string, operation_id: string, kind: string, key: string, request_hash: string,
+type Owner = { deadline: domain.Deadline?, board_id: string, operation_id: string, kind: string, request_hash: string,
     actor_id: string, actor_context: string, data: Map, status: string, processed: integer, counts: { [string]: integer }, error_code: string?, job_id: string }
 type Status = { bulk_id: string?, move_id: string?, job_id: string, status: string, total: integer, processed: integer,
     applied: integer, unchanged: integer, invalid: integer, denied: integer, conflict: integer, unavailable: integer, error_code: string?, item: string?, items: { string }? }

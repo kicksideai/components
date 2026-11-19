@@ -11,6 +11,7 @@ local store = require("store")
 local types = require("types")
 local domain = require("domain")
 local peers = require("peers")
+local threads = require("threads")
 local M = {}
 function M.plan(request: types.MoveRequest): (types.MovePlan?, error?)
     local plan, err = planner.plan(request)
@@ -66,7 +67,14 @@ function M.start(request: types.MoveRequest): (types.Status?, error?)
         writes[#writes + 1] = { group = event.subject, events = { event }, ops = {}, caller_expect = false, expect_head = plan.source_seq }
     end
     local _, perr = events.append(owner.board_id, "move/" .. owner.operation_id .. "/prepared", writes, {})
-    if perr then return nil, perr end
+    if perr then
+        -- The phase append checked for a committed receipt before returning the conflict.
+        if threads.mismatch(perr, "head_mismatch") then
+            local reject_err = rows.reject_move_prepare(owner)
+            if reject_err then return nil, reject_err end
+        end
+        return nil, perr
+    end
     local resumed, rerr = rows.resume(owner)
     if rerr or not resumed then return nil, rerr end
     return surface(resumed)
