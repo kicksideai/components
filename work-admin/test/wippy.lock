@@ -24,8 +24,8 @@ modules:
       version: 0.1.83
       hash: 1120a2388e565232d5dabcc011f23c3f6faf374938488f189020419cf63a828a
     - name: kickside/mcp
-      version: 0.2.12
-      hash: bf03ae0917f8612f30beeffdf18e0c6e7e62dd4aec0184bf2f9f0faaebf9644d
+      version: 0.2.13
+      hash: e9dde28121bdb263ea51c18eb3f361dc365dfcfc067795b10a322f82a4435375
     - name: kickside/realtime-dispatch
       version: 0.1.1
       hash: 6f0fa3625683510a1565afff3b40b6726ea5604b940b1627b787f6615683264d
@@ -48,8 +48,8 @@ modules:
       version: 0.1.64
       hash: 2eba78591b828d454063368097132cca82001b2229bc0dd26d9d35954a609566
     - name: kickside/work
-      version: 0.1.3
-      hash: fc672759dbd88165511d17c2af49847172fdc436cec761df8256028a5b00c58f
+      version: 0.1.4
+      hash: 4afbe213052d4d714b40a384aece6756e1b16de92e30ac4d01554aa87c2f8ac4
     - name: kickside/work-admin
       version: 0.0.0
     - name: kickside/workflows

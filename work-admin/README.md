@@ -19,10 +19,9 @@ responsive layout, keyboard selection, zoom and pan.
 Bind `kickside.work.admin:ui_server` to the host HTTP service and
 `kickside.work.admin:api_router` to its authenticated router running
 `token_auth` and `endpoint_firewall`. Install and bind `kickside/work` and
-`kickside/widgets` as usual. Work Admin requires Work 0.1.5 or later for
-board ADMIN schema options, typed board admission, and the reviewed
-`remove.visibility` schema operation. This floor also supports automated stage
-Flow bindings.
+`kickside/widgets` as usual. The Work dependency floor is 0.1.5. This release
+supports board ADMIN schema options, typed board admission, automated stage
+Flow bindings, and explicit visibility removal.
 
 `kickside.work.admin:admin` announces `kickside-work-admin` and the
 `ui.settings_tab` mount. The platform checks
@@ -65,7 +64,7 @@ make test-pg WORK_ADMIN_PG_PORT=5434
 
 The standalone harness uses the real authenticated platform stack and the
 sibling Work source. It validates `structuredContent` against the advertised
-output schemas for all 41 static Work tools through MCP 0.2.14 or later. The
+output schemas for all 41 static Work tools through MCP 0.2.13 or later. The
 published Work probe installs the exact minimum Work release and exercises a
 published Flow binding, ADMIN-only schema options, visibility removal, and
 saved-view rejection.

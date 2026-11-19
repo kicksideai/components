@@ -8,7 +8,7 @@ entries:
   - name: dep.mcp
     kind: ns.dependency
     component: kickside/mcp
-    version: '>=0.2.14'
+    version: '>=0.2.13'
     parameters:
       - { name: 'kickside.mcp:target_db', value: 'app:db' }
       - { name: 'kickside.mcp:api_router', value: 'app:api' }
