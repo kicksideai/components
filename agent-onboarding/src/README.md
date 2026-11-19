@@ -64,7 +64,9 @@ Personal memory is on by default. The shared checkbox lets a user opt out, with
 no memory provisioning when it is off. When on, the creation service finds the
 oldest memory owned by the current user or creates **My Memory** through the
 Knowledge registry's public creation contract, using the memory engine defaults
-and `class:embed`. Shared memories owned by other users are not selected.
+and `class:embed`. The creation endpoint ignores Knowledge configuration fields
+in its request. The new store has no explicit engine settings, so Memory resolves
+its defaults at runtime. Shared memories owned by other users are not selected.
 
 Creation calls `POST /api/v1/agent-onboarding/agents` under the current user's
 identity. The service provisions memory first, then calls the agents owner's
