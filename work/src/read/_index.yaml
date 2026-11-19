@@ -310,6 +310,7 @@ entries:
     rows: kickside.work.persist:plugin_rows
     manifests: kickside.work.domain:manifests
     plugins: kickside.work.read:plugins
+    declarations: kickside.work.domain:plugins
     states: kickside.work.extensions:plugin_projection_state
     component: kickside.component:component
     types: kickside.work.read:types

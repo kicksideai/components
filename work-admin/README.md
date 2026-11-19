@@ -38,7 +38,9 @@ administration rights. Its two helper routes are:
 
 - `GET /api/v1/work-admin/boards/{id}/options`: reads the board under the
   caller's scope and reports independent READ/WRITE/ADMIN access. Only board
-  administrators receive plugin and installed field-type choices.
+  administrators receive plugin and installed field-type choices. `installed_types`
+  carries the same descriptors as `schema_options.field_types`. The Fields picker uses
+  each descriptor's value form, index choices and configuration schema.
 - `POST /api/v1/work-admin/boards/{id}/principal_labels`: requires board ADMIN
   and resolves up to 200 user/group references through the scoped Directory
   contract. It accepts `{ "refs": [{ "type": "user", "id": "…" }] }`.

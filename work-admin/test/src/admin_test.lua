@@ -13,6 +13,13 @@ local function board(owner: session.Session): string
     return response.body.data.board_id :: string
 end
 local function path(id: string, method: string): string return "/work-admin/boards/" .. id .. "/" .. method end
+local function score_type(options: { unknown }): { [string]: unknown }
+    for _, candidate in ipairs(options) do
+        local desc = candidate :: { [string]: unknown }
+        if desc.id == "app:score_type" then return desc end
+    end
+    error("expected the installed Score field type")
+end
 local function cases()
     test.describe("administration module boundaries", function()
         test.it("announces and serves administration, board settings and shared defaults composition", function()
@@ -67,6 +74,28 @@ local function cases()
                 end
             end
         end)
+        test.it("plans an integer custom field using the descriptor from the options helper", function()
+            local owner = session.admin()
+            local id = board(owner)
+            local response = owner.get(path(id, "options"))
+            test.eq(response.status, 200, json.encode(response.body))
+            local descriptor = score_type(response.body.data.installed_types)
+            test.eq(descriptor.title, "Score")
+            test.eq(descriptor.form, "int")
+            test.eq(json.encode(descriptor.indexes), '["number"]')
+            test.eq(json.encode(descriptor.config_schema.required), '["limit"]')
+            test.eq(descriptor.config_schema.properties.limit.type, "integer")
+            test.eq(json.encode(descriptor), json.encode(score_type(response.body.data.schema_options.field_types)))
+            local plan = owner.post("/work/boards/" .. id .. "/plan_schema", {
+                expected_generation = 1,
+                declaration = {
+                    plugins = { { use = "app:ui_plugin" } },
+                    fields = { { code = "score", type = descriptor.id, form = descriptor.form, index = descriptor.indexes[1], config = { limit = 5 } } },
+                },
+            })
+            test.eq(plan.status, 200, json.encode(plan.body))
+            test.eq(#plan.body.data.refused, 0, json.encode(plan.body))
+        end)
         test.it("discovers access and initializes a legacy board without a schema", function()
             local owner = session.admin()
             local title = "Interrupted initialization " .. uuid.v4()
@@ -78,7 +107,7 @@ local function cases()
             local options = owner.get(path(id, "options"))
             test.eq(options.status, 200, json.encode(options.body))
             test.is_true(options.body.data.access.admin)
-            test.not_nil(options.body.data.installed_types)
+            test.eq(score_type(options.body.data.installed_types).form, "int")
             local request = { declaration = { key_prefix = "LEGACY" }, expected_generation = 0 }
             local plan = owner.post("/work/boards/" .. id .. "/plan_schema", request)
             test.eq(plan.status, 200, json.encode(plan.body))

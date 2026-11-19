@@ -5,7 +5,7 @@ local contract = require("contract")
 local security = require("security")
 local component = require("component")
 local http_errors = require("http_errors")
-local field_types = require("field_types")
+local plugins = require("plugins")
 local types = require("types")
 local M = {}
 local function fail(res: http.Response, err: error)
@@ -36,18 +36,18 @@ function M.get()
         if access_err and access_err:kind() ~= errors.PERMISSION_DENIED then return fail(res, access_err) end
         granted[level] = access_err == nil
     end
-    local options: types.Map = { plugins = {} }
-    local installed: { types.FieldTypeOption } = {}
+    local options: types.SchemaOptions = { plugins = {}, field_types = {} }
     if granted.admin then
-        if not missing then
+        if missing then
+            local found_types, types_err = plugins.field_types()
+            if types_err then return fail(res, types_err) end
+            options.field_types = found_types or {}
+        else
             local found, options_err = (client :: types.Board):schema_options({ board_id = id })
             if options_err then return fail(res, options_err) end
-            options = found :: types.Map
+            options = found :: types.SchemaOptions
         end
-        local found_types, types_err = field_types.field_types()
-        if types_err then return fail(res, types_err) end
-        installed = found_types or {}
     end
-    res:write_json({ success = true, data = { access = granted, schema_options = options, installed_types = installed } })
+    res:write_json({ success = true, data = { access = granted, schema_options = options, installed_types = options.field_types } })
 end
 return M

@@ -26,6 +26,8 @@ entries:
 - name: types
   kind: library.lua
   source: file://types.lua
+  imports:
+    work: kickside.work:types
 - name: ui_server
   kind: ns.requirement
   meta:

@@ -12,3 +12,23 @@ entries:
       test: wippy.test:test
       session: app:session
       fixture: app:fixture
+  - name: score_type
+    kind: registry.entry
+    meta:
+      type: kickside.work.type
+      plugin: app:ui_plugin
+      title: Score
+      form: int
+      indexes: [number]
+      config_schema:
+        type: object
+        required: [limit]
+        properties:
+          limit: {type: integer, minimum: 1}
+  - name: score_type_discovery
+    kind: security.policy
+    groups: [app.security:user]
+    policy:
+      resources: [app:score_type]
+      actions: [registry.find, registry.get]
+      effect: allow
