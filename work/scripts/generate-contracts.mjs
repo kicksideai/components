@@ -56,6 +56,14 @@ for (const [path, replacements] of Object.entries(vocabulary.adapters)) {
   await output(path, schemas(await readFile(resolve(root, path), 'utf8'), replacements))
 }
 
+const feedToken = JSON.stringify(expand({ $work_ref: 'plugin_feed_token' }))
+await output('src/extensions/plugin_feed_schema.lua', `local json = require("json")
+local types = require("types")
+local M = {}
+M.token = assert(json.decode([==[${feedToken}]==])) :: types.JsonObject
+return M
+`)
+
 // Compilation owns semantic validation; this shape checks declaration structure.
 function structure(schema) {
   if (schema.anyOf?.[1]?.maxItems === 0) return structure(schema.anyOf[0])

@@ -415,6 +415,50 @@ local function define()
             test.eq(pending.status, "running")
             test.eq(operations.finished(h, start.bulk_id).status, "done")
         end)
+        for _, scenario in ipairs({
+            { name = "an empty selection", total = 0, applied = 0 },
+            { name = "an all-unchanged selection", total = 1, applied = 0 },
+            { name = "a changing page followed by an unchanged final page", total = 201, applied = 1 },
+        }) do
+            test.it("publishes exactly one terminal bulk progress event for " .. scenario.name, function()
+                local h = operations.board()
+                gate(h, true)
+                local ids: { string } = {}
+                for first = 1, scenario.total, 200 do
+                    local ops: { Map } = {}
+                    for _ = first, math.min(first + 199, scenario.total) do
+                        ops[#ops + 1] = { op = "create", type = "task", values = { estimate = 2 } }
+                    end
+                    for _, outcome in ipairs(call(h, "apply", { ops = ops }).outcomes) do
+                        ids[#ids + 1] = outcome.item
+                    end
+                end
+                if scenario.applied > 0 then
+                    table.sort(ids)
+                    test.eq(steps.one(h, { op = "set", item = ids[1], values = { estimate = 1 } }).status, "applied")
+                end
+                local started = call(h, "bulk", { key = "terminal-progress", query = {},
+                    ops_template = { { op = "set", values = { estimate = 2 } } } })
+                local finished = operations.finished(h, started.bulk_id)
+                test.eq(finished.status, "done")
+                test.eq(finished.applied, scenario.applied)
+                test.eq(finished.unchanged, scenario.total - scenario.applied)
+                local port = assert(registry.get("kickside.work.ports:bulk_progress"))
+                local schema = assert(registry.get(port.data.event)).data.schema
+                local terminal = {}
+                for _, event in ipairs(steps.events(h)) do
+                    if event.type == port.data.event and event.body.operation_id == started.bulk_id and event.body.status == "done" then
+                        terminal[#terminal + 1] = event.body
+                    end
+                end
+                test.eq(#terminal, 1)
+                test.is_true(json.validate(schema, terminal[1]) == true)
+                test.eq(terminal[1].total, scenario.total)
+                test.eq(terminal[1].processed, scenario.total)
+                test.eq(terminal[1].counts.applied, finished.applied)
+                test.eq(terminal[1].counts.unchanged, finished.unchanged)
+            end)
+        end
         test.it("emits all six object outcome counters from the initial bulk boundary", function()
             local h = operations.board()
             gate(h, true)

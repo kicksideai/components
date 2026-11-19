@@ -8,16 +8,13 @@ local json = require("json")
 local types = require("types")
 local local_types = require("local_types")
 local limits = require("limits")
+local schema = require("schema")
 local M = {}
-local TOKEN_SCHEMA = { type = "object", required = { "projection_id", "start_seq", "bootstrapping" }, additionalProperties = false,
-    properties = { projection_id = { type = "string" }, start_seq = { type = "integer" }, bootstrapping = { type = "boolean" },
-        cursor = { type = "object", required = { "seq", "item_id" }, additionalProperties = false,
-            properties = { floor = {type="integer",minimum=0}, seq = { type = "integer", minimum = 0 }, item_id = { type = "string" }, access = { type = "string" } } } } }
 
 function M.decode(token: string): (local_types.FeedToken?, error?)
     local decoded, err = json.decode(token)
     if err then return nil, access.invalid("invalid plugin feed token") end
-    local valid, verr = json.validate(TOKEN_SCHEMA, decoded)
+    local valid, verr = json.validate(schema.token, decoded)
     if verr or not valid then return nil, access.invalid("invalid plugin feed token") end
     return decoded :: local_types.FeedToken, nil
 end

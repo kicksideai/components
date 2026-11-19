@@ -333,6 +333,42 @@ local function define()
             test.eq(err:details().code, "invalid_feed_cursor")
         end)
 
+        test.it("returns schema-valid opaque feed cursors to contract and tool consumers", function()
+            local owner = scoped.admin()
+            local d = declaration()
+            d.visibility.levels[1].holders = { { user = owner.id } }
+            local h = scoped.board(owner, d)
+            local reader = fixture.board()
+            assert(h.call("grant", { subject_id = reader.actor:id(), mask = 1 }))
+            steps.create(h, "task", { level = "internal" })
+            local visible = steps.create(h, "task")
+            local contract = assert(registry.get("kickside.work:board"))
+            local tool = assert(registry.get("kickside.work.traits:list_changes"))
+            local schemas = {}
+            for _, method in ipairs(contract.data.methods) do
+                if method.name == "list_changes" then schemas.contract = method.output_schemas[1].definition end
+            end
+            schemas.tool = tool.meta.output_schema
+            local executor = reader.executor:with_context({ board_id = h.id })
+            local failures = {}
+            for kind, call in pairs({
+                contract = function(request) return reader.executor:call("app:work_call", {
+                    board_id = h.id, op = "list_changes", request = request,
+                }) end,
+                tool = function(request) return executor:call(tool.id, request) end,
+            }) do
+                local first = assert(call({ limit = 1 }))
+                test.eq(#first.items, 0)
+                test.is_true(first.has_more)
+                test.not_nil(first.next.position)
+                local resumed = assert(call({ cursor = first.next, limit = 1 }))
+                test.eq(resumed.items[1].item_id, visible)
+                local valid, err = json.validate_string(schemas[kind], assert(json.encode(first)))
+                if not valid then failures[#failures + 1] = kind .. ": " .. tostring(err) end
+            end
+            test.eq(#failures, 0, table.concat(failures, "\n"))
+        end)
+
         test.it("rejects visibility indexes that collapse distinct level ids", function()
             local admin = scoped.admin()
             for _, field in ipairs({

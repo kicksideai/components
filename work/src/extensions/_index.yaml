@@ -69,3 +69,10 @@ entries:
     threads: kickside.work.persist:threads
     types: kickside.work.read:types
     local_types: kickside.work.extensions:types
+    schema: kickside.work.extensions:plugin_feed_schema
+- name: plugin_feed_schema
+  kind: library.lua
+  source: file://plugin_feed_schema.lua
+  modules: [json]
+  imports:
+    types: kickside.work:types

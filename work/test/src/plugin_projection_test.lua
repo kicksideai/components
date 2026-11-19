@@ -345,6 +345,32 @@ local function define()
             test.is_true(reset.bootstrap); test.eq(#reset.changes, 200); test.is_false(reset.done)
             test.eq(#rows(h), 205)
         end)
+        test.it("resumes plugin state delivery after a hidden row ends a page", function()
+            local owner = scoped.admin()
+            local declaration = fixture.declaration(fixture.fresh_prefix())
+            declaration.fields[7] = { code = "level", form = "text", index = "key" }
+            declaration.item_types[3].fields[4] = "level"
+            declaration.visibility = { field = "level", levels = {
+                { id = "internal", holders = { { user = owner.id } } },
+            } }
+            local h = scoped.board(owner, declaration)
+            local reader, reader_id = fixture.user(h, nil, true)
+            assert(h.call("grant", { subject_id = reader_id, mask = 1 }))
+            local hidden = steps.create(h, "task", { level = "internal" })
+            activate(h, true)
+            ready(h, false)
+            local request: Map = { plugin = PLUGIN, kind = "app:item_fold" }
+            local first = assert(reader("plugin_feed", request))
+            test.eq(#first.changes, 0)
+            test.is_nil(first.token:find(hidden, 1, true))
+
+            local visible = steps.create(h, "task")
+            request.token = first.token
+            local next_page, err = reader("plugin_feed", request)
+            assert(next_page, steps.detail(err))
+            test.eq(#next_page.changes, 1)
+            test.eq(next_page.changes[1].item_id, visible)
+        end)
         test.it("rebuilds current state when effective configuration changes", function()
             local h = fixture.board()
             steps.create(h, "task", {})
