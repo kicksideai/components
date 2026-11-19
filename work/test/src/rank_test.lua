@@ -110,7 +110,7 @@ local function define()
             test.not_nil(folded.rebalance_job)
         end)
 
-        test.it("keeps edit CAS and version independent and writes rank history once", function()
+        test.it("checks rank against the edit version and keeps rank history independent", function()
             local h = fixture.board()
             local a = steps.create(h, "task", { title = "A" })
             local b = steps.create(h, "task", { title = "B" })
@@ -119,8 +119,10 @@ local function define()
                 { ops = { { op = "rank", item = a, after = b, expect_version = 0 } } },
                 { ops = { { op = "set", item = a, expect_version = v, values = { title = "edited" } } } },
             })
-            for _, result in ipairs(out) do test.eq((result.outcomes :: { Map })[1].status, "applied") end
+            test.eq((out[1].outcomes :: { Map })[1].status, "conflict")
+            test.eq((out[2].outcomes :: { Map })[1].status, "applied")
             test.eq(steps.version(h, a), v + 1)
+            test.eq(steps.one(h, { op = "rank", item = a, after = b, expect_version = v + 1 }).status, "applied")
             test.eq(steps.one(h, { op = "rank", item = a, before = b }).status, "applied")
             local ranked = 0
             for _, e in ipairs(assert(h.call("list_history", { item = { id = a } })).entries) do

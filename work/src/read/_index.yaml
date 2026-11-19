@@ -243,6 +243,10 @@ entries:
   kind: library.lua
   source: file://transitions.lua
   imports:
+    flow: kickside.work.command:flow
+    prepare: kickside.work.command:prepare_context
+    when: kickside.work.command:when
+    guard: kickside.work.command:guard
     seams: kickside.work.domain:seams
     store: kickside.work.persist:store
     process: kickside.work.domain:process

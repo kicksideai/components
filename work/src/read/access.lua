@@ -20,7 +20,7 @@ function M.describe(raw: unknown): (domain.BoardAccess?, error?)
         return nil, errors.new({ kind = errors.INTERNAL, message = "component access mask is malformed", details = { code = "row_corrupt" } })
     end
     return { read = (mask & component.ACCESS.READ) ~= 0, write = (mask & component.ACCESS.WRITE) ~= 0,
-        admin = (mask & component.ACCESS.ADMIN) ~= 0 }, nil
+        delete = (mask & component.ACCESS.DELETE) ~= 0, admin = (mask & component.ACCESS.ADMIN) ~= 0 }, nil
 end
 
 function M.effective(board_id: string, required_access: integer?): (domain.BoardAccess?, error?)

@@ -20,7 +20,7 @@ type Op = {
     visit: integer?, attempt: integer?, outcome: string?, outputs: domain.JsonObject?, progress: domain.JsonObject?, decision: string?, timer: string?, scheduled_at: string?, timer_life_at: string?, force: boolean?,
     op: string, type: string?, parent: string | boolean | nil, values: { [string]: unknown }?, clear: { string }?, unset: { string }?,
     region: string?, state: string?, item: string?, expect_version: integer?, transition: string?, target: TargetRef?, comment: string?,
-    body: string?, delete: boolean?, mentions: unknown, after: unknown, before: unknown,
+    body: string?, delete: boolean?, expect_comment_version: integer?, mentions: unknown, after: unknown, before: unknown,
 }
 type ApplyRequest = { trace_context: domain.TraceContext?, board_id: string, key: string?, mode: string?, ops: { Op }, source: string?, origin: JsonObject? }
 type SchemaRequest = { pack: JsonObject?, trace_context: domain.TraceContext?, plugin_configs: { [string]: JsonObject }?, board_id: string, declaration: Declaration, expected_generation: integer?, key: string?, source: string?, origin: JsonObject? }

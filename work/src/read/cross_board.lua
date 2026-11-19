@@ -54,6 +54,7 @@ local function boards_of(request: types.QueryRequest): ({ string }?, error?)
 end
 
 function M.query(request: types.QueryRequest): (types.QueryResult?, error?)
+    if request.group_by or request.sub_group_by then return nil, invalid("cross-board queries do not support grouping") end
     local allowance, allowance_err = budget.start(request.budget)
     if allowance_err or not allowance then return nil, allowance_err end
     local ids, err = boards_of(request)
