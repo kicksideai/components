@@ -62,12 +62,14 @@ function M.create(board_id: string, kind: string, key: string, hashed: string, d
     end
     local _, cerr = tx:commit()
     if cerr then db:release(); return nil, cerr end
-    local owner, oerr = M.get(db, board_id, nil, kind, key)
+    local inserted = rows and rows[1] and id or nil
+    local owner, oerr = M.get(db, board_id, inserted, kind, key)
     db:release()
     if oerr then return nil, oerr end
-    if not owner or owner.request_hash ~= hashed then
-        return nil, errors.new({ kind = errors.CONFLICT, message = "operation key names another request", details = { code = "idempotency_conflict" } })
+    if not owner then
+        return nil, errors.new({ kind = errors.CONFLICT, message = "operation key was released during admission", details = { code = "operation_key_released" } })
     end
+    if owner.request_hash ~= hashed then return nil, errors.new({ kind = errors.CONFLICT, message = "operation key names another request", details = { code = "idempotency_conflict" } }) end
     if not parked then
         local _, werr = jobs.wake_job(owner.job_id, { control = true, ensure_due = true })
         if werr then return nil, werr end
