@@ -42,6 +42,7 @@ type TransitionView = { id: string, name: string, to: string, require: { string 
 type GetResult = ReadStamp & {
     title: string?, description: string?, icon: string?,
     access: domain.BoardAccess,
+    field_edit: { [string]: domain.FieldEdit }?,
     stage_runs: { StageRun }?,
     item: ItemView, links: { LinkView }?, children: { ItemView }?, comments: { CommentView }?, transitions: { TransitionView }?,
 }
