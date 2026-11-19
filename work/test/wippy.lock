@@ -15,14 +15,14 @@ modules:
       version: 0.3.8
       hash: c297c02ca276a5963bd688b6b022e54fcfe03450e30cf496481c14f963ae8134
     - name: kickside/core
-      version: 0.3.21
-      hash: 95528870ccc4463aa2784d8a75b4a41796f84a28ac7e31dfe8e6669ddbf4627c
+      version: 0.3.22
+      hash: e79fdadd33a6dfad117a28a7ec2899a61b20d091a6b3185724705490758e1b49
     - name: kickside/execution
       version: 0.2.8
       hash: 7ffa847541cce7d03424bad43828fb08e9b077b6a08b3fe857cd0a22fa589e97
     - name: kickside/jobs
-      version: 0.1.82
-      hash: ceaf5cfe99bf608238a714f910398782b92f8c965794088202cbdfbd7104b198
+      version: 0.1.83
+      hash: 1120a2388e565232d5dabcc011f23c3f6faf374938488f189020419cf63a828a
     - name: kickside/realtime-dispatch
       version: 0.1.1
       hash: 6f0fa3625683510a1565afff3b40b6726ea5604b940b1627b787f6615683264d

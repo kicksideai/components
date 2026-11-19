@@ -141,7 +141,8 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
     if type(q.text) == "string" and q.text ~= "" then
         -- Free text finds items whose sku starts with it or whose searchable
         -- values contain its words.
-        local key_arg = search.fold(q.text)
+        local key_arg, err = search.fold(q.text)
+        if not key_arg then return nil, err end
         local position = dialect == sql.type.POSTGRES and "strpos" or "instr"
         local key_sql = position .. "(i.sku_fold, ?) = 1"
         local tokens = #t.layout.search > 0 and search.tokens(q.text) or {}

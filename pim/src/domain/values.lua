@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Canonical value forms, equality keys and order values. Key and order are
 -- defined only by forms, so every attribute of a form indexes and compares alike.
-local case_folding = require("case_folding")
+local casefold = require("casefold")
 local failure = require("failure")
 local json = require("json")
 local shape = require("shape")
@@ -257,8 +257,12 @@ function M.key(form: string, value: types.Scalar, config: types.AttributeConfig?
     local key: string
     if form == "text" then
         local text = value :: string
-        -- Match each UTF-8 code point in a normalized text value.
-        key = cfg.case == "insensitive" and case_folding.fold(text) or text
+        key = text
+        if cfg.case == "insensitive" then
+            local folded, err = casefold.fold(text)
+            if not folded then return nil, err end
+            key = folded
+        end
     elseif form == "int" then
         key = tostring(value :: integer)
     elseif form == "dec" then

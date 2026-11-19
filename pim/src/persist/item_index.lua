@@ -27,8 +27,10 @@ local function item_row(compiled: types.Compiled, item: types.Product, lineage: 
             if #findings > 0 then open[c.ctx] = findings end
         end
     end
+    local sku_fold, err = search.fold(item.sku)
+    if not sku_fold then return nil, err end
     row.system = { root_id = item.root_id, family = item.family, status = item.status, version = item.version,
-        updated_seq = item.updated_seq or 0, findings = values.canonical(open), sku_fold = search.fold(item.sku) }
+        updated_seq = item.updated_seq or 0, findings = values.canonical(open), sku_fold = sku_fold }
     for _, c in ipairs(columns.columns) do
         local attr = by_id[c.attribute_id]
         local r = resolve.resolve(compiled, item, lineage, attr, resolve.parse_ctx(c.ctx))
