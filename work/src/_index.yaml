@@ -14,7 +14,7 @@ entries:
     comment: Board components, ACL checks and deletion.
   component: kickside/component
 - name: dep.kickside.core
-  version: '>=0.3.35'
+  version: '>=0.3.36'
   kind: ns.dependency
   meta:
     comment: Board threads, subjects, sequence-targeted projection waits, retention and Unicode case folding.
