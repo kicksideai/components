@@ -84,6 +84,13 @@ local function define()
             } })) :: types.ApplyResult
             test.eq(batch.outcomes[2].outcome, "unchanged")
             test.eq(assert(steps.get(h, "ORDERED")).product.parent_id, expected_parent)
+            local events = fixture.events(h)
+            local latest = events[#events]
+            test.eq(latest.type, "kickside.pim.events:product.changed")
+            local body = latest.body :: types.ProductBody
+            test.eq(body.source_seq, 12)
+            test.eq(#assert(body.patch), 0)
+            test.eq(body.generation, 1)
         end)
 
         test.it("uses the same sequence for trash and restore within and across commands", function()

@@ -416,6 +416,7 @@ A plugin declares itself once with a `kickside.pim.plugin` entry:
   kind: registry.entry
   meta:
     type: kickside.pim.plugin
+    interface_version: 1                  # optional: defaults to 1
     title: Shipping
     settings: acme.shipping                # its deployment configuration defaults namespace
     attachment: acme.shipping:attachment   # required: attachment component kind
@@ -427,6 +428,12 @@ A plugin declares itself once with a `kickside.pim.plugin` entry:
           config: { units: { g: "1", kg: "1000" }, canonical: g, scale: 0 } } ] } ]
       provider: acme.shipping:schema       # or a kickside.pim:schema_provider binding resolving the fragment per catalog
 ```
+
+PIM accepts manifest interface version `1`, including when
+`interface_version` is omitted. Other values fail with native
+`errors.INVALID` and `details.code = "plugin_interface_version_unsupported"`
+before PIM validates the rest of the manifest. The provider's fragment
+`version` and a projection's `revision` describe their own separate contracts.
 
 Membership is explicit and lives in the catalog's schema declaration:
 `plugins: [ { use: <plugin id> } ]`. Present means active, absent means inactive.
@@ -461,7 +468,7 @@ One entry shape applies wherever plugin state is answered (`get_schema.plugins`,
 a list, and the options listing):
 
 ```
-{ plugin: <id>, title, description, icon, installed: boolean, active: boolean,
+{ plugin: <id>, interface_version?: integer, title, description, icon, installed: boolean, active: boolean,
   attachment_id?: string, config?: object,          -- the validated effective configuration
   requires: [..], tools: [..],
   lifecycle: { state: "pending" | "ready" | "failed", error?: { kind, code, message } },
@@ -470,7 +477,8 @@ a list, and the options listing):
 ```
 
 `get_schema.plugins` lists active and installed plugins whose metadata the caller
-can read. The options listing (`schema_options.plugins`) includes their
+can read. Both it and `schema_options.plugins` include the accepted
+`interface_version` for loaded manifests. The options listing also includes
 `config_schema`. The catalog's committed declaration and fields remain readable
 with catalog READ. An explicit `plugin_context` request also requires registry
 access to the requested plugin.
@@ -934,8 +942,8 @@ used for authorization).
 | `pim.schema.applied` | `schema` | generation, declaration, digest, class, plan; activating `plugin_configs` carried outside the declaration |
 | Plugin configuration fact from `configure_plugin` | plugin | plugin id and validated configuration change |
 | `plugin.rebuild` catalog fact | plugin | plugin id and changed projection revision |
-| `pim.product.created` | `p:<id>` | sku, family, parent, level, axis values, patch |
-| `pim.product.changed` | `p:<id>` | patch, status?, previous_status? (with status), axis_key?, source_seq? |
+| `pim.product.created` | `p:<id>` | sku, family, parent, level, axis values, patch, generation? |
+| `pim.product.changed` | `p:<id>` | patch, generation?, status?, previous_status? (with status), axis_key?, source_seq? |
 | `pim.product.moved` | `p:<id>` | parent, axis_key, source_seq? |
 | `pim.product.deleted` | `p:<id>` | source_seq? |
 | `pim.product.restored` | `p:<id>` | current axis_key, source_seq? |
@@ -944,7 +952,11 @@ used for authorization).
 | `pim.product.released` | `r:<id>` | release_id, product_id, version, generation, snapshot, hash, channels |
 | `pim.product.withdrawn` | `r:<id>` | product_id, channels |
 
-A patch is `[{a, c, before?, v | clear | unset, s?}]`. A product's version
+A patch is `[{a, c, before?, v | clear | unset, s?}]`. New creation and
+change events carry the schema `generation` used to encode these steps, even
+when the patch is empty. Consumers can pass that value to `get_schema` to
+resolve attribute IDs and context keys while the generation is retained.
+Stored events may omit it. A product's version
 counts its product events and equals Core's `subject_version` of `p:<id>`.
 Apply product events carry the command's source and any supplied provenance.
 Events ≤ 4 MB; a release snapshot ≤ 512 KB.
