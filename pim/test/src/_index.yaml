@@ -2375,6 +2375,7 @@ entries:
       component: kickside.component:component
       test: wippy.test:test
       fixture: app:fixture
+      trash_fixture: app:trash_fixture
       types: kickside.pim:types
 
   - name: plugin_projection_worker

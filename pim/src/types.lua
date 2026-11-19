@@ -123,7 +123,8 @@ type Fragment = { aspects: { AspectDecl }?, vocabularies: { VocabularyDecl }? }
 -- choice, what the plugin runs with, or why it cannot run.
 type PluginProblem = { code: string, message: string, field: string? }
 type PluginFeedRequest = { catalog_id: string, plugin: string, kind: string, token: string? }
-type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, changes: { ChangeItem }, token: string, done: boolean }
+-- On a gap, clear the catalog replica before applying changes and commit both with the replacement token.
+type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, gap: FeedGap?, changes: { ChangeItem }, token: string, done: boolean }
 type PluginContext = ReadStamp & { attachment_id: string?, config: JsonObject, lifecycle: PluginLifecycle, projections: { [string]: PluginProjectionState }, retention: { event_days: integer } }
 type PluginView = { plugin: string, title: string?, description: string?, icon: string?, installed: boolean, active: boolean,
     attachment_id: string?, config: JsonObject?, requires: { string }, tools: { string }, lifecycle: PluginLifecycle,

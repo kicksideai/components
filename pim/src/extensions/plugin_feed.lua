@@ -10,11 +10,12 @@ local types = require("types")
 local values=require("values")
 local failure=require("failure")
 local M = {}
-type Token = { projection_id: string, start_seq: integer, cursor: types.ChangesCursor?, bootstrapping: boolean }
+type Token = { projection_id: string, start_seq: integer, cursor: types.ChangesCursor?, bootstrapping: boolean, tombstone_floor_seq: integer }
 type Body = { worker_config: { start_seq: integer }, token: string? }
 type Pair = { projection: { id: string, body: string } }
-local TOKEN_SCHEMA = { type = "object", required = { "projection_id", "start_seq", "bootstrapping" }, additionalProperties = false,
+local TOKEN_SCHEMA = { type = "object", required = { "projection_id", "start_seq", "bootstrapping", "tombstone_floor_seq" }, additionalProperties = false,
     properties = { projection_id = { type = "string" }, start_seq = { type = "integer" }, bootstrapping = { type = "boolean" },
+        tombstone_floor_seq = { type = "integer", minimum = 0 },
         cursor = { type = "object", required = { "seq", "product_id" }, additionalProperties = false,
             properties = { seq = { type = "integer", minimum = 0 }, product_id = { type = "string" } } } } }
 
@@ -68,7 +69,7 @@ function M.page(catalog_id: string, request: types.PluginFeedRequest): (types.Pl
     if merr then return nil, merr end
     if type(body)~="table" or type(body.worker_config)~="table" then return nil,failure.corrupt("stored plugin projection config is malformed","worker_config") end
     local registration=body.worker_config :: types.JsonObject
-    local token:Token={projection_id=pair.projection.id,start_seq=body.worker_config.start_seq,bootstrapping=true}
+    local token:Token={projection_id=pair.projection.id,start_seq=body.worker_config.start_seq,bootstrapping=true,tombstone_floor_seq=catalog.tombstone_floor_seq}
     if request.token then
         local parsed,err=M.decode(request.token)
         if err or not parsed then return nil,err end
@@ -78,10 +79,11 @@ function M.page(catalog_id: string, request: types.PluginFeedRequest): (types.Pl
     if registration.start_seq~=intent.seq or not values.equal(registration.config,intent.config) or registration.attachment_id~=intent.attachment_id or registration.revision~=declared.revision then
         return nil,errors.new({kind=errors.UNAVAILABLE,retryable=true,message="plugin registration differs from captured intent",details={code="plugin_registration_pending"}})
     end
-    local page, ferr = feeds.changes_snapshot(tx,dialect,catalog,{cursor=token.cursor},200)
+    local page, ferr = feeds.changes_snapshot(tx,dialect,catalog,{cursor=token.cursor},200,token.tombstone_floor_seq)
     if ferr or not page then return nil, ferr end
-    if page.gap then
-        token.cursor, token.bootstrapping = nil, true
+    local gap = page.gap
+    if gap then
+        token.bootstrapping = true
         page, ferr = feeds.changes_snapshot(tx,dialect,catalog,{},200)
         if ferr or not page then return nil, ferr end
     end
@@ -90,11 +92,12 @@ function M.page(catalog_id: string, request: types.PluginFeedRequest): (types.Pl
     local bootstrap = token.bootstrapping
     local caught_up = not page.has_more and not page.rebuilding
     token.cursor = page.next
+    token.tombstone_floor_seq = catalog.tombstone_floor_seq
     if caught_up and (page.as_of :: integer) >= token.start_seq then token.bootstrapping = false end
     local encoded, eerr = json.encode(token)
     if eerr or not encoded then return nil, eerr end
     return { attachment_id = intent.attachment_id :: string, config = config :: types.JsonObject, bootstrap = bootstrap,
-        changes = page.items, token = encoded, done = caught_up and (page.as_of :: integer) >= head.event_count }, nil
+        gap = gap, changes = page.items, token = encoded, done = caught_up and (page.as_of :: integer) >= head.event_count }, nil
     end)
     return result,serr
 end
