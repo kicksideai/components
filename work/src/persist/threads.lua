@@ -29,12 +29,11 @@ function M.open(): (types.ThreadClient?, error?)
     return client :: types.ThreadClient, nil
 end
 
--- catch_up waits until the thread's projection of kind covers the thread head
--- or the deadline passes; done reports whether it got there.
-function M.catch_up(c: types.ThreadClient, thread_id: string, kind: string, deadline: types.Deadline): (types.CatchUp?, error?)
+-- catch_up waits for the target sequence, defaulting to the head sampled by Core.
+function M.catch_up(c: types.ThreadClient, thread_id: string, kind: string, deadline: types.Deadline, target_seq: integer?): (types.CatchUp?, error?)
     local settings, settings_err = limits.read()
     if settings_err or not settings then return nil, settings_err end
-    local result, err = c:catch_up_projection({ thread_id = thread_id, kind = kind, max_ticks = settings.projection_catchup_ticks, deadline = deadline.at })
+    local result, err = c:catch_up_projection({ thread_id = thread_id, kind = kind, max_ticks = settings.projection_catchup_ticks, deadline = deadline.at, target_seq = target_seq })
     if err then return nil, errors.wrap(err, "projection catch-up failed") end
     local done = field(result, "done") == true
     local last_seq = store.int(field(result, "last_seq"))

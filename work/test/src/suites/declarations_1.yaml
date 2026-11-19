@@ -195,6 +195,7 @@ entries:
     declaration: kickside.work.domain:declaration
     changes: kickside.work.domain:changes
     threads: kickside.work.persist:threads
+    append: kickside.work.persist:append
     types: kickside.work:types
     job_rows: kickside.work.persist:job_rows
 - name: declaration_merge_test

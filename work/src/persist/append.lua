@@ -49,10 +49,10 @@ function M.writes(c: domain.ThreadClient, board_id: string, writes: { domain.Wri
     end
     local out, err = c:append_events({ writes = list })
     if err then return nil, err end
-    local appended = (out :: { writes: { { max_seq: integer } } }).writes
+    local appended = (out :: { writes: { { thread_id: string, max_seq: integer } } }).writes
     local top = 0
-    for i, write in ipairs(appended) do
-        if list[i].thread_id == board_id and write.max_seq > top then top = write.max_seq end
+    for _, write in ipairs(appended) do
+        if write.thread_id == board_id and write.max_seq > top then top = write.max_seq end
     end
     return top, nil
 end

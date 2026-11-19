@@ -157,6 +157,7 @@ entries:
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
+    apply_ack_probe: app:apply_ack_probe
 - name: history_test
   kind: function.lua
   meta:
