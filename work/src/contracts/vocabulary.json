@@ -1,6 +1,6 @@
 {
   "definitions": {
-    "field_edit": {"type":"object","additionalProperties":{"type":"string","enum":["editable","field_denied","read_only"]},"description":"Direct field patch capability by field code for this caller and item snapshot. Present for live items with declared fields when the caller has board WRITE. Field values follow their separate read rules."},
+    "field_edit": {"type":"object","additionalProperties":{"type":"string","enum":["editable","field_denied","read_only"]},"description":"Direct patch capability by field code for the caller and item snapshot. Present on live items with declared fields under board WRITE. Field values follow field read access."},
     "schema_001": {"id":{"type":"string","description":"Stable nonempty option value stored on items; use existing ids from WorkGetSchema when editing."},"label":{"type":"string","description":"Display label for this option; omit to use its id."},"color":{"type":"string","description":"Display color metadata for this option; omit when no color is assigned."},"order":{"type":"integer","description":"Numeric option order used by numeric indexes; omit to use its position in this list."},"category":{"type":"string","enum":["triage","backlog","unstarted","started","completed","canceled"],"description":"Lifecycle category for this option; omit when the option carries no category."}},
     "schema_002": {"type":"object","properties":{"$work_ref":"schema_001"},"additionalProperties":false,"required":["id"]},
     "schema_003": {"type":"array","items":{"$work_ref":"schema_002"}},
