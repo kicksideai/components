@@ -29,6 +29,7 @@ override:
   kickside.work.jobs:bulk_commands:imports.apply_ops: app:bulk_apply_probe
   kickside.work.command:bulk:imports.rows: app:operation_rows_probe
   kickside.work.command:move_plan:imports.principals: app:move_admission_probe
+  kickside.work.command:move:imports.events: app:move_phase_probe
   kickside.work.jobs:move_commands:imports.events: app:move_phase_probe
   kickside.work.jobs:bulk:imports.identity: app:deferred_probe
   kickside.work.jobs:migrate_batch:imports.component: app:authorization_probe

@@ -35,6 +35,7 @@ entries:
   - sql
   imports:
     events: kickside.work.command:operation_events
+    apply_ops: kickside.work.command:apply_ops
 - name: move_admission_probe
   kind: library.lua
   source: file://move_admission_probe.lua
