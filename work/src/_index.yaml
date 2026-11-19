@@ -20,10 +20,10 @@ entries:
     comment: Board threads, subjects, projections, retention and Unicode case folding.
   component: kickside/core
 - name: dep.kickside.jobs
-  version: '*'
+  version: '>=0.1.83'
   kind: ns.dependency
   meta:
-    comment: Follow-migration jobs after schema changes.
+    comment: Follow-migration jobs and projection cancellation notifications used by Core 0.3.22.
   component: kickside/jobs
 - name: dep.kickside.execution
   version: '*'

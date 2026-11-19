@@ -27,8 +27,8 @@ modules:
       version: 0.2.8
       hash: 7ffa847541cce7d03424bad43828fb08e9b077b6a08b3fe857cd0a22fa589e97
     - name: kickside/jobs
-      version: 0.1.80
-      hash: 95a229aee78d9a5545579dc46f74d482c18b3d2d986bb2a13c36125f6b297420
+      version: 0.1.83
+      hash: 1120a2388e565232d5dabcc011f23c3f6faf374938488f189020419cf63a828a
     - name: kickside/pim
       version: 0.0.0
     - name: kickside/pim-admin
