@@ -47,11 +47,24 @@ entries:
   meta:
     type: kickside.work.plugin
     attachment: app:fold_attachment
+    seams: [app:fold_scope]
     config_schema: { type: object, properties: { fail: { type: boolean }, marker: { type: string } }, additionalProperties: false }
     projections:
     - kind: app:item_fold
       worker_ref: func://app:plugin_projection_worker
       input: state
+- name: fold_scope
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: app:folding_plugin
+    projection: app:item_fold
+    table: work_test_plugin_fold
+    board_column: board_id
+    item_column: item_id
+    match: [item_id]
+    filters:
+      seq: { column: seq, type: integer, ops: [eq] }
 - name: missing_worker_plugin
   kind: registry.entry
   meta:
@@ -150,6 +163,6 @@ entries:
   kind: security.policy
   groups: [kickside.security.groups:members]
   policy:
-    resources: [app:folding_plugin, app:fold_attachment, app:plugin_projection_worker]
+    resources: [app:folding_plugin, app:fold_attachment, app:plugin_projection_worker, app:fold_scope]
     actions: [registry.get, contract.get, contract.open]
     effect: allow

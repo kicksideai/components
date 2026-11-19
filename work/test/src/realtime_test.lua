@@ -44,6 +44,48 @@ local function define()
             test.is_nil(assert(member.call("get_meta", {}, h.id)).meta.item_count)
             test.eq(assert(member.call("list",{})).boards[1].item_count,1)
         end)
+        test.it("invalidates inbound links after commit for destination-only subscribers", function()
+            local admin, member = scoped.admin(), scoped.member()
+            local source, destination = scoped.board(admin), scoped.board(admin)
+            assert(destination.call("grant", { subject_id = member.id, mask = 1 }))
+            local from, to = steps.create(source, "task"), steps.create(destination, "task")
+            local request = { item = { id = to }, direction = "inward" }
+            local cursor = assert(member.call("list_changes", {}, destination.id)).next
+            local topic = "component." .. destination.id
+            local function invalidations(): integer
+                local db = assert(store.open())
+                local deliveries = assert(db:query("SELECT data FROM work_test_delivery WHERE user_id = $1 AND topic = $2", { member.id, topic }))
+                db:release()
+                local found = 0
+                for _, row in ipairs(deliveries) do
+                    local data = assert(json.decode(row.data))
+                    if data.event == "work.relations.invalidated" then
+                        for key in pairs(data) do test.eq(key, "event") end
+                        found = found + 1
+                    end
+                end
+                return found
+            end
+            test.eq(#assert(member.call("list_links", request, destination.id)).links, 0)
+            local baseline = invalidations()
+            for i, op in ipairs({ "link", "unlink" }) do
+                local outcome = steps.one(source, { op = op, item = from, type = "blocks", target = { board = destination.id, item = to } })
+                test.eq(outcome.status, "applied")
+                steps.wait_for("destination board relation invalidation after " .. op, function(): boolean
+                    return invalidations() > baseline + i - 1
+                end)
+                test.eq(invalidations(), baseline + i)
+                local links = assert(member.call("list_links", request, destination.id)).links
+                test.eq(#links, 2 - i)
+                if op == "link" then
+                    test.is_true(links[1].source.unavailable)
+                    test.is_nil(links[1].source.board)
+                    test.is_nil(links[1].source.item)
+                end
+                local feed = assert(member.call("list_changes", { cursor = cursor }, destination.id))
+                test.eq(#feed.items, 0)
+            end
+        end)
         test.it("publishes pending and failed rebuilds and keeps built queries available", function()
             local admin, member = scoped.admin(), scoped.member()
             local h = scoped.board(admin)

@@ -105,6 +105,18 @@ local function compile(tx: types.Executor, dialect: string, board: domain.Board,
     if serr then return nil, serr end
     local actor = security.actor()
     local caller: domain.Reader = { board_id = board.board_id, actor = actor and actor:id(), search = board.compiled.scopes, plugins = board.compiled.plugins, allows = function(level: string): boolean return level == "read" or (grants ~= nil and grants[level] == true) end }
+    local min_seq = request.min_seq
+    if min_seq and min_seq > 0 and not definition_only then
+        local checked: { [string]: { [string]: boolean } } = {}
+        caller.scope_fence = function(projection: domain.ScopeProjection): error?
+            local kinds = checked[projection.plugin] or {}
+            if kinds[projection.kind] then return nil end
+            local err = scopes.fence(tx, board.board_id, projection, min_seq)
+            if err then return err end
+            kinds[projection.kind], checked[projection.plugin] = true, kinds
+            return nil
+        end
+    end
     caller.awaiting = function(alias: string): (domain.Condition?, error?)
         if definition_only then return { sql = "1=0", args = {} }, nil end
         return awaiting.condition(tx, board, actor:id(), alias)
