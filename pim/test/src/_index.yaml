@@ -1373,7 +1373,7 @@ entries:
 
   - name: ordered_pages_test
     kind: function.lua
-    meta: { type: test, suite: kickside_pim }
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
     source: file://ordered_pages_test.lua
     method: run
     imports:
@@ -1384,6 +1384,8 @@ entries:
       types: kickside.pim:types
       layout: kickside.pim.persist:layout
       select: kickside.pim.persist:select
+      fixture: app:fixture
+      consts: kickside.pim:consts
 
   - name: select_test
     kind: function.lua
