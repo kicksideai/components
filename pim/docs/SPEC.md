@@ -1241,7 +1241,7 @@ Schema boundaries by method (tool inputs equal their contract inputs):
 
 | Method | Request-level validation | Per-item pipeline decisions |
 |---|---|---|
-| `apply` | object, top-level source/mode/keys, items list of objects, reference objects with id or sku, operation containers | status, expected version, source sequence, family/term codes, labels, attribute codes, contexts and authored values |
+| `apply` | object, top-level source/mode/keys and expected schema generation, items list of objects, reference objects with id or sku, operation containers | status, expected version, source sequence, family/term codes, labels, attribute codes, contexts and authored values |
 | `propose` | object, top-level source/origin/provenance/keys, items list of objects, product reference and edit containers | status, attribute codes, contexts and authored values; captures base versions |
 | `release` | object, top-level keys, items list of objects, product reference and channel-list structure | missing or malformed expected version and channel codes |
 | `withdraw` | object, top-level keys, items list of objects, product reference and channel-list structure | channel codes |
@@ -1269,6 +1269,7 @@ Contract `kickside.pim:catalog`, method `apply`:
 { "catalog_id": "…",
   "idempotency": { "namespace": "ui", "key": "…" },
   "source": "erp",
+  "expected_generation": 7,
   "mode": "atomic | independent",
   "items": [
     { "product": {"id": "…"} | {"sku": "B-100"},
@@ -1283,6 +1284,13 @@ Contract `kickside.pim:catalog`, method `apply`:
     { "term": { "vocabulary": "colors", "code": "moss" }, "labels": { "en": "Moss" } },
     { "term_merge": { "vocabulary": "colors", "from": "olive", "into": "moss" } } ] }
 ```
+
+When submitting a draft, pass its read's `generation` (or `schema_generation`
+from `get_schema`) as `expected_generation`. A mismatch at the command head
+rejects the full command in either mode with `CONFLICT / schema_generation_conflict`.
+The error carries `expected_generation` and the current `generation`. The
+optional generation participates in idempotency identity. A matching receipt
+replays even after the schema advances.
 
 Steps:
 
@@ -1406,6 +1414,9 @@ are `POST` (`/schema`, `/schema/plan`, `/query`, `/apply`, `/proposals`,
 `/proposals/{proposal_id}/decision`, `/releases`, `/withdrawals`, `/rebuild`,
 `/plugins/configure`), all
 under `/pim/catalogs/{id}`.
+
+Product-addressed GET endpoints accept `id` or `sku`. A nonempty `id` takes
+precedence when both are supplied.
 
 The catalog contract's `list` rows and `get_schema` response include required
 `access: { read: boolean, write: boolean, admin: boolean }` for the ambient
@@ -1860,8 +1871,10 @@ matching, product configuration, delivery to channels. Each is a plugin.
 Plugin findings and batched type results must be dense arrays: object keys,
 holes and malformed elements fail closed. Numeric collection membership uses
 equality keys; scalar numeric comparisons use order values. Quantity range checks
-run after canonical-unit conversion and rounding. Publication filters with no
-channel match any published channel.
+run after canonical-unit conversion and rounding. Query publication filters with
+no channel match any published channel. A supplied channel must be active in the
+query's schema snapshot or the query returns `INVALID / unknown_channel`.
+Publication feeds can still page historical channels.
 
 PIM plugin feeds capture intent, configuration, products and their read stamp in
 one SQL snapshot. Core registration is sampled before that snapshot and checked

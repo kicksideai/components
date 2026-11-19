@@ -156,6 +156,10 @@ function M.query(catalog_id: string, request: types.QueryRequest?): (types.Query
     if scope_err or not admitted then return nil, scope_err end
     return with_snapshot(caller, function(tx: types.Executor, catalog: types.Catalog, dialect: string): (types.QueryResult?, error?)
         local compiled = catalog.compiled
+        local channel = q.published and q.published.channel
+        if channel and not compiled.channels[channel] then
+            return nil, invalid("unknown channel " .. channel, { code = "unknown_channel", channel = channel })
+        end
         local pending = pending_indexes(catalog)
         local item_filter: read_model.ItemFilter = { family = q.family, status = q.status }
         if q.root then
@@ -173,7 +177,7 @@ function M.query(catalog_id: string, request: types.QueryRequest?): (types.Query
         end
         local conditions = read_model.item_conditions(catalog_id, item_filter)
         if q.published then
-            conditions[#conditions + 1] = read_model.published_condition(catalog_id, q.published.channel)
+            conditions[#conditions + 1] = read_model.published_condition(catalog_id, channel)
         end
         if q.ready then
             local column: string? = nil

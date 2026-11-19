@@ -41,6 +41,43 @@ local function define()
             test.is_true((again.as_of :: integer) >= (first.seq :: integer))
         end)
 
+        test.it("replays a guarded command after schema edits and fingerprints its generation", function()
+            local h = fixture.catalog({ bare = true })
+            local generation = assert(h.call("get_schema", {})).schema_generation
+            local items = { create("GUARDED") }
+            local first = assert(apply(h, items, "ui", "guarded", { expected_generation = generation }))
+            local current = assert(h.call("apply_schema", { declaration = { vocabularies = { { code = "extras" } } } }))
+            test.eq(current.generation, generation + 1)
+            local replay = assert(apply(h, items, "ui", "guarded", { expected_generation = generation }))
+            test.is_true(replay.replayed)
+            test.eq(replay.seq, first.seq)
+            test.eq(replay.outcomes[1].product_id, first.outcomes[1].product_id)
+            for _, change in ipairs({ {}, { expected_generation = current.generation } }) do
+                local result, err = apply(h, items, "ui", "guarded", change)
+                test.is_nil(result)
+                test.eq(assert(err):kind(), errors.CONFLICT)
+                test.eq(assert(err):details().code, "idempotency_conflict")
+            end
+        end)
+
+        test.it("replays a matching guarded receipt published after the first lookup", function()
+            local h = fixture.catalog({ bare = true })
+            local generation = assert(h.call("get_schema", {})).schema_generation
+            local request = { expected_generation = generation, items = { create("CONCURRENT-GUARDED") },
+                idempotency = { namespace = "ui", key = "concurrent-guarded" } }
+            local duplicate, duplicate_err = h.call("apply_with_interleaved_guarded_receipt", { request = request })
+            local control = assert(h.call("apply", request))
+            test.is_true(control.replayed, "ordinary retry must see the committed matching receipt")
+            test.eq(control.outcomes[1].outcome, "created")
+            local stale, stale_err = apply(h, { create("NEVER-COMMITTED") }, "ui", "never-committed", { expected_generation = generation })
+            test.is_nil(stale)
+            test.eq(assert(stale_err):details().code, "schema_generation_conflict")
+            test.is_nil(duplicate_err, duplicate_err and tostring(duplicate_err:details().code) or "interleaved receipt error")
+            test.is_true(assert(duplicate).replayed)
+            test.eq(assert(duplicate).seq, control.seq)
+            test.eq(assert(duplicate).outcomes[1].product_id, control.outcomes[1].product_id)
+        end)
+
         test.it("refuses the same key for a different request shape", function()
             local h = fixture.catalog()
             fixture.boot(h)

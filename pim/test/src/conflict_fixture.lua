@@ -4,6 +4,7 @@ local store = require("store")
 local values = require("values")
 local pipeline = require("pipeline")
 local writer = require("writer")
+local types = require("types")
 local M = {}
 type Attempt = pipeline.Attempt
 M.Attempt = Attempt
@@ -12,13 +13,37 @@ local catalog_id = ""
 local generation_changes = false
 local revocation: { [string]: unknown }? = nil
 local revocation_timing = ""
+local guarded_request: types.ApplyRequest? = nil
 function M.configure(id: string, changed: boolean)
     catalog_id, generation_changes, revocation = id, changed, nil
 end
 function M.revoke_source(id: string, declaration: { [string]: unknown }, timing: string)
     catalog_id, revocation, revocation_timing = id, declaration, timing
 end
+function M.interleave_guarded_receipt(id: string, request: types.ApplyRequest)
+    catalog_id, guarded_request, revocation = id, request, nil
+end
+
 function M.run(command: pipeline.Command): (unknown, error?)
+    local guarded = guarded_request
+    if guarded then
+        guarded_request = nil
+        local read = assert(command.receipt)
+        local first = true
+        command.receipt = function(marker)
+            local receipt, seq, err = read(marker)
+            if first then
+                first = false
+                assert(not receipt and not seq and not err, "the duplicate must actually miss its first receipt read")
+                local winner = assert(writer.apply(catalog_id, guarded))
+                assert(winner.applied and winner.seq and not winner.replayed, "ordinary winner did not commit")
+                local changed = assert(writer.apply_schema(catalog_id, { declaration = { vocabularies = { { code = "concurrent_schema" } } } }))
+                assert(changed.generation == assert(guarded.expected_generation) + 1, "ordinary schema edit did not advance the generation")
+            end
+            return receipt, seq, err
+        end
+        return pipeline.run(command)
+    end
     local declaration = revocation
     if declaration then
         local function revoke()

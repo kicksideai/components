@@ -42,6 +42,14 @@ type Admit = (types.Executor, types.Catalog) -> error?
 local EV = consts.EVENTS
 local invalid = failure.invalid
 
+local function require_generation(expected: integer?, generation: integer): error?
+    if expected ~= nil and expected ~= generation then
+        return errors.new({ kind = errors.CONFLICT, message = "schema generation changed",
+            details = { code = "schema_generation_conflict", expected_generation = expected, generation = generation } })
+    end
+    return nil
+end
+
 local function require_access(catalog_id: string, access: integer): error?
     if not security.actor() then return errors.new({ details = { code = "authentication_required" }, kind = errors.PERMISSION_DENIED, message = "an authenticated actor is required" }) end
     if catalog_id == "" then return invalid("catalog_id required") end
@@ -135,9 +143,8 @@ end
 -- state at the command head; plan_schema returns it, apply_schema appends it.
 local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_id: string, request: types.SchemaRequest): (SchemaPlan?, error?)
     local generation = catalog and catalog.generation or 0
-    if request.expected_generation ~= nil and request.expected_generation ~= generation then
-        return nil, errors.new({ kind = errors.CONFLICT, message = "schema generation changed", details = { code = "schema_generation_conflict", generation = generation } })
-    end
+    local conflict = require_generation(request.expected_generation, generation)
+    if conflict then return nil, conflict end
     local prev = catalog and catalog.compiled or nil
     local prev_declaration: types.Declaration? = nil
     if catalog then
@@ -332,9 +339,12 @@ local function execute(catalog_id: string, request: types.ApplyRequest, deadline
     local prepared: items.Prepared = { refined = {}, links = {} }
     local out, err = run(catalog_id, request.idempotency,
         { op = "apply", items = request.items, mode = mode, source = request.source or "", import = request.import == true or nil,
-            origin = request.origin, provenance = request.provenance, approval_item_id = request.approval_item_id },
+            expected_generation = request.expected_generation, origin = request.origin, provenance = request.provenance,
+            approval_item_id = request.approval_item_id },
         request.trace_context,
         function(db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
+            local conflict = require_generation(request.expected_generation, catalog.generation)
+            if conflict then return nil, conflict end
             local planned, perr = items.plan(db, catalog, request, actor_id(), settings, prepared, admit ~= nil)
             if perr or not planned then return nil, perr end
             local result = { outcomes = planned.outcomes, applied = planned.ok or mode == "independent" }
@@ -345,7 +355,7 @@ local function execute(catalog_id: string, request: types.ApplyRequest, deadline
     return out :: types.ApplyResult, nil
 end
 
--- apply(catalog_id, { items, mode?, source?, idempotency? })
+-- apply(catalog_id, { items, mode?, source?, expected_generation?, idempotency? })
 function M.apply(catalog_id: string, request: types.ApplyRequest, deadline: clock.Deadline?): (types.ApplyResult?, error?)
     local access_err = require_access(catalog_id, component.ACCESS.WRITE)
     if access_err then return nil, access_err end

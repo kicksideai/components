@@ -113,7 +113,15 @@ function M.run(c: Command): (types.JsonObject?, error?)
         local last_seq, cerr = covered(c, until_at)
         if cerr or not last_seq then return nil, cerr end
         local attempt, berr = c.build(last_seq)
-        if berr or not attempt then return nil, berr end
+        if berr or not attempt then
+            local details = berr and berr:details()
+            if marker and hashed and details and details.code == "schema_generation_conflict" then
+                -- Catch-up can materialize the matching receipt before the guarded build.
+                local winner, rerr = replay(c, marker, hashed, until_at)
+                if rerr or winner then return winner, rerr end
+            end
+            return nil, berr
+        end
         local events: {types.Event} = attempt.events
         local noop = #events == 0
         if noop and marker and hashed then
