@@ -14,10 +14,10 @@ entries:
     comment: Board components, ACL checks and deletion.
   component: kickside/component
 - name: dep.kickside.core
-  version: '>=0.3.36'
+  version: '>=0.3.37'
   kind: ns.dependency
   meta:
-    comment: Board threads, subjects, sequence-targeted projection waits, retention and Unicode case folding.
+    comment: Board threads, sequence-targeted projection waits, and startup provisioning of the prefix registry.
   component: kickside/core
 - name: dep.kickside.jobs
   version: '>=0.1.83'

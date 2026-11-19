@@ -184,7 +184,7 @@ type PluginDecl = { schema: PluginSchema?, use: string, attachment_kind: string?
 type PluginProgress = { projection_after: string?, scanned: boolean?, registered: integer? }
 type PluginState = { plugin: string, attachment_id: string, impl_id: string, config: JsonObject, active: boolean, revision: integer, applied_revision: integer, lifecycle: PluginLifecycle, progress: PluginProgress? }
 type StateMaps = { [string]: { [string]: string } }
-type RemoveDecl = { fields: { string }?, item_types: { string }?, processes: { string }?, relation_types: { string }? }
+type RemoveDecl = { fields: { string }?, item_types: { string }?, processes: { string }?, relation_types: { string }?, visibility: boolean? }
 type Declaration = {
     visibility: Visibility?, key_prefix: string?, fields: { FieldDecl }?, item_types: { ItemTypeDecl }?, relation_types: { RelationDecl }?,
     processes: { ProcessDecl }?, plugins: { PluginDecl }?, scopes: { string }?, policy: PolicyDecl?, remove: RemoveDecl?,

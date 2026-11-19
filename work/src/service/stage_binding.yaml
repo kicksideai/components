@@ -25,6 +25,13 @@ entries:
     schema_validate: kickside.workflows.schema:schema_validate
     guard: kickside.work.command:guard
     types: kickside.work:types
+- name: stage_binding_preflight
+  kind: function.lua
+  meta: { private: true, comment: Validate Flow bindings before board registration. }
+  source: file://stage_binding.lua
+  method: preflight
+  modules: [sql]
+  imports: *binding_imports
 - name: stage_binding_selected
   kind: function.lua
   meta: { private: true, comment: Provision the owned launcher under the stored board identity before schema append. }
