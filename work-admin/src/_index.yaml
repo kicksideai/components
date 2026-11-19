@@ -8,7 +8,7 @@ entries:
     title: KickSide Work administration
     description: Board configuration on the platform System surface.
 - name: dep.kickside.work
-  version: '>=0.1.5'
+  version: '>=0.1.7'
   kind: ns.dependency
   component: kickside/work
 - name: dep.kickside.widgets

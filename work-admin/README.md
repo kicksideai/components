@@ -19,7 +19,7 @@ responsive layout, keyboard selection, zoom and pan.
 Bind `kickside.work.admin:ui_server` to the host HTTP service and
 `kickside.work.admin:api_router` to its authenticated router running
 `token_auth` and `endpoint_firewall`. Install and bind `kickside/work` and
-`kickside/widgets` as usual. The Work dependency floor is 0.1.5. This release
+`kickside/widgets` as usual. The Work dependency floor is 0.1.7. This release
 supports board ADMIN schema options, typed board admission, automated stage
 Flow bindings, and explicit visibility removal.
 
