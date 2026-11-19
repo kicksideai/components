@@ -230,7 +230,6 @@ entries:
     - kickside.work.jobs:types
     - kickside.work.migrations:01_work
     - kickside.work.migrations:02_saved_view_boards
-    - kickside.work.migrations:03_move_operation_keys
     - kickside.work.persist:access_rows
     - kickside.work.persist:append
     - kickside.work.persist:board_meta

@@ -62,14 +62,12 @@ function M.create(board_id: string, kind: string, key: string, hashed: string, d
     end
     local _, cerr = tx:commit()
     if cerr then db:release(); return nil, cerr end
-    local inserted = rows and rows[1] and id or nil
-    local owner, oerr = M.get(db, board_id, inserted, kind, key)
+    local owner, oerr = M.get(db, board_id, nil, kind, key)
     db:release()
     if oerr then return nil, oerr end
-    if not owner then
-        return nil, errors.new({ kind = errors.CONFLICT, message = "operation key was released during admission", details = { code = "operation_key_released" } })
+    if not owner or owner.request_hash ~= hashed then
+        return nil, errors.new({ kind = errors.CONFLICT, message = "operation key names another request", details = { code = "idempotency_conflict" } })
     end
-    if owner.request_hash ~= hashed then return nil, errors.new({ kind = errors.CONFLICT, message = "operation key names another request", details = { code = "idempotency_conflict" } }) end
     if not parked then
         local _, werr = jobs.wake_job(owner.job_id, { control = true, ensure_due = true })
         if werr then return nil, werr end
@@ -78,6 +76,9 @@ function M.create(board_id: string, kind: string, key: string, hashed: string, d
 end
 
 function M.reject_move_prepare(owner: types.Owner): error?
+    -- A confirmed prepare conflict leaves the job parked. Settle it before making its key reusable.
+    local _, cancel_err = jobs.cancel(owner.job_id)
+    if cancel_err then return cancel_err end
     local db, err = store.open()
     if not db then return err end
     local _, uerr = db:execute([[UPDATE kickside_work_operation SET status = 'failed', error_code = 'head_mismatch', key = NULL

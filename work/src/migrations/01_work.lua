@@ -13,7 +13,7 @@ end
 local POSTGRES = {
     [[CREATE TABLE kickside_work_board_meta (board_id text NOT NULL PRIMARY KEY, title text NOT NULL, description text NOT NULL, icon text NOT NULL, applied_seq bigint NOT NULL)]],
     [[CREATE TABLE kickside_work_operation (
-        board_id text NOT NULL, operation_id text NOT NULL, kind text NOT NULL, key text NOT NULL, request_hash text NOT NULL,
+        board_id text NOT NULL, operation_id text NOT NULL, kind text NOT NULL, key text, request_hash text NOT NULL,
         actor_id text NOT NULL, actor_context text NOT NULL, data text NOT NULL, status text NOT NULL,
         processed integer NOT NULL DEFAULT 0, counts text NOT NULL DEFAULT '{"applied":0,"unchanged":0,"invalid":0,"denied":0,"conflict":0,"unavailable":0}', error_code text, job_id text NOT NULL,
         PRIMARY KEY (board_id, operation_id), UNIQUE (board_id, kind, key))]],

@@ -50,38 +50,6 @@ print(json.dumps(db.execute("SELECT name FROM sqlite_master WHERE type='table' A
   assert.deepEqual(JSON.parse(result), [])
 })
 
-test('released move keys preserve operations and indexes when upgrading a Work database', async () => {
-  const initial = await statements('01_work', 'up')
-  const upgrade = await statements('03_move_operation_keys', 'up')
-  const result = await run('python3', ['-c', `
-import json, sqlite3, sys
-initial, upgrade = json.load(sys.stdin)
-db = sqlite3.connect(':memory:')
-for statement in initial: db.execute(statement)
-row = ('board', 'old-move', 'move', 'caller-key', 'request', 'actor', '{}', '{}', 'pending', 0, '{}', None, 'job')
-db.execute('INSERT INTO kickside_work_operation VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', row)
-def indexes():
-    return dict(db.execute("SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='kickside_work_operation' AND sql IS NOT NULL"))
-original_indexes = indexes()
-for statement in upgrade: db.execute(statement)
-assert indexes() == original_indexes
-assert db.execute('SELECT * FROM kickside_work_operation').fetchone() == row
-db.execute("UPDATE kickside_work_operation SET key=NULL, status='failed' WHERE operation_id='old-move'")
-fresh = list(row)
-fresh[1] = 'new-move'
-db.execute('INSERT INTO kickside_work_operation VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', fresh)
-try:
-    fresh[1] = 'duplicate'
-    db.execute('INSERT INTO kickside_work_operation VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', fresh)
-except sqlite3.IntegrityError:
-    pass
-else:
-    raise AssertionError('an active caller key must remain unique')
-print(db.execute('SELECT count(*) FROM kickside_work_operation').fetchone()[0])
-`], {}, JSON.stringify([initial, upgrade]))
-  assert.equal(result.trim(), '2')
-})
-
 test('board retention seeks directly to a deep cursor with a bounded page', async () => {
   const { readFile } = await import('node:fs/promises')
   const source = await readFile(resolve(root, 'src/retention/rows.lua'), 'utf8')

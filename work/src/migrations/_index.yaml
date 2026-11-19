@@ -32,16 +32,3 @@ entries:
   security:
     policies:
     - kickside.work.security:view_public_meta
-- name: 03_move_operation_keys
-  kind: function.lua
-  meta:
-    type: migration
-    private: true
-    tags: [work, board]
-    comment: Allow a rejected move to retain its operation ID after releasing its caller key.
-    timestamp: '2026-11-19T01:00:00Z'
-  source: file://03_move_operation_keys.lua
-  imports:
-    migration: wippy.migration:migration
-    operation_expiry: kickside.work.persist:operation_expiry
-  method: migrate
