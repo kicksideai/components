@@ -16,3 +16,19 @@ entries:
     operation_expiry: kickside.work.persist:operation_expiry
     migration: wippy.migration:migration
   method: migrate
+- name: 02_saved_view_boards
+  kind: function.lua
+  meta:
+    type: migration
+    private: true
+    tags: [work, board]
+    comment: Populate the board index for existing saved views.
+    timestamp: '2026-11-19T00:00:00Z'
+  source: file://02_saved_view_boards.lua
+  imports:
+    component: kickside.component:component
+    migration: wippy.migration:migration
+  method: migrate
+  security:
+    policies:
+    - kickside.work.security:view_public_meta
