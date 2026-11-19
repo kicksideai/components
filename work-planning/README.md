@@ -1,6 +1,9 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Work Planning
 
+Use Work Planning with the Work release that provides the atomic
+`expected_head` precondition.
+
 Install `kickside.work.planning:pack` through Work pack plan and apply. On a new
 board, Work board creation can install it in the same request. Installation
 requires board ADMIN. Agents can use Work's administration trait to list, plan,
@@ -23,12 +26,20 @@ choices. Adopted types keep their existing process and items.
 board and item IDs, plus the ID of a different planned or active sprint to roll
 unfinished issues into it. Omit the destination for the backlog. The preview
 returns the affected item IDs and versions, the Work snapshot, and a token bound
-to the caller and that snapshot. It leaves completed and canceled issues on the
-source sprint and excludes trash. The Work trait contributes
-`WorkPlanCloseSprint` on boards with Planning active.
+to the caller and that snapshot. Completed and canceled issues stay on the
+source sprint. Trash is excluded.
 
 Preview requires live board WRITE, visibility of the entire live sprint
 membership, and write access to the membership field on each unfinished issue.
 On boards with item restrictions, a proof that exceeds Work's 10,000-match
 count budget is refused. If 200 or more issues are unfinished, use Work bulk to
 reduce that set and preview again.
+
+Pass the unchanged `snapshot` and `token` with a unique `key` to
+`kickside.work.planning:sprints.close`. Work applies the rollover and the sprint
+transition in one command, and records the membership edits in item history.
+An intervening board write makes the preview stale. A retry of a committed
+request with the same key and preview returns the Work receipt.
+
+The Work trait contributes `WorkPlanCloseSprint` and `WorkCloseSprint` on boards
+with Planning active.

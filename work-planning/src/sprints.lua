@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local board_client = require("board_client")
 local codec = require("codec")
+local commands = require("commands")
 local consts = require("consts")
 local hash = require("hash")
 local query = require("query")
@@ -18,6 +19,7 @@ local FIELD = "current_sprint"
 type PreviewRequest = { board_id: string, sprint_id: string, rollover_id: string? }
 type Snapshot = PreviewRequest & { head: integer, generation: integer, sprint_version: integer, members: { reads.EditMember } }
 type Preview = { snapshot: Snapshot, token: string }
+type CloseRequest = Preview & { key: string }
 
 local function problem(kind: string, code: string, message: string): error
     return errors.new({ kind = kind, message = message, details = { code = code } })
@@ -103,6 +105,49 @@ function M.plan_close(input: unknown): (Preview?, error?)
     local token, token_err = codec.seal(digest(snapshot), token_context(snapshot.board_id))
     if token_err or not token then return nil, token_err end
     return { snapshot = snapshot, token = token }, nil
+end
+
+function M.close(input: unknown): (commands.ApplyResult?, error?)
+    local invalid = requests.parse("close", input, CONTRACT)
+    if invalid then return nil, invalid end
+    local request = input :: CloseRequest
+    local snapshot = request.snapshot
+    local held, token_err = codec.open(request.token, token_context(snapshot.board_id))
+    if token_err and token_err:kind() == errors.UNAVAILABLE then return nil, token_err end
+    if held ~= digest(snapshot) then
+        return nil, problem(errors.INVALID, "planning_snapshot_invalid", "This snapshot token does not match the caller and preview.")
+    end
+    local schema, schema_err = active_schema(snapshot.board_id)
+    if schema_err or not schema then return nil, schema_err end
+
+    -- A newer head can only match an existing receipt. Work handles both the
+    -- replay and the precondition in the same command path.
+    if schema.as_of == snapshot.head then
+        if schema.generation ~= snapshot.generation then return nil, stale() end
+        local selected, select_err = members(snapshot)
+        if select_err or not selected then return nil, select_err end
+        if snapshot.rollover_id then
+            local target, target_err = get(snapshot.board_id, snapshot.rollover_id)
+            if target_err and target_err:kind() ~= errors.NOT_FOUND then return nil, target_err end
+            if not target then return nil, ineligible() end
+        end
+    end
+    local ops: { commands.Op } = {}
+    for _, member in ipairs(snapshot.members) do
+        local op: commands.Op = { op = "set", item = member.item_id, expect_version = member.version }
+        if snapshot.rollover_id then
+            op.values = { [FIELD] = { board = snapshot.board_id, item = snapshot.rollover_id } }
+        else
+            op.clear = { FIELD }
+        end
+        ops[#ops + 1] = op
+    end
+    ops[#ops + 1] = { op = "transition", item = snapshot.sprint_id, transition = "close", expect_version = snapshot.sprint_version }
+    local result, err = board_client.call("apply", { board_id = snapshot.board_id, mode = "atomic",
+        key = "planning-close/" .. request.key, expected_head = snapshot.head, ops = ops, source = "planning",
+        origin = { close_key = request.key, sprint_id = snapshot.sprint_id, rollover_id = snapshot.rollover_id } })
+    if err and (err:details() or {}).code == "head_changed" then return nil, stale() end
+    return result :: commands.ApplyResult?, err
 end
 
 return M

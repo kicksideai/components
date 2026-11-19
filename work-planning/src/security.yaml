@@ -19,6 +19,7 @@ entries:
     - kickside.work.planning:schema_provider
     - kickside.work.planning:sprints
     - kickside.work.planning:plan_close
+    - kickside.work.planning:close
     actions: [registry.get, registry.find]
     effect: allow
 - name: module_runtime
@@ -33,6 +34,7 @@ entries:
     - kickside.work.planning:schema_provider
     - kickside.work.planning:sprints
     - kickside.work.planning:plan_close
+    - kickside.work.planning:close
     - kickside.work.planning:adopt_fields
     - kickside.work.planning:sprints_binding
     actions: [contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]

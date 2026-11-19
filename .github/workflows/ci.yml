@@ -251,6 +251,8 @@ jobs:
             cd "$source_root"
             version=$(jq -er --arg path work '.[$path]' .release-please-manifest.json)
             wippy publish --config work --version "$version" --dry-run --create --module-visibility private --module-type plugin
+            planning_version=$(jq -r '."work-planning" // "0.1.0"' .release-please-manifest.json)
+            wippy publish --config work-planning --version "$planning_version" --dry-run --create --module-visibility private --module-type plugin
         - module: work
           engine: postgres
           timeout_minutes: 45

@@ -206,6 +206,21 @@
       "pg_database": "kickside_test_work",
       "extra_tests": []
     },
+    "work-planning": {
+      "path": "work-planning",
+      "organization": "kickside",
+      "module": "work-planning",
+      "type": "plugin",
+      "visibility": "private",
+      "embed": [],
+      "targets": [],
+      "harness": "../work/test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "kickside_test_work",
+      "extra_tests": []
+    },
     "pim": {
       "path": "pim",
       "organization": "kickside",

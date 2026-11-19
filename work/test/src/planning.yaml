@@ -16,4 +16,5 @@ entries:
     test: wippy.test:test
     scoped: app:scoped
     fixture: app:fixture
+    operations: app:operation_steps
     steps: app:steps

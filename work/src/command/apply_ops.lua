@@ -210,9 +210,14 @@ local function seal_atomic(ctx: types.ApplyContext, writes: { types.Write }, out
     writes[#writes + 1] = claim_write(ctx, { outcomes = outcomes } :: domain.JsonObject)
 end
 
+local function head_changed(): error
+    return errors.new({ kind = errors.CONFLICT, message = "Board head changed.", details = { code = "head_changed" } })
+end
+
 local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
     local all: { integer } = {}
     for i = 1, #ctx.ops do all[i] = i end
+    local expected_head = ctx.request.expected_head
     for _ = 1, consts.LIMITS.prepare_retries + 1 do
         if clock.passed(ctx.until_at) then break end
         local hit, ferr = stored_claim(ctx)
@@ -220,6 +225,12 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
         if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
         local last_seq, cu_err = receipts.covered(ctx.board_id, ctx.until_at)
         if cu_err or not last_seq then return nil, cu_err end
+        if expected_head ~= nil and last_seq ~= expected_head then
+            local replay, replay_err = stored_claim(ctx)
+            if replay_err then return nil, replay_err end
+            if replay then return finish(ctx, stored_outcomes(replay), true, replay.seq, true) end
+            return nil, head_changed()
+        end
         local db, derr = store.open()
         if not db then return nil, derr end
         local actor, at = guard.actor_id(), guard.stamp_now()
@@ -236,6 +247,7 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
         local hit, recovery_err = stored_claim(ctx)
         if recovery_err then return nil, recovery_err end
         if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
+        if expected_head ~= nil and board.applied_seq > expected_head then return nil, head_changed() end
         if failed then
             for i = 1, #ctx.ops do
                 if plans[i].status == "applied" or plans[i].status == "unchanged" then roll_back(outcomes[i]) end
@@ -246,8 +258,9 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
         if #writes == 0 then return finish(ctx, outcomes, false, nil, nil) end
         for _, w in ipairs(writes) do
             -- The covered cursor includes sibling outputs the item projection skips.
-            if w.expect_head and (not w.thread_id or w.thread_id == ctx.board_id) then
-                w.expect_head = math.max(w.expect_head, last_seq)
+            if not w.thread_id or w.thread_id == ctx.board_id then
+                if expected_head ~= nil then w.expect_head = expected_head
+                elseif w.expect_head then w.expect_head = math.max(w.expect_head, last_seq) end
             end
             for _, raw in ipairs(w.events) do
                 local event = raw :: domain.Event
@@ -262,7 +275,9 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
         if ferr then return nil, ferr end
         if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
         local subject = mismatch_subject(aerr)
-        if not subject and not threads.mismatch(aerr, "head_mismatch") then return nil, errors.wrap(aerr, "board append failed") end
+        local stale_head = threads.mismatch(aerr, "head_mismatch")
+        if stale_head and expected_head ~= nil then return nil, head_changed() end
+        if not subject and not stale_head then return nil, errors.wrap(aerr, "board append failed") end
         for _, w in ipairs(writes) do
             if w.expect_subject == subject and w.caller_expect then
                 for i = 1, #ctx.ops do roll_back(outcomes[i]) end
@@ -390,6 +405,9 @@ function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?): (type
     if access_err then return nil, access_err end
     local mode = request.mode or "atomic"
     if mode ~= "atomic" and mode ~= "independent" then return nil, guard.invalid("mode must be atomic or independent") end
+    if request.expected_head ~= nil and (mode ~= "atomic" or math.tointeger(request.expected_head) == nil or request.expected_head < 0) then
+        return nil, guard.invalid("expected_head requires atomic mode and a nonnegative board head")
+    end
     if #request.ops == 0 then return nil, guard.invalid("ops required") end
     if #request.ops > consts.LIMITS.ops then return nil, guard.invalid("an apply takes at most " .. consts.LIMITS.ops .. " ops") end
     local key = request.key
@@ -404,7 +422,7 @@ function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?): (type
     if boundary and boundary.ns < until_at.ns then until_at = boundary end
     local ctx: types.ApplyContext = {
         settings = settings, c = c, board_id = board_id, request = request, ops = request.ops, source = source,
-        hashed = receipts.request_hash({ op = "apply", mode, request.ops, source, origin = request.origin }), base = key and ("apply/" .. key) or nil,
+        hashed = receipts.request_hash({ op = "apply", mode, request.ops, source, origin = request.origin, expected_head = request.expected_head }), base = key and ("apply/" .. key) or nil,
         until_at = until_at, generation = uuid.v4(),
     }
     if mode == "atomic" then return run_atomic(ctx) end
