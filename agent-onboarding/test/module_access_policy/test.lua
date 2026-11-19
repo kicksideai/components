@@ -89,9 +89,10 @@ local function define_tests()
             local store = assert(memory_stores.get(memory.component_id))
             test.eq(store.kb_type, "memory")
             test.eq(store.embedding_model, "class:embed")
+            test.is_nil(next(store.config), "personal memory has no explicit settings")
             local defaults = assert(memory_config.defaults())
-            for key, value in pairs(defaults) do test.eq(store.config[key], value, key) end
-            for key in pairs(store.config) do test.not_nil(defaults[key], key) end
+            local effective = assert(memory_config.effective(store.config))
+            for key, value in pairs(defaults) do test.eq(effective[key], value, key) end
             local agent = member_call(actor, "agent", agent_id).agent
             test.eq(#agent.traits, 1)
             test.eq(agent.traits[1], "kickside.memory:memory")
@@ -115,7 +116,7 @@ local function define_tests()
             local created = onboard(actor, {
                 title="Personal agent", traits={}, name="Extra knowledge", kb_type="unavailable",
                 engine="unavailable", embedding_model="unavailable", parent_id=parent.component_id,
-                config={extraction_model="unavailable", capture_conversation=false, arbitrary=true},
+                config={recall_max_items=20, extraction_model="unavailable", capture_conversation=false, arbitrary=true},
             })
             personal_memory(actor, created.component_id)
         end)
