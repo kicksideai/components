@@ -25,24 +25,28 @@ entries:
   source: file://model_seams_fixture.lua
   method: guard
   modules: [security]
+  imports: { types: 'kickside.work:types' }
 - name: unlisted_guard
   kind: function.lua
   meta: {type: kickside.work.guard, plugin: 'app:model_plugin'}
   source: file://model_seams_fixture.lua
   method: guard
   modules: [security]
+  imports: { types: 'kickside.work:types' }
 - name: model_group_guard
   kind: function.lua
   meta: {type: kickside.work.guard, plugin: 'app:model_plugin'}
   source: file://model_seams_fixture.lua
   method: group_guard
   modules: [security]
+  imports: { types: 'kickside.work:types' }
 - name: model_operand
   kind: function.lua
   meta: {type: kickside.work.operand, plugin: 'app:model_plugin'}
   source: file://model_seams_fixture.lua
   method: operand
   modules: [security]
+  imports: { types: 'kickside.work:types' }
 - name: model_search
   kind: registry.entry
   meta:
@@ -67,6 +71,7 @@ entries:
 - name: model_resolve_ids
   kind: function.lua
   source: file://model_seams_fixture.lua
+  imports: { types: 'kickside.work:types' }
   method: resolve_ids
   modules: [security]
 

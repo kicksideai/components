@@ -161,7 +161,7 @@ entries:
     effect: allow
 - name: prune_boundary_read
   kind: security.policy
-  meta: {private: true, service_only: true, producers: [kickside.work.retention:owner]}
+  meta: {private: true, service_only: true, producers: [kickside.work.retention:owner, kickside.work.extensions:plugin_batch]}
   policy:
     resources: [work.board]
     actions: threads.prune_boundary.read

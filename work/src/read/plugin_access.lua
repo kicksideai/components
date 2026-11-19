@@ -26,7 +26,7 @@ function M.context(request: types.PluginContextRequest): (types.PluginContext?, 
         if merr or not manifest then return nil, merr end
         local config, cerr = plugins.effective(manifest, selected.state.config)
         if cerr then return nil, cerr end
-        return { attachment_id = selected.state.attachment_id, config = config, lifecycle = selected.state.lifecycle,
+        return { attachment_id = selected.state.attachment_id, interface_version = manifest.interface_version, config = config, lifecycle = selected.state.lifecycle,
             projections = states.states(request.board_id, manifest) }, nil
     end)
 end

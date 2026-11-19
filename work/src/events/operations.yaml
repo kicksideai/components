@@ -115,6 +115,10 @@ entries:
         type: string
       state:
         type: string
+      schema_generation:
+        type: integer
+        minimum: 1
+        description: Board schema generation that encoded the numeric patch field IDs.
       patch:
         type: array
         items:

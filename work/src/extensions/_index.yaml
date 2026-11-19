@@ -39,7 +39,7 @@ entries:
 - name: plugin_batch
   kind: function.lua
   security:
-    policies: [kickside.work.security:plugin_rebuild_output_publish]
+    policies: [kickside.work.security:plugin_rebuild_output_publish, kickside.work.security:prune_boundary_read]
   source: file://plugin_projections.lua
   method: batch
   modules: [json]

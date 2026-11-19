@@ -118,7 +118,8 @@ local function plan_create(ctx: types.PrepareContext, op: types.Op): types.OpPla
     end
     local id = op.moved_from and op.item or uuid.v4()
     local id = id :: string
-    local body: domain.EventBody = { item = id, type = item_type.id, parent = parent and parent.item_id or nil, state = initial, patch = steps :: { domain.PatchStep } }
+    local body: domain.EventBody = { item = id, type = item_type.id, parent = parent and parent.item_id or nil, state = initial,
+        patch = steps :: { domain.PatchStep }, schema_generation = board.generation }
     body.moved_from, body.operation_id = op.moved_from, op.operation_id
     local events: { domain.Event } = { M.event(op.moved_from and consts.EVENTS.ITEM_MOVED_IN or EV.ITEM_CREATED, M.item_group(id), body) }
     local entered = process.state_of(p, initial)
@@ -160,7 +161,7 @@ local function plan_set(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     if #steps > 0 then
         document.apply_patch(work.document, steps)
         work.version = work.version + 1
-        events[#events + 1] = M.event(EV.ITEM_CHANGED, group, { item = item.item_id, patch = steps })
+        events[#events + 1] = M.event(EV.ITEM_CHANGED, group, { item = item.item_id, patch = steps, schema_generation = ctx.board.generation })
     end
     local p, process_err, model = store.process(ctx.db, ctx.board, item)
     if process_err or not p or not model then return M.failed(process_err :: error) end
