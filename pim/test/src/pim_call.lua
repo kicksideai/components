@@ -60,9 +60,12 @@ function M.run(input: unknown): (unknown, error?)
         return { results = results }, nil
     end
     if op == "settle" then
-        -- settle waits until the catalog projection covers the thread head.
+        -- Settle the selected projection at the thread head.
         local threads = open("kickside.core:threads")
-        return invoke(threads, "catch_up_projection", { thread_id = id, kind = "kickside.pim:catalog_model", max_ticks = 1000 })
+        return invoke(threads, "catch_up_projection", {
+            thread_id = id, kind = req.kind or "kickside.pim:catalog_model", projection_key = req.projection_key,
+            max_ticks = req.max_ticks or 1000,
+        })
     end
     if op == "projection_padding" then
         local client = open("kickside.core:threads")
