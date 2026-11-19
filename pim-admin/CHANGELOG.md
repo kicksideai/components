@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.3](https://github.com/kicksideai/components/compare/pim-admin-v0.1.2...pim-admin-v0.1.3) (2026-11-19)
+
+
+### Features
+
+* **pim-admin:** restore form layout editor and schema history ([#141](https://github.com/kicksideai/components/issues/141)) ([d3a23ef](https://github.com/kicksideai/components/commit/d3a23ef3f90f5448b05ee2be3f9cb30b495780a0))
+
+
+### Bug Fixes
+
+* **pim:** preserve source ordering, proposals and audit history ([#157](https://github.com/kicksideai/components/issues/157)) ([5e1a32a](https://github.com/kicksideai/components/commit/5e1a32a3327a29b1b2d87b0cccef377d51ed818f))
+* **ui:** adopt SDK 0.0.70 lifecycle helpers ([#143](https://github.com/kicksideai/components/issues/143)) ([7f09eb7](https://github.com/kicksideai/components/commit/7f09eb72ad77984c00cfeb3b161f467b4d14775b))
+
 ## [0.1.2](https://github.com/kicksideai/components/compare/pim-admin-v0.1.1...pim-admin-v0.1.2) (2026-11-17)
 
 

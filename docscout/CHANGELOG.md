@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.18](https://github.com/kicksideai/components/compare/docscout-v0.1.17...docscout-v0.1.18) (2026-11-19)
+
+
+### Bug Fixes
+
+* **docscout:** fold quote formatting without dropping semantic characters ([#138](https://github.com/kicksideai/components/issues/138)) ([9234193](https://github.com/kicksideai/components/commit/9234193438eeb3ec87385ee7a673ffc6816b5cd3))
+* **docscout:** require a value and quotes in found extraction replies ([#137](https://github.com/kicksideai/components/issues/137)) ([4874b75](https://github.com/kicksideai/components/commit/4874b75db3ab9da10889b7ec5907e25ef302b2c6))
+* **ui:** adopt SDK 0.0.70 lifecycle helpers ([#143](https://github.com/kicksideai/components/issues/143)) ([7f09eb7](https://github.com/kicksideai/components/commit/7f09eb72ad77984c00cfeb3b161f467b4d14775b))
+
 ## [0.1.17](https://github.com/kicksideai/components/compare/docscout-v0.1.16...docscout-v0.1.17) (2026-11-17)
 
 

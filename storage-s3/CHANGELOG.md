@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/kicksideai/components/compare/storage-s3-v0.2.3...storage-s3-v0.2.4) (2026-11-19)
+
+
+### Bug Fixes
+
+* **ui:** adopt SDK 0.0.70 lifecycle helpers ([#143](https://github.com/kicksideai/components/issues/143)) ([7f09eb7](https://github.com/kicksideai/components/commit/7f09eb72ad77984c00cfeb3b161f467b4d14775b))
+
 ## [0.2.3](https://github.com/kicksideai/components/compare/storage-s3-v0.2.2...storage-s3-v0.2.3) (2026-11-17)
 
 
