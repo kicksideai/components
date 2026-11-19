@@ -284,7 +284,7 @@ local function define()
             release(h, "RDG-moss-40")
             h.call("apply", { items = { { product = { sku = "RDG-moss-40" }, expect_version = item(h, "RDG-moss-40").product.version, status = "draft" } } })
             test.eq(#h.call("query", { published = { channel = "web" } }).items, 1)
-            test.eq(#h.call("query", { published = { channel = "nope" } }).items, 0)
+            test.eq(#h.call("query", { published = {} }).items, 1)
         end)
 
         test.it("publishes again on a channel that was removed and declared anew", function()
@@ -295,6 +295,8 @@ local function define()
             local states: { [string]: string } = {}
             for _, pub in ipairs(item(h, "RDG-moss-40").publications) do states[pub.channel] = pub.state end
             test.eq(states.web, "withdrawn")
+            local _, query_err = h.call("query", { published = { channel = "web" } })
+            test.eq(assert(query_err):details().code, "unknown_channel")
             h.call("apply_schema", { declaration = { channels = { { id = "web", requirements = { "web" } } } } })
             test.eq(release(h, "RDG-moss-40").outcomes[1].outcome, "released")
             states = {}

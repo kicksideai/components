@@ -2066,6 +2066,16 @@ entries:
       fixture: app:fixture
       steps: app:steps
 
+  - name: product_http_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 600s, comment: HTTP product lookup, schema preconditions and publication filters. }
+    source: file://product_http_test.lua
+    method: run
+    modules: [json]
+    imports:
+      scoped: app:scoped
+      test: wippy.test:test
+
   - name: schema_fixture
     kind: library.lua
     source: file://schema_fixture.lua
