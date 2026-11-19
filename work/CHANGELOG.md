@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.4](https://github.com/kicksideai/components/compare/work-v0.1.3...work-v0.1.4) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** declare the registry admin grant as an object literal ([#140](https://github.com/kicksideai/components/issues/140)) ([7ff6406](https://github.com/kicksideai/components/commit/7ff6406c64725020adfc9a6ce6fec3d43cd7c7e7))
+* **work:** enforce access across reads and stage delivery ([#159](https://github.com/kicksideai/components/issues/159)) ([6b440ec](https://github.com/kicksideai/components/commit/6b440ecfad04093ce4bf6e01aee8cdb20f96c45e))
+* **work:** enforce schema admission and pack contracts ([#150](https://github.com/kicksideai/components/issues/150)) ([25e4f21](https://github.com/kicksideai/components/commit/25e4f21f2b8eb6aeddc22642c8cbdf850f3803e3))
+* **work:** keep board projections advancing and scoped ([#148](https://github.com/kicksideai/components/issues/148)) ([19b47a6](https://github.com/kicksideai/components/commit/19b47a64da7b65fa10a7879b5287cb8488c1b967))
+* **work:** pace fleet retention rediscovery ([#163](https://github.com/kicksideai/components/issues/163)) ([d1e328d](https://github.com/kicksideai/components/commit/d1e328d7fb510c72904bce5b8a485580c29f2aa5))
+* **work:** preserve process outcomes and decisions ([#153](https://github.com/kicksideai/components/issues/153)) ([dddb0f1](https://github.com/kicksideai/components/commit/dddb0f16242970ab8ea9bfff5e7a011c7020da8f))
+* **work:** preserve query order and index seeks under read budgets ([#160](https://github.com/kicksideai/components/issues/160)) ([77b8bb4](https://github.com/kicksideai/components/commit/77b8bb4ad63da177ac1a5044e65f8e10f63720c2))
+* **work:** preserve retention and paging continuity ([#155](https://github.com/kicksideai/components/issues/155)) ([5c14750](https://github.com/kicksideai/components/commit/5c147502d53afac63d73a94c7ea69fd5f599f922))
+* **work:** synchronize stage launches and preserve visit deadlines ([#156](https://github.com/kicksideai/components/issues/156)) ([466a2fd](https://github.com/kicksideai/components/commit/466a2fdfddb34118bdc566ee38d6407aeff72daa))
+
 ## [0.1.3](https://github.com/kicksideai/components/compare/work-v0.1.2...work-v0.1.3) (2026-11-17)
 
 

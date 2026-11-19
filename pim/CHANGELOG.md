@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.3](https://github.com/kicksideai/components/compare/pim-v0.1.2...pim-v0.1.3) (2026-11-19)
+
+
+### Bug Fixes
+
+* **pim:** bound query walks and seek feed pages ([#161](https://github.com/kicksideai/components/issues/161)) ([a2ce419](https://github.com/kicksideai/components/commit/a2ce4193a9ed2e8fee745c183c447cf472a6ffa2))
+* **pim:** enforce plugin seams and committed catalog discovery ([#151](https://github.com/kicksideai/components/issues/151)) ([e30e938](https://github.com/kicksideai/components/commit/e30e9388910487cba381068ebff2e1c1647a681e))
+* **pim:** enforce retention and portable term boundaries ([#154](https://github.com/kicksideai/components/issues/154)) ([54499f4](https://github.com/kicksideai/components/commit/54499f4aa62f06a8e0769c449a15f8c75f41f0b5))
+* **pim:** keep term merge and import resume within deadline ([#146](https://github.com/kicksideai/components/issues/146)) ([0373bf0](https://github.com/kicksideai/components/commit/0373bf00957e29f4d24de3cb913a17f953c43745))
+* **pim:** plan schema changes by attribute identity ([#149](https://github.com/kicksideai/components/issues/149)) ([9f243cc](https://github.com/kicksideai/components/commit/9f243cc2e80a014d70cb3b0db7cbf421a325f01f))
+* **pim:** preserve source ordering, proposals and audit history ([#157](https://github.com/kicksideai/components/issues/157)) ([5e1a32a](https://github.com/kicksideai/components/commit/5e1a32a3327a29b1b2d87b0cccef377d51ed818f))
+* **pim:** validate initial schema before catalog registration ([#164](https://github.com/kicksideai/components/issues/164)) ([b464dfa](https://github.com/kicksideai/components/commit/b464dfac805791b26c9df7ef762763b46ee78124))
+* **pim:** validate product writes against their final values ([#152](https://github.com/kicksideai/components/issues/152)) ([2150447](https://github.com/kicksideai/components/commit/2150447ec1dec8748263363028a05d947476d46e))
+* **pim:** validate schema indexes and track rebuilds ([#158](https://github.com/kicksideai/components/issues/158)) ([7f92252](https://github.com/kicksideai/components/commit/7f92252d4cd918d930d729f45476fea4ad5b744e))
+* **pim:** validate vocabulary and schema declarations before apply ([#147](https://github.com/kicksideai/components/issues/147)) ([6116972](https://github.com/kicksideai/components/commit/61169720436cce8fab9716158a961c83212f4816))
+
 ## [0.1.2](https://github.com/kicksideai/components/compare/pim-v0.1.1...pim-v0.1.2) (2026-11-17)
 
 

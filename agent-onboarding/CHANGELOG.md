@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.13](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.12...agent-onboarding-v0.1.13) (2026-11-19)
+
+
+### Bug Fixes
+
+* **ui:** adopt SDK 0.0.70 lifecycle helpers ([#143](https://github.com/kicksideai/components/issues/143)) ([7f09eb7](https://github.com/kicksideai/components/commit/7f09eb72ad77984c00cfeb3b161f467b4d14775b))
+
 ## [0.1.12](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.11...agent-onboarding-v0.1.12) (2026-11-17)
 
 
