@@ -47,7 +47,7 @@ type GetResult = ReadStamp & {
 }
 type ChangesCursor = { floor: integer?, access: string?, seq: integer, item_id: string, position: string? }
 type ChangesRequest = { budget: ReadBudget?, selection: domain.Where?, board_id: string, cursor: ChangesCursor?, limit: integer?, min_seq: integer? }
-type ChangeItem = { awaiting: AwaitingView?, gate: GateView?,
+type ChangeItem = { awaiting: AwaitingView?, gate: GateView?, rank: string?,
     item_id: string, op: string, updated_seq: integer, key: string?, type: string?, visit: integer?, process_generation: integer?, state: string | { [string]: string } | nil, category: string?, parent: string?,
     comments_truncated: boolean?, comments: { domain.CommentRow }?, version: integer?, value_states: { [string]: string }?, values: { [string]: unknown }?,
 }
@@ -97,8 +97,9 @@ type Snapshot<T> = (Executor, domain.Board, string) -> (T?, error?)
 
 type Redactor = (string, unknown) -> (unknown, error?)
 
-type TransitionCandidate = { item: domain.Item, transition: domain.Transition, region: string? }
-type TransitionGroup = { candidates: { TransitionCandidate }, items: { domain.Item }, where: unknown, require: { string } }
+type TransitionCandidate = { item: domain.Item, root: domain.Item, transition: domain.Transition, region: string? }
+type TransitionGroup = { candidates: { TransitionCandidate }, items: { domain.Item }, where: unknown, require: { string },
+    model: domain.Model, process: domain.Process }
 return { AwaitingView = AwaitingView, GateView = GateView, ApprovalView = ApprovalView, StageRun = StageRun, StageRunsRequest = StageRunsRequest, StageRunsResult = StageRunsResult, JsonObject = JsonObject, PluginFeedRequest = PluginFeedRequest, PluginFeed = PluginFeed, PluginContext = PluginContext, PluginSelection = PluginSelection, PluginOptions = PluginOptions, PluginContextRequest = PluginContextRequest, TransitionCandidate = TransitionCandidate, TransitionGroup = TransitionGroup, Redactor = Redactor, BudgetUsage = BudgetUsage, ReadBudget = ReadBudget, ReadAllowance = ReadAllowance, SchemaPlugin = SchemaPlugin, QueryGroupRow = QueryGroupRow, QueryGroup = QueryGroup,
     Count = Count, Plan = Plan, BoundedPlan = BoundedPlan, GroupBucket = GroupBucket, CrossCandidate = CrossCandidate,
     ReferenceOrder = ReferenceOrder, CrossCursor = CrossCursor, QueryPage = QueryPage,

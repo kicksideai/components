@@ -5,6 +5,10 @@ local process = require("process")
 local seams = require("seams")
 local conditions = require("conditions")
 local predicates = require("predicates")
+local flow = require("flow")
+local prepare = require("prepare")
+local when = require("when")
+local guard = require("guard")
 local domain = require("domain")
 local types = require("types")
 local M = {}
@@ -42,12 +46,12 @@ function M.list(tx: types.Executor, board: domain.Board, items: { domain.Item },
                                 local field = board.model.by_id[model.fields[code].id]
                                 required[#required + 1] = field and field.code or code
                             end
-                            group = { candidates = {}, items = {}, where = where, require = required }
+                            group = { candidates = {}, items = {}, where = where, require = required, model = model, process = definition }
                             by_key[key] = group
                             groups[#groups + 1] = group
                         end
                         group.items[#group.items + 1] = active
-                        group.candidates[#group.candidates + 1] = { item = active, transition = t, region = region }
+                        group.candidates[#group.candidates + 1] = { item = active, root = item, transition = t, region = region }
                     end
                 end
                 return nil
@@ -61,10 +65,22 @@ function M.list(tx: types.Executor, board: domain.Board, items: { domain.Item },
             end
         end
     end
+    local full: { string } = {}
+    if #groups > 0 then
+        for state, rule in pairs(board.compiled.policy.wip or {}) do
+            if rule.hard then
+                local exceeds, err = store.exceeds_wip(tx, board.board_id, state, rule.limit, 1)
+                if err then return nil, err end
+                if exceeds then full[#full + 1] = state end
+            end
+        end
+    end
+    local actor = conditions.actor()
+    local now = #full > 0 and guard.stamp_now() or nil
     for _, group in ipairs(groups) do
         local matches: { [string]: boolean }? = nil
         if group.where ~= nil then
-            local selected, err = conditions.matching(tx, board, group.items, group.where, conditions.actor(), dialect, nil, nil, true)
+            local selected, err = conditions.matching(tx, board, group.items, group.where, actor, dialect, nil, nil, true)
             if err or not selected then return nil, err end
             matches = selected
         end
@@ -73,8 +89,27 @@ function M.list(tx: types.Executor, board: domain.Board, items: { domain.Item },
                 local t = candidate.transition
                 local admitted, _, err = seams.guard(board, candidate.item, t, t.guards)
                 if err then return nil, err end
-                local list = admitted and out[candidate.item.item_id] or {}
-                list[#list + 1] = { id = t.id, name = t.name, to = t.to, require = group.require, region = candidate.region }
+                if admitted and now then
+                    local ctx = prepare.context(tx, board, actor :: string, now, dialect)
+                    local projected = flow.copy(candidate.root)
+                    local events, _, err = flow.transition(board, projected, t, {}, ctx.actor, now, group.process, group.model,
+                        candidate.region, when.check(ctx, group.model), ctx.auto)
+                    if err then return nil, err end
+                    -- Transitions that need form values remain discoverable. For a runnable edge,
+                    -- use the same settled item as command capacity admission, including regions.
+                    if events then
+                        for _, state in ipairs(full) do
+                            if process.holds_state(projected, state) and not process.holds_state(candidate.root, state) then
+                                admitted = false
+                                break
+                            end
+                        end
+                    end
+                end
+                if admitted then
+                    local list = out[candidate.item.item_id]
+                    list[#list + 1] = { id = t.id, name = t.name, to = t.to, require = group.require, region = candidate.region }
+                end
             end
         end
     end

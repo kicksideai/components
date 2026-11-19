@@ -95,7 +95,8 @@ local function conflict_outcomes(outcomes: { types.Outcome }, write: types.Write
         local o = outcome_of(i, plans[i] :: types.OpPlan)
         o.status = "conflict"
         o.version = nil
-        o.findings = { { code = "version_mismatch", message = "item changed since the command read it" } }
+        local subject = o.comment and "comment" or "item"
+        o.findings = { { code = "version_mismatch", message = subject .. " changed since the command read it" } }
         outcomes[i] = o
     end
 end

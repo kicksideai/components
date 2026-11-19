@@ -47,6 +47,9 @@ local function plan_comment(ctx: types.PrepareContext, op: types.Op): types.OpPl
     local mentions, merr = mentions_of(op.mentions)
     if merr or not mentions then return merr or M.invalid("invalid_mentions", "invalid mentions", "mentions") end
     if op.comment == nil then
+        if op.expect_comment_version ~= nil then
+            return M.invalid("comment_required", "expect_comment_version requires a comment to edit or delete", "comment")
+        end
         local count, count_err = store.count(ctx.db, "SELECT COUNT(*) AS n FROM kickside_work_comment WHERE board_id=$1 AND item_id=$2 AND deleted=0", { ctx.board.board_id, item.item_id })
         if count_err then return M.failed(count_err) end
         local slot = "comments:" .. item.item_id
@@ -78,6 +81,12 @@ local function plan_comment(ctx: types.PrepareContext, op: types.Op): types.OpPl
     end
     if comment.deleted then
         return M.result("invalid", group, "unknown_comment", "unknown comment " .. id, "comment")
+    end
+    if op.expect_comment_version ~= nil and op.expect_comment_version ~= comment.version then
+        local conflict = M.result("conflict", group, "version_mismatch", "comment " .. id .. " is at version " .. comment.version,
+            "expect_comment_version")
+        conflict.item, conflict.comment = item.item_id, id
+        return conflict
     end
     local plan: types.OpPlan = { status = "applied", events = {}, group = group, item = item.item_id, comment = id }
     plan.expected = ctx.comment_base[id]

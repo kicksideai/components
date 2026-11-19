@@ -220,19 +220,12 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
     local steps, serr = value_steps(ctx.board, item_type, work.document, op)
     if serr or not steps then return serr or M.invalid("invalid_value", "invalid values") end
     document.apply_patch(work.document, steps)
-    local events: { domain.Event } = {}
-    local taken, ferr, terr = flow.take(ctx.board, work, t, steps, ctx.actor, ctx.now, false, p, model, op.region, check, events)
+    local events, ferr, terr = flow.transition(ctx.board, work, t, steps, ctx.actor, ctx.now, p, model, op.region, check, ctx.auto, op.force)
     if terr then return M.failed(terr) end
     if ferr then return M.refused(group, ferr) end
-    local settled, serr2, aerr = flow.settle(ctx.board, work, ctx.actor, ctx.now, check, p, model, ctx.auto)
-    if aerr then return M.failed(aerr) end
-    if serr2 then return M.refused(group, serr2) end
-    if taken and op.force then taken.body.force = true end
-    events[#events + 1] = taken :: domain.Event
-    for _, e in ipairs(settled :: { domain.Event }) do events[#events + 1] = e end
     item.work = work.work
     item.document, item.state, item.category, item.visit, item.version = work.document, work.state, work.category, work.visit, work.version
-    return M.done(ctx, item, group, events)
+    return M.done(ctx, item, group, events :: { domain.Event })
 end
 
 
