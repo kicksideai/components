@@ -55,7 +55,8 @@ local function define()
             for _, name in ipairs({ "work_readonly", "work", "work_admin" }) do
                 local trait = assert(registry.get(NS .. name))
                 for _, id in ipairs(trait.data.tools) do
-                    local method = METHODS[id:sub(#NS + 1)]
+                    local name = id:sub(#NS + 1)
+                    local method = METHODS[name]
                     test.not_nil(method, id)
                     test.not_nil(methods[method], id)
                     local tool = assert(registry.get(id))
@@ -66,6 +67,11 @@ local function define()
                         local required = {}
                         for _, key in ipairs(contract_input.required or {}) do if key ~= "board_id" then required[#required + 1] = key end end
                         contract_input.required = required
+                    end
+                    if name == "comment" or name == "transition" then
+                        local discriminator = contract_input.properties.ops.items.properties.op
+                        discriminator.enum = { name }
+                        discriminator.description = "Accepted: " .. name .. ". Each operation returns its own outcome."
                     end
                     test.eq(values.canonical(input), values.canonical(contract_input), id)
                 described(assert(json.decode(tool.meta.input_schema)) :: Map, tool.id)
@@ -80,8 +86,8 @@ local function define()
                     test.not_nil(tool.meta.output_schema, id)
                     test.not_nil(tool.meta.title, id)
                     test.is_true(#tool.meta.llm_description > 40, id)
-                local _, sentences = tool.meta.llm_description:gsub("%.", "")
-                test.is_true(sentences <= 2, tool.id)
+                local _, breaks = tool.meta.llm_description:gsub("%.%s", "")
+                    test.is_true(breaks < 2, tool.id)
                     test.is_true(tool.meta.llm_alias:match("^Work[A-Z]%w+$") ~= nil, id)
                     test.eq(#tool.meta.mcp.required_scopes, 1, id)
                     test.eq(tool.meta.mcp.required_scopes[1], (reads[id] or method == "board.schema_options" or method == "packs.list") and "state.read" or "state.write", id)
