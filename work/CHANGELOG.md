@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/kicksideai/components/compare/work-v0.1.6...work-v0.1.7) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** cancel the parked job when a move prepare conflicts ([#175](https://github.com/kicksideai/components/issues/175)) ([26a6a96](https://github.com/kicksideai/components/commit/26a6a96c575d044b32dcdb0866a9dc0ef29bf2bb))
+
 ## [0.1.6](https://github.com/kicksideai/components/compare/work-v0.1.5...work-v0.1.6) (2026-11-19)
 
 
