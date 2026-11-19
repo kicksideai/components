@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/kicksideai/components/compare/work-v0.1.5...work-v0.1.6) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** release move keys after prepare conflicts ([#173](https://github.com/kicksideai/components/issues/173)) ([d9a999a](https://github.com/kicksideai/components/commit/d9a999ab0c6d5d723d8f2dbc65038e913787e3a9))
+
 ## [0.1.5](https://github.com/kicksideai/components/compare/work-v0.1.4...work-v0.1.5) (2026-11-19)
 
 
