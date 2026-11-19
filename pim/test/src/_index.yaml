@@ -2282,6 +2282,7 @@ entries:
       values: kickside.pim.domain:values
       pipeline: kickside.pim.command:pipeline
       writer: kickside.pim.command:writer
+      types: kickside.pim:types
 
   - name: trash_retention_test
     kind: function.lua

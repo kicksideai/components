@@ -60,6 +60,24 @@ local function define()
             end
         end)
 
+        test.it("replays a matching guarded receipt published after the first lookup", function()
+            local h = fixture.catalog({ bare = true })
+            local generation = assert(h.call("get_schema", {})).schema_generation
+            local request = { expected_generation = generation, items = { create("CONCURRENT-GUARDED") },
+                idempotency = { namespace = "ui", key = "concurrent-guarded" } }
+            local duplicate, duplicate_err = h.call("apply_with_interleaved_guarded_receipt", { request = request })
+            local control = assert(h.call("apply", request))
+            test.is_true(control.replayed, "ordinary retry must see the committed matching receipt")
+            test.eq(control.outcomes[1].outcome, "created")
+            local stale, stale_err = apply(h, { create("NEVER-COMMITTED") }, "ui", "never-committed", { expected_generation = generation })
+            test.is_nil(stale)
+            test.eq(assert(stale_err):details().code, "schema_generation_conflict")
+            test.is_nil(duplicate_err, duplicate_err and tostring(duplicate_err:details().code) or "interleaved receipt error")
+            test.is_true(assert(duplicate).replayed)
+            test.eq(assert(duplicate).seq, control.seq)
+            test.eq(assert(duplicate).outcomes[1].product_id, control.outcomes[1].product_id)
+        end)
+
         test.it("refuses the same key for a different request shape", function()
             local h = fixture.catalog()
             fixture.boot(h)
