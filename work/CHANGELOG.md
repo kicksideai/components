@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/kicksideai/components/compare/work-v0.1.4...work-v0.1.5) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** harden public API correctness ([#170](https://github.com/kicksideai/components/issues/170)) ([449814c](https://github.com/kicksideai/components/commit/449814c81a06d0773d0c50bde92f4e80e4c82b07))
+
 ## [0.1.4](https://github.com/kicksideai/components/compare/work-v0.1.3...work-v0.1.4) (2026-11-19)
 
 
