@@ -15,8 +15,8 @@ modules:
       version: 0.3.8
       hash: c297c02ca276a5963bd688b6b022e54fcfe03450e30cf496481c14f963ae8134
     - name: kickside/core
-      version: 0.3.21
-      hash: 95528870ccc4463aa2784d8a75b4a41796f84a28ac7e31dfe8e6669ddbf4627c
+      version: 0.3.22
+      hash: e79fdadd33a6dfad117a28a7ec2899a61b20d091a6b3185724705490758e1b49
     - name: kickside/execution
       version: 0.2.8
       hash: 7ffa847541cce7d03424bad43828fb08e9b077b6a08b3fe857cd0a22fa589e97
