@@ -43,6 +43,10 @@ function M.run(input: unknown): (unknown, error?)
         conflict_fixture.configure(id, req.changed_generation == true)
         return conflict_writer.apply(id, req.request)
     end
+    if op == "apply_with_interleaved_guarded_receipt" then
+        conflict_fixture.interleave_guarded_receipt(id, req.request)
+        return conflict_writer.apply(id, req.request)
+    end
     if op == "decide_with_source_revocation" then
         conflict_fixture.revoke_source(id, req.declaration, req.timing)
         return conflict_writer.decide(id, req.request)
@@ -60,9 +64,12 @@ function M.run(input: unknown): (unknown, error?)
         return { results = results }, nil
     end
     if op == "settle" then
-        -- settle waits until the catalog projection covers the thread head.
+        -- Settle the selected projection at the thread head.
         local threads = open("kickside.core:threads")
-        return invoke(threads, "catch_up_projection", { thread_id = id, kind = "kickside.pim:catalog_model", max_ticks = 1000 })
+        return invoke(threads, "catch_up_projection", {
+            thread_id = id, kind = req.kind or "kickside.pim:catalog_model", projection_key = req.projection_key,
+            max_ticks = req.max_ticks or 1000,
+        })
     end
     if op == "projection_padding" then
         local client = open("kickside.core:threads")

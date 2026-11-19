@@ -143,8 +143,13 @@ function M.read(method: string, params: ReadParams, addressed: boolean?)
         end
     end
     if params.product then
-        local sku, id = req:query("sku"), req:query("id")
-        if sku and sku ~= "" then input.product = { sku = sku } elseif id and id ~= "" then input.product = { id = id } end
+        local id = req:query("id")
+        if id and id ~= "" then
+            input.product = { id = id }
+        else
+            local sku = req:query("sku")
+            if sku and sku ~= "" then input.product = { sku = sku } end
+        end
     end
     local status, body = call(method, input)
     respond(res, status, body)

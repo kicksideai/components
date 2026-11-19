@@ -308,4 +308,17 @@ function M.settle(board: types.Board, item: types.Item, actor: string, at: strin
     end
 end
 
+function M.transition(board: types.Board, item: types.Item, t: types.Transition, steps: { types.PatchStep }, actor: string, at: string,
+    p: types.Process, model: types.Model, region: string?, check: types.WhenCheck, budget: types.AutoBudget?, force: boolean?): ({ types.Event }?, types.Finding?, error?)
+    local events: { types.Event } = {}
+    local taken, finding, err = M.take(board, item, t, steps, actor, at, false, p, model, region, check, events)
+    if err or finding or not taken then return nil, finding, err end
+    local settled, refusal, settle_err = M.settle(board, item, actor, at, check, p, model, budget)
+    if settle_err or refusal or not settled then return nil, refusal, settle_err end
+    if force then taken.body.force = true end
+    events[#events + 1] = taken
+    for _, event in ipairs(settled) do events[#events + 1] = event end
+    return events, nil, nil
+end
+
 return M

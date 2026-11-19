@@ -410,6 +410,7 @@ entries:
   source: file://move.lua
   imports:
     peers: kickside.work.read:peers
+    threads: kickside.work.persist:threads
     domain: kickside.work:types
     planner: kickside.work.command:move_plan
     rows: kickside.work.persist:operation_rows

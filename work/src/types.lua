@@ -307,7 +307,7 @@ type ProjectionInput = {
     thread_id: string?, range: ProjectionRange?, events: { RawEvent }?, projection: { body: ProjectionBody? }?,
 }
 
-type BoardAccess = { read: boolean, write: boolean, admin: boolean }
+type BoardAccess = { read: boolean, write: boolean, delete: boolean, admin: boolean }
 
 type BoardMeta = { title: string, description: string, icon: string, applied_seq: integer? }
 type ComponentMeta = { [string]: unknown }

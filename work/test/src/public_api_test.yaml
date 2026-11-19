@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app
+entries:
+- name: public_api_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: work_public_api
+  source: file://public_api_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
+    steps: app:steps

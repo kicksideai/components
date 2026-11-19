@@ -141,7 +141,8 @@ local function create(request: types.CreateViewRequest, component_id: string?): 
     local service, serr = component.get_service()
     if serr or not service then return nil, serr :: error? end
     local out, err = service:register({ component_id = component_id, impl_id = KIND, parent_id = not request.personal and request.board_id or nil,
-        private_context = { board_id = request.board_id, view = request.view }, meta = { title = request.title or "View" } })
+        private_context = { board_id = request.board_id, view = request.view },
+        meta = { title = request.title or "View", board_id = request.board_id } })
     if err then return nil, err :: error end
     local eerr = component_envelope.error_of(out :: component_types.ServiceEnvelope, "register")
     if eerr then return nil, eerr end
@@ -222,7 +223,6 @@ function M.get(input: unknown): (types.SavedView?, error?)
     return { view_id = request.view_id, board_id = context.board_id, title = meta.title or "View", view = context.view }, nil
 end
 
--- list walks only actor-readable views and filters their private board reference.
 function M.list(input: unknown): (types.ViewList?, error?)
     local perr = requests.parse("list", input, "kickside.work:view")
     if perr then return nil, perr end
@@ -233,22 +233,29 @@ function M.list(input: unknown): (types.ViewList?, error?)
     if not offset or offset < 0 then return nil, invalid("after is a view-list cursor") end
     local limit = request.limit or 100
     local rows, err = component.query({ impl_ids = { KIND }, access_mask = component.ACCESS.READ :: integer,
-        include = { meta = true }, order_by = { field = "created_at", direction = "ASC" }, offset = offset, limit = limit + 1 })
-    if err then return nil, err :: error end
+        meta = { board_id = request.board_id }, include = { meta = false },
+        order_by = { field = "created_at", direction = "ASC" }, offset = offset, limit = limit + 1 })
+    if err or not rows then return nil, err :: error? end
+    local ids: { string } = {}
+    for i = 1, math.min(#rows, limit) do ids[i] = rows[i].component_id end
     local views: { types.SavedView } = {}
-    for i = 1, math.min(#(rows or {}), limit) do
-        local row = rows[i]
-        local view_id = row.component_id
-        if not view_id then return nil, invalid("view row has no component id") end
-        local context, cerr = component.get_context(view_id, component.ACCESS.READ)
-        if cerr then return nil, cerr :: error end
-        if not context then return nil, invalid("view context is unavailable") end
-        local held = context :: types.ViewContext
-        if held.board_id == request.board_id then
-            local meta = row.meta or {}
-            views[#views + 1] = { view_id = view_id, board_id = held.board_id, title = meta.title or "View", view = held.view }
+    if #ids == 0 then return { views = views }, nil end
+    -- Component gates batch private-context reads separately. Hydrate only the admitted page.
+    local page, perr = component.list_system({ component_ids = ids, impl_ids = { KIND },
+        include = { meta = true, private_context = true }, limit = #ids })
+    if perr or not page then return nil, perr :: error? end
+    local by_id: { [string]: component_types.ComponentRow } = {}
+    for _, row in ipairs(page) do by_id[row.component_id] = row end
+    for _, id in ipairs(ids) do
+        local row = by_id[id]
+        if not row then return nil, access.changed() end
+        local held = row.private_context :: types.ViewContext?
+        if not held or held.board_id ~= request.board_id then
+            return nil, errors.new({ kind = errors.INTERNAL, message = "view board reference does not match its index", details = { code = "row_corrupt" } })
         end
+        local meta = row.meta or {}
+        views[#views + 1] = { view_id = id, board_id = held.board_id, title = meta.title or "View", view = held.view }
     end
-    return { views = views, after = #(rows or {}) > limit and tostring(offset + limit) or nil }, nil
+    return { views = views, after = #rows > limit and tostring(offset + limit) or nil }, nil
 end
 return M

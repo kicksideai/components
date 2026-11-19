@@ -20,7 +20,7 @@ type Op = {
     visit: integer?, attempt: integer?, outcome: string?, outputs: domain.JsonObject?, progress: domain.JsonObject?, decision: string?, timer: string?, scheduled_at: string?, timer_life_at: string?, force: boolean?,
     op: string, type: string?, parent: string | boolean | nil, values: { [string]: unknown }?, clear: { string }?, unset: { string }?,
     region: string?, state: string?, item: string?, expect_version: integer?, transition: string?, target: TargetRef?, comment: string?,
-    body: string?, delete: boolean?, mentions: unknown, after: unknown, before: unknown,
+    body: string?, delete: boolean?, expect_comment_version: integer?, mentions: unknown, after: unknown, before: unknown,
 }
 type ApplyRequest = { trace_context: domain.TraceContext?, board_id: string, key: string?, mode: string?, ops: { Op }, source: string?, origin: JsonObject? }
 type SchemaRequest = { pack: JsonObject?, trace_context: domain.TraceContext?, plugin_configs: { [string]: JsonObject }?, board_id: string, declaration: Declaration, expected_generation: integer?, key: string?, source: string?, origin: JsonObject? }
@@ -97,7 +97,7 @@ type ConfigureResult = { attachment_id: string, seq: integer?, as_of: integer? }
 type Map = { [string]: unknown }
 type BulkRequest = { board_id: string, key: string, query: reads.QueryRequest, ops_template: { Op } }
 type Locator = { deadline: string?, board_id: string, operation_id: string?, bulk_id: string?, move_id: string? }
-type Owner = { deadline: domain.Deadline?, board_id: string, operation_id: string, kind: string, key: string, request_hash: string,
+type Owner = { deadline: domain.Deadline?, board_id: string, operation_id: string, kind: string, request_hash: string,
     actor_id: string, actor_context: string, data: Map, status: string, processed: integer, counts: { [string]: integer }, error_code: string?, job_id: string }
 type Status = { bulk_id: string?, move_id: string?, job_id: string, status: string, total: integer, processed: integer,
     applied: integer, unchanged: integer, invalid: integer, denied: integer, conflict: integer, unavailable: integer, error_code: string?, item: string?, items: { string }? }

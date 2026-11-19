@@ -268,7 +268,7 @@ type ApplyItem = {
     term_merge: TermMerge?,
 }
 type Idempotency = { namespace: string, key: string }
-type ApplyRequest = { items: { ApplyItem }, mode: string?, source: string?, origin: Origin?, provenance: JsonObject?, approval_item_id: string?, idempotency: Idempotency?,
+type ApplyRequest = { items: { ApplyItem }, mode: string?, source: string?, expected_generation: integer?, origin: Origin?, provenance: JsonObject?, approval_item_id: string?, idempotency: Idempotency?,
     import: boolean?, trace_context: TraceContext? }
 type ApplyResult = { outcomes: { Outcome }, applied: boolean, seq: integer?, as_of: integer?, replayed: boolean? }
 type SchemaRequest = { plugin_configs: { [string]: JsonObject }?, declaration: Declaration, expected_generation: integer?, idempotency: Idempotency?, trace_context: TraceContext? }

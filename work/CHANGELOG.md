@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.1.8](https://github.com/kicksideai/components/compare/work-v0.1.7...work-v0.1.8) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** acknowledge writes at their committed sequence ([162a37b](https://github.com/kicksideai/components/commit/162a37b31a6b085a6076e640049b5a6887b86938))
+
+## [0.1.7](https://github.com/kicksideai/components/compare/work-v0.1.6...work-v0.1.7) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** cancel the parked job when a move prepare conflicts ([#175](https://github.com/kicksideai/components/issues/175)) ([26a6a96](https://github.com/kicksideai/components/commit/26a6a96c575d044b32dcdb0866a9dc0ef29bf2bb))
+
+## [0.1.6](https://github.com/kicksideai/components/compare/work-v0.1.5...work-v0.1.6) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** release move keys after prepare conflicts ([#173](https://github.com/kicksideai/components/issues/173)) ([d9a999a](https://github.com/kicksideai/components/commit/d9a999ab0c6d5d723d8f2dbc65038e913787e3a9))
+
+## [0.1.5](https://github.com/kicksideai/components/compare/work-v0.1.4...work-v0.1.5) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** harden public API correctness ([#170](https://github.com/kicksideai/components/issues/170)) ([449814c](https://github.com/kicksideai/components/commit/449814c81a06d0773d0c50bde92f4e80e4c82b07))
+
 ## [0.1.4](https://github.com/kicksideai/components/compare/work-v0.1.3...work-v0.1.4) (2026-11-19)
 
 

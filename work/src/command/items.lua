@@ -23,6 +23,8 @@ local item_comments = require("item_comments")
 local function plan_rank(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     local item, err = M.locate(ctx, op.item)
     if err or not item then return err or M.invalid("item_required", "item required", "item") end
+    local conflict = M.stale(op, item)
+    if conflict then return conflict end
     if item.life ~= "live" then return M.invalid("item_trashed", "rank requires a live item", "item") end
     local neighbors: { [string]: string } = {}
     for _, name in ipairs({ "after", "before" }) do
@@ -42,6 +44,8 @@ local function plan_rank(ctx: types.PrepareContext, op: types.Op): types.OpPlan
         end
     end
     if neighbors.after and neighbors.after == neighbors.before then return M.invalid("invalid_neighbor", "rank neighbors are distinct", "before") end
+    -- Rank keeps its own subject. Fence the projection used to check the item version.
+    if op.expect_version ~= nil then ctx.head_guard = ctx.board.applied_seq end
     return { status = "applied", group = M.FREE, item = item.item_id, version = item.version,
         events = { M.event(consts.EVENTS.ITEM_RANKED, "rank", { item = item.item_id, after = neighbors.after, before = neighbors.before }) } }
 end
@@ -122,10 +126,10 @@ local function wip(ctx: types.PrepareContext, before: types.PrepareContext, plan
             previous = previous + (prior and prior.life == "live" and process.holds_state(prior, state) and 1 or 0) - held
         end
         if delta > previous then
-            local count, err = store.state_count(ctx.db, ctx.board.board_id, state, rule.limit - delta + 1)
+            local exceeds, err = store.exceeds_wip(ctx.db, ctx.board.board_id, state, rule.limit, delta)
             if err then return M.failed(err) end
             if rule.hard then plan.head = ctx.board.applied_seq end
-            if count + delta > rule.limit then
+            if exceeds then
                 local finding = M.finding("wip_limit", "state " .. state .. " exceeds WIP limit " .. rule.limit)
                 if rule.hard then return M.refused(plan.group, finding) end
                 plan.findings = plan.findings or {}
@@ -212,7 +216,10 @@ function M.writes(plans: { types.OpPlan }, indices: { integer }, ops: { types.Op
                 write.guards = write.guards or {}
                 for subject, version in pairs(plan.guards) do write.guards[subject] = version end
             end
-            if ops[i].expect_version ~= nil and #write.ops == 0 then write.caller_expect = true end
+            local caller_version = ops[i].op == "comment" and ops[i].expect_comment_version or ops[i].expect_version
+            if caller_version ~= nil and write.expect_subject and #write.ops == 0 then
+                write.caller_expect = true
+            end
             for _, e in ipairs(plan.events) do write.events[#write.events + 1] = e end
             write.ops[#write.ops + 1] = i
         end

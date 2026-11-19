@@ -36,6 +36,14 @@ entries:
   imports:
     delivery_probe: app:stage_delivery_probe
     append: kickside.work.persist:append
+    apply_ack_probe: app:apply_ack_probe
+- name: apply_ack_probe
+  kind: library.lua
+  source: file://apply_ack_probe.lua
+  modules: [sql]
+  imports:
+    materializer: kickside.work.persist:materializer
+    types: kickside.work:types
 - name: placement_folder
   kind: contract.binding
   contracts:

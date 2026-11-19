@@ -21,6 +21,7 @@ override:
   kickside.work.settings:limits:imports.clock: app:read_budget_clock
   kickside.work.retention:rows:imports.threads: app:retirement_threads
   kickside.work.command:apply_ops:imports.append: app:keyed_append
+  kickside.work.persist:projection:imports.materializer: app:apply_ack_probe
   kickside.work.command:apply_ops:imports.receipts: app:receipt_probe
   kickside.work.jobs:reindex_batch:imports.append: app:reindex_append
   kickside.work.jobs:pack_commands:imports.schema_commands: app:pack_schema_probe
@@ -29,6 +30,7 @@ override:
   kickside.work.jobs:bulk_commands:imports.apply_ops: app:bulk_apply_probe
   kickside.work.command:bulk:imports.rows: app:operation_rows_probe
   kickside.work.command:move_plan:imports.principals: app:move_admission_probe
+  kickside.work.command:move:imports.events: app:move_phase_probe
   kickside.work.jobs:move_commands:imports.events: app:move_phase_probe
   kickside.work.jobs:bulk:imports.identity: app:deferred_probe
   kickside.work.jobs:migrate_batch:imports.component: app:authorization_probe
