@@ -10,14 +10,10 @@ entries:
     source: file://values.lua
     modules: [json]
     imports:
-      case_folding: kickside.pim.domain:case_folding
+      casefold: kickside.core:casefold
       failure: kickside.pim:failure
       shape: kickside.pim:shape
       types: kickside.pim:types
-
-  - name: case_folding
-    kind: library.lua
-    source: file://case_folding.lua
 
   - name: policy
     kind: library.lua
@@ -71,7 +67,7 @@ entries:
     source: file://search.lua
     modules: [hash, text]
     imports:
-      case_folding: kickside.pim.domain:case_folding
+      casefold: kickside.core:casefold
 
   - name: references
     kind: library.lua

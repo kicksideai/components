@@ -270,14 +270,11 @@ entries:
     fields: kickside.work.domain:fields
     values: kickside.work.domain:values
     types: kickside.work:types
-- name: case_folding
-  kind: library.lua
-  source: file://case_folding.lua
 - name: search_text
   kind: library.lua
   source: file://search_text.lua
   imports:
-    case_folding: kickside.work.domain:case_folding
+    casefold: kickside.core:casefold
 - name: search
   kind: library.lua
   source: file://search.lua

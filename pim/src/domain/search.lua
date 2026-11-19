@@ -1,9 +1,9 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- SKU prefixes and text tokens use the same Unicode case folding.
-local case_folding = require("case_folding")
+local casefold = require("casefold")
 local hash = require("hash")
 local text = require("text")
-local M = { fold = case_folding.fold }
+local M = { fold = casefold.fold }
 local WORDS = assert(text.regexp.compile([[\p{L}[\p{L}\p{N}]*|\p{N}[\p{L}\p{N}]*]]))
 
 local function hex_byte(byte: string): string
@@ -22,7 +22,7 @@ function M.tokens(value: string): { string }
     local tokens: { string } = {}
     local seen: { [string]: boolean } = {}
     for _, word in ipairs(WORDS:find_all_string(value)) do
-        local token = lexeme(M.fold(word))
+        local token = lexeme(assert(M.fold(word)))
         if not seen[token] then
             tokens[#tokens + 1] = token
             seen[token] = true

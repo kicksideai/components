@@ -15,8 +15,8 @@ modules:
       version: 0.3.8
       hash: c297c02ca276a5963bd688b6b022e54fcfe03450e30cf496481c14f963ae8134
     - name: kickside/core
-      version: 0.3.19
-      hash: 5630a7b2d9722ae52cf966f3c64f7f5c5e624c5dfdc81c4c1775b16b74666917
+      version: 0.3.22
+      hash: e79fdadd33a6dfad117a28a7ec2899a61b20d091a6b3185724705490758e1b49
     - name: kickside/doc2md
       version: 0.8.24
       hash: 7cc8af30e6cdbba2f40a77ac2115891311bb91c4227b4c0892dc0be03b29ab72
@@ -24,8 +24,8 @@ modules:
       version: 0.2.8
       hash: 7ffa847541cce7d03424bad43828fb08e9b077b6a08b3fe857cd0a22fa589e97
     - name: kickside/jobs
-      version: 0.1.80
-      hash: 95a229aee78d9a5545579dc46f74d482c18b3d2d986bb2a13c36125f6b297420
+      version: 0.1.83
+      hash: 1120a2388e565232d5dabcc011f23c3f6faf374938488f189020419cf63a828a
     - name: kickside/realtime-dispatch
       version: 0.1.1
       hash: 6f0fa3625683510a1565afff3b40b6726ea5604b940b1627b787f6615683264d
