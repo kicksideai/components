@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/kicksideai/components/compare/work-v0.1.7...work-v0.1.8) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** acknowledge writes at their committed sequence ([162a37b](https://github.com/kicksideai/components/commit/162a37b31a6b085a6076e640049b5a6887b86938))
+
 ## [0.1.7](https://github.com/kicksideai/components/compare/work-v0.1.6...work-v0.1.7) (2026-11-19)
 
 
