@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/kicksideai/components/compare/pim-v0.1.3...pim-v0.1.4) (2026-11-19)
+
+
+### Bug Fixes
+
+* **pim:** guard drafts and honor product read inputs ([#167](https://github.com/kicksideai/components/issues/167)) ([bf6a6e4](https://github.com/kicksideai/components/commit/bf6a6e4873d22510a2e95ebf942cb59b40f773d2))
+
 ## [0.1.3](https://github.com/kicksideai/components/compare/pim-v0.1.2...pim-v0.1.3) (2026-11-19)
 
 
