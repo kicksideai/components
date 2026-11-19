@@ -277,8 +277,10 @@ type SchemaPlanResult = { generation: integer, class: string, changes: { SchemaC
 type ReleaseItem = { product: ProductRef, expect_version: integer?, channels: { string }? }
 type ReleaseRequest = { items: { ReleaseItem }, idempotency: Idempotency?, trace_context: TraceContext? }
 type ProposeRequest = { items: { ApplyItem }, source: string?, origin: Origin?, provenance: JsonObject?, idempotency: Idempotency? }
+type ProposalBase = { generation: integer, versions: { [string]: integer } }
 type Proposal = {
     proposal_id: string, source: string?, origin: JsonObject, provenance: JsonObject?, items: { ApplyItem }, base: { [string]: integer },
+    generation: integer,
     status: string, result: ApplyResult?, created_by: string, created_at: string, decided_by: string?, decided_at: string?,
 }
 type ProposeResult = { proposal_id: string, status: string }
@@ -472,7 +474,7 @@ return {
     ValueEntry = ValueEntry, CreateSpec = CreateSpec, TermRef = TermRef, ExpectVersion = ExpectVersion,
     ApplyItem = ApplyItem, Idempotency = Idempotency, ApplyRequest = ApplyRequest, ApplyResult = ApplyResult,
     SchemaRequest = SchemaRequest, SchemaResult = SchemaResult, SchemaPlanResult = SchemaPlanResult,
-    ReleaseItem = ReleaseItem, ReleaseRequest = ReleaseRequest, ProposeRequest = ProposeRequest, Proposal = Proposal,
+    ReleaseItem = ReleaseItem, ReleaseRequest = ReleaseRequest, ProposeRequest = ProposeRequest, ProposalBase = ProposalBase, Proposal = Proposal,
     ProposeResult = ProposeResult, DecideRequest = DecideRequest, DecideResult = DecideResult, RebuildResult = RebuildResult,
         TypeMeta = TypeMeta, ReadStamp = ReadStamp, ResolvedValue = ResolvedValue, ProductView = ProductView,
     GetRequest = GetRequest, GetResult = GetResult, Where = Where, Executor = Executor, Origin = Origin, TraceContext = TraceContext, Sort = Sort,

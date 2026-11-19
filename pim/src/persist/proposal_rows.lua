@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Proposal rows: stored commands and their decisions.
 local uuid = require("uuid")
+local failure = require("failure")
 local store = require("store")
 local narrow = require("narrow")
 local values = require("values")
@@ -11,7 +12,7 @@ local types = require("types")
 local M = {}
 
 
-function M.insert(db: types.Executor, catalog_id: string, request: types.ProposeRequest, base: { [string]: integer }, actor: string): (string?, error?)
+function M.insert(db: types.Executor, catalog_id: string, request: types.ProposeRequest, base: types.ProposalBase, actor: string): (string?, error?)
     local id = uuid.v7() :: string
     local _, err = db:execute([[INSERT INTO kickside_pim_proposal (catalog_id, proposal_id, source, origin, items, base, status,
         result, created_by, created_at, decided_by, decided_at) VALUES ($1, $2, $3, $4, $5, $6, 'pending', NULL, $7, $8, NULL, NULL)]],
@@ -22,14 +23,19 @@ function M.insert(db: types.Executor, catalog_id: string, request: types.Propose
 end
 
 local function row(r: types.Row): (types.Proposal?, error?)
-    local decoded, err = store.decode_row(r, { proposal_id = "text", status = "text", created_by = "text", created_at = "text", origin = "json", items = "json", base = "json", result = "json?" })
+    local decoded, err = store.decode_row(r, { proposal_id = "text", status = "text", created_by = "text", created_at = "text",
+        origin = "json", items = "json", base = "json", result = "json?" })
     if err or not decoded then return nil, err end
     r = decoded
     local origin: types.JsonObject = r.origin :: types.JsonObject
     local items: { types.ApplyItem } = r.items :: { types.ApplyItem }
-    local base: { [string]: integer } = r.base :: { [string]: integer }
+    local base = r.base :: types.Row
+    local generation, gerr = store.need_int(base, "generation")
+    if gerr or not generation then return nil, gerr end
+    if type(base.versions) ~= "table" then return nil, failure.corrupt("proposal base lacks versions", "base") end
     local result: types.ApplyResult? = r.result :: types.ApplyResult?
-    return { proposal_id = r.proposal_id :: string, source = narrow.text(r.source), origin = origin, items = items, base = base,
+    return { proposal_id = r.proposal_id :: string, source = narrow.text(r.source), origin = origin, items = items,
+        base = base.versions :: { [string]: integer }, generation = generation,
         status = r.status :: string, result = result, created_by = r.created_by :: string, created_at = r.created_at :: string,
         decided_by = narrow.text(r.decided_by), decided_at = narrow.text(r.decided_at) } , nil
 end

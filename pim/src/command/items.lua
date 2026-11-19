@@ -247,7 +247,9 @@ local function check_version(st: item_state.State, item: types.ApplyItem, p: typ
         local wanted = item.expect_version
         local expected = type(wanted) == "number" and math.tointeger(wanted) or nil
         if expected == nil then return nil, item_state.fail("invalid", "expect_version is required") end
-        if expected ~= p.version then return nil, item_state.fail("conflict", "product changed", { version = p.version }) end
+        if expected ~= p.version then
+            return nil, item_state.fail("conflict", "product changed", { code = "version_conflict", version = p.version })
+        end
     end
     return seq, nil
 end

@@ -1324,8 +1324,10 @@ Steps:
 7. Catch up to the appended `max_seq`; return outcomes with versions and seq.
 
 Outcomes: `created | updated | unchanged | conflict | invalid | forbidden`
-with findings. Merge reference paging first selects distinct live holders under
-the product limit using the reference target and product id index, then returns
+with findings. A mismatched integer product version returns `conflict` with
+finding code `version_conflict` and the current version. Merge reference paging
+first selects distinct live holders under the product limit using the reference
+target and product id index, then returns
 all matching references for those holders. A
 500-holder page completes within the 5 s command deadline.
 Merge-generated edits use the ordinary product-edit validation,
@@ -1594,6 +1596,9 @@ backfill commits.
   the existing ID/hash and appends nothing when the requested channels already
   publish that hash, independently of the latest product release pointer, including duplicate items within
   one release command.
+  A missing or malformed expected version returns an item `conflict` with
+  finding code `invalid_version`. A mismatched integer returns an item
+  `conflict` with `version_conflict`.
   Releasing an active model with its current version appends
   `model.release_requested`; the fold persists `release_job` and enqueues the
   one-shot `release_model` job together. Its outcome is `queued` with the durable
@@ -1632,17 +1637,20 @@ withdrawals. Channel plugins consume the publications feed (§12).
 
 A proposal is PIM-owned state (Core requires WRITE for any append):
 
-- `propose` (READ) stores items and base versions after prepare and enforced
-  checks. Admission validates the proposal's source and its write scope.
+- `propose` (READ) stores items, base product versions and the validating schema
+  generation after prepare and enforced checks. Admission validates the
+  proposal's source and its write scope.
   Attributes of source-restricted aspects cannot be proposed. Proposal edits
   use the captured product versions for every source, including sequence-ordered
   sources, and leave each source's delivery sequence unchanged.
 - `decide` (WRITE): accept claims the proposal with a conditional
   transition at the same catalog head that authorizes the reviewer and plans the
-  edit. It runs `apply` (atomic) with the base versions, its source and
+  edit. It runs `apply` (atomic) with the base versions, schema generation, source and
   `origin` with `approval_item_id` set to the proposal, idempotency `proposal/<id>`, then settles
   `accepted`, `conflict` (only stale versions stopped it; decidable again)
-  or `failed` (an item is refused outright or the source was removed).
+  or `failed` (an item is refused outright).
+  A changed generation returns `schema_generation_conflict`, releases any
+  uncommitted acceptance claim and requires a new proposal for review.
   If the reviewer loses source access before the write, acceptance releases that
   reviewer's uncommitted claim. Reject works from `pending` or `conflict`.
 - Proposals are reviewed in the shell's proposals view by WRITE holders;
