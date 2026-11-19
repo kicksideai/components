@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.planning
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: Work Planning
+- name: dep.work
+  kind: ns.dependency
+  component: kickside/work
+  version: '*'
+- name: pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Planning
+    version: '1.0.0'
+    icon: tabler:calendar
+    description: Plan sprints and milestones and track issue membership.
+  data:
+    additive: true
+    schema:
+      fields:
+      - {code: title, form: text}
+      - {code: name, form: text, title: Name}
+      - {code: planning_start, form: time, index: key, title: Start date}
+      - {code: planning_end, form: time, index: key, title: End date}
+      - {code: planning_goal, form: text, title: Goal}
+      - {code: current_sprint, type: item, index: key, track: true, title: Current sprint}
+      - {code: milestone, type: item, index: key, track: true, title: Milestone}
+      item_types:
+      - {id: issue, title: Issue, process: planning_issue, fields: [title, current_sprint, milestone]}
+      - {id: sprint, title: Sprint, process: planning_period, fields: [name, planning_start, planning_end, planning_goal]}
+      - {id: milestone, title: Milestone, process: planning_period, fields: [name, planning_start, planning_end, planning_goal]}
+    processes:
+    - id: planning_period
+      initial: planned
+      states:
+      - {id: planned, name: Planned, category: unstarted, require: [name]}
+      - {id: active, name: Active, category: started, require: [name, planning_start, planning_end]}
+      - {id: closed, name: Closed, category: completed, require: [name]}
+      transitions:
+      - {id: start, from: [planned], to: active, guards: ['kickside.work.planning:date_order']}
+      - {id: close, from: [active], to: closed}
+    - id: planning_issue
+      initial: open
+      states:
+      - {id: open, name: Open, category: backlog}
+      - {id: done, name: Done, category: completed}
+      - {id: canceled, name: Canceled, category: canceled}
+      transitions:
+      - {id: complete, from: [open], to: done}
+      - {id: cancel, from: [open], to: canceled}
+    requires: ['kickside.work.planning:plugin']
+    views: []
+    automations: []
+    traits: []
+    starter: {items: [], default: false}
+- name: plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    title: Work Planning
+    description: Sprint and milestone planning.
+    icon: tabler:calendar
+    attachment: kickside.work.planning:attachment
+    seams: ['kickside.work.planning:date_order']
+    schema:
+      provider: kickside.work.planning:schema_provider
+    config_schema:
+      type: object
+      properties:
+        issue_types:
+          type: array
+          description: Existing custom issue type IDs to extend with the planning reference fields.
+          maxItems: 49
+          uniqueItems: true
+          items: {type: string, pattern: '^[a-z][a-z0-9_]{0,39}$'}
+      additionalProperties: false
+- name: date_order
+  kind: function.lua
+  meta:
+    type: kickside.work.guard
+    plugin: kickside.work.planning:plugin
+    reads: [planning_start, planning_end]
+    cost: interactive
+    enforce: write
+  source: file://pack.lua
+  method: date_order
+- name: schema_provider
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:schema_provider
+    methods: {resolve: 'kickside.work.planning:adopt_fields'}
+- name: adopt_fields
+  kind: function.lua
+  source: file://pack.lua
+  method: adopt_fields
+- name: attachment
+  kind: contract.binding
+  meta:
+    title: Work Planning attachment
+    placement:
+      parents: ['kickside.work.binding:board']
+      fixed: true
+  contracts:
+  - contract: kickside.contract:component
+    methods: {get_status: 'kickside.core.threads:thread_status'}
+  - contract: kickside.contract:deletable
+    context_required: [component_id]
+    methods: {delete: 'kickside.work.planning:delete'}
+- name: delete
+  kind: function.lua
+  source: file://pack.lua
+  method: delete

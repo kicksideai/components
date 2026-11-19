@@ -12,6 +12,7 @@ test('Work harness replaces only modules in this repository', async () => {
   })
   assert.deepEqual(Object.fromEntries(entries), {
     'kickside/work': '..',
+    'kickside/work-planning': '../../work-planning',
     'kickside/agent-onboarding': '../../agent-onboarding',
     'kickside/sso': '../../sso',
     'kickside/dashboard': '../../dashboard',

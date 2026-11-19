@@ -29,11 +29,12 @@ function M.plan(request: types.Request): (types.Plan?, error?)
     if serr or not snapshot then db:release(); return nil, serr end
     local board, local_decl = snapshot.board, snapshot.declaration
     local generation = board and board.generation or 0
-    local admission_err = schema_commands.check_pack_install(db, request.board_id, board)
+    local admission_err = not pack.data.additive and schema_commands.check_pack_install(db, request.board_id, board)
     if admission_err then db:release(); return nil, admission_err end
     db:release()
     local incoming = catalog.declaration(pack.data)
     local base = board and board.pack_base and catalog.declaration(board.pack_base :: types.Data) or nil
+    if pack.data.additive and not base then base = { policy = {}, scopes = {} } end
     local merged, conflicts = merge.schema(base, local_decl, incoming, request.resolutions)
     merged.key_prefix = board and board.key_prefix or M.initial_prefix(request.board_id, request.declaration and request.declaration.key_prefix, incoming.key_prefix)
     local proposals = merge.maps(local_decl, merged)
@@ -50,7 +51,7 @@ function M.plan(request: types.Request): (types.Plan?, error?)
             migration = "create the board with the new visibility declaration and move its items" }
     else
         local classified, err = schema_commands.prepare_schema({ board_id = request.board_id, expected_generation = request.expected_generation,
-            declaration = merged, plugin_configs = request.plugin_configs, pack = { id = pack.id, version = pack.version, digest = pack.digest } }, snapshot)
+            declaration = merged, plugin_configs = request.plugin_configs, pack = { id = pack.id, version = pack.version, digest = pack.digest, base = { additive = pack.data.additive } } }, snapshot)
         if err or not classified then return nil, err end
         prepared = classified
         plan = schema_commands.describe(classified)
