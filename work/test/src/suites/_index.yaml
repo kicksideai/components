@@ -2,6 +2,19 @@
 version: '1.0'
 namespace: app
 entries:
+- name: board_startup_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: kickside_work
+    comment: First board creation after the startup barrier on a fresh database.
+  source: file://../board_startup_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
+    steps: app:steps
 - name: board_test
   kind: function.lua
   meta:
@@ -157,6 +170,7 @@ entries:
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
+    apply_ack_probe: app:apply_ack_probe
 - name: history_test
   kind: function.lua
   meta:

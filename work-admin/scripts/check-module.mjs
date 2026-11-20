@@ -21,7 +21,11 @@ assert.equal(manifest.version, undefined)
 assert.deepEqual(manifest.embed, ['kickside.work.admin:ui_fs'])
 assert.equal(entries.filter(entry => entry.kind === 'ns.definition').length, 1)
 assert(source.every(doc => /^kickside\.work\.admin(?:\.|$)/.test(doc.namespace)))
-for (const dep of entries.filter(entry => entry.kind === 'ns.dependency')) assert.equal(dep.version, '*', dep.id)
+const dependencies = entries.filter(entry => entry.kind === 'ns.dependency')
+const work = dependencies.find(dep => dep.component === 'kickside/work')
+const minimumWork = work.version.match(/^>=(\d+\.\d+\.\d+)$/)?.[1]
+assert(minimumWork, 'Work must declare a minimum version')
+for (const dep of dependencies.filter(dep => dep !== work)) assert.equal(dep.version, '*', dep.id)
 for (const pattern of ['test/**', 'test:**', 'wippy.lock', 'build-inputs/**', 'ui/node_modules/**', 'static/*.map']) assert(manifest.exclude.includes(pattern), pattern)
 const owned = new Map(entries.map(entry => [entry.id, entry]))
 const endpoints = entries.filter(entry => entry.kind === 'http.endpoint')
@@ -60,11 +64,10 @@ for (const view of entries.filter(entry => entry.meta?.type === 'view.component'
 for (const name of ['index.js', 'board.js', 'list.js', 'table.js', 'backlog.js']) assert(!existsSync(resolve(root, 'static', name)), name)
 const harness = parse(read('test/.wippy.yaml'))
 assert.equal(harness.workspace.replacements['kickside/work-admin'], '..')
-// Work is published privately; the harness tests against the sibling source at the same commit.
+// The ordinary harness tests against the sibling source at the same commit.
 assert.equal(harness.workspace.replacements['kickside/work'], '../../work')
 assert(Object.keys(harness.workspace.replacements).every(id => ['kickside/work-admin', 'kickside/work', 'kickside/agent-onboarding', 'kickside/sso', 'kickside/dashboard'].includes(id)))
 const lock = parse(read('test/wippy.lock'))
-assert.equal(lock.modules.find(module => module.name === 'kickside/work').version, '0.1.1')
 const floors = { 'kickside/component': '0.3.20', 'kickside/core': '0.3.17', 'kickside/jobs': '0.1.80' }
 const version = value => value.split('.').map(Number)
 for (const [name, floor] of Object.entries(floors)) {
@@ -73,4 +76,4 @@ for (const [name, floor] of Object.entries(floors)) {
 }
 const installed = JSON.parse(execFileSync(process.env.WIPPY || 'wippy', ['registry', 'list', '--ns', 'kickside.work.admin*', '--json'], { cwd: resolve(root, 'test'), encoding: 'utf8' }))
 assert.deepEqual(installed.map(entry => entry.id).sort(), entries.map(entry => entry.id).sort(), 'installed source is current')
-console.log(`Module checks passed: ${entries.length} entries, ${endpoints.length} exact helper endpoints, published Work 0.1.1, administration-only bundles`)
+console.log(`Module checks passed: ${entries.length} entries, ${endpoints.length} exact helper endpoints, Work ${work.version}, administration-only bundles`)

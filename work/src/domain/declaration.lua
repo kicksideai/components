@@ -135,8 +135,12 @@ function M.merge(prev: types.Declaration?, incoming: types.Declaration): (types.
     if not prev and named.remove ~= nil then
         return nil, errors.new({ details = { code = "invalid_schema" }, kind = errors.INVALID, message = "nothing to remove in a first schema" })
     end
+    if remove.visibility and named.visibility then
+        return nil, invalid("cannot set and remove visibility in the same declaration")
+    end
     local out: types.Declaration = { visibility = named.visibility or base.visibility, key_prefix = named.key_prefix or base.key_prefix, policy = named.policy or base.policy,
         plugins = named.plugins or base.plugins, scopes = named.scopes or base.scopes }
+    if remove.visibility then out.visibility = nil end
     out.fields, err = M.merge_fields(base.fields, named.fields)
     if err then return nil, err end
     out.item_types, err = M.merge_list(base.item_types, named.item_types, item_id)

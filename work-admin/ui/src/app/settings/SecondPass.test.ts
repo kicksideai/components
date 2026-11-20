@@ -12,6 +12,7 @@ import ApproversEditor from './ApproversEditor.vue'
 import SettingsHead from './SettingsHead.vue'
 import type { Declaration, Field } from '../../types'
 import { getButton } from '../../test/controls'
+import { clone, requestDeclaration } from './model'
 const wrappers: VueWrapper[] = []
 afterEach(() => { wrappers.splice(0).forEach(w => w.unmount()) })
 it('explains each zero retention window according to the backend policy', () => {
@@ -51,6 +52,13 @@ it('configures text visibility with explicit levels and retains the shared holde
   await getButton(w, 'Add level').trigger('click'); await flushPromises()
   expect(draft.visibility).toEqual({ field: 'visibility', levels: [{ id: 'Internal', holders: [] }] })
   expect(w.find('[aria-label="Who can see these items"]').exists()).toBe(true)
+})
+it('submits explicit visibility removal from the editor', async () => {
+  const original: Declaration = { visibility: { field: 'visibility', levels: [{ id: 'internal', holders: [] }] } }
+  const draft = reactive(clone(original))
+  const w = mount(VisibilityEditor, { props: { draft } }); wrappers.push(w)
+  await getButton(w, 'Remove visibility restriction').trigger('click')
+  expect(requestDeclaration(draft, original)).toEqual({ remove: { visibility: true } })
 })
 it('describes state entry requirements and gate visit self-approval accurately', () => {
   const state = { id: 'review', category: 'started' }, process = { id: 'flow', initial: 'review', states: [state] }

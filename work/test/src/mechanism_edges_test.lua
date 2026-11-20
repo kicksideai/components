@@ -11,6 +11,7 @@ local shape = require("shape")
 local declaration = require("declaration")
 local changes = require("changes")
 local threads = require("threads")
+local append = require("append")
 local json = require("json")
 local types = require("types")
 local job_rows = require("job_rows")
@@ -224,7 +225,23 @@ local function define()
         end)
     end)
 
-    test.describe("thread client errors", function()
+    test.describe("thread client", function()
+        test.it("returns the largest board sequence when Core orders results by thread", function()
+            local c = client({ append_events = function(_self: unknown, _request: unknown): (unknown, error?)
+                return { writes = {
+                    { thread_id = "board", max_seq = 3 },
+                    { thread_id = "board", max_seq = 4 },
+                    { thread_id = "registry", max_seq = 20 },
+                } }, nil
+            end })
+            local seq, err = append.writes(c, "board", {
+                { thread_id = "registry", group = "registry", events = { { subject = "prefix", type = "claim", body = {} } }, ops = {}, caller_expect = false },
+                { group = "first", events = { { subject = "item:1", type = "edit", body = {} } }, ops = {}, caller_expect = false },
+                { group = "second", events = { { subject = "item:2", type = "edit", body = {} } }, ops = {}, caller_expect = false },
+            })
+            test.is_nil(err)
+            test.eq(seq, 4)
+        end)
         test.it("reports a catch-up that finished without a position", function()
             local _, err = threads.catch_up(client({ catch_up_projection = function(_s: unknown, _r: unknown): (unknown, error?) return { done = true }, nil end }), "t", "k", clock.deadline(100))
             test.eq((err :: error):kind(), errors.INTERNAL)

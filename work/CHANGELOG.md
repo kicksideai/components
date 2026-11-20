@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.1.10](https://github.com/kicksideai/components/compare/work-v0.1.9...work-v0.1.10) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** invalidate cross-board links and fence plugin scopes ([#177](https://github.com/kicksideai/components/issues/177)) ([71366a4](https://github.com/kicksideai/components/commit/71366a4d5da7f45af17602776b4ae9208fa920e0))
+* **work:** preserve stage reports when routing is refused ([#181](https://github.com/kicksideai/components/issues/181)) ([cb12c63](https://github.com/kicksideai/components/commit/cb12c6352b25405cb8e5eafe3486cbeda69547ad))
+
+## [0.1.9](https://github.com/kicksideai/components/compare/work-v0.1.8...work-v0.1.9) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** validate board creation and allow visibility removal ([e7b5f5e](https://github.com/kicksideai/components/commit/e7b5f5ea22e667dd3ad6409e7a30b3b6adb0cd4d))
+
+## [0.1.8](https://github.com/kicksideai/components/compare/work-v0.1.7...work-v0.1.8) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** acknowledge writes at their committed sequence ([162a37b](https://github.com/kicksideai/components/commit/162a37b31a6b085a6076e640049b5a6887b86938))
+
+## [0.1.7](https://github.com/kicksideai/components/compare/work-v0.1.6...work-v0.1.7) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** cancel the parked job when a move prepare conflicts ([#175](https://github.com/kicksideai/components/issues/175)) ([26a6a96](https://github.com/kicksideai/components/commit/26a6a96c575d044b32dcdb0866a9dc0ef29bf2bb))
+
 ## [0.1.6](https://github.com/kicksideai/components/compare/work-v0.1.5...work-v0.1.6) (2026-11-19)
 
 

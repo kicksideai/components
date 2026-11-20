@@ -48,7 +48,7 @@ function M.configure_plugin(request: types.ConfigureRequest): (types.ConfigureRe
             actor = guard.actor_id(), at = guard.stamp_now(), source = "api" } }
     local seq, err = append.writes(client, request.board_id, { { group = event.subject, events = { event }, ops = {}, expect_subject = "schema", expect_version = snapshot.schema_version, caller_expect = true } })
     if err then return nil, err end
-    local as_of, perr = receipts.covered(request.board_id, deadline)
+    local as_of, perr = receipts.covered(request.board_id, deadline, seq)
     if perr then return nil, perr end
     return { attachment_id = selected.attachment_id, as_of = as_of, seq = seq }, nil
 end

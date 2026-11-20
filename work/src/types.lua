@@ -68,7 +68,8 @@ type IndexRow = { id: string, system: { [string]: ColumnValue }, values: { [stri
 
 -- Queries. A reader is a caller admitted to read one board; allows answers whether it
 -- holds an access level (read, write, admin) there; actor is who it reads as, for $actor operands.
-type Reader = { awaiting: ((string) -> (Condition?, error?))?, search: { string }?, board_id: string, actor: string?, plugins: { PluginDecl }?, allows: (string) -> boolean }
+type Reader = { awaiting: ((string) -> (Condition?, error?))?, scope_fence: ((ScopeProjection) -> error?)?,
+    search: { string }?, board_id: string, actor: string?, plugins: { PluginDecl }?, allows: (string) -> boolean }
 -- Where is a filter tree as requested; kickside.work.domain:filter reads it.
 type Where = { [string]: unknown }
 type Sort = { field: string, ctx: { [string]: string }?, dir: string? }
@@ -100,7 +101,8 @@ type HistoryAsked = { target: ColumnTarget, by: string?, from: string?, to: stri
 
 -- Scopes: declarative filters over plugin tables in the board database.
 type ScopeFilter = { column: string, type: string, ops: { [string]: boolean } }
-type Scope = { id: string, table: string, board_column: string, item_column: string, filters: { [string]: ScopeFilter }, access: string, match: { string } }
+type ScopeProjection = { plugin: string, kind: string }
+type Scope = { id: string, table: string, board_column: string, item_column: string, filters: { [string]: ScopeFilter }, access: string, match: { string }, projection: ScopeProjection? }
 type ScopeQuery = { id: string, where: { [string]: { [string]: unknown } } }
 -- AdmittedScope is a scope query whose scope the reader's access allows.
 type AdmittedScope = { scope: Scope, where: { [string]: { [string]: unknown } } }
@@ -184,7 +186,7 @@ type PluginDecl = { schema: PluginSchema?, use: string, attachment_kind: string?
 type PluginProgress = { projection_after: string?, scanned: boolean?, registered: integer? }
 type PluginState = { plugin: string, attachment_id: string, impl_id: string, config: JsonObject, active: boolean, revision: integer, applied_revision: integer, lifecycle: PluginLifecycle, progress: PluginProgress? }
 type StateMaps = { [string]: { [string]: string } }
-type RemoveDecl = { fields: { string }?, item_types: { string }?, processes: { string }?, relation_types: { string }? }
+type RemoveDecl = { fields: { string }?, item_types: { string }?, processes: { string }?, relation_types: { string }?, visibility: boolean? }
 type Declaration = {
     visibility: Visibility?, key_prefix: string?, fields: { FieldDecl }?, item_types: { ItemTypeDecl }?, relation_types: { RelationDecl }?,
     processes: { ProcessDecl }?, plugins: { PluginDecl }?, scopes: { string }?, policy: PolicyDecl?, remove: RemoveDecl?,
@@ -331,7 +333,7 @@ return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, Operation
     GeneratedNames = GeneratedNames, GeneratedTable = GeneratedTable, IndexRow = IndexRow, Reader = Reader, Where = Where, Sort = Sort, Cursor = Cursor,
     ItemQuery = ItemQuery, ColumnTarget = ColumnTarget, Resolver = Resolver, Condition = Condition, FilterEnvironment = FilterEnvironment,
     FilterCompilation = FilterCompilation, FilterOptions = FilterOptions, VisibilityCondition = VisibilityCondition, RelationScope = RelationScope, HistoryAsked = HistoryAsked, ScopeFilter = ScopeFilter, Scope = Scope,
-    ScopeQuery = ScopeQuery, AdmittedScope = AdmittedScope, PluginSchemaSource = PluginSchemaSource, PluginSchema = PluginSchema, ResolveContext = ResolveContext,
+    ScopeProjection = ScopeProjection, ScopeQuery = ScopeQuery, AdmittedScope = AdmittedScope, PluginSchemaSource = PluginSchemaSource, PluginSchema = PluginSchema, ResolveContext = ResolveContext,
     PluginError = PluginError, PluginProblem = PluginProblem, PluginLifecycle = PluginLifecycle, PluginView = PluginView, PluginProjection = PluginProjection, PluginProjectionState = PluginProjectionState, Plugin = Plugin, ProviderResult = ProviderResult, Provider = Provider, FieldType = FieldType,
     Holder = Holder, FieldAccess = FieldAccess, Visibility = Visibility, AccessCaller = AccessCaller,
     PluginOwners = PluginOwners, PluginDecl = PluginDecl, PluginState = PluginState, PluginProgress = PluginProgress,

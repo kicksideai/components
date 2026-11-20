@@ -343,7 +343,7 @@ jobs:
             export TMPDIR="$PWD/.scratch"
             mkdir -p "$TMPDIR"
             make -C work-admin setup build typecheck ui-test lint strict check
-            make -C work-admin test
+            make -C work-admin test test-published test-scope
             make -C work-admin pack
         - module: work-admin
           engine: postgres
@@ -353,9 +353,15 @@ jobs:
             mkdir -p "$TMPDIR"
             make -C work-admin setup build typecheck ui-test lint strict check
             database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_work_admin"
+            published="${database}_published"
+            custom_scope="${database}_scope"
+            trap 'dropdb --if-exists "$database"; dropdb --if-exists "$published"; dropdb --if-exists "$custom_scope"' EXIT
             createdb "$database"
-            trap 'dropdb "$database"' EXIT
+            createdb "$published"
+            createdb "$custom_scope"
             make -C work-admin test-pg WORK_ADMIN_PG_PORT="$PGPORT" WIPPY_ARGS="--set vars.pg_database=$database --set vars.pg_host=127.0.0.1"
+            make -C work-admin test-published WIPPY_ARGS="--profile postgres --set vars.pg_database=$published --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT"
+            make -C work-admin test-scope WIPPY_ARGS="--profile postgres --set vars.pg_database=$custom_scope --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT"
             make -C work-admin pack
         - module: storage-s3
           engine: sqlite

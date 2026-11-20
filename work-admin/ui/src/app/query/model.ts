@@ -16,7 +16,7 @@ export function filterFields(schema: Schema): Field[] {
 export function operators(field?: Field): string[] {
   if (field?.cardinality && field.cardinality !== 'one') return ['has', 'in', 'nin', 'is_null', ...(field.type === 'principal' ? ['member_of'] : [])]
   const basic = ['eq', 'neq', 'in', 'nin', 'is_null', ...(field?.type === 'principal' ? ['member_of'] : [])]
-  if (field && (['int', 'number', 'dec', 'time', 'quantity'].includes(field.form) || field.index === 'number')) basic.push('lt', 'lte', 'gt', 'gte', 'between')
+  if (field && (['int', 'number', 'dec', 'time', 'quantity'].includes(field.form ?? '') || field.index === 'number')) basic.push('lt', 'lte', 'gt', 'gte', 'between')
   if (field?.form === 'text' && field.type !== 'option') basic.push('contains', 'starts_with')
   return basic
 }

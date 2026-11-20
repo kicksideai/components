@@ -119,6 +119,46 @@ local function define()
             test.eq(facts(h, item, "kickside.work.events:stage.reported"), 1)
         end)
 
+        test.it("records a passed report when its outcome transition predicate fails", function()
+            local decl = declaration()
+            decl.processes[1].transitions[2].when = { field = "points", op = "gte", value = 1 }
+            local h = fixture.board({ declaration = decl })
+            local item = start(h, { points = 0 })
+            local result = assert(h.call("report", { item = item, visit = 2, attempt = 1, outcome = "passed",
+                outputs = { artifact = "build-42" }, progress = { step = "complete" } })).outcomes[1]
+
+            test.eq(result.status, "applied")
+            test.eq(result.findings[1].code, "when_failed")
+            test.eq(state(h, item), "build")
+            local run = runs(h, item)[1]
+            test.eq(run.outcome, "passed")
+            test.eq(run.outputs.artifact, "build-42")
+            test.eq(run.progress.step, "complete")
+            test.not_nil(run.finished_at)
+            test.eq(facts(h, item, "kickside.work.events:stage.reported"), 1)
+        end)
+
+        test.it("records a canceled report when hard WIP refuses its outcome transition", function()
+            local decl = declaration()
+            decl.processes[1].states[2].run.on_cancel = "fail"
+            decl.processes[1].states[4].category = "started"
+            decl.policy = { wip = { stopped = { limit = 1, hard = true } } }
+            local h = fixture.board({ declaration = decl })
+            local first, second = start(h), start(h)
+            test.eq(assert(h.call("report", { item = first, visit = 2, attempt = 1, outcome = "canceled" })).outcomes[1].status, "applied")
+            test.eq(state(h, first), "stopped")
+            local result = assert(h.call("report", { item = second, visit = 2, attempt = 1, outcome = "canceled",
+                outputs = { reason = "superseded" } })).outcomes[1]
+
+            test.eq(result.status, "applied")
+            test.eq(result.findings[1].code, "wip_limit")
+            test.eq(state(h, second), "build")
+            local run = runs(h, second)[1]
+            test.eq(run.outcome, "canceled")
+            test.eq(run.outputs.reason, "superseded")
+            test.not_nil(run.finished_at)
+        end)
+
         test.it("keeps an attempt outcome when a hard WIP limit refuses its failure route", function()
             local decl = declaration()
             decl.processes[1].states[4].category = "started"
@@ -164,11 +204,15 @@ local function define()
             local input = { item = reported_item, visit = 2, attempt = 1, outcome = "passed" }
             local reported = assert(h.call("report", input)).outcomes[1]
             test.eq(state(h, reported_item), "build")
-            test.eq(reported.status, "invalid")
+            test.eq(reported.status, "applied")
             test.eq(reported.findings[1].code, "invalid_reference")
-            test.is_nil(runs(h, reported_item)[1].outcome)
+            test.eq(runs(h, reported_item)[1].outcome, "passed")
             test.eq(steps.one(h, { op = "restore", item = peer }).status, "applied")
-            test.eq(assert(h.call("report", input)).outcomes[1].status, "applied")
+            local duplicate = assert(h.call("report", input)).outcomes[1]
+            test.eq(duplicate.status, "invalid")
+            test.eq(duplicate.findings[1].code, "stage_attempt_finished")
+            test.eq(state(h, reported_item), "build")
+            test.eq(steps.one(h, { op = "transition", item = reported_item, transition = "pass" }).status, "applied")
             test.eq(state(h, reported_item), "done")
         end)
 
