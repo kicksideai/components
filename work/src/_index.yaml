@@ -59,6 +59,10 @@ entries:
     value_kind: http.router
     comment: Authenticated HTTP router the work endpoints attach to. Must run token_auth and endpoint_firewall.
   targets:
+  - entry: kickside.work.api.sprints:plan_close.endpoint
+    path: .meta.router
+  - entry: kickside.work.api.sprints:close.endpoint
+    path: .meta.router
   - entry: kickside.work.templates.api:list.endpoint
     path: .meta.router
   - entry: kickside.work.templates.api:instantiate.endpoint

@@ -37,8 +37,8 @@ entries:
     - kickside.work.planning:close
     - kickside.work.planning:adopt_fields
     - kickside.work.planning:sprints_binding
-    - kickside.work.planning.api:plan_close
-    - kickside.work.planning.api:close
+    - kickside.work.api.sprints:plan_close
+    - kickside.work.api.sprints:close
     actions: [contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
     effect: allow
 - name: member_endpoints
@@ -47,8 +47,8 @@ entries:
   groups: []
   policy:
     resources:
-    - kickside.work.planning.api:plan_close.endpoint
-    - kickside.work.planning.api:close.endpoint
+    - kickside.work.api.sprints:plan_close.endpoint
+    - kickside.work.api.sprints:close.endpoint
     actions: access
     effect: allow
 - name: user_security_scope
