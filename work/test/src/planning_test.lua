@@ -200,6 +200,33 @@ local function define()
             test.eq(conflict:details().code, "pack_conflicts")
         end)
     end)
+    test.describe("planning plugin adoption", function()
+        test.it("provisions a board-owned root attachment and reaps it on board deletion", function()
+            local admin = scoped.admin()
+            local board = custom_board(admin)
+            assert(board.call("apply_schema", { declaration = { plugins = { { use = PLUGIN } } } }))
+
+            local attachment_id: string?
+            steps.wait_for("Planning attachment provisioning", function(): boolean
+                local plugin = assert(find(assert(board.call("get_schema", {})).plugins, PLUGIN, "plugin"))
+                test.is_true(plugin.active)
+                if plugin.lifecycle.state == "pending" then return false end
+                test.eq(plugin.lifecycle.state, "ready", plugin.lifecycle.error and plugin.lifecycle.error.message)
+                attachment_id = plugin.attachment_id
+                return true
+            end)
+
+            local id = assert(attachment_id)
+            local attachment = assert(admin.call("get_meta", {}, id))
+            test.is_nil(attachment.parent_id)
+            test.eq(attachment.meta.owner, board.id)
+
+            local deleted, err = board.call("delete", {})
+            assert(deleted, steps.detail(err))
+            steps.deleted(board.id)
+            steps.deleted(id)
+        end)
+    end)
     test.describe("close sprint preview", function()
         test.it("previews only unfinished live members at one head and binds the rollover", function()
             local owner = scoped.admin()

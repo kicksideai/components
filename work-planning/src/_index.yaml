@@ -114,7 +114,7 @@ entries:
   meta:
     title: Work Planning attachment
     placement:
-      parents: ['kickside.work.binding:board']
+      parents: [root]
       fixed: true
   contracts:
   - contract: kickside.contract:component
