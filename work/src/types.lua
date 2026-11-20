@@ -156,7 +156,7 @@ type FieldDecl = {
 }
 type ItemTypeDecl = {
     move_children: string?,
-    id: string, title: string?, process: string, parent_types: { string }?, fields: { string }?, inherit: { string }?,
+    id: string, title: string?, process: string, parent_types: { string | false }?, fields: { string }?, inherit: { string }?,
 }
 type RelationDecl = { id: string, outward: string?, inward: string?, cardinality: string?, symmetric: boolean? }
 type PrincipalDecl = { kind: string, id: string }
@@ -208,7 +208,7 @@ type Field = {
     id: integer, code: string, title: string?, type: string, form: string, cardinality: string, config: FieldConfig,
     formula: { expression: string, depends: { integer } }?, access: FieldAccess?, rollup: Rollup?, options: { Option }?, index: string, track: boolean, intervals: boolean,
 }
-type ItemType = { move_children: string?, plugin: string?, id: string, title: string, process: string, parent_types: { string }, fields: { string }, inherit: { string } }
+type ItemType = { move_children: string?, plugin: string?, id: string, title: string, process: string, parent_types: { string | false }, fields: { string }, inherit: { string } }
 type Relation = { plugin: string?, id: string, outward: string, inward: string, cardinality: string, symmetric: boolean }
 type State = {
     id: string, name: string, category: string, kind: string, awaiting: PrincipalSource?, stage: string?, assign: { PrincipalDecl }, require: { string }, invariants: { string }?, due: string?, timers: { Timer }?, run: Stage?, release_when: Release?, regions: { Region }?, join: string | integer | nil,

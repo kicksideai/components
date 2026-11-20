@@ -91,13 +91,27 @@ local function define()
 
         test.it("allows root placement when listed alongside an item type", function()
             local d = fixture.declaration(fixture.fresh_prefix())
-            d.item_types[3].parent_types = { "root", "epic" }
+            d.item_types[3].parent_types = { false, "epic" }
             local h = fixture.board({ declaration = d })
             local epic = steps.create(h, "epic")
             local task = steps.create(h, "task")
             test.eq(steps.one(h, { op = "parent", item = task, parent = epic }).status, "applied")
             test.eq(steps.one(h, { op = "parent", item = task, parent = false }).status, "applied")
             test.is_nil(assert(steps.get(h, task)).item.parent)
+        end)
+
+        test.it("keeps a released root item type distinct from top-level placement", function()
+            local d = fixture.declaration(fixture.fresh_prefix())
+            d.item_types[1].id = "root"
+            d.item_types[2].parent_types = { "root" }
+            d.item_types[3].parent_types = { false, "root" }
+            local h = fixture.board({ declaration = d })
+            local parent = steps.create(h, "root")
+            local story = steps.create(h, "story", nil, parent)
+            test.eq(steps.one(h, { op = "parent", item = story, parent = false }).findings[1].code, "parent_required")
+            local task = steps.create(h, "task", nil, parent)
+            test.eq(steps.one(h, { op = "parent", item = task, parent = false }).status, "applied")
+            assert(h.call("plan_schema", { declaration = { fields = { { code = "extra", form = "text" } } } }))
         end)
 
         test.it("checks allowed parent types and counts the depth of a moved subtree", function()
