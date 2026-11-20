@@ -132,7 +132,7 @@ return { run = test.run_cases(function()
             local first = publish(h, "First")
             local receipt = assert(instantiate(h, first, "before"))
             local declaration = fixture.declaration(h.prefix)
-            table.remove(declaration.fields, 1)
+            table.remove(declaration.fields :: { Map }, 1)
             for _, item_type in ipairs(declaration.item_types) do table.remove(item_type.fields, 1) end
             declaration.remove = { fields = { "title" } }
             assert(h.call("apply_schema", { declaration = declaration }))

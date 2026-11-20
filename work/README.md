@@ -201,3 +201,5 @@ input:
 ```
 
 The action runs under the Automation execution principal. Work board event retention must cover Automation delivery and history retention. Automation reserves each send before attempting it. Operator replays use the same occurrence key and recover an existing Work receipt. When receipt evidence is unavailable, replay returns `template_replay_unavailable`.
+
+The platform's selected-install API requires the Automation kind to declare `prepare_install`. Automation 0.2.30 provides standard installation for its recurring task kind, and component placement checks parent WRITE. Selected installation with a board ADMIN placement rule requires platform support.
