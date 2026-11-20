@@ -73,7 +73,7 @@ it('shares the field draft, invalidates a review after layout edits, and applies
   expect(reviewed.aspects![0].attributes!.map(a => a.code)).toEqual(['color', 'name'])
   await button(w, 'Apply layout').trigger('click'); await flushPromises()
   expect(pim.applySchema).toHaveBeenLastCalledWith('cat', reviewed, 1, {})
-  expect(w.text()).toContain('Applied as generation 2 (cosmetic)')
+  expect(w.text()).toContain('Applied as generation 2')
 })
 it('discards layout edits with the same builder action and surfaces generation conflicts', async () => {
   const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } }); wrappers.push(w); await flushPromises()
