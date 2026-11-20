@@ -1,11 +1,13 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local work = require("work")
 local M = {}
 type Map = { [string]: unknown }
-type Board = { get_schema: (self: Board, Map) -> (unknown, error?), schema_options: (self: Board, Map) -> (Map?, error?) }
+type FieldTypeOption = work.FieldTypeOption
+type SchemaOptions = { plugins: { unknown }, field_types: { FieldTypeOption } }
+type Board = { get_schema: (self: Board, Map) -> (unknown, error?), schema_options: (self: Board, Map) -> (SchemaOptions?, error?) }
 type Directory = { resolve: (self: Directory, Map) -> (unknown, error?) }
-type FieldTypeOption = { id: string, title: string, form: string, config_schema: Map? }
 M.Map = Map
 M.Board = Board
 M.Directory = Directory
-M.FieldTypeOption = FieldTypeOption
+M.SchemaOptions = SchemaOptions
 return M

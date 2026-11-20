@@ -125,6 +125,26 @@ it('asks before discarding a board draft and preserves it when the operator canc
   } finally { await page.close() }
 }, 30000)
 
+it('fits board fields and the add action in a 390px settings surface', async () => {
+  const { page } = await fixture('admin')
+  try {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.getByLabel('Settings for Delivery', { exact: true }).click()
+    const fields = page.getByRole('region', { name: 'Fields editor' })
+    await fields.waitFor()
+    const details = await page.getByRole('region', { name: 'Board settings detail' }).boundingBox()
+    const shell = await page.locator('.work-admin-shell').boundingBox()
+    expect(details?.width).toBe(shell?.width)
+    expect(await page.getByRole('navigation', { name: 'Board settings navigation' }).isVisible()).toBe(false)
+    const list = fields.locator('.work-definition-scroll')
+    expect(await list.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0)
+    const add = await fields.getByRole('button', { name: 'Add field', exact: true }).boundingBox()
+    expect(add!.x + add!.width).toBeLessThanOrEqual(390)
+    await page.getByRole('button', { name: 'Back to boards', exact: true }).click()
+    expect(await page.getByLabel('Settings for Delivery', { exact: true }).isVisible()).toBe(true)
+  } finally { await page.close() }
+}, 30000)
+
 it.each([1500, 900])('keeps the reviewed CI/CD map complete after opening the real settings inspector at %s', async width => {
   const { page, errors } = await fixture('process')
   try {
