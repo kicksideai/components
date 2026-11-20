@@ -124,7 +124,7 @@ The stage visit limit applies at entry. An admitted visit uses `run.retry.max` t
 
 Sink configuration names an exact registered `kickside.work.write_source` resource. Its caller requires `work.source.write` and declaration discovery on that resource as well as the board's ordinary read/write authority. Fleet reads accept `limit` (at most 50) and `after`, and return a `next` continuation.
 
-Work settings in namespace `kickside.work` include these operational controls:
+Work settings in namespace `kickside.work` can be saved from **Work application defaults** with application settings write access. The Work discovery policy lists the exact registry IDs of these definitions. Operational controls include:
 
 - `comments_per_item`: default 10000, inclusive range 1–100000.
 - `command_deadline_ms`: default 5000, inclusive range 1–60000.
