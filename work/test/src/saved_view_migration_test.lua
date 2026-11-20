@@ -22,6 +22,7 @@ return { run = test.run_cases(function()
                 local id = data(session.http("POST", session.route(board.id, "views"), {
                     title = title, personal = personal, view = { type = "list", columns = { "title" } },
                 })).view_id
+                assert(type(id) == "string")
                 -- Recreate the public metadata shape used before board-indexed listing.
                 local ok, err = component.set_meta(id, {}, { trusted_runtime = true, delete_keys = { "board_id" } })
                 assert(ok, tostring(err))

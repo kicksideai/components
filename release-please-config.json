@@ -93,6 +93,15 @@
         "pim-admin/ui/coverage"
       ]
     },
+    "work-planning": {
+      "component": "work-planning",
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
+      "exclude-paths": [
+        "work-planning/.wippy",
+        "work-planning/wippy.lock"
+      ]
+    },
     "work-admin": {
       "component": "work-admin",
       "changelog-path": "CHANGELOG.md",

@@ -75,7 +75,8 @@ end
 local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id: string, request: types.SchemaRequest, frozen: types.SchemaPlan?, creating: boolean?): (types.SchemaPlan?, error?)
     local board, previous = snapshot.board, snapshot.declaration
     local generation = board and board.generation or 0
-    if request.pack then
+    local pack_base = request.pack and request.pack.base :: { additive: boolean? }?
+    if request.pack and not (pack_base and pack_base.additive) then
         local admission_err = M.check_pack_install(db, board_id, board)
         if admission_err then return nil, admission_err end
     end

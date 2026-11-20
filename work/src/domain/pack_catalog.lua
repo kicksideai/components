@@ -19,7 +19,7 @@ local STATE = { type = "object", properties = { id = STRING, name = { type = "st
 local PROCESSES = shape.tolerant(array({ type = "object", properties = {
     id = STRING, initial = STRING, states = { type = "array", minItems = 1, items = STATE },
 }, required = { "id", "initial", "states" } }))
-local DATA = shape.tolerant(object({ schema = { type = "object" }, processes = array({ type = "object" }),
+local DATA = shape.tolerant(object({ additive = { type = "boolean" }, schema = { type = "object" }, processes = array({ type = "object" }),
     views = array(object({ id = STRING, title = STRING, view = { type = "object" } }, { "id", "title", "view" })),
     automations = array(object({ id = STRING, type = STRING, input = { type = "object" } }, { "id", "type", "input" })),
     traits = array(STRING), requires = array(STRING), starter = object({ items = array({ type = "object" }), default = { type = "boolean" } }, { "items", "default" }),

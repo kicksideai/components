@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.planning
+entries:
+- name: sprints
+  kind: contract.definition
+  meta:
+    title: Work Planning sprints
+  methods:
+  - name: plan_close
+    description: Preview the unfinished issues that will leave a sprint, under live board WRITE and membership access.
+    input_schemas:
+    - format: application/schema+json
+      definition: &plan_input '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"sprint_id":{"type":"string","minLength":1,"maxLength":255},"rollover_id":{"type":"string","minLength":1,"maxLength":255,"description":"Another planned or active sprint on this board. Omit to return unfinished issues to the backlog."}},"required":["board_id","sprint_id"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: &plan_output '{"type":"object","properties":{"snapshot":{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"sprint_id":{"type":"string","minLength":1,"maxLength":255},"rollover_id":{"type":"string","minLength":1,"maxLength":255},"head":{"type":"integer","minimum":0},"generation":{"type":"integer","minimum":1},"sprint_version":{"type":"integer","minimum":1},"members":{"type":"array","maxItems":199,"items":{"type":"object","properties":{"item_id":{"type":"string","minLength":1,"maxLength":255},"version":{"type":"integer","minimum":1}},"required":["item_id","version"],"additionalProperties":false}}},"required":["board_id","sprint_id","head","generation","sprint_version","members"],"additionalProperties":false},"token":{"type":"string","minLength":1,"maxLength":512}},"required":["snapshot","token"],"additionalProperties":false}'
+  - name: close
+    description: Commit a preview under the caller's identity with a unique key, closing the sprint and rolling over its unfinished issues in one Work apply.
+    input_schemas:
+    - format: application/schema+json
+      definition: &close_input '{"type":"object","properties":{"key":{"type":"string","minLength":1,"maxLength":240},"snapshot":{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"sprint_id":{"type":"string","minLength":1,"maxLength":255},"rollover_id":{"type":"string","minLength":1,"maxLength":255},"head":{"type":"integer","minimum":0},"generation":{"type":"integer","minimum":1},"sprint_version":{"type":"integer","minimum":1},"members":{"type":"array","maxItems":199,"items":{"type":"object","properties":{"item_id":{"type":"string","minLength":1,"maxLength":255},"version":{"type":"integer","minimum":1}},"required":["item_id","version"],"additionalProperties":false}}},"required":["board_id","sprint_id","head","generation","sprint_version","members"],"additionalProperties":false},"token":{"type":"string","minLength":1,"maxLength":512}},"required":["key","snapshot","token"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: &close_output '{"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object"}},"applied":{"type":"boolean"},"seq":{"type":"integer","minimum":0},"as_of":{"type":"integer","minimum":0},"replayed":{"type":"boolean"}},"required":["outcomes","applied"],"additionalProperties":false}'
+- name: sprints_binding
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work.planning:sprints
+    default: true
+    methods:
+      plan_close: kickside.work.planning:plan_close
+      close: kickside.work.planning:close
+- name: plan_close
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: Preview sprint closure
+    llm_alias: WorkPlanCloseSprint
+    llm_description: Preview closure of an active sprint and the rollover of unfinished issues to a different sprint or the backlog.
+    mcp:
+      required_scopes: [state.write]
+    input_schema: *plan_input
+    output_schema: *plan_output
+  source: file://sprints.lua
+  method: plan_close
+  modules: [hash, security]
+  imports: &sprint_imports
+    board_client: kickside.work:client
+    codec: kickside.work.read:cursor_codec
+    commands: kickside.work.command:types
+    consts: kickside.work:consts
+    query: kickside.work.read:query
+    reads: kickside.work.read:types
+    requests: kickside.work.service:requests
+    values: kickside.work.domain:values
+    work: kickside.work:types
+- name: close
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: Close sprint
+    llm_alias: WorkCloseSprint
+    llm_description: Commit the exact sprint closure preview with a unique replay key. If stale, request a new preview.
+    mcp:
+      required_scopes: [state.write]
+    input_schema: *close_input
+    output_schema: *close_output
+  source: file://sprints.lua
+  method: close
+  modules: [hash, security]
+  imports: *sprint_imports

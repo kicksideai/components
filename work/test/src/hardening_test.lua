@@ -117,6 +117,38 @@ local function define()
             test.eq(#next_page.items,1)
         end)
 
+        test.it("fences atomic apply against its expected board head and hashes the precondition", function()
+            local h = fixture.board()
+            local id = steps.create(h, "task", { title = "Before" })
+            local head = assert(steps.get(h, id)).as_of :: integer
+            local request = { key = "guarded", expected_head = head, ops = { { op = "set", item = id, values = { title = "After" } } } }
+            local first, err = h.call("apply", request)
+            assert(first and first.applied, steps.detail(err))
+            test.is_true(assert(h.call("apply", request)).replayed)
+            request.expected_head = first.as_of
+            local failed, conflict = h.call("apply", request)
+            test.is_nil(failed)
+            test.eq(conflict:details().code, "idempotency_conflict")
+            local invalid, mode_err = h.call("apply", { mode = "independent", expected_head = head, ops = request.ops })
+            test.is_nil(invalid)
+            test.eq(mode_err:details().code, "invalid_request")
+        end)
+
+        test.it("rejects a head change between atomic preparation and append", function()
+            local h = fixture.board()
+            local id = steps.create(h, "task", { title = "Before" })
+            local head = assert(steps.get(h, id)).as_of :: integer
+            local db = assert(store.open())
+            assert(db:execute("CREATE TABLE IF NOT EXISTS work_keyed_churn (board_id TEXT PRIMARY KEY,item_id TEXT NOT NULL)"))
+            assert(db:execute("INSERT INTO work_keyed_churn VALUES ($1,$2)", { h.id, id })); db:release()
+            local result, err = h.call("apply", { key = "guarded-append", expected_head = head,
+                ops = { { op = "set", item = id, values = { title = "After" } } } })
+            db = assert(store.open()); assert(db:execute("DELETE FROM work_keyed_churn WHERE board_id=$1", { h.id })); db:release()
+            test.is_nil(result)
+            test.eq(err:details().code, "head_changed")
+            test.eq(assert(steps.get(h, id)).item.values.title, "Before")
+        end)
+
         test.it("keeps keyed item CAS when unrelated commands advance the board", function()
             local h = fixture.board()
             local id = steps.create(h,"task",{ title = "Before" })

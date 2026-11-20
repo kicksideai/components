@@ -22,7 +22,7 @@ type Op = {
     region: string?, state: string?, item: string?, expect_version: integer?, transition: string?, target: TargetRef?, comment: string?,
     body: string?, delete: boolean?, expect_comment_version: integer?, mentions: unknown, after: unknown, before: unknown,
 }
-type ApplyRequest = { trace_context: domain.TraceContext?, board_id: string, key: string?, mode: string?, ops: { Op }, source: string?, origin: JsonObject? }
+type ApplyRequest = { expected_head: integer?, trace_context: domain.TraceContext?, board_id: string, key: string?, mode: string?, ops: { Op }, source: string?, origin: JsonObject? }
 type SchemaRequest = { pack: JsonObject?, trace_context: domain.TraceContext?, plugin_configs: { [string]: JsonObject }?, board_id: string, declaration: Declaration, expected_generation: integer?, key: string?, source: string?, origin: JsonObject? }
 type UpdateRequest = { board_id: string, title: string?, description: string?, icon: string?, key_prefix: string? }
 type UpdateResult = { board_id: string, status: string, seq: integer?, as_of: integer? }
