@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.24](https://github.com/kicksideai/components/compare/work-v0.1.23...work-v0.1.24) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** expose template and sprint planning operations over HTTP ([#251](https://github.com/kicksideai/components/issues/251)) ([3100463](https://github.com/kicksideai/components/commit/310046356f25aaafbd265ad6b1d0c12a10dce847))
+* **work:** reuse the configured router for sprint HTTP endpoints ([#253](https://github.com/kicksideai/components/issues/253)) ([3e4a6dd](https://github.com/kicksideai/components/commit/3e4a6dd07576fee3eafd23dd2a00fb3aa366dede))
+
 ## [0.1.23](https://github.com/kicksideai/components/compare/work-v0.1.22...work-v0.1.23) (2026-11-20)
 
 
