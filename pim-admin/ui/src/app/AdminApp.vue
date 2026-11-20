@@ -1,10 +1,11 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import InteractiveSurface from '../shared/InteractiveSurface.vue'
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watchEffect } from 'vue'
 import { host, on } from '@wippy-fe/proxy'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { requestGeneration } from '../shared/requests'
+import { ApiError } from '../shared/transport'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Tag from 'primevue/tag'
@@ -30,15 +31,16 @@ async function selectCatalog(id: string) {
 function dirtyChanged(event: Event) { dirty.value = (event as CustomEvent<{ dirty: boolean }>).detail.dirty }
 
 const search = ref('')
+const query = computed(() => search.value.trim().toLocaleLowerCase())
 const loading = ref(true)
-const error = ref('')
+const error = ref<{ message: string; code?: string }>()
 const next = ref<number>()
 const reads = requestGeneration()
-const visible = computed(() => catalogs.value.filter(c => c.title.toLocaleLowerCase().includes(search.value.toLocaleLowerCase())))
+const visible = computed(() => catalogs.value.filter(c => c.title.toLocaleLowerCase().includes(query.value)))
 async function load(after?: number) {
   const generation = reads.begin()
   loading.value = true
-  error.value = ''
+  error.value = undefined
   try {
     const page = await pim.listCatalogs(after)
     if (!reads.current(generation)) return
@@ -46,9 +48,16 @@ async function load(after?: number) {
     catalogs.value = after == null ? admins : [...catalogs.value, ...admins]
     next.value = page.after
     if (next.value == null && selected.value && !catalogs.value.some(c => c.catalog_id === selected.value)) selected.value = ''
-  } catch (e) { if (reads.current(generation)) error.value = e instanceof Error ? e.message : 'Could not load catalogs.' }
+  } catch (e) {
+    if (!reads.current(generation)) return
+    const code = e instanceof ApiError ? e.details?.code : undefined
+    error.value = { message: e instanceof Error ? e.message : 'Could not load catalogs.', code: typeof code === 'string' ? code : undefined }
+  }
   finally { if (reads.current(generation)) loading.value = false }
 }
+watchEffect(() => {
+  if (query.value && !loading.value && !error.value && next.value != null) void load(next.value)
+})
 const unsubscribe = on('component.meta.changed', () => { void load() })
 useHostVisibilityRefresh(load)
 onUnmounted(() => { unsubscribe(); reads.begin() })
@@ -65,10 +74,17 @@ onUnmounted(() => { unsubscribe(); reads.begin() })
           <span>{{ c.title || 'Untitled catalog' }}</span>
         </InteractiveSurface>
       </div>
-      <Button v-if="next != null" type="button" :disabled="loading" @click="load(next)" severity="secondary" outlined size="small"><Icon icon="tabler:chevron-right" aria-hidden="true" /> Load more catalogs</Button>
+      <Message v-if="query && error" class="pim-rail-error" severity="error" role="alert">
+        {{ error.message }} <code v-if="error.code">{{ error.code }}</code>
+      </Message>
+      <div v-else-if="query && (loading || next != null)" class="small muted" role="status">Searching catalogs…</div>
+      <div v-else-if="query && visible.length === 0" class="small muted" role="status">No matching catalogs.</div>
+      <Button v-if="next != null && (!query || error)" type="button" :disabled="loading" @click="load(next)" severity="secondary" outlined size="small"><Icon icon="tabler:chevron-right" aria-hidden="true" /> Load more catalogs</Button>
     </aside>
     <main class="pim-system-main">
-      <Message v-if="error" severity="error">{{ error }}</Message>
+      <Message v-if="error && !query" severity="error" role="alert">
+        {{ error.message }} <code v-if="error.code">{{ error.code }}</code>
+      </Message>
       <kickside-pim-catalog-settings v-if="selected && ready" :key="selected" :catalog-id="selected" embedded="true" @dirty-changed="dirtyChanged" />
       <div v-else-if="loading" class="kx-loading" role="status">Loading catalogs…</div>
       <div v-else class="kx-empty"><Icon icon="tabler:settings" class="kx-empty-ico" /><h3 class="kx-empty-title">Catalog settings</h3><p class="kx-empty-sub">Select a catalog to edit its schema, plugins and policy.</p></div>

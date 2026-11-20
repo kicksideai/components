@@ -5,12 +5,14 @@ import AdminApp from './AdminApp.vue'
 import SettingsApp from './SettingsApp.vue'
 import SchemaBuilder from './builder/SchemaBuilder.vue'
 import { pim } from '../api'
+import { ApiError } from '../shared/transport'
 import { createSchema, deferred } from '../test/fixtures'
 import { hostProps, events } from '../test/setup'
 
 vi.mock('../api', () => ({ pim: Object.fromEntries(['listCatalogs', 'catalogSummary', 'schema', 'schemaOptions'].map(key => [key, vi.fn()])) }))
 const row = (id: string, admin = true) => ({ catalog_id: id, title: id, access: { read: true, write: true, admin } })
 beforeEach(() => {
+  vi.clearAllMocks()
   hostProps.value = {}
   vi.mocked(pim.listCatalogs).mockResolvedValue({ catalogs: [row('Apparel'), row('Reader', false)], after: 10 })
   vi.mocked(pim.catalogSummary).mockImplementation(async id => row(id))
@@ -34,6 +36,64 @@ it('paginates and searches the administration rail', async () => {
   await w.get('input[type=search]').setValue('hard')
   expect(w.findAll('.pim-rail-row').map(row => row.text())).toEqual(['Hardware'])
   w.unmount()
+})
+it('searches all catalog pages, including pages with no administrative catalogs', async () => {
+  const last = deferred<Awaited<ReturnType<typeof pim.listCatalogs>>>()
+  vi.mocked(pim.listCatalogs)
+    .mockResolvedValueOnce({ catalogs: [row('Northstar Apparel')], after: 10 })
+    .mockResolvedValueOnce({ catalogs: [row('Northstar Reader', false)], after: 20 })
+    .mockReturnValueOnce(last.promise)
+  const w = mount(AdminApp)
+  try {
+    await flushPromises()
+    await w.get('input[type=search]').setValue('  NORTHSTAR  ')
+    await flushPromises()
+    expect(vi.mocked(pim.listCatalogs).mock.calls).toEqual([[undefined], [10], [20]])
+    expect(w.get('aside [role=status]').text()).toContain('Searching catalogs')
+    last.resolve({ catalogs: [row('Northstar Outdoor'), row('Hardware')] })
+    await flushPromises()
+    expect(w.findAll('.pim-rail-row').map(row => row.text())).toEqual(['Northstar Apparel', 'Northstar Outdoor'])
+    await w.get('input[type=search]').setValue('does not exist')
+    expect(w.get('aside [role=status]').text()).toBe('No matching catalogs.')
+    expect(pim.listCatalogs).toHaveBeenCalledTimes(3)
+  } finally { w.unmount() }
+})
+it('stops searching when cleared and keeps the cursor for manual paging', async () => {
+  const pending = deferred<Awaited<ReturnType<typeof pim.listCatalogs>>>()
+  vi.mocked(pim.listCatalogs)
+    .mockResolvedValueOnce({ catalogs: [row('Apparel')], after: 10 })
+    .mockReturnValueOnce(pending.promise)
+    .mockResolvedValueOnce({ catalogs: [row('Hardware')] })
+  const w = mount(AdminApp)
+  try {
+    await flushPromises()
+    const search = w.get('input[type=search]')
+    await search.setValue('hardware')
+    expect(pim.listCatalogs).toHaveBeenLastCalledWith(10)
+    await search.setValue('')
+    pending.resolve({ catalogs: [row('Footwear')], after: 20 })
+    await flushPromises()
+    expect(pim.listCatalogs).toHaveBeenCalledTimes(2)
+    await w.findAll('button').find(button => button.text().includes('Load more catalogs'))!.trigger('click')
+    await flushPromises()
+    expect(pim.listCatalogs).toHaveBeenLastCalledWith(20)
+    expect(w.findAll('.pim-rail-row').map(row => row.text())).toEqual(['Apparel', 'Footwear', 'Hardware'])
+  } finally { w.unmount() }
+})
+it('shows a typed error instead of an empty result when a search page fails', async () => {
+  vi.mocked(pim.listCatalogs)
+    .mockResolvedValueOnce({ catalogs: [row('Apparel')], after: 10 })
+    .mockRejectedValueOnce(new ApiError({ message: 'Catalogs are temporarily unavailable.', details: { code: 'catalog_directory_unavailable' } }, 'catalog list', 503))
+  const w = mount(AdminApp)
+  try {
+    await flushPromises()
+    await w.get('input[type=search]').setValue('hardware')
+    await flushPromises()
+    expect(w.get('aside [role=alert]').text()).toContain('Catalogs are temporarily unavailable.')
+    expect(w.get('aside [role=alert]').text()).toContain('catalog_directory_unavailable')
+    expect(w.text()).not.toContain('No matching catalogs')
+    expect(pim.listCatalogs).toHaveBeenCalledTimes(2)
+  } finally { w.unmount() }
 })
 it('keeps transport errors visible and removes subscriptions when unmounted', async () => {
   vi.mocked(pim.listCatalogs).mockRejectedValue(new Error('Catalog directory unavailable'))
