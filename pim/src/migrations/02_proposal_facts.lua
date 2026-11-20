@@ -45,7 +45,7 @@ local function decode(row, fields)
     return assert(decoded)
 end
 
-local function accepted_result(result, seq, count, applied_seq, noop)
+local function accepted_result(result, seq: integer, count: integer, applied_seq: integer, noop: boolean): string
     assert(type(result) == "table" and result.applied == true and type(result.outcomes) == "table",
         "completed proposal receipt lacks a successful apply result")
     local last = not noop and (seq + count - 1) or nil
@@ -101,8 +101,8 @@ local function reconcile(db, uuid_parameter)
         -- Same pending-only count as kickside.pim.persist:publish_meta.
         execute(db, [[INSERT INTO kickside_component_meta(meta_id, component_id, key, value)
             SELECT ]] .. uuid_parameter .. [[, component_id, 'pending_proposal_count', CAST((
-                SELECT COUNT(*) FROM kickside_pim_proposal WHERE catalog_id = $3 AND status = 'pending') AS text)
-            FROM kickside_components WHERE component_id = $2
+                SELECT COUNT(*) FROM kickside_pim_proposal WHERE catalog_id = $2 AND status = 'pending') AS text)
+            FROM kickside_components WHERE component_id = $3
             ON CONFLICT(component_id, key) DO UPDATE SET value = excluded.value]], { uuid.v7(), id, id })
     end
 end
