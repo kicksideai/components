@@ -32,6 +32,10 @@ entries:
     icon: search
     attachment: kickside.work_search:attachment
     seams: [kickside.work_search:text, kickside.work_search:key]
+    projections:
+    - kind: kickside.work_search:items
+      worker_ref: func://kickside.work_search:project
+      input: state
 - name: text
   kind: registry.entry
   meta:
@@ -55,6 +59,10 @@ entries:
   - contract: kickside.contract:component
     methods:
       get_status: kickside.core.threads:thread_status
+  - contract: kickside.contract:deletable
+    context_required: [component_id]
+    methods:
+      delete: kickside.work_search:delete_attachment
 - name: resolver
   kind: contract.binding
   contracts:
@@ -70,6 +78,28 @@ entries:
     storage: kickside.work_search:storage
   security:
     policies: &storage_policies [kickside.work_search:storage_config_access, kickside.work_search:storage_db_access]
+- name: project
+  kind: function.lua
+  meta: { type: projection.worker }
+  source: file://projection.lua
+  method: run
+  modules: [sql, uuid]
+  imports:
+    work: kickside.work_search:work
+    storage: kickside.work_search:storage
+  security:
+    policies: *storage_policies
+- name: delete_attachment
+  kind: function.lua
+  meta: { private: true }
+  source: file://teardown.lua
+  method: delete
+  modules: [ctx, sql]
+  imports:
+    component: kickside.component:component
+    storage: kickside.work_search:storage
+  security:
+    policies: *storage_policies
 - name: storage_config_access
   kind: security.policy
   meta: { private: true, service_only: true }
@@ -85,10 +115,18 @@ entries:
   groups: [kickside.security.groups:members, wippy.security:process]
   policy:
     resources:
+    - kickside.work_search:project
     - kickside.work_search:storage_config_access
     - kickside.work_search:storage_db_access
     - kickside.search_index:index
     actions: [registry.get]
+    effect: allow
+- name: worker_access
+  kind: security.policy
+  groups: [wippy.security:process]
+  policy:
+    resources: [kickside.work_search:project]
+    actions: [registry.get, funcs.call]
     effect: allow
 - name: work
   kind: library.lua
