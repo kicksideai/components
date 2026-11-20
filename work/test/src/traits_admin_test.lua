@@ -2,6 +2,7 @@
 local test = require("test")
 local fixture = require("fixture")
 local steps = require("steps")
+local operation_steps = require("operation_steps")
 local registry = require("registry")
 local json = require("json")
 local authorization_probe = require("authorization_probe")
@@ -18,6 +19,32 @@ local function tool(h: fixture.Handle, name: string, args: Map): Map
 end
 local function define()
     test.describe("Work administration answers", function()
+        test.it("starts and monitors moves through the admin trait alone under source access", function()
+            local source, target = fixture.board(), fixture.board()
+            operation_steps.gate(source, true)
+            local item = steps.create(source, "task")
+            assert(target.call("grant", { subject_id = source.actor:id(), mask = 3 }))
+            local compiled = assert(source.executor:call("app:compile_work_agent", { board_id = source.id, admin_only = true }))
+            local tools = {}
+            for _, entry in pairs(compiled.tools) do tools[entry.registry_id] = true end
+            test.is_true(tools["kickside.work.traits:move"])
+            test.is_true(tools["kickside.work.traits:move_status"], "admin-only agent cannot discover WorkMoveStatus")
+
+            local started = tool(source, "move", { item = item, to_board = target.id, key = "admin-trait-move",
+                map = { type = {}, state = {}, fields = {}, relations = {} } })
+            local request = { move_id = started.move_id }
+            steps.wait_for("admin agent sees completed move", function(): boolean
+                return tool(source, "move_status", request).status == "done"
+            end)
+            local executor = target.executor:with_context({ board_id = source.id })
+            for _, mask in ipairs({ 1, 3 }) do
+                assert(source.call("grant", { subject_id = target.actor:id(), mask = mask }))
+                local _, err = executor:call("kickside.work.traits:move_status", request)
+                test.eq(err:kind(), errors.PERMISSION_DENIED)
+            end
+            assert(source.call("grant", { subject_id = target.actor:id(), mask = 11 }))
+            test.eq(tool(target, "move_status", { board_id = source.id, move_id = started.move_id }).status, "done")
+        end)
         test.it("accepts context board inputs and keeps explicit board precedence", function()
             local h, other = fixture.board(), fixture.board()
             for _, case in ipairs({

@@ -8,10 +8,20 @@ entries:
     source: file://admin_test.lua
     method: run
     modules: [json, uuid, registry, fs, http_client]
-    imports:
+    imports: &admin_imports
       test: wippy.test:test
       session: app:session
       fixture: app:fixture
+  - name: admin_scope_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_work_admin, timeout: 300s }
+    source: file://admin_scope_test.lua
+    method: run
+    modules: [json, uuid, registry]
+    imports: *admin_imports
+  - name: admin_scope_expectation
+    kind: registry.entry
+    members_have_access: true
   - name: score_type
     kind: registry.entry
     meta:

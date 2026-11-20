@@ -8,6 +8,9 @@ local security = require("security")
 local job_rows = require("job_rows")
 local store = require("store")
 local board_meta = require("board_meta")
+local consts = require("consts")
+local materializer = require("materializer")
+local types = require("types")
 
 local M = {}
 
@@ -62,9 +65,25 @@ end
 
 -- after_commit is the projection's post-commit hook; it publishes under the
 -- trusted meta policy of publish_meta.
-function M.after_commit(input: storage.MetaInput): (storage.Published?, error?)
+function M.after_commit(input: types.ProjectionInput): (storage.Published?, error?)
     local _, err = funcs.call("kickside.work.persist:publish_meta", input)
     if err then return nil, err end
+    local committed = input.range and input.range.to_seq
+    if committed then
+        local notified: { [string]: boolean } = {}
+        for _, raw in ipairs(input.events or {}) do
+            if raw.type == consts.EVENTS.ITEM_LINKED or raw.type == consts.EVENTS.ITEM_UNLINKED then
+                local event, decode_err = materializer.decode(raw)
+                if decode_err then return nil, decode_err end
+                local target = event and event.seq <= committed and event.body.target
+                if target and target.board ~= input.thread_id and not notified[target.board] then
+                    local _, notify_err = component.notify_access(target.board, nil, { event = "work.relations.invalidated" })
+                    if notify_err then return nil, notify_err end
+                    notified[target.board] = true
+                end
+            end
+        end
+    end
     return { published = true }, nil
 end
 

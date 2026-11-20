@@ -12,8 +12,23 @@ local pack_views = require("pack_views")
 local registry = require("registry")
 local api_access = require("api_access")
 local component_envelope = require("component_envelope")
+local threads = require("threads")
+local uuid = require("uuid")
 
 local M = {}
+
+function M.register_schemaless(): (unknown, error?)
+    local id = uuid.v4()
+    local result, err = assert(component.get_service()):register({
+        component_id = id, impl_id = "kickside.work.binding:board", meta = { title = "Schema-less board" },
+    })
+    if err then return nil, err end
+    local failure = component_envelope.error_of(result, "register")
+    if failure then return nil, failure end
+    local _, thread_err = assert(threads.open()):ensure_thread({ component_id = id, impl_id = "kickside.work.binding:board", thread_class = "work.board" })
+    if thread_err then return nil, thread_err end
+    return { board_id = id }, nil
+end
 
 local BOARD_METHODS = { schema_options = true, plugin_feed = true, list_packs = true, pack_plan = true, pack_apply = true, update = true, move_status = true, bulk = true, bulk_status = true, cancel_bulk = true, plan_move = true, move = true, approve = true, report = true, create = true, list = true, get_schema = true, plan_schema = true, apply_schema = true, apply = true,
     list_links = true, list_comments = true, list_stage_runs = true, configure_plugin = true, explain = true, query = true, count = true, get = true, list_changes = true, list_history = true, get_time_in_state = true, resume_migration = true }
@@ -41,6 +56,7 @@ end
 
 function M.run(input: unknown): (unknown, error?)
     local op, id, req = input.op, input.board_id, input.request or {}
+    if op == "register_schemaless" then return funcs.call("app:register_schemaless_board") end
     if op == "contract_request" then
         local service, err = open(req.contract)
         if err or not service then return nil, err end

@@ -8,7 +8,7 @@ entries:
     title: KickSide Work administration
     description: Board configuration on the platform System surface.
 - name: dep.kickside.work
-  version: '*'
+  version: '>=0.1.15'
   kind: ns.dependency
   component: kickside/work
 - name: dep.kickside.widgets
@@ -71,8 +71,9 @@ entries:
     base_path: kickside-work-admin
     entry_point: admin.js
     icon: tabler:layout-kanban
-    description: Board schemas, process and plugin administration under the signed-in
-      user.
+    description: Open Work administration to create a board or select an existing one.
+      The component uses the signed-in user and takes no props. Board administrators
+      review field, process, visibility and plugin changes before applying a draft.
     props: {}
 - name: settings_tab
   kind: registry.entry

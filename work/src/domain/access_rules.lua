@@ -144,6 +144,14 @@ function M.field(board: types.Board, field: types.Field, mode: string, doc: type
     return allowed
 end
 
+function M.field_edit(board: types.Board, field: types.Field, doc: types.Document): types.FieldEdit
+    if not M.field(board, field, "write", doc) then return "field_denied" end
+    if field.type == "rollup" or field.type == "formula" or field.type == "rank" or field.type == "counter" then
+        return "read_only"
+    end
+    return "editable"
+end
+
 -- Retained history uses the same authority inputs after payload disposal.
 function M.retained(board: types.Board, doc: types.Document): types.Document
     local out: types.Document = {}

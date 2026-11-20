@@ -39,6 +39,14 @@ function M.compile(reader: types.Reader, alias: string, text: unknown, position:
             local _, ferr = resolve(code)
             if ferr then return nil, ferr end
         end
+        if reader.scope_fence and (meta.resolve_ids ~= nil or meta.match ~= nil) then
+            local projection, perr = scopes.projection(id, meta)
+            if perr then return nil, perr end
+            if projection then
+                local pending = reader.scope_fence(projection)
+                if pending then return nil, pending end
+            end
+        end
         if meta.resolve_ids ~= nil then
             if type(meta.resolve_ids) ~= "string" then return nil, invalid("unknown_scope", "resolve_ids names a binding") end
             local def, derr = contract.get("kickside.work:search_resolver")

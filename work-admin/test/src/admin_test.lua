@@ -98,12 +98,7 @@ local function cases()
         end)
         test.it("discovers access and initializes a legacy board without a schema", function()
             local owner = session.admin()
-            local title = "Interrupted initialization " .. uuid.v4()
-            local response = owner.post("/work/boards", { title = title, idempotency_key = uuid.v4(), declaration = { key_prefix = "invalid" } })
-            test.eq(response.status, 400)
-            local id
-            for _, row in ipairs(assert(owner.call("list", {})).boards) do if row.title == title then id = row.board_id end end
-            test.not_nil(id)
+            local id = assert(owner.call("register_schemaless", {})).board_id
             local options = owner.get(path(id, "options"))
             test.eq(options.status, 200, json.encode(options.body))
             test.is_true(options.body.data.access.admin)
@@ -135,9 +130,15 @@ local function cases()
                 test.eq(owner.post(path(id, "principal_labels"), request).status, 400)
             end
             local refs = {}
-            for _ = 1, 201 do refs[#refs + 1] = { type = "user", id = owner.id } end
-            test.eq(owner.post(path(id, "principal_labels"), { refs = refs }).status, 400)
-            test.eq(owner.post(path(id, "principal_labels"), { refs = {} }).status, 200)
+            for _ = 1, 200 do refs[#refs + 1] = { type = "user", id = owner.id } end
+            local endpoint = path(id, "principal_labels")
+            test.eq(owner.post(endpoint, { refs = refs }).status, 200)
+            refs[201] = refs[200]
+            local oversized = owner.post(endpoint, { refs = refs })
+            test.eq(oversized.status, 400)
+            test.eq(oversized.body.details.code, "invalid_principal_refs")
+            test.eq(owner.post_raw(endpoint, '{"refs":{}}').status, 400)
+            test.eq(owner.post_raw(endpoint, '{"refs":[]}').status, 200)
         end)
     end)
 end

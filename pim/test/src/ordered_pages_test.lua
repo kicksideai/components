@@ -6,6 +6,8 @@ local history = require("history")
 local types = require("types")
 local layout = require("layout")
 local select = require("select")
+local fixture = require("fixture")
+local consts = require("consts")
 
 local CATALOG = "ordered-pages"
 local SERIES = "WITH RECURSIVE series(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM series WHERE n < 12000) "
@@ -25,6 +27,7 @@ local function define()
         end
         local plan = ""
         local measured_plans: { string } = {}
+        local walked = 0
         local measured = { query = function(_self: unknown, statement: string, args: types.SqlParams)
             local prefix = pg and "EXPLAIN (ANALYZE, TIMING OFF) " or "EXPLAIN QUERY PLAN "
             local lines, err = db:query(prefix .. statement, args)
@@ -33,7 +36,9 @@ local function define()
             for i, line in ipairs(lines) do parts[i] = tostring(line["QUERY PLAN"] or line.detail) end
             plan = table.concat(parts, "\n")
             measured_plans[#measured_plans + 1] = plan
-            return db:query(statement, args)
+            local rows, query_err = db:query(statement, args)
+            for _, row in ipairs(rows or {}) do walked = walked + (tonumber(row.walk_count) or 0) end
+            return rows, query_err
         end } :: types.Executor
         local id = pg and "lpad(n::text, 5, '0')" or "printf('%05d', n)"
         test.before_all(function()
@@ -153,7 +158,105 @@ local function define()
             assert(not layout.drop(db, t.names))
         end)
 
+        local sparse_catalog: string? = nil
+        local sparse_table: types.Table? = nil
+        test.it("seeks a sparse indexed stage in a 440,000-item catalog", function()
+            local h = fixture.catalog({ bare = true })
+            local declaration = { aspects = { { namespace = "core", attributes = {
+                { code = "stage", type = "kickside.pim.types:text", index = "key" },
+            } } } }
+            local applied, schema_err = h.call("apply_schema", { declaration = declaration })
+            assert(applied, tostring(schema_err))
+            local catalog = assert((store.catalog(db, h.id)))
+            local t = layout.active(catalog)
+            sparse_catalog, sparse_table = h.id, t
+            local column = t.layout.columns[1].column
+            local series = "WITH RECURSIVE series(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM series WHERE n < 440000) "
+            local product_id = "'p' || " .. (pg and "lpad(n::text, 6, '0')" or "printf('%06d', n)")
+            assert(db:execute(series .. [[INSERT INTO kickside_pim_product
+                (catalog_id,product_id,sku,family,root_id,level,is_item,version,status,state,document,source_seq,created_seq,updated_seq)
+                SELECT $1, ]] .. product_id .. ", " .. product_id .. ", 'generic','root',0,1,1,'active','live','{}','{}',1,1 FROM series", { h.id }))
+            assert(db:execute(series .. "INSERT INTO " .. t.names.item
+                .. " (product_id,root_id,family,status,version,updated_seq,findings,sku_fold," .. column .. ") SELECT "
+                .. product_id .. ", 'root','generic','active',1,1,'{}'," .. product_id
+                .. ",CASE WHEN n = 440000 THEN 'ready' ELSE 'queued' END FROM series", {}))
+            assert(db:execute("ANALYZE kickside_pim_product", {}))
+            assert(db:execute("ANALYZE " .. t.names.item, {}))
+
+            local where = { ["and"] = {
+                { field = "core.stage", op = "contains", value = "ead" },
+                { ["and"] = { { field = "core.stage", op = "eq", value = "ready" } } },
+            } }
+            local out, err = h.call("query", { where = where, status = "active", limit = 5, count = true })
+            assert(out, tostring(err))
+            local page = out :: types.QueryResult
+            test.eq(#page.items, 1, "the first consumer page reaches the only matching stage")
+            test.eq(page.items[1].sku, "p440000")
+            test.is_nil(page.after)
+            test.is_false(page.incomplete == true)
+            test.eq(page.total, 1)
+            test.is_false(page.estimated == true)
+
+            local sorted = assert(h.call("query", { where = where, sort = { field = "core.stage", dir = "desc" },
+                after = { id = "p439999", v = "ready" } })) :: types.QueryResult
+            test.eq(#sorted.items, 1)
+            test.eq(sorted.items[1].sku, "p440000")
+            test.is_nil(sorted.after)
+
+            local function compile(q: types.ItemQuery): select.Plan
+                return assert((select.items({ catalog_id = h.id, allows = function(): boolean return true end },
+                    t, db:type(), q, function(): (types.Target?, error?)
+                        return { column = column, kind = "key", set = false, shape = { form = "text", cardinality = "one", config = {} } }, nil
+                    end, {}, read_model.item_conditions(h.id, { status = "active" }), {})))
+            end
+            local compiled = compile({ where = where, scan = consts.LIMITS.scan, count = consts.LIMITS.count })
+            measured_plans = {}
+            walked = 0
+            local rows = assert((select.rows(measured, compiled, 5)))
+            test.eq(#rows, 1)
+            test.eq(walked, 1, "only the matching index candidate is examined")
+            local total, estimated = select.total(measured, assert(compiled.count))
+            test.eq(total, 1)
+            test.is_false(estimated)
+            for _, query_plan in ipairs(measured_plans) do
+                test.not_nil(query_plan:find(t.names.item .. "_" .. column, 1, true), query_plan)
+                if pg then
+                    test.not_nil(query_plan:find("Index Cond: (" .. column .. " =", 1, true), query_plan)
+                    test.is_nil(query_plan:find("Rows Removed by Filter", 1, true), query_plan)
+                else
+                    test.not_nil(query_plan:find("(" .. column .. "=?)", 1, true), query_plan)
+                end
+            end
+            if pg then
+                local page_plan = measured_plans[1]
+                local sku_index_cond = assert(page_plan:match(
+                    "Index Scan using kickside_pim_product_pkey[^\n]*\n%s*Index Cond: ([^\n]+)"), page_plan)
+                test.not_nil(sku_index_cond:find("catalog_id =", 1, true), page_plan)
+                test.not_nil(sku_index_cond:find("product_id = i.product_id", 1, true), page_plan)
+            end
+
+            local dense = compile({ where = { field = "core.stage", op = "eq", value = "queued" },
+                sort = { field = "core.stage", dir = "asc" }, text = "!missing",
+                after = { id = "p100000", v = "queued" }, scan = 3, count = 5 })
+            walked = 0
+            local rejected, edge = select.rows(measured, dense, 5)
+            test.eq(#assert(rejected), 0)
+            test.eq(walked, 3)
+            test.eq(assert(edge).id, "p100003")
+            test.eq(assert(edge).v, "queued")
+            local bounded, truncated = select.total(measured, assert(dense.count))
+            test.eq(bounded, 0)
+            test.is_true(truncated)
+        end)
+
         test.after_all(function()
+            if sparse_table then
+                local clear_items = (pg and "TRUNCATE TABLE " or "DELETE FROM ") .. sparse_table.names.item
+                assert(db:execute(clear_items, {}))
+            end
+            if sparse_catalog then
+                assert(db:execute("DELETE FROM kickside_pim_product WHERE catalog_id = $1", { sparse_catalog }))
+            end
             clear()
             db:release()
         end)

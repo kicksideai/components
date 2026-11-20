@@ -45,7 +45,7 @@ function M.update(request: types.UpdateRequest): (types.UpdateResult?, error?)
     if cerr or not client then return nil, cerr end
     local seq, aerr = append.writes(client, request.board_id, { { group = "board", events = { event }, ops = {}, expect_head = head, caller_expect = true } })
     if aerr then return nil, aerr end
-    local as_of, werr = receipts.covered(request.board_id, deadline)
+    local as_of, werr = receipts.covered(request.board_id, deadline, seq)
     if werr then return nil, werr end
     local _, publish_err = funcs.call("kickside.work.persist:publish_meta", { thread_id = request.board_id })
     if publish_err then return nil, publish_err end

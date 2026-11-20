@@ -134,17 +134,11 @@ function M.board(opts: { bare: boolean?, declaration: unknown?, member_only: boo
     local prefix = M.fresh_prefix()
     local declaration = opts and opts.declaration or M.declaration(prefix)
     if opts and opts.declaration then prefix = (opts.declaration :: { [string]: unknown }).key_prefix :: string end
-    -- Invalid first-schema admission leaves the legacy/interrupted component
-    -- shape used by generation-zero tests; successful creation now initializes.
-    local legacy = bare or opts and opts.actor ~= nil
-    local created, cerr = executor:call("app:work_call", { op = "create",
-        request = { idempotency_key = "fixture", title = "Fixture board", declaration = legacy and { key_prefix = "invalid" } or declaration } })
-    if legacy then
-        assert(cerr and cerr:kind() == errors.INVALID, tostring(cerr))
-        local listed = assert(executor:call("app:work_call", { op = "list", request = {} }))
-        for _, row in ipairs(listed.boards) do if row.title == "Fixture board" then created = { board_id = row.board_id } end end
-        assert(created, "interrupted board exists")
-    else assert(not cerr, tostring(cerr)) end
+    local register_only = bare or opts and opts.actor ~= nil
+    local created, cerr = executor:call("app:work_call", register_only and { op = "register_schemaless" } or {
+        op = "create", request = { idempotency_key = "fixture", title = "Fixture board", declaration = declaration },
+    })
+    assert(created, tostring(cerr))
     local h = handle_for(actor, created.board_id, prefix)
     if opts and opts.actor and not bare then
         local admin = handle_for(actors.real((uuid.v4()), true), h.id, prefix)

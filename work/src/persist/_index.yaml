@@ -175,7 +175,7 @@ entries:
   kind: function.lua
   meta:
     type: projection.worker
-    comment: Publishes board public meta after the projection commit.
+    comment: Publishes board public meta and relation invalidations after the projection commit.
   source: file://public_meta.lua
   method: after_commit
   modules:
@@ -187,6 +187,9 @@ entries:
     storage: kickside.work.persist:types
     job_rows: kickside.work.persist:job_rows
     board_meta: kickside.work.persist:board_meta
+    consts: kickside.work:consts
+    materializer: kickside.work.persist:materializer
+    types: kickside.work:types
 - name: publish_meta
   kind: function.lua
   meta:
@@ -207,6 +210,9 @@ entries:
     storage: kickside.work.persist:types
     job_rows: kickside.work.persist:job_rows
     board_meta: kickside.work.persist:board_meta
+    consts: kickside.work:consts
+    materializer: kickside.work.persist:materializer
+    types: kickside.work:types
 - name: fold_rollup
   kind: library.lua
   source: file://fold_rollup.lua

@@ -51,9 +51,12 @@ local function plan_rank(ctx: types.PrepareContext, op: types.Op): types.OpPlan
 end
 
 local HANDLERS: { [string]: (types.PrepareContext, types.Op) -> types.OpPlan } = {
-    approve = approval.plan, report = function(ctx: types.PrepareContext, op: types.Op): types.OpPlan
+    approve = approval.plan,
+    report = function(ctx: types.PrepareContext, op: types.Op): types.OpPlan
         return op.completion and report.complete(ctx, op) or report.plan(ctx, op)
-    end, advance = process_context.advance, timer = timer.plan,
+    end,
+    advance = process_context.advance,
+    timer = timer.plan,
     create = item_fields.plan_create,
     set = item_fields.plan_set,
     transition = item_fields.plan_transition,
@@ -65,6 +68,12 @@ local HANDLERS: { [string]: (types.PrepareContext, types.Op) -> types.OpPlan } =
     delete = function(ctx: types.PrepareContext, op: types.Op): types.OpPlan return item_tree.plan_life(ctx, op, true) end,
     restore = function(ctx: types.PrepareContext, op: types.Op): types.OpPlan return item_tree.plan_life(ctx, op, false) end,
 }
+
+function M.operation_names(): { string }
+    local names: { string } = {}
+    for name in pairs(HANDLERS) do names[#names + 1] = name end
+    return names
+end
 
 -- plan_op plans one op.
 local function plan_op(ctx: types.PrepareContext, op: types.Op): types.OpPlan

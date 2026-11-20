@@ -15,6 +15,7 @@ local M = {}
 
 M.TYPE = "kickside.work.plugin"
 M.PROVIDER = "kickside.work:schema_provider"
+M.INTERFACE_VERSION = 1
 
 local EMPTY_SCHEMA: types.JsonObject = { type = "object", additionalProperties = false }
 
@@ -116,6 +117,13 @@ local function projections(plugin: string, raw: unknown): ({ types.PluginProject
         if p.input == "state" and p.events ~= nil then
             return nil, invalid_projection("plugin_projection_invalid", plugin, "state projections take no event filter")
         end
+        local start_seq: integer? = nil
+        if p.start_seq ~= nil then
+            start_seq = type(p.start_seq) == "number" and math.tointeger(p.start_seq) or nil
+            if p.input ~= "events" or not start_seq or start_seq < 1 then
+                return nil, invalid_projection("plugin_projection_invalid", plugin, "start_seq is a positive integer for event projections")
+            end
+        end
         local ref = p.worker_ref
         local id = type(ref) == "string" and (ref :: string):match("^func://(.+)$") or nil
         if not id then return nil, invalid_projection("plugin_projection_invalid", plugin, "plugin workers require a func:// reference") end
@@ -141,7 +149,8 @@ local function projections(plugin: string, raw: unknown): ({ types.PluginProject
         end
         for _, event in ipairs((p.events or {}) :: { string }) do events[#events + 1] = event end
         kinds[p.kind :: string] = true
-        out[#out + 1] = { kind = p.kind :: string, worker_ref = ref :: string, input = p.input :: string, revision = math.tointeger(revision) :: integer, events = events }
+        out[#out + 1] = { kind = p.kind :: string, worker_ref = ref :: string, input = p.input :: string,
+            revision = math.tointeger(revision) :: integer, events = events, start_seq = start_seq }
     end
     return out, nil
 end
@@ -177,6 +186,10 @@ function M.load(id: string): (types.Plugin?, error?)
     if type(meta) ~= "table" then return nil, invalid(id .. " is not a plugin") end
     local m = meta :: { [string]: unknown }
     if m.type ~= M.TYPE then return nil, invalid(id .. " is not a plugin") end
+    if m.interface_version ~= nil and m.interface_version ~= M.INTERFACE_VERSION then
+        return nil, errors.new({ kind = errors.INVALID, message = id .. " requires an unsupported plugin interface version",
+            details = { code = "plugin_interface_version_unsupported", plugin = id } })
+    end
     local schema: types.JsonObject = EMPTY_SCHEMA
     if m.config_schema ~= nil then
         if type(m.config_schema) ~= "table" or (m.config_schema :: { [string]: unknown }).type ~= "object" then
@@ -213,7 +226,7 @@ function M.load(id: string): (types.Plugin?, error?)
     if serr then return nil, serr end
     local declared, perr = projections(id, m.projections)
     if perr then return nil, perr end
-    return { tools = declared_tools :: { string }, projections = declared :: { types.PluginProjection }, id = id, title = m.title :: string?, description = m.description :: string?, icon = m.icon :: string?, settings = m.settings :: string?,
+    return { interface_version = M.INTERFACE_VERSION, tools = declared_tools :: { string }, projections = declared :: { types.PluginProjection }, id = id, title = m.title :: string?, description = m.description :: string?, icon = m.icon :: string?, settings = m.settings :: string?,
         attachment = m.attachment :: string?, config_schema = schema, schema = source, requires = lists.requires :: { string }, seams = lists.seams :: { string } }, nil
 end
 

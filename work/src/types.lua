@@ -68,7 +68,8 @@ type IndexRow = { id: string, system: { [string]: ColumnValue }, values: { [stri
 
 -- Queries. A reader is a caller admitted to read one board; allows answers whether it
 -- holds an access level (read, write, admin) there; actor is who it reads as, for $actor operands.
-type Reader = { awaiting: ((string) -> (Condition?, error?))?, search: { string }?, board_id: string, actor: string?, plugins: { PluginDecl }?, allows: (string) -> boolean }
+type Reader = { awaiting: ((string) -> (Condition?, error?))?, scope_fence: ((ScopeProjection) -> error?)?,
+    search: { string }?, board_id: string, actor: string?, plugins: { PluginDecl }?, allows: (string) -> boolean }
 -- Where is a filter tree as requested; kickside.work.domain:filter reads it.
 type Where = { [string]: unknown }
 type Sort = { field: string, ctx: { [string]: string }?, dir: string? }
@@ -100,7 +101,8 @@ type HistoryAsked = { target: ColumnTarget, by: string?, from: string?, to: stri
 
 -- Scopes: declarative filters over plugin tables in the board database.
 type ScopeFilter = { column: string, type: string, ops: { [string]: boolean } }
-type Scope = { id: string, table: string, board_column: string, item_column: string, filters: { [string]: ScopeFilter }, access: string, match: { string } }
+type ScopeProjection = { plugin: string, kind: string }
+type Scope = { id: string, table: string, board_column: string, item_column: string, filters: { [string]: ScopeFilter }, access: string, match: { string }, projection: ScopeProjection? }
 type ScopeQuery = { id: string, where: { [string]: { [string]: unknown } } }
 -- AdmittedScope is a scope query whose scope the reader's access allows.
 type AdmittedScope = { scope: Scope, where: { [string]: { [string]: unknown } } }
@@ -113,16 +115,16 @@ type PluginSchema = { fragment: JsonObject, version: string?, digest: string }
 -- What a provider resolves against: the board, the plugin's effective config and the copy the board holds.
 type ResolveContext = { board_id: string, config: JsonObject, current: PluginSchema? }
 -- Plugin is a loaded manifest.
-type PluginProjection = { kind: string, worker_ref: string, input: string, revision: integer, events: { string } }
-type PluginError = { kind: string, code: string?, message: string }
+type PluginProjection = { kind: string, worker_ref: string, input: string, revision: integer, events: { string }, start_seq: integer? }
+type PluginError = { kind: string, code: string?, message: string, floor: integer? }
 type PluginProblem = { code: string, message: string, field: string? }
 type PluginLifecycle = { state: string, error: PluginError? }
-type PluginProjectionState = { last_seq: integer, parked: boolean, bootstrapping: boolean, error: unknown? }
-type PluginView = { plugin: string, title: string?, description: string?, icon: string?, installed: boolean, active: boolean,
+type PluginProjectionState = { last_seq: integer, start_seq: integer?, parked: boolean, bootstrapping: boolean, error: unknown? }
+type PluginView = { plugin: string, interface_version: integer?, title: string?, description: string?, icon: string?, installed: boolean, active: boolean,
     attachment_id: string?, config: JsonObject?, config_schema: JsonObject?, requires: { string }, tools: { string },
     lifecycle: PluginLifecycle, projections: { [string]: PluginProjectionState }, problem: PluginProblem?,
     version: string?, digest: string?, outdated: boolean? }
-type Plugin = { tools: { string }, projections: { PluginProjection }, id: string, title: string?, description: string?, icon: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?, requires: { string }, seams: { string } }
+type Plugin = { interface_version: integer, tools: { string }, projections: { PluginProjection }, id: string, title: string?, description: string?, icon: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?, requires: { string }, seams: { string } }
 -- ProviderResult is what a schema_provider binding answers.
 type ProviderResult = { fragment: JsonObject, version: string? }
 type Provider = { resolve: (self: Provider, request: JsonObject) -> (unknown, error?) }
@@ -141,6 +143,7 @@ type Finding = { code: string, message: string, field: string? }
 type OptionDecl = { id: string, label: string?, color: string?, order: integer?, category: string? }
 type Holder = { group: string?, user: string?, service: string?, field: string? }
 type FieldAccess = { read: { Holder }?, write: { Holder }? }
+type FieldEdit = "editable" | "field_denied" | "read_only"
 type Visibility = { field: string, levels: { { id: string, holders: { Holder } } }, bypass: string? }
 type AccessCaller = { principal: PrincipalDecl, groups: { [string]: boolean }, admin: boolean }
 type FieldDecl = {
@@ -185,7 +188,7 @@ type PluginDecl = { schema: PluginSchema?, use: string, attachment_kind: string?
 type PluginProgress = { projection_after: string?, scanned: boolean?, registered: integer? }
 type PluginState = { plugin: string, attachment_id: string, impl_id: string, config: JsonObject, active: boolean, revision: integer, applied_revision: integer, lifecycle: PluginLifecycle, progress: PluginProgress? }
 type StateMaps = { [string]: { [string]: string } }
-type RemoveDecl = { fields: { string }?, item_types: { string }?, processes: { string }?, relation_types: { string }? }
+type RemoveDecl = { fields: { string }?, item_types: { string }?, processes: { string }?, relation_types: { string }?, visibility: boolean? }
 type Declaration = {
     visibility: Visibility?, key_prefix: string?, fields: { FieldDecl }?, item_types: { ItemTypeDecl }?, relation_types: { RelationDecl }?,
     processes: { ProcessDecl }?, plugins: { PluginDecl }?, scopes: { string }?, policy: PolicyDecl?, remove: RemoveDecl?,
@@ -212,6 +215,12 @@ type Transition = {
     id: string, name: string, from: { string }, any: boolean, to: string, require: { string }, set: { Effect }, auto: boolean, people: boolean?,
     order: integer, default: boolean, when: unknown, guards: { string }?,
 }
+type HookActor = { id: string?, groups: { string } }
+type GuardRequest = { config: JsonObject, actor: HookActor, transition: Transition?,
+    item: { id: string, type: string, state: string, category: string, parent: string?, rank: string?, values: JsonObject } }
+type GuardResult = { allow: boolean, findings: { Finding } }
+type OperandRequest = { board_id: string, config: JsonObject, actor: HookActor }
+type OperandResult = boolean | number | string | { OperandResult } | { [string]: OperandResult }
 -- generation is the board generation that last changed the process definition.
 type Process = {
     plugin: string?,
@@ -266,6 +275,7 @@ type CommentRow = {
     deleted: boolean, created_at: string, edited_at: string?,
 }
 type CommentPosition = { created_at: string, comment_id: string }
+type LinkPosition = { seq: integer, board_id: string, from_id: string, type: string, to_board_id: string, to_id: string }
 type IntervalRow = { field_id: string, start_seq: integer, value_key: string, started_at: string, ended_at: string? }
 type ChangeRow = {
     seq: integer, n: integer, subject: string, kind: string, field_id: integer?, before: Json, after: Json, actor: string,
@@ -284,7 +294,7 @@ type EventBody = { board_id: string?, flow_ref: FlowRef?, pack: JsonObject?,
     command_key: string?,
     plugin: string?, attachment: string?, config: JsonObject?, audit: string?, actor: string?, at: string?, source: string?, origin: JsonObject?, receipt: Receipt?,
     plugin_configs: { [string]: JsonObject }?, generation: integer?, declaration: Declaration?, compiled: Compiled?, digest: string?, class: string?, changes: { SchemaChange }?,
-    item: string?, type: string?, parent: string?, previous: string?, state: string?, patch: { PatchStep }?,
+    item: string?, type: string?, parent: string?, previous: string?, state: string?, patch: { PatchStep }?, schema_generation: integer?,
     transition: string?, from: string?, to: string?, visit: integer?, auto: boolean?, from_generation: integer?, to_generation: integer?,
     state_map: { [string]: string }?, maps: StateMaps?, migrates: boolean?,
     recompute: RecomputeRange?, after: string?, before: string?, range: RankRange?, count: integer?,
@@ -332,9 +342,10 @@ return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, Operation
     GeneratedNames = GeneratedNames, GeneratedTable = GeneratedTable, IndexRow = IndexRow, Reader = Reader, Where = Where, Sort = Sort, Cursor = Cursor,
     ItemQuery = ItemQuery, ColumnTarget = ColumnTarget, Resolver = Resolver, Condition = Condition, FilterEnvironment = FilterEnvironment,
     FilterCompilation = FilterCompilation, FilterOptions = FilterOptions, VisibilityCondition = VisibilityCondition, RelationScope = RelationScope, HistoryAsked = HistoryAsked, ScopeFilter = ScopeFilter, Scope = Scope,
-    ScopeQuery = ScopeQuery, AdmittedScope = AdmittedScope, PluginSchemaSource = PluginSchemaSource, PluginSchema = PluginSchema, ResolveContext = ResolveContext,
+    ScopeProjection = ScopeProjection, ScopeQuery = ScopeQuery, AdmittedScope = AdmittedScope, PluginSchemaSource = PluginSchemaSource, PluginSchema = PluginSchema, ResolveContext = ResolveContext,
     PluginError = PluginError, PluginProblem = PluginProblem, PluginLifecycle = PluginLifecycle, PluginView = PluginView, PluginProjection = PluginProjection, PluginProjectionState = PluginProjectionState, Plugin = Plugin, ProviderResult = ProviderResult, Provider = Provider, FieldType = FieldType, FieldTypeOption = FieldTypeOption,
-    Holder = Holder, FieldAccess = FieldAccess, Visibility = Visibility, AccessCaller = AccessCaller,
+    HookActor = HookActor, GuardRequest = GuardRequest, GuardResult = GuardResult, OperandRequest = OperandRequest, OperandResult = OperandResult,
+    Holder = Holder, FieldAccess = FieldAccess, FieldEdit = FieldEdit, Visibility = Visibility, AccessCaller = AccessCaller,
     PluginOwners = PluginOwners, PluginDecl = PluginDecl, PluginState = PluginState, PluginProgress = PluginProgress,
     PathMove = PathMove, SubtreeStats = SubtreeStats, DeleteResult = DeleteResult,
     Write = Write,
@@ -346,7 +357,7 @@ return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, Operation
     Effect = Effect, Transition = Transition, Process = Process, Policy = Policy, EventWindow = EventWindow, Compiled = Compiled, Model = Model, SchemaChange = SchemaChange,
     Usage = Usage, StateUsageTarget = StateUsageTarget, UsageTargets = UsageTargets,
     Board = Board, Cell = Cell, Document = Document, Item = Item, LinkRow = LinkRow, InboundLink = InboundLink,
-    CommentRow = CommentRow, CommentPosition = CommentPosition, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
+    CommentRow = CommentRow, CommentPosition = CommentPosition, LinkPosition = LinkPosition, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
 
     PatchStep = PatchStep, Target = Target, Receipt = Receipt, EventBody = EventBody, External = External, Event = Event,
     FoldBatch = FoldBatch, FoldResult = FoldResult, RawEvent = RawEvent, FoldEvent = FoldEvent, ProjectionRange = ProjectionRange, ProjectionBody = ProjectionBody,

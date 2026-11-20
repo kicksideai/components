@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- The filter tree: the canonical JSON form of an item query's predicate,
--- compiled to one SQL fragment over a generated row. A node is exactly one of
+-- compiled to conjunctive SQL fragments over a generated row. A node is exactly one of
 -- { and = [node] }, { or = [node] }, { not = node } or a leaf
 -- { field, ctx?, op, value }. Fields go through the query's resolver and every
 -- value is bound; a value may be an operand (kickside.pim.persist:operands).
@@ -15,8 +15,9 @@ local types = require("types")
 
 local M = {}
 
--- Fragment is compiled SQL and its arguments in placeholder order.
-type Fragment = { sql: string, args: { unknown } }
+-- A scalar equality can also restrict the candidate walk.
+type Fragment = types.Condition & { equality_column: string? }
+M.Fragment = Fragment
 -- Environment is what a tree compiles against: the reader, the generated set
 -- table, the dialect's substring position function and the field resolver.
 type Environment = { reader: types.Reader, set_table: string, position: string, resolve: types.Resolver }
@@ -110,7 +111,7 @@ local function column_leaf(c: Compilation, target: types.Target, op: string, lab
     elseif op == "eq" or op == "neq" then
         local v, err = one(c, target, label, raw)
         if err or v == nil then return nil, err end
-        if op == "eq" then return { sql = col .. " = ?", args = { v } }, nil end
+        if op == "eq" then return { sql = col .. " = ?", args = { v }, equality_column = target.column }, nil end
         return { sql = "(" .. col .. " IS NULL OR " .. col .. " <> ?)", args = { v } }, nil
     elseif op == "in" or op == "nin" then
         local vs, err = many(c, target, label, raw)
@@ -154,9 +155,9 @@ local function leaf(c: Compilation, n: { [string]: unknown }): (Fragment?, error
     return column_leaf(c, target, op, label, n.value)
 end
 
-local node: (Compilation, unknown, integer) -> (Fragment?, error?)
+local node: (Compilation, unknown, integer, { Fragment }?) -> (Fragment?, error?)
 
-function node(c: Compilation, raw: unknown, depth: integer): (Fragment?, error?)
+function node(c: Compilation, raw: unknown, depth: integer, conjuncts: { Fragment }?): (Fragment?, error?)
     if depth > M.LIMITS.depth then return nil, invalid("a filter tree nests at most " .. M.LIMITS.depth .. " levels") end
     if type(raw) ~= "table" then return nil, invalid("a filter node must be an object") end
     local n = raw :: { [string]: unknown }
@@ -172,27 +173,40 @@ function node(c: Compilation, raw: unknown, depth: integer): (Fragment?, error?)
         return leaf(c, n)
     end
     if connective == "not" then
-        local inner, err = node(c, n["not"], depth + 1)
+        local inner, err = node(c, n["not"], depth + 1, nil)
         if err or not inner then return nil, err end
         return { sql = "((" .. inner.sql .. ") IS NOT TRUE)", args = inner.args }, nil
     end
     local list = n[connective]
     if type(list) ~= "table" or #(list :: { unknown }) == 0 then return nil, invalid(connective .. " needs a list of nodes") end
+    -- Pull apart leading conjunctions only. A predicate under OR or NOT
+    -- is part of that expression and cannot restrict the candidate walk.
+    local split = connective == "and" and conjuncts or nil
     local parts: { string } = {}
     local args: { unknown } = {}
     for i, child in ipairs(list :: { unknown }) do
-        local inner, err = node(c, child, depth + 1)
-        if err or not inner then return nil, err end
-        parts[i] = inner.sql
-        for _, a in ipairs(inner.args) do args[#args + 1] = a end
+        local inner, err = node(c, child, depth + 1, split)
+        if err then return nil, err end
+        if inner then
+            if split then
+                split[#split + 1] = inner
+            else
+                parts[i] = inner.sql
+                for _, a in ipairs(inner.args) do args[#args + 1] = a end
+            end
+        end
     end
+    if split then return nil, nil end
     return { sql = "(" .. table.concat(parts, connective == "and" and " AND " or " OR ") .. ")", args = args }, nil
 end
 
--- compile turns a tree into a fragment over alias i.
-function M.compile(where: unknown, env: Environment): (Fragment?, error?)
-    return node({ reader = env.reader, set_table = env.set_table, position = env.position, resolve = env.resolve,
-        leaves = M.LIMITS.leaves, values = M.LIMITS.values }, where, 1)
+-- compile turns a tree into conjuncts over alias i.
+function M.compile(where: unknown, env: Environment): ({ Fragment }, error?)
+    local conjuncts: { Fragment } = {}
+    local fragment, err = node({ reader = env.reader, set_table = env.set_table, position = env.position, resolve = env.resolve,
+        leaves = M.LIMITS.leaves, values = M.LIMITS.values }, where, 1, conjuncts)
+    if fragment then conjuncts[#conjuncts + 1] = fragment end
+    return conjuncts, err
 end
 
 return M

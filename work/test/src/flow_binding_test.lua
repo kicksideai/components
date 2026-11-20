@@ -108,6 +108,26 @@ local function define()
                 end
             end
         end)
+        test.it("requires the stored execution principal for edits to an already bound stage", function()
+            local h = fixture.board({ bare = true })
+            local admin, admin_id = fixture.user(h)
+            assert(h.call("grant", { subject_id = admin_id, mask = 8 }))
+            local ref = assert(actor(h, { op = "flow" }))
+            assert(actor(h, { op = "grant_flow_read", ref = ref, subject_id = admin_id }))
+            assert(admin("direct", { target = "app:flow_binding_actor", input = { op = "flow_read", ref = ref } }))
+            local d = declaration(h, ref)
+            assert(actor(h, { op = "fault", fault = "success" }))
+            assert(h.call("apply_schema", { declaration = d }))
+            d.processes[1].states[2].run.stage = "Revised build"
+            for _, method in ipairs({ "plan_schema", "apply_schema" }) do
+                local result, err = admin(method, { declaration = d, expected_generation = 1 })
+                test.is_nil(result)
+                test.eq(err:kind(), errors.PERMISSION_DENIED)
+                test.eq(err:details().code, "stage_launch_principal_denied")
+                test.is_nil(err:retryable())
+            end
+            test.eq(assert(h.call("get_schema", {})).generation, 1)
+        end)
         test.it("requires a Start schema compatible with the entire fixed Work envelope", function()
             for _, schema in ipairs({
                 { type = "object", required = { "custom" } },

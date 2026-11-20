@@ -7,6 +7,7 @@ local registry = require("registry")
 local sql = require("sql")
 local search_text = require("search_text")
 local types = require("types")
+local cursor_reader = require("cursor_reader")
 
 local M = {}
 
@@ -27,6 +28,28 @@ local function identifier(v: unknown): string?
     return v
 end
 
+function M.projection(id: string, meta: { [string]: unknown }): (types.ScopeProjection?, error?)
+    if meta.projection == nil then return nil, nil end
+    if type(meta.projection) ~= "string" or meta.projection == "" or type(meta.plugin) ~= "string" or meta.plugin == "" then
+        return nil, invalid(id .. " projection names a kind on its owning plugin")
+    end
+    return { plugin = meta.plugin, kind = meta.projection }, nil
+end
+
+-- Read the cursor in the same snapshot as the index it fences.
+function M.fence(tx: sql.DB | sql.Transaction, board_id: string, projection: types.ScopeProjection, min_seq: integer): error?
+    local pair, err = cursor_reader.find_projection_cursor(tx, board_id, {
+        kind = projection.kind, projection_key = "kickside.work.plugin:" .. projection.plugin,
+    })
+    if err and not errors.is(err, errors.NOT_FOUND) then return err end
+    local last_seq = pair and (pair :: { cursor: { last_seq: integer } }).cursor.last_seq or 0
+    if last_seq < min_seq then
+        return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "plugin projection has not reached seq " .. min_seq,
+            details = { code = "projection_pending", min_seq = min_seq, applied_seq = last_seq } })
+    end
+    return nil
+end
+
 -- load reads and checks the scope entry id.
 function M.load(id: string): (types.Scope?, error?)
     local entry, err = registry.get(id)
@@ -36,6 +59,8 @@ function M.load(id: string): (types.Scope?, error?)
     if type(meta) ~= "table" then return nil, invalid(id .. " is not a work scope") end
     local m = meta :: { [string]: unknown }
     if m.type ~= M.TYPE then return nil, invalid(id .. " is not a work scope") end
+    local projection, perr = M.projection(id, m)
+    if perr then return nil, perr end
     local table_name, board_column, item_column = identifier(m.table), identifier(m.board_column), identifier(m.item_column)
     if not table_name or not board_column or not item_column then
         return nil, invalid(id .. " declares table, board_column and item_column as identifiers")
@@ -73,7 +98,7 @@ function M.load(id: string): (types.Scope?, error?)
         end
     end
     return { id = id, table = table_name, board_column = board_column, item_column = item_column, filters = filters,
-        access = access, match = match }, nil
+        access = access, match = match, projection = projection }, nil
 end
 
 -- write_search replaces one plugin-owned search projection row. The plugin
@@ -113,6 +138,10 @@ function M.admit(r: types.Reader, queries: { types.ScopeQuery }?): ({ types.Admi
         if err or not scope then return nil, err end
         if not r.allows(scope.access) then
             return nil, errors.new({ details = { code = "scope_access_denied" }, kind = errors.PERMISSION_DENIED, message = "scope " .. scope.id .. " needs " .. scope.access .. " access" })
+        end
+        if scope.projection and r.scope_fence then
+            local pending = r.scope_fence(scope.projection)
+            if pending then return nil, pending end
         end
         out[#out + 1] = { scope = scope, where = sq.where or {} }
     end

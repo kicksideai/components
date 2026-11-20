@@ -123,7 +123,10 @@ import rows. Pending-creation expiry and maintenance row/catalog budgets are
 deployment-wide settings, shown read-only in Catalog Policy. Blank overrides
 inherit deployment settings.
 
-Catalog discovery accepts `limit` (1–100) and the returned `after` offset.
+`GET /pim/catalogs` and `PIMCatalogs` accept `limit` (1–100) and the returned
+`after` offset. Use `text` to search catalog IDs and public metadata, including
+titles. Use `admin_only` to require both read and administration access.
+Pass the same filters with each continuation.
 `get_catalog` and `GET /pim/catalogs/{id}/summary` resolve one exact readable
 catalog independently of discovery pages.
 

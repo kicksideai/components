@@ -102,8 +102,12 @@ local function conflict_outcomes(outcomes: { types.Outcome }, write: types.Write
 end
 
 local function finish(ctx: types.ApplyContext, outcomes: { [integer]: types.Outcome }, applied: boolean, seq: integer?, replayed: boolean?): (types.ApplyResult?, error?)
-    local as_of, cu_err = receipts.covered(ctx.board_id, ctx.until_at)
-    if cu_err or not as_of then return nil, cu_err end
+    local as_of = replayed and seq or nil
+    if not as_of then
+        local cu_err: error?
+        as_of, cu_err = receipts.covered(ctx.board_id, ctx.until_at, seq)
+        if cu_err or not as_of then return nil, cu_err end
+    end
     local list: { types.Outcome } = {}
     for i = 1, #ctx.ops do list[i] = outcomes[i] end
     local kerr = fill_keys(ctx.board_id, list, replayed)
@@ -126,32 +130,57 @@ local function groups_of(ops: { types.Op }, indices: { integer }): ({ string }, 
     return order, groups
 end
 
-local function stored_claim(ctx: types.ApplyContext): (types.Durable?, error?)
-    if not ctx.base then return nil, nil end
-    local version, version_err = receipts.version(ctx.board_id, ctx.base, ctx.until_at)
-    if version_err or not version then return nil, version_err end
-    ctx.claim_version = version
-    local command, err = receipts.command(ctx.board_id, ctx.base)
+local function read_claim(ctx: types.ApplyContext, key: string): (types.Durable?, error?)
+    local command, err = receipts.command(ctx.board_id, key)
     if err then return nil, err end
     if command and command.receipt.request_hash ~= ctx.hashed then return nil, receipts.conflict_of() end
     return command, nil
 end
 
+local function stored_claim(ctx: types.ApplyContext): (types.Durable?, error?)
+    local key = ctx.base
+    if not key then return nil, nil end
+    local version, version_err = receipts.version(ctx.board_id, key, ctx.until_at)
+    if version_err or not version then return nil, version_err end
+    ctx.claim_version = version
+    local command, err = read_claim(ctx, key)
+    if err or command then return command, err end
+    local _, cover_err = receipts.covered(ctx.board_id, ctx.until_at)
+    if cover_err then return nil, cover_err end
+    return read_claim(ctx, key)
+end
+
 -- Independent commands leave one receipt per committed group.
-local function stored(ctx: types.ApplyContext, indices: { integer }): ({ [string]: types.Durable }?, error?)
+local function read_groups(ctx: types.ApplyContext, key: string, groups: { string }): ({ [string]: types.Durable }?, boolean, error?)
     local found: { [string]: types.Durable } = {}
-    local command, err = stored_claim(ctx)
-    if err then return nil, err end
+    local command, err = read_claim(ctx, key)
+    if err then return nil, false, err end
     ctx.claimed = command ~= nil
-    if not command then return found, nil end
+    if not command then return found, false, nil end
     ctx.generation = command.receipt.result.generation :: string
-    local order = groups_of(ctx.ops, indices)
-    for _, g in ipairs(order) do
-        local hit, ferr = receipts.command(ctx.board_id, ctx.base .. "/" .. ctx.generation .. "/" .. g)
-        if ferr then return nil, ferr end
-        if hit then found[g] = hit end
+    local complete = true
+    for _, group in ipairs(groups) do
+        local hit, ferr = receipts.command(ctx.board_id, key .. "/" .. ctx.generation .. "/" .. group)
+        if ferr then return nil, false, ferr end
+        if hit then found[group] = hit else complete = false end
     end
-    return found, nil
+    return found, complete, nil
+end
+
+local function stored(ctx: types.ApplyContext, indices: { integer }): ({ [string]: types.Durable }?, error?)
+    local key = ctx.base
+    if not key then return {}, nil end
+    local version, version_err = receipts.version(ctx.board_id, key, ctx.until_at)
+    if version_err or not version then return nil, version_err end
+    ctx.claim_version = version
+    local groups = groups_of(ctx.ops, indices)
+    local found, complete, err = read_groups(ctx, key, groups)
+    if err or complete then return found, err end
+    -- Cover commits that could have advanced the shard before we sampled its guard.
+    local _, cover_err = receipts.covered(ctx.board_id, ctx.until_at)
+    if cover_err then return nil, cover_err end
+    local covered, _, read_err = read_groups(ctx, key, groups)
+    return covered, read_err
 end
 
 local function claim_write(ctx: types.ApplyContext, result: domain.JsonObject): types.Write
@@ -314,6 +343,7 @@ local function run_independent(ctx: types.ApplyContext): (types.ApplyResult?, er
             local batch: { types.Write } = { w }
             local claimed = claim(ctx, batch)
             local max_seq, aerr = append.writes(ctx.c, ctx.board_id, batch)
+            local committed = not aerr
             if claimed and not aerr then ctx.claim_version = (ctx.claim_version :: integer) + 1 end
             if aerr and ctx.base then
                 local found, ferr = stored(ctx, w.ops)
@@ -328,7 +358,7 @@ local function run_independent(ctx: types.ApplyContext): (types.ApplyResult?, er
                 if ctx.base then ctx.claimed = true end
                 for _, o in ipairs(w_outcomes) do outcomes[o.op] = o end
                 last_seq = max_seq :: integer
-                wrote = true
+                if committed then wrote = true else replayed = true end
                 if not last_append or (max_seq :: integer) > last_append then last_append = max_seq end
             elseif threads.mismatch(aerr, "head_mismatch") or (mismatch_subject(aerr) and (not w.caller_expect or mismatch_subject(aerr) ~= w.expect_subject)) then
                 for _, i in ipairs(w.ops) do retry[#retry + 1] = i end

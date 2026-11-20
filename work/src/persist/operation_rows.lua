@@ -78,6 +78,9 @@ function M.create(board_id: string, kind: string, key: string, hashed: string, d
 end
 
 function M.reject_move_prepare(owner: types.Owner): error?
+    -- A confirmed prepare conflict leaves the job parked. Settle it before making its key reusable.
+    local _, cancel_err = jobs.cancel(owner.job_id)
+    if cancel_err then return cancel_err end
     local db, err = store.open()
     if not db then return err end
     local _, uerr = db:execute([[UPDATE kickside_work_operation SET status = 'failed', error_code = 'head_mismatch', key = NULL

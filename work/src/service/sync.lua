@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local types = require("types")
--- The command consistency boundary returns only the board's committed position.
+-- Read claim guards and projection positions under the board execution identity.
 local component = require("component")
 local guard = require("guard")
 local execution_identity = require("execution_identity")
@@ -29,20 +29,19 @@ end
 function M.position(input: types.SyncRequest): (integer?, error?)
     local client, err = threads.open()
     if err or not client then return nil, err end
-    local version: integer? = nil
     if input.command_key then
         local head, herr = client:find({ thread_id = input.board_id, subject = receipts.subject(input.command_key) })
         if herr then return nil, herr end
+        local version: integer? = nil
         if head then version = math.tointeger(tonumber((head :: { subject_version: unknown }).subject_version)) end
         if not version then return nil, errors.new({ kind = errors.INTERNAL, message = "command subject version is missing", details = { code = "row_corrupt" } }) end
+        return version, nil
     end
-    -- Cover the claim version read above before consulting projected receipts.
-    local caught, cerr = threads.catch_up(client, input.board_id, consts.PROJECTION_KIND, input.deadline)
+    local caught, cerr = threads.catch_up(client, input.board_id, consts.PROJECTION_KIND, input.deadline, input.target_seq)
     if cerr or not caught then return nil, cerr end
     if not caught.done or not caught.last_seq then
         return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "board projection has not reached its command position", details = { code = "projection_pending" } })
     end
-    if version then return version, nil end
     return caught.last_seq, nil
 end
 return M

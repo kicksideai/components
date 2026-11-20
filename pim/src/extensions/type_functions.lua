@@ -19,7 +19,8 @@ end
 -- results answers the results list of one call, checked to be a list of
 -- tables as long as the values.
 local function results(fn: string, config: types.JsonObject, values: { unknown }): ({ { [string]: unknown } }?, error?)
-    local out, err = funcs.new():call(fn, { config = config, values = values })
+    local request: types.TypeFunctionRequest = { config = config, values = values }
+    local out, err = funcs.new():call(fn, request)
     if err then return nil, unavailable(fn, "failed", err) end
     if type(out) ~= "table" or type((out :: { [string]: unknown }).results) ~= "table" then return nil, unavailable(fn, "answered no results list") end
     local list = (out :: { [string]: unknown }).results :: { unknown }

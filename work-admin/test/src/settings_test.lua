@@ -7,6 +7,33 @@ local json = require("json")
 local uuid = require("uuid")
 local fs = require("fs")
 type Map = { [string]: unknown }
+local SETTINGS = "/settings"
+local WORK_NAMESPACE = "kickside.work"
+
+local function listed_settings(admin: session.Session): { [string]: Map }
+    local reply = admin.get(SETTINGS .. "?namespace=" .. WORK_NAMESPACE)
+    test.eq(reply.status, 200, json.encode(reply.body))
+    local by_key: { [string]: Map } = {}
+    for _, row in ipairs(reply.body.settings) do
+        test.eq(row.namespace, WORK_NAMESPACE)
+        by_key[row.key] = row
+    end
+    return by_key
+end
+
+local function alternate_value(setting: Map): unknown
+    local schema = setting.schema :: Map
+    if setting.value_type == "int" then
+        local current = setting.value :: number
+        if current < (schema.maximum :: number) then return current + 1 end
+        return current - 1
+    end
+    for _, value in ipairs(schema.enum :: { string }) do
+        if value ~= setting.value then return value end
+    end
+    error("No alternate value for " .. tostring(setting.key))
+end
+
 local function create(owner: session.Session): string
     local reply = owner.post("/work/boards", { title = "Schema editing", idempotency_key = (uuid.v4()), declaration = fixture.declaration() })
     test.eq(reply.status, 200, json.encode(reply.body))
@@ -19,6 +46,41 @@ local function extensions(owner: session.Session, id: string): Map
     return reply.body.data :: Map
 end
 local function cases()
+    test.describe("Work application defaults", function()
+        test.it("lists, saves and reads back every declared Work setting as an administrator", function()
+            local entries = assert(registry.find({ ["meta.type"] = "kickside.settings:definition" }))
+            local admin = session.admin()
+            local listed = listed_settings(admin)
+            local declared = 0
+            local failures: { string } = {}
+            for _, entry in ipairs(entries) do
+                if entry.data.namespace == WORK_NAMESPACE then
+                    declared = declared + 1
+                    local key = entry.data.key :: string
+                    local before = assert(listed[key], "Missing Work setting: " .. key)
+                    listed[key] = nil
+                    test.eq(before.editable, true, key)
+                    local value = alternate_value(before)
+                    local saved = admin.put(SETTINGS, { namespace = WORK_NAMESPACE, key = key, value = value })
+                    if saved.status == 200 then
+                        local after = listed_settings(admin)[key]
+                        local original = before.value
+                        if before.is_default then original = nil end
+                        local restored = admin.put(SETTINGS, { namespace = WORK_NAMESPACE, key = key, value = original })
+                        test.eq(restored.status, 200, key .. ": " .. json.encode(restored.body))
+                        test.not_nil(after, key)
+                        test.eq(after.value, value, key)
+                        test.eq(after.is_default, false, key)
+                    else
+                        table.insert(failures, key .. ": HTTP " .. tostring(saved.status) .. " " .. json.encode(saved.body))
+                    end
+                end
+            end
+            test.is_true(declared > 0, "Work has declared settings")
+            test.eq(next(listed), nil, "Every listed Work setting has a declaration")
+            test.eq(#failures, 0, table.concat(failures, "\n"))
+        end)
+    end)
     test.describe("settings declaration and schema editor requests", function()
         test.it("declares an announced admin view and protects the System tab with board creation access", function()
             local entry = assert(registry.get("kickside.work.admin:settings_tab"))

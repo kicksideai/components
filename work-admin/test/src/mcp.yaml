@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+  - name: mcp_public
+    kind: http.router
+    meta: { server: app:gateway }
+  - name: dep.mcp
+    kind: ns.dependency
+    component: kickside/mcp
+    version: '>=0.2.13'
+    parameters:
+      - { name: 'kickside.mcp:target_db', value: 'app:db' }
+      - { name: 'kickside.mcp:api_router', value: 'app:api' }
+      - { name: 'kickside.mcp:public_router', value: 'app:mcp_public' }
+      - { name: 'kickside.mcp:ui_server', value: 'app:gateway' }
+      - { name: 'kickside.mcp.security:user_security_scope', value: 'kickside.security.groups:members' }
+  - name: mcp_tool_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.security:work_mcp_tools
+    policies: [kickside.work.security:work_tools]
+  - name: mcp_transport_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_work_admin, timeout: 300s }
+    source: file://mcp_transport_test.lua
+    method: run
+    modules: [http_client, json, uuid, registry, time]
+    imports:
+      test: wippy.test:test
+      session: app:session
+      fixture: app:fixture
+      mcp_migration_fault: app:mcp_migration_fault
+  - name: mcp_public_url_access
+    kind: security.policy
+    groups: [kickside.security.groups:members]
+    policy:
+      resources: [PUBLIC_API_URL]
+      actions: [env.get]
+      effect: allow
+  - name: mcp_migration_fault
+    kind: library.lua
+    source: file://mcp_migration_fault.lua
+    modules: [sql]
+    imports:
+      component: kickside.component:component

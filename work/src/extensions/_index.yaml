@@ -39,7 +39,7 @@ entries:
 - name: plugin_batch
   kind: function.lua
   security:
-    policies: [kickside.work.security:plugin_rebuild_output_publish]
+    policies: [kickside.work.security:plugin_rebuild_output_publish, kickside.work.security:prune_boundary_read]
   source: file://plugin_projections.lua
   method: batch
   modules: [json]
@@ -69,3 +69,11 @@ entries:
     threads: kickside.work.persist:threads
     types: kickside.work.read:types
     local_types: kickside.work.extensions:types
+    schema: kickside.work.extensions:plugin_feed_schema
+    cursor_reader: kickside.core.projections.persist:reader
+- name: plugin_feed_schema
+  kind: library.lua
+  source: file://plugin_feed_schema.lua
+  modules: [json]
+  imports:
+    types: kickside.work:types

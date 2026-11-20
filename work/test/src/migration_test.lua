@@ -189,7 +189,7 @@ local function define()
             local spans = assert(h.call("get_time_in_state", { item = { id = id } }))
             test.eq(spans.periods[#spans.periods].value, "review")
             test.is_nil(spans.periods[#spans.periods].ended_at)
-            test.eq(rows.job(h.id).status, "done")
+            steps.wait_for("the job record", function() return rows.job(h.id).status == "done" end)
         end)
 
         test.it("stamps new items with the current process generation and migrates nothing for a pinned process", function()
