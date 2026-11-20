@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/kicksideai/components/compare/pim-v0.1.7...pim-v0.1.8) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim:** expose plugin feed gaps on replacement pages ([#185](https://github.com/kicksideai/components/issues/185)) ([2bb9742](https://github.com/kicksideai/components/commit/2bb9742f6bc73ade1d4a82753e5943117a2c30b5))
+
 ## [0.1.7](https://github.com/kicksideai/components/compare/pim-v0.1.6...pim-v0.1.7) (2026-11-20)
 
 
