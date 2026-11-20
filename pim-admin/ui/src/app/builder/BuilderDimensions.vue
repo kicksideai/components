@@ -7,7 +7,7 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 // Dimensions: the contexts values vary by (locale, channel…), their members
 // and which member falls back to which.
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 import { Icon } from '@iconify/vue'
 import type { Declaration, DimensionDecl, RemoveDecl, SchemaView } from '../../types'
 import { humanize } from '../../forms'
@@ -16,6 +16,10 @@ import ChipPicker from './ChipPicker.vue'
 const props = defineProps<{ draft: Declaration; schema: SchemaView }>()
 const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string] }>()
 const dims = computed(() => props.draft.dimensions ?? [])
+const dimensionPrefix = useId()
+function fieldId(dimension: DimensionDecl, field: string): string {
+  return dimensionPrefix + '-' + dimension.name + '-' + field
+}
 const newName = ref('')
 function add() {
   const name = newName.value.trim()
@@ -62,10 +66,10 @@ function setFallback(d: DimensionDecl, m: string, list: string[]) {
       <div class="pim-aspect">
         <p v-if="usedBy(d).length" class="small muted">Used by {{ usedBy(d).join(', ') }}</p>
         <div class="pim-fields">
-          <div class="pim-f pim-w-full"><div class="pim-f-label"><label>Members</label><span class="pim-f-note">the values this dimension takes</span></div>
-            <ChipPicker :model-value="d.members" free placeholder="add member" @update:model-value="setMembers(d, $event)" /></div>
-          <div v-for="m in d.members" :key="m" class="pim-f pim-w-half"><div class="pim-f-label"><label>{{ m }} falls back to</label><span class="pim-f-note">in order, when it has no value</span></div>
-            <ChipPicker :model-value="fallbackOf(d, m)" :options="d.members.filter((x) => x !== m).map((x) => ({ value: x }))" @update:model-value="setFallback(d, m, $event)" /></div>
+          <div class="pim-f pim-w-full"><div class="pim-f-label"><label :id="fieldId(d, 'members')">Members</label><span class="pim-f-note">the values this dimension takes</span></div>
+            <ChipPicker :labelledby="fieldId(d, 'members')" :model-value="d.members" free placeholder="add member" @update:model-value="setMembers(d, $event)" /></div>
+          <div v-for="m in d.members" :key="m" class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(d, 'fallback-' + encodeURIComponent(m))">{{ m }} falls back to</label><span class="pim-f-note">in order, when it has no value</span></div>
+            <ChipPicker :labelledby="fieldId(d, 'fallback-' + encodeURIComponent(m))" :model-value="fallbackOf(d, m)" :options="d.members.filter((x) => x !== m).map((x) => ({ value: x }))" @update:model-value="setFallback(d, m, $event)" /></div>
         </div>
       </div>
     </DefinitionRow>

@@ -2,9 +2,12 @@
 # Catalog administration
 
 The System surface lists only catalogs whose backend response grants ADMIN.
-Pagination and search operate within that list; catalog creation selects the new
-catalog in the schema editor. Creation without a declaration supplies an empty
-generation 1; the editor displays “Define its schema” and lets the administrator
+The catalog rail loads additional pages while a search is active. Clearing the
+search keeps the pages and cursor already received. The rail shows an empty
+result after the last page, or the error with its typed code if a page fails.
+Catalog creation selects the new catalog in the schema editor. Creation without
+a declaration supplies an empty generation 1 and displays “Define its schema”.
+The editor lets the administrator
 review and apply the first definitions against that generation. The standalone settings component accepts `catalog-id` and `embedded`.
 Each component instance owns its draft and requests; it does not share routing
 or selection state with other instances.
@@ -21,6 +24,8 @@ Declared fields remain editable in type, cardinality and scope; declaration
 presence does not establish authored values. The existing review/apply boundary
 classifies or refuses those changes. Scope changes preserve defaults and the
 same default editor remains available for scoped fields.
+In the settings editor, visible field labels name their controls and related
+controls use named groups. Field help uses the theme's full muted text color.
 
 Term codes follow the backend grammar: 1–128 ASCII characters, beginning with
 an alphanumeric character, then alphanumeric characters, underscores, dots or
@@ -75,9 +80,12 @@ canonical unit. Conversion factors and record members use its structured inputs.
 Form layout and History are peer settings sections. Layout edits the same declaration
 as Fields: arrow controls and drag/drop reorder fields within their own field group;
 widths are full, half, third or quarter, using compiled defaults until explicitly edited.
-Plugin-owned groups remain read-only. Narrow screens stack cards while retaining
+Plugin-owned groups remain read-only. Layout uses discovered field type titles,
+and plugin and scope summaries present readable field and filter names.
+Narrow screens stack cards while retaining
 their declared widths. The System catalog rail becomes a horizontal picker on
-phone screens, leaving the full width for settings and their actions. Review changes
+phone screens, leaving the full width for settings and their actions. Long
+catalog names wrap within the embedded settings header. Review changes
 and Apply layout use the builder's shared review snapshot, removals, plugin configuration and expected generation. Discard
 resets the whole shared draft. Layout does not own a second loader or write path.
 
