@@ -31,7 +31,7 @@ it('refreshes the layout on return and notifications while preserving a dirty la
   w.unmount(); expect(events.has('component.cat')).toBe(false)
 })
 it('refetches catalog history on notifications and disposes the subscription', async () => {
-  const w = mount(HistoryPanel, { props: { catalogId: 'cat' } }); await flushPromises()
+  const w = mount(HistoryPanel, { props: { catalogId: 'cat', canResolveActors: true } }); await flushPromises()
   const before = vi.mocked(pim.history).mock.calls.length
   events.get('component.cat')?.(); await flushPromises()
   expect(pim.history).toHaveBeenCalledTimes(before + 1)

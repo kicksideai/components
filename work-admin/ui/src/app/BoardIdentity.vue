@@ -35,7 +35,22 @@ async function save() {
       <div class="work-stack work-tight"><span>Board icon</span><wc-icon-picker v-if="iconReady" :value="icon" fallback="tabler:layout-kanban" :inert="busy || undefined" @select="icon = ($event as CustomEvent<string>).detail" /><p v-else class="work-muted work-small">The icon picker is unavailable.</p></div>
       <div class="work-row"><Button label="Save" severity="secondary" type="submit" :disabled="!title.trim() || busy" :loading="busy" outlined><template #icon><Icon icon="tabler:device-floppy" aria-hidden="true" /></template></Button><Button label="Cancel" severity="secondary" :disabled="busy" @click="editing = false" outlined><template #icon><Icon icon="tabler:x" aria-hidden="true" /></template></Button></div>
     </form>
-    <template v-else><div class="work-row"><Icon v-if="board?.icon" :icon="board.icon" aria-hidden="true" /><component :is="compact || detail ? 'h2' : 'h1'" :class="detail ? 'work-detail-title' : compact ? 'kx-card-name' : 'kx-title'">{{ board?.title || 'Untitled board' }}</component><slot v-if="compact" name="title-end" /><span v-if="compact" class="work-identity-actions"><Button v-if="admin" severity="secondary" text size="small" @click.stop="begin" aria-label="Edit board"><Icon icon="tabler:pencil" aria-hidden="true" /></Button><slot name="actions" /></span><Button v-else-if="admin" severity="secondary" text size="small" @click.stop="begin" aria-label="Edit board"><Icon icon="tabler:pencil" aria-hidden="true" /></Button><slot v-if="!compact" name="title-end" /></div><p v-if="!compact && (subtitle || board?.description)" class="kx-head-sub" :title="subtitle || board?.description">{{ subtitle || board?.description }}</p></template>
+    <template v-else>
+      <div class="work-row">
+        <div class="work-row work-board-title">
+          <Icon v-if="board?.icon" :icon="board.icon" aria-hidden="true" />
+          <component :is="compact || detail ? 'h2' : 'h1'" :class="detail ? 'work-detail-title' : compact ? 'kx-card-name' : 'kx-title'">{{ board?.title || 'Untitled board' }}</component>
+        </div>
+        <slot v-if="compact" name="title-end" />
+        <span v-if="compact" class="work-identity-actions">
+          <Button v-if="admin" severity="secondary" text size="small" @click.stop="begin" aria-label="Edit board"><Icon icon="tabler:pencil" aria-hidden="true" /></Button>
+          <slot name="actions" />
+        </span>
+        <Button v-else-if="admin" severity="secondary" text size="small" @click.stop="begin" aria-label="Edit board"><Icon icon="tabler:pencil" aria-hidden="true" /></Button>
+        <slot v-if="!compact" name="title-end" />
+      </div>
+      <p v-if="!compact && (subtitle || board?.description)" class="kx-head-sub" :title="subtitle || board?.description">{{ subtitle || board?.description }}</p>
+    </template>
     <p v-if="error" class="kx-err work-inline" role="alert">{{ error }}</p><p v-if="message" class="work-muted work-small" role="status">{{ message }}</p>
   </div>
 </template>

@@ -114,6 +114,11 @@ local function define()
             test.eq(assert(h.call("count", {})).total, 1)
             test.is_true(assert(h.call("query", { where = { field = "estimate", op = "eq", value = 4 } })).reindexing)
             test.is_true(assert(h.call("query", { order = { field = "estimate" } })).reindexing)
+            local grouped = assert(h.call("query", { group_by = "state",
+                measures = { { id = "total", op = "sum", field = "estimate" } } }))
+            test.is_true(grouped.reindexing)
+            test.is_nil(grouped.groups)
+            test.is_nil(grouped.group_after)
         end)
 
         test.it("keeps rank, parent, descendants, trash and restore consistent", function()

@@ -8,10 +8,10 @@ entries:
     title: KickSide PIM administration
     description: Catalog schema administration on the platform System surface.
 - name: dep.kickside.pim
-  version: '*'
+  version: '>=0.1.9'
   kind: ns.dependency
   meta:
-    description: The catalog service these pages read and write.
+    description: The catalog service, including text and administration filters on the catalog directory.
   component: kickside/pim
 - name: dep.kickside.widgets
   version: '*'

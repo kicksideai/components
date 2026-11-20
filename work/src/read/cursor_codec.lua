@@ -30,8 +30,8 @@ function M.seal(value: string, context: string): (string?, error?)
     return base64.encode(ciphertext), nil
 end
 
-function M.open(position: string, context: string): (string?, error?)
-    if #position > 512 then return nil, invalid() end
+function M.open(position: string, context: string, limit: integer?): (string?, error?)
+    if #position > (limit or 512) then return nil, invalid() end
     local secret, err = key()
     if err or not secret then return nil, err end
     local ciphertext, derr = base64.decode(position)

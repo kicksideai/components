@@ -7,6 +7,140 @@ local steps = require("steps")
 
 local function define()
     test.describe("declared query grouping and order", function()
+        test.it("continues past 200 distinct lanes with exact counts and missing keys last", function()
+            local h = fixture.board()
+            local ops = {}
+            for i = 200, 1, -1 do
+                ops[#ops + 1] = { op = "create", type = "task", values = { estimate = i } }
+            end
+            local created = assert(steps.apply(h, ops))
+            test.eq(created.outcomes[200].status, "applied")
+            steps.create(h, "task", { estimate = 201 })
+            local last = steps.create(h, "task", { estimate = 201 })
+            steps.create(h, "task")
+            local order = { field = "number" }
+            local page = assert(h.call("query", { group_by = "estimate", limit = 1, order = order }))
+            test.eq(#page.groups, 200)
+            for i, group in ipairs(page.groups) do
+                test.eq(group.value, i)
+                test.eq(group.count, 1)
+            end
+            test.not_nil(page.group_after)
+            page = assert(h.call("query", { group_by = "estimate", group_after = page.group_after, limit = 1, order = order }))
+            test.eq(#page.groups, 2)
+            test.eq(page.groups[1].value, 201)
+            test.eq(page.groups[1].count, 2)
+            test.is_nil(page.groups[2].value)
+            test.eq(page.groups[2].count, 1)
+            test.is_nil(page.group_after)
+            local detail = assert(h.call("query", { where = { field = "estimate", op = "eq", value = 201 },
+                after = page.groups[1].after, limit = 1, order = order }))
+            test.eq(detail.items[1].id, last)
+        end)
+
+        test.it("sums exact indexed values for parents and their paged subgroups", function()
+            local session = scoped.admin()
+            local d = fixture.declaration(fixture.fresh_prefix())
+            d.fields[#d.fields + 1] = { code = "amount", form = "dec", index = "number", config = { scale = 5 } }
+            d.fields[#d.fields + 1] = { code = "points", form = "int", index = "key" }
+            d.item_types[3].fields[#d.item_types[3].fields + 1] = "amount"
+            d.item_types[3].fields[#d.item_types[3].fields + 1] = "points"
+            local h = scoped.board(session, d)
+            steps.create(h, "task", { estimate = 1, amount = "900719925474.099", points = "9007199254740991" })
+            steps.create(h, "task", { estimate = 1, amount = "0.00002", points = "9007199254740991" })
+            steps.create(h, "task", { estimate = 2, amount = "-900719925474.099", points = -1 })
+            local cleared = steps.create(h, "task", { estimate = 3, amount = "7" })
+            steps.one(h, { op = "set", item = cleared, clear = { "amount" } })
+            steps.create(h, "task", { amount = "999", points = 99 })
+            local measure_request = {
+                group_by = "state", sub_group_by = "estimate", group_limit = 1, limit = 1,
+                where = { field = "estimate", op = "gte", value = 1 },
+                measures = { { id = "amount", op = "sum", field = "amount" }, { id = "points", op = "sum", field = "points" } },
+            }
+            local page = assert(h.call("query", measure_request))
+            test.eq(page.incomplete, false)
+            test.eq(page.groups[1].count, 4)
+            test.eq(page.groups[1].measures.amount, "0.00002")
+            test.eq(page.groups[1].measures.points, "18014398509481981")
+            test.eq(#page.groups[1].groups, 1)
+            test.eq(page.groups[1].groups[1].count, 2)
+            test.eq(page.groups[1].groups[1].measures.amount, "900719925474.09902")
+            test.eq(page.groups[1].groups[1].measures.points, "18014398509481982")
+            test.not_nil(page.groups[1].groups[1].after)
+            measure_request.group_after = page.group_after
+            page = assert(h.call("query", measure_request))
+            test.eq(page.groups[1].measures.amount, "0.00002")
+            test.eq(page.groups[1].groups[1].measures.amount, "-900719925474.099")
+            test.eq(page.groups[1].groups[1].measures.points, "-1")
+            measure_request.group_after = page.group_after
+            local empty = session.http("POST", session.route(h.id, "query"), measure_request)
+            test.eq(empty.status, 200)
+            test.eq(empty.body.data.groups[1].groups[1].value, 3)
+            test.is_true(empty.raw:find('"amount":null', 1, true) ~= nil, empty.raw)
+            test.is_nil(empty.body.data.groups[1].groups[1].measures.amount)
+            test.is_nil(empty.body.data.group_after)
+            measure_request.group_after = nil
+            measure_request.budget = { rows = 1 }
+            page = assert(h.call("query", measure_request))
+            test.eq(page.incomplete, true)
+            test.is_nil(page.groups)
+            test.is_nil(page.group_after)
+        end)
+
+        test.it("folds measures only for the visible matches of a bounded residual filter", function()
+            local session, reader = scoped.admin(), scoped.member()
+            local d = fixture.declaration(fixture.fresh_prefix())
+            d.fields[1].index = "key"
+            d.fields[#d.fields + 1] = { code = "amount", form = "dec", index = "key" }
+            d.fields[#d.fields + 1] = { code = "level", form = "text", index = "key" }
+            d.item_types[3].fields[#d.item_types[3].fields + 1] = "amount"
+            d.item_types[3].fields[#d.item_types[3].fields + 1] = "level"
+            d.visibility = { field = "level", bypass = "admin", levels = { { id = "internal", holders = { { user = session.id } } } } }
+            local h = scoped.board(session, d)
+            steps.create(h, "task", { title = "excluded", amount = "10" })
+            steps.create(h, "task", { title = "include A", amount = { m = 123456789012345, e = 12 } })
+            steps.create(h, "task", { title = "include B", amount = { m = -123456789012345, e = 12 } })
+            steps.create(h, "task", { title = "include hidden", amount = "11", level = "internal" })
+            local trashed = steps.create(h, "task", { title = "include trash", amount = "12" })
+            steps.one(h, { op = "delete", item = trashed })
+            assert(h.call("grant", { subject_id = reader.id, mask = 1 }))
+            local request = { group_by = "state", where = { field = "title", op = "contains", value = "include" },
+                measures = { { id = "total", op = "sum", field = "amount" } }, budget = { rows = 2 }, limit = 1 }
+            local stopped = assert(reader.call("query", request, h.id))
+            test.is_true(stopped.incomplete)
+            test.is_nil(stopped.groups)
+            request.budget.rows = 3
+            local page = assert(reader.call("query", request, h.id))
+            test.is_false(page.incomplete)
+            test.eq(page.groups[1].count, 2)
+            test.eq(page.groups[1].measures.total, "0")
+        end)
+
+        test.it("requires board-wide field read and validates grouped measures", function()
+            local session, reader = scoped.admin(), scoped.member()
+            local d = fixture.declaration(fixture.fresh_prefix())
+            d.fields[2].access = { read = { { user = session.id } } }
+            d.fields[1].index = "key"
+            local h = scoped.board(session, d)
+            steps.create(h, "task", { estimate = 3 })
+            assert(h.call("grant", { subject_id = reader.id, mask = 1 }))
+            local measure = { id = "total", op = "sum", field = "estimate" }
+            local _, denied = reader.call("query", { group_by = "state", measures = { measure } }, h.id)
+            test.eq(denied:kind(), errors.PERMISSION_DENIED)
+            local _, ungrouped = h.call("query", { measures = { measure } })
+            test.eq(ungrouped:kind(), errors.INVALID)
+            for _, measures in ipairs({
+                { measure, measure }, { measure, { id = "text", op = "sum", field = "title" } },
+                { { id = "unknown", op = "sum", field = "missing" } },
+                { { id = "other", op = "avg", field = "estimate" } },
+                { measure, { id = "a", op = "sum", field = "estimate" }, { id = "b", op = "sum", field = "estimate" },
+                    { id = "c", op = "sum", field = "estimate" }, { id = "d", op = "sum", field = "estimate" } },
+            }) do
+                local _, err = h.call("query", { group_by = "state", measures = measures })
+                test.eq(err:kind(), errors.INVALID)
+            end
+        end)
+
         test.it("returns subgroup counts and each group's first page", function()
             local h = fixture.board()
             for _, amount in ipairs({ 1, 1, 2 }) do steps.create(h, "task", { estimate = amount }) end

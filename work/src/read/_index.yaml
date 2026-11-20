@@ -126,7 +126,10 @@ entries:
   source: file://query.lua
   modules:
   - security
+  - json
   imports:
+    rollup: kickside.work.domain:rollup
+    values: kickside.work.domain:values
     cursor_codec: kickside.work.read:cursor_codec
     awaiting: kickside.work.read:awaiting
     principals: kickside.work.read:principals
