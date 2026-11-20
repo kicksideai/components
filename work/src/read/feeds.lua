@@ -112,6 +112,7 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
                     local view, verr = item_view.render(tx, board, held, true)
                     if verr or not view then return nil, verr end
                     item.state, item.category, item.parent, item.values = view.state, view.category, view.parent, view.values
+                    item.rank = view.rank
                     item.visit, item.process_generation = view.visit, view.process_generation
                     item.value_states, item.gate, item.awaiting = view.value_states, view.gate, view.awaiting
                     local comments, cerr = store.comment_page(tx, board.board_id, held.item_id, "", 10001)

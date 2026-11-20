@@ -13,6 +13,7 @@ local json = require("json")
 
 type Map = { [string]: unknown }
 local PLUGIN = "app:folding_plugin"
+local KIND = "app:product_fold"
 
 local function attachment(h: fixture.Handle): Map?
     local found, err = component.list_system({ impl_ids = { "app:plugin_attachment" }, meta = { owner = h.id }, include = { meta = true, private_context = true }, limit = 2 })
@@ -42,16 +43,31 @@ local function wait_removed(h: fixture.Handle)
 end
 
 local function wait_for(h: fixture.Handle, parked: boolean): Map
-    local target = assert(h.call("get_schema", {})).as_of
+    local lifecycle
     for _ = 1, 300 do
-        local state = view(h).projections["app:product_fold"]
-        if type(state) == "table" then
+        local plugin = view(h)
+        lifecycle = plugin.lifecycle
+        assert(lifecycle.state ~= "failed", json.encode(lifecycle))
+        local state = plugin.projections[KIND]
+        if lifecycle.state == "ready" and type(state) == "table" then
             local p = state :: Map
-            if p.parked == parked and (parked or (p.last_seq :: integer) >= target) then return p end
+            if p.parked ~= true then
+                -- Ask Core to dispatch this cursor and observe its committed result.
+                local caught, err = h.call("settle", { kind = KIND, projection_key = "kickside.pim.plugin:" .. PLUGIN, max_ticks = 2 })
+                if parked then
+                    assert(err and err:kind() == errors.CONFLICT, tostring(err or "projection should park"))
+                else
+                    assert(caught and caught.done, tostring(err))
+                end
+                p = assert(view(h).projections[KIND]) :: Map
+                if caught then test.is_true((p.last_seq :: integer) >= caught.event_count) end
+            end
+            test.eq(p.parked, parked, json.encode(p))
+            return p
         end
         time.sleep("10ms")
     end
-    error("plugin projection does not reach its declared state")
+    error("plugin projection registration did not become ready: " .. json.encode(lifecycle))
 end
 
 local function rows(h: fixture.Handle): { Map }
@@ -296,7 +312,7 @@ local function define()
             test.eq((attached.private_context :: Map).catalog_id, h.id)
             test.eq(#rows(h), 0)
             assert(h.call("apply", { items = { { product = { sku = "PLUGIN-1" }, expect_version = "any", set = { { attr = "core.care", value = "Dry clean" } } } } }))
-            for _ = 1, 300 do if #rows(h) == 1 then break end; time.sleep("10ms") end
+            wait_for(h, false)
             test.eq(#rows(h), 1)
             test.eq(rows(h)[1].event_type, "kickside.pim.events:product.changed")
             test.eq(rows(h)[1].actor_id, h.actor:id())
@@ -340,12 +356,12 @@ local function define()
             activate(h, true)
             wait_for(h, false)
             assert(h.call("apply", { items = { { product = { sku = "CONFIG-1" }, create = { family = "footwear" } } } }))
-            for _ = 1, 300 do if #rows(h) > 0 then break end; time.sleep("10ms") end
+            wait_for(h, false)
             test.eq(rows(h)[1].marker, "initial")
             assert(h.call("configure_plugin", { plugin = PLUGIN, config = { fail = false, marker = "reconfigured" } }))
-            for _ = 1, 300 do if view(h).lifecycle.state == "ready" then break end; time.sleep("10ms") end
+            wait_for(h, false)
             assert(h.call("apply", { items = { { product = { sku = "CONFIG-2" }, create = { family = "footwear" } } } }))
-            for _ = 1, 300 do if #rows(h) == 2 then break end; time.sleep("10ms") end
+            wait_for(h, false)
             local recorded = rows(h)
             test.eq(#recorded, 2)
             test.eq(recorded[1].marker, "initial")
@@ -361,14 +377,12 @@ local function define()
             local recorded = rows(h)
             assert(h.call("apply_schema", { declaration = { policy = { trash_days = 31 } } }))
             assert(h.call("plugin_sync", {}))
-            time.sleep("100ms")
-            local after = view(h).projections["app:product_fold"] :: Map
+            local after = wait_for(h, false)
             test.is_true((after.last_seq :: integer) >= (before.last_seq :: integer))
             -- Core acknowledges the new schema event without delivering it to this worker.
             assert(h.call("apply_schema", { declaration = { policy = { trash_days = 31 } } }))
             assert(h.call("plugin_sync", {}))
-            time.sleep("100ms")
-            test.eq((view(h).projections["app:product_fold"] :: Map).last_seq, after.last_seq)
+            test.eq(wait_for(h, false).last_seq, after.last_seq)
             local after_rows = rows(h)
             test.eq(#after_rows, #recorded)
             for i, row in ipairs(after_rows) do

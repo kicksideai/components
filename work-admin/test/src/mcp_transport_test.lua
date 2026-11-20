@@ -135,13 +135,16 @@ local function cases()
         end)
         test.it("runs bulk and cross-board move tools against their advertised output schemas", function()
             local owner = session.admin()
-            local id, target = create(owner), create(owner)
-            local call = checked_tools(credential(owner, id, { NS .. "work", NS .. "work_admin" }), exercised)
-            local item = add_item(call)
-            local bulk = call("WorkBulk", { key = uuid.v4(), query = table.create(0, 1),
+            local traits = { NS .. "work", NS .. "work_admin" }
+            local bulk_call = checked_tools(credential(owner, create(owner), traits), exercised)
+            add_item(bulk_call)
+            local bulk = bulk_call("WorkBulk", { key = uuid.v4(), query = table.create(0, 1),
                 ops_template = { { op = "set", values = { title = "Bulk update" } } } })
-            test.eq(call("WorkBulkStatus", { bulk_id = bulk.bulk_id }).bulk_id, bulk.bulk_id)
-            test.eq(call("WorkCancelBulk", { bulk_id = bulk.bulk_id }).bulk_id, bulk.bulk_id)
+            test.eq(bulk_call("WorkBulkStatus", { bulk_id = bulk.bulk_id }).bulk_id, bulk.bulk_id)
+            test.eq(bulk_call("WorkCancelBulk", { bulk_id = bulk.bulk_id }).bulk_id, bulk.bulk_id)
+            local id, target = create(owner), create(owner)
+            local call = checked_tools(credential(owner, id, traits), exercised)
+            local item = add_item(call)
             local move = { item = item, to_board = target, key = uuid.v4(), map = {
                 type = { task = "task" }, state = { todo = "todo", done = "done" },
                 fields = { title = "title" }, relations = table.create(0, 1),

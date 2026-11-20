@@ -20,6 +20,7 @@ entries:
     fixture: app:fixture
     steps: app:steps
     defaults: kickside.work.settings:defaults
+    jobs: kickside.core.jobs:jobs
 - name: deferred_probe
   kind: library.lua
   source: file://deferred_probe.lua
@@ -35,6 +36,7 @@ entries:
   - sql
   imports:
     events: kickside.work.command:operation_events
+    apply_ops: kickside.work.command:apply_ops
 - name: move_admission_probe
   kind: library.lua
   source: file://move_admission_probe.lua

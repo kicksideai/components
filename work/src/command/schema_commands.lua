@@ -261,13 +261,16 @@ function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?,
     end
     local function replay(): (types.SchemaResult?, error?)
         if not marker or not hashed then return nil, nil end
-        local as_of, cerr = receipts.covered(board_id, until_at)
-        if cerr then return nil, cerr end
         local found, ferr = receipts.command(board_id, marker)
+        if not ferr and not found then
+            local _, cerr = receipts.covered(board_id, until_at)
+            if cerr then return nil, cerr end
+            found, ferr = receipts.command(board_id, marker)
+        end
         if ferr or not found then return nil, ferr end
         if found.receipt.request_hash ~= hashed then return nil, receipts.conflict_of() end
         local result = found.receipt.result :: types.SchemaResult
-        result.seq, result.as_of, result.replayed = found.seq, as_of, true
+        result.seq, result.as_of, result.replayed = found.seq, found.seq, true
         return result, nil
     end
     while not clock.passed(until_at) do
@@ -333,10 +336,7 @@ function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?,
             if plan.claim and threads.mismatch(aerr, "version_mismatch") then return nil, registry.taken(plan.compiled.key_prefix) end
             if not threads.mismatch(aerr, "head_mismatch") and not threads.mismatch(aerr, "version_mismatch") then return nil, errors.wrap(aerr, "board append failed") end
         else
-            local stored, rerr = replay()
-            if rerr then return nil, rerr end
-            if stored then stored.replayed = nil; return stored, nil end
-            local as_of, done_err = receipts.covered(board_id, until_at)
+            local as_of, done_err = receipts.covered(board_id, until_at, max_seq)
             if done_err or not as_of then return nil, done_err end
             result.seq = max_seq
             result.as_of = as_of

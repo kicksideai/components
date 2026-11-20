@@ -33,7 +33,7 @@ function M.version(board_id, key, deadline)
     return version, err
 end
 
--- Reproduce a winner projecting after the retry's claim-version sync. The retry can
+-- Reproduce a winner projecting after the retry samples the claim version. The retry can
 -- see the committed prefix until its next catch-up covers the whole append.
 function M.command(board_id, key)
     local hit, err = receipts.command(board_id, key)
@@ -42,8 +42,8 @@ function M.command(board_id, key)
     return hit, err
 end
 
-function M.covered(board_id, deadline)
-    local seq, err = receipts.covered(board_id, deadline)
+function M.covered(board_id, deadline, target_seq)
+    local seq, err = receipts.covered(board_id, deadline, target_seq)
     if not err and cutoffs[board_id] then
         local db = assert(sql.get("app:db"))
         assert(db:execute("DELETE FROM work_receipt_probe WHERE board_id=$1", { board_id }))

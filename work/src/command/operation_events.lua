@@ -27,7 +27,7 @@ function M.append(board_id: string, key: string, writes: { commands.Write }, res
     end
     local c, err = threads.open()
     if not c then return nil, err end
-    local _, aerr = append.writes(c, board_id, writes)
+    local seq, aerr = append.writes(c, board_id, writes)
     if aerr then
         local _, uerr = receipts.covered(board_id, until_at)
         if uerr then return nil, uerr end
@@ -36,7 +36,7 @@ function M.append(board_id: string, key: string, writes: { commands.Write }, res
         if replayed then return replayed.receipt.result, nil end
         return nil, aerr
     end
-    local _, uerr = receipts.covered(board_id, until_at)
+    local _, uerr = receipts.covered(board_id, until_at, seq)
     if uerr then return nil, uerr end
     return result, nil
 end

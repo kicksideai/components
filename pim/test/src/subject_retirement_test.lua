@@ -48,13 +48,22 @@ local function define()
             test.not_nil(before["r:"..keeper])
             for _,item in ipairs(release) do test.not_nil(before["r:"..item.product.id]) end
             assert(h.call("apply",{items=remove}))
-            age(h,"trashed");assert(fixture.retain());assert(h.call("settle",{}));age(h,"purged")
+            age(h,"trashed")
+            -- A 50-row catalog share reserves up to 25 trash purges per pass.
+            trash_fixture.run_owner(h)
+            trash_fixture.run_owner(h)
+            age(h,"purged")
             test.eq(tombs(h),40)
             local one=trash_fixture.run_owner(h)
             test.is_true(one.needs_continue)
             local remaining=tombs(h)
             test.is_true(remaining<40 and remaining>=28,"charge three subject seeks plus each tombstone deletion against the 50-row catalog share")
-            assert(fixture.retain());test.eq(tombs(h),0)
+            while remaining>0 do
+                trash_fixture.run_owner(h)
+                local left=tombs(h)
+                test.is_true(left<remaining,"each retirement page removes tombstones from this catalog")
+                remaining=left
+            end
             local after=subjects(h)
             for _,item in ipairs(release) do
                 test.is_nil(after["p:"..item.product.id]);test.is_nil(after["r:"..item.product.id]);test.is_nil(after["model-release:"..item.product.id])
@@ -65,11 +74,11 @@ local function define()
             for name,version in pairs(before) do if name:sub(1,2)=="t:" then test.eq(after[name],version) end end
             -- Expiry of individual releases never ends a live product's release subject.
             trash_fixture.exec("UPDATE kickside_pim_release SET created_at=$1 WHERE catalog_id=$2",{OLD,h.id})
-            assert(fixture.retain());test.eq(subjects(h)["r:"..keeper],before["r:"..keeper])
+            trash_fixture.run_owner(h);test.eq(subjects(h)["r:"..keeper],before["r:"..keeper])
             assert(h.call("apply",{items={{term={vocabulary="colors",code="moss"},retired=true}}}))
             local term_version=subjects(h)["t:colors:moss"]
             trash_fixture.exec("UPDATE kickside_pim_term SET retired_at=$1 WHERE catalog_id=$2 AND vocabulary='colors' AND code='moss'",{OLD,h.id})
-            assert(fixture.retain());test.eq(subjects(h)["t:colors:moss"],term_version)
+            trash_fixture.run_owner(h);test.eq(subjects(h)["t:colors:moss"],term_version)
             assert(h.call("apply",{items={{term={vocabulary="colors",code="moss"},labels={en="Reused"}}}}))
             test.eq(subjects(h)["t:colors:moss"],term_version+1)
         end)
@@ -87,14 +96,14 @@ local function define()
             local db=assert(store.open())
             local rows=assert(db:query("SELECT product_id,version FROM kickside_pim_product WHERE catalog_id=$1 AND state='live' ORDER BY level DESC,product_id",{h.id}));assert(db:release())
             for _,row in ipairs(rows) do assert(h.call("apply",{items={{product={id=row.product_id},expect_version=tonumber(row.version),delete=true}}})) end
-            age(h,"trashed");assert(fixture.retain());assert(h.call("settle",{}));age(h,"purged");assert(fixture.retain())
+            age(h,"trashed");trash_fixture.run_owner(h);age(h,"purged");trash_fixture.run_owner(h)
             test.eq(tombs(h),0);local after=subjects(h)
             test.is_nil(after["model-release:"..model.product_id]);test.is_nil(after["p:"..model.product_id])
         end)
         test.it("keeps the durable tombstone after an ambiguous retirement and retries missing names",function()
             local h=fixture.catalog()
             local id=assert(h.call("apply",{items={{product={sku="ambiguous"},create={}}}})).outcomes[1].product_id
-            trash_fixture.trash(h,"ambiguous");age(h,"trashed");assert(fixture.retain());assert(h.call("settle",{}));age(h,"purged")
+            trash_fixture.trash(h,"ambiguous");age(h,"trashed");trash_fixture.run_owner(h);age(h,"purged")
             local db=assert(store.open())
             assert(db:execute("UPDATE kickside_pim_retention SET catalog_id=$1,inclusive=1,product_after='',pending=0,deadline_ms=NULL WHERE owner_id='pim'",{h.id}));assert(db:release())
             local out=assert(funcs.call("app:retirement_ambiguous_owner",{}))

@@ -419,6 +419,12 @@ function M.state_count(db: storage.Executor, board_id: string, state: string, ma
         { state, maximum, tables.region_column("live", state) })
 end
 
+function M.exceeds_wip(db: storage.Executor, board_id: string, state: string, limit: integer, delta: integer): (boolean, error?)
+    local count, err = M.state_count(db, board_id, state, limit - delta + 1)
+    if err or count == nil then return false, err end
+    return count + delta > limit, nil
+end
+
 function M.field_usage(db: storage.Executor, board_id: string): ({ [integer]: integer }?, error?)
     local usage: { [integer]: integer } = {}
     local rows, err = db:query("SELECT field_id, items FROM kickside_work_field_usage WHERE board_id = $1", { board_id })

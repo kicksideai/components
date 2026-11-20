@@ -10,6 +10,9 @@ registry:
   enable_history: true
   history_type: memory
 override:
+  # Match the Work harness budget so transport assertions can run under load.
+  kickside.work.settings:read_deadline_ms:default: 60000
+  kickside.work.settings:command_deadline_ms:default: 60000
   kickside.work.jobs:migrate_batch:imports.component: app:mcp_migration_fault
   kickside.core.retention.service:sweeper.service:lifecycle.auto_start: false
 workspace:

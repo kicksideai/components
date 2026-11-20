@@ -217,6 +217,7 @@ entries:
               items: { type: object, additionalProperties: true }
             mode: { type: string, title: Mode, enum: [atomic, independent] }
             source: { type: string, title: Source }
+            expected_generation: { type: integer, title: Expected schema generation, description: Require the schema generation the command was built against. }
             origin:
               type: object
               title: Origin
