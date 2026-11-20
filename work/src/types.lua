@@ -130,6 +130,7 @@ type ProviderResult = { fragment: JsonObject, version: string? }
 type Provider = { resolve: (self: Provider, request: JsonObject) -> (unknown, error?) }
 -- FieldType is what a kickside.work.type entry declares.
 type FieldType = { form: string, indexes: { string }?, config_schema: JsonObject? }
+type FieldTypeOption = FieldType & { id: string, title: string }
 
 -- Finding names why an op or a transition is refused: a stable code, the message and the field it concerns.
 type WorkingState = { items: { [string]: Item }, links: { [string]: boolean } }
@@ -342,7 +343,7 @@ return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, Operation
     ItemQuery = ItemQuery, ColumnTarget = ColumnTarget, Resolver = Resolver, Condition = Condition, FilterEnvironment = FilterEnvironment,
     FilterCompilation = FilterCompilation, FilterOptions = FilterOptions, VisibilityCondition = VisibilityCondition, RelationScope = RelationScope, HistoryAsked = HistoryAsked, ScopeFilter = ScopeFilter, Scope = Scope,
     ScopeProjection = ScopeProjection, ScopeQuery = ScopeQuery, AdmittedScope = AdmittedScope, PluginSchemaSource = PluginSchemaSource, PluginSchema = PluginSchema, ResolveContext = ResolveContext,
-    PluginError = PluginError, PluginProblem = PluginProblem, PluginLifecycle = PluginLifecycle, PluginView = PluginView, PluginProjection = PluginProjection, PluginProjectionState = PluginProjectionState, Plugin = Plugin, ProviderResult = ProviderResult, Provider = Provider, FieldType = FieldType,
+    PluginError = PluginError, PluginProblem = PluginProblem, PluginLifecycle = PluginLifecycle, PluginView = PluginView, PluginProjection = PluginProjection, PluginProjectionState = PluginProjectionState, Plugin = Plugin, ProviderResult = ProviderResult, Provider = Provider, FieldType = FieldType, FieldTypeOption = FieldTypeOption,
     HookActor = HookActor, GuardRequest = GuardRequest, GuardResult = GuardResult, OperandRequest = OperandRequest, OperandResult = OperandResult,
     Holder = Holder, FieldAccess = FieldAccess, FieldEdit = FieldEdit, Visibility = Visibility, AccessCaller = AccessCaller,
     PluginOwners = PluginOwners, PluginDecl = PluginDecl, PluginState = PluginState, PluginProgress = PluginProgress,
