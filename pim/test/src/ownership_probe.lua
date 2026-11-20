@@ -2,6 +2,7 @@
 local create=require("create")
 local threads=require("threads")
 local attachments=require("attachments")
+local creations=require("creations")
 local component=require("component")
 local M={}
 function M.run(input: {catalog_id: string, attachment: boolean?,phase:string?,grant:string?}): (unknown,error?)
@@ -9,7 +10,14 @@ function M.run(input: {catalog_id: string, attachment: boolean?,phase:string?,gr
         local id=assert(attachments.id(input.catalog_id,"app:projection_plugin",99))
         local service=assert(component.get_service())
         if input.phase=="create_delete" then
-            assert(attachments.ensure(input.catalog_id,"app:projection_plugin",99,"app:empty_plugin_attachment","Plugin",{}))
+            -- Seed confirmed provenance from the previous registration sequence.
+            local request={plugin="app:projection_plugin",generation=99,kind="app:empty_plugin_attachment"}
+            local token=assert(creations.prepare(input.catalog_id,id,request))
+            local registered=assert(service:register({component_id=id,impl_id=request.kind,
+                private_context={catalog_id=input.catalog_id,pim_plugin=request.plugin,generation=request.generation,pim_creation=token}}))
+            assert(registered.success)
+            assert(creations.confirm(id)==nil)
+            assert(component.set_meta(id,{owner=input.catalog_id}))
             local removed=assert(service:delete({component_id=id}))
             assert(removed.success)
             for _=1,600 do

@@ -11,7 +11,7 @@ entries:
       description: Product information management on Kickside threads - typed contextual product values, variants, schema evolution and releases.
 
   - name: dep.kickside.component
-    version: "*"
+    version: ">=0.3.28"
     kind: ns.dependency
     meta:
       comment: Catalog components, ACL checks and deletion.

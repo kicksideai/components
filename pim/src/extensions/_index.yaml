@@ -10,6 +10,7 @@ entries:
     imports:
       values: kickside.pim.domain:values
       component_types: kickside.component:types
+      registration: kickside.component.binding:child_registration
       creations: kickside.pim.persist:creations
       component: kickside.component:component
       envelope: kickside.component:envelope
@@ -38,7 +39,7 @@ entries:
     kind: function.lua
     security:
       groups: [kickside.pim.security:manifest_reader]
-      policies: [kickside.pim.security:lifecycle_output_publish]
+      policies: [kickside.pim.security:lifecycle_output_publish, kickside.component:attachment_seal_access]
     source: file://plugin_projections.lua
     method: batch
     modules: [sql, json]
