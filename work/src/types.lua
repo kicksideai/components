@@ -189,7 +189,8 @@ type PolicyDecl = { stage_timeout: string?, stage_max_visits: integer?, comments
 type PluginOwners = { [string]: { [string]: string } }
 type PluginDecl = { schema: PluginSchema?, use: string, attachment_kind: string?, attachment_id: string? }
 type PluginProgress = { projection_after: string?, scanned: boolean?, registered: integer? }
-type PluginState = { plugin: string, attachment_id: string, impl_id: string, config: JsonObject, active: boolean, revision: integer, applied_revision: integer, lifecycle: PluginLifecycle, progress: PluginProgress? }
+type PluginAttachment = { plugin: string, attachment_id: string, impl_id: string, config: JsonObject }
+type PluginState = { plugin: string, attachment_id: string, impl_id: string, config: JsonObject, active: boolean, revision: integer, applied_revision: integer, lifecycle: PluginLifecycle, progress: PluginProgress }
 type StateMaps = { [string]: { [string]: string } }
 type RemoveDecl = { fields: { string }?, item_types: { string }?, processes: { string }?, relation_types: { string }?, visibility: boolean? }
 type Declaration = {
@@ -249,7 +250,7 @@ type UsageTargets = { item_types: { string }, links: { string }, states: { State
 
 -- Rows.
 type Board = { memberships: Memberships?, pack: string?, pack_version: string?, pack_digest: string?, pack_base: JsonObject?, caller_error: error?,
-    schema_version: integer?,
+    schema_version: integer,
     dialect: string?, caller: AccessCaller?, board_id: string, key_prefix: string, generation: integer, compiled: Compiled, model: Model, digest: string,
     applied_seq: integer, counter: integer,
     tombstone_floor_seq: integer, layout: Layout?,
@@ -303,6 +304,7 @@ type EventBody = { board_id: string?, flow_ref: FlowRef?, pack: JsonObject?,
     recompute: RecomputeRange?, after: string?, before: string?, range: RankRange?, count: integer?,
     target: Target?, comment: string?, body: string?, mentions: { PrincipalDecl }?, prefix: string?, board: string?, claim_version: integer?,
 }
+type PatchEventBody = EventBody & { patch: { PatchStep }, schema_generation: integer }
 type External = { external_source: string, external_id: string }
 type TraceContext = { trace_id: string?, run_id: string?, caused_by_event_id: string?, correlation_key: string? }
 type Event = { trace_context: TraceContext?, type: string, subject: string, body: EventBody, external: External? }
@@ -349,7 +351,7 @@ return { SearchResults = SearchResults, StageBindingRequest = StageBindingReques
     PluginError = PluginError, PluginProblem = PluginProblem, PluginLifecycle = PluginLifecycle, PluginView = PluginView, PluginProjection = PluginProjection, PluginProjectionState = PluginProjectionState, Plugin = Plugin, ProviderResult = ProviderResult, Provider = Provider, FieldType = FieldType, FieldTypeOption = FieldTypeOption,
     HookActor = HookActor, GuardRequest = GuardRequest, GuardResult = GuardResult, OperandRequest = OperandRequest, OperandResult = OperandResult,
     Holder = Holder, FieldAccess = FieldAccess, FieldEdit = FieldEdit, Visibility = Visibility, AccessCaller = AccessCaller,
-    PluginOwners = PluginOwners, PluginDecl = PluginDecl, PluginState = PluginState, PluginProgress = PluginProgress,
+    PluginOwners = PluginOwners, PluginDecl = PluginDecl, PluginAttachment = PluginAttachment, PluginState = PluginState, PluginProgress = PluginProgress,
     PathMove = PathMove, SubtreeStats = SubtreeStats, DeleteResult = DeleteResult,
     Write = Write,
     WhenCheck = WhenCheck, Layout = Layout, Rollup = Rollup, RecomputeRange = RecomputeRange, RankRange = RankRange, RebalanceState = RebalanceState, Finding = Finding, Json = Json, JsonObject = JsonObject, SqlParams = SqlParams, Row = Row, Value = Value, Dec = Dec, Quantity = Quantity, Ref = Ref, FieldConfig = FieldConfig,
@@ -362,7 +364,7 @@ return { SearchResults = SearchResults, StageBindingRequest = StageBindingReques
     Board = Board, Cell = Cell, Document = Document, Item = Item, LinkRow = LinkRow, InboundLink = InboundLink,
     CommentRow = CommentRow, CommentPosition = CommentPosition, LinkPosition = LinkPosition, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
 
-    PatchStep = PatchStep, Target = Target, Receipt = Receipt, EventBody = EventBody, External = External, Event = Event,
+    PatchStep = PatchStep, Target = Target, Receipt = Receipt, EventBody = EventBody, PatchEventBody = PatchEventBody, External = External, Event = Event,
     FoldBatch = FoldBatch, FoldResult = FoldResult, RawEvent = RawEvent, FoldEvent = FoldEvent, ProjectionRange = ProjectionRange, ProjectionBody = ProjectionBody,
     ProjectionInput = ProjectionInput, ComponentMeta = ComponentMeta, ComponentRow = ComponentRow,
 }

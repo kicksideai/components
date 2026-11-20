@@ -16,6 +16,7 @@ entries:
     kind: registry.entry
     meta:
       type: kickside.work.plugin
+      interface_version: 1
       attachment: app:ui_attachment
       seams: [app:settings_integer_field, app:settings_reference_field, app:settings_quantity_field]
   - name: settings_integer_field

@@ -93,16 +93,6 @@ local function define()
             assert(changes:apply())
         end
 
-        test.it("reports the current interface for implicit and explicit plugin manifests", function()
-            local h = fixture.board()
-            local plugin = "app:event_projection_plugin"
-            revise(plugin, function(meta) meta.interface_version = 1 end)
-            test.eq(plugin_view(h, PLUGIN, "schema_options").interface_version, 1)
-            test.eq(plugin_view(h, plugin, "schema_options").interface_version, 1)
-            assert(h.call("apply_schema", { declaration = { plugins = { { use = plugin } } } }))
-            test.eq(plugin_view(h, plugin, "get_schema").interface_version, 1)
-        end)
-
         test.it("refuses an unknown manifest interface before loading its declarations", function()
             local h = fixture.board()
             local plugin = "app:event_projection_plugin"
@@ -270,7 +260,7 @@ local function define()
             test.eq(page.changes[1].key, prefix .. "-1")
         end)
 
-        test.it("registers state projections without raw board events and converges existing cursors", function()
+        test.it("registers state projections without raw board events", function()
             local h = fixture.board()
             activate(h, true)
             local item = steps.create(h, "task", { title = "before convergence" })
@@ -280,27 +270,11 @@ local function define()
                 return view(h).projections["app:item_fold"].last_seq >= configured.seq
             end)
             local before = ready(h, false)
-            local id, body = projection(h, "app:item_fold")
+            local _, body = projection(h, "app:item_fold")
             test.is_true(body.worker_config.start_seq < configured.seq)
             test.eq(body.meta.worker_input_mode, "cursor_only")
             test.eq(body.observed_mode, "cursor_only")
             test.is_false(body.received_events)
-
-            body.meta.worker_input_mode = "prefetch_events"
-            local db = assert(sql.get("app:db"))
-            assert(db:execute("UPDATE kickside_projection SET body=$1 WHERE id=$2", { assert(json.encode(body)), id }))
-            db:release()
-            assert(h.call("plugin_sync", {}))
-            steps.wait_for("state registration converges", function(): boolean
-                local _, converged = projection(h, "app:item_fold")
-                return converged.meta.worker_input_mode == "cursor_only"
-            end)
-            local after_id, after_body = projection(h, "app:item_fold")
-            test.eq(after_id, id)
-            test.eq(after_body.meta.worker_input_mode, "cursor_only")
-            test.eq(after_body.worker_config.start_seq, body.worker_config.start_seq)
-            test.eq(after_body.token, body.token)
-            test.eq(view(h).projections["app:item_fold"].last_seq, before.last_seq)
 
             steps.one(h, { op = "set", item = item, values = { title = "after convergence" } })
             steps.wait_for("converged state worker follows changes", function(): boolean return #rows(h) == 2 end)
@@ -463,7 +437,7 @@ local function define()
             assert(updated, steps.detail(update_err))
             local stored = credential_attachment(attachment_id)
             test.eq(tonumber(stored.secrets_generation), 2)
-            test.is_nil(string.find(stored.private_context :: string, secret, 1, true))
+            test.is_nil((string.find(stored.private_context :: string, secret, 1, true)))
             assert(board.call("configure_plugin", { plugin = plugin, config = { marker = "second" } }))
             test.eq(ready_attachment("second"), attachment_id)
             local reconfigured = credential_attachment(attachment_id)

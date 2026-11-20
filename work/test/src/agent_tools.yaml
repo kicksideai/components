@@ -51,6 +51,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:fold_attachment
     tools:
     - app:trait_plugin_read

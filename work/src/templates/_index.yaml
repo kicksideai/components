@@ -6,6 +6,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     title: Work Templates
     description: Versioned create presets owned by a Work board.
     attachment: kickside.work.templates:attachment
@@ -130,17 +131,6 @@ entries:
   method: retire
   modules: [sql, ctx, time]
   imports: *catalog_imports
-- name: 01_catalog
-  kind: function.lua
-  meta:
-    type: migration
-    private: true
-    tags: [work, templates]
-    timestamp: '2026-11-19T02:00:00Z'
-  source: file://schema.lua
-  method: migrate
-  imports:
-    migration: wippy.migration:migration
 - name: action
   kind: contract.binding
   meta:

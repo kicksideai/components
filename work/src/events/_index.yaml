@@ -334,6 +334,7 @@ entries:
     - to
     - visit
     - patch
+    - schema_generation
 - name: item.migrated
   kind: registry.entry
   meta:
@@ -535,6 +536,7 @@ entries:
     - type
     - state
     - patch
+    - schema_generation
 - name: item.changed
   kind: registry.entry
   meta:
@@ -558,3 +560,4 @@ entries:
     required:
     - item
     - patch
+    - schema_generation

@@ -20,6 +20,7 @@ entries:
   meta:
     seams: [app:work_scope, app:work_type]
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     config_schema:
       type: object
@@ -32,6 +33,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
 - name: work_scope
   kind: registry.entry
@@ -115,6 +117,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     schema:
       template:
@@ -132,6 +135,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     config_schema:
       type: object
@@ -144,6 +148,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     settings: app.board_settings
     attachment: app:work_attachment
     config_schema:
@@ -174,6 +179,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     schema:
       provider: app:private_schema_binding
@@ -181,6 +187,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     schema:
       provider: app:absent_schema_binding
@@ -253,6 +260,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     comment: Harness plugin with per-board shelf settings.
     title: Shelf
     settings: app.shelf
@@ -272,6 +280,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     comment: Harness plugin whose fields come from a provider reading its own store.
     config_schema: {type: object, properties: {prefix: {type: string}}, additionalProperties: false}
@@ -281,6 +290,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     comment: Harness plugin whose provider fails.
     schema:
@@ -289,6 +299,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     comment: Harness plugin whose provider answers without a fragment.
     schema:
@@ -297,6 +308,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     comment: Harness plugin naming both a template and a provider.
     schema:
@@ -306,6 +318,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     comment: Harness plugin whose template is not an object.
     schema:
@@ -314,6 +327,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     comment: Harness plugin declaring a secret-shaped config property.
     config_schema:
@@ -325,12 +339,14 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     comment: Harness plugin with no settings and no config.
 - name: listed_plugin
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     comment: Harness plugin with a list in its config.
     config_schema: {type: object, properties: {tags: {type: array, items: {type: string}}}}

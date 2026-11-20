@@ -444,6 +444,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     schema:
       template:

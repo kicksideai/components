@@ -347,6 +347,7 @@ entries:
   - json
   imports:
     store: kickside.work.persist:store
+    row_decode: kickside.work.persist:row_decode
     domain: kickside.work:types
     storage: kickside.work.persist:types
     jobs: kickside.core.jobs:jobs

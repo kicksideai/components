@@ -62,7 +62,7 @@ function M.decode_board(row: types.Row): (types.Board?, error?)
     if decode_err then return nil, decode_err end
     if not compiled then return nil, errors.new({ details = { code = "row_corrupt" }, kind = errors.INTERNAL, message = "board row has no compiled model" }) end
     local schema_version, version_err = need_int(row, "schema_version")
-    if version_err then return nil, version_err end
+    if version_err or schema_version == nil then return nil, version_err end
     local layout, decode_err = stored(row.layout, nil :: types.Layout?)
     if decode_err then return nil, decode_err end
 

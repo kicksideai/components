@@ -90,7 +90,7 @@ type ApplyContext = {
     claimed: boolean?, base: string?, until_at: domain.Deadline, source: string,
 }
 
-type ConfigureSelection = { schema_version: integer?, as_of: integer?, generation: integer?, plugin: domain.PluginState }
+type ConfigureSelection = { schema_version: integer, as_of: integer?, generation: integer?, plugin: domain.PluginState }
 type ConfigureRequest = { trace_context: domain.TraceContext?, board_id: string, plugin: string, config: domain.JsonObject }
 type ConfigureResult = { attachment_id: string, seq: integer?, as_of: integer? }
 

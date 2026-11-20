@@ -51,14 +51,6 @@ entries:
   targets:
   - entry: kickside.work.migrations:01_work
     path: .meta.target_db
-  - entry: kickside.work.migrations:02_saved_view_boards
-    path: .meta.target_db
-  - entry: kickside.work.migrations:03_move_operation_keys
-    path: .meta.target_db
-  - entry: kickside.work.migrations:04_link_page_indexes
-    path: .meta.target_db
-  - entry: kickside.work.templates:01_catalog
-    path: .meta.target_db
   - entry: kickside.work.persist:config
     path: .meta.db_id
 - name: api_router

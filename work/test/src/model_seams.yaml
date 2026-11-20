@@ -16,6 +16,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     requires: [app:work_plugin]
     seams: [app:model_guard, app:model_group_guard, app:model_operand, app:model_search, app:model_search_ids, app:model_search_field_ids, app:model_search_admin_ids]

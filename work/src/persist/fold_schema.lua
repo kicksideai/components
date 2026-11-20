@@ -64,7 +64,7 @@ local function apply_schema(tx: sql.Transaction, dialect: string, board: types.B
             WHERE board_id = $6]], { compiled.key_prefix, body.generation, encoded, body.digest, at, board_id })
         if err then return nil, errors.wrap(err, "board update failed") end
         board.key_prefix = compiled.key_prefix
-        board.schema_version = (board.schema_version or 0) + 1
+        board.schema_version = board.schema_version + 1
         board.generation = body.generation
         board.compiled = compiled
         board.model = schema.model(compiled)

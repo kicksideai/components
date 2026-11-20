@@ -23,6 +23,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     title: Board enhancements
     tools:
     - kickside.work.traits:get_schema
@@ -40,6 +41,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     title: Invalid enhancement
     attachment: app:ui_attachment
     config_schema:

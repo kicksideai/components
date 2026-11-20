@@ -9,51 +9,10 @@ entries:
     tags:
     - work
     - board
-    comment: Fixed work tables - boards, schema generations, items, links, change history, comments and board jobs.
+    comment: Fixed Work tables including the template catalog.
     timestamp: '2026-11-03T00:00:01Z'
   source: file://01_work.lua
   imports:
     operation_expiry: kickside.work.persist:operation_expiry
-    migration: wippy.migration:migration
-  method: migrate
-- name: 02_saved_view_boards
-  kind: function.lua
-  meta:
-    type: migration
-    private: true
-    tags: [work, board]
-    comment: Populate the board index for existing saved views.
-    timestamp: '2026-11-19T00:00:00Z'
-  source: file://02_saved_view_boards.lua
-  imports:
-    component: kickside.component:component
-    migration: wippy.migration:migration
-  method: migrate
-  security:
-    policies:
-    - kickside.work.security:view_public_meta
-- name: 03_move_operation_keys
-  kind: function.lua
-  meta:
-    type: migration
-    private: true
-    tags: [work, board]
-    comment: Allow a rejected move to retain its operation ID after releasing its caller key.
-    timestamp: '2026-11-19T01:00:00Z'
-  source: file://03_move_operation_keys.lua
-  imports:
-    migration: wippy.migration:migration
-    operation_expiry: kickside.work.persist:operation_expiry
-  method: migrate
-- name: 04_link_page_indexes
-  kind: function.lua
-  meta:
-    type: migration
-    private: true
-    tags: [work, board]
-    comment: Add ordered seeks for outward, inward, and target link pages.
-    timestamp: '2026-11-20T00:00:00Z'
-  source: file://04_link_page_indexes.lua
-  imports:
     migration: wippy.migration:migration
   method: migrate
