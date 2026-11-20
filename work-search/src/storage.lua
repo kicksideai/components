@@ -13,7 +13,7 @@ local SPEC = {
     vectors = "", vector_key = "",
     rows = "kickside_work_search_row", row_key = "row_id", partition = "generation_id",
     columns = { "item_id", "item_key", "source_seq" }, fts = "kickside_work_search_fts",
-    fts_key = "rowid", tsvector = "search_vector",
+    fts_key = "rowid", tsvector = "search_vector", lexical_scope = true,
 }
 
 function M.open(): (sql.DB?, error?)
@@ -126,7 +126,8 @@ function M.put(tx: sql.Transaction, sqlite: boolean, generation: string, item: C
     local row_id = rows[1].row_id
     local _, delete_err = tx:execute("DELETE FROM kickside_work_search_fts WHERE rowid=$1", { row_id })
     if delete_err then return delete_err end
-    local _, insert_err = tx:execute("INSERT INTO kickside_work_search_fts (rowid,content) VALUES ($1,$2)", { row_id, content })
+    local _, insert_err = tx:execute("INSERT INTO kickside_work_search_fts (rowid,content,scope_token) VALUES ($1,$2,$3)",
+        { row_id, content, index.lexical_scope_token(generation) })
     return insert_err
 end
 

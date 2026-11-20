@@ -12,7 +12,7 @@ entries:
 - name: dep.index
   kind: ns.dependency
   component: kickside/search-index
-  version: '>=0.1.2'
+  version: '>=0.1.4'
 - name: target_db
   kind: ns.requirement
   meta: { value_kind: db.sql }

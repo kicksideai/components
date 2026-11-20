@@ -13,13 +13,14 @@ local function create(db, sqlite: boolean)
     )]])
     local id = sqlite and "INTEGER PRIMARY KEY" or "BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY"
     local vector = sqlite and "" or [=[, search_vector tsvector GENERATED ALWAYS AS
-        (to_tsvector('simple', regexp_replace(content, '[^[:alnum:]]+', ' ', 'g'))) STORED]=]
+        (setweight(to_tsvector('simple', regexp_replace(content, '[^[:alnum:]]+', ' ', 'g')), 'A') ||
+         setweight(to_tsvector('simple', 'p' || encode(generation_id::bytea, 'hex') || '@scope.invalid'), 'D')) STORED]=]
     execute("CREATE TABLE kickside_work_search_row (row_id " .. id .. [[,
         generation_id TEXT NOT NULL, item_id TEXT NOT NULL, item_key TEXT NOT NULL,
         source_seq BIGINT NOT NULL, content TEXT NOT NULL,
         UNIQUE (generation_id, item_id), UNIQUE (generation_id, item_key)]] .. vector .. ")")
     if sqlite then
-        execute([[CREATE VIRTUAL TABLE kickside_work_search_fts USING fts5(content, tokenize='unicode61 remove_diacritics 2')]])
+        execute([[CREATE VIRTUAL TABLE kickside_work_search_fts USING fts5(content, scope_token, tokenize='unicode61 remove_diacritics 2')]])
     else
         execute([[CREATE INDEX kickside_work_search_fts ON kickside_work_search_row USING gin (search_vector)]])
     end

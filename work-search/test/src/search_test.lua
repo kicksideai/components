@@ -7,6 +7,7 @@ local uuid = require("uuid")
 local time = require("time")
 local sql = require("sql")
 local json = require("json")
+local index = require("index")
 
 type Map = { [string]: unknown }
 type Call = (string, Map, string?) -> (unknown, error?)
@@ -222,6 +223,33 @@ local function define()
             local items = assert(find(admin, id, "quartz"))
             test.eq(#items, 1)
             test.eq(items[1].id, second)
+        end)
+
+        test.it("returns a member's Work result beside many unrelated lexical matches", function()
+            local admin = session(true)
+            local member, member_id = session(false)
+            local id = create(admin, declaration(TEXT))
+            checked(admin("grant", { subject_id = member_id, mask = 1 }, id))
+            local own = apply(admin, id, { op = "create", type = "issue", values = { title = "Roadmap" } }).item
+            test.eq(indexed(member, id, "roadmap", 1)[1].id, own)
+            local foreign = "fixture-" .. id
+            local db = assert(sql.get("app:db"))
+            local sqlite = db:type() == sql.type.SQLITE
+            local own_rows = assert(db:query("SELECT generation_id FROM kickside_work_search_row WHERE item_id=$1", { own }))
+            local foreign_content = "roadmap " .. index.lexical_scope_token(own_rows[1].generation_id) .. "@scope.invalid"
+            local tx = assert(db:begin())
+            local sequence = sqlite and "WITH RECURSIVE counter(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM counter WHERE n<100000) " or ""
+            local source = sqlite and "counter" or "generate_series(1,100000) AS counter(n)"
+            assert(tx:execute(sequence .. [[INSERT INTO kickside_work_search_row (generation_id,item_id,item_key,source_seq,content)
+                SELECT $1,'foreign-'||n,'FOREIGN-'||n,1,$2 FROM ]] .. source, { foreign, foreign_content }))
+            if sqlite then
+                assert(tx:execute([[INSERT INTO kickside_work_search_fts (rowid,content,scope_token)
+                    SELECT row_id,content,$2 FROM kickside_work_search_row WHERE generation_id=$1]],
+                    { foreign, index.lexical_scope_token(foreign) }))
+            end
+            assert(tx:commit())
+            db:release()
+            test.eq(indexed(member, id, "roadmap", 1)[1].id, own)
         end)
 
         test.it("checks live board access and visibility and preserves Work ordering across pages", function()
