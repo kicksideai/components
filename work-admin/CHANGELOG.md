@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/kicksideai/components/compare/work-admin-v0.1.7...work-admin-v0.1.8) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work-admin:** preserve drafts and clarify board reviews ([c70e660](https://github.com/kicksideai/components/commit/c70e660f050ae86f388939e4ba8c4da4c7ef251a))
+
 ## [0.1.7](https://github.com/kicksideai/components/compare/work-admin-v0.1.6...work-admin-v0.1.7) (2026-11-20)
 
 
