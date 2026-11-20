@@ -16,7 +16,7 @@ type Plan = { bounded: BoundedPlan?, query: sql.SelectBuilder, tails: { sql.Sele
     count: Count?, groups: integer, take: integer }
 type ReadStamp = { as_of: integer?, generation: integer? }
 type PluginSelection = ReadStamp & { state: domain.PluginState }
-type PluginOptions = ReadStamp & { plugins: { domain.PluginView } }
+type PluginOptions = ReadStamp & { plugins: { domain.PluginView }, field_types: { domain.FieldTypeOption } }
 type PluginContext = { attachment_id: string?, interface_version: integer, config: JsonObject?, lifecycle: domain.PluginLifecycle, projections: { [string]: domain.PluginProjectionState } }
 type PluginContextRequest = { board_id: string, plugin: string }
 type PluginFeedRequest = PluginContextRequest & { kind: string, token: string? }

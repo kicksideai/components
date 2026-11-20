@@ -5,6 +5,7 @@ local budget = require("budget")
 local rows = require("rows")
 local manifests = require("manifests")
 local plugins = require("plugins")
+local declarations = require("declarations")
 local states = require("states")
 local component = require("component")
 local types = require("types")
@@ -38,7 +39,9 @@ function M.options(request: types.SchemaGetRequest): (types.PluginOptions?, erro
             if derr then return nil, derr end
             local listed, lerr = plugins.list(board.board_id, desired or {}, board.compiled.plugins or {}, false, true)
             if lerr then return nil, lerr end
-            return { plugins = listed }, nil
+            local installed, terr = declarations.field_types()
+            if terr then return nil, terr end
+            return { plugins = listed, field_types = installed }, nil
         end, context, nil, nil, component.ACCESS.ADMIN :: integer)
         if err or not result then return nil, err end
         plugins.projections(request.board_id, result.plugins)
