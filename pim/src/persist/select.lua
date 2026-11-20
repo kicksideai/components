@@ -130,13 +130,13 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
     local selected: { string } = { "i.product_id AS product_id" }
     for _, name in ipairs(returning) do selected[#selected + 1] = "i." .. name end
     selected[#selected + 1] = "r.sku"
-    local clauses: { types.Condition } = {}
+    local clauses: { tree.Fragment } = {}
     for _, c in ipairs(conditions) do clauses[#clauses + 1] = c end
     if q.where ~= nil then
         local position = dialect == sql.type.POSTGRES and "strpos" or "instr"
-        local fragment, err = tree.compile(q.where, { reader = r, set_table = names.set, position = position, resolve = resolve })
-        if err or not fragment then return nil, err end
-        clauses[#clauses + 1] = fragment
+        local conjuncts, err = tree.compile(q.where, { reader = r, set_table = names.set, position = position, resolve = resolve })
+        if err then return nil, err end
+        for _, c in ipairs(conjuncts) do clauses[#clauses + 1] = c end
     end
     if type(q.text) == "string" and q.text ~= "" then
         -- Free text finds items whose sku starts with it or whose searchable
@@ -174,7 +174,20 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
     local direction = q.sort and q.sort.dir == "desc" and "DESC" or "ASC"
     local pg = dialect == sql.type.POSTGRES
     local format = pg and sql.builder.dollar or sql.builder.question
-    local scan = #clauses > 0 and q.scan or nil
+    -- A fixed scalar index key leaves product ID as the index's order.
+    local seek: tree.Fragment? = nil
+    for i, c in ipairs(clauses) do
+        if c.equality_column and (not sort_column or sort_column == c.equality_column) then
+            seek = table.remove(clauses, i)
+            break
+        end
+    end
+    local scan = (seek ~= nil or #clauses > 0) and q.scan or nil
+
+    local function seeking(base: sql.SelectBuilder): sql.SelectBuilder
+        if seek then return base:where(seek.sql, table.unpack(seek.args)) end
+        return base
+    end
 
     local function filtered(base: sql.SelectBuilder, lookahead: string?): sql.SelectBuilder
         local include = lookahead and ("WHEN " .. lookahead .. " THEN 1 ") or ""
@@ -194,8 +207,7 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
             else
                 base = base:from(source .. " i")
             end
-            base = base:join("LATERAL (SELECT sku FROM kickside_pim_product "
-                .. "WHERE catalog_id = ? AND product_id = i.product_id OFFSET 0) r ON TRUE", r.catalog_id)
+            base = base:join("kickside_pim_product r ON r.catalog_id = ? AND r.product_id = i.product_id", r.catalog_id)
         else
             local from = source .. " i"
             if keys_only then from = source .. " w CROSS JOIN " .. names.item .. " i ON i.product_id = w.product_id" end
@@ -206,7 +218,7 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
     end
 
     local function candidate(range: Range, size: integer): sql.SelectBuilder
-        return restrict(sql.builder.select("i.product_id", sort_value):from(names.item .. " i"), range)
+        return restrict(seeking(sql.builder.select("i.product_id", sort_value):from(names.item .. " i")), range)
             :order_by(order(range, false)):limit(size)
     end
 
@@ -218,28 +230,35 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
 
     local counted: Count? = nil
     if q.count then
-        local function bounded_count(budget: integer): sql.SelectBuilder
+        local function bounded_count(budget: integer): (sql.SelectBuilder, types.SqlParams)
             -- Stream the prefix and one lookahead from the same index. The last
             -- row reports whether the budget was exceeded without testing it.
             local candidates = sql.builder.select("i.*", "row_number() OVER (ORDER BY i.product_id) AS walk_pos")
                 :from(names.item .. " i")
             if not pg then candidates = candidates:columns("i.rowid AS rowid") end
-            local walk = candidates:order_by("i.product_id"):limit(budget + 1):to_sql()
+            local walk, keys = seeking(candidates):order_by("i.product_id"):limit(budget + 1):to_sql()
             local edge = "i.walk_pos > " .. budget
-            return filtered(sql.builder.select("CASE WHEN " .. edge .. " THEN 1 ELSE 0 END AS beyond")
-                :from("(" .. walk .. ") i"), edge)
+            local matched = sql.builder.select("CASE WHEN " .. edge .. " THEN 1 ELSE 0 END AS beyond")
+                :from("(" .. walk .. ") i")
+            return filtered(matched, edge), keys
         end
-        local matched = scan and bounded_count(scan) or filtered(sql.builder.select("0 AS beyond"):from(names.item .. " i"))
+        local matched: sql.SelectBuilder
+        local keys: types.SqlParams = {}
+        if scan then
+            matched, keys = bounded_count(scan)
+        else
+            matched = filtered(seeking(sql.builder.select("0 AS beyond"):from(names.item .. " i")))
+        end
         local within, args = matched:limit(q.count + 1):to_sql()
         local outer = sql.builder.select("count(*) FILTER (WHERE beyond = 0) AS n", "coalesce(max(beyond), 0) AS beyond")
             :from("(" .. within .. ") matched")
-        local built = compiled(outer, {}, args)
+        local built = compiled(outer, keys, args)
         counted = { statement = built.statement, args = built.args, cap = q.count }
     end
 
     local function page(range: Range, size: integer?, wanted: integer): Statement
         if not size then
-            local query, args = restrict(matching(selected, names.item, false):columns(sort_value), range)
+            local query, args = restrict(seeking(matching(selected, names.item, false):columns(sort_value)), range)
                 :order_by(order(range, false)):limit(wanted):placeholder_format(format):to_sql()
             return { statement = query, args = args }
         end
@@ -257,8 +276,16 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
         return compiled(outer, keys, args)
     end
 
+    local function page_ranges(after: types.Cursor?): { Range }
+        if seek and sort_column then
+            if after and after.v == nil then return {} end
+            if not after or after.v == seek.args[1] then return ranges(nil, direction, after) end
+        end
+        return ranges(sort_sql, direction, after)
+    end
+
     return { sort_column = sort_column, tables = tables, count = counted, after = q.after, scan = scan,
-        ranges = function(after: types.Cursor?): { Range } return ranges(sort_sql, direction, after) end, page = page }, nil
+        ranges = page_ranges, page = page }, nil
 end
 
 -- cursor_of reads a row's position as a keyset cursor.

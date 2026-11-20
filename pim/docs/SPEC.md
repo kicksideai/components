@@ -1384,10 +1384,12 @@ input, including punctuation.
 
 An item sort puts nulls last in both directions and breaks ties by ascending
 product ID. A filtered page admits candidates in that order before applying
-filters. The scan budget covers all ranges of the page, including ties and
-nulls. The count uses its own bounded walk in ascending product ID, independent
-of sort and continuation. The same walk reads one extra key to identify a count
-that exhausted its scan budget. Filters apply only within that budget.
+residual filters. A required equality on an indexed scalar field restricts
+the candidates when the query uses product ID order or sorts by that field.
+The scan budget covers all candidate ranges, including ties and nulls. The
+count uses the same candidate restriction and its own bounded walk in ascending
+product ID from the start. It reads one extra key to identify a count that
+exhausted its scan budget. Residual filters apply only within that budget.
 
 Reads run in one read snapshot and return `as_of`. PostgreSQL snapshots use
 a read-only repeatable-read transaction; SQLite uses one read transaction.
