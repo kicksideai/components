@@ -7,7 +7,7 @@ local limits = require("limits")
 local M = {}
 local function publish(owner: types.Owner, total: integer): (boolean?, error?)
     local status = owner.status == "finishing" and "done" or owner.status
-    if (owner.counts.applied or 0)>0 then
+    if owner.status == "finishing" or (owner.counts.applied or 0) > 0 then
         local err = events.progress(owner.board_id, owner.operation_id, "bulk", owner.processed, total, status, owner.counts, owner.deadline)
         if err then return nil, err end
     end
@@ -22,9 +22,11 @@ function M.batch(owner: types.Owner): (boolean?, error?)
     if owner.status == "done" then return true,nil end
     if owner.status == "cancelled" then return publish(owner, #ids) end
     if owner.processed == #ids then
-        if owner.status == "finishing" then return publish(owner,#ids) end
-        local err = rows.update(owner,"done",nil)
-        return err == nil,err
+        if owner.status ~= "finishing" then
+            local err = rows.update(owner, "finishing", nil)
+            if err then return nil, err end
+        end
+        return publish(owner, #ids)
     end
     local admitted = rows.update(owner, "running", nil)
     if admitted then return nil, admitted end
@@ -63,11 +65,11 @@ function M.batch(owner: types.Owner): (boolean?, error?)
         for _, outcome in ipairs(result.outcomes) do owner.counts[outcome.status] = (owner.counts[outcome.status] or 0) + 1 end
     end
     owner.processed = through
-    local changed = (owner.counts.applied or 0)>applied_before
-    local status = through == #ids and (changed and "finishing" or "done") or "running"
-    local err = rows.update(owner, status, nil)
+    local changed = (owner.counts.applied or 0) > applied_before
+    local finished = through == #ids
+    local err = rows.update(owner, finished and "finishing" or "running", nil)
     if err then return nil, err end
-    if not changed then return owner.status=="done" or owner.status=="cancelled",nil end
-    return publish(owner, #ids)
+    if changed or finished then return publish(owner, #ids) end
+    return owner.status == "cancelled", nil
 end
 return M

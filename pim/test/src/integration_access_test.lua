@@ -14,6 +14,41 @@ local kind = catalog_fixture.kind
 
 local function define()
     test.describe("caller access on read surfaces", function()
+        test.it("searches the actor-scoped catalog directory before paging", function()
+            local owner, caller = scoped.member(), scoped.member()
+            local function create(key: string, title: string, mask: integer?): string
+                local created = assert(owner.call("create", { idempotency_key = key, title = title })) :: {catalog_id: string}
+                if mask then assert(owner.call("grant", { subject_id = caller.id, mask = mask }, created.catalog_id)) end
+                return created.catalog_id
+            end
+            local west = create("west", "Harbor West", 9)
+            local east = create("east", "Harbor East", 11)
+            local read_only = create("read", "Harbor Reading Room", READ)
+            create("private", "Harbor Private")
+            create("other", "Hilltop", 9)
+
+            local readable = caller.http("GET", "?text=hArBoR")
+            test.eq(readable.status, 200, json.encode(readable.body))
+            local found: { [string]: boolean } = {}
+            for _, row in ipairs(readable.body.data.catalogs) do found[row.catalog_id] = true end
+            test.eq(#readable.body.data.catalogs, 3)
+            test.is_true(found[west] and found[east] and found[read_only])
+
+            local filtered = "?text=hArBoR&admin_only=true&limit=1"
+            local first = caller.http("GET", filtered)
+            test.eq(first.status, 200, json.encode(first.body))
+            test.eq(#first.body.data.catalogs, 1)
+            test.eq(first.body.data.after, 1)
+            local second = caller.http("GET", filtered .. "&after=" .. tostring(first.body.data.after))
+            test.eq(second.status, 200, json.encode(second.body))
+            test.eq(#second.body.data.catalogs, 1)
+            test.is_nil(second.body.data.after)
+            local left, right = first.body.data.catalogs[1], second.body.data.catalogs[1]
+            test.is_true((left.catalog_id == west and right.catalog_id == east) or (left.catalog_id == east and right.catalog_id == west))
+            test.is_true(left.access.admin and right.access.admin)
+            test.eq(caller.http("GET", "?admin_only=maybe").status, 400)
+        end)
+
         test.it("keeps catalog schema readable without access to an active plugin's manifest", function()
             local h = fixture.catalog()
             local reader = scoped.member()

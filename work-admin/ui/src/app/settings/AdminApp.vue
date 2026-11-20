@@ -22,7 +22,7 @@ async function select(id: string) {
   if (selected.value === id || !await mayLeave()) return
   dirty.value = false; selected.value = id
   await nextTick()
-  const back = detail.value?.querySelector<HTMLButtonElement>('.work-board-back button')
+  const back = detail.value?.querySelector<HTMLButtonElement>('.work-mobile-board-back button')
   if (back?.getClientRects().length) back.focus()
 }
 async function backToBoards() {
@@ -43,7 +43,7 @@ onMounted(loadSettings)
 async function created(id: string) { await load(); await select(id) }
 </script>
 <template>
-  <main class="work-admin-shell" :class="{ 'work-admin-has-selection': selected }">
+  <main class="work-admin-shell" :class="{ 'work-board-selected': selected }">
     <nav ref="rail" class="work-rail" aria-label="Board settings navigation">
       <header class="work-railhead"><h2>Boards <span class="work-count work-mono" :aria-label="boards.length + (boards.length === 1 ? ' board' : ' boards')">{{ boards.length }}</span></h2><Button aria-label="Create board" title="Create board" severity="secondary" text size="small" @click="creating = true"><Icon icon="tabler:plus" /></Button></header>
       <InputText v-model="search" type="search" aria-label="Search boards" placeholder="Search boards…" />
@@ -58,7 +58,7 @@ async function created(id: string) { await load(); await select(id) }
       <p v-if="!loading && !visibleBoards.length" class="work-muted work-small">{{ boards.length ? 'No boards match this search.' : 'No readable boards.' }}</p>
     </nav>
     <section ref="detail" class="work-admin-main" aria-label="Board settings detail">
-      <div v-if="selected" class="work-board-back">
+      <div v-if="selected" class="work-mobile-board-back">
         <Button label="Back to boards" severity="secondary" text size="small" @click="backToBoards">
           <template #icon><Icon icon="tabler:arrow-left" aria-hidden="true" /></template>
         </Button>

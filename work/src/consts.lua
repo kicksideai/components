@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Stable work identifiers, event types and limits.
 
+local operation_batch = require("operation_batch")
 local M = {}
 
 M.DB_CONFIG = "kickside.work.persist:config"
@@ -107,7 +108,7 @@ M.LIMITS = {
     plugin_fragment_bytes = 262144,
     rollup_children = 2000,
     rollup_links = 2000,
-    ops = 200,
+    ops = operation_batch.max_ops,
     fields = 200,
     item_types = 50,
     states = 64,

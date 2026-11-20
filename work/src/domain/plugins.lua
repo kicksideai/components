@@ -69,12 +69,9 @@ function M.seam(id: string, entries: { types.PluginDecl }?, in_use: boolean?, ki
     end
     return invalid(in_use and "plugin_seam_in_use" or "plugin_seam_unowned", "seam " .. id .. " requires its listed plugin")
 end
--- load_type reads and checks the field type entry id: its form, the indexes it can
--- take and its config schema. A type declares data only; it names no callbacks.
-function M.load_type(id: string): (types.FieldType?, error?)
-    local entry, err = registry.get(id)
-    if err and err:kind() ~= errors.NOT_FOUND then return nil, err end
-    if not entry then return nil, errors.new({ details = { code = "unknown_type" }, kind = errors.INVALID, message = "unknown type " .. id }) end
+-- A field type declares data only. Validation and discovery read the same descriptor.
+local function descriptor(entry: registry.Entry): (types.FieldType?, error?)
+    local id = entry.id
     local meta = registry_values.canonical(entry.meta)
     if type(meta) ~= "table" then return nil, errors.new({ details = { code = "unknown_type" }, kind = errors.INVALID, message = id .. " is not a work type" }) end
     local m = meta :: { [string]: unknown }
@@ -98,6 +95,32 @@ function M.load_type(id: string): (types.FieldType?, error?)
         config_schema = m.config_schema :: types.JsonObject
     end
     return { form = m.form :: string, indexes = indexes, config_schema = config_schema }, nil
+end
+
+function M.load_type(id: string): (types.FieldType?, error?)
+    local entry, err = registry.get(id)
+    if err and err:kind() ~= errors.NOT_FOUND then return nil, err end
+    if not entry then return nil, invalid("unknown_type", "unknown type " .. id) end
+    return descriptor(entry)
+end
+
+function M.field_types(): ({ types.FieldTypeOption }?, error?)
+    local entries, err = registry.find({ [".kind"] = "registry.entry", ["meta.type"] = FIELD_TYPE })
+    if err then return nil, err end
+    local out: { types.FieldTypeOption } = {}
+    for _, entry in ipairs(entries or {}) do
+        local kind = descriptor(entry)
+        if kind then
+            local meta = entry.meta or {}
+            local title = type(meta.title) == "string" and meta.title :: string or "Custom field type"
+            out[#out + 1] = { id = entry.id, title = title, form = kind.form, indexes = kind.indexes, config_schema = kind.config_schema }
+        end
+    end
+    table.sort(out, function(a: types.FieldTypeOption, b: types.FieldTypeOption): boolean
+        if a.title == b.title then return a.id < b.id end
+        return a.title < b.title
+    end)
+    return out, nil
 end
 
 function M.field(declaration: types.FieldDecl, entries: { types.PluginDecl }?, in_use: boolean?): (string?, error?)

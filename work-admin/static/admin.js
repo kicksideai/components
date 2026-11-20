@@ -1,5 +1,5 @@
 import { defineComponent as Q, ref as d, computed as W, watch as O, openBlock as u, createBlock as X, withCtx as A, createElementVNode as t, withModifiers as le, toDisplayString as n, createElementBlock as v, Fragment as z, createTextVNode as D, createVNode as k, unref as l, createCommentVNode as y, renderList as ee, onUnmounted as te, onMounted as se, normalizeClass as H, isRef as oe, nextTick as J } from "vue";
-import { u as ie, e as re, a as ne } from "./mount-DF_QHjX3.js";
+import { u as ie, e as re, a as ne } from "./mount-3Ymcko7U.js";
 import "pinia";
 import { on as de, host as Y, define as ue } from "@wippy-fe/proxy";
 import I from "primevue/button";
@@ -271,7 +271,7 @@ const Oe = { class: "work-railhead" }, Pe = ["aria-label"], Ze = {
   class: "work-muted work-small"
 }, ea = {
   key: 0,
-  class: "work-board-back"
+  class: "work-mobile-board-back"
 }, aa = ["board-id"], la = {
   key: 2,
   class: "kx-loading",
@@ -300,7 +300,7 @@ const Oe = { class: "work-railhead" }, Pe = ["aria-label"], Ze = {
     async function w(f) {
       if (o.value === f || !await g()) return;
       V.value = !1, o.value = f, await J();
-      const s = C.value?.querySelector(".work-board-back button");
+      const s = C.value?.querySelector(".work-mobile-board-back button");
       s?.getClientRects().length && s.focus();
     }
     async function _() {
@@ -323,7 +323,7 @@ const Oe = { class: "work-railhead" }, Pe = ["aria-label"], Ze = {
       await P(), await w(f);
     }
     return (f, s) => (u(), v("main", {
-      class: H(["work-admin-shell", { "work-admin-has-selection": o.value }])
+      class: H(["work-admin-shell", { "work-board-selected": o.value }])
     }, [
       t("nav", {
         ref_key: "rail",

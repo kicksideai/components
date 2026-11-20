@@ -45,8 +45,8 @@ export interface Query {
 export interface QueryResult { items: Item[]; groups?: Group[]; after?: Cursor; as_of: number; reindexing: boolean; incomplete?: boolean }
 export interface Finding { code: string; message?: string; field?: string }
 export interface PluginOption extends PluginState { title?: string; description?: string; config_schema: Record<string, unknown> }
-export interface FieldTypeOption { id: string; title: string; form: FieldForm; config_schema?: Record<string, unknown> }
-export interface AdminOptions { access: BoardAccess; schema_options: { plugins: PluginOption[] }; installed_types?: FieldTypeOption[] }
+export interface FieldTypeOption { id: string; title: string; form: FieldForm; indexes?: string[]; config_schema?: Values }
+export interface AdminOptions { access: BoardAccess; schema_options: { plugins: PluginOption[]; field_types?: FieldTypeOption[] }; installed_types?: FieldTypeOption[] }
 export const emptyOptions = (): AdminOptions => ({ access: { read: false, write: false, admin: false }, schema_options: { plugins: [] } })
 
 export interface Timer { id: string; after?: string; at_field?: string; by?: string; table?: Record<string, string>; repeat?: string; interrupting?: boolean; then?: { emit?: string; transition?: string } }

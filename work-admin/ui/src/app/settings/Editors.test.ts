@@ -32,11 +32,12 @@ it('keeps Work field kinds canonical and persists display reordering in item typ
   expect(draft.fields![0].options?.map(o => [o.id, o.order])).toEqual([['high', 0], ['low', 1]])
   w.unmount()
 })
-it('submits a newly selected installed field type without the primitive form', async () => {
+it('uses the installed form in the draft and lets Work derive it when submitted', async () => {
   const draft = reactive<Declaration>({ fields: [{ code: 'quantity', form: 'text', cardinality: 'one' }] })
   const iron = { id: 'app:integer_field', title: 'Whole units', form: 'int' } as const
   const w = mount(FieldsEditor, { props: { draft, installedTypes: [iron] } })
-  await w.findAllComponents(Select).at(-1)!.setValue(iron.id)
+  await selectControl(w, 'Kind').setValue(iron.id)
+  expect(draft.fields?.[0].form).toBe(iron.form)
   expect(requestDeclaration(draft, {}).fields).toEqual([{ code: 'quantity', type: iron.id, cardinality: 'one' }])
   w.unmount()
 })
@@ -57,7 +58,7 @@ it.each([
     type: 'object', properties, required: Object.keys(properties),
   } }
   const w = mount(FieldsEditor, { props: { draft, installedTypes: [type] } })
-  await w.findAllComponents(Select).at(-1)!.setValue(type.id)
+  await selectControl(w, 'Kind').setValue(type.id)
   await w.get('input[aria-label="' + (form === 'ref' ? 'Reference target' : 'Canonical unit') + '"]').setValue(
     form === 'ref' ? config.target : config.canonical,
   )
@@ -66,11 +67,10 @@ it.each([
   expect(requestDeclaration(draft, {}).fields).toEqual([{ code: 'custom', type: type.id, cardinality: 'one', config }])
   w.unmount()
 })
-it('uses the installed form for configuration when the type has no schema', async () => {
-  const draft = reactive<Declaration>({ fields: [{ code: 'custom', form: 'text' }] })
+it('uses the installed form for a legacy field without a stored form or configuration schema', async () => {
+  const draft = reactive<Declaration>({ fields: [{ code: 'custom', type: 'app:reference' }] })
   const type = { id: 'app:reference', title: 'Custom reference', form: 'ref' } as const
   const w = mount(FieldsEditor, { props: { draft, installedTypes: [type] } })
-  await w.findAllComponents(Select).at(-1)!.setValue(type.id)
   await w.get('textarea[aria-label="Field configuration"]').setValue('{"target":"app:record"}')
   expect(requestDeclaration(draft, {}).fields).toEqual([{ code: 'custom', type: type.id, config: { target: 'app:record' } }])
   w.unmount()

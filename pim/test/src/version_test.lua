@@ -19,7 +19,9 @@ local function define()
             test.eq(steps.one(h, { product = base, set = { { attr = "core.gtin", value = "a" } } }).outcome, "invalid")
             local stale = steps.one(h, { product = base, expect_version = 0, set = { { attr = "core.gtin", value = "a" } } })
             test.eq(stale.outcome, "conflict")
-            test.eq((stale.findings :: { types.Finding })[1].version, steps.version(h, "RDG-moss-40"))
+            local finding = (stale.findings :: { types.Finding })[1]
+            test.eq(finding.version, steps.version(h, "RDG-moss-40"))
+            test.eq(finding.code, "version_conflict")
             local before = events(h)
             test.eq(steps.one(h, { product = base, expect_version = "1", set = { { attr = "core.gtin", value = "a" } } }).outcome, "invalid")
             test.eq(events(h), before)
@@ -84,6 +86,13 @@ local function define()
             } })) :: types.ApplyResult
             test.eq(batch.outcomes[2].outcome, "unchanged")
             test.eq(assert(steps.get(h, "ORDERED")).product.parent_id, expected_parent)
+            local events = fixture.events(h)
+            local latest = events[#events]
+            test.eq(latest.type, "kickside.pim.events:product.changed")
+            local body = latest.body :: types.ProductBody
+            test.eq(body.source_seq, 12)
+            test.eq(#assert(body.patch), 0)
+            test.eq(body.generation, 1)
         end)
 
         test.it("uses the same sequence for trash and restore within and across commands", function()

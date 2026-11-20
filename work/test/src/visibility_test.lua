@@ -333,6 +333,42 @@ local function define()
             test.eq(err:details().code, "invalid_feed_cursor")
         end)
 
+        test.it("returns schema-valid opaque feed cursors to contract and tool consumers", function()
+            local owner = scoped.admin()
+            local d = declaration()
+            d.visibility.levels[1].holders = { { user = owner.id } }
+            local h = scoped.board(owner, d)
+            local reader = fixture.board()
+            assert(h.call("grant", { subject_id = reader.actor:id(), mask = 1 }))
+            steps.create(h, "task", { level = "internal" })
+            local visible = steps.create(h, "task")
+            local contract = assert(registry.get("kickside.work:board"))
+            local tool = assert(registry.get("kickside.work.traits:list_changes"))
+            local schemas = {}
+            for _, method in ipairs(contract.data.methods) do
+                if method.name == "list_changes" then schemas.contract = method.output_schemas[1].definition end
+            end
+            schemas.tool = tool.meta.output_schema
+            local executor = reader.executor:with_context({ board_id = h.id })
+            local failures = {}
+            for kind, call in pairs({
+                contract = function(request) return reader.executor:call("app:work_call", {
+                    board_id = h.id, op = "list_changes", request = request,
+                }) end,
+                tool = function(request) return executor:call(tool.id, request) end,
+            }) do
+                local first = assert(call({ limit = 1 }))
+                test.eq(#first.items, 0)
+                test.is_true(first.has_more)
+                test.not_nil(first.next.position)
+                local resumed = assert(call({ cursor = first.next, limit = 1 }))
+                test.eq(resumed.items[1].item_id, visible)
+                local valid, err = json.validate_string(schemas[kind], assert(json.encode(first)))
+                if not valid then failures[#failures + 1] = kind .. ": " .. tostring(err) end
+            end
+            test.eq(#failures, 0, table.concat(failures, "\n"))
+        end)
+
         test.it("rejects visibility indexes that collapse distinct level ids", function()
             local admin = scoped.admin()
             for _, field in ipairs({
@@ -401,6 +437,96 @@ local function define()
             steps.one(h, { op = "set", item = id, values = { owner = { kind = "group", id = "app.security:work_admin" } } })
             test.eq(assert(member.call("get", { item = { id = id } }, h.id)).item.values.note, "Edited")
             test.is_nil(assert(owner.call("get", { item = { id = id } }, h.id)).item.values.note)
+        end)
+
+        test.it("reports field edits exactly as single-field patches are admitted", function()
+            local admin, holder, peer, group = scoped.admin(), scoped.member(), scoped.member(), scoped.admin()
+            local h = scoped.board(admin, {
+                key_prefix = fixture.fresh_prefix(),
+                fields = {
+                    { code = "owner", type = "principal", access = { read = { { user = admin.id } } } },
+                    { code = "points", form = "int" },
+                    { code = "note", form = "text", access = { write = { { field = "owner" } } } },
+                    { code = "private_note", form = "text", access = { read = {}, write = { { field = "owner" } } } },
+                    { code = "mirror", type = "formula", form = "int", expression = "points", access = { write = { { field = "owner" } } } },
+                    { code = "total", type = "rollup", form = "int", of = "children", fn = "count" },
+                    { code = "position", type = "rank", index = "key" },
+                    { code = "number", type = "counter" },
+                    { code = "other_type_field", form = "text" },
+                },
+                item_types = { { id = "task", process = "flow", fields = {
+                    "owner", "points", "note", "private_note", "mirror", "total", "position", "number",
+                } } },
+                processes = { { id = "flow", initial = "open", states = { { id = "open", category = "started" } }, transitions = {} } },
+            })
+            for _, caller in ipairs({ holder, peer, group }) do assert(h.call("grant", { subject_id = caller.id, mask = 3 })) end
+            local cases = {
+                { owner = { kind = "user", id = holder.id }, editor = holder },
+                { owner = { kind = "group", id = "app.security:work_admin" }, editor = group },
+                {},
+            }
+            for _, case in ipairs(cases) do
+                local id = steps.create(h, "task", { owner = case.owner, points = 1 })
+                for _, caller in ipairs({ holder, peer, group }) do
+                    local reply = caller.http("POST", caller.route(h.id, "get"), { item = { id = id } })
+                    test.eq(reply.status, 200)
+                    local data = reply.body.data
+                    test.is_nil(data.item.values.owner)
+                    test.is_nil(data.item.value_states.owner)
+                    test.is_nil(data.item.values.private_note)
+                    test.is_nil(data.item.value_states.private_note)
+                    test.not_nil(data.field_edit)
+                    test.is_nil(data.field_edit.other_type_field)
+                    local allowed = caller == case.editor
+                    local edited = allowed and "editable" or "field_denied"
+                    local computed = allowed and "read_only" or "field_denied"
+                    for _, field in ipairs({
+                        { "points", 2, "editable" }, { "note", "updated", edited }, { "private_note", "updated", edited },
+                        { "mirror", 2, computed }, { "total", 2, "read_only" }, { "position", "first", "read_only" },
+                        { "number", 2, "read_only" },
+                    }) do
+                        local code, value, capability = field[1], field[2], field[3]
+                        test.eq(data.field_edit[code], capability, code)
+                        for _, patch in ipairs({ { values = { [code] = value } }, { clear = { code } }, { unset = { code } } }) do
+                            patch.op, patch.item = "set", id
+                            local outcome = assert(caller.call("apply", { ops = { patch } }, h.id)).outcomes[1]
+                            local finding = outcome.findings and outcome.findings[1]
+                            local finding_code = finding and finding.code
+                            test.eq(data.field_edit[code] == "field_denied", finding_code == "field_denied", code)
+                            test.eq(data.field_edit[code] == "editable", outcome.status == "applied" or outcome.status == "unchanged", code)
+                            if data.field_edit[code] == "read_only" then
+                                test.eq(finding_code, code == "number" and "invalid_value" or "read_only", code)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+
+        test.it("returns field edit capabilities only for a writable live item detail", function()
+            local admin, reader = scoped.admin(), scoped.member()
+            local h = scoped.board(admin, declaration())
+            assert(h.call("grant", { subject_id = reader.id, mask = 1 }))
+            local id = steps.create(h, "task")
+            steps.create(h, "task", {}, id)
+            local request = { item = { id = id }, include = { "children" } }
+            local detail = assert(h.call("get", request))
+            test.not_nil(detail.field_edit)
+            test.eq(detail.field_edit.title, "editable")
+            test.eq(#detail.children, 1)
+            test.is_nil(detail.children[1].field_edit)
+            test.is_nil(assert(reader.call("get", request, h.id)).field_edit)
+            local page = assert(h.call("query", {}))
+            test.is_nil(page.field_edit)
+            test.eq(#page.items, 2)
+            for _, item in ipairs(page.items) do test.is_nil(item.field_edit) end
+            local changes = assert(h.call("list_changes", {}))
+            test.is_nil(changes.field_edit)
+            for _, item in ipairs(changes.items) do test.is_nil(item.field_edit) end
+            test.eq(steps.one(h, { op = "delete", item = id }).status, "applied")
+            local trashed = assert(h.call("get", { item = { id = id } }))
+            test.eq(trashed.item.life, "trashed")
+            test.is_nil(trashed.field_edit)
         end)
 
         test.it("matches principal holder lists and sets in point and compiled reads", function()

@@ -39,6 +39,7 @@ entries:
         status: { type: string }
         source: { type: string }
         source_seq: { type: integer, description: Sequence of the ordered source that created the product. }
+        generation: &patch_generation { type: integer, minimum: 1, description: Schema generation used to encode the patch. }
         patch: { type: array, items: { type: object, required: [a, c], properties: { a: { type: integer }, c: { type: string }, v: { description: Canonical value written. }, before: { description: Canonical value replaced. }, clear: { type: boolean }, unset: { type: boolean }, s: { type: string } } } }
         origin: { type: object, description: "Canonical provenance {type, id}: what produced this change." }
         provenance: { type: object, description: "Reported detail beside origin: model, confidence, evidence." }
@@ -57,6 +58,7 @@ entries:
       additionalProperties: false
       properties:
         product_id: { type: string }
+        generation: *patch_generation
         patch: { type: array, items: { type: object, required: [a, c], properties: { a: { type: integer }, c: { type: string }, v: { description: Canonical value written. }, before: { description: Canonical value replaced. }, clear: { type: boolean }, unset: { type: boolean }, s: { type: string } } } }
         status: { type: string }
         previous_status: { type: string, description: Status before this change; set with status. }

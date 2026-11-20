@@ -64,7 +64,7 @@ h3, h4 { font-size: 14px; font-weight: 600; }
 .work-rail .work-rail-active { background: color-mix(in srgb, var(--p-primary-color) 14%, transparent); color: var(--p-primary-color); }
 .work-admin-main { min-width: 0; min-height: 0; overflow: hidden; }
 .work-admin-main > .kx-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
-.work-board-back { display: none; }
+.work-mobile-board-back { display: none; }
 .work-settings-shell { min-width: 0; height: 100%; display: flex; flex-direction: column; container-type: inline-size; }
 .work-settings-shell > .kx-head, .work-detail-head { flex: none; }
 .work-detail-head { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 18px var(--kickside-system-surface-gutter, 24px) 14px; }
@@ -319,12 +319,12 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .work-node-connector:focus-visible, summary:focus-visible { outline: var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color); outline-offset: var(--p-focus-ring-offset); box-shadow: none; }
 @container (max-width: 1000px) { .work-option-row { grid-template-columns: 28px repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) {
-  .work-admin-shell { grid-template-columns: minmax(0, 1fr); }
+  .work-admin-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
   .work-admin-shell > .work-rail { border-right: 0; }
-  .work-admin-has-selection > .work-rail, .work-admin-shell:not(.work-admin-has-selection) > .work-admin-main { display: none; }
-  .work-admin-has-selection > .work-admin-main { display: flex; flex-direction: column; }
+  .work-board-selected > .work-rail, .work-admin-shell:not(.work-board-selected) > .work-admin-main { display: none; }
+  .work-board-selected > .work-admin-main { display: flex; flex-direction: column; }
   .work-admin-main > kickside-work-board-settings { display: block; flex: 1; min-height: 0; }
-  .work-board-back { display: block; flex: none; padding: 8px var(--kickside-system-surface-gutter, 24px) 0; }
+  .work-mobile-board-back { display: block; flex: none; padding: 8px var(--kickside-system-surface-gutter, 24px) 0; }
 }
 @container (max-width: 720px) {
   .work-settings-grid, .work-identity-edit { grid-template-columns: minmax(0, 1fr); }

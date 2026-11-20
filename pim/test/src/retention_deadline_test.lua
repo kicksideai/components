@@ -50,7 +50,7 @@ local function define()
                         VALUES($1,$2,'storage','path','{}','{}','job',1,$3)]] },
                 { name = "proposal", days = policy.proposal_days, insert =
                     [[INSERT INTO kickside_pim_proposal(catalog_id,proposal_id,origin,items,base,status,created_by,created_at)
-                        VALUES($1,$2,'{}','[]','{}','pending','fixture',$3)]] },
+                        VALUES($1,$2,'{}','[]','{"generation":1,"versions":{}}','pending','fixture',$3)]] },
                 { name = "release_job", days = policy.abandoned_work_days, insert =
                     [[INSERT INTO kickside_pim_release_job(catalog_id,request_id,model_id,root,identity,job_id,after_product,done,created_at)
                         VALUES($1,$2,'product',1,'{}','job','',0,$3)]] },

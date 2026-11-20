@@ -27,7 +27,7 @@ beforeEach(() => {
 })
 it('arranges fields with arrows, constrains boundary moves, and uses compiled width defaults', async () => {
   const schema = fixture(), draft = structuredClone(schema.declaration)
-  const w = mount(LayoutEditor, { props: { schema, draft } }); wrappers.push(w)
+  const w = mount(LayoutEditor, { props: { schema, draft, types: [] } }); wrappers.push(w)
   expect(w.findAll('.pim-lcard').map(c => c.attributes('style'))).toEqual(['grid-column: span 12;', 'grid-column: span 3;'])
   expect(w.get('[aria-label="Move Name earlier"]').attributes('disabled')).toBeDefined()
   await w.get('[aria-label="Move Color earlier"]').trigger('click')
@@ -40,7 +40,7 @@ it('arranges fields with arrows, constrains boundary moves, and uses compiled wi
 it('supports dragging within a group and rejects drops across groups', async () => {
   const schema = fixture(), draft = structuredClone(schema.declaration)
   draft.aspects!.push({ namespace: 'other', attributes: [{ code: 'notes', type: attribute.type }] })
-  const w = mount(LayoutEditor, { props: { schema, draft } }); wrappers.push(w)
+  const w = mount(LayoutEditor, { props: { schema, draft, types: [] } }); wrappers.push(w)
   await w.findAll('.pim-lcard')[0].trigger('dragstart')
   await w.findAll('.pim-lcard')[2].trigger('drop')
   expect(draft.aspects![0].attributes![0].code).toBe('name')
@@ -54,7 +54,7 @@ it('supports dragging within a group and rejects drops across groups', async () 
 it('shows plugin fields without editable controls and leaves the draft unchanged on read', () => {
   const schema = fixture(), draft = structuredClone(schema.declaration), initial = JSON.stringify(draft)
   schema.attributes['stock.quantity'] = { ...attribute, plugin: 'stock', width: 'half' }
-  const w = mount(LayoutEditor, { props: { schema, draft } }); wrappers.push(w)
+  const w = mount(LayoutEditor, { props: { schema, draft, types: [] } }); wrappers.push(w)
   expect(w.get('.fixed').text()).toContain('Quantity')
   expect(w.get('.fixed').find('button').exists()).toBe(false)
   expect(JSON.stringify(draft)).toBe(initial)

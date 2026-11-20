@@ -1373,7 +1373,7 @@ entries:
 
   - name: ordered_pages_test
     kind: function.lua
-    meta: { type: test, suite: kickside_pim }
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
     source: file://ordered_pages_test.lua
     method: run
     imports:
@@ -1384,6 +1384,8 @@ entries:
       types: kickside.pim:types
       layout: kickside.pim.persist:layout
       select: kickside.pim.persist:select
+      fixture: app:fixture
+      consts: kickside.pim:consts
 
   - name: select_test
     kind: function.lua
@@ -1629,6 +1631,22 @@ entries:
       attachment: app:empty_plugin_attachment
       comment: Harness manifest with a list in its config.
       config_schema: { type: object, properties: { tags: { type: array, items: { type: string } } } }
+
+  - name: probe_version_one_plugin
+    kind: registry.entry
+    meta: { type: kickside.pim.plugin, attachment: 'app:empty_plugin_attachment', interface_version: 1 }
+
+  - name: probe_version_future_plugin
+    kind: registry.entry
+    meta: { type: kickside.pim.plugin, interface_version: 2 }
+
+  - name: probe_version_string_plugin
+    kind: registry.entry
+    meta: { type: kickside.pim.plugin, interface_version: "1" }
+
+  - name: probe_version_false_plugin
+    kind: registry.entry
+    meta: { type: kickside.pim.plugin, interface_version: false }
 
   - name: probe_fields_provider
     kind: contract.binding
@@ -2375,6 +2393,7 @@ entries:
       component: kickside.component:component
       test: wippy.test:test
       fixture: app:fixture
+      trash_fixture: app:trash_fixture
       types: kickside.pim:types
 
   - name: plugin_projection_worker

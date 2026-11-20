@@ -149,9 +149,12 @@ it('exposes field controls by their labels and separates the keyboard reorder ha
     const row = page.locator('.work-field-row').first()
     const disclosure = row.locator('.work-definition-toggle')
     await disclosure.press('Enter')
-    for (const name of ['Kind', 'Values allowed', 'Search support', 'Custom field type']) {
+    for (const name of ['Kind', 'Values allowed', 'Search support']) {
       expect.soft(await row.getByRole('combobox', { name, exact: true }).count(), name).toBe(1)
     }
+    await row.getByRole('combobox', { name: 'Kind', exact: true }).click()
+    await page.getByRole('option', { name: 'Rating', exact: true }).waitFor()
+    await page.keyboard.press('Escape')
     expect(await disclosure.getByRole('button').count()).toBe(0)
     const handle = row.getByRole('button', { name: /use the arrow keys to reorder/ })
     await handle.focus()
@@ -262,6 +265,26 @@ it('asks before discarding a board draft and preserves it when the operator canc
     await page.getByLabel('Settings for Other board', { exact: true }).click(); await page.locator('#discard').click()
     await expect.poll(() => page.locator('kickside-work-board-settings').getAttribute('board-id')).toBe('other')
     expect(errors).toEqual([])
+  } finally { await page.close() }
+}, 30000)
+
+it('fits board fields and the add action in a 390px settings surface', async () => {
+  const { page } = await fixture('admin')
+  try {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.getByLabel('Settings for Delivery', { exact: true }).click()
+    const fields = page.getByRole('region', { name: 'Fields editor' })
+    await fields.waitFor()
+    const details = await page.getByRole('region', { name: 'Board settings detail' }).boundingBox()
+    const shell = await page.locator('.work-admin-shell').boundingBox()
+    expect(details?.width).toBe(shell?.width)
+    expect(await page.getByRole('navigation', { name: 'Board settings navigation' }).isVisible()).toBe(false)
+    const list = fields.locator('.work-definition-scroll')
+    expect(await list.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0)
+    const add = await fields.getByRole('button', { name: 'Add field', exact: true }).boundingBox()
+    expect(add!.x + add!.width).toBeLessThanOrEqual(390)
+    await page.getByRole('button', { name: 'Back to boards', exact: true }).click()
+    expect(await page.getByLabel('Settings for Delivery', { exact: true }).isVisible()).toBe(true)
   } finally { await page.close() }
 }, 30000)
 

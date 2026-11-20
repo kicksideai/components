@@ -214,7 +214,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
       <fieldset v-else-if="schema && options" class="pim-editor-surface" :disabled="busy || !schema.access.admin" :inert="busy || !schema.access.admin">
         <Message v-if="empty && section === 'fields'" severity="info">Define its schema. Add a field group to start defining fields.</Message>
         <BuilderFields v-if="section === 'fields'" :draft="draft" :schema="schema" :options="options" @remove="remove" />
-        <LayoutEditor v-else-if="section === 'layout'" :draft="draft" :schema="schema" />
+        <LayoutEditor v-else-if="section === 'layout'" :draft="draft" :schema="schema" :types="options.types" />
         <BuilderDimensions v-else-if="section === 'dimensions'" :draft="draft" :schema="schema" @remove="remove" />
         <BuilderVocabularies v-else-if="section === 'vocabularies'" :catalog-id="catalogId" :draft="draft" :schema="schema" @remove="remove" />
         <BuilderFamilies v-else-if="section === 'families'" :draft="draft" :schema="schema" @remove="remove" />

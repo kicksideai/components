@@ -27,6 +27,7 @@ type Session = {
     get: (string) -> Reply,
     post: (string, unknown) -> Reply,
     post_raw: (string, string) -> Reply,
+    put: (string, unknown) -> Reply,
     allows: (string, string) -> boolean,
 }
 M.Session = Session
@@ -51,8 +52,8 @@ local function open(actor: security.Actor, scope: security.Scope): Session
     assert(restored_actor and restored_scope, "stored session validates")
     assert(restored_scope:evaluate(actor, "access", "kickside.work.admin.api:options.endpoint") == scope:evaluate(actor, "access", "kickside.work.admin.api:options.endpoint"), "stored session preserves module capability")
     tokens:close()
-    local function post_raw(path: string, body: string): Reply
-        local res, err = http_client.request("POST", M.API .. path, { headers = { ["Content-Type"] = "application/json", Authorization = "Bearer " .. token }, body = body })
+    local function send(method: string, path: string, body: string): Reply
+        local res, err = http_client.request(method, M.API .. path, { headers = { ["Content-Type"] = "application/json", Authorization = "Bearer " .. token }, body = body })
         assert(not err and res, tostring(err))
         return { status = res.status_code, body = json.decode(res.body) :: Json }
     end
@@ -63,8 +64,9 @@ local function open(actor: security.Actor, scope: security.Scope): Session
             return executor:call("app:work_call", { op = op, board_id = board_id, request = request })
         end,
         get = function(path: string): Reply return M.get(path, token) end,
-        post = function(path: string, body: unknown): Reply return post_raw(path, json.encode(body)) end,
-        post_raw = post_raw,
+        post = function(path: string, body: unknown): Reply return send("POST", path, json.encode(body)) end,
+        post_raw = function(path: string, body: string): Reply return send("POST", path, body) end,
+        put = function(path: string, body: unknown): Reply return send("PUT", path, json.encode(body)) end,
     }
 end
 
