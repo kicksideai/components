@@ -65,12 +65,24 @@ async function output(path, value) {
   await writeFile(filename, value)
 }
 
+function adapterSchema(source) {
+  const schema = expand(source)
+  if (source.optional_board_id) {
+    schema.required = schema.required.filter(key => key !== 'board_id')
+  }
+  if (source.tool_output) {
+    schema.properties.success = expand({ $work_ref: 'tool_success' })
+    schema.required = [...(schema.required ?? []), 'success']
+  }
+  return schema
+}
+
 function schemas(text, replacements) {
   let index = 0
   const result = text.replace(/'(\{[^\n]*\})'/g, () => {
     const value = replacements[index++]
     if (!value) throw new Error('Schema slot has no vocabulary entry')
-    return `'${JSON.stringify(expand(value)).replaceAll("'", "''")}'`
+    return `'${JSON.stringify(adapterSchema(value)).replaceAll("'", "''")}'`
   })
   if (index !== replacements.length) throw new Error('Schema slot count differs from the vocabulary')
   return result
