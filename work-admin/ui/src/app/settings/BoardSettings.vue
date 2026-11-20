@@ -7,7 +7,7 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import { host, on } from '@wippy-fe/proxy'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
-import { ApiError } from '../../transport'
+import { ApiError, formatApiError } from '../../transport'
 import { work } from '../../api'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import type { BoardRow, Declaration, AdminOptions, Schema } from '../../types'
@@ -84,7 +84,7 @@ async function reviewPack() {
     if (!current() || before !== JSON.stringify(packRequest.value)) return
     packPlan.value = reviewed.plan; plan.value = reviewed.plan; packRequest.value = reviewed.request
     packReviewed.value = clone(packRequest.value); applyKey.value = crypto.randomUUID(); tab.value = 'Review'
-  } catch (e) { if (current()) { packReviewed.value = undefined; error.value = e instanceof Error ? e.message : 'Could not plan the pack upgrade.' } }
+  } catch (e) { if (current()) { packReviewed.value = undefined; error.value = formatApiError(e, 'Could not plan the pack upgrade.') } }
   finally { busy.value = false }
 }
 const follows = computed(() => plan.value ? processMigration(plan.value, request.value) : [])
@@ -118,13 +118,13 @@ async function load(force = false) {
   } catch (e) {
     if (!current()) return
     if (e instanceof ApiError && (e.status === 403 || e.kind?.toLowerCase() === 'permission_denied')) authorized.value = false
-    invalidate(); error.value = e instanceof Error ? e.message : 'Could not load board settings.'
+    invalidate(); error.value = formatApiError(e, 'Could not load board settings.')
   } finally { if (current()) loading.value = false }
 }
 async function loadPacks(current: () => boolean = () => true) {
   packError.value = ''
   try { const rows = await work.packs(); if (current()) packs.value = rows.filter(availablePack) }
-  catch (e) { if (current()) packError.value = e instanceof Error ? e.message : 'Could not load packs.' }
+  catch (e) { if (current()) packError.value = formatApiError(e, 'Could not load packs.') }
 }
 function validForm() {
   for (const input of editor.value?.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input, select, textarea') ?? []) {
@@ -143,7 +143,7 @@ async function review() {
     const response = await settings.plan(props.boardId, snapshot)
     if (!current() || invalid.value.size || !snapshot.matches(request.value, schema.value.generation, configs.value)) return
     plan.value = response; reviewed.value = snapshot; applyKey.value = crypto.randomUUID(); tab.value = 'Review'
-  } catch (e) { if (current()) { invalidate(); error.value = e instanceof Error ? e.message : 'Could not review changes.'; serverIssues.value = validationIssues(e, request.value) } }
+  } catch (e) { if (current()) { invalidate(); error.value = formatApiError(e, 'Could not review changes.'); serverIssues.value = validationIssues(e, request.value) } }
   finally { busy.value = false }
 }
 async function apply() {
@@ -152,7 +152,7 @@ async function apply() {
     busy.value = true; error.value = ''
     const appliedDraft = draftSnapshot()
     try { const result = await settings.packApply(props.boardId, clone(packReviewed.value), applyKey.value); resetGeneration = result.generation; resetDraft = appliedDraft; await load(); saved.value = result.status === 'done' ? `Pack applied at generation ${result.generation}.` : 'Pack installation continues in the background.' }
-    catch (e) { error.value = e instanceof Error ? e.message : 'Could not apply the pack upgrade.' }
+    catch (e) { error.value = formatApiError(e, 'Could not apply the pack upgrade.') }
     finally { busy.value = false }
     return
   }
@@ -164,14 +164,14 @@ async function apply() {
     resetGeneration = result.generation; resetDraft = appliedDraft
     await load()
     saved.value = `Applied generation ${result.generation} (${result.class}).`
-  } catch (e) { error.value = e instanceof Error ? e.message : 'Could not apply schema.' }
+  } catch (e) { error.value = formatApiError(e, 'Could not apply schema.') }
   finally { busy.value = false }
 }
 async function resume() {
   if (busy.value) return
   busy.value = true; error.value = ''
   try { const result = await settings.resume(props.boardId); saved.value = result.resumed ? 'Migration resumes.' : 'Migration is already running.'; await load() }
-  catch (e) { error.value = e instanceof Error ? e.message : 'Could not resume migration.' }
+  catch (e) { error.value = formatApiError(e, 'Could not resume migration.') }
   finally { busy.value = false }
 }
 async function guardRemoval(kind: RemovalKind, id: string): Promise<string | undefined> {
@@ -187,7 +187,7 @@ async function guardRemoval(kind: RemovalKind, id: string): Promise<string | und
     const refusal = removalReason(response, kind, id)
     if (refusal) return refusal
     if (response.class === 'refused') return 'Resolve the refused draft changes in Review before removing this definition.'
-  } catch (e) { return e instanceof Error ? e.message : 'Could not check this removal.' }
+  } catch (e) { return formatApiError(e, 'Could not check this removal.') }
   finally { checkingRemoval.value = false }
 }
 async function back() {
@@ -210,17 +210,17 @@ onUnmounted(() => { stop(); beginRead(); beginReview() })
         <TabList aria-label="Settings sections"><Tab v-for="name in tabs" :key="name" :value="name">{{ name }}</Tab></TabList>
       </Tabs></div>
     </div>
-    <div
-      v-if="error"
-      class="kx-err"
-      role="alert"
-    >{{ error }}
+    <div v-if="error" class="kx-err work-alert-actions">
+      <p role="alert">{{ error }}</p>
       <Button
         label="Retry"
         severity="secondary"
         @click="load()" outlined><template #icon><Icon icon="tabler:refresh" aria-hidden="true" /></template></Button>
     </div>
-    <p v-if="packError" class="kx-err" role="alert">{{ packError }}<Button label="Reload packs" severity="secondary" outlined @click="loadPacks()"><template #icon><Icon icon="tabler:refresh" /></template></Button></p>
+    <div v-if="packError" class="kx-err work-alert-actions">
+      <p role="alert">{{ packError }}</p>
+      <Button label="Reload packs" severity="secondary" outlined @click="loadPacks()"><template #icon><Icon icon="tabler:refresh" aria-hidden="true" /></template></Button>
+    </div>
     <p
       v-if="saved"
       class="work-notice"

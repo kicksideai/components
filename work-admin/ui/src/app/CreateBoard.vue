@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import { formatApiError } from '../transport'
 import { Icon } from '@iconify/vue'
 import SelectButton from 'primevue/selectbutton'
 import ToggleSwitch from 'primevue/toggleswitch'
@@ -29,7 +30,7 @@ watch(() => props.visible, async visible => {
   if (!visible) return
   created.value = ''; configs.value = {}; invalid.value.clear(); step.value = 1; error.value = ''; discoveryError.value = ''; title.value = ''; description.value = ''; prefix.value = 'WORK'; selected.value = ''; starter.value = false; key = crypto.randomUUID(); attempted = ''; packs.value = []; loading.value = true
   try { const rows = await work.packs(); if (current === read) packs.value = rows }
-  catch (e) { if (current === read) discoveryError.value = e instanceof Error ? e.message : 'Could not load packs.' }
+  catch (e) { if (current === read) discoveryError.value = formatApiError(e, 'Could not load packs.') }
   finally { if (current === read) loading.value = false }
 }, { immediate: true })
 async function create() {
@@ -46,7 +47,7 @@ async function create() {
     if (description.value) await work.updateBoard(created.value, { description: description.value })
     emit('created', created.value); emit('close')
   }
-  catch (e) { error.value = (created.value ? 'Board created. Description was not saved. ' : '') + (e instanceof Error ? e.message : 'Could not save the board.') }
+  catch (e) { error.value = (created.value ? 'Board created. Description was not saved. ' : '') + formatApiError(e, 'Could not save the board.') }
   finally { busy.value = false }
 }
 </script>

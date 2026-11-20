@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import { formatApiError } from '../transport'
 import { Icon } from '@iconify/vue'
 import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
@@ -23,7 +24,7 @@ async function save() {
   if (!Object.keys(changes).length) { editing.value = false; message.value = 'Nothing changed.'; return }
   busy.value = true; error.value = ''
   try { const result = await work.updateBoard(props.board.board_id, changes); editing.value = false; message.value = result.status === 'unchanged' ? 'Nothing changed.' : 'Board saved.'; emit('saved') }
-  catch (e) { error.value = e instanceof Error ? e.message : 'Could not save the board.' }
+  catch (e) { error.value = formatApiError(e, 'Could not save the board.') }
   finally { busy.value = false }
 }
 </script>

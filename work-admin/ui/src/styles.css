@@ -23,7 +23,8 @@ h3, h4 { font-size: 14px; font-weight: 600; }
 .work-stack.work-tight { gap: 6px; }
 .work-small { font-size: 12px; }
 .work-muted, dt, .work-read-value { color: var(--p-text-muted-color); }
-.work-error { color: var(--p-danger-500); }
+.kx-err, .work-error { color: var(--p-danger-active-color); white-space: pre-line; overflow-wrap: anywhere; }
+.work-alert-actions { display: grid; justify-items: start; gap: 8px; }
 .work-mono { width: fit-content; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; font-weight: 400; padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, var(--p-text-color) 7%, transparent); }
 .work-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .work-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
@@ -50,6 +51,7 @@ h3, h4 { font-size: 14px; font-weight: 600; }
 /* System rail and the shared settings detail. */
 .work-admin-shell { height: 100%; min-height: 0; display: grid; grid-template-columns: 232px minmax(0, 1fr); }
 .work-rail { padding: 16px 12px; border-right: 1px solid var(--p-content-border-color); overflow-y: auto; min-height: 0; }
+.work-rail > .kx-err { margin-inline: 0; }
 .work-railhead { display: flex; align-items: center; justify-content: space-between; min-height: 48px; gap: 8px; }
 .work-railhead h2 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--p-text-muted-color); }
 .work-count { font-size: 11px; font-weight: 600; text-transform: none; white-space: nowrap; color: var(--p-text-muted-color); font-variant-numeric: tabular-nums; }
