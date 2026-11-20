@@ -129,6 +129,9 @@ entries:
   source: file://board.lua
   method: query
   imports: *id001
+  security:
+    policies: &search_policies [kickside.work.security:search_invocation]
+
 - name: count
   kind: function.lua
   meta:
@@ -136,6 +139,9 @@ entries:
   source: file://board.lua
   method: count
   imports: *id001
+  security:
+    policies: *search_policies
+
 - name: board
   kind: contract.binding
   meta:
@@ -211,6 +217,9 @@ entries:
   source: file://board.lua
   method: explain
   imports: *id001
+  security:
+    policies: *search_policies
+
 - name: attachments
   kind: library.lua
   source: file://attachments.lua
@@ -262,6 +271,9 @@ entries:
     domain: kickside.work:types
     reads: kickside.work.read:types
     component_types: kickside.component:types
+  security:
+    policies: *search_policies
+
 - name: save_view
   kind: function.lua
   source: file://views.lua
@@ -270,6 +282,9 @@ entries:
   - registry
   - security
   imports: *id002
+  security:
+    policies: *search_policies
+
 - name: run_view
   kind: function.lua
   source: file://views.lua
@@ -278,6 +293,9 @@ entries:
   - registry
   - security
   imports: *id002
+  security:
+    policies: *search_policies
+
 - name: get_view
   kind: function.lua
   source: file://views.lua

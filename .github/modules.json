@@ -206,6 +206,26 @@
       "pg_database": "kickside_test_work",
       "extra_tests": []
     },
+    "work-search": {
+      "path": "work-search",
+      "organization": "kickside",
+      "module": "work-search",
+      "type": "plugin",
+      "visibility": "private",
+      "embed": [],
+      "targets": [
+        "setup",
+        "lint",
+        "test",
+        "test-pg"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "kickside_test_work_search",
+      "extra_tests": []
+    },
     "pim": {
       "path": "pim",
       "organization": "kickside",

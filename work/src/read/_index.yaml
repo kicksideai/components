@@ -143,6 +143,7 @@ entries:
     tables: kickside.work.domain:layout
     store: kickside.work.persist:store
     predicates: kickside.work.domain:predicates
+    search: kickside.work.domain:search
     select: kickside.work.read:select
     access_rows: kickside.work.persist:access_rows
     resolve: kickside.work.persist:predicate_rows

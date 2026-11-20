@@ -18,7 +18,7 @@ entries:
     type: kickside.work.plugin
     attachment: app:work_attachment
     requires: [app:work_plugin]
-    seams: [app:model_guard, app:model_group_guard, app:model_operand, app:model_search, app:model_search_ids, app:model_search_admin_ids]
+    seams: [app:model_guard, app:model_group_guard, app:model_operand, app:model_search, app:model_search_ids, app:model_search_field_ids, app:model_search_admin_ids]
 - name: model_guard
   kind: function.lua
   meta: {type: kickside.work.guard, plugin: 'app:model_plugin', reads: [estimate], cost: interactive, enforce: write}
@@ -62,6 +62,13 @@ entries:
   meta:
     type: kickside.work.scope
     plugin: app:model_plugin
+    resolve_ids: app:model_resolver
+- name: model_search_field_ids
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: app:model_plugin
+    reads: [title]
     resolve_ids: app:model_resolver
 - name: model_resolver
   kind: contract.binding

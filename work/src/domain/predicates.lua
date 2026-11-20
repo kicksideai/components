@@ -113,14 +113,15 @@ function M.rebind(raw: unknown, recorded: types.Model, live: types.Model): (unkn
 end
 
 -- inspect bounds traversal and identifies inputs that require projected peer rows.
-function M.inspect(raw: unknown, fields: { [string]: boolean }, depth: integer): (boolean, error?, boolean?)
+function M.inspect(raw: unknown, fields: { [string]: boolean }, depth: integer, matches: { [string]: boolean }?): (boolean, error?, boolean?)
     if depth > 16 then return false, invalid("invalid_predicate", "predicate nesting exceeds the traversal limit") end
     if type(raw) ~= "table" then return false, nil end
     local peer, search = false, false
     for k, value in pairs(raw :: { [string]: unknown }) do
         if k == "field" and type(value) == "string" then fields[value] = true end
+        if k == "match" and type(value) == "string" and matches then matches[value] = true end
         if k == "rel" or k == "children" or k == "history" then peer = true end
-        local nested, err, matching = M.inspect(value, fields, depth + 1)
+        local nested, err, matching = M.inspect(value, fields, depth + 1, matches)
         if err then return false, err end
         peer = peer or nested
         search = search or k == "match" or matching == true
@@ -171,7 +172,7 @@ function M.compile(compiled: types.Compiled, board_id: string, actor: string?, w
     local relations: { [string]: types.Relation } = {}
     for _, r in ipairs(compiled.relation_types) do relations[r.id] = r end
     local t = tables.of(board_id, tables.layout(compiled), relations)
-    return filter.compile(where, { reader = { board_id = board_id, actor = actor, search = compiled.scopes, plugins = compiled.plugins, allows = function(level: string): boolean return level == "read" end },
+    return filter.compile(where, { reader = { board_id = board_id, actor = actor, search = compiled.scopes, search_model = compiled, plugins = compiled.plugins, allows = function(level: string): boolean return level == "read" end },
         item_table = t.names.item, set_table = t.names.set, dialect = dialect,
         relations = t.relations, resolve = resolver or M.targets(compiled),
         alias = options and options.alias, peer_visibility = options and options.peer_visibility })

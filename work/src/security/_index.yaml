@@ -401,3 +401,11 @@ entries:
     resources: [kickside.work.jobs:plugins]
     actions: kickside.execution.defer
     effect: allow
+- name: search_invocation
+  kind: security.policy
+  meta: { private: true, service_only: true }
+  groups: []
+  policy:
+    resources: [kickside.work:search_resolver]
+    actions: [kickside.work.search.resolve]
+    effect: allow

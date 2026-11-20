@@ -1,0 +1,193 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work_search
+entries:
+- name: definition
+  kind: ns.definition
+  meta: { title: Work Search }
+- name: dep.work
+  kind: ns.dependency
+  component: kickside/work
+  version: '>=0.1.17'
+- name: dep.index
+  kind: ns.dependency
+  component: kickside/search-index
+  version: '>=0.1.4'
+- name: target_db
+  kind: ns.requirement
+  meta: { value_kind: db.sql }
+  targets:
+  - { entry: 'kickside.work_search:storage_config', path: .meta.db_id }
+  - { entry: 'kickside.work_search:01_search', path: .meta.target_db }
+  - { entry: 'kickside.work_search:storage_db_access', path: .policy.resources }
+- name: storage_config
+  kind: registry.entry
+  meta: { private: true }
+- name: plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    title: Work Search
+    description: Lexical search for Work issue keys, titles and descriptions.
+    icon: search
+    attachment: kickside.work_search:attachment
+    seams: [kickside.work_search:text, kickside.work_search:key]
+    projections:
+    - kind: kickside.work_search:items
+      worker_ref: func://kickside.work_search:project
+      input: state
+- name: text
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: kickside.work_search:plugin
+    resolve_ids: kickside.work_search:resolver
+    projection: kickside.work_search:items
+    reads: [title, description]
+- name: key
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: kickside.work_search:plugin
+    resolve_ids: kickside.work_search:resolver
+    projection: kickside.work_search:items
+    reads: []
+- name: attachment
+  kind: contract.binding
+  meta:
+    class: [work_search]
+    placement: { parents: [root], fixed: true }
+  contracts:
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.core.threads:thread_status
+  - contract: kickside.contract:deletable
+    context_required: [component_id]
+    methods:
+      delete: kickside.work_search:delete_attachment
+- name: resolver
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:search_resolver
+    methods: { resolve_ids: 'kickside.work_search:resolve_ids' }
+- name: resolve_ids
+  kind: function.lua
+  source: file://resolver.lua
+  method: resolve_ids
+  modules: [ctx, security, time]
+  imports:
+    work: kickside.work_search:work
+    storage: kickside.work_search:storage
+  security:
+    policies: &storage_policies [kickside.work_search:storage_config_access, kickside.work_search:storage_db_access]
+- name: project
+  kind: function.lua
+  meta: { type: projection.worker }
+  source: file://projection.lua
+  method: run
+  modules: [sql, uuid]
+  imports:
+    work: kickside.work_search:work
+    storage: kickside.work_search:storage
+  security:
+    policies: *storage_policies
+- name: delete_attachment
+  kind: function.lua
+  meta: { private: true }
+  source: file://teardown.lua
+  method: delete
+  modules: [ctx, sql]
+  imports:
+    component: kickside.component:component
+    storage: kickside.work_search:storage
+  security:
+    policies: *storage_policies
+- name: storage_config_access
+  kind: security.policy
+  meta: { private: true, service_only: true }
+  groups: []
+  policy: { resources: [kickside.work_search:storage_config], actions: [registry.get], effect: allow }
+- name: storage_db_access
+  kind: security.policy
+  meta: { private: true, service_only: true }
+  groups: []
+  policy: { resources: [], actions: [db.get], effect: allow }
+- name: worker_discovery
+  kind: security.policy
+  groups: [kickside.security.groups:members, wippy.security:process]
+  policy:
+    resources:
+    - kickside.work_search:project
+    - kickside.work_search:storage_config_access
+    - kickside.work_search:storage_db_access
+    - kickside.search_index:index
+    actions: [registry.get]
+    effect: allow
+- name: worker_access
+  kind: security.policy
+  groups: [wippy.security:process]
+  policy:
+    resources: [kickside.work_search:project]
+    actions: [registry.get, funcs.call]
+    effect: allow
+- name: work
+  kind: library.lua
+  source: file://work.lua
+  modules: [contract]
+- name: storage
+  kind: library.lua
+  source: file://storage.lua
+  modules: [sql, registry, json]
+  imports:
+    index: kickside.search_index:index
+- name: 01_search
+  kind: function.lua
+  meta:
+    type: migration
+    tags: [work-search]
+    timestamp: '2026-11-19T03:00:00Z'
+  source: file://01_search.lua
+  method: migrate
+  imports:
+    migration: wippy.migration:migration
+- name: member_access
+  kind: security.policy
+  groups: [kickside.security.groups:members]
+  meta: { title: Work Search, surface: kickside.work_search, intent: module_access }
+  policy:
+    resources:
+    - kickside.work_search:plugin
+    - kickside.work_search:text
+    - kickside.work_search:key
+    - kickside.work_search:attachment
+    - kickside.work_search:issue_board
+    - kickside.work_search:resolver
+    - kickside.work_search:resolve_ids
+    actions: [registry.get, contract.get, contract.open, contract.call, funcs.call]
+    effect: allow
+- name: pack_trait_discovery
+  kind: security.policy
+  groups: [kickside.security.groups:members]
+  policy:
+    resources: [kickside.work_search:search]
+    actions: [registry.get]
+    effect: allow
+- name: tool_access
+  kind: security.policy
+  groups: []
+  meta:
+    title: Work Search tools
+    surface: kickside.work_search
+    intent: tool_access
+    includes: [kickside.work.security:work_tools]
+  policy:
+    resources: [kickside.work_search:search, kickside.work_search:admin]
+    actions: [registry.get, registry.find]
+    effect: allow
+- name: resolver_method
+  kind: security.policy
+  groups: [kickside.security.groups:members]
+  policy:
+    resources: [resolve_ids]
+    actions: [contract.call]
+    effect: allow

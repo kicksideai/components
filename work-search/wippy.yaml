@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: work-search
+type: plugin
+description: Optional lexical search for KickSide Work boards.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+homepage: https://wippy.ai
+keywords: [kickside, work, search]
+exclude:
+- wippy.lock
+- app:**
+- "app.**:**"
+- test/**
+- test:**
+- .wippy/**
+- .wippy:**

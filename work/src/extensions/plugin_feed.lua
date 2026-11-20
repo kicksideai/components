@@ -64,7 +64,8 @@ function M.page(request: types.PluginFeedRequest, context: types.PluginContext):
     if not head then return nil, errors.new({ kind = errors.NOT_FOUND, message = "board thread is absent", details = { code = "board_not_found" } }) end
     local page, ferr = feeds.list_changes({ board_id = request.board_id, cursor = token.cursor, limit = settings.plugin_discovery_batch })
     if ferr or not page then return nil, ferr end
-    if page.gap then
+    local reset = page.gap ~= nil
+    if reset then
         token.cursor, token.bootstrapping = nil, true
         page, ferr = feeds.list_changes({ board_id = request.board_id, limit = settings.plugin_discovery_batch })
         if ferr or not page then return nil, ferr end
@@ -74,7 +75,7 @@ function M.page(request: types.PluginFeedRequest, context: types.PluginContext):
     if not page.has_more and (page.as_of :: integer) >= token.start_seq then token.bootstrapping = false end
     local encoded, eerr = json.encode(token)
     if eerr or not encoded then return nil, eerr end
-    return { attachment_id = context.attachment_id :: string, config = context.config :: types.JsonObject, bootstrap = bootstrap,
+    return { attachment_id = context.attachment_id :: string, config = context.config :: types.JsonObject, bootstrap = bootstrap, reset = reset, generation = page.generation :: integer,
         changes = page.items, token = encoded, done = not page.has_more and (page.as_of :: integer) >= (head :: { event_count: integer }).event_count }, nil
 end
 return M

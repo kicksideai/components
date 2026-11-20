@@ -21,7 +21,7 @@ type PluginOptions = ReadStamp & { plugins: { domain.PluginView }, field_types: 
 type PluginContext = { attachment_id: string?, interface_version: integer, config: JsonObject?, lifecycle: domain.PluginLifecycle, projections: { [string]: domain.PluginProjectionState } }
 type PluginContextRequest = { board_id: string, plugin: string }
 type PluginFeedRequest = PluginContextRequest & { kind: string, token: string? }
-type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, changes: { ChangeItem }, token: string, done: boolean }
+type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, reset: boolean, generation: integer, changes: { ChangeItem }, token: string, done: boolean }
 type SchemaGetRequest = { budget: ReadBudget?, board_id: string, generation: integer?, check_plugins: boolean? }
 type SchemaPlugin = domain.PluginView
 type SchemaView = ReadStamp & { pack: JsonObject?, outdated: boolean?, plugins: { SchemaPlugin }?, declaration: Declaration, compiled: JsonObject, digest: string, key_prefix: string, migration_error: string? }
@@ -99,6 +99,7 @@ type ReadContext = { partial: boolean?, allowance: ReadAllowance?, admitted: { [
 type PageCheck = (domain.Board) -> error?
 
 type Snapshot<T> = (Executor, domain.Board, string) -> (T?, error?)
+type SnapshotPreparation = (domain.Board) -> error?
 
 
 type Redactor = (string, unknown) -> (unknown, error?)
@@ -112,7 +113,7 @@ return { AwaitingView = AwaitingView, GateView = GateView, ApprovalView = Approv
     ReferenceOrder = ReferenceOrder, CrossCursor = CrossCursor, QueryPage = QueryPage,
     LinksRequest = LinksRequest, LinkPeer = LinkPeer, RelationView = RelationView, LinksResult = LinksResult,
     CommentsRequest = CommentsRequest, CommentsResult = CommentsResult, ExplainResult = ExplainResult,
-    Snapshot = Snapshot, PrincipalResult = PrincipalResult, ReadContext = ReadContext, PageCheck = PageCheck,
+    Snapshot = Snapshot, SnapshotPreparation = SnapshotPreparation, PrincipalResult = PrincipalResult, ReadContext = ReadContext, PageCheck = PageCheck,
     Executor = Executor,
     Order = Order, QueryRequest = QueryRequest, QueryResult = QueryResult, CountResult = CountResult,
     ReadStamp = ReadStamp, SchemaGetRequest = SchemaGetRequest, SchemaView = SchemaView, ItemRef = ItemRef, GetRequest = GetRequest,
