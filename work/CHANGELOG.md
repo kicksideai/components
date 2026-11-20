@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.13](https://github.com/kicksideai/components/compare/work-v0.1.12...work-v0.1.13) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** constrain item tools and publish mutation outcomes ([876705c](https://github.com/kicksideai/components/commit/876705c3622c53f274ddef0a43d33054832545dd))
+
 ## [0.1.12](https://github.com/kicksideai/components/compare/work-v0.1.11...work-v0.1.12) (2026-11-20)
 
 

@@ -6,6 +6,8 @@ local fixture = require("fixture")
 local steps = require("steps")
 local store = require("store")
 local json = require("json")
+local items = require("items")
+local operation_batch = require("operation_batch")
 
 local function board_row(h: fixture.Handle): { [string]: unknown }
     for _, board in ipairs(assert(h.call("list", {})).boards) do
@@ -19,6 +21,18 @@ local function user(id: string): { kind: string, id: string }
 end
 
 local function define()
+    test.describe("operation dispatch", function()
+        test.it("dispatches exactly the declared item operations", function()
+            local actual = items.operation_names()
+            local declared: { string } = {}
+            for i, name in ipairs(operation_batch.operations) do declared[i] = name end
+            table.sort(actual)
+            table.sort(declared)
+            test.eq(#actual, #declared)
+            for i, name in ipairs(declared) do test.eq(actual[i], name) end
+        end)
+    end)
+
     test.describe("index acceptance", function()
         test.it("returns malformed compiled snapshots as native row errors", function()
             local h = fixture.board()

@@ -162,6 +162,11 @@ entries:
   meta:
     comment: Stable work identifiers, event types and limits.
   source: file://consts.lua
+  imports:
+    operation_batch: kickside.work:operation_batch
+- name: operation_batch
+  kind: library.lua
+  source: file://operation_batch.lua
 - name: types
   kind: library.lua
   meta:

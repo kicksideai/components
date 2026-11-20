@@ -33,8 +33,22 @@ function M.list_views(args: types.Map): (types.Map?, error?) return run("kicksid
 function M.get_view(args: types.Map): (types.Map?, error?) return run("kickside.work:view", "get", args, false) end
 function M.run_view(args: types.Map): (types.Map?, error?) return run("kickside.work:view", "run", args, false) end
 function M.apply(args: types.Map): (types.Map?, error?) return run("kickside.work:board", "apply", args, true) end
-function M.transition(args: types.Map): (types.Map?, error?) return run("kickside.work:board", "apply", args, true) end
-function M.comment(args: types.Map): (types.Map?, error?) return run("kickside.work:board", "apply", args, true) end
+local function apply_only(args: types.Map, operation: string): (types.Map?, error?)
+    if type(args.ops) == "table" then
+        for _, op in pairs(args.ops :: types.Map) do
+            if type(op) ~= "table" or (op :: types.Map).op ~= operation then
+                return nil, errors.new({
+                    kind = errors.INVALID,
+                    message = "This tool accepts only " .. operation .. " operations. Use WorkApply for mixed batches.",
+                    details = { code = "tool_operation_mismatch" },
+                })
+            end
+        end
+    end
+    return M.apply(args)
+end
+function M.transition(args: types.Map): (types.Map?, error?) return apply_only(args, "transition") end
+function M.comment(args: types.Map): (types.Map?, error?) return apply_only(args, "comment") end
 function M.approve(args: types.Map): (types.Map?, error?) return run("kickside.work:board", "approve", args, true) end
 function M.report(args: types.Map): (types.Map?, error?) return run("kickside.work:board", "report", args, true) end
 function M.bulk(args: types.Map): (types.Map?, error?) return run("kickside.work:board", "bulk", args, true) end
