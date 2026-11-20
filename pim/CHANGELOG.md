@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.1.10](https://github.com/kicksideai/components/compare/pim-v0.1.9...pim-v0.1.10) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim:** publish proposal facts and preserve installed proposals ([#223](https://github.com/kicksideai/components/issues/223)) ([2a521a7](https://github.com/kicksideai/components/commit/2a521a7e02003c6de459fae2f4f543049f4a22be))
+
+## [0.1.9](https://github.com/kicksideai/components/compare/pim-v0.1.8...pim-v0.1.9) (2026-11-20)
+
+
+### Features
+
+* **pim:** filter catalog discovery by text and administration access ([#214](https://github.com/kicksideai/components/issues/214)) ([3a9c5c2](https://github.com/kicksideai/components/commit/3a9c5c2ed4634e6104bd02031d74b0c833183434))
+
+
+### Bug Fixes
+
+* **work:** constrain item tools and publish mutation outcomes ([876705c](https://github.com/kicksideai/components/commit/876705c3622c53f274ddef0a43d33054832545dd))
+
+## [0.1.8](https://github.com/kicksideai/components/compare/pim-v0.1.7...pim-v0.1.8) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim:** expose plugin feed gaps on replacement pages ([#185](https://github.com/kicksideai/components/issues/185)) ([2bb9742](https://github.com/kicksideai/components/commit/2bb9742f6bc73ade1d4a82753e5943117a2c30b5))
+
+## [0.1.7](https://github.com/kicksideai/components/compare/pim-v0.1.6...pim-v0.1.7) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim:** seek sparse indexed equality queries ([#193](https://github.com/kicksideai/components/issues/193)) ([5cbb237](https://github.com/kicksideai/components/commit/5cbb2379e520eea785b755975780f6ae6127b00b))
+
+## [0.1.6](https://github.com/kicksideai/components/compare/pim-v0.1.5...pim-v0.1.6) (2026-11-20)
+
+
+### Features
+
+* **pim:** version plugin manifests and product patches ([#186](https://github.com/kicksideai/components/issues/186)) ([9b8d9d9](https://github.com/kicksideai/components/commit/9b8d9d9ebadcafefa14053117a3b08f51157db75))
+
+## [0.1.5](https://github.com/kicksideai/components/compare/pim-v0.1.4...pim-v0.1.5) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim:** guard proposal acceptance and classify version conflicts ([#189](https://github.com/kicksideai/components/issues/189)) ([2b9bdbe](https://github.com/kicksideai/components/commit/2b9bdbe1ee2780ad4832a8a8c973c417976fa98e))
+
 ## [0.1.4](https://github.com/kicksideai/components/compare/pim-v0.1.3...pim-v0.1.4) (2026-11-19)
 
 

@@ -15,10 +15,19 @@ export class ApiError extends Error {
     this.status = status
   }
 }
-export function errorMessage(error: unknown, defaultMessage: string): string {
-  const message = error instanceof Error ? error.message : defaultMessage
+const operatorMessages: Readonly<Record<string, string>> = {
+  key_prefix_taken: 'That item key prefix is already in use. Choose another prefix.',
+  plugin_config_invalid: 'The plugin rejected this configuration. Check its settings and try again.',
+  generation_changed: 'The board settings changed. Review your changes again before applying them.',
+  no_parked_migration: 'There is no paused migration to resume.',
+}
+
+export function formatApiError(error: unknown, fallback: string): string {
   const code = error instanceof ApiError ? error.details?.code : undefined
-  return typeof code === 'string' && code ? `${message} (Error code: ${code})` : message
+  const message = error instanceof Error ? error.message || fallback : fallback
+  if (typeof code !== 'string' || !code.trim()) return message
+  const operatorMessage = Object.hasOwn(operatorMessages, code) ? operatorMessages[code] : message
+  return `${operatorMessage}\nError code: ${code}`
 }
 export function unwrap<T>(data: unknown, what: string): T {
   const body = data as { success?: boolean; error?: string; data?: T }

@@ -45,3 +45,15 @@ entries:
     migration: wippy.migration:migration
     operation_expiry: kickside.work.persist:operation_expiry
   method: migrate
+- name: 04_link_page_indexes
+  kind: function.lua
+  meta:
+    type: migration
+    private: true
+    tags: [work, board]
+    comment: Add ordered seeks for outward, inward, and target link pages.
+    timestamp: '2026-11-20T00:00:00Z'
+  source: file://04_link_page_indexes.lua
+  imports:
+    migration: wippy.migration:migration
+  method: migrate

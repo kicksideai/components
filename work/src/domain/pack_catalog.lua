@@ -97,7 +97,6 @@ local function decode(entry: registry.Entry): (types.Pack?, error?)
         if ierr and ierr:kind() ~= errors.INVALID then return nil, ierr end
         plugins[#plugins + 1] = { plugin = id, installed = manifest ~= nil or (ierr and ierr:details().code ~= "unknown_plugin") == true,
             title = manifest and manifest.title, description = manifest and manifest.description, icon = manifest and manifest.icon,
-            config_schema = manifest and manifest.config_schema,
             active = false, requires = manifest and manifest.requires or {}, tools = manifest and manifest.tools or {},
             lifecycle = ierr and { state = "failed", error = { kind = ierr:kind(), code = ierr:details().code, message = ierr:message() } } or { state = "ready" },
             projections = table.create(0, 1), problem = ierr and { code = ierr:details().code, message = ierr:message() } or nil }

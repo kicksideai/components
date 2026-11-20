@@ -136,6 +136,7 @@ entries:
     plugins: kickside.work.domain:plugins
     policy: kickside.work.domain:policy
     access_rules: kickside.work.domain:access_rules
+    search: kickside.work.domain:search
     fields: kickside.work.domain:fields
 - name: declaration
   kind: library.lua
@@ -281,9 +282,9 @@ entries:
   modules:
   - registry
   - contract
-  - security
   imports:
     search_text: kickside.work.domain:search_text
+    rules: kickside.work.domain:access_rules
     registry_values: kickside.work.domain:registry_values
     plugins: kickside.work.domain:plugins
     scopes: kickside.work.read:scopes

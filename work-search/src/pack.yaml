@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work_search
+entries:
+- name: issue_board
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Searchable issue board
+    description: Track issues and find them by key, title or description.
+    version: 1.0.0
+    icon: search
+  data:
+    schema:
+      key_prefix: ISSUE
+      fields:
+      - { code: title, form: text, index: none }
+      - { code: description, form: text, index: none }
+      item_types:
+      - { id: issue, title: Issue, process: issue, fields: [title, description] }
+      scopes: [kickside.work_search:text]
+    processes:
+    - id: issue
+      initial: open
+      states:
+      - { id: open, category: started }
+      - { id: closed, category: completed }
+      transitions:
+      - { id: close, from: [open], to: closed }
+      - { id: reopen, from: [closed], to: open }
+    views: []
+    automations: []
+    traits: [kickside.work_search:search]
+    requires: [kickside.work_search:plugin]
+    starter: { items: [], default: false }

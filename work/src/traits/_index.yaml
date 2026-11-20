@@ -105,6 +105,7 @@ entries:
   - kickside.work.traits:configure_plugin
   - kickside.work.traits:plan_move
   - kickside.work.traits:move
+  - kickside.work.traits:move_status
   - kickside.work.traits:list_boards
   - kickside.work.traits:get_schema
   - kickside.work.traits:list_packs

@@ -49,6 +49,52 @@ text = text.split('\n').map(line => {
   return `${match[1]}${match[2]}_schema: '${JSON.stringify(schema).replaceAll("'", "''")}'`
 }).join('\n')
 await output('src/traits/tools.yaml', text)
+
+const proposed = contracts.get('propose:input').properties
+const proposalItems = structuredClone(proposed.items)
+proposalItems.items.properties.product = {
+  type: 'object', required: ['id'], additionalProperties: false,
+  properties: { id: { type: 'string', description: 'Product id captured at submission.' } },
+}
+const proposalFields = {
+  proposal_id: { type: 'string' },
+  actor: { type: 'string', description: 'Actor who issued the command.' },
+  at: { type: 'string', description: 'Command time in RFC3339 UTC.' },
+}
+const submitted = {
+  type: 'object', additionalProperties: false,
+  required: ['proposal_id', 'generation', 'base', 'items', 'actor', 'at'],
+  properties: {
+    ...proposalFields,
+    generation: { type: 'integer', minimum: 1, description: 'Schema generation that validated the proposal.' },
+    base: { type: 'object', additionalProperties: { type: 'integer' }, description: 'Product versions by product id.' },
+    items: proposalItems, source: proposed.source, origin: proposed.origin, provenance: proposed.provenance,
+  },
+}
+const decided = {
+  type: 'object', additionalProperties: false, required: ['proposal_id', 'decision', 'status', 'actor', 'at'],
+  properties: {
+    ...proposalFields,
+    decision: contracts.get('decide:input').properties.decision,
+    status: { type: 'string', enum: ['accepted', 'conflict', 'failed', 'rejected'] },
+    result: contracts.get('apply:output'),
+  },
+}
+await output('src/events/proposals.yaml', `# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+# Generated from the catalog contract by scripts/generate-contracts.mjs.
+version: "1.0"
+namespace: kickside.pim.events
+entries:
+  - name: proposal.submitted
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "A proposal is submitted for review." }
+    schema: ${JSON.stringify(submitted)}
+  - name: proposal.decided
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, comment: "A proposal decision is recorded." }
+    schema: ${JSON.stringify(decided)}
+`)
+
 await output('src/schema/declaration_shape.lua', `-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Generated from declaration.json by scripts/generate-contracts.mjs.
 local json = require("json")

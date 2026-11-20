@@ -24,7 +24,7 @@ it('fits the history caption and stacked changes with intact metadata at 390px',
   const recorded = { ...entry(3), sku: 'DEMO-PRODUCT-42', source: 'manual', ctx: 'en · web' }
   vi.mocked(api.post).mockResolvedValue({ data: { data: { principals: [{ id: 'owner', label: name }] } } } as never)
   vi.mocked(pim.history).mockResolvedValue({ entries: [recorded], next: '3:1', as_of: 3 })
-  const w = mount(HistoryPanel, { props: { catalogId: 'cat' } }); wrappers.push(w); await flushPromises()
+  const w = mount(HistoryPanel, { props: { catalogId: 'cat', canResolveActors: true } }); wrappers.push(w); await flushPromises()
   const css = ['shared/base.css', 'shared/settings.css', 'styles.css']
     .map(file => readFileSync(`src/${file}`, 'utf8').replace(/^@import .*;$/gm, ''))
     .join('\n')
@@ -64,7 +64,7 @@ it('fits the history caption and stacked changes with intact metadata at 390px',
 }, 15000)
 it('pages newest first, resolves people through the catalog helper and refreshes from the first page', async () => {
   vi.mocked(pim.history).mockResolvedValueOnce({ entries: [entry(3)], next: '3:1', as_of: 3 }).mockResolvedValueOnce({ entries: [entry(2)], as_of: 3 })
-  const w = mount(HistoryPanel, { props: { catalogId: 'cat' } }); wrappers.push(w); await flushPromises()
+  const w = mount(HistoryPanel, { props: { catalogId: 'cat', canResolveActors: true } }); wrappers.push(w); await flushPromises()
   expect(w.text()).toContain('Avery')
   expect(api.post).toHaveBeenLastCalledWith('/api/v1/pim-admin/catalogs/cat/principal_labels', { refs: [{ type: 'user', id: 'owner' }] })
   await w.findAll('button').find(b => b.text() === 'Load older')!.trigger('click'); await flushPromises()
@@ -77,7 +77,7 @@ it('pages newest first, resolves people through the catalog helper and refreshes
 })
 it('exposes loading, a failed read and Retry, and keeps unresolved actors readable', async () => {
   const pending = deferred<HistoryResult>(); vi.mocked(pim.history).mockReturnValueOnce(pending.promise)
-  const w = mount(HistoryPanel, { props: { catalogId: 'cat' } }); wrappers.push(w); await flushPromises()
+  const w = mount(HistoryPanel, { props: { catalogId: 'cat', canResolveActors: true } }); wrappers.push(w); await flushPromises()
   expect(w.get('[role=status]').text()).toContain('Loading history')
   pending.reject(new Error('History unavailable')); await flushPromises()
   expect(w.get('[role=alert]').text()).toContain('History unavailable')
@@ -90,7 +90,7 @@ it('exposes loading, a failed read and Retry, and keeps unresolved actors readab
 it('ignores a stale older page after refresh and disposes the old catalog subscription', async () => {
   const older = deferred<HistoryResult>()
   vi.mocked(pim.history).mockResolvedValueOnce({ entries: [entry(3)], next: '3:1', as_of: 3 }).mockReturnValueOnce(older.promise)
-  const w = mount(HistoryPanel, { props: { catalogId: 'cat' } }); wrappers.push(w); await flushPromises()
+  const w = mount(HistoryPanel, { props: { catalogId: 'cat', canResolveActors: true } }); wrappers.push(w); await flushPromises()
   await w.findAll('button').find(b => b.text() === 'Load older')!.trigger('click')
   vi.mocked(pim.history).mockResolvedValue({ entries: [entry(5)], as_of: 5 })
   events.get('component.cat')!(); await flushPromises()

@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
-import { host } from '@wippy-fe/proxy'
+import { api, host } from '@wippy-fe/proxy'
 import Select from 'primevue/select'
 import AdminApp from './AdminApp.vue'
 import SettingsApp from './SettingsApp.vue'
@@ -11,10 +11,11 @@ import SchemaBuilder from './builder/SchemaBuilder.vue'
 import BuilderFields from './builder/BuilderFields.vue'
 import BuilderVocabularies from './builder/BuilderVocabularies.vue'
 import { pim } from '../api'
-import { createSchema } from '../test/fixtures'
+import { createSchema, deferred } from '../test/fixtures'
 import { hostProps, hostEmit } from '../test/setup'
+import { ApiError } from '../shared/transport'
 
-vi.mock('../api', () => ({ pim: Object.fromEntries(['listCatalogs', 'catalogSummary', 'schema', 'schemaOptions', 'termsPage', 'apply', 'invalidateTerms', 'planSchema'].map(k => [k, vi.fn()])) }))
+vi.mock('../api', () => ({ pim: Object.fromEntries(['listCatalogs', 'catalogSummary', 'schema', 'schemaOptions', 'termsPage', 'apply', 'invalidateTerms', 'planSchema', 'applySchema', 'history'].map(k => [k, vi.fn()])) }))
 const row = (id: string) => ({ catalog_id: id, title: id, access: { read: true, write: true, admin: true } })
 const button = (w: ReturnType<typeof mount>, text: string) => w.findAll('button').find(b => b.text() === text)!
 beforeEach(() => {
@@ -77,6 +78,87 @@ it('retries a failed term read and clears its old error after recovery', async (
   await button(w, 'Retire').trigger('click'); await flushPromises()
   expect(host.confirm).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('immediately') }))
   expect(pim.apply).not.toHaveBeenCalled(); w.unmount()
+})
+it.each(['review', 'apply'])('shows a typed %s conflict and reloads only after confirming draft removal', async action => {
+  const conflict = new ApiError({ error: 'schema generation changed', details: { code: 'schema_generation_conflict' } }, 'schema review', 409)
+  if (action === 'review') vi.mocked(pim.planSchema).mockRejectedValueOnce(conflict)
+  else {
+    vi.mocked(pim.planSchema).mockResolvedValueOnce({ generation: 1, class: 'cosmetic', changes: [], refused: [] })
+    vi.mocked(pim.applySchema).mockRejectedValueOnce(conflict)
+  }
+  const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } }); await flushPromises()
+  w.getComponent(BuilderFields).props('draft').aspects![0].attributes![0].width = 'half'; await flushPromises()
+  await button(w, 'Review changes').trigger('click'); await flushPromises()
+  if (action === 'apply') { await button(w, 'Apply').trigger('click'); await flushPromises() }
+  expect(w.get('[role=alert]').text()).toContain('This catalog’s settings changed while you were editing.')
+  expect(w.get('[role=alert] code').text()).toBe('schema_generation_conflict')
+  vi.mocked(host.confirm).mockResolvedValueOnce(false)
+  await button(w, 'Reload settings').trigger('click'); await flushPromises()
+  expect(host.confirm).toHaveBeenCalledWith(expect.objectContaining({ acceptLabel: 'Discard and reload' }))
+  expect(pim.schema).toHaveBeenCalledTimes(1)
+  expect(w.getComponent(BuilderFields).props('draft').aspects![0].attributes![0].width).toBe('half')
+  vi.mocked(pim.schema).mockResolvedValueOnce({ ...createSchema(), schema_generation: 2 })
+  await button(w, 'Reload settings').trigger('click'); await flushPromises()
+  expect(pim.schema).toHaveBeenCalledTimes(2)
+  expect(w.text()).toContain('generation 2')
+  expect(w.getComponent(BuilderFields).props('draft').aspects![0].attributes![0].width).toBeUndefined()
+  expect(w.find('[role=alert]').exists()).toBe(false)
+  w.unmount()
+})
+it('shows a readable access denial and its typed error code', async () => {
+  vi.mocked(pim.schema).mockRejectedValueOnce(new ApiError({ error: 'permission check failed', details: { code: 'catalog_access_denied' } }, 'schema', 403))
+  const w = mount(SettingsApp); await flushPromises()
+  expect(w.get('[role=alert]').text()).toContain('You don’t have access to this catalog.')
+  expect(w.get('[role=alert] code').text()).toBe('catalog_access_denied')
+  w.unmount()
+})
+it.each([false, true])('lets non-admins browse field definitions with WRITE %s without editing', async write => {
+  const s = createSchema()
+  s.access = { read: true, admin: false, write }
+  s.declaration.aspects![0].attributes!.push({ code: 'description', type: 'text' })
+  vi.mocked(pim.schema).mockResolvedValueOnce(s)
+  const w = mount(SettingsApp); await flushPromises()
+  const toggle = w.get('.field-toggle')
+  expect(toggle.element.closest('[inert], fieldset[disabled]')).toBeNull()
+  await toggle.trigger('click')
+  expect(toggle.attributes('aria-expanded')).toBe('true')
+  expect(w.get('input[value="name"]').attributes('disabled')).toBeDefined()
+  await toggle.trigger('keydown', { key: 'ArrowDown', altKey: true })
+  expect(w.findAll('.field-toggle').map(b => b.text())[0]).toContain('Name')
+  expect(w.findAll('button').some(b => b.text() === 'Add field group')).toBe(false)
+  w.unmount()
+})
+it('loads readable history without requesting the admin directory for a reader', async () => {
+  const s = createSchema(); s.access = { read: true, admin: false, write: false }
+  vi.mocked(pim.schema).mockResolvedValueOnce(s)
+  vi.mocked(pim.history).mockResolvedValueOnce({ entries: [{ seq: 3, n: 1, subject: 'Catalog', kind: 'schema', after: { generation: 3 }, actor: 'user:private-actor', at: '2026-11-17T12:00:00Z' }], as_of: 3 })
+  const w = mount(SettingsApp); await flushPromises()
+  await w.findAll('[role=tab]').find(t => t.text() === 'History')!.trigger('click'); await flushPromises()
+  expect(w.text()).toContain('Schema generation 3')
+  expect(w.text()).not.toContain('private-actor')
+  expect(api.post).not.toHaveBeenCalled()
+  w.unmount()
+})
+it('announces terms loading and separates loading, failure, and a successful empty page', async () => {
+  const initial = deferred<Awaited<ReturnType<typeof pim.termsPage>>>()
+  const retry = deferred<Awaited<ReturnType<typeof pim.termsPage>>>()
+  vi.mocked(pim.termsPage).mockReturnValueOnce(initial.promise).mockReturnValueOnce(retry.promise)
+  const s = createSchema(); s.vocabularies = { colors: { code: 'colors', hierarchical: false } }
+  const w = mount(BuilderVocabularies, { props: { catalogId: 'cat', draft: { vocabularies: [{ code: 'colors' }] }, schema: s } })
+  await w.get('.pim-definition-toggle').trigger('click'); await button(w, 'Terms').trigger('click')
+  expect(w.get('[role=status]').text()).toBe('Loading terms…')
+  expect(w.text()).not.toContain('No terms yet.')
+  initial.reject(new Error('Temporary term outage')); await flushPromises()
+  expect(w.find('[role=status]').exists()).toBe(false)
+  expect(w.get('[role=alert]').text()).toContain('Temporary term outage')
+  expect(w.text()).not.toContain('No terms yet.')
+  await button(w, 'Retry').trigger('click')
+  expect(w.get('[role=status]').text()).toBe('Loading terms…')
+  expect(w.find('[role=alert]').exists()).toBe(false)
+  retry.resolve({ terms: [], as_of: 1 }); await flushPromises()
+  expect(w.find('[role=status]').exists()).toBe(false)
+  expect(w.text()).toContain('No terms yet.')
+  w.unmount()
 })
 it('labels value counts for operators while preserving wire values', async () => {
   const s = createSchema()

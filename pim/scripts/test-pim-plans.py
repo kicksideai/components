@@ -22,6 +22,22 @@ class QueryPlans(unittest.TestCase):
         query = re.search(r'query\("(SELECT p.channel,.*?p.product_id=\$2)"', source).group(1)
         plan = str(self.db.execute("EXPLAIN QUERY PLAN " + query, named(("catalog", "00100"))).fetchall())
         self.assertIn("catalog_id=? AND product_id=?", plan)
+    def test_proposal_quota_and_decision_use_indexed_access(self):
+        source = (ROOT / "src/persist/proposal_rows.lua").read_text()
+        quota = re.search(r"\[\[(SELECT COUNT\(\*\) AS n FROM.*?)\]\]", source, re.S).group(1)
+        decision = re.search(r"\[\[(UPDATE kickside_pim_proposal.*?)\]\]", source, re.S).group(1)
+        self.db.executemany("""INSERT INTO kickside_pim_proposal
+            (catalog_id,proposal_id,origin,items,base,status,created_by,created_at)
+            VALUES('catalog',?,'{}','[]','{}','pending','actor','2000')""", [(str(n),) for n in range(2000)])
+        params = named(("catalog", 5))
+        self.assertEqual(self.db.execute(quota, params).fetchone(), (5,))
+        quota_plan = str(self.db.execute("EXPLAIN QUERY PLAN " + quota, params).fetchall())
+        self.assertIn("SEARCH kickside_pim_proposal USING COVERING INDEX", quota_plan)
+        self.assertIn("catalog_id=?", quota_plan)
+        decision_plan = str(self.db.execute("EXPLAIN QUERY PLAN " + decision,
+            named(("rejected", None, "reviewer", "2000", "catalog", "5"))).fetchall())
+        self.assertIn("catalog_id=? AND proposal_id=?", decision_plan)
+        print("proposal quota and decision plans:", quota_plan, decision_plan)
     def test_channel_cleanup_page_work_is_constant(self):
         source = (ROOT / "src/persist/schema_cleanup.lua").read_text()
         query = re.search(r"\[\[(SELECT product_id FROM kickside_pim_publication.*?)\]\]", source, re.S).group(1)

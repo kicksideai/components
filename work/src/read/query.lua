@@ -1,6 +1,9 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local peers = require("peers")
 local cursor_codec = require("cursor_codec")
+local json = require("json")
+local rollup = require("rollup")
+local values = require("values")
 local window = require("window")
 local budget = require("budget")
 local planner = require("planner")
@@ -18,6 +21,7 @@ local item_view = require("item_view")
 local domain = require("domain")
 local types = require("types")
 local predicates = require("predicates")
+local search = require("search")
 local plugins = require("plugins")
 local scopes = require("scopes")
 local component = require("component")
@@ -31,8 +35,11 @@ local function includes(list: { string }?, name: string): boolean
     for _, value in ipairs(list or {}) do if value == name then return true end end
     return false
 end
-local QUERY_KEYS: { [string]: boolean } = { budget = true, include = true, group_by = true, sub_group_by = true, board_id = true, where = true, scopes = true, order = true, after = true, limit = true, min_seq = true, include_trashed = true }
+local QUERY_KEYS: { [string]: boolean } = { budget = true, include = true, group_by = true, sub_group_by = true, group_after = true,
+    group_limit = true, measures = true, board_id = true, where = true, scopes = true, order = true, after = true, limit = true,
+    min_seq = true, include_trashed = true }
 local COUNT_KEYS: { [string]: boolean } = { budget = true, board_id = true, where = true, scopes = true, min_seq = true, include_trashed = true }
+local GROUP_CURSOR_LIMIT = 8192
 
 local function validate(request: types.QueryRequest, counted: boolean): error?
     local allowed = counted and COUNT_KEYS or QUERY_KEYS
@@ -40,6 +47,29 @@ local function validate(request: types.QueryRequest, counted: boolean): error?
         if not allowed[key] then return access.invalid("unsupported query option " .. tostring(key)) end
     end
     if request.group_by and request.after then return access.invalid("group detail cursors are used with a query filtered to that group") end
+    if not request.group_by and (request.sub_group_by or request.group_after or request.group_limit or request.measures) then
+        return access.invalid("sub_group_by, group_after, group_limit and measures require group_by")
+    end
+    local group_after, group_limit = request.group_after, request.group_limit
+    if group_after ~= nil and (type(group_after) ~= "string" or #group_after == 0 or #group_after > GROUP_CURSOR_LIMIT) then
+        return access.invalid("group_after is a group continuation from a previous page")
+    end
+    if group_limit ~= nil and (type(group_limit) ~= "number" or math.tointeger(group_limit) == nil or group_limit < 1 or group_limit > 200) then
+        return access.invalid("group_limit must be 1..200")
+    end
+    if request.measures ~= nil then
+        if type(request.measures) ~= "table" or #request.measures < 1 or #request.measures > 4 then
+            return access.invalid("measures takes one to four sums")
+        end
+        local ids: { [string]: boolean } = {}
+        for _, measure in ipairs(request.measures) do
+            if type(measure) ~= "table" or type(measure.id) ~= "string" or measure.id == "" or
+                measure.op ~= "sum" or type(measure.field) ~= "string" or measure.field == "" or ids[measure.id] then
+                return access.invalid("each sum needs a unique id and a field")
+            end
+            ids[measure.id] = true
+        end
+    end
     if request.include ~= nil then
         if type(request.include) ~= "table" then return access.invalid("query include takes gate, awaiting and transitions") end
         local seen: { [string]: boolean } = {}
@@ -93,18 +123,66 @@ local function pending(tx: types.Executor, board: domain.Board, request: types.Q
         for _, key in ipairs(sort or {}) do used[key.field] = true end
         if request.group_by then used[request.group_by] = true end
         if request.sub_group_by then used[request.sub_group_by] = true end
+        for _, measure in ipairs(request.measures or {}) do used[measure.field] = true end
     end
     return job_rows.rebuilding(tx, board, used)
 end
 
+local function search_reader(board: domain.Board, grants: { [string]: boolean }?): domain.Reader
+    local actor = security.actor()
+    return { board_id = board.board_id, actor = actor and actor:id(), search = board.compiled.scopes,
+        search_model = board.compiled, plugins = board.compiled.plugins,
+        allows = function(level: string): boolean return level == "read" or (grants ~= nil and grants[level] == true) end }
+end
+
+local function with_query_snapshot<T: types.ReadStamp>(request: types.QueryRequest, grants: { [string]: boolean },
+    fn: (types.Executor, domain.Board, string, domain.SearchResults?) -> (T?, error?), context: types.ReadContext?): (T?, error?)
+    local matches: { [string]: boolean } = {}
+    local _, inspect_err = predicates.inspect(request.where, {}, 1, matches)
+    if inspect_err then return nil, inspect_err end
+    local ids: domain.SearchResults? = nil
+    local selected_seq: integer? = nil
+    local prepare: types.SnapshotPreparation? = nil
+    if next(matches) ~= nil then
+        prepare = function(board: domain.Board): error?
+            local reader = search_reader(board, grants)
+            local min_seq = request.min_seq
+            if min_seq and min_seq > 0 then
+                local wanted = min_seq :: integer
+                reader.scope_fence = function(projection: domain.ScopeProjection): error?
+                    local db, err = store.open()
+                    if err or not db then return err end
+                    local pending = scopes.fence(db, board.board_id, projection, wanted)
+                    db:release()
+                    return pending
+                end
+            end
+            local prepared, err = search.prepare(reader, board, matches)
+            if err then return err end
+            if prepared and next(prepared) ~= nil then
+                ids, selected_seq = prepared, board.applied_seq
+            end
+            return nil
+        end
+    end
+    return access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (T?, error?)
+        if selected_seq and selected_seq ~= board.applied_seq then
+            return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Work changed while resolving search candidates",
+                details = { code = "search_snapshot_changed" } })
+        end
+        return fn(tx, board, dialect, ids)
+    end, context, nil, request.where, nil, prepare)
+end
+
 local function compile(tx: types.Executor, dialect: string, board: domain.Board, request: types.QueryRequest, counted: boolean, grants: { [string]: boolean }?, additional: { domain.Condition }?, scan: integer?, order: { domain.Sort }?,
-    definition_only: boolean?): (types.Plan?, error?)
+    definition_only: boolean?, ids: domain.SearchResults?): (types.Plan?, error?)
     local berr = predicates.bounds(request.where)
     if berr then return nil, berr end
     local sort, serr = M.order(request.order)
     if serr then return nil, serr end
     local actor = security.actor()
-    local caller: domain.Reader = { board_id = board.board_id, actor = actor and actor:id(), search = board.compiled.scopes, plugins = board.compiled.plugins, allows = function(level: string): boolean return level == "read" or (grants ~= nil and grants[level] == true) end }
+    local caller = search_reader(board, grants)
+    caller.search_definition, caller.search_ids = definition_only, ids
     local min_seq = request.min_seq
     if min_seq and min_seq > 0 and not definition_only then
         local checked: { [string]: { [string]: boolean } } = {}
@@ -134,12 +212,9 @@ local function compile(tx: types.Executor, dialect: string, board: domain.Board,
     for _, condition in ipairs(additional or {}) do conditions[#conditions + 1] = condition end
     local groups: { string }? = nil
     if request.group_by then groups = { request.group_by } end
-    if request.sub_group_by then
-        if not groups then return nil, access.invalid("sub_group_by requires group_by") end
-        groups[#groups + 1] = request.sub_group_by
-    end
+    if groups and request.sub_group_by then groups[2] = request.sub_group_by end
     return select.items(caller, tables.of(board.board_id, tables.layout(board.compiled), board.model.relations), dialect,
-        { scan = scan or (request.budget and request.budget.rows or 200000), groups = groups, where = request.where, sorts = order or sort,
+        { scan = scan or (request.budget and request.budget.rows or 200000), groups = groups, measures = request.measures, where = request.where, sorts = order or sort,
             after = request.after, count = counted and 10000 or nil, peer_visibility = visible }, access_rows.resolver(board, resolve.resolver(tx, board)), admitted,
         conditions,
         request.limit or 50)
@@ -159,13 +234,25 @@ local function scope_grants(request: types.QueryRequest): ({ [string]: boolean }
     return out
 end
 
+local function group_less(left: types.GroupKey?, right: types.GroupKey?): boolean
+    return left ~= nil and (right == nil or left < right)
+end
+
+local function group_context(board: domain.Board, request: types.QueryRequest): string
+    local actor = security.actor()
+    return "kickside.work.groups.v1\0" .. values.canonical({
+        board = board.board_id, actor = actor and actor:id(), generation = board.generation,
+        group_by = request.group_by, sub_group_by = request.sub_group_by, where = request.where,
+        scopes = request.scopes, include_trashed = request.include_trashed == true,
+    })
+end
+
 local function add_group(groups: { types.GroupBucket }, by_key: { [domain.ColumnValue]: types.GroupBucket },
-    key: domain.ColumnValue?, row: domain.Row, limit: integer): types.GroupBucket
-    local identity: domain.ColumnValue = false
-    if key ~= nil then identity = key end
+    key: types.GroupKey?, row: domain.Row, limit: integer, measures: { types.MeasureColumn }?): types.GroupBucket
+    local identity = key or false
     local group: types.GroupBucket? = by_key[identity]
     if not group then
-        local created: types.GroupBucket = { key = key, count = 0, rows = {} }
+        local created: types.GroupBucket = { key = key, count = 0, rows = {}, totals = measures and {} or nil }
         by_key[identity] = created
         groups[#groups + 1] = created
         group = created
@@ -173,45 +260,83 @@ local function add_group(groups: { types.GroupBucket }, by_key: { [domain.Column
     local held = group :: types.GroupBucket
     held.count = held.count + 1
     if #held.rows < limit then held.rows[#held.rows + 1] = row end
+    local totals = held.totals
+    if totals then
+        for i, measure in ipairs(measures or {}) do
+            local value = row["measure_" .. i] :: string?
+            if value ~= nil then
+                if measure.decimal_key then
+                    local sign, whole, fraction = value:match("^([%-]?)(%d+)%.?(%d*)$")
+                    local magnitude = (whole .. fraction .. string.rep("0", measure.scale - #fraction)):gsub("^0+", "")
+                    value = magnitude == "" and "0" or sign .. magnitude
+                end
+                totals[i] = rollup.add(totals[i] or "0", value)
+            end
+        end
+    end
     return held
 end
 
-local function group_rows(rows: { domain.Row }, levels: integer, limit: integer): ({ types.GroupBucket }?, error?)
+local function group_rows(rows: { domain.Row }, plan: types.Plan, limit: integer, group_limit: integer,
+    after: types.GroupPosition?): ({ types.GroupBucket }, types.GroupPosition?)
     local parents: { types.GroupBucket } = {}
     local by_key: { [domain.ColumnValue]: types.GroupBucket } = {}
     local children: { [types.GroupBucket]: { [domain.ColumnValue]: types.GroupBucket } } = {}
-    local count = 0
     for _, row in ipairs(rows) do
-        local parent = add_group(parents, by_key, row.group_1 :: domain.ColumnValue?, row, limit)
-        if levels == 2 then
-            local siblings: { [domain.ColumnValue]: types.GroupBucket }? = children[parent]
-            if not siblings then
-                siblings = {}
-                children[parent] = siblings
-                parent.children = {}
+        local key, child = row.group_1 :: types.GroupKey?, row.group_2 :: types.GroupKey?
+        if not after or group_less(after.parent, key) or (plan.groups == 2 and after.parent == key) then
+            local parent = add_group(parents, by_key, key, row, limit, plan.measures)
+            if plan.groups == 2 and (not after or after.parent ~= key or group_less(after.child, child)) then
+                local siblings = children[parent]
+                if not siblings then
+                    siblings = {}
+                    children[parent] = siblings
+                    parent.children = {}
+                end
+                add_group(parent.children :: { types.GroupBucket }, siblings, child, row, limit, plan.measures)
             end
-            local group = add_group(parent.children :: { types.GroupBucket },
-                siblings :: { [domain.ColumnValue]: types.GroupBucket }, row.group_2 :: domain.ColumnValue?, row, limit)
-            if group.count == 1 then count = count + 1 end
-        else
-            if parent.count == 1 then count = count + 1 end
         end
-        if count > 200 then return nil, access.invalid("a grouped page holds at most 200 groups") end
     end
     local function less(left: types.GroupBucket, right: types.GroupBucket): boolean
-        return left.key ~= nil and (right.key == nil or left.key < right.key)
+        return group_less(left.key, right.key)
     end
     table.sort(parents, less)
+    local page: { types.GroupBucket } = {}
+    local remaining, edge = group_limit, nil :: types.GroupPosition?
     for _, parent in ipairs(parents) do
-        if parent.children then table.sort(parent.children, less) end
+        if plan.groups == 1 then
+            if remaining == 0 then return page, edge end
+            page[#page + 1] = parent
+            remaining, edge = remaining - 1, { parent = parent.key }
+        elseif parent.children then
+            if remaining == 0 then return page, edge end
+            local siblings = parent.children :: { types.GroupBucket }
+            table.sort(siblings, less)
+            local selected: { types.GroupBucket } = {}
+            for i = 1, math.min(remaining, #siblings) do selected[i] = siblings[i] end
+            parent.children = selected
+            page[#page + 1] = parent
+            local last = selected[#selected]
+            edge = { parent = parent.key, child = last.key }
+            remaining = remaining - #selected
+            if #selected < #siblings then return page, edge end
+        end
     end
-    return parents, nil
+    return page, nil
 end
 
 local function read_page(tx: types.Executor, board: domain.Board, plan: types.Plan, allowance: types.ReadAllowance,
     order: { domain.Sort }, request: types.QueryRequest, listing: boolean?): (types.QueryPage?, error?)
     local limit = request.limit or 50
     if budget.check(allowance) then return { items = {}, cursors = {}, reindexing = false, incomplete = true }, nil end
+    local position: types.GroupPosition? = nil
+    if request.group_after then
+        local raw, err = cursor_codec.open(request.group_after, group_context(board, request), GROUP_CURSOR_LIMIT)
+        if err or not raw then return nil, err end
+        local decoded, decode_err = json.decode(raw)
+        if decode_err then return nil, decode_err end
+        position = decoded :: types.GroupPosition
+    end
     local rows, qerr, inspected, stopped = select.rows(tx, plan)
     if qerr or not rows then return nil, qerr end
     local clipped = #rows > plan.take
@@ -222,10 +347,15 @@ local function read_page(tx: types.Executor, board: domain.Board, plan: types.Pl
     local flat: { domain.Row } = {}
     for i = 1, math.min(admitted, limit) do flat[i] = rows[i] end
     local buckets: { types.GroupBucket }? = nil
+    local group_after: string? = nil
     if plan.groups > 0 and not clipped and not stopped then
-        local err: error?
-        buckets, err = group_rows(rows, plan.groups, limit)
-        if err then return nil, err end
+        local edge: types.GroupPosition?
+        buckets, edge = group_rows(rows, plan, limit, request.group_limit or 200, position)
+        if edge then
+            local err: error?
+            group_after, err = cursor_codec.seal(json.encode(edge), group_context(board, request))
+            if err then return nil, err end
+        end
     end
     local ids: { string } = {}
     local included: { [string]: boolean } = {}
@@ -274,8 +404,17 @@ local function read_page(tx: types.Executor, board: domain.Board, plan: types.Pl
         local items = views(bucket.rows)
         local value: unknown = bucket.key
         if board.model.fields[field] then value = items[1].values[field] end
+        local measures: { [string]: types.MeasureValue }? = nil
+        if bucket.totals then
+            measures = {}
+            for i, measure in ipairs(plan.measures or {}) do
+                local total = bucket.totals[i]
+                -- Wippy's JSON encoder emits null for non-finite values.
+                measures[measure.id] = total and rollup.decimal_text(total, measure.scale) or math.huge
+            end
+        end
         return { field = field, value = value, count = bucket.count, items = items,
-            after = #items < bucket.count and window.cursor(bucket.rows[#items], order) or nil }
+            after = #items < bucket.count and window.cursor(bucket.rows[#items], order) or nil, measures = measures }
     end
     local groups: { types.QueryGroup }? = nil
     if buckets then
@@ -294,8 +433,9 @@ local function read_page(tx: types.Executor, board: domain.Board, plan: types.Pl
     for i, row in ipairs(flat) do cursors[i] = window.cursor(row, order) end
     local following = rows[#flat + 1] and window.cursor(rows[#flat + 1], order)
     local after = following and cursors[#flat] or stopped
-    return { items = views(flat), groups = groups, cursors = cursors, after = after, following = following, reindexing = false,
-        scanned = scanned, incomplete = (stopped ~= nil and not following) or (clipped and (plan.groups > 0 or plan.take < limit)) }, nil
+    return { items = views(flat), groups = groups, group_after = group_after, cursors = cursors, after = after, following = following,
+        reindexing = false, scanned = scanned, incomplete = (stopped ~= nil and (plan.groups > 0 or not following))
+            or (clipped and (plan.groups > 0 or plan.take < limit)) }, nil
 end
 
 -- matching evaluates a feed selection in its existing committed snapshot.
@@ -413,26 +553,26 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
     local nulls = reference ~= nil and reference.after ~= nil and reference.after.phase == "nulls"
     local sort = nulls and {} or order
     local catalog: { [string]: domain.Field } = {}
-    local result, read_err = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.QueryPage?, error?)
+    local result, read_err = with_query_snapshot(request, grants, function(tx: types.Executor, board: domain.Board, dialect: string, search_ids: domain.SearchResults?): (types.QueryPage?, error?)
         if budget.expired(allowance) then return { items = {}, cursors = {}, reindexing = false, incomplete = true }, nil end
         catalog = peers.catalog(board)
         if check then
             local cerr = check(board)
             if cerr then return nil, cerr end
         end
-        local rebuilding, perr = pending(tx, board, request, false)
-        if perr then return nil, perr end
-        if rebuilding then return { items = {}, cursors = {}, reindexing = true }, nil end
         local extra: { domain.Condition }? = nil
         if reference then
             local ref_err: error?
             extra, ref_err = reference_plan(board, request, order, reference)
             if ref_err then return nil, ref_err end
         end
-        local plan, err = compile(tx, dialect, board, request, false, grants, extra, scan, sort)
+        local plan, err = compile(tx, dialect, board, request, false, grants, extra, scan, sort, nil, search_ids)
         if err or not plan then return nil, err end
+        local rebuilding, perr = pending(tx, board, request, false)
+        if perr then return nil, perr end
+        if rebuilding then return { items = {}, cursors = {}, reindexing = true }, nil end
         return read_page(tx, board, plan, allowance, sort, request, listing)
-    end, shared, nil, request.where)
+    end, shared)
     if read_err or not result then return nil, read_err end
     local err = peers.page(result, peers.redactor(catalog))
     if err then return nil, err end
@@ -440,7 +580,9 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
         local err = reference_result(result, request, order[1].field, nulls, reference.admission)
         if err then return nil, err end
     end
-    if budget.check(allowance) then result.incomplete = true end
+    if budget.check(allowance) then
+        result.incomplete, result.groups, result.group_after = true, nil, nil
+    end
     return result :: types.QueryPage, nil
 end
 
@@ -449,7 +591,7 @@ function M.freeze(request: types.QueryRequest): ({ string }?, error?)
     if err then return nil, err end
     local grants, gerr = scope_grants(request)
     if gerr or not grants then return nil, gerr end
-    local frozen, ferr = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): ({ ids: { string }, as_of: integer?, generation: integer? }?, error?)
+    local frozen, ferr = with_query_snapshot(request, grants, function(tx: types.Executor, board: domain.Board, dialect: string, search_ids: domain.SearchResults?): ({ ids: { string }, as_of: integer?, generation: integer? }?, error?)
         local rebuilding, perr = pending(tx, board, request, true)
         if perr then return nil, perr end
         if rebuilding then return nil, errors.new({ kind = errors.UNAVAILABLE, message = "bulk selection awaits indexes", details = { code = "projection_pending" } }) end
@@ -457,7 +599,7 @@ function M.freeze(request: types.QueryRequest): ({ string }?, error?)
         if nerr then return nil, nerr end
         if population and population > 200000 then return nil, errors.new({ kind = errors.INVALID, message = "bulk selection exceeds its scan budget", details = { code = "bulk_selection_limit" } }) end
         request.limit = 200000
-        local plan, cerr = compile(tx, dialect, board, request, false, grants)
+        local plan, cerr = compile(tx, dialect, board, request, false, grants, nil, nil, nil, nil, search_ids)
         if cerr or not plan then return nil, cerr end
         local rows, rerr = select.rows(tx, plan)
         if rerr then return nil, rerr end
@@ -469,7 +611,7 @@ function M.freeze(request: types.QueryRequest): ({ string }?, error?)
         end
         table.sort(ids)
         return { ids = ids }, nil
-    end, nil, nil, request.where)
+    end, nil)
     if ferr or not frozen then return nil, ferr end
     return frozen.ids, nil
 end
@@ -477,7 +619,8 @@ end
 function M.query(request: types.QueryRequest): (types.QueryResult?, error?)
     local page, err = M.page(request)
     if err or not page then return nil, err end
-    return { incomplete = page.incomplete, items = page.items, groups = page.groups, after = page.after, reindexing = page.reindexing, as_of = page.as_of, generation = page.generation }, nil
+    return { incomplete = page.incomplete, items = page.items, groups = page.groups, group_after = page.group_after,
+        after = page.after, reindexing = page.reindexing, as_of = page.as_of, generation = page.generation }, nil
 end
 
 function M.count(request: types.QueryRequest): (types.CountResult?, error?)
@@ -487,9 +630,9 @@ function M.count(request: types.QueryRequest): (types.CountResult?, error?)
     if allowance_err or not allowance then return nil, allowance_err end
     local grants, gerr = scope_grants(request)
     if gerr or not grants then return nil, gerr end
-    return access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.CountResult?, error?)
+    return with_query_snapshot(request, grants, function(tx: types.Executor, board: domain.Board, dialect: string, search_ids: domain.SearchResults?): (types.CountResult?, error?)
         if budget.expired(allowance) then return { total = 0, estimated = true, incomplete = true, reindexing = false }, nil end
-        local plan, err = compile(tx, dialect, board, request, true, grants)
+        local plan, err = compile(tx, dialect, board, request, true, grants, nil, nil, nil, nil, search_ids)
         if err or not plan or not plan.count then return nil, err end
         local rebuilding, perr = pending(tx, board, request, true)
         if perr then return nil, perr end
@@ -498,7 +641,7 @@ function M.count(request: types.QueryRequest): (types.CountResult?, error?)
         if cerr then return nil, cerr end
         local incomplete = estimated or budget.expired(allowance)
         return { total = total, estimated = incomplete, incomplete = incomplete, reindexing = false }, nil
-    end, { allowance = allowance, partial = true, admitted = {}, holders = {} }, nil, request.where)
+    end, { allowance = allowance, partial = true, admitted = {}, holders = {} })
 end
 
 function M.explain(request: types.QueryRequest): (types.ExplainResult?, error?)
@@ -510,8 +653,8 @@ function M.explain(request: types.QueryRequest): (types.ExplainResult?, error?)
     if gerr or not grants then return nil, gerr end
     local access_grants, aerr = access.effective(request.board_id)
     if aerr or not access_grants then return nil, aerr end
-    local result, rerr = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.ExplainResult?, error?)
-        local plan, err = compile(tx, dialect, board, request, false, grants)
+    local result, rerr = with_query_snapshot(request, grants, function(tx: types.Executor, board: domain.Board, dialect: string, search_ids: domain.SearchResults?): (types.ExplainResult?, error?)
+        local plan, err = compile(tx, dialect, board, request, false, grants, nil, nil, nil, nil, search_ids)
         if err or not plan then return nil, err end
         local statement, args = select.statement(plan, dialect)
         local indexes, ierr = planner.indexes(tx, dialect, statement, args)
@@ -519,7 +662,7 @@ function M.explain(request: types.QueryRequest): (types.ExplainResult?, error?)
         local admitted: { string } = {}
         for _, scope in ipairs(request.scopes or {}) do admitted[#admitted + 1] = scope.id end
         return { access = access_grants, plan = { statement = statement, args = args, indexes = indexes }, scopes = admitted, visibility = { life = not request.include_trashed } }, nil
-    end, { allowance = allowance, admitted = {}, holders = {} }, nil, request.where)
+    end, { allowance = allowance, admitted = {}, holders = {} })
     if rerr or not result then return nil, rerr end
     local usage, uerr = budget.usage(allowance)
     if uerr or not usage then return nil, uerr end

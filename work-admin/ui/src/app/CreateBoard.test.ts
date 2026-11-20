@@ -47,6 +47,18 @@ it('shows discovery failures and still permits Empty board', async () => {
   await w.get('form').trigger('submit'); await flushPromises(); expect(work.createBoard).toHaveBeenCalled(); w.unmount()
 })
 
+it('shows the duplicate-prefix message and its labeled Work error code in the wizard alert', async () => {
+  vi.mocked(work.createBoard).mockRejectedValue(new ApiError({ message: 'initial schema failed: key prefix NEXT is taken', details: { code: 'key_prefix_taken' } }, 'Create board', 400))
+  const w = await render()
+  try {
+    await w.get('form').trigger('submit'); await flushPromises()
+    const alert = w.get('[role="alert"]').text()
+    expect(alert).toContain('That item key prefix is already in use. Choose another prefix.')
+    expect(alert).toMatch(/Error code:\s*key_prefix_taken/)
+    expect(w.get('dialog').element.open).toBe(true)
+  } finally { w.unmount() }
+})
+
 it('keeps an invalid installed pack visible and unavailable while valid choices still create', async () => {
   vi.mocked(work.packs).mockResolvedValue([...packs, { id: 'app:broken', title: 'Broken pack', version: '1', icon: 'tabler:alert-triangle', description: '', problem: { code: 'invalid_pack', message: 'Pack data is malformed' } }])
   const w = await render()
@@ -56,10 +68,13 @@ it('keeps an invalid installed pack visible and unavailable while valid choices 
   expect(w.emitted('created')).toEqual([['new']]); w.unmount()
 })
 it('updates description after creation and retries metadata on the same created board', async () => {
-  vi.mocked(work.updateBoard).mockRejectedValueOnce(new Error('Metadata service unavailable')).mockResolvedValue({ board_id: 'new', status: 'updated' })
+  vi.mocked(work.updateBoard).mockRejectedValueOnce(new ApiError({ message: 'Metadata service unavailable', details: { code: 'metadata_unavailable' } }, 'Save description', 503)).mockResolvedValue({ board_id: 'new', status: 'updated' })
   const w = await render(); await w.get('form').trigger('submit'); await flushPromises()
   expect(work.updateBoard).toHaveBeenCalledWith('new', { description: 'A shared delivery plan.' })
-  expect(w.text()).toContain('Metadata service unavailable'); expect(w.emitted('created')).toBeUndefined()
+  const alert = w.get('[role="alert"]').text()
+  expect(alert).toContain('Board created. Description was not saved. Metadata service unavailable')
+  expect(alert).toMatch(/Error code:\s*metadata_unavailable/)
+  expect(w.emitted('created')).toBeUndefined()
   await w.get('form').trigger('submit'); await flushPromises()
   expect(work.createBoard).toHaveBeenCalledOnce(); expect(w.emitted('created')).toEqual([['new']]); w.unmount()
 })

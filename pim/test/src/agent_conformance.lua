@@ -14,6 +14,7 @@ local exclusions = {
     ["kickside.pim:catalog.plugin_feed"] = "State workers consume opaque feed tokens through the host contract only.",
     ["kickside.pim:catalog.plugin_context"] = "Plugin service admission uses the host contract only.",
     ["kickside.pim:schema_provider.resolve"] = "Provider seam resolves plugin schema declarations.",
+    ["kickside.pim:family_check.run"] = "Family checks run inside catalog commands, readiness and release.",
     ["kickside.pim:link_target.resolve"] = "Provider seam resolves link targets.",
     ["kickside.pim:link_target.describe"] = "Provider seam describes link targets.",
     ["kickside.pim.inventory:inventory.attach"] = "Administration owns attachment setup.",

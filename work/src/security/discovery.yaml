@@ -231,6 +231,7 @@ entries:
     - kickside.work.migrations:01_work
     - kickside.work.migrations:02_saved_view_boards
     - kickside.work.migrations:03_move_operation_keys
+    - kickside.work.migrations:04_link_page_indexes
     - kickside.work.persist:access_rows
     - kickside.work.persist:append
     - kickside.work.persist:board_meta
@@ -419,8 +420,29 @@ entries:
     - kickside.work.service:view
     - kickside.work.settings:audit
     - kickside.work.settings:audit_days
+    - kickside.work.settings:bulk_batch_items
+    - kickside.work.settings:bulk_batch_ops
+    - kickside.work.settings:cleanup_batch
+    - kickside.work.settings:command_deadline_ms
+    - kickside.work.settings:comments_per_item
     - kickside.work.settings:defaults
     - kickside.work.settings:interval_days
+    - kickside.work.settings:migration_batch
+    - kickside.work.settings:migration_batches_per_run
+    - kickside.work.settings:operation_batches_per_run
+    - kickside.work.settings:pack_steps_per_run
+    - kickside.work.settings:plugin_batch
+    - kickside.work.settings:plugin_batches_per_run
+    - kickside.work.settings:plugin_discovery_batch
+    - kickside.work.settings:plugin_projection_batch
+    - kickside.work.settings:projection_catchup_ticks
+    - kickside.work.settings:read_deadline_ms
+    - kickside.work.settings:rebalance_batch
+    - kickside.work.settings:rebalance_batches_per_run
+    - kickside.work.settings:rebuild_batch
+    - kickside.work.settings:rebuild_batches_per_run
+    - kickside.work.settings:retention_batch
+    - kickside.work.settings:storage_batch
     - kickside.work.settings:tombstone_days
     - kickside.work.settings:trash_days
     - kickside.work.settings:validate
@@ -469,6 +491,7 @@ entries:
     - kickside.work:registry_admin_grant
     - kickside.work:schema_provider
     - kickside.work:search_resolver
+    - kickside.work.security:search_invocation
     - kickside.work:target_db
     - kickside.work:types
     - kickside.work:view

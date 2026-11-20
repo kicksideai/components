@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import { formatApiError } from '../../transport'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
@@ -25,7 +26,7 @@ async function load() {
     if (request !== sequence) return
     versions.value = rows.filter(row => Number.isInteger(row.version) && row.version > 0)
     if (!choosing.value && reference && !versions.value.some(row => row.version === reference.version)) throw new Error('The published version is unavailable.')
-  } catch (cause) { if (request === sequence) error.value = cause instanceof Error ? cause.message : 'Could not read published Flow.' }
+  } catch (cause) { if (request === sequence) error.value = formatApiError(cause, 'Could not read published Flow.') }
   finally { if (request === sequence) loading.value = false }
 }
 watch([selectedId, () => props.modelValue?.version, choosing], load, { immediate: true })
@@ -48,13 +49,16 @@ onBeforeUnmount(() => { sequence++; emit('validity', true) })
   <section class="work-stack work-tight" aria-label="Stage Flow">
     <h4 class="work-field-label">What runs</h4>
     <p v-if="!modelValue" class="work-muted work-small">No Flow bound. This stage keeps its existing external execution contract.</p>
-    <p v-if="error" class="kx-err" role="alert">{{ choosing ? 'Flow versions unavailable' : 'Flow binding unavailable' }}: {{ selectedId }}<template v-if="!choosing && modelValue"> · v{{ modelValue.version }}</template>. {{ error }}<Button label="Reload Flow" severity="secondary" text @click="load" /></p>
+    <div v-if="error" class="kx-err work-alert-actions">
+      <p role="alert">{{ choosing ? 'Flow versions unavailable' : 'Flow binding unavailable' }}<template v-if="!choosing && modelValue"> (v{{ modelValue.version }})</template>. {{ error }}</p>
+      <Button label="Reload Flow" severity="secondary" text @click="load" />
+    </div>
     <wc-workflow-picker v-if="ready" :schema="schema" :config="config" :title="modelValue?.id" @change="pick" />
     <p v-else class="kx-err" role="alert">Published Flow picker unavailable.<Button label="Reload Flow picker" text severity="secondary" @click="loadWidget" /></p>
     <label v-if="selectedId" class="work-stack work-tight">Published version<Select
       :model-value="choosing ? undefined : modelValue?.version" :options="versions.map(row => ({ label: 'v' + row.version, value: row.version }))"
       option-label="label" option-value="value" aria-label="Published version" placeholder="Choose a published version" append-to="self" :loading="loading" :disabled="loading || !!error" @update:model-value="select" /></label>
-    <p v-if="choosing" class="work-muted work-small" role="status">Choose a published version of {{ selectedId }} to finish selecting the Flow.</p>
+    <p v-if="choosing" class="work-muted work-small" role="status">Choose a published version to finish selecting the Flow.</p>
     <Button v-if="modelValue || choosing" :label="choosing ? 'Cancel Flow selection' : 'Remove Flow binding'" :aria-label="choosing ? 'Cancel Flow selection' : 'Remove Flow binding'" severity="secondary" text @click="choosing ? (choosing = false, candidate = '') : remove()" />
   </section>
 </template>

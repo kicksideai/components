@@ -30,10 +30,12 @@ afterEach(() => { for (const wrapper of wrappers.splice(0)) wrapper.unmount() })
 async function render() { const w = mount(BoardSettings, { props: { boardId: 'b' } }); wrappers.push(w); await flushPromises(); return w }
 async function edit(w: ReturnType<typeof mount>) { await w.find('form input[aria-label="Field code"]').setValue('name'); await flushPromises() }
 it('retains the reviewed schema request and key after an uncertain apply', async () => {
-  vi.mocked(settings.apply).mockRejectedValueOnce(new Error('Connection lost')).mockResolvedValue({ generation: 2, class: 'cosmetic' })
+  vi.mocked(settings.apply).mockRejectedValueOnce(new ApiError({ message: 'Connection lost', details: { code: 'apply_unavailable' } }, 'Apply changes', 503)).mockResolvedValue({ generation: 2, class: 'cosmetic' })
   const w = await render(); await edit(w)
   await getButton(w.get('.kx-head-actions'), 'Review changes').trigger('click'); await flushPromises()
   await getButton(w.get('.kx-head-actions'), 'Apply').trigger('click'); await flushPromises()
+  expect(w.get('[role="alert"]').text()).toContain('Connection lost')
+  expect(w.get('[role="alert"]').text()).toMatch(/Error code:\s*apply_unavailable/)
   await getButton(w.get('.kx-head-actions'), 'Apply').trigger('click'); await flushPromises()
   expect(settings.apply).toHaveBeenCalledTimes(2)
   expect(vi.mocked(settings.apply).mock.calls[1]).toEqual(vi.mocked(settings.apply).mock.calls[0])
@@ -135,10 +137,11 @@ it('discards invalid text and permits a fresh review after correcting the draft'
   expect(w.find('[aria-label="Schema review"]').exists()).toBe(true)
 })
 it('renders compiler field errors inline and retains the editable draft', async () => {
-  const { ApiError } = await import('../../transport')
-  vi.mocked(settings.plan).mockRejectedValue(new ApiError({ message: 'This field cannot index by number.', details: { field: 'name' } }, 'Schema plan'))
+  vi.mocked(settings.plan).mockRejectedValue(new ApiError({ message: 'This field cannot index by number.', details: { code: 'invalid_schema', field: 'name' } }, 'Schema plan'))
   const w = await render(); await edit(w); await getButton(w.get('.kx-head-actions'), 'Review changes').trigger('click'); await flushPromises()
-  expect(w.find('.work-field-row [role=alert]').text()).toContain('This field cannot index by number.')
+  const alert = w.get('.work-field-row [role=alert]').text()
+  expect(alert).toContain('This field cannot index by number.')
+  expect(alert).toMatch(/Error code:\s*invalid_schema/)
   expect(w.get('.kx-head-actions').findAll('button').filter(button => button.text() === 'Apply')).toHaveLength(0)
   expect(w.find<HTMLInputElement>('form input[aria-label="Field code"]').element.value).toBe('name')
 })

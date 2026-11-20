@@ -14,6 +14,9 @@ local function every_event(h: fixture.Handle)
     assert(h.call("configure_plugin", { plugin = "app:strict_plugin", config = { endpoint="after" } }))
     assert(h.executor:call("app:plugin_rebuild", { catalog_id = h.id, plugin = "app:strict_plugin" }))
     fixture.boot(h)
+    local proposal = assert(h.call("propose", { items = { { product = { sku = "RDG" },
+        set = { { attr = "core.care", value = "Proposed care" } } } } })) :: types.ProposeResult
+    assert(h.call("decide", { proposal_id = proposal.proposal_id, decision = "reject" }))
     assert(h.call("apply",{idempotency={namespace="test",key="noop"},items={{product={sku="RDG"},expect_version="any",status="active"}}}))
     h.call("apply", { items = { { term = { vocabulary = "colors", code = "teal" }, labels = { en = "Teal" } } } })
     h.call("apply", { source = "pricing", origin = { type = "feed", id = "feed" }, items = { { product = { sku = "PRICED" }, create = { family = "generic" }, seq = 4,
@@ -43,6 +46,87 @@ local compatibility = require("event_compatibility")
 
 local function define()
     test.describe("automation ports", function()
+        test.it("replays a proposal rejection even when the proposal was already conflicted", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local trace = { trace_id = "proposal-review", correlation_key = "review-inbox" }
+            local proposal = assert(h.call("propose", { items = { { product = { sku = "RDG" },
+                set = { { attr = "core.care", value = "Suggested" } } } }, trace_context = trace })) :: types.ProposeResult
+            assert(h.call("apply", { items = { { product = { sku = "RDG" }, expect_version = "any",
+                set = { { attr = "core.care", value = "New version" } } } } }))
+            local function decide(decision: string): types.DecideResult
+                return assert(h.call("decide", { proposal_id = proposal.proposal_id, decision = decision,
+                    trace_context = trace })) :: types.DecideResult
+            end
+            test.eq(decide("accept").status, "conflict")
+            test.eq(decide("accept").status, "conflict")
+            test.eq(#(assert(h.call("list_proposals", { status = "pending" })) :: types.ProposalsResult).proposals, 0)
+            test.eq(decide("reject").status, "rejected")
+            test.eq(decide("reject").status, "rejected")
+            local facts: { types.RawEvent } = {}
+            for _, event in ipairs(fixture.events(h)) do
+                if event.type == "kickside.pim.events:proposal.submitted" or event.type == "kickside.pim.events:proposal.decided" then
+                    facts[#facts + 1] = event
+                end
+            end
+            test.eq(#facts, 3)
+            test.eq(facts[1].type, "kickside.pim.events:proposal.submitted")
+            test.eq(facts[1].body.generation, 1)
+            test.eq(facts[1].trace_context.correlation_key, trace.correlation_key)
+            for _, event in ipairs(facts) do test.eq(event.body.proposal_id, proposal.proposal_id) end
+            test.eq(facts[2].body.status, "conflict")
+            test.eq(facts[2].body.decision, "accept")
+            test.eq(facts[3].body.status, "rejected")
+            test.eq(facts[3].body.decision, "reject")
+            test.eq(facts[3].trace_context.correlation_key, trace.correlation_key)
+            local listed = assert(h.call("list_proposals", { status = "rejected" })) :: types.ProposalsResult
+            test.eq(listed.proposals[1].proposal_id, proposal.proposal_id)
+        end)
+
+        test.it("commits acceptance with the product edit and returns the same decision on replay", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local proposal = assert(h.call("propose", { items = { { product = { sku = "RDG" },
+                set = { { attr = "core.care", value = "Accepted" } } } } })) :: types.ProposeResult
+            local request = { proposal_id = proposal.proposal_id, decision = "accept" }
+            local accepted = assert(h.call("decide", request)) :: types.DecideResult
+            local replayed = assert(h.call("decide", request)) :: types.DecideResult
+            test.eq(accepted.status, "accepted")
+            test.eq(assert(accepted.result).seq, assert(replayed.result).seq)
+            local events = fixture.events(h)
+            local edit, fact = events[#events - 1], events[#events]
+            test.eq(edit.type, "kickside.pim.events:product.changed")
+            test.eq(edit.body.approval_item_id, proposal.proposal_id)
+            test.eq(fact.type, "kickside.pim.events:proposal.decided")
+            test.eq(fact.body.status, "accepted")
+            test.eq(fact.seq, edit.seq + 1)
+            test.eq(assert(steps.get(h, "RDG")).values["core.care"].value, "Accepted")
+        end)
+
+        test.it("records the schema generations that encoded retained product patches", function()
+            local h = fixture.catalog()
+            steps.one(h, { product = { sku = "PATCH-GENERATION" }, create = { family = "footwear" },
+                set = { { attr = "core.name", ctx = { locale = "en" }, value = "Before" } } })
+            local schema = assert(h.call("apply_schema", { declaration = { aspects = {
+                { namespace = "extension", attributes = { { code = "field", type = "kickside.pim.types:text" } } },
+            } } })) :: types.SchemaResult
+            test.eq(schema.generation, 2)
+            steps.one(h, { product = { sku = "PATCH-GENERATION" }, expect_version = "any",
+                set = { { attr = "core.name", ctx = { locale = "en" }, value = "After" } } })
+            local patches: { [string]: types.ProductBody } = {}
+            for _, event in ipairs(fixture.events(h)) do
+                if event.type == "kickside.pim.events:product.created" or event.type == "kickside.pim.events:product.changed" then
+                    patches[event.type] = event.body :: types.ProductBody
+                end
+            end
+            local created = assert(patches["kickside.pim.events:product.created"])
+            local changed = assert(patches["kickside.pim.events:product.changed"])
+            test.eq(assert(created.patch)[1].v, "Before")
+            test.eq(assert(changed.patch)[1].v, "After")
+            test.eq(created.generation, 1)
+            test.eq(changed.generation, 2)
+        end)
+
         test.it("detects nested event schema incompatibilities", function()
             local frozen = baseline.schemas["product.changed"]
             for _, mutation in ipairs({ "type", "required", "removed", "constraint" }) do

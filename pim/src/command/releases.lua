@@ -87,6 +87,7 @@ function M.release(db: types.Executor, catalog: types.Catalog, request: types.Re
     local published:{[string]:{[string]:{release_id:string,hash:string}}}={}
     for index, item in ipairs(request.items) do
         local outcome: types.Outcome
+        local expected = type(item.expect_version) == "number" and math.tointeger(item.expect_version) or nil
         local p, err = load(db, catalog.catalog_id, item.product)
         if err then return nil, err end
         local problem = channel_problem(compiled, item.channels)
@@ -97,8 +98,12 @@ function M.release(db: types.Executor, catalog: types.Catalog, request: types.Re
         elseif p.status ~= "active" then
             outcome = { outcome = "invalid", product_id = p.product_id, findings = { { message = "only active products are released",
                 code = "inactive" } } }
-        elseif type(item.expect_version) ~= "number" or math.tointeger(item.expect_version) ~= p.version then
-            outcome = { outcome = "conflict", product_id = p.product_id, version = p.version, findings = { { message = "product changed" } } }
+        elseif expected == nil then
+            outcome = { outcome = "conflict", product_id = p.product_id, version = p.version,
+                findings = { { code = "invalid_version", message = "expect_version must be an integer" } } }
+        elseif expected ~= p.version then
+            outcome = { outcome = "conflict", product_id = p.product_id, version = p.version,
+                findings = { { code = "version_conflict", message = "product changed" } } }
         elseif p.is_item ~= 1 then
             local identity, ierr = execution_identity.capture()
             if ierr or not identity then return nil, ierr :: error? end

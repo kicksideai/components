@@ -58,6 +58,30 @@ end
 
 local function define()
     test.describe("plugins per catalog", function()
+        test.it("reports accepted interface versions in schema options", function()
+            local h = fixture.catalog({ bare = true })
+            local options = assert(h.call("schema_options", {})) :: types.SchemaOptions
+            local by_id: { [string]: types.PluginOption } = {}
+            for _, plugin in ipairs(options.plugins) do by_id[plugin.plugin] = plugin end
+            test.eq(assert(by_id["app:probe_bare_plugin"]).interface_version, 1)
+            test.eq(assert(by_id["app:probe_version_one_plugin"]).interface_version, 1)
+            local unsupported = assert(by_id["app:probe_version_future_plugin"])
+            test.eq(assert(unsupported.problem).code, "plugin_interface_version_unsupported")
+            test.is_nil(unsupported.interface_version)
+        end)
+
+        test.it("refuses activation of an unsupported plugin before appending schema", function()
+            local h = fixture.catalog({ bare = true })
+            local before = #fixture.events(h)
+            local result, err = h.call("apply_schema", { declaration = {
+                plugins = { { use = "app:probe_version_future_plugin" } },
+            } })
+            test.is_nil(result)
+            test.eq(assert(err):kind(), errors.INVALID)
+            test.eq(assert(err):details().code, "plugin_interface_version_unsupported")
+            test.eq(#fixture.events(h), before)
+        end)
+
         test.it("answers plugin lists with explicit activity and structured declaration problems", function()
             local h = fixture.catalog()
             local out = schema(h)

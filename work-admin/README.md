@@ -19,7 +19,7 @@ responsive layout, keyboard selection, zoom and pan.
 Bind `kickside.work.admin:ui_server` to the host HTTP service and
 `kickside.work.admin:api_router` to its authenticated router running
 `token_auth` and `endpoint_firewall`. Install and bind `kickside/work` and
-`kickside/widgets` as usual. The Work dependency floor is 0.1.9. This release
+`kickside/widgets` as usual. The Work dependency floor is 0.1.15. This release
 supports board ADMIN schema options, typed board admission, automated stage
 Flow bindings, and explicit visibility removal.
 
@@ -39,7 +39,9 @@ administration rights. Its two helper routes are:
 
 - `GET /api/v1/work-admin/boards/{id}/options`: reads the board under the
   caller's scope and reports independent READ/WRITE/ADMIN access. Only board
-  administrators receive plugin and installed field-type choices.
+  administrators receive plugin and installed field-type choices. `installed_types`
+  carries the same descriptors as `schema_options.field_types`. The Fields picker uses
+  each descriptor's value form, index choices and configuration schema.
 - `POST /api/v1/work-admin/boards/{id}/principal_labels`: requires board ADMIN
   and resolves up to 200 user/group references through the scoped Directory
   contract. It accepts `{ "refs": [{ "type": "user", "id": "…" }] }` and returns
@@ -95,7 +97,7 @@ immediate cleanup. Comments per item supports a board override of 1–100000.
 
 An existing empty board can use Install pack and review the backend's plan before
 applying. Required plugins use exact manifest IDs and the existing configuration
-form during pack review. Packed creation offers initial configuration as JSON
-objects keyed by those IDs, includes them in the retry identity, and lets Work
-validate required configuration. Refresh status explicitly reloads plugin
+form during pack review. Packed creation uses each required plugin’s declared configuration fields.
+It submits values under the exact plugin IDs and includes them in the retry
+identity so Work can validate the required configuration. Refresh status explicitly reloads plugin
 lifecycle/projection progress while preserving a schema draft.

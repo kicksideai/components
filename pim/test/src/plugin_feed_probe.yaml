@@ -70,6 +70,7 @@ entries:
       resolve: kickside.pim.domain:resolve
       types: kickside.pim:types
       proposal_rows: kickside.pim.persist:proposal_rows
+      defaults: kickside.pim.settings:defaults
       read_model: kickside.pim.persist:read_model
 
   - name: snapshot_access

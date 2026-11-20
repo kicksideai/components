@@ -16,13 +16,14 @@ M.Runner = Runner
 -- run_check appends one check's findings over the item's view of what it
 -- reads; a check that cannot run yields check_unavailable.
 local function run_check(compiled: types.Compiled, item: types.Product, lineage: types.Lineage, run: Runner?, check: types.Check,
-    findings: { types.Finding })
+    findings: { types.Finding }, previous_status: string?, proposed_status: string?)
     if not run then
         findings[#findings + 1] = { code = "check_unavailable", check = check.fn, message = "check runner unavailable" }
         return
     end
     local out, err = run(check.fn, { config = check.config, view = snapshot.values_for(compiled, item, lineage, check.reads),
-        product = { product_id = item.product_id, sku = item.sku, family = item.family, level = item.level } })
+        product = { product_id = item.product_id, sku = item.sku, family = item.family, level = item.level },
+        previous_status = previous_status, proposed_status = proposed_status })
     if err or not out then
         findings[#findings + 1] = { code = "check_unavailable", check = check.fn, message = err and tostring(err) or "check returned no findings" }
         return
@@ -46,11 +47,13 @@ end
 
 -- enforced runs the family checks that enforce writes at the item's level and
 -- returns their findings; any finding rejects the write.
-function M.enforced(compiled: types.Compiled, item: types.Product, lineage: types.Lineage, run: Runner?): { types.Finding }
+function M.enforced(compiled: types.Compiled, item: types.Product, lineage: types.Lineage, run: Runner?, previous_status: string?): { types.Finding }
     local findings: { types.Finding } = {}
     local family = compiled.families[item.family]
     for _, check in ipairs(family and family.checks or {}) do
-        if check.enforce and check.level == item.level then run_check(compiled, item, lineage, run, check, findings) end
+        if check.enforce and check.level == item.level then
+            run_check(compiled, item, lineage, run, check, findings, previous_status, item.status)
+        end
     end
     return findings
 end

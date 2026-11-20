@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { api } from '@wippy-fe/proxy'
-import { failure } from '../../transport'
+import { ApiError, failure } from '../../transport'
 export type FlowRef = { kind: 'flow'; id: string; version: number }
 async function read(path: string, params?: Record<string, string>): Promise<{
   versions?: { version: number }[]
@@ -9,7 +9,10 @@ async function read(path: string, params?: Record<string, string>): Promise<{
 }> {
   try {
     const { data } = await api.get(path, params ? { params } : undefined)
-    if (!data?.success) throw new Error(data?.message || (typeof data?.error === 'string' ? data.error : data?.error?.message) || 'Could not read published Flow.')
+    if (!data?.success) {
+      const message = data?.message || (typeof data?.error === 'string' ? data.error : data?.error?.message) || 'Could not read published Flow.'
+      throw new ApiError({ message, details: data?.details }, 'Published Flow')
+    }
     return data
   } catch (error) { throw failure(error, 'Published Flow') }
 }

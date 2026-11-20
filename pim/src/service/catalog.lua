@@ -46,9 +46,9 @@ end
 function M.list(input: unknown): (types.ListResult?, error?)
     local perr = requests.parse("list", input)
     if perr then return nil, perr end
-    local request = (input or {}) :: {limit:integer?,after:integer?}
+    local request = (input or {}) :: { limit: integer?, after: integer?, text: string?, admin_only: boolean? }
     local limit=request.limit or 50
-    local catalogs, err, after = locate.readable(limit, request.after)
+    local catalogs, err, after = locate.readable(limit, request.after, nil, request)
     if err or not catalogs then return nil, err end
     return { catalogs = catalogs, after = after }, nil
 end
@@ -63,6 +63,8 @@ end
 M.get_schema = with_catalog("get_schema", function(id: string, input: unknown): (types.SchemaView?, error?)
     return reader.get_schema(id, input :: types.GetSchemaRequest)
 end)
+
+M.policy_defaults = with_catalog("policy_defaults", reader.policy_defaults)
 
 M.plan_schema = with_catalog("plan_schema", function(id: string, input: unknown): (types.SchemaPlanResult?, error?)
     local request = input :: types.SchemaRequest

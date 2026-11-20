@@ -19,11 +19,12 @@ local function create(owner: session.Session, declaration: unknown?): string
     return created.body.data.board_id
 end
 
-local function credential(owner: session.Session, board_id: string, traits: { string })
+local function credential(owner: session.Session, board_id: string, traits: { string }, tools: { string }?)
     local contexts = table.create(0, #traits)
     for _, trait in ipairs(traits) do contexts[trait] = { board_id = board_id } end
     local minted = owner.post("/mcp/credentials", {
         label = "Work trait fixture", allowed_trait_ids = traits, default_active_trait_ids = traits,
+        allowed_tool_ids = tools,
         agent_profile = { trait_contexts = contexts },
     })
     test.eq(minted.status, 200, json.encode(minted.body))
@@ -132,6 +133,74 @@ local function cases()
             test.eq(call("WorkSaveView", { view_id = view, view = { type = "list", columns = { "title" } } }).view_id, view)
             test.eq(call("WorkRenameView", { view_id = view, title = "MCP renamed" }).view_id, view)
             test.eq(call("WorkDeleteView", { view_id = view }).view_id, view)
+        end)
+        test.it("keeps direct WorkComment and WorkTransition grants within their advertised operations", function()
+            local owner = session.admin()
+            local id = create(owner)
+            local read_write = checked_tools(credential(owner, id, { NS .. "work" }), exercised)
+            local item = add_item(read_write)
+            local reference = { item = { id = item } }
+            local allowed = {
+                { name = "WorkComment", tool = "comment", op = { op = "comment", item = item, body = "Allowed comment" } },
+                { name = "WorkTransition", tool = "transition", op = { op = "transition", item = item, transition = "finish" } },
+            }
+            for _, grant in ipairs(allowed) do
+                local rpc = credential(owner, id, {}, { NS .. grant.tool })
+                local tools = aliases(rpc)
+                test.not_nil(tools[grant.name])
+                for name in pairs(tools) do test.eq(name, grant.name) end
+                local call = checked_tools(rpc, exercised)
+                test.is_true(call(grant.name, { board_id = id, ops = { grant.op } }).applied)
+                for _, foreign in ipairs({
+                    { op = "create", type = "task", values = { title = "Forbidden create" } },
+                    { op = "set", item = item, values = { title = "Forbidden edit" } },
+                }) do
+                    local args = { board_id = id, mode = "independent", ops = { grant.op, foreign } }
+                    test.is_false(json.validate_string(tools[grant.name].inputSchema, json.encode(args)) == true)
+                    local result = rpc("tools/call", { name = grant.name, arguments = args })
+                    test.is_true(result.isError, grant.name .. " accepted " .. foreign.op)
+                    test.eq(result.structuredContent.error.kind, errors.INVALID)
+                end
+            end
+            local saved = read_write("WorkGetItem", reference).item
+            test.eq(saved.values.title, "MCP item")
+            test.eq(saved.state, "done")
+            test.eq(#read_write("WorkFindItems").items, 1)
+            local comments = read_write("WorkListComments", reference).comments
+            test.eq(#comments, 1)
+            test.eq(comments[1].body, "Allowed comment")
+        end)
+        test.it("reports a genuine mixed WorkApply rollback and commits a corrected batch", function()
+            local owner = session.admin()
+            local id = create(owner)
+            local call = checked_tools(credential(owner, id, { NS .. "work" }), exercised)
+            local first, stale = add_item(call), add_item(call)
+            local first_ref, stale_ref = { item = { id = first } }, { item = { id = stale } }
+            local version = call("WorkGetItem", stale_ref).item.version
+            test.is_true(call("WorkApply", {
+                ops = { { op = "set", item = stale, values = { title = "Current" } } },
+            }).applied)
+            local ops = {
+                { op = "comment", item = first, body = "Mixed batch" },
+                { op = "set", item = stale, expect_version = version, values = { title = "Corrected" } },
+            }
+            local refused = call("WorkApply", { ops = ops })
+            test.is_true(refused.success)
+            test.is_false(refused.applied)
+            test.eq(refused.outcomes[1].status, "unchanged")
+            test.is_true(refused.outcomes[1].rolled_back)
+            test.eq(refused.outcomes[2].status, "conflict")
+            test.eq(refused.outcomes[2].findings[1].code, "version_mismatch")
+            test.eq(#call("WorkListComments", first_ref).comments, 0)
+            local current = call("WorkGetItem", stale_ref).item
+            test.eq(current.values.title, "Current")
+            ops[2].expect_version = current.version
+            local applied = call("WorkApply", { ops = ops })
+            test.is_true(applied.applied)
+            test.eq(applied.outcomes[1].status, "applied")
+            test.eq(applied.outcomes[2].status, "applied")
+            test.eq(call("WorkListComments", first_ref).comments[1].body, "Mixed batch")
+            test.eq(call("WorkGetItem", stale_ref).item.values.title, "Corrected")
         end)
         test.it("runs bulk and cross-board move tools against their advertised output schemas", function()
             local owner = session.admin()

@@ -192,13 +192,14 @@ function M.parse_key(key: string): (string?, integer?)
     return prefix, math.tointeger(tonumber(digits))
 end
 
--- item_by_key resolves a key to its item on any board: the board that claimed the
--- prefix holds the number.
-function M.item_by_key(db: storage.Executor, key: string): (types.Item?, error?)
+-- Scope the key's origin before following its move aliases to the current item.
+function M.item_by_key(db: storage.Executor, key: string, board_id: string?): (types.Item?, error?)
     local prefix, number = M.parse_key(key)
     if not prefix or not number then return nil, nil end
+    local params: types.SqlParams = { prefix, number }
+    if board_id then params[3] = board_id end
     local rows, err = db:query([[SELECT i.* FROM kickside_work_prefix p JOIN kickside_work_item i ON i.board_id = p.board_id
-        WHERE p.prefix = $1 AND i.number = $2]], { prefix, number })
+        WHERE p.prefix = $1 AND i.number = $2]] .. (board_id and " AND p.board_id = $3" or ""), params)
     if err then return nil, errors.wrap(err, "item read failed") end
     local row = rows and rows[1]
     local item: types.Item? = nil
@@ -207,7 +208,10 @@ function M.item_by_key(db: storage.Executor, key: string): (types.Item?, error?)
         if derr or not decoded then return nil, derr end
         item = decoded[1]
     else
-        local aliases, aerr = db:query("SELECT to_board_id,to_item_id FROM kickside_work_key_alias WHERE key = $1", { key:upper() })
+        local params: types.SqlParams = { key:upper() }
+        if board_id then params[2] = board_id end
+        local aliases, aerr = db:query("SELECT to_board_id,to_item_id FROM kickside_work_key_alias WHERE key = $1"
+            .. (board_id and " AND board_id = $2" or ""), params)
         if aerr then return nil, aerr end
         if aliases and aliases[1] then
             local decoded, derr = M.item(db, aliases[1].to_board_id :: string, aliases[1].to_item_id :: string)

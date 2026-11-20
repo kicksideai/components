@@ -21,11 +21,19 @@ const processes = computed(() => props.draft.processes ?? [])
 const creating = ref(false), newName = ref(''), selected = ref(''), error = ref(''), mode = ref('Map'), target = ref('')
 const selectedState = ref<State>(), selectedTransition = ref<Transition>(), graph = ref<InstanceType<typeof ProcessGraph>>()
 const inspector = ref<HTMLElement>(), editingName = ref(false)
+type InspectorOpener = HTMLElement | SVGElement
+let inspectorOpener: InspectorOpener | undefined
 async function editName() { editingName.value = true; await nextTick(); inspector.value?.querySelector<HTMLInputElement>('[aria-label="State name"]')?.focus() }
 const process = computed(() => processes.value.find(p => p.id === selected.value) ?? processes.value[0])
-function clear() { editingName.value = false; selectedState.value = undefined; selectedTransition.value = undefined; error.value = '' }
-function chooseState(state: State) { editingName.value = false; selectedState.value = state; selectedTransition.value = undefined; target.value = ''; error.value = '' }
-function chooseTransition(transition: Transition) { editingName.value = false; selectedTransition.value = transition; selectedState.value = undefined; error.value = '' }
+function clear() { editingName.value = false; selectedState.value = undefined; selectedTransition.value = undefined; error.value = ''; inspectorOpener = undefined }
+async function closeInspector() {
+  const opener = inspectorOpener
+  clear()
+  await nextTick()
+  if (opener?.isConnected) opener.focus()
+}
+function chooseState(state: State, opener?: InspectorOpener) { inspectorOpener = opener; editingName.value = false; selectedState.value = state; selectedTransition.value = undefined; target.value = ''; error.value = '' }
+function chooseTransition(transition: Transition, opener?: InspectorOpener) { inspectorOpener = opener; editingName.value = false; selectedTransition.value = transition; selectedState.value = undefined; error.value = '' }
 watch(process, clear)
 function selectProcess(value: string) { if (value === '__new') creating.value = true; else selected.value = value }
 function add() {
@@ -37,7 +45,7 @@ function add() {
   ;(props.draft.processes ??= []).push({ id: code, name, initial: 'todo', states: [{ id: 'todo', name: 'To do', category: 'unstarted' }], transitions: [] })
   selected.value = code; newName.value = ''; creating.value = false
 }
-async function addState(p: Process) {
+async function addState(p: Process, opener: HTMLElement) {
   const state: State = { id: uniqueId('state', p.states), name: 'New state', category: 'started' }
   const main = mainPath(p), last = main.at(-1)
   const after = selectedState.value ?? (last?.category === 'completed' ? main.at(-2) : last)
@@ -50,20 +58,20 @@ async function addState(p: Process) {
       ;(p.transitions ??= []).push({ id: uniqueId('transition', p.transitions ?? []), name: 'Continue', from: [state.id], to: target, ...(outgoing.auto && outgoing.default ? { auto: true, default: true } : {}) })
     } else (p.transitions ??= []).push({ id: uniqueId('transition', p.transitions ?? []), name: 'Continue', from: [after.id], to: state.id })
   }
-  chooseState(state)
+  chooseState(state, opener)
   await editName()
 }
-function connect(from: string, to: string) {
+function connect(from: string, to: string, opener = inspectorOpener) {
   const p = process.value
   if (!p || !to || from === to) return
   let id = `to_${to}`, index = 2
   while (p.transitions?.some(transition => transition.id === id)) id = `to_${to}_${index++}`
   const transition: Transition = { id, name: `To ${stateTitle(p.states.find(s => s.id === to)).toLowerCase()}`, from: [from], to }
-  ;(p.transitions ??= []).push(transition); chooseTransition(transition)
+  ;(p.transitions ??= []).push(transition); chooseTransition(transition, opener)
 }
-function addTransition(p: Process) {
+function addTransition(p: Process, opener: HTMLElement) {
   const transition: Transition = { id: uniqueId('transition', p.transitions ?? []), name: 'To ' + stateTitle(p.states.at(-1)), from: [p.initial], to: p.states.at(-1)?.id ?? p.initial }
-  ;(p.transitions ??= []).push(transition); chooseTransition(transition)
+  ;(p.transitions ??= []).push(transition); chooseTransition(transition, opener)
 }
 function removeTransition(p: Process, transition: Transition) {
   const uses = transitionUses(p, transition)
@@ -84,7 +92,7 @@ async function remove(p: Process) {
 }
 </script>
 <template>
-  <section class="work-process-editor work-stack" aria-label="Process editor" @keydown.esc="clear">
+  <section class="work-process-editor work-stack" aria-label="Process editor" @keydown.esc="closeInspector">
     <p v-if="error" class="kx-err" role="alert">{{ error }}</p>
     <p
       v-for="issue in issues?.filter((i) => i.code === 'process ' + process?.id) ?? []"
@@ -114,7 +122,7 @@ async function remove(p: Process) {
           @update:model-value="selectProcess"
         />
         <span v-else class="work-process-title">{{ process.name || 'Process' }}</span>
-        <Button label="Add state" severity="secondary" outlined size="small" @click="addState(process)"
+        <Button label="Add state" severity="secondary" outlined size="small" @click="addState(process, $event.currentTarget as HTMLElement)"
           ><template #icon><Icon icon="tabler:plus" /></template
         ></Button>
         <Select
@@ -183,7 +191,7 @@ async function remove(p: Process) {
         @state="chooseState"
         @transition="chooseTransition"
         @connect="connect"
-        @clear="clear"
+        @clear="closeInspector"
       />
       <ProcessList
         v-else
@@ -194,7 +202,7 @@ async function remove(p: Process) {
         @transition="chooseTransition"
         @remove-state="removeState(process, $event)"
         @remove-transition="removeTransition(process, $event)"
-        @add-transition="addTransition(process)"
+        @add-transition="addTransition(process, $event)"
       />
       <aside
         v-if="selectedState || selectedTransition"
@@ -216,7 +224,7 @@ async function remove(p: Process) {
               class="work-process-name"
               aria-label="State name"
               @blur="editingName = false"
-            /><Button severity="secondary" text size="small" aria-label="Close state editor" @click="clear"
+            /><Button severity="secondary" text size="small" aria-label="Close state editor" @click="closeInspector"
               ><Icon icon="tabler:x"
             /></Button>
           </header>
@@ -280,7 +288,7 @@ async function remove(p: Process) {
               text
               size="small"
               aria-label="Close transition editor"
-              @click="clear"
+              @click="closeInspector"
               ><Icon icon="tabler:x"
             /></Button>
           </header>

@@ -416,6 +416,7 @@ A plugin declares itself once with a `kickside.pim.plugin` entry:
   kind: registry.entry
   meta:
     type: kickside.pim.plugin
+    interface_version: 1                  # optional: defaults to 1
     title: Shipping
     settings: acme.shipping                # its deployment configuration defaults namespace
     attachment: acme.shipping:attachment   # required: attachment component kind
@@ -427,6 +428,12 @@ A plugin declares itself once with a `kickside.pim.plugin` entry:
           config: { units: { g: "1", kg: "1000" }, canonical: g, scale: 0 } } ] } ]
       provider: acme.shipping:schema       # or a kickside.pim:schema_provider binding resolving the fragment per catalog
 ```
+
+PIM accepts manifest interface version `1`, including when
+`interface_version` is omitted. Other values fail with native
+`errors.INVALID` and `details.code = "plugin_interface_version_unsupported"`
+before PIM validates the rest of the manifest. The provider's fragment
+`version` and a projection's `revision` describe their own separate contracts.
 
 Membership is explicit and lives in the catalog's schema declaration:
 `plugins: [ { use: <plugin id> } ]`. Present means active, absent means inactive.
@@ -461,7 +468,7 @@ One entry shape applies wherever plugin state is answered (`get_schema.plugins`,
 a list, and the options listing):
 
 ```
-{ plugin: <id>, title, description, icon, installed: boolean, active: boolean,
+{ plugin: <id>, interface_version?: integer, title, description, icon, installed: boolean, active: boolean,
   attachment_id?: string, config?: object,          -- the validated effective configuration
   requires: [..], tools: [..],
   lifecycle: { state: "pending" | "ready" | "failed", error?: { kind, code, message } },
@@ -470,7 +477,8 @@ a list, and the options listing):
 ```
 
 `get_schema.plugins` lists active and installed plugins whose metadata the caller
-can read. The options listing (`schema_options.plugins`) includes their
+can read. Both it and `schema_options.plugins` include the accepted
+`interface_version` for loaded manifests. The options listing also includes
 `config_schema`. The catalog's committed declaration and fields remain readable
 with catalog READ. An explicit `plugin_context` request also requires registry
 access to the requested plugin.
@@ -587,10 +595,13 @@ accepts it only for `cost: interactive` checks whose `reads` are owned at
 one level, so the check runs on that level's products and a model edit never
 evaluates its descendants at the head. Enforced checks run in prepare, as the
 caller, over the product as the item would leave it and before the command's
-state changes; `check_unavailable` rejects. They run at `apply`, at `propose`
-(propose plans the proposal's items at the head without appending, as the
-proposer, and refuses a proposal whose items would be invalid) and at
-`decide`. `restore` and catalog import are exempt: they bring back values
+state changes; `check_unavailable` rejects. The published
+`kickside.pim:family_check` input includes optional `previous_status` and
+`proposed_status`. A write-enforced check receives the candidate's status even
+when it stays the same. A creation omits `previous_status`. Readiness and
+release checks omit both fields. Write enforcement runs at `apply`, `propose`
+(which validates the edits as the proposer before recording the submission) and
+at `decide`. `restore` and catalog import are exempt: they bring back values
 that were accepted when they were written.
 
 ### 3.5 Scopes — `kickside.pim.scope`
@@ -755,15 +766,22 @@ it may already be pruned. Unchanged configuration and revision preserve the curs
   `plugin_feed { catalog_id, plugin, kind, token? }` (READ, contract only; no HTTP
   route or agent tool) with the opaque token kept in its projection body. The host
   validates catalog READ and active plugin membership and answers
-  `{ attachment_id, config, bootstrap, changes, token, done }`: one bounded page
+  `{ attachment_id, config, bootstrap, gap?, changes, token, done }`: one bounded page
   of its durable state feed (the one `list_changes` answers), with upserts carrying
   the record and deletes for trashed and purged records. An absent token starts
-  from the beginning with `bootstrap: true`. The host owns the token format,
-  paging, gap reset and bootstrap bookkeeping. The worker maps `changes` to its
-  own store, stores the returned token in the body and reports progress; it
-  acknowledges the triggering range only when `done` is true and its writes
-  commit. `done` requires the host materialization to reach the catalog thread
-  head sampled before reading the page, with no rebuild or remaining page.
+  from the beginning with `bootstrap: true`. When tombstone pruning expires a
+  token, the first replacement page starts from the beginning with both
+  `bootstrap: true` and `gap: { floor }`, where `floor` is the tombstone floor
+  sequence. The worker clears its replica for the catalog before applying the
+  replacement changes and commits the reset, changes, and replacement token
+  together. Ordinary bootstrap pages and continuations using the replacement
+  token omit `gap` unless a later expiry starts another replacement.
+  The host owns the token format, paging and bootstrap bookkeeping. The worker
+  maps `changes` to its own store, stores the returned token in the body and
+  reports progress. It acknowledges the triggering range only when `done` is
+  true and its writes commit. `done` requires the host materialization to reach
+  the catalog thread head sampled before reading the page, with no rebuild or
+  remaining page.
   The worker does no paging logic, event decoding, attachment or configuration
   lookup and never interprets the token. `bootstrap` stays true until the feed
   reaches the registration position after a (re)registration; per-kind
@@ -934,8 +952,8 @@ used for authorization).
 | `pim.schema.applied` | `schema` | generation, declaration, digest, class, plan; activating `plugin_configs` carried outside the declaration |
 | Plugin configuration fact from `configure_plugin` | plugin | plugin id and validated configuration change |
 | `plugin.rebuild` catalog fact | plugin | plugin id and changed projection revision |
-| `pim.product.created` | `p:<id>` | sku, family, parent, level, axis values, patch |
-| `pim.product.changed` | `p:<id>` | patch, status?, previous_status? (with status), axis_key?, source_seq? |
+| `pim.product.created` | `p:<id>` | sku, family, parent, level, axis values, patch, generation? |
+| `pim.product.changed` | `p:<id>` | patch, generation?, status?, previous_status? (with status), axis_key?, source_seq? |
 | `pim.product.moved` | `p:<id>` | parent, axis_key, source_seq? |
 | `pim.product.deleted` | `p:<id>` | source_seq? |
 | `pim.product.restored` | `p:<id>` | current axis_key, source_seq? |
@@ -943,8 +961,14 @@ used for authorization).
 | `pim.term.changed` | `t:<vocabulary>:<code>` | labels, parent, data, retired |
 | `pim.product.released` | `r:<id>` | release_id, product_id, version, generation, snapshot, hash, channels |
 | `pim.product.withdrawn` | `r:<id>` | product_id, channels |
+| `pim.proposal.submitted` | `proposals` | proposal_id, generation, base product versions, proposed items, source?, origin?, provenance? |
+| `pim.proposal.decided` | `proposals` | proposal_id, decision, resulting status, apply result for an acceptance attempt |
 
-A patch is `[{a, c, before?, v | clear | unset, s?}]`. A product's version
+A patch is `[{a, c, before?, v | clear | unset, s?}]`. New creation and
+change events carry the schema `generation` used to encode these steps, even
+when the patch is empty. Consumers can pass that value to `get_schema` to
+resolve attribute IDs and context keys while the generation is retained.
+Stored events may omit it. A product's version
 counts its product events and equals Core's `subject_version` of `p:<id>`.
 Apply product events carry the command's source and any supplied provenance.
 Events ≤ 4 MB; a release snapshot ≤ 512 KB.
@@ -1324,8 +1348,10 @@ Steps:
 7. Catch up to the appended `max_seq`; return outcomes with versions and seq.
 
 Outcomes: `created | updated | unchanged | conflict | invalid | forbidden`
-with findings. Merge reference paging first selects distinct live holders under
-the product limit using the reference target and product id index, then returns
+with findings. A mismatched integer product version returns `conflict` with
+finding code `version_conflict` and the current version. Merge reference paging
+first selects distinct live holders under the product limit using the reference
+target and product id index, then returns
 all matching references for those holders. A
 500-holder page completes within the 5 s command deadline.
 Merge-generated edits use the ordinary product-edit validation,
@@ -1370,10 +1396,12 @@ input, including punctuation.
 
 An item sort puts nulls last in both directions and breaks ties by ascending
 product ID. A filtered page admits candidates in that order before applying
-filters. The scan budget covers all ranges of the page, including ties and
-nulls. The count uses its own bounded walk in ascending product ID, independent
-of sort and continuation. The same walk reads one extra key to identify a count
-that exhausted its scan budget. Filters apply only within that budget.
+residual filters. A required equality on an indexed scalar field restricts
+the candidates when the query uses product ID order or sorts by that field.
+The scan budget covers all candidate ranges, including ties and nulls. The
+count uses the same candidate restriction and its own bounded walk in ascending
+product ID from the start. It reads one extra key to identify a count that
+exhausted its scan budget. Residual filters apply only within that budget.
 
 Reads run in one read snapshot and return `as_of`. PostgreSQL snapshots use
 a read-only repeatable-read transaction; SQLite uses one read transaction.
@@ -1454,7 +1482,7 @@ The catalog is the security unit: READ sees every item of the catalog.
 | `list_releases({ product, before?, limit? })` | a product's releases newest first |
 | `get_schema({ generation? })` | the declaration and compiled public parts of the head (including an initially empty schema), or of a past generation; `plugins` is the per-catalog state list in §3.2 |
 | `plugin_context({ catalog_id, plugin })` | contract-only READ; `{ attachment_id, config, lifecycle, projections }` for an active plugin (§3.2) |
-| `plugin_feed({ catalog_id, plugin, kind, token? })` | contract-only READ; one bounded state page `{ attachment_id, config, bootstrap, changes, token, done }` for an active declared state projection (§3.11) |
+| `plugin_feed({ catalog_id, plugin, kind, token? })` | contract-only READ; one bounded state page `{ attachment_id, config, bootstrap, gap?, changes, token, done }` for an active declared state projection (§3.11) |
 | `explain({ product, attr, context })` | the resolution steps (2.6) and the findings behind readiness |
 | `list_changes`, `list_publications` | the feeds (§12) |
 
@@ -1594,6 +1622,9 @@ backfill commits.
   the existing ID/hash and appends nothing when the requested channels already
   publish that hash, independently of the latest product release pointer, including duplicate items within
   one release command.
+  A missing or malformed expected version returns an item `conflict` with
+  finding code `invalid_version`. A mismatched integer returns an item
+  `conflict` with `version_conflict`.
   Releasing an active model with its current version appends
   `model.release_requested`; the fold persists `release_job` and enqueues the
   one-shot `release_model` job together. Its outcome is `queued` with the durable
@@ -1630,26 +1661,29 @@ withdrawals. Channel plugins consume the publications feed (§12).
 
 ## 11. Proposals
 
-A proposal is PIM-owned state (Core requires WRITE for any append):
-
-- `propose` (READ) stores items and base versions after prepare and enforced
-  checks. Admission validates the proposal's source and its write scope.
+- `propose` (READ) validates the edits, their source and applicable checks at
+  the catalog head, then appends `proposal.submitted`. The fold records the
+  review row with the captured product versions and schema generation.
   Attributes of source-restricted aspects cannot be proposed. Proposal edits
   use the captured product versions for every source, including sequence-ordered
   sources, and leave each source's delivery sequence unchanged.
-- `decide` (WRITE): accept claims the proposal with a conditional
-  transition at the same catalog head that authorizes the reviewer and plans the
-  edit. It runs `apply` (atomic) with the base versions, its source and
-  `origin` with `approval_item_id` set to the proposal, idempotency `proposal/<id>`, then settles
-  `accepted`, `conflict` (only stale versions stopped it; decidable again)
-  or `failed` (an item is refused outright or the source was removed).
-  If the reviewer loses source access before the write, acceptance releases that
-  reviewer's uncommitted claim. Reject works from `pending` or `conflict`.
+- `decide` (WRITE) accepts or rejects a `pending` or `conflict` proposal at the
+  guarded catalog head. Acceptance uses the atomic apply planner with the
+  captured versions, schema generation, source and origin. Product edits
+  carry the proposal id in `approval_item_id` and commit in the same append as
+  `proposal.decided`. Its status is `accepted`, `conflict` when the proposed
+  edits conflict, or `failed` when an item is refused. A changed schema generation
+  returns `schema_generation_conflict` and requires a new submission for review.
+  A source access denial leaves the review state as it was. The fold records
+  decisions in the inbox. Replaying a settled decision or getting the same
+  conflict outcome again returns the recorded result without another fact.
 - Proposals are reviewed in the shell's proposals view by WRITE holders;
   public meta carries `pending_proposal_count`. Inbox routing is optional
   and built from platform parts: `pim-flow` exposes a `list_proposals` pullable,
   and an automation feeds it to the Inbox review Block under the
   application's assigner group, whose resolution calls `decide`.
+  Decision consumers can subscribe to the two catalog automation ports and
+  correlate the retained facts by `proposal_id`.
 
 ## 12. Integration surface
 

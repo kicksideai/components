@@ -13,6 +13,7 @@ local predicates = require("predicates")
 local plugins = require("plugins")
 local policy = require("policy")
 local access_rules = require("access_rules")
+local search = require("search")
 
 local fields_validator = require("fields")
 local M = {}
@@ -313,6 +314,10 @@ function M.compile(prev: types.Compiled?, decl: types.Declaration, generation: i
     if seam_err then return nil, seam_err end
     local access_err = access_rules.validate(compiled)
     if access_err then return nil, access_err end
+    for _, id in ipairs(compiled.scopes or {}) do
+        local err = search.validate_scope(compiled, id)
+        if err then return nil, err end
+    end
     local predicate_err = predicates.validate(compiled)
     if predicate_err then return nil, predicate_err end
     return compiled, nil

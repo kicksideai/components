@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import { formatApiError } from '../transport'
 import { Icon } from '@iconify/vue'
 import InputNumber from 'primevue/inputnumber'
 import Checkbox from 'primevue/checkbox'
@@ -92,7 +93,7 @@ watch(search, () => {
     try { const q = search.value.trim()
       const rows = /^[A-Z][A-Z0-9]{1,9}-[0-9]+$/.test(q) ? [(await work.item(props.boardId, { key: q })).item] : (await work.query(props.boardId, { where: { field: 'title', op: 'contains', value: q }, limit: 8 })).items
       if (current()) { hits.value = rows; error.value = '' } }
-    catch (e) { if (current()) error.value = e instanceof Error ? e.message : 'Could not search items.' }
+    catch (e) { if (current()) error.value = formatApiError(e, 'Could not search items.') }
   }, 200)
 })
 function pickItem(item: Item) { set({ board: props.boardId, item: item.id }); search.value = ''; hits.value = [] }

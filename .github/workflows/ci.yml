@@ -274,6 +274,25 @@ jobs:
             cd "$source_root"
             version=$(jq -er --arg path work '.[$path]' .release-please-manifest.json)
             wippy publish --config work --version "$version" --dry-run --create --module-visibility private --module-type plugin
+        - module: work-search
+          engine: sqlite
+          commands: |
+            set -euo pipefail
+            make -C work-search setup lint test
+            version=$(jq -r '."work-search" // "0.1.0"' .release-please-manifest.json)
+            wippy publish --config work-search --version "$version" --dry-run --create --module-visibility private --module-type plugin
+        - module: work-search
+          engine: postgres
+          commands: |
+            set -euo pipefail
+            make -C work-search setup
+            database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_work_search"
+            createdb "$database"
+            trap 'dropdb "$database"' EXIT
+            cd work-search/test
+            profile=(--profile postgres --set "vars.pg_database=$database" --set vars.pg_host=127.0.0.1 --set "vars.pg_port=$PGPORT")
+            wippy lint --ns kickside.work_search --ns app --level warning "${profile[@]}"
+            bash run.sh "${profile[@]}"
         - module: pim
           engine: sqlite
           timeout_minutes: 45

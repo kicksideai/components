@@ -28,7 +28,7 @@ M.Prepared = Prepared
 -- level over its state as the item would leave it, as the caller; a finding
 -- rejects the item before the command's state changes. Restore never comes
 -- here and import replays values that were accepted when exported.
-local function enforce(st: item_state.State, candidate: types.Product): (types.Outcome?, error?)
+local function enforce(st: item_state.State, candidate: types.Product, previous_status: string?): (types.Outcome?, error?)
     if st.import then return nil, nil end
     local family = st.compiled.families[candidate.family]
     local any = false
@@ -38,7 +38,7 @@ local function enforce(st: item_state.State, candidate: types.Product): (types.O
     if not any then return nil, nil end
     local lineage, err = item_state.lineage(st, candidate)
     if err or not lineage then return nil, err end
-    local findings = evaluate.enforced(st.compiled, candidate, lineage, checks.run)
+    local findings = evaluate.enforced(st.compiled, candidate, lineage, checks.run, previous_status)
     if #findings == 0 then return nil, nil end
     local outcome: types.Outcome = { outcome = "invalid", findings = findings }
     if candidate.version > 0 then
@@ -137,7 +137,7 @@ local function plan_create(st: item_state.State, item: types.ApplyItem): (types.
     item_state.claim_uniques(st, p, built.unique)
     return { type = EV.PRODUCT_CREATED, subject = "p:" .. p.product_id,
         body = stamp(st, p, { product_id = p.product_id, sku = sku, family = family_code, parent_id = p.parent_id, level = level,
-            is_item = p.is_item == 1, axis_key = key, status = status, patch = built.patch }, seq) },
+            is_item = p.is_item == 1, axis_key = key, status = status, generation = st.catalog.generation, patch = built.patch }, seq) },
         { outcome = "created", product_id = p.product_id, sku = sku, version = 1 }, nil
 end
 
@@ -172,7 +172,7 @@ local function plan_move(st: item_state.State, item: types.ApplyItem, p: types.P
         -- A newer delivery still advances the sequence when the parent already matches.
         p.version = p.version + 1
         return { type = EV.PRODUCT_CHANGED, subject = "p:" .. p.product_id,
-            body = stamp(st, p, { product_id = p.product_id, patch = {} }, seq) },
+            body = stamp(st, p, { product_id = p.product_id, generation = st.catalog.generation, patch = {} }, seq) },
             { outcome = "updated", product_id = p.product_id, version = p.version }, nil
     end
     local family = compiled.families[p.family]
@@ -211,7 +211,7 @@ local function plan_edit(st: item_state.State, item: types.ApplyItem, p: types.P
         if aerr then return nil, nil, aerr end
         if axis_fail then return nil, axis_fail, nil end
     end
-    local rejected, eerr = enforce(st, as_written(p, built.document, status_change and item.status or nil))
+    local rejected, eerr = enforce(st, as_written(p, built.document, item.status), p.status)
     if eerr then return nil, nil, eerr end
     if rejected then return nil, rejected, nil end
     if key ~= p.axis_key then item_state.take_axis(st, p, p.parent_id, key) end
@@ -221,7 +221,7 @@ local function plan_edit(st: item_state.State, item: types.ApplyItem, p: types.P
     if status_change then p.status = item.status :: string end
     item_state.release(st, p, built.released)
     item_state.claim_uniques(st, p, built.unique)
-    local body: types.ProductBody = { product_id = p.product_id, patch = built.patch }
+    local body: types.ProductBody = { product_id = p.product_id, generation = st.catalog.generation, patch = built.patch }
     if status_change then
         body.previous_status = previous_status
         body.status = item.status
@@ -247,7 +247,9 @@ local function check_version(st: item_state.State, item: types.ApplyItem, p: typ
         local wanted = item.expect_version
         local expected = type(wanted) == "number" and math.tointeger(wanted) or nil
         if expected == nil then return nil, item_state.fail("invalid", "expect_version is required") end
-        if expected ~= p.version then return nil, item_state.fail("conflict", "product changed", { version = p.version }) end
+        if expected ~= p.version then
+            return nil, item_state.fail("conflict", "product changed", { code = "version_conflict", version = p.version })
+        end
     end
     return seq, nil
 end

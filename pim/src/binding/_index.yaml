@@ -47,6 +47,8 @@ entries:
           - { type: kickside.pim.events:model.release_requested, system_only: true }
           - { type: kickside.pim.events:product.released, system_only: true }
           - { type: kickside.pim.events:product.withdrawn, system_only: true }
+          - { type: kickside.pim.events:proposal.submitted, system_only: true }
+          - { type: kickside.pim.events:proposal.decided, system_only: true }
       projections:
         - kind: kickside.pim:catalog_model
           worker_ref: func://kickside.pim.persist:projection
@@ -66,6 +68,8 @@ entries:
               - { type: kickside.pim.events:model.release_requested }
               - { type: kickside.pim.events:product.released }
               - { type: kickside.pim.events:product.withdrawn }
+              - { type: kickside.pim.events:proposal.submitted }
+              - { type: kickside.pim.events:proposal.decided }
     contracts:
       - contract: kickside.contract:component
         methods:
@@ -93,6 +97,7 @@ entries:
           list: kickside.pim.service:list
           get_catalog: kickside.pim.service:get_catalog
           get_schema: kickside.pim.service:get_schema
+          policy_defaults: kickside.pim.service:policy_defaults
           configure_plugin: kickside.pim.service:configure_plugin
           plugin_feed: kickside.pim.service:plugin_feed
           plugin_context: kickside.pim.service:plugin_context

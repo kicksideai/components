@@ -9,7 +9,7 @@ import Button from 'primevue/button'
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 
-const props = defineProps<{ modelValue: string[]; options?: { value: string; label?: string }[]; free?: boolean; placeholder?: string; disabled?: boolean }>()
+const props = defineProps<{ modelValue: string[]; options?: { value: string; label?: string }[]; free?: boolean; placeholder?: string; disabled?: boolean; dropdown?: boolean; labelledby?: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string[]] }>()
 const entry = ref('')
 
@@ -36,19 +36,26 @@ function labelOf(v: string): string {
 
 <template>
   <div class="pim-chips pim-picker-chips">
-    <template v-if="options && options.length > 10">
-      <span v-for="v in modelValue" :key="v" class="row">{{ labelOf(v) }}<Button v-if="!disabled" type="button" :aria-label="'Remove ' + v" @click="remove(v)" size="small" text severity="secondary"><Icon icon="tabler:x" /></Button></span>
-      <Select v-if="!disabled" :model-value="''" :aria-label="placeholder ?? 'Add'" @update:model-value="toggle($event)" class="pim-chip-entry" :options="[{ value: '', label: String(placeholder ?? 'Add…') }, ...(options.filter((x) => !has(x.value))).map((o) => ({ value: o.value, label: String(o.label ?? o.value) }))]" option-label="label" option-value="value" appendTo="self" />
+    <template v-if="disabled">
+      <span v-for="v in modelValue" :key="v">{{ labelOf(v) }}</span>
+      <span v-if="!modelValue.length" class="muted small">None</span>
+    </template>
+    <template v-else-if="options && (dropdown || options.length > 10)">
+      <span v-for="v in modelValue" :key="v" class="row">{{ labelOf(v) }}<Button v-if="!disabled" type="button" :aria-label="'Remove ' + labelOf(v)" @click="remove(v)" size="small" text severity="secondary"><Icon icon="tabler:x" aria-hidden="true" /></Button></span>
+      <Select v-if="!disabled" :model-value="null" :placeholder="placeholder ?? 'Add…'" :aria-labelledby="labelledby" :aria-label="placeholder ?? 'Add'"
+        @update:model-value="toggle($event)" class="pim-chip-entry"
+        :options="options.filter(option => !has(option.value)).map(option => ({ value: option.value, label: option.label ?? option.value }))"
+        option-label="label" option-value="value" appendTo="self" />
     </template>
     <template v-else-if="options">
-      <SelectButton :model-value="modelValue.filter(v => options!.some(o => o.value === v))" :options="options.map(o => ({ value: o.value, label: o.label ?? o.value }))" option-label="label" option-value="value" multiple :disabled="disabled" :aria-label="placeholder ?? 'Selected values'" @update:model-value="emit('update:modelValue', [...$event, ...modelValue.filter(v => !options!.some(o => o.value === v))])" />
+      <SelectButton :model-value="modelValue.filter(v => options!.some(o => o.value === v))" :options="options.map(o => ({ value: o.value, label: o.label ?? o.value }))" option-label="label" option-value="value" multiple :disabled="disabled" :aria-labelledby="labelledby" :aria-label="placeholder ?? 'Selected values'" @update:model-value="emit('update:modelValue', [...$event, ...modelValue.filter(v => !options!.some(o => o.value === v))])" />
       <template v-for="v in modelValue.filter((x) => !options!.some((o) => o.value === x))" :key="v">
-        <span class="row">{{ labelOf(v) }}<Button v-if="!disabled" type="button" :aria-label="'Remove ' + v" @click="remove(v)" size="small" text severity="secondary"><Icon icon="tabler:x" /></Button></span>
+        <span class="row">{{ labelOf(v) }}<Button type="button" :aria-label="'Remove ' + v" @click="remove(v)" size="small" text severity="secondary"><Icon icon="tabler:x" /></Button></span>
       </template>
     </template>
     <template v-else>
-      <span v-for="v in modelValue" :key="v" class="row">{{ v }}<Button v-if="!disabled" type="button" :aria-label="'Remove ' + v" @click="remove(v)" size="small" text severity="secondary"><Icon icon="tabler:x" /></Button></span>
+      <span v-for="v in modelValue" :key="v" class="row">{{ v }}<Button type="button" :aria-label="'Remove ' + v" @click="remove(v)" size="small" text severity="secondary"><Icon icon="tabler:x" /></Button></span>
     </template>
-    <InputText v-if="free && !disabled" v-model="entry" type="text" :placeholder="placeholder ?? 'Add…'" @keydown.enter.prevent="add" @blur="add" class="pim-chip-entry" />
+    <InputText v-if="free && !disabled" v-model="entry" type="text" :aria-labelledby="labelledby" :placeholder="placeholder ?? 'Add…'" @keydown.enter.prevent="add" @blur="add" class="pim-chip-entry" />
   </div>
 </template>

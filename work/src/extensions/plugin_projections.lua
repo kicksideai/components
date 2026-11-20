@@ -79,7 +79,7 @@ local function converge(board_id: string, row: types.PluginState, settings: type
             return rerr == nil, rerr
         end
         if not previous or reset or previous_mode ~= mode then
-            local start_seq = previous and not reset and previous.start_seq or row.revision
+            local start_seq = previous and not reset and previous.start_seq or p.start_seq or row.revision
             local events: { { type: string } } = {}
             if p.input == "state" then
                 for _, event_type in pairs(consts.EVENTS) do events[#events + 1] = { type = event_type } end
@@ -91,7 +91,18 @@ local function converge(board_id: string, row: types.PluginState, settings: type
                 events = { input = events }, start_seq = start_seq - 1, reset = reset,
                 worker_config = { plugin = row.plugin, board_id = board_id, attachment_id = row.attachment_id, config = config,
                     input = p.input, revision = p.revision, start_seq = start_seq } })
-            if rerr then return nil, rerr end
+            if rerr then
+                if p.start_seq and (not previous or reset) and rerr:kind() == errors.CONFLICT then
+                    -- Core checks retention atomically when it installs the cursor. Read the floor only to describe a refusal.
+                    local boundary, berr = client:prune_boundary({ thread_id = board_id })
+                    if berr then return nil, berr end
+                    if boundary and start_seq <= boundary.max_pruned_seq then
+                        return nil, errors.new({ kind = errors.CONFLICT, message = "event projection start is below retained history",
+                            details = { code = "plugin_projection_gap", floor = boundary.max_pruned_seq + 1 } })
+                    end
+                end
+                return nil, rerr
+            end
         end
         progress.registered = index
     end

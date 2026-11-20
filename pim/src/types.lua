@@ -104,9 +104,16 @@ type PluginSchemaSource = { template: JsonObject?, provider: string? }
 -- A resolved fragment as the catalog stores it: the fragment in the declaration
 -- vocabulary, the provider's version when it gives one, and the fragment's digest.
 type PluginSchema = { fragment: JsonObject, version: string?, digest: string }
+-- Registry metadata authored by a plugin, before the host applies defaults.
+type PluginProjectionDeclaration = { kind: string, worker_ref: string, input: "state" | "events", revision: integer?, events: { string }? }
+type PluginManifest = {
+    type: "kickside.pim.plugin", interface_version: integer?, title: string?, description: string?, icon: string?, settings: string?,
+    attachment: string, config_schema: JsonObject?, schema: PluginSchemaSource?, projections: { PluginProjectionDeclaration }?,
+    tools: { string }?, requires: { string }?, seams: { string }?,
+}
 -- Plugin is a loaded kickside.pim.plugin manifest.
 type Plugin = {
-    id: string, title: string?, description: string?, icon: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?,
+    id: string, interface_version: integer, title: string?, description: string?, icon: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?,
     projections: { PluginProjection }?, tools: { string }?, requires: { string }?, seams: { string }?,
 }
 type PluginLifecycle = { state: string, error: { kind: string, code: string?, message: string }? }
@@ -116,6 +123,8 @@ type PluginProjectionState = { last_seq: integer, parked: boolean, bootstrapping
 -- What a provider resolves against: the catalog, the plugin's effective config
 -- and the copy the catalog holds.
 type ResolveContext = { catalog_id: string, config: JsonObject, current: PluginSchema? }
+type ProviderRequest = ResolveContext & { plugin: string }
+type ProviderResult = { fragment: JsonObject, version: string? }
 -- Fragment is what a plugin's schema source contributes: aspects and
 -- vocabularies in the declaration vocabulary, attributes without ids.
 type Fragment = { aspects: { AspectDecl }?, vocabularies: { VocabularyDecl }? }
@@ -123,9 +132,10 @@ type Fragment = { aspects: { AspectDecl }?, vocabularies: { VocabularyDecl }? }
 -- choice, what the plugin runs with, or why it cannot run.
 type PluginProblem = { code: string, message: string, field: string? }
 type PluginFeedRequest = { catalog_id: string, plugin: string, kind: string, token: string? }
-type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, changes: { ChangeItem }, token: string, done: boolean }
+-- On a gap, clear the catalog replica before applying changes and commit both with the replacement token.
+type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, gap: FeedGap?, changes: { ChangeItem }, token: string, done: boolean }
 type PluginContext = ReadStamp & { attachment_id: string?, config: JsonObject, lifecycle: PluginLifecycle, projections: { [string]: PluginProjectionState }, retention: { event_days: integer } }
-type PluginView = { plugin: string, title: string?, description: string?, icon: string?, installed: boolean, active: boolean,
+type PluginView = { plugin: string, interface_version: integer?, title: string?, description: string?, icon: string?, installed: boolean, active: boolean,
     attachment_id: string?, config: JsonObject?, requires: { string }, tools: { string }, lifecycle: PluginLifecycle,
     projections: { [string]: PluginProjectionState }, problem: PluginProblem? }
 
@@ -176,7 +186,9 @@ type Snapshot = {
 }
 -- CheckInput is what a family check function receives (spec 3.4).
 type CheckProduct = { product_id: string, sku: string, family: string, level: integer }
-type CheckInput = { config: JsonObject, view: { [string]: ContextValues }, product: CheckProduct }
+type CheckInput = { config: JsonObject, view: { [string]: ContextValues }, product: CheckProduct,
+    previous_status: string?, proposed_status: string? }
+type CheckResult = { findings: { Finding } }
 
 -- Event bodies, one record per event family (spec 5.2). The writer adds actor,
 -- at and, on the first event of an idempotent command, the receipt.
@@ -187,7 +199,7 @@ type SchemaBody = {
 }
 type ProductBody = {
     product_id: string, sku: string?, family: string?, parent_id: string?, level: integer?, is_item: boolean?,
-    axis_key: string?, status: string?, previous_status: string?, source: string?, source_seq: integer?, patch: { PatchStep }?,
+    axis_key: string?, status: string?, previous_status: string?, source: string?, source_seq: integer?, generation: integer?, patch: { PatchStep }?,
     origin: Origin?, provenance: JsonObject?, approval_item_id: string?, audit: boolean?, actor: string?, at: string?, receipt: Receipt?,
 }
 type TermBody = {
@@ -202,7 +214,12 @@ type WithdrawBody = { product_id: string, channels: { string }?, actor: string?,
 type ModelReleaseBody = { request_id: string, product_id: string, root: boolean, identity: JsonObject, channels: { string }?, actor: string?, at: string?, receipt: Receipt? }
 type PluginConfiguredBody = { plugin: string, config: JsonObject, actor: string?, at: string?, receipt: Receipt? }
 type PluginRebuildBody = { plugin: string, actor: string?, at: string?, receipt: Receipt? }
+type ProposalSubmittedBody = { proposal_id: string, generation: integer, base: { [string]: integer }, items: { ApplyItem },
+    source: string?, origin: Origin?, provenance: JsonObject?, actor: string?, at: string? }
+type ProposalDecidedBody = { proposal_id: string, decision: "accept" | "reject", status: string, result: ApplyResult?,
+    actor: string?, at: string? }
 type EventBody = PluginRebuildBody | PluginConfiguredBody | SchemaBody | ProductBody | TermBody | ReleaseBody | WithdrawBody | ModelReleaseBody
+    | ProposalSubmittedBody | ProposalDecidedBody
 -- External identity makes a retried command idempotent.
 type External = { external_source: string, external_id: string }
 -- TraceContext correlates an event with the work that caused it.
@@ -276,9 +293,10 @@ type SchemaResult = { generation: integer, class: string, changes: { SchemaChang
 type SchemaPlanResult = { generation: integer, class: string, changes: { SchemaChange }, refused: { SchemaChange }, migration: string? }
 type ReleaseItem = { product: ProductRef, expect_version: integer?, channels: { string }? }
 type ReleaseRequest = { items: { ReleaseItem }, idempotency: Idempotency?, trace_context: TraceContext? }
-type ProposeRequest = { items: { ApplyItem }, source: string?, origin: Origin?, provenance: JsonObject?, idempotency: Idempotency? }
+type ProposeRequest = { items: { ApplyItem }, source: string?, origin: Origin?, provenance: JsonObject?, trace_context: TraceContext? }
 type Proposal = {
     proposal_id: string, source: string?, origin: JsonObject, provenance: JsonObject?, items: { ApplyItem }, base: { [string]: integer },
+    generation: integer?,
     status: string, result: ApplyResult?, created_by: string, created_at: string, decided_by: string?, decided_at: string?,
 }
 type ProposeResult = { proposal_id: string, status: string }
@@ -444,7 +462,10 @@ type TypeMeta = { type: string, form: string, indexes: { string }?, target: stri
 type Normalized = { value: unknown?, error: string? }
 -- TypeFinding is one finding a validate function answers.
 type TypeFinding = { code: string?, message: string }
-type CommandResult = ApplyResult | SchemaResult | { seq: integer?, as_of: integer?, replayed: boolean? }
+type TypeFunctionRequest = { config: JsonObject, values: { unknown } }
+type NormalizeResult = { results: { Normalized } }
+type ValidateResult = { results: { { findings: { TypeFinding } } } }
+type CommandResult = ApplyResult | SchemaResult | ProposeResult | DecideResult | { seq: integer?, as_of: integer?, replayed: boolean? }
 type Plan = { result: CommandResult, events: { Event } }
 
 return {
@@ -465,8 +486,9 @@ return {
     External = External, Event = Event, SchemaEvent = SchemaEvent, ProductCreatedBody = ProductCreatedBody, CreatedEvent = CreatedEvent,
     ProductEvent = ProductEvent, TermEvent = TermEvent,
     ReleaseEvent = ReleaseEvent, WithdrawEvent = WithdrawEvent, FoldEvent = FoldEvent, RawEvent = RawEvent,
+    ProposalSubmittedBody = ProposalSubmittedBody, ProposalDecidedBody = ProposalDecidedBody,
         SchemaChange = SchemaChange, ContextValues = ContextValues, Snapshot = Snapshot,
-    CheckProduct = CheckProduct, CheckInput = CheckInput, FindingDetail = FindingDetail, Finding = Finding,
+    CheckProduct = CheckProduct, CheckInput = CheckInput, CheckResult = CheckResult, FindingDetail = FindingDetail, Finding = Finding,
     CodedFinding = CodedFinding, ExtensionFinding = ExtensionFinding,
     Outcome = Outcome, ColumnValue = ColumnValue, ItemRow = ItemRow, Names = Names, ProductRef = ProductRef,
     ValueEntry = ValueEntry, CreateSpec = CreateSpec, TermRef = TermRef, ExpectVersion = ExpectVersion,
@@ -500,5 +522,7 @@ return {
     SystemColumn = SystemColumn, Table = Table, Reader = Reader, ItemQuery = ItemQuery, Target = Target, Resolver = Resolver,
     Condition = Condition, ScopeFilter = ScopeFilter, Scope = Scope, TypeFunctions = TypeFunctions, Normalized = Normalized,
     TypeFinding = TypeFinding, Plugin = Plugin, PluginProjection = PluginProjection, PluginProjectionState = PluginProjectionState,
+    TypeFunctionRequest = TypeFunctionRequest, NormalizeResult = NormalizeResult, ValidateResult = ValidateResult,
+    PluginManifest = PluginManifest, PluginProjectionDeclaration = PluginProjectionDeclaration, ProviderRequest = ProviderRequest, ProviderResult = ProviderResult,
     PluginFeedRequest = PluginFeedRequest, PluginFeed = PluginFeed, PluginContext = PluginContext, PluginIntent = PluginIntent, PluginLifecycle = PluginLifecycle, PluginSchemaSource = PluginSchemaSource, ResolveContext = ResolveContext,
 }

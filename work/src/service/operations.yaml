@@ -16,6 +16,7 @@ entries:
     policies:
     - kickside.work.security:operation_retirement_call
     - kickside.work.security:sync_call
+    - kickside.work.security:search_invocation
 
 - name: bulk_status
   kind: function.lua

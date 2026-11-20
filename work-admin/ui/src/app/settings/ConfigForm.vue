@@ -21,7 +21,8 @@ const picked = computed(() => fields.value.filter(f => typeof f.schema.picker ==
 const scalar = computed(() => fields.value.filter(f => typeof f.schema.picker !== 'string'))
 const pickerSchema = computed(() => ({ ...props.schema, properties: Object.fromEntries(picked.value.map(f => [f.key, { ...f.schema, title: f.title }])), required: Array.isArray(props.schema.required) ? props.schema.required.filter(key => picked.value.some(f => f.key === key)) : [] }))
 const pickerValues = computed(() => Object.fromEntries(picked.value.map(f => [f.key, props.modelValue[f.key]])))
-watch([errors, invalid, () => picked.value.length > 0 && !ready.value], () => emit('validity', !Object.keys(errors.value).length && !invalid.value.size && (!picked.value.length || ready.value)), { immediate: true, deep: true })
+const valid = computed(() => !Object.keys(errors.value).length && !invalid.value.size && (!picked.value.length || ready.value))
+watch(valid, value => emit('validity', value), { immediate: true })
 async function loadPicker() { widgetLoading.value = true; ready.value = await ensureTag('wc-schema-form'); widgetLoading.value = false }
 watch(() => picked.value.length > 0, present => { if (present) void loadPicker() }, { immediate: true })
 onBeforeUnmount(() => emit('validity', true))

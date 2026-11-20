@@ -20,8 +20,10 @@ async function shot(page: Page, name: string) {
     await page.screenshot({ path: resolve(process.env.WORK_ADMIN_SCREENSHOTS, name + '.png'), fullPage: true })
   }
 }
-async function fixture(mode: string, missing = false) {
-  const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } })
+const longBoardName = 'UnbrokenBoardName'.repeat(10)
+
+async function fixture(mode: string, missing = false, width = 1500) {
+  const page = await browser.newPage({ viewport: { width, height: 1000 } })
   page.setDefaultTimeout(5000)
   const errors: string[] = [], requests: { path: string; body: Record<string, unknown> }[] = []
   page.on('pageerror', e => errors.push(e.message))
@@ -33,7 +35,7 @@ async function fixture(mode: string, missing = false) {
     requests.push({ path, body })
     const reply = (data: unknown) => route.fulfill({ json: { success: true, data } })
     if (path.endsWith('/packs')) return reply({ packs: [{ id: 'broken:pack', title: 'Broken installed pack', problem: { code: 'invalid_pack', message: 'Pack data is malformed' } }, { id: 'release:pack', title: 'Release pipeline', version: '1.0.0', icon: 'tabler:route', description: 'Release work', requires: [], plugins: [] }] })
-    if (path.endsWith('/options')) return reply({ access, schema_options: { plugins: [] }, installed_types: [] })
+    if (path.endsWith('/options')) return reply({ access, schema_options: { plugins: [{ plugin: 'fixture:enhancements', title: 'Board enhancements', requires: [], config_schema: { type: 'object', properties: { threshold: { type: 'integer', title: 'Threshold' } } } }] }, installed_types: [{ id: 'fixture:rating', title: 'Rating' }] })
     if (path.endsWith('/get_schema')) {
       if (path.includes('/new/')) return reply({ generation: 1, declaration: { key_prefix: 'WORK' }, compiled: {}, key_prefix: 'WORK', as_of: 1 })
       if (hold) { hold = false; held = route; return }
@@ -49,7 +51,7 @@ async function fixture(mode: string, missing = false) {
     if (path.endsWith('/update')) { description = String(body.description); return reply({ board_id: 'new', status: 'updated' }) }
     if (path.endsWith('/boards')) {
       if (route.request().method() === 'POST') { createdTitle = String(body.title); return reply({ board_id: 'new', generation: 1 }) }
-      return reply({ boards: [{ board_id: 'b', title: 'Delivery', access }, { board_id: 'other', title: 'Other board', access }, ...(createdTitle ? [{ board_id: 'new', title: createdTitle, description, access }] : [])] })
+      return reply({ boards: [{ board_id: 'b', title: 'Delivery', access }, { board_id: 'other', title: 'Other board', access }, { board_id: 'long', title: longBoardName, access }, ...(createdTitle ? [{ board_id: 'new', title: createdTitle, description, access }] : [])] })
     }
     throw new Error('Unexpected fixture request: ' + path)
   })
@@ -70,6 +72,147 @@ it('creates with the declared body, updates description, and keeps an invalid pa
     expect(Object.keys(requests.find(r => r.path.endsWith('/boards') && 'idempotency_key' in r.body)!.body).sort()).toEqual(['declaration', 'idempotency_key', 'title'])
     expect(requests.find(r => r.path.endsWith('/update'))?.body).toEqual({ description: 'Team delivery' })
     await shot(page, 'W01-created-with-description'); expect(errors).toEqual([])
+  } finally { await page.close() }
+}, 30000)
+
+it.each([
+  { tab: 'Fields', kind: 'Text', action: 'Remove field', editor: 'Field title' },
+  { tab: 'Item types', kind: 'Delivery', action: 'Remove type', editor: 'Title' },
+  { tab: 'Relation types', kind: 'Different each way', action: 'Remove relation', editor: 'Outward label' },
+  { tab: 'Plugins', kind: 'Inactive', action: 'Activate on this board', editor: 'Threshold' },
+])('fits $tab rows and keeps their editing controls reachable at 390 px', async ({ tab, kind, action, editor }) => {
+  const { page } = await fixture('admin', false, 390)
+  try {
+    await page.getByRole('button', { name: 'Settings for Delivery', exact: true }).click()
+    await page.getByRole('tab', { name: tab, exact: true }).click()
+    const list = page.locator('.work-definition-scroll:visible')
+    const row = list.locator('.work-definition').first()
+    await row.waitFor()
+    expect(await list.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1)
+    const pane = page.getByRole('region', { name: 'Board settings detail' })
+    expect((await pane.boundingBox())!.width).toBeGreaterThan(320)
+    const header = row.locator('.work-definition-head')
+    expect(await header.getByText(kind, { exact: true }).isVisible()).toBe(true)
+    const editAction = tab === 'Plugins' ? header.getByRole('switch', { name: action }) : header.getByRole('button', { name: action })
+    const actionBox = await editAction.boundingBox()
+    const listBox = (await list.boundingBox())!
+    expect(actionBox!.x + actionBox!.width).toBeLessThanOrEqual(listBox.x + listBox.width + 1)
+    if (tab === 'Plugins') await editAction.click()
+    await row.locator('.work-definition-toggle').click()
+    await row.getByLabel(editor, { exact: true }).waitFor()
+  } finally { await page.close() }
+}, 30000)
+
+it('returns from narrow board settings through the shared discard confirmation', async () => {
+  const { page } = await fixture('admin', false, 390)
+  try {
+    const board = page.getByRole('button', { name: 'Settings for Delivery', exact: true })
+    const back = page.getByRole('button', { name: 'Back to boards', exact: true })
+    await board.press('Enter')
+    await board.waitFor({ state: 'hidden' })
+    expect(await back.evaluate(element => (element.getRootNode() as ShadowRoot).activeElement === element)).toBe(true)
+    await page.locator('.work-field-row .work-definition-toggle').first().click()
+    const title = page.getByLabel('Field title', { exact: true }).first()
+    await title.fill('Draft title')
+    await back.click()
+    await page.locator('#keep').click()
+    expect(await title.inputValue()).toBe('Draft title')
+    await back.click()
+    await page.locator('#discard').click()
+    await board.waitFor()
+    expect(await board.evaluate(element => (element.getRootNode() as ShadowRoot).activeElement === element)).toBe(true)
+  } finally { await page.close() }
+}, 30000)
+
+it.each([1440, 390])('wraps a long board name in navigation and settings at %s px', async width => {
+  const { page } = await fixture('admin', false, width)
+  try {
+    const board = page.getByRole('button', { name: 'Settings for ' + longBoardName, exact: true })
+    const rail = page.getByRole('navigation', { name: 'Board settings navigation' })
+    await board.waitFor()
+    expect.soft(await rail.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1)
+    await board.click()
+    const title = page.getByRole('heading', { name: longBoardName, exact: true })
+    await title.waitFor()
+    expect(await title.evaluate(element => {
+      const heading = element.getBoundingClientRect()
+      const header = element.closest('header')!.getBoundingClientRect()
+      return heading.right <= header.right && heading.height > parseFloat(getComputedStyle(element).fontSize) * 2
+    })).toBe(true)
+    expect(await page.getByRole('button', { name: 'Edit board', exact: true }).isVisible()).toBe(true)
+  } finally { await page.close() }
+}, 30000)
+
+it('exposes field controls by their labels and separates the keyboard reorder handle', async () => {
+  const { page } = await fixture('settings')
+  try {
+    const row = page.locator('.work-field-row').first()
+    const disclosure = row.locator('.work-definition-toggle')
+    await disclosure.press('Enter')
+    for (const name of ['Kind', 'Values allowed', 'Search support']) {
+      expect.soft(await row.getByRole('combobox', { name, exact: true }).count(), name).toBe(1)
+    }
+    await row.getByRole('combobox', { name: 'Kind', exact: true }).click()
+    await page.getByRole('option', { name: 'Rating', exact: true }).waitFor()
+    await page.keyboard.press('Escape')
+    expect(await disclosure.getByRole('button').count()).toBe(0)
+    const handle = row.getByRole('button', { name: /use the arrow keys to reorder/ })
+    await handle.focus()
+    await page.keyboard.press('Tab')
+    expect(await disclosure.evaluate(element => (element.getRootNode() as Document | ShadowRoot).activeElement === element)).toBe(true)
+    await handle.focus()
+    await page.keyboard.press('ArrowDown')
+    expect(await page.locator('.work-field-row').nth(1).getByRole('button', { name: 'Title', exact: true }).count()).toBe(1)
+  } finally { await page.close() }
+}, 30000)
+
+it.each([
+  { mode: 'Map', type: 'state', close: 'Escape' },
+  { mode: 'Map', type: 'transition', close: 'button' },
+  { mode: 'List', type: 'state', close: 'button' },
+  { mode: 'List', type: 'transition', close: 'Escape' },
+])('returns focus to the $mode $type action after closing the inspector with $close', async ({ mode, type, close }) => {
+  const { page } = await fixture('process', false, 390)
+  try {
+    await page.getByRole('tab', { name: 'Process', exact: true }).click()
+    if (mode === 'List') await page.getByRole('button', { name: 'List', exact: true }).click()
+    else await page.getByLabel('Process map', { exact: true }).press('0')
+    const scope = page.getByLabel(mode === 'Map' ? 'Process map' : 'Process list', { exact: true })
+    const opener = scope.getByRole('button', { name: new RegExp(`^Edit ${type}`) }).first()
+    await opener.press('Enter')
+    const inspector = page.getByRole('complementary', { name: type === 'state' ? 'State inspector' : 'Transition inspector' })
+    if (type === 'state') await inspector.getByRole('button', { name: 'Rename state' }).press('Enter')
+    const input = inspector.getByRole('textbox', { name: type === 'state' ? 'State name' : 'Transition name' })
+    await input.focus()
+    if (close === 'Escape') await input.press('Escape')
+    else await inspector.getByRole('button', { name: `Close ${type} editor` }).press('Enter')
+    await inspector.waitFor({ state: 'hidden' })
+    expect(await opener.evaluate(element => (element.getRootNode() as Document | ShadowRoot).activeElement === element)).toBe(true)
+  } finally { await page.close() }
+}, 30000)
+
+it('keeps process list details readable beside the edit actions at 390 px', async () => {
+  const { page } = await fixture('process', false, 390)
+  try {
+    await page.getByRole('tab', { name: 'Process', exact: true }).click()
+    await page.getByRole('button', { name: 'List', exact: true }).click()
+    const tables = page.getByRole('region', { name: 'Process list' }).getByRole('table')
+    for (const table of await tables.all()) {
+      const row = table.locator('tbody').getByRole('row').first()
+      const cells = row.getByRole('cell')
+      for (const index of [1, 2]) {
+        const width = await cells.nth(index).evaluate(element => {
+          const style = getComputedStyle(element)
+          return element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+        })
+        expect(width).toBeGreaterThan(64)
+      }
+      const action = row.getByRole('button', { name: /^Edit / })
+      const bounds = (await table.boundingBox())!
+      const button = (await action.boundingBox())!
+      expect(button.x + button.width).toBeLessThanOrEqual(bounds.x + bounds.width)
+    }
+    expect(await tables.count()).toBe(2)
   } finally { await page.close() }
 }, 30000)
 it('resets a successful Apply once when its read is superseded by a notification', async () => {
@@ -142,6 +285,26 @@ it('confirms leaving an edited board description and clears the prompt after Can
     await expect.poll(() => page.locator('kickside-work-board-settings').getAttribute('board-id')).toBe('other')
     expect(await page.locator('#confirm').isVisible()).toBe(false)
     expect(errors).toEqual([])
+  } finally { await page.close() }
+}, 30000)
+
+it('fits board fields and the add action in a 390px settings surface', async () => {
+  const { page } = await fixture('admin')
+  try {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.getByLabel('Settings for Delivery', { exact: true }).click()
+    const fields = page.getByRole('region', { name: 'Fields editor' })
+    await fields.waitFor()
+    const details = await page.getByRole('region', { name: 'Board settings detail' }).boundingBox()
+    const shell = await page.locator('.work-admin-shell').boundingBox()
+    expect(details?.width).toBe(shell?.width)
+    expect(await page.getByRole('navigation', { name: 'Board settings navigation' }).isVisible()).toBe(false)
+    const list = fields.locator('.work-definition-scroll')
+    expect(await list.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0)
+    const add = await fields.getByRole('button', { name: 'Add field', exact: true }).boundingBox()
+    expect(add!.x + add!.width).toBeLessThanOrEqual(390)
+    await page.getByRole('button', { name: 'Back to boards', exact: true }).click()
+    expect(await page.getByLabel('Settings for Delivery', { exact: true }).isVisible()).toBe(true)
   } finally { await page.close() }
 }, 30000)
 
