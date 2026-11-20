@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.22](https://github.com/kicksideai/components/compare/work-v0.1.21...work-v0.1.22) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** register shared views under board custody ([#241](https://github.com/kicksideai/components/issues/241)) ([79877ac](https://github.com/kicksideai/components/commit/79877accd15f6c529c8765c05ca038031764e911))
+
 ## [0.1.21](https://github.com/kicksideai/components/compare/work-v0.1.20...work-v0.1.21) (2026-11-20)
 
 
