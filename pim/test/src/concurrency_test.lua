@@ -104,6 +104,24 @@ local function define()
     end)
 
     test.describe("proposals under race", function()
+        test.it("admits only one submission when two requests race for the last quota slot", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            assert(h.call("apply_schema", { declaration = { policy = { proposal_count = 1 } } }))
+            local function suggestion(value: string): Map
+                return { items = { { product = { sku = "RDG" }, set = { { attr = "core.care", value = value } } } } }
+            end
+            local submissions = together(h, { { "propose", suggestion("First") }, { "propose", suggestion("Second") } })
+            local admitted, limited = 0, 0
+            for _, submission in ipairs(submissions) do
+                if submission.out then admitted = admitted + 1 end
+                if submission.err and submission.err:details().code == "proposal_limit" then limited = limited + 1 end
+            end
+            test.eq(admitted, 1)
+            test.eq(limited, 1)
+            test.eq(#assert(h.call("list_proposals", {})).proposals, 1)
+        end)
+
         test.it("applies a proposal once when two admins accept it", function()
             local h = fixture.catalog()
             fixture.boot(h)

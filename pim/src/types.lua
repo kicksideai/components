@@ -186,7 +186,8 @@ type Snapshot = {
 }
 -- CheckInput is what a family check function receives (spec 3.4).
 type CheckProduct = { product_id: string, sku: string, family: string, level: integer }
-type CheckInput = { config: JsonObject, view: { [string]: ContextValues }, product: CheckProduct }
+type CheckInput = { config: JsonObject, view: { [string]: ContextValues }, product: CheckProduct,
+    previous_status: string?, proposed_status: string? }
 type CheckResult = { findings: { Finding } }
 
 -- Event bodies, one record per event family (spec 5.2). The writer adds actor,
@@ -213,7 +214,12 @@ type WithdrawBody = { product_id: string, channels: { string }?, actor: string?,
 type ModelReleaseBody = { request_id: string, product_id: string, root: boolean, identity: JsonObject, channels: { string }?, actor: string?, at: string?, receipt: Receipt? }
 type PluginConfiguredBody = { plugin: string, config: JsonObject, actor: string?, at: string?, receipt: Receipt? }
 type PluginRebuildBody = { plugin: string, actor: string?, at: string?, receipt: Receipt? }
+type ProposalSubmittedBody = { proposal_id: string, generation: integer, base: { [string]: integer }, items: { ApplyItem },
+    source: string?, origin: Origin?, provenance: JsonObject?, actor: string?, at: string? }
+type ProposalDecidedBody = { proposal_id: string, decision: "accept" | "reject", status: string, result: ApplyResult?,
+    actor: string?, at: string? }
 type EventBody = PluginRebuildBody | PluginConfiguredBody | SchemaBody | ProductBody | TermBody | ReleaseBody | WithdrawBody | ModelReleaseBody
+    | ProposalSubmittedBody | ProposalDecidedBody
 -- External identity makes a retried command idempotent.
 type External = { external_source: string, external_id: string }
 -- TraceContext correlates an event with the work that caused it.
@@ -287,11 +293,10 @@ type SchemaResult = { generation: integer, class: string, changes: { SchemaChang
 type SchemaPlanResult = { generation: integer, class: string, changes: { SchemaChange }, refused: { SchemaChange }, migration: string? }
 type ReleaseItem = { product: ProductRef, expect_version: integer?, channels: { string }? }
 type ReleaseRequest = { items: { ReleaseItem }, idempotency: Idempotency?, trace_context: TraceContext? }
-type ProposeRequest = { items: { ApplyItem }, source: string?, origin: Origin?, provenance: JsonObject?, idempotency: Idempotency? }
-type ProposalBase = { generation: integer, versions: { [string]: integer } }
+type ProposeRequest = { items: { ApplyItem }, source: string?, origin: Origin?, provenance: JsonObject?, trace_context: TraceContext? }
 type Proposal = {
     proposal_id: string, source: string?, origin: JsonObject, provenance: JsonObject?, items: { ApplyItem }, base: { [string]: integer },
-    generation: integer?,
+    generation: integer,
     status: string, result: ApplyResult?, created_by: string, created_at: string, decided_by: string?, decided_at: string?,
 }
 type ProposeResult = { proposal_id: string, status: string }
@@ -460,7 +465,7 @@ type TypeFinding = { code: string?, message: string }
 type TypeFunctionRequest = { config: JsonObject, values: { unknown } }
 type NormalizeResult = { results: { Normalized } }
 type ValidateResult = { results: { { findings: { TypeFinding } } } }
-type CommandResult = ApplyResult | SchemaResult | { seq: integer?, as_of: integer?, replayed: boolean? }
+type CommandResult = ApplyResult | SchemaResult | ProposeResult | DecideResult | { seq: integer?, as_of: integer?, replayed: boolean? }
 type Plan = { result: CommandResult, events: { Event } }
 
 return {
@@ -481,6 +486,7 @@ return {
     External = External, Event = Event, SchemaEvent = SchemaEvent, ProductCreatedBody = ProductCreatedBody, CreatedEvent = CreatedEvent,
     ProductEvent = ProductEvent, TermEvent = TermEvent,
     ReleaseEvent = ReleaseEvent, WithdrawEvent = WithdrawEvent, FoldEvent = FoldEvent, RawEvent = RawEvent,
+    ProposalSubmittedBody = ProposalSubmittedBody, ProposalDecidedBody = ProposalDecidedBody,
         SchemaChange = SchemaChange, ContextValues = ContextValues, Snapshot = Snapshot,
     CheckProduct = CheckProduct, CheckInput = CheckInput, CheckResult = CheckResult, FindingDetail = FindingDetail, Finding = Finding,
     CodedFinding = CodedFinding, ExtensionFinding = ExtensionFinding,
@@ -488,7 +494,7 @@ return {
     ValueEntry = ValueEntry, CreateSpec = CreateSpec, TermRef = TermRef, ExpectVersion = ExpectVersion,
     ApplyItem = ApplyItem, Idempotency = Idempotency, ApplyRequest = ApplyRequest, ApplyResult = ApplyResult,
     SchemaRequest = SchemaRequest, SchemaResult = SchemaResult, SchemaPlanResult = SchemaPlanResult,
-    ReleaseItem = ReleaseItem, ReleaseRequest = ReleaseRequest, ProposeRequest = ProposeRequest, ProposalBase = ProposalBase, Proposal = Proposal,
+    ReleaseItem = ReleaseItem, ReleaseRequest = ReleaseRequest, ProposeRequest = ProposeRequest, Proposal = Proposal,
     ProposeResult = ProposeResult, DecideRequest = DecideRequest, DecideResult = DecideResult, RebuildResult = RebuildResult,
         TypeMeta = TypeMeta, ReadStamp = ReadStamp, ResolvedValue = ResolvedValue, ProductView = ProductView,
     GetRequest = GetRequest, GetResult = GetResult, Where = Where, Executor = Executor, Origin = Origin, TraceContext = TraceContext, Sort = Sort,

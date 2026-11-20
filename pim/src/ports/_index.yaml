@@ -101,3 +101,17 @@ entries:
     binding: kickside.pim.binding:catalog
     event: kickside.pim.events:plugin.rebuild
     config_schema: *pim_catalog
+
+  - name: proposal_submitted
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM proposal submitted, icon: 'tabler:clipboard-plus' }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:proposal.submitted
+    config_schema: *pim_catalog
+
+  - name: proposal_decided
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: PIM proposal decided, icon: 'tabler:clipboard-check' }
+    binding: kickside.pim.binding:catalog
+    event: kickside.pim.events:proposal.decided
+    config_schema: *pim_catalog

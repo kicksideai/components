@@ -29,6 +29,8 @@ M.EVENTS = {
     PRODUCT_PURGED = NS .. "product.purged",
     TERM_CHANGED = NS .. "term.changed",
     MODEL_RELEASE_REQUESTED = NS .. "model.release_requested",
+    PROPOSAL_SUBMITTED = NS .. "proposal.submitted",
+    PROPOSAL_DECIDED = NS .. "proposal.decided",
     PRODUCT_RELEASED = NS .. "product.released",
     PRODUCT_WITHDRAWN = NS .. "product.withdrawn",
 }

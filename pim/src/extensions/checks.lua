@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Runs family check functions (kickside.pim.check entries).
--- A check receives { config, values, product } and returns { findings }.
+-- A check receives CheckInput and returns { findings }.
 local funcs = require("funcs")
 local types = require("types")
 

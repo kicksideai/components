@@ -1,25 +1,31 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Proposal rows: stored commands and their decisions.
-local uuid = require("uuid")
 local failure = require("failure")
 local store = require("store")
 local narrow = require("narrow")
 local values = require("values")
-local clock = require("clock")
 local sql = require("sql")
 local types = require("types")
 
 local M = {}
 
 
-function M.insert(db: types.Executor, catalog_id: string, request: types.ProposeRequest, base: types.ProposalBase, actor: string): (string?, error?)
-    local id = uuid.v7() :: string
+-- count stops at the quota. The catalog prefix of the primary key bounds this read.
+function M.count(db: types.Executor, catalog_id: string, limit: integer): (integer?, error?)
+    return store.count(db, [[SELECT COUNT(*) AS n FROM
+        (SELECT 1 FROM kickside_pim_proposal WHERE catalog_id = $1 LIMIT $2) proposals]],
+        { catalog_id, limit }, "proposal quota")
+end
+
+function M.submit(db: types.Executor, catalog_id: string, body: types.ProposalSubmittedBody): error?
+    local origin: types.JsonObject = { type = body.origin and body.origin.type, id = body.origin and body.origin.id,
+        provenance = body.provenance }
     local _, err = db:execute([[INSERT INTO kickside_pim_proposal (catalog_id, proposal_id, source, origin, items, base, status,
-        result, created_by, created_at, decided_by, decided_at) VALUES ($1, $2, $3, $4, $5, $6, 'pending', NULL, $7, $8, NULL, NULL)]],
-        { catalog_id, id, request.source or sql.NULL, values.canonical({ type = request.origin and request.origin.type, id = request.origin and request.origin.id, provenance = request.provenance }), values.canonical(request.items),
-            values.canonical(base), actor, clock.now() })
-    if err then return nil, errors.wrap(err, "proposal write failed") end
-    return id, nil
+        created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8)]],
+        { catalog_id, body.proposal_id, body.source or sql.NULL, values.canonical(origin), values.canonical(body.items),
+            values.canonical({ generation = body.generation, versions = body.base }), body.actor :: string, body.at :: string })
+    if err then return errors.wrap(err, "proposal write failed") end
+    return nil
 end
 
 local function row(r: types.Row): (types.Proposal?, error?)
@@ -30,19 +36,12 @@ local function row(r: types.Row): (types.Proposal?, error?)
     local origin: types.JsonObject = r.origin :: types.JsonObject
     local items: { types.ApplyItem } = r.items :: { types.ApplyItem }
     local base = r.base :: types.Row
-    local versions = base
-    local generation: integer? = nil
-    -- Released proposals stored only the map of product IDs to versions.
-    if base.generation ~= nil or base.versions ~= nil then
-        local gerr: error?
-        generation, gerr = store.need_int(base, "generation")
-        if gerr or not generation then return nil, gerr end
-        if type(base.versions) ~= "table" then return nil, failure.corrupt("proposal base lacks versions", "base") end
-        versions = base.versions :: types.Row
-    end
+    local generation, gerr = store.need_int(base, "generation")
+    if gerr or not generation then return nil, gerr end
+    if type(base.versions) ~= "table" then return nil, failure.corrupt("proposal base lacks versions", "base") end
     local result: types.ApplyResult? = r.result :: types.ApplyResult?
     return { proposal_id = r.proposal_id :: string, source = narrow.text(r.source), origin = origin, items = items,
-        base = versions :: { [string]: integer }, generation = generation,
+        base = base.versions :: { [string]: integer }, generation = generation,
         status = r.status :: string, result = result, created_by = r.created_by :: string, created_at = r.created_at :: string,
         decided_by = narrow.text(r.decided_by), decided_at = narrow.text(r.decided_at) } , nil
 end
@@ -78,38 +77,15 @@ function M.list(db: types.Executor, catalog_id: string, status: string?, limit: 
     return out, nil
 end
 
--- transition moves a proposal from one of the listed states to status; it
--- returns false when the proposal was in another state (decided concurrently).
-function M.transition(db: types.Executor, catalog_id: string, proposal_id: string, from: { string }, status: string,
-    result: types.ApplyResult?, actor: string, at: string?, claimed_at: string?): (boolean?, error?)
-    local marks: { string } = {}
-    local params: types.SqlParams = { status, result and values.canonical(result) or sql.NULL, actor, at or clock.now(), catalog_id, proposal_id }
-    for _, s in ipairs(from) do
-        params[#params + 1] = s
-        marks[#marks + 1] = "$" .. #params
-    end
-    local owned = ""
-    if claimed_at then
-        params[#params + 1] = claimed_at
-        owned = " AND decided_by = $3 AND decided_at = $" .. #params
-    end
-    local out, err = db:execute([[UPDATE kickside_pim_proposal SET status = $1, result = $2, decided_by = $3, decided_at = $4
-        WHERE catalog_id = $5 AND proposal_id = $6 AND status IN (]] .. table.concat(marks, ", ") .. ")" .. owned, params)
-    if err then return nil, errors.wrap(err, "proposal decision write failed") end
-    return (math.tointeger(tonumber(out and out.rows_affected)) or 0) == 1, nil
-end
-
--- Only undo the matching claim while the command has no completed receipt.
--- The caller holds the same catalog lock as the receipt fold.
-function M.release_claim(db: types.Executor, catalog_id: string, proposal_id: string, actor: string, claimed_at: string,
-    marker: string, prior: types.Proposal?): (boolean?, error?)
-    local out, err = db:execute([[UPDATE kickside_pim_proposal SET status = $1, result = $2, decided_by = $3, decided_at = $4
-        WHERE catalog_id = $5 AND proposal_id = $6 AND status = 'accepting' AND decided_by = $7 AND decided_at = $8
-        AND NOT EXISTS (SELECT 1 FROM kickside_pim_receipt WHERE catalog_id = $5 AND marker = $9 AND (event_count > 0 OR noop = 1))]],
-        { prior and prior.status or "pending", prior and prior.result and values.canonical(prior.result) or sql.NULL,
-            prior and prior.decided_by or sql.NULL, prior and prior.decided_at or sql.NULL, catalog_id, proposal_id, actor, claimed_at, marker })
-    if err then return nil, errors.wrap(err, "proposal claim release failed") end
-    return (math.tointeger(tonumber(out and out.rows_affected)) or 0) == 1, nil
+-- A proposal can expire between command planning and folding its decision.
+-- The fact is still retained by the thread. Only its inbox row has expired.
+function M.decide(db: types.Executor, catalog_id: string, body: types.ProposalDecidedBody): error?
+    local _, err = db:execute([[UPDATE kickside_pim_proposal SET status = $1, result = $2, decided_by = $3, decided_at = $4
+        WHERE catalog_id = $5 AND proposal_id = $6]],
+        { body.status, body.result and values.canonical(body.result) or sql.NULL,
+            body.actor :: string, body.at :: string, catalog_id, body.proposal_id })
+    if err then return errors.wrap(err, "proposal decision write failed") end
+    return nil
 end
 
 return M

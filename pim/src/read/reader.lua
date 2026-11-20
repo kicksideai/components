@@ -7,6 +7,7 @@ local store = require("store")
 local read_model = require("read_model")
 local proposal_rows = require("proposal_rows")
 local access = require("access")
+local defaults = require("defaults")
 local select = require("select")
 local scopes = require("scopes")
 local seams = require("seams")
@@ -319,6 +320,24 @@ function M.get_schema(catalog_id: string, request: types.GetSchemaRequest?): (ty
     if perr or not views then return nil,perr end
     view.plugins=views
     return view, nil
+end
+
+-- policy_defaults requires independent catalog READ and ADMIN before Settings.
+function M.policy_defaults(catalog_id: string): (types.Policy?, error?)
+    local caller, err = access.reader(catalog_id)
+    if err or not caller then return nil, err end
+    if not caller.allows("admin") then
+        return nil, errors.new({ kind = errors.PERMISSION_DENIED, message = "catalog administration is required",
+            details = { code = "catalog_access_denied" } })
+    end
+    local exists, cerr = store.with_db(function(db: types.Executor): (boolean?, error?)
+        local rows, rerr = db:query("SELECT 1 FROM kickside_pim_catalog WHERE catalog_id = $1", { catalog_id })
+        if rerr then return nil, rerr end
+        return rows and rows[1] ~= nil, nil
+    end)
+    if cerr then return nil, cerr end
+    if not exists then return nil, failure.catalog_not_initialized() end
+    return defaults.deployment()
 end
 -- schema_options answers what a catalog's schema may name from the registry:
 -- attribute types, product scopes, plugins and bound link kinds. It needs READ

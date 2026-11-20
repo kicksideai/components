@@ -25,7 +25,7 @@ All catalog calls use the signed-in user's PIM backend endpoints. Two helpers
 verify catalog schema read access and catalog ADMIN access:
 
 - `POST /pim-admin/catalogs/{id}/principal_labels` resolves at most 200 user/group references through the directory contract.
-- `GET /pim-admin/catalogs/{id}/policy_defaults` reads only the `kickside.pim` namespace through Settings' public read contract, without granting the global settings listing or writes.
+- `GET /pim-admin/catalogs/{id}/policy_defaults` and the `PIMPolicyDefaults` administration tool use the catalog contract's `policy_defaults` method. It requires catalog READ and ADMIN and reads the caller-visible PIM namespace through Settings. The result describes deployment defaults independently of catalog overrides.
 
 Install and authorize `kickside/pim` separately; readers and writers cannot apply
 schemas or configure plugins.
