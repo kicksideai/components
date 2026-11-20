@@ -25,6 +25,8 @@ entries:
     kind: contract.binding
     meta:
       class: [pim_catalog]
+      root_attachment_producers:
+        kickside.pim.plugin: [kickside.pim.extensions:plugin_batch]
       title: Product catalog
       icon: tabler:packages
       thread_class: pim.catalog

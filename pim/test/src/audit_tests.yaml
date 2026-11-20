@@ -39,6 +39,7 @@ entries:
     source: file://attachment_audit_probe.lua
     modules: [hash]
     imports:
+      registration: kickside.component.binding:child_registration
       component: app:lifecycle_audit_component
       creations: app:lifecycle_audit_fixture
       component_types: kickside.component:types
@@ -216,6 +217,7 @@ entries:
     source: file://r3_attachments.lua
     modules: [hash]
     imports:
+      registration: app:r3_creation_store
       component: kickside.component:component
       creations: app:r3_creations
       component_types: kickside.component:types

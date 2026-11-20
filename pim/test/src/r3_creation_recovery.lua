@@ -17,9 +17,10 @@ function M.run(input)
         return {refused=true,catalog_id=assert(create.catalog_id(request.idempotency_key)),retry_id=retry.catalog_id},nil
     end
     fixture.reset()
-    local _,_,first=attachments.ensure(input.catalog_id,"app:projection_plugin",98,"app:empty_plugin_attachment","Plugin",{})
+    local expected=assert(attachments.id(input.catalog_id,"app:projection_plugin",98))
+    local _,_,first=attachments.ensure(input.catalog_id,"app:projection_plugin",98,"app:empty_plugin_attachment","Plugin",{},expected)
     assert(first and first:kind()==errors.UNAVAILABLE,tostring(first))
-    local id,_,err=attachments.ensure(input.catalog_id,"app:projection_plugin",98,"app:empty_plugin_attachment","Plugin",{})
+    local id,_,err=attachments.ensure(input.catalog_id,"app:projection_plugin",98,"app:empty_plugin_attachment","Plugin",{},expected)
     if err then return nil,err end
     return {recovered=id~=nil},nil
 end

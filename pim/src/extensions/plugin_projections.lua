@@ -56,7 +56,7 @@ local function converge(catalog_id: string, id: string, intent: types.PluginInte
         return true, nil
     end
     local active=plugin :: types.Plugin
-    local _, _, aerr = attachments.ensure(catalog_id, id, intent.generation, active.attachment :: string, active.title, intent.config)
+    local _, _, aerr = attachments.ensure(catalog_id, id, intent.generation, active.attachment :: string, active.title, intent.config, intent.attachment_id)
     if aerr then return nil, aerr end
     for _, p in ipairs((plugin and plugin.projections) or {}) do
         local previous: types.JsonObject? = nil

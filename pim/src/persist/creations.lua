@@ -17,19 +17,25 @@ function M.proves(catalog_id: string, component_id: string, request: unknown, to
     if qerr then return nil,qerr end
     return rows~=nil and rows[1]~=nil and rows[1].request==values.canonical(request) and type(token)=="string" and rows[1].token==token,nil
 end
-function M.prepare(catalog_id: string,component_id: string,request: unknown): (string?,error?)
-    return store.transaction("prepare component provenance",function(tx: types.Executor,_dialect: string): (string?,error?)
+type Reservation = {token: string, pending: boolean}
+function M.reserve(catalog_id: string,component_id: string,request: unknown): (Reservation?,error?)
+    return store.transaction("prepare component provenance",function(tx: types.Executor,_dialect: string): (Reservation?,error?)
         local token=M.token()
         local _,ierr=tx:execute("INSERT INTO kickside_pim_creation(catalog_id,component_id,request,token,reserved_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(component_id) DO UPDATE SET reserved_at=excluded.reserved_at WHERE kickside_pim_creation.reserved_at IS NOT NULL",{catalog_id,component_id,values.canonical(request),token,clock.now()})
         if ierr then return nil,ierr end
-        local rows,qerr=tx:query("SELECT catalog_id,request,token FROM kickside_pim_creation WHERE component_id=$1",{component_id})
+        local rows,qerr=tx:query("SELECT catalog_id,request,token,reserved_at FROM kickside_pim_creation WHERE component_id=$1",{component_id})
         if qerr then return nil,qerr end
         local row=rows and rows[1]
         if not row or row.catalog_id~=catalog_id or row.request~=values.canonical(request) then
             return nil,errors.new({kind=errors.CONFLICT,message="creation request differs",details={code="idempotency_conflict"}})
         end
-        return row.token :: string,nil
+        return {token=row.token :: string,pending=row.reserved_at~=nil},nil
     end)
+end
+function M.prepare(catalog_id: string,component_id: string,request: unknown): (string?,error?)
+    local reservation,err=M.reserve(catalog_id,component_id,request)
+    if err or not reservation then return nil,err end
+    return reservation.token,nil
 end
 -- An accepted PIM removal ends this instance's ownership. External repair
 -- deletion does not call this path and keeps its record for replacement checks.

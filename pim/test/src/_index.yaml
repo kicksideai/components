@@ -2530,6 +2530,7 @@ entries:
     modules: [time, json]
     method: run
     imports:
+      creations: kickside.pim.persist:creations
       create: kickside.pim.command:create
       threads: kickside.pim.command:threads
       attachments: kickside.pim.extensions:plugin_attachments

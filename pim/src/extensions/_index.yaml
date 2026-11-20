@@ -10,6 +10,7 @@ entries:
     imports:
       values: kickside.pim.domain:values
       component_types: kickside.component:types
+      registration: kickside.component.binding:child_registration
       creations: kickside.pim.persist:creations
       component: kickside.component:component
       envelope: kickside.component:envelope
