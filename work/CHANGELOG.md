@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.23](https://github.com/kicksideai/components/compare/work-v0.1.22...work-v0.1.23) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** register plugin attachments under board custody ([#244](https://github.com/kicksideai/components/issues/244)) ([51cadeb](https://github.com/kicksideai/components/commit/51cadeb11ceb212b8d3429cf60eb9cded88ab03c))
+
 ## [0.1.22](https://github.com/kicksideai/components/compare/work-v0.1.21...work-v0.1.22) (2026-11-20)
 
 
