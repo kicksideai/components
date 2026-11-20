@@ -179,3 +179,25 @@ Known platform gap: Settings 0.3.8 publishes committed revisions through `kicksi
 Indexed lists keep the original order and repeated values in the item document. The generated membership table stores one row per distinct indexed key. Rebuild/reindex and rebalance event replay use fixed 500-item protocol bounds, independently of current execution batch settings. The initial schema includes every cleanup tie-breaker in receipt, alias, audit, interval, generation and terminal-operation age indexes. Generation protection uses positive live/trashed item and pending/running job-state seeks per bounded candidate, so an empty active population does not scan retained rows on older SQLite planners. Approval, stage-run, failed-job, item-life, visibility and comment selectors retain their matching complete indexes.
 
 The functional test harness explicitly configures read and command budgets to 60000 ms: data and fixture assertions do not impose a production latency target on shared runners. Deadline tests choose their own setting or earlier caller deadline. The snapshot budget probe advances a clock through the existing deadline imports, checks expiry after snapshot work, and restores the real clock before returning; it never sleeps to reach a read deadline. Production defaults remain 2000 ms for reads and 5000 ms for commands.
+
+### Task templates and recurring creation
+
+Declare `kickside.work.templates:plugin` on a board to enable its versioned create presets. Use `kickside.work.templates:templates` to list, publish, archive, or instantiate a version. The Work trait contributes the corresponding tools on active boards. Board ADMIN publishes and archives versions. Board READ lists active versions, with default values limited by current field and item visibility. Board WRITE instantiates an exact version with an explicit key. Overrides replace only the declared field codes. The standard create command enforces current field access, parent visibility, entry requirements and workflow effects.
+
+The catalog retains up to 128 versions per board. Archive hides a version from listing and refuses fresh creates. Existing keyed Work receipts replay while their evidence is retained. A version whose field identity changed needs a new publication and pin. The attachment emits publish and archive facts and removes the catalog on teardown.
+
+Automation can run the `kickside.automation.recurring:task` kind with this target:
+
+```yaml
+kind: action
+port: kickside.work.templates:recurring
+config:
+  board_id: <work-board-id>
+  template_id: <template-id>
+  version: <exact-version-from-publish>
+input:
+  overrides:
+    title: Weekly review
+```
+
+The action runs under the Automation execution principal. Work board event retention must cover Automation delivery and history retention. Automation reserves each send before attempting it. Operator replays use the same occurrence key and recover an existing Work receipt. When receipt evidence is unavailable, replay returns `template_replay_unavailable`.

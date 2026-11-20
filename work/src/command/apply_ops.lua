@@ -214,7 +214,7 @@ local function head_changed(): error
     return errors.new({ kind = errors.CONFLICT, message = "Board head changed.", details = { code = "head_changed" } })
 end
 
-local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
+local function run_atomic(ctx: types.ApplyContext, admit: ((domain.Board) -> error?)?): (types.ApplyResult?, error?)
     local all: { integer } = {}
     for i = 1, #ctx.ops do all[i] = i end
     local expected_head = ctx.request.expected_head
@@ -248,6 +248,10 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
         if recovery_err then return nil, recovery_err end
         if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
         if expected_head ~= nil and board.applied_seq > expected_head then return nil, head_changed() end
+        if admit then
+            local admission_err = admit(board)
+            if admission_err then return nil, admission_err end
+        end
         if failed then
             for i = 1, #ctx.ops do
                 if plans[i].status == "applied" or plans[i].status == "unchanged" then roll_back(outcomes[i]) end
@@ -259,8 +263,9 @@ local function run_atomic(ctx: types.ApplyContext): (types.ApplyResult?, error?)
         for _, w in ipairs(writes) do
             -- The covered cursor includes sibling outputs the item projection skips.
             if not w.thread_id or w.thread_id == ctx.board_id then
-                if expected_head ~= nil then w.expect_head = expected_head
-                elseif w.expect_head then w.expect_head = math.max(w.expect_head, last_seq) end
+                -- A provider's admission describes this prepared board snapshot.
+                local head = admit and board.applied_seq or w.expect_head
+                w.expect_head = expected_head or (head and math.max(head, last_seq))
             end
             for _, raw in ipairs(w.events) do
                 local event = raw :: domain.Event
@@ -396,7 +401,7 @@ local function run_independent(ctx: types.ApplyContext): (types.ApplyResult?, er
 end
 
 -- apply(request) runs item ops. Needs WRITE; deleting and restoring also need DELETE.
-function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?): (types.ApplyResult?, error?)
+function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?, admit: ((domain.Board) -> error?)?): (types.ApplyResult?, error?)
     local context, trace_err = receipts.trace(request.trace_context, "work.apply")
     if trace_err then return nil, trace_err end
     request.trace_context = context
@@ -408,6 +413,7 @@ function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?): (type
     if request.expected_head ~= nil and (mode ~= "atomic" or math.tointeger(request.expected_head) == nil or request.expected_head < 0) then
         return nil, guard.invalid("expected_head requires atomic mode and a nonnegative board head")
     end
+    if admit and (mode ~= "atomic" or request.key == nil) then return nil, guard.invalid("guarded apply requires an atomic command key") end
     if #request.ops == 0 then return nil, guard.invalid("ops required") end
     if #request.ops > consts.LIMITS.ops then return nil, guard.invalid("an apply takes at most " .. consts.LIMITS.ops .. " ops") end
     local key = request.key
@@ -425,7 +431,7 @@ function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?): (type
         hashed = receipts.request_hash({ op = "apply", mode, request.ops, source, origin = request.origin, expected_head = request.expected_head }), base = key and ("apply/" .. key) or nil,
         until_at = until_at, generation = uuid.v4(),
     }
-    if mode == "atomic" then return run_atomic(ctx) end
+    if mode == "atomic" then return run_atomic(ctx, admit) end
     return run_independent(ctx)
 end
 

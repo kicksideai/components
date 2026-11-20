@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.templates
+entries:
+- name: tool_list
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: WorkListTemplates
+    llm_alias: WorkListTemplates
+    llm_description: List active versions on a readable board and return only statically readable defaults.
+    mcp: {required_scopes: [state.read]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255,"description":"Exact Work board component id."}},"required":[],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"templates":{"type":"array","maxItems":128,"items":{"type":"object","properties":{"template_id":{"type":"string","minLength":1,"maxLength":64,"pattern":"^[a-z][a-z0-9_-]*$","description":"Board-local template id."},"version":{"type":"string","minLength":1,"maxLength":36,"pattern":"^[0-9a-f-]{36}$","description":"An exact immutable template version from the catalog."},"title":{"type":"string","minLength":1,"maxLength":255,"description":"Display title for this version."},"description":{"type":"string","minLength":1,"maxLength":2048,"description":"Display description for this version."},"schema_generation":{"type":"integer","minimum":1,"description":"Work schema generation."},"preset":{"type":"object","properties":{"op":{"type":"string","const":"create"},"type":{"type":"string","minLength":1,"maxLength":40,"pattern":"^[a-z][a-z0-9_]*$","description":"Stable Work schema code."},"parent":{"type":"string","minLength":1,"maxLength":255,"description":"Optional visible parent item id on the same board."},"state":{"type":"string","minLength":1,"maxLength":40,"pattern":"^[a-z][a-z0-9_]*$","description":"Stable Work schema code."},"values":{"type":"object","maxProperties":200,"additionalProperties":{},"description":"Work field codes mapped to values accepted on create."}},"required":["op","type"],"additionalProperties":false},"override_fields":{"type":"array","items":{"type":"string","minLength":1,"maxLength":40,"pattern":"^[a-z][a-z0-9_]*$","description":"Stable Work schema code."},"uniqueItems":true,"maxItems":200,"description":"Field codes whose preset values an instantiation may replace or supply."}},"required":["template_id","version","title","schema_generation","preset","override_fields"],"additionalProperties":false}},"generation":{"type":"integer","minimum":1,"description":"Work schema generation."},"as_of":{"type":"integer","minimum":0},"success":{"type":"boolean"}},"required":["templates","generation","as_of","success"],"additionalProperties":false}'
+  source: file://tool.lua
+  method: list
+  modules: [ctx]
+  imports:
+    client: kickside.work:client
+    types: kickside.work.templates:types
+    catalog: kickside.work.templates:catalog
+- name: tool_publish
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: WorkPublishTemplate
+    llm_alias: WorkPublishTemplate
+    llm_description: Publish one immutable version under board ADMIN using the pack starter create shape.
+    mcp: {required_scopes: [state.write]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255,"description":"Exact Work board component id."},"template_id":{"type":"string","minLength":1,"maxLength":64,"pattern":"^[a-z][a-z0-9_-]*$","description":"Board-local template id."},"title":{"type":"string","minLength":1,"maxLength":255,"description":"Display title for this version."},"description":{"type":"string","minLength":1,"maxLength":2048,"description":"Display description for this version."},"preset":{"type":"object","properties":{"op":{"type":"string","const":"create"},"type":{"type":"string","minLength":1,"maxLength":40,"pattern":"^[a-z][a-z0-9_]*$","description":"Stable Work schema code."},"parent":{"type":"string","minLength":1,"maxLength":255,"description":"Optional visible parent item id on the same board."},"state":{"type":"string","minLength":1,"maxLength":40,"pattern":"^[a-z][a-z0-9_]*$","description":"Stable Work schema code."},"values":{"type":"object","maxProperties":200,"additionalProperties":{},"description":"Work field codes mapped to values accepted on create."}},"required":["op","type"],"additionalProperties":false},"override_fields":{"type":"array","items":{"type":"string","minLength":1,"maxLength":40,"pattern":"^[a-z][a-z0-9_]*$","description":"Stable Work schema code."},"uniqueItems":true,"maxItems":200,"description":"Field codes whose preset values an instantiation may replace or supply."}},"required":["template_id","title","preset"],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"template_id":{"type":"string","minLength":1,"maxLength":64,"pattern":"^[a-z][a-z0-9_-]*$","description":"Board-local template id."},"version":{"type":"string","minLength":1,"maxLength":36,"pattern":"^[0-9a-f-]{36}$","description":"An exact immutable template version from the catalog."},"title":{"type":"string","minLength":1,"maxLength":255,"description":"Display title for this version."},"description":{"type":"string","minLength":1,"maxLength":2048,"description":"Display description for this version."},"schema_generation":{"type":"integer","minimum":1,"description":"Work schema generation."},"preset":{"type":"object","properties":{"op":{"type":"string","const":"create"},"type":{"type":"string","minLength":1,"maxLength":40,"pattern":"^[a-z][a-z0-9_]*$","description":"Stable Work schema code."},"parent":{"type":"string","minLength":1,"maxLength":255,"description":"Optional visible parent item id on the same board."},"state":{"type":"string","minLength":1,"maxLength":40,"pattern":"^[a-z][a-z0-9_]*$","description":"Stable Work schema code."},"values":{"type":"object","maxProperties":200,"additionalProperties":{},"description":"Work field codes mapped to values accepted on create."}},"required":["op","type"],"additionalProperties":false},"override_fields":{"type":"array","items":{"type":"string","minLength":1,"maxLength":40,"pattern":"^[a-z][a-z0-9_]*$","description":"Stable Work schema code."},"uniqueItems":true,"maxItems":200,"description":"Field codes whose preset values an instantiation may replace or supply."},"success":{"type":"boolean"}},"required":["template_id","version","title","schema_generation","preset","override_fields","success"],"additionalProperties":false}'
+  source: file://tool.lua
+  method: publish
+  modules: [ctx]
+  imports:
+    client: kickside.work:client
+    types: kickside.work.templates:types
+    catalog: kickside.work.templates:catalog
+- name: tool_archive
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: WorkArchiveTemplate
+    llm_alias: WorkArchiveTemplate
+    llm_description: Archive one version under board ADMIN and keep its existing apply receipts replayable.
+    mcp: {required_scopes: [state.write]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255,"description":"Exact Work board component id."},"template_id":{"type":"string","minLength":1,"maxLength":64,"pattern":"^[a-z][a-z0-9_-]*$","description":"Board-local template id."},"version":{"type":"string","minLength":1,"maxLength":36,"pattern":"^[0-9a-f-]{36}$","description":"An exact immutable template version from the catalog."}},"required":["template_id","version"],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"template_id":{"type":"string","minLength":1,"maxLength":64,"pattern":"^[a-z][a-z0-9_-]*$","description":"Board-local template id."},"version":{"type":"string","minLength":1,"maxLength":36,"pattern":"^[0-9a-f-]{36}$","description":"An exact immutable template version from the catalog."},"archived":{"type":"boolean"},"success":{"type":"boolean"}},"required":["template_id","version","archived","success"],"additionalProperties":false}'
+  source: file://tool.lua
+  method: archive
+  modules: [ctx]
+  imports:
+    client: kickside.work:client
+    types: kickside.work.templates:types
+    catalog: kickside.work.templates:catalog
+- name: tool_instantiate
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: WorkInstantiateTemplate
+    llm_alias: WorkInstantiateTemplate
+    llm_description: Create one item from an exact template version as the caller using an explicit Work key.
+    mcp: {required_scopes: [state.write]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255,"description":"Exact Work board component id."},"template_id":{"type":"string","minLength":1,"maxLength":64,"pattern":"^[a-z][a-z0-9_-]*$","description":"Board-local template id."},"version":{"type":"string","minLength":1,"maxLength":36,"pattern":"^[0-9a-f-]{36}$","description":"An exact immutable template version from the catalog."},"key":{"type":"string","minLength":1,"maxLength":255,"description":"Caller-supplied idempotency key for this create."},"overrides":{"type":"object","maxProperties":200,"additionalProperties":{},"description":"Work field codes mapped to values accepted on create."}},"required":["template_id","version","key"],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object","properties":{"op":{"type":"integer"},"status":{"type":"string","enum":["applied","unchanged","conflict","invalid","denied","unavailable"]},"item":{"type":"string"},"key":{"type":"string"},"version":{"type":"integer"},"comment":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"message":{"type":"string"},"field":{"type":"string"}},"additionalProperties":false,"required":["code","message"]}},"rolled_back":{"type":"boolean"},"error":{"type":"object","description":"Native error envelope retaining the original condition and retry policy.","properties":{"kind":{"type":"string","description":"Native error kind."},"message":{"type":"string","description":"Original failure message."},"retryable":{"type":"boolean","description":"Original retry policy."},"details":{"type":"object","description":"Original condition details."}},"required":["kind","message","retryable"],"additionalProperties":false}},"additionalProperties":false,"required":["op","status"]},"description":"Ordered per-operation statuses, item ids, versions and findings."},"applied":{"type":"boolean","description":"Whether this command records changes."},"seq":{"type":"integer","description":"Sequence of the command append, absent when nothing is appended."},"as_of":{"type":"integer","description":"Committed sequence covered by the returned snapshot."},"replayed":{"type":"boolean","description":"True when this request reuses its previously recorded result."},"success":{"type":"boolean"}},"additionalProperties":false,"required":["outcomes","applied","success"]}'
+  source: file://tool.lua
+  method: instantiate
+  modules: [ctx]
+  imports:
+    client: kickside.work:client
+    types: kickside.work.templates:types
+    catalog: kickside.work.templates:catalog

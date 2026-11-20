@@ -225,6 +225,10 @@ entries:
     path: .groups +=
   - entry: kickside.work.security:member_endpoints
     path: .groups +=
+  - entry: kickside.work.templates:module_access
+    path: .groups +=
+  - entry: kickside.work.templates:module_runtime
+    path: .groups +=
 - name: board_public_meta
   kind: security.policy
   meta:

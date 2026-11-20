@@ -1,0 +1,176 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.templates
+entries:
+- name: plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    title: Work Templates
+    description: Versioned create presets owned by a Work board.
+    attachment: kickside.work.templates:attachment
+    tools:
+    - kickside.work.templates:tool_list
+    - kickside.work.templates:tool_publish
+    - kickside.work.templates:tool_archive
+    - kickside.work.templates:tool_instantiate
+- name: attachment
+  kind: contract.binding
+  meta:
+    title: Work Templates catalog
+    thread: {class: work.templates}
+    thread_class: work.templates
+    retention: {event_days: 90}
+    events:
+      read: admin
+      input: []
+      output:
+      - {type: 'kickside.work.templates:template.published', system_only: true}
+      - {type: 'kickside.work.templates:template.archived', system_only: true}
+  contracts:
+  - contract: kickside.contract:component
+    methods: {get_status: 'kickside.core.threads:thread_status'}
+  - contract: kickside.contract:deletable
+    context_required: [component_id]
+    methods: {delete: 'kickside.work.templates:delete'}
+- name: service
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work.templates:templates
+    default: true
+    methods:
+      list: kickside.work.templates:list
+      publish: kickside.work.templates:publish
+      archive: kickside.work.templates:archive
+      instantiate: kickside.work.templates:instantiate
+- name: list
+  kind: function.lua
+  source: file://templates.lua
+  method: list
+  modules: [uuid, hash]
+  imports: &template_imports
+    component: kickside.component:component
+    types: kickside.work.templates:types
+    domain: kickside.work:types
+    reads: kickside.work.read:types
+    commands: kickside.work.command:types
+    access: kickside.work.read:access
+    rules: kickside.work.domain:access_rules
+    requests: kickside.work.service:requests
+    catalog: kickside.work.templates:catalog
+    presets: kickside.work.templates:presets
+    store: kickside.work.persist:store
+    policy: kickside.work.domain:policy
+    apply: kickside.work.command:apply_ops
+    outcomes: kickside.work.domain:outcomes
+    peers: kickside.work.read:peers
+    limits: kickside.work.settings:limits
+    values: kickside.work.domain:values
+- name: publish
+  kind: function.lua
+  source: file://templates.lua
+  method: publish
+  modules: [uuid, hash]
+  imports: *template_imports
+- name: archive
+  kind: function.lua
+  source: file://templates.lua
+  method: archive
+  modules: [uuid, hash]
+  imports: *template_imports
+- name: instantiate
+  kind: function.lua
+  source: file://templates.lua
+  method: instantiate
+  modules: [uuid, hash]
+  imports: *template_imports
+  security:
+    policies: [kickside.work.security:apply_output_publish]
+- name: implementation
+  kind: library.lua
+  source: file://templates.lua
+  modules: [uuid, hash]
+  imports: *template_imports
+- name: presets
+  kind: library.lua
+  source: file://presets.lua
+  imports:
+    types: kickside.work.templates:types
+    domain: kickside.work:types
+    values: kickside.work.domain:values
+    fields: kickside.work.domain:fields
+    catalog: kickside.work.templates:catalog
+- name: types
+  kind: library.lua
+  source: file://types.lua
+  imports:
+    domain: kickside.work:types
+- name: catalog
+  kind: library.lua
+  source: file://catalog.lua
+  modules: [sql, ctx, time]
+  imports: &catalog_imports
+    types: kickside.work.templates:types
+    domain: kickside.work:types
+    store: kickside.work.persist:store
+    clock: kickside.work.domain:clock
+    append: kickside.core.threads.persist:append
+    values: kickside.work.domain:values
+- name: delete
+  kind: function.lua
+  meta: {private: true}
+  source: file://catalog.lua
+  method: delete
+  modules: [sql, ctx, time]
+  imports: *catalog_imports
+- name: retire
+  kind: function.lua
+  meta: {type: kickside.retention.owner, private: true}
+  source: file://catalog.lua
+  method: retire
+  modules: [sql, ctx, time]
+  imports: *catalog_imports
+- name: 01_catalog
+  kind: function.lua
+  meta:
+    type: migration
+    private: true
+    tags: [work, templates]
+    timestamp: '2026-11-19T02:00:00Z'
+  source: file://schema.lua
+  method: migrate
+  imports:
+    migration: wippy.migration:migration
+- name: action
+  kind: contract.binding
+  meta:
+    title: Instantiate Work template
+    delivery: at_most_once
+    input_shape: record
+  contracts:
+  - contract: kickside.data:writable
+    methods: {write: 'kickside.work.templates:write'}
+- name: write
+  kind: function.lua
+  source: file://action.lua
+  method: write
+  modules: [hash]
+  security:
+    policies: [kickside.work.security:apply_output_publish]
+  imports:
+    templates: kickside.work.templates:implementation
+    types: kickside.work.templates:types
+    catalog: kickside.work.templates:catalog
+    shape: kickside.work.domain:shape
+    schemas: kickside.work.templates:schemas
+    writable: kickside.data:writable_sink
+    automation_policy: kickside.automation:runtime_policy
+    values: kickside.work.domain:values
+    data_error: kickside.work.source:data_error
+- name: schemas
+  kind: library.lua
+  source: file://schemas.lua
+  modules: [json]
+  imports:
+    shape: kickside.work.domain:shape
+    types: kickside.work.templates:types

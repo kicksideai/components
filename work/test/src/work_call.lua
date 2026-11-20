@@ -58,7 +58,7 @@ function M.run(input: unknown): (unknown, error?)
     local op, id, req = input.op, input.board_id, input.request or {}
     if op == "register_schemaless" then return funcs.call("app:register_schemaless_board") end
     if op == "contract_request" then
-        local service, err = open(req.contract)
+        local service, err = open(req.contract, req.binding)
         if err or not service then return nil, err end
         return invoke(service, req.method, req.value)
     end

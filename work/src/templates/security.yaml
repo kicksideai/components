@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.templates
+entries:
+- name: module_access
+  kind: security.policy
+  meta:
+    title: Work Templates
+    surface: kickside.work.templates
+    intent: module_access
+    includes: [kickside.work.templates:module_runtime]
+  groups: []
+  policy:
+    resources:
+    - kickside.work.templates:plugin
+    - kickside.work.templates:attachment
+    - kickside.work.templates:templates
+    - kickside.work.templates:service
+    - kickside.work.templates:action
+    - kickside.work.templates:recurring
+    - kickside.work.templates:tool_list
+    - kickside.work.templates:tool_publish
+    - kickside.work.templates:tool_archive
+    - kickside.work.templates:tool_instantiate
+    actions: [registry.get, registry.find]
+    effect: allow
+- name: module_runtime
+  kind: security.policy
+  meta: {private: true}
+  groups: []
+  policy:
+    resources:
+    - kickside.work.templates:templates
+    - kickside.work.templates:service
+    - kickside.work.templates:list
+    - kickside.work.templates:publish
+    - kickside.work.templates:archive
+    - kickside.work.templates:instantiate
+    - kickside.work.templates:action
+    - kickside.work.templates:write
+    - kickside.work.templates:tool_list
+    - kickside.work.templates:tool_publish
+    - kickside.work.templates:tool_archive
+    - kickside.work.templates:tool_instantiate
+    actions: [contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
+    effect: allow
