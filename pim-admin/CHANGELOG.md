@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/kicksideai/components/compare/pim-admin-v0.1.5...pim-admin-v0.1.6) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim-admin:** make settings states recoverable and readable ([942a49b](https://github.com/kicksideai/components/commit/942a49b851fbb3685345b17d28c87fbddb1050f2))
+
 ## [0.1.5](https://github.com/kicksideai/components/compare/pim-admin-v0.1.4...pim-admin-v0.1.5) (2026-11-20)
 
 
