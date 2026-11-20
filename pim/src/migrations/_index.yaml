@@ -14,3 +14,22 @@ entries:
     imports:
       migration: wippy.migration:migration
     method: migrate
+
+  - name: 02_proposal_facts
+    kind: function.lua
+    meta:
+      type: migration
+      private: true
+      tags: [pim, catalog]
+      comment: Register proposal facts on existing projections and reconcile interrupted proposal acceptances.
+      timestamp: "2026-11-20T00:00:00Z"
+    source: file://02_proposal_facts.lua
+    modules: [uuid]
+    imports:
+      migration: wippy.migration:migration
+      pipeline: kickside.pim.command:pipeline
+      proposal_rows: kickside.pim.persist:proposal_rows
+      proposals: kickside.pim.command:proposals
+      store: kickside.pim.persist:store
+      values: kickside.pim.domain:values
+    method: migrate

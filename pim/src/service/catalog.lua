@@ -64,6 +64,8 @@ M.get_schema = with_catalog("get_schema", function(id: string, input: unknown): 
     return reader.get_schema(id, input :: types.GetSchemaRequest)
 end)
 
+M.policy_defaults = with_catalog("policy_defaults", reader.policy_defaults)
+
 M.plan_schema = with_catalog("plan_schema", function(id: string, input: unknown): (types.SchemaPlanResult?, error?)
     local request = input :: types.SchemaRequest
     return writer.plan_schema(id, request)

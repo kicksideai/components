@@ -37,6 +37,22 @@ entries:
       actions: threads.output.publish
       effect: allow
 
+  - name: proposal_submit_publish
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: [kickside.pim.events:proposal.submitted]
+      actions: threads.output.publish
+      effect: allow
+
+  - name: proposal_decide_publish
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: [kickside.pim.events:proposal.decided]
+      actions: threads.output.publish
+      effect: allow
+
   - name: withdraw_output_publish
     kind: security.policy
     meta: { private: true, service_only: true, comment: The withdraw command publishes withdrawals. }

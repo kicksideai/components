@@ -22,6 +22,7 @@ local derived = require("derived")
 local item_index = require("item_index")
 local schema_cleanup = require("schema_cleanup")
 local release_jobs = require("release_jobs")
+local proposal_rows = require("proposal_rows")
 local attachments = require("attachments")
 
 local M = {}
@@ -445,6 +446,7 @@ end
 -- FOLDED lists the event types the catalog projection folds.
 local FOLDED: { [string]: boolean } = {
     [EV.MODEL_RELEASE_REQUESTED] = true, [EV.SCHEMA_APPLIED] = true, [EV.TERM_CHANGED] = true, [EV.PRODUCT_RELEASED] = true, [EV.PRODUCT_WITHDRAWN] = true,
+    [EV.PROPOSAL_SUBMITTED] = true, [EV.PROPOSAL_DECIDED] = true,
 }
 for t in pairs(PRODUCT_EVENTS) do FOLDED[t] = true end
 
@@ -475,6 +477,13 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
         rows = function(): integer return batch.rows end,
         pending = function(): boolean return pending end,
         apply = function(step: driver.Step, index: integer): error?
+            if step.type == EV.PROPOSAL_SUBMITTED or step.type == EV.PROPOSAL_DECIDED then
+                if not catalog then return failure.corrupt("catalog event before its schema") end
+                if step.type == EV.PROPOSAL_SUBMITTED then
+                    return proposal_rows.submit(tx, catalog_id, step.body :: types.ProposalSubmittedBody)
+                end
+                return proposal_rows.decide(tx, catalog_id, step.body :: types.ProposalDecidedBody)
+            end
             local event = typed(step)
             local herr: error?
             if event.kind ~= "created" and event.kind ~= "product" then

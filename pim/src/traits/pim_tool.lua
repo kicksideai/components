@@ -22,6 +22,7 @@ end
 
 function M.list_catalogs(args: Map): (Map?, error?) return run("list", args, nil) end
 function M.get_schema(args: Map): (Map?, error?) return run("get_schema", args, ctx.get("catalog_id")) end
+function M.policy_defaults(args: Map): (Map?, error?) return run("policy_defaults", args, ctx.get("catalog_id")) end
 function M.schema_options(args: Map): (Map?, error?) return run("schema_options", args, ctx.get("catalog_id")) end
 function M.list_terms(args: Map): (Map?, error?) return run("list_terms", args, ctx.get("catalog_id")) end
 function M.query(args: Map): (Map?, error?) return run("query", args, ctx.get("catalog_id")) end
