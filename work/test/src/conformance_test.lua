@@ -133,13 +133,17 @@ local function define()
             local literal_types = { boolean = true, number = true, integer = true, string = true, object = true, array = true }
             local expected = { ["kickside.work:target_db"] = true, ["kickside.work:api_router"] = true,
                 ["kickside.work:registry_admin_grant"] = true, ["kickside.work:board_event_retention_days"] = true,
-                ["kickside.work.security:user_security_scope"] = true, ["kickside.work.planning:user_security_scope"] = true,
-                ["kickside.work.planning:api_router"] = true }
+                ["kickside.work.security:user_security_scope"] = true, ["kickside.work.planning:user_security_scope"] = true }
             for _, entry in ipairs(requirements) do
                 if tostring(entry.id):match("^kickside%.work[.:]") then
                     test.is_true(expected[tostring(entry.id)] == true, tostring(entry.id))
                     test.is_nil(literal_types[(entry.meta or {}).value_kind], tostring(entry.id) .. " must declare literal types under meta.value_type")
                 end
+            end
+            local work_router = assert(registry.get("kickside.work.api:get.endpoint")).meta.router
+            for _, method in ipairs({ "plan_close", "close" }) do
+                local endpoint = assert(registry.get("kickside.work.api.sprints:" .. method .. ".endpoint"))
+                test.eq(endpoint.meta.router, work_router)
             end
             local binding = assert(registry.get("kickside.work.binding:board"))
             test.is_nil(binding.meta.component)
