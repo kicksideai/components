@@ -55,6 +55,8 @@ entries:
     path: .meta.target_db
   - entry: kickside.work.migrations:03_move_operation_keys
     path: .meta.target_db
+  - entry: kickside.work.migrations:04_link_page_indexes
+    path: .meta.target_db
   - entry: kickside.work.persist:config
     path: .meta.db_id
 - name: api_router

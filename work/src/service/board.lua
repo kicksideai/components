@@ -54,8 +54,7 @@ function M.get(input: unknown): (reads.GetResult?, error?)
     if request.item.key ~= nil and request.item.key ~= "" then return reader.get_by_key(request) end
     local id, lerr = locate.resolve(request.board_id)
     if lerr or not id then return nil, lerr end
-    request.board_id = id
-    return reader.get(request)
+    return reader.get(request, id)
 end
 
 function M.get_schema(input: unknown): (reads.SchemaView?, error?)

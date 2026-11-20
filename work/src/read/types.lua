@@ -25,7 +25,7 @@ type SchemaGetRequest = { budget: ReadBudget?, board_id: string, generation: int
 type SchemaPlugin = domain.PluginView
 type SchemaView = ReadStamp & { pack: JsonObject?, outdated: boolean?, plugins: { SchemaPlugin }?, declaration: Declaration, compiled: JsonObject, digest: string, key_prefix: string, migration_error: string? }
 type ItemRef = { id: string?, key: string? }
-type GetRequest = { budget: ReadBudget?, board_id: string, item: ItemRef, include: { string }?, min_seq: integer? }
+type GetRequest = { budget: ReadBudget?, board_id: string?, item: ItemRef, include: { string }?, min_seq: integer? }
 type ApprovalView = { principal: domain.PrincipalDecl, decision: string, at: string }
 type GateView = { entered_by: domain.PrincipalDecl, entered_at: string, approvals: { ApprovalView }, can_approve: boolean }
 type AwaitingView = { since: string, by: string?, can_act: boolean, principals: { domain.PrincipalDecl }? }
@@ -78,6 +78,7 @@ type CrossCandidate = { board: string, index: integer, key: domain.Cursor, item:
 type QueryResult = ReadStamp & { incomplete: boolean?, groups: { QueryGroup }?, positions: { [string]: ReadStamp }?, cross_after: CrossCursor?, items: { ItemView }, after: domain.Cursor?, reindexing: boolean }
 type CountResult = ReadStamp & { incomplete: boolean?, total: integer?, estimated: boolean?, reindexing: boolean }
 
+-- Link continuations are opaque and bound to the board and selector.
 type LinksRequest = { budget: ReadBudget?, board_id: string, item: ItemRef?, target: domain.Target?, direction: string?, after: string?, limit: integer?, min_seq: integer? }
 type LinkPeer = { board: string?, item: string?, unavailable: boolean? }
 type RelationView = { type: string, source: LinkPeer, target: LinkPeer, at: string }

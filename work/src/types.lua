@@ -268,6 +268,7 @@ type CommentRow = {
     deleted: boolean, created_at: string, edited_at: string?,
 }
 type CommentPosition = { created_at: string, comment_id: string }
+type LinkPosition = { seq: integer, board_id: string, from_id: string, type: string, to_board_id: string, to_id: string }
 type IntervalRow = { field_id: string, start_seq: integer, value_key: string, started_at: string, ended_at: string? }
 type ChangeRow = {
     seq: integer, n: integer, subject: string, kind: string, field_id: integer?, before: Json, after: Json, actor: string,
@@ -348,7 +349,7 @@ return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, Operation
     Effect = Effect, Transition = Transition, Process = Process, Policy = Policy, EventWindow = EventWindow, Compiled = Compiled, Model = Model, SchemaChange = SchemaChange,
     Usage = Usage, StateUsageTarget = StateUsageTarget, UsageTargets = UsageTargets,
     Board = Board, Cell = Cell, Document = Document, Item = Item, LinkRow = LinkRow, InboundLink = InboundLink,
-    CommentRow = CommentRow, CommentPosition = CommentPosition, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
+    CommentRow = CommentRow, CommentPosition = CommentPosition, LinkPosition = LinkPosition, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
 
     PatchStep = PatchStep, Target = Target, Receipt = Receipt, EventBody = EventBody, External = External, Event = Event,
     FoldBatch = FoldBatch, FoldResult = FoldResult, RawEvent = RawEvent, FoldEvent = FoldEvent, ProjectionRange = ProjectionRange, ProjectionBody = ProjectionBody,

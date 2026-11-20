@@ -93,23 +93,23 @@ local function has(include: { string }?, name: string): boolean
     return false
 end
 
-local function get(request: types.GetRequest, context: types.ReadContext): (types.GetResult?, error?)
+local function get(request: types.GetRequest, board_id: string, ref: types.ItemRef, context: types.ReadContext): (types.GetResult?, error?)
     local unsupported = access.non_item(request)
     if unsupported then return nil, unsupported end
     local writable = false
     if has(request.include, "transitions") then
         local werr: error?
-        writable, werr = conditions.writable(request.board_id)
+        writable, werr = conditions.writable(board_id)
         if werr then return nil, werr end
     end
-    local grants, gerr = access.effective(request.board_id)
+    local grants, gerr = access.effective(board_id)
     if gerr or not grants then return nil, gerr end
-    local metadata, merr = locate.metadata(request.board_id, 1)
+    local metadata, merr = locate.metadata(board_id, 1)
     if merr or not metadata then return nil, merr end
     local catalog: { [string]: domain.Field } = {}
-    local result, err = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, _dialect: string): (types.GetResult?, error?)
+    local result, err = access.with_snapshot(board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, _dialect: string): (types.GetResult?, error?)
         catalog = peers.catalog(board)
-        local item, err = find(tx, board, request.item)
+        local item, err = find(tx, board, ref)
         if err then return nil, err end
         if not item then return nil, errors.new({ kind = errors.NOT_FOUND, message = "item not found", details = { code = "item_not_found" } }) end
         local view, verr = render(tx, board, item, true)
@@ -125,7 +125,7 @@ local function get(request: types.GetRequest, context: types.ReadContext): (type
             out.field_edit = edits
         end
         if has(request.include, "links") then
-            local rows, lerr = read_rows.links(tx, board.board_id, item.item_id, nil, "both", 0, 200)
+            local rows, lerr = read_rows.links(tx, board.board_id, item.item_id, nil, "both", nil, 200)
             if lerr then return nil, lerr end
             local links: { types.LinkView } = {}
             for _, row in ipairs(rows or {}) do
@@ -203,11 +203,11 @@ local function not_found(): error
     return errors.new({ kind = errors.NOT_FOUND, message = "item not found", details = { code = "item_not_found" } })
 end
 
--- get_by_key answers a key without a board: the key's prefix names the board. A caller
--- who cannot read that board gets the answer an unknown key gets.
+-- A supplied board is the origin of the key. Only an omitted board allows global lookup.
 local function get_by_key(request: types.GetRequest, context: types.ReadContext): (types.GetResult?, error?)
-    if request.board_id and request.board_id ~= "" then
-        local err = access.admit(request.board_id)
+    local origin = request.board_id
+    if origin then
+        local err = access.admit(origin)
         if err then return nil, err end
     end
     local unsupported = access.non_item(request)
@@ -216,12 +216,11 @@ local function get_by_key(request: types.GetRequest, context: types.ReadContext)
     if key == nil or key == "" then return nil, access.invalid("item needs an id or a key") end
     local db, err = store.open()
     if not db then return nil, err end
-    local item, ierr = store.item_by_key(db, key)
+    local item, ierr = store.item_by_key(db, key, origin)
     db:release()
     if ierr then return nil, ierr end
     if not item then return nil, not_found() end
-    request.board_id = item.board_id
-    local out, gerr = get(request, context)
+    local out, gerr = get(request, item.board_id, { id = item.item_id }, context)
     if gerr then
         if gerr:kind() == errors.PERMISSION_DENIED then return nil, not_found() end
         return nil, gerr
@@ -478,8 +477,8 @@ M.render = render
 function M.get_schema(request: types.SchemaGetRequest): (types.SchemaView?, error?)
     return budget.run(request, function(context: types.ReadContext): (types.SchemaView?, error?) return get_schema(request, context) end)
 end
-function M.get(request: types.GetRequest): (types.GetResult?, error?)
-    return budget.run(request, function(context: types.ReadContext): (types.GetResult?, error?) return get(request, context) end)
+function M.get(request: types.GetRequest, board_id: string): (types.GetResult?, error?)
+    return budget.run(request, function(context: types.ReadContext): (types.GetResult?, error?) return get(request, board_id, request.item, context) end)
 end
 function M.get_by_key(request: types.GetRequest): (types.GetResult?, error?)
     return budget.run(request, function(context: types.ReadContext): (types.GetResult?, error?) return get_by_key(request, context) end)

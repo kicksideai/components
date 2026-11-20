@@ -3,6 +3,7 @@ local budget = require("budget")
 local json = require("json")
 -- Bounded relation and comment pages over a committed board snapshot.
 local access = require("access")
+local cursor_codec = require("cursor_codec")
 local reader = require("reader")
 local read_rows = require("read_rows")
 local store = require("store")
@@ -11,21 +12,12 @@ local domain = require("domain")
 local types = require("types")
 local M = {}
 
-local function offset_of(after: string?): (integer?, error?)
-    if after == nil then return 0, nil end
-    if not after:match("^%d+$") then return nil, access.invalid("after is a page cursor") end
-    local offset = math.tointeger(tonumber(after))
-    if not offset or offset < 0 then return nil, access.invalid("after is a page cursor") end
-    return offset, nil
-end
-
 local function list_links(request: types.LinksRequest, context: types.ReadContext): (types.LinksResult?, error?)
     local limit = request.limit or 50
     if limit < 1 or limit > 200 then return nil, access.invalid("limit must be 1..200") end
+    if (request.item == nil) == (request.target == nil) then return nil, access.invalid("links takes item or target") end
     local direction = request.direction or "both"
     if direction ~= "both" and direction ~= "inward" and direction ~= "outward" then return nil, access.invalid("direction is inward, outward or both") end
-    local offset, oerr = offset_of(request.after)
-    if oerr or offset == nil then return nil, oerr end
     if request.target and request.target.board ~= request.board_id then
         local visible, verr = peers.visible(request.target.board, request.target.item)
         if verr then return nil, verr end
@@ -44,10 +36,23 @@ local function list_links(request: types.LinksRequest, context: types.ReadContex
             if verr then return nil, verr end
             if not target then return nil, errors.new({ kind = errors.NOT_FOUND, message = "item not found", details = { code = "item_not_found" } }) end
         end
-        local rows, rerr = read_rows.links(tx, board.board_id, item and item.item_id, request.target, direction, offset, limit + 1)
-        if rerr then return nil, rerr end
+        local selector = request.target and { "target", request.target.board, request.target.item }
+            or { direction, (item :: domain.Item).item_id }
+        local binding = "kickside.work.links.v1\0" .. board.board_id .. "\0" .. (store.encode(selector) :: string)
+        local after: domain.LinkPosition? = nil
+        if request.after then
+            local decoded, derr = cursor_codec.open(request.after, binding)
+            if derr and derr:kind() == errors.UNAVAILABLE then return nil, derr end
+            if not decoded then return nil, access.invalid("after is a link page cursor") end
+            local position, perr = json.decode(decoded)
+            if perr or type(position) ~= "table" then return nil, access.invalid("after is a link page cursor") end
+            after = position :: domain.LinkPosition
+        end
+        local rows, rerr = read_rows.links(tx, board.board_id, item and item.item_id, request.target, direction, after, limit + 1)
+        if rerr or not rows then return nil, rerr end
         local links: { types.RelationView } = {}
-        for i = 1, math.min(#(rows or {}), limit) do
+        local next_cursor: string? = nil
+        for i = 1, math.min(#rows, limit) do
             local row = rows[i]
             local from_id, decode_err = store.need(row, "from_id")
             if decode_err or from_id == nil then return nil, decode_err end
@@ -70,8 +75,17 @@ local function list_links(request: types.LinksRequest, context: types.ReadContex
             if decode_err or relation_type == nil then return nil, decode_err end
 
             links[#links + 1] = { type = relation_type, source = source, target = target, at = at }
+            if i == limit and #rows > limit then
+                local seq, err = store.need_int(row, "seq")
+                if err or not seq then return nil, err end
+                local position: domain.LinkPosition = { seq = seq, board_id = board_id, from_id = from_id,
+                    type = relation_type, to_board_id = to_board_id, to_id = to_id }
+                local seal_err: error?
+                next_cursor, seal_err = cursor_codec.seal(store.encode(position) :: string, binding)
+                if seal_err then return nil, seal_err end
+            end
         end
-        return { links = links, after = #(rows or {}) > limit and tostring(offset + limit) or nil }, nil
+        return { links = links, after = next_cursor }, nil
     end, context)
     if err or not out then return nil, err end
     -- Component authority resolves outside the SQL snapshot.
