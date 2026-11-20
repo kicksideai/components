@@ -53,8 +53,12 @@ local function value_steps(board: domain.Board, item_type: domain.ItemType, doc:
         if not f or not allowed[key] then
             return nil, M.invalid("unknown_field", "item type " .. item_type.id .. " has no field " .. key, key)
         end
-        if not rules.field(board, f, "write", authority) then return nil, M.result("denied", M.FREE, "field_denied", "field " .. key .. " is denied", key) end
-        if f.type == "rollup" or f.type == "formula" or f.type == "rank" then return nil, M.invalid("read_only", "field " .. key .. " is computed", key) end
+        local edit = rules.field_edit(board, f, authority)
+        if edit == "field_denied" then return nil, M.result("denied", M.FREE, edit, "field " .. key .. " is denied", key) end
+        if edit == "read_only" then
+            if f.type == "counter" then return nil, M.invalid("invalid_value", "field " .. key .. " is assigned by the board", key) end
+            return nil, M.invalid(edit, "field " .. key .. " is computed", key)
+        end
         if touched[key] then return nil, M.invalid("duplicate_field", "field " .. key .. " is written twice", key) end
         touched[key] = true
         return f, nil
@@ -73,7 +77,6 @@ local function value_steps(board: domain.Board, item_type: domain.ItemType, doc:
         for _, key in ipairs(names or {}) do
             local f, ferr = field_of(key)
             if ferr or not f then return nil, ferr end
-            if f.type == "counter" then return nil, M.invalid("invalid_value", "field " .. key .. " is assigned by the board", key) end
             local step = document.remove_step(doc, f.id, mode)
             if step then steps[#steps + 1] = step end
         end
