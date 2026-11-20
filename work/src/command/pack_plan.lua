@@ -10,6 +10,10 @@ local domain = require("domain")
 local commands = require("commands")
 local views = require("views")
 local M = {}
+function M.initial_prefix(board_id: string, requested: string?, declared: string?): string
+    return requested or declared or ("W" .. board_id:gsub("-", ""):sub(1, 9):upper())
+end
+
 function M.plan(request: types.Request): (types.Plan?, error?)
     local aerr = guard.require_access(request.board_id, guard.admin_access())
     if aerr then return nil, aerr end
@@ -31,8 +35,7 @@ function M.plan(request: types.Request): (types.Plan?, error?)
     local incoming = catalog.declaration(pack.data)
     local base = board and board.pack_base and catalog.declaration(board.pack_base :: types.Data) or nil
     local merged, conflicts = merge.schema(base, local_decl, incoming, request.resolutions)
-    merged.key_prefix = board and board.key_prefix or (request.declaration and request.declaration.key_prefix) or incoming.key_prefix
-        or ("W" .. request.board_id:gsub("-", ""):sub(1, 9):upper())
+    merged.key_prefix = board and board.key_prefix or M.initial_prefix(request.board_id, request.declaration and request.declaration.key_prefix, incoming.key_prefix)
     local proposals = merge.maps(local_decl, merged)
     for _, process in ipairs(merged.processes or {}) do process.map = request.maps and request.maps[process.id] or nil end
     local managed, resource_conflicts, resource_refused, resource_err = resources.plan(request.board_id,

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/kicksideai/components/compare/work-v0.1.8...work-v0.1.9) (2026-11-19)
+
+
+### Bug Fixes
+
+* **work:** validate board creation and allow visibility removal ([e7b5f5e](https://github.com/kicksideai/components/commit/e7b5f5ea22e667dd3ad6409e7a30b3b6adb0cd4d))
+
 ## [0.1.8](https://github.com/kicksideai/components/compare/work-v0.1.7...work-v0.1.8) (2026-11-19)
 
 

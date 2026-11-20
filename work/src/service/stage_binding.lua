@@ -53,6 +53,14 @@ local function validate(request: types.StageBindingRequest): error?
     return nil
 end
 
+-- Creation has no stored execution identity yet. Validate the target under
+-- the creator's authority; schema admission checks the registered identity.
+function M.preflight(request: types.StageBindingRequest): (boolean?, error?)
+    local err = validate(request)
+    if err then return nil, err end
+    return true, nil
+end
+
 function M.selected(request: types.StageBindingRequest): (boolean?, error?)
     local aerr = guard.require_access(request.board_id, guard.admin_access())
     if aerr then return nil, aerr end

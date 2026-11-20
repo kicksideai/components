@@ -293,12 +293,14 @@ entries:
     comment: Runs one work operation under the caller's actor (harness only).
   source: file://work_call.lua
   method: run
-  modules:
+  modules: &work_call_modules
   - registry
   - contract
   - security
   - funcs
-  imports:
+  - uuid
+  imports: &work_call_imports
+    threads: kickside.work.persist:threads
     pack_rows: kickside.work.persist:operation_rows
     automations: kickside.automation:automation
     pack_views: kickside.work.service:pack_views
@@ -307,7 +309,29 @@ entries:
     api_access: kickside.work.api:access
     component_envelope: kickside.component:envelope
   security:
-    policies: [app:placement_fixture_discovery, app:operation_retirement_call]
+    policies: [app:placement_fixture_discovery, app:operation_retirement_call, app:schemaless_fixture_call]
+- name: register_schemaless_board
+  kind: function.lua
+  source: file://work_call.lua
+  method: register_schemaless
+  modules: *work_call_modules
+  imports: *work_call_imports
+  security:
+    policies: [app:schemaless_fixture_create]
+- name: schemaless_fixture_call
+  kind: security.policy
+  meta: {private: true, service_only: true, producers: [app:work_call]}
+  policy:
+    resources: [app:register_schemaless_board]
+    actions: [registry.get, funcs.call]
+    effect: allow
+- name: schemaless_fixture_create
+  kind: security.policy
+  meta: {private: true, service_only: true, producers: [app:register_schemaless_board]}
+  policy:
+    resources: [kickside.work.binding:board]
+    actions: [component.kind.create, component.kind.update]
+    effect: allow
 - name: rollup_fixture
   kind: library.lua
   source: file://rollup_fixture.lua

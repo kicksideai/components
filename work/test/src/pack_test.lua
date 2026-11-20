@@ -27,15 +27,7 @@ local function track(admin, id)
     return id
 end
 local function empty(admin)
-    -- Legacy/interrupted boards still support a generation-zero pack install.
-    local key = uuid.v4()
-    local title = "Pack board " .. key
-    local _, err = admin.call("create", { idempotency_key = key, title = title, declaration = { key_prefix = "invalid" } })
-    assert(err and err:kind() == errors.INVALID, tostring(err))
-    for _, board in ipairs(assert(admin.call("list", {})).boards) do
-        if board.title == title then return track(admin, board.board_id) end
-    end
-    error("interrupted pack board exists")
+    return track(admin, assert(admin.call("register_schemaless", {})).board_id)
 end
 local function install(admin, id, pack, starter, key)
     return admin.call("pack_apply", { board_id = id, pack = pack or "app:kanban_pack", expected_generation = 0,

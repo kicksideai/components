@@ -58,6 +58,7 @@ entries:
     - kickside.work.service:apply
     - kickside.work.service:apply_schema
     - kickside.work.service:stage_binding
+    - kickside.work.service:stage_binding_preflight
     - kickside.work.service:stage_binding_selected
     - kickside.work.service:approve
     - kickside.work.service:board

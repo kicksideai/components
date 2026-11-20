@@ -72,7 +72,7 @@ end
 
 -- plan_schema compiles and classifies a declaration against the board state at
 -- the command head; plan_schema returns it, apply_schema appends it.
-local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id: string, request: types.SchemaRequest, frozen: types.SchemaPlan?): (types.SchemaPlan?, error?)
+local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id: string, request: types.SchemaRequest, frozen: types.SchemaPlan?, creating: boolean?): (types.SchemaPlan?, error?)
     local board, previous = snapshot.board, snapshot.declaration
     local generation = board and board.generation or 0
     if request.pack then
@@ -129,7 +129,8 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
             end
         end
     end
-    local _, binding_err = funcs.call("kickside.work.service:stage_binding", { board_id = board_id, compiled = compiled })
+    local binding = creating and "kickside.work.service:stage_binding_preflight" or "kickside.work.service:stage_binding"
+    local _, binding_err = funcs.call(binding, { board_id = board_id, compiled = compiled })
     if binding_err then return nil, binding_err :: error end
     local limit_err = rollup_rows.check(db, board_id, compiled)
     if limit_err then return nil, limit_err end
@@ -202,6 +203,20 @@ end
 
 local MIGRATION = "add the new field or option, copy the values with apply commands, then remove the old one"
 local STATE_MIGRATION = "declare map: { removed_state: new_state } on the process; its items follow at apply"
+
+-- Create has authorized the caller but has yet to register the board. Use the
+-- ordinary schema compiler and check the registry before giving it an identity.
+function M.preflight_create(request: types.SchemaRequest): error?
+    local db, err = store.open()
+    if not db then return err end
+    local plan, plan_err = plan_schema(db, {}, request.board_id, request, nil, true)
+    db:release()
+    if plan_err or not plan then return plan_err end
+    local client, client_err = threads.open()
+    if not client then return client_err end
+    local _, prefix_err = registry.available_version(client, plan.compiled.key_prefix)
+    return prefix_err
+end
 
 -- migration_hint names the way out of the refused changes: a state map when only states are removed.
 local function migration_hint(refused: { domain.SchemaChange }): string

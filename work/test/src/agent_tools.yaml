@@ -24,8 +24,14 @@ entries:
   kind: function.lua
   source: file://compile_work_agent.lua
   method: run
-  imports:
+  imports: &agent_imports
     compiler: wippy.agent.compiler:compiler
+    caller: wippy.agent.tools:caller
+- name: call_work_agent_tools
+  kind: function.lua
+  source: file://compile_work_agent.lua
+  method: execute
+  imports: *agent_imports
 - name: trait_plugins_test
   kind: function.lua
   meta:
