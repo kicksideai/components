@@ -6,6 +6,7 @@ import PluginsEditor from './PluginsEditor.vue'
 import { schema } from '../../test/fixtures'
 import { settings } from './api'
 import { projectionHealth } from './plugin-state'
+import { ApiError } from '../../transport'
 vi.mock('./api', () => ({ settings: { configure: vi.fn().mockResolvedValue({ attachment_id: 'attachment' }) } }))
 it.each([
   [{ last_seq: 10, parked: false, bootstrapping: false }, 'Up to date'],
@@ -44,4 +45,18 @@ it('saves refreshed configuration when the local form has no edits', async () =>
   await w.setProps({ schema: { ...view, plugins: [{ ...plugin, config: { limit: 8 } }] } }); await flushPromises()
   await getButton(w, 'Save configuration').trigger('click'); await flushPromises()
   expect(settings.configure).toHaveBeenLastCalledWith('b', 'app:plugin', { limit: 8 }); w.unmount()
+})
+
+it('shows a labeled Work error code when the plugin configuration is refused', async () => {
+  const plugin = { plugin: 'app:plugin', title: 'Files', installed: true, active: true, lifecycle: { state: 'ready' as const }, projections: {}, requires: [], tools: [], config: {}, config_schema: {} }
+  vi.mocked(settings.configure).mockRejectedValueOnce(new ApiError({ message: 'app:plugin effective config is malformed', details: { code: 'plugin_config_invalid' } }, 'Save configuration', 400))
+  const w = mount(PluginsEditor, { props: { boardId: 'b', schema: { ...schema(), plugins: [plugin] }, draft: { plugins: [{ use: plugin.plugin }] }, options: [plugin], configs: {} } })
+  try {
+    await w.get('[aria-expanded]').trigger('click')
+    await getButton(w, 'Save configuration').trigger('click'); await flushPromises()
+    const alert = w.get('[role="alert"]').text()
+    expect(alert).toContain('The plugin rejected this configuration. Check its settings and try again.')
+    expect(alert).toMatch(/Error code:\s*plugin_config_invalid/)
+    expect(alert).not.toContain('app:plugin')
+  } finally { w.unmount() }
 })

@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import { formatApiError } from '../../transport'
 import { Icon } from '@iconify/vue'
 import DefinitionRow from './DefinitionRow.vue'
 import DefinitionList from './DefinitionList.vue'
@@ -36,7 +37,7 @@ async function save(id: string) {
   if (busy.value || invalid.value.has(id)) return
   busy.value = id; error.value = ''; saved.value = ''
   try { await settings.configure(props.boardId, id, config(id)); delete edit.value[id]; saved.value = 'Plugin configuration saved.'; emit('configured') }
-  catch (e) { error.value = e instanceof Error ? e.message : 'Could not configure plugin.' }
+  catch (e) { error.value = formatApiError(e, 'Could not configure plugin.') }
   finally { busy.value = '' }
 }
 </script>

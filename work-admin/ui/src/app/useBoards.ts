@@ -4,17 +4,25 @@ import { on } from '@wippy-fe/proxy'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import { work } from '../api'
+import { formatApiError } from '../transport'
 import type { BoardRow } from '../types'
 
-export function useBoards(refreshState = true) {
+export function useBoards() {
   const boards = ref<BoardRow[]>([]), loading = ref(true), error = ref(''), search = ref('')
+  const hasLoaded = ref(false)
   const visibleBoards = computed(() => boards.value.filter(board => `${board.title} ${board.description ?? ''} ${board.key_prefix ?? ''}`.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase())))
   const begin = latestRequest()
-  async function load() {
+  async function load(showLoading = false) {
     const current = begin()
-    if (refreshState) { loading.value = true; error.value = '' }
-    try { const rows = await work.boards(); if (current()) boards.value = rows }
-    catch (e) { if (current()) error.value = e instanceof Error ? e.message : 'Could not load boards.' }
+    if (showLoading) { loading.value = true; error.value = '' }
+    try {
+      const rows = await work.boards()
+      if (!current()) return
+      boards.value = rows
+      hasLoaded.value = true
+      error.value = ''
+    }
+    catch (e) { if (current()) error.value = formatApiError(e, 'Could not load boards.') }
     finally { if (current()) loading.value = false }
   }
   const stops = new Map<string, () => void>()
@@ -24,5 +32,5 @@ export function useBoards(refreshState = true) {
   })
   useHostVisibilityRefresh(load)
   onUnmounted(() => { begin(); for (const stop of stops.values()) stop() })
-  return { boards, loading, error, search, visibleBoards, load }
+  return { boards, loading, error, search, visibleBoards, hasLoaded, load }
 }
