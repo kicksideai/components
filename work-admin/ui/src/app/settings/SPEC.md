@@ -10,7 +10,7 @@ and a stable retry key. A successful Apply retains its committed generation as a
 reset target until an accepted read reaches it, even if a notification supersedes
 the first read; that reset is consumed once. Other concurrent drafts stay stale.
 Board selection and Back ask through the shared host confirmation before
-replacing an unsaved draft. Settings report dirty state across the widget boundary.
+replacing an unsaved schema or metadata draft. Settings report both through the widget boundary. Saving or canceling metadata clears its pending state independently of the schema draft.
 On narrow screens, the board list and selected settings each use the full pane.
 Back to boards returns focus to the selected row. Board titles wrap in both
 surfaces, and the definition lists place metadata and row actions below the title
@@ -21,8 +21,8 @@ Schemaless boards retain identity and independent access, and initialize through
 the ordinary declaration review/apply path at generation 0. Service errors remain
 retryable errors, separate from access denials. Duration controls contribute
 validity for invalid attempted values and unsupported stored values, preserve the
-last valid declaration value, and clear local validity on removal. Review remains
-blocked while any visited editor has an invalid duration. Backend refusal messages remain visible with the draft. Native validation considers controls owned by the settings form, independently of auxiliary creation forms.
+last valid declaration value, and clear local validity on removal. Focus and blur leave the stored duration intact. Values below one minute open in seconds. Review remains
+blocked while any visited editor has an invalid duration. Review uses display labels and saved and proposed values from the reviewed snapshot. Backend refusals remain visible with the draft. Blocked plan entries show the reason code, and failed requests show the typed error code when supplied. Native validation considers controls owned by the settings form, independently of auxiliary creation forms.
 
 The process map uses Dagre's layered network-simplex layout. DFS identifies
 cycle-closing arcs before ranking; returns and self loops occupy compact exterior
@@ -79,7 +79,7 @@ Board creation sends only the declared create body. A nonempty description uses
 the existing metadata update after creation. Failed metadata updates retain the
 created board ID and retry that update without another creation; identity inputs
 stay fixed. Invalid installed pack summaries remain disabled choices with their
-problem reason; a missing title uses the declaration ID. Valid packs and Empty board remain usable.
+problem reason. A missing title is shown as Unnamed pack. Valid packs and Empty board remain usable.
 
 
 Board sharing is an ADMIN-only header action that mounts the existing
@@ -124,15 +124,11 @@ initial installation share pack planning/apply, frozen generation/maps/conflict
 choices, and initial configuration forms; invalid configuration blocks Apply.
 Pack discovery also runs for unprovenanced boards. Their Install pack action
 submits the ordinary pack plan; Work decides eligibility, including emptiness.
-Packed creation accepts per-required-plugin JSON objects keyed by manifest ID;
-configuration joins the frozen retry identity, is not sent for Empty board, and
-is validated by Work before admission. Schema-aware creation configuration is
-not inferred from summaries that do not expose a configuration schema.
+Packed creation uses the same configuration editor as Install pack, with the title and schema from discovery. Values still travel under the exact manifest ID, join the frozen retry identity, and are validated by Work before admission. Empty board sends no plugin configuration.
 Automated states retain `run.stage` as their editable run label. The shared
 published Flow picker selects a Flow; an explicit published-version choice writes
 `run.flow_ref = {kind: flow, id, version}`. Selection in progress blocks review;
-it never silently upgrades a saved version. Schema review shows the exact pinned
-references and Apply uses the existing frozen declaration/generation request.
+it never silently upgrades a saved version. Schema review shows the published Flow title and exact pinned version. Apply uses the existing frozen declaration/generation request.
 The state panel shows the picker's Flow title and published version, with the
 saved Flow ID available on hover instead of a duplicate ID line.
 The version list and exact-version read expose deleted Flows, missing versions

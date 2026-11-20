@@ -22,7 +22,7 @@ it('sends the wizard create body through the declared HTTP boundary then updates
 
 it('includes exact initial plugin configuration in the packed creation HTTP body', async () => {
   const { default: SelectButton } = await import('primevue/selectbutton')
-  vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: { packs: [{ id: 'app:pack', title: 'Delivery', version: '1.0.0', icon: '', description: '', requires: ['app:plugin'], plugins: [{ plugin: 'app:plugin', installed: true }] }] } } })
+  vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: { packs: [{ id: 'app:pack', title: 'Delivery', version: '1.0.0', icon: '', description: '', requires: ['app:plugin'], plugins: [{ plugin: 'app:plugin', installed: true, title: 'Delivery setup', config_schema: { type: 'object', properties: { folder: { type: 'string', title: 'Folder' } } } }] }] } } })
   vi.mocked(api.post).mockImplementation(async (path: string, body: unknown) => {
     expect(path).toBe('/api/v1/work/boards')
     expect(body).toEqual({ title: 'Configured board', declaration: { key_prefix: 'WORK' }, idempotency_key: expect.any(String), pack: 'app:pack', version: '1.0.0', starter: false, plugin_configs: { 'app:plugin': { folder: 'Documents' } } })
@@ -31,7 +31,7 @@ it('includes exact initial plugin configuration in the packed creation HTTP body
   const w = mount(CreateBoard, { props: { visible: true } }); await flushPromises()
   await w.get('#board-title').setValue('Configured board'); await w.get('form').trigger('submit')
   await w.getComponent(SelectButton).setValue('app:pack')
-  await w.get('textarea[aria-label="Initial configuration for app:plugin"]').setValue('{"folder":"Documents"}')
+  await w.get('input[aria-label="Folder"]').setValue('Documents')
   await w.get('form').trigger('submit'); await flushPromises()
   expect(w.emitted('created')).toEqual([['configured']]); w.unmount()
 })

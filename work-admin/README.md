@@ -97,7 +97,7 @@ immediate cleanup. Comments per item supports a board override of 1–100000.
 
 An existing empty board can use Install pack and review the backend's plan before
 applying. Required plugins use exact manifest IDs and the existing configuration
-form during pack review. Packed creation offers initial configuration as JSON
-objects keyed by those IDs, includes them in the retry identity, and lets Work
-validate required configuration. Refresh status explicitly reloads plugin
+form during pack review. Packed creation uses each required plugin’s declared configuration fields.
+It submits values under the exact plugin IDs and includes them in the retry
+identity so Work can validate the required configuration. Refresh status explicitly reloads plugin
 lifecycle/projection progress while preserving a schema draft.

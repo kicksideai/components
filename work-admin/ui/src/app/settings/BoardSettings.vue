@@ -51,7 +51,9 @@ const invalid = ref(new Set<string>()), editor = ref<HTMLFormElement>()
 const beginRead = latestRequest(), beginReview = latestRequest()
 const request = computed(() => requestDeclaration(draft.value, schema.value?.declaration ?? {}))
 const dirty = computed(() => invalid.value.size > 0 || !!packRequest.value || !!schema.value && (JSON.stringify(request.value) !== JSON.stringify(schema.value.declaration) || Object.keys(configs.value).length > 0))
-watch(dirty, value => emit('dirty-change', value), { immediate: true, flush: 'sync' })
+const metadataDirty = ref(false)
+const unsaved = computed(() => dirty.value || metadataDirty.value)
+watch(unsaved, value => emit('dirty-change', value), { immediate: true, flush: 'sync' })
 const stale = computed(() => !!schema.value && !!latest.value && schema.value.generation !== latest.value.generation)
 const canSchemaApply = computed(() => authorized.value && !busy.value && !checkingRemoval.value && !migrationPending.value && !stale.value && !invalid.value.size && plan.value && (plan.value.changes.length > 0 || Object.keys(configs.value).length > 0) && plan.value.class !== 'refused' && !plan.value.refused.length && reviewed.value?.matches(request.value, schema.value?.generation ?? -1, configs.value))
 const packPlugins = computed(() => packs.value.find(pack => pack.id === packRequest.value?.pack)?.plugins.filter(plugin => !schema.value?.plugins?.some(state => state.plugin === plugin.plugin && state.active)).map(plugin => ({ use: plugin.plugin })) ?? [])
@@ -87,7 +89,12 @@ async function reviewPack() {
   } catch (e) { if (current()) { packReviewed.value = undefined; error.value = formatApiError(e, 'Could not plan the pack upgrade.') } }
   finally { busy.value = false }
 }
-const follows = computed(() => plan.value ? processMigration(plan.value, request.value) : [])
+const reviewedDeclaration = computed(() => packPlan.value?.declaration ?? reviewed.value?.declaration)
+const follows = computed(() => {
+  const declaration = reviewedDeclaration.value
+  if (!plan.value || !declaration) return []
+  return processMigration(plan.value, declaration).map(id => declaration.processes?.find(process => process.id === id)?.name || 'Untitled process')
+})
 const migrationPending = computed(() => !!latest.value?.migration_error || board.value?.status === 'migrating')
 function invalidate() { serverIssues.value = []; beginReview(); plan.value = undefined; reviewed.value = undefined; packReviewed.value = undefined; applyKey.value = '' }
 watch([request, configs], invalidate, { deep: true, flush: 'sync' })
@@ -191,12 +198,12 @@ async function guardRemoval(kind: RemovalKind, id: string): Promise<string | und
   finally { checkingRemoval.value = false }
 }
 async function back() {
-  if (dirty.value && !await host.confirm({ header: 'Discard changes?', message: 'Your unsaved board settings will be discarded.', acceptLabel: 'Discard', rejectLabel: 'Keep editing' })) return
+  if (unsaved.value && !await host.confirm({ header: 'Discard changes?', message: 'Your unsaved board settings will be discarded.', acceptLabel: 'Discard', rejectLabel: 'Keep editing' })) return
   go({ name: 'board', board: props.boardId })
 }
 function discard() { resetGeneration = undefined; if (latest.value) reset(latest.value); saved.value = ''; error.value = '' }
 
-watch(() => props.boardId, () => { resetGeneration = undefined; clearPack(); packs.value = []; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); visited.value = new Set(['Fields']); tab.value = 'Fields'; authorized.value = false; loading.value = true; void load(true) })
+watch(() => props.boardId, () => { metadataDirty.value = false; resetGeneration = undefined; clearPack(); packs.value = []; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); visited.value = new Set(['Fields']); tab.value = 'Fields'; authorized.value = false; loading.value = true; void load(true) })
 let stop = () => {}
 watch(() => props.boardId, id => { stop(); stop = on(`component.${id}`, () => { void load() }) }, { immediate: true })
 useHostVisibilityRefresh(load)
@@ -204,7 +211,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview() })
 </script>
 <template>
   <section class="work-settings-shell" :class="{ 'work-embedded': embedded }">
-    <SettingsHead :board="board" :embedded="embedded" :generation="schema?.generation" :authorized="authorized" :dirty="dirty" :busy="busy" :checking-removal="checkingRemoval" :reviewed="isReviewed" :pack="schema?.pack" :pack-title="packTitle" :outdated="schema?.outdated" :upgrade-reason="upgradeReason" :can-upgrade="upgradeAvailable && !dirty && !busy && !migrationPending && authorized" @upgrade="upgrade" @install="installing = true" :disabled="!dirty || busy || checkingRemoval || migrationPending || stale || !!invalid.size || (isReviewed && !canApply)" @back="back" @discard="discard" @primary="isReviewed ? apply() : review()" @saved="load()" />
+    <SettingsHead :board="board" :embedded="embedded" :generation="schema?.generation" :authorized="authorized" :dirty="dirty" :busy="busy" :checking-removal="checkingRemoval" :reviewed="isReviewed" :pack="schema?.pack" :pack-title="packTitle" :outdated="schema?.outdated" :upgrade-reason="upgradeReason" :can-upgrade="upgradeAvailable && !dirty && !busy && !migrationPending && authorized" @upgrade="upgrade" @install="installing = true" :disabled="!dirty || busy || checkingRemoval || migrationPending || stale || !!invalid.size || (isReviewed && !canApply)" @back="back" @discard="discard" @primary="isReviewed ? apply() : review()" @saved="load()" @metadata-dirty-change="metadataDirty = $event" />
     <div v-if="authorized && schema" class="work-settings-tabs">
       <div class="work-section-navigation"><Tabs :value="tab" @update:value="selectTab($event as typeof tab)">
         <TabList aria-label="Settings sections"><Tab v-for="name in tabs" :key="name" :value="name">{{ name }}</Tab></TabList>
@@ -327,7 +334,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview() })
       </form>
       <ProcessMigration v-if="tab === 'Review' && !packRequest" :draft="draft" :original="schema.declaration" :disabled="busy || checkingRemoval" />
       <PluginsEditor v-if="tab === 'Review' && packRequest && packPlugins.length" :board-id="boardId" :draft="{ plugins: packPlugins }" :schema="latest ?? schema" :options="options?.schema_options.plugins.filter(plugin => packPlugins.some(selected => selected.use === plugin.plugin)) ?? []" :configs="configs" :disabled="busy" activation-locked @validity="(key, valid) => validity('pack-plugin:' + key, valid)" />
-      <SchemaReview :declaration="reviewed?.declaration" v-if="tab === 'Review'" :plan="plan" :generation="schema.generation" :follows="follows" :config-count="Object.keys(configs).length" :pack-review="!!packPlan">
+      <SchemaReview :board-id="boardId" :original="schema.declaration" :declaration="reviewedDeclaration" v-if="tab === 'Review'" :plan="plan" :generation="schema.generation" :follows="follows" :config-count="Object.keys(configs).length" :pack-review="!!packPlan">
         <PackReview v-if="packPlan && packRequest" :plan="packPlan" :request="packRequest" :original="schema.declaration" :disabled="busy" @change="packReviewed = undefined; applyKey = ''" />
       </SchemaReview>
       <p

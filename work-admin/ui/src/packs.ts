@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import type { Declaration } from './types'
 import { clone, type SchemaPlan } from './app/settings/model'
-export interface AvailablePack { id: string; title: string; version: string; icon: string; description: string; requires: string[]; plugins: { plugin: string; installed: boolean }[] }
+export interface PackPlugin { plugin: string; installed: boolean; title?: string; config_schema?: Record<string, unknown>; problem?: { code: string; message: string } }
+export interface AvailablePack { id: string; title: string; version: string; icon: string; description: string; requires: string[]; plugins: PackPlugin[] }
 export interface UnavailablePack { id: string; title?: string; version?: string; icon?: string; description?: string; problem: { code: string; message: string } }
 export type Pack = AvailablePack | UnavailablePack
 export const availablePack = (pack: Pack): pack is AvailablePack => !('problem' in pack)

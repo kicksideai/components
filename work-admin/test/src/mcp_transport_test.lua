@@ -241,7 +241,11 @@ local function cases()
             draft.key = uuid.v4()
             test.eq(call("WorkApplySchema", draft).generation, 2)
             test.not_nil(call("WorkSchemaOptions").plugins[1])
-            test.not_nil(call("WorkListPacks").packs[1])
+            local found = {}
+            for _, pack in ipairs(call("WorkListPacks").packs) do found[pack.id] = pack end
+            local required = found["app:configured_pack"].plugins[1]
+            test.eq(required.title, "Board enhancements")
+            test.eq(required.config_schema.properties.threshold.type, "integer")
             local empty = call("WorkCreateBoard", { idempotency_key = uuid.v4(), title = "MCP pack target" })
             local request = { board_id = empty.board_id, pack = "app:configured_pack", expected_generation = empty.generation,
                 plugin_configs = { ["app:ui_plugin"] = { threshold = 2 } } }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { getButton } from '../../test/controls'
+import { editNumber, getButton } from '../../test/controls'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import BoardSettings from './BoardSettings.vue'
@@ -15,9 +15,9 @@ import { notify, subscriptions, visibility } from '../../test/setup'
 import { emptyOptions } from '../../types'
 import type { SchemaPlan } from './model'
 vi.mock('./api', () => ({ settings: { plan: vi.fn(), apply: vi.fn(), resume: vi.fn(), configure: vi.fn() } }))
-vi.mock('../../api', () => ({ work: { boards: vi.fn(), schema: vi.fn(), options: vi.fn() } }))
+vi.mock('../../api', () => ({ work: { boards: vi.fn(), schema: vi.fn(), options: vi.fn(), updateBoard: vi.fn() } }))
 const wrappers: ReturnType<typeof mount>[] = []
-const reviewed: SchemaPlan = { generation: 2, class: 'cosmetic', changes: [{ code: 'title', class: 'cosmetic', what: 'field.rename' }], refused: [] }
+const reviewed: SchemaPlan = { generation: 2, class: 'cosmetic', changes: [{ code: 'name', class: 'cosmetic', what: 'renamed from title' }], refused: [] }
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(work.schema).mockResolvedValue(schema())
@@ -44,7 +44,7 @@ it('plans the exact editor draft then applies the same generation and request', 
   const w = await render(); await edit(w)
   expect(w.get('.kx-head-actions').findAll('button').filter(button => button.text() === 'Apply')).toHaveLength(0)
   await getButton(w.get('.kx-head-actions'), 'Review changes').trigger('click'); await flushPromises()
-  expect(w.get('[aria-label="Schema review"]').text()).toContain('field.rename')
+  expect(w.get('[aria-label="Schema review"]').text()).toContain('Field key')
   expect(getButton(w.get('.kx-head-actions'), 'Apply').attributes('disabled')).toBeUndefined()
   const plan = vi.mocked(settings.plan).mock.calls[0][1]
   expect(plan.expected_generation).toBe(1)
@@ -253,12 +253,12 @@ it('keeps service failures retryable without describing them as access denials',
 })
 it('blocks Review while a duration edit is invalid, including after switching tabs', async () => {
   const w = await render(); await edit(w); await getButton(w, 'Policy').trigger('click')
-  await w.getComponent(DurationControl).getComponent(InputNumber).setValue(0)
+  await editNumber(w.getComponent(DurationControl).getComponent(InputNumber), 0)
   await getButton(w, 'Fields').trigger('click')
   expect(getButton(w, 'Review changes').attributes('disabled')).toBeDefined()
   await getButton(w, 'Review').trigger('click'); await flushPromises()
   expect(settings.plan).not.toHaveBeenCalled()
-  await getButton(w, 'Policy').trigger('click'); await w.getComponent(DurationControl).getComponent(InputNumber).setValue(2)
+  await getButton(w, 'Policy').trigger('click'); await editNumber(w.getComponent(DurationControl).getComponent(InputNumber), 2)
   await getButton(w, 'Review').trigger('click'); await flushPromises()
   expect(settings.plan).toHaveBeenCalledOnce()
 })
@@ -322,7 +322,7 @@ it('reviews the exact Flow and version, preserves permission failures and invali
   const view = schema()
   view.declaration.processes![0].states[1] = { id: 'doing', name: 'In progress', category: 'started', kind: 'automated', run: { stage: 'Build' } }
   vi.mocked(work.schema).mockResolvedValue(view)
-  vi.mocked(api.get).mockImplementation(async (path: string) => ({ data: String(path).endsWith('/versions') ? { success: true, versions: [{ version: 2 }, { version: 1 }] } : { success: true, version: { version: Number(String(path).split('/').at(-1)) } } }) as never)
+  vi.mocked(api.get).mockImplementation(async (path: string, options?: { params?: { id?: string } }) => ({ data: path.endsWith('/published') ? { success: true, item: { title: options?.params?.id === 'flow-a' ? 'Deployment checks' : 'Release gates' } } : String(path).endsWith('/versions') ? { success: true, versions: [{ version: 2 }, { version: 1 }] } : { success: true, version: { version: Number(String(path).split('/').at(-1)) } } }) as never)
   const w = await render()
   await getButton(w, 'Process').trigger('click'); await flushPromises()
   await w.get('[aria-label="Edit state In progress"]').trigger('click'); await flushPromises()
@@ -332,14 +332,44 @@ it('reviews the exact Flow and version, preserves permission failures and invali
   await getButton(w.get('.kx-head-actions'), 'Review changes').trigger('click'); await flushPromises()
   const snapshot = vi.mocked(settings.plan).mock.calls.at(-1)![1]
   expect(snapshot.declaration.processes![0].states[1].run?.flow_ref).toEqual({ kind: 'flow', id: 'flow-a', version: 1 })
-  expect(w.get('[aria-label="Schema review"]').text()).toContain('flow-a · v1')
-  vi.mocked(settings.apply).mockRejectedValueOnce(new Error('Flow READ access denied'))
+  expect(w.get('[aria-label="Schema review"]').text()).toContain('Deployment checks · v1')
+  expect(w.get('[aria-label="Schema review"]').text()).not.toContain('flow-a')
+  vi.mocked(settings.apply).mockRejectedValueOnce(new ApiError({ message: 'Flow READ access denied', details: { code: 'flow_unavailable' } }, 'Schema apply'))
   await getButton(w.get('.kx-head-actions'), 'Apply').trigger('click'); await flushPromises()
   expect(w.text()).toContain('Flow READ access denied')
+  expect(w.text()).toContain('Error code: flow_unavailable')
   expect(settings.apply).toHaveBeenCalledWith('b', snapshot, expect.any(String))
   await getButton(w, 'Process').trigger('click')
   await w.get('wc-workflow-picker').trigger('change', { detail: { flow_ref: { kind: 'flow', id: 'flow-b', version: 2 } } }); await flushPromises()
   expect(getButton(w.get('.kx-head-actions'), 'Review changes').attributes('disabled')).toBeDefined()
   await w.findAllComponents(Select).find(s => s.props('ariaLabel') === 'Published version')!.setValue(2); await flushPromises()
   expect(w.get('.kx-head-actions').text()).toContain('Review changes')
+})
+
+it('protects unsaved board descriptions through the settings dirty boundary until save or cancel', async () => {
+  vi.mocked(work.updateBoard).mockRejectedValueOnce(new ApiError({ message: 'Could not save description.', details: { code: 'metadata_refused' } }, 'Board')).mockResolvedValue({ board_id: 'b', status: 'updated' })
+  const go = vi.fn(), w = mount(BoardSettings, { props: { boardId: 'b' }, global: { provide: { [navigatorKey as symbol]: go } } })
+  wrappers.push(w); await flushPromises()
+  const editBoard = () => w.get('[aria-label="Edit board"]').trigger('click')
+  const form = () => w.get('form[aria-label="Edit board"]')
+  await editBoard()
+  expect(w.emitted('dirty-change')?.at(-1)).toEqual([false])
+  await form().get('textarea').setValue('Unsaved release details')
+  expect(w.emitted('dirty-change')?.at(-1)).toEqual([true])
+  vi.mocked(host.confirm).mockResolvedValueOnce(false)
+  await getButton(w, 'Back to board').trigger('click'); await flushPromises()
+  expect(go).not.toHaveBeenCalled()
+  expect(form().get('textarea').element.value).toBe('Unsaved release details')
+  await form().trigger('submit'); await flushPromises()
+  expect(w.text()).toContain('Error code: metadata_refused')
+  expect(w.emitted('dirty-change')?.at(-1)).toEqual([true])
+  await form().trigger('submit'); await flushPromises()
+  expect(work.updateBoard).toHaveBeenLastCalledWith('b', { description: 'Unsaved release details' })
+  expect(w.emitted('dirty-change')?.at(-1)).toEqual([false])
+  await edit(w)
+  await editBoard(); await form().get('textarea').setValue('Other details')
+  await getButton(form(), 'Cancel').trigger('click')
+  expect(w.emitted('dirty-change')?.at(-1)).toEqual([true])
+  await getButton(w.get('.kx-head-actions'), 'Discard').trigger('click')
+  expect(w.emitted('dirty-change')?.at(-1)).toEqual([false])
 })

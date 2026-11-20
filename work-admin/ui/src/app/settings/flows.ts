@@ -2,9 +2,13 @@
 import { api } from '@wippy-fe/proxy'
 import { ApiError, failure } from '../../transport'
 export type FlowRef = { kind: 'flow'; id: string; version: number }
-async function read(path: string): Promise<{ versions?: { version: number }[]; version?: { version: number } }> {
+async function read(path: string, params?: Record<string, string>): Promise<{
+  versions?: { version: number }[]
+  version?: { version: number }
+  item?: { title?: string }
+}> {
   try {
-    const { data } = await api.get(path)
+    const { data } = await api.get(path, params ? { params } : undefined)
     if (!data?.success) {
       const message = data?.message || (typeof data?.error === 'string' ? data.error : data?.error?.message) || 'Could not read published Flow.'
       throw new ApiError({ message, details: data?.details }, 'Published Flow')
@@ -14,6 +18,7 @@ async function read(path: string): Promise<{ versions?: { version: number }[]; v
 }
 const path = (id: string) => `/api/v1/workflows/${encodeURIComponent(id)}/versions`
 export const flows = {
+  title: async (id: string) => (await read('/api/v1/workflows/published', { id })).item?.title,
   versions: async (id: string) => (await read(path(id))).versions ?? [],
   check: async (reference: FlowRef) => {
     const data = await read(`${path(reference.id)}/${reference.version}`)
