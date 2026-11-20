@@ -219,8 +219,8 @@ local function define()
                 ["kickside.work.templates.api:instantiate.endpoint"] = true,
             })
             exact("kickside.work.planning:member_endpoints", {
-                ["kickside.work.planning.api:plan_close.endpoint"] = true,
-                ["kickside.work.planning.api:close.endpoint"] = true,
+                ["kickside.work.api.sprints:plan_close.endpoint"] = true,
+                ["kickside.work.api.sprints:close.endpoint"] = true,
             })
         end)
 

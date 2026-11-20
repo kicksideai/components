@@ -10,16 +10,6 @@ entries:
   kind: ns.dependency
   component: kickside/work
   version: '>=0.1.18'
-- name: api_router
-  kind: ns.requirement
-  meta:
-    value_kind: http.router
-    comment: Authenticated HTTP router. Must run token_auth and endpoint_firewall.
-  targets:
-  - entry: kickside.work.planning.api:plan_close.endpoint
-    path: .meta.router
-  - entry: kickside.work.planning.api:close.endpoint
-    path: .meta.router
 - name: pack
   kind: registry.entry
   meta:
