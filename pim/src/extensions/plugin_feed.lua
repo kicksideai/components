@@ -10,10 +10,10 @@ local types = require("types")
 local values=require("values")
 local failure=require("failure")
 local M = {}
-type Token = { projection_id: string, start_seq: integer, cursor: types.ChangesCursor?, bootstrapping: boolean, tombstone_floor_seq: integer }
+type Token = { projection_id: string, start_seq: integer, cursor: types.ChangesCursor?, bootstrapping: boolean, tombstone_floor_seq: integer? }
 type Body = { worker_config: { start_seq: integer }, token: string? }
 type Pair = { projection: { id: string, body: string } }
-local TOKEN_SCHEMA = { type = "object", required = { "projection_id", "start_seq", "bootstrapping", "tombstone_floor_seq" }, additionalProperties = false,
+local TOKEN_SCHEMA = { type = "object", required = { "projection_id", "start_seq", "bootstrapping" }, additionalProperties = false,
     properties = { projection_id = { type = "string" }, start_seq = { type = "integer" }, bootstrapping = { type = "boolean" },
         tombstone_floor_seq = { type = "integer", minimum = 0 },
         cursor = { type = "object", required = { "seq", "product_id" }, additionalProperties = false,
