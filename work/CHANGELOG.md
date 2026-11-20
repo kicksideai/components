@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.20](https://github.com/kicksideai/components/compare/work-v0.1.19...work-v0.1.20) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** include plugin configuration in pack discovery ([ce206ea](https://github.com/kicksideai/components/commit/ce206ea183a532a79255bbf3a10d2c6557937bbf))
+
 ## [0.1.19](https://github.com/kicksideai/components/compare/work-v0.1.18...work-v0.1.19) (2026-11-20)
 
 
