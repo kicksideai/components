@@ -20,7 +20,7 @@ const emit = defineEmits<{ validity: [key: string, valid: boolean] }>()
 const processes = computed(() => props.draft.processes ?? [])
 const creating = ref(false), newName = ref(''), selected = ref(''), error = ref(''), mode = ref('Map'), target = ref('')
 const selectedState = ref<State>(), selectedTransition = ref<Transition>(), graph = ref<InstanceType<typeof ProcessGraph>>()
-const inspector = ref<HTMLElement>(), editingName = ref(false)
+const inspector = ref<HTMLElement>(), tools = ref<HTMLElement>(), editingName = ref(false)
 type InspectorOpener = HTMLElement | SVGElement
 let inspectorOpener: InspectorOpener | undefined
 async function editName() { editingName.value = true; await nextTick(); inspector.value?.querySelector<HTMLInputElement>('[aria-label="State name"]')?.focus() }
@@ -31,9 +31,26 @@ async function closeInspector() {
   clear()
   await nextTick()
   if (opener?.isConnected) opener.focus()
+  else focusEditor()
 }
-function chooseState(state: State, opener?: InspectorOpener) { inspectorOpener = opener; editingName.value = false; selectedState.value = state; selectedTransition.value = undefined; target.value = ''; error.value = '' }
-function chooseTransition(transition: Transition, opener?: InspectorOpener) { inspectorOpener = opener; editingName.value = false; selectedTransition.value = transition; selectedState.value = undefined; error.value = '' }
+function focusEditor() {
+  if (mode.value === 'Map') graph.value?.focus()
+  else tools.value?.focus()
+}
+async function focusInspector() {
+  await nextTick()
+  if (!inspector.value) return
+  inspector.value.scrollTop = 0
+  inspector.value.focus()
+}
+function chooseState(state: State, opener?: InspectorOpener) {
+  inspectorOpener = opener; editingName.value = false; selectedState.value = state; selectedTransition.value = undefined; target.value = ''; error.value = ''
+  void focusInspector()
+}
+function chooseTransition(transition: Transition, opener?: InspectorOpener) {
+  inspectorOpener = opener; editingName.value = false; selectedTransition.value = transition; selectedState.value = undefined; error.value = ''
+  void focusInspector()
+}
 watch(process, clear)
 function selectProcess(value: string) { if (value === '__new') creating.value = true; else selected.value = value }
 function add() {
@@ -64,19 +81,36 @@ async function addState(p: Process, opener: HTMLElement) {
 function connect(from: string, to: string, opener = inspectorOpener) {
   const p = process.value
   if (!p || !to || from === to) return
-  let id = `to_${to}`, index = 2
-  while (p.transitions?.some(transition => transition.id === id)) id = `to_${to}_${index++}`
+  const transitions = (p.transitions ??= [])
+  const base = `to_${to}`
+  let id = base.slice(0, 40), index = 2
+  while (transitions.some(transition => transition.id === id)) {
+    const suffix = `_${index++}`
+    id = base.slice(0, 40 - suffix.length) + suffix
+  }
   const transition: Transition = { id, name: `To ${stateTitle(p.states.find(s => s.id === to)).toLowerCase()}`, from: [from], to }
-  ;(p.transitions ??= []).push(transition); chooseTransition(transition, opener)
+  transitions.push(transition)
+  chooseTransition(transition, opener)
 }
 function addTransition(p: Process, opener: HTMLElement) {
   const transition: Transition = { id: uniqueId('transition', p.transitions ?? []), name: 'To ' + stateTitle(p.states.at(-1)), from: [p.initial], to: p.states.at(-1)?.id ?? p.initial }
   ;(p.transitions ??= []).push(transition); chooseTransition(transition, opener)
 }
-function removeTransition(p: Process, transition: Transition) {
+async function removeTransition(transition: Transition) {
+  const p = process.value
+  const index = p?.transitions?.indexOf(transition) ?? -1
+  if (!p || index < 0) return
   const uses = transitionUses(p, transition)
   if (uses.length) { error.value = `Used by ${uses.join(', ')}. Update those references first.`; return }
-  p.transitions?.splice(p.transitions.indexOf(transition), 1); clear()
+  p.transitions!.splice(index, 1)
+  clear()
+  await nextTick()
+  focusEditor()
+}
+function removeSelectedTransition(event: KeyboardEvent) {
+  if (!selectedTransition.value || event.defaultPrevented || event.repeat) return
+  event.preventDefault()
+  void removeTransition(selectedTransition.value)
 }
 function removeState(p: Process, state: State) {
   const uses = stateUses(p, state)
@@ -92,8 +126,8 @@ async function remove(p: Process) {
 }
 </script>
 <template>
-  <section class="work-process-editor work-stack" aria-label="Process editor" @keydown.esc="closeInspector">
-    <p v-if="error" class="kx-err" role="alert">{{ error }}</p>
+  <section class="work-process-editor work-stack" aria-label="Process editor" @keydown.esc="inspector && closeInspector()">
+    <p v-if="error && !selectedTransition" class="kx-err" role="alert">{{ error }}</p>
     <p
       v-for="issue in issues?.filter((i) => i.code === 'process ' + process?.id) ?? []"
       :key="issue.what + issue.detail"
@@ -107,7 +141,7 @@ async function remove(p: Process) {
       class="work-process-builder"
       :class="{ 'work-process-inspecting': selectedState || selectedTransition }"
     >
-      <div class="work-process-controls" role="toolbar" aria-label="Process tools">
+      <div ref="tools" class="work-process-controls" role="toolbar" aria-label="Process tools" tabindex="-1">
         <Select
           v-if="processes.length > 1"
           :model-value="process.id"
@@ -190,6 +224,7 @@ async function remove(p: Process) {
         :selected-transition="selectedTransition"
         @state="chooseState"
         @transition="chooseTransition"
+        @remove-transition="removeSelectedTransition"
         @connect="connect"
         @clear="closeInspector"
       />
@@ -201,14 +236,18 @@ async function remove(p: Process) {
         @state="chooseState"
         @transition="chooseTransition"
         @remove-state="removeState(process, $event)"
-        @remove-transition="removeTransition(process, $event)"
+        @remove-transition="removeTransition"
         @add-transition="addTransition(process, $event)"
       />
       <aside
         v-if="selectedState || selectedTransition"
         ref="inspector"
         class="work-process-sideform"
+        tabindex="-1"
         :aria-label="selectedState ? 'State inspector' : 'Transition inspector'"
+        :aria-keyshortcuts="selectedTransition ? 'Delete Backspace' : undefined"
+        @keydown.delete.self="removeSelectedTransition"
+        @keydown.backspace.self="removeSelectedTransition"
       >
         <template v-for="state in selectedState ? [selectedState] : []" :key="state.id">
           <header class="work-row">
@@ -280,10 +319,18 @@ async function remove(p: Process) {
           </footer>
         </template>
         <template v-for="transition in selectedTransition ? [selectedTransition] : []" :key="transition.id">
-          <header class="work-row">
+          <header class="work-row work-transition-actions">
             <h3>Transition</h3>
-            <span class="work-spacer"></span
-            ><Button
+            <Button
+              type="button"
+              label="Remove transition"
+              severity="danger"
+              text
+              size="small"
+              @click="removeTransition(transition)"
+              ><template #icon><Icon icon="tabler:trash" /></template
+            ></Button>
+            <Button
               severity="secondary"
               text
               size="small"
@@ -300,6 +347,7 @@ async function remove(p: Process) {
             }}
             → {{ stateTitle(process.states.find((s) => s.id === transition!.to)) }}
           </p>
+          <p v-if="error" class="kx-err" role="alert">{{ error }}</p>
           <label class="work-stack work-tight"
             >Name<InputText
               v-model="transition.name"
@@ -316,16 +364,6 @@ async function remove(p: Process) {
                 emit('validity', process!.id + ':transition-' + transition!.id + ':' + key, valid)
             "
           />
-          <footer class="work-process-inspector-foot">
-            <Button
-              label="Remove transition"
-              severity="danger"
-              text
-              size="small"
-              @click="removeTransition(process, transition)"
-              ><template #icon><Icon icon="tabler:trash" /></template
-            ></Button>
-          </footer>
         </template>
       </aside>
     </div>

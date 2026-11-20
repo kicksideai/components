@@ -252,7 +252,7 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .work-process-canvas { position: relative; min-width: 0; overflow: hidden; touch-action: none; background: radial-gradient(circle, color-mix(in srgb, var(--p-text-color) 13%, transparent) 1px, transparent 1.2px) 0 0 / 18px 18px, var(--p-content-background); cursor: grab; }
 .work-process-canvas:active { cursor: grabbing; }
 .work-process-canvas > svg { width: 100%; display: block; }
-.work-process-instruction { position: absolute; top: 8px; left: 16px; font-size: 12px; color: var(--p-primary-color); }
+.work-process-instruction { position: absolute; top: 8px; inset-inline: 16px; width: fit-content; padding: 4px 8px; border-radius: var(--kx-radius-8); background: var(--p-content-background); font-size: 12px; color: var(--p-text-color); pointer-events: none; }
 .work-graph-phase rect { fill: var(--kx-surface-1); }
 .work-graph-phase text { fill: var(--p-text-muted-color); font-size: 11px; font-weight: 600; }
 .work-graph-parallel > rect { fill: none; stroke: var(--p-content-border-color); stroke-dasharray: 2 3; }
@@ -298,6 +298,9 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .work-process-sideform .work-settings-grid { grid-template-columns: 1fr; }
 .work-process-sideform .work-process-state-title { flex: 1; font-size: 16px; font-weight: 700; }
 .work-process-sideform h3 { font-size: 16px; font-weight: 700; }
+.work-transition-actions { flex-wrap: wrap; gap: 4px; }
+.work-transition-actions h3 { margin-inline-end: auto; }
+.work-flow-version.p-inputtext { width: 100%; appearance: auto; }
 .work-process-sideform .work-process-name.p-inputtext { width: 100%; min-width: 0; font-size: 16px; font-weight: 700; padding: 4px 0; background: transparent; border-color: transparent; box-shadow: none; }
 .work-process-sideform .work-process-name.p-inputtext:focus { border-color: var(--p-focus-ring-color); box-shadow: var(--p-focus-ring-shadow); }
 .work-block { display: block; }

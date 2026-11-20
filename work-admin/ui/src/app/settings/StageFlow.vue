@@ -3,7 +3,6 @@
 import { formatApiError } from '../../transport'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Button from 'primevue/button'
-import Select from 'primevue/select'
 import { ensureTag } from '../mount'
 import { flows, type FlowRef } from './flows'
 const props = defineProps<{ modelValue?: FlowRef }>()
@@ -55,9 +54,19 @@ onBeforeUnmount(() => { sequence++; emit('validity', true) })
     </div>
     <wc-workflow-picker v-if="ready" :schema="schema" :config="config" :title="modelValue?.id" @change="pick" />
     <p v-else class="kx-err" role="alert">Published Flow picker unavailable.<Button label="Reload Flow picker" text severity="secondary" @click="loadWidget" /></p>
-    <label v-if="selectedId" class="work-stack work-tight">Published version<Select
-      :model-value="choosing ? undefined : modelValue?.version" :options="versions.map(row => ({ label: 'v' + row.version, value: row.version }))"
-      option-label="label" option-value="value" aria-label="Published version" placeholder="Choose a published version" append-to="self" :loading="loading" :disabled="loading || !!error" @update:model-value="select" /></label>
+    <label v-if="selectedId" class="work-stack work-tight">
+      Published version
+      <select
+        class="p-inputtext work-flow-version"
+        :value="choosing ? '' : modelValue?.version"
+        :aria-busy="loading"
+        :disabled="loading || !!error"
+        @change="select(Number(($event.target as HTMLSelectElement).value))"
+      >
+        <option value="" disabled>{{ loading ? 'Loading versions…' : 'Choose a published version' }}</option>
+        <option v-for="row in versions" :key="row.version" :value="row.version">v{{ row.version }}</option>
+      </select>
+    </label>
     <p v-if="choosing" class="work-muted work-small" role="status">Choose a published version to finish selecting the Flow.</p>
     <Button v-if="modelValue || choosing" :label="choosing ? 'Cancel Flow selection' : 'Remove Flow binding'" :aria-label="choosing ? 'Cancel Flow selection' : 'Remove Flow binding'" severity="secondary" text @click="choosing ? (choosing = false, candidate = '') : remove()" />
   </section>

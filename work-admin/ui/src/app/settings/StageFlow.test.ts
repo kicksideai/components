@@ -3,7 +3,6 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
 import { api } from '@wippy-fe/proxy'
-import Select from 'primevue/select'
 import StateSettings from './StateSettings.vue'
 import type { State } from '../../types'
 const wrappers: ReturnType<typeof mount>[] = []
@@ -26,9 +25,10 @@ it('uses the published Flow widget and requires an explicit version before repla
   await w.get('wc-workflow-picker').trigger('change', { detail: { flow_ref: { kind: 'flow', id: 'flow-b', version: 3 } } }); await flushPromises()
   expect(state.run!.flow_ref).toEqual({ kind: 'flow', id: 'flow-a', version: 1 })
   expect(w.emitted('validity')).toContainEqual(['flow', false])
-  const versions = w.findAllComponents(Select).find(s => s.props('ariaLabel') === 'Published version')!
-  expect(versions.props('options')).toEqual([{ label: 'v3', value: 3 }, { label: 'v1', value: 1 }])
-  await versions.setValue(1); await flushPromises()
+  const versions = w.get('select')
+  expect(versions.findAll('option:not([disabled])').map(option => ({ label: option.text(), value: (option.element as HTMLOptionElement).value })))
+    .toEqual([{ label: 'v3', value: '3' }, { label: 'v1', value: '1' }])
+  await versions.setValue('1'); await flushPromises()
   expect(state.run!.flow_ref).toEqual({ kind: 'flow', id: 'flow-b', version: 1 })
   expect(state.run!.stage).toBe('Build')
   expect(w.emitted('validity')?.at(-1)).toEqual(['flow', true])
@@ -65,8 +65,7 @@ it('ignores a late availability response after replacing a Flow', async () => {
   vi.mocked(api.get).mockImplementationOnce(() => new Promise((_, no) => { reject = no }) as never)
   const { w, state } = await render(true)
   await w.get('wc-workflow-picker').trigger('change', { detail: { flow_ref: { kind: 'flow', id: 'flow-b', version: 3 } } }); await flushPromises()
-  const versions = w.findAllComponents(Select).find(s => s.props('ariaLabel') === 'Published version')!
-  await versions.setValue(3); await flushPromises()
+  await w.get('select').setValue('3'); await flushPromises()
   reject(new Error('Old permission denied')); await flushPromises()
   expect(state.run!.flow_ref?.id).toBe('flow-b')
   expect(w.text()).not.toContain('Old permission denied')
