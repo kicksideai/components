@@ -18,6 +18,7 @@ local receipts = require("receipts")
 local envelope = require("envelope")
 local component_types = require("component_types")
 local threads = require("threads")
+local ui_app = require("ui_app")
 
 local M = {}
 
@@ -50,15 +51,21 @@ local function existing(board_id: string): (boolean?, error?)
     return true, nil
 end
 
-local function preflight(board_id: string, input: types.CreateRequest, initial: domain.Declaration): error?
+local function preflight(board_id: string, input: types.CreateRequest, initial: domain.Declaration): (string?, error?)
+    local binding = input.ui_app
     if input.pack then
         local pack, perr = catalog.load(input.pack, input.version)
-        if perr or not pack then return perr end
+        if perr or not pack then return nil, perr end
+        binding = binding or pack.data.ui_app
         local incoming = catalog.declaration(pack.data)
         incoming.key_prefix = planner.initial_prefix(board_id, input.declaration and input.declaration.key_prefix, incoming.key_prefix)
         initial = incoming
     end
-    return schema_commands.preflight_create({ board_id = board_id, declaration = initial, plugin_configs = input.plugin_configs })
+    if binding then
+        local binding_err = ui_app.validate(binding)
+        if binding_err then return nil, binding_err end
+    end
+    return binding, schema_commands.preflight_create({ board_id = board_id, declaration = initial, plugin_configs = input.plugin_configs })
 end
 
 function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
@@ -75,21 +82,21 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
     if not board_id then return nil, id_err end
 
     local fingerprint = receipts.request_hash({ title = title, parent_id = parent_id, declaration = input.declaration,
-        pack = input.pack, version = input.version, starter = input.starter, plugin_configs = input.plugin_configs })
+        pack = input.pack, version = input.version, starter = input.starter, plugin_configs = input.plugin_configs, ui_app = input.ui_app })
     local found, ferr = existing(board_id)
     if ferr then return nil, ferr end
     local initial = input.declaration or { key_prefix = planner.initial_prefix(board_id) }
     local service, service_err = component.get_service()
     if service_err or not service then return nil, service_err :: error? end
     if not found then
-        local validation_err = preflight(board_id, input, initial)
+        local binding, validation_err = preflight(board_id, input, initial)
         if validation_err then return nil, validation_err end
         -- Component owns atomic creation of the board, its immutable identity
         -- and the primary thread declared by the kind. Failed admission leaves
         -- no independent Work receipt behind.
         local result, call_err = service:register({ component_id = board_id, impl_id = consts.BOARD_IMPL,
             parent_id = parent_id ~= "" and parent_id or nil,
-            meta = { title = title, icon = ICON }, private_context = { work_creation = fingerprint } })
+            meta = { title = title, icon = ICON, ui_app = binding }, private_context = { work_creation = fingerprint } })
         local creation_err = call_err :: error? or envelope.error_of(result :: component_types.ServiceEnvelope, "register")
         if creation_err then
             if not errors.is(creation_err,errors.CONFLICT) then return nil, creation_err end

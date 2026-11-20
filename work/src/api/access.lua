@@ -79,6 +79,7 @@ function M.endpoint(method: string, param: string?, contract_id: string?)
         end
     end
     if method == "list" and contract_id == "kickside.work:packs" then input.pack = req:query("pack") end
+    if method == "list" and contract_id == nil then input.ui_app = req:query("ui_app") end
     local status, body = M.call(method, input, contract_id)
     M.respond(res, status, body)
 end

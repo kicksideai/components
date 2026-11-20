@@ -1,6 +1,14 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Work specification
 
+## Board UI binding
+
+A UI module registers a `registry.entry` with `meta.type: kickside.work.ui.app`, a title, an icon, and one destination. Use `meta.page` for a local board-route prefix or `meta.component` for a web component tag. Append a slash and the encoded board component ID to the page route, or pass the ID to the component as its `board` property. An optional `meta.packs` list names suitable Work pack IDs for consumers that present UI and pack choices. Grant registry discovery for the entry to the users who can bind boards to it.
+
+`board.create` and `WorkCreateBoard` accept an optional `ui_app` registry entry ID. A pack can preset it with `data.ui_app` and an explicit creation argument takes precedence. Applying or updating a pack on an existing board leaves its binding in place. Board ADMIN can set `ui_app` with `board.update` or `WorkUpdateBoard`, or clear the setting with an empty string. Work validates new bindings against registered UI apps before any write.
+
+`board.list`, `WorkListBoards`, and `GET /work/boards` expose each readable board’s optional `ui_app` ID. Pass that ID as `ui_app` to filter discovery before pagination. Follow `next` with the same filter. Discovery uses Component’s READ-filtered metadata query and the existing caller-visible board counts.
+
 ## Item write invariants
 
 Omit `parent_types` or use an empty list for a root-only item type. A nonempty list allows the listed item type IDs as parents. Include JSON `false` to also allow top-level placement. For example, `["root", false]` allows a parent item whose type ID is `root` and also allows the item at the top level. Creating or reparenting an item at root when its type requires a parent returns `parent_required` on `parent`.

@@ -156,6 +156,10 @@ entries:
     consts: kickside.work:consts
     domain: kickside.work:types
     types: kickside.work.command:types
+- name: ui_app
+  kind: library.lua
+  source: file://ui_app.lua
+  modules: [registry]
 - name: create
   kind: library.lua
   meta:
@@ -179,6 +183,7 @@ entries:
     packs: kickside.work.command:packs
     catalog: kickside.work.domain:pack_catalog
     planner: kickside.work.command:pack_plan
+    ui_app: kickside.work.command:ui_app
 - name: when
   kind: library.lua
   source: file://when.lua
@@ -442,6 +447,7 @@ entries:
     types: kickside.work.command:types
     store: kickside.work.persist:store
     board_meta: kickside.work.persist:board_meta
+    ui_app: kickside.work.command:ui_app
   modules:
   - funcs
 - name: pack_plan

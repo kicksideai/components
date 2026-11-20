@@ -2,6 +2,21 @@
 version: '1.0'
 namespace: app
 entries:
+- name: tracker_ui
+  kind: registry.entry
+  meta:
+    type: kickside.work.ui.app
+    title: Tracker
+    icon: tabler:layout-kanban
+    page: /tracker
+    packs: [app:tracker_pack]
+- name: alternate_ui
+  kind: registry.entry
+  meta:
+    type: kickside.work.ui.app
+    title: Alternate
+    icon: tabler:table
+    component: alternate-board
 - name: kanban_pack
   kind: registry.entry
   meta:
@@ -10,7 +25,7 @@ entries:
     version: 1.0.0
     icon: tabler:layout-kanban
     description: Tasks across a delivery flow
-  data:
+  data: &kanban_data
     schema: &id009
       fields: &id015
       - &id016
@@ -71,6 +86,17 @@ entries:
         values:
           title: Second task
       default: false
+- name: tracker_pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Tracker
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Tasks in a tracker board
+  data:
+    <<: *kanban_data
+    ui_app: app:tracker_ui
 - name: kanban_next_pack
   kind: registry.entry
   meta:
@@ -228,6 +254,9 @@ entries:
     - app:numeric_pack
     - app:numeric_plugin
     - app:kanban_pack
+    - app:tracker_pack
+    - app:tracker_ui
+    - app:alternate_ui
     - app:kanban_next_pack
     - app:renamed_pack
     - app:invalid_form_pack

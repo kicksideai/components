@@ -292,7 +292,7 @@ type PatchStep = { f: integer, v: Value?, before: Value?, clear: boolean?, unset
 type Target = { board: string, item: string }
 type Receipt = { request_hash: string, result: JsonObject }
 type EventBody = { board_id: string?, flow_ref: FlowRef?, pack: JsonObject?,
-    title: string?, description: string?, icon: string?,
+    title: string?, description: string?, icon: string?, ui_app: string?,
     operation_id: string?, processed: integer?, total: integer?, status: string?, counts: { [string]: integer }?, moved_from: Target?, moved_to: Target?, old_key: string?,
     region: string?, decision: string?, gate: string?, attempt: integer?, outcome: string?, outputs: JsonObject?, progress: JsonObject?, timer: string?, scheduled_at: string?, emitted: string?, force: boolean?,
     command_key: string?,
@@ -325,7 +325,7 @@ type ProjectionInput = {
 
 type BoardAccess = { read: boolean, write: boolean, delete: boolean, admin: boolean }
 
-type BoardMeta = { title: string, description: string, icon: string, applied_seq: integer? }
+type BoardMeta = { title: string, description: string, icon: string, ui_app: string, applied_seq: integer? }
 type ComponentMeta = { [string]: unknown }
 type ComponentRow = { component_id: string?, impl_id: string?, parent_id: string?, meta: ComponentMeta?, access_level: integer? }
 

@@ -6,7 +6,7 @@ type Map = { [string]: unknown }
 type View = views.View
 type PackView = { id: string, title: string, view: views.View, revision: integer? }
 type Automation = { id: string, type: string, input: domain.JsonObject, revision: integer? }
-type Data = { additive: boolean?, schema: domain.Declaration, processes: { domain.ProcessDecl }?, views: { PackView }, automations: { Automation },
+type Data = { additive: boolean?, ui_app: string?, schema: domain.Declaration, processes: { domain.ProcessDecl }?, views: { PackView }, automations: { Automation },
     traits: { string }, requires: { string }, starter: { items: { commands.Op }, default: boolean } }
 type Plugin = domain.PluginView
 type Summary = { id: string, title: string?, version: string?, icon: string?, description: string?, digest: string?, requires: { string }?, plugins: { Plugin }?, problem: { code: string, message: string }? }

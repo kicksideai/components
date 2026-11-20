@@ -18,6 +18,8 @@ entries:
         type: string
       icon:
         type: string
+      ui_app:
+        type: string
       actor:
         type: string
       at:

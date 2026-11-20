@@ -11,7 +11,7 @@ local function run(db, statements)
 end
 
 local POSTGRES = {
-    [[CREATE TABLE kickside_work_board_meta (board_id text NOT NULL PRIMARY KEY, title text NOT NULL, description text NOT NULL, icon text NOT NULL, applied_seq bigint NOT NULL)]],
+    [[CREATE TABLE kickside_work_board_meta (board_id text NOT NULL PRIMARY KEY, title text NOT NULL, description text NOT NULL, icon text NOT NULL, ui_app text NOT NULL, applied_seq bigint NOT NULL)]],
     [[CREATE TABLE kickside_work_operation (
         board_id text NOT NULL, operation_id text NOT NULL, kind text NOT NULL, key text, request_hash text NOT NULL,
         actor_id text NOT NULL, actor_context text NOT NULL, data text NOT NULL, status text NOT NULL,

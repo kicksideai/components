@@ -43,7 +43,7 @@ import json, sqlite3, sys
 up, down = json.load(sys.stdin)
 db = sqlite3.connect(':memory:')
 for sql in up: db.execute(sql)
-db.execute("INSERT INTO kickside_work_board_meta VALUES ('board','Title','','',1)")
+db.execute("INSERT INTO kickside_work_board_meta (board_id, title, description, icon, ui_app, applied_seq) VALUES ('board','Title','','','app:tracker_ui',1)")
 for sql in down: db.execute(sql)
 print(json.dumps(db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'kickside_work_%'").fetchall()))
 `], {}, JSON.stringify([up, down]))
