@@ -74,7 +74,8 @@ type Reader = { awaiting: ((string) -> (Condition?, error?))?, scope_fence: ((Sc
 type Where = { [string]: unknown }
 type Sort = { field: string, ctx: { [string]: string }?, dir: string? }
 type Cursor = { id: string, phase: string?, position: string?, v: ColumnValue?, keys: { { v: ColumnValue? } }? }
-type ItemQuery = { scan: integer?, groups: { string }?, sorts: { Sort }?, where: Where?, after: Cursor?, count: integer?, peer_visibility: VisibilityCondition? }
+type Measure = { id: string, op: "sum", field: string }
+type ItemQuery = { scan: integer?, groups: { string }?, measures: { Measure }?, sorts: { Sort }?, where: Where?, after: Cursor?, count: integer?, peer_visibility: VisibilityCondition? }
 -- ColumnTarget is the generated column a filter or sort names: the value shape normalizes
 -- request values, coerce maps a request shorthand onto the canonical form first, and
 -- field_id names the field in the change table.
@@ -340,7 +341,7 @@ return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, Operation
     CommandError = CommandError, Deadline = Deadline, ThreadRequest = ThreadRequest, ThreadClient = ThreadClient, CatchUp = CatchUp, ThreadExpect = ThreadExpect,
     Scalar = Scalar, Record = Record, MemberSpec = MemberSpec, ColumnValue = ColumnValue, LayoutColumn = LayoutColumn, SystemColumn = SystemColumn,
     GeneratedNames = GeneratedNames, GeneratedTable = GeneratedTable, IndexRow = IndexRow, Reader = Reader, Where = Where, Sort = Sort, Cursor = Cursor,
-    ItemQuery = ItemQuery, ColumnTarget = ColumnTarget, Resolver = Resolver, Condition = Condition, FilterEnvironment = FilterEnvironment,
+    Measure = Measure, ItemQuery = ItemQuery, ColumnTarget = ColumnTarget, Resolver = Resolver, Condition = Condition, FilterEnvironment = FilterEnvironment,
     FilterCompilation = FilterCompilation, FilterOptions = FilterOptions, VisibilityCondition = VisibilityCondition, RelationScope = RelationScope, HistoryAsked = HistoryAsked, ScopeFilter = ScopeFilter, Scope = Scope,
     ScopeProjection = ScopeProjection, ScopeQuery = ScopeQuery, AdmittedScope = AdmittedScope, PluginSchemaSource = PluginSchemaSource, PluginSchema = PluginSchema, ResolveContext = ResolveContext,
     PluginError = PluginError, PluginProblem = PluginProblem, PluginLifecycle = PluginLifecycle, PluginView = PluginView, PluginProjection = PluginProjection, PluginProjectionState = PluginProjectionState, Plugin = Plugin, ProviderResult = ProviderResult, Provider = Provider, FieldType = FieldType, FieldTypeOption = FieldTypeOption,

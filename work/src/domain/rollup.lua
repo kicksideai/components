@@ -45,6 +45,26 @@ local function digits(v: types.Dec): string
     return trim(tostring(v.m):gsub("^%-", "") .. string.rep("0", v.e + 12))
 end
 
+-- add folds signed, unscaled base-ten integers without a machine-integer bound.
+function M.add(total: string, value: string): string
+    local a_negative, b_negative = total:sub(1, 1) == "-", value:sub(1, 1) == "-"
+    local a, b = a_negative and total:sub(2) or total, b_negative and value:sub(2) or value
+    local result, negative
+    if a_negative == b_negative then result, negative = plus(a, b), a_negative
+    elseif compare(a, b) >= 0 then result, negative = minus(a, b), a_negative
+    else result, negative = minus(b, a), b_negative end
+    return negative and result ~= "0" and "-" .. result or result
+end
+
+function M.decimal_text(total: string, scale: integer): string
+    if scale == 0 or total == "0" then return total end
+    local negative = total:sub(1, 1) == "-"
+    local magnitude = negative and total:sub(2) or total
+    if #magnitude <= scale then magnitude = string.rep("0", scale + 1 - #magnitude) .. magnitude end
+    local whole, fraction = magnitude:sub(1, -scale - 1), magnitude:sub(-scale):gsub("0+$", "")
+    return (negative and "-" or "") .. whole .. (fraction == "" and "" or "." .. fraction)
+end
+
 function M.decimal_compare(a: types.Dec, b: types.Dec): integer
     if a.m < 0 and b.m >= 0 then return -1 end
     if b.m < 0 and a.m >= 0 then return 1 end
@@ -54,13 +74,12 @@ end
 -- aggregate rounds division half away from zero to fifteen significant digits and twelve fractional places.
 -- A result outside the form's range holds no value.
 function M.aggregate(input: { types.Dec }, divisor: integer, form: string, rounded: boolean?): types.Value?
-    local total, sign = "0", 1
+    local total = "0"
     for _, v in ipairs(input) do
-        local n, s = digits(v), v.m < 0 and -1 or 1
-        if s == sign then total = plus(total, n)
-        elseif compare(total, n) >= 0 then total = minus(total, n)
-        else total, sign = minus(n, total), s end
+        total = M.add(total, (v.m < 0 and "-" or "") .. digits(v))
     end
+    local negative = total:sub(1, 1) == "-"
+    if negative then total = total:sub(2) end
     local quotient, remainder = "", 0
     for i = 1, #total do
         local n = remainder * 10 + total:byte(i) - 48
@@ -74,7 +93,7 @@ function M.aggregate(input: { types.Dec }, divisor: integer, form: string, round
         quotient = kept .. string.rep("0", extra)
     elseif remainder * 2 >= divisor then quotient = plus(quotient, "1") end
     if #quotient <= 12 then quotient = string.rep("0", 13 - #quotient) .. quotient end
-    local text = (sign < 0 and "-" or "") .. quotient:sub(1, -13) .. "." .. quotient:sub(-12)
+    local text = (negative and "-" or "") .. quotient:sub(1, -13) .. "." .. quotient:sub(-12)
     local value, err = values.normalize({ form = form, cardinality = "one", config = {} }, form == "int" and text:sub(1, -14) or text)
     if err then return nil end
     return value

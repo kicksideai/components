@@ -15,7 +15,7 @@ local M = {}
 local BASE = "http://127.0.0.1:19239/api/work/boards"
 
 type Json = { [string]: unknown }
-type Reply = { status: number, body: Json }
+type Reply = { status: number, body: Json, raw: string }
 type Session = {
     id: string,
     actor: security.Actor,
@@ -41,7 +41,7 @@ local function open(actor: security.Actor, scope: security.Scope): Session
         })
         assert(not err and res, tostring(err))
         local decoded = res.body ~= "" and json.decode(res.body) or {}
-        return { status = res.status_code, body = decoded :: Json }
+        return { status = res.status_code, body = decoded :: Json, raw = res.body }
     end
     return {
         id = actor:id(), actor = actor, scope = scope,
