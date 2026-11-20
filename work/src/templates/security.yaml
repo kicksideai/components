@@ -8,7 +8,7 @@ entries:
     title: Work Templates
     surface: kickside.work.templates
     intent: module_access
-    includes: [kickside.work.templates:module_runtime]
+    includes: [kickside.work.templates:module_runtime, kickside.work.templates:member_endpoints]
   groups: []
   policy:
     resources:
@@ -36,6 +36,8 @@ entries:
     - kickside.work.templates:publish
     - kickside.work.templates:archive
     - kickside.work.templates:instantiate
+    - kickside.work.templates.api:list
+    - kickside.work.templates.api:instantiate
     - kickside.work.templates:action
     - kickside.work.templates:write
     - kickside.work.templates:tool_list
@@ -43,4 +45,14 @@ entries:
     - kickside.work.templates:tool_archive
     - kickside.work.templates:tool_instantiate
     actions: [contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
+    effect: allow
+- name: member_endpoints
+  kind: security.policy
+  meta: {private: true}
+  groups: []
+  policy:
+    resources:
+    - kickside.work.templates.api:list.endpoint
+    - kickside.work.templates.api:instantiate.endpoint
+    actions: access
     effect: allow
