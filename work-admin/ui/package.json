@@ -44,7 +44,7 @@
   "wippy": {
     "tagName": "kickside-work-admin",
     "type": "component",
-    "description": "Board schemas, processes, policy and packs for KickSide Work.",
+    "description": "Open Work administration to create a board or select an existing one. The component uses the signed-in user and takes no props. Board administrators can review changes to fields, processes, visibility and installed plugins before applying a draft.",
     "props": {
       "type": "object",
       "properties": {}

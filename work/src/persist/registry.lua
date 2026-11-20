@@ -37,12 +37,17 @@ function M.version(c: types.ThreadClient, prefix: string): (integer?, error?)
     return version, nil
 end
 
--- claim builds the registry write that claims prefix for board_id, or the taken error
--- when the prefix is held.
-function M.claim(c: types.ThreadClient, prefix: string, board_id: string, actor: string, at: string, trace_context: types.TraceContext?): (types.Write?, error?)
+function M.available_version(c: types.ThreadClient, prefix: string): (integer?, error?)
     local version, err = M.version(c, prefix)
     if not version then return nil, err end
     if version % 2 == 1 then return nil, taken(prefix) end
+    return version, nil
+end
+
+-- claim builds the versioned registry write that claims prefix for board_id.
+function M.claim(c: types.ThreadClient, prefix: string, board_id: string, actor: string, at: string, trace_context: types.TraceContext?): (types.Write?, error?)
+    local version, err = M.available_version(c, prefix)
+    if not version then return nil, err end
     return {
         group = "registry", thread_id = M.thread_id(), ops = {}, caller_expect = false, expect_subject = subject_of(prefix), expect_version = version,
         events = { { trace_context = trace_context, type = consts.EVENTS.PREFIX_CLAIMED, subject = subject_of(prefix),

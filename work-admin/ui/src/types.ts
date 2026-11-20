@@ -8,7 +8,7 @@ export interface Option { id: string; label?: string; order?: number; color?: st
 export type Holder = { group: string } | { user: string } | { service: string } | { field: string }
 export type FieldForm = 'text' | 'int' | 'dec' | 'quantity' | 'bool' | 'time' | 'ref' | 'record'
 export interface Field {
-  id?: number; code: string; title?: string; type?: string; form: FieldForm; cardinality?: string; options?: Option[]
+  id?: number; code: string; title?: string; type?: string; form?: FieldForm; cardinality?: string; options?: Option[]
   config?: { scale?: number; target?: string; format?: string; units?: Record<string, string>; canonical?: string; [key: string]: unknown }
   access?: { read?: Holder[]; write?: Holder[] }; index?: string; track?: boolean; intervals?: boolean; expression?: string; of?: string; fn?: string; field?: string; by?: 'rank' | 'time'; where?: unknown
 }
@@ -20,7 +20,7 @@ export interface Process { id: string; name?: string; initial: string; generatio
 export interface Declaration {
   key_prefix?: string; fields?: Field[]; item_types?: ItemType[]; processes?: Process[]
   relation_types?: { id: string; outward?: string; inward?: string; cardinality?: string; symmetric?: boolean }[]
-  plugins?: { use: string }[]; scopes?: string[]; visibility?: { field: string; levels: { id: string; holders: Holder[] }[]; bypass?: string }; remove?: Partial<Record<'fields' | 'item_types' | 'processes' | 'relation_types', string[]>>
+  plugins?: { use: string }[]; scopes?: string[]; visibility?: { field: string; levels: { id: string; holders: Holder[] }[]; bypass?: string }; remove?: Partial<Record<'fields' | 'item_types' | 'processes' | 'relation_types', string[]>> & { visibility?: boolean }
   policy?: { comments_per_item?: number; stage_timeout?: string; stage_max_visits?: number; wip?: Record<string, { limit: number; hard?: boolean }>; audit?: string; audit_days?: number; trash_days?: number; tombstone_days?: number; interval_days?: number }
 }
 export interface Schema { pack?: { id: string; version: string; digest: string }; outdated?: boolean; declaration: Declaration; compiled: Declaration; key_prefix: string; generation: number; as_of: number; migration_error?: string; plugins?: PluginState[] }
@@ -45,7 +45,8 @@ export interface Query {
 export interface QueryResult { items: Item[]; groups?: Group[]; after?: Cursor; as_of: number; reindexing: boolean; incomplete?: boolean }
 export interface Finding { code: string; message?: string; field?: string }
 export interface PluginOption extends PluginState { title?: string; description?: string; config_schema: Record<string, unknown> }
-export interface AdminOptions { access: BoardAccess; schema_options: { plugins: PluginOption[] }; installed_types?: { id: string; title: string }[] }
+export interface FieldTypeOption { id: string; title: string; form: FieldForm; config_schema?: Record<string, unknown> }
+export interface AdminOptions { access: BoardAccess; schema_options: { plugins: PluginOption[] }; installed_types?: FieldTypeOption[] }
 export const emptyOptions = (): AdminOptions => ({ access: { read: false, write: false, admin: false }, schema_options: { plugins: [] } })
 
 export interface Timer { id: string; after?: string; at_field?: string; by?: string; table?: Record<string, string>; repeat?: string; interrupting?: boolean; then?: { emit?: string; transition?: string } }

@@ -26,10 +26,9 @@ local M = {}
 
 M.TYPE = "kickside.pim.plugin"
 M.PROVIDER = "kickside.pim:schema_provider"
+M.INTERFACE_VERSION = 1
 
--- ProviderResult is what a schema_provider binding answers.
-type ProviderResult = { fragment: types.JsonObject, version: string? }
-type Provider = { resolve: (self: Provider, request: types.JsonObject) -> (unknown, error?) }
+type Provider = { resolve: (self: Provider, request: types.ProviderRequest) -> (unknown, error?) }
 
 local function invalid_projection(plugin: string, message: string): error
     return errors.new({ kind = errors.INVALID, retryable = false, message = message, details = { code = "plugin_projection_invalid", plugin = plugin, field = "projections" } })
@@ -240,6 +239,10 @@ function M.load(id: string): (types.Plugin?, error?)
     if type(meta) ~= "table" then return nil, invalid(id .. " is not a plugin") end
     local m = meta :: { [string]: unknown }
     if m.type ~= M.TYPE then return nil, invalid(id .. " is not a plugin") end
+    if m.interface_version ~= nil and m.interface_version ~= M.INTERFACE_VERSION then
+        return nil, invalid(id .. " requires an unsupported plugin interface version",
+            { code = "plugin_interface_version_unsupported", plugin = id })
+    end
     if type(m.attachment) ~= "string" or m.attachment == "" then
         return nil, invalid(id .. " attachment must name a component binding", { field = "attachment" })
     end
@@ -269,7 +272,8 @@ function M.load(id: string): (types.Plugin?, error?)
         if perr then return nil, perr end
         projections = declared :: { types.PluginProjection }
     end
-    return { id = id, title = m.title :: string?, description = m.description :: string?, icon = m.icon :: string?, settings = m.settings :: string?,
+    return { id = id, interface_version = M.INTERFACE_VERSION,
+        title = m.title :: string?, description = m.description :: string?, icon = m.icon :: string?, settings = m.settings :: string?,
         attachment = m.attachment :: string, requires = requires, seams = seams, config_schema = schema, schema = source, projections = projections, tools = tools }, nil
 end
 
@@ -311,6 +315,7 @@ function M.list(states: { [string]: types.PluginIntent }?, membership: { [string
                 entry.attachment_id, entry.config, entry.lifecycle = state.attachment_id, state.config, state.lifecycle
             end
             if p then
+                entry.interface_version = p.interface_version
                 entry.title, entry.description, entry.icon = p.title, p.description, p.icon
                 entry.requires, entry.tools, entry.config_schema = p.requires or {}, p.tools or {}, p.config_schema
             end
@@ -438,10 +443,10 @@ function M.resolve_schema(p: types.Plugin, ctx: types.ResolveContext): (types.Pl
     local provider = instance :: Provider
     local answer, rerr = provider:resolve({ catalog_id = ctx.catalog_id, plugin = p.id, config = ctx.config, current = ctx.current })
     if rerr then return nil, errors.wrap(rerr, p.id .. " schema provider") end
-    if type(answer) ~= "table" or type((answer :: ProviderResult).fragment) ~= "table" then
+    if type(answer) ~= "table" or type((answer :: types.ProviderResult).fragment) ~= "table" then
         return nil, errors.new({ kind = errors.INTERNAL, message = p.id .. " schema provider answered without a fragment", details = { code = "internal" } })
     end
-    local result = answer :: ProviderResult
+    local result = answer :: types.ProviderResult
     if result.version ~= nil and type(result.version) ~= "string" then
         return nil, errors.new({ kind = errors.INTERNAL, message = p.id .. " schema provider version must be a string", details = { code = "internal" } })
     end

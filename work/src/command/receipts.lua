@@ -69,16 +69,16 @@ function M.request_hash(value: unknown): string
     return tostring(hash.sha256(values.canonical(value)))
 end
 
--- version reads the claim-shard version, then covers it before receipt lookup.
+-- version reads the claim-shard append guard.
 function M.version(board_id: string, key: string, deadline: domain.Deadline): (integer?, error?)
     local result, err = funcs.call("kickside.work.service:sync", { board_id = board_id, deadline = deadline, command_key = key })
     if err then return nil, err end
     return result :: integer, nil
 end
 
--- covered waits until the projection reaches the thread head.
-function M.covered(board_id: string, deadline: domain.Deadline): (integer?, error?)
-    local result, err = funcs.call("kickside.work.service:sync", { board_id = board_id, deadline = deadline })
+-- covered waits for a committed sequence, or for the sampled head if omitted.
+function M.covered(board_id: string, deadline: domain.Deadline, target_seq: integer?): (integer?, error?)
+    local result, err = funcs.call("kickside.work.service:sync", { board_id = board_id, deadline = deadline, target_seq = target_seq })
     if err then return nil, err end
     return result :: integer, nil
 end

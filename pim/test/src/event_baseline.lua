@@ -32,6 +32,7 @@ return {
                 ["status"] = { ["type"] = "string" },
                 ["source"] = { ["type"] = "string" },
                 ["source_seq"] = { ["type"] = "integer" },
+                ["generation"] = { ["type"] = "integer", ["minimum"] = 1 },
                 ["patch"] = {
                     ["type"] = "array",
                     ["items"] = {
@@ -55,6 +56,7 @@ return {
             ["additionalProperties"] = false,
             ["properties"] = {
                 ["product_id"] = { ["type"] = "string" },
+                ["generation"] = { ["type"] = "integer", ["minimum"] = 1 },
                 ["patch"] = {
                     ["type"] = "array",
                     ["items"] = {

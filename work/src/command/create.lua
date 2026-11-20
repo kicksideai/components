@@ -12,8 +12,8 @@ local schema_commands = require("schema_commands")
 local locate = require("locate")
 local types = require("types")
 local domain = require("domain")
-local plugins = require("plugins")
 local catalog = require("catalog")
+local planner = require("planner")
 local receipts = require("receipts")
 local envelope = require("envelope")
 local component_types = require("component_types")
@@ -50,19 +50,15 @@ local function existing(board_id: string): (boolean?, error?)
     return true, nil
 end
 
-local function validate_initial(input: types.CreateRequest): error?
-    local initial = input.declaration
+local function preflight(board_id: string, input: types.CreateRequest, initial: domain.Declaration): error?
     if input.pack then
         local pack, perr = catalog.load(input.pack, input.version)
         if perr or not pack then return perr end
-        initial = catalog.declaration(pack.data)
+        local incoming = catalog.declaration(pack.data)
+        incoming.key_prefix = planner.initial_prefix(board_id, input.declaration and input.declaration.key_prefix, incoming.key_prefix)
+        initial = incoming
     end
-    if initial then
-        local _, err = plugins.compile(initial.plugins, input.plugin_configs)
-        if err then return err end
-    end
-
-    return nil
+    return schema_commands.preflight_create({ board_id = board_id, declaration = initial, plugin_configs = input.plugin_configs })
 end
 
 function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
@@ -82,11 +78,12 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
         pack = input.pack, version = input.version, starter = input.starter, plugin_configs = input.plugin_configs })
     local found, ferr = existing(board_id)
     if ferr then return nil, ferr end
+    local initial = input.declaration or { key_prefix = planner.initial_prefix(board_id) }
     local service, service_err = component.get_service()
     if service_err or not service then return nil, service_err :: error? end
     if not found then
-        local validation_err = validate_initial(input)
-        if validation_err then return nil,validation_err end
+        local validation_err = preflight(board_id, input, initial)
+        if validation_err then return nil, validation_err end
         -- Component owns atomic creation of the board, its immutable identity
         -- and the primary thread declared by the kind. Failed admission leaves
         -- no independent Work receipt behind.
@@ -113,11 +110,6 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
         return { board_id = result.board_id, title = result.title, generation = result.generation, replayed = true }, nil
     end
 
-    if found then
-        local validation_err = validate_initial(input)
-        if validation_err then return nil,validation_err end
-    end
-
     local client, client_err = threads.open()
     if client_err or not client then return nil,client_err end
     local _, converge_err = client:ensure_thread({component_id=board_id,impl_id=consts.BOARD_IMPL,thread_class=consts.THREAD_CLASS})
@@ -129,7 +121,6 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
         if perr or not installed then return nil, perr end
         generation = installed.generation
     else
-        local initial = input.declaration or { key_prefix = "W" .. board_id:gsub("-", ""):sub(1, 9):upper() }
         local applied, serr = schema_commands.apply_schema({ trace_context = input.trace_context, board_id = board_id, declaration = initial, plugin_configs = input.plugin_configs, key = "create/" .. board_id })
         if serr or not applied then return nil, errors.wrap(serr or errors.new({ kind = errors.INTERNAL, retryable = false, message = "operation returned no result", details = { code = "internal" } }), "initial schema failed") end
         generation = applied.generation

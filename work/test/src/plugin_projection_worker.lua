@@ -4,11 +4,11 @@ local security = require("security")
 local board = require("board")
 local M = {}
 local function ensure(db: sql.DB): error?
-    local _, err = db:execute("CREATE TABLE IF NOT EXISTS work_test_plugin_fold (board_id TEXT NOT NULL, seq BIGINT NOT NULL, event_type TEXT NOT NULL, actor_id TEXT NOT NULL, marker TEXT NOT NULL, deliveries BIGINT NOT NULL, PRIMARY KEY (board_id, seq))", {})
+    local _, err = db:execute("CREATE TABLE IF NOT EXISTS work_test_plugin_fold (board_id TEXT NOT NULL, seq BIGINT NOT NULL, item_id TEXT NOT NULL, event_type TEXT NOT NULL, actor_id TEXT NOT NULL, marker TEXT NOT NULL, deliveries BIGINT NOT NULL, PRIMARY KEY (board_id, seq))", {})
     return err
 end
 type Map = { [string]: unknown }
-type Change = { updated_seq: integer, op: string }
+type Change = { item_id: string, updated_seq: integer, op: string }
 type Body = { worker_config: { plugin: string, input: string }, token: string? }
 type Input = { thread_id: string, projection: { kind: string, body: Body }, range: { from_seq: integer, to_seq: integer }, events: { Map }?, worker_input_mode: string }
 type Feed = { config: { fail: boolean?, marker: string? }, changes: { Change }, token: string, done: boolean }
@@ -28,7 +28,7 @@ function M.run(input: Input): (Map?, error?)
     local tx, terr = db:begin()
     if terr or not tx then db:release(); return nil, terr end
     for _, event in ipairs(feed.changes) do
-        local _, werr = tx:execute("INSERT INTO work_test_plugin_fold (board_id, seq, event_type, actor_id, marker, deliveries) VALUES ($1, $2, $3, $4, $5, 1) ON CONFLICT (board_id, seq) DO UPDATE SET marker=excluded.marker, deliveries=work_test_plugin_fold.deliveries+1", { input.thread_id, event.updated_seq, event.op, (security.actor() :: security.Actor):id(), feed.config.marker or "initial" })
+        local _, werr = tx:execute("INSERT INTO work_test_plugin_fold (board_id, seq, item_id, event_type, actor_id, marker, deliveries) VALUES ($1, $2, $3, $4, $5, $6, 1) ON CONFLICT (board_id, seq) DO UPDATE SET marker=excluded.marker, deliveries=work_test_plugin_fold.deliveries+1", { input.thread_id, event.updated_seq, event.item_id, event.op, (security.actor() :: security.Actor):id(), feed.config.marker or "initial" })
         if werr then tx:rollback(); db:release(); return nil, werr end
     end
     local _, cerr = tx:commit()

@@ -31,6 +31,16 @@ it('recovers stable field IDs from compiled schema without mutating the response
   expect(normalizeSchema(view).declaration.fields![0].id).toBe(17)
   expect(view.declaration.fields![0].id).toBeUndefined()
 })
+it('uses a custom field form in the draft and omits it from the schema request', () => {
+  const view = schema()
+  view.declaration.fields = [{ code: 'customer', type: 'app:reference', config: { target: 'app:record' } }]
+  view.compiled.fields = [{ id: 17, code: 'customer', form: 'ref' }]
+  const draft = normalizeSchema(view).declaration
+  expect(draft.fields![0].form).toBe('ref')
+  expect(requestDeclaration(draft, view.declaration).fields).toEqual([
+    { id: 17, code: 'customer', type: 'app:reference', config: { target: 'app:record' } },
+  ])
+})
 it('identifies follow process migrations from the returned change classes', async () => {
   const { processMigration } = await import('./model')
   const plan = { generation: 2, class: 'semantic', refused: [], changes: [{ code: 'process delivery', class: 'semantic', what: 'state.map' }] }

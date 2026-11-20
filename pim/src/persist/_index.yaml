@@ -184,6 +184,7 @@ entries:
     source: file://proposal_rows.lua
     modules: [uuid, sql]
     imports:
+      failure: kickside.pim:failure
       narrow: kickside.pim:narrow
       clock: kickside.pim:clock
       store: kickside.pim.persist:store

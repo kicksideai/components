@@ -12,6 +12,18 @@ local security = require("security")
 local M = {}
 function M.run(input)
     if input.op == nil then return {} end
+    if input.op == "grant_flow_read" then
+        local granted, err = assert(component.get_service()):grant_subtree({ root_component_id = input.ref.id,
+            subject = { subject_type = "user", subject_id = input.subject_id }, access_mask = component.ACCESS.READ })
+        if err then return nil, err end
+        assert(granted.success, json.encode(granted))
+        return true, nil
+    end
+    if input.op == "flow_read" then
+        local _, err = component.validate_access(input.ref.id, component.ACCESS.READ)
+        if err then return nil, err end
+        return true, nil
+    end
     if input.op == "pack" then
         local entry = assert(registry.get("app:binding_pack"))
         local d = input.declaration

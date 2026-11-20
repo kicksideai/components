@@ -13,6 +13,7 @@ entries:
     search_text: kickside.work.domain:search_text
     registry_values: kickside.work.domain:registry_values
     types: kickside.work:types
+    cursor_reader: kickside.core.projections.persist:reader
 - name: select
   kind: library.lua
   meta:

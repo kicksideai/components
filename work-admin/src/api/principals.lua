@@ -1,12 +1,22 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Display names resolve only after the caller reads this board through its contract.
 local http = require("http")
+local json = require("json")
 local contract = require("contract")
 local security = require("security")
 local http_errors = require("http_errors")
 local component = require("component")
 local types = require("types")
 local M = {}
+local references = {
+    type = "object", required = { "refs" },
+    properties = { refs = {
+        type = "array", maxItems = 200,
+        items = { type = "object", required = { "type", "id" }, properties = {
+            type = { enum = { "user", "group" } }, id = { type = "string", minLength = 1 },
+        } },
+    } },
+}
 local function fail(res: http.Response, err: error)
     res:set_status(http_errors.classify(err))
     res:write_json(http_errors.response(err))
@@ -33,18 +43,16 @@ function M.post()
     if access_err then return fail(res, access_err) end
     local _, admin_err = component.validate_access(id, component.ACCESS.ADMIN)
     if admin_err then return fail(res, admin_err) end
-    local body, body_err = req:body_json()
-    if body_err or type(body) ~= "table" or type((body :: types.Map).refs) ~= "table" then
-        return fail(res, errors.new({ kind = errors.INVALID, message = "principal references required" }))
+    local raw = req:body() or ""
+    local valid = json.validate_string(references, raw)
+    if not valid then
+        return fail(res, errors.new({ kind = errors.INVALID, message = "refs must be an array of at most 200 user or group references",
+            details = { code = "invalid_principal_refs" } }))
     end
+    local body, body_err = json.decode(raw)
+    if body_err then return fail(res, body_err) end
     local refs: { types.Map } = {}
-    for _, raw in ipairs((body :: types.Map).refs :: { unknown }) do
-        if #refs >= 200 then return fail(res, errors.new({ kind = errors.INVALID, message = "too many principal references" })) end
-        if type(raw) ~= "table" then return fail(res, errors.new({ kind = errors.INVALID, message = "invalid principal reference" })) end
-        local ref = raw :: types.Map
-        if (ref.type ~= "user" and ref.type ~= "group") or type(ref.id) ~= "string" or ref.id == "" then
-            return fail(res, errors.new({ kind = errors.INVALID, message = "invalid principal reference" }))
-        end
+    for _, ref in ipairs((body :: { refs: { types.Map } }).refs) do
         refs[#refs + 1] = { type = ref.type, id = ref.id }
     end
     local directory, directory_err = open("kickside.contract:directory")

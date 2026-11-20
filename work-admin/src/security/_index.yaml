@@ -7,7 +7,6 @@ entries:
   meta:
     title: KickSide Work administration
     surface: kickside.work.admin
-    intent: module_access
     includes:
     - kickside.work.admin.security:member_endpoints
     - kickside.work.admin.security:module_runtime

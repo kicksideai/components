@@ -183,6 +183,23 @@ local function define()
             for _, tool in pairs(result.tools) do test.is_nil(seen[tool.registry_id]); seen[tool.registry_id] = true end
             for name in pairs(METHODS) do test.is_true(seen[NS .. name]) end
         end)
+        test.it("executes compiled tools with board context, an explicit override and a native Work error", function()
+            local h = fixture.board()
+            local explicit = assert(h.call("create", {
+                idempotency_key = "agent-override", declaration = fixture.declaration(fixture.fresh_prefix()),
+            }))
+            local result, err = h.executor:call("app:call_work_agent_tools", { board_id = h.id, calls = {
+                { name = "WorkGetSchema", arguments = "{}" },
+                { name = "WorkUpdateBoard", arguments = { board_id = explicit.board_id, title = "Agent-selected board" } },
+                { name = "WorkResumeMigration", arguments = "{}" },
+            } })
+            test.is_nil(err, tostring(err))
+            test.eq(result.WorkGetSchema.result.key_prefix, h.prefix)
+            test.eq(result.WorkUpdateBoard.result.board_id, explicit.board_id)
+            test.eq(result.WorkResumeMigration.kind, errors.INVALID)
+            test.eq(result.WorkResumeMigration.code, "no_parked_migration")
+            test.is_nil(result.WorkResumeMigration.retryable)
+        end)
     end)
 end
 return { run = test.run_cases(define) }

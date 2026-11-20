@@ -175,8 +175,8 @@ entries:
     domain: kickside.work:types
     identifiers: kickside.work.domain:identifiers
     packs: kickside.work.command:packs
-    plugins: kickside.work.domain:plugins
     catalog: kickside.work.domain:pack_catalog
+    planner: kickside.work.command:pack_plan
 - name: when
   kind: library.lua
   source: file://when.lua

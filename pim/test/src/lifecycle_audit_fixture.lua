@@ -30,7 +30,7 @@ function M.transaction<T>(_what: string,fn: (types.Executor,string)->(T?,error?)
 end
 function M.load(_id: string): (types.Plugin?,error?)
     if mode=="missing" then return nil,errors.new({kind=errors.INVALID,retryable=false,message="missing",details={code="unknown_plugin"}}) end
-    return {id="a",attachment="kind",projections={{kind="fold",input="state",revision=2,worker_ref="func://app:worker",events={}}}} :: types.Plugin,nil
+    return {id="a",interface_version=1,attachment="kind",projections={{kind="fold",input="state",revision=2,worker_ref="func://app:worker",events={}}}} :: types.Plugin,nil
 end
 local function client(): unknown
     return {
