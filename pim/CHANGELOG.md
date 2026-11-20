@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12](https://github.com/kicksideai/components/compare/pim-v0.1.11...pim-v0.1.12) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim:** initialize the greenfield catalog schema in one migration ([#248](https://github.com/kicksideai/components/issues/248)) ([cc2067f](https://github.com/kicksideai/components/commit/cc2067f7ec8fb66d75a1bc4764c2d4d9c1ad217f))
+
 ## [0.1.11](https://github.com/kicksideai/components/compare/pim-v0.1.10...pim-v0.1.11) (2026-11-20)
 
 
