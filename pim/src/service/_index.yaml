@@ -73,6 +73,22 @@ entries:
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
+  - name: policy_defaults
+    kind: function.lua
+    meta: { comment: "kickside.pim:catalog policy_defaults." }
+    source: file://catalog.lua
+    method: policy_defaults
+    imports:
+      writer: kickside.pim.command:writer
+      reader: kickside.pim.read:reader
+      create: kickside.pim.command:create
+      locate: kickside.pim.read:locate
+      types: kickside.pim:types
+      feeds: kickside.pim.read:feeds
+      release_reads: kickside.pim.read:releases
+      requests: kickside.pim:requests
+      plugin_feed: kickside.pim.extensions:plugin_feed
+
   - name: plan_schema
     kind: function.lua
     security:
@@ -183,6 +199,8 @@ entries:
     meta: { comment: "kickside.pim:catalog propose." }
     source: file://catalog.lua
     method: propose
+    security:
+      policies: [kickside.pim.security:proposal_submit_publish]
     imports:
       writer: kickside.pim.command:writer
       reader: kickside.pim.read:reader
@@ -202,6 +220,7 @@ entries:
     security:
       policies:
         - kickside.pim.security:item_output_publish
+        - kickside.pim.security:proposal_decide_publish
     imports:
       writer: kickside.pim.command:writer
       reader: kickside.pim.read:reader

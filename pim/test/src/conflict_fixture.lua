@@ -9,11 +9,13 @@ local M = {}
 type Attempt = pipeline.Attempt
 M.Attempt = Attempt
 M.marker = pipeline.marker
+M.apply_fingerprint = pipeline.apply_fingerprint
 local catalog_id = ""
 local generation_changes = false
 local revocation: { [string]: unknown }? = nil
 local revocation_timing = ""
 local guarded_request: types.ApplyRequest? = nil
+local interruption: string? = nil
 function M.configure(id: string, changed: boolean)
     catalog_id, generation_changes, revocation = id, changed, nil
 end
@@ -24,7 +26,31 @@ function M.interleave_guarded_receipt(id: string, request: types.ApplyRequest)
     catalog_id, guarded_request, revocation = id, request, nil
 end
 
+function M.interrupt_decision(phase: string)
+    interruption = phase
+end
+
 function M.run(command: pipeline.Command): (unknown, error?)
+    local phase = interruption
+    if phase then
+        interruption = nil
+        local client = command.client
+        local appended = false
+        local interrupted = errors.new({ kind = errors.UNAVAILABLE, message = "interrupted proposal decision" })
+        command.client = {
+            append_events = function(_, request)
+                if phase == "append" then return nil, interrupted end
+                local out, err = client:append_events(request)
+                appended = out ~= nil and err == nil
+                return out, err
+            end,
+            catch_up_projection = function(_, request)
+                if appended then return nil, interrupted end
+                return client:catch_up_projection(request)
+            end,
+        }
+        return pipeline.run(command)
+    end
     local guarded = guarded_request
     if guarded then
         guarded_request = nil
@@ -50,15 +76,15 @@ function M.run(command: pipeline.Command): (unknown, error?)
             assert(writer.apply_schema(catalog_id, { declaration = declaration }))
         end
         if revocation_timing == "before append" then
-            local reserve = assert(command.reserve)
+            local build = command.build
             local revoked = false
-            command.reserve = function(marker, hashed, seq, at)
-                local ok, err = reserve(marker, hashed, seq, at)
-                if ok and not revoked then
+            command.build = function(seq)
+                local attempt, err = build(seq)
+                if attempt and not revoked then
                     revoke()
                     revoked = true
                 end
-                return ok, err
+                return attempt, err
             end
         else
             if revocation_timing == "during conflict review" then

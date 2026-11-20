@@ -84,6 +84,7 @@ entries:
         - app:cost_scope
         - app:ghost_scope
         - app:weight_check
+        - app:status_check
         - app:actor_check
         - app:location_target
         - app:managed_location_target
@@ -613,6 +614,14 @@ entries:
     kind: function.lua
     meta: { type: kickside.pim.check, comment: Harness check - net weight at most config.max kg. }
     source: file://weight_check.lua
+    method: run
+    imports:
+      types: kickside.pim:types
+
+  - name: status_check
+    kind: function.lua
+    meta: { type: kickside.pim.check, comment: Harness check over native status transitions. }
+    source: file://status_check.lua
     method: run
     imports:
       types: kickside.pim:types
@@ -2262,7 +2271,7 @@ entries:
     meta:
       comment: The single PIM write path - head-checked appends with projection catch-up.
     source: file://conflict_writer_probe.lua
-    modules: [security, funcs]
+    modules: [security, uuid, funcs]
     imports:
       policy: kickside.pim.domain:policy
       receipts: kickside.pim.persist:receipts

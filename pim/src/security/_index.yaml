@@ -23,6 +23,7 @@ entries:
     policy:
       resources:
         - kickside.pim:catalog
+        - kickside.pim:family_check
         - kickside.pim.binding:catalog
         - kickside.pim.events:plugin.rebuild
         - kickside.pim.events:plugin.configured
@@ -37,6 +38,8 @@ entries:
         - kickside.pim.events:model.release_requested
         - kickside.pim.events:product.released
         - kickside.pim.events:product.withdrawn
+        - kickside.pim.events:proposal.submitted
+        - kickside.pim.events:proposal.decided
         - kickside.pim.ports:plugin_configured
         - kickside.pim.ports:plugin_rebuild
         - kickside.pim.ports:schema_applied
@@ -50,6 +53,8 @@ entries:
         - kickside.pim.ports:model_release_requested
         - kickside.pim.ports:product_released
         - kickside.pim.ports:product_withdrawn
+        - kickside.pim.ports:proposal_submitted
+        - kickside.pim.ports:proposal_decided
         - kickside.pim.source:publications_port
         - kickside.pim.source:products_port
         - kickside.pim.source:proposals_port
@@ -92,6 +97,7 @@ entries:
         - kickside.pim:narrow
         - kickside.pim:shape
         - kickside.pim:schema_provider
+        - kickside.pim:family_check
         - kickside.pim:catalog
         - kickside.pim:link_target
         - kickside.pim.api:access
@@ -187,6 +193,8 @@ entries:
         - kickside.pim.events:model.release_requested
         - kickside.pim.events:plugin.configured
         - kickside.pim.events:plugin.rebuild
+        - kickside.pim.events:proposal.submitted
+        - kickside.pim.events:proposal.decided
         - kickside.pim.persist:config
         - kickside.pim.persist:creations
         - kickside.pim.persist:receipts
@@ -273,6 +281,7 @@ entries:
         - kickside.pim.service:list
         - kickside.pim.service:get_catalog
         - kickside.pim.service:get_schema
+        - kickside.pim.service:policy_defaults
         - kickside.pim.service:plan_schema
         - kickside.pim.service:apply_schema
         - kickside.pim.service:get
@@ -488,6 +497,7 @@ entries:
       - kickside.pim.traits:plan_schema
       - kickside.pim.traits:apply_schema
       - kickside.pim.traits:configure_plugin
+      - kickside.pim.traits:policy_defaults
       - kickside.pim.traits:rebuild
       actions: [registry.get, registry.find, funcs.call]
       effect: allow

@@ -22,6 +22,7 @@ entries:
       comment: Product reads and item queries; every answer reports as_of.
     source: file://reader.lua
     imports:
+      defaults: kickside.pim.settings:defaults
       failure: kickside.pim:failure
       layout: kickside.pim.persist:layout
       plugins: kickside.pim.extensions:plugins
