@@ -4,6 +4,7 @@ local worker = require("worker")
 local test = require("test")
 local funcs = require("funcs")
 local fixture = require("fixture")
+local trash_fixture = require("trash_fixture")
 local time = require("time")
 local sql = require("sql")
 local component = require("component")
@@ -242,6 +243,17 @@ local function define()
             test.eq(#third.changes,0)
             test.is_false(third.bootstrap)
             test.is_true(third.done)
+            -- PIM 0.1.4 persisted the same continuation before it recorded the observed floor.
+            local saved=assert(json.decode(second.token))
+            saved.tombstone_floor_seq=nil
+            local saved_token=assert(json.encode(saved))
+            local function resume_saved(): Map
+                return assert(h.call("plugin_feed",{plugin="app:state_plugin",kind="app:state_fold",token=saved_token}))
+            end
+            local current=resume_saved()
+            test.is_nil(current.gap)
+            test.eq(#current.changes,0)
+            test.eq(current.token,third.token)
             local _,bad=h.call("plugin_feed",{plugin="app:state_plugin",kind="app:state_fold",token="malformed"})
             test.eq(bad:kind(),errors.INVALID)
             local _,undeclared=h.call("plugin_feed",{plugin="app:state_plugin",kind="app:other"})
@@ -266,6 +278,86 @@ local function define()
             test.is_true(reset.bootstrap)
             test.eq(#reset.changes,200)
             test.is_false(reset.done)
+            local replaced=resume_saved()
+            test.eq(assert(replaced.gap).floor,position)
+            test.is_true(replaced.bootstrap)
+            test.eq(replaced.token,reset.token)
+            local resumed=assert(h.call("plugin_feed",{plugin="app:state_plugin",kind="app:state_fold",token=replaced.token}))
+            test.is_nil(resumed.gap)
+            test.is_true(resumed.done)
+        end)
+
+        test.it("resets a replica when a tombstone expires during bootstrap", function()
+            local h = fixture.catalog()
+            assert(h.call("apply_schema", { declaration = { policy = { trash_days = 1, tombstone_days = 1 } } }))
+            local sku = "EXPIRED-DURING-BOOTSTRAP"
+            local created = assert(h.call("apply", { items = { { product = { sku = sku }, create = { family = "footwear" } } } }))
+            local expired = assert(created.outcomes[1].product_id)
+            local items: { types.ApplyItem } = {}
+            for i = 1, 201 do
+                items[i] = { product = { sku = "REPLICA-" .. i }, create = { family = "footwear" } }
+            end
+            test.is_true(assert(h.call("apply", { items = items })).applied)
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = "app:state_plugin" } } } }))
+            for _ = 1, 300 do
+                if assert(h.call("plugin_context", { plugin = "app:state_plugin" })).lifecycle.state == "ready" then break end
+                time.sleep("10ms")
+            end
+
+            local replica: { [string]: boolean } = {}
+            local token: string? = nil
+            local function pull(): Map
+                return assert(h.call("plugin_feed", { plugin = "app:state_plugin", kind = "app:state_fold", token = token }))
+            end
+            local function commit(page: Map)
+                if page.gap then replica = {} end
+                for _, change in ipairs(page.changes) do
+                    replica[change.product_id] = change.op == "upsert" and true or nil
+                end
+                token = page.token
+            end
+
+            local first = pull()
+            test.is_true(first.bootstrap)
+            test.is_false(first.done)
+            test.is_nil(first.gap)
+            commit(first)
+            test.is_true(replica[expired])
+            local ordinary = pull()
+            test.is_true(ordinary.bootstrap)
+            test.is_true(ordinary.done)
+            test.is_nil(ordinary.gap)
+
+            test.eq(trash_fixture.trash(h, sku), expired)
+            for _ = 1, 2 do
+                trash_fixture.exec("UPDATE kickside_pim_product SET state_at=$1 WHERE catalog_id=$2 AND product_id=$3",
+                    { "2000-01-01T00:00:00Z", h.id, expired })
+                trash_fixture.run_owner(h)
+            end
+            test.is_nil(trash_fixture.product(h, expired))
+            local last = first.changes[#first.changes]
+            local public = assert(h.call("list_changes", { cursor = { seq = last.updated_seq, product_id = last.product_id } }))
+            local floor = assert(public.gap).floor
+
+            local replacement = pull()
+            test.is_true(replacement.bootstrap)
+            test.is_false(replacement.done)
+            test.eq(#replacement.changes, 200)
+            local retry = pull()
+            commit(replacement)
+            test.is_nil(replica[expired], "the replica drops the expired product when it commits the reset")
+            test.eq(assert(replacement.gap).floor, floor)
+            test.eq(assert(retry.gap).floor, floor, "an uncommitted replacement still signals the gap")
+
+            local continuation = pull()
+            test.is_nil(continuation.gap)
+            test.is_true(continuation.bootstrap)
+            test.is_true(continuation.done)
+            test.eq(#continuation.changes, 1)
+            commit(continuation)
+            local count = 0
+            for _ in pairs(replica) do count = count + 1 end
+            test.eq(count, #items)
         end)
 
         test.it("answers the same projection progress in schema options and plugin context", function()

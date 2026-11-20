@@ -34,11 +34,13 @@ function M.changes(catalog_id: string, request: types.ChangesRequest): (types.Ch
     end)
 end
 
-function M.changes_snapshot(tx: types.Executor,dialect: string,catalog: types.Catalog,request: types.ChangesRequest,limit: integer): (types.ChangesResult?,error?)
+function M.changes_snapshot(tx: types.Executor,dialect: string,catalog: types.Catalog,request: types.ChangesRequest,limit: integer,observed_floor_seq: integer?): (types.ChangesResult?,error?)
     local catalog_id=catalog.catalog_id
     local cursor=request.cursor or {seq=0,product_id=""}
-        if cursor.seq > 0 and cursor.seq < catalog.tombstone_floor_seq then
-            return { items = {}, next = cursor, has_more = false, gap = { floor = catalog.tombstone_floor_seq } }, nil
+        local floor = catalog.tombstone_floor_seq
+        -- A plugin token can page through older rows after observing this floor.
+        if cursor.seq > 0 and cursor.seq < floor and floor > (observed_floor_seq or 0) then
+            return { items = {}, next = cursor, has_more = false, gap = { floor = floor } }, nil
         end
         local ceiling = catalog.applied_seq
         if catalog.rebuild_after ~= nil and catalog.rebuild_seq then ceiling = (catalog.rebuild_seq :: integer) - 1 end
