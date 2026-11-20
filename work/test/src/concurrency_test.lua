@@ -56,7 +56,7 @@ local function define()
                 local item = steps.create(h, "task", { title = "Before" })
                 local result, err = steps.apply(h, {
                     { op = "set", item = item, values = { title = "After" } },
-                    { op = "purge", item = item },
+                    { op = "set", item = item, values = { unknown_field = "Invalid" } },
                     { op = "rank", item = item, before = 3 },
                     { op = "comment", item = item, body = "Comment", mentions = 3 },
                     { op = "link", item = item, type = "blocks", target = 3 },
@@ -64,7 +64,7 @@ local function define()
                 }, { mode = mode })
                 test.is_nil(err, steps.detail(err))
                 test.eq(#result.outcomes, 6)
-                for i, code in ipairs({ "unsupported_op", "invalid_neighbor", "invalid_mentions", "invalid_target", "invalid_target" }) do
+                for i, code in ipairs({ "unknown_field", "invalid_neighbor", "invalid_mentions", "invalid_target", "invalid_target" }) do
                     test.eq(result.outcomes[i + 1].status, "invalid")
                     test.eq(result.outcomes[i + 1].findings[1].code, code)
                 end
@@ -232,7 +232,7 @@ local function define()
     end)
 
     test.describe("limits", function()
-        test.it("refuses empty and oversized commands and unknown modes", function()
+        test.it("refuses empty and oversized commands, unknown modes and invalid operation discriminators", function()
             local h = fixture.board()
             local _, e1 = steps.apply(h, {})
             test.eq(e1:kind(), errors.INVALID)
@@ -242,8 +242,12 @@ local function define()
             test.eq(e2:kind(), errors.INVALID)
             local _, e3 = steps.apply(h, { { op = "create", type = "task" } }, { mode = "sideways" })
             test.eq(e3:kind(), errors.INVALID)
-            local out = steps.one(h, { op = "purge", item = "x" })
-            test.eq(out.findings[1].code, "unsupported_op")
+            for _, op in ipairs({ { op = "purge", item = "x" }, { op = 1 }, { item = "x" } }) do
+                local out, err = steps.apply(h, { op })
+                test.is_nil(out)
+                test.eq(err:kind(), errors.INVALID)
+                test.eq(err:details().code, "invalid_shape")
+            end
         end)
     end)
 end

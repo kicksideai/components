@@ -68,6 +68,8 @@ entries:
     fixture: app:fixture
     steps: app:steps
     store: kickside.work.persist:store
+    items: kickside.work.command:items
+    operation_batch: kickside.work:operation_batch
 - name: process_test
   kind: function.lua
   meta:
