@@ -3,8 +3,8 @@
 import { computed } from 'vue'
 import ConfigForm from './ConfigForm.vue'
 import type { AttributeDecl, TypeOption } from '../../types'
-import { decimalText, type Dec } from '../../forms'
-const props = defineProps<{ attribute: AttributeDecl; type?: TypeOption }>()
+import { decimalText, display as displayValue, type Dec } from '../../forms'
+const props = defineProps<{ attribute: AttributeDecl; type?: TypeOption; disabled?: boolean }>()
 const emit = defineEmits<{ change: [value: unknown] }>()
 const schema = computed(() => {
   const form = props.type?.form
@@ -29,5 +29,6 @@ function display(value: unknown): unknown {
 const config = computed(() => props.attribute.default === undefined ? {} : { value: Array.isArray(props.attribute.default) ? props.attribute.default.map(display) : display(props.attribute.default) })
 </script>
 <template>
-  <ConfigForm :schema="schema" :model-value="config" @update:model-value="emit('change', $event.value)" />
+  <span v-if="disabled">{{ attribute.default == null ? 'No default' : displayValue(attribute.default) }}</span>
+  <ConfigForm v-else :schema="schema" :model-value="config" @update:model-value="emit('change', $event.value)" />
 </template>

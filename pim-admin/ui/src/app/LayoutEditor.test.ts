@@ -88,13 +88,14 @@ it('discards layout edits with the same builder action and surfaces generation c
   expect(w.get('[role=alert]').text()).toContain('Schema generation changed')
   expect(w.text()).toContain('Unsaved changes')
 })
-it('keeps layout controls inert and hides mutation actions for non-admins', async () => {
+it('keeps the layout readable and every mutation unavailable to non-admins', async () => {
   const schema = fixture(); schema.access.admin = false
   vi.mocked(pim.schema).mockResolvedValue(schema)
   const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } }); wrappers.push(w); await flushPromises()
   await tab(w, 'Form layout')
-  expect(w.get('fieldset').attributes('disabled')).toBeDefined()
-  expect(w.get('fieldset').attributes('inert')).toBeDefined()
+  expect(w.get('.pim-layout').element.closest('[inert], fieldset[disabled]')).toBeNull()
   expect(w.findAll('.pim-lcard').every(c => c.attributes('draggable') === 'false')).toBe(true)
+  expect(w.findAllComponents(SelectButton).every(control => control.props('disabled'))).toBe(true)
+  expect(w.find('[aria-label="Move Name earlier"]').exists()).toBe(false)
   expect(w.findAll('button').some(b => ['Apply layout', 'Discard', 'Review changes'].includes(b.text()))).toBe(false)
 })

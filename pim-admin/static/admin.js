@@ -1,43 +1,42 @@
-import { p as z, e as q, u as I, _ as K, A as G, r as H, W as J, s as O, P as Q } from "./styles-4p9J22Mw.js";
-import { defineComponent as P, ref as c, watch as F, onMounted as X, onBeforeUnmount as Y, openBlock as s, createElementBlock as _, renderSlot as Z, nextTick as ee, createBlock as E, withCtx as h, createElementVNode as m, withModifiers as te, createVNode as b, unref as d, createTextVNode as x, toDisplayString as $, createCommentVNode as S, computed as ae, onUnmounted as le, Fragment as oe, renderList as ne, normalizeClass as ie } from "vue";
-import { on as se, host as re, define as ue } from "@wippy-fe/proxy";
-import D from "primevue/button";
-import R from "primevue/inputtext";
-import de from "primevue/tag";
-import L from "primevue/message";
-import { Icon as U } from "@iconify/vue";
-function B(o) {
-  return !!o && typeof o == "object" && !Array.isArray(o);
+import { _ as D, p as R, a as P, e as I, u as K, b as G, r as H, W as J, s as O, P as Q } from "./styles-DXPC0Ax5.js";
+import { defineComponent as z, ref as d, watch as q, onMounted as X, onBeforeUnmount as Y, openBlock as u, createElementBlock as _, renderSlot as Z, nextTick as ee, createBlock as w, withCtx as C, createElementVNode as v, withModifiers as te, createVNode as p, unref as c, createCommentVNode as $, createTextVNode as S, computed as ae, onUnmounted as le, Fragment as oe, renderList as ne, normalizeClass as ie, toDisplayString as se } from "vue";
+import { on as re, host as ue, define as de } from "@wippy-fe/proxy";
+import B from "primevue/button";
+import F from "primevue/inputtext";
+import ce from "primevue/tag";
+import { Icon as A } from "@iconify/vue";
+function E(n) {
+  return !!n && typeof n == "object" && !Array.isArray(n);
 }
-function ce(o, g) {
-  return o;
+function ve(n, g) {
+  return n;
 }
-function me(o, g, r) {
-  const l = B(o) ? o : {}, n = [
+function me(n, g, r) {
+  const l = E(n) ? n : {}, o = [
     l,
-    B(l.data) ? l.data : null,
-    B(l.payload) ? l.payload : null,
-    B(l.detail) ? l.detail : null
+    E(l.data) ? l.data : null,
+    E(l.payload) ? l.payload : null,
+    E(l.detail) ? l.detail : null
   ].filter(Boolean);
-  for (const e of n) {
+  for (const e of o) {
     if (e.event !== "component.meta.changed" && e.event !== "component.deleting" && e.event !== "component.deleted") continue;
-    const p = String(e.component_id || ""), v = String(l.topic || e.topic || "");
-    if (!p && (!v.startsWith("component.") || v === "component.")) continue;
-    const t = p || g || v.slice(10);
+    const f = String(e.component_id || ""), m = String(l.topic || e.topic || "");
+    if (!f && (!m.startsWith("component.") || m === "component.")) continue;
+    const t = f || g || m.slice(10);
     return e.event === "component.deleting" && typeof e.deletion_job_id == "string" && e.deletion_job_id ? { event: e.event, component_id: t, deletion_job_id: e.deletion_job_id } : e.event !== "component.meta.changed" ? { event: e.event, component_id: t } : {
       event: "component.meta.changed",
       component_id: t,
-      meta: ce(B(e.meta) ? e.meta : {}),
+      meta: ve(E(e.meta) ? e.meta : {}),
       deleted: Array.isArray(e.deleted) ? e.deleted.map(String) : []
     };
   }
   return null;
 }
-function ve(o, g, r) {
-  const l = me(o, g);
+function pe(n, g, r) {
+  const l = me(n, g);
   return l?.event === "component.meta.changed" ? l : null;
 }
-const ge = ["aria-label", "aria-busy"], pe = /* @__PURE__ */ P({
+const ge = ["aria-label", "aria-busy"], fe = /* @__PURE__ */ z({
   __name: "NativeDialog",
   props: {
     visible: { type: Boolean },
@@ -45,109 +44,104 @@ const ge = ["aria-label", "aria-busy"], pe = /* @__PURE__ */ P({
     busy: { type: Boolean }
   },
   emits: ["close"],
-  setup(o, { emit: g }) {
-    const r = o, l = g, n = c(null);
+  setup(n, { emit: g }) {
+    const r = n, l = g, o = d(null);
     let e = null;
-    async function p() {
+    async function f() {
       await ee();
-      const t = n.value;
+      const t = o.value;
       t && (r.visible && !t.open ? (e = t.getRootNode().activeElement, t.showModal()) : !r.visible && t.open && (t.close(), e?.focus()));
     }
-    function v(t) {
+    function m(t) {
       t.preventDefault(), r.busy || l("close");
     }
-    return F(() => r.visible, p), X(p), Y(() => {
-      n.value?.open && n.value.close(), e?.focus();
-    }), (t, f) => (s(), _("dialog", {
+    return q(() => r.visible, f), X(f), Y(() => {
+      o.value?.open && o.value.close(), e?.focus();
+    }), (t, y) => (u(), _("dialog", {
       ref_key: "dialog",
-      ref: n,
+      ref: o,
       class: "native-dialog",
-      "aria-label": o.label,
+      "aria-label": n.label,
       "aria-modal": "true",
-      "aria-busy": o.busy || void 0,
-      onCancel: v,
-      onClose: f[0] || (f[0] = () => {
-        o.visible && !o.busy && l("close");
+      "aria-busy": n.busy || void 0,
+      onCancel: m,
+      onClose: y[0] || (y[0] = () => {
+        n.visible && !n.busy && l("close");
       })
     }, [
       Z(t.$slots, "default")
     ], 40, ge));
   }
-}), fe = { class: "pim-stack" }, ye = { class: "dialog-actions" }, be = /* @__PURE__ */ P({
+}), ye = { class: "pim-stack" }, be = { class: "dialog-actions" }, Ce = /* @__PURE__ */ z({
   __name: "CreateCatalog",
   props: {
     visible: { type: Boolean }
   },
   emits: ["close", "created"],
-  setup(o, { emit: g }) {
-    const r = g, l = c(""), n = c(""), e = c(!1);
-    async function p() {
-      const v = l.value.trim();
-      if (!(!v || e.value)) {
-        e.value = !0, n.value = "";
+  setup(n, { emit: g }) {
+    const r = g, l = d(""), o = d(), e = d(!1);
+    async function f() {
+      const m = l.value.trim();
+      if (!(!m || e.value)) {
+        e.value = !0, o.value = void 0;
         try {
-          const t = await z.createCatalog(v);
+          const t = await R.createCatalog(m);
           l.value = "", r("close"), r("created", t.catalog_id);
         } catch (t) {
-          n.value = t instanceof Error ? t.message : "Could not create the catalog.";
+          o.value = P(t, "Could not create the catalog.");
         } finally {
           e.value = !1;
         }
       }
     }
-    return (v, t) => (s(), E(pe, {
-      visible: o.visible,
+    return (m, t) => (u(), w(fe, {
+      visible: n.visible,
       label: "New catalog",
       busy: e.value,
-      onClose: t[2] || (t[2] = (f) => r("close"))
+      onClose: t[2] || (t[2] = (y) => r("close"))
     }, {
-      default: h(() => [
-        m("form", {
+      default: C(() => [
+        v("form", {
           class: "dialog-box",
-          onSubmit: te(p, ["prevent"])
+          onSubmit: te(f, ["prevent"])
         }, [
-          t[6] || (t[6] = m("h2", null, "New catalog", -1)),
-          m("label", fe, [
-            t[3] || (t[3] = m("span", { class: "small muted" }, "Title", -1)),
-            b(d(R), {
+          t[6] || (t[6] = v("h2", null, "New catalog", -1)),
+          v("label", ye, [
+            t[3] || (t[3] = v("span", { class: "small muted" }, "Title", -1)),
+            p(c(F), {
               modelValue: l.value,
-              "onUpdate:modelValue": t[0] || (t[0] = (f) => l.value = f),
+              "onUpdate:modelValue": t[0] || (t[0] = (y) => l.value = y),
               autofocus: "",
               placeholder: "Catalog title"
             }, null, 8, ["modelValue"])
           ]),
-          n.value ? (s(), E(d(L), {
+          o.value ? (u(), w(D, {
             key: 0,
-            severity: "error"
-          }, {
-            default: h(() => [
-              x($(n.value), 1)
-            ]),
-            _: 1
-          })) : S("", !0),
-          m("div", ye, [
-            b(d(D), {
+            error: o.value
+          }, null, 8, ["error"])) : $("", !0),
+          v("div", be, [
+            p(c(B), {
               severity: "secondary",
               outlined: "",
               disabled: e.value,
-              onClick: t[1] || (t[1] = (f) => r("close"))
+              onClick: t[1] || (t[1] = (y) => r("close"))
             }, {
-              default: h(() => [
-                b(d(U), {
+              default: C(() => [
+                p(c(A), {
                   icon: "tabler:x",
                   "aria-hidden": "true"
                 }),
-                t[4] || (t[4] = x(" Cancel", -1))
+                t[4] || (t[4] = S(" Cancel", -1))
               ]),
               _: 1
             }, 8, ["disabled"]),
-            b(d(D), {
+            p(c(B), {
               type: "submit",
               disabled: e.value || !l.value.trim(),
               loading: e.value
             }, {
-              default: h(() => [...t[5] || (t[5] = [
-                x("Create", -1)
+              default: C(() => [...t[5] || (t[5] = [
+                S("Create", -1)
               ])]),
               _: 1
             }, 8, ["disabled", "loading"])
@@ -157,10 +151,10 @@ const ge = ["aria-label", "aria-busy"], pe = /* @__PURE__ */ P({
       _: 1
     }, 8, ["visible", "busy"]));
   }
-}), Ce = { class: "pim-system" }, _e = {
+}), _e = { class: "pim-system" }, ke = {
   class: "pim-rail",
   "aria-label": "Catalogs"
-}, he = { class: "pim-railhead" }, ke = { class: "pim-rail-list" }, xe = { key: 0 }, we = {
+}, he = { class: "pim-railhead" }, we = { class: "pim-rail-list" }, xe = {
   key: 1,
   class: "small muted",
   role: "status"
@@ -168,177 +162,199 @@ const ge = ["aria-label", "aria-busy"], pe = /* @__PURE__ */ P({
   key: 2,
   class: "small muted",
   role: "status"
-}, Ve = { class: "pim-system-main" }, $e = { key: 0 }, Se = ["catalog-id"], Ee = {
+}, Ve = { class: "pim-system-main" }, $e = ["catalog-id"], Se = {
   key: 2,
   class: "kx-loading",
   role: "status"
-}, Ae = {
+}, Be = {
   key: 3,
   class: "kx-empty"
-}, Be = /* @__PURE__ */ P({
+}, Ne = /* @__PURE__ */ z({
   __name: "AdminApp",
-  setup(o) {
-    const g = c(!1), r = c(!1);
-    q("kickside-pim-catalog-settings").then((u) => {
-      g.value = u;
+  setup(n) {
+    const g = d(!1), r = d(!1);
+    I("kickside-pim-catalog-settings").then((i) => {
+      g.value = i;
     });
-    async function l(u) {
-      await j(), await v(u);
+    async function l(i) {
+      await N(), await m(i);
     }
-    const n = c([]), e = c(""), p = c(!1);
-    async function v(u) {
-      u !== e.value && (p.value && !await re.confirm({ header: "Discard unsaved changes?", message: "Switching catalogs will discard unsaved schema and plugin changes.", acceptLabel: "Discard and switch", rejectLabel: "Cancel" }) || (p.value = !1, e.value = u));
+    const o = d(), e = d(""), f = d(!1);
+    async function m(i) {
+      i !== e.value && (f.value && !await ue.confirm({ header: "Discard unsaved changes?", message: "Switching catalogs will discard unsaved schema and plugin changes.", acceptLabel: "Discard and switch", rejectLabel: "Cancel" }) || (f.value = !1, e.value = i));
     }
-    function t(u) {
-      p.value = u.detail.dirty;
+    function t(i) {
+      f.value = i.detail.dirty;
     }
-    const f = c(""), w = ae(() => f.value.trim()), k = c(!0), y = c(), T = c(), V = H();
-    let N;
-    async function j(u) {
-      if (u != null && k.value) return;
-      clearTimeout(N);
-      const a = V.begin(), i = w.value || void 0;
-      k.value = !0, y.value = void 0;
+    const y = d(""), x = ae(() => y.value.trim()), k = d(!0), b = d(), T = d(), V = H();
+    let j;
+    async function N(i, a = x.value || void 0) {
+      if (i != null && k.value) return;
+      clearTimeout(j);
+      const s = V.begin();
+      k.value = !0, b.value = void 0;
       try {
-        const C = await z.listCatalogs(u, i);
-        if (!V.current(a)) return;
-        const A = C.catalogs.filter((M) => M.access.admin);
-        n.value = u == null ? A : [...n.value, ...A], T.value = C.after, !i && T.value == null && e.value && !n.value.some((M) => M.catalog_id === e.value) && (e.value = "");
-      } catch (C) {
-        if (!V.current(a)) return;
-        const A = C instanceof G ? C.details?.code : void 0;
-        y.value = { message: C instanceof Error ? C.message : "Could not load catalogs.", code: typeof A == "string" ? A : void 0 };
+        const h = await R.listCatalogs(i, a);
+        if (!V.current(s)) return;
+        const M = h.catalogs.filter((U) => U.access.admin);
+        o.value = i == null ? M : [...o.value ?? [], ...M], T.value = h.after, !a && T.value == null && e.value && !o.value.some((U) => U.catalog_id === e.value) && (e.value = "");
+      } catch (h) {
+        V.current(s) && (b.value = { error: P(h, "Could not load catalogs."), after: i, text: a });
       } finally {
-        V.current(a) && (k.value = !1);
+        V.current(s) && (k.value = !1);
       }
     }
-    F(w, () => {
-      V.begin(), clearTimeout(N), n.value = [], T.value = void 0, k.value = !0, y.value = void 0, N = setTimeout(() => {
-        j();
+    function L() {
+      const i = b.value;
+      i && N(i.after, i.text);
+    }
+    q(x, () => {
+      V.begin(), clearTimeout(j), o.value = void 0, T.value = void 0, k.value = !0, b.value = void 0, j = setTimeout(() => {
+        N();
       }, 250);
     });
-    const W = se("component.meta.changed", (u) => {
-      const a = ve(u);
+    const W = re("component.meta.changed", (i) => {
+      const a = pe(i);
       if (!a) return;
-      const i = n.value.find((C) => C.catalog_id === a.component_id);
-      i && (typeof a.meta.title == "string" && (i.title = a.meta.title.trim() || "Catalog"), a.deleted.includes("title") && (i.title = "Catalog"));
+      const s = o.value?.find((h) => h.catalog_id === a.component_id);
+      s && (typeof a.meta.title == "string" && (s.title = a.meta.title.trim() || "Catalog"), a.deleted.includes("title") && (s.title = "Catalog"));
     });
-    return I(j), le(() => {
-      W(), clearTimeout(N), V.begin();
-    }), (u, a) => (s(), _("div", Ce, [
-      m("aside", _e, [
-        m("div", he, [
-          m("h2", null, [
-            a[4] || (a[4] = x("Catalogs ", -1)),
-            b(d(de), {
+    return K(N), le(() => {
+      W(), clearTimeout(j), V.begin();
+    }), (i, a) => (u(), _("div", _e, [
+      v("aside", ke, [
+        v("div", he, [
+          v("h2", null, [
+            a[4] || (a[4] = S("Catalogs ", -1)),
+            o.value ? (u(), w(c(ce), {
+              key: 0,
               severity: "secondary",
-              value: String(n.value.length)
-            }, null, 8, ["value"])
+              value: String(o.value.length)
+            }, null, 8, ["value"])) : $("", !0)
           ]),
-          b(d(D), {
+          p(c(B), {
             text: "",
             size: "small",
             "aria-label": "Create catalog",
-            onClick: a[0] || (a[0] = (i) => r.value = !0)
+            onClick: a[0] || (a[0] = (s) => r.value = !0)
           }, {
-            default: h(() => [
-              b(d(U), { icon: "tabler:plus" })
+            default: C(() => [
+              p(c(A), { icon: "tabler:plus" })
             ]),
             _: 1
           })
         ]),
-        b(d(R), {
-          modelValue: f.value,
-          "onUpdate:modelValue": a[1] || (a[1] = (i) => f.value = i),
+        p(c(F), {
+          modelValue: y.value,
+          "onUpdate:modelValue": a[1] || (a[1] = (s) => y.value = s),
           class: "pim-rail-search",
           type: "search",
           "aria-label": "Find a catalog",
           placeholder: "Find a catalog…"
         }, null, 8, ["modelValue"]),
-        m("div", ke, [
-          (s(!0), _(oe, null, ne(n.value, (i) => (s(), E(K, {
-            key: i.catalog_id,
-            class: ie(["pim-rail-row", { active: e.value === i.catalog_id }]),
-            "aria-pressed": e.value === i.catalog_id,
-            onClick: (C) => v(i.catalog_id)
+        v("div", we, [
+          (u(!0), _(oe, null, ne(o.value, (s) => (u(), w(G, {
+            key: s.catalog_id,
+            class: ie(["pim-rail-row", { active: e.value === s.catalog_id }]),
+            "aria-pressed": e.value === s.catalog_id,
+            onClick: (h) => m(s.catalog_id)
           }, {
-            default: h(() => [
-              m("span", null, $(i.title || "Untitled catalog"), 1)
+            default: C(() => [
+              v("span", null, se(s.title || "Untitled catalog"), 1)
             ]),
             _: 2
           }, 1032, ["class", "aria-pressed", "onClick"]))), 128))
         ]),
-        w.value && y.value ? (s(), E(d(L), {
+        x.value && b.value ? (u(), w(D, {
           key: 0,
-          class: "pim-rail-error",
-          severity: "error",
-          role: "alert"
+          error: b.value.error,
+          class: "pim-rail-error"
         }, {
-          default: h(() => [
-            x($(y.value.message) + " ", 1),
-            y.value.code ? (s(), _("code", xe, $(y.value.code), 1)) : S("", !0)
+          default: C(() => [
+            p(c(B), {
+              type: "button",
+              severity: "secondary",
+              outlined: "",
+              size: "small",
+              onClick: L
+            }, {
+              default: C(() => [...a[5] || (a[5] = [
+                S("Retry", -1)
+              ])]),
+              _: 1
+            })
           ]),
           _: 1
-        })) : w.value && k.value ? (s(), _("div", we, "Searching catalogs…")) : w.value && n.value.length === 0 && T.value == null ? (s(), _("div", Te, "No matching catalogs.")) : S("", !0),
-        T.value != null ? (s(), E(d(D), {
+        }, 8, ["error"])) : x.value && k.value ? (u(), _("div", xe, "Searching catalogs…")) : x.value && o.value?.length === 0 && T.value == null ? (u(), _("div", Te, "No matching catalogs.")) : $("", !0),
+        T.value != null ? (u(), w(c(B), {
           key: 3,
           type: "button",
-          disabled: k.value,
-          onClick: a[2] || (a[2] = (i) => j(T.value)),
+          disabled: k.value || !!b.value,
+          onClick: a[2] || (a[2] = (s) => N(T.value)),
           severity: "secondary",
           outlined: "",
           size: "small"
         }, {
-          default: h(() => [
-            b(d(U), {
+          default: C(() => [
+            p(c(A), {
               icon: "tabler:chevron-right",
               "aria-hidden": "true"
             }),
-            a[5] || (a[5] = x(" Load more catalogs", -1))
+            a[6] || (a[6] = S(" Load more catalogs", -1))
           ]),
           _: 1
-        }, 8, ["disabled"])) : S("", !0)
+        }, 8, ["disabled"])) : $("", !0)
       ]),
-      m("main", Ve, [
-        y.value && !w.value ? (s(), E(d(L), {
+      v("main", Ve, [
+        !x.value && b.value ? (u(), w(D, {
           key: 0,
-          severity: "error",
-          role: "alert"
+          error: b.value.error,
+          class: "pim-list-error"
         }, {
-          default: h(() => [
-            x($(y.value.message) + " ", 1),
-            y.value.code ? (s(), _("code", $e, $(y.value.code), 1)) : S("", !0)
+          default: C(() => [
+            p(c(B), {
+              type: "button",
+              severity: "secondary",
+              outlined: "",
+              size: "small",
+              onClick: L
+            }, {
+              default: C(() => [...a[7] || (a[7] = [
+                S("Retry", -1)
+              ])]),
+              _: 1
+            })
           ]),
           _: 1
-        })) : S("", !0),
-        e.value && g.value ? (s(), _("kickside-pim-catalog-settings", {
+        }, 8, ["error"])) : $("", !0),
+        e.value && g.value ? (u(), _("kickside-pim-catalog-settings", {
           key: e.value,
           "catalog-id": e.value,
           embedded: "true",
           onDirtyChanged: t
-        }, null, 40, Se)) : k.value ? (s(), _("div", Ee, "Loading catalogs…")) : (s(), _("div", Ae, [
-          b(d(U), {
+        }, null, 40, $e)) : k.value ? (u(), _("div", Se, "Loading catalogs…")) : !b.value && o.value ? (u(), _("div", Be, [
+          p(c(A), {
             icon: "tabler:settings",
             class: "kx-empty-ico"
           }),
-          a[6] || (a[6] = m("h3", { class: "kx-empty-title" }, "Catalog settings", -1)),
-          a[7] || (a[7] = m("p", { class: "kx-empty-sub" }, "Select a catalog to edit its schema, plugins and policy.", -1))
-        ]))
+          a[8] || (a[8] = v("h3", { class: "kx-empty-title" }, "Catalog settings", -1)),
+          a[9] || (a[9] = v("p", { class: "kx-empty-sub" }, "Select a catalog to edit its schema, plugins and policy.", -1))
+        ])) : $("", !0)
       ]),
-      b(be, {
+      p(Ce, {
         visible: r.value,
-        onClose: a[3] || (a[3] = (i) => r.value = !1),
+        onClose: a[3] || (a[3] = (s) => r.value = !1),
         onCreated: l
       }, null, 8, ["visible"])
     ]));
   }
-}), Ne = { type: "object", properties: {} };
+}), Ee = { type: "object", properties: {} };
 class je extends J {
   static get wippyConfig() {
-    return { propsSchema: Ne, hostCssKeys: ["themeConfigUrl", "primeVueCssUrl"], inlineCss: O };
+    return { propsSchema: Ee, hostCssKeys: ["themeConfigUrl", "primeVueCssUrl"], inlineCss: O };
   }
   static get vueConfig() {
-    return { rootComponent: Be, plugins: [Q] };
+    return { rootComponent: Ne, plugins: [Q] };
   }
 }
-ue(import.meta.url, je);
+de(import.meta.url, je);
