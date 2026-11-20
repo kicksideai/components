@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.9](https://github.com/kicksideai/components/compare/pim-v0.1.8...pim-v0.1.9) (2026-11-20)
+
+
+### Features
+
+* **pim:** filter catalog discovery by text and administration access ([#214](https://github.com/kicksideai/components/issues/214)) ([3a9c5c2](https://github.com/kicksideai/components/commit/3a9c5c2ed4634e6104bd02031d74b0c833183434))
+
+
+### Bug Fixes
+
+* **work:** constrain item tools and publish mutation outcomes ([876705c](https://github.com/kicksideai/components/commit/876705c3622c53f274ddef0a43d33054832545dd))
+
 ## [0.1.8](https://github.com/kicksideai/components/compare/pim-v0.1.7...pim-v0.1.8) (2026-11-20)
 
 
