@@ -22,7 +22,6 @@ end
 local function list_links(request: types.LinksRequest, context: types.ReadContext): (types.LinksResult?, error?)
     local limit = request.limit or 50
     if limit < 1 or limit > 200 then return nil, access.invalid("limit must be 1..200") end
-    if (request.item == nil) == (request.target == nil) then return nil, access.invalid("links takes item or target") end
     local direction = request.direction or "both"
     if direction ~= "both" and direction ~= "inward" and direction ~= "outward" then return nil, access.invalid("direction is inward, outward or both") end
     local offset, oerr = offset_of(request.after)

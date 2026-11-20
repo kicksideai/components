@@ -10,7 +10,6 @@ local types = require("types")
 local local_types = require("local_types")
 local limits = require("limits")
 local schema = require("schema")
-type FeedRegistration = types.ReadStamp & { id: string, start_seq: integer }
 local M = {}
 
 function M.decode(token: string): (local_types.FeedToken?, error?)
@@ -33,7 +32,7 @@ function M.page(request: types.PluginFeedRequest, context: types.PluginContext):
     if not declared then return nil, errors.new({ kind = errors.INVALID, message = "plugin declares no such state projection", details = { code = "plugin_projection_invalid" } }) end
     -- Resolve only the declared plugin's registration after Work board READ
     -- admission. Raw Core thread events remain restricted to board admins.
-    local registration, rerr = access.with_snapshot(request.board_id, nil, function(tx: types.Executor): (FeedRegistration?, error?)
+    local registration, rerr = access.with_snapshot(request.board_id, nil, function(tx: types.Executor): (local_types.FeedRegistration?, error?)
         local raw, err = cursor_reader.find_projection_cursor(tx, request.board_id, {
             kind = request.kind, projection_key = "kickside.work.plugin:" .. request.plugin,
         })

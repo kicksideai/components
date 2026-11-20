@@ -138,6 +138,29 @@ test('contracts and adapter schemas share the generated vocabulary', async () =>
   await run('node', [resolve(root, 'scripts/generate-contracts.mjs'), '--check'])
 })
 
+test('contract generation needs no Lua implementation files', async () => {
+  const { run } = await import(rulesPath)
+  const cache = resolve(root, 'test/.wippy')
+  await mkdir(cache, { recursive: true })
+  const directory = await mkdtemp(resolve(cache, 'contract-generator-'))
+  try {
+    const generator = 'scripts/generate-contracts.mjs'
+    const source = 'src/contracts/vocabulary.json'
+    const vocabulary = JSON.parse(await readFile(resolve(root, source), 'utf8'))
+    await mkdir(resolve(directory, 'src/domain'), { recursive: true })
+    await mkdir(resolve(directory, 'src/extensions'), { recursive: true })
+    for (const path of [generator, source, ...Object.keys(vocabulary.adapters)]) {
+      const target = resolve(directory, path)
+      await mkdir(dirname(target), { recursive: true })
+      await writeFile(target, await readFile(resolve(root, path)))
+    }
+    await run('node', [resolve(directory, generator)])
+    await run('node', [resolve(directory, generator), '--check'])
+  } finally {
+    await rm(directory, { recursive: true })
+  }
+})
+
 test('operation descriptions and declaration enums match their owning dispatch sets', async () => {
   const { parseYamlDocuments } = await import(rulesPath)
   const [document] = await parseYamlDocuments([await readFile(resolve(root, 'src/contracts/board.yaml'), 'utf8')])
@@ -155,17 +178,24 @@ test('operation descriptions and declaration enums match their owning dispatch s
   assert.match(methods.bulk.properties.ops_template.items.properties.item.description, /bulk_template_item/)
   const [tools] = await parseYamlDocuments([await readFile(resolve(root, 'src/traits/admin.yaml'), 'utf8')])
   assert.match(tools.entries.find(entry => entry.name === 'create_board').meta.llm_description, /Work administration capability/)
-  const source = await readFile(resolve(root, 'src/command/items.lua'), 'utf8')
-  const handlers = source.match(/local HANDLERS[^=]*= \{([\s\S]*?)\n\}/)[1]
-  const kinds = [...handlers.matchAll(/\b(\w+) =/g)].map(match => match[1]).sort()
+  const { operation_batch: batchVocabulary } = JSON.parse(await readFile(resolve(root, 'src/contracts/vocabulary.json'), 'utf8'))
+  const kinds = batchVocabulary.operations.toSorted()
   const constants = await readFile(resolve(root, 'src/consts.lua'), 'utf8')
   const constantSet = name => [...constants.match(new RegExp(`M\\.${name} = \\{([^}]+)\\}`))[1].matchAll(/\b(\w+) = true/g)].map(match => match[1]).sort()
   const approval = await readFile(resolve(root, 'src/command/process_approval.lua'), 'utf8')
   const decisions = [...approval.match(/if decision ~= [^\n]+ then/)[0].matchAll(/decision ~= "([^"]+)"/g)].map(match => match[1]).sort()
   assert.deepEqual(methods.apply.properties.ops.items.properties.op.description.match(/Accepted: ([^.]+)\./)[1].split(', ').sort(), kinds)
   assert.deepEqual(methods.bulk.properties.ops_template.items.properties.op.description.match(/Accepted: ([^.]+)\./)[1].split(', ').sort(), kinds.filter(kind => kind !== 'create'))
+  assert.deepEqual(methods.apply.properties.ops.items.properties.op.enum.toSorted(), kinds)
+  assert.deepEqual(methods.bulk.properties.ops_template.items.properties.op.enum.toSorted(), kinds.filter(kind => kind !== 'create'))
+  for (const batch of [methods.apply.properties.ops, methods.bulk.properties.ops_template]) {
+    assert.equal(batch.minItems, 1)
+    assert.equal(batch.maxItems, batchVocabulary.max_ops)
+    assert.equal(batch.items.properties.op.type, 'string')
+    assert.ok(batch.items.required.includes('op'))
+  }
   for (const node of [methods.apply.properties.ops.items, methods.bulk.properties.ops_template.items]) {
-    for (const key of ['op', 'target', 'mentions', 'after', 'before', 'parent', 'body', 'state', 'transition', 'type', 'expect_version', 'decision', 'outcome', 'region']) assert.equal(node.properties[key].type, undefined, key)
+    for (const key of ['target', 'mentions', 'after', 'before', 'parent', 'body', 'state', 'transition', 'type', 'expect_version', 'decision', 'outcome', 'region']) assert.equal(node.properties[key].type, undefined, key)
     assert.deepEqual(node.properties.mentions.description.match(/Accepted kinds: ([^.]+)\./)[1].split(', ').sort(), constantSet('PRINCIPAL_KINDS'))
     assert.deepEqual(node.properties.outcome.description.match(/Accepted: ([^.]+)\./)[1].split(', ').sort(), constantSet('STAGE_OUTCOMES'))
     assert.deepEqual(node.properties.decision.description.match(/Accepted: ([^.]+)\./)[1].split(', ').sort(), decisions)
