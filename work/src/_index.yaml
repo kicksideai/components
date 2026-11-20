@@ -57,6 +57,8 @@ entries:
     path: .meta.target_db
   - entry: kickside.work.migrations:04_link_page_indexes
     path: .meta.target_db
+  - entry: kickside.work.templates:01_catalog
+    path: .meta.target_db
   - entry: kickside.work.persist:config
     path: .meta.db_id
 - name: api_router

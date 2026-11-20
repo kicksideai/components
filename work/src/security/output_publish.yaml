@@ -29,6 +29,8 @@ entries:
     - kickside.work.service:report
     - kickside.work.service:complete_stage
     - kickside.work.sink:stage_launch
+    - kickside.work.templates:instantiate
+    - kickside.work.templates:write
     - kickside.work.jobs:process_batch
     - kickside.work.jobs:advance_batch
     - kickside.work.jobs:migrate_batch

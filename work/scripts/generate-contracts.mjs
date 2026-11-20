@@ -143,3 +143,15 @@ function M.get(): (types.JsonObject?, error?)
 end
 return M
 `)
+
+function luaSchema(name) {
+  return `assert(json.decode([==[${JSON.stringify(expand({ $work_ref: name }))}]==]))`
+}
+await output('src/templates/schemas.lua', `local json = require("json")
+local shape = require("shape")
+local types = require("types")
+return {
+    config = shape.tolerant(${luaSchema('templates_pinned')} :: types.Map),
+    input = shape.tolerant(${luaSchema('templates_action_input')} :: types.Map),
+}
+`)
