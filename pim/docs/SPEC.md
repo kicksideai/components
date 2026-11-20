@@ -672,8 +672,9 @@ UI extension declarations and browser widgets belong to the separate shell modul
 
 - **Transaction or fold hooks.** In a command a hook writes state a lost
   append contradicts; in the projection a plugin fault blocks catch-up and
-  so every command, upgrades drift read models, and late installs cannot
-  backfill. Plugins use feeds (3.6) or independent declared cursors (3.11).
+  delays every command. Changes to plugin projection code can leave read models
+  stale, and plugins installed later need a way to backfill. Plugins use feeds
+  (3.6) or independent declared cursors (3.11).
 - **Plugin command handlers.** Plugins write as sources through `apply`.
 - **Plugin key/order functions, SQL-returning scopes, read-enrichment hooks
   on `get`, purge participants, global plugin columns, DDL on registry
@@ -952,8 +953,8 @@ used for authorization).
 | `pim.schema.applied` | `schema` | generation, declaration, digest, class, plan; activating `plugin_configs` carried outside the declaration |
 | Plugin configuration fact from `configure_plugin` | plugin | plugin id and validated configuration change |
 | `plugin.rebuild` catalog fact | plugin | plugin id and changed projection revision |
-| `pim.product.created` | `p:<id>` | sku, family, parent, level, axis values, patch, generation? |
-| `pim.product.changed` | `p:<id>` | patch, generation?, status?, previous_status? (with status), axis_key?, source_seq? |
+| `pim.product.created` | `p:<id>` | sku, family, parent, level, axis values, patch, generation |
+| `pim.product.changed` | `p:<id>` | patch, generation, status?, previous_status? (with status), axis_key?, source_seq? |
 | `pim.product.moved` | `p:<id>` | parent, axis_key, source_seq? |
 | `pim.product.deleted` | `p:<id>` | source_seq? |
 | `pim.product.restored` | `p:<id>` | current axis_key, source_seq? |
@@ -964,12 +965,12 @@ used for authorization).
 | `pim.proposal.submitted` | `proposals` | proposal_id, generation, base product versions, proposed items, source?, origin?, provenance? |
 | `pim.proposal.decided` | `proposals` | proposal_id, decision, resulting status, apply result for an acceptance attempt |
 
-A patch is `[{a, c, before?, v | clear | unset, s?}]`. New creation and
+A patch is `[{a, c, before?, v | clear | unset, s?}]`. Creation and
 change events carry the schema `generation` used to encode these steps, even
 when the patch is empty. Consumers can pass that value to `get_schema` to
 resolve attribute IDs and context keys while the generation is retained.
-Stored events may omit it. A product's version
-counts its product events and equals Core's `subject_version` of `p:<id>`.
+A product's version counts its product events and equals Core's
+`subject_version` of `p:<id>`.
 Apply product events carry the command's source and any supplied provenance.
 Events ≤ 4 MB; a release snapshot ≤ 512 KB.
 
@@ -1375,12 +1376,11 @@ an older one is `unchanged` (`stale_source`). Move, trash and restore advance
 the same per-product source sequence. A newer move to the current parent
 advances the sequence without recording a move in history.
 
-### Event schema evolution
+### Event schema validation
 
 The fold parses every stored event against its type's declared body schema
-before folding it, so event schemas evolve only compatibly: a schema may gain
-optional properties; it never gains a required property, drops a property or
-changes a property's type. A frozen baseline in the test suite enforces this.
+before applying it. The port tests verify that each command's emitted event
+body satisfies its declared schema.
 
 ## 7. Reads
 

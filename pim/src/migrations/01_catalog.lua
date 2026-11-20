@@ -163,6 +163,7 @@ local POSTGRES = {
         origin text NOT NULL,
         items text NOT NULL,
         base text NOT NULL,
+        generation integer NOT NULL CHECK (generation > 0),
         status text NOT NULL,
         result text,
         created_by text NOT NULL,

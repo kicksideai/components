@@ -48,7 +48,7 @@ entries:
         audit: { type: boolean, description: Whether this event's value steps enter the change history. }
         at: { type: string, description: Command time, RFC3339 UTC. }
         receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
-      required: [product_id, sku, family, level, is_item, patch]
+      required: [product_id, sku, family, level, is_item, generation, patch]
 
   - name: product.changed
     kind: registry.entry
@@ -72,7 +72,7 @@ entries:
         audit: { type: boolean, description: Whether this event's value steps enter the change history. }
         at: { type: string, description: Command time, RFC3339 UTC. }
         receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
-      required: [product_id, patch]
+      required: [product_id, generation, patch]
 
   - name: product.moved
     kind: registry.entry

@@ -35,11 +35,11 @@ M.Attempt = Attempt
 M.Build = Build
 M.Command = Command
 
-function M.request_hash(value: unknown): string
+local function request_hash(value: unknown): string
     return tostring(hash.sha256(values.canonical(value)))
 end
 
--- Keep the apply receipt fingerprint stable for replay and proposal upgrades.
+-- Identifies an apply request for receipt replay.
 function M.apply_fingerprint(request: types.ApplyRequest): unknown
     return { op = "apply", items = request.items, mode = request.mode or "atomic", source = request.source or "",
         import = request.import == true or nil, expected_generation = request.expected_generation, origin = request.origin,
@@ -62,7 +62,7 @@ local function covered(c: Command, deadline: clock.Deadline): (integer?, error?)
     return last_seq, nil
 end
 
-function M.stamp(result: types.JsonObject, seq: integer?, as_of: integer, replayed: boolean?): types.JsonObject
+local function stamp(result: types.JsonObject, seq: integer?, as_of: integer, replayed: boolean?): types.JsonObject
     result.seq = seq
     result.as_of = as_of
     result.replayed = replayed
@@ -91,7 +91,7 @@ local function replay(c: Command, marker: string, hashed: string, deadline: cloc
     if not count or count < (receipt.noop and 0 or 1) then
         return nil, failure.corrupt("stored receipt has no valid event count")
     end
-    return M.stamp(stored, not receipt.noop and seq + count - 1 or nil, as_of, true), nil
+    return stamp(stored, not receipt.noop and seq + count - 1 or nil, as_of, true), nil
 end
 
 -- run executes a command and returns its result with seq, as_of and, for a
@@ -109,7 +109,7 @@ function M.run(c: Command): (types.JsonObject?, error?)
             return nil, errors.new({ details = { code = "idempotency_key_invalid" }, kind = errors.INVALID, message = "idempotency needs namespace and key" })
         end
         marker = M.marker(idempotency)
-        hashed = M.request_hash(c.fingerprint)
+        hashed = request_hash(c.fingerprint)
     end
     while not clock.passed(until_at) do
         if marker and hashed then
@@ -152,7 +152,7 @@ function M.run(c: Command): (types.JsonObject?, error?)
                     retry=saved~=true
                 end
             end
-            if not retry then return M.stamp(attempt.result,nil,attempt.as_of,nil),nil end
+            if not retry then return stamp(attempt.result,nil,attempt.as_of,nil),nil end
         else
         local at = clock.now()
         for n, event in ipairs(events) do
@@ -190,7 +190,7 @@ function M.run(c: Command): (types.JsonObject?, error?)
             if derr or not as_of then return nil, derr end
             local result_seq = max_seq
             if noop then result_seq = nil end
-            return M.stamp(attempt.result, result_seq, as_of, nil), nil
+            return stamp(attempt.result, result_seq, as_of, nil), nil
         end
         end
     end

@@ -464,10 +464,6 @@ function M.decide(catalog_id: string, request: types.DecideRequest): (types.Deci
             local result: types.DecideResult = { proposal_id = id, status = "rejected" }
             local events: { types.Event } = {}
             if action == "accept" then
-                if proposal.generation == nil then
-                    return nil, errors.new({ kind = errors.CONFLICT, message = "proposal has no recorded schema generation; submit a new proposal",
-                        details = { code = "schema_generation_conflict", generation = catalog.generation } })
-                end
                 local conflict = require_generation(proposal.generation, catalog.generation)
                 if conflict then return nil, conflict end
                 local planned, aerr = items.plan(db, catalog, proposals.accept_request(proposal), actor_id(), settings, prepared, true)

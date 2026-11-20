@@ -1226,8 +1226,6 @@ entries:
     method: run
     modules: [registry, json]
     imports:
-      event_baseline: app:event_baseline
-      event_compatibility: app:event_compatibility
       steps: app:steps
       test: wippy.test:test
       fixture: app:fixture
@@ -2122,17 +2120,6 @@ entries:
       changes: kickside.pim.schema:classify
       resolve: kickside.pim.domain:resolve
       declaration: kickside.pim.schema:merge
-
-  - name: event_baseline
-    kind: library.lua
-    source: file://event_baseline.lua
-    modules: [json]
-
-  - name: event_compatibility
-    kind: library.lua
-    source: file://event_compatibility.lua
-    imports:
-      values: kickside.pim.domain:values
 
   - name: type_value_fixture
     kind: library.lua

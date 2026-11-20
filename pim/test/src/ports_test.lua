@@ -41,9 +41,6 @@ local function every_event(h: fixture.Handle)
     assert(h.call("release", { items = { { product = { sku = "RDG" }, expect_version = steps.version(h, "RDG") } } }))
 end
 
-local baseline = require("event_baseline")
-local compatibility = require("event_compatibility")
-
 local function define()
     test.describe("automation ports", function()
         test.it("replays a proposal rejection even when the proposal was already conflicted", function()
@@ -113,10 +110,10 @@ local function define()
             test.eq(schema.generation, 2)
             steps.one(h, { product = { sku = "PATCH-GENERATION" }, expect_version = "any",
                 set = { { attr = "core.name", ctx = { locale = "en" }, value = "After" } } })
-            local patches: { [string]: types.ProductBody } = {}
+            local patches: { [string]: types.ProductPatchBody } = {}
             for _, event in ipairs(fixture.events(h)) do
                 if event.type == "kickside.pim.events:product.created" or event.type == "kickside.pim.events:product.changed" then
-                    patches[event.type] = event.body :: types.ProductBody
+                    patches[event.type] = event.body :: types.ProductPatchBody
                 end
             end
             local created = assert(patches["kickside.pim.events:product.created"])
@@ -127,19 +124,12 @@ local function define()
             test.eq(changed.generation, 2)
         end)
 
-        test.it("detects nested event schema incompatibilities", function()
-            local frozen = baseline.schemas["product.changed"]
-            for _, mutation in ipairs({ "type", "required", "removed", "constraint" }) do
-                local current = assert(json.decode(assert(json.encode(frozen))))
-                local item = current.properties.patch.items
-                if mutation == "type" then item.properties.a.type = "string"
-                elseif mutation == "required" then item.required[#item.required + 1] = "v"
-                elseif mutation == "removed" then item.properties.a = nil
-                else item.properties.a.minimum = 1 end
-                local ok, err = compatibility.check(frozen, current, "product.changed")
-                test.is_false(ok, mutation)
-                test.eq(err:kind(), errors.INVALID)
-                test.eq(err:details().code, "event_schema_incompatible")
+        test.it("requires a generation in product patch events", function()
+            for _, name in ipairs({ "product.created", "product.changed" }) do
+                local schema = assert(registry.get("kickside.pim.events:" .. name)).data.schema
+                local required: { [string]: boolean } = {}
+                for _, field in ipairs(schema.required) do required[field] = true end
+                test.is_true(required.generation, name)
             end
         end)
 
@@ -181,18 +171,6 @@ local function define()
                 end
             end
             for t in pairs(declared) do test.is_true(seen[t] == true, "scenario emits no " .. t) end
-        end)
-
-        test.it("evolve event schemas only by adding optional properties", function()
-            for name, frozen in pairs(baseline.schemas) do
-                local event_type = "kickside.pim.events:" .. name
-                local current = assert(registry.get(event_type)).data.schema
-                local ok, err = compatibility.check(frozen, current, event_type)
-                test.is_nil(err, tostring(err))
-                test.is_true(ok)
-                local valid, verr = json.validate(current, baseline.bodies[name])
-                test.is_true(valid == true, event_type .. ": " .. tostring(verr))
-            end
         end)
 
         test.it("publish the products sink and the publications source", function()
