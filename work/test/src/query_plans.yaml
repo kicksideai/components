@@ -27,6 +27,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     seams: [app:query_text_search_scope]
 - name: query_text_search_scope

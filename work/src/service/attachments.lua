@@ -8,8 +8,8 @@ local domain = require("domain")
 local teardown = require("teardown")
 local M = {}
 
-local function association(board_id: string, row: domain.PluginState): (component_types.ComponentRow?, error?)
-    local found, err = component.list_system({ component_ids = { row.attachment_id }, include = { private_context = true, meta = true }, limit = 1 })
+local function association(board_id: string, row: domain.PluginAttachment): (component_types.ComponentRow?, error?)
+    local found, err = component.list_system({ component_ids = { row.attachment_id }, include = { private_context = true }, limit = 1 })
     if err then return nil, err :: error end
     local existing = found and found[1]
     if existing and (existing.impl_id ~= row.impl_id or not existing.private_context
@@ -19,7 +19,7 @@ local function association(board_id: string, row: domain.PluginState): (componen
     return existing, nil
 end
 
-function M.remove(board_id: string, row: domain.PluginState): error?
+function M.remove(board_id: string, row: domain.PluginAttachment): error?
     local existing, aerr = association(board_id, row)
     if aerr then return aerr end
     if not existing then return nil end
@@ -29,7 +29,7 @@ function M.remove(board_id: string, row: domain.PluginState): error?
     return nil
 end
 
-function M.ensure(board_id: string, row: domain.PluginState): error?
+function M.ensure(board_id: string, row: domain.PluginAttachment): error?
     local existing, aerr = association(board_id, row)
     if aerr then return aerr end
     if not existing then
@@ -40,10 +40,6 @@ function M.ensure(board_id: string, row: domain.PluginState): error?
             meta = { title = row.plugin },
         }, board_id, row.plugin)
         return component_envelope.error_of(registered :: component_types.ServiceEnvelope, "register")
-    end
-    if (existing.meta or {}).owner ~= board_id then
-        local _, merr = component.set_meta(row.attachment_id, { owner = board_id })
-        if merr then return merr :: error end
     end
     local _, uerr = component.update(row.attachment_id, { { type = "PATCH_CONTEXT", payload = { patch = { config = row.config } } } })
     return uerr :: error?

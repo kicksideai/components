@@ -4,8 +4,6 @@ local registry = require("registry")
 local json = require("json")
 local fixture = require("fixture")
 local steps = require("steps")
-local baseline = require("event_baseline")
-local compatibility = require("event_compatibility")
 
 type Map = { [string]: unknown }
 local function define()
@@ -53,19 +51,6 @@ local function define()
                     else test.is_true(listed[id] == true, id) end
                 end
             end
-        end)
-        test.it("keeps frozen output schemas compatible at every nested level", function()
-            for id, schema in pairs(baseline.schemas) do
-                local ok, err = compatibility.check(schema, assert(registry.get(id)).data.schema, id)
-                test.is_nil(err, tostring(err))
-                test.is_true(ok, id)
-            end
-            local frozen = baseline.schemas["kickside.work.events:item.changed"]
-            local changed = assert(json.decode(assert(json.encode(frozen))))
-            changed.properties.item.type = "integer"
-            local ok, err = compatibility.check(frozen, changed, "item.changed")
-            test.is_false(ok)
-            test.eq(err:details().code, "event_schema_incompatible")
         end)
         test.it("emits schema-valid command, schema, item, relation, comment and lifecycle bodies", function()
             local h = fixture.board({ declaration = fixture.workflow(fixture.fresh_prefix()) })

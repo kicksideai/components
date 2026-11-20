@@ -173,5 +173,6 @@ entries:
     - type
     - state
     - patch
+    - schema_generation
     - moved_from
     - operation_id

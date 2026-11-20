@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Fixed work tables: boards, schema generations, items, key prefixes, receipts, links,
--- change history, value intervals, comments and board jobs.
+-- change history, value intervals, comments, board jobs and template versions.
 local operation_expiry = require("operation_expiry")
 
 local function run(db, statements)
@@ -13,7 +13,7 @@ end
 local POSTGRES = {
     [[CREATE TABLE kickside_work_board_meta (board_id text NOT NULL PRIMARY KEY, title text NOT NULL, description text NOT NULL, icon text NOT NULL, applied_seq bigint NOT NULL)]],
     [[CREATE TABLE kickside_work_operation (
-        board_id text NOT NULL, operation_id text NOT NULL, kind text NOT NULL, key text NOT NULL, request_hash text NOT NULL,
+        board_id text NOT NULL, operation_id text NOT NULL, kind text NOT NULL, key text, request_hash text NOT NULL,
         actor_id text NOT NULL, actor_context text NOT NULL, data text NOT NULL, status text NOT NULL,
         processed integer NOT NULL DEFAULT 0, counts text NOT NULL DEFAULT '{"applied":0,"unchanged":0,"invalid":0,"denied":0,"conflict":0,"unavailable":0}', error_code text, job_id text NOT NULL,
         PRIMARY KEY (board_id, operation_id), UNIQUE (board_id, kind, key))]],
@@ -124,6 +124,9 @@ local POSTGRES = {
         PRIMARY KEY (board_id, from_id, type, to_board_id, to_id))]],
     [[CREATE INDEX kickside_work_link_target ON kickside_work_link (to_board_id, to_id, board_id, from_id, type)]],
     [[CREATE INDEX kickside_work_link_type ON kickside_work_link (board_id, type, from_id)]],
+    [[CREATE INDEX kickside_work_link_outward_page ON kickside_work_link (board_id, from_id, seq, type, to_board_id, to_id)]],
+    [[CREATE INDEX kickside_work_link_inward_page ON kickside_work_link (to_board_id, to_id, seq, board_id, from_id, type)]],
+    [[CREATE INDEX kickside_work_link_target_page ON kickside_work_link (to_board_id, to_id, board_id, seq, from_id, type)]],
     [[CREATE TABLE kickside_work_change (
         board_id text NOT NULL,
         seq bigint NOT NULL,
@@ -178,7 +181,6 @@ local POSTGRES = {
         error text,
         failed_at text,
         PRIMARY KEY (board_id, job_id))]],
-    [[CREATE INDEX kickside_work_change_legacy ON kickside_work_change (board_id,seq,n) WHERE kind = 'query_value']],
     [[CREATE INDEX kickside_work_visibility_age ON kickside_work_visibility (board_id,at,seq)]],
     [[CREATE INDEX kickside_work_comment_page ON kickside_work_comment (board_id,item_id,deleted,comment_id)]],
     [[CREATE INDEX kickside_work_purge_pending ON kickside_work_item (board_id, life_at, item_id) WHERE purge_pending=1 AND life='purged']],
@@ -195,6 +197,15 @@ local POSTGRES = {
     [[CREATE INDEX kickside_work_visibility_floor ON kickside_work_visibility (board_id, seq, item_id)]],
     [[CREATE INDEX kickside_work_comment_purge ON kickside_work_comment (board_id, item_id, comment_id)]],
     [[CREATE INDEX kickside_work_comment_deleted ON kickside_work_comment (board_id, edited_at, comment_id) WHERE deleted=1]],
+    [[CREATE TABLE kickside_work_template_version (
+        attachment_id text NOT NULL, template_id text NOT NULL, version text NOT NULL,
+        record text NOT NULL, field_identities text NOT NULL, type_identity text NOT NULL,
+        archived integer NOT NULL DEFAULT 0, expires_at text,
+        PRIMARY KEY (attachment_id, template_id, version))]],
+    [[CREATE INDEX kickside_work_template_active ON kickside_work_template_version
+        (attachment_id, template_id, version) WHERE archived = 0]],
+    [[CREATE INDEX kickside_work_template_expiry ON kickside_work_template_version
+        (expires_at, attachment_id, template_id, version) WHERE expires_at IS NOT NULL]],
 }
 
 local SQLITE = {}
@@ -213,6 +224,7 @@ for dialect, statements in pairs({ postgres = POSTGRES, sqlite = SQLITE }) do
 end
 
 local DROP = {
+    "DROP TABLE kickside_work_template_version",
     "DROP TABLE kickside_work_board_meta",
     "DROP TABLE kickside_work_key_alias",
     "DROP TABLE kickside_work_operation",

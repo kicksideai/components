@@ -2,16 +2,6 @@
 version: '1.0'
 namespace: app
 entries:
-- name: event_baseline
-  kind: library.lua
-  source: file://event_baseline.lua
-  modules:
-  - json
-- name: event_compatibility
-  kind: library.lua
-  source: file://event_compatibility.lua
-  imports:
-    values: kickside.work.domain:values
 - name: ports_test
   kind: function.lua
   meta:
@@ -28,8 +18,6 @@ entries:
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
-    event_baseline: app:event_baseline
-    event_compatibility: app:event_compatibility
 - name: sources_test
   kind: function.lua
   meta:

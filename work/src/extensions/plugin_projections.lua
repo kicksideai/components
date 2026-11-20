@@ -29,8 +29,7 @@ local function converge(board_id: string, row: types.PluginState, settings: type
     end
     local client, err = threads.open()
     if err or not client then return nil, err end
-    local progress = row.progress or {}
-    row.progress = progress
+    local progress = row.progress
     if not progress.scanned then
         local expected: { [string]: boolean } = {}
         for _, p in ipairs(projections) do expected[p.kind] = true end
@@ -58,7 +57,6 @@ local function converge(board_id: string, row: types.PluginState, settings: type
         local p = projections[index]
         local mode = p.input == "state" and "cursor_only" or "prefetch_events"
         local previous: local_types.Config? = nil
-        local previous_mode: string? = nil
         local raw, perr = client:get_projection_cursor({ thread_id = board_id, kind = p.kind, projection_key = PREFIX .. row.plugin })
         if perr and perr:kind() ~= errors.NOT_FOUND then return nil, perr end
         if raw then
@@ -70,7 +68,6 @@ local function converge(board_id: string, row: types.PluginState, settings: type
             end
             local definition = body :: local_types.Body
             previous = definition.worker_config
-            previous_mode = definition.meta and definition.meta.worker_input_mode
         end
         local reset = previous ~= nil and (not values.equal(previous.config, config) or previous.revision ~= p.revision)
         if previous and previous.revision ~= p.revision and previous.start_seq == row.revision then
@@ -78,7 +75,7 @@ local function converge(board_id: string, row: types.PluginState, settings: type
                 subject = "plugin:" .. row.plugin, body = { plugin = row.plugin } } } } } })
             return rerr == nil, rerr
         end
-        if not previous or reset or previous_mode ~= mode then
+        if not previous or reset or previous.input ~= p.input then
             local start_seq = previous and not reset and previous.start_seq or p.start_seq or row.revision
             local events: { { type: string } } = {}
             if p.input == "state" then

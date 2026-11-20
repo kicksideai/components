@@ -507,7 +507,8 @@ local function define()
             valid.counts.unrecognized = 1
             test.is_false(json.validate(progress, valid) == true)
             local incoming = assert(registry.get("kickside.work.events:item.moved_in")).data.schema
-            local event = { item = "id", type = "task", state = "open", operation_id = "id", moved_from = { board = "b", item = "i" }, patch = { { f = 1, v = "text", unrecognized = true } } }
+            local event = { item = "id", type = "task", state = "open", schema_generation = 1, operation_id = "id",
+                moved_from = { board = "b", item = "i" }, patch = { { f = 1, v = "text", unrecognized = true } } }
             test.is_false(json.validate(incoming, event) == true)
         end)
     end)

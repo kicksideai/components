@@ -38,6 +38,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:fold_attachment
     projections:
     - kind: app:event_fold
@@ -48,6 +49,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:fold_attachment
     seams: [app:fold_scope]
     config_schema: { type: object, properties: { fail: { type: boolean }, marker: { type: string } }, additionalProperties: false }
@@ -71,6 +73,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:fold_attachment
     projections:
     - { kind: app:missing_fold, worker_ref: 'func://app:absent_worker', input: events, events: [] }
@@ -78,6 +81,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:fold_attachment
     projections:
     - { kind: app:wrong_fold, worker_ref: 'func://app:work_call', input: events, events: [] }
@@ -106,6 +110,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:credential_attachment
     config_schema: { type: object, properties: { marker: { type: string } }, additionalProperties: false }
 - name: credential_attachment
@@ -122,6 +127,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     title: Contract
     description: Contract fixture
     icon: puzzle
@@ -154,18 +160,21 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:fold_attachment
     requires: { hidden: app:work_plugin }
 - name: mapped_seams_plugin
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:fold_attachment
     seams: { hidden: app:text_type }
 - name: false_revision_plugin
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:fold_attachment
     projections:
     - { kind: app:false_revision, worker_ref: 'func://app:plugin_projection_worker', input: state, revision: false }

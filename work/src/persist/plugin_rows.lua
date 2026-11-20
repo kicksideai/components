@@ -3,6 +3,7 @@
 local sql = require("sql")
 local json = require("json")
 local store = require("store")
+local codec = require("row_decode")
 local domain = require("domain")
 local storage = require("storage")
 local jobs = require("jobs")
@@ -14,35 +15,14 @@ function M.list(tx: storage.Executor, board_id: string, pending: boolean?, limit
     local rows, err = tx:query("SELECT * FROM kickside_work_plugin WHERE board_id = $1" .. where .. " ORDER BY plugin" .. (limit and " LIMIT $2" or ""), params)
     if err then return nil, err end
     local out: { domain.PluginState } = {}
-    for _, row in ipairs(rows or {}) do
-        local decoded_1, decode_err = store.need_int(row, "active")
-        if decode_err then return nil, decode_err end
-        local decoded_1 = decoded_1 :: integer
-        local decoded_2, decode_err = store.stored(row.config, {} :: domain.JsonObject)
-        if decode_err then return nil, decode_err end
-        local decoded_2 = decoded_2 :: domain.JsonObject
-        local decoded_3, decode_err = store.need(row, "impl_id")
-        if decode_err then return nil, decode_err end
-        local decoded_3 = decoded_3 :: string
-        local decoded_4, decode_err = store.need_int(row, "applied_revision")
-        if decode_err then return nil, decode_err end
-        local decoded_4 = decoded_4 :: integer
-        local decoded_5, decode_err = store.need_int(row, "revision")
-        if decode_err then return nil, decode_err end
-        local decoded_5 = decoded_5 :: integer
-        local decoded_6, decode_err = store.need(row, "attachment_id")
-        if decode_err then return nil, decode_err end
-        local decoded_6 = decoded_6 :: string
-        local decoded_7, decode_err = store.need(row, "plugin")
-        if decode_err then return nil, decode_err end
-        local decoded_7 = decoded_7 :: string
-        local lifecycle, lifecycle_err = store.stored(row.lifecycle, {} :: domain.PluginLifecycle)
-        if lifecycle_err then return nil, lifecycle_err end
-        local progress, progress_err = store.stored(row.progress, {} :: domain.PluginProgress)
-        if progress_err then return nil, progress_err end
-        out[#out + 1] = { plugin = decoded_7, attachment_id = decoded_6,
-            revision = decoded_5, applied_revision = decoded_4,
-            impl_id = decoded_3, config = decoded_2, active = decoded_1 == 1, lifecycle = lifecycle :: domain.PluginLifecycle, progress = progress }
+    for _, raw in ipairs(rows or {}) do
+        local row, row_err = codec.object(raw, { "plugin", "attachment_id", "impl_id" },
+            { "active", "revision", "applied_revision" }, { "config", "lifecycle", "progress" })
+        if row_err or not row then return nil, row_err end
+        out[#out + 1] = { plugin = row.plugin :: string, attachment_id = row.attachment_id :: string,
+            revision = row.revision :: integer, applied_revision = row.applied_revision :: integer,
+            impl_id = row.impl_id :: string, config = row.config :: domain.JsonObject, active = row.active == 1,
+            lifecycle = row.lifecycle :: domain.PluginLifecycle, progress = row.progress :: domain.PluginProgress }
     end
     return out, nil
 end
@@ -85,7 +65,7 @@ function M.finish(board_id: string, row: domain.PluginState, lifecycle: domain.P
     if not db then return err end
     local query = "UPDATE kickside_work_plugin SET lifecycle = $1, progress = $2, applied_revision = $3 WHERE board_id = $4 AND plugin = $5 AND revision = $6"
     if not row.active and lifecycle.state == "ready" then query = "DELETE FROM kickside_work_plugin WHERE revision = $1 AND board_id = $2 AND plugin = $3" end
-    local params: domain.SqlParams = { json.encode(lifecycle), json.encode(row.progress or {}),
+    local params: domain.SqlParams = { json.encode(lifecycle), json.encode(row.progress),
         lifecycle.state == "pending" and row.applied_revision or row.revision, board_id, row.plugin, row.revision }
     if not row.active and lifecycle.state == "ready" then params = { row.revision, board_id, row.plugin } end
     local _, uerr = db:execute(query, params)

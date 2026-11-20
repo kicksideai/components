@@ -90,13 +90,11 @@ end
 
 function M.item(row: types.Row): (types.Item?, error?)
     local checked, err = M.object(row,
-        { "board_id", "item_id", "type", "state", "category", "path", "life" },
-        { "number", "process_generation", "visit", "version", "created_seq", "updated_seq" }, { "document", "findings" })
+        { "board_id", "item_id", "type", "state", "category", "path", "life", "created_at", "updated_at" },
+        { "number", "process_generation", "visit", "version", "created_seq", "updated_seq" }, { "document", "findings", "process_data" })
     if err or not checked then return nil, err end
-    for _, name in ipairs({ "move_id", "parent_id", "rank", "life_at", "created_at", "updated_at" }) do checked[name] = text(row[name]) end
-    local work, werr = M.stored(row.process_data, {} :: types.ProcessData)
-    if werr then return nil, werr end
-    checked.work = work
+    for _, name in ipairs({ "move_id", "parent_id", "rank", "life_at" }) do checked[name] = text(row[name]) end
+    checked.work, checked.process_data = checked.process_data, nil
     return checked :: types.Item, nil
 end
 

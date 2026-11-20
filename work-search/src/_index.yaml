@@ -27,6 +27,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     title: Work Search
     description: Lexical search for Work issue keys, titles and descriptions.
     icon: search

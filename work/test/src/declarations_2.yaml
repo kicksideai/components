@@ -6,6 +6,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     config_schema: {"type": "object", "properties": {"payload": {"anyOf": [{"type": "string", "format": "password"}]}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
 
@@ -13,6 +14,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     config_schema: {"type": "object", "properties": {"payload": {"oneOf": [{"type": "string", "format": "password"}]}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
 
@@ -20,6 +22,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     config_schema: {"type": "object", "properties": {"payload": {"allOf": [{"type": "string", "format": "password"}]}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
 
@@ -27,6 +30,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     config_schema: {"type": "object", "properties": {"payload": {"items": {"type": "string", "format": "password"}}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
 
@@ -34,6 +38,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     config_schema: {"type": "object", "properties": {"payload": {"additionalProperties": {"type": "string", "format": "password"}}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
 
@@ -41,6 +46,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     config_schema: {"type": "object", "properties": {"payload": {"$ref": "#/$defs/private"}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
 
@@ -48,6 +54,7 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.work.plugin
+    interface_version: 1
     attachment: app:work_attachment
     config_schema: {"type": "object", "properties": {"payload": {"$ref": "#/$defs/loop"}}, "$defs": {"private": {"type": "string", "format": "password"}, "loop": {"$ref": "#/$defs/loop"}}}
 

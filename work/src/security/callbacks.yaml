@@ -8,7 +8,6 @@ entries:
     private: true
     service_only: true
     producers:
-    - kickside.work.migrations:02_saved_view_boards
     - kickside.work.service:rename_view
   policy:
     resources: '*'

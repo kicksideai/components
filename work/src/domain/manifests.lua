@@ -186,7 +186,7 @@ function M.load(id: string): (types.Plugin?, error?)
     if type(meta) ~= "table" then return nil, invalid(id .. " is not a plugin") end
     local m = meta :: { [string]: unknown }
     if m.type ~= M.TYPE then return nil, invalid(id .. " is not a plugin") end
-    if m.interface_version ~= nil and m.interface_version ~= M.INTERFACE_VERSION then
+    if m.interface_version ~= M.INTERFACE_VERSION then
         return nil, errors.new({ kind = errors.INVALID, message = id .. " requires an unsupported plugin interface version",
             details = { code = "plugin_interface_version_unsupported", plugin = id } })
     end
