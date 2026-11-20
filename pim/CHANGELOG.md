@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/kicksideai/components/compare/pim-v0.1.4...pim-v0.1.5) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim:** guard proposal acceptance and classify version conflicts ([#189](https://github.com/kicksideai/components/issues/189)) ([2b9bdbe](https://github.com/kicksideai/components/commit/2b9bdbe1ee2780ad4832a8a8c973c417976fa98e))
+
 ## [0.1.4](https://github.com/kicksideai/components/compare/pim-v0.1.3...pim-v0.1.4) (2026-11-19)
 
 
