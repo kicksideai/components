@@ -6,6 +6,7 @@ local operations = require("operation_steps")
 local sql = require("sql")
 local registry = require("registry")
 local json = require("json")
+local tables = require("tables")
 type Map = { [string]: unknown }
 local call, grant, gate = operations.call, operations.grant, operations.gate
 local moved, request = operations.moved, operations.move_request
@@ -156,22 +157,49 @@ local function define()
             db:release()
             test.eq(tonumber(rows[1].n), 0)
         end)
-        test.it("refuses a population beyond the scan allowance without starting partial bulk work", function()
-            local h = operations.board()
+        test.it("caps the filtered scan and starts indexed selections on large boards", function()
+            local declaration = fixture.declaration(fixture.fresh_prefix())
+            declaration.fields[1].index = "key"
+            local h = operations.board({ declaration = declaration })
+            local target = steps.create(h, "task", { title = "needle", estimate = 1 })
+            local table_name = tables.names(h.id).item
             local db = assert(sql.get("app:db"))
-            assert(db:execute([[WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM numbers WHERE n < 200001)
-                INSERT INTO kickside_work_item (board_id,item_id,number,type,state,category,process_generation,visit,path,version,life,document,created_seq,updated_seq,created_at,updated_at)
-                SELECT $1,'scan-' || n,n,'task','open','started',1,1,'/scan-' || n || '/',1,'live','{}',0,0,'','' FROM numbers]], { h.id }))
+            local numbers = "WITH RECURSIVE numbers(n) AS (SELECT 100001 UNION ALL SELECT n+1 FROM numbers WHERE n < 300000) "
+            local tx = assert(db:begin())
+            assert(tx:execute(numbers .. [[INSERT INTO kickside_work_item
+                (board_id,item_id,number,type,state,category,process_generation,visit,path,rank,version,life,document,created_seq,updated_seq,created_at,updated_at)
+                SELECT $1,'scan-' || n,n+1,'task','open','started',1,1,'/scan-' || n || '/',CAST(n AS text),1,'live','{}',0,0,'','' FROM numbers]], { h.id }))
+            assert(tx:execute(numbers .. "INSERT INTO " .. table_name .. [[
+                (item_id,number,type,state,category,path,rank,version,life,created_seq,updated_seq,created_at,updated_at)
+                SELECT 'scan-' || n,n+1,'task','open','started','/scan-' || n || '/',CAST(n AS text),1,'live',0,0,'','' FROM numbers]], {}))
+            assert(tx:commit())
+            -- Bring the set-based seed to the same index and visibility state as retained rows.
+            if db:type() == sql.type.POSTGRES then
+                assert(db:execute("VACUUM (ANALYZE) kickside_work_item", {}))
+                assert(db:execute("VACUUM (ANALYZE) " .. table_name, {}))
+            end
             db:release()
             local _, err = h.call("bulk", { key = "scan", query = {}, ops_template = { { op = "delete" } } })
+            local _, residual_err = h.call("bulk", { key = "residual", query = { where = { field = "title", op = "contains", value = "needle" } }, ops_template = { { op = "delete" } } })
+            gate(h, true)
+            local started, indexed_err = h.call("bulk", { key = "indexed", query = { where = { field = "estimate", op = "eq", value = 1 } },
+                ops_template = { { op = "set", values = { estimate = 2 } } } })
             db = assert(sql.get("app:db"))
-            assert(db:execute("DELETE FROM kickside_work_item WHERE board_id = $1", { h.id }))
-            local rows = assert(db:query("SELECT COUNT(*) AS n FROM kickside_work_operation WHERE board_id = $1", { h.id }))
+            assert(db:execute("DELETE FROM " .. table_name .. " WHERE item_id LIKE 'scan-%'", {}))
+            assert(db:execute("DELETE FROM kickside_work_item WHERE board_id = $1 AND item_id LIKE 'scan-%'", { h.id }))
+            local rows = assert(db:query("SELECT COUNT(*) AS n FROM kickside_work_operation WHERE board_id = $1 AND key IN ('scan','residual')", { h.id }))
             db:release()
             test.not_nil(err)
-            test.eq(err:kind(), errors.INVALID)
-            test.eq(err:details().code, "bulk_selection_limit")
+            test.not_nil(residual_err)
+            for _, failure in ipairs({ err, residual_err }) do
+                test.eq(failure:kind(), errors.INVALID, steps.detail(failure))
+                test.eq(failure:details().code, "bulk_selection_limit")
+            end
             test.eq(tonumber(rows[1].n), 0)
+            assert(started, steps.detail(indexed_err))
+            test.eq(started.total, 1)
+            test.eq(operations.finished(h, started.bulk_id).status, "done")
+            test.eq(steps.get(h, target).item.values.estimate, 2)
         end)
         test.it("refuses bulk selection while an index required by its query is unfinished", function()
             local h = operations.board()

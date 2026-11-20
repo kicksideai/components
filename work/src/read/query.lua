@@ -41,6 +41,7 @@ local QUERY_KEYS: { [string]: boolean } = { budget = true, include = true, group
     min_seq = true, include_trashed = true }
 local COUNT_KEYS: { [string]: boolean } = { budget = true, board_id = true, where = true, scopes = true, min_seq = true, include_trashed = true }
 local GROUP_CURSOR_LIMIT = 8192
+local BULK_SCAN_LIMIT = 200000
 
 local function validate(request: types.QueryRequest, counted: boolean): error?
     local allowed = counted and COUNT_KEYS or QUERY_KEYS
@@ -215,9 +216,10 @@ local function compile(tx: types.Executor, dialect: string, board: domain.Board,
     local groups: { string }? = nil
     if request.group_by then groups = { request.group_by } end
     if groups and request.sub_group_by then groups[2] = request.sub_group_by end
+    local resolver = definition_only and predicates.targets(board.compiled, nil, {}) or resolve.resolver(tx, board)
     return select.items(caller, tables.of(board.board_id, tables.layout(board.compiled), board.model.relations), dialect,
         { scan = scan or (request.budget and request.budget.rows or 200000), groups = groups, measures = request.measures, where = request.where, sorts = order or sort,
-            after = request.after, count = counted and 10000 or nil, peer_visibility = visible }, access_rows.resolver(board, resolve.resolver(tx, board)), admitted,
+            after = request.after, count = counted and 10000 or nil, peer_visibility = visible }, access_rows.resolver(board, resolver), admitted,
         conditions,
         request.limit or 50)
 end
@@ -655,14 +657,14 @@ function M.freeze(request: types.QueryRequest): ({ string }?, error?)
         local rebuilding, perr = pending(tx, board, request, true)
         if perr then return nil, perr end
         if rebuilding then return nil, errors.new({ kind = errors.UNAVAILABLE, message = "bulk selection awaits indexes", details = { code = "projection_pending" } }) end
-        local population, nerr = job_rows.work_population(tx, board.board_id)
-        if nerr then return nil, nerr end
-        if population and population > 200000 then return nil, errors.new({ kind = errors.INVALID, message = "bulk selection exceeds its scan budget", details = { code = "bulk_selection_limit" } }) end
-        request.limit = 200000
-        local plan, cerr = compile(tx, dialect, board, request, false, grants, nil, nil, nil, nil, search_ids)
+        request.limit = BULK_SCAN_LIMIT
+        local plan, cerr = compile(tx, dialect, board, request, false, grants, nil, BULK_SCAN_LIMIT, {}, nil, search_ids)
         if cerr or not plan then return nil, cerr end
-        local rows, rerr = select.rows(tx, plan)
+        local rows, rerr, _, more = select.rows(tx, plan)
         if rerr then return nil, rerr end
+        if more or #(rows or {}) > BULK_SCAN_LIMIT then
+            return nil, errors.new({ kind = errors.INVALID, message = "bulk selection exceeds its scan budget", details = { code = "bulk_selection_limit" } })
+        end
         local ids: { string } = {}
         for _, row in ipairs(rows or {}) do
             local id, derr = store.need(row, "item_id")
@@ -730,12 +732,18 @@ function M.explain(request: types.QueryRequest): (types.ExplainResult?, error?)
     return result :: types.ExplainResult, nil
 end
 
--- Check a saved query against the next schema before its tables and rows exist.
-function M.validate_definition(request: types.QueryRequest, compiled: domain.Compiled, model: domain.Model): error?
+-- Check a query without reading its candidates or resolving operands against items.
+function M.validate_admitted(db: types.Executor, board: domain.Board, dialect: string, request: types.QueryRequest): error?
     local verr = validate(request, false)
     if verr then return verr end
     local grants, gerr = scope_grants(request)
     if gerr or not grants then return gerr end
+    local _, err = compile(db, dialect, board, request, false, grants, nil, nil, nil, true)
+    return err
+end
+
+-- Check a saved query against the next schema before its tables and rows exist.
+function M.validate_definition(request: types.QueryRequest, compiled: domain.Compiled, model: domain.Model): error?
     local board = { board_id = request.board_id, key_prefix = compiled.key_prefix, compiled = compiled, model = model,
         memberships = {} } :: domain.Board
     local aerr = principals.resolve(board)
@@ -743,7 +751,7 @@ function M.validate_definition(request: types.QueryRequest, compiled: domain.Com
     local db, derr = store.open()
     if derr or not db then return derr end
     board.dialect = db:type()
-    local _, err = compile(db, db:type(), board, request, false, grants, nil, nil, nil, true)
+    local err = M.validate_admitted(db, board, db:type(), request)
     db:release()
     return err
 end

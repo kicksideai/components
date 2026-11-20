@@ -263,6 +263,7 @@ entries:
     component_envelope: kickside.component:envelope
     requests: kickside.work.service:requests
     query: kickside.work.read:query
+    cross_board: kickside.work.read:cross_board
     access: kickside.work.read:access
     schema: kickside.work.domain:schema
     predicates: kickside.work.domain:predicates

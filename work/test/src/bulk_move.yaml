@@ -76,6 +76,7 @@ entries:
     fixture: app:fixture
     steps: app:steps
     operation_steps: app:operation_steps
+    tables: kickside.work.domain:layout
 - name: bulk_apply_probe
   kind: library.lua
   source: file://bulk_apply_probe.lua

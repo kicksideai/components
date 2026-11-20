@@ -212,6 +212,7 @@ entries:
     locate: kickside.work.command:locate
     query: kickside.work.read:query
     predicates: kickside.work.domain:predicates
+    rules: kickside.work.domain:access_rules
     domain: kickside.work:types
     types: kickside.work.read:types
 - name: resolve_principal
