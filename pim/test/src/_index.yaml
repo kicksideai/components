@@ -1630,6 +1630,22 @@ entries:
       comment: Harness manifest with a list in its config.
       config_schema: { type: object, properties: { tags: { type: array, items: { type: string } } } }
 
+  - name: probe_version_one_plugin
+    kind: registry.entry
+    meta: { type: kickside.pim.plugin, attachment: 'app:empty_plugin_attachment', interface_version: 1 }
+
+  - name: probe_version_future_plugin
+    kind: registry.entry
+    meta: { type: kickside.pim.plugin, interface_version: 2 }
+
+  - name: probe_version_string_plugin
+    kind: registry.entry
+    meta: { type: kickside.pim.plugin, interface_version: "1" }
+
+  - name: probe_version_false_plugin
+    kind: registry.entry
+    meta: { type: kickside.pim.plugin, interface_version: false }
+
   - name: probe_fields_provider
     kind: contract.binding
     meta:
