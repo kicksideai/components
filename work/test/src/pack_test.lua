@@ -283,6 +283,9 @@ local function define()
             local shared = admin.http("POST", "/" .. id .. "/list_views", {})
             test.eq(shared.status, 200); test.eq(#shared.body.data.views, 1)
             test.eq(shared.body.data.views[1].title, "All tasks")
+            local record = assert(admin.call("get_meta", {}, shared.body.data.views[1].view_id))
+            test.eq(record.parent_id, id)
+            test.eq(record.meta.owner, id)
             local events = steps.events({ id = id, prefix = "", actor = admin.actor, executor = admin, call = function(op, request) return admin.call(op, request, id) end })
             local schema_events = {}
             for _, event in ipairs(events) do

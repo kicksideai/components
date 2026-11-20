@@ -2,6 +2,7 @@
 local registry_values = require("registry_values")
 -- Saved views carry query and presentation data and evaluate under the viewer.
 local component = require("component")
+local child_registration = require("child_registration")
 local security = require("security")
 local component_envelope = require("component_envelope")
 local component_types = require("component_types")
@@ -155,16 +156,18 @@ local function create(request: types.CreateViewRequest, component_id: string?): 
     if verr then return nil, verr end
     local service, serr = component.get_service()
     if serr or not service then return nil, serr :: error? end
-    local out, err = service:register({ component_id = component_id, impl_id = KIND, parent_id = not request.personal and request.board_id or nil,
+    local registration = { component_id = component_id, impl_id = KIND, parent_id = not request.personal and request.board_id or nil,
         private_context = { board_id = request.board_id, view = request.view },
-        meta = { title = request.title or "View", board_id = request.board_id } })
+        meta = { title = request.title or "View", board_id = request.board_id } }
+    local out, err
+    if request.personal then
+        out, err = service:register(registration)
+    else
+        out = child_registration.register_owned_child(registration)
+    end
     if err then return nil, err :: error end
     local eerr = component_envelope.error_of(out :: component_types.ServiceEnvelope, "register")
     if eerr then return nil, eerr end
-    if not request.personal then
-        local owned, owner_err = component.set_meta(out.component_id :: string, { owner = request.board_id })
-        if not owned then return nil, owner_err :: error? end
-    end
     return { view_id = out.component_id :: string }, nil
 end
 

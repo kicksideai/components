@@ -47,6 +47,10 @@ entries:
 - name: board
   kind: contract.binding
   meta:
+    owned_child_producers:
+      kickside.work.binding:view:
+      - kickside.work.service:create_view
+      - kickside.work.jobs:operation_batch
     mutation: closed
     thread: {class: work.board}
     class:
