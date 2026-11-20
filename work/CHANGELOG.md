@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.14](https://github.com/kicksideai/components/compare/work-v0.1.13...work-v0.1.14) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** scope key reads and seek link pages ([14fcec0](https://github.com/kicksideai/components/commit/14fcec06cc914cc22fd68bd9b33c1c557908cc03))
+
 ## [0.1.13](https://github.com/kicksideai/components/compare/work-v0.1.12...work-v0.1.13) (2026-11-20)
 
 
