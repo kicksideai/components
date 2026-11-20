@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Work Planning
 
-Work Planning requires `kickside/work` 0.1.24 or newer for additive pack
-installation, atomic sprint closure, and the authenticated sprint HTTP endpoints.
+Work Planning requires `kickside/work` 0.1.25 or newer for typed sprint and
+milestone references, including upgrades of existing Planning boards.
 
 Install `kickside.work.planning:pack` through Work pack plan and apply. On a new
 board, Work board creation can install it in the same request. Installation
