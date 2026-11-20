@@ -10,6 +10,7 @@ import { humanize, FIELD_WIDTHS as WIDTHS, fieldWidth } from '../forms'
 
 // The builder owns the draft, review and apply. This canvas edits only order and width.
 const props = defineProps<{ draft: Declaration; schema: SchemaView }>()
+const canEdit = computed(() => props.schema.access.admin)
 const aspects = computed<AspectDecl[]>(() => props.draft?.aspects ?? [])
 
 // pluginAspects are contributed by plugins and laid out by their manifests.
@@ -37,6 +38,7 @@ const dragging = ref<{ ns: string; index: number } | null>(null)
 const over = ref<{ ns: string; index: number } | null>(null)
 
 function dragStart(ns: string, index: number, event: DragEvent) {
+  if (!canEdit.value) return
   dragging.value = { ns, index }
   event.dataTransfer?.setData('text/plain', ns + ':' + index)
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
@@ -47,7 +49,7 @@ function dragOver(ns: string, index: number, event: DragEvent) {
   over.value = { ns, index }
 }
 function drop(aspect: AspectDecl, index: number) {
-  if (dragging.value && dragging.value.ns === aspect.namespace) moveField(aspect.attributes ?? [], dragging.value.index, index)
+  if (canEdit.value && dragging.value?.ns === aspect.namespace) moveField(aspect.attributes ?? [], dragging.value.index, index)
   dragging.value = null
   over.value = null
 }
@@ -64,10 +66,10 @@ function typeName(ns: string, attr: AttributeDecl): string {
 </script>
 <template>
   <div class="pim-table form pim-layout">
-    <p class="pim-layout-help muted">Arrange fields within each group and choose their widths. Review changes before applying the layout.</p>
-    <div v-if="aspects.length === 0" class="kx-empty">This catalog has no field groups yet. Add a field group in Fields.</div>
+    <p v-if="canEdit" class="pim-layout-help muted">Arrange fields within each group and choose their widths. Review changes before applying the layout.</p>
+    <div v-if="aspects.length === 0" class="kx-empty">This catalog has no field groups yet.<template v-if="canEdit"> Add a field group in Fields.</template></div>
     <section v-for="aspect in aspects" :key="aspect.namespace" class="pim-aspect">
-      <header class="pim-aspect-head"><h3>{{ humanize(aspect.namespace) }}</h3><span class="muted small">drag a field, or use its arrows</span></header>
+      <header class="pim-aspect-head"><h3>{{ humanize(aspect.namespace) }}</h3><span v-if="canEdit" class="muted small">drag a field, or use its arrows</span></header>
       <div class="pim-canvas" @dragover.prevent>
         <div
           v-for="(attr, index) in aspect.attributes ?? []"
@@ -75,22 +77,22 @@ function typeName(ns: string, attr: AttributeDecl): string {
           class="pim-lcard"
           :class="{ dragging: dragging?.ns === aspect.namespace && dragging?.index === index, over: over?.ns === aspect.namespace && over?.index === index }"
           :style="{ gridColumn: 'span ' + spanOf(aspect.namespace, attr) }"
-          :draggable="schema.access.admin"
+          :draggable="canEdit"
           @dragstart="dragStart(aspect.namespace, index, $event)"
           @dragover="dragOver(aspect.namespace, index, $event)"
           @drop.prevent="drop(aspect, index)"
           @dragend="dragEnd"
         >
           <div class="pim-lcard-top">
-            <span class="pim-grip" aria-hidden="true"><Icon icon="tabler:grip-vertical" /></span>
+            <span v-if="canEdit" class="pim-grip" aria-hidden="true"><Icon icon="tabler:grip-vertical" /></span>
             <span class="pim-lcard-name">{{ humanize(attr.code) }}</span>
             <span class="pim-lcard-type">{{ typeName(aspect.namespace, attr) }}</span>
-            <span class="pim-lcard-move">
+            <span v-if="canEdit" class="pim-lcard-move">
               <Button type="button" :disabled="index === 0" :aria-label="'Move ' + humanize(attr.code) + ' earlier'" @click="moveField(aspect.attributes ?? [], index, index - 1)" class="arrow" text severity="secondary" size="small"><Icon icon="tabler:arrow-left" /></Button>
               <Button type="button" :disabled="index === (aspect.attributes ?? []).length - 1" :aria-label="'Move ' + humanize(attr.code) + ' later'" @click="moveField(aspect.attributes ?? [], index, index + 1)" class="arrow" text severity="secondary" size="small"><Icon icon="tabler:arrow-right" /></Button>
             </span>
           </div>
-          <SelectButton :model-value="fieldWidth(schema, aspect.namespace, attr)" :options="WIDTHS" option-label="label" option-value="value" :allow-empty="false" :aria-label="'Width of ' + humanize(attr.code)" @update:model-value="attr.width = $event" />
+          <SelectButton :disabled="!canEdit" :model-value="fieldWidth(schema, aspect.namespace, attr)" :options="WIDTHS" option-label="label" option-value="value" :allow-empty="false" :aria-label="'Width of ' + humanize(attr.code)" @update:model-value="attr.width = $event" />
         </div>
       </div>
     </section>

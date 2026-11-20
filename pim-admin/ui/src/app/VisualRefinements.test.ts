@@ -24,7 +24,7 @@ it('keeps history and grid reference values readable without machine identifiers
   const { default: HistoryPanel } = await import('./HistoryPanel.vue')
   const { display } = await import('../forms')
   vi.mocked(pim.history).mockResolvedValue({ entries: [{ seq: 1, n: 1, subject: 'p:' + id, kind: 'value', attribute: 'stock.ships_from', after: { ref: ['inventory.location', id] }, actor: 'admin@example.test', at: '2026-11-08T20:00:00Z' }], as_of: 1 })
-  const w = mount(HistoryPanel, { props: { catalogId: id } }); wrappers.push(w); await flushPromises()
+  const w = mount(HistoryPanel, { props: { catalogId: id, canResolveActors: true } }); wrappers.push(w); await flushPromises()
   expect(w.text()).not.toMatch(opaque)
   expect(w.text()).toContain('Ships from set to Linked location')
   expect(display({ ref: ['component', id] })).toBe('Linked component')

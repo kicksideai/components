@@ -7,6 +7,7 @@ import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
 import Message from 'primevue/message'
+import AdminError from '../../shared/AdminError.vue'
 import LayoutEditor from '../LayoutEditor.vue'
 import HistoryPanel from '../HistoryPanel.vue'
 import SettingsActions from './SettingsActions.vue'
@@ -14,7 +15,7 @@ import PageHead from '../../shared/PageHead.vue'
 import { clone } from '../../state'
 // Schema edits are reviewed and applied together; vocabulary terms save immediately.
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { on } from '@wippy-fe/proxy'
+import { host, on } from '@wippy-fe/proxy'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { pim } from '../../api'
 import type { Declaration, PluginConfigs, RemoveDecl, SchemaOptions, SchemaPlan, SchemaView } from '../../types'
@@ -28,6 +29,7 @@ import BuilderPolicy from './BuilderPolicy.vue'
 import BuilderDeclaration from './BuilderDeclaration.vue'
 import { requestGeneration } from '../../shared/requests'
 import { reconcileRemovals, reviewedRequest } from '../../state'
+import { presentError, SCHEMA_CONFLICT } from '../../shared/transport'
 
 const props = defineProps<{ catalogId: string; embedded?: boolean; title?: string; backLabel?: string }>()
 const emit = defineEmits<{ applied: [generation: number]; back: []; 'dirty-changed': [dirty: boolean] }>()
@@ -53,14 +55,16 @@ const draft = ref<Declaration>({})
 const removed = ref<RemoveDecl>({})
 const pluginConfigs = ref<PluginConfigs>({})
 const initialConfigs = computed(() => Object.fromEntries(Object.entries(pluginConfigs.value).filter(([id]) => draft.value.plugins?.some(p => p.use === id) && !schema.value?.plugins.some(p => p.plugin === id && p.active))))
-const error = ref('')
+const error = ref<ReturnType<typeof presentError>>()
+const stale = ref(false)
 const busy = ref(false)
+const editable = computed(() => schema.value?.access.admin === true)
 const saved = ref('')
 const plan = ref<SchemaPlan | null>(null)
 const reviewed = ref<ReturnType<typeof reviewedRequest> | null>(null)
 const valid = ref(true)
 const reviews = requestGeneration()
-const canApply = computed(() => valid.value && !!plan.value && plan.value.class !== 'refused' && !!reviewed.value?.matches(request.value, schema.value?.schema_generation ?? -1, initialConfigs.value))
+const canApply = computed(() => !stale.value && valid.value && !!plan.value && plan.value.class !== 'refused' && !!reviewed.value?.matches(request.value, schema.value?.schema_generation ?? -1, initialConfigs.value))
 
 
 const loads = requestGeneration()
@@ -72,7 +76,7 @@ async function load(replaceDraft = false, preserveActiveConfigs = false) {
   const generation = loads.begin(), revision = editRevision, id = props.catalogId
   const retainedConfigs = preserveActiveConfigs ? Object.entries(pluginConfigs.value).filter(([plugin]) => schema.value?.plugins.some(p => p.plugin === plugin && p.active)) : []
   loading.value = true
-  error.value = ''
+  error.value = undefined
   try {
     const [view, opts] = await Promise.all([pim.schema(id), pim.schemaOptions(id)])
     if (!loads.current(generation) || revision !== editRevision || id !== props.catalogId) return
@@ -83,8 +87,9 @@ async function load(replaceDraft = false, preserveActiveConfigs = false) {
     pluginConfigs.value = Object.fromEntries(retainedConfigs.filter(([plugin]) => view.plugins.some(p => p.plugin === plugin && p.active)))
     plan.value = null
     valid.value = true
+    stale.value = false
   } catch (e) {
-    if (loads.current(generation)) error.value = e instanceof Error ? e.message : 'Could not load the schema.'
+    if (loads.current(generation)) error.value = presentError(e, 'Could not load settings.')
   } finally {
     if (loads.current(generation)) loading.value = false
   }
@@ -96,7 +101,7 @@ watch(() => props.catalogId, id => {
 }, { immediate: true })
 useHostVisibilityRefresh(async () => { if (!dirty.value) await load() })
 onUnmounted(() => { unsubscribe(); reviews.begin(); loads.begin() })
-watch(() => props.catalogId, () => { reviews.begin(); busy.value = false; schema.value = null; options.value = null; discard(); void load() })
+watch(() => props.catalogId, () => { reviews.begin(); busy.value = false; stale.value = false; schema.value = null; options.value = null; discard(); void load() })
 
 const removals = computed(() => Object.values(reconcileRemovals(draft.value, removed.value)).reduce((n, list) => n + (list?.length ?? 0), 0))
 const dirty = computed(() => !!schema.value && (JSON.stringify(draft.value) !== JSON.stringify(schema.value.declaration) || removals.value > 0 || Object.keys(pluginConfigs.value).length > 0))
@@ -114,12 +119,32 @@ const request = computed<Declaration>(() => {
 watch(dirty, (d) => { if (!d) plan.value = null })
 watch([request, initialConfigs], () => { plan.value = null }, { deep: true })
 
+function reportSchemaError(cause: unknown, fallback: string) {
+  error.value = presentError(cause, fallback)
+  if (error.value.code !== SCHEMA_CONFLICT) return
+  stale.value = true
+  plan.value = null
+  reviewed.value = null
+}
+
+async function reloadSettings() {
+  if (dirty.value && !await host.confirm({
+    header: 'Discard unsaved changes?',
+    message: 'Reloading will discard unsaved settings and plugin changes.',
+    acceptLabel: 'Discard and reload',
+    rejectLabel: 'Cancel',
+  })) return
+  busy.value = true
+  saved.value = ''
+  try { await load(true) } finally { busy.value = false }
+}
+
 async function review() {
-  if (!schema.value || !valid.value) return
+  if (!schema.value || !valid.value || stale.value) return
   const generation = reviews.begin()
   const snapshot = reviewedRequest(request.value, schema.value.schema_generation, initialConfigs.value)
   busy.value = true
-  error.value = ''
+  error.value = undefined
   try {
     const response = await pim.planSchema(props.catalogId, snapshot.declaration, snapshot.generation, snapshot.pluginConfigs)
     if (!reviews.current(generation) || !snapshot.matches(request.value, schema.value.schema_generation, initialConfigs.value) || !valid.value) return
@@ -127,7 +152,7 @@ async function review() {
     plan.value = response
   } catch (e) {
     if (!reviews.current(generation)) return
-    error.value = e instanceof Error ? e.message : 'Could not review the change.'
+    reportSchemaError(e, 'Could not review the change.')
     plan.value = null
     reviewed.value = null
   } finally {
@@ -139,7 +164,7 @@ async function apply() {
   if (!schema.value || !dirty.value || !canApply.value || !reviewed.value) return
   const id = props.catalogId, generation = reviews.begin()
   busy.value = true
-  error.value = ''
+  error.value = undefined
   saved.value = ''
   try {
     const out = await pim.applySchema(id, reviewed.value.declaration, reviewed.value.generation, reviewed.value.pluginConfigs)
@@ -150,7 +175,7 @@ async function apply() {
     emit('applied', out.generation)
   } catch (e) {
     if (id !== props.catalogId || !reviews.current(generation)) return
-    error.value = e instanceof Error ? e.message : 'Could not apply the change.'
+    reportSchemaError(e, 'Could not apply the change.')
   } finally {
     if (reviews.current(generation)) busy.value = false
   }
@@ -159,7 +184,7 @@ async function apply() {
 async function configure(plugin: string, config: Record<string, unknown>) {
   const id = props.catalogId, generation = loads.begin(), action = reviews.begin()
   busy.value = true
-  error.value = ''
+  error.value = undefined
   try {
     const snapshot = JSON.stringify(config)
     await pim.configurePlugin(id, plugin, clone(config))
@@ -169,7 +194,7 @@ async function configure(plugin: string, config: Record<string, unknown>) {
     if (schema.value) schema.value.plugins = updated.plugins
     if (JSON.stringify(pluginConfigs.value[plugin]) === snapshot) delete pluginConfigs.value[plugin]
     saved.value = 'Configuration saved'
-  } catch (e) { if (id === props.catalogId && reviews.current(action)) error.value = e instanceof Error ? e.message : 'Could not save configuration.' }
+  } catch (e) { if (id === props.catalogId && reviews.current(action)) reportSchemaError(e, 'Could not save configuration.') }
   finally { if (reviews.current(action)) busy.value = false }
 }
 
@@ -192,36 +217,40 @@ function remove(kind: keyof RemoveDecl, id: string) {
 <template>
   <div class="pim-builder" :class="{ embedded }">
     <div v-if="embedded" class="pim-detail-head">
-      <h2>{{ title || 'Catalog' }}</h2><Tag severity="secondary" :value="'Generation ' + (schema?.schema_generation ?? '…')" />
+      <h2>{{ title || 'Catalog' }}</h2><Tag v-if="schema" severity="secondary" :value="'Generation ' + schema.schema_generation" />
       <div class="pim-detail-actions"><slot name="actions" :access="schema?.access" />
       <SettingsActions :access="schema?.access"
-        :apply-label="section === 'layout' ? 'Apply layout' : 'Apply'" :dirty="dirty" :busy="busy" :valid="valid" :reviewed="!!plan" :can-apply="canApply"
+        :apply-label="section === 'layout' ? 'Apply layout' : 'Apply'" :dirty="dirty" :busy="busy" :valid="valid && !stale" :reviewed="!!plan" :can-apply="canApply"
         @discard="discard" @review="review" @apply="apply" /></div>
     </div>
-    <PageHead v-else :title="title || 'Catalog'" :subtitle="'Settings · generation ' + (schema?.schema_generation ?? '…')" icon="tabler:settings" :back-label="backLabel" @back="emit('back')"><slot name="actions" :access="schema?.access" />
+    <PageHead v-else :title="title || 'Catalog'" :subtitle="schema ? 'Settings · generation ' + schema.schema_generation : 'Settings'" icon="tabler:settings" :back-label="backLabel" @back="emit('back')"><slot name="actions" :access="schema?.access" />
       <SettingsActions :access="schema?.access"
-        :apply-label="section === 'layout' ? 'Apply layout' : 'Apply'" :dirty="dirty" :busy="busy" :valid="valid" :reviewed="!!plan" :can-apply="canApply"
+        :apply-label="section === 'layout' ? 'Apply layout' : 'Apply'" :dirty="dirty" :busy="busy" :valid="valid && !stale" :reviewed="!!plan" :can-apply="canApply"
         @discard="discard" @review="review" @apply="apply" /></PageHead>
-    <Tabs v-model:value="section" class="pim-section-tabs">
+    <Tabs v-if="schema && options" v-model:value="section" class="pim-section-tabs">
       <TabList aria-label="Schema sections"><Tab v-for="s in SECTIONS" :key="s.id" :value="s.id">{{ s.title }}</Tab></TabList>
     </Tabs>
     <div class="pim-settings-pane"><div class="pim-builder-main pim-readable">
-      <Message v-if="error" severity="error" role="alert">{{ error }}</Message>
+      <AdminError v-if="error" :error="error">
+        <Button v-if="stale" type="button" severity="secondary" outlined size="small" :disabled="busy" @click="reloadSettings">Reload settings</Button>
+        <Button v-else-if="!schema || !options" type="button" severity="secondary" outlined size="small" @click="load()">Retry</Button>
+      </AdminError>
+      <div v-else-if="stale && loading" class="kx-loading" role="status">Reloading settings…</div>
       <Message v-if="saved" severity="success">{{ saved }}</Message>
       <div v-if="loading && (!schema || !options)" class="kx-loading" role="status">Loading…</div>
-      <Button v-else-if="(!schema || !options) && error" @click="load()" severity="secondary" outlined>Retry</Button>
-      <HistoryPanel v-else-if="schema && options && section === 'history'" :catalog-id="catalogId" />
-      <fieldset v-else-if="schema && options" class="pim-editor-surface" :disabled="busy || !schema.access.admin" :inert="busy || !schema.access.admin">
-        <Message v-if="empty && section === 'fields'" severity="info">Define its schema. Add a field group to start defining fields.</Message>
+      <HistoryPanel v-else-if="schema && options && section === 'history'" :catalog-id="catalogId" :can-resolve-actors="editable" />
+      <fieldset v-else-if="schema && options" class="pim-editor-surface" :disabled="busy" :inert="busy">
+        <Message v-if="!editable" severity="info" class="pim-readonly">Read-only settings</Message>
+        <Message v-if="empty && section === 'fields'" severity="info">{{ editable ? 'Define its schema. Add a field group to start defining fields.' : 'This catalog has no field groups yet.' }}</Message>
         <BuilderFields v-if="section === 'fields'" :draft="draft" :schema="schema" :options="options" @remove="remove" />
         <LayoutEditor v-else-if="section === 'layout'" :draft="draft" :schema="schema" />
         <BuilderDimensions v-else-if="section === 'dimensions'" :draft="draft" :schema="schema" @remove="remove" />
         <BuilderVocabularies v-else-if="section === 'vocabularies'" :catalog-id="catalogId" :draft="draft" :schema="schema" @remove="remove" />
         <BuilderFamilies v-else-if="section === 'families'" :draft="draft" :schema="schema" @remove="remove" />
         <BuilderChannels :catalog-id="catalogId" v-else-if="section === 'channels'" :draft="draft" :schema="schema" @remove="remove" />
-        <BuilderPlugins v-else-if="section === 'plugins'" :draft="draft" :schema="schema" :options="options" :plugin-configs="pluginConfigs" @configure="configure" @remove="remove" />
-        <BuilderPolicy :catalog-id="catalogId" v-else-if="section === 'policy'" :draft="draft" />
-        <BuilderDeclaration v-else-if="section === 'declaration'" :draft="draft" @replace="draft = $event" @validity="valid = $event; plan = null" />
+        <BuilderPlugins v-else-if="section === 'plugins'" :draft="draft" :schema="schema" :options="options" :plugin-configs="pluginConfigs" :stale="stale" @configure="configure" @remove="remove" />
+        <BuilderPolicy :catalog-id="catalogId" v-else-if="section === 'policy'" :draft="draft" :disabled="!editable" />
+        <BuilderDeclaration v-else-if="section === 'declaration'" :draft="draft" :readonly="!editable" @replace="draft = $event" @validity="valid = $event; plan = null" />
       </fieldset>
       <div v-if="plan" class="pim-table pim-plan">
         <div class="pim-group-head"><Icon icon="tabler:checklist" /><h3>Review</h3><Tag class="kx-tag-sm" :severity="plan.class === 'refused' ? 'danger' : plan.class === 'semantic' ? 'warn' : 'info'">{{ plan.class }}</Tag></div>

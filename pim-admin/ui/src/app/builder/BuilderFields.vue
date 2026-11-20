@@ -28,6 +28,7 @@ const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string] }>()
 const WIDTHS = FIELD_WIDTHS.map(width => width.value)
 const CARDINALITIES = [{ value: 'one', label: 'Single value' }, { value: 'list', label: 'Ordered list' }, { value: 'set', label: 'Unique set' }]
 
+const canEdit = computed(() => props.schema.access.admin)
 const aspects = computed(() => props.draft.aspects ?? [])
 const dimensions = computed(() => (props.draft.dimensions ?? []).map((d) => ({ value: d.name, label: humanize(d.name) })))
 const vocabularies = computed(() => (props.draft.vocabularies ?? []).map((v) => v.code))
@@ -109,8 +110,16 @@ function addContext(attr: AttributeDecl) {
 }
 
 const dragging = ref<{ namespace: string; index: number } | null>(null)
+function moveByKey(event: KeyboardEvent, aspect: AspectDecl, index: number) {
+  if (!canEdit.value || !event.altKey) return
+  const direction = { ArrowUp: -1, ArrowDown: 1 }[event.key]
+  if (direction === undefined) return
+  event.preventDefault()
+  move(aspect.attributes ?? [], index, index + direction)
+}
+
 function drop(a: AspectDecl, index: number) {
-  if (dragging.value?.namespace === a.namespace) move(a.attributes ?? [], dragging.value.index, index)
+  if (canEdit.value && dragging.value?.namespace === a.namespace) move(a.attributes ?? [], dragging.value.index, index)
   dragging.value = null
 }
 const newAspect = ref('')
@@ -154,83 +163,83 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
           <h3>{{ humanize(a.namespace) }}<span v-if="humanize(a.namespace).toLocaleLowerCase() !== a.namespace.toLocaleLowerCase()" class="mono muted small"> {{ a.namespace }}</span></h3>
           <div class="pim-source-permissions">
             <label :for="'writers-' + a.namespace">Sources allowed to write</label>
-            <MultiSelect :input-id="'writers-' + a.namespace" aria-label="Sources allowed to write" :model-value="a.write?.sources ?? []" :options="sources" option-label="label" option-value="value" placeholder="Any source" appendTo="self" @update:model-value="a.write = { sources: $event }" />
-            <span class="small muted">Leave empty to allow any source to write this field group.</span>
+            <MultiSelect :disabled="!canEdit" :input-id="'writers-' + a.namespace" aria-label="Sources allowed to write" :model-value="a.write?.sources ?? []" :options="sources" option-label="label" option-value="value" placeholder="Any source" appendTo="self" @update:model-value="a.write = { sources: $event }" />
+            <span v-if="canEdit" class="small muted">Leave empty to allow any source to write this field group.</span>
           </div>
         </div>
-        <Button type="button" @click="removeAspect(a)" text severity="secondary" size="small"><Icon icon="tabler:trash" /> Remove field group</Button>
+        <Button v-if="canEdit" type="button" @click="removeAspect(a)" text severity="secondary" size="small"><Icon icon="tabler:trash" /> Remove field group</Button>
       </header>
       </template>
       <DefinitionRow v-for="(attr, i) in a.attributes ?? []" :key="key(a.namespace, attr)"
         v-model:open="open[key(a.namespace, attr)]" :title="humanize(attr.code)" :code="a.namespace + '.' + attr.code"
         :kind="typeOf(attr) ? typeTitle(typeOf(attr)!) : 'Unknown type'" :usage="usage(a.namespace)"
         class="pim-attr" head-class="pim-attr-row" toggle-class="field-toggle"
-        @head-dragover.prevent @head-drop.prevent="drop(a, i)" @head-keydown.alt.up.prevent="move(a.attributes ?? [], i, i - 1)" @head-keydown.alt.down.prevent="move(a.attributes ?? [], i, i + 1)">
-        <template #handle><span class="pim-grip" draggable="true" aria-hidden="true" @click.stop @dragstart.stop="dragging = { namespace: a.namespace, index: i }" @dragend="dragging = null"><Icon icon="tabler:grip-vertical" /></span></template>
+        @head-dragover.prevent @head-drop.prevent="drop(a, i)" @head-keydown="moveByKey($event, a, i)">
+        <template #handle><span v-if="canEdit" class="pim-grip" draggable="true" aria-hidden="true" @click.stop @dragstart.stop="dragging = { namespace: a.namespace, index: i }" @dragend="dragging = null"><Icon icon="tabler:grip-vertical" /></span></template>
         <template #details>
           <Tag v-if="attr.cardinality && attr.cardinality !== 'one'" class="kx-tag-sm" severity="secondary">{{ CARDINALITIES.find(c => c.value === attr.cardinality)?.label }}</Tag>
           <Tag v-if="attr.scope?.length" class="kx-tag-sm" severity="secondary">per {{ attr.scope.join(', ') }}</Tag>
           <Tag v-if="attr.index && attr.index !== 'none'" class="kx-tag-sm" severity="secondary">{{ attr.index }} index</Tag>
           <Tag v-if="attr.unique" class="kx-tag-sm" severity="secondary">unique</Tag>
         </template>
-        <template #actions>
+        <template v-if="canEdit" #actions>
           <Button type="button" :disabled="i === 0" :aria-label="'Move ' + attr.code + ' earlier'" @click="move(a.attributes!, i, i - 1)" text severity="secondary" size="small"><Icon icon="tabler:arrow-up" /></Button>
           <Button type="button" :disabled="i === (a.attributes?.length ?? 0) - 1" :aria-label="'Move ' + attr.code + ' later'" @click="move(a.attributes!, i, i + 1)" text severity="secondary" size="small"><Icon icon="tabler:arrow-down" /></Button>
         </template>
           <div class="pim-fields">
-            <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Code</label><span v-if="declared(a.namespace, attr)" class="pim-f-note">renames keep values</span></div><InputText type="text" :value="attr.code" @input="attr.code = ($event.target as HTMLInputElement).value" class="mono" /></div>
+            <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Code</label><span v-if="canEdit && declared(a.namespace, attr)" class="pim-f-note">renames keep values</span></div><InputText :disabled="!canEdit" type="text" :value="attr.code" @input="attr.code = ($event.target as HTMLInputElement).value" class="mono" /></div>
             <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Type</label></div>
-              <Select
+              <Select :disabled="!canEdit"
                 :model-value="attr.type"
                 :options="typeOptions" option-label="label" option-value="value" appendTo="self"
                 @update:model-value="setType(attr, $event)"
               /></div>
             <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Values</label></div>
-              <Select
+              <Select :disabled="!canEdit"
                 :model-value="attr.cardinality ?? 'one'"
                 :options="CARDINALITIES" option-label="label" option-value="value" appendTo="self"
                 @update:model-value="setOptional(attr, 'cardinality', $event === 'one' ? undefined : $event)"
               /></div>
             <div v-if="isTerm(attr)" class="pim-f pim-w-third"><div class="pim-f-label"><label>Vocabulary</label></div>
-              <Select :model-value="attr.vocabulary ?? ''" @update:model-value="setOptional(attr, 'vocabulary', $event)" :options="[{ value: '', label: 'Choose…' }, ...(vocabularies).map((v) => ({ value: v, label: String(v) }))]" option-label="label" option-value="value" appendTo="self" /></div>
+              <Select :disabled="!canEdit" :model-value="attr.vocabulary ?? ''" @update:model-value="setOptional(attr, 'vocabulary', $event)" :options="[{ value: '', label: 'Choose…' }, ...(vocabularies).map((v) => ({ value: v, label: String(v) }))]" option-label="label" option-value="value" appendTo="self" /></div>
             <div v-if="isLink(attr)" class="pim-f pim-w-third"><div class="pim-f-label"><label>Link kind</label><span class="pim-f-note">owned by a plugin</span></div>
-              <Select :model-value="(attr.config?.target as string) ?? ''" @update:model-value="setTarget(attr, $event)" :options="[{ value: '', label: 'Choose…' }, ...(options.link_kinds).map((k) => ({ value: k.kind, label: humanLabel(k.title, 'Link kind') }))]" option-label="label" option-value="value" appendTo="self" /></div>
+              <Select :disabled="!canEdit" :model-value="(attr.config?.target as string) ?? ''" @update:model-value="setTarget(attr, $event)" :options="[{ value: '', label: 'Choose…' }, ...(options.link_kinds).map((k) => ({ value: k.kind, label: humanLabel(k.title, 'Link kind') }))]" option-label="label" option-value="value" appendTo="self" /></div>
             <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Index</label><span class="pim-f-note">for filters and keys</span></div>
-              <Select
+              <Select :disabled="!canEdit"
                 :model-value="attr.index ?? 'none'" :options="typeOf(attr)?.indexes ?? ['none']" appendTo="self"
                 @update:model-value="setOptional(attr, 'index', $event === 'none' ? undefined : $event)"
               /></div>
             <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Width</label><span class="pim-f-note">of a form row</span></div>
-              <SelectButton :model-value="fieldWidth(schema, a.namespace, attr)" :options="WIDTHS" :allow-empty="false" @update:model-value="attr.width = $event" /></div>
+              <SelectButton :disabled="!canEdit" :model-value="fieldWidth(schema, a.namespace, attr)" :options="WIDTHS" :allow-empty="false" @update:model-value="attr.width = $event" /></div>
             <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Varies per</label><span class="pim-f-note">dimensions the value depends on</span></div>
-              <ChipPicker :model-value="attr.scope ?? []" :options="dimensions" @update:model-value="setScope(attr, $event)" /></div>
+              <ChipPicker :disabled="!canEdit" :model-value="attr.scope ?? []" :options="dimensions" @update:model-value="setScope(attr, $event)" /></div>
             <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Unique</label><span class="pim-f-note">one holder per value, catalog wide</span></div>
-              <label class="row"><ToggleSwitch :aria-label="'Unique ' + attr.code" :model-value="attr.unique === true" :disabled="!!attr.scope?.length || (attr.cardinality ?? 'one') !== 'one'" @update:model-value="setOptional(attr, 'unique', $event)" /><span>{{ attr.unique ? 'Yes' : 'No' }}</span></label></div>
+              <label class="row"><ToggleSwitch :aria-label="'Unique ' + attr.code" :model-value="attr.unique === true" :disabled="!canEdit || !!attr.scope?.length || (attr.cardinality ?? 'one') !== 'one'" @update:model-value="setOptional(attr, 'unique', $event)" /><span>{{ attr.unique ? 'Yes' : 'No' }}</span></label></div>
             <div v-if="(attr.scope?.length ?? 0) > 0 && attr.index && attr.index !== 'none'" class="pim-f pim-w-full"><div class="pim-f-label"><label>Indexed contexts</label><span class="pim-f-note">which combinations get an index</span></div>
               <div class="pim-contexts">
                 <div v-for="(tuple, ti) in contexts(attr)" :key="ti" class="pim-context-row">
                   <label v-for="d in attr.scope" :key="d" class="pim-context-field"><span class="small muted">{{ humanize(d) }}</span>
-                    <Select
+                    <Select :disabled="!canEdit"
                       :model-value="tuple[d] ?? ''" :options="membersOf(d)" class="narrow" appendTo="self"
                       @update:model-value="tuple[d] = $event"
                     /></label>
-                  <Button type="button" aria-label="Remove context" @click="contexts(attr).splice(ti, 1)" text severity="secondary" size="small"><Icon icon="tabler:x" /></Button>
+                  <Button v-if="canEdit" type="button" aria-label="Remove context" @click="contexts(attr).splice(ti, 1)" text severity="secondary" size="small"><Icon icon="tabler:x" /></Button>
                 </div>
-                <Button type="button" @click="addContext(attr)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add context</Button>
+                <Button v-if="canEdit" type="button" @click="addContext(attr)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add context</Button>
               </div></div>
             <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Default</label><span class="pim-f-note">when no value is set</span></div>
-              <DefaultValue :attribute="attr" :type="typeOf(attr)" @change="setOptional(attr, 'default', $event)" /></div>
+              <DefaultValue :disabled="!canEdit" :attribute="attr" :type="typeOf(attr)" @change="setOptional(attr, 'default', $event)" /></div>
             <div v-if="typeOf(attr)?.config_schema" class="pim-f pim-w-full"><div class="pim-f-label"><label>Type configuration</label></div>
-              <ConfigForm :schema="typeOf(attr)!.config_schema!" :model-value="attr.config ?? {}" @update:model-value="setConfig(attr, $event)" /></div>
+              <ConfigForm :disabled="!canEdit" :schema="typeOf(attr)!.config_schema!" :model-value="attr.config ?? {}" @update:model-value="setConfig(attr, $event)" /></div>
           </div>
-          <div class="row end"><Button type="button" @click="removeAttribute(a, attr)" text severity="secondary" size="small"><Icon icon="tabler:trash" /> Remove field</Button></div>
+          <div v-if="canEdit" class="row end"><Button type="button" @click="removeAttribute(a, attr)" text severity="secondary" size="small"><Icon icon="tabler:trash" /> Remove field</Button></div>
       </DefinitionRow>
-      <template #add><div class="row pim-add-row">
+      <template v-if="canEdit" #add><div class="row pim-add-row">
           <InputText v-model="newCode[a.namespace]" type="text" placeholder="new_field" @keydown.enter.prevent="addAttribute(a)" class="mono" />
           <Button type="button" :disabled="!CODE.test(newCode[a.namespace] ?? '')" @click="addAttribute(a)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add field</Button>
       </div></template>
     </DefinitionList>
-    <section class="form">
+    <section v-if="canEdit" class="form">
       <div class="pim-aspect row pim-add-row">
         <InputText v-model="newAspect" type="text" placeholder="new_field_group" @keydown.enter.prevent="addAspect" class="mono" />
         <Button type="button" :disabled="!CODE.test(newAspect)" @click="addAspect" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add field group</Button>

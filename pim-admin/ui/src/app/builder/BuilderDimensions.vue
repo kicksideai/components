@@ -15,6 +15,7 @@ import ChipPicker from './ChipPicker.vue'
 
 const props = defineProps<{ draft: Declaration; schema: SchemaView }>()
 const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string] }>()
+const canEdit = computed(() => props.schema.access.admin)
 const dims = computed(() => props.draft.dimensions ?? [])
 const newName = ref('')
 function add() {
@@ -56,20 +57,20 @@ function setFallback(d: DimensionDecl, m: string, list: string[]) {
   <DefinitionList :count="dims.length" :columns="['code', 'details', 'usage']">
     <DefinitionRow :title="humanize(d.name)" :code="d.name" v-for="d in dims" :key="d.name" :usage="usedBy(d).length + (usedBy(d).length === 1 ? ' dependency' : ' dependencies')">
       <template #details><span class="muted small">{{ d.members.length }} {{ d.members.length === 1 ? 'member' : 'members' }}</span></template>
-      <template #actions>
+      <template v-if="canEdit" #actions>
 
         <Button type="button" :disabled="usedBy(d).length > 0" :aria-label="'Remove ' + humanize(d.name)" :title="usedBy(d).length ? 'Take the dimension off these first' : ''" @click="remove(d)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
       <div class="pim-aspect">
         <p v-if="usedBy(d).length" class="small muted">Used by {{ usedBy(d).join(', ') }}</p>
         <div class="pim-fields">
           <div class="pim-f pim-w-full"><div class="pim-f-label"><label>Members</label><span class="pim-f-note">the values this dimension takes</span></div>
-            <ChipPicker :model-value="d.members" free placeholder="add member" @update:model-value="setMembers(d, $event)" /></div>
+            <ChipPicker :disabled="!canEdit" :model-value="d.members" free placeholder="add member" @update:model-value="setMembers(d, $event)" /></div>
           <div v-for="m in d.members" :key="m" class="pim-f pim-w-half"><div class="pim-f-label"><label>{{ m }} falls back to</label><span class="pim-f-note">in order, when it has no value</span></div>
-            <ChipPicker :model-value="fallbackOf(d, m)" :options="d.members.filter((x) => x !== m).map((x) => ({ value: x }))" @update:model-value="setFallback(d, m, $event)" /></div>
+            <ChipPicker :disabled="!canEdit" :model-value="fallbackOf(d, m)" :options="d.members.filter((x) => x !== m).map((x) => ({ value: x }))" @update:model-value="setFallback(d, m, $event)" /></div>
         </div>
       </div>
     </DefinitionRow>
-    <template #add>
+    <template v-if="canEdit" #add>
     <div class="row pim-add-row">
       <InputText v-model="newName" type="text" placeholder="new_dimension" @keydown.enter.prevent="add" class="mono" />
       <Button type="button" :disabled="!CODE.test(newName)" @click="add" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add dimension</Button>

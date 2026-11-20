@@ -2,8 +2,9 @@
 # Catalog administration
 
 The System surface lists only catalogs whose backend response grants ADMIN.
-Pagination and search operate within that list; catalog creation selects the new
-catalog in the schema editor. Creation without a declaration supplies an empty
+Pagination and search operate within that list. A failed list request exposes
+Retry for the same page. The catalog selection prompt follows a successful read.
+Catalog creation selects the new catalog in the schema editor. Creation without a declaration supplies an empty
 generation 1; the editor displays “Define its schema” and lets the administrator
 review and apply the first definitions against that generation. The standalone settings component accepts `catalog-id` and `embedded`.
 Each component instance owns its draft and requests; it does not share routing
@@ -14,8 +15,11 @@ and policy are edited as one schema draft. Reading a section must not create
 absent fields in the draft. A review snapshots the declaration, removals, initial
 plugin configuration and schema generation. Editing any reviewed input invalidates
 the review. Apply sends that snapshot with its expected generation; backend
-validation and ACL failures remain visible. Refresh does not overwrite a dirty
-draft, and replies for an old catalog cannot replace the current catalog's draft.
+validation and access errors remain visible with their typed codes when supplied.
+A schema generation conflict invalidates review and Apply. Reload settings asks
+for confirmation before replacing a dirty draft. Cancel or a failed reload keeps
+the draft available. Automatic refresh preserves dirty drafts, and replies for
+an old catalog cannot replace the current catalog's draft.
 
 Declared fields remain editable in type, cardinality and scope; declaration
 presence does not establish authored values. The existing review/apply boundary
@@ -25,8 +29,8 @@ same default editor remains available for scoped fields.
 Term codes follow the backend grammar: 1–128 ASCII characters, beginning with
 an alphanumeric character, then alphanumeric characters, underscores, dots or
 hyphens. Declaration codes retain their separate grammar. Adding, retiring and
-restoring terms require catalog WRITE independently of ADMIN; term reads and
-schema editing remain available to an administrator without WRITE.
+restoring terms in this administration UI require catalog ADMIN and WRITE.
+Term reads and schema editing remain available to an administrator without WRITE.
 Term writes use PIM's apply endpoint and only term-shaped requests. Active plugin
 configuration saves separately and must preserve unrelated schema drafts and
 other unsaved plugin configuration. Deployment policy defaults are read through
@@ -64,7 +68,8 @@ It owns principal selection, grant validation and last-owner protection.
 
 Term panels state that term changes save immediately. Retirement asks for host
 confirmation before writing; restoration remains immediate. Term reads clear
-previous errors at the start and expose Retry while keeping failed reads visible.
+previous errors at the start and announce “Loading terms…” as a status. A failed
+read exposes Retry for that page. The empty message follows a successful empty read.
 On narrow settings panes, definition rows stack their metadata below the title
 and keep their actions in view. Vocabulary terms show the label first, followed
 by the code and any parent, with the same retire or restore action.
@@ -81,11 +86,16 @@ phone screens, leaving the full width for settings and their actions. Review cha
 and Apply layout use the builder's shared review snapshot, removals, plugin configuration and expected generation. Discard
 resets the whole shared draft. Layout does not own a second loader or write path.
 
+Standalone settings let readers and editors expand definitions, browse terms,
+view layout and policy, and read the catalog declaration. Schema and term
+mutation controls stay unavailable. Catalog administrators can view deployment
+defaults and resolve source account names through the admin endpoints.
+
 History reads the existing PIM catalog history endpoint, newest first, in pages of
-50 using its opaque `next` cursor as `before`. People resolve with the existing
-catalog-scoped helper; unresolved people and references keep readable labels.
-Wide panes show a table. Narrow panes stack each entry with the change first,
-followed by the person, time and product or other subject. The caption and
+50 using its opaque `next` cursor as `before`. Administrators see actor names from
+the catalog-scoped helper. For readers and editors, History shows the time,
+subject, change and any source, and skips the actor resolver. Wide panes show a
+table. Narrow panes stack each entry with the change first. The caption and
 paging footer fit the pane in either layout.
 Loading, empty, failure and Retry states remain visible. Notifications and host
 visibility refresh restart the first page, stale replies are ignored, and unmount
