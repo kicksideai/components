@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import type { BoardAccess, Holder, Declaration, Field, Schema } from '../../types'
 import { effectiveMigration } from './process'
-import { ApiError } from '../../transport'
+import { ApiError, formatApiError } from '../../transport'
 export interface SchemaChange { code: string; class: string; what: string; detail?: string; to?: string; count?: number }
 export interface SchemaPlan { generation: number; class: string; changes: SchemaChange[]; refused: SchemaChange[]; migration?: string }
 export type PluginConfigs = Record<string, Record<string, unknown>>
@@ -149,7 +149,7 @@ export function validationIssues(error: unknown, declaration: Declaration): Sche
     if (process) code = `process ${process.id}`
     else if (typeof details.item_type === 'string') code = `item_type ${details.item_type}`
   }
-  return code ? [{ code, class: 'refused', what: 'invalid', detail: error.message }] : []
+  return code ? [{ code, class: 'refused', what: 'invalid', detail: formatApiError(error, 'The definition is invalid.') }] : []
 }
 export const classDescription: Record<string, string> = {
   unchanged: 'Nothing changes.', cosmetic: 'Presentation or policy changes. Stored item values keep their meaning.',

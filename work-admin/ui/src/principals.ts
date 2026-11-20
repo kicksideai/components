@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { onUnmounted, ref, watch, type WatchSource } from 'vue'
-import { post } from './transport'
+import { formatApiError, post } from './transport'
 import { opaque } from './values'
 import type { QueryResult, Schema } from './types'
 type Labels = Map<string, string>
@@ -52,7 +52,7 @@ export function usePrincipalNames(boardId: () => string, source: WatchSource<Pri
     labels.value = new Map(); error.value = ''
     if (!board || !refs.length) return
     try { const resolved = await resolveNames(board, refs); if (current === generation) labels.value = resolved }
-    catch (e) { if (current === generation) error.value = e instanceof Error ? e.message : 'Display names are unavailable.' }
+    catch (e) { if (current === generation) error.value = formatApiError(e, 'Display names are unavailable.') }
   }, { immediate: true, deep: true })
   onUnmounted(() => { generation++; labels.value.clear() })
   return { labels, error, label: (value: unknown) => principalLabel(value, labels.value),
