@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/kicksideai/components/compare/pim-admin-v0.1.4...pim-admin-v0.1.5) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim-admin:** correct schema editing flows ([7ee5372](https://github.com/kicksideai/components/commit/7ee5372e577515bffab534c7d60f5435226f2586))
+
 ## [0.1.4](https://github.com/kicksideai/components/compare/pim-admin-v0.1.3...pim-admin-v0.1.4) (2026-11-20)
 
 
