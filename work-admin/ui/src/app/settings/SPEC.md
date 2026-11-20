@@ -98,6 +98,13 @@ measures elapsed time in that state. Self-approval prevention excludes the perso
 who entered the current gate visit.
 
 Option IDs are nonempty, distinct strings without the field-identifier pattern. Their validity uses the editor instance identity so field removal or reordering cannot strand an invalid key.
+Kind lists built-in and installed plugin field types together. Selecting a plugin
+type updates the value form, clears incompatible search support and shows its
+schema-defined configuration beside the field properties. Required configuration
+blocks review, and the form reports validity only when it changes.
+At narrow widths, the selected board uses the full width and Back to boards uses
+the same draft confirmation as board selection. The Fields list keeps each row
+and the Add field action within the available width.
 Visibility supports eligible single text fields and option fields, explicit level
 IDs, shared holder selection, and the complete JSON declaration path. The backend
 validates limits and creates the required exact index.

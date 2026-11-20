@@ -60,6 +60,7 @@ h3, h4 { font-size: 14px; font-weight: 600; }
 .work-rail .work-rail-active { background: color-mix(in srgb, var(--p-primary-color) 14%, transparent); color: var(--p-primary-color); }
 .work-admin-main { min-width: 0; min-height: 0; overflow: hidden; }
 .work-admin-main > .kx-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+.work-mobile-board-back { display: none; }
 .work-settings-shell { min-width: 0; height: 100%; display: flex; flex-direction: column; container-type: inline-size; }
 .work-settings-shell > .kx-head, .work-detail-head { flex: none; }
 .work-detail-head { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 18px var(--kickside-system-surface-gutter, 24px) 14px; }
@@ -281,7 +282,26 @@ dd { margin: 0; overflow-wrap: anywhere; }
 @container (max-width: 700px) { .work-process-builder.work-process-inspecting { grid-template-columns: minmax(0, 1fr); } .work-process-sideform { border-left: 0; border-top: 1px solid var(--p-content-border-color); } }
 .work-node-connector:focus-visible, summary:focus-visible { outline: var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color); outline-offset: var(--p-focus-ring-offset); box-shadow: none; }
 @container (max-width: 1000px) { .work-option-row { grid-template-columns: 28px repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 720px) { .work-admin-shell { grid-template-columns: 190px minmax(0, 1fr); } .work-settings-grid { grid-template-columns: 1fr; } .work-identity-edit { grid-template-columns: 1fr; } }
+@media (max-width: 720px) {
+  .work-admin-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .work-admin-shell.work-board-selected { grid-template-rows: auto minmax(0, 1fr); }
+  .work-rail { border-right: 0; }
+  .work-admin-shell:not(.work-board-selected) .work-admin-main, .work-board-selected .work-rail { display: none; }
+  .work-board-selected .work-mobile-board-back { display: block; padding: 8px var(--kickside-system-surface-gutter, 24px) 0; }
+  .work-settings-grid, .work-identity-edit { grid-template-columns: minmax(0, 1fr); }
+}
+@container (max-width: 620px) {
+  .work-definitions-fields { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+  .work-definitions-fields .work-definition-columns { display: none; }
+  .work-definitions-fields .work-definition-head { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; padding: 10px 12px; }
+  .work-definitions-fields .work-definition-toggle { grid-column: 1; }
+  .work-definitions-fields .work-definition-actions { grid-column: 2; grid-row: 1; }
+  .work-definitions-fields .work-definition-kind { justify-self: end; }
+  .work-definitions-fields .work-definition-usage { text-align: left; }
+  .work-definitions-fields .work-definition-flags:empty, .work-definitions-fields .work-definition-usage:empty { display: none; }
+  .work-definitions-fields .work-add-definition > label { flex: 1 1 160px; min-width: 0; }
+  .work-definitions-fields .work-definition-body { width: 100%; padding: 12px; }
+}
 
 /* Compact limits and structured settings. */
 .work-wip-container { overflow-x: auto; }

@@ -31,7 +31,7 @@ onMounted(loadSettings)
 async function created(id: string) { await load(); await select(id) }
 </script>
 <template>
-  <main class="work-admin-shell">
+  <main class="work-admin-shell" :class="{ 'work-board-selected': selected }">
     <nav class="work-rail" aria-label="Board settings navigation">
       <header class="work-railhead"><h2>Boards <span class="work-count work-mono" :aria-label="boards.length + (boards.length === 1 ? ' board' : ' boards')">{{ boards.length }}</span></h2><Button aria-label="Create board" title="Create board" severity="secondary" text size="small" @click="creating = true"><Icon icon="tabler:plus" /></Button></header>
       <InputText v-model="search" type="search" aria-label="Search boards" placeholder="Search boards…" />
@@ -45,6 +45,7 @@ async function created(id: string) { await load(); await select(id) }
       </ContentAction>
       <p v-if="!loading && !visibleBoards.length" class="work-muted work-small">{{ boards.length ? 'No boards match this search.' : 'No readable boards.' }}</p>
     </nav>
+    <div v-if="selected" class="work-mobile-board-back"><Button label="Back to boards" severity="secondary" text size="small" @click="select('')"><template #icon><Icon icon="tabler:arrow-left" aria-hidden="true" /></template></Button></div>
     <section class="work-admin-main" aria-label="Board settings detail">
       <kickside-work-board-settings v-if="selected && ready" :key="selected" :board-id="selected" embedded="true" @dirty-change="dirty = $event.detail.dirty" />
       <p v-else-if="selected && widgetLoading" class="kx-loading" role="status">Loading board settings…</p>

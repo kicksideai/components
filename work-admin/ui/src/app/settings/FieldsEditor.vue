@@ -34,19 +34,19 @@ const forms = Object.entries({ text: 'Text', int: 'Whole number', dec: 'Decimal 
 const indexes = [{ label: 'None', value: 'none' }, { label: 'Exact matches', value: 'key' }, { label: 'Numeric ranges', value: 'number' }]
 const numericForms = ['int', 'dec', 'quantity']
 const descriptors = computed(() => new Map(props.installedTypes?.map(type => [type.id, type])))
+const kindOptions = computed(() => [...forms, ...(props.installedTypes ?? []).map(type => ({ value: type.id, label: type.title }))])
+const emptyConfig: Record<string, unknown> = {}
 function kind(field: Field) { return field.type && field.type !== 'value' ? field.type : field.form }
 function customType(field: Field) { return field.type ? descriptors.value.get(field.type) : undefined }
-function kindOptions(field: Field) {
-  const custom = customType(field)
-  return custom ? [...forms, { value: custom.id, label: custom.title }] : forms
-}
 function indexOptions(field: Field) {
   const custom = customType(field)
-  if (!custom) return indexes
   return indexes.filter(({ value }) => value === 'none' || (
-    (!custom.indexes || custom.indexes.includes(value)) && custom.form !== 'record' &&
-    (value !== 'number' || numericForms.includes(custom.form))
+    (!custom?.indexes || custom.indexes.includes(value)) && field.form !== 'record' &&
+    (value !== 'number' || numericForms.includes(field.form) || field.type === 'option')
   ))
+}
+function clearInvalidIndex(field: Field) {
+  if (field.index && !indexOptions(field).some(option => option.value === field.index)) delete field.index
 }
 function setKind(field: Field, value: string) {
   const custom = descriptors.value.get(value)
@@ -56,7 +56,7 @@ function setKind(field: Field, value: string) {
     field.form = custom.form
     delete field.options
     delete field.config
-    if (field.index && !indexOptions(field).some(option => option.value === field.index)) delete field.index
+    clearInvalidIndex(field)
     return
   }
   if (customType(field)) delete field.config
@@ -66,6 +66,11 @@ function setKind(field: Field, value: string) {
   if (value !== 'option') delete field.options
   else field.options ??= []
   if (value === 'rich_text') field.config = { format: 'json' }
+  clearInvalidIndex(field)
+}
+function setResultForm(field: Field, form: Field['form']) {
+  field.form = form
+  clearInvalidIndex(field)
 }
 function reorder(index: number, delta: number) {
   move(fields.value, index, delta)
@@ -92,19 +97,19 @@ function add() { if (!/^[a-z][a-z0-9_]*$/.test(code.value) || fields.value.some(
         <label class="work-stack work-tight">Title<InputText v-model="field.title" aria-label="Field title" maxlength="255" :placeholder="fieldTitle(field)" /></label>
         <label class="work-stack work-tight">Field identifier<InputText :value="field.code" aria-label="Field code" required pattern="[a-z][a-z0-9_]*" @input="rename(field, $event.target as HTMLInputElement)" />
         </label>
-        <label class="work-stack work-tight">Kind<Select :model-value="kind(field)" @update:model-value="setKind(field, $event)" appendTo="self" :options="kindOptions(field)" optionLabel="label" optionValue="value" /></label>
-        <label class="work-stack work-tight">Values allowed<Select :model-value="field.cardinality ?? 'one'" @update:model-value="field.cardinality = $event" appendTo="self" :options="[{ label: 'One value', value: 'one' }, { label: 'Multiple unique values', value: 'set' }, { label: 'Ordered values', value: 'list' }]" optionLabel="label" optionValue="value" /></label>
-        <label class="work-stack work-tight">Search support<Select :model-value="field.index ?? 'none'" @update:model-value="field.index = $event" appendTo="self" :options="indexOptions(field)" optionLabel="label" optionValue="value" /></label>
+        <label class="work-stack work-tight">Kind<Select aria-label="Kind" :model-value="kind(field)" @update:model-value="setKind(field, $event)" appendTo="self" :options="kindOptions" optionLabel="label" optionValue="value" /></label>
+        <label class="work-stack work-tight">Values allowed<Select aria-label="Values allowed" :model-value="field.cardinality ?? 'one'" @update:model-value="field.cardinality = $event" appendTo="self" :options="[{ label: 'One value', value: 'one' }, { label: 'Multiple unique values', value: 'set' }, { label: 'Ordered values', value: 'list' }]" optionLabel="label" optionValue="value" /></label>
+        <label class="work-stack work-tight">Search support<Select aria-label="Search support" :model-value="field.index ?? 'none'" @update:model-value="field.index = $event" appendTo="self" :options="indexOptions(field)" optionLabel="label" optionValue="value" /></label>
 
       </div>
+      <ConfigForm v-if="customType(field)?.config_schema" :key="field.type" :schema="customType(field)!.config_schema!" :model-value="field.config ?? emptyConfig" @update:model-value="field.config = $event" @validity="emit('validity', 'config-' + index, $event)" />
       <section class="work-stack work-tight work-field-history"><h4 class="work-group-title">History</h4><div class="work-settings-list"><div class="work-settings-row"><div class="work-row-main"><strong>Track changes</strong><p class="work-muted work-small">Record each value change in the item history.</p></div><ToggleSwitch v-model="field.track" aria-label="Track changes" /></div><div class="work-settings-row"><div class="work-row-main"><strong>Track intervals</strong><p class="work-muted work-small">Measure how long each value stays in effect.</p></div><ToggleSwitch v-model="field.intervals" aria-label="Track intervals" /></div></div></section>
       <OptionsEditor v-if="field.type === 'option'" :field="field" @validity="(valid, key) => emit('validity', key, valid)" />
-      <label v-if="field.type === 'formula' || field.type === 'rollup'" class="work-stack work-tight">Result type<Select v-model="field.form" aria-label="Result type" :options="forms.slice(0, 8)" optionLabel="label" optionValue="value" appendTo="self" /></label>
+      <label v-if="field.type === 'formula' || field.type === 'rollup'" class="work-stack work-tight">Result type<Select :model-value="field.form" @update:model-value="setResultForm(field, $event)" aria-label="Result type" :options="forms.slice(0, 8)" optionLabel="label" optionValue="value" appendTo="self" /></label>
       <label v-if="field.type === 'formula'" class="work-stack work-tight">Expression<InputText v-model="field.expression" /></label>
       <template v-if="field.type === 'rollup'"><label class="work-stack work-tight">Of<InputText v-model="field.of" /></label><label class="work-stack work-tight">Function<InputText v-model="field.fn" /></label><label class="work-stack work-tight">Field<InputText v-model="field.field" /></label><label class="work-stack work-tight">Order by<Select :model-value="field.by" aria-label="Rollup order" :options="['rank', 'time']" showClear appendTo="self" @update:model-value="field.by = $event || undefined" /></label><ConditionEditor v-model="field.where" :draft="draft" :board-id="boardId" label="Include related items when" @validity="emit('validity', 'rollup-' + index, $event)" /></template>
-      <ConfigForm v-if="customType(field)?.config_schema" :key="field.type" :schema="customType(field)!.config_schema!" :model-value="field.config ?? {}" @update:model-value="field.config = $event" @validity="emit('validity', 'config-' + index, $event)" />
-      <JsonInput v-else-if="['dec', 'quantity', 'ref', 'time', 'record'].includes(field.form) || field.config" label="Field configuration" :model-value="field.config" shape="object" @update:model-value="field.config = $event as Field['config']" @validity="emit('validity', 'config-' + index, $event)" />
-      <section class="work-stack"><h4 class="work-group-title">Access</h4><label v-if="installedTypes?.length" class="work-stack work-tight">Custom field type<Select :model-value="field.type" :options="installedTypes" optionLabel="title" optionValue="id" appendTo="self" @update:model-value="setKind(field, $event)" /></label><HoldersPicker :board-id="boardId" v-for="mode in (['read', 'write'] as const)" :key="mode" :label="mode === 'read' ? 'Who can read' : 'Who can edit'" :model-value="field.access?.[mode]" @update:model-value="field.access = { ...field.access, [mode]: $event }" @validity="emit('validity', 'access-' + index + mode, $event)" /></section>
+      <JsonInput v-if="!customType(field)?.config_schema && (['dec', 'quantity', 'ref', 'time', 'record'].includes(field.form) || field.config)" label="Field configuration" :model-value="field.config" shape="object" @update:model-value="field.config = $event as Field['config']" @validity="emit('validity', 'config-' + index, $event)" />
+      <section class="work-stack"><h4 class="work-group-title">Access</h4><HoldersPicker :board-id="boardId" v-for="mode in (['read', 'write'] as const)" :key="mode" :label="mode === 'read' ? 'Who can read' : 'Who can edit'" :model-value="field.access?.[mode]" @update:model-value="field.access = { ...field.access, [mode]: $event }" @validity="emit('validity', 'access-' + index + mode, $event)" /></section>
     </DefinitionRow>
     <div class="work-row work-add-definition"><label class="work-stack work-tight">New field identifier<InputText v-model="code" @keydown.enter.prevent="add" /></label><Button label="Add field" severity="secondary" :disabled="!code.trim()" @click="add" outlined><template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template></Button></div>
     </DefinitionList>
