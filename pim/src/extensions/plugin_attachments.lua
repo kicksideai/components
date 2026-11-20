@@ -25,9 +25,7 @@ function M.ensure(catalog_id: string, plugin_id: string, generation: integer, ki
     if rerr then return nil, nil, rerr end
     local row = rows and rows[1]
     local request={plugin=plugin_id,generation=generation,kind=kind}
-    local needs_owner_write = true
     if row then
-        needs_owner_write = (row.meta or {}).owner ~= catalog_id
         local proven,perr=creations.proves(catalog_id,id,request,(row.private_context or {}).pim_creation)
         if perr then return nil,nil,perr end
         if not proven then return nil,nil,errors.new({kind=errors.CONFLICT,retryable=false,message="attachment has no PIM creation provenance",details={code="attachment_mismatch"}}) end
@@ -36,32 +34,21 @@ function M.ensure(catalog_id: string, plugin_id: string, generation: integer, ki
         local service, serr = component.get_service()
         if serr then return nil, nil, serr end
         if not service then return nil, nil, errors.new({ kind = errors.UNAVAILABLE, message = "component service unavailable", details = { code = "contract_unavailable" } }) end
-        local reservation,perr=creations.reserve(catalog_id,id,request)
-        if perr or not reservation then return nil,nil,perr end
-        local creation = { component_id = id, impl_id = kind, private_context = { pim_creation=reservation.token,
-            catalog_id = catalog_id, pim_plugin = plugin_id, generation = generation, config = config },
-            meta = { title = title or "Plugin" } }
-        local registered: component_types.ServiceEnvelope?
-        if reservation.pending then
-            if expected_id ~= id then
-                return nil,nil,errors.new({kind=errors.CONFLICT,retryable=false,message="attachment differs from the activation intent",
-                    details={code="attachment_mismatch"}})
-            end
-            registered = registration.register_root_attachment(creation, catalog_id, plugin_id)
-            needs_owner_write = false
-        else
-            -- A confirmed reservation with a missing component is repair of
-            -- the same activation. Keep its existing registration sequence.
-            local result, err = service:register(creation)
-            if err then return nil, nil, err :: error end
-            registered = result :: component_types.ServiceEnvelope?
+        if expected_id ~= id then
+            return nil,nil,errors.new({kind=errors.CONFLICT,retryable=false,message="attachment differs from the activation intent",
+                details={code="attachment_mismatch"}})
         end
+        local token,perr=creations.prepare(catalog_id,id,request)
+        if perr or not token then return nil,nil,perr end
+        local registered = registration.register_root_attachment({component_id=id,impl_id=kind,
+            private_context={pim_creation=token,catalog_id=catalog_id,pim_plugin=plugin_id,generation=generation,config=config},
+            meta={title=title or "Plugin"}},catalog_id,plugin_id)
         local eerr = envelope.error_of(registered :: component_types.ServiceEnvelope?, "register")
         if eerr then return nil, nil, eerr end
     end
     local confirmed=creations.confirm(id)
     if confirmed then return nil,nil,confirmed end
-    if needs_owner_write then
+    if row and (row.meta or {}).owner~=catalog_id then
         local _,merr=component.set_meta(id,{owner=catalog_id})
         if merr then return nil,nil,merr end
     end

@@ -435,6 +435,26 @@ local function define()
             test.is_true(assert(attachment(h)).component_id ~= attached.component_id)
         end)
 
+        test.it("recreates a missing attachment under the confirmed activation", function()
+            local h = fixture.catalog()
+            activate(h, true)
+            wait_for(h, false)
+            local before = assert(attachment(h))
+            rows(h) -- initialize the plugin's fold table used by its deletion hook
+            local deleted = assert((h.executor :: funcs.Executor):call("app:pim_call", {
+                op="delete_component",catalog_id=before.component_id,request={}
+            }))
+            test.is_true(deleted.success)
+            wait_removed(h)
+            assert(h.call("plugin_sync", {}))
+            wait_for(h, false)
+            local after = assert(attachment(h))
+            test.eq(after.component_id, before.component_id)
+            test.eq((after.private_context :: Map).pim_creation, (before.private_context :: Map).pim_creation)
+            test.eq((after.meta :: Map).owner, h.id)
+            test.is_nil(after.parent_id)
+        end)
+
         test.it("removes plugin projections beyond the first discovery page", function()
             local h=fixture.catalog()
             assert(h.call("projection_padding",{}))
