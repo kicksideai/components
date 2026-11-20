@@ -43,6 +43,30 @@ local compatibility = require("event_compatibility")
 
 local function define()
     test.describe("automation ports", function()
+        test.it("records the schema generations that encoded retained product patches", function()
+            local h = fixture.catalog()
+            steps.one(h, { product = { sku = "PATCH-GENERATION" }, create = { family = "footwear" },
+                set = { { attr = "core.name", ctx = { locale = "en" }, value = "Before" } } })
+            local schema = assert(h.call("apply_schema", { declaration = { aspects = {
+                { namespace = "extension", attributes = { { code = "field", type = "kickside.pim.types:text" } } },
+            } } })) :: types.SchemaResult
+            test.eq(schema.generation, 2)
+            steps.one(h, { product = { sku = "PATCH-GENERATION" }, expect_version = "any",
+                set = { { attr = "core.name", ctx = { locale = "en" }, value = "After" } } })
+            local patches: { [string]: types.ProductBody } = {}
+            for _, event in ipairs(fixture.events(h)) do
+                if event.type == "kickside.pim.events:product.created" or event.type == "kickside.pim.events:product.changed" then
+                    patches[event.type] = event.body :: types.ProductBody
+                end
+            end
+            local created = assert(patches["kickside.pim.events:product.created"])
+            local changed = assert(patches["kickside.pim.events:product.changed"])
+            test.eq(assert(created.patch)[1].v, "Before")
+            test.eq(assert(changed.patch)[1].v, "After")
+            test.eq(created.generation, 1)
+            test.eq(changed.generation, 2)
+        end)
+
         test.it("detects nested event schema incompatibilities", function()
             local frozen = baseline.schemas["product.changed"]
             for _, mutation in ipairs({ "type", "required", "removed", "constraint" }) do
