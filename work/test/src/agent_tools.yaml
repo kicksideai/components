@@ -114,5 +114,6 @@ entries:
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
+    operation_steps: app:operation_steps
     authorization_probe: app:authorization_probe
     rows: app:rows
