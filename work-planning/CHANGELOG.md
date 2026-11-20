@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.2](https://github.com/kicksideai/components/compare/work-planning-v0.1.1...work-planning-v0.1.2) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work-planning:** require Work with typed reference upgrades ([133bb5d](https://github.com/kicksideai/components/commit/133bb5da54e87e04964315a606f0cc721226a16c))
+* **work-planning:** require Work with typed reference upgrades ([e78fb7b](https://github.com/kicksideai/components/commit/e78fb7bfa75cf621ae81797ffa0169d6a7667f4d))
+* **work:** validate stored references when adopting target types ([180f13e](https://github.com/kicksideai/components/commit/180f13eabf7897034dd1679794ec87e43327eaa5))
+* **work:** validate stored references when adopting target types ([ce01e5c](https://github.com/kicksideai/components/commit/ce01e5c2bdacb48fa1194d349a7232c8555b58b6))
+
 ## [0.1.1](https://github.com/kicksideai/components/compare/work-planning-v0.1.0...work-planning-v0.1.1) (2026-11-20)
 
 
