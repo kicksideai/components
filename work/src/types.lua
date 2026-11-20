@@ -68,7 +68,9 @@ type IndexRow = { id: string, system: { [string]: ColumnValue }, values: { [stri
 
 -- Queries. A reader is a caller admitted to read one board; allows answers whether it
 -- holds an access level (read, write, admin) there; actor is who it reads as, for $actor operands.
-type Reader = { awaiting: ((string) -> (Condition?, error?))?, scope_fence: ((ScopeProjection) -> error?)?,
+type SearchResults = { [string]: { [string]: { string } } }
+type Reader = { search_model: Compiled?, search_definition: boolean?, search_ids: SearchResults?,
+    awaiting: ((string) -> (Condition?, error?))?, scope_fence: ((ScopeProjection) -> error?)?,
     search: { string }?, board_id: string, actor: string?, plugins: { PluginDecl }?, allows: (string) -> boolean }
 -- Where is a filter tree as requested; kickside.work.domain:filter reads it.
 type Where = { [string]: unknown }
@@ -327,7 +329,7 @@ type DeleteResult = { success: boolean }
 
 
 type BoardClient = { [string]: (BoardClient, Row) -> (unknown, error?) }
-return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, OperationPosition = OperationPosition, OperationalLimits = OperationalLimits, SettingRule = SettingRule, PrincipalSource = PrincipalSource, Memberships = Memberships, Approvals = Approvals, BoardClient = BoardClient, BoardMeta = BoardMeta, BoardAccess = BoardAccess, StateItem = StateItem, AutoBudget = AutoBudget, TimerEffect = TimerEffect, ProcessData = ProcessData, Timer = Timer, Release = Release, Stage = Stage, Region = Region, Wip = Wip, WorkingState = WorkingState, TraceContext = TraceContext,
+return { SearchResults = SearchResults, StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, OperationPosition = OperationPosition, OperationalLimits = OperationalLimits, SettingRule = SettingRule, PrincipalSource = PrincipalSource, Memberships = Memberships, Approvals = Approvals, BoardClient = BoardClient, BoardMeta = BoardMeta, BoardAccess = BoardAccess, StateItem = StateItem, AutoBudget = AutoBudget, TimerEffect = TimerEffect, ProcessData = ProcessData, Timer = Timer, Release = Release, Stage = Stage, Region = Region, Wip = Wip, WorkingState = WorkingState, TraceContext = TraceContext,
     CommandError = CommandError, Deadline = Deadline, ThreadRequest = ThreadRequest, ThreadClient = ThreadClient, CatchUp = CatchUp, ThreadExpect = ThreadExpect,
     Scalar = Scalar, Record = Record, MemberSpec = MemberSpec, ColumnValue = ColumnValue, LayoutColumn = LayoutColumn, SystemColumn = SystemColumn,
     GeneratedNames = GeneratedNames, GeneratedTable = GeneratedTable, IndexRow = IndexRow, Reader = Reader, Where = Where, Sort = Sort, Cursor = Cursor,

@@ -200,6 +200,36 @@ local function define()
             test.eq(err:kind(), errors.PERMISSION_DENIED)
             test.eq(err:details().code, "scope_access_denied")
         end)
+        test.it("admits a resolver reading unindexed public fields", function()
+            local d = declaration()
+            d.fields[1].index = "none"
+            d.scopes = { "app:model_search_field_ids" }
+            local h = fixture.board({ declaration = d })
+            local id = steps.create(h, "task", { title = "Unindexed title" })
+            local call, actor = fixture.user(h, nil, true)
+            assert(h.call("grant", { subject_id = actor, mask = 1 }))
+            local page, err = call("query", { where = { match = id } })
+            assert(page, steps.detail(err))
+            test.eq(#page.items, 1)
+            test.eq(page.items[1].id, id)
+        end)
+        test.it("refuses search scope adoption with restricted or absent inputs", function()
+            local d = declaration()
+            local h = fixture.board({ declaration = d })
+            d.scopes = { "app:model_search_field_ids" }
+            d.fields[1].access = { read = { { user = h.actor:id() } } }
+            local _, err = h.call("plan_schema", { declaration = d })
+            test.not_nil(err)
+            test.eq(err:details().code, "search_field_restricted")
+            d.remove = { fields = { "title" } }
+            table.remove(d.fields :: { { [string]: unknown } }, 1)
+            for _, item_type in ipairs(d.item_types :: { { fields: { string } } }) do
+                table.remove(item_type.fields, 1)
+            end
+            local _, missing = h.call("plan_schema", { declaration = d })
+            test.not_nil(missing)
+            test.eq(missing:details().code, "search_field_unknown")
+        end)
         test.it("resolves search ids as the caller and intersects ordinary predicates", function()
             local d = declaration()
             d.scopes = { "app:model_search_ids" }

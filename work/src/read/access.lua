@@ -65,7 +65,7 @@ end
 
 -- with_snapshot runs fn for an admitted caller inside one read transaction over
 -- the board. Context carries the selection's admission and live caller authority.
-function M.with_snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?, fn: types.Snapshot<T>, context: types.ReadContext?, asked: types.ReadBudget?, where: unknown?, required_access: integer?): (T?, error?)
+function M.with_snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?, fn: types.Snapshot<T>, context: types.ReadContext?, asked: types.ReadBudget?, where: unknown?, required_access: integer?, prepare: types.SnapshotPreparation?): (T?, error?)
     local allowance = context and context.allowance
     if not allowance then
         local started, allowance_err = budget.start(asked)
@@ -103,6 +103,10 @@ function M.with_snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?
         return result, nil
     end
     db:release()
+    if prepare then
+        local err = prepare(admitted)
+        if err then return nil, err end
+    end
     db, err = store.open()
     if not db then return nil, err end
     local tx, berr = db:begin()

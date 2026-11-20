@@ -469,6 +469,7 @@ entries:
     - kickside.work:registry_admin_grant
     - kickside.work:schema_provider
     - kickside.work:search_resolver
+    - kickside.work.security:search_invocation
     - kickside.work:target_db
     - kickside.work:types
     - kickside.work:view

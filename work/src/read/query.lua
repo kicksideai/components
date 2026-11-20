@@ -18,6 +18,7 @@ local item_view = require("item_view")
 local domain = require("domain")
 local types = require("types")
 local predicates = require("predicates")
+local search = require("search")
 local plugins = require("plugins")
 local scopes = require("scopes")
 local component = require("component")
@@ -97,14 +98,61 @@ local function pending(tx: types.Executor, board: domain.Board, request: types.Q
     return job_rows.rebuilding(tx, board, used)
 end
 
+local function search_reader(board: domain.Board, grants: { [string]: boolean }?): domain.Reader
+    local actor = security.actor()
+    return { board_id = board.board_id, actor = actor and actor:id(), search = board.compiled.scopes,
+        search_model = board.compiled, plugins = board.compiled.plugins,
+        allows = function(level: string): boolean return level == "read" or (grants ~= nil and grants[level] == true) end }
+end
+
+local function with_query_snapshot<T: types.ReadStamp>(request: types.QueryRequest, grants: { [string]: boolean },
+    fn: (types.Executor, domain.Board, string, domain.SearchResults?) -> (T?, error?), context: types.ReadContext?): (T?, error?)
+    local matches: { [string]: boolean } = {}
+    local _, inspect_err = predicates.inspect(request.where, {}, 1, matches)
+    if inspect_err then return nil, inspect_err end
+    local ids: domain.SearchResults? = nil
+    local selected_seq: integer? = nil
+    local prepare: types.SnapshotPreparation? = nil
+    if next(matches) ~= nil then
+        prepare = function(board: domain.Board): error?
+            local reader = search_reader(board, grants)
+            local min_seq = request.min_seq
+            if min_seq and min_seq > 0 then
+                local wanted = min_seq :: integer
+                reader.scope_fence = function(projection: domain.ScopeProjection): error?
+                    local db, err = store.open()
+                    if err or not db then return err end
+                    local pending = scopes.fence(db, board.board_id, projection, wanted)
+                    db:release()
+                    return pending
+                end
+            end
+            local prepared, err = search.prepare(reader, board, matches)
+            if err then return err end
+            if prepared and next(prepared) ~= nil then
+                ids, selected_seq = prepared, board.applied_seq
+            end
+            return nil
+        end
+    end
+    return access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (T?, error?)
+        if selected_seq and selected_seq ~= board.applied_seq then
+            return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Work changed while resolving search candidates",
+                details = { code = "search_snapshot_changed" } })
+        end
+        return fn(tx, board, dialect, ids)
+    end, context, nil, request.where, nil, prepare)
+end
+
 local function compile(tx: types.Executor, dialect: string, board: domain.Board, request: types.QueryRequest, counted: boolean, grants: { [string]: boolean }?, additional: { domain.Condition }?, scan: integer?, order: { domain.Sort }?,
-    definition_only: boolean?): (types.Plan?, error?)
+    definition_only: boolean?, ids: domain.SearchResults?): (types.Plan?, error?)
     local berr = predicates.bounds(request.where)
     if berr then return nil, berr end
     local sort, serr = M.order(request.order)
     if serr then return nil, serr end
     local actor = security.actor()
-    local caller: domain.Reader = { board_id = board.board_id, actor = actor and actor:id(), search = board.compiled.scopes, plugins = board.compiled.plugins, allows = function(level: string): boolean return level == "read" or (grants ~= nil and grants[level] == true) end }
+    local caller = search_reader(board, grants)
+    caller.search_definition, caller.search_ids = definition_only, ids
     local min_seq = request.min_seq
     if min_seq and min_seq > 0 and not definition_only then
         local checked: { [string]: { [string]: boolean } } = {}
@@ -413,7 +461,7 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
     local nulls = reference ~= nil and reference.after ~= nil and reference.after.phase == "nulls"
     local sort = nulls and {} or order
     local catalog: { [string]: domain.Field } = {}
-    local result, read_err = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.QueryPage?, error?)
+    local result, read_err = with_query_snapshot(request, grants, function(tx: types.Executor, board: domain.Board, dialect: string, search_ids: domain.SearchResults?): (types.QueryPage?, error?)
         if budget.expired(allowance) then return { items = {}, cursors = {}, reindexing = false, incomplete = true }, nil end
         catalog = peers.catalog(board)
         if check then
@@ -429,10 +477,10 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
             extra, ref_err = reference_plan(board, request, order, reference)
             if ref_err then return nil, ref_err end
         end
-        local plan, err = compile(tx, dialect, board, request, false, grants, extra, scan, sort)
+        local plan, err = compile(tx, dialect, board, request, false, grants, extra, scan, sort, nil, search_ids)
         if err or not plan then return nil, err end
         return read_page(tx, board, plan, allowance, sort, request, listing)
-    end, shared, nil, request.where)
+    end, shared)
     if read_err or not result then return nil, read_err end
     local err = peers.page(result, peers.redactor(catalog))
     if err then return nil, err end
@@ -449,7 +497,7 @@ function M.freeze(request: types.QueryRequest): ({ string }?, error?)
     if err then return nil, err end
     local grants, gerr = scope_grants(request)
     if gerr or not grants then return nil, gerr end
-    local frozen, ferr = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): ({ ids: { string }, as_of: integer?, generation: integer? }?, error?)
+    local frozen, ferr = with_query_snapshot(request, grants, function(tx: types.Executor, board: domain.Board, dialect: string, search_ids: domain.SearchResults?): ({ ids: { string }, as_of: integer?, generation: integer? }?, error?)
         local rebuilding, perr = pending(tx, board, request, true)
         if perr then return nil, perr end
         if rebuilding then return nil, errors.new({ kind = errors.UNAVAILABLE, message = "bulk selection awaits indexes", details = { code = "projection_pending" } }) end
@@ -457,7 +505,7 @@ function M.freeze(request: types.QueryRequest): ({ string }?, error?)
         if nerr then return nil, nerr end
         if population and population > 200000 then return nil, errors.new({ kind = errors.INVALID, message = "bulk selection exceeds its scan budget", details = { code = "bulk_selection_limit" } }) end
         request.limit = 200000
-        local plan, cerr = compile(tx, dialect, board, request, false, grants)
+        local plan, cerr = compile(tx, dialect, board, request, false, grants, nil, nil, nil, nil, search_ids)
         if cerr or not plan then return nil, cerr end
         local rows, rerr = select.rows(tx, plan)
         if rerr then return nil, rerr end
@@ -469,7 +517,7 @@ function M.freeze(request: types.QueryRequest): ({ string }?, error?)
         end
         table.sort(ids)
         return { ids = ids }, nil
-    end, nil, nil, request.where)
+    end, nil)
     if ferr or not frozen then return nil, ferr end
     return frozen.ids, nil
 end
@@ -487,9 +535,9 @@ function M.count(request: types.QueryRequest): (types.CountResult?, error?)
     if allowance_err or not allowance then return nil, allowance_err end
     local grants, gerr = scope_grants(request)
     if gerr or not grants then return nil, gerr end
-    return access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.CountResult?, error?)
+    return with_query_snapshot(request, grants, function(tx: types.Executor, board: domain.Board, dialect: string, search_ids: domain.SearchResults?): (types.CountResult?, error?)
         if budget.expired(allowance) then return { total = 0, estimated = true, incomplete = true, reindexing = false }, nil end
-        local plan, err = compile(tx, dialect, board, request, true, grants)
+        local plan, err = compile(tx, dialect, board, request, true, grants, nil, nil, nil, nil, search_ids)
         if err or not plan or not plan.count then return nil, err end
         local rebuilding, perr = pending(tx, board, request, true)
         if perr then return nil, perr end
@@ -498,7 +546,7 @@ function M.count(request: types.QueryRequest): (types.CountResult?, error?)
         if cerr then return nil, cerr end
         local incomplete = estimated or budget.expired(allowance)
         return { total = total, estimated = incomplete, incomplete = incomplete, reindexing = false }, nil
-    end, { allowance = allowance, partial = true, admitted = {}, holders = {} }, nil, request.where)
+    end, { allowance = allowance, partial = true, admitted = {}, holders = {} })
 end
 
 function M.explain(request: types.QueryRequest): (types.ExplainResult?, error?)
@@ -510,8 +558,8 @@ function M.explain(request: types.QueryRequest): (types.ExplainResult?, error?)
     if gerr or not grants then return nil, gerr end
     local access_grants, aerr = access.effective(request.board_id)
     if aerr or not access_grants then return nil, aerr end
-    local result, rerr = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.ExplainResult?, error?)
-        local plan, err = compile(tx, dialect, board, request, false, grants)
+    local result, rerr = with_query_snapshot(request, grants, function(tx: types.Executor, board: domain.Board, dialect: string, search_ids: domain.SearchResults?): (types.ExplainResult?, error?)
+        local plan, err = compile(tx, dialect, board, request, false, grants, nil, nil, nil, nil, search_ids)
         if err or not plan then return nil, err end
         local statement, args = select.statement(plan, dialect)
         local indexes, ierr = planner.indexes(tx, dialect, statement, args)
@@ -519,7 +567,7 @@ function M.explain(request: types.QueryRequest): (types.ExplainResult?, error?)
         local admitted: { string } = {}
         for _, scope in ipairs(request.scopes or {}) do admitted[#admitted + 1] = scope.id end
         return { access = access_grants, plan = { statement = statement, args = args, indexes = indexes }, scopes = admitted, visibility = { life = not request.include_trashed } }, nil
-    end, { allowance = allowance, admitted = {}, holders = {} }, nil, request.where)
+    end, { allowance = allowance, admitted = {}, holders = {} })
     if rerr or not result then return nil, rerr end
     local usage, uerr = budget.usage(allowance)
     if uerr or not usage then return nil, uerr end
