@@ -257,16 +257,18 @@ local function define()
             local member, member_id = session(false)
             local schema = declaration(TEXT)
             schema.fields[3] = { code = "audience", form = "text", index = "key" }
-            schema.item_types[1].fields[3] = "audience"
+            schema.fields[4] = { code = "points", form = "int", index = "key" }
+            schema.item_types[1].fields[3], schema.item_types[1].fields[4] = "audience", "points"
             schema.visibility = { field = "audience", bypass = "admin", levels = {
                 { id = "team", holders = { { user = admin_id } } },
             } }
             local id = create(admin, schema)
             checked(admin("grant", { subject_id = member_id, mask = 1 }, id))
 
-            local first = apply(admin, id, { op = "create", type = "issue", values = { title = "Citrine" } }).item
-            apply(admin, id, { op = "create", type = "issue", values = { title = "Citrine", audience = "team" } })
-            local last = apply(admin, id, { op = "create", type = "issue", values = { description = "Citrine" } }).item
+            local first = apply(admin, id, { op = "create", type = "issue", values = { title = "Citrine", points = 3 } }).item
+            apply(admin, id, { op = "create", type = "issue", values = { title = "Citrine", audience = "team", points = 3 } })
+            local last = apply(admin, id, { op = "create", type = "issue", values = { description = "Citrine", points = 7 } }).item
+            apply(admin, id, { op = "create", type = "issue", values = { title = "Unrelated", points = 3 } })
             indexed(admin, id, "citrine", 3)
             local request = { where = { ["and"] = { { match = "citrine" }, { field = "type", op = "eq", value = "issue" } } },
                 order = { field = "key", dir = "asc" }, limit = 1 }
@@ -277,6 +279,20 @@ local function define()
             local two = checked(member("query", request, id))
             test.eq(two.items[1].id, last)
             test.is_nil(two.after)
+
+            local grouped = { where = { match = "citrine" }, group_by = "points", group_limit = 1,
+                measures = { { id = "total", op = "sum", field = "points" } } }
+            local group_one = checked(member("query", grouped, id))
+            test.eq(group_one.groups[1].value, 3)
+            test.eq(group_one.groups[1].count, 1)
+            test.eq(group_one.groups[1].measures.total, "3")
+            test.not_nil(group_one.group_after)
+            grouped.group_after = group_one.group_after
+            local group_two = checked(member("query", grouped, id))
+            test.eq(group_two.groups[1].value, 7)
+            test.eq(group_two.groups[1].count, 1)
+            test.eq(group_two.groups[1].measures.total, "7")
+            test.is_nil(group_two.group_after)
 
             checked(admin("revoke", { subject_id = member_id }, id))
             local denied, err = member("query", { where = { match = "citrine" } }, id)
