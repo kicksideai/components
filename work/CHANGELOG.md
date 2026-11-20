@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.17](https://github.com/kicksideai/components/compare/work-v0.1.16...work-v0.1.17) (2026-11-20)
+
+
+### Features
+
+* **work-search:** ship lexical search for Work boards ([4fb9581](https://github.com/kicksideai/components/commit/4fb95812b365125078b9f7de608dbffcbde4585d))
+
 ## [0.1.16](https://github.com/kicksideai/components/compare/work-v0.1.15...work-v0.1.16) (2026-11-20)
 
 
