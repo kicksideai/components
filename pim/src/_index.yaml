@@ -316,7 +316,7 @@ entries:
             definition: '{"type":"object","required":["catalog_id","plugin","kind"],"properties":{"catalog_id":{"type":"string","minLength":1,"description":"Catalog component id."},"plugin":{"type":"string","minLength":1,"description":"Active plugin registry id."},"kind":{"type":"string","minLength":1,"description":"Declared state projection kind."},"token":{"type":"string","description":"Opaque token from the previous feed page; omit to bootstrap."}},"additionalProperties":false}'
         output_schemas:
           - format: application/schema+json
-            definition: '{"type":"object","required":["attachment_id","config","bootstrap","changes","token","done"],"properties":{"attachment_id":{"type":"string"},"config":{"type":"object"},"bootstrap":{"type":"boolean"},"changes":{"type":"array","items":{"type":"object"}},"token":{"type":"string"},"done":{"type":"boolean"}},"additionalProperties":false}'
+            definition: '{"type":"object","required":["attachment_id","config","bootstrap","changes","token","done"],"properties":{"attachment_id":{"type":"string"},"config":{"type":"object"},"bootstrap":{"type":"boolean"},"gap":{"type":"object","description":"Present on the first page replacing an expired token. Clear the catalog replica before applying changes and commit both with the replacement token.","required":["floor"],"properties":{"floor":{"type":"integer"}},"additionalProperties":false},"changes":{"type":"array","items":{"type":"object"}},"token":{"type":"string"},"done":{"type":"boolean"}},"additionalProperties":false}'
       - name: get
         description: "One product with every value resolved for a context, and readiness for items."
         input_schemas:

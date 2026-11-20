@@ -763,15 +763,22 @@ it may already be pruned. Unchanged configuration and revision preserve the curs
   `plugin_feed { catalog_id, plugin, kind, token? }` (READ, contract only; no HTTP
   route or agent tool) with the opaque token kept in its projection body. The host
   validates catalog READ and active plugin membership and answers
-  `{ attachment_id, config, bootstrap, changes, token, done }`: one bounded page
+  `{ attachment_id, config, bootstrap, gap?, changes, token, done }`: one bounded page
   of its durable state feed (the one `list_changes` answers), with upserts carrying
   the record and deletes for trashed and purged records. An absent token starts
-  from the beginning with `bootstrap: true`. The host owns the token format,
-  paging, gap reset and bootstrap bookkeeping. The worker maps `changes` to its
-  own store, stores the returned token in the body and reports progress; it
-  acknowledges the triggering range only when `done` is true and its writes
-  commit. `done` requires the host materialization to reach the catalog thread
-  head sampled before reading the page, with no rebuild or remaining page.
+  from the beginning with `bootstrap: true`. When tombstone pruning expires a
+  token, the first replacement page starts from the beginning with both
+  `bootstrap: true` and `gap: { floor }`, where `floor` is the tombstone floor
+  sequence. The worker clears its replica for the catalog before applying the
+  replacement changes and commits the reset, changes, and replacement token
+  together. Ordinary bootstrap pages and continuations using the replacement
+  token omit `gap` unless a later expiry starts another replacement.
+  The host owns the token format, paging and bootstrap bookkeeping. The worker
+  maps `changes` to its own store, stores the returned token in the body and
+  reports progress. It acknowledges the triggering range only when `done` is
+  true and its writes commit. `done` requires the host materialization to reach
+  the catalog thread head sampled before reading the page, with no rebuild or
+  remaining page.
   The worker does no paging logic, event decoding, attachment or configuration
   lookup and never interprets the token. `bootstrap` stays true until the feed
   reaches the registration position after a (re)registration; per-kind
@@ -1470,7 +1477,7 @@ The catalog is the security unit: READ sees every item of the catalog.
 | `list_releases({ product, before?, limit? })` | a product's releases newest first |
 | `get_schema({ generation? })` | the declaration and compiled public parts of the head (including an initially empty schema), or of a past generation; `plugins` is the per-catalog state list in §3.2 |
 | `plugin_context({ catalog_id, plugin })` | contract-only READ; `{ attachment_id, config, lifecycle, projections }` for an active plugin (§3.2) |
-| `plugin_feed({ catalog_id, plugin, kind, token? })` | contract-only READ; one bounded state page `{ attachment_id, config, bootstrap, changes, token, done }` for an active declared state projection (§3.11) |
+| `plugin_feed({ catalog_id, plugin, kind, token? })` | contract-only READ; one bounded state page `{ attachment_id, config, bootstrap, gap?, changes, token, done }` for an active declared state projection (§3.11) |
 | `explain({ product, attr, context })` | the resolution steps (2.6) and the findings behind readiness |
 | `list_changes`, `list_publications` | the feeds (§12) |
 
