@@ -390,6 +390,50 @@ local function define()
             test.is_true(view(h).projections["app:item_fold"].parked)
             test.eq(view(h).projections["app:item_fold"].last_seq, state.last_seq)
         end)
+        test.it("fences plugin scope reads until the backing projection catches up", function()
+            local admin, member = scoped.admin(), scoped.member()
+            local h = scoped.board(admin)
+            assert(h.call("grant", { subject_id = member.id, mask = 1 }))
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = PLUGIN } }, scopes = { "app:fold_scope" } } }))
+            local item = steps.create(h, "task", { title = "Before" })
+            ready(h, false)
+            assert(h.call("configure_plugin", { plugin = PLUGIN, config = { fail = true } }))
+            ready(h, true)
+            local edit = assert(steps.apply(h, { { op = "set", item = item, values = { title = "After" } } }))
+            test.eq(edit.outcomes[1].status, "applied")
+            local seq = assert(member.call("get", { item = { id = item } }, h.id)).as_of
+            test.is_true(view(h).projections["app:item_fold"].last_seq < seq)
+            local scope = { id = "app:fold_scope", where = { seq = { eq = seq } } }
+            test.eq(#assert(member.call("query", { scopes = { scope } }, h.id)).items, 0)
+            test.eq(#assert(member.call("query", { min_seq = seq }, h.id)).items, 1)
+            for _, read in ipairs({
+                { method = "query", request = { scopes = { scope }, min_seq = seq } },
+                { method = "count", request = { scopes = { scope }, min_seq = seq } },
+                { method = "query", request = { where = { match = item }, min_seq = seq } },
+            }) do
+                local page, err = member.call(read.method, read.request, h.id)
+                test.is_nil(page)
+                test.not_nil(err)
+                test.eq(err:kind(), errors.UNAVAILABLE)
+                test.is_true(err:retryable())
+                test.eq(err:details().code, "projection_pending")
+                test.eq(err:details().min_seq, seq)
+                test.eq(err:details().applied_seq, view(h).projections["app:item_fold"].last_seq)
+            end
+            assert(h.call("configure_plugin", { plugin = PLUGIN, config = {} }))
+            ready(h, false)
+            steps.wait_for("plugin scope projection acknowledgement", function(): boolean
+                return view(h).projections["app:item_fold"].last_seq >= seq
+            end)
+            local page = assert(member.call("query", { scopes = { scope }, min_seq = seq }, h.id))
+            test.eq(#page.items, 1)
+            test.eq(page.items[1].id, item)
+            test.eq(page.items[1].values.title, "After")
+            test.eq(assert(member.call("count", { scopes = { scope }, min_seq = seq }, h.id)).total, 1)
+            local matched = assert(member.call("query", { where = { match = item }, min_seq = seq }, h.id))
+            test.eq(#matched.items, 1)
+            test.eq(matched.items[1].id, item)
+        end)
         test.it("refuses missing and wrong-kind workers before changing the schema", function()
             local h = fixture.board()
             for id, code in pairs({ ["app:missing_worker_plugin"] = "plugin_projection_invalid", ["app:wrong_worker_plugin"] = "plugin_projection_invalid" }) do
