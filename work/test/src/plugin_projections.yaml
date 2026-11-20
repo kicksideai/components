@@ -102,6 +102,22 @@ entries:
   imports:
     board: kickside.work:client
     component: kickside.component:component
+- name: credential_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    attachment: app:credential_attachment
+    config_schema: { type: object, properties: { marker: { type: string } }, additionalProperties: false }
+- name: credential_attachment
+  kind: contract.binding
+  meta:
+    placement: { parents: [root], fixed: true }
+    secret_fields: [{ path: [api_key], type: string }]
+    credential_schema: { fields: [{ key: api_key, type: password }] }
+  contracts:
+  - contract: kickside.contract:component
+    methods:
+      get_status: kickside.core.threads:thread_status
 - name: contract_plugin
   kind: registry.entry
   meta:
@@ -161,10 +177,16 @@ entries:
     resources: [app:plugin_projection_worker, app:plugin_event_worker]
     actions: [registry.get, funcs.call]
     effect: allow
-- name: folding_plugin_access
+- name: plugin_fixture_access
   kind: security.policy
   groups: [kickside.security.groups:members]
   policy:
-    resources: [app:folding_plugin, app:fold_attachment, app:plugin_projection_worker, app:fold_scope]
+    resources:
+    - app:folding_plugin
+    - app:fold_attachment
+    - app:plugin_projection_worker
+    - app:fold_scope
+    - app:credential_plugin
+    - app:credential_attachment
     actions: [registry.get, contract.get, contract.open]
     effect: allow

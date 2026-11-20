@@ -62,6 +62,16 @@ local function plugin_view(h: fixture.Handle, id: string, method: string): Map
     error("plugin is missing: " .. id)
 end
 
+local function credential_attachment(id: string): Map
+    local db = assert(sql.get("app:db"))
+    local rows, err = db:query([[SELECT c.parent_id, c.private_context, c.encrypted_secrets, c.secrets_generation, m.value AS owner
+        FROM kickside_components c JOIN kickside_component_meta m ON m.component_id = c.component_id AND m.key = 'owner'
+        WHERE c.component_id = $1]], { id })
+    db:release()
+    assert(not err, steps.detail(err))
+    return assert(rows and rows[1]) :: Map
+end
+
 local function define()
     test.describe("declared plugin projections", function()
         local original: registry.Entry?
@@ -409,6 +419,69 @@ local function define()
             test.eq(#rows(h), 2)
             test.eq(#attachments(h), 1)
         end)
+
+        test.it("converges a credential-bearing root attachment under board custody", function()
+            local admin, member = scoped.admin(), scoped.member()
+            local board = scoped.board(admin)
+            local plugin = "app:credential_plugin"
+            local activation = { declaration = { plugins = { { use = plugin } } },
+                plugin_configs = { [plugin] = { marker = "first" } } }
+            assert(board.call("grant", { subject_id = member.id, mask = 3 }))
+            local denied, deny_err = member.call("apply_schema", activation, board.id)
+            test.is_nil(denied)
+            test.eq(assert(deny_err):kind(), errors.PERMISSION_DENIED)
+            assert(board.call("grant", { subject_id = member.id, mask = 15 }))
+            local applied, apply_err = member.call("apply_schema", activation, board.id)
+            assert(applied, steps.detail(apply_err))
+
+            local function ready_attachment(marker: string): string
+                local attachment_id: string?
+                steps.wait_for("credential attachment is configured", function(): boolean
+                    local status = plugin_view(board, plugin, "get_schema")
+                    if status.lifecycle.state == "failed" then error(json.encode(status.lifecycle), 0) end
+                    if status.lifecycle.state == "ready" and status.config.marker == marker then
+                        attachment_id = status.attachment_id :: string
+                    end
+                    return attachment_id ~= nil
+                end)
+                return assert(attachment_id)
+            end
+            local attachment_id = ready_attachment("first")
+            local initial = credential_attachment(attachment_id)
+            test.eq(initial.owner, board.id)
+            test.is_nil(initial.parent_id)
+            test.eq(tonumber(initial.secrets_generation), 1)
+            test.not_nil(initial.encrypted_secrets)
+            local context = assert(json.decode(initial.private_context :: string))
+            test.eq(context.board_id, board.id)
+            test.eq(context.plugin, plugin)
+            test.eq(context._execution_identity.principal.id, admin.id)
+
+            local secret = "work-synthetic-credential"
+            local updated, update_err = admin.call("component_update",
+                { { type = "PATCH_CONTEXT", payload = { patch = { api_key = secret } } } }, attachment_id)
+            assert(updated, steps.detail(update_err))
+            local stored = credential_attachment(attachment_id)
+            test.eq(tonumber(stored.secrets_generation), 2)
+            test.is_nil(string.find(stored.private_context :: string, secret, 1, true))
+            assert(board.call("configure_plugin", { plugin = plugin, config = { marker = "second" } }))
+            test.eq(ready_attachment("second"), attachment_id)
+            local reconfigured = credential_attachment(attachment_id)
+            test.eq(reconfigured.owner, board.id)
+            test.eq(reconfigured.encrypted_secrets, stored.encrypted_secrets)
+            test.eq(tonumber(reconfigured.secrets_generation), 2)
+
+            assert(board.call("apply_schema", { declaration = { plugins = {} } }))
+            steps.deleted(attachment_id)
+            assert(board.call("apply_schema", activation))
+            local reactivated = ready_attachment("first")
+            test.is_true(reactivated ~= attachment_id)
+            test.eq(credential_attachment(reactivated).owner, board.id)
+            assert(board.call("delete", {}))
+            steps.deleted(board.id)
+            steps.deleted(reactivated)
+        end)
+
         test.it("bootstraps live items after their source events expire", function()
             local h = fixture.board()
             steps.create(h, "task", { title = "Durable item" })
