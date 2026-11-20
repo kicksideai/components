@@ -223,9 +223,8 @@ entries:
 - name: attachments
   kind: library.lua
   source: file://attachments.lua
-  modules:
-  - time
   imports:
+    child_registration: kickside.component.binding:child_registration
     domain: kickside.work:types
     teardown: kickside.component.persist:teardown
     component: kickside.component:component
