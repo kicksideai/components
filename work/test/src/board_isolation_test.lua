@@ -40,12 +40,17 @@ end
 
 local function define()
     test.describe("board isolation", function()
-        test.it("reports the resolved board alongside an item returned by key", function()
+        test.it("reports the resolved board for a key lookup without a board", function()
             local a, other = fixture.board(), fixture.board()
             assert(other.call("grant", { subject_id = a.actor:id(), mask = 1 }))
             local id = steps.create(other, "task", {})
             local item = assert(other.call("get", { item = { id = id } })).item
-            test.eq(assert(a.call("get", { item = { key = item.key } })).item.board_id, other.id)
+            local ref = { item = { key = item.key } }
+            local found = assert(a.executor:call("app:work_call", { op = "get", request = ref }))
+            test.eq(found.item.board_id, other.id)
+            local _, err = a.call("get", ref)
+            test.eq(err:kind(), errors.NOT_FOUND)
+            test.eq(err:details().code, "item_not_found")
         end)
         test.it("keeps schemas apart and writes each item against its own board", function()
             local a, b = pair()

@@ -11,6 +11,26 @@ local function tool(h: fixture.Handle, name: string, args: Map): Map
 end
 local function define()
     test.describe("Work full agent surface", function()
+        test.it("binds WorkGetItem keys to an explicit board or the board in context", function()
+            local a, b = fixture.board(), fixture.board()
+            assert(b.call("grant", { subject_id = a.actor:id(), mask = 1 }))
+            local id = steps.create(b, "task")
+            local key = assert(steps.get(b, id)).item.key
+            local args = { item = { key = key } }
+            local found = assert(a.executor:call("kickside.work.traits:get_item", args))
+            test.eq(found.item.id, id)
+            test.eq(tool(a, "get_item", { board_id = b.id, item = args.item }).item.id, id)
+            local function expect_missing(input: Map, in_context: boolean)
+                local executor = in_context and a.executor:with_context({ board_id = a.id }) or a.executor
+                local _, err = executor:call("kickside.work.traits:get_item", input)
+                test.not_nil(err)
+                test.eq(err:kind(), errors.NOT_FOUND)
+                test.eq(err:details().code, "item_not_found")
+            end
+            expect_missing({ board_id = a.id, item = args.item }, false)
+            expect_missing(args, true)
+        end)
+
         test.it("reads boards, history, intervals, links, comments, changes and packs", function()
             local h = fixture.board()
             local item = steps.create(h, "task", { title = "Visible answer" })

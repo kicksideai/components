@@ -158,6 +158,7 @@ entries:
   modules: [json]
   imports:
     access: kickside.work.read:access
+    cursor_codec: kickside.work.read:cursor_codec
     reader: kickside.work.read:reader
     read_rows: kickside.work.persist:read_rows
     store: kickside.work.persist:store
@@ -312,6 +313,7 @@ entries:
     rows: kickside.work.persist:plugin_rows
     manifests: kickside.work.domain:manifests
     plugins: kickside.work.read:plugins
+    declarations: kickside.work.domain:plugins
     states: kickside.work.extensions:plugin_projection_state
     component: kickside.component:component
     types: kickside.work.read:types

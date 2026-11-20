@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.1.15](https://github.com/kicksideai/components/compare/work-v0.1.14...work-v0.1.15) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** return custom field type descriptors ([#219](https://github.com/kicksideai/components/issues/219)) ([c4422a4](https://github.com/kicksideai/components/commit/c4422a496860722fed415503a797f91ef5421998))
+* **work:** version plugin contracts and replay retained events ([#183](https://github.com/kicksideai/components/issues/183)) ([2e5d59c](https://github.com/kicksideai/components/commit/2e5d59c7ffaf35650047822d7e29d9ad426cc469))
+
+## [0.1.14](https://github.com/kicksideai/components/compare/work-v0.1.13...work-v0.1.14) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** scope key reads and seek link pages ([14fcec0](https://github.com/kicksideai/components/commit/14fcec06cc914cc22fd68bd9b33c1c557908cc03))
+
+## [0.1.13](https://github.com/kicksideai/components/compare/work-v0.1.12...work-v0.1.13) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** constrain item tools and publish mutation outcomes ([876705c](https://github.com/kicksideai/components/commit/876705c3622c53f274ddef0a43d33054832545dd))
+
+## [0.1.12](https://github.com/kicksideai/components/compare/work-v0.1.11...work-v0.1.12) (2026-11-20)
+
+
+### Features
+
+* **work:** expose per-field edit capabilities ([68de4c4](https://github.com/kicksideai/components/commit/68de4c4d46ab4b782a2fa4e4607572512e5d47f9))
+
+## [0.1.11](https://github.com/kicksideai/components/compare/work-v0.1.10...work-v0.1.11) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** allow saving every application default ([5b68334](https://github.com/kicksideai/components/commit/5b683342050c6d9b64dfad1b92ad104f7fa393b9))
+* **work:** restore feed continuation and operation tracking ([#180](https://github.com/kicksideai/components/issues/180)) ([fd23628](https://github.com/kicksideai/components/commit/fd236284486fbd2b67da74f4037db3472cd9c974))
+
 ## [0.1.10](https://github.com/kicksideai/components/compare/work-v0.1.9...work-v0.1.10) (2026-11-20)
 
 

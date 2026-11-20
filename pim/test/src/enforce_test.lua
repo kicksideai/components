@@ -87,7 +87,7 @@ local function define()
             test.eq(again.outcome, "invalid", json.encode(again))
         end)
 
-        test.it("refuses a proposal its enforced checks fail, when proposed and when decided", function()
+        test.it("refuses a failed check at proposal admission and requires renewed review when checks change", function()
             local h = fixture.catalog()
             fixture.boot(h)
             enforced(h, { WEIGHT })
@@ -97,8 +97,12 @@ local function define()
             local proposed, ok = h.call("propose", { items = { { product = { sku = "RDG-moss-40" }, set = { { attr = "logistics.net_weight", value = "1.9" } } } } })
             test.is_nil(ok)
             enforced(h, { { check = "app:weight_check", reads = { "logistics.net_weight" }, config = { max = 1 }, enforce = "write" } })
-            local decided = h.call("decide", { proposal_id = (proposed :: Map).proposal_id, decision = "accept" }) :: Map
-            test.eq(decided.status, "failed", json.encode(decided))
+            local proposal_id = (proposed :: Map).proposal_id
+            local decided, err = h.call("decide", { proposal_id = proposal_id, decision = "accept" })
+            test.is_nil(decided)
+            test.eq(assert(err):details().code, "schema_generation_conflict")
+            local rejected = assert(h.call("decide", { proposal_id = proposal_id, decision = "reject" }))
+            test.eq(rejected.status, "rejected")
         end)
     end)
 end

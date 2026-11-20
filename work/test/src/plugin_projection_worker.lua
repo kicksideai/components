@@ -2,6 +2,7 @@
 local sql = require("sql")
 local security = require("security")
 local board = require("board")
+local json = require("json")
 local M = {}
 local function ensure(db: sql.DB): error?
     local _, err = db:execute("CREATE TABLE IF NOT EXISTS work_test_plugin_fold (board_id TEXT NOT NULL, seq BIGINT NOT NULL, item_id TEXT NOT NULL, event_type TEXT NOT NULL, actor_id TEXT NOT NULL, marker TEXT NOT NULL, deliveries BIGINT NOT NULL, PRIMARY KEY (board_id, seq))", {})
@@ -9,7 +10,7 @@ local function ensure(db: sql.DB): error?
 end
 type Map = { [string]: unknown }
 type Change = { item_id: string, updated_seq: integer, op: string }
-type Body = { worker_config: { plugin: string, input: string }, token: string? }
+type Body = { worker_config: { plugin: string, input: string }, token: string?, delivered: { unknown }?, patches: { Map }? }
 type Input = { thread_id: string, projection: { kind: string, body: Body }, range: { from_seq: integer, to_seq: integer }, events: { Map }?, worker_input_mode: string }
 type Feed = { config: { fail: boolean?, marker: string? }, changes: { Change }, token: string, done: boolean }
 function M.run(input: Input): (Map?, error?)
@@ -41,9 +42,17 @@ function M.run(input: Input): (Map?, error?)
 end
 
 function M.events(input: Input): (Map?, error?)
-    local delivered: { unknown } = {}
-    for _, event in ipairs(input.events or {}) do delivered[#delivered + 1] = event.type end
-    return { body = { observed_mode = input.worker_input_mode, delivered = delivered },
+    local body = input.projection.body
+    local delivered, patches = body.delivered or {}, body.patches or {}
+    for _, event in ipairs(input.events or {}) do
+        delivered[#delivered + 1] = event.type
+        local value = event.body
+        if type(value) == "string" then value = assert(json.decode(value)) end
+        if type(value) == "table" and value.patch then
+            patches[#patches + 1] = { seq = event.seq, schema_generation = value.schema_generation }
+        end
+    end
+    return { body = { worker_config = body.worker_config, observed_mode = input.worker_input_mode, delivered = delivered, patches = patches },
         last_seq = input.range.to_seq }, nil
 end
 

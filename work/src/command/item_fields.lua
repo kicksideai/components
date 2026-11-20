@@ -53,8 +53,12 @@ local function value_steps(board: domain.Board, item_type: domain.ItemType, doc:
         if not f or not allowed[key] then
             return nil, M.invalid("unknown_field", "item type " .. item_type.id .. " has no field " .. key, key)
         end
-        if not rules.field(board, f, "write", authority) then return nil, M.result("denied", M.FREE, "field_denied", "field " .. key .. " is denied", key) end
-        if f.type == "rollup" or f.type == "formula" or f.type == "rank" then return nil, M.invalid("read_only", "field " .. key .. " is computed", key) end
+        local edit = rules.field_edit(board, f, authority)
+        if edit == "field_denied" then return nil, M.result("denied", M.FREE, edit, "field " .. key .. " is denied", key) end
+        if edit == "read_only" then
+            if f.type == "counter" then return nil, M.invalid("invalid_value", "field " .. key .. " is assigned by the board", key) end
+            return nil, M.invalid(edit, "field " .. key .. " is computed", key)
+        end
         if touched[key] then return nil, M.invalid("duplicate_field", "field " .. key .. " is written twice", key) end
         touched[key] = true
         return f, nil
@@ -73,7 +77,6 @@ local function value_steps(board: domain.Board, item_type: domain.ItemType, doc:
         for _, key in ipairs(names or {}) do
             local f, ferr = field_of(key)
             if ferr or not f then return nil, ferr end
-            if f.type == "counter" then return nil, M.invalid("invalid_value", "field " .. key .. " is assigned by the board", key) end
             local step = document.remove_step(doc, f.id, mode)
             if step then steps[#steps + 1] = step end
         end
@@ -115,7 +118,8 @@ local function plan_create(ctx: types.PrepareContext, op: types.Op): types.OpPla
     end
     local id = op.moved_from and op.item or uuid.v4()
     local id = id :: string
-    local body: domain.EventBody = { item = id, type = item_type.id, parent = parent and parent.item_id or nil, state = initial, patch = steps :: { domain.PatchStep } }
+    local body: domain.EventBody = { item = id, type = item_type.id, parent = parent and parent.item_id or nil, state = initial,
+        patch = steps :: { domain.PatchStep }, schema_generation = board.generation }
     body.moved_from, body.operation_id = op.moved_from, op.operation_id
     local events: { domain.Event } = { M.event(op.moved_from and consts.EVENTS.ITEM_MOVED_IN or EV.ITEM_CREATED, M.item_group(id), body) }
     local entered = process.state_of(p, initial)
@@ -157,7 +161,7 @@ local function plan_set(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     if #steps > 0 then
         document.apply_patch(work.document, steps)
         work.version = work.version + 1
-        events[#events + 1] = M.event(EV.ITEM_CHANGED, group, { item = item.item_id, patch = steps })
+        events[#events + 1] = M.event(EV.ITEM_CHANGED, group, { item = item.item_id, patch = steps, schema_generation = ctx.board.generation })
     end
     local p, process_err, model = store.process(ctx.db, ctx.board, item)
     if process_err or not p or not model then return M.failed(process_err :: error) end

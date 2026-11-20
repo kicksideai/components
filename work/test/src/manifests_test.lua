@@ -113,7 +113,7 @@ local function define()
 
         test.it("digests a fragment by content, not by key order", function()
             local function manifest(fragment: types.JsonObject): types.Plugin
-                return { id = "app:inline", config_schema = { type = "object" }, schema = { template = fragment }, requires = {}, seams = {}, projections = {}, tools = {} }
+                return { id = "app:inline", interface_version = 1, config_schema = { type = "object" }, schema = { template = fragment }, requires = {}, seams = {}, projections = {}, tools = {} }
             end
             local a = assert(manifests.resolve_schema(manifest({ aspects = { { namespace = "z", attributes = { { code = "k", type = "text", index = "key" } } } }, vocabularies = {} }),
                 { board_id = "o", config = {} }))

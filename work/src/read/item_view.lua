@@ -61,7 +61,7 @@ local function find(tx: types.Executor, board: domain.Board, ref: types.ItemRef)
         return item, err
     end
     if ref.key ~= nil and ref.key ~= "" then
-        local item, err = store.item_by_key(tx, ref.key)
+        local item, err = store.item_by_key(tx, ref.key, board.board_id)
         if err or not item then return nil, err end
         if item.board_id ~= board.board_id then return nil, nil end
         local allowed, aerr = access_rows.permits(tx, board, item.item_id)

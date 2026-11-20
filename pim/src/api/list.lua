@@ -1,9 +1,9 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
--- GET /pim/catalogs - the catalogs the caller can read.
+-- GET /pim/catalogs - the caller's catalog directory, with optional filters.
 local access = require("access")
 
 local function handler()
-    access.read("list", {int={"limit","after"}}, false)
+    access.read("list", { text = { "text" }, bool = { "admin_only" }, int = { "limit", "after" } }, false)
 end
 
 return { handler = handler }

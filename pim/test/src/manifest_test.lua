@@ -37,6 +37,23 @@ end
 
 local function define()
     test.describe("plugin manifests", function()
+        test.it("loads explicit and implicit interface version one", function()
+            test.eq(assert(plugins.load("app:probe_bare_plugin")).interface_version, 1)
+            test.eq(assert(plugins.load("app:probe_version_one_plugin")).interface_version, 1)
+        end)
+
+        test.it("rejects unsupported interface versions before validating the rest of the manifest", function()
+            for _, suffix in ipairs({ "future", "string", "false" }) do
+                local id = "app:probe_version_" .. suffix .. "_plugin"
+                local plugin, err = plugins.load(id)
+                test.is_nil(plugin, id)
+                test.not_nil(err, id)
+                test.eq(err:kind(), errors.INVALID)
+                test.eq(err:details().code, "plugin_interface_version_unsupported")
+                test.eq(err:details().plugin, id)
+            end
+        end)
+
         test.it("loads declared state input and positive projection revisions", function()
             local p, err = plugins.load("app:state_plugin")
             test.is_nil(err, tostring(err))
@@ -164,7 +181,7 @@ local function define()
 
         test.it("digests a fragment by content, not by key order", function()
             local function manifest(fragment: types.JsonObject): types.Plugin
-                return { id = "app:inline", config_schema = { type = "object" }, schema = { template = fragment } }
+                return { id = "app:inline", interface_version = 1, config_schema = { type = "object" }, schema = { template = fragment } }
             end
             local a = assert(plugins.resolve_schema(manifest({ aspects = { { namespace = "z", attributes = { { code = "k", type = "text", index = "key" } } } }, vocabularies = {} }),
                 { catalog_id = "o", config = {} }))
