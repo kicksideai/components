@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.11](https://github.com/kicksideai/components/compare/work-v0.1.10...work-v0.1.11) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** allow saving every application default ([5b68334](https://github.com/kicksideai/components/commit/5b683342050c6d9b64dfad1b92ad104f7fa393b9))
+* **work:** restore feed continuation and operation tracking ([#180](https://github.com/kicksideai/components/issues/180)) ([fd23628](https://github.com/kicksideai/components/commit/fd236284486fbd2b67da74f4037db3472cd9c974))
+
 ## [0.1.10](https://github.com/kicksideai/components/compare/work-v0.1.9...work-v0.1.10) (2026-11-20)
 
 
