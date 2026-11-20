@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11](https://github.com/kicksideai/components/compare/pim-v0.1.10...pim-v0.1.11) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim:** register new plugin attachments under catalog custody ([#243](https://github.com/kicksideai/components/issues/243)) ([5b73068](https://github.com/kicksideai/components/commit/5b73068d4fd225092a71e173a8b8e7e2aec98967))
+
 ## [0.1.10](https://github.com/kicksideai/components/compare/pim-v0.1.9...pim-v0.1.10) (2026-11-20)
 
 
