@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.26](https://github.com/kicksideai/components/compare/work-v0.1.25...work-v0.1.26) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** bind boards to registered UI apps ([#266](https://github.com/kicksideai/components/issues/266)) ([7f8d525](https://github.com/kicksideai/components/commit/7f8d52524b3cdaa344977a19ed2819ae0ec31507))
+* **work:** migrate stored board UI bindings ([#268](https://github.com/kicksideai/components/issues/268)) ([6e56b18](https://github.com/kicksideai/components/commit/6e56b1895ebf2067a2b500799fcb517c685e9580))
+
 ## [0.1.25](https://github.com/kicksideai/components/compare/work-v0.1.24...work-v0.1.25) (2026-11-20)
 
 
