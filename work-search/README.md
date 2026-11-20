@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Work Search
 
-Work Search adds lexical issue search to Work on SQLite and PostgreSQL. Install
+Work Search adds lexical issue search to Work on SQLite and PostgreSQL. It requires
+`kickside/work` 0.1.17 or newer and `kickside/search-index` 0.1.4 or newer. Install
 `kickside/work-search` and bind `kickside.work_search:target_db` to a SQL database
 with SQLite FTS5 or PostgreSQL full-text search support.
 
