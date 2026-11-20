@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.18](https://github.com/kicksideai/components/compare/work-v0.1.17...work-v0.1.18) (2026-11-20)
+
+
+### Features
+
+* **work-planning:** add sprint and milestone planning ([097cf0b](https://github.com/kicksideai/components/commit/097cf0b21b87646cd0d10d985421913c8336ad23))
+
 ## [0.1.17](https://github.com/kicksideai/components/compare/work-v0.1.16...work-v0.1.17) (2026-11-20)
 
 
