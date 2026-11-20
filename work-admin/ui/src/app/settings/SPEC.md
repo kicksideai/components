@@ -16,7 +16,7 @@ the ordinary declaration review/apply path at generation 0. Service errors remai
 retryable errors, separate from access denials. Duration controls contribute
 validity for invalid attempted values and unsupported stored values, preserve the
 last valid declaration value, and clear local validity on removal. Focus and blur leave the stored duration intact. Values below one minute open in seconds. Review remains
-blocked while any visited editor has an invalid duration. Review uses display labels and saved and proposed values from the reviewed snapshot. Backend refusals remain visible with the draft, with the typed error code when the response supplies one. Native validation considers controls owned by the settings form, independently of auxiliary creation forms.
+blocked while any visited editor has an invalid duration. Review uses display labels and saved and proposed values from the reviewed snapshot. Backend refusals remain visible with the draft. Blocked plan entries show the reason code, and failed requests show the typed error code when supplied. Native validation considers controls owned by the settings form, independently of auxiliary creation forms.
 
 The process map uses Dagre's layered network-simplex layout. DFS identifies
 cycle-closing arcs before ranking; returns and self loops occupy compact exterior

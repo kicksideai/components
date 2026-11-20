@@ -139,13 +139,17 @@ export function reviewCopy(change: SchemaChange, original: Declaration, draft: D
   if (!field) return { title: actions[what] ?? 'Board settings changed', details: [] }
   const title = `${fieldTitle(field)} · ${what.startsWith('renamed from ') ? 'Field key' : actions[what] ?? 'Field settings changed'}`
   if (what.startsWith('options.')) {
-    const old = before?.options?.find(option => option.id === detail), next = after?.options?.find(option => option.id === detail)
+    const savedOptions = before?.options ?? [], proposedOptions = after?.options ?? []
+    const savedIndex = savedOptions.findIndex(option => option.id === detail)
+    const proposedIndex = proposedOptions.findIndex(option => option.id === detail)
+    const old = savedOptions[savedIndex], next = proposedOptions[proposedIndex]
     const label = next?.label || old?.label || 'Untitled choice'
-    const details = what === 'options.change' ? [] : [label]
+    const details = old && next && old.label !== next.label ? [] : [label]
     if (old && next) {
       if (old.label !== next.label) details.push(pair(old.label || 'Untitled choice', next.label || 'Untitled choice'))
       if (old.category !== next.category) details.push(`Category · ${pair(old.category ? categoryTitle(old.category) : 'None', next.category ? categoryTitle(next.category) : 'None')}`)
-      if (old.order !== next.order) details.push(`Order · ${pair(old.order ?? 'Default', next.order ?? 'Default')}`)
+      const oldOrder = old.order ?? savedIndex + 1, nextOrder = next.order ?? proposedIndex + 1
+      if (oldOrder !== nextOrder) details.push(`Order · ${pair(oldOrder, nextOrder)}`)
       if (old.color !== next.color) details.push(`Color · ${pair(old.color ?? 'Default', next.color ?? 'Default')}`)
     }
     return { title, details }

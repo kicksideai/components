@@ -32,3 +32,27 @@ it('explains choice, policy and visibility changes from the saved and reviewed d
   expect(rows[2]).toContain('Priority')
   w.unmount()
 })
+
+it('shows a readable refusal with the backend reason code', () => {
+  const field = { code: 'priority_code', title: 'Priority', form: 'text' as const, type: 'option',
+    options: [{ id: '42', label: 'Routine' }, { id: 'critical', label: 'Critical' }] }
+  const refused = { code: field.code, what: 'options.remove', detail: '42', class: 'refused' }
+  const w = mount(SchemaReview, { props: {
+    original: { fields: [field] },
+    declaration: { fields: [{ ...field, options: field.options.slice(1) }] },
+    generation: 1, follows: [], configCount: 0,
+    plan: { class: 'refused', generation: 2, refused: [refused], changes: [refused, { ...refused, what: 'options.change', detail: 'critical', class: 'cosmetic' }],
+      migration: 'add the new field or option, copy the values with apply commands, then remove the old one' },
+  } })
+  expect(w.get('.work-notice').text()).toContain('Copy existing values into it before removing the old field.')
+  const alert = w.get('[role=alert]')
+  expect(alert.text()).toContain('Priority')
+  expect(alert.text()).toContain('Routine')
+  expect(alert.text()).toContain('Items still hold values in this option field.')
+  expect(alert.text()).toContain('Reason code')
+  expect(alert.get('code').text()).toBe('options.remove')
+  expect(alert.text()).not.toMatch(/priority_code|42/)
+  expect(w.get('tbody tr').text()).toContain('Critical')
+  expect(w.get('tbody tr').text()).toContain('Order · 2 → 1')
+  w.unmount()
+})

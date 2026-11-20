@@ -50,6 +50,13 @@ function holderName(holder: Holder) {
 const rows = (changes: SchemaChange[]) => changes.map(change => ({ change, ...reviewCopy(change, original.value, draft.value, holderName) }))
 const changes = computed(() => rows(props.plan?.changes.filter(change => change.class !== 'refused') ?? []))
 const refusals = computed(() => rows(props.plan?.refused ?? []))
+const migrationAdvice = computed(() => {
+  const message = props.plan?.migration
+  if (!message || !refusals.value.length) return message
+  if (refusals.value.every(row => row.change.what === 'options.remove')) return 'Add a new field with the choices you want to keep. Copy existing values into it before removing the old field.'
+  if (refusals.value.every(row => row.change.what === 'state.remove')) return 'Choose where existing items should move before removing their state.'
+  return message
+})
 const impact: Record<string, [string, 'secondary' | 'warn' | 'success' | 'danger']> = {
   unchanged: ['No changes', 'secondary'], cosmetic: ['Labels or settings', 'secondary'],
   additive: ['New definitions', 'success'], semantic: ['Affects existing items', 'warn'],
@@ -72,7 +79,7 @@ function refusalReason(change: SchemaChange) {
         <span class="work-muted work-small">Generation {{ generation }} → {{ plan.generation }}</span>
       </header>
       <p class="work-muted">{{ classDescription[plan.class] || 'Review the changes below.' }}</p>
-      <p v-if="plan.migration" class="work-notice">{{ plan.migration }}</p>
+      <p v-if="migrationAdvice" class="work-notice">{{ migrationAdvice }}</p>
       <p v-else-if="follows.length" class="work-notice">Existing items in {{ follows.join(', ') }} will move to the updated process using the state choices above.</p>
       <section v-if="bindings.length" class="work-stack work-tight" aria-label="Reviewed Flow bindings">
         <h3>Flow bindings</h3>
@@ -85,6 +92,7 @@ function refusalReason(change: SchemaChange) {
         <strong>{{ row.title }}</strong>
         <p v-for="(detail, detailIndex) in row.details" :key="detailIndex">{{ detail }}</p>
         <p>{{ refusalReason(row.change) }}</p>
+        <p class="work-small">Reason code <code>{{ row.change.what }}</code></p>
       </Message>
       <table v-if="changes.length" class="work-settings-table">
         <thead><tr><th scope="col">Change</th><th scope="col">Impact</th></tr></thead>
