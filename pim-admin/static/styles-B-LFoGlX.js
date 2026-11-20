@@ -895,7 +895,11 @@ async function E(t, e, i) {
 }
 const f = "/api/v1/pim/catalogs", S = /* @__PURE__ */ new Map(), Ke = {
   catalogSummary: (t) => C(`${f}/${encodeURIComponent(t)}/summary`, "catalog summary"),
-  listCatalogs: (t) => C(f, "catalog list", t == null ? void 0 : { after: String(t) }),
+  listCatalogs: (t, e) => C(f, "catalog list", {
+    admin_only: "true",
+    ...t == null ? {} : { after: String(t) },
+    ...e ? { text: e } : {}
+  }),
   createCatalog: (t, e, i = {}) => E(f, { idempotency_key: `ui-${Date.now()}`, title: t, declaration: e, plugin_configs: i }, "catalog create"),
   history: (t, e = {}) => C(`${f}/${encodeURIComponent(t)}/history`, "catalog history", Object.fromEntries(Object.entries(e).filter(([, i]) => i !== void 0).map(([i, r]) => [i, String(r)]))),
   schema: (t) => C(`${f}/${encodeURIComponent(t)}/schema`, "schema"),
