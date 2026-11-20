@@ -25,7 +25,7 @@ it('keeps Work field kinds canonical and persists display reordering in item typ
   const w = mount(FieldsEditor, { props: { draft } })
   await w.findAll('article')[0].findAllComponents(Select)[0].setValue('principal')
   expect(draft.fields![0]).toMatchObject({ type: 'principal', form: 'ref' })
-  await w.get('[aria-label="Move title later"]').trigger('click')
+  await w.get('[aria-label="Move Title later"]').trigger('click')
   expect(draft.item_types![0].fields).toEqual(['priority', 'title'])
   expect(draft.fields![0].code).toBe('priority')
   await w.get('button[aria-label="Option later"]').trigger('click')

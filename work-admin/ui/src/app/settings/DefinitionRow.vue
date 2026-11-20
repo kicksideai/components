@@ -10,11 +10,20 @@ const slots = useSlots()
 </script>
 <template>
   <article class="work-definition">
-    <header class="work-definition-head">
-      <ContentAction as="article" class="work-definition-toggle" :class="{ 'work-definition-has-handle': slots.handle }" :aria-expanded="open" @activate="open = !open"><span class="work-definition-affordances"><slot name="handle" /><Icon :icon="open ? 'tabler:chevron-down' : 'tabler:chevron-right'" /></span><span class="work-row-title" :title="title">{{ title }}</span></ContentAction>
-      <span class="work-definition-code"><code v-if="code" class="work-mono" :title="code">{{ code }}</code></span>
-      <span class="work-definition-kind"><Tag v-if="kind" severity="secondary" :value="kind" /></span>
-      <span class="work-definition-flags"><slot name="flags" /></span><div class="work-definition-usage"><slot name="usage" /></div><div class="work-definition-actions"><slot name="actions" /></div><p v-if="description" class="work-definition-description">{{ description }}</p>
+    <header class="work-definition-head" :class="{ 'work-definition-has-handle': slots.handle }">
+      <div v-if="slots.handle" class="work-definition-handle"><slot name="handle" /></div>
+      <ContentAction class="work-definition-toggle" :aria-expanded="open" @activate="open = !open">
+        <Icon :icon="open ? 'tabler:chevron-down' : 'tabler:chevron-right'" aria-hidden="true" />
+        <span class="work-row-title" :title="title">{{ title }}</span>
+      </ContentAction>
+      <div class="work-definition-details">
+        <span class="work-definition-code"><code v-if="code" class="work-mono" :title="code">{{ code }}</code></span>
+        <span class="work-definition-kind"><Tag v-if="kind" severity="secondary" :value="kind" /></span>
+        <span class="work-definition-flags"><slot name="flags" /></span>
+        <div class="work-definition-usage"><slot name="usage" /></div>
+      </div>
+      <div class="work-definition-actions"><slot name="actions" /></div>
+      <p v-if="description" class="work-definition-description">{{ description }}</p>
     </header>
     <div v-show="open" class="work-definition-body work-stack"><slot /></div>
   </article>
