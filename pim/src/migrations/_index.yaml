@@ -31,5 +31,6 @@ entries:
       proposal_rows: kickside.pim.persist:proposal_rows
       proposals: kickside.pim.command:proposals
       store: kickside.pim.persist:store
+      types: kickside.pim:types
       values: kickside.pim.domain:values
     method: migrate

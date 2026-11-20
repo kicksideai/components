@@ -4,6 +4,7 @@ local pipeline = require("pipeline")
 local proposal_rows = require("proposal_rows")
 local proposals = require("proposals")
 local store = require("store")
+local types = require("types")
 local uuid = require("uuid")
 local values = require("values")
 
@@ -52,28 +53,28 @@ local function accepted_result(result, seq: integer, count: integer, applied_seq
     return values.canonical(pipeline.stamp(result, last, math.max(applied_seq, last or seq), true))
 end
 
-local function recover(db, claim, proposal)
+local function recover(db, catalog_id: string, applied_seq: integer, proposal: types.Proposal): string?
     local marker = pipeline.marker({ namespace = "proposal", key = proposal.proposal_id })
     local hashed = pipeline.request_hash(pipeline.apply_fingerprint(proposals.accept_request(proposal)))
     local receipt = query(db, [[SELECT result, first_seq, event_count, noop FROM kickside_pim_receipt
         WHERE catalog_id = $1 AND marker = $2 AND request_hash = $3 AND (event_count > 0 OR noop = 1)]],
-        { claim.catalog_id, marker, hashed })[1]
+        { catalog_id, marker, hashed })[1]
     if receipt then
         local r = decode(receipt, { result = "json", first_seq = "int", event_count = "int", noop = "int" })
-        return accepted_result(r.result, r.first_seq, r.event_count, claim.applied_seq, r.noop == 1)
+        return accepted_result(r.result, r.first_seq :: integer, r.event_count :: integer, applied_seq, r.noop == 1)
     end
     -- The first inline event carries the receipt even if the prior runtime
     -- stopped after append. The ordinary projection fold will record it.
     local events = query(db, [[SELECT CAST(body AS text) AS body, seq FROM kickside_event WHERE thread_id = $1
         AND external_source = 'pim' AND external_id = $2 AND content_mode = 'inline' ORDER BY seq]],
-        { claim.catalog_id, marker })
+        { catalog_id, marker })
     for _, event in ipairs(events) do
         local e = decode(event, { body = "json", seq = "int" })
         local r = e.body.receipt
         if type(r) == "table" and r.marker == marker and r.request_hash == hashed then
             local count = math.tointeger(r.event_count)
             assert(count and count > 0 and r.noop == false, "durable proposal receipt lacks an event count")
-            return accepted_result(r.result, e.seq, count, claim.applied_seq, false)
+            return accepted_result(r.result, e.seq :: integer, count, applied_seq, false)
         end
     end
     return nil
@@ -87,7 +88,7 @@ local function reconcile(db, uuid_parameter)
         local claim = decode(row, { catalog_id = "text", applied_seq = "int" })
         local proposal, err = proposal_rows.decode(claim)
         if err then error(err) end
-        local result = recover(db, claim, assert(proposal))
+        local result = recover(db, claim.catalog_id :: string, claim.applied_seq :: integer, assert(proposal))
         if result then
             execute(db, [[UPDATE kickside_pim_proposal SET status = 'accepted', result = $1
                 WHERE catalog_id = $2 AND proposal_id = $3 AND status = 'accepting']], { result, claim.catalog_id, proposal.proposal_id })

@@ -40,7 +40,7 @@ function M.request_hash(value: unknown): string
 end
 
 -- Keep the apply receipt fingerprint stable for replay and proposal upgrades.
-function M.apply_fingerprint(request: types.ApplyRequest): types.JsonObject
+function M.apply_fingerprint(request: types.ApplyRequest): unknown
     return { op = "apply", items = request.items, mode = request.mode or "atomic", source = request.source or "",
         import = request.import == true or nil, expected_generation = request.expected_generation, origin = request.origin,
         provenance = request.provenance, approval_item_id = request.approval_item_id }
