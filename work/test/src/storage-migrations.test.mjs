@@ -8,7 +8,7 @@ import { run } from '../../scripts/module-rules.mjs'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const capture = `
 local direction, engine = arg[2], arg[3]
-local db = { execute = function(_, statement, params)
+local db = { query = function() return arg[4] == "bound" and {{ name = "ui_app" }} or {}, nil end, execute = function(_, statement, params)
     for i, value in ipairs(params or {}) do statement = statement:gsub("%$" .. i, "'" .. value .. "'") end
     io.write(statement, "\\0"); return {}, nil
 end }
@@ -30,14 +30,14 @@ end
 dofile(arg[1])
 `
 
-async function statements(name, direction, engine = 'sqlite') {
-  const result = await run('lua', ['-', resolve(root, `src/migrations/${name}.lua`), direction, engine], {}, capture)
+async function statements(name, direction, engine = 'sqlite', state = 'legacy') {
+  const result = await run('lua', ['-', resolve(root, `src/migrations/${name}.lua`), direction, engine, state], {}, capture)
   return result.split('\0').filter(Boolean)
 }
 
 test('Work rollback removes every fixed table including board metadata', async () => {
-  const up = await statements('01_work', 'up')
-  const down = await statements('01_work', 'down')
+  const up = [...await statements('01_work', 'up'), ...await statements('02_board_ui_app', 'up')]
+  const down = [...await statements('02_board_ui_app', 'down'), ...await statements('01_work', 'down')]
   const result = await run('python3', ['-c', `
 import json, sqlite3, sys
 up, down = json.load(sys.stdin)
@@ -48,6 +48,27 @@ for sql in down: db.execute(sql)
 print(json.dumps(db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'kickside_work_%'").fetchall()))
 `], {}, JSON.stringify([up, down]))
   assert.deepEqual(JSON.parse(result), [])
+})
+
+test('Work adds the UI binding to existing metadata and preserves existing bindings on replay', async () => {
+  const initial = await statements('01_work', 'up')
+  const migration = await statements('02_board_ui_app', 'up')
+  const replay = await statements('02_board_ui_app', 'up', 'sqlite', 'bound')
+  assert.deepEqual(replay, [])
+  const result = await run('python3', ['-c', `
+import json, sqlite3, sys
+initial,migration,replay=json.load(sys.stdin)
+db=sqlite3.connect(':memory:')
+for sql in initial: db.execute(sql)
+db.execute("INSERT INTO kickside_work_board_meta (board_id,title,description,icon,applied_seq) VALUES ('old','Existing','Description','icon',42)")
+for sql in migration: db.execute(sql)
+old=db.execute("SELECT title,description,icon,applied_seq,ui_app FROM kickside_work_board_meta WHERE board_id='old'").fetchone()
+db.execute("UPDATE kickside_work_board_meta SET ui_app='app:tracker_ui' WHERE board_id='old'")
+for sql in replay: db.execute(sql)
+bound=db.execute("SELECT ui_app FROM kickside_work_board_meta WHERE board_id='old'").fetchone()
+print(json.dumps([old,bound]))
+`], {}, JSON.stringify([initial, migration, replay]))
+  assert.deepEqual(JSON.parse(result), [['Existing', 'Description', 'icon', 42, ''], ['app:tracker_ui']])
 })
 
 test('board retention seeks directly to a deep cursor with a bounded page', async () => {
