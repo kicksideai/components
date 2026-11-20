@@ -27,8 +27,8 @@ entries:
       - {code: planning_start, form: time, index: key, title: Start date}
       - {code: planning_end, form: time, index: key, title: End date}
       - {code: planning_goal, form: text, title: Goal}
-      - {code: current_sprint, type: item, index: key, track: true, title: Current sprint}
-      - {code: milestone, type: item, index: key, track: true, title: Milestone}
+      - {code: current_sprint, type: item, config: {item_type: sprint}, index: key, track: true, title: Current sprint}
+      - {code: milestone, type: item, config: {item_type: milestone}, index: key, track: true, title: Milestone}
       item_types:
       - {id: issue, title: Issue, process: planning_issue, fields: [title, current_sprint, milestone]}
       - {id: sprint, title: Sprint, process: planning_period, fields: [name, planning_start, planning_end, planning_goal]}

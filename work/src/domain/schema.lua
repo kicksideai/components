@@ -17,6 +17,7 @@ local search = require("search")
 
 local fields_validator = require("fields")
 local M = {}
+local ROOT_PARENT = "root"
 
 local function invalid(message: string, details: types.JsonObject?): error
     local d: types.JsonObject = details or {}
@@ -26,6 +27,14 @@ end
 
 local function valid_id(id: unknown): boolean
     return type(id) == "string" and id:match(consts.ID_PATTERN) ~= nil and #id <= 40
+end
+
+function M.parent_allowed(item_type: types.ItemType, parent_type: string?): boolean
+    if #item_type.parent_types == 0 then return parent_type == nil end
+    for _, allowed in ipairs(item_type.parent_types) do
+        if allowed == (parent_type or ROOT_PARENT) then return true end
+    end
+    return false
 end
 
 -- model indexes a compiled schema.
@@ -102,7 +111,12 @@ local function compile_field(decl: types.FieldDecl, id: integer, entries: { type
     if form == "record" and index ~= "none" then return nil, invalid("field " .. decl.code .. " has no record equality index", { field = decl.code }) end
     local config: types.FieldConfig = decl.config or {}
     if kind == "principal" then config = { target = consts.PRINCIPAL_TARGET } end
-    if kind == "item" then config = { target = consts.ITEM_TARGET } end
+    if kind == "item" then
+        if config.item_type ~= nil and not valid_id(config.item_type) then
+            return nil, invalid("item reference config.item_type must be an item type id", { code = "invalid_field_config", field = decl.code })
+        end
+        config = { target = consts.ITEM_TARGET, item_type = config.item_type }
+    end
     if kind == "formula" and type(decl.expression) ~= "string" then return nil, invalid("formula requires an expression", { code = "formula_invalid", field = decl.code }) end
     if kind == "rich_text" and config.format ~= "json" then return nil, invalid("rich_text declares config.format json", { code = "rich_text_format", field = decl.code }) end
     if (kind == "rank" or kind == "rich_text") and cardinality ~= "one" then return nil, invalid(kind .. " is a single field value") end
@@ -208,6 +222,7 @@ local function compile_item_types(decl: types.Declaration, fields: { [string]: t
     local out: { types.ItemType } = {}
     for _, t in ipairs(sources) do
         if not valid_id(t.id) then return nil, invalid("item type id must match " .. consts.ID_PATTERN) end
+        if t.id == ROOT_PARENT then return nil, invalid("root is reserved for parent placement", { item_type = t.id }) end
         if not processes[t.process] then return nil, invalid("item type " .. t.id .. " names unknown process " .. tostring(t.process), { item_type = t.id }) end
         local listed_fields = (t.fields or {})
         local in_type: { [string]: boolean } = {}
@@ -220,7 +235,7 @@ local function compile_item_types(decl: types.Declaration, fields: { [string]: t
             if fields[key].type == "counter" or fields[key].type == "rollup" or fields[key].type == "rank" or fields[key].type == "formula" then return nil, invalid("a counter field cannot be inherited", { item_type = t.id }) end
         end
         for _, parent in ipairs((t.parent_types or {})) do
-            if not declared[parent] then return nil, invalid("item type " .. t.id .. " names unknown parent type " .. tostring(parent), { item_type = t.id }) end
+            if parent ~= ROOT_PARENT and not declared[parent] then return nil, invalid("item type " .. t.id .. " names unknown parent type " .. tostring(parent), { item_type = t.id }) end
         end
         if t.move_children ~= nil and t.move_children ~= "move" and t.move_children ~= "refuse" then
             return nil, invalid("move_children takes move or refuse", { code = "move_children_invalid", item_type = t.id })

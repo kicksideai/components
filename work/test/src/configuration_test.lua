@@ -160,7 +160,7 @@ local function define()
         test.it("admits declared field seams only while their plugin is active", function()
             local h = scoped.board(scoped.admin())
             local declaration = { plugins = { { use = "app:work_plugin" } }, fields = { { code = "external", type = "app:work_type", index = "number" } },
-                item_types = { { id = "task", process = "delivery", fields = { "title", "estimate", "external" }, parent_types = { "task" } } } }
+                item_types = { { id = "task", process = "delivery", fields = { "title", "estimate", "external" }, parent_types = { "root", "task" } } } }
             local _, denied = h.call("apply_schema", { declaration = { fields = declaration.fields } })
             test.not_nil(denied)
             test.eq(denied:details().code, "plugin_seam_unowned")

@@ -92,6 +92,19 @@ local function define()
             end
         end)
 
+        test.it("only accepts the matching period type for each planning reference", function()
+            local board = create_board(scoped.admin())
+            local sprint_id, milestone_id = sprint(board), sprint(board, "milestone")
+            local item = issue(board, sprint_id)
+            local cases = { current_sprint = milestone_id, milestone = sprint_id }
+            for field, target in pairs(cases) do
+                local refused = steps.one(board, { op = "set", item = item, values = { [field] = { board = board.id, item = target } } })
+                test.eq(refused.status, "invalid")
+                test.eq(refused.findings[1].code, "invalid_reference")
+                test.eq(refused.findings[1].field, field)
+            end
+        end)
+
         test.it("plans field adoption on populated custom types and requires board administration", function()
             local admin = scoped.admin()
             local board = custom_board(admin)
@@ -205,7 +218,8 @@ local function define()
             local source = sprint(board, "sprint", true)
             issue(board, source)
             assert(board.call("apply_schema", { declaration = { fields = {
-                { code = "current_sprint", type = "item", index = "key", track = true, access = { write = { { user = owner.id } } } },
+                { code = "current_sprint", type = "item", config = { item_type = "sprint" }, index = "key", track = true,
+                    access = { write = { { user = owner.id } } } },
             } } }))
             assert(board.call("grant", { subject_id = writer.id, mask = 3 }))
             local result, err = planning(writer, "plan_close", { board_id = board.id, sprint_id = source })

@@ -7,9 +7,9 @@ local types = require("types")
 
 local M = {}
 
--- These field properties define a stored value, its key or its order.
+-- These field properties define a stored value, its constraints, key or order.
 local REPRESENTATION = { "type", "form", "cardinality" }
-local REPRESENTATION_CONFIG = { "scale", "range", "case", "members", "target", "units", "canonical", "currency" }
+local REPRESENTATION_CONFIG = { "scale", "range", "case", "members", "target", "item_type", "units", "canonical", "currency" }
 -- These field properties shape the generated index.
 local INDEX_SHAPE = { "track", "intervals", "access" }
 local RANK: { [string]: integer } = { cosmetic = 1, additive = 2, semantic = 3, refused = 4 }

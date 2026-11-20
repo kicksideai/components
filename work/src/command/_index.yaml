@@ -227,6 +227,7 @@ entries:
   meta: *id001
   source: file://prepare_context.lua
   imports:
+    schema: kickside.work.domain:schema
     guard: kickside.work.command:guard
     access_rows: kickside.work.persist:access_rows
     rules: kickside.work.domain:access_rules

@@ -14,7 +14,8 @@ Sprint and Milestone carry `name`, `planning_start`, `planning_end`, and optiona
 requires dates in order. Work accepts calendar dates and UTC timestamps for the
 date fields. The `close` transition leads to `closed`.
 
-Issue items carry indexed, tracked `current_sprint` and `milestone` references.
+Issue items carry indexed, tracked `current_sprint` and `milestone` references
+that accept Sprint and Milestone items respectively.
 On a populated board, use the same pack plan with
 `plugin_configs["kickside.work.planning:plugin"].issue_types` set to the IDs
 of any custom issue types that should gain these fields. The plan describes

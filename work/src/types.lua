@@ -25,7 +25,7 @@ type Value = Scalar | { Scalar }
 -- Field configuration a form reads: decimal scale and range, text case and
 -- pattern, reference target, record members, quantity units and currency.
 type FieldConfig = {
-    scale: integer?, range: { integer }?, case: string?, target: string?, members: { [string]: MemberSpec }?,
+    scale: integer?, range: { integer }?, case: string?, target: string?, item_type: string?, members: { [string]: MemberSpec }?,
     units: { [string]: string }?, canonical: string?, currency: string?, pattern: string?, format: string?,
 }
 type MemberSpec = FieldConfig & { form: string, cardinality: string? }
