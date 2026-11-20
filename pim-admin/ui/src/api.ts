@@ -10,7 +10,11 @@ const termPages = new Map<string, Promise<ListTermsResult>>()
 
 export const pim = {
   catalogSummary: (id: string) => get<CatalogRow>(`${BASE}/${encodeURIComponent(id)}/summary`, 'catalog summary'),
-  listCatalogs: (after?: number) => get<{ catalogs: CatalogRow[]; after?: number }>(BASE, 'catalog list', after == null ? undefined : { after: String(after) }),
+  listCatalogs: (after?: number, text?: string) => get<{ catalogs: CatalogRow[]; after?: number }>(BASE, 'catalog list', {
+    admin_only: 'true',
+    ...(after == null ? {} : { after: String(after) }),
+    ...(text ? { text } : {}),
+  }),
   createCatalog: (title: string, declaration?: Declaration, pluginConfigs: PluginConfigs = {}) =>
     post<{ catalog_id: string; title: string }>(BASE, { idempotency_key: `ui-${Date.now()}`, title, declaration, plugin_configs: pluginConfigs }, 'catalog create'),
   history: (id: string, query: { limit?: number; before?: string } = {}) =>

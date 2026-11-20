@@ -21,7 +21,9 @@ assert.equal(manifest.version, undefined)
 assert.deepEqual(manifest.embed, ['kickside.pim.admin:ui_fs'])
 assert.equal(entries.filter(entry => entry.kind === 'ns.definition').length, 1)
 assert(source.every(doc => /^kickside\.pim\.admin(?:\.|$)/.test(doc.namespace)))
-for (const dep of entries.filter(entry => entry.kind === 'ns.dependency')) assert.equal(dep.version, '*', dep.id)
+for (const dep of entries.filter(entry => entry.kind === 'ns.dependency')) {
+  assert.equal(dep.version, dep.component === 'kickside/pim' ? '>=0.1.9' : '*', dep.id)
+}
 for (const pattern of ['test/**', 'test:**', 'wippy.lock', 'build-inputs/**', 'ui/node_modules/**', 'static/*.map']) assert(manifest.exclude.includes(pattern), pattern)
 const owned = new Map(entries.map(entry => [entry.id, entry]))
 const endpoints = entries.filter(entry => entry.kind === 'http.endpoint')

@@ -9,7 +9,7 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 // Channels (where products are released, judged by requirement sets) and
 // sources (where values come from, limited to the aspects they may write).
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 import { Icon } from '@iconify/vue'
 import type { ChannelDecl, Declaration, RemoveDecl, SchemaView, SourceDecl } from '../../types'
 import { humanize } from '../../forms'
@@ -18,6 +18,10 @@ import PrincipalList from '../../shared/PrincipalList.vue'
 
 const props = defineProps<{ catalogId?: string; draft: Declaration; schema: SchemaView }>()
 const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string] }>()
+const settingsPrefix = useId()
+function fieldId(id: string, field: string): string {
+  return settingsPrefix + '-' + id + '-' + field
+}
 const channels = computed(() => props.draft.channels ?? [])
 const sources = computed(() => props.draft.sources ?? [])
 const requirementIds = computed(() => [...new Set((props.draft.families ?? []).flatMap((f) => (f.requirements ?? []).map((r) => r.id)))].map((id) => ({ value: id })))
@@ -55,8 +59,8 @@ function removeSource(s: SourceDecl) {
         <template #details><span class="muted small">{{ c.requirements?.length ?? 0 }} {{ c.requirements?.length === 1 ? 'requirement' : 'requirements' }}</span></template>
         <template #actions><Button type="button" @click="removeChannel(c)" :aria-label="'Remove ' + humanize(c.id)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
         <div class="pim-fields">
-          <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Requirements</label><span class="pim-f-note">a product is ready for the channel when these hold</span></div><ChipPicker :model-value="c.requirements ?? []" :options="requirementIds" @update:model-value="setList(c, 'requirements', $event)" /></div>
-          <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Families</label><span class="pim-f-note">empty means every family</span></div><ChipPicker :model-value="c.families ?? []" :options="familyOptions" @update:model-value="setList(c, 'families', $event)" /></div>
+          <div class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(c.id, 'requirements')">Requirements</label><span class="pim-f-note">a product is ready for the channel when these hold</span></div><ChipPicker :labelledby="fieldId(c.id, 'requirements')" :model-value="c.requirements ?? []" :options="requirementIds" @update:model-value="setList(c, 'requirements', $event)" /></div>
+          <div class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(c.id, 'families')">Families</label><span class="pim-f-note">empty means every family</span></div><ChipPicker :labelledby="fieldId(c.id, 'families')" :model-value="c.families ?? []" :options="familyOptions" @update:model-value="setList(c, 'families', $event)" /></div>
         </div>
       </DefinitionRow>
       <template #add><div class="row pim-add-row"><InputText v-model="newChannel" type="text" placeholder="new_channel" @keydown.enter.prevent="addChannel" class="mono" /><Button type="button" :disabled="!CODE.test(newChannel)" @click="addChannel" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add channel</Button></div></template>
@@ -67,12 +71,12 @@ function removeSource(s: SourceDecl) {
         <template #details><span class="muted small">{{ s.writes?.length ?? 0 }} {{ s.writes?.length === 1 ? 'field group' : 'field groups' }}</span></template>
         <template #actions><Button type="button" @click="removeSource(s)" :aria-label="'Remove ' + humanize(s.id)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
         <div class="pim-fields">
-          <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Ordering</label><span class="pim-f-note">sequence keeps late deliveries from winning</span></div>
-            <Select :model-value="s.ordering ?? 'none'" @update:model-value="s.ordering = $event" :options="[{ value: 'none', label: 'none' }, { value: 'sequence', label: 'sequence' }]" option-label="label" option-value="value" appendTo="self" /></div>
-          <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Audit</label><span class="pim-f-note">record each value change</span></div>
-            <label class="row"><ToggleSwitch :aria-label="'Audit ' + s.id" :model-value="s.audit !== false" @update:model-value="$event ? delete s.audit : (s.audit = false)" /><span>{{ s.audit === false ? 'Off for this source' : 'As the catalog policy' }}</span></label></div>
-          <div class="pim-f pim-w-third"><div class="pim-f-label"><label>Principals</label><span class="pim-f-note">who may write as this source</span></div><PrincipalList :catalog-id="catalogId" :model-value="s.principals ?? []" @update:model-value="setList(s, 'principals', $event)" /></div>
-          <div class="pim-f pim-w-full"><div class="pim-f-label"><label>Writes</label><span class="pim-f-note">field groups this source may set</span></div><ChipPicker :model-value="s.writes ?? []" :options="aspectOptions" @update:model-value="setList(s, 'writes', $event)" /></div>
+          <div class="pim-f pim-w-third"><div class="pim-f-label"><label :id="fieldId(s.id, 'ordering')">Ordering</label><span class="pim-f-note">sequence keeps late deliveries from winning</span></div>
+            <Select :aria-labelledby="fieldId(s.id, 'ordering')" :model-value="s.ordering ?? 'none'" @update:model-value="s.ordering = $event" :options="[{ value: 'none', label: 'none' }, { value: 'sequence', label: 'sequence' }]" option-label="label" option-value="value" appendTo="self" /></div>
+          <div class="pim-f pim-w-third"><div class="pim-f-label"><label :for="fieldId(s.id, 'audit')">Audit</label><span class="pim-f-note">record each value change</span></div>
+            <div class="row"><ToggleSwitch :input-id="fieldId(s.id, 'audit')" :model-value="s.audit !== false" @update:model-value="$event ? delete s.audit : (s.audit = false)" /><span>{{ s.audit === false ? 'Off for this source' : 'As the catalog policy' }}</span></div></div>
+          <div class="pim-f pim-w-third" role="group" :aria-labelledby="fieldId(s.id, 'people')"><div class="pim-f-label"><label :id="fieldId(s.id, 'people')">People and service accounts</label><span class="pim-f-note">who may write as this source</span></div><PrincipalList :catalog-id="catalogId" :model-value="s.principals ?? []" @update:model-value="setList(s, 'principals', $event)" /></div>
+          <div class="pim-f pim-w-full"><div class="pim-f-label"><label :id="fieldId(s.id, 'writes')">Writes</label><span class="pim-f-note">field groups this source may set</span></div><ChipPicker :labelledby="fieldId(s.id, 'writes')" :model-value="s.writes ?? []" :options="aspectOptions" @update:model-value="setList(s, 'writes', $event)" /></div>
         </div>
       </DefinitionRow>
       <template #add><div class="row pim-add-row"><InputText v-model="newSource" type="text" placeholder="new_source" @keydown.enter.prevent="addSource" class="mono" /><Button type="button" :disabled="!CODE.test(newSource)" @click="addSource" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add source</Button></div></template>
