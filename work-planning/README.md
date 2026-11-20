@@ -23,6 +23,13 @@ schema changes and identifies conflicts that require explicit resolutions.
 Pass the same configuration to apply with the planned generation and resolved
 choices. Adopted types keep their existing process and items.
 
+For boards installed with untyped Planning references, run `pack_plan` and
+`pack_apply` to adopt the target types in a new schema generation. Work checks
+stored references on live and trashed items. Each target must be live, readable
+by the caller, and of the required type. A refusal identifies the affected
+field. Correct the references or restore target availability and retry.
+Conforming boards keep their field IDs and existing item values.
+
 `kickside.work.planning:sprints.plan_close` previews an active sprint. Pass its
 board and item IDs, plus the ID of a different planned or active sprint to roll
 unfinished issues into it. Omit the destination for the backlog. The preview

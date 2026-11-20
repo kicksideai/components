@@ -112,6 +112,8 @@ entries:
     plugin_rows: kickside.work.persist:plugin_rows
     plugins: kickside.work.domain:plugins
     plugin_schema: kickside.work.domain:plugin_schema
+    peers: kickside.work.read:peers
+    values: kickside.work.domain:values
     fields: kickside.work.domain:fields
 - name: apply_ops
   kind: library.lua

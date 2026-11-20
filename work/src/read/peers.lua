@@ -89,7 +89,7 @@ function M.page(page: types.QueryPage, redact: types.Redactor): error?
     return nil
 end
 
-function M.visible(board_id: string, item_id: string?): (boolean, error?)
+function M.visible(board_id: string, item_id: string?, required_type: string?): (boolean, error?)
     local _, err = component.validate_access(board_id, component.ACCESS.READ :: integer)
     local admitted, aerr = guard.authorization(err :: error?)
     if aerr or not admitted then return false, aerr end
@@ -100,7 +100,7 @@ function M.visible(board_id: string, item_id: string?): (boolean, error?)
         local item, ierr
         if allowed then item, ierr = store.item(tx, board_id, item_id) end
         if ierr then return nil, ierr end
-        return { visible = allowed and item ~= nil }, nil
+        return { visible = allowed and item ~= nil and (not required_type or (item.life == "live" and item.type == required_type)) }, nil
     end, { admitted = { [board_id] = true }, holders = {} })
     return result ~= nil and result.visible, rerr
 end

@@ -74,6 +74,41 @@ local function define()
                 test.eq(err:details().code, "invalid_field_config")
             end
         end)
+        test.it("narrows a populated item-reference set after every target is live and of the required type", function()
+            local declaration = minimal(fixture.fresh_prefix())
+            declaration.fields[2] = { code = "related", type = "item", cardinality = "set" }
+            declaration.item_types[1].fields = { "title", "related" }
+            declaration.item_types[2] = { id = "period", process = "flow", fields = { "title" } }
+            local board = fixture.board({ declaration = declaration })
+            local period = steps.create(board, "period")
+            local other = steps.create(board, "task")
+            local valid = { board = board.id, item = period }
+            local invalid = { board = board.id, item = other }
+            local task = steps.create(board, "task", { related = { valid, invalid } })
+            local change = { declaration = { fields = { { code = "related", type = "item", cardinality = "set",
+                config = { item_type = "period" } } } } }
+            local before = assert(board.call("get_schema", {}))
+            local function refused()
+                local plan = assert(board.call("plan_schema", change))
+                test.eq(plan.refused[1].code, "related")
+                test.eq(plan.refused[1].what, "config.item_type")
+                test.not_nil(plan.refused[1].detail)
+                local _, err = board.call("apply_schema", change)
+                test.eq(err:details().code, "migration_required")
+                test.eq(assert(board.call("get_schema", {})).generation, before.generation)
+            end
+            refused()
+            test.eq(#assert(steps.get(board, task)).item.values.related, 2)
+            test.eq(steps.one(board, { op = "set", item = task, values = { related = { valid } } }).status, "applied")
+            test.eq(steps.one(board, { op = "delete", item = period }).status, "applied")
+            refused()
+            test.eq(steps.one(board, { op = "restore", item = period }).status, "applied")
+            test.eq(assert(board.call("plan_schema", change)).class, "semantic")
+            assert(board.call("apply_schema", change))
+            test.eq(assert(board.call("get_schema", {})).generation, before.generation + 1)
+            test.eq(assert(steps.get(board, task)).item.values.related[1].item, period)
+            test.eq(steps.one(board, { op = "set", item = task, values = { related = { valid, invalid } } }).findings[1].code, "invalid_reference")
+        end)
         test.it("refuses a schema index that cannot represent stored values", function()
             local h = fixture.board()
             steps.create(h, "task", { title = string.rep("x", 257) })

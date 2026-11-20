@@ -25,6 +25,8 @@ local plugin_rows = require("plugin_rows")
 local plugins = require("plugins")
 local plugin_schema = require("plugin_schema")
 local fields = require("fields")
+local peers = require("peers")
+local values = require("values")
 local layout = require("layout")
 local limits = require("limits")
 local M = {}
@@ -68,6 +70,32 @@ function M.current_schema(db: sql.DB, board_id: string, expected_generation: int
         previous = row.declaration
     end
     return { board = board, declaration = previous }, nil
+end
+
+-- A type constraint can retain an item's stored field ID and references when
+-- every non-cleared member already points to a visible item of the required type.
+local function references_match(field: domain.Field, item: domain.Item, cache: { [string]: boolean },
+    deadline: domain.Deadline): (boolean, error?)
+    local stored = fields.value(field, item)
+    if stored == nil then return true, nil end
+    for _, member in ipairs(values.members(fields.shape(field), stored)) do
+        if type(member) ~= "table" then return false, nil end
+        local ref = (member :: domain.Ref).ref
+        if type(ref) ~= "table" or ref[1] ~= consts.ITEM_TARGET or type(ref[2]) ~= "string" then return false, nil end
+        local board_id, item_id = ref[2]:match("^([^/]+)/(.+)$")
+        if not board_id or not item_id then return false, nil end
+        local key = (field.config.item_type :: string) .. ":" .. ref[2]
+        if cache[key] == nil then
+            if clock.passed(deadline) then
+                return false, errors.new({ kind = errors.TIMEOUT, message = "schema validation deadline passed", details = { code = "schema_validation_deadline" } })
+            end
+            local matches, err = peers.visible(board_id, item_id, field.config.item_type)
+            if err then return false, err end
+            cache[key] = matches
+        end
+        if not cache[key] then return false, nil end
+    end
+    return true, nil
 end
 
 -- plan_schema compiles and classifies a declaration against the board state at
@@ -142,8 +170,9 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
             compiled = compiled, digest = digest, unchanged = true, claim = false, migrates = false, maps = {} }, nil
     end
     local usage: domain.Usage = { fields = {}, items = 0, types = {}, links = {}, states = {} }
+    local next_model = schema.model(compiled)
     if board then
-        local loaded, uerr = store.usage(db, board_id, changes.usage_targets(board.model, schema.model(compiled)))
+        local loaded, uerr = store.usage(db, board_id, changes.usage_targets(board.model, next_model))
         if uerr or not loaded then return nil, uerr end
         usage = loaded
     end
@@ -160,11 +189,23 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
     for _, p in ipairs(request.declaration.processes or {}) do maps[p.id] = p.map or {} end
     local delta = changes.changes(board and board.compiled or nil, compiled, usage, maps)
     local refused: { domain.SchemaChange } = {}
+    local narrowing: { { field: domain.Field, change: domain.SchemaChange } } = {}
+    local other_refusal = false
     for _, c in ipairs(delta) do
-        if c.class == "refused" then refused[#refused + 1] = c end
+        if c.class == "refused" then
+            local field = next_model.fields[c.code]
+            local before = board and field and board.model.by_id[field.id]
+            if c.what == "config.item_type" and before and before.type == "item" and not before.config.item_type
+                and field and field.type == "item" and field.config.item_type then
+                narrowing[#narrowing + 1] = { field = field, change = c }
+            else
+                other_refusal = true
+            end
+        end
     end
     local affected = board and layout.unbuilt(board.compiled, compiled) or {}
-    if board and #refused == 0 and #affected > 0 then
+    if board and not other_refusal and (#affected > 0 or #narrowing > 0) then
+        for _, entry in ipairs(narrowing) do entry.change.class = "semantic" end
         local selected: { domain.Field } = {}
         for _, field in ipairs(compiled.fields) do
             for _, code in ipairs(affected) do if field.code == code then selected[#selected + 1] = field end end
@@ -189,13 +230,27 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
             end
             local items, ierr = store.items(db, board_id, ids)
             if ierr then return nil, ierr end
+            local matches: { [string]: boolean } = {}
             for _, item in ipairs(items or {}) do
                 if clock.passed(until_at) then return nil, errors.new({ kind = errors.TIMEOUT, message = "schema validation deadline passed", details = { code = "schema_validation_deadline" } }) end
                 local _, verr = fields.document(representation, item.document)
                 if verr then return nil, verr end
+                for _, entry in ipairs(narrowing) do
+                    if entry.change.class ~= "refused" then
+                        local valid, ref_err = references_match(entry.field, item, matches, until_at)
+                        if ref_err then return nil, ref_err end
+                        if not valid then
+                            entry.change.class = "refused"
+                            entry.change.detail = "a stored reference is unavailable or has a different target type"
+                        end
+                    end
+                end
             end
             after = ids[#ids]
         end
+    end
+    for _, c in ipairs(delta) do
+        if c.class == "refused" then refused[#refused + 1] = c end
     end
     return { generation = generation + 1, class = #refused > 0 and "refused" or changes.classify(board and board.compiled or nil, delta), changes = delta,
         refused = refused, declaration = effective, compiled = compiled, digest = digest, unchanged = false, claim = claim,
@@ -222,6 +277,9 @@ end
 -- migration_hint names the way out of the refused changes: a state map when only states are removed.
 local function migration_hint(refused: { domain.SchemaChange }): string
     for _, c in ipairs(refused) do
+        if c.what == "config.item_type" and c.detail then
+            return "correct the affected field references or make their targets readable, then retry the schema plan"
+        end
         if c.what ~= "state.remove" then return MIGRATION end
     end
     return STATE_MIGRATION
