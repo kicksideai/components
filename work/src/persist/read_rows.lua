@@ -3,6 +3,7 @@
 local sql = require("sql")
 local domain = require("domain")
 local M = {}
+local LINK_ORDER = "seq, board_id, from_id, type, to_board_id, to_id"
 
 function M.changes(tx: sql.DB | sql.Transaction, board: domain.Board, seq: integer, item_id: string, limit: integer): ({ domain.Row }?, error?)
     return tx:query([[SELECT updated_seq, item_id FROM kickside_work_item WHERE board_id = $1 AND updated_seq <= $2
@@ -32,7 +33,7 @@ function M.life_condition(trashed: boolean?): domain.Condition
 end
 
 -- links pages the source rows for an item or a target in a stable total order.
-function M.links(tx: sql.DB | sql.Transaction, board_id: string, item_id: string?, target: domain.Target?, direction: string, offset: integer, limit: integer): ({ domain.Row }?, error?)
+function M.links(tx: sql.DB | sql.Transaction, board_id: string, item_id: string?, target: domain.Target?, direction: string, after: domain.LinkPosition?, limit: integer): ({ domain.Row }?, error?)
     local params: domain.SqlParams = { board_id }
     local where: string
     if target then
@@ -44,10 +45,17 @@ function M.links(tx: sql.DB | sql.Transaction, board_id: string, item_id: string
         local inward = "(to_board_id = $1 AND to_id = $2)"
         where = direction == "inward" and inward or direction == "outward" and outward or ("(" .. outward .. " OR " .. inward .. ")")
     end
+    if after then
+        local position: domain.SqlParams = { after.seq, after.board_id, after.from_id, after.type, after.to_board_id, after.to_id }
+        local markers: { string } = {}
+        for i, value in ipairs(position) do
+            params[#params + 1] = value
+            markers[i] = "$" .. #params
+        end
+        where = where .. " AND (" .. LINK_ORDER .. ") > (" .. table.concat(markers, ", ") .. ")"
+    end
     params[#params + 1] = limit
-    local take = #params
-    params[#params + 1] = offset
-    return tx:query("SELECT * FROM kickside_work_link WHERE " .. where .. " ORDER BY seq, board_id, from_id, type, to_board_id, to_id LIMIT $" .. take .. " OFFSET $" .. #params, params)
+    return tx:query("SELECT * FROM kickside_work_link WHERE " .. where .. " ORDER BY " .. LINK_ORDER .. " LIMIT $" .. #params, params)
 end
 
 function M.stage_run(tx: sql.DB | sql.Transaction, board_id: string, item_id: string, visit: integer, attempt: integer): (domain.Row?, error?)
