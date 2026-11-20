@@ -185,7 +185,6 @@ entries:
     source: file://proposal_rows.lua
     modules: [sql]
     imports:
-      failure: kickside.pim:failure
       narrow: kickside.pim:narrow
       store: kickside.pim.persist:store
       values: kickside.pim.domain:values

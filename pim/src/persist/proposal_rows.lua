@@ -1,6 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Proposal rows: stored commands and their decisions.
-local failure = require("failure")
 local store = require("store")
 local narrow = require("narrow")
 local values = require("values")
@@ -20,35 +19,24 @@ end
 function M.submit(db: types.Executor, catalog_id: string, body: types.ProposalSubmittedBody): error?
     local origin: types.JsonObject = { type = body.origin and body.origin.type, id = body.origin and body.origin.id,
         provenance = body.provenance }
-    local _, err = db:execute([[INSERT INTO kickside_pim_proposal (catalog_id, proposal_id, source, origin, items, base, status,
-        created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8)]],
+    local _, err = db:execute([[INSERT INTO kickside_pim_proposal (catalog_id, proposal_id, source, origin, items, base, generation,
+        status, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9)]],
         { catalog_id, body.proposal_id, body.source or sql.NULL, values.canonical(origin), values.canonical(body.items),
-            values.canonical({ generation = body.generation, versions = body.base }), body.actor :: string, body.at :: string })
+            values.canonical(body.base), body.generation, body.actor :: string, body.at :: string })
     if err then return errors.wrap(err, "proposal write failed") end
     return nil
 end
 
-function M.decode(r: types.Row): (types.Proposal?, error?)
+local function decode(r: types.Row): (types.Proposal?, error?)
     local decoded, err = store.decode_row(r, { proposal_id = "text", status = "text", created_by = "text", created_at = "text",
-        origin = "json", items = "json", base = "json", result = "json?" })
+        origin = "json", items = "json", base = "json", generation = "int", result = "json?" })
     if err or not decoded then return nil, err end
     r = decoded
     local origin: types.JsonObject = r.origin :: types.JsonObject
     local items: { types.ApplyItem } = r.items :: { types.ApplyItem }
-    local base = r.base :: types.Row
-    local versions = base
-    local generation: integer? = nil
-    -- Released proposals stored only the map of product IDs to versions.
-    if base.generation ~= nil or base.versions ~= nil then
-        local gerr: error?
-        generation, gerr = store.need_int(base, "generation")
-        if gerr or not generation then return nil, gerr end
-        if type(base.versions) ~= "table" then return nil, failure.corrupt("proposal base lacks versions", "base") end
-        versions = base.versions :: types.Row
-    end
     local result: types.ApplyResult? = r.result :: types.ApplyResult?
     return { proposal_id = r.proposal_id :: string, source = narrow.text(r.source), origin = origin, items = items,
-        base = versions :: { [string]: integer }, generation = generation,
+        base = r.base :: { [string]: integer }, generation = r.generation :: integer,
         status = r.status :: string, result = result, created_by = r.created_by :: string, created_at = r.created_at :: string,
         decided_by = narrow.text(r.decided_by), decided_at = narrow.text(r.decided_at) } , nil
 end
@@ -57,7 +45,7 @@ function M.get(db: types.Executor, catalog_id: string, proposal_id: string): (ty
     local rows, err = db:query("SELECT * FROM kickside_pim_proposal WHERE catalog_id = $1 AND proposal_id = $2", { catalog_id, proposal_id })
     if err then return nil, errors.wrap(err, "proposal read failed") end
     if not rows or not rows[1] then return nil, nil end
-    return M.decode(rows[1])
+    return decode(rows[1])
 end
 
 function M.list(db: types.Executor, catalog_id: string, status: string?, limit: integer, after: types.ProposalCursor?): ({ types.Proposal }?, error?)
@@ -77,7 +65,7 @@ function M.list(db: types.Executor, catalog_id: string, status: string?, limit: 
     if err then return nil, errors.wrap(err, "proposal list failed") end
     local out: { types.Proposal } = {}
     for _, r in ipairs(rows or {}) do
-        local p, derr = M.decode(r)
+        local p, derr = decode(r)
         if derr or not p then return nil, derr end
         out[#out + 1] = p
     end

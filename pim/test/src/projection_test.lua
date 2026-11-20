@@ -148,9 +148,9 @@ local function define()
             local last = math.tointeger(tonumber(events[#events].seq)) :: integer
             local id = h.call("get", { product = { sku = "RDG-moss-40" } }).product.product_id
             for _, body in ipairs({
-                { product_id = id, patch = "not a patch", actor = "a", at = "2026-01-01T00:00:00Z" },
-                { product_id = id, patch = {}, actor = "a", at = "2026-01-01T00:00:00Z", surprise = true },
-                { patch = {}, actor = "a", at = "2026-01-01T00:00:00Z" },
+                { product_id = id, generation = 1, patch = "not a patch", actor = "a", at = "2026-01-01T00:00:00Z" },
+                { product_id = id, generation = 1, patch = {}, actor = "a", at = "2026-01-01T00:00:00Z", surprise = true },
+                { generation = 1, patch = {}, actor = "a", at = "2026-01-01T00:00:00Z" },
             } :: { { [string]: unknown } }) do
                 local db = assert(store.open())
                 local tx = assert(db:begin())

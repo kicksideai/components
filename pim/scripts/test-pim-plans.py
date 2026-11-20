@@ -27,8 +27,8 @@ class QueryPlans(unittest.TestCase):
         quota = re.search(r"\[\[(SELECT COUNT\(\*\) AS n FROM.*?)\]\]", source, re.S).group(1)
         decision = re.search(r"\[\[(UPDATE kickside_pim_proposal.*?)\]\]", source, re.S).group(1)
         self.db.executemany("""INSERT INTO kickside_pim_proposal
-            (catalog_id,proposal_id,origin,items,base,status,created_by,created_at)
-            VALUES('catalog',?,'{}','[]','{}','pending','actor','2000')""", [(str(n),) for n in range(2000)])
+            (catalog_id,proposal_id,origin,items,base,generation,status,created_by,created_at)
+            VALUES('catalog',?,'{}','[]','{}',1,'pending','actor','2000')""", [(str(n),) for n in range(2000)])
         params = named(("catalog", 5))
         self.assertEqual(self.db.execute(quota, params).fetchone(), (5,))
         quota_plan = str(self.db.execute("EXPLAIN QUERY PLAN " + quota, params).fetchall())

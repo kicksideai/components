@@ -59,7 +59,7 @@ local function as_written(p: types.Product, document: types.Document, status: st
 end
 
 -- Every product mutation carries the same source ordering and attribution.
-local function stamp(st: item_state.State, p: types.Product, body: types.ProductBody, seq: integer?): types.ProductBody
+local function stamp<T: types.ProductBody>(st: item_state.State, p: types.Product, body: T, seq: integer?): T
     local source = st.source
     if source then
         body.source = source.id
@@ -135,9 +135,10 @@ local function plan_create(st: item_state.State, item: types.ApplyItem): (types.
     st.skus[sku] = p.product_id
     st.freed[sku] = nil
     item_state.claim_uniques(st, p, built.unique)
-    return { type = EV.PRODUCT_CREATED, subject = "p:" .. p.product_id,
-        body = stamp(st, p, { product_id = p.product_id, sku = sku, family = family_code, parent_id = p.parent_id, level = level,
-            is_item = p.is_item == 1, axis_key = key, status = status, generation = st.catalog.generation, patch = built.patch }, seq) },
+    local body: types.ProductCreatedBody = { product_id = p.product_id, sku = sku, family = family_code,
+        parent_id = p.parent_id, level = level, is_item = p.is_item == 1, axis_key = key, status = status,
+        generation = st.catalog.generation, patch = built.patch }
+    return { type = EV.PRODUCT_CREATED, subject = "p:" .. p.product_id, body = stamp(st, p, body, seq) },
         { outcome = "created", product_id = p.product_id, sku = sku, version = 1 }, nil
 end
 
@@ -171,8 +172,8 @@ local function plan_move(st: item_state.State, item: types.ApplyItem, p: types.P
         if seq == nil then return nil, { outcome = "unchanged", product_id = p.product_id, version = p.version }, nil end
         -- A newer delivery still advances the sequence when the parent already matches.
         p.version = p.version + 1
-        return { type = EV.PRODUCT_CHANGED, subject = "p:" .. p.product_id,
-            body = stamp(st, p, { product_id = p.product_id, generation = st.catalog.generation, patch = {} }, seq) },
+        local body: types.ProductPatchBody = { product_id = p.product_id, generation = st.catalog.generation, patch = {} }
+        return { type = EV.PRODUCT_CHANGED, subject = "p:" .. p.product_id, body = stamp(st, p, body, seq) },
             { outcome = "updated", product_id = p.product_id, version = p.version }, nil
     end
     local family = compiled.families[p.family]
@@ -221,7 +222,7 @@ local function plan_edit(st: item_state.State, item: types.ApplyItem, p: types.P
     if status_change then p.status = item.status :: string end
     item_state.release(st, p, built.released)
     item_state.claim_uniques(st, p, built.unique)
-    local body: types.ProductBody = { product_id = p.product_id, generation = st.catalog.generation, patch = built.patch }
+    local body: types.ProductPatchBody = { product_id = p.product_id, generation = st.catalog.generation, patch = built.patch }
     if status_change then
         body.previous_status = previous_status
         body.status = item.status

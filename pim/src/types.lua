@@ -199,9 +199,10 @@ type SchemaBody = {
 }
 type ProductBody = {
     product_id: string, sku: string?, family: string?, parent_id: string?, level: integer?, is_item: boolean?,
-    axis_key: string?, status: string?, previous_status: string?, source: string?, source_seq: integer?, generation: integer?, patch: { PatchStep }?,
+    axis_key: string?, status: string?, previous_status: string?, source: string?, source_seq: integer?, patch: { PatchStep }?,
     origin: Origin?, provenance: JsonObject?, approval_item_id: string?, audit: boolean?, actor: string?, at: string?, receipt: Receipt?,
 }
+type ProductPatchBody = ProductBody & { generation: integer, patch: { PatchStep } }
 type TermBody = {
     vocabulary: string, code: string, labels: { [string]: string }?, parent: string?, retired: boolean?, merged_into: string?, merge: Merge?,
     actor: string?, at: string?, receipt: Receipt?,
@@ -229,7 +230,7 @@ type Origin = { type: string, id: string }
 type Event = { type: string, subject: string?, body: EventBody, external: External?, trace_context: TraceContext? }
 type SchemaEvent = { kind: "schema", seq: integer, type: string, body: SchemaBody }
 -- A created product's body always names its identity.
-type ProductCreatedBody = ProductBody & { sku: string, family: string, level: integer, is_item: boolean, status: string }
+type ProductCreatedBody = ProductPatchBody & { sku: string, family: string, level: integer, is_item: boolean, status: string }
 type CreatedEvent = { kind: "created", seq: integer, type: string, body: ProductCreatedBody }
 type ProductEvent = { kind: "product", seq: integer, type: string, body: ProductBody }
 type TermEvent = { kind: "term", seq: integer, type: string, body: TermBody }
@@ -296,7 +297,7 @@ type ReleaseRequest = { items: { ReleaseItem }, idempotency: Idempotency?, trace
 type ProposeRequest = { items: { ApplyItem }, source: string?, origin: Origin?, provenance: JsonObject?, trace_context: TraceContext? }
 type Proposal = {
     proposal_id: string, source: string?, origin: JsonObject, provenance: JsonObject?, items: { ApplyItem }, base: { [string]: integer },
-    generation: integer?,
+    generation: integer,
     status: string, result: ApplyResult?, created_by: string, created_at: string, decided_by: string?, decided_at: string?,
 }
 type ProposeResult = { proposal_id: string, status: string }
@@ -481,7 +482,7 @@ return {
     Level = Level, Requirement = Requirement, Check = Check, Family = Family, Channel = Channel,
     Aspect = Aspect, Source = Source, Vocabulary = Vocabulary, Column = Column, Layout = Layout, RebuildStorage = RebuildStorage,
     Compiled = Compiled, Catalog = Catalog, Product = Product, Lineage = Lineage, Resolution = Resolution,
-    PatchStep = PatchStep, Receipt = Receipt, SchemaBody = SchemaBody, ProductBody = ProductBody,
+    PatchStep = PatchStep, Receipt = Receipt, SchemaBody = SchemaBody, ProductBody = ProductBody, ProductPatchBody = ProductPatchBody,
     ModelReleaseBody = ModelReleaseBody, ModelReleaseEvent = ModelReleaseEvent, TermBody = TermBody, ReleaseBody = ReleaseBody, WithdrawBody = WithdrawBody, EventBody = EventBody,
     External = External, Event = Event, SchemaEvent = SchemaEvent, ProductCreatedBody = ProductCreatedBody, CreatedEvent = CreatedEvent,
     ProductEvent = ProductEvent, TermEvent = TermEvent,

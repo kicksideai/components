@@ -21,10 +21,10 @@ local function define()
             local root = assert(steps.get(h, "RDG")).product.product_id
             local seq = current.applied_seq + 1
             local batch: { types.RawEvent } = {
-                { seq = seq, type = "kickside.pim.events:product.changed", body = { product_id = root,
+                { seq = seq, type = "kickside.pim.events:product.changed", body = { product_id = root, generation = current.generation,
                     patch = { { a = current.compiled.attributes["core.name"].id, c = "locale=en", v = "All descendants" } },
                     actor = h.actor:id(), at = "2026-01-01T00:00:00Z" } },
-                { seq = seq + 1, type = "kickside.pim.events:product.changed", body = { product_id = root,
+                { seq = seq + 1, type = "kickside.pim.events:product.changed", body = { product_id = root, generation = current.generation,
                     patch = { { a = current.compiled.attributes["core.care"].id, c = "", v = "Following event" } },
                     actor = h.actor:id(), at = "2026-01-01T00:00:00Z" } },
             }

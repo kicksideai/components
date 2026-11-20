@@ -31,7 +31,7 @@ local function define()
                 { type = "kickside.pim.events:product.deleted", role = "user", body = { product_id = id, actor = "forged", at = AT } },
                 { type = "kickside.pim.events:product.purged", role = "user", body = { product_id = id, actor = "forged", at = AT } },
                 { type = "kickside.pim.events:product.created", role = "user", body = { product_id = "forged-id", sku = "FORGED", family = "footwear",
-                    level = 0, is_item = false, patch = json.decode("[]"), actor = "forged", at = AT } },
+                    level = 0, is_item = false, generation = 1, patch = json.decode("[]"), actor = "forged", at = AT } },
             }
             for _, event in ipairs(events) do
                 local schema = assert(registry.get(event.type)).data.schema
