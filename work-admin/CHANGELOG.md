@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/kicksideai/components/compare/work-admin-v0.1.5...work-admin-v0.1.6) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work-admin:** improve settings layout and keyboard access ([5e35ffa](https://github.com/kicksideai/components/commit/5e35ffa0fa2bba141cbc71b83ab507e2323e31b8))
+
 ## [0.1.5](https://github.com/kicksideai/components/compare/work-admin-v0.1.4...work-admin-v0.1.5) (2026-11-20)
 
 
