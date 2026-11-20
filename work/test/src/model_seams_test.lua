@@ -75,6 +75,25 @@ local function define()
             test.eq(denied.findings[1].code, "estimate_required")
             test.eq(steps.one(h, { op = "transition", item = yes, transition = "finish" }).status, "applied")
         end)
+        test.it("records a passed report when a plugin guard refuses its outcome transition", function()
+            local d = declaration()
+            d.processes[1].states[3] = { id = "build", category = "started", kind = "automated",
+                run = { stage = "build", on_pass = "finish" } }
+            d.processes[1].transitions[1].from = { "build" }
+            d.processes[1].transitions[2] = { id = "start", from = { "open" }, to = "build" }
+            local h = fixture.board({ declaration = d })
+            local item = steps.create(h, "task", { estimate = 1 })
+            test.eq(steps.one(h, { op = "transition", item = item, transition = "start" }).status, "applied")
+            local result = assert(h.call("report", { item = item, visit = 2, attempt = 1, outcome = "passed",
+                outputs = { artifact = "build-42" } })).outcomes[1]
+
+            test.eq(result.status, "applied")
+            test.eq(result.findings[1].code, "estimate_required")
+            test.eq(assert(steps.get(h, item)).item.state, "build")
+            local run = assert(h.call("list_stage_runs", { item = { id = item } })).stage_runs[1]
+            test.eq(run.outcome, "passed")
+            test.eq(run.outputs.artifact, "build-42")
+        end)
         test.it("persists state invariant failures and outages as findings without stalling the fold", function()
             local d = declaration()
             d.processes[1].states[1].invariants = { "app:model_guard" }
