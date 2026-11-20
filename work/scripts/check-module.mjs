@@ -46,7 +46,9 @@ for (const pattern of ['test/**', 'test:**', '.wippy/**', 'wippy.lock']) {
   if (!moduleManifest.exclude.includes(pattern)) report(`manifest must exclude ${pattern}`)
 }
 const runtime = process.env.WIPPY || 'wippy'
-const installed = JSON.parse(await run(runtime, ['registry', 'list', '--ns', 'kickside.work*', '--json'], { cwd: resolve(root, 'test') })).filter(entry => entry.id.startsWith('kickside.work:') || entry.id.startsWith('kickside.work.'))
+const namespaces = new Set(registries.map(registry => registry.namespace))
+const installed = JSON.parse(await run(runtime, ['registry', 'list', '--ns', 'kickside.work*', '--json'], { cwd: resolve(root, 'test') }))
+  .filter(entry => namespaces.has(entry.id.split(':', 1)[0]))
 if (installed.filter(entry => entry.kind === 'ns.definition').length !== 1) report('module needs one root ns.definition')
 if (!installed.some(entry => entry.id === 'kickside.work:types' && entry.kind === 'library.lua')) report('shared root types are missing')
 

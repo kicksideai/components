@@ -80,6 +80,8 @@ type GroupPosition = { parent: GroupKey?, child: GroupKey? }
 type GroupBucket = { key: GroupKey?, count: integer, rows: { domain.Row }, totals: { [integer]: string }?, children: { GroupBucket }? }
 type CrossCandidate = { board: string, index: integer, key: domain.Cursor, item: ItemView }
 type QueryResult = ReadStamp & { incomplete: boolean?, groups: { QueryGroup }?, group_after: string?, positions: { [string]: ReadStamp }?, cross_after: CrossCursor?, items: { ItemView }, after: domain.Cursor?, reindexing: boolean }
+type EditMember = { item_id: string, version: integer }
+type EditSelection = ReadStamp & { members: { EditMember }, over_limit: boolean? }
 type CountResult = ReadStamp & { incomplete: boolean?, total: integer?, estimated: boolean?, reindexing: boolean }
 
 -- Link continuations are opaque and bound to the board and selector.
@@ -116,7 +118,7 @@ return { AwaitingView = AwaitingView, GateView = GateView, ApprovalView = Approv
     Snapshot = Snapshot, SnapshotPreparation = SnapshotPreparation, PrincipalResult = PrincipalResult, ReadContext = ReadContext, PageCheck = PageCheck,
     Executor = Executor,
     Order = Order, QueryRequest = QueryRequest, QueryResult = QueryResult, CountResult = CountResult,
-    ReadStamp = ReadStamp, SchemaGetRequest = SchemaGetRequest, SchemaView = SchemaView, ItemRef = ItemRef, GetRequest = GetRequest,
+    EditMember = EditMember, EditSelection = EditSelection, ReadStamp = ReadStamp, SchemaGetRequest = SchemaGetRequest, SchemaView = SchemaView, ItemRef = ItemRef, GetRequest = GetRequest,
     ItemView = ItemView, LinkView = LinkView, CommentView = CommentView, GetResult = GetResult, ChangesCursor = ChangesCursor,
     ChangesRequest = ChangesRequest, ChangeItem = ChangeItem, FeedGap = FeedGap, ChangesResult = ChangesResult,
     HistoryRequest = HistoryRequest, HistoryEntry = HistoryEntry, HistoryResult = HistoryResult, TransitionView = TransitionView,

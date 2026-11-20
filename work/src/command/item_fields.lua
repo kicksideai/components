@@ -217,13 +217,14 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
     local permitted, werr = check(active, t.when)
     if werr then return M.failed(werr) end
     if not permitted then return M.result("denied", group, "when_failed", "transition " .. t.id .. " fails its when condition") end
-    local allowed, findings, gerr = seams.guard(ctx.board, active, t, t.guards)
-    if gerr then return M.failed(gerr) end
-    if not allowed then return { status = "denied", events = {}, group = group, findings = findings } end
     local work = flow.copy(item)
     local steps, serr = value_steps(ctx.board, item_type, work.document, op)
     if serr or not steps then return serr or M.invalid("invalid_value", "invalid values") end
     document.apply_patch(work.document, steps)
+    local candidate = op.region and process.region(work, op.region, p) or work
+    local allowed, findings, gerr = seams.guard(ctx.board, candidate, t, t.guards)
+    if gerr then return M.failed(gerr) end
+    if not allowed then return { status = "denied", events = {}, group = group, findings = findings } end
     local events, ferr, terr = flow.transition(ctx.board, work, t, steps, ctx.actor, ctx.now, p, model, op.region, check, ctx.auto, op.force)
     if terr then return M.failed(terr) end
     if ferr then return M.refused(group, ferr) end

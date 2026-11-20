@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.planning
+entries:
+- name: module_access
+  kind: security.policy
+  meta:
+    title: Work Planning
+    surface: kickside.work.planning
+    intent: module_access
+    includes: ['kickside.work.planning:module_runtime']
+  groups: []
+  policy:
+    resources:
+    - kickside.work.planning:pack
+    - kickside.work.planning:plugin
+    - kickside.work.planning:date_order
+    - kickside.work.planning:attachment
+    - kickside.work.planning:schema_provider
+    - kickside.work.planning:sprints
+    - kickside.work.planning:plan_close
+    - kickside.work.planning:close
+    actions: [registry.get, registry.find]
+    effect: allow
+- name: module_runtime
+  kind: security.policy
+  meta: {private: true}
+  groups: []
+  policy:
+    resources:
+    - kickside.work.planning:date_order
+    - kickside.work.planning:attachment
+    - kickside.work.planning:delete
+    - kickside.work.planning:schema_provider
+    - kickside.work.planning:sprints
+    - kickside.work.planning:plan_close
+    - kickside.work.planning:close
+    - kickside.work.planning:adopt_fields
+    - kickside.work.planning:sprints_binding
+    actions: [contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
+    effect: allow
+- name: user_security_scope
+  kind: ns.requirement
+  meta: {value_kind: security.scope}
+  default: kickside.security.groups:members
+  targets:
+  - {entry: 'kickside.work.planning:module_access', path: '.groups +='}
+  - {entry: 'kickside.work.planning:module_runtime', path: '.groups +='}

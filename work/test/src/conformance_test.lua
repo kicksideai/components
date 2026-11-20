@@ -132,7 +132,8 @@ local function define()
             local requirements = assert(registry.find({ [".kind"] = "ns.requirement" }))
             local literal_types = { boolean = true, number = true, integer = true, string = true, object = true, array = true }
             local expected = { ["kickside.work:target_db"] = true, ["kickside.work:api_router"] = true,
-                ["kickside.work:registry_admin_grant"] = true, ["kickside.work:board_event_retention_days"] = true, ["kickside.work.security:user_security_scope"] = true }
+                ["kickside.work:registry_admin_grant"] = true, ["kickside.work:board_event_retention_days"] = true,
+                ["kickside.work.security:user_security_scope"] = true, ["kickside.work.planning:user_security_scope"] = true }
             for _, entry in ipairs(requirements) do
                 if tostring(entry.id):match("^kickside%.work[.:]") then
                     test.is_true(expected[tostring(entry.id)] == true, tostring(entry.id))
