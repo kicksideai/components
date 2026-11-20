@@ -147,6 +147,15 @@ label.work-stack, .work-settings-grid label, .work-chip-picker legend { font-siz
 .work-chip-picker { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
 .work-chip-picker legend { padding: 0; margin-bottom: 8px; }
 .work-schema-plan, .work-advanced-settings { margin-top: 20px; }
+.work-schema-plan { min-width: 0; overflow-wrap: anywhere; }
+.work-schema-plan .work-settings-table td { vertical-align: top; }
+.work-schema-plan .work-settings-table p { margin-top: 4px; }
+@media (max-width: 640px) {
+  .work-schema-plan .work-settings-table { table-layout: fixed; }
+  .work-schema-plan .work-settings-table th, .work-schema-plan .work-settings-table td { padding-inline: 4px; }
+  .work-schema-plan .work-settings-table th:last-child { width: 40%; }
+  .work-schema-plan .p-tag { max-width: 100%; white-space: normal; }
+}
 .work-schema-plan ul { display: grid; gap: 10px; padding-left: 20px; }
 .work-relation-preview { padding: 12px; border-radius: 8px; background: var(--kx-overlay-subtle); }
 
@@ -197,6 +206,10 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .work-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .work-pack-choices.p-selectbutton { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .work-pack-choices > .p-togglebutton { text-align: left; }
+@media (max-width: 640px) {
+  .work-pack-choices.p-selectbutton { max-height: 240px; grid-auto-rows: max-content; overflow-y: auto; padding: 3px; align-content: start; }
+  .work-pack-choices .work-row { flex-wrap: wrap; }
+}
 .work-field-control > div { min-width: 0; }
 .work-plain-list { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 12px; }
 
@@ -298,6 +311,8 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .work-field-label { font-size: 11.5px; font-weight: 680; color: var(--p-text-muted-color); }
 .work-duration-control { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 8px; }
 .work-duration-control .p-inputnumber, .work-duration-control .p-inputnumber-input { width: 100%; min-width: 0; }
+.work-duration-control .p-select-label { padding-inline: 8px; }
+.work-duration-control .p-select-dropdown { width: 32px; }
 .work-json-disclosure { font-size: 12px; min-width: 0; }
 .work-json-disclosure > summary { cursor: pointer; color: var(--p-text-muted-color); }
 .work-json-disclosure > label { margin-top: 10px; }

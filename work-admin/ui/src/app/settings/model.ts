@@ -152,7 +152,7 @@ export function validationIssues(error: unknown, declaration: Declaration): Sche
   return code ? [{ code, class: 'refused', what: 'invalid', detail: error.message }] : []
 }
 export const classDescription: Record<string, string> = {
-  unchanged: 'Nothing changes.', cosmetic: 'Presentation or policy changes. Stored item values keep their meaning.',
-  additive: 'New definitions become available to items.', semantic: 'The board updates its indexes or process generations after apply.',
-  refused: 'Resolve the refused changes before applying this draft.', initial: 'The first schema defines the board.',
+  unchanged: 'Nothing changes.', cosmetic: 'These changes update labels or settings. Saved item values keep their meaning.',
+  additive: 'New choices or definitions become available to items.', semantic: 'These changes can affect existing items or how they are found.',
+  refused: 'Resolve the blocked changes before applying this draft.', initial: 'These settings will be used when the board is ready.',
 }

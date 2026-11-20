@@ -49,6 +49,17 @@ local function cases()
             test.eq(hidden.status, 200)
             for _, pack in ipairs(hidden.body.data.packs) do test.is_true(pack.id ~= "app:hidden_pack") end
         end)
+        test.it("discovers display metadata and configuration for the wizard", function()
+            local listed = session.admin().get("/work/packs")
+            test.eq(listed.status, 200, json.encode(listed.body))
+            local found: Map = {}
+            for _, pack in ipairs(listed.body.data.packs) do found[pack.id] = pack end
+            local plugin = found["app:configured_pack"].plugins[1]
+            test.eq(plugin.plugin, "app:ui_plugin")
+            test.eq(plugin.title, "Board enhancements")
+            test.eq(plugin.config_schema and plugin.config_schema.properties.threshold.type, "integer")
+            test.eq(plugin.config_schema and plugin.config_schema.properties.threshold.minimum, 1)
+        end)
         test.it("creates with pack provenance, honors starter opt-out, and leaves Empty board empty", function()
             local owner = session.admin()
             for _, starter in ipairs({ false, true }) do

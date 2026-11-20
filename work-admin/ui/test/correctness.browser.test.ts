@@ -125,6 +125,26 @@ it('asks before discarding a board draft and preserves it when the operator canc
   } finally { await page.close() }
 }, 30000)
 
+it('confirms leaving an edited board description and clears the prompt after Cancel', async () => {
+  const { page, errors } = await fixture('admin')
+  try {
+    await page.getByLabel('Settings for Delivery', { exact: true }).click()
+    await page.getByRole('button', { name: 'Edit board' }).click()
+    const description = page.getByRole('textbox', { name: 'Description', exact: true })
+    await description.fill('Unsaved release notes')
+    const other = page.getByLabel('Settings for Other board', { exact: true })
+    await other.click()
+    await expect.poll(() => page.locator('#confirm').isVisible()).toBe(true)
+    await page.locator('#keep').click()
+    expect(await description.inputValue()).toBe('Unsaved release notes')
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await other.click()
+    await expect.poll(() => page.locator('kickside-work-board-settings').getAttribute('board-id')).toBe('other')
+    expect(await page.locator('#confirm').isVisible()).toBe(false)
+    expect(errors).toEqual([])
+  } finally { await page.close() }
+}, 30000)
+
 it.each([1500, 900])('keeps the reviewed CI/CD map complete after opening the real settings inspector at %s', async width => {
   const { page, errors } = await fixture('process')
   try {

@@ -26,15 +26,16 @@ it('serializes small and large positive control values without exponent notation
 })
 
 import { mount } from '@vue/test-utils'
+import { editNumber } from '../../test/controls'
 import InputNumber from 'primevue/inputnumber'
 import DurationControl from './DurationControl.vue'
 it('reports duration validity for invalid edits, unsupported storage, correction and removal', async () => {
   const w = mount(DurationControl, { props: { label: 'Deadline', modelValue: 'PT1H' } })
   expect(w.emitted('validity')?.at(-1)?.slice(0, 1)).toEqual([true])
-  await w.getComponent(InputNumber).setValue(0)
+  await editNumber(w.getComponent(InputNumber), 0)
   expect(w.emitted('validity')?.at(-1)?.slice(0, 1)).toEqual([false])
   expect(w.emitted('update:modelValue')).toBeUndefined()
-  await w.getComponent(InputNumber).setValue(2)
+  await editNumber(w.getComponent(InputNumber), 2)
   expect(w.emitted('validity')?.at(-1)?.slice(0, 1)).toEqual([true])
   await w.setProps({ modelValue: 'unsupported' })
   expect(w.emitted('validity')?.at(-1)?.slice(0, 1)).toEqual([false])
@@ -48,4 +49,25 @@ it('reports an unparseable attempted duration without clearing the stored value'
   w.getComponent(InputNumber).vm.$emit('update:modelValue', null)
   expect(w.emitted('validity')?.at(-1)?.[0]).toBe(false)
   expect(w.emitted('update:modelValue')).toBeUndefined(); w.unmount()
+})
+
+it('preserves the saved retry delay on focus and blur without typing', async () => {
+  const w = mount(DurationControl, { props: { label: 'Retry backoff', modelValue: 'PT1S' } })
+  const input = w.get('input')
+  await input.trigger('focus')
+  await input.trigger('blur')
+  expect(w.emitted('update:modelValue')).toBeUndefined()
+  expect(input.element.value).toBe('1')
+  expect(w.text()).toContain('Seconds')
+  w.unmount()
+})
+
+it('does not commit an untouched duration even when its displayed number is rounded', async () => {
+  const w = mount(DurationControl, { props: { label: 'Retry backoff', modelValue: 'PT1M1S' } })
+  const amount = w.getComponent(InputNumber)
+  amount.vm.$emit('update:modelValue', 1.017)
+  expect(w.emitted('update:modelValue')).toBeUndefined()
+  amount.vm.$emit('input', { value: 2, formattedValue: '2' })
+  expect(w.emitted('update:modelValue')).toEqual([['PT2M']])
+  w.unmount()
 })

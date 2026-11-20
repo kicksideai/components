@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { getButton as button } from '../../test/controls'
 import Select from 'primevue/select'
+import { editNumber } from '../../test/controls'
 import InputNumber from 'primevue/inputnumber'
 import DurationControl from './DurationControl.vue'
 import { expect, it } from 'vitest'
@@ -33,7 +34,7 @@ it('supports wait-only gates without retaining approval requirements', async () 
   const approvals = w.findAll('[type=checkbox]').find(input => input.element.closest('label')?.textContent?.includes('Require approvals'))!
   await approvals.setValue(false)
   const wait = w.findAllComponents(DurationControl).find(c => c.props('label') === 'Wait before release')!
-  await wait.getComponent(Select).setValue('hours'); await wait.getComponent(InputNumber).setValue(2); expect(state.release_when).toEqual({ wait: 'PT2H' }); expect(w.findComponent(ApproversEditor).exists()).toBe(false)
+  await wait.getComponent(Select).setValue('hours'); await editNumber(wait.getComponent(InputNumber), 2); expect(state.release_when).toEqual({ wait: 'PT2H' }); expect(w.findComponent(ApproversEditor).exists()).toBe(false)
   w.unmount()
 })
 it('edits each timer deadline, lookup table and effect and removes repetition for interrupting timers', async () => {
@@ -50,7 +51,7 @@ it('edits each timer deadline, lookup table and effect and removes repetition fo
   expect(state.timers![0]).toMatchObject({ at_field: 'due', by: 'priority', table: { urgent: 'PT1H' }, then: { transition: 'finish' } })
   expect(state.timers![0].after).toBeUndefined()
   const repeat = w.findAllComponents(DurationControl).find(c => c.props('label') === 'Repeat every')!.getComponent(InputNumber)
-  await repeat.setValue(1); await w.get('[type=checkbox]').setValue(true)
+  await editNumber(repeat, 1); await w.get('[type=checkbox]').setValue(true)
   expect(state.timers![0].repeat).toBeUndefined(); expect(repeat.props('disabled')).toBe(true)
   await button(w, 'Remove timer').trigger('click'); expect(state.timers).toEqual([]); w.unmount()
 })
@@ -85,7 +86,7 @@ it('clears duration validity after removing an earlier timer and then the invali
   const state = reactive<State>({ id: 'active', category: 'started', timers: [{ id: 'one', after: 'PT1H' }, { id: 'two', after: 'PT1H' }] })
   const invalid = new Set<string>()
   const w = mount(TimersEditor, { props: { state, draft: {}, onValidity: (key: string, valid: boolean) => { if (valid) invalid.delete(key); else invalid.add(key) } } })
-  await w.findAllComponents(DurationControl)[2].getComponent(InputNumber).setValue(0)
+  await editNumber(w.findAllComponents(DurationControl)[2].getComponent(InputNumber), 0)
   expect(invalid.size).toBe(1)
   await w.findAll('[aria-label="Remove timer"]')[0].trigger('click')
   expect(invalid.size).toBe(1)
