@@ -7,7 +7,7 @@ local function run(input)
         return automations.control(input.automation_id, { control = input.control, request_id = input.request_id })
     end
     if input.op == "component" then
-        local rows, err = component.query({ component_ids = { input.automation_id }, limit = 1 })
+        local rows, err = component.query({ component_ids = { input.automation_id }, include = { placement = true }, limit = 1 })
         return rows and rows[1], err
     end
     local target = { kind = "action", port = "kickside.work.templates:recurring", config = {

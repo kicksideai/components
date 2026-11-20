@@ -50,6 +50,12 @@ local function code(err: error?, expected: string)
     test.eq((err :: error):details().code, expected)
 end
 
+local function automation(h: fixture.Handle, input: Map): Map
+    local result, err = h.executor:call("app:templates_recurring", input)
+    assert(result, steps.detail(err))
+    return result :: Map
+end
+
 local function deliver(h: fixture.Handle, template: Map, identity: string, attempt: string, caller: Call?): Map
     local parts = { identity, "occurrence", "upsert", "1", attempt }
     for i, part in ipairs(parts) do parts[i] = tostring(#part) .. ":" .. part end
@@ -221,32 +227,32 @@ return { run = test.run_cases(function()
             code(missing, "template_version_not_found")
         end)
 
-        test.it("delivers the platform recurring kind under the board and honors reconfiguration and controls", function()
+        test.it("installs the recurring task under the board and runs pinned creates as the installer", function()
             local h = fixture.board()
             activate(h)
             event_window(h, 90)
             local first = publish(h, "Pinned title")
             local second = publish(h, "Other title")
-            local function automation(input: Map): Map
-                local result, err = h.executor:call("app:templates_recurring", input)
-                assert(result, steps.detail(err))
-                return result :: Map
-            end
-            local installed = automation({ board_id = h.id, version = first.version })
+            local installed = automation(h, { board_id = h.id, version = first.version })
             local id = assert(installed.id or installed.component_id) :: string
-            local installed_component = automation({ op = "component", automation_id = id })
+            local installed_component = automation(h, { op = "component", automation_id = id })
             test.eq(installed_component.parent_id, h.id)
             local function control(action: string, key: string)
-                automation({ op = "control", automation_id = id, control = action, request_id = key })
+                automation(h, { op = "control", automation_id = id, control = action, request_id = key })
             end
             control("run_now", "first-occurrence")
             steps.wait_for("first recurring item", function(): boolean
                 local items = assert(h.call("query", {})).items
                 return #items == 1 and items[1].values.title == "Pinned title"
             end)
+            local item = assert(h.call("query", {})).items[1]
+            local history = assert(h.call("list_history", { item = { id = item.id } })).entries
+            local created = history[#history]
+            test.eq(created.kind, "created")
+            test.eq(created.actor, h.actor:id())
             control("run_now", "first-occurrence")
             control("pause", "pause")
-            automation({ op = "reconfigure", automation_id = id, board_id = h.id,
+            automation(h, { op = "reconfigure", automation_id = id, board_id = h.id,
                 version = second.version, overrides = { title = "Reconfigured" } })
             control("resume", "resume")
             control("run_now", "second-occurrence")
@@ -254,6 +260,21 @@ return { run = test.run_cases(function()
                 local items = assert(h.call("query", {})).items
                 return #items == 2 and items[2].values.title == "Reconfigured"
             end)
+        end)
+
+        test.it("refuses to delete a board with a live recurring task", function()
+            local h = fixture.board()
+            activate(h)
+            local first = publish(h, "Pinned title")
+            local installed = automation(h, { board_id = h.id, version = first.version })
+            local id = assert(installed.id or installed.component_id) :: string
+
+            local result, err = h.call("contract_request", {
+                contract = "kickside.work:board", method = "delete", value = { board_id = h.id },
+            })
+            test.is_nil(result)
+            test.eq(assert(err):kind(), errors.CONFLICT)
+            test.eq(automation(h, { op = "component", automation_id = id }).parent_id, h.id)
         end)
     end)
 end) }

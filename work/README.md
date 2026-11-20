@@ -186,7 +186,7 @@ Declare `kickside.work.templates:plugin` on a board to enable its versioned crea
 
 The catalog retains up to 128 versions per board. Archive hides a version from listing and refuses fresh creates. Existing keyed Work receipts replay while their evidence is retained. A version whose field identity changed needs a new publication and pin. The attachment emits publish and archive facts and removes the catalog on teardown.
 
-Automation can run the `kickside.automation.recurring:task` kind with this target:
+Install `kickside.automation.recurring:task` through Automation's standard installation and pass the board ID as the parent. Placement requires board WRITE. The target below pins a template version and supplies an override.
 
 ```yaml
 kind: action
@@ -200,6 +200,6 @@ input:
     title: Weekly review
 ```
 
-The action runs under the Automation execution principal. Work board event retention must cover Automation delivery and history retention. Automation reserves each send before attempting it. Operator replays use the same occurrence key and recover an existing Work receipt. When receipt evidence is unavailable, replay returns `template_replay_unavailable`.
+The task runs as its installer. Each occurrence checks the installer's current Work WRITE and create permissions. Work board event retention must cover Automation delivery and history retention. Automation reserves each send before attempting it. Operator replays use the same occurrence key and recover an existing Work receipt. When receipt evidence is unavailable, replay returns `template_replay_unavailable`.
 
-The platform's selected-install API requires the Automation kind to declare `prepare_install`. Automation 0.2.30 provides standard installation for its recurring task kind, and component placement checks parent WRITE. Selected installation with a board ADMIN placement rule requires platform support.
+To delete a board, delete or move its recurring tasks first. Component returns `CONFLICT` while a live recurring task is still placed under the board. [Work Templates specification](docs/SPEC.md)
