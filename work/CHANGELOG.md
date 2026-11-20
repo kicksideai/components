@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.20](https://github.com/kicksideai/components/compare/work-v0.1.19...work-v0.1.20) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** include plugin configuration in pack discovery ([ce206ea](https://github.com/kicksideai/components/commit/ce206ea183a532a79255bbf3a10d2c6557937bbf))
+
+## [0.1.19](https://github.com/kicksideai/components/compare/work-v0.1.18...work-v0.1.19) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** add cross-board saved views and bound bulk selections ([#216](https://github.com/kicksideai/components/issues/216)) ([610e34f](https://github.com/kicksideai/components/commit/610e34ff4c542d180753dd59a3bbd60933965353))
+
+## [0.1.18](https://github.com/kicksideai/components/compare/work-v0.1.17...work-v0.1.18) (2026-11-20)
+
+
+### Features
+
+* **work-planning:** add sprint and milestone planning ([097cf0b](https://github.com/kicksideai/components/commit/097cf0b21b87646cd0d10d985421913c8336ad23))
+
 ## [0.1.17](https://github.com/kicksideai/components/compare/work-v0.1.16...work-v0.1.17) (2026-11-20)
 
 

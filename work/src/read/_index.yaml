@@ -146,6 +146,7 @@ entries:
     search: kickside.work.domain:search
     select: kickside.work.read:select
     access_rows: kickside.work.persist:access_rows
+    rules: kickside.work.domain:access_rules
     resolve: kickside.work.persist:predicate_rows
     item_view: kickside.work.read:item_view
     domain: kickside.work:types
@@ -211,6 +212,7 @@ entries:
     locate: kickside.work.command:locate
     query: kickside.work.read:query
     predicates: kickside.work.domain:predicates
+    rules: kickside.work.domain:access_rules
     domain: kickside.work:types
     types: kickside.work.read:types
 - name: resolve_principal

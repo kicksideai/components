@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: dep.planning
+  kind: ns.dependency
+  component: kickside/work-planning
+  version: '*'
+- name: planning_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work_planning, timeout: 300s}
+  source: file://planning_test.lua
+  method: run
+  modules: [uuid]
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    operations: app:operation_steps
+    steps: app:steps

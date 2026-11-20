@@ -19,7 +19,7 @@ local STATE = { type = "object", properties = { id = STRING, name = { type = "st
 local PROCESSES = shape.tolerant(array({ type = "object", properties = {
     id = STRING, initial = STRING, states = { type = "array", minItems = 1, items = STATE },
 }, required = { "id", "initial", "states" } }))
-local DATA = shape.tolerant(object({ schema = { type = "object" }, processes = array({ type = "object" }),
+local DATA = shape.tolerant(object({ additive = { type = "boolean" }, schema = { type = "object" }, processes = array({ type = "object" }),
     views = array(object({ id = STRING, title = STRING, view = { type = "object" } }, { "id", "title", "view" })),
     automations = array(object({ id = STRING, type = STRING, input = { type = "object" } }, { "id", "type", "input" })),
     traits = array(STRING), requires = array(STRING), starter = object({ items = array({ type = "object" }), default = { type = "boolean" } }, { "items", "default" }),
@@ -97,6 +97,7 @@ local function decode(entry: registry.Entry): (types.Pack?, error?)
         if ierr and ierr:kind() ~= errors.INVALID then return nil, ierr end
         plugins[#plugins + 1] = { plugin = id, installed = manifest ~= nil or (ierr and ierr:details().code ~= "unknown_plugin") == true,
             title = manifest and manifest.title, description = manifest and manifest.description, icon = manifest and manifest.icon,
+            config_schema = manifest and manifest.config_schema,
             active = false, requires = manifest and manifest.requires or {}, tools = manifest and manifest.tools or {},
             lifecycle = ierr and { state = "failed", error = { kind = ierr:kind(), code = ierr:details().code, message = ierr:message() } } or { state = "ready" },
             projections = table.create(0, 1), problem = ierr and { code = ierr:details().code, message = ierr:message() } or nil }

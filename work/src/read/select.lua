@@ -138,6 +138,9 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
         counted = { statement = "SELECT count(*) AS n FROM (" .. inner .. ") matched", args = args, cap = cap, beyond = beyond, beyond_args = beyond_args }
     end
     local order: { domain.Sort } = q.sorts or {}
+    -- Bulk passes an empty sort list to let the filter index drive the selection.
+    -- Its residual walk uses the generated rank index to bound candidates.
+    if residual and q.sorts and #order == 0 then order = { { field = "rank" } } end
     local columns: { string } = {}
     for _, sort in ipairs(order) do
         local target, err = resolve(sort.field, sort.ctx)

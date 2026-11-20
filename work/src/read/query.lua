@@ -28,6 +28,7 @@ local component = require("component")
 
 local access_rows = require("access_rows")
 local guard = require("guard")
+local rules = require("rules")
 local awaiting = require("awaiting")
 local principals = require("principals")
 local M = {}
@@ -40,6 +41,7 @@ local QUERY_KEYS: { [string]: boolean } = { budget = true, include = true, group
     min_seq = true, include_trashed = true }
 local COUNT_KEYS: { [string]: boolean } = { budget = true, board_id = true, where = true, scopes = true, min_seq = true, include_trashed = true }
 local GROUP_CURSOR_LIMIT = 8192
+local BULK_SCAN_LIMIT = 200000
 
 local function validate(request: types.QueryRequest, counted: boolean): error?
     local allowed = counted and COUNT_KEYS or QUERY_KEYS
@@ -175,7 +177,7 @@ local function with_query_snapshot<T: types.ReadStamp>(request: types.QueryReque
 end
 
 local function compile(tx: types.Executor, dialect: string, board: domain.Board, request: types.QueryRequest, counted: boolean, grants: { [string]: boolean }?, additional: { domain.Condition }?, scan: integer?, order: { domain.Sort }?,
-    definition_only: boolean?, ids: domain.SearchResults?): (types.Plan?, error?)
+    definition_only: boolean?, ids: domain.SearchResults?, unfiltered: boolean?): (types.Plan?, error?)
     local berr = predicates.bounds(request.where)
     if berr then return nil, berr end
     local sort, serr = M.order(request.order)
@@ -208,14 +210,16 @@ local function compile(tx: types.Executor, dialect: string, board: domain.Board,
     local visible = access_rows.visibility(board, dialect)
     local visibility, verr = visible("i")
     if verr or not visibility then return nil, verr end
-    local conditions: { domain.Condition } = { read_rows.life_condition(request.include_trashed), visibility }
+    local conditions: { domain.Condition } = { read_rows.life_condition(request.include_trashed) }
+    if not unfiltered then conditions[#conditions + 1] = visibility end
     for _, condition in ipairs(additional or {}) do conditions[#conditions + 1] = condition end
     local groups: { string }? = nil
     if request.group_by then groups = { request.group_by } end
     if groups and request.sub_group_by then groups[2] = request.sub_group_by end
+    local resolver = definition_only and predicates.targets(board.compiled, nil, {}) or resolve.resolver(tx, board)
     return select.items(caller, tables.of(board.board_id, tables.layout(board.compiled), board.model.relations), dialect,
         { scan = scan or (request.budget and request.budget.rows or 200000), groups = groups, measures = request.measures, where = request.where, sorts = order or sort,
-            after = request.after, count = counted and 10000 or nil, peer_visibility = visible }, access_rows.resolver(board, resolve.resolver(tx, board)), admitted,
+            after = request.after, count = counted and 10000 or nil, peer_visibility = visible }, access_rows.resolver(board, resolver), admitted,
         conditions,
         request.limit or 50)
 end
@@ -586,6 +590,64 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
     return result :: types.QueryPage, nil
 end
 
+local function restricted(): error
+    return errors.new({ kind = errors.PERMISSION_DENIED, message = "Selection is unavailable under the caller's access.",
+        details = { code = "selection_restricted" } })
+end
+
+-- An edit can affect a subset of a scope, while visibility must cover the whole
+-- scope. Both filters use the ordinary indexed query compiler in one snapshot.
+function M.select_for_edit(request: types.QueryRequest, scope: domain.Where, field_code: string): (types.EditSelection?, error?)
+    local err = validate(request, false)
+    if err then return nil, err end
+    local mask = (component.ACCESS.READ :: integer) | (component.ACCESS.WRITE :: integer)
+    return access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.EditSelection?, error?)
+        local field = board.model.fields[field_code]
+        if not field or not rules.field(board, field, "read") then return nil, restricted() end
+        local rebuilding, rerr = pending(tx, board, request, false)
+        if rerr then return nil, rerr end
+        if rebuilding then
+            return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Selection awaits its indexes.",
+                details = { code = "projection_pending" } })
+        end
+        local visibility = board.compiled.visibility
+        if visibility and not (visibility.bypass == "admin" and board.caller and board.caller.admin) then
+            local all: types.QueryRequest = { board_id = board.board_id, where = scope }
+            local raw, raw_err = compile(tx, dialect, board, all, true, nil, nil, nil, nil, nil, nil, true)
+            if raw_err or not raw or not raw.count then return nil, raw_err end
+            local total, capped, total_err = select.total(tx, raw.count)
+            if total_err then return nil, total_err end
+            if capped then return nil, restricted() end
+            local visible, visible_err = compile(tx, dialect, board, all, true)
+            if visible_err or not visible or not visible.count then return nil, visible_err end
+            local admitted, _, count_err = select.total(tx, visible.count)
+            if count_err then return nil, count_err end
+            if total ~= admitted then return nil, restricted() end
+        end
+        local plan, plan_err = compile(tx, dialect, board, request, false)
+        if plan_err or not plan then return nil, plan_err end
+        local rows, rows_err, _, stopped = select.rows(tx, plan)
+        if rows_err or not rows then return nil, rows_err end
+        if stopped then return nil, restricted() end
+        if #rows > plan.take then return { members = {}, over_limit = true }, nil end
+        local ids: { string } = {}
+        for _, row in ipairs(rows) do ids[#ids + 1] = row.item_id :: string end
+        local items, items_err = store.items(tx, board.board_id, ids)
+        if items_err or not items then return nil, items_err end
+        if #items ~= #ids then
+            return nil, errors.new({ kind = errors.INTERNAL, message = "Selection index names a missing item.", details = { code = "row_corrupt" } })
+        end
+        local by_id: { [string]: integer } = {}
+        for _, item in ipairs(items) do
+            if not rules.field(board, field, "write", item.document) then return nil, restricted() end
+            by_id[item.item_id] = item.version
+        end
+        local members: { types.EditMember } = table.create(0, 1)
+        for _, id in ipairs(ids) do members[#members + 1] = { item_id = id, version = by_id[id] } end
+        return { members = members }, nil
+    end, nil, request.budget, request.where, mask)
+end
+
 function M.freeze(request: types.QueryRequest): ({ string }?, error?)
     local err = validate(request, true)
     if err then return nil, err end
@@ -595,14 +657,14 @@ function M.freeze(request: types.QueryRequest): ({ string }?, error?)
         local rebuilding, perr = pending(tx, board, request, true)
         if perr then return nil, perr end
         if rebuilding then return nil, errors.new({ kind = errors.UNAVAILABLE, message = "bulk selection awaits indexes", details = { code = "projection_pending" } }) end
-        local population, nerr = job_rows.work_population(tx, board.board_id)
-        if nerr then return nil, nerr end
-        if population and population > 200000 then return nil, errors.new({ kind = errors.INVALID, message = "bulk selection exceeds its scan budget", details = { code = "bulk_selection_limit" } }) end
-        request.limit = 200000
-        local plan, cerr = compile(tx, dialect, board, request, false, grants, nil, nil, nil, nil, search_ids)
+        request.limit = BULK_SCAN_LIMIT
+        local plan, cerr = compile(tx, dialect, board, request, false, grants, nil, BULK_SCAN_LIMIT, {}, nil, search_ids)
         if cerr or not plan then return nil, cerr end
-        local rows, rerr = select.rows(tx, plan)
+        local rows, rerr, _, more = select.rows(tx, plan)
         if rerr then return nil, rerr end
+        if more or #(rows or {}) > BULK_SCAN_LIMIT then
+            return nil, errors.new({ kind = errors.INVALID, message = "bulk selection exceeds its scan budget", details = { code = "bulk_selection_limit" } })
+        end
         local ids: { string } = {}
         for _, row in ipairs(rows or {}) do
             local id, derr = store.need(row, "item_id")
@@ -670,12 +732,18 @@ function M.explain(request: types.QueryRequest): (types.ExplainResult?, error?)
     return result :: types.ExplainResult, nil
 end
 
--- Check a saved query against the next schema before its tables and rows exist.
-function M.validate_definition(request: types.QueryRequest, compiled: domain.Compiled, model: domain.Model): error?
+-- Check a query without reading its candidates or resolving operands against items.
+function M.validate_admitted(db: types.Executor, board: domain.Board, dialect: string, request: types.QueryRequest): error?
     local verr = validate(request, false)
     if verr then return verr end
     local grants, gerr = scope_grants(request)
     if gerr or not grants then return gerr end
+    local _, err = compile(db, dialect, board, request, false, grants, nil, nil, nil, true)
+    return err
+end
+
+-- Check a saved query against the next schema before its tables and rows exist.
+function M.validate_definition(request: types.QueryRequest, compiled: domain.Compiled, model: domain.Model): error?
     local board = { board_id = request.board_id, key_prefix = compiled.key_prefix, compiled = compiled, model = model,
         memberships = {} } :: domain.Board
     local aerr = principals.resolve(board)
@@ -683,7 +751,7 @@ function M.validate_definition(request: types.QueryRequest, compiled: domain.Com
     local db, derr = store.open()
     if derr or not db then return derr end
     board.dialect = db:type()
-    local _, err = compile(db, db:type(), board, request, false, grants, nil, nil, nil, true)
+    local err = M.validate_admitted(db, board, db:type(), request)
     db:release()
     return err
 end

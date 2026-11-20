@@ -40,8 +40,9 @@ local function open(actor: security.Actor, scope: security.Scope): Session
             headers = { ["Content-Type"] = "application/json", Authorization = "Bearer " .. token },
         })
         assert(not err and res, tostring(err))
-        local decoded = res.body ~= "" and json.decode(res.body) or {}
-        return { status = res.status_code, body = decoded :: Json, raw = res.body }
+        local raw = res.body or ""
+        local decoded = raw ~= "" and json.decode(raw) or {}
+        return { status = res.status_code, body = decoded :: Json, raw = raw }
     end
     return {
         id = actor:id(), actor = actor, scope = scope,

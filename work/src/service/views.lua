@@ -7,6 +7,7 @@ local component_envelope = require("component_envelope")
 local component_types = require("component_types")
 local requests = require("requests")
 local query = require("query")
+local cross_board = require("cross_board")
 local access = require("access")
 local predicates = require("predicates")
 local shape = require("shape")
@@ -21,6 +22,17 @@ local KIND = "kickside.work.binding:view"
 local function invalid(message: string, code: string?): error
     return errors.new({ kind = errors.INVALID, message = message, details = { code = code or "invalid_view" } })
 end
+local function view_denied(): error
+    return errors.new({ kind = errors.PERMISSION_DENIED, message = "view access denied", details = { code = "access_denied" } })
+end
+
+local function selection_error(view: types.View): error?
+    if not view.boards then return nil end
+    local _, err = cross_board.selection(view.boards)
+    if err and err:kind() == errors.PERMISSION_DENIED then return view_denied() end
+    return err
+end
+
 local function validate_fields(view: types.View, model: domain.Model, requires: types.ViewRequirements?): error?
     local resolve = predicates.targets(model.compiled)
     for _, field in ipairs(view.columns or {}) do
@@ -29,8 +41,7 @@ local function validate_fields(view: types.View, model: domain.Model, requires: 
             if err then return err end
         end
     end
-    if requires and requires.group_by then
-        if not view.group_by then return invalid("view type requires group_by") end
+    if requires and requires.group_by and view.group_by then
         local field = model.fields[view.group_by]
         local kind = field and field.type or view.group_by
         for _, value in ipairs(requires.group_by.kinds or {}) do if value == kind then return nil end end
@@ -45,12 +56,16 @@ function M.validate(board_id: string, view: types.View, proposed: domain.Compile
     if not matches or #matches ~= 1 then return invalid("view type is unavailable") end
     local meta = registry_values.canonical(matches[1].meta or {})
     local requires = meta.requires :: types.ViewRequirements?
+    if requires and requires.group_by and not view.group_by then return invalid("view type requires group_by") end
     local config_schema = meta.config_schema
     if type(config_schema) ~= "table" then return invalid("view type declares config_schema") end
     local cerr = shape.check(shape.tolerant(config_schema :: domain.JsonObject), view.config or {}, "view config")
     if cerr then return cerr end
     local request: reads.QueryRequest = { group_by = view.group_by, sub_group_by = view.sub_group_by, board_id = board_id,
-        where = view.where, order = view.order, scopes = view.scopes }
+        where = view.where, order = view.order, scopes = view.scopes, boards = view.boards }
+    if view.boards then
+        return cross_board.validate(request, view.columns or {})
+    end
     if proposed then
         local model = schema.model(proposed)
         return query.validate_definition(request, proposed, model) or validate_fields(view, model, requires)
@@ -68,7 +83,7 @@ end
 local function load(view_id: string, mask: integer): (types.ViewContext?, error?)
     local rows, err = component.query({ component_ids = { view_id }, impl_ids = { KIND }, limit = 1 })
     if err then return nil, err :: error end
-    if not rows or #rows ~= 1 then return nil, errors.new({ details = { code = "access_denied" },  kind = errors.PERMISSION_DENIED, message = "view access denied" }) end
+    if not rows or #rows ~= 1 then return nil, view_denied() end
     local context, cerr = component.get_context(view_id, mask)
     if cerr or not context then return nil, cerr :: error? end
     return context :: types.ViewContext, nil
@@ -134,8 +149,8 @@ function M.delete(input: unknown): (types.DeleteViewResult?, error?)
 end
 
 local function create(request: types.CreateViewRequest, component_id: string?): (types.ViewResult?, error?)
-    local _, aerr = component.validate_access(request.board_id, request.personal and component.ACCESS.READ or component.ACCESS.WRITE)
-    if aerr then return nil, aerr :: error end
+    local aerr = access.admit(request.board_id, request.personal and component.ACCESS.READ or component.ACCESS.WRITE)
+    if aerr then return nil, aerr end
     local verr = M.validate(request.board_id, request.view)
     if verr then return nil, verr end
     local service, serr = component.get_service()
@@ -185,6 +200,10 @@ function M.save(input: unknown, revision: integer?): (types.ViewResult?, error?)
     end
     local context, err = load(request.view_id, component.ACCESS.WRITE :: integer)
     if err or not context then return nil, err end
+    if request.view.boards then
+        local aerr = access.admit(context.board_id)
+        if aerr then return nil, aerr end
+    end
     local verr = M.validate(context.board_id, request.view)
     if verr then return nil, verr end
     local commands: { component_types.Command } = { { type = "PATCH_CONTEXT", payload = { patch = { view = request.view } } } }
@@ -201,11 +220,18 @@ function M.run(input: unknown): (reads.QueryResult?, error?)
     local context, err = load(request.view_id, component.ACCESS.READ :: integer)
     if err or not context then return nil, err end
     local view = context.view
+    if view.boards then
+        local aerr = access.admit(context.board_id)
+        if aerr then return nil, aerr end
+        if request.min_seq ~= nil then return nil, invalid("min_seq requires a single-board view") end
+    end
     local first = request.after == nil
-    return query.query({ group_by = first and view.group_by or nil, sub_group_by = first and view.sub_group_by or nil,
-        board_id = context.board_id, where = view.where, order = view.order, scopes = view.scopes,
-        limit = request.limit, after = request.after, group_after = request.group_after, group_limit = request.group_limit,
-        measures = request.measures, min_seq = request.min_seq })
+    local result, qerr = cross_board.query({ group_by = first and view.group_by or nil, sub_group_by = first and view.sub_group_by or nil,
+        board_id = context.board_id, where = view.where, order = view.order, scopes = view.scopes, boards = view.boards,
+        limit = request.limit, after = request.after, cross_after = request.cross_after, group_after = request.group_after,
+        group_limit = request.group_limit, measures = request.measures, min_seq = request.min_seq }, view.columns or {})
+    if view.boards and qerr and qerr:kind() == errors.PERMISSION_DENIED then return nil, view_denied() end
+    return result, qerr
 end
 -- get exposes presentation only after both component ACLs admit the caller.
 function M.get(input: unknown): (types.SavedView?, error?)
@@ -216,10 +242,12 @@ function M.get(input: unknown): (types.SavedView?, error?)
     if err or not context then return nil, err end
     local _, aerr = component.validate_access(context.board_id, component.ACCESS.READ)
     if aerr then return nil, aerr :: error end
+    local selected_err = selection_error(context.view)
+    if selected_err then return nil, selected_err end
     local rows, rerr = component.query({ component_ids = { request.view_id }, include = { meta = true }, limit = 1 })
     if rerr then return nil, rerr :: error end
     local row = rows and rows[1]
-    if not row then return nil, errors.new({ kind = errors.PERMISSION_DENIED, message = "view access denied", details = { code = "access_denied" } }) end
+    if not row then return nil, view_denied() end
     local meta = row.meta or {}
     return { view_id = request.view_id, board_id = context.board_id, title = meta.title or "View", view = context.view }, nil
 end
@@ -239,7 +267,7 @@ function M.list(input: unknown): (types.ViewList?, error?)
     if err or not rows then return nil, err :: error? end
     local ids: { string } = {}
     for i = 1, math.min(#rows, limit) do ids[i] = rows[i].component_id end
-    local views: { types.SavedView } = {}
+    local views: { types.ViewListEntry } = {}
     if #ids == 0 then return { views = views }, nil end
     -- Component gates batch private-context reads separately. Hydrate only the admitted page.
     local page, perr = component.list_system({ component_ids = ids, impl_ids = { KIND },
@@ -254,8 +282,14 @@ function M.list(input: unknown): (types.ViewList?, error?)
         if not held or held.board_id ~= request.board_id then
             return nil, errors.new({ kind = errors.INTERNAL, message = "view board reference does not match its index", details = { code = "row_corrupt" } })
         end
-        local meta = row.meta or {}
-        views[#views + 1] = { view_id = id, board_id = held.board_id, title = meta.title or "View", view = held.view }
+        local selected_err = selection_error(held.view)
+        if selected_err then
+            if selected_err:kind() ~= errors.PERMISSION_DENIED and selected_err:kind() ~= errors.INVALID then return nil, selected_err end
+            views[#views + 1] = { view_id = id, board_id = held.board_id, status = "unavailable" }
+        else
+            local meta = row.meta or {}
+            views[#views + 1] = { view_id = id, board_id = held.board_id, title = meta.title or "View", view = held.view }
+        end
     end
     return { views = views, after = #rows > limit and tostring(offset + limit) or nil }, nil
 end

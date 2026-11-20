@@ -888,23 +888,22 @@ io.write('bounded')
   assert.equal(result,'bounded')
 })
 
-test('rank replay retains its population while bulk work excludes permanent identities', async () => {
+test('rank replay retains permanent identities in its population', async () => {
   const {readFile}=await import('node:fs/promises')
   const jobs=await readFile(resolve(root,'src/persist/job_rows.lua'),'utf8')
   const admission=jobs.split('function M.population(')[1].match(/"(SELECT COUNT\(\*\)[^"]+)"/)[1]
-  const work=jobs.split('function M.work_population(')[1].match(/"(SELECT COUNT\(\*\)[^"]+)"/)[1]
   const folding=(await readFile(resolve(root,'src/persist/fold_rank.lua'),'utf8')).split('function M.apply_rebalanced(')[1]
   const total=folding.match(/"(SELECT COUNT\(\*\)[^"]+)"/)[1]
   const selected=folding.match(/"(SELECT item_id, rank[^"]+)"/)[1]
   const result=await run('python3',['-c',`
 import json,sqlite3,sys
-admission,total,selected,work=json.load(sys.stdin)
+admission,total,selected=json.load(sys.stdin)
 db=sqlite3.connect(':memory:')
 db.execute('CREATE TABLE kickside_work_item(board_id TEXT,item_id TEXT,rank TEXT,life TEXT,PRIMARY KEY(board_id,item_id))')
 db.execute("INSERT INTO kickside_work_item VALUES ('board','live','a','live'),('board','retired','z','purged')")
-print(json.dumps([db.execute(admission,['board']).fetchone()[0],db.execute(total,['board']).fetchone()[0],[r[0] for r in db.execute(selected,['board',10,0])],db.execute(work,['board']).fetchone()[0]]))
-`],{},JSON.stringify([admission,total,selected,work]))
-  assert.deepEqual(JSON.parse(result),[2,2,['live','retired'],1])
+print(json.dumps([db.execute(admission,['board']).fetchone()[0],db.execute(total,['board']).fetchone()[0],[r[0] for r in db.execute(selected,['board',10,0])]]))
+`],{},JSON.stringify([admission,total,selected]))
+  assert.deepEqual(JSON.parse(result),[2,2,['live','retired']])
 })
 
 test('completed prefix inspection is independent of PostgreSQL key collation', {skip: !process.env.WORK_MIGRATION_POSTGRES}, async () => {

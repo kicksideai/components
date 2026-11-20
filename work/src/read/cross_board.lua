@@ -15,14 +15,15 @@ local domain = require("domain")
 local types = require("types")
 local values = require("values")
 local budget = require("budget")
+local rules = require("rules")
 local M = {}
 
 local function invalid(message: string, boards: { string }?): error
     return errors.new({ kind = errors.INVALID, message = message, details = { code = "invalid_query", cap = 50, boards = boards } })
 end
 
-local function boards_of(request: types.QueryRequest): ({ string }?, error?)
-    if request.boards == "readable" then
+function M.selection(selection: types.BoardSelection): ({ string }?, error?)
+    if selection == "readable" then
         local boards, err = locate.readable(51)
         if err or not boards then return nil, err end
         if #boards > 50 then return nil, invalid("cross-board query cap is 50 boards") end
@@ -31,8 +32,8 @@ local function boards_of(request: types.QueryRequest): ({ string }?, error?)
         table.sort(ids)
         return ids, nil
     end
-    if type(request.boards) ~= "table" then return nil, invalid("boards is an id list or readable") end
-    local ids = request.boards :: { string }
+    if type(selection) ~= "table" then return nil, invalid("boards is an id list or readable") end
+    local ids = selection :: { string }
     if #ids > 50 then return nil, invalid("cross-board query cap is 50 boards") end
     local unique: { [string]: boolean } = {}
     for _, id in ipairs(ids) do
@@ -53,13 +54,11 @@ local function boards_of(request: types.QueryRequest): ({ string }?, error?)
     return result, nil
 end
 
-function M.query(request: types.QueryRequest): (types.QueryResult?, error?)
+local function admit(request: types.QueryRequest, context: types.ReadContext, columns: { string }?): (types.CrossAdmission?, error?)
     if request.group_by or request.sub_group_by or request.group_after or request.group_limit or request.measures then
         return nil, invalid("cross-board queries do not support grouping")
     end
-    local allowance, allowance_err = budget.start(request.budget)
-    if allowance_err or not allowance then return nil, allowance_err end
-    local ids, err = boards_of(request)
+    local ids, err = M.selection(request.boards :: types.BoardSelection)
     if err or not ids then return nil, err end
     local limit = request.limit or 50
     if limit < 1 or limit > 200 then return nil, invalid("limit must be 1..200") end
@@ -90,14 +89,16 @@ function M.query(request: types.QueryRequest): (types.QueryResult?, error?)
     if #orders ~= 1 then return nil, invalid("order takes one indexed field") end
     local sort = orders[1]
     used[sort.field] = true
+    for _, code in ipairs(columns or {}) do
+        if used[code] == nil then used[code] = false end
+    end
     local forms: { [string]: string } = {}
     local origins: { [string]: string } = {}
-    local admissions: { [string]: { generation: integer, digest: string, caller: domain.AccessCaller? } } = {}
-    local context: types.ReadContext = { admitted = {}, holders = {}, allowance = allowance }
+    local admissions: { [string]: types.BoardAdmission } = {}
     local reference = false
     local db, db_err = store.open()
     if db_err or not db then return nil, db_err end
-    local function admit(id: string): error?
+    local function admit_board(id: string): error?
         local board, err = store.board(db, id)
         if err then return err end
         if not board then
@@ -106,36 +107,65 @@ function M.query(request: types.QueryRequest): (types.QueryResult?, error?)
         local perr = principals.resolve(board, context)
         if perr then return perr end
         local resolve = access_rows.resolver(board, predicates.targets(board.compiled))
-        for code in pairs(used) do
+        for code, indexed in pairs(used) do
             local field = board.model.fields[code]
-            local target, terr = resolve(code, code == sort.field and sort.ctx or nil)
-            if terr and terr:kind() == errors.PERMISSION_DENIED then return terr end
-            if terr or not target then return invalid("field " .. code .. " is unavailable on board " .. id, { id }) end
-            if code == sort.field then
-                if target.set then return invalid(code .. " holds several values and cannot sort", { id }) end
-                reference = field ~= nil and field.type == "item"
+            local target: domain.ColumnTarget? = nil
+            if indexed or not field then
+                local terr: error?
+                target, terr = resolve(code, code == sort.field and sort.ctx or nil)
+                if terr and terr:kind() == errors.PERMISSION_DENIED then return terr end
+                if terr or not target then return invalid("field " .. code .. " is unavailable on board " .. id, { id }) end
+                if code == sort.field then
+                    if target.set then return invalid(code .. " holds several values and cannot sort", { id }) end
+                    reference = field ~= nil and field.type == "item"
+                end
+            elseif not rules.field(board, field, "read") then
+                return rules.denied(code)
             end
             local options: { [string]: integer } = {}
             for _, option in ipairs(field and field.options or {}) do options[option.id] = option.order end
-            local form = values.canonical({ form = field and field.form or target.shape.form, cardinality = field and field.cardinality or "one",
-                kind = target.kind, config = field and field.config or target.shape.config, options = options,
+            local form = values.canonical({ form = field and field.form or (target and target.shape.form), cardinality = field and field.cardinality or "one",
+                kind = target and target.kind, config = field and field.config or (target and target.shape.config), options = options,
                 reference = field ~= nil and field.type == "item" })
             if forms[code] and forms[code] ~= form then return invalid("field " .. code .. " has different forms on boards " .. origins[code] .. " and " .. id, { origins[code] :: string, id }) end
             forms[code], origins[code] = form, id
+        end
+        if columns then
+            local definition_err = query.validate_admitted(db, board, db:type(), {
+                board_id = id, where = request.where, scopes = request.scopes, order = sort,
+            })
+            if definition_err then return definition_err end
         end
         context.admitted[id] = true
         admissions[id] = { generation = board.generation, digest = board.digest, caller = board.caller }
         return nil
     end
     for _, id in ipairs(ids) do
-        local aerr = admit(id)
+        local aerr = admit_board(id)
         if aerr then db:release(); return nil, aerr end
     end
     db:release()
+    return { ids = ids, boards = admissions, sort = sort, reference = reference }, nil
+end
+
+function M.validate(request: types.QueryRequest, columns: { string }): error?
+    local _, err = admit(request, { admitted = {}, holders = {} }, columns)
+    return err
+end
+
+local function run(request: types.QueryRequest, columns: { string }?): (types.QueryResult?, error?)
+    local allowance, allowance_err = budget.start(request.budget)
+    if allowance_err or not allowance then return nil, allowance_err end
+    local context: types.ReadContext = { admitted = {}, holders = {}, allowance = allowance }
+    local admitted, err = admit(request, context, columns)
+    if err or not admitted then return nil, err end
+    local ids, admissions, sort, reference = admitted.ids, admitted.boards, admitted.sort, admitted.reference
+    local cursor, limit = request.cross_after, request.limit or 50
     local actor = security.actor()
     local admission, digest_err = hash.sha256(values.canonical({
         actor = actor and actor:id(), boards = admissions, where = request.where, scopes = request.scopes,
         order = { field = sort.field, dir = sort.dir or "asc" }, include_trashed = request.include_trashed == true,
+        readable = request.boards == "readable", columns = columns,
     }))
     if digest_err or not admission then return nil, digest_err end
     if cursor and cursor.id ~= admission then return nil, invalid("cross_after belongs to the admitted query") end
@@ -250,4 +280,14 @@ function M.query(request: types.QueryRequest): (types.QueryResult?, error?)
     incomplete = incomplete or (more and #out < limit)
     return { incomplete = incomplete, items = out, cross_after = more and next_cursor or nil, positions = positions, reindexing = false }, nil
 end
+
+function M.query(request: types.QueryRequest, columns: { string }?): (types.QueryResult?, error?)
+    if request.boards ~= nil then return run(request, columns) end
+    if request.cross_after ~= nil then return nil, access.invalid("cross_after requires boards") end
+    local id, err = locate.resolve(request.board_id)
+    if err or not id then return nil, err end
+    request.board_id = id
+    return query.query(request)
+end
+
 return M

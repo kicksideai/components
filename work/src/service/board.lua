@@ -180,13 +180,7 @@ end
 function M.query(input: unknown): (reads.QueryResult?, error?)
     local err = requests.parse("query", input)
     if err then return nil, err end
-    local request = input :: reads.QueryRequest
-    if request.boards ~= nil then return cross_board.query(request) end
-    if request.cross_after ~= nil then return nil, errors.new({ details = { code = "invalid_request" },  kind = errors.INVALID, message = "cross_after requires boards" }) end
-    local id, lerr = locate.resolve(request.board_id)
-    if lerr or not id then return nil, lerr end
-    request.board_id = id
-    return query.query(request)
+    return cross_board.query(input :: reads.QueryRequest)
 end
 
 function M.count(input: unknown): (reads.CountResult?, error?)

@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: work-planning
+type: plugin
+description: Sprint and milestone planning for KickSide Work.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+homepage: https://wippy.ai
+keywords: [kickside, work, planning]
+exclude:
+- wippy.lock
+- .wippy/**
+- .wippy:**
