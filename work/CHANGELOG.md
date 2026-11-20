@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.10](https://github.com/kicksideai/components/compare/work-v0.1.9...work-v0.1.10) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** invalidate cross-board links and fence plugin scopes ([#177](https://github.com/kicksideai/components/issues/177)) ([71366a4](https://github.com/kicksideai/components/commit/71366a4d5da7f45af17602776b4ae9208fa920e0))
+* **work:** preserve stage reports when routing is refused ([#181](https://github.com/kicksideai/components/issues/181)) ([cb12c63](https://github.com/kicksideai/components/commit/cb12c6352b25405cb8e5eafe3486cbeda69547ad))
+
 ## [0.1.9](https://github.com/kicksideai/components/compare/work-v0.1.8...work-v0.1.9) (2026-11-19)
 
 
