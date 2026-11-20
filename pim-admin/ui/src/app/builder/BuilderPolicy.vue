@@ -4,22 +4,23 @@ import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import { computed, onMounted, ref } from 'vue'
 import Button from 'primevue/button'
-import Message from 'primevue/message'
+import AdminError from '../../shared/AdminError.vue'
+import { presentError } from '../../shared/transport'
 import { Icon } from '@iconify/vue'
 import { readPolicyDefaults, OPERATING_CONTROLS } from '../../policy'
 import type { Declaration, PolicyDefaults } from '../../types'
 
-const props = defineProps<{ draft: Declaration; catalogId?: string; defaults?: PolicyDefaults }>()
+const props = defineProps<{ draft: Declaration; catalogId?: string; defaults?: PolicyDefaults; disabled?: boolean }>()
 const loaded = ref<PolicyDefaults>()
 const defaults = computed(() => props.defaults ?? loaded.value)
-const error = ref('')
+const error = ref<ReturnType<typeof presentError>>()
 const pending = ref(false)
 async function load() {
-  if (props.defaults) return
-  error.value = ''
+  if (props.defaults || props.disabled) return
+  error.value = undefined
   pending.value = true
   try { loaded.value = await readPolicyDefaults(props.catalogId ?? '') }
-  catch (e) { error.value = e instanceof Error ? e.message : 'Could not read policy defaults.' }
+  catch (e) { error.value = presentError(e, 'Could not read policy defaults.') }
   finally { pending.value = false }
 }
 onMounted(load)
@@ -73,14 +74,14 @@ function set<K extends keyof PolicyDefaults>(key: K, value: PolicyDefaults[K] | 
   <section class="form">
     <p class="muted small pim-policy-intro">Empty fields inherit the deployment settings.</p>
     <p v-if="pending" class="muted small pim-policy-status" role="status">Loading deployment defaults…</p>
-    <Message v-if="error" severity="error" role="alert">{{ error }} <Button severity="secondary" outlined @click="load">Retry</Button></Message>
+    <AdminError v-if="error" :error="error"><Button severity="secondary" outlined size="small" @click="load">Retry</Button></AdminError>
     <template v-for="group in groups" :key="group.id">
       <section v-if="group.id !== 'advanced' || advancedOpen" :id="group.id === 'advanced' ? 'policy-advanced' : undefined" :data-policy-group="group.id" class="pim-policy-group" :aria-label="group.title || 'Advanced'">
         <header v-if="group.title" class="pim-bsection-head"><h3>{{ group.title }}</h3></header>
         <div v-for="k in group.keys" :key="k.key" class="pim-policy-row">
           <div class="pim-policy-copy"><label :for="'pol-' + k.key">{{ k.title }}</label><p :id="'pol-help-' + k.key">{{ k.hint }}<span v-if="k.global"> Managed in deployment settings.</span></p></div>
-          <Select v-if="k.kind === 'enum'" :input-id="'pol-' + k.key" :aria-describedby="'pol-help-' + k.key" class="pim-policy-control" :model-value="typeof policy[k.key] === 'string' ? policy[k.key] : 'inherited'" :options="auditOptions" option-label="label" option-value="value" appendTo="self" @update:model-value="set(k.key, $event)" />
-          <InputNumber v-else :disabled="k.global" :input-id="'pol-' + k.key" :aria-describedby="'pol-help-' + k.key" class="pim-policy-control" :model-value="k.global ? Number(defaults?.[k.key] ?? 0) || null : typeof policy[k.key] === 'number' ? Number(policy[k.key]) : null" :min="k.min ?? (k.key === 'audit_days' ? 0 : 1)" :max="k.max" :step="1" :placeholder="defaults ? 'Default: ' + defaults[k.key] : 'Deployment default'" @update:model-value="set(k.key, $event)" />
+          <Select v-if="k.kind === 'enum'" :disabled="disabled" :input-id="'pol-' + k.key" :aria-describedby="'pol-help-' + k.key" class="pim-policy-control" :model-value="typeof policy[k.key] === 'string' ? policy[k.key] : 'inherited'" :options="auditOptions" option-label="label" option-value="value" appendTo="self" @update:model-value="set(k.key, $event)" />
+          <InputNumber v-else :disabled="disabled || k.global" :input-id="'pol-' + k.key" :aria-describedby="'pol-help-' + k.key" class="pim-policy-control" :model-value="k.global ? Number(defaults?.[k.key] ?? 0) || null : typeof policy[k.key] === 'number' ? Number(policy[k.key]) : null" :min="k.min ?? (k.key === 'audit_days' ? 0 : 1)" :max="k.max" :step="1" :placeholder="defaults ? 'Default: ' + defaults[k.key] : 'Deployment default'" @update:model-value="set(k.key, $event)" />
         </div>
       </section>
       <button v-if="group.id === 'proposals'" type="button" class="pim-policy-advanced" :aria-expanded="advancedOpen" aria-controls="policy-advanced" @click="advancedOpen = !advancedOpen">

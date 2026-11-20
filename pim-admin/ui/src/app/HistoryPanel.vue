@@ -3,7 +3,7 @@
 import { humanLabel, principalLabels } from '../shared/labels'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
-import Message from 'primevue/message'
+import AdminError from '../shared/AdminError.vue'
 import { computed, onUnmounted, ref, useId, watch } from 'vue'
 import { on } from '@wippy-fe/proxy'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
@@ -11,15 +11,16 @@ import { requestGeneration } from '../shared/requests'
 import { pim } from '../api'
 import type { HistoryEntry } from '../types'
 import { attributeChange, humanize, when } from '../forms'
+import { presentError } from '../shared/transport'
 
 // The catalog's audit trail: every recorded change, newest first, paged.
-const props = defineProps<{ catalogId: string }>()
+const props = defineProps<{ catalogId: string; canResolveActors: boolean }>()
 
 const entries = ref<HistoryEntry[]>([])
 const people = ref<Record<string, string>>({})
 const next = ref<string | undefined>()
 const loading = ref(false)
-const error = ref('')
+const error = ref<ReturnType<typeof presentError>>()
 const reads = requestGeneration()
 const captionId = useId()
 const rows = computed(() => entries.value.map(e => ({
@@ -36,19 +37,21 @@ const rows = computed(() => entries.value.map(e => ({
 async function load(more = false) {
   const current = reads.begin()
   loading.value = true
-  error.value = ''
+  error.value = undefined
   try {
     const page = await pim.history(props.catalogId, { limit: 50, before: more ? next.value : undefined })
     if (!reads.current(current)) return
     entries.value = more ? [...entries.value, ...page.entries] : page.entries
     next.value = page.next
-    try {
-      const labels = await principalLabels(props.catalogId, page.entries.map(entry => entry.actor))
-      if (reads.current(current)) people.value = { ...people.value, ...labels }
-    } catch { /* The audit trail stays readable when a person no longer resolves. */ }
+    if (props.canResolveActors) {
+      try {
+        const labels = await principalLabels(props.catalogId, page.entries.map(entry => entry.actor))
+        if (reads.current(current)) people.value = { ...people.value, ...labels }
+      } catch { /* The audit trail stays readable when a person no longer resolves. */ }
+    }
   } catch (e) {
     if (!reads.current(current)) return
-    error.value = e instanceof Error ? e.message : 'Could not load the history.'
+    error.value = presentError(e, 'Could not load the history.')
   } finally {
     if (reads.current(current)) loading.value = false
   }
@@ -95,7 +98,7 @@ watch(() => props.catalogId, () => {
   entries.value = []
   people.value = {}
   next.value = undefined
-  error.value = ''
+  error.value = undefined
   stop = on(`component.${props.catalogId}`, () => { void load() })
 }, { immediate: true })
 watch(() => props.catalogId, () => { void load() })
@@ -105,19 +108,19 @@ onUnmounted(() => { stop(); reads.begin() })
 
 <template>
   <section class="pim-history" aria-label="Catalog history">
-    <Message v-if="error" severity="error" role="alert">{{ error }} <Button severity="secondary" outlined :disabled="loading" @click="load()">Retry</Button></Message>
+    <AdminError v-if="error" :error="error"><Button severity="secondary" outlined size="small" @click="load()">Retry</Button></AdminError>
     <div v-if="loading" class="kx-loading" role="status">Loading history…</div>
     <div class="pim-table pim-responsive-table">
       <p :id="captionId" class="pim-history-caption muted small">Catalog changes, newest first</p>
       <template v-if="rows.length">
         <table class="pim-grid" :aria-labelledby="captionId">
-          <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Change</th></tr></thead>
+          <thead><tr><th scope="col">When</th><th v-if="canResolveActors" scope="col">Who</th><th scope="col">What</th><th scope="col">Change</th></tr></thead>
           <tbody>
             <tr v-for="row in rows" :key="row.key">
               <td class="muted small"><time :datetime="row.at">{{ row.date }}</time></td>
-              <td class="small">{{ row.actor }}<span v-if="row.source" class="muted"> via {{ row.source }}</span></td>
+              <td v-if="canResolveActors" class="small">{{ row.actor }}<span v-if="row.source" class="muted"> via {{ row.source }}</span></td>
               <td class="mono small">{{ row.product }}<span v-if="row.context" class="muted"> · {{ row.context }}</span></td>
-              <td>{{ row.change }}</td>
+              <td>{{ row.change }}<span v-if="!canResolveActors && row.source" class="muted small"> via {{ row.source }}</span></td>
             </tr>
           </tbody>
         </table>
@@ -125,7 +128,8 @@ onUnmounted(() => { stop(); reads.begin() })
           <li v-for="row in rows" :key="row.key" class="pim-stacked-row">
             <div>{{ row.change }}</div>
             <div class="pim-stacked-meta muted small">
-              <span><span>{{ row.actor }}</span><template v-if="row.source"> via {{ row.source }}</template></span>
+              <span v-if="canResolveActors"><span>{{ row.actor }}</span><template v-if="row.source"> via {{ row.source }}</template></span>
+              <span v-else-if="row.source">Via {{ row.source }}</span>
               <time :datetime="row.at">{{ row.date }}</time>
               <span>{{ row.product }}<template v-if="row.context"> · {{ row.context }}</template></span>
             </div>

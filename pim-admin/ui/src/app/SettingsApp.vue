@@ -16,7 +16,7 @@ async function loadTitle() {
   try {
     const catalog = await pim.catalogSummary(id)
     if (reads.current(current)) title.value = catalog?.title || 'Untitled catalog'
-  } catch { if (reads.current(current)) title.value = 'Untitled catalog' }
+  } catch { if (reads.current(current)) title.value = '' }
 }
 watch(catalogId, () => { title.value = ''; void loadTitle() })
 useHostVisibilityRefresh(loadTitle)

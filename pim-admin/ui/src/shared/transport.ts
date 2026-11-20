@@ -15,14 +15,18 @@ export class ApiError extends Error {
     this.status = status
   }
 }
-export interface ErrorNotice { message: string; code?: string }
+export interface AdminError { message: string; code?: string }
+export const SCHEMA_CONFLICT = 'schema_generation_conflict'
+const errorMessages: Readonly<Record<string, string>> = {
+  [SCHEMA_CONFLICT]: 'This catalog’s settings changed while you were editing.',
+  catalog_access_denied: 'You don’t have access to this catalog.',
+}
 
-export function errorNotice(error: unknown, message: string): ErrorNotice {
-  const code = error instanceof ApiError ? error.details?.code : undefined
-  return {
-    message: error instanceof Error ? error.message : message,
-    code: typeof code === 'string' ? code : undefined,
-  }
+export function presentError(error: unknown, fallback: string): AdminError {
+  const detail = error instanceof ApiError ? error.details?.code : undefined
+  const code = typeof detail === 'string' && detail ? detail : undefined
+  const message = error instanceof Error && error.message ? error.message : fallback
+  return { message: code && Object.prototype.hasOwnProperty.call(errorMessages, code) ? errorMessages[code] : message, code }
 }
 
 export function unwrap<T>(data: unknown, what: string): T {
