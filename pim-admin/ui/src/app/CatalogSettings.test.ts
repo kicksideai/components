@@ -100,10 +100,10 @@ it('names family field group, variation, and requirement controls', async () => 
     await wrapper.findAll('[role=tab]').find(tab => tab.text() === 'Families')!.trigger('click')
     await wrapper.get('.pim-definition-toggle').trigger('click')
     await render(page, wrapper.html())
-    for (const name of ['Field groups', 'Axes', 'Also owned here', 'Required', 'Authored']) {
-      expect(await page.getByRole('group', { name, exact: true }).count()).toBe(1)
+    expect(await page.getByRole('group', { name: 'Field groups', exact: true }).count()).toBe(1)
+    for (const name of ['Axes', 'Also owned here', 'Required', 'Authored', 'Locale']) {
+      expect(await page.getByRole('combobox', { name, exact: true }).count()).toBe(1)
     }
-    expect(await page.getByRole('combobox', { name: 'Locale', exact: true }).count()).toBe(1)
   } finally {
     wrapper.unmount()
     await page.close()

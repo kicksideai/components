@@ -17,7 +17,7 @@ const draft = () => ({
 })
 for (const [name, component] of [['dimensions', BuilderDimensions], ['families', BuilderFamilies], ['channels and sources', BuilderChannels], ['vocabularies', BuilderVocabularies]] as const) {
   it(`keeps ${name} definitions collapsed until the row opens`, async () => {
-    const w = mount(component, { props: { catalogId: 'cat', draft: draft(), schema: createSchema() } })
+    const w = mount(component, { props: { catalogId: 'cat', draft: draft(), schema: createSchema(), options } })
     expect(w.find('.pim-definition-body').exists()).toBe(false)
     for (const list of w.findAll('.form')) {
       if (!list.find('.pim-definition').exists()) continue
@@ -57,4 +57,37 @@ it('limits field reorder shortcuts to the row header while its form is open', as
   await w.get('.pim-definition-body input').trigger('keydown', { key: 'ArrowUp', altKey: true })
   expect(declaration.aspects[0].attributes.map(a => a.code)).toEqual(['name', 'title'])
   w.unmount()
+})
+
+it.each([
+  [BuilderFields, 'Field code', 'Add field', ' name ', true],
+  [BuilderFields, 'Field group code', 'Add field group', ' core ', false],
+  [BuilderDimensions, 'Dimension code', 'Add dimension', ' locale ', false],
+  [BuilderVocabularies, 'Vocabulary code', 'Add vocabulary', ' colors ', false],
+  [BuilderFamilies, 'Family code', 'Add family', ' apparel ', false],
+  [BuilderFamilies, 'Requirement code', 'Add requirement', ' ready ', true],
+  [BuilderChannels, 'Channel code', 'Add channel', ' web ', false],
+  [BuilderChannels, 'Source code', 'Add source', ' feed ', false],
+] as const)('explains a duplicate for %s (%s) and blocks both click and Enter', async (component, placeholder, label, duplicate, expand) => {
+  const declaration = reactive({ ...draft(), families: [{ code: 'apparel', aspects: ['core'], requirements: [{ id: 'ready' }] }] })
+  const w = mount(component, { props: { catalogId: 'cat', draft: declaration, schema: createSchema(), options } })
+  try {
+    if (expand && component === BuilderFamilies) await w.get('.pim-definition-toggle').trigger('click')
+    const input = w.get(`input[placeholder="${placeholder}"]`)
+    const add = w.findAll('button').find(b => b.text() === label)!
+    const before = JSON.stringify(declaration)
+    await input.setValue(duplicate)
+    expect(input.attributes('aria-invalid')).toBe('true')
+    expect(w.findAll('[role=status]').some(status => status.text().includes('already in use'))).toBe(true)
+    expect(add.attributes('disabled')).toBeDefined()
+    await add.trigger('click')
+    await input.trigger('keydown', { key: 'Enter' })
+    expect(JSON.stringify(declaration)).toBe(before)
+    await input.setValue(' available ')
+    expect(input.attributes('aria-invalid')).not.toBe('true')
+    expect(add.attributes('disabled')).toBeUndefined()
+    await input.trigger('keydown', { key: 'Enter' })
+    expect(JSON.stringify(declaration)).not.toBe(before)
+    expect((input.element as HTMLInputElement).value).toBe('')
+  } finally { w.unmount() }
 })

@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import Message from 'primevue/message'
-import { CODE } from '../../state'
+import Tag from 'primevue/tag'
+import AddSchemaCode from './AddSchemaCode.vue'
 import DefinitionList from '../../shared/DefinitionList.vue'
 import DefinitionRow from '../../shared/DefinitionRow.vue'
 import Select from 'primevue/select'
@@ -15,7 +16,8 @@ import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { host } from '@wippy-fe/proxy'
 import { pim } from '../../api'
-import type { ApplyItem, Declaration, RemoveDecl, SchemaView, TermRow, VocabularyDecl } from '../../types'
+import { errorNotice, type ErrorNotice } from '../../shared/transport'
+import type { ApplyItem, ApplyResult, Declaration, RemoveDecl, SchemaView, TermRow, VocabularyDecl } from '../../types'
 import { humanize } from '../../forms'
 
 const props = defineProps<{ catalogId: string; draft: Declaration; schema: SchemaView }>()
@@ -24,12 +26,8 @@ const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string] }>()
 const TERM_CODE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}(?![\s\S])/
 const canWrite = computed(() => props.schema.access.write)
 const vocabs = computed(() => props.draft.vocabularies ?? [])
-const newCode = ref('')
-function add() {
-  const code = newCode.value.trim()
-  if (!CODE.test(code) || vocabs.value.some((v) => v.code === code)) return
+function add(code: string) {
   (props.draft.vocabularies ??= []).push({ code })
-  newCode.value = ''
 }
 function remove(v: VocabularyDecl) {
   vocabs.value.splice(vocabs.value.indexOf(v), 1)
@@ -45,12 +43,20 @@ const terms = ref<Record<string, TermRow[]>>({})
 const cursors = ref<Record<string, string | undefined>>({})
 const pages = ref<Record<string, string | undefined>>({})
 const busy = ref<Record<string, boolean>>({})
-const error = ref<Record<string, string>>({})
+const errors = ref<Record<string, ErrorNotice[] | undefined>>({})
 const term = ref<Record<string, { code: string; label: string; parent: string }>>({})
 async function loadTerms(code: string, after?: string) {
   busy.value[code] = true
-  error.value[code] = ''
-  try { const page = await pim.termsPage(props.catalogId, code, after); terms.value[code] = page.terms; pages.value[code] = after; cursors.value[code] = page.next } catch (e) { error.value[code] = e instanceof Error ? e.message : 'Could not load terms.' } finally { busy.value[code] = false }
+  delete errors.value[code]
+  try {
+    const page = await pim.termsPage(props.catalogId, code, after)
+    terms.value[code] = page.terms
+    pages.value[code] = after
+    cursors.value[code] = page.next
+    const entry = form(code)
+    if (page.terms.some(t => t.retired && t.code === entry.parent)) entry.parent = ''
+  } catch (e) { errors.value[code] = [errorNotice(e, 'Could not load terms.')] }
+  finally { busy.value[code] = false }
 }
 function toggle(code: string) {
   open.value[code] = !open.value[code]
@@ -59,34 +65,50 @@ function toggle(code: string) {
 function form(code: string) {
   return term.value[code] ?? (term.value[code] = { code: '', label: '', parent: '' })
 }
+function parentOptions(code: string) {
+  return [{ value: '', label: 'No parent' }, ...(terms.value[code] ?? [])
+    .filter(t => !t.retired).map(t => ({ value: t.code, label: label(t) }))]
+}
+function showTermFindings(code: string, outcome: ApplyResult['outcomes'][number] | undefined, message: string) {
+  errors.value[code] = outcome?.findings?.length
+    ? outcome.findings.map(f => ({ message: f.message ?? message, code: f.code }))
+    : [{ message }]
+}
 async function addTerm(v: VocabularyDecl) {
   const f = form(v.code)
   if (!canWrite.value || !TERM_CODE.test(f.code)) return
   busy.value[v.code] = true
-  error.value[v.code] = ''
+  delete errors.value[v.code]
   try {
     const item: ApplyItem = { term: { vocabulary: v.code, code: f.code }, labels: { en: f.label || humanize(f.code) } }
     if (v.hierarchical && f.parent) item.parent = f.parent
     const out = await pim.apply(props.catalogId, [item])
     const o = out.outcomes[0]
-    if (o.outcome !== 'created' && o.outcome !== 'updated') throw new Error(o.findings?.[0]?.message ?? 'The term was not accepted.')
+    if (o?.outcome !== 'created' && o?.outcome !== 'updated') {
+      showTermFindings(v.code, o, 'The term was not accepted.')
+      return
+    }
     term.value[v.code] = { code: '', label: '', parent: '' }
     pim.invalidateTerms(props.catalogId)
     await loadTerms(v.code, pages.value[v.code])
-  } catch (e) { error.value[v.code] = e instanceof Error ? e.message : 'Could not add the term.' } finally { busy.value[v.code] = false }
+  } catch (e) { errors.value[v.code] = [errorNotice(e, 'Could not add the term.')] } finally { busy.value[v.code] = false }
 }
 async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
   if (!canWrite.value) return
   if (retired && !await host.confirm({ header: 'Retire term?', message: `Retire ${label(t)}? Term changes save immediately. You can restore this term later.`, acceptLabel: 'Retire', rejectLabel: 'Cancel' })) return
   busy.value[v.code] = true
-  error.value[v.code] = ''
+  delete errors.value[v.code]
   try {
     const out = await pim.apply(props.catalogId, [{ term: { vocabulary: v.code, code: t.code }, retired }])
     const outcome = out.outcomes[0]
-    if (!outcome || !['updated', 'unchanged'].includes(outcome.outcome)) throw new Error(outcome?.findings?.map(f => f.message ?? f.code).join('; ') || 'The term change was not accepted.')
+    if (!outcome || !['updated', 'unchanged'].includes(outcome.outcome)) {
+      showTermFindings(v.code, outcome, 'The term change was not accepted.')
+      return
+    }
+    if (retired && form(v.code).parent === t.code) form(v.code).parent = ''
     pim.invalidateTerms(props.catalogId)
     await loadTerms(v.code, pages.value[v.code])
-  } catch (e) { error.value[v.code] = e instanceof Error ? e.message : 'Could not change the term.' } finally { busy.value[v.code] = false }
+  } catch (e) { errors.value[v.code] = [errorNotice(e, 'Could not change the term.')] } finally { busy.value[v.code] = false }
 }
 </script>
 
@@ -101,18 +123,25 @@ async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
         <span v-else class="muted small">Apply the schema before adding terms.</span>
         <div v-if="open[v.code]" class="pim-stack tight pim-terms">
           <p class="muted small">Term changes save immediately.</p>
-          <Message v-if="error[v.code]" severity="error" role="alert">{{ error[v.code] }} <Button type="button" :disabled="busy[v.code]" @click="loadTerms(v.code, pages[v.code])" severity="secondary" outlined size="small">Retry</Button></Message>
+          <Message v-if="errors[v.code]" severity="error" role="alert">
+            <div class="pim-error-copy">
+              <div v-for="(issue, i) in errors[v.code]" :key="i">
+                {{ issue.message }} <span v-if="issue.code" class="pim-error-code">Code <code>{{ issue.code }}</code></span>
+              </div>
+            </div>
+            <Button type="button" :disabled="busy[v.code]" @click="loadTerms(v.code, pages[v.code])" severity="secondary" outlined size="small">Retry</Button>
+          </Message>
           <div v-if="(terms[v.code] ?? []).length" class="pim-responsive-table">
             <table class="pim-grid compact" aria-label="Vocabulary terms">
               <thead><tr><th>Code</th><th>Label</th><th v-if="v.hierarchical">Parent</th><th></th></tr></thead>
               <tbody><tr v-for="t in terms[v.code]" :key="t.code" :class="{ muted: t.retired }">
-                <td class="mono">{{ t.code }}</td><td>{{ label(t) }}</td><td v-if="v.hierarchical" class="mono muted">{{ t.parent ?? '' }}</td>
+                <td class="mono">{{ t.code }}</td><td>{{ label(t) }} <Tag v-if="t.retired" severity="secondary" value="Retired" /></td><td v-if="v.hierarchical" class="mono muted">{{ t.parent ?? '' }}</td>
                 <td class="num"><Button type="button" :disabled="!canWrite || busy[v.code]" @click="retire(v, t, !t.retired)" text severity="secondary" size="small">{{ t.retired ? 'Restore' : 'Retire' }}</Button></td>
               </tr></tbody>
             </table>
             <ul role="list" class="pim-stacked-list" aria-label="Vocabulary terms">
               <li v-for="t in terms[v.code]" :key="t.code" class="pim-stacked-row" :class="{ muted: t.retired }">
-                <div>{{ label(t) }}</div>
+                <div>{{ label(t) }} <Tag v-if="t.retired" severity="secondary" value="Retired" /></div>
                 <div class="pim-stacked-meta muted small"><span class="mono">{{ t.code }}</span><span v-if="v.hierarchical && t.parent">Parent: {{ t.parent }}</span></div>
                 <Button type="button" :disabled="!canWrite || busy[v.code]" @click="retire(v, t, !t.retired)" text severity="secondary" size="small">{{ t.retired ? 'Restore' : 'Retire' }}</Button>
               </li>
@@ -126,18 +155,16 @@ async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
           <div class="row wrap pim-add-row">
             <InputText v-model="form(v.code).code" :disabled="!canWrite || busy[v.code]" type="text" placeholder="code" class="mono narrow" />
             <InputText v-model="form(v.code).label" :disabled="!canWrite || busy[v.code]" type="text" placeholder="Label (en)" />
-            <Select v-if="v.hierarchical" v-model="form(v.code).parent" :disabled="!canWrite || busy[v.code]" class="narrow" :options="[{ value: '', label: 'No parent' }, ...(terms[v.code] ?? []).map((t) => ({ value: t.code, label: String(label(t)) }))]" option-label="label" option-value="value" appendTo="self" />
+            <Select v-if="v.hierarchical" v-model="form(v.code).parent" :disabled="!canWrite || busy[v.code]" class="narrow" aria-label="Parent term" placeholder="No parent" :options="parentOptions(v.code)" option-label="label" option-value="value" appendTo="self" />
             <Button type="button" :disabled="!canWrite || busy[v.code] || !TERM_CODE.test(form(v.code).code)" @click="addTerm(v)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add term</Button>
           </div>
         </div>
       </div>
     </DefinitionRow>
     <template #add>
-    <div class="row pim-add-row">
-      <InputText v-model="newCode" type="text" placeholder="new_vocabulary" @keydown.enter.prevent="add" class="mono" />
-      <Button type="button" :disabled="!CODE.test(newCode)" @click="add" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add vocabulary</Button>
-      <span class="muted small">Select fields pick their values from a vocabulary's terms.</span>
-    </div>
+      <AddSchemaCode label="Vocabulary code" action="Add vocabulary" :existing="vocabs.map(v => v.code)" @add="add">
+        <span class="muted small">Select fields pick their values from a vocabulary's terms.</span>
+      </AddSchemaCode>
     </template>
   </DefinitionList>
 </template>
