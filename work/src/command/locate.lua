@@ -101,13 +101,15 @@ local trim = require("trim_text").trim
 local function display(meta: domain.ComponentMeta): domain.BoardMeta
     return { title = trim(meta.title) ~= "" and trim(meta.title) or "Board",
         description = type(meta.description) == "string" and meta.description or "",
-        icon = type(meta.icon) == "string" and meta.icon or "" }
+        icon = type(meta.icon) == "string" and meta.icon or "",
+        ui_app = type(meta.ui_app) == "string" and meta.ui_app or "" }
 end
 
 -- readable returns a bounded page of readable boards in component id order.
-function M.readable(limit: integer?, offset: integer?): ({ types.BoardSummary }?, error?)
+function M.readable(limit: integer?, offset: integer?, ui_app: string?): ({ types.BoardSummary }?, error?)
     local rows, err = component.query({ impl_ids = { consts.BOARD_IMPL }, access_mask = (component.ACCESS.READ :: integer),
-        include = { meta = true, access = true }, order_by = { field = "component_id", direction = "ASC" }, limit = limit or 50, offset = offset or 0 })
+        include = { meta = true, access = true }, meta = ui_app and { ui_app = ui_app } or nil,
+        order_by = { field = "component_id", direction = "ASC" }, limit = limit or 50, offset = offset or 0 })
     if err then return nil, errors.wrap(err :: error, "board lookup failed") end
     local out: { types.BoardSummary } = {}
     for _, raw in ipairs(type(rows) == "table" and (rows :: { unknown }) or {}) do
@@ -120,6 +122,7 @@ function M.readable(limit: integer?, offset: integer?): ({ types.BoardSummary }?
             local meta = row.meta or {}
             local properties = display(meta)
             out[#out + 1] = { board_id = id, access = grants, title = properties.title, description = properties.description, icon = properties.icon,
+                ui_app = properties.ui_app ~= "" and properties.ui_app or nil,
                 key_prefix = type(meta.key_prefix) == "string" and meta.key_prefix or nil,
                 generation = meta.generation and math.tointeger(meta.generation) or nil,
                 status = type(meta.status) == "string" and meta.status or nil }

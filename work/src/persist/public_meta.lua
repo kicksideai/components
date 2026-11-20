@@ -35,7 +35,9 @@ function M.publish(input: storage.MetaInput): (storage.Published?, error?)
     local metadata, merr = board_meta.get(db, board_id)
     if merr then db:release(); return nil, merr end
     local fields: { [string]: unknown } = {}
-    if metadata then fields.title, fields.description, fields.icon = metadata.title, metadata.description, metadata.icon end
+    if metadata then
+        fields.title, fields.description, fields.icon, fields.ui_app = metadata.title, metadata.description, metadata.icon, metadata.ui_app
+    end
     local board, berr = store.board(db, board_id)
     if berr then db:release(); return nil, berr end
     if not board then

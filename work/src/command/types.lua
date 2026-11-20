@@ -24,9 +24,9 @@ type Op = {
 }
 type ApplyRequest = { expected_head: integer?, trace_context: domain.TraceContext?, board_id: string, key: string?, mode: string?, ops: { Op }, source: string?, origin: JsonObject? }
 type SchemaRequest = { pack: JsonObject?, trace_context: domain.TraceContext?, plugin_configs: { [string]: JsonObject }?, board_id: string, declaration: Declaration, expected_generation: integer?, key: string?, source: string?, origin: JsonObject? }
-type UpdateRequest = { board_id: string, title: string?, description: string?, icon: string?, key_prefix: string? }
+type UpdateRequest = { board_id: string, title: string?, description: string?, icon: string?, key_prefix: string?, ui_app: string? }
 type UpdateResult = { board_id: string, status: string, seq: integer?, as_of: integer? }
-type CreateRequest = { pack: string?, version: string?, starter: boolean?, trace_context: domain.TraceContext?, plugin_configs: { [string]: JsonObject }?, idempotency_key: string, title: string?, parent_id: string?, declaration: Declaration? }
+type CreateRequest = { pack: string?, version: string?, starter: boolean?, trace_context: domain.TraceContext?, plugin_configs: { [string]: JsonObject }?, idempotency_key: string, title: string?, parent_id: string?, declaration: Declaration?, ui_app: string? }
 
 type SchemaSnapshot = { board: domain.Board?, declaration: Declaration? }
 
@@ -49,10 +49,10 @@ type ResumeMigrationRequest = { board_id: string }
 type ResumeMigrationResult = { resumed: boolean, job_id: string }
 type CreateResult = { board_id: string, title: string, generation: integer?, replayed: boolean }
 type BoardSummary = {
-    access: domain.BoardAccess,
+    access: domain.BoardAccess, ui_app: string?,
     board_id: string, title: string, description: string, icon: string, key_prefix: string?, item_count: integer?, open_count: integer?, completed_count: integer?, trashed_count: integer?, generation: integer?, status: string?,
 }
-type ListRequest = { limit: integer?, after: integer? }
+type ListRequest = { limit: integer?, after: integer?, ui_app: string? }
 type ListResult = { boards: { BoardSummary }, next: integer? }
 
 -- OpPlan is the planned result of one op: its status, the events it appends and

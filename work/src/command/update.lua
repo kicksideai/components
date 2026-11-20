@@ -12,12 +12,17 @@ local consts = require("consts")
 local domain = require("domain")
 local types = require("types")
 local limits = require("limits")
+local ui_app = require("ui_app")
 local M = {}
 
 function M.update(request: types.UpdateRequest): (types.UpdateResult?, error?)
     local access_err = guard.require_access(request.board_id, guard.admin_access())
     if access_err then return nil, access_err end
     if request.key_prefix ~= nil then return nil, guard.invalid("board key prefix is immutable", { code = "prefix_immutable" }) end
+    if request.ui_app and request.ui_app ~= "" then
+        local binding_err = ui_app.validate(request.ui_app)
+        if binding_err then return nil, binding_err end
+    end
     local title = request.title and locate.trim(request.title) or nil
     if title == "" then return nil, guard.invalid("board title must be nonblank", { code = "board_title_blank" }) end
     if title and #title > 255 then return nil, guard.invalid("board title exceeds 255 bytes", { code = "board_title_too_long" }) end
@@ -34,12 +39,13 @@ function M.update(request: types.UpdateRequest): (types.UpdateResult?, error?)
     if perr or not previous then return nil, perr end
     local metadata: domain.BoardMeta = { title = title or previous.title,
         description = request.description or previous.description,
-        icon = request.icon or previous.icon }
-    if metadata.title == previous.title and metadata.description == previous.description and metadata.icon == previous.icon then
+        icon = request.icon or previous.icon, ui_app = request.ui_app or previous.ui_app }
+    if metadata.title == previous.title and metadata.description == previous.description and metadata.icon == previous.icon
+        and metadata.ui_app == previous.ui_app then
         return { board_id = request.board_id, status = "unchanged", as_of = head }, nil
     end
     local event: domain.Event = { type = consts.EVENTS.BOARD_UPDATED, subject = "board", body = {
-        title = metadata.title, description = metadata.description, icon = metadata.icon } }
+        title = metadata.title, description = metadata.description, icon = metadata.icon, ui_app = metadata.ui_app } }
     receipts.decorate(event, guard.actor_id(), guard.stamp_now(), "api", nil, nil)
     local client, cerr = threads.open()
     if cerr or not client then return nil, cerr end

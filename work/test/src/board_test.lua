@@ -8,6 +8,60 @@ local json = require("json")
 
 local function define()
     test.describe("board", function()
+        test.it("lets a consumer discover only its readable boards for a registered UI app", function()
+            local owner, reader, hidden_owner = scoped.admin(), scoped.member(), scoped.admin()
+            local app, alternate = "app:tracker_ui", "app:alternate_ui"
+            local function create(session: scoped.Session, key: string, ui_app: string?, pack: string?): string
+                return assert(session.call("create", {
+                    idempotency_key = key, title = key, ui_app = ui_app, pack = pack,
+                })).board_id
+            end
+            local first = create(owner, "Tracker board", app)
+            local second = create(owner, "Pack board", nil, "app:tracker_pack")
+            local other = create(owner, "Alternate board", alternate, "app:tracker_pack")
+            local unbound = create(owner, "Unbound board", nil)
+            local hidden = create(hidden_owner, "Hidden board", app)
+            for _, id in ipairs({ first, second, other, unbound }) do
+                assert(owner.call("grant", { subject_id = reader.id, mask = 3 }, id))
+            end
+
+            local page = assert(reader.call("list", { ui_app = app, limit = 1 }))
+            test.eq(#page.boards, 1)
+            test.eq(page.boards[1].ui_app, app)
+            test.not_nil(page.next)
+            local next_page = assert(reader.call("list", { ui_app = app, limit = 1, after = page.next }))
+            test.eq(#next_page.boards, 1)
+            test.eq(next_page.boards[1].ui_app, app)
+            test.is_nil(next_page.next)
+            local found = { [page.boards[1].board_id] = true, [next_page.boards[1].board_id] = true }
+            test.is_true(found[first])
+            test.is_true(found[second])
+            test.is_nil(found[hidden])
+
+            local _, denied = reader.call("update", { ui_app = alternate }, first)
+            test.eq(denied:kind(), errors.PERMISSION_DENIED)
+            local _, invalid = owner.call("update", { ui_app = "app:tracker_pack" }, first)
+            test.eq(invalid:kind(), errors.INVALID)
+            test.eq(invalid:details().code, "invalid_ui_app")
+            local _, unknown = owner.call("create", { idempotency_key = "Missing UI", ui_app = "app:absent_ui" })
+            test.eq(unknown:kind(), errors.INVALID)
+            test.eq(unknown:details().code, "invalid_ui_app")
+
+            assert(owner.call("update", { ui_app = alternate }, first))
+            assert(owner.call("update", { title = "Renamed" }, first))
+            assert(owner.call("update", { ui_app = "" }, second))
+            test.eq(#assert(reader.call("list", { ui_app = app })).boards, 0)
+            local response = reader.http("GET", "?ui_app=app%3Aalternate_ui")
+            test.eq(response.status, 200)
+            test.eq(#response.body.data.boards, 2)
+            local boards = {}
+            for _, board in ipairs(assert(reader.call("list", {})).boards) do boards[board.board_id] = board end
+            test.eq(boards[first].title, "Renamed")
+            test.eq(boards[first].ui_app, alternate)
+            test.eq(boards[other].ui_app, alternate)
+            test.is_nil(boards[second].ui_app)
+            test.is_nil(boards[unbound].ui_app)
+        end)
         test.it("discovers every readable board through bounded continuation pages", function()
             local h = fixture.board({ bare = true })
             local admin = { call = h.call }

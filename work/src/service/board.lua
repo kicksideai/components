@@ -38,7 +38,7 @@ function M.list(input: unknown): (commands.ListResult?, error?)
     if err then return nil, err end
     local request = input :: commands.ListRequest
     local limit, after = request.limit or 50, request.after or 0
-    local boards, berr = locate.readable(limit + 1, after)
+    local boards, berr = locate.readable(limit + 1, after, request.ui_app)
     if berr or not boards then return nil, berr end
     local more = #boards > limit
     if more then table.remove(boards) end
