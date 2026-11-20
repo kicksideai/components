@@ -115,6 +115,15 @@ local function get(request: types.GetRequest, context: types.ReadContext): (type
         local view, verr = render(tx, board, item, true)
         if verr or not view then return nil, verr end
         local out: types.GetResult = { item = view, access = grants, title = metadata.title, description = metadata.description, icon = metadata.icon }
+        local item_type = board.model.item_types[item.type]
+        if grants.write and item.life == "live" and item_type and #item_type.fields > 0 then
+            local edits: { [string]: domain.FieldEdit } = {}
+            for _, code in ipairs(item_type.fields) do
+                local field = board.model.fields[code]
+                if field then edits[code] = rules.field_edit(board, field, item.document) end
+            end
+            out.field_edit = edits
+        end
         if has(request.include, "links") then
             local rows, lerr = read_rows.links(tx, board.board_id, item.item_id, nil, "both", 0, 200)
             if lerr then return nil, lerr end

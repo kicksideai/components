@@ -64,7 +64,12 @@ local function define()
                 test.is_true(out.success)
                 return out :: Map
             end
-            test.eq((tool("get_item", { item = { id = id } }).item :: Map).id, id)
+            local detail = tool("get_item", { item = { id = id } })
+            test.eq((detail.item :: Map).id, id)
+            test.not_nil(detail.field_edit)
+            test.eq((detail.field_edit :: Map).title, "editable")
+            local schema = assert(json.decode(assert(registry.get("kickside.work.traits:get_item")).meta.output_schema))
+            test.is_true(json.validate(schema, detail) == true)
             test.eq(#(tool("find_items", {}).items :: { Map }), 1)
             test.not_nil(tool("get_schema", {}).compiled)
             test.not_nil(tool("explain", {}).plan)

@@ -142,6 +142,7 @@ type Finding = { code: string, message: string, field: string? }
 type OptionDecl = { id: string, label: string?, color: string?, order: integer?, category: string? }
 type Holder = { group: string?, user: string?, service: string?, field: string? }
 type FieldAccess = { read: { Holder }?, write: { Holder }? }
+type FieldEdit = "editable" | "field_denied" | "read_only"
 type Visibility = { field: string, levels: { { id: string, holders: { Holder } } }, bypass: string? }
 type AccessCaller = { principal: PrincipalDecl, groups: { [string]: boolean }, admin: boolean }
 type FieldDecl = {
@@ -335,7 +336,7 @@ return { StageBindingRequest = StageBindingRequest, FlowRef = FlowRef, Operation
     FilterCompilation = FilterCompilation, FilterOptions = FilterOptions, VisibilityCondition = VisibilityCondition, RelationScope = RelationScope, HistoryAsked = HistoryAsked, ScopeFilter = ScopeFilter, Scope = Scope,
     ScopeProjection = ScopeProjection, ScopeQuery = ScopeQuery, AdmittedScope = AdmittedScope, PluginSchemaSource = PluginSchemaSource, PluginSchema = PluginSchema, ResolveContext = ResolveContext,
     PluginError = PluginError, PluginProblem = PluginProblem, PluginLifecycle = PluginLifecycle, PluginView = PluginView, PluginProjection = PluginProjection, PluginProjectionState = PluginProjectionState, Plugin = Plugin, ProviderResult = ProviderResult, Provider = Provider, FieldType = FieldType,
-    Holder = Holder, FieldAccess = FieldAccess, Visibility = Visibility, AccessCaller = AccessCaller,
+    Holder = Holder, FieldAccess = FieldAccess, FieldEdit = FieldEdit, Visibility = Visibility, AccessCaller = AccessCaller,
     PluginOwners = PluginOwners, PluginDecl = PluginDecl, PluginState = PluginState, PluginProgress = PluginProgress,
     PathMove = PathMove, SubtreeStats = SubtreeStats, DeleteResult = DeleteResult,
     Write = Write,
