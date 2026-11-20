@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.21](https://github.com/kicksideai/components/compare/work-v0.1.20...work-v0.1.21) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** add versioned task templates and recurring creation ([#217](https://github.com/kicksideai/components/issues/217)) ([8d23046](https://github.com/kicksideai/components/commit/8d230462b16c9bad165deb49c7d38305317c5ebe))
+
 ## [0.1.20](https://github.com/kicksideai/components/compare/work-v0.1.19...work-v0.1.20) (2026-11-20)
 
 
