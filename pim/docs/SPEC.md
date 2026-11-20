@@ -595,10 +595,13 @@ accepts it only for `cost: interactive` checks whose `reads` are owned at
 one level, so the check runs on that level's products and a model edit never
 evaluates its descendants at the head. Enforced checks run in prepare, as the
 caller, over the product as the item would leave it and before the command's
-state changes; `check_unavailable` rejects. They run at `apply`, at `propose`
-(propose plans the proposal's items at the head without appending, as the
-proposer, and refuses a proposal whose items would be invalid) and at
-`decide`. `restore` and catalog import are exempt: they bring back values
+state changes; `check_unavailable` rejects. The published
+`kickside.pim:family_check` input includes optional `previous_status` and
+`proposed_status`. A write-enforced check receives the candidate's status even
+when it stays the same. A creation omits `previous_status`. Readiness and
+release checks omit both fields. Write enforcement runs at `apply`, `propose`
+(which validates the edits as the proposer before recording the submission) and
+at `decide`. `restore` and catalog import are exempt: they bring back values
 that were accepted when they were written.
 
 ### 3.5 Scopes — `kickside.pim.scope`
@@ -958,6 +961,8 @@ used for authorization).
 | `pim.term.changed` | `t:<vocabulary>:<code>` | labels, parent, data, retired |
 | `pim.product.released` | `r:<id>` | release_id, product_id, version, generation, snapshot, hash, channels |
 | `pim.product.withdrawn` | `r:<id>` | product_id, channels |
+| `pim.proposal.submitted` | `proposals` | proposal_id, generation, base product versions, proposed items, source?, origin?, provenance? |
+| `pim.proposal.decided` | `proposals` | proposal_id, decision, resulting status, apply result for an acceptance attempt |
 
 A patch is `[{a, c, before?, v | clear | unset, s?}]`. New creation and
 change events carry the schema `generation` used to encode these steps, even
@@ -1656,33 +1661,29 @@ withdrawals. Channel plugins consume the publications feed (§12).
 
 ## 11. Proposals
 
-A proposal is PIM-owned state (Core requires WRITE for any append):
-
-- `propose` (READ) stores items, base product versions and the validating schema
-  generation after prepare and enforced checks. Admission validates the
-  proposal's source and its write scope.
+- `propose` (READ) validates the edits, their source and applicable checks at
+  the catalog head, then appends `proposal.submitted`. The fold records the
+  review row with the captured product versions and schema generation.
   Attributes of source-restricted aspects cannot be proposed. Proposal edits
   use the captured product versions for every source, including sequence-ordered
   sources, and leave each source's delivery sequence unchanged.
-- `decide` (WRITE): accept claims the proposal with a conditional
-  transition at the same catalog head that authorizes the reviewer and plans the
-  edit. It runs `apply` (atomic) with the base versions, schema generation, source and
-  `origin` with `approval_item_id` set to the proposal, idempotency `proposal/<id>`, then settles
-  `accepted`, `conflict` (only stale versions stopped it; decidable again)
-  or `failed` (an item is refused outright).
-  A changed generation returns `schema_generation_conflict`, releases any
-  uncommitted acceptance claim and requires a new proposal for review.
-  Proposals created before generation tracking still appear in listings with
-  their base versions. They can be rejected or replay a committed acceptance.
-  A new acceptance requires a recorded generation and returns
-  `schema_generation_conflict` when the proposal lacks one.
-  If the reviewer loses source access before the write, acceptance releases that
-  reviewer's uncommitted claim. Reject works from `pending` or `conflict`.
+- `decide` (WRITE) accepts or rejects a `pending` or `conflict` proposal at the
+  guarded catalog head. Acceptance uses the atomic apply planner with the
+  captured versions, schema generation, source and origin. Product edits
+  carry the proposal id in `approval_item_id` and commit in the same append as
+  `proposal.decided`. Its status is `accepted`, `conflict` when the proposed
+  edits conflict, or `failed` when an item is refused. A changed schema generation
+  returns `schema_generation_conflict` and requires a new submission for review.
+  A source access denial leaves the review state as it was. The fold records
+  decisions in the inbox. Replaying a settled decision or getting the same
+  conflict outcome again returns the recorded result without another fact.
 - Proposals are reviewed in the shell's proposals view by WRITE holders;
   public meta carries `pending_proposal_count`. Inbox routing is optional
   and built from platform parts: `pim-flow` exposes a `list_proposals` pullable,
   and an automation feeds it to the Inbox review Block under the
   application's assigner group, whose resolution calls `decide`.
+  Decision consumers can subscribe to the two catalog automation ports and
+  correlate the retained facts by `proposal_id`.
 
 ## 12. Integration surface
 

@@ -83,4 +83,20 @@ function M.namespace(ns: string): (types.JsonObject?, error?)
     return values :: types.JsonObject, nil
 end
 
+-- deployment is the caller-visible Settings namespace, with the audit window resolved.
+function M.deployment(): (types.Policy?, error?)
+    local settings, err = M.namespace(NAMESPACE)
+    if err or not settings then return nil, err end
+    local defaults: types.JsonObject = {}
+    for key in pairs(policy.KEYS) do
+        local value = settings[key]
+        if policy.check(key, value) then
+            return nil, errors.new({ kind = errors.UNAVAILABLE, message = "PIM policy defaults are unavailable",
+                details = { code = "settings_unavailable", namespace = NAMESPACE, key = key } })
+        end
+        defaults[key] = value
+    end
+    return policy.effective(defaults :: types.Policy), nil
+end
+
 return M

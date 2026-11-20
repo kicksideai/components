@@ -85,7 +85,7 @@ entries:
     meta:
       comment: The single PIM write path - head-checked appends with projection catch-up.
     source: file://writer.lua
-    modules: [security, funcs]
+    modules: [security, uuid, funcs]
     imports:
       policy: kickside.pim.domain:policy
       receipts: kickside.pim.persist:receipts

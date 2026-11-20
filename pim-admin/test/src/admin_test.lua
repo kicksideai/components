@@ -244,6 +244,32 @@ local function cases()
                 test.eq(user.get("/pim-admin/catalogs/" .. id .. "/policy_defaults").status, mask == 9 and 200 or 403)
             end
         end)
+        test.it("returns the same deployment defaults through the administration contract and HTTP", function()
+            local owner = session.admin()
+            local id = catalog(owner)
+            local endpoint = "/pim-admin/catalogs/" .. id .. "/policy_defaults"
+            local defaults, err = owner.call("policy_defaults", {}, id)
+            test.is_nil(err, tostring(err))
+            local http = owner.get(endpoint)
+            test.eq(http.status, 200)
+            local function same_defaults(actual: { [string]: unknown }, expected: { [string]: unknown })
+                for key, value in pairs(expected) do test.eq(actual[key], value, key) end
+                for key, value in pairs(actual) do test.eq(expected[key], value, key) end
+            end
+            same_defaults(defaults, http.body.data)
+            for _, mask in ipairs({ 1, 3, 8, 9 }) do
+                local user = session.member()
+                assert(owner.call("grant", { subject_id = user.id, mask = mask }, id))
+                local result, denied = user.call("policy_defaults", {}, id)
+                if mask == 9 then
+                    test.is_nil(denied, tostring(denied))
+                    same_defaults(result, defaults)
+                else
+                    test.is_nil(result)
+                    test.eq(assert(denied):kind(), errors.PERMISSION_DENIED)
+                end
+            end
+        end)
         test.it("policy defaults resolve the deployment audit retention sentinel", function()
             local owner = session.admin()
             local id = catalog(owner)
@@ -283,6 +309,25 @@ local function cases()
             test.eq(reply.status, 503)
             test.is_false(reply.body.success)
             test.not_nil(reply.body.error)
+        end)
+
+        test.it("does not read a Settings key hidden from a catalog administrator", function()
+            local owner = session.admin()
+            local id = catalog(owner)
+            local revision = assert(registry.current_version())
+            local entry = assert(registry.get("kickside.pim.settings:audit_days"))
+            local data: { [string]: unknown } = {}
+            for key, value in pairs(entry.data) do data[key] = value end
+            data.read_access = "admin"
+            local changes = assert(registry.snapshot()):changes()
+            changes:update({ id = entry.id, kind = entry.kind, meta = entry.meta, data = data })
+            test.is_nil(select(2, changes:apply()))
+            local ok, result, err = pcall(owner.call, "policy_defaults", {}, id)
+            test.is_nil(select(2, registry.apply_version(revision)))
+            assert(ok, tostring(result))
+            test.is_nil(result)
+            test.eq(assert(err):kind(), errors.UNAVAILABLE)
+            test.eq(assert(err):details().code, "settings_unavailable")
         end)
 
         test.it("exposes built-in configuration and reviews a configured Quantity", function()

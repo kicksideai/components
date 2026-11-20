@@ -111,6 +111,7 @@ entries:
     source: file://materializer.lua
     modules: [json, sql]
     imports:
+      proposal_rows: kickside.pim.persist:proposal_rows
       failure: kickside.pim:failure
       attachments: kickside.pim.extensions:plugin_attachments
       release_jobs: kickside.pim.persist:release_jobs
@@ -182,11 +183,10 @@ entries:
     meta:
       comment: Proposal rows - stored commands and their decisions.
     source: file://proposal_rows.lua
-    modules: [uuid, sql]
+    modules: [sql]
     imports:
       failure: kickside.pim:failure
       narrow: kickside.pim:narrow
-      clock: kickside.pim:clock
       store: kickside.pim.persist:store
       values: kickside.pim.domain:values
       types: kickside.pim:types

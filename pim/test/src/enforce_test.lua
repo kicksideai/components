@@ -29,6 +29,35 @@ end
 
 local function define()
     test.describe("enforced checks", function()
+        test.it("checks native status on creation, updates and promotion while readiness has no transition", function()
+            local h = fixture.catalog()
+            local function status_check(previous: string?, proposed: string?, write: boolean): Map
+                return { check = "app:status_check", reads = { "core.name" }, enforce = write and "write" or nil,
+                    config = { previous = previous, proposed = proposed } }
+            end
+            enforced(h, { status_check(nil, "draft", true) })
+            local created = steps.one(h, { product = { sku = "REVIEW" }, create = { family = "footwear" }, status = "draft" })
+            test.eq(created.outcome, "created", json.encode(created))
+
+            enforced(h, { status_check("draft", "draft", true) })
+            local edited = steps.set(h, "REVIEW", "core.name", "Draft name", { locale = "en" })
+            test.eq(edited.outcome, "updated", json.encode(edited))
+
+            enforced(h, { status_check("draft", "active", true) })
+            local promoted = steps.one(h, { product = { sku = "REVIEW" }, expect_version = "any", status = "active" })
+            test.eq(promoted.outcome, "invalid", json.encode(promoted))
+            test.eq(assert(promoted.findings)[1].code, "promotion_requires_approval")
+            test.eq(assert(steps.get(h, "REVIEW")).product.status, "draft")
+
+            enforced(h, { status_check(nil, nil, false) })
+            fixture.boot(h)
+            local leaf = assert(steps.get(h, "RDG-moss-40"))
+            test.eq(#leaf.readiness.web, 0)
+            local release = assert(h.call("release", { items = { { product = { sku = "RDG-moss-40" },
+                expect_version = leaf.product.version, channels = { "web" } } } })) :: types.ApplyResult
+            test.eq(release.outcomes[1].outcome, "released", json.encode(release))
+        end)
+
         test.it("compiles enforce: write only for an interactive check whose reads share one owning level", function()
             local h = fixture.catalog()
             for _, bad in ipairs({
