@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/kicksideai/components/compare/pim-admin-v0.1.6...pim-admin-v0.1.7) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim-admin:** read policy defaults from PIM ([#218](https://github.com/kicksideai/components/issues/218)) ([302ced3](https://github.com/kicksideai/components/commit/302ced3dbd608ba7b1a16dc1d7c9bedb6d6b88eb))
+
 ## [0.1.6](https://github.com/kicksideai/components/compare/pim-admin-v0.1.5...pim-admin-v0.1.6) (2026-11-20)
 
 
