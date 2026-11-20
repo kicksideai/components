@@ -30,12 +30,19 @@ local function row(r: types.Row): (types.Proposal?, error?)
     local origin: types.JsonObject = r.origin :: types.JsonObject
     local items: { types.ApplyItem } = r.items :: { types.ApplyItem }
     local base = r.base :: types.Row
-    local generation, gerr = store.need_int(base, "generation")
-    if gerr or not generation then return nil, gerr end
-    if type(base.versions) ~= "table" then return nil, failure.corrupt("proposal base lacks versions", "base") end
+    local versions = base
+    local generation: integer? = nil
+    -- Released proposals stored only the map of product IDs to versions.
+    if base.generation ~= nil or base.versions ~= nil then
+        local gerr: error?
+        generation, gerr = store.need_int(base, "generation")
+        if gerr or not generation then return nil, gerr end
+        if type(base.versions) ~= "table" then return nil, failure.corrupt("proposal base lacks versions", "base") end
+        versions = base.versions :: types.Row
+    end
     local result: types.ApplyResult? = r.result :: types.ApplyResult?
     return { proposal_id = r.proposal_id :: string, source = narrow.text(r.source), origin = origin, items = items,
-        base = base.versions :: { [string]: integer }, generation = generation,
+        base = versions :: { [string]: integer }, generation = generation,
         status = r.status :: string, result = result, created_by = r.created_by :: string, created_at = r.created_at :: string,
         decided_by = narrow.text(r.decided_by), decided_at = narrow.text(r.decided_at) } , nil
 end

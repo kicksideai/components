@@ -343,6 +343,12 @@ local function execute(catalog_id: string, request: types.ApplyRequest, deadline
             approval_item_id = request.approval_item_id },
         request.trace_context,
         function(db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
+            -- Proposal acceptance preserves the old fingerprint so the pipeline can replay
+            -- a committed receipt before refusing a new write with no validated generation.
+            if admit and request.expected_generation == nil then
+                return nil, errors.new({ kind = errors.CONFLICT, message = "proposal has no recorded schema generation; submit a new proposal",
+                    details = { code = "schema_generation_conflict", generation = catalog.generation } })
+            end
             local conflict = require_generation(request.expected_generation, catalog.generation)
             if conflict then return nil, conflict end
             local planned, perr = items.plan(db, catalog, request, actor_id(), settings, prepared, admit ~= nil)

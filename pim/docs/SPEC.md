@@ -1651,6 +1651,10 @@ A proposal is PIM-owned state (Core requires WRITE for any append):
   or `failed` (an item is refused outright).
   A changed generation returns `schema_generation_conflict`, releases any
   uncommitted acceptance claim and requires a new proposal for review.
+  Proposals created before generation tracking still appear in listings with
+  their base versions. They can be rejected or replay a committed acceptance.
+  A new acceptance requires a recorded generation and returns
+  `schema_generation_conflict` when the proposal lacks one.
   If the reviewer loses source access before the write, acceptance releases that
   reviewer's uncommitted claim. Reject works from `pending` or `conflict`.
 - Proposals are reviewed in the shell's proposals view by WRITE holders;

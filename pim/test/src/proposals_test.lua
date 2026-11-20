@@ -449,6 +449,47 @@ local function define()
             test.eq(assert(decide(h, p.proposal_id, "reject")).status, "rejected")
         end)
 
+        test.it("lists legacy proposals, replays settled decisions and releases an unfinished claim", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local function suggest(value: string): string
+                return assert(propose(h, { { product = { sku = "RDG" },
+                    set = { { attr = "core.care", value = value } } } })).proposal_id
+            end
+            local accepted = suggest("Original acceptance")
+            local original = assert(decide(h, accepted, "accept"))
+            test.eq(original.status, "accepted")
+            local interrupted = suggest("Unfinished acceptance")
+            local before = assert(h.call("list_proposals", {})) :: types.ProposalsResult
+            local db = assert(store.open())
+            for _, proposal in ipairs(before.proposals) do
+                assert(db:execute("UPDATE kickside_pim_proposal SET base = $1 WHERE catalog_id = $2 AND proposal_id = $3",
+                    { json.encode(proposal.base), h.id, proposal.proposal_id }))
+            end
+            assert(db:execute([[UPDATE kickside_pim_proposal SET status = 'accepting', decided_by = $1, decided_at = $2
+                WHERE catalog_id = $3 AND proposal_id = $4]],
+                { h.actor:id(), "2026-11-17T12:00:00Z", h.id, interrupted }))
+            assert(db:release())
+
+            local prior_version = version(h, "RDG")
+            local listed = assert(h.call("list_proposals", {})) :: types.ProposalsResult
+            test.eq(#listed.proposals, 2)
+            for _, proposal in ipairs(listed.proposals) do
+                test.is_nil(proposal.generation)
+                test.not_nil(next(proposal.base))
+            end
+            local replayed = assert(decide(h, accepted, "accept"))
+            test.eq(replayed.status, "accepted")
+            test.eq(assert(replayed.result).seq, assert(original.result).seq)
+
+            local result, err = decide(h, interrupted, "accept")
+            test.is_nil(result)
+            test.eq(assert(err):details().code, "schema_generation_conflict")
+            test.eq(version(h, "RDG"), prior_version)
+            test.eq(assert(decide(h, interrupted, "reject")).status, "rejected")
+            test.eq(assert(decide(h, interrupted, "reject")).status, "rejected")
+        end)
+
         test.it("answers an unknown proposal and decision", function()
             local h = fixture.catalog()
             fixture.boot(h)
