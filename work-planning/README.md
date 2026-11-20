@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Work Planning
 
-Work Planning requires `kickside/work` 0.1.18 or newer for additive pack
-installation and atomic sprint closure.
+Work Planning requires `kickside/work` 0.1.24 or newer for additive pack
+installation, atomic sprint closure, and the authenticated sprint HTTP endpoints.
 
 Install `kickside.work.planning:pack` through Work pack plan and apply. On a new
 board, Work board creation can install it in the same request. Installation
@@ -45,7 +45,7 @@ request with the same key and preview returns the Work receipt.
 The Work trait contributes `WorkPlanCloseSprint` and `WorkCloseSprint` on boards
 with Planning active.
 
-Work 0.1.24 or newer mounts sprint preview and closure on the authenticated router already bound
+Work mounts sprint preview and closure on the authenticated router already bound
 to `kickside.work:api_router`. The Work Planning member policy grants access to
 the two endpoints. Both call the Planning contract as the request actor and
 return the standard Work HTTP envelope.
