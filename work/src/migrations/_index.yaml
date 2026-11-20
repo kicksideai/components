@@ -16,3 +16,16 @@ entries:
     operation_expiry: kickside.work.persist:operation_expiry
     migration: wippy.migration:migration
   method: migrate
+- name: 02_board_ui_app
+  kind: function.lua
+  meta:
+    type: migration
+    tags:
+    - work
+    - board
+    comment: Adds the optional UI binding to existing Work board metadata.
+    timestamp: '2026-11-20T00:00:02Z'
+  source: file://02_board_ui_app.lua
+  imports:
+    migration: wippy.migration:migration
+  method: migrate
