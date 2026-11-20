@@ -328,7 +328,7 @@ it('reviews the exact Flow and version, preserves permission failures and invali
   await w.get('[aria-label="Edit state In progress"]').trigger('click'); await flushPromises()
   await w.get('wc-workflow-picker').trigger('change', { detail: { flow_ref: { kind: 'flow', id: 'flow-a', version: 2 } } }); await flushPromises()
   expect(getButton(w.get('.kx-head-actions'), 'Review changes').attributes('disabled')).toBeDefined()
-  await w.findAllComponents(Select).find(s => s.props('ariaLabel') === 'Published version')!.setValue(1); await flushPromises()
+  await w.get('.work-flow-version').setValue('1'); await flushPromises()
   await getButton(w.get('.kx-head-actions'), 'Review changes').trigger('click'); await flushPromises()
   const snapshot = vi.mocked(settings.plan).mock.calls.at(-1)![1]
   expect(snapshot.declaration.processes![0].states[1].run?.flow_ref).toEqual({ kind: 'flow', id: 'flow-a', version: 1 })
@@ -342,7 +342,7 @@ it('reviews the exact Flow and version, preserves permission failures and invali
   await getButton(w, 'Process').trigger('click')
   await w.get('wc-workflow-picker').trigger('change', { detail: { flow_ref: { kind: 'flow', id: 'flow-b', version: 2 } } }); await flushPromises()
   expect(getButton(w.get('.kx-head-actions'), 'Review changes').attributes('disabled')).toBeDefined()
-  await w.findAllComponents(Select).find(s => s.props('ariaLabel') === 'Published version')!.setValue(2); await flushPromises()
+  await w.get('.work-flow-version').setValue('2'); await flushPromises()
   expect(w.get('.kx-head-actions').text()).toContain('Review changes')
 })
 

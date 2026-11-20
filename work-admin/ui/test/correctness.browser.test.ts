@@ -22,13 +22,21 @@ async function shot(page: Page, name: string) {
 }
 const longBoardName = 'UnbrokenBoardName'.repeat(10)
 
-async function fixture(mode: string, missing = false, width = 1500) {
-  const page = await browser.newPage({ viewport: { width, height: 1000 } })
+async function fixture(mode: string, missing = false, width = 1500, input: { hasTouch?: boolean; colorScheme?: 'light' | 'dark' } = {}) {
+  const page = await browser.newPage({ viewport: { width, height: 1000 }, ...input })
   page.setDefaultTimeout(5000)
   const errors: string[] = [], requests: { path: string; body: Record<string, unknown> }[] = []
   page.on('pageerror', e => errors.push(e.message))
   let view = schema(), hold = false, held: Route | undefined, createdTitle = '', description = ''
   if (mode === 'process') { view.declaration.processes = [cicd]; view.compiled.processes = [cicd] }
+  if (mode === 'process-editing') {
+    const process = view.declaration.processes![0]
+    view.declaration.fields![0].title = 'Title'
+    process.name = 'Delivery process'
+    process.states[1].kind = 'automated'
+    process.states[1].run = { stage: 'Verify', on_pass: 'finish' }
+    process.transitions!.push({ id: 'cancel', name: 'Return to queue', from: 'any', to: 'todo' })
+  }
   const access = { read: true, write: true, admin: true }
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname, body = route.request().postDataJSON() as Record<string, unknown> ?? {}
@@ -42,7 +50,14 @@ async function fixture(mode: string, missing = false, width = 1500) {
       if (missing) return route.fulfill({ status: 404, json: { success: false, kind: 'NotFound', details: { code: 'board_schema_missing' }, error: 'board has no schema' } })
       return reply(view)
     }
-    if (path.endsWith('/plan_schema')) return reply({ generation: view.generation + 1, class: 'cosmetic', changes: [{ what: 'field.rename', class: 'cosmetic', code: 'title' }], refused: [] })
+    if (path.endsWith('/plan_schema')) {
+      const declaration = body.declaration as typeof view.declaration
+      const changes = mode === 'process-editing'
+        ? view.declaration.processes![0].transitions!.filter(edge => !declaration.processes![0].transitions!.some(current => current.id === edge.id))
+          .map(edge => ({ what: 'transition.remove', class: 'cosmetic', code: 'process delivery', detail: edge.id }))
+        : [{ what: 'field.rename', class: 'cosmetic', code: 'title' }]
+      return reply({ generation: view.generation + 1, class: 'cosmetic', changes, refused: [] })
+    }
     if (path.endsWith('/apply_schema')) {
       view = { ...view, generation: view.generation + 1, declaration: body.declaration as typeof view.declaration }
       hold = true
@@ -58,6 +73,115 @@ async function fixture(mode: string, missing = false, width = 1500) {
   await page.goto(`${server.resolvedUrls!.local[0]}test/correctness.html?mode=${mode}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
   return { page, errors, requests, release: async () => { await held!.fulfill({ json: { success: true, data: view } }) }, isHeld: () => !!held }
 }
+
+async function processEditing(width: number, theme: 'light' | 'dark', hasTouch = false) {
+  const context = await fixture('process-editing', false, width, { colorScheme: theme, hasTouch })
+  await context.page.getByRole('tab', { name: 'Process', exact: true }).click()
+  const map = context.page.getByRole('region', { name: 'Process map' })
+  await map.press('0')
+  return { ...context, map }
+}
+
+it.each(['light', 'dark'] as const)('removes a map transition with the visible action and reviews the draft in %s', async theme => {
+  const { page, map, requests } = await processEditing(1440, theme)
+  try {
+    await map.getByRole('button', { name: 'Edit transition Reopen' }).first().locator('.work-edge-label-bg').click()
+    const inspector = page.getByRole('complementary', { name: 'Transition inspector' })
+    const remove = inspector.getByRole('button', { name: 'Remove transition', exact: true })
+    await remove.waitFor()
+    const visible = await remove.evaluate(button => button.getBoundingClientRect().bottom <= button.closest('aside')!.getBoundingClientRect().bottom)
+    await shot(page, `map-removal-1440-${theme}`)
+    // Exercise the existing action even when its placement fails the visibility assertion.
+    await remove.click()
+    expect(await map.getByRole('button', { name: 'Edit transition Reopen' }).count()).toBe(0)
+    await page.getByRole('tab', { name: 'Review', exact: true }).click()
+    await page.getByText('Delivery process · Transition removed', { exact: true }).waitFor()
+    expect((requests.find(request => request.path.endsWith('/plan_schema'))!.body.declaration as ReturnType<typeof schema>['declaration']).processes![0].transitions!.map(edge => edge.id)).not.toContain('reopen')
+    expect(visible).toBe(true)
+  } finally { await page.close() }
+}, 30000)
+
+it.each(['Delete', 'Backspace'])('removes the selected map transition with %s and keeps draft review reachable', async key => {
+  const { page, map } = await processEditing(390, 'light')
+  try {
+    const edge = map.getByRole('button', { name: 'Edit transition Return to queue' })
+    await edge.press('Enter')
+    const inspector = page.getByRole('complementary', { name: 'Transition inspector' })
+    const name = inspector.getByRole('textbox', { name: 'Transition name' })
+    await name.fill('Return to queues')
+    await name.press('Backspace')
+    expect(await name.inputValue()).toBe('Return to queue')
+    await inspector.getByRole('button', { name: 'Close transition editor' }).press('Enter')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press(key)
+    expect(await edge.count()).toBe(0)
+    expect(await map.evaluate(el => (el.getRootNode() as Document).activeElement === el)).toBe(true)
+    await page.getByRole('tab', { name: 'Review', exact: true }).press('Enter')
+    await page.getByText('Delivery process · Transition removed', { exact: true }).waitFor()
+  } finally { await page.close() }
+}, 30000)
+
+it('keeps a transition used by a stage when removal is requested on the map', async () => {
+  const { page, map } = await processEditing(1440, 'light')
+  try {
+    await map.getByRole('button', { name: 'Edit transition Complete' }).first().press('Enter')
+    const inspector = page.getByRole('complementary', { name: 'Transition inspector' })
+    await page.keyboard.press('Delete')
+    await inspector.getByRole('alert').filter({ hasText: 'Used by success handler in In progress' }).waitFor()
+    expect(await map.getByRole('button', { name: 'Edit transition Complete' }).count()).toBe(2)
+  } finally { await page.close() }
+}, 30000)
+
+it.each(['light', 'dark'] as const)('connects states by touch and edits the transition at 390 px in %s', async theme => {
+  const { page, map, requests } = await processEditing(390, theme, true)
+  try {
+    const source = map.getByRole('button', { name: 'Connect from To do' })
+    await source.tap()
+    await map.getByRole('status').filter({ hasText: 'Choose the next stop' }).waitFor({ timeout: 1500 })
+    await map.getByRole('button', { name: 'Edit state Done' }).locator('.work-state-card').tap()
+    const inspector = page.getByRole('complementary', { name: 'Transition inspector' })
+    const name = inspector.getByRole('textbox', { name: 'Transition name' })
+    await name.waitFor()
+    const bounds = (await name.boundingBox())!
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(1000)
+    await name.fill('Send forward')
+    await inspector.getByRole('combobox', { name: 'To state', exact: true }).tap()
+    await page.getByRole('option', { name: 'In progress', exact: true }).tap()
+    const sources = inspector.getByRole('group', { name: 'From states', exact: true }).first()
+    await sources.getByRole('button', { name: 'Done', exact: true }).tap()
+    await sources.getByRole('button', { name: 'To do', exact: true }).tap()
+    await inspector.getByRole('group', { name: 'Required fields', exact: true }).first().getByRole('button', { name: 'Title', exact: true }).tap()
+    await inspector.getByText('Edit as JSON · Guards', { exact: true }).tap()
+    await inspector.getByRole('textbox', { name: 'Guards', exact: true }).fill('["fixture:guard"]')
+    await shot(page, `map-transition-settings-390-${theme}`)
+    await page.getByRole('button', { name: 'List', exact: true }).tap()
+    const row = page.getByRole('row').filter({ has: page.getByRole('textbox', { name: 'Name of Send forward', exact: true }) })
+    expect(await row.innerText()).toContain('Done')
+    expect(await row.innerText()).toContain('In progress')
+    await page.getByRole('tab', { name: 'Review', exact: true }).tap()
+    await expect.poll(() => requests.some(request => request.path.endsWith('/plan_schema'))).toBe(true)
+    const draft = requests.find(request => request.path.endsWith('/plan_schema'))!.body.declaration as ReturnType<typeof schema>['declaration']
+    expect(draft.processes![0].transitions!.at(-1)).toMatchObject({ name: 'Send forward', from: ['done'], to: 'doing', require: ['title'], guards: ['fixture:guard'] })
+  } finally { await page.close() }
+}, 30000)
+
+it('moves keyboard focus directly to the stage and transition inspectors', async () => {
+  const { page, map } = await processEditing(390, 'dark')
+  try {
+    await map.getByRole('button', { name: 'Edit state In progress' }).press('Enter')
+    const state = page.getByRole('complementary', { name: 'State inspector' })
+    expect(await state.evaluate(element => (element.getRootNode() as Document).activeElement === element)).toBe(true)
+    await state.getByRole('textbox', { name: 'Run label' }).fill('Verify build')
+    await state.getByRole('region', { name: 'Stage Flow' }).waitFor()
+    await state.getByRole('button', { name: 'Close state editor' }).press('Enter')
+    await map.getByRole('button', { name: 'Connect from To do' }).press('Enter')
+    await map.getByRole('button', { name: 'Edit state Done' }).press('Space')
+    const transition = page.getByRole('complementary', { name: 'Transition inspector' })
+    expect(await transition.evaluate(el => (el.getRootNode() as Document).activeElement === el)).toBe(true)
+    expect(await transition.getByRole('textbox', { name: 'Transition name' }).inputValue()).toBe('To done')
+  } finally { await page.close() }
+}, 30000)
+
 it('creates with the declared body, updates description, and keeps an invalid pack unavailable', async () => {
   const { page, errors, requests } = await fixture('admin')
   try {

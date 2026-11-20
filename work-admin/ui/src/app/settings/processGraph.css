@@ -12,7 +12,8 @@
 .work-graph-arrow { fill: context-stroke; }
 .work-lane-line { fill: none; stroke: var(--p-text-muted-color); stroke-width: 1.5; stroke-dasharray: 2 4; }
 .work-node-connector { fill: var(--p-content-background); stroke: var(--p-primary-color); stroke-width: 1.5; }
-.work-node-connector:hover, .work-node-connector:focus-visible { fill: var(--p-primary-color); }
+.work-node-connector:hover, .work-node-connector:focus-visible, .work-node-connector[aria-pressed=true] { fill: var(--p-primary-color); }
+.work-any-transition:focus-visible text, .work-any-transition[aria-pressed=true] text { fill: var(--p-primary-color); text-decoration: underline; }
 .work-process-legend { position: static; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--p-content-border-color); background: var(--p-content-background); }
 @media (max-width: 700px) { .work-process-canvas > svg { height: 420px; } }
 

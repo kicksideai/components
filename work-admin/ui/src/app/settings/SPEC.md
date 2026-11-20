@@ -60,7 +60,16 @@ initial or width-fitted view. Switching process resets the viewport and pending
 connection. Escape cancels a connection and clears selection. Styles load inside
 the owning ShadowRoot and use platform tokens in both themes. Closing an inspector
 with Escape or its close button returns focus to the map element or list action
-that opened it.
+that opened it. Opening an inspector focuses the panel and brings its initial
+controls into view on narrow screens. Connectors support mouse drag and a
+two-step click, tap or keyboard connection. Activate the connector, then activate
+the destination state. Both layouts edit the same transition and state settings,
+including the published Flow binding for automated states. The transition
+inspector puts Remove transition beside Close. Delete and Backspace remove the
+selected transition when focus is on the map transition or inspector panel.
+Removal affects all routes for that transition, checks stage and timer references,
+and updates the draft for Review. After removal, focus returns to the map or
+the process tools in List.
 
 Generated process identifiers respect Work’s 40-character bound while retaining the complete human title and a unique suffix. Manual transitions created by Add state never acquire an automatic default flag.
 Splitting a default automatic edge preserves its automatic continuation.
@@ -126,7 +135,8 @@ Pack discovery also runs for unprovenanced boards. Their Install pack action
 submits the ordinary pack plan; Work decides eligibility, including emptiness.
 Packed creation uses the same configuration editor as Install pack, with the title and schema from discovery. Values still travel under the exact manifest ID, join the frozen retry identity, and are validated by Work before admission. Empty board sends no plugin configuration.
 Automated states retain `run.stage` as their editable run label. The shared
-published Flow picker selects a Flow; an explicit published-version choice writes
+published Flow picker selects a Flow. The browser’s native version selector stays
+usable inside the scrolling inspector. An explicit published-version choice writes
 `run.flow_ref = {kind: flow, id, version}`. Selection in progress blocks review;
 it never silently upgrades a saved version. Schema review shows the published Flow title and exact pinned version. Apply uses the existing frozen declaration/generation request.
 The state panel shows the picker's Flow title and published version, with the
