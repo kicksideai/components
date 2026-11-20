@@ -154,7 +154,7 @@ local function define()
             db:release()
             local out, err = h.call("apply_schema", { declaration = {
                 fields = { { code = "held", type = "rollup", form = "int", of = "blocks", fn = "count" } },
-                item_types = { { id = "child", process = "work", parent_types = { "root", "parent" }, fields = { "points", "cost", "title", "due", "priority", "symmetric", "held" } } },
+                item_types = { { id = "child", process = "work", parent_types = { false, "parent" }, fields = { "points", "cost", "title", "due", "priority", "symmetric", "held" } } },
             } })
             test.is_nil(out)
             test.eq((err:details() :: Map).code, "links_limit")

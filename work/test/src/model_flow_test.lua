@@ -167,7 +167,7 @@ local function define()
             local h = fixture.board({ declaration = d })
             local id = steps.create(h, "task", { estimate = 3 })
             test.is_nil(steps.get(h, id).item.values.double)
-            local patch = { item_types = { { id = "task", process = "delivery", parent_types = { "root", "story", "task" },
+            local patch = { item_types = { { id = "task", process = "delivery", parent_types = { false, "story", "task" },
                 fields = { "title", "estimate", "labels", "double" } } } }
             test.eq(assert(h.call("plan_schema", { declaration = patch })).class, "semantic")
             assert(h.call("apply_schema", { declaration = patch }))

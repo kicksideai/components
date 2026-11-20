@@ -21,7 +21,7 @@ local function declaration()
         { code = "title", form = "text", track = true },
         { code = "level", form = "text", index = "key" },
         { code = "owner", type = "principal", index = "key" },
-    }, item_types = { { id = "task", process = "flow", fields = { "title", "level", "owner" }, parent_types = { "root", "task" } } },
+    }, item_types = { { id = "task", process = "flow", fields = { "title", "level", "owner" }, parent_types = { false, "task" } } },
         processes = { { id = "flow", initial = "open", states = { { id = "open", category = "started" } } } },
         visibility = { field = "level", bypass = "admin", levels = {
             { id = "private", holders = { { field = "owner" } } },

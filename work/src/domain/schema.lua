@@ -17,7 +17,6 @@ local search = require("search")
 
 local fields_validator = require("fields")
 local M = {}
-local ROOT_PARENT = "root"
 
 local function invalid(message: string, details: types.JsonObject?): error
     local d: types.JsonObject = details or {}
@@ -32,7 +31,7 @@ end
 function M.parent_allowed(item_type: types.ItemType, parent_type: string?): boolean
     if #item_type.parent_types == 0 then return parent_type == nil end
     for _, allowed in ipairs(item_type.parent_types) do
-        if allowed == (parent_type or ROOT_PARENT) then return true end
+        if allowed == (parent_type or false) then return true end
     end
     return false
 end
@@ -222,7 +221,6 @@ local function compile_item_types(decl: types.Declaration, fields: { [string]: t
     local out: { types.ItemType } = {}
     for _, t in ipairs(sources) do
         if not valid_id(t.id) then return nil, invalid("item type id must match " .. consts.ID_PATTERN) end
-        if t.id == ROOT_PARENT then return nil, invalid("root is reserved for parent placement", { item_type = t.id }) end
         if not processes[t.process] then return nil, invalid("item type " .. t.id .. " names unknown process " .. tostring(t.process), { item_type = t.id }) end
         local listed_fields = (t.fields or {})
         local in_type: { [string]: boolean } = {}
@@ -235,7 +233,7 @@ local function compile_item_types(decl: types.Declaration, fields: { [string]: t
             if fields[key].type == "counter" or fields[key].type == "rollup" or fields[key].type == "rank" or fields[key].type == "formula" then return nil, invalid("a counter field cannot be inherited", { item_type = t.id }) end
         end
         for _, parent in ipairs((t.parent_types or {})) do
-            if parent ~= ROOT_PARENT and not declared[parent] then return nil, invalid("item type " .. t.id .. " names unknown parent type " .. tostring(parent), { item_type = t.id }) end
+            if parent ~= false and not declared[parent] then return nil, invalid("item type " .. t.id .. " names unknown parent type " .. tostring(parent), { item_type = t.id }) end
         end
         if t.move_children ~= nil and t.move_children ~= "move" and t.move_children ~= "refuse" then
             return nil, invalid("move_children takes move or refuse", { code = "move_children_invalid", item_type = t.id })

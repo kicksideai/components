@@ -21,9 +21,9 @@ M.DECLARATION = {
     },
     item_types = {
         { id = "epic", title = "Epic", process = "delivery", parent_types = {}, fields = { "title", "assignee", "priority", "number" } },
-        { id = "story", title = "Story", process = "delivery", parent_types = { "root", "epic" },
+        { id = "story", title = "Story", process = "delivery", parent_types = { false, "epic" },
           fields = { "title", "assignee", "priority", "estimate", "labels", "number" }, inherit = { "priority" } },
-        { id = "task", title = "Task", process = "delivery", parent_types = { "root", "story", "task" }, fields = { "title", "estimate", "labels" } },
+        { id = "task", title = "Task", process = "delivery", parent_types = { false, "story", "task" }, fields = { "title", "estimate", "labels" } },
     },
     relation_types = {
         { id = "blocks", outward = "blocks", inward = "blocked by" },
