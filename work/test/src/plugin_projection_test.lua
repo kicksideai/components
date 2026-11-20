@@ -7,6 +7,8 @@ local json = require("json")
 local component = require("component")
 local scoped = require("scoped")
 local registry = require("registry")
+local clock = require("clock")
+local core_prune = require("core_prune")
 type Map = { [string]: unknown }
 local PLUGIN = "app:folding_plugin"
 
@@ -53,6 +55,13 @@ local function projection(h: fixture.Handle, kind: string): (string, Map)
     error("projection is missing: " .. kind)
 end
 
+local function plugin_view(h: fixture.Handle, id: string, method: string): Map
+    for _, entry in ipairs(assert(h.call(method, {})).plugins) do
+        if entry.plugin == id then return entry :: Map end
+    end
+    error("plugin is missing: " .. id)
+end
+
 local function define()
     test.describe("declared plugin projections", function()
         local original: registry.Entry?
@@ -63,6 +72,108 @@ local function define()
                 assert(changes:apply())
                 original = nil
             end
+        end)
+
+        local function revise(id: string, update: (Map) -> ())
+            original = assert(registry.get(id))
+            local revised = assert(registry.get(id))
+            update(revised.meta :: Map)
+            local changes = assert(registry.snapshot()):changes()
+            changes:update(revised)
+            assert(changes:apply())
+        end
+
+        test.it("reports the current interface for implicit and explicit plugin manifests", function()
+            local h = fixture.board()
+            local plugin = "app:event_projection_plugin"
+            revise(plugin, function(meta) meta.interface_version = 1 end)
+            test.eq(plugin_view(h, PLUGIN, "schema_options").interface_version, 1)
+            test.eq(plugin_view(h, plugin, "schema_options").interface_version, 1)
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = plugin } } } }))
+            test.eq(plugin_view(h, plugin, "get_schema").interface_version, 1)
+        end)
+
+        test.it("refuses an unknown manifest interface before loading its declarations", function()
+            local h = fixture.board()
+            local plugin = "app:event_projection_plugin"
+            revise(plugin, function(meta) meta.interface_version = 2; meta.attachment = "app:missing_attachment" end)
+            local result, err = h.call("apply_schema", { declaration = { plugins = { { use = plugin } } } })
+            test.is_nil(result)
+            test.eq(assert(err):kind(), errors.INVALID)
+            test.eq(assert(err):details().code, "plugin_interface_version_unsupported")
+            test.eq(plugin_view(h, plugin, "schema_options").problem.code, "plugin_interface_version_unsupported")
+        end)
+
+        test.it("replays each selected retained patch with its producing schema generation", function()
+            local h = fixture.board()
+            local plugin, kind = "app:event_projection_plugin", "app:event_fold"
+            local item = steps.create(h, "task", { title = "before replay" })
+            local first_generation = assert(h.call("get_schema", {})).generation
+            steps.one(h, { op = "set", item = item, values = { title = "outside replay window" } })
+            steps.one(h, { op = "set", item = item, values = { title = "first retained edit" } })
+            local first_seq = assert(steps.get(h, item)).item.updated_seq
+            assert(h.call("apply_schema", { declaration = { key_prefix = fixture.fresh_prefix() } }))
+            local second_generation = assert(h.call("get_schema", {})).generation
+            test.eq(second_generation, first_generation + 1)
+            steps.one(h, { op = "set", item = item, values = { title = "second retained edit" } })
+            local second_seq = assert(steps.get(h, item)).item.updated_seq
+            revise(plugin, function(meta)
+                meta.projections[1].start_seq = first_seq
+                meta.projections[1].events = { "kickside.work.events:item.changed" }
+            end)
+            local applied = assert(h.call("apply_schema", { declaration = { plugins = { { use = plugin } } } }))
+            steps.wait_for("event projection catches up", function(): boolean
+                return plugin_view(h, plugin, "get_schema").projections[kind].last_seq >= applied.seq
+            end)
+            local id, body = projection(h, kind)
+            local patches = body.patches or {}
+            test.eq(#patches, 2)
+            test.eq(patches[1].seq, first_seq)
+            test.eq(patches[1].schema_generation, first_generation)
+            test.eq(patches[2].seq, second_seq)
+            test.eq(patches[2].schema_generation, second_generation)
+            test.eq(plugin_view(h, plugin, "get_schema").projections[kind].start_seq, first_seq)
+            assert(h.call("plugin_sync", {}))
+            steps.wait_for("unchanged event registration converges", function(): boolean
+                return plugin_view(h, plugin, "get_schema").lifecycle.state == "ready"
+            end)
+            local after_id, after = projection(h, kind)
+            test.eq(after_id, id)
+            test.eq(#after.patches, 2)
+        end)
+
+        test.it("records a typed gap when the requested start has been pruned", function()
+            local h = fixture.board()
+            local plugin, kind = "app:event_projection_plugin", "app:event_fold"
+            local item = steps.create(h, "task")
+            local item_seq = assert(steps.get(h, item)).item.updated_seq :: integer
+            local db = assert(sql.get("app:db"))
+            local boundary = assert(core_prune.prune_thread(db, h.id, { cutoff = clock.offset(86400) }))
+            db:release()
+            local pruned = boundary.max_pruned_seq
+            test.is_true(pruned >= item_seq)
+            revise(plugin, function(meta) meta.projections[1].start_seq = pruned end)
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = plugin } } } }))
+            steps.wait_for("event projection registration settles", function(): boolean
+                return plugin_view(h, plugin, "get_schema").lifecycle.state ~= "pending"
+            end)
+            local failed = plugin_view(h, plugin, "get_schema").lifecycle
+            test.eq(failed.state, "failed")
+            test.eq(failed.error.kind, errors.CONFLICT)
+            test.eq(failed.error.code, "plugin_projection_gap")
+            test.eq(failed.error.floor, pruned + 1)
+            for _, p in ipairs(assert(h.call("plugin_projections", {})).projections) do test.is_true(p.kind ~= kind) end
+
+            local revised = assert(registry.get(plugin))
+            revised.meta.projections[1].start_seq = pruned + 1
+            local changes = assert(registry.snapshot()):changes()
+            changes:update(revised)
+            assert(changes:apply())
+            assert(h.call("plugin_sync", {}))
+            steps.wait_for("the first retained sequence is accepted", function(): boolean
+                return plugin_view(h, plugin, "get_schema").lifecycle.state == "ready"
+            end)
+            test.eq(plugin_view(h, plugin, "get_schema").projections[kind].start_seq, pruned + 1)
         end)
 
         test.it("detaches an unused plugin after its manifest disappears", function()
@@ -194,6 +305,7 @@ local function define()
             local h = fixture.board()
             local plugin = "app:event_projection_plugin"
             local kind = "app:event_fold"
+            steps.create(h, "task", { title = "before subscription" })
             local function cursor(): integer
                 local out = assert(h.call("get_schema", {}))
                 for _, p in ipairs(out.plugins) do

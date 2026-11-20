@@ -158,7 +158,7 @@ function M.take(board: types.Board, item: types.Item, t: types.Transition, steps
         item.category = target.category
         M.initialize(item, target, actor, at, p)
     end
-    local body: types.EventBody = { item = item.item_id, transition = t.id, from = source, to = t.to, visit = item.visit, patch = patch,
+    local body: types.EventBody = { item = item.item_id, transition = t.id, from = source, to = t.to, visit = item.visit, patch = patch, schema_generation = board.generation,
         auto = auto or nil, region = region }
     item.version = item.version + 1
     return { type = consts.EVENTS.ITEM_TRANSITIONED, subject = "i:" .. item.item_id, body = body }, nil

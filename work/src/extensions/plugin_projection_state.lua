@@ -10,7 +10,7 @@ function M.states(board_id: string, plugin: types.Plugin): { [string]: types.Plu
     local out: { [string]: types.PluginProjectionState } = table.create(0, 1)
     local client, err = threads.open()
     for _, p in ipairs(plugin.projections) do
-        local state: types.PluginProjectionState = { last_seq = 0, parked = false, bootstrapping = p.input == "state" }
+        local state: types.PluginProjectionState = { last_seq = 0, start_seq = p.start_seq, parked = false, bootstrapping = p.input == "state" }
         local failure = err
         if client then
             local raw, rerr = client:get_projection_cursor({ thread_id = board_id, kind = p.kind, projection_key = "kickside.work.plugin:" .. plugin.id })
