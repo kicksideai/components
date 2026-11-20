@@ -1,0 +1,6 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local json = require("json")
+local types = require("types")
+local M = {}
+M.token = assert(json.decode([==[{"type":"object","required":["projection_id","start_seq","bootstrapping"],"additionalProperties":false,"properties":{"projection_id":{"type":"string"},"start_seq":{"type":"integer"},"bootstrapping":{"type":"boolean"},"cursor":{"type":"object","properties":{"seq":{"type":"integer","minimum":0,"description":"Last sequence from WorkListChanges.next; preserve unchanged, or start with zero."},"item_id":{"type":"string","description":"Visible anchor item id from WorkListChanges.next, or an empty string; preserve unchanged."},"position":{"type":"string","maxLength":128,"description":"Opaque scan anchor when the last examined item was hidden; preserve unchanged."},"access":{"type":"string","description":"Access fingerprint from WorkListChanges.next; preserve unchanged to detect visibility changes."},"floor":{"type":"integer","minimum":0,"description":"Feed floor admitted at bootstrap; preserve the returned value unchanged."}},"additionalProperties":false,"required":["seq","item_id"],"description":"Continuation returned by the previous page of this method; omit to start at the beginning and reuse unchanged with the same filters."}}}]==])) :: types.JsonObject
+return M

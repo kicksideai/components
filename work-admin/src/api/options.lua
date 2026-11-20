@@ -5,12 +5,15 @@ local contract = require("contract")
 local security = require("security")
 local component = require("component")
 local http_errors = require("http_errors")
-local field_types = require("field_types")
+local plugins = require("plugins")
 local types = require("types")
 local M = {}
 local function fail(res: http.Response, err: error)
     res:set_status(http_errors.classify(err))
     res:write_json(http_errors.response(err))
+end
+local function schema_missing(err: error): boolean
+    return (err:details() or {}).code == "board_schema_missing"
 end
 function M.get()
     local req, res = http.request(), http.response()
@@ -34,23 +37,21 @@ function M.get()
         if access_err and access_err:kind() ~= errors.PERMISSION_DENIED then return fail(res, access_err) end
         granted[level] = access_err == nil
     end
-    local options: types.Map = { plugins = {} }
-    local installed: { types.FieldTypeOption } = {}
-    local admission_err: error?
+    local options: types.SchemaOptions = { plugins = {}, field_types = {} }
     if granted.admin then
-        local found: types.Map?
-        found, admission_err = board:schema_options({ board_id = id })
-        if found then options = found end
+        local found, options_err = board:schema_options({ board_id = id })
+        if options_err then
+            if not schema_missing(options_err) then return fail(res, options_err) end
+            local found_types, types_err = plugins.field_types()
+            if types_err then return fail(res, types_err) end
+            options.field_types = found_types or {}
+        elseif found then
+            options = found
+        end
     else
         local _, read_err = board:get_schema({ board_id = id })
-        admission_err = read_err
+        if read_err and not schema_missing(read_err) then return fail(res, read_err) end
     end
-    if admission_err and (admission_err:details() or {}).code ~= "board_schema_missing" then return fail(res, admission_err) end
-    if granted.admin then
-        local found_types, types_err = field_types.field_types()
-        if types_err then return fail(res, types_err) end
-        installed = found_types or {}
-    end
-    res:write_json({ success = true, data = { access = granted, schema_options = options, installed_types = installed } })
+    res:write_json({ success = true, data = { access = granted, schema_options = options, installed_types = options.field_types } })
 end
 return M

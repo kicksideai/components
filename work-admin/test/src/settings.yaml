@@ -27,7 +27,7 @@ entries:
     tools:
     - kickside.work.traits:get_schema
     attachment: app:ui_attachment
-    seams: []
+    seams: [app:score_type]
     config_schema:
       type: object
       properties:
@@ -85,4 +85,15 @@ entries:
     - contract.open
     - contract.call
     - contract.security
+    effect: allow
+- name: settings_admin_access
+  kind: security.policy
+  groups:
+  - app.security:work_admin
+  policy:
+    resources:
+    - kickside.settings.api:list_settings.endpoint
+    - kickside.settings.api:put_settings.endpoint
+    actions:
+    - access
     effect: allow

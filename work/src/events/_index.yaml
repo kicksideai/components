@@ -300,6 +300,10 @@ entries:
       visit:
         type: integer
         description: The visit number of the state entered.
+      schema_generation: &patch_generation
+        type: integer
+        minimum: 1
+        description: Board schema generation that encoded the numeric patch field IDs.
       patch: &id008
         type: array
         items:
@@ -524,6 +528,7 @@ entries:
         type: string
       state:
         type: string
+      schema_generation: *patch_generation
       patch: *id008
     required:
     - item
@@ -548,6 +553,7 @@ entries:
       audit: *id007
       item:
         type: string
+      schema_generation: *patch_generation
       patch: *id008
     required:
     - item

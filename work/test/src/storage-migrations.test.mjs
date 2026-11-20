@@ -82,6 +82,39 @@ print(db.execute('SELECT count(*) FROM kickside_work_operation').fetchone()[0])
   assert.equal(result.trim(), '2')
 })
 
+test('link page indexes upgrade the released schema without changing links', async () => {
+  const initial = await statements('01_work', 'up')
+  const upgrade = await statements('04_link_page_indexes', 'up')
+  const rollback = await statements('04_link_page_indexes', 'down')
+  const result = await run('python3', ['-c', `
+import json, sqlite3, sys
+initial, upgrade, rollback = json.load(sys.stdin)
+db = sqlite3.connect(':memory:')
+for statement in initial: db.execute(statement)
+link = ('board', 'source', 'relates', 'target-board', 'target', '2026-11-19T00:00:00Z', 1)
+db.execute('INSERT INTO kickside_work_link VALUES (?,?,?,?,?,?,?)', link)
+expected = {
+    'kickside_work_link_outward_page': ['board_id', 'from_id', 'seq', 'type', 'to_board_id', 'to_id'],
+    'kickside_work_link_inward_page': ['to_board_id', 'to_id', 'seq', 'board_id', 'from_id', 'type'],
+    'kickside_work_link_target_page': ['to_board_id', 'to_id', 'board_id', 'seq', 'from_id', 'type'],
+}
+def indexes():
+    return {name for _, name, *_ in db.execute("PRAGMA index_list('kickside_work_link')")}
+original = indexes()
+assert original.isdisjoint(expected)
+for statement in upgrade: db.execute(statement)
+assert indexes() == original | expected.keys()
+for name, columns in expected.items():
+    assert [column for _, _, column in db.execute("PRAGMA index_info(" + name + ")")] == columns
+assert db.execute('SELECT * FROM kickside_work_link').fetchone() == link
+for statement in rollback: db.execute(statement)
+assert indexes() == original
+assert db.execute('SELECT * FROM kickside_work_link').fetchone() == link
+print('passed')
+`], {}, JSON.stringify([initial, upgrade, rollback]))
+  assert.equal(result.trim(), 'passed')
+})
+
 test('board retention seeks directly to a deep cursor with a bounded page', async () => {
   const { readFile } = await import('node:fs/promises')
   const source = await readFile(resolve(root, 'src/retention/rows.lua'), 'utf8')

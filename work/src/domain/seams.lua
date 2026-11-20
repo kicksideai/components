@@ -50,7 +50,7 @@ function M.validate(compiled: types.Compiled): error?
     return nil
 end
 
-local function actor(board: types.Board?): types.JsonObject
+local function actor(board: types.Board?): types.HookActor
     local current = security.actor()
     local groups: { string } = {}
     for id in pairs(board and board.caller and board.caller.groups or {}) do groups[#groups + 1] = id end
@@ -75,8 +75,9 @@ function M.guard(board: types.Board, item: types.Item, transition: types.Transit
                 held[field.code] = surface
             end
         end
-        local answer, aerr = funcs.call(id, { config = {}, item = { id = item.item_id, type = item.type, state = item.state,
-            category = item.category, parent = item.parent_id, rank = item.rank, values = held }, transition = transition, actor = actor(board) })
+        local request: types.GuardRequest = { config = {}, item = { id = item.item_id, type = item.type, state = item.state,
+            category = item.category, parent = item.parent_id, rank = item.rank, values = held }, transition = transition, actor = actor(board) }
+        local answer, aerr = funcs.call(id, request)
         if aerr then return false, nil, errors.wrap(aerr, "guard " .. id .. " unavailable") end
         if type(answer) ~= "table" or type(answer.allow) ~= "boolean" or type(answer.findings) ~= "table" or #answer.findings > 64 then
             return false, nil, errors.new({ kind = errors.UNAVAILABLE, message = "guard returns allow and bounded findings", details = { code = "guard_result_invalid" } })
@@ -91,18 +92,20 @@ function M.guard(board: types.Board, item: types.Item, transition: types.Transit
                 return false, nil, errors.new({ kind = errors.UNAVAILABLE, message = "guard finding requires code and message", details = { code = "guard_result_invalid" } })
             end
         end
-        if not answer.allow then return false, answer.findings :: { types.Finding }, nil end
+        local result = answer :: types.GuardResult
+        if not result.allow then return false, result.findings, nil end
     end
     return true, {}, nil
 end
 
-function M.operand(reader: types.Reader, raw: unknown): (unknown, error?)
+function M.operand(reader: types.Reader, raw: unknown): (types.OperandResult?, error?)
     if type(raw) ~= "table" or type(raw.id) ~= "string" then return nil, invalid("invalid_operand", "$operand names an id and optional config") end
     for key in pairs(raw) do if key ~= "id" and key ~= "config" then return nil, invalid("invalid_operand", "unknown operand key") end end
     if raw.config ~= nil and type(raw.config) ~= "table" then return nil, invalid("invalid_operand", "operand config is an object") end
     local meta, err = load(raw.id, "operand", reader.plugins)
     if err or not meta then return nil, err end
-    local answer, aerr = funcs.call(raw.id, { board_id = reader.board_id, config = raw.config or {}, actor = actor(nil) })
+    local request: types.OperandRequest = { board_id = reader.board_id, config = raw.config or {}, actor = actor(nil) }
+    local answer, aerr = funcs.call(raw.id, request)
     if aerr then return nil, errors.wrap(aerr, "operand unavailable") end
     local remaining = 4096
     local active: { [table]: boolean } = {}
@@ -135,6 +138,6 @@ function M.operand(reader: types.Reader, raw: unknown): (unknown, error?)
     local result_err = concrete(answer, 1)
     if result_err then return nil, result_err end
     if #values.canonical(answer) > 65536 then return nil, invalid("operand_result_invalid", "operand result holds at most 64 KB") end
-    return answer, nil
+    return answer :: types.OperandResult, nil
 end
 return M

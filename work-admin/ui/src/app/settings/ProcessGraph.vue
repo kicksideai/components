@@ -9,7 +9,7 @@ import type { Declaration, Process, State, Transition } from '../../types'
 import { graphLines } from './processLayout'
 import { processLayout, stateTitle, transitionTitle, type GraphNode } from './process'
 const props = defineProps<{ process: Process; draft: Declaration; selectedState?: State; selectedTransition?: Transition }>()
-const emit = defineEmits<{ state: [value: State]; transition: [value: Transition]; connect: [from: string, to: string]; clear: [] }>()
+const emit = defineEmits<{ state: [value: State, opener: SVGElement]; transition: [value: Transition, opener: SVGElement]; connect: [from: string, to: string, opener: SVGElement]; clear: [] }>()
 const prefix = useId().replace(/:/g, '_'), connecting = ref(''), canvas = ref<HTMLElement>(), svg = ref<SVGSVGElement>()
 const viewportWidth = ref(900), overview = ref(false)
 const baseHeight = computed(() => viewportWidth.value < 700 ? 420 : 480)
@@ -56,14 +56,14 @@ function canvasKey(event: KeyboardEvent) {
     pan.value = { x: pan.value.x + (event.key === 'ArrowRight' ? delta : event.key === 'ArrowLeft' ? -delta : 0), y: pan.value.y + (event.key === 'ArrowDown' ? delta : event.key === 'ArrowUp' ? -delta : 0) }
   }
 }
-function finish(state: State) { if (connecting.value && connecting.value !== state.id) emit('connect', connecting.value, state.id); connecting.value = '' }
+function finish(state: State, event: Event) { if (connecting.value && connecting.value !== state.id) emit('connect', connecting.value, state.id, event.currentTarget as SVGElement); connecting.value = '' }
 function start(event: PointerEvent, node: GraphNode) {
   connecting.value = node.state.id; ghost.value = { x: node.x, y: node.y }
   const element = event.target
   if (element instanceof Element && element.hasPointerCapture?.(event.pointerId)) element.releasePointerCapture(event.pointerId)
 }
 function keyboard(event: KeyboardEvent, state: State) {
-  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (connecting.value) finish(state); else emit('state', state) }
+  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (connecting.value) finish(state, event); else emit('state', state, event.currentTarget as SVGElement) }
   if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) {
     event.preventDefault()
     const stops = Array.from(svg.value?.querySelectorAll<SVGElement>('.work-graph-node') ?? [])
@@ -129,7 +129,7 @@ function icon(state: State) {
       <path v-for="lane in layout.parallels" :key="lane.key" :d="lane.path" class="work-lane-line" :marker-end="`url(#${prefix}-arrow)`"><title>Parallel lane from {{ stateTitle(lane.state) }}</title></path>
       <g v-for="edge in layout.edges" :key="edge.key" class="work-graph-edge" :class="['work-edge-' + edge.type, { 'work-selected': selectedTransition === edge.transition }]"
         role="button" tabindex="0" :aria-label="'Edit transition ' + transitionTitle(edge.transition)" :aria-pressed="selectedTransition === edge.transition"
-        @focus="reveal(edge)" @click="emit('transition', edge.transition)" @keydown.enter.prevent="emit('transition', edge.transition)" @keydown.space.prevent="emit('transition', edge.transition)">
+        @focus="reveal(edge)" @click="emit('transition', edge.transition, $event.currentTarget as SVGElement)" @keydown.enter.prevent="emit('transition', edge.transition, $event.currentTarget as SVGElement)" @keydown.space.prevent="emit('transition', edge.transition, $event.currentTarget as SVGElement)">
         <path :d="edge.path" class="work-edge-hit" />
         <path :d="edge.path" class="work-edge-line" :marker-end="`url(#${prefix}-arrow)`" />
         <rect :x="edge.x - edge.width / 2" :y="edge.y - edge.height / 2" :width="edge.width" :height="edge.height" rx="6" class="work-edge-label-bg" />
@@ -137,18 +137,18 @@ function icon(state: State) {
       </g>
       <g v-for="node in layout.nodes" :key="node.state.id" class="work-graph-node" :class="['work-stop-' + node.state.category, { 'work-selected': selectedState === node.state }]"
         role="button" tabindex="0" :aria-label="'Edit state ' + stateTitle(node.state)" :aria-pressed="selectedState === node.state"
-        @click="emit('state', node.state)" @keydown="keyboard($event, node.state)" @focus="reveal(node)" @pointerup.stop="finish(node.state)">
+        @click="emit('state', node.state, $event.currentTarget as SVGElement)" @keydown="keyboard($event, node.state)" @focus="reveal(node)" @pointerup.stop="finish(node.state, $event)">
         <rect :x="node.x - node.width / 2" :y="node.y - node.height / 2" :width="node.width" :height="node.height" rx="10" class="work-state-card" />
         <circle :cx="node.x - node.width / 2 + 22" :cy="node.y - node.height / 2 + 25" r="10" class="work-stop-ring" />
         <Icon :icon="'tabler:' + icon(node.state)" :x="node.x - node.width / 2 + 15" :y="node.y - node.height / 2 + 18" width="14" height="14" class="work-stop-icon" aria-hidden="true" />
         <text :x="node.x - node.width / 2 + 42" :y="node.y - node.height / 2 + 29" class="work-node-name"><tspan v-for="(line, i) in node.title" :key="i" :x="node.x - node.width / 2 + 42" :dy="i ? 18 : 0">{{ line }}</tspan></text>
         <text :x="node.x - node.width / 2 + 16" :y="node.y - node.height / 2 + 33 + node.title.length * 18" class="work-node-meta"><tspan v-for="(line, i) in node.caption" :key="i" :x="node.x - node.width / 2 + 16" :dy="i ? 16 : 0">{{ line }}</tspan><tspan v-if="draft.policy?.wip?.[node.state.id]" class="work-limit-text"> · limit {{ draft.policy.wip[node.state.id].limit }}</tspan></text>
         <g v-for="(transition, badge) in node.badges" :key="transition.id" class="work-any-transition" role="button" tabindex="0" :aria-label="'Edit transition ' + transitionTitle(transition)"
-          @click.stop="emit('transition', transition)" @keydown.enter.stop.prevent="emit('transition', transition)" @keydown.space.stop.prevent="emit('transition', transition)">
+          @click.stop="emit('transition', transition, $event.currentTarget as SVGElement)" @keydown.enter.stop.prevent="emit('transition', transition, $event.currentTarget as SVGElement)" @keydown.space.stop.prevent="emit('transition', transition, $event.currentTarget as SVGElement)">
           <text :x="node.x - node.width / 2 + 16" :y="node.y - node.height / 2 + 33 + node.title.length * 18 + node.caption.length * 16 + node.badges.slice(0, badge).reduce((n, t) => n + graphLines(transitionTitle(t) + ' works from any state').length * 18, 0)" class="work-node-meta"><tspan v-for="(line, i) in graphLines(transitionTitle(transition) + ' works from any state')" :key="i" :x="node.x - node.width / 2 + 16" :dy="i ? 18 : 0">{{ line }}</tspan></text>
         </g>
         <circle v-if="!['completed', 'canceled'].includes(node.state.category)" :cx="layout.direction === 'TB' ? node.x : node.x + node.width / 2" :cy="layout.direction === 'TB' ? node.y + node.height / 2 : node.y" r="7" class="work-node-connector" role="button" tabindex="0" :aria-label="'Connect from ' + stateTitle(node.state)"
-          @pointerdown.stop.prevent="start($event, node)" @click.stop="emit('state', node.state)" @keydown.enter.stop.prevent="connecting = node.state.id; ghost = { x: node.x, y: node.y }" @keydown.space.stop.prevent="connecting = node.state.id" />
+          @pointerdown.stop.prevent="start($event, node)" @click.stop="emit('state', node.state, $event.currentTarget as SVGElement)" @keydown.enter.stop.prevent="connecting = node.state.id; ghost = { x: node.x, y: node.y }" @keydown.space.stop.prevent="connecting = node.state.id" />
       </g>
       <path v-if="source" :d="`M ${layout.direction === 'TB' ? source.x : source.x + source.width / 2} ${layout.direction === 'TB' ? source.y + source.height / 2 : source.y} L ${ghost.x} ${ghost.y}`" class="work-connect-ghost" />
     </svg>

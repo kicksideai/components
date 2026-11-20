@@ -9,7 +9,9 @@ local M = {}
 
 function M.failure(err: error): types.PluginError
     local details = err:details()
-    return { kind = err:kind(), code = details and details.code :: string?, message = err:message() }
+    local code = details and details.code :: string?
+    return { kind = err:kind(), code = code, message = err:message(),
+        floor = code == "plugin_projection_gap" and details.floor :: integer? or nil }
 end
 
 function M.effective(plugin: types.Plugin, own: types.JsonObject?): (types.JsonObject?, error?)
@@ -43,6 +45,7 @@ function M.list(board_id: string, desired: { types.PluginState }, activations: {
             requires = {}, tools = {}, projections = table.create(0, 1), lifecycle = { state = "ready" } }
         local plugin, perr = manifests.load(id)
         if plugin then
+            view.interface_version = plugin.interface_version
             view.title, view.description, view.icon = plugin.title, plugin.description, plugin.icon
             view.requires, view.tools = plugin.requires, plugin.tools
             if options then view.config_schema = plugin.config_schema end

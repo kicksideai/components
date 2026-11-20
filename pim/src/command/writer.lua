@@ -343,6 +343,12 @@ local function execute(catalog_id: string, request: types.ApplyRequest, deadline
             approval_item_id = request.approval_item_id },
         request.trace_context,
         function(db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
+            -- Proposal acceptance preserves the old fingerprint so the pipeline can replay
+            -- a committed receipt before refusing a new write with no validated generation.
+            if admit and request.expected_generation == nil then
+                return nil, errors.new({ kind = errors.CONFLICT, message = "proposal has no recorded schema generation; submit a new proposal",
+                    details = { code = "schema_generation_conflict", generation = catalog.generation } })
+            end
             local conflict = require_generation(request.expected_generation, catalog.generation)
             if conflict then return nil, conflict end
             local planned, perr = items.plan(db, catalog, request, actor_id(), settings, prepared, admit ~= nil)
@@ -407,7 +413,7 @@ function M.propose(catalog_id: string, request: types.ProposeRequest): (types.Pr
     if #request.items > consts.LIMITS.items then return nil, invalid("too many items") end
     local settings,serr=defaults.read()
     if serr or not settings then return nil,serr end
-    local base,err=store.with_db(function(db): ({[string]:integer}?,error?)
+    local validated,err=store.with_db(function(db): (types.ProposalBase?,error?)
         local catalog,cerr=store.catalog(db,catalog_id)
         if cerr then return nil, cerr end
         if not catalog then return nil, failure.catalog_not_initialized() end
@@ -419,9 +425,9 @@ function M.propose(catalog_id: string, request: types.ProposeRequest): (types.Pr
         local planned,perr=items.plan(db,catalog,proposals.plan_request(request,base),actor_id(),settings,nil,true)
         if perr or not planned then return nil,perr end
         if not planned.ok then return nil,invalid("proposal items are invalid at the catalog head",{outcomes=planned.outcomes :: {types.JsonObject}}) end
-        return base,nil
+        return {generation=catalog.generation,versions=base},nil
     end)
-    if err or not base then return nil,err end
+    if err or not validated then return nil,err end
     local id, ierr = store.transaction("proposal admission",function(tx: types.Executor,dialect: string): (string?,error?)
         local current,cerr=store.catalog(tx,catalog_id,dialect)
         if cerr then return nil,cerr end
@@ -431,7 +437,7 @@ function M.propose(catalog_id: string, request: types.ProposeRequest): (types.Pr
         local effective=policy.effective(settings,current.compiled.policy)
         if #values.canonical(request)>effective.proposal_bytes then return nil,invalid("proposal exceeds configured byte budget",{code="proposal_budget_exceeded"}) end
         if (count :: integer)>=effective.proposal_count then return nil,invalid("catalog proposal quota reached",{code="proposal_limit"}) end
-        return proposal_rows.insert(tx,catalog_id,request,base,actor_id())
+        return proposal_rows.insert(tx,catalog_id,request,validated,actor_id())
     end)
     if ierr or not id then return nil, ierr end
     local merr = publish_meta(catalog_id)
@@ -482,7 +488,9 @@ local function accept(catalog_id: string, proposal: types.Proposal, trace_contex
         if err or not current then return err end
         if not can_accept(current.status) then return decided(current.status) end
         local source: types.Source? = nil
-        if proposal.source then source = catalog.compiled.sources[proposal.source] end
+        if proposal.source and proposal.generation == catalog.generation then
+            source = catalog.compiled.sources[proposal.source]
+        end
         if source then
             local denied = items.source_access(source, actor)
             if denied then return denied end
@@ -504,7 +512,7 @@ local function accept(catalog_id: string, proposal: types.Proposal, trace_contex
         if err or not stored then return nil, err end
         return decision(stored), nil
     end
-    if code == "source_access_denied" and claimed_at then
+    if (code == "source_access_denied" or code == "schema_generation_conflict") and claimed_at then
         local marker = pipeline.marker(assert(request.idempotency))
         local released, err = store.transaction("proposal claim release", function(tx, dialect): (boolean?, error?)
             local catalog, cerr = store.catalog(tx, catalog_id, dialect)
@@ -518,14 +526,8 @@ local function accept(catalog_id: string, proposal: types.Proposal, trace_contex
         end
         return nil, aerr
     end
-    local status: string
-    if applied then
-        status = settled(applied)
-    elseif code == "unknown_source" then
-        status = "failed"
-    else
-        return nil, aerr
-    end
+    if not applied then return nil, aerr end
+    local status = settled(applied)
     -- A successful apply has a receipt. An attempt with no committed result
     -- can only settle while it still owns the claim.
     local expected_claim = status ~= "accepted" and claimed_at or nil
@@ -533,14 +535,13 @@ local function accept(catalog_id: string, proposal: types.Proposal, trace_contex
         return proposal_rows.transition(db, catalog_id, id, { "accepting" }, status, applied, actor, nil, expected_claim)
     end)
     if serr then return nil,serr end
-    if not moved and not aerr then
+    if not moved then
         local stored, err = store.with_db(function(db) return get_proposal(db, catalog_id, id) end)
         if err or not stored then return nil, err end
         return decision(stored), nil
     end
     local merr=publish_meta(catalog_id)
     if merr then return nil,merr end
-    if aerr then return nil, aerr end
     return { proposal_id = id, status = status, result = applied }, nil
 end
 

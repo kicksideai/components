@@ -14,12 +14,14 @@ entries:
     fixture: app:fixture
     steps: app:steps
     scoped: app:scoped
+    clock: kickside.work.domain:clock
+    core_prune: kickside.core.retention:prune
 - name: plugin_projection_worker
   kind: function.lua
   meta: { type: projection.worker }
   source: file://plugin_projection_worker.lua
   method: run
-  modules: [sql, security, ctx]
+  modules: [sql, security, ctx, json]
   imports:
     board: kickside.work:client
     component: kickside.component:component
@@ -28,7 +30,7 @@ entries:
   meta: { type: projection.worker }
   source: file://plugin_projection_worker.lua
   method: events
-  modules: [sql, security, ctx]
+  modules: [sql, security, ctx, json]
   imports:
     board: kickside.work:client
     component: kickside.component:component
@@ -96,7 +98,7 @@ entries:
   kind: function.lua
   source: file://plugin_projection_worker.lua
   method: delete
-  modules: [ctx, sql, security]
+  modules: [ctx, sql, security, json]
   imports:
     board: kickside.work:client
     component: kickside.component:component

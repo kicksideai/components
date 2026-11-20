@@ -111,7 +111,7 @@ it('requires WRITE independently of ADMIN for adding, retiring and restoring ter
   expect(w.get('input[placeholder=code]').attributes('disabled')).toBeDefined()
   expect(w.get('input[placeholder="Label (en)"]').attributes('disabled')).toBeDefined()
   expect(w.getComponent(Select).props('disabled')).toBe(true)
-  await w.get('input[placeholder=new_vocabulary]').setValue('valid')
+  await w.get('input[placeholder="Vocabulary code"]').setValue('valid')
   expect(w.findAll('button').find(b => b.text() === 'Add vocabulary')!.attributes('disabled')).toBeUndefined()
   w.unmount()
 })
@@ -125,7 +125,7 @@ it('allows writers to retire and restore terms while declaration codes stay rest
     await button.trigger('click'); await flushPromises()
     expect(pim.apply).toHaveBeenLastCalledWith('cat', [{ term: { vocabulary: 'colors', code }, retired }])
   }
-  await w.get('input[placeholder=new_vocabulary]').setValue('XL')
+  await w.get('input[placeholder="Vocabulary code"]').setValue('XL')
   expect(w.findAll('button').find(b => b.text() === 'Add vocabulary')!.attributes('disabled')).toBeDefined()
   w.unmount()
 })

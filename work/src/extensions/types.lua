@@ -6,6 +6,7 @@ type Config = { board_id: string, plugin: string, attachment_id: string, config:
     input: string, start_seq: integer, revision: integer }
 type Body = { worker_config: Config, token: string?, meta: { worker_input_mode: string }? }
 type FeedToken = { projection_id: string, start_seq: integer, cursor: reads.ChangesCursor?, bootstrapping: boolean }
+type FeedRegistration = reads.ReadStamp & { id: string, start_seq: integer }
 type Definition = { id: string, kind: string, projection_key: string, body: unknown }
 type Page = { projections: { Definition }, projections_has_more: boolean, projections_cursor: string? }
-return { FeedToken = FeedToken, Config = Config, Body = Body, Definition = Definition, Page = Page, Pair = Pair }
+return { FeedRegistration = FeedRegistration, FeedToken = FeedToken, Config = Config, Body = Body, Definition = Definition, Page = Page, Pair = Pair }

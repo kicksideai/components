@@ -5,12 +5,13 @@
 .pim-railhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; }
 .pim-railhead h2 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
 .pim-rail-search { width: 100%; margin-bottom: 12px; }
+.pim-rail-error { overflow-wrap: anywhere; }
 .pim-rail-list { display: grid; gap: 4px; }
 .pim-rail .pim-rail-row { display: flex; flex-direction: column; align-items: start; gap: 4px; width: 100%; padding: 8px 10px; border-radius: 8px; text-align: left; color: var(--p-text-color); font-size: 13px; font-weight: 500; }
 .pim-rail .pim-rail-row.active { background: color-mix(in srgb, var(--p-primary-color) 14%, transparent); color: var(--p-primary-color); }
 .pim-system-main { min-width: 0; min-height: 0; overflow-y: auto; }
 .pim-detail-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 18px var(--kickside-system-surface-gutter, 24px); }
-.pim-detail-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.pim-detail-head h2 { min-width: 0; max-width: 100%; margin: 0; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
 .pim-detail-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .pim-settings-pane { padding: 18px var(--kickside-system-surface-gutter, 24px) 28px; }
 .pim-readable { max-width: 960px; }
@@ -97,3 +98,4 @@
   .pim-settings-pane { padding: 16px; }
   .pim-section-tabs { padding-inline: 16px; }
 }
+.pim-list-error { margin: 12px; }

@@ -1,8 +1,8 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Proposals (spec 11): stored commands awaiting a decision. Proposing needs
 -- catalog READ; the proposal is PIM-owned state, outside the catalog log. Accepting
--- runs the items through the single write path, expecting the versions the
--- proposal was based on, with the proposal as provenance.
+-- runs the items through the single write path with the schema generation and
+-- product versions the proposal was based on, with the proposal as provenance.
 local failure = require("failure")
 local store = require("store")
 local types = require("types")
@@ -67,7 +67,8 @@ function M.accept_request(proposal: types.Proposal, trace_context: types.TraceCo
     local items = apply_items(proposal.items, proposal.base)
     local origin: types.Origin = { type = "proposal", id = proposal.proposal_id }
     if proposal.origin.type and proposal.origin.id then origin = { type = tostring(proposal.origin.type), id = tostring(proposal.origin.id) } end
-    return { items = items, mode = "atomic", source = proposal.source, origin = origin, provenance = proposal.origin.provenance :: types.JsonObject?, approval_item_id = proposal.proposal_id,
+    return { items = items, mode = "atomic", expected_generation = proposal.generation, source = proposal.source,
+        origin = origin, provenance = proposal.origin.provenance :: types.JsonObject?, approval_item_id = proposal.proposal_id,
         idempotency = { namespace = "proposal", key = proposal.proposal_id }, trace_context = trace_context }
 end
 

@@ -16,8 +16,8 @@ type Plan = { bounded: BoundedPlan?, query: sql.SelectBuilder, tails: { sql.Sele
     count: Count?, groups: integer, take: integer }
 type ReadStamp = { as_of: integer?, generation: integer? }
 type PluginSelection = ReadStamp & { state: domain.PluginState }
-type PluginOptions = ReadStamp & { plugins: { domain.PluginView } }
-type PluginContext = { attachment_id: string?, config: JsonObject?, lifecycle: domain.PluginLifecycle, projections: { [string]: domain.PluginProjectionState } }
+type PluginOptions = ReadStamp & { plugins: { domain.PluginView }, field_types: { domain.FieldTypeOption } }
+type PluginContext = { attachment_id: string?, interface_version: integer, config: JsonObject?, lifecycle: domain.PluginLifecycle, projections: { [string]: domain.PluginProjectionState } }
 type PluginContextRequest = { board_id: string, plugin: string }
 type PluginFeedRequest = PluginContextRequest & { kind: string, token: string? }
 type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, changes: { ChangeItem }, token: string, done: boolean }
@@ -25,7 +25,7 @@ type SchemaGetRequest = { budget: ReadBudget?, board_id: string, generation: int
 type SchemaPlugin = domain.PluginView
 type SchemaView = ReadStamp & { pack: JsonObject?, outdated: boolean?, plugins: { SchemaPlugin }?, declaration: Declaration, compiled: JsonObject, digest: string, key_prefix: string, migration_error: string? }
 type ItemRef = { id: string?, key: string? }
-type GetRequest = { budget: ReadBudget?, board_id: string, item: ItemRef, include: { string }?, min_seq: integer? }
+type GetRequest = { budget: ReadBudget?, board_id: string?, item: ItemRef, include: { string }?, min_seq: integer? }
 type ApprovalView = { principal: domain.PrincipalDecl, decision: string, at: string }
 type GateView = { entered_by: domain.PrincipalDecl, entered_at: string, approvals: { ApprovalView }, can_approve: boolean }
 type AwaitingView = { since: string, by: string?, can_act: boolean, principals: { domain.PrincipalDecl }? }
@@ -42,6 +42,7 @@ type TransitionView = { id: string, name: string, to: string, require: { string 
 type GetResult = ReadStamp & {
     title: string?, description: string?, icon: string?,
     access: domain.BoardAccess,
+    field_edit: { [string]: domain.FieldEdit }?,
     stage_runs: { StageRun }?,
     item: ItemView, links: { LinkView }?, children: { ItemView }?, comments: { CommentView }?, transitions: { TransitionView }?,
 }
@@ -77,6 +78,7 @@ type CrossCandidate = { board: string, index: integer, key: domain.Cursor, item:
 type QueryResult = ReadStamp & { incomplete: boolean?, groups: { QueryGroup }?, positions: { [string]: ReadStamp }?, cross_after: CrossCursor?, items: { ItemView }, after: domain.Cursor?, reindexing: boolean }
 type CountResult = ReadStamp & { incomplete: boolean?, total: integer?, estimated: boolean?, reindexing: boolean }
 
+-- Link continuations are opaque and bound to the board and selector.
 type LinksRequest = { budget: ReadBudget?, board_id: string, item: ItemRef?, target: domain.Target?, direction: string?, after: string?, limit: integer?, min_seq: integer? }
 type LinkPeer = { board: string?, item: string?, unavailable: boolean? }
 type RelationView = { type: string, source: LinkPeer, target: LinkPeer, at: string }

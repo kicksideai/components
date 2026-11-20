@@ -11,6 +11,8 @@ local M = {}
 
 local trim = require("trim_text").trim
 
+type ListFilters = { text: string?, admin_only: boolean? }
+
 local function committed(ids: { string }): ({ [string]: types.Row }?, error?)
     if #ids == 0 then return {}, nil end
     local params: { string } = {}
@@ -31,9 +33,12 @@ local function committed(ids: { string }): ({ [string]: types.Row }?, error?)
 end
 
 -- Page the actor-scoped component directory and look up committed state by id.
-function M.readable(limit: integer, offset: integer?, exact: string?): ({ types.CatalogSummary }?, error?, integer?)
+function M.readable(limit: integer, offset: integer?, exact: string?, filters: ListFilters?): ({ types.CatalogSummary }?, error?, integer?)
     local start = offset or 0
-    local rows, err = component.query({ impl_ids = { consts.CATALOG_IMPL }, access_mask = component.ACCESS.READ,
+    local mask = component.ACCESS.READ
+    if filters and filters.admin_only then mask = mask | component.ACCESS.ADMIN end
+    local text = filters and trim(filters.text) or ""
+    local rows, err = component.query({ impl_ids = { consts.CATALOG_IMPL }, access_mask = mask, text = text,
         component_ids = exact and { exact } or nil, include = { meta = true, access = true },
         order_by = { field = "component_id", direction = "ASC" }, limit = exact and 1 or limit + 1, offset = start })
     if err then return nil, errors.wrap(err, "catalog lookup failed") end
