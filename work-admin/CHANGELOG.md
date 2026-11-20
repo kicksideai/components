@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/kicksideai/components/compare/work-admin-v0.1.6...work-admin-v0.1.7) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work-admin:** show error codes and retry board catalog outages ([cdfdcc7](https://github.com/kicksideai/components/commit/cdfdcc736be61dfd1cf302487a704bb3d08964b7))
+
 ## [0.1.6](https://github.com/kicksideai/components/compare/work-admin-v0.1.5...work-admin-v0.1.6) (2026-11-20)
 
 
