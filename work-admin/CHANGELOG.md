@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/kicksideai/components/compare/work-admin-v0.1.3...work-admin-v0.1.4) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work-admin:** correct board administration boundaries ([6a279ed](https://github.com/kicksideai/components/commit/6a279eddcbd91b1dfed93a38aa0ace61f624d39f))
+
 ## [0.1.3](https://github.com/kicksideai/components/compare/work-admin-v0.1.2...work-admin-v0.1.3) (2026-11-19)
 
 
