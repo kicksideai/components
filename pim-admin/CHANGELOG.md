@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/kicksideai/components/compare/pim-admin-v0.1.3...pim-admin-v0.1.4) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim-admin:** complete catalog search and clarify settings controls ([72748b3](https://github.com/kicksideai/components/commit/72748b3d4e214763b6ea210e4eb0d3b3e0a071f7))
+
 ## [0.1.3](https://github.com/kicksideai/components/compare/pim-admin-v0.1.2...pim-admin-v0.1.3) (2026-11-19)
 
 
