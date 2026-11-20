@@ -6,9 +6,9 @@
   "storage-s3": "0.2.4",
   "docscout": "0.1.18",
   "work": "0.1.24",
-  "pim": "0.1.11",
-  "pim-admin": "0.1.7",
+  "pim": "0.1.12",
+  "pim-admin": "0.1.8",
   "work-admin": "0.1.8",
-  "work-search": "0.1.0",
+  "work-search": "0.1.1",
   "work-planning": "0.1.1"
 }
