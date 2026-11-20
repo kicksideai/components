@@ -207,7 +207,7 @@ local function define()
                     holders[event.type] = nil
                 end
             end
-            test.eq(count, 32)
+            test.eq(count, 33)
             test.is_nil(next(holders))
         end)
 

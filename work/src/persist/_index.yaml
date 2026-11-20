@@ -390,6 +390,7 @@ entries:
   modules:
   - sql
   imports:
+    canonical_json: kickside.contract:canonical_json
     jobs: kickside.core.jobs:jobs
     consts: kickside.work:consts
     store: kickside.work.persist:store

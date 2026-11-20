@@ -222,6 +222,15 @@ entries:
       required: true
       role: primary
       title: Board
+- name: stage_progressed
+  kind: registry.entry
+  meta:
+    type: kickside.automation.port
+    title: Work stage progressed
+    icon: tabler:layout-kanban
+  binding: kickside.work.binding:board
+  event: kickside.work.events:stage.progressed
+  config_schema: *id002
 - name: stage_reported
   kind: registry.entry
   meta:

@@ -40,7 +40,7 @@ end
 -- changes pages items in (updated_seq, item_id) order up to the projection
 -- position. Trashed items are deletes. A cursor below the durable floor gets a
 -- gap: the consumer resyncs from zero.
-local function list_changes(request: types.ChangesRequest, context: types.ReadContext): (types.ChangesResult?, error?)
+local function list_changes(request: types.ChangesRequest, context: types.ReadContext, at_head: boolean?): (types.ChangesResult?, error?)
     local filter_err = selection(request.selection, 1)
     if filter_err then return nil, filter_err end
     local unsupported = access.non_item(request)
@@ -52,7 +52,6 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
     local cursor: types.ChangesCursor = request.cursor or { seq = 0, item_id = "" }
     local catalog: { [string]: domain.Field } = {}
     local result, read_err = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.ChangesResult?, error?)
-        catalog = peers.catalog(board)
         local stamp = board.key_prefix
         local caller_specific = board.caller ~= nil or request.selection ~= nil
         if caller_specific then
@@ -66,6 +65,10 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
         local boundary, boundary_err = thread_reader.prune_boundary(tx, board.board_id)
         if boundary_err or not boundary then return nil, boundary_err end
         local floor: integer = math.max(board.tombstone_floor_seq, boundary.max_pruned_seq :: integer)
+        if at_head then
+            return { items = {}, next = { seq = board.applied_seq, item_id = "", access = stamp, floor = floor }, has_more = false }, nil
+        end
+        catalog = peers.catalog(board)
         if cursor.seq > 0 and cursor.seq < floor and (cursor.floor or 0) < floor then
             return { items = {}, next = cursor, has_more = false, gap = { floor = floor } }, nil
         end
@@ -168,6 +171,15 @@ end
 
 function M.list_changes(request: types.ChangesRequest): (types.ChangesResult?, error?)
     return budget.run(request, function(context: types.ReadContext): (types.ChangesResult?, error?) return list_changes(request, context) end)
+end
+
+function M.head(board_id: string, read_budget: types.ReadBudget): (types.ChangesCursor?, error?)
+    local request = { board_id = board_id, budget = read_budget }
+    local result, err = budget.run(request, function(context: types.ReadContext): (types.ChangesResult?, error?)
+        return list_changes(request, context, true)
+    end)
+    if err or not result then return nil, err end
+    return result.next, nil
 end
 
 return M

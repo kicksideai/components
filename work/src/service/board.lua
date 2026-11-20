@@ -132,11 +132,19 @@ local function process_command(method: string, input: unknown): (commands.ApplyR
     local err = requests.parse(method, input)
     if err then return nil, err end
     local request = input :: { [string]: unknown }
+    if method == "report" then
+        local progress = request.kind == "progress"
+        if (progress and (request.key == nil or request.progress == nil or request.outcome ~= nil or request.outputs ~= nil))
+            or (not progress and request.outcome == nil) then
+            return nil, errors.new({ kind = errors.INVALID, details = { code = "invalid_shape" },
+                message = "report requires a terminal outcome or keyed progress without outcome or outputs" })
+        end
+    end
     local id, lerr = locate.resolve(request.board_id :: string?)
     if lerr or not id then return nil, lerr end
     local op: commands.Op = { op = method }
     for key, value in pairs(request) do
-        if key == "item" or key == "visit" or key == "attempt" or key == "outcome" or key == "outputs" or key == "progress" or key == "decision" then
+        if key == "item" or key == "visit" or key == "attempt" or key == "kind" or key == "outcome" or key == "outputs" or key == "progress" or key == "decision" then
             (op :: { [string]: unknown })[key] = value
         end
     end

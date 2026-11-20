@@ -96,6 +96,10 @@ entries:
     - kickside.work.binding:delete_func
     - kickside.work.binding:registry
     - kickside.work.binding:view
+    - kickside.work.blocks:schemas
+    - kickside.work.blocks:types
+    - kickside.work.blocks:wait
+    - kickside.work.blocks:wait_for_item
     - kickside.work.command:apply_ops
     - kickside.work.command:bulk
     - kickside.work.command:command.recorded
@@ -193,6 +197,7 @@ entries:
     - kickside.work.events:rollups.recomputed
     - kickside.work.events:schema.applied
     - kickside.work.events:stage.entered
+    - kickside.work.events:stage.progressed
     - kickside.work.events:stage.reported
     - kickside.work.events:timer.fired
     - kickside.work.extensions:plugin_batch
@@ -293,7 +298,9 @@ entries:
     - kickside.work.ports:rank_rebalanced
     - kickside.work.ports:rollups_recomputed
     - kickside.work.ports:schema_applied
+    - kickside.work.packs:agent_queue
     - kickside.work.ports:stage_entered
+    - kickside.work.ports:stage_progressed
     - kickside.work.ports:stage_reported
     - kickside.work.ports:timer_fired
     - kickside.work.read:access

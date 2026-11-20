@@ -24,7 +24,7 @@ local M = {}
 
 local EV = consts.EVENTS
 local ITEM_EVENTS: { [string]: boolean } = {
-    [EV.STAGE_ENTERED] = true, [EV.STAGE_REPORTED] = true, [EV.APPROVAL_RECORDED] = true, [EV.TIMER_FIRED] = true,
+    [EV.STAGE_ENTERED] = true, [EV.STAGE_PROGRESSED] = true, [EV.STAGE_REPORTED] = true, [EV.APPROVAL_RECORDED] = true, [EV.TIMER_FIRED] = true,
     [EV.ITEM_CREATED] = true, [EV.ITEM_CHANGED] = true, [EV.ITEM_TRANSITIONED] = true, [EV.ITEM_MIGRATED] = true, [EV.ITEM_PARENTED] = true,
     [EV.ITEM_LINKED] = true,
     [EV.ITEM_UNLINKED] = true, [EV.ITEM_PURGED] = true, [EV.ITEM_DELETED] = true, [EV.ITEM_RESTORED] = true,
@@ -124,7 +124,8 @@ function M.fold(tx: sql.Transaction, dialect: string, board_id: string, events: 
                 end
             elseif event.type == EV.ROLLUPS_RECOMPUTED then
                 err = fold_rollup.apply_recomputed(tx, board, event, batch)
-            elseif event.type == EV.STAGE_ENTERED or event.type == EV.STAGE_REPORTED or event.type == EV.APPROVAL_RECORDED or event.type == EV.TIMER_FIRED then
+            elseif event.type == EV.STAGE_ENTERED or event.type == EV.STAGE_PROGRESSED or event.type == EV.STAGE_REPORTED
+                or event.type == EV.APPROVAL_RECORDED or event.type == EV.TIMER_FIRED then
                 err = fold_process.apply(tx, dialect, board, event, batch)
             elseif event.type == EV.ITEM_CREATED then
                 err = fold_items.apply_created(tx, board, event, batch, result, dialect)

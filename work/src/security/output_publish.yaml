@@ -51,6 +51,7 @@ entries:
     - kickside.work.events:comment.edited
     - kickside.work.events:comment.deleted
     - kickside.work.events:stage.entered
+    - kickside.work.events:stage.progressed
     - kickside.work.events:stage.reported
     - kickside.work.events:approval.recorded
     - kickside.work.events:timer.fired

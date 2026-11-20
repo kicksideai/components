@@ -1,0 +1,8 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local json = require("json")
+local shape = require("shape")
+local types = require("types")
+return {
+    input = shape.tolerant(assert(json.decode([==[{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"description":"Board component id."},"item":{"type":"string","minLength":1,"description":"Immutable item id on the board."},"state":{"type":"string","minLength":1,"description":"Exact item state id to match."},"cursor":{"type":"object","properties":{"seq":{"type":"integer","minimum":0,"description":"Last sequence from WorkListChanges.next; preserve unchanged, or start with zero."},"item_id":{"type":"string","description":"Visible anchor item id from WorkListChanges.next, or an empty string; preserve unchanged."},"position":{"type":"string","maxLength":128,"description":"Opaque scan anchor when the last examined item was hidden; preserve unchanged."},"access":{"type":"string","description":"Access fingerprint from WorkListChanges.next; preserve unchanged to detect visibility changes."},"floor":{"type":"integer","minimum":0,"description":"Feed floor admitted at bootstrap; preserve the returned value unchanged."}},"additionalProperties":false,"required":["seq","item_id"],"description":"Continuation returned by the previous page of this method; omit to start at the beginning and reuse unchanged with the same filters."}},"required":["board_id","item","state"],"additionalProperties":false}]==])) :: types.Map),
+    config = shape.tolerant(assert(json.decode([==[{"type":"object","properties":{"timeout_ms":{"type":"integer","minimum":1,"maximum":60000,"default":30000,"title":"Timeout (milliseconds)"}},"additionalProperties":false}]==])) :: types.Map),
+}

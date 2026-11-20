@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -62,6 +62,7 @@ async function output(path, value) {
   })
   if (current === value) return
   if (check) throw new Error(`Regenerate contract schemas: ${path}`)
+  await mkdir(dirname(filename), { recursive: true })
   await writeFile(filename, value)
 }
 
@@ -153,5 +154,14 @@ local types = require("types")
 return {
     config = shape.tolerant(${luaSchema('templates_pinned')} :: types.Map),
     input = shape.tolerant(${luaSchema('templates_action_input')} :: types.Map),
+}
+`)
+
+await output('src/blocks/schemas.lua', `local json = require("json")
+local shape = require("shape")
+local types = require("types")
+return {
+    input = shape.tolerant(${luaSchema('wait_for_item_input')} :: types.Map),
+    config = shape.tolerant(${luaSchema('wait_for_item_config')} :: types.Map),
 }
 `)

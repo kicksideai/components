@@ -112,6 +112,8 @@ entries:
         system_only: true
       - type: kickside.work.events:stage.entered
         system_only: true
+      - type: kickside.work.events:stage.progressed
+        system_only: true
       - type: kickside.work.events:stage.reported
         system_only: true
       - type: kickside.work.events:approval.recorded
@@ -156,6 +158,7 @@ entries:
         - type: kickside.work.events:plugin.rebuild
         - type: kickside.work.events:plugin.configured
         - type: kickside.work.events:stage.entered
+        - type: kickside.work.events:stage.progressed
         - type: kickside.work.events:stage.reported
         - type: kickside.work.events:approval.recorded
         - type: kickside.work.events:timer.fired

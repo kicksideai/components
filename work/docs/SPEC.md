@@ -17,6 +17,14 @@ A state’s `require` list applies on entry and after ordinary edits settle. Wor
 
 An item reference field can declare `config.item_type` as the target item type ID. Work checks each written reference after resolving its live, visible target, including targets on another board. A type mismatch returns `invalid_reference` on the field. Fields with no target type accept any visible, live item type.
 
+## Agent pipelines
+
+The Agent Queue pack composes a principal field, an absolute time field and a process timer. Its `claim` edge enters the claimed state with both fields present. `renew` re-enters that state on a new visit. The timer releases the current visit and clears the two fields. Workers use the item version from their last successful mutation as `expect_version` for their next mutation. A superseded version yields `version_mismatch`.
+
+A `report` with `kind: progress` requires a keyed command and the active visit and attempt. It replaces the attempt's latest progress with an object of at most 65,536 canonical JSON bytes. The corresponding `stage.progressed` fact does not route the item, affect the attempt deadline or set the terminal fields. Terminal reports apply the same progress bound and preserve the checkpoint when they omit progress. Terminal outputs use their existing independent size limit.
+
+The Wait for Work item Block matches the current live item state under board and item READ. It resumes the unfiltered change feed from the given cursor or from a head snapshot and listens for commits to the board's projection. A feed gap causes a new head snapshot and point read. The Block returns `matched` with the item id, state and version, or `timed_out`. Both outcomes carry a feed cursor. A wait lives for the current Block invocation.
+
 ## Work Templates
 
 ### Template catalog

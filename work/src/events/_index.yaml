@@ -404,6 +404,27 @@ entries:
     - state
     - visit
     - attempt
+- name: stage.progressed
+  kind: registry.entry
+  meta:
+    type: kickside.core.threads.event
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      actor: *id001
+      at: *id002
+      source: *id003
+      origin: *id004
+      command_key: *id005
+      receipt: *id006
+      audit: *id007
+      item: {type: string}
+      state: {type: string}
+      visit: {type: integer}
+      attempt: {type: integer}
+      progress: {type: object}
+    required: [item, state, visit, attempt, progress]
 - name: stage.reported
   kind: registry.entry
   meta:
