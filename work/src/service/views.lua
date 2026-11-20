@@ -154,13 +154,13 @@ local function create(request: types.CreateViewRequest, component_id: string?): 
     if aerr then return nil, aerr end
     local verr = M.validate(request.board_id, request.view)
     if verr then return nil, verr end
-    local service, serr = component.get_service()
-    if serr or not service then return nil, serr :: error? end
     local registration = { component_id = component_id, impl_id = KIND, parent_id = not request.personal and request.board_id or nil,
         private_context = { board_id = request.board_id, view = request.view },
         meta = { title = request.title or "View", board_id = request.board_id } }
     local out, err
     if request.personal then
+        local service, serr = component.get_service()
+        if serr or not service then return nil, serr :: error? end
         out, err = service:register(registration)
     else
         out = child_registration.register_owned_child(registration)
