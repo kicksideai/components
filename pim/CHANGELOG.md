@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/kicksideai/components/compare/pim-v0.1.6...pim-v0.1.7) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim:** seek sparse indexed equality queries ([#193](https://github.com/kicksideai/components/issues/193)) ([5cbb237](https://github.com/kicksideai/components/commit/5cbb2379e520eea785b755975780f6ae6127b00b))
+
 ## [0.1.6](https://github.com/kicksideai/components/compare/pim-v0.1.5...pim-v0.1.6) (2026-11-20)
 
 
