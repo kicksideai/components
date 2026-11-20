@@ -101,8 +101,10 @@ local function define()
             test.eq(release(h, "RDG-moss-40", { channels = { "marketplace" } }).outcomes[1].outcome, "not_ready")
             local stale = h.call("release", { items = { { product = { sku = "RDG-moss-40" }, expect_version = 99 } } })
             test.eq(stale.outcomes[1].outcome, "conflict")
+            test.eq(stale.outcomes[1].findings[1].code, "version_conflict")
             local model = h.call("release", { items = { { product = { sku = "RDG" }, expect_version = 999 } } })
             test.eq(model.outcomes[1].outcome, "conflict")
+            test.eq(model.outcomes[1].findings[1].code, "version_conflict")
         end)
 
         test.it("refuses release and withdraw naming a channel the schema lacks", function()
@@ -192,8 +194,16 @@ local function define()
             local archived = release(h, "RDG-moss-41")
             test.eq(archived.outcomes[1].outcome, "invalid")
             test.eq(archived.outcomes[1].findings[1].code, "inactive")
-            local missing = h.call("release", { items = { { product = { sku = "RDG-moss-42" } } } })
-            test.eq(missing.outcomes[1].outcome, "conflict")
+            local invalid = h.call("release", { items = {
+                { product = { sku = "RDG-moss-42" } },
+                { product = { sku = "RDG-moss-42" }, expect_version = "1" },
+                { product = { sku = "RDG-moss-42" }, expect_version = 1.5 },
+                { product = { sku = "RDG-moss-42" }, expect_version = "any" },
+            } })
+            for _, outcome in ipairs(invalid.outcomes) do
+                test.eq(outcome.outcome, "conflict")
+                test.eq(outcome.findings[1].code, "invalid_version")
+            end
             local releases = h.call("list_releases", { product = { sku = "RDG-moss-42" } })
             test.eq(#releases.releases, 0)
             local many: { Map } = {}
