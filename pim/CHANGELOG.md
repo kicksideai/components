@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/kicksideai/components/compare/pim-v0.1.9...pim-v0.1.10) (2026-11-20)
+
+
+### Bug Fixes
+
+* **pim:** publish proposal facts and preserve installed proposals ([#223](https://github.com/kicksideai/components/issues/223)) ([2a521a7](https://github.com/kicksideai/components/commit/2a521a7e02003c6de459fae2f4f543049f4a22be))
+
 ## [0.1.9](https://github.com/kicksideai/components/compare/pim-v0.1.8...pim-v0.1.9) (2026-11-20)
 
 

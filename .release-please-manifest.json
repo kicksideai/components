@@ -6,7 +6,7 @@
   "storage-s3": "0.2.4",
   "docscout": "0.1.18",
   "work": "0.1.16",
-  "pim": "0.1.9",
+  "pim": "0.1.10",
   "pim-admin": "0.1.6",
   "work-admin": "0.1.6"
 }
