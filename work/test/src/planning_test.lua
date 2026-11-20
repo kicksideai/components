@@ -53,6 +53,68 @@ local function issue(board, sprint_id)
 end
 
 local function define()
+    test.describe("Work Planning HTTP", function()
+        local preview_path = "/api/work/sprints/plan_close"
+        local close_path = "/api/work/sprints/close"
+
+        test.it("previews and commits rollover as a board writer", function()
+            local owner, member = scoped.admin(), scoped.member()
+            local board = create_board(owner)
+            local source = sprint(board, "sprint", true)
+            local target = sprint(board, "sprint", false)
+            local unfinished = issue(board, source)
+            local request = { board_id = board.id, sprint_id = source, rollover_id = target }
+
+            assert(board.call("grant", { subject_id = member.id, mask = 1 }))
+            local denied = member.http("POST", preview_path, request)
+            test.eq(denied.status, 403, denied.raw)
+            test.eq(denied.body.details.code, "planning_write_required")
+            assert(board.call("grant", { subject_id = member.id, mask = 3 }))
+            local planned = member.http("POST", preview_path, request)
+            test.eq(planned.status, 200, planned.raw)
+            test.is_true(planned.body.success)
+            local preview = planned.body.data
+            test.eq(preview.snapshot.rollover_id, target)
+            test.eq(#preview.snapshot.members, 1)
+            test.eq(preview.snapshot.members[1].item_id, unfinished)
+            test.eq(assert(steps.get(board, source)).item.state, "active")
+
+            local commit = { key = "http-close", snapshot = preview.snapshot, token = preview.token }
+            assert(board.call("grant", { subject_id = member.id, mask = 1 }))
+            local denied_commit = member.http("POST", close_path, commit)
+            test.eq(denied_commit.status, 403, denied_commit.raw)
+            assert(board.call("grant", { subject_id = member.id, mask = 3 }))
+            local closed = member.http("POST", close_path, commit)
+            test.eq(closed.status, 200, closed.raw)
+            test.is_true(closed.body.success)
+            test.is_true(closed.body.data.applied)
+            test.eq(assert(steps.get(board, source)).item.state, "closed")
+            test.eq(assert(steps.get(board, unfinished)).item.values.current_sprint.item, target)
+        end)
+
+        test.it("returns typed failures for an ineligible destination and a stale preview", function()
+            local owner = scoped.admin()
+            local board = create_board(owner)
+            local source = sprint(board, "sprint", true)
+            local request = { board_id = board.id, sprint_id = source, rollover_id = source }
+            local invalid = owner.http("POST", preview_path, request)
+            test.eq(invalid.status, 400, invalid.raw)
+            test.eq(invalid.body.kind, errors.INVALID)
+            test.eq(invalid.body.details.code, "planning_rollover_ineligible")
+
+            request.rollover_id = nil
+            local planned = owner.http("POST", preview_path, request)
+            test.eq(planned.status, 200, planned.raw)
+            local preview = planned.body.data
+            issue(board, source)
+            local stale = owner.http("POST", close_path, { key = "http-stale", snapshot = preview.snapshot, token = preview.token })
+            test.eq(stale.status, 409, stale.raw)
+            test.eq(stale.body.kind, errors.CONFLICT)
+            test.eq(stale.body.details.code, "planning_snapshot_stale")
+            test.eq(assert(steps.get(board, source)).item.state, "active")
+        end)
+    end)
+
     test.describe("planning pack", function()
         test.it("discovers and installs sprint, milestone, and tracked issue references", function()
             local admin = scoped.admin()

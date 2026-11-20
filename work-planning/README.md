@@ -43,3 +43,13 @@ request with the same key and preview returns the Work receipt.
 
 The Work trait contributes `WorkPlanCloseSprint` and `WorkCloseSprint` on boards
 with Planning active.
+
+Set `kickside.work.planning:api_router` to the authenticated Work HTTP router
+with `token_auth` and `endpoint_firewall`. The Work Planning member policy
+admits the following routes, which call the sprint contract as the request
+actor and return the standard Work HTTP envelope.
+
+- `POST /work/sprints/plan_close` accepts `board_id`, `sprint_id`, and optional
+  `rollover_id`.
+- `POST /work/sprints/close` accepts the preview's unchanged `snapshot` and
+  `token` with a `key`.

@@ -85,7 +85,7 @@ entries:
   modules: [uuid, hash]
   imports: *template_imports
   security:
-    policies: [kickside.work.security:apply_output_publish]
+    policies: [kickside.work.security:sync_call, kickside.work.security:apply_output_publish]
 - name: implementation
   kind: library.lua
   source: file://templates.lua

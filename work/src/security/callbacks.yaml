@@ -103,6 +103,7 @@ entries:
     - kickside.work.service:report
     - kickside.work.service:complete_stage
     - kickside.work.sink:stage_launch
+    - kickside.work.templates:instantiate
     - kickside.work.service:sync
     - kickside.work.jobs:migrate_batch
     - kickside.work.jobs:rebalance_batch

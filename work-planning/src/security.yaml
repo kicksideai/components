@@ -8,7 +8,7 @@ entries:
     title: Work Planning
     surface: kickside.work.planning
     intent: module_access
-    includes: ['kickside.work.planning:module_runtime']
+    includes: ['kickside.work.planning:module_runtime', 'kickside.work.planning:member_endpoints']
   groups: []
   policy:
     resources:
@@ -37,7 +37,19 @@ entries:
     - kickside.work.planning:close
     - kickside.work.planning:adopt_fields
     - kickside.work.planning:sprints_binding
+    - kickside.work.planning.api:plan_close
+    - kickside.work.planning.api:close
     actions: [contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
+    effect: allow
+- name: member_endpoints
+  kind: security.policy
+  meta: {private: true}
+  groups: []
+  policy:
+    resources:
+    - kickside.work.planning.api:plan_close.endpoint
+    - kickside.work.planning.api:close.endpoint
+    actions: access
     effect: allow
 - name: user_security_scope
   kind: ns.requirement
@@ -46,3 +58,4 @@ entries:
   targets:
   - {entry: 'kickside.work.planning:module_access', path: '.groups +='}
   - {entry: 'kickside.work.planning:module_runtime', path: '.groups +='}
+  - {entry: 'kickside.work.planning:member_endpoints', path: '.groups +='}

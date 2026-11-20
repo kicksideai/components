@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local test = require("test")
 local fixture = require("fixture")
+local scoped = require("scoped")
 local steps = require("steps")
 local uuid = require("uuid")
 local sql = require("sql")
@@ -69,6 +70,62 @@ local function deliver(h: fixture.Handle, template: Map, identity: string, attem
 end
 
 return { run = test.run_cases(function()
+    test.describe("Work Templates HTTP", function()
+        test.it("lists active versions for a reader and instantiates the selected version for a writer", function()
+            local owner, member = scoped.admin(), scoped.member()
+            local board = scoped.board(owner)
+            activate(board)
+            local first = publish(board, "First preset")
+            local second = publish(board, "Second preset")
+            local path = member.route(board.id, "templates")
+
+            test.eq(member.http("GET", path).status, 403)
+            assert(board.call("grant", { subject_id = member.id, mask = 1 }))
+            local list = member.http("GET", path)
+            test.eq(list.status, 200, list.raw)
+            test.is_true(list.body.success)
+            local versions = {}
+            for _, template in ipairs(list.body.data.templates) do versions[template.version] = template.title end
+            test.eq(#list.body.data.templates, 2)
+            test.eq(versions[first.version], "First preset")
+            test.eq(versions[second.version], "Second preset")
+
+            local request = { template_id = "weekly", version = first.version, key = "http-create" }
+            local denied = member.http("POST", path .. "/instantiate", request)
+            test.eq(denied.status, 403, denied.raw)
+            test.eq(denied.body.kind, errors.PERMISSION_DENIED)
+            assert(board.call("grant", { subject_id = member.id, mask = 3 }))
+            local result = member.http("POST", path .. "/instantiate", request)
+            test.eq(result.status, 200, result.raw)
+            test.is_true(result.body.success)
+            local created = result.body.data.outcomes[1]
+            test.eq(created.status, "applied")
+            test.eq(assert(steps.get(board, created.item)).item.values.title, "First preset")
+            local replay = member.http("POST", path .. "/instantiate", request)
+            test.eq(replay.status, 200, replay.raw)
+            test.is_true(replay.body.data.replayed)
+            test.eq(replay.body.data.outcomes[1].item, created.item)
+        end)
+
+        test.it("returns typed failures for an inactive catalog and an unknown version", function()
+            local owner = scoped.admin()
+            local board = scoped.board(owner)
+            local path = owner.route(board.id, "templates")
+            local inactive = owner.http("GET", path)
+            test.eq(inactive.status, 404, inactive.raw)
+            test.eq(inactive.body.kind, errors.NOT_FOUND)
+            test.eq(inactive.body.details.code, "plugin_inactive")
+
+            activate(board)
+            local missing = owner.http("POST", path .. "/instantiate", {
+                template_id = "weekly", version = uuid.v4(), key = "http-missing",
+            })
+            test.eq(missing.status, 404, missing.raw)
+            test.eq(missing.body.kind, errors.NOT_FOUND)
+            test.eq(missing.body.details.code, "template_version_not_found")
+        end)
+    end)
+
     test.describe("Work templates", function()
         test.it("publishes immutable versions and lists a board catalog only after activation", function()
             local h = fixture.board()

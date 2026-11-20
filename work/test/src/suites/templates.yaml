@@ -11,6 +11,7 @@ entries:
   imports:
     test: wippy.test:test
     fixture: app:fixture
+    scoped: app:scoped
     steps: app:steps
 - name: templates_recurring
   kind: function.lua
