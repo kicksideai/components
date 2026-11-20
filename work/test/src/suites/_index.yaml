@@ -541,6 +541,7 @@ entries:
   method: run
   modules:
   - funcs
+  - json
   - time
   imports:
     test: wippy.test:test

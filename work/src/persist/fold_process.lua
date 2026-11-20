@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local sql = require("sql")
+local canonical_json = require("canonical_json")
 local jobs = require("jobs")
 local consts = require("consts")
 local store = require("store")
@@ -92,6 +93,12 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
     local root = item
     item = process.for_visit(root, body.visit) or root
     local work = item.work :: types.ProcessData
+    local progress: unknown = sql.NULL
+    if body.progress then
+        local encoded, encode_err = canonical_json.encode(canonical_json.object(body.progress))
+        if encode_err then return encode_err end
+        progress = encoded
+    end
     if event.type == consts.EVENTS.STAGE_ENTERED then
         work.attempt, work.waiting = body.attempt, nil
         work.stage_delivery = body.flow_ref and { state = body.state :: string, flow_ref = body.flow_ref } or nil
@@ -107,13 +114,17 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
         if serr then return serr end
         err = fold_batch.exec(tx, [[INSERT INTO kickside_work_stage_run (board_id,item_id,visit,attempt,state,started)
             VALUES ($1,$2,$3,$4,$5,$6)]], { board.board_id, item.item_id, body.visit, body.attempt, body.state, body.at })
+    elseif event.type == consts.EVENTS.STAGE_PROGRESSED then
+        err = fold_batch.exec(tx, [[UPDATE kickside_work_stage_run SET progress=$1
+            WHERE board_id=$2 AND item_id=$3 AND visit=$4 AND attempt=$5]],
+            { progress, board.board_id, item.item_id, body.visit, body.attempt })
     elseif event.type == consts.EVENTS.STAGE_REPORTED then
         err = fold_batch.exec(tx, [[INSERT INTO kickside_work_stage_run (board_id,item_id,visit,attempt,state,started,finished,outcome,outputs,progress,flow_run)
             VALUES ($1,$2,$3,$4,$5,$6,$6,$7,$8,$9,$10)
             ON CONFLICT (board_id,item_id,visit,attempt) DO UPDATE SET finished=excluded.finished,outcome=excluded.outcome,
-                outputs=excluded.outputs,progress=excluded.progress,flow_run=excluded.flow_run]],
+                outputs=excluded.outputs,progress=COALESCE(excluded.progress,kickside_work_stage_run.progress),flow_run=excluded.flow_run]],
             { board.board_id, item.item_id, body.visit, body.attempt, body.state, body.at, body.outcome,
-                store.encode(body.outputs), store.encode(body.progress), event.trace_context and event.trace_context.run_id or sql.NULL })
+                store.encode(body.outputs), progress, event.trace_context and event.trace_context.run_id or sql.NULL })
         work.waiting = true
         if work.timer_due then work.timer_due[consts.STAGE_TIMER_PREFIX .. body.attempt] = nil end
         local p, perr = store.process(tx, board, item)

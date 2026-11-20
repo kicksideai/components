@@ -17,7 +17,7 @@ type TargetRef = { board: string?, item: string?, kind: string?, id: string? }
 type Op = {
     completion: boolean?, -- Private receiver marker; public request schemas reject this field.
     moved_from: domain.Target?, operation_id: string?,
-    visit: integer?, attempt: integer?, outcome: string?, outputs: domain.JsonObject?, progress: domain.JsonObject?, decision: string?, timer: string?, scheduled_at: string?, timer_life_at: string?, force: boolean?,
+    visit: integer?, attempt: integer?, kind: string?, outcome: string?, outputs: domain.JsonObject?, progress: domain.JsonObject?, decision: string?, timer: string?, scheduled_at: string?, timer_life_at: string?, force: boolean?,
     op: string, type: string?, parent: string | boolean | nil, values: { [string]: unknown }?, clear: { string }?, unset: { string }?,
     region: string?, state: string?, item: string?, expect_version: integer?, transition: string?, target: TargetRef?, comment: string?,
     body: string?, delete: boolean?, expect_comment_version: integer?, mentions: unknown, after: unknown, before: unknown,
@@ -69,6 +69,7 @@ type Planned = { plans: { OpPlan }, writes: { Write }, ok: boolean }
 
 type PrepareContext = {
     importing: boolean?,
+    keyed: boolean?,
     auto: domain.AutoBudget,
     db: sql.DB | sql.Transaction, dialect: string, board: domain.Board, items: { [string]: domain.Item }, base: { [string]: integer },
     peer_boards: { [string]: domain.Board }?, peer_errors: { [string]: error }?,

@@ -334,6 +334,7 @@ entries:
   kind: library.lua
   source: file://process_report.lua
   imports:
+    canonical_json: kickside.contract:canonical_json
     process: kickside.work.domain:process
     flow: kickside.work.command:flow
     read_rows: kickside.work.persist:read_rows

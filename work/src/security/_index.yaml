@@ -50,6 +50,7 @@ entries:
     - kickside.work.binding:board
     - kickside.work.binding:registry
     - kickside.work.binding:view
+    - kickside.work.blocks:wait
     - kickside.work.domain:validate_tool
     - kickside.work.extensions:plugin_projections
     - kickside.work.persist:publish_meta

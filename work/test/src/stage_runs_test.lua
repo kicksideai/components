@@ -4,6 +4,7 @@ local fixture = require("fixture")
 local steps = require("steps")
 local store = require("store")
 local funcs = require("funcs")
+local json = require("json")
 local scoped = require("scoped")
 local time = require("time")
 
@@ -43,6 +44,114 @@ local function report(h: fixture.Handle, id: string, visit: integer, outcome: st
     test.eq(out.outcomes[1].status, "applied")
 end
 local function define()
+    test.describe("stage progress", function()
+        test.it("checkpoints an active attempt and replays its keyed receipt after completion", function()
+            local h = fixture.board({ declaration = transition_process() })
+            local id = steps.create(h, "task")
+            local item = { id = id }
+            local before = assert(h.call("list_stage_runs", { item = item })).stage_runs[1]
+            local heartbeat = { item = id, visit = before.visit, attempt = before.attempt,
+                kind = "progress", key = "checkpoint", progress = { log = string.rep("x", 65526) } }
+            local written, err = h.call("report", heartbeat)
+            assert(written, steps.detail(err))
+            test.eq(written.outcomes[1].status, "applied")
+            local current = assert(h.call("list_stage_runs", { item = item })).stage_runs[1]
+            test.eq(current.started_at, before.started_at)
+            test.eq(current.progress.log, heartbeat.progress.log)
+            test.is_nil(current.finished_at); test.is_nil(current.outcome); test.is_nil(current.outputs)
+            test.eq(assert(steps.get(h, id)).item.state, "triage")
+            local replayed = assert(h.call("report", heartbeat))
+            test.is_true(replayed.replayed); test.eq(replayed.seq, written.seq)
+
+            local conflict, conflict_err = h.call("report", { item = id, visit = 1, attempt = 1,
+                kind = "progress", key = heartbeat.key, progress = { count = 2 } })
+            test.is_nil(conflict)
+            test.eq(conflict_err:kind(), errors.CONFLICT)
+            local rejected = assert(h.call("report", { item = id, visit = 1, attempt = 1,
+                kind = "progress", key = "large", progress = { log = string.rep("x", 65527) } }))
+            test.eq(rejected.outcomes[1].findings[1].code, "stage_progress_limit")
+            local latest = assert(h.call("report", { item = id, visit = 1, attempt = 1,
+                kind = "progress", key = "latest", progress = { step = 2 } }))
+            test.eq(latest.outcomes[1].status, "applied")
+            local passed = assert(h.call("report", { item = id, visit = 1, attempt = 1,
+                outcome = "passed", outputs = { artifact = "build" } }))
+            test.eq(passed.outcomes[1].status, "applied")
+            local terminal = assert(h.call("list_stage_runs", { item = item })).stage_runs[1]
+            test.eq(terminal.outcome, "passed"); test.not_nil(terminal.finished_at)
+            test.eq(terminal.outputs.artifact, "build")
+            test.eq(terminal.progress.step, 2); test.is_nil(terminal.progress.log)
+            test.eq(assert(h.call("report", heartbeat)).seq, written.seq)
+            heartbeat.key = "late"
+            test.eq(assert(h.call("report", heartbeat)).outcomes[1].findings[1].code, "stage_attempt_finished")
+
+            local terminal_events, progress_events = 0, 0
+            for _, event in ipairs(steps.events(h)) do
+                if event.type == "kickside.work.events:stage.reported" then terminal_events = terminal_events + 1 end
+                if event.type == "kickside.work.events:stage.progressed" then progress_events = progress_events + 1 end
+            end
+            test.eq(terminal_events, 1); test.eq(progress_events, 2)
+        end)
+
+        test.it("fences visit and attempt and requires a keyed progress-only request", function()
+            local d = transition_process()
+            d.processes[1].states[1].run.retry = { max = 2, backoff = "PT0.1S" }
+            local h = fixture.board({ declaration = d })
+            local id = steps.create(h, "task")
+            local failed = assert(h.call("report", { item = id, visit = 1, attempt = 1, outcome = "failed" }))
+            test.eq(failed.outcomes[1].status, "applied")
+            steps.wait_for("second stage attempt", function()
+                return assert(h.call("list_stage_runs", { item = { id = id } })).stage_runs[1].attempt == 2
+            end)
+            for _, case in ipairs({ { 2, 2, "stage_visit_mismatch" }, { 1, 3, "stage_attempt_mismatch" },
+                { 1, 1, "stage_attempt_finished" } }) do
+                local result = assert(h.call("report", { item = id, kind = "progress", key = case[3],
+                    visit = case[1], attempt = case[2], progress = { step = 1 } }))
+                test.eq(result.outcomes[1].findings[1].code, case[3])
+            end
+            local request = { item = id, kind = "progress", visit = 1, attempt = 2, progress = { step = 2 } }
+            local no_key, key_err = h.call("report", request)
+            test.is_nil(no_key); test.eq(key_err:kind(), errors.INVALID)
+            request.key, request.outputs = "with-output", { artifact = "premature" }
+            local with_outputs, outputs_err = h.call("report", request)
+            test.is_nil(with_outputs); test.eq(outputs_err:kind(), errors.INVALID)
+            local no_outcome, outcome_err = h.call("report", { item = id, visit = 1, attempt = 2 })
+            test.is_nil(no_outcome); test.eq(outcome_err:kind(), errors.INVALID)
+            local op = { op = "report", item = id, kind = "progress", visit = 1, attempt = 2, progress = { step = 2 } }
+            test.eq(steps.one(h, op).findings[1].code, "stage_progress_key_required")
+            local batch = assert(steps.apply(h, {
+                { op = "report", item = id, visit = 1, attempt = 2, outcome = "failed" }, op,
+            }, { key = "mixed" }))
+            test.is_true(batch.outcomes[1].rolled_back)
+            test.eq(batch.outcomes[2].findings[1].code, "stage_attempt_finished")
+        end)
+
+        test.it("publishes the same checkpoint over the report tool and HTTP", function()
+            local h = scoped.board(scoped.admin(), transition_process())
+            local item = steps.create(h, "task")
+            local worker = scoped.member()
+            assert(h.call("grant", { subject_id = worker.id, mask = 3 }))
+            local tool = funcs.new():with_actor(worker.actor):with_scope(worker.scope):with_context({ board_id = h.id })
+            local result, err = tool:call("kickside.work.traits:report", {
+                item = item, kind = "progress", visit = 1, attempt = 1, key = "tool",
+                progress = { step = 1, details = table.create(0, 1) } })
+            assert(result, steps.detail(err))
+            test.is_true(result.success); test.eq(result.outcomes[1].status, "applied")
+            local checkpoint = assert(worker.call("list_stage_runs", { item = { id = item } }, h.id)).stage_runs[1]
+            test.eq(checkpoint.progress.step, 1)
+            test.eq(json.encode(checkpoint.progress.details), "{}")
+            local response = worker.http("POST", "/" .. h.id .. "/report", {
+                item = item, kind = "progress", visit = 1, attempt = 1, key = "http", progress = {} })
+            test.eq(response.status, 200)
+            test.eq(response.body.data.outcomes[1].status, "applied")
+            local read = worker.http("POST", "/" .. h.id .. "/list_stage_runs", { item = { id = item } })
+            test.eq(read.status, 200)
+            local run = read.body.data.stage_runs[1]
+            test.not_nil(run.progress)
+            test.eq(json.encode(run.progress), "{}")
+            test.is_nil(run.finished_at)
+        end)
+    end)
+
     test.describe("stage routing", function()
         test.it("routes each of three automated stages through its own pass transition", function()
             local h = fixture.board({ declaration = declaration() })

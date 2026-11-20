@@ -300,7 +300,7 @@ local function define()
             test.is_true(forced)
         end)
 
-        test.it("bounds report outputs and records progress before taking on_fail at the attempt limit", function()
+        test.it("bounds terminal report payloads before taking on_fail at the attempt limit", function()
             local d = definition()
             local p = d.processes[1]
             p.states[2] = { id = "doing", category = "started", kind = "automated", run = { stage = "build", retry = { max = 1, backoff = "PT1S" }, on_fail = "stop" } }
@@ -311,7 +311,11 @@ local function define()
             local oversized = assert(h.call("report", { item = id, visit = 2, attempt = 1, outcome = "failed", outputs = { log = string.rep("x", 65536) } }))
             test.eq(oversized.outcomes[1].findings[1].code, "stage_outputs_limit")
             test.eq(view(h, id).state, "doing")
-            assert(h.call("report", { item = id, visit = 2, attempt = 1, outcome = "failed", progress = { build = "failed", nodes = string.rep("p", 70000) } }))
+            local large_progress = assert(h.call("report", { item = id, visit = 2, attempt = 1, outcome = "failed",
+                progress = { nodes = string.rep("p", 65536) } }))
+            test.eq(large_progress.outcomes[1].findings[1].code, "stage_progress_limit")
+            test.eq(view(h, id).state, "doing")
+            assert(h.call("report", { item = id, visit = 2, attempt = 1, outcome = "failed", progress = { build = "failed" } }))
             test.eq(view(h, id).state, "canceled")
             test.eq(rows.scalar("SELECT COUNT(*) AS n FROM kickside_work_stage_run WHERE board_id = $1 AND item_id = $2 AND outcome = 'failed' AND progress IS NOT NULL", { h.id, id }), 1)
         end)

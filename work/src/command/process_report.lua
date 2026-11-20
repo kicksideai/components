@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local consts = require("consts")
+local canonical_json = require("canonical_json")
 local read_rows = require("read_rows")
 local values = require("values")
 local flow = require("flow")
@@ -24,6 +25,24 @@ function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     local work = item.work :: domain.ProcessData
     if op.attempt ~= work.attempt then return M.invalid("stage_attempt_mismatch", "report attempt differs from the current attempt") end
     if work.waiting then return M.invalid("stage_attempt_finished", "stage attempt already finishes") end
+    if op.progress then
+        local progress = canonical_json.object(op.progress) :: domain.JsonObject
+        local encoded, encode_err = canonical_json.encode(progress)
+        if not encoded then return M.invalid("stage_progress_invalid", tostring(encode_err)) end
+        if #encoded > consts.LIMITS.stage_progress then return M.invalid("stage_progress_limit", "stage progress exceeds 64 KiB") end
+        op.progress = progress
+    end
+    if op.kind == "progress" then
+        if not ctx.keyed then return M.invalid("stage_progress_key_required", "progress reports require a command key") end
+        if op.outcome ~= nil or op.outputs ~= nil or op.progress == nil then
+            return M.invalid("stage_progress_invalid", "progress reports require progress and omit outcome and outputs")
+        end
+        local group = M.item_group(item.item_id)
+        local event = M.event(consts.EVENTS.STAGE_PROGRESSED, group,
+            { item = item.item_id, state = item.state, visit = op.visit, attempt = op.attempt, progress = op.progress })
+        item.version = item.version + 1
+        return done(ctx, item, group, { event })
+    end
     if not consts.STAGE_OUTCOMES[op.outcome :: string] then return M.invalid("stage_outcome_invalid", "outcome is passed, failed or canceled") end
     if #values.canonical(op.outputs or {}) > consts.LIMITS.stage_outputs then return M.invalid("stage_outputs_limit", "stage outputs exceed 64 KB") end
     return H.finish(ctx, target, op, {})

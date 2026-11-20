@@ -64,11 +64,24 @@ entries:
   - registry
   - json
   - funcs
+  - time
   imports:
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
     blocks: kickside.blocks:blocks
+    scoped: app:scoped
+- name: agent_queue_test
+  kind: function.lua
+  meta: { type: test, suite: kickside_work, timeout: 120s }
+  source: file://agent_queue_test.lua
+  method: run
+  modules: [funcs, json, time, security]
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    scoped: app:scoped
 - name: traits_test
   kind: function.lua
   meta:

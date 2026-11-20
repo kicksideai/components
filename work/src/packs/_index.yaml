@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.packs
+entries:
+- name: agent_queue
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Agent Queue
+    version: '1.0.0'
+    icon: tabler:list-check
+    description: Queue tasks with version-fenced claims and automatic release on expiry.
+  data:
+    schema:
+      fields:
+      - {code: title, form: text, title: Title}
+      - {code: claimant, type: principal, index: key, title: Claimant}
+      - {code: claim_expires_at, form: time, title: Claim expires at}
+      item_types:
+      - {id: task, title: Task, process: agent_queue, fields: [title, claimant, claim_expires_at]}
+    processes:
+    - id: agent_queue
+      initial: queued
+      states:
+      - {id: queued, name: Queued, category: unstarted}
+      - id: claimed
+        name: Claimed
+        category: started
+        require: [claimant, claim_expires_at]
+        timers:
+        - id: claim_expiry
+          at_field: claim_expires_at
+          interrupting: true
+          then: {transition: release}
+      - {id: done, name: Done, category: completed}
+      transitions:
+      - {id: claim, from: [queued], to: claimed}
+      - {id: renew, from: [claimed], to: claimed}
+      - id: release
+        from: [claimed]
+        to: queued
+        set: &clear_claim
+        - {field: claimant, clear: true}
+        - {field: claim_expires_at, clear: true}
+      - {id: complete, from: [claimed], to: done, set: *clear_claim}
+    views: []
+    automations: []
+    traits: []
+    requires: []
+    starter: {items: [], default: false}
