@@ -156,6 +156,22 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
             selection[#selection + 1] = group_columns[i] .. " AS group_" .. i
         end
     end
+    local measures: { types.MeasureColumn }? = nil
+    if q.measures then
+        measures = {}
+        for i, measure in ipairs(q.measures) do
+            local target, err = resolve(measure.field)
+            if err or not target then return nil, err or invalid("unknown measure field") end
+            local form = target.shape.form
+            if target.set or measure.field == "key" or (form ~= "int" and form ~= "dec") then
+                return nil, invalid("sum requires an indexed scalar int or dec field")
+            end
+            local decimal_key = form == "dec" and target.kind == "key"
+            local scale = decimal_key and 12 or (target.kind == "number" and target.shape.config.scale or 0)
+            measures[i] = { id = measure.id, scale = scale, decimal_key = decimal_key }
+            selection[#selection + 1] = "CAST(i." .. target.column .. " AS TEXT) AS measure_" .. i
+        end
+    end
     local ranges: { domain.Condition } = { { sql = "1 = 1", args = {} } }
     if q.after then
         if #columns == 1 then
@@ -182,7 +198,8 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
         end
     end
     local first = table.remove(pages, 1)
-    local plan: types.Plan = { query = first:limit(take + 1), tails = pages, count = counted, groups = #group_columns, take = take }
+    local plan: types.Plan = { query = first:limit(take + 1), tails = pages, count = counted, groups = #group_columns,
+        measures = measures, take = take }
     if #scans > 0 then
         -- The walk already checked ownership and board visibility.
         local outer = window.order(apply(sql.builder.select(table.unpack(selection)), predicates_only), columns, order)

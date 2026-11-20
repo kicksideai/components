@@ -60,6 +60,44 @@ it('offers all formula result forms and all Work option categories', async () =>
   expect(draft.fields![1].options![0].category).toBe('backlog')
   w.unmount()
 })
+it('uses the custom type’s form, index choices and configuration for a new field', async () => {
+  const { default: FieldsEditor } = await import('./FieldsEditor.vue')
+  const draft = reactive<Declaration>({})
+  const installedTypes = [{ id: 'app:score_type', title: 'Score', form: 'int' as const, indexes: ['number'], config_schema: {
+    type: 'object', required: ['limit'], properties: { limit: { type: 'integer', title: 'Score limit', minimum: 1 } },
+  } }]
+  const w = mount(FieldsEditor, { props: { draft, installedTypes } })
+  try {
+    await w.get('.work-add-definition input').setValue('score')
+    await w.get('.work-add-definition button').trigger('click')
+    await w.get('.work-definition-toggle').trigger('click')
+    const control = (label: string) => w.findAll('label').find(item => item.text().startsWith(label))!.getComponent(Select)
+    await control('Search support').setValue('key')
+    const kind = control('Kind')
+    expect(kind.props('options')).toContainEqual({ value: 'app:score_type', label: 'Score' })
+    expect(w.get('[aria-label="Kind"]').attributes('role')).toBe('combobox')
+    expect(w.text()).not.toContain('Custom field type')
+    await kind.setValue('app:score_type')
+    expect(draft.fields![0]).toMatchObject({ type: 'app:score_type', form: 'int' })
+    expect(draft.fields![0].index ?? 'none').toBe('none')
+    const index = control('Search support')
+    expect(index.props('options')?.map(option => option.value)).toEqual(['none', 'number'])
+    await index.setValue('number')
+    expect(w.emitted('validity')?.at(-1)).toEqual(['config-0', false])
+    const limit = w.get('input[aria-label="Score limit"]')
+    await limit.setValue('5')
+    await limit.trigger('blur')
+    expect(draft.fields![0]).toMatchObject({ index: 'number', config: { limit: 5 } })
+    expect(w.emitted('validity')?.at(-1)).toEqual(['config-0', true])
+    await kind.setValue('text')
+    expect(draft.fields![0]).toMatchObject({ form: 'text' })
+    expect(draft.fields![0]).not.toHaveProperty('type')
+    expect(draft.fields![0]).not.toHaveProperty('config')
+    expect(draft.fields![0]).not.toHaveProperty('index')
+  } finally {
+    w.unmount()
+  }
+})
 it('retains backend predicate forms and combines validity from both condition editors', async () => {
   const { default: JsonInput } = await import('./JsonInput.vue')
   const w = mount(ConditionEditor, { props: { draft: {}, label: 'Release', modelValue: { awaiting: true } } })

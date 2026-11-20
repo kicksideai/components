@@ -9,6 +9,7 @@ local M = {}
 type Attempt = pipeline.Attempt
 M.Attempt = Attempt
 M.marker = pipeline.marker
+M.apply_fingerprint = pipeline.apply_fingerprint
 local catalog_id = ""
 local generation_changes = false
 local revocation: { [string]: unknown }? = nil

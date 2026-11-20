@@ -27,7 +27,7 @@ entries:
     tools:
     - kickside.work.traits:get_schema
     attachment: app:ui_attachment
-    seams: []
+    seams: [app:score_type]
     config_schema:
       type: object
       properties:

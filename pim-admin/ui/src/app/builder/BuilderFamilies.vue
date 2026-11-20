@@ -1,40 +1,71 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { CODE, setList } from '../../state'
+import { setList } from '../../state'
+import AddSchemaCode from './AddSchemaCode.vue'
 import DefinitionList from '../../shared/DefinitionList.vue'
 import DefinitionRow from '../../shared/DefinitionRow.vue'
-import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 // Families: which aspects a product shape carries, how it varies by level,
 // and what each channel requirement needs.
-import { computed, ref } from 'vue'
+import { computed, useId } from 'vue'
 import { Icon } from '@iconify/vue'
-import type { Declaration, FamilyDecl, RemoveDecl, RequirementDecl, SchemaView } from '../../types'
+import type { Declaration, FamilyDecl, RemoveDecl, RequirementDecl, SchemaOptions, SchemaView, VariationDecl } from '../../types'
 import { humanize } from '../../forms'
 import ChipPicker from './ChipPicker.vue'
 
-const props = defineProps<{ draft: Declaration; schema: SchemaView }>()
+const props = defineProps<{ draft: Declaration; schema: SchemaView; options: SchemaOptions }>()
 const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string] }>()
+const familyPrefix = useId()
+function fieldId(family: FamilyDecl, name: string): string {
+  return familyPrefix + '-' + family.code + '-' + name
+}
+const canEdit = computed(() => props.schema.access.admin)
 const families = computed(() => (props.draft.families ?? []).filter((f) => f.code !== 'generic'))
+const pluginFields = computed(() => {
+  const plugins = new Set(props.draft.plugins?.map(p => p.use))
+  return Object.entries(props.schema.attributes).filter(([, field]) => field.plugin && plugins.has(field.plugin))
+})
 const aspectOptions = computed(() => {
   const declared = (props.draft.aspects ?? []).map((a) => a.namespace)
-  const plugin = [...new Set(Object.entries(props.schema.attributes).filter(([, a]) => a.plugin).map(([code]) => code.split('.')[0]))]
+  const plugin = [...new Set(pluginFields.value.map(([code]) => code.split('.')[0]))]
   return [...declared, ...plugin.filter((p) => !declared.includes(p))].map((ns) => ({ value: ns, label: humanize(ns) }))
 })
-function attributesOf(f: FamilyDecl): { value: string; label: string }[] {
-  const out: { value: string; label: string }[] = []
-  for (const a of props.draft.aspects ?? []) if (f.aspects?.includes(a.namespace)) for (const x of a.attributes ?? []) out.push({ value: a.namespace + '.' + x.code, label: humanize(x.code) + ' (' + a.namespace + ')' })
-  for (const [code, a] of Object.entries(props.schema.attributes)) if (a.plugin && f.aspects?.includes(code.split('.')[0]) && !out.some((o) => o.value === code)) out.push({ value: code, label: humanize(code) + ' (' + code.split('.')[0] + ')' })
-  return out
+const typeForms = computed(() => new Map(props.options.types.map(type => [type.id, type.form])))
+function fieldLabel(code: string): string {
+  return `${humanize(code)} (${humanize(code.split('.')[0])})`
+}
+const fieldsByCode = computed(() => {
+  const fields = new Map<string, { value: string; label: string; canBeAxis: boolean }>()
+  function add(code: string, form: string | undefined, scope: string[] = [], cardinality = 'one') {
+    // compile_family requires one unscoped value and excludes text and records.
+    const canBeAxis = !!form && form !== 'text' && form !== 'record' && scope.length === 0 && cardinality === 'one'
+    fields.set(code, { value: code, label: fieldLabel(code), canBeAxis })
+  }
+  for (const group of props.draft.aspects ?? []) {
+    for (const field of group.attributes ?? []) {
+      const code = group.namespace + '.' + field.code
+      add(code, typeForms.value.get(field.type), field.scope, field.cardinality)
+    }
+  }
+  for (const [code, field] of pluginFields.value) add(code, field.form, field.scope, field.cardinality)
+  return fields
+})
+function attributesOf(family: FamilyDecl) {
+  return [...fieldsByCode.value.values()].filter(field => family.aspects?.includes(field.value.split('.')[0]))
+}
+function variationOptions(family: FamilyDecl, level: VariationDecl, kind: 'axes' | 'own') {
+  const selected = level[kind] ?? []
+  const claimed = new Set(levels(family).flatMap(other => [...(other.axes ?? []), ...(other.own ?? [])]))
+  const available = attributesOf(family).filter(field => selected.includes(field.value) ||
+    (!claimed.has(field.value) && (kind === 'own' || field.canBeAxis)))
+  // Selected fields can be removed even after a change to their field group or type.
+  return [...available, ...selected.filter(code => !available.some(field => field.value === code))
+    .map(code => ({ value: code, label: fieldLabel(code) }))]
 }
 const dimensions = computed(() => props.draft.dimensions ?? [])
-const newCode = ref('')
-function add() {
-  const code = newCode.value.trim()
-  if (!CODE.test(code) || (props.draft.families ?? []).some((f) => f.code === code)) return
+function add(code: string) {
   (props.draft.families ??= []).push({ code, aspects: [] })
-  newCode.value = ''
 }
 function remove(f: FamilyDecl) {
   props.draft.families!.splice(props.draft.families!.indexOf(f), 1)
@@ -49,12 +80,8 @@ function addLevel(f: FamilyDecl) {
 function requirements(f: FamilyDecl) {
   return f.requirements ?? []
 }
-const newReq = ref<Record<string, string>>({})
-function addRequirement(f: FamilyDecl) {
-  const id = (newReq.value[f.code] ?? '').trim()
-  if (!CODE.test(id) || requirements(f).some((r) => r.id === id)) return
+function addRequirement(f: FamilyDecl, id: string) {
   (f.requirements ??= []).push({ id, require: [] })
-  newReq.value[f.code] = ''
 }
 function contextOf(r: RequirementDecl, dim: string): string {
   return r.context?.[dim] ?? ''
@@ -72,48 +99,56 @@ function setContext(r: RequirementDecl, dim: string, member: string) {
   <DefinitionList :count="families.length" :columns="['code', 'details']">
     <DefinitionRow :title="humanize(f.code)" :code="f.code" v-for="f in families" :key="f.code">
       <template #details><span class="muted small">{{ f.aspects?.length ?? 0 }} {{ f.aspects?.length === 1 ? 'field group' : 'field groups' }}</span></template>
-      <template #actions><Button type="button" @click="remove(f)" :aria-label="'Remove ' + humanize(f.code)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
+      <template v-if="canEdit" #actions><Button type="button" @click="remove(f)" :aria-label="'Remove ' + humanize(f.code)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
       <div class="pim-aspect">
         <div class="pim-fields">
-          <div class="pim-f pim-w-full"><div class="pim-f-label"><label>Field groups</label><span class="pim-f-note">the fields this family's products carry</span></div>
-            <ChipPicker :model-value="f.aspects ?? []" :options="aspectOptions" @update:model-value="setList(f, 'aspects', $event)" /></div>
+          <div class="pim-f pim-w-full"><div class="pim-f-label"><label :id="fieldId(f, 'groups')">Field groups</label><span class="pim-f-note">the fields this family's products carry</span></div>
+            <ChipPicker :disabled="!canEdit" :labelledby="fieldId(f, 'groups')" :model-value="f.aspects ?? []" :options="aspectOptions" @update:model-value="setList(f, 'aspects', $event)" /></div>
         </div>
       </div>
       <div class="pim-aspect">
-        <header class="pim-aspect-head"><h3>Variation</h3><span class="muted small">model → variants → items; each level owns axes that make its children distinct</span></header>
+        <header class="pim-aspect-head"><h3>Variation</h3></header>
+        <p class="muted small pim-axis-help">Choose the fields that distinguish variants at each level. Each field can be used once.</p>
         <div class="pim-stack tight">
           <div v-for="(level, li) in levels(f)" :key="li" class="pim-level">
-            <div class="pim-level-head"><strong>Level {{ li + 1 }}</strong><Button type="button" aria-label="Remove level" @click="levels(f).splice(li, 1)" text severity="secondary" size="small"><Icon icon="tabler:x" /></Button></div>
+            <div class="pim-level-head"><strong>Level {{ li + 1 }}</strong><Button v-if="canEdit" type="button" aria-label="Remove level" @click="levels(f).splice(li, 1)" text severity="secondary" size="small"><Icon icon="tabler:x" /></Button></div>
             <div class="pim-fields">
-              <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Axes</label><span class="pim-f-note">key-indexed, one value each</span></div><ChipPicker :model-value="level.axes ?? []" :options="attributesOf(f)" @update:model-value="level.axes = $event" /></div>
-              <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Also owned here</label><span class="pim-f-note">other fields written at this level</span></div><ChipPicker :model-value="level.own ?? []" :options="attributesOf(f)" @update:model-value="$event.length ? (level.own = $event) : delete level.own" /></div>
+              <div class="pim-f pim-w-half">
+                <div class="pim-f-label"><label :id="fieldId(f, li + '-axes')">Axes</label></div>
+                <p class="muted small pim-axis-help">Choose a single-value field with no dimensions. Text and record fields are excluded.</p>
+                <ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, li + '-axes')" :model-value="level.axes ?? []" :options="variationOptions(f, level, 'axes')" placeholder="Add an axis" @update:model-value="level.axes = $event" />
+              </div>
+              <div class="pim-f pim-w-half">
+                <div class="pim-f-label"><label :id="fieldId(f, li + '-owned')">Also owned here</label></div>
+                <p class="muted small pim-axis-help">Other fields you edit at this level.</p>
+                <ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, li + '-owned')" :model-value="level.own ?? []" :options="variationOptions(f, level, 'own')" placeholder="Add a field" @update:model-value="$event.length ? (level.own = $event) : delete level.own" />
+              </div>
             </div>
           </div>
-          <Button type="button" @click="addLevel(f)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add level</Button>
+          <Button v-if="canEdit" type="button" @click="addLevel(f)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add level</Button>
         </div>
       </div>
       <div class="pim-aspect">
         <header class="pim-aspect-head"><h3>Requirements</h3><span class="muted small">what a channel needs before a product is ready</span></header>
         <div class="pim-stack tight">
           <div v-for="(r, ri) in requirements(f)" :key="r.id" class="pim-level">
-            <div class="pim-level-head"><strong class="mono">{{ r.id }}</strong><Button type="button" aria-label="Remove requirement" @click="requirements(f).splice(ri, 1)" text severity="secondary" size="small"><Icon icon="tabler:x" /></Button></div>
+            <div class="pim-level-head"><strong class="mono">{{ r.id }}</strong><Button v-if="canEdit" type="button" aria-label="Remove requirement" @click="requirements(f).splice(ri, 1)" text severity="secondary" size="small"><Icon icon="tabler:x" /></Button></div>
             <div class="pim-fields">
-              <div v-for="d in dimensions" :key="d.name" class="pim-f pim-w-third"><div class="pim-f-label"><label>{{ humanize(d.name) }}</label><span class="pim-f-note">context</span></div>
-                <Select :model-value="contextOf(r, d.name)" @update:model-value="setContext(r, d.name, $event)" :options="[{ value: '', label: 'not stated' }, { value: 'all', label: 'all members' }, ...(d.members).map((m) => ({ value: m, label: String(m) }))]" option-label="label" option-value="value" appendTo="self" /></div>
-              <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Required</label><span class="pim-f-note">must hold a value</span></div><ChipPicker :model-value="r.require ?? []" :options="attributesOf(f)" @update:model-value="setList(r, 'require', $event)" /></div>
-              <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Authored</label><span class="pim-f-note">must be set in the context itself, not by fallback</span></div><ChipPicker :model-value="r.authored ?? []" :options="attributesOf(f)" @update:model-value="setList(r, 'authored', $event)" /></div>
+              <div v-for="d in dimensions" :key="d.name" class="pim-f pim-w-third"><div class="pim-f-label"><label :id="fieldId(f, r.id + '-context-' + d.name)">{{ humanize(d.name) }}</label><span class="pim-f-note">context</span></div>
+                <Select :disabled="!canEdit" :aria-labelledby="fieldId(f, r.id + '-context-' + d.name)" :model-value="contextOf(r, d.name)" @update:model-value="setContext(r, d.name, $event)" :options="[{ value: '', label: 'not stated' }, { value: 'all', label: 'all members' }, ...(d.members).map((m) => ({ value: m, label: String(m) }))]" option-label="label" option-value="value" appendTo="self" /></div>
+              <div class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(f, r.id + '-required')">Required</label><span class="pim-f-note">must hold a value</span></div><ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, r.id + '-required')" :model-value="r.require ?? []" placeholder="Add a required field" :options="attributesOf(f)" @update:model-value="setList(r, 'require', $event)" /></div>
+              <div class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(f, r.id + '-authored')">Authored</label><span class="pim-f-note">must be set in the context itself, not by fallback</span></div><ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, r.id + '-authored')" :model-value="r.authored ?? []" placeholder="Add a field to author" :options="attributesOf(f)" @update:model-value="setList(r, 'authored', $event)" /></div>
             </div>
           </div>
-          <div class="row pim-add-row"><InputText v-model="newReq[f.code]" type="text" placeholder="requirement_id" @keydown.enter.prevent="addRequirement(f)" class="mono narrow" /><Button type="button" :disabled="!CODE.test(newReq[f.code] ?? '')" @click="addRequirement(f)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add requirement</Button></div>
+          <AddSchemaCode v-if="canEdit" label="Requirement code" action="Add requirement"
+            :existing="requirements(f).map(r => r.id)" @add="addRequirement(f, $event)" />
         </div>
       </div>
     </DefinitionRow>
-    <template #add>
-    <div class="row pim-add-row">
-      <InputText v-model="newCode" type="text" placeholder="new_family" @keydown.enter.prevent="add" class="mono" />
-      <Button type="button" :disabled="!CODE.test(newCode)" @click="add" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add family</Button>
-      <span class="muted small">Products without a family use the generic one.</span>
-    </div>
+    <template v-if="canEdit" #add>
+      <AddSchemaCode label="Family code" action="Add family" :existing="draft.families?.map(f => f.code)" @add="add">
+        <span class="muted small">Products without a family use the generic one.</span>
+      </AddSchemaCode>
     </template>
   </DefinitionList>
 </template>

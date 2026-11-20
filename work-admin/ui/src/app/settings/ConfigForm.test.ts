@@ -28,3 +28,13 @@ it('reports validation inline and keeps invalid configuration unsavable', async 
   await w.setProps({ modelValue: { max_files: 3 } })
   expect(w.find('[role=alert]').exists()).toBe(false); expect(w.emitted('validity')?.at(-1)).toEqual([true]); w.unmount()
 })
+it('reports validity only when the valid state changes', async () => {
+  const required = { ...schema, required: ['max_files'] }
+  const w = mount(ConfigForm, { props: { schema: required, modelValue: {} } })
+  await w.setProps({ modelValue: {} })
+  expect(w.emitted('validity')).toEqual([[false]])
+  await w.setProps({ modelValue: { max_files: 3 } })
+  await w.setProps({ modelValue: { max_files: 5 } })
+  expect(w.emitted('validity')).toEqual([[false], [true]])
+  w.unmount()
+})

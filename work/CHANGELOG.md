@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.16](https://github.com/kicksideai/components/compare/work-v0.1.15...work-v0.1.16) (2026-11-20)
+
+
+### Features
+
+* **work:** page grouped queries and sum measures ([#192](https://github.com/kicksideai/components/issues/192)) ([c0b0349](https://github.com/kicksideai/components/commit/c0b0349523e87ea2243466fe8f4544c1406cba5e))
+
+
+### Bug Fixes
+
+* **work:** derive tool schemas from contract vocabulary ([#227](https://github.com/kicksideai/components/issues/227)) ([d04e69b](https://github.com/kicksideai/components/commit/d04e69b1ab4bc9e78eb9f9391912f99967122bf1))
+
+## [0.1.15](https://github.com/kicksideai/components/compare/work-v0.1.14...work-v0.1.15) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** return custom field type descriptors ([#219](https://github.com/kicksideai/components/issues/219)) ([c4422a4](https://github.com/kicksideai/components/commit/c4422a496860722fed415503a797f91ef5421998))
+* **work:** version plugin contracts and replay retained events ([#183](https://github.com/kicksideai/components/issues/183)) ([2e5d59c](https://github.com/kicksideai/components/commit/2e5d59c7ffaf35650047822d7e29d9ad426cc469))
+
 ## [0.1.14](https://github.com/kicksideai/components/compare/work-v0.1.13...work-v0.1.14) (2026-11-20)
 
 

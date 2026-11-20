@@ -296,7 +296,7 @@ type ReleaseRequest = { items: { ReleaseItem }, idempotency: Idempotency?, trace
 type ProposeRequest = { items: { ApplyItem }, source: string?, origin: Origin?, provenance: JsonObject?, trace_context: TraceContext? }
 type Proposal = {
     proposal_id: string, source: string?, origin: JsonObject, provenance: JsonObject?, items: { ApplyItem }, base: { [string]: integer },
-    generation: integer,
+    generation: integer?,
     status: string, result: ApplyResult?, created_by: string, created_at: string, decided_by: string?, decided_at: string?,
 }
 type ProposeResult = { proposal_id: string, status: string }

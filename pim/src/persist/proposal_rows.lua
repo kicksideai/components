@@ -28,7 +28,7 @@ function M.submit(db: types.Executor, catalog_id: string, body: types.ProposalSu
     return nil
 end
 
-local function row(r: types.Row): (types.Proposal?, error?)
+function M.decode(r: types.Row): (types.Proposal?, error?)
     local decoded, err = store.decode_row(r, { proposal_id = "text", status = "text", created_by = "text", created_at = "text",
         origin = "json", items = "json", base = "json", result = "json?" })
     if err or not decoded then return nil, err end
@@ -36,12 +36,19 @@ local function row(r: types.Row): (types.Proposal?, error?)
     local origin: types.JsonObject = r.origin :: types.JsonObject
     local items: { types.ApplyItem } = r.items :: { types.ApplyItem }
     local base = r.base :: types.Row
-    local generation, gerr = store.need_int(base, "generation")
-    if gerr or not generation then return nil, gerr end
-    if type(base.versions) ~= "table" then return nil, failure.corrupt("proposal base lacks versions", "base") end
+    local versions = base
+    local generation: integer? = nil
+    -- Released proposals stored only the map of product IDs to versions.
+    if base.generation ~= nil or base.versions ~= nil then
+        local gerr: error?
+        generation, gerr = store.need_int(base, "generation")
+        if gerr or not generation then return nil, gerr end
+        if type(base.versions) ~= "table" then return nil, failure.corrupt("proposal base lacks versions", "base") end
+        versions = base.versions :: types.Row
+    end
     local result: types.ApplyResult? = r.result :: types.ApplyResult?
     return { proposal_id = r.proposal_id :: string, source = narrow.text(r.source), origin = origin, items = items,
-        base = base.versions :: { [string]: integer }, generation = generation,
+        base = versions :: { [string]: integer }, generation = generation,
         status = r.status :: string, result = result, created_by = r.created_by :: string, created_at = r.created_at :: string,
         decided_by = narrow.text(r.decided_by), decided_at = narrow.text(r.decided_at) } , nil
 end
@@ -50,7 +57,7 @@ function M.get(db: types.Executor, catalog_id: string, proposal_id: string): (ty
     local rows, err = db:query("SELECT * FROM kickside_pim_proposal WHERE catalog_id = $1 AND proposal_id = $2", { catalog_id, proposal_id })
     if err then return nil, errors.wrap(err, "proposal read failed") end
     if not rows or not rows[1] then return nil, nil end
-    return row(rows[1])
+    return M.decode(rows[1])
 end
 
 function M.list(db: types.Executor, catalog_id: string, status: string?, limit: integer, after: types.ProposalCursor?): ({ types.Proposal }?, error?)
@@ -70,7 +77,7 @@ function M.list(db: types.Executor, catalog_id: string, status: string?, limit: 
     if err then return nil, errors.wrap(err, "proposal list failed") end
     local out: { types.Proposal } = {}
     for _, r in ipairs(rows or {}) do
-        local p, derr = row(r)
+        local p, derr = M.decode(r)
         if derr or not p then return nil, derr end
         out[#out + 1] = p
     end

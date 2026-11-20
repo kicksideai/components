@@ -11,6 +11,12 @@ reset target until an accepted read reaches it, even if a notification supersede
 the first read; that reset is consumed once. Other concurrent drafts stay stale.
 Board selection and Back ask through the shared host confirmation before
 replacing an unsaved draft. Settings report dirty state across the widget boundary.
+On narrow screens, the board list and selected settings each use the full pane.
+Back to boards returns focus to the selected row. Board titles wrap in both
+surfaces, and the definition lists place metadata and row actions below the title
+when the available space cannot fit the desktop columns. Field controls have
+programmatic labels, and the reorder handle and row disclosure each have their
+own tab stop.
 Schemaless boards retain identity and independent access, and initialize through
 the ordinary declaration review/apply path at generation 0. Service errors remain
 retryable errors, separate from access denials. Duration controls contribute
@@ -52,7 +58,9 @@ zoom, and arrow keys move between states. The map accepts arrow-key panning,
 including after inspector resizing. A width change recomputes orientation and the
 initial or width-fitted view. Switching process resets the viewport and pending
 connection. Escape cancels a connection and clears selection. Styles load inside
-the owning ShadowRoot and use platform tokens in both themes.
+the owning ShadowRoot and use platform tokens in both themes. Closing an inspector
+with Escape or its close button returns focus to the map element or list action
+that opened it.
 
 Generated process identifiers respect Work’s 40-character bound while retaining the complete human title and a unique suffix. Manual transitions created by Add state never acquire an automatic default flag.
 Splitting a default automatic edge preserves its automatic continuation.
@@ -98,6 +106,13 @@ measures elapsed time in that state. Self-approval prevention excludes the perso
 who entered the current gate visit.
 
 Option IDs are nonempty, distinct strings without the field-identifier pattern. Their validity uses the editor instance identity so field removal or reordering cannot strand an invalid key.
+Kind lists built-in and installed plugin field types together. Selecting a plugin
+type updates the value form, clears incompatible search support and shows its
+schema-defined configuration beside the field properties. Required configuration
+blocks review, and the form reports validity only when it changes.
+At narrow widths, the selected board uses the full width and Back to boards uses
+the same draft confirmation as board selection. The Fields list keeps each row
+and the Add field action within the available width.
 Visibility supports eligible single text fields and option fields, explicit level
 IDs, shared holder selection, and the complete JSON declaration path. The backend
 validates limits and creates the required exact index.

@@ -204,7 +204,8 @@ function M.run(input: unknown): (reads.QueryResult?, error?)
     local first = request.after == nil
     return query.query({ group_by = first and view.group_by or nil, sub_group_by = first and view.sub_group_by or nil,
         board_id = context.board_id, where = view.where, order = view.order, scopes = view.scopes,
-        limit = request.limit, after = request.after, min_seq = request.min_seq })
+        limit = request.limit, after = request.after, group_after = request.group_after, group_limit = request.group_limit,
+        measures = request.measures, min_seq = request.min_seq })
 end
 -- get exposes presentation only after both component ACLs admit the caller.
 function M.get(input: unknown): (types.SavedView?, error?)

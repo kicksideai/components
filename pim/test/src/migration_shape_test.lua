@@ -4,14 +4,16 @@ local registry = require("registry")
 local store = require("store")
 local function define()
     test.describe("initial catalog schema", function()
-        test.it("creates all durable work tables and the seeded owner position in one migration", function()
+        test.it("registers the catalog migrations and creates durable tables and retention state", function()
             local entries = assert(registry.find({ ["meta.type"] = "migration" }))
             local ids = {}
             for _, entry in ipairs(entries) do
                 if tostring(entry.id):match("^kickside.pim.migrations:") then ids[#ids + 1] = tostring(entry.id) end
             end
-            test.eq(#ids, 1)
+            table.sort(ids)
+            test.eq(#ids, 2)
             test.eq(ids[1], "kickside.pim.migrations:01_catalog")
+            test.eq(ids[2], "kickside.pim.migrations:02_proposal_facts")
             local db = assert(store.open())
             for _, name in ipairs({ "merge", "release_job", "schema_work", "retention", "cleanup" }) do
                 local exists, err = store.table_exists(db, db:type(), "kickside_pim_" .. name)

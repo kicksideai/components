@@ -87,6 +87,28 @@ local function define()
                 end
             end
         end)
+        test.it("publishes an installed field type descriptor in board and tool options", function()
+            local h = fixture.board()
+            local options = assert(h.call("contract_request", { contract = "kickside.work:board", method = "schema_options", value = { board_id = h.id } }))
+            local contract = assert(registry.get("kickside.work:board"))
+            for _, method in ipairs(contract.data.methods) do
+                if method.name == "schema_options" then
+                    local ok, err = json.validate_string(method.output_schemas[1].definition, assert(json.encode(options)))
+                    test.is_true(ok, tostring(err))
+                end
+            end
+            for _, result in ipairs({ options, tool(h, "schema_options", {}) }) do
+                local descriptor
+                for _, field_type in ipairs(result.field_types or {}) do
+                    if field_type.id == "app:work_type" then descriptor = field_type end
+                end
+                test.not_nil(descriptor, "installed app:work_type must be discoverable")
+                test.eq(descriptor.form, "int")
+                test.eq(descriptor.indexes[2], "number")
+                test.eq(descriptor.config_schema.type, "object")
+                test.eq(descriptor.config_schema.additionalProperties, false)
+            end
+        end)
         test.it("encodes absent item values and value states as objects", function()
             local d = fixture.declaration(fixture.fresh_prefix())
             d.item_types[3].fields = {}

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.6](https://github.com/kicksideai/components/compare/work-admin-v0.1.5...work-admin-v0.1.6) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work-admin:** improve settings layout and keyboard access ([5e35ffa](https://github.com/kicksideai/components/commit/5e35ffa0fa2bba141cbc71b83ab507e2323e31b8))
+
+## [0.1.5](https://github.com/kicksideai/components/compare/work-admin-v0.1.4...work-admin-v0.1.5) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work-admin:** use custom field descriptors from Work ([#184](https://github.com/kicksideai/components/issues/184)) ([466d8c7](https://github.com/kicksideai/components/commit/466d8c7fba4a338f3693df520c8daa513fe650dd))
+
 ## [0.1.4](https://github.com/kicksideai/components/compare/work-admin-v0.1.3...work-admin-v0.1.4) (2026-11-20)
 
 

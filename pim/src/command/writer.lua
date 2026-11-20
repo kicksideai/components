@@ -326,10 +326,7 @@ local function execute(catalog_id: string, request: types.ApplyRequest, deadline
     if mode ~= "atomic" and mode ~= "independent" then return nil, invalid("mode must be atomic or independent") end
     local prepared: items.Prepared = { refined = {}, links = {} }
     local out, err = run(catalog_id, request.idempotency,
-        { op = "apply", items = request.items, mode = mode, source = request.source or "", import = request.import == true or nil,
-            expected_generation = request.expected_generation, origin = request.origin, provenance = request.provenance,
-            approval_item_id = request.approval_item_id },
-        request.trace_context,
+        pipeline.apply_fingerprint(request), request.trace_context,
         function(db: types.Executor, catalog: types.Catalog, _head: integer, settings: types.Policy): (types.Plan?, error?)
             local conflict = require_generation(request.expected_generation, catalog.generation)
             if conflict then return nil, conflict end
@@ -467,6 +464,10 @@ function M.decide(catalog_id: string, request: types.DecideRequest): (types.Deci
             local result: types.DecideResult = { proposal_id = id, status = "rejected" }
             local events: { types.Event } = {}
             if action == "accept" then
+                if proposal.generation == nil then
+                    return nil, errors.new({ kind = errors.CONFLICT, message = "proposal has no recorded schema generation; submit a new proposal",
+                        details = { code = "schema_generation_conflict", generation = catalog.generation } })
+                end
                 local conflict = require_generation(proposal.generation, catalog.generation)
                 if conflict then return nil, conflict end
                 local planned, aerr = items.plan(db, catalog, proposals.accept_request(proposal), actor_id(), settings, prepared, true)
