@@ -14,6 +14,30 @@ end
 
 local function define()
     test.describe("declarative model flows", function()
+        test.it("checks the declared target type on item reference writes", function()
+            local d = with_field({ code = "peers", type = "item", cardinality = "set", config = { item_type = "epic" } })
+            local h = fixture.board({ declaration = d })
+            local epic = steps.create(h, "epic")
+            local task = steps.create(h, "task")
+            local valid = { board = h.id, item = epic }
+            local wrong = { board = h.id, item = task }
+            local refused = steps.one(h, { op = "create", type = "task", values = { peers = { valid, wrong } } })
+            test.eq(refused.status, "invalid")
+            test.eq(refused.findings[1].code, "invalid_reference")
+            test.eq(refused.findings[1].field, "peers")
+            local holder = steps.create(h, "task", { peers = { valid } })
+            local foreign = fixture.board()
+            local foreign_task = steps.create(foreign, "task")
+            assert(foreign.call("grant", { subject_id = h.actor:id(), mask = 1 }))
+            refused = steps.one(h, { op = "set", item = holder, values = { peers = { { board = foreign.id, item = foreign_task } } } })
+            test.eq(refused.status, "invalid")
+            test.eq(refused.findings[1].code, "invalid_reference")
+            test.eq(refused.findings[1].field, "peers")
+            test.eq(assert(steps.get(h, holder)).item.values.peers[1].item, epic)
+            local foreign_epic = steps.create(foreign, "epic")
+            test.eq(steps.one(h, { op = "set", item = holder, values = { peers = { { board = foreign.id, item = foreign_epic } } } }).status, "applied")
+        end)
+
         test.it("checks peer visibility in the shared schema snapshot", function()
             local h = fixture.board({ declaration = with_field({ code = "peer", type = "item", index = "key" }) })
             local d = fixture.declaration(fixture.fresh_prefix())
@@ -143,7 +167,7 @@ local function define()
             local h = fixture.board({ declaration = d })
             local id = steps.create(h, "task", { estimate = 3 })
             test.is_nil(steps.get(h, id).item.values.double)
-            local patch = { item_types = { { id = "task", process = "delivery", parent_types = { "story", "task" },
+            local patch = { item_types = { { id = "task", process = "delivery", parent_types = { "root", "story", "task" },
                 fields = { "title", "estimate", "labels", "double" } } } }
             test.eq(assert(h.call("plan_schema", { declaration = patch })).class, "semantic")
             assert(h.call("apply_schema", { declaration = patch }))

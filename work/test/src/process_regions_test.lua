@@ -229,6 +229,21 @@ local function define()
             test.eq(view(h, id).state.qa, "review")
         end)
 
+        test.it("keeps fields required by the current regional state on ordinary edits", function()
+            local d = definition()
+            d.processes[1].states[4].require = { "owner" }
+            local h = fixture.board({ declaration = d })
+            local owner = { kind = "user", id = h.actor:id() }
+            local id = steps.create(h, "task", { owner = owner })
+            test.eq(steps.one(h, { op = "transition", item = id, transition = "start" }).status, "applied")
+            test.eq(steps.one(h, { op = "transition", item = id, transition = "pass", region = "qa" }).status, "applied")
+            local refused = steps.one(h, { op = "set", item = id, clear = { "owner" } })
+            test.eq(refused.status, "invalid")
+            test.eq(refused.findings[1].code, "required_field")
+            test.eq(refused.findings[1].field, "owner")
+            test.eq(view(h, id).values.owner.id, owner.id)
+        end)
+
         test.it("uses terminal regional categories immediately on creation and entry", function()
             for _, initial in ipairs({ true, false }) do
                 for _, terminal in ipairs({ "done", "canceled" }) do

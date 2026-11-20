@@ -16,7 +16,7 @@ local function board(): fixture.Handle
             { code = "count", type = "rollup", of = "children", fn = "count", form = "int" },
             { code = "total", type = "rollup", of = "children", fn = "sum", field = "points", form = "int" } },
         item_types = { { id = "parent", process = "work", fields = { "count", "total" } },
-            { id = "child", process = "work", parent_types = { "parent" }, fields = { "points" } } },
+            { id = "child", process = "work", parent_types = { "root", "parent" }, fields = { "points" } } },
         processes = { { id = "work", initial = "todo", states = { { id = "todo", category = "started" } } } },
     } })
 end

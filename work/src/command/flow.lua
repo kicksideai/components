@@ -77,13 +77,31 @@ local function effect_steps(board: types.Board, model: types.Model, doc: types.D
     return out, nil
 end
 
+local function required(model: types.Model, state: types.State, doc: types.Document): types.Finding?
+    for _, key in ipairs(state.require) do
+        if not present(model, doc, key) then return finding("required_field", "state " .. state.id .. " needs " .. key, key) end
+    end
+    return nil
+end
+
 function M.entry(model: types.Model, state: types.State, doc: types.Document, p: types.Process): types.Finding?
-    local entering = { state }
-    for _, region in ipairs(state.regions or {}) do entering[#entering + 1] = process.state_of(p, region.initial) :: types.State end
-    for _, target in ipairs(entering) do
-        for _, key in ipairs(target.require) do
-            if not present(model, doc, key) then return finding("required_field", "state " .. target.id .. " needs " .. key, key) end
-        end
+    local missing = required(model, state, doc)
+    if missing then return missing end
+    for _, region in ipairs(state.regions or {}) do
+        missing = required(model, process.state_of(p, region.initial) :: types.State, doc)
+        if missing then return missing end
+    end
+    return nil
+end
+
+function M.active_requirements(model: types.Model, item: types.Item, p: types.Process): types.Finding?
+    local state = process.state_of(p, item.state) :: types.State
+    local missing = required(model, state, item.document)
+    if missing then return missing end
+    for _, region in ipairs(state.regions or {}) do
+        local regional = process.state_of(p, item.work.regions[region.id]) :: types.State
+        missing = required(model, regional, item.document)
+        if missing then return missing end
     end
     return nil
 end

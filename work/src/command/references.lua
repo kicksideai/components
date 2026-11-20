@@ -66,10 +66,14 @@ function R.patch(ctx: types.PrepareContext, patch: { domain.PatchStep }): types.
         if field and field.type == "item" and step.v ~= nil then
             for _, value in ipairs(values.members(fields.shape(field), step.v)) do
                 local board, item = (value :: domain.Ref).ref[2]:match("^([^/]+)/(.+)$")
-                local _, err = R.resolve(ctx, { board = board :: string, item = item :: string })
+                local peer, err = R.resolve(ctx, { board = board :: string, item = item :: string })
                 if err then
                     if err.status == "unavailable" then return err end
                     return M.invalid("invalid_reference", "field reference is unavailable", field.code)
+                end
+                local target_type = field.config.item_type
+                if target_type and (peer :: domain.Item).type ~= target_type then
+                    return M.invalid("invalid_reference", "field reference must target item type " .. target_type, field.code)
                 end
             end
         end

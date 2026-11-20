@@ -31,6 +31,11 @@ local function plan_parent(ctx: types.PrepareContext, op: types.Op): types.OpPla
     elseif op.parent ~= false then
         return M.result("invalid", group, "invalid_parent", "parent is an item id, or false to move to the root", "parent")
     end
+    if target and target.path:find("/" .. item.item_id .. "/", 1, true) then
+        return M.result("invalid", group, "cycle", "an item cannot move under itself or its descendants", "parent")
+    end
+    local violation = M.parent_violation(item_type, target)
+    if violation then violation.group = group; return violation end
     if (target and target.item_id or nil) == item.parent_id then return M.done(ctx, item, group, {}) end
     local stats, serr = tree_rows.subtree(ctx.db, ctx.board.board_id, ctx.moves, item.path, M.depth_of(item.path))
     if serr or not stats then return M.failed(serr or errors.new({ details = { code = "row_corrupt" }, kind = errors.INTERNAL, message = "subtree statistics are missing" })) end
@@ -44,11 +49,6 @@ local function plan_parent(ctx: types.PrepareContext, op: types.Op): types.OpPla
         if reserved then return M.failed(reserved) end
     end
     if target then
-        if target.path:find("/" .. item.item_id .. "/", 1, true) then
-            return M.result("invalid", group, "cycle", "an item cannot move under itself or its descendants", "parent")
-        end
-        local violation = M.parent_violation(ctx.board, item_type, target)
-        if violation then violation.group = group; return violation end
         local limit = M.child_limit(ctx, target)
         if limit then limit.group = group; return limit end
         local below = stats.depth - M.depth_of(item.path)

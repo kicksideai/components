@@ -117,6 +117,7 @@ entries:
   - json
   - sql
   imports:
+    schema: kickside.work.domain:schema
     rules: kickside.work.domain:access_rules
     fold_rank: kickside.work.persist:fold_rank
     fold_process: kickside.work.persist:fold_process

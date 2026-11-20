@@ -15,7 +15,7 @@ local function declaration()
         { code = "related", type = "rollup", form = "int", of = "blocks", fn = "count", where = { field = "points", op = "gt", value = 5 } },
     }, item_types = {
         { id = "parent", process = "work", fields = { "total", "some", "every", "related" } },
-        { id = "child", process = "work", parent_types = { "parent" }, fields = { "points" } },
+        { id = "child", process = "work", parent_types = { "root", "parent" }, fields = { "points" } },
     }, relation_types = { { id = "blocks" } }, processes = { { id = "work", initial = "todo",
         states = { { id = "todo", category = "started" }, { id = "done", category = "completed" } },
         transitions = { { id = "finish", from = { "todo" }, to = "done" } } } } }

@@ -11,6 +11,7 @@ local fold_batch = require("fold_batch")
 local document = require("document")
 local intervals = require("intervals")
 local process = require("process")
+local schema = require("schema")
 local fold_rollup = require("fold_rollup")
 local fold_process = require("fold_process")
 
@@ -213,18 +214,18 @@ local function apply_parented(tx: storage.Executor, board: types.Board, event: t
     local decoded_3 = decoded_3 :: integer
     local size = decoded_3
     if size > consts.LIMITS.subtree_rows then reason = "subtree_too_large" end
+    local item_type = board.model.item_types[item.type]
     if body.parent then
         local parent, perr = store.item(tx, board.board_id, body.parent)
         if perr then return perr end
         if not parent or parent.life ~= "live" then reason = "parent_trashed"
         else
-            local allowed = false
-            local item_type = board.model.item_types[item.type]
-            for _, t in ipairs(item_type and item_type.parent_types or {}) do if t == parent.type then allowed = true end end
-            if not allowed then reason = "parent_type" end
+            if not item_type or not schema.parent_allowed(item_type, parent.type) then reason = "parent_type" end
             if parent.path:find("/" .. item.item_id .. "/", 1, true) then reason = "cycle" end
             path = parent.path .. item.item_id .. "/"
         end
+    elseif item_type and not schema.parent_allowed(item_type, nil) then
+        reason = "parent_required"
     end
     local _, depth = path:gsub("/", "")
     local rows_deep, derr = tx:query([[SELECT path FROM kickside_work_item WHERE board_id = $1 AND path LIKE $2

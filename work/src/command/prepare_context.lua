@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local component = require("component")
 local consts = require("consts")
+local schema = require("schema")
 local domain = require("domain")
 local store = require("store")
 local tree_rows = require("tree_rows")
@@ -172,15 +173,13 @@ function M.reserve_child(ctx: types.PrepareContext, id: string?, delta: integer)
     if id then ctx.child_delta[id] = (ctx.child_delta[id] or 0) + delta end
 end
 
--- parent_violation reports why an item of item_type cannot sit under parent.
-function M.parent_violation(board: domain.Board, item_type: domain.ItemType, parent: domain.Item): types.OpPlan?
-    if parent.life ~= "live" then return M.invalid("parent_trashed", "parent " .. parent.item_id .. " is in the trash", "parent") end
-    local allowed = false
-    for _, t in ipairs(item_type.parent_types) do
-        if t == parent.type then allowed = true end
+function M.parent_violation(item_type: domain.ItemType, parent: domain.Item?): types.OpPlan?
+    if parent and parent.life ~= "live" then return M.invalid("parent_trashed", "parent " .. parent.item_id .. " is in the trash", "parent") end
+    if not schema.parent_allowed(item_type, parent and parent.type) then
+        if not parent then return M.invalid("parent_required", "item type " .. item_type.id .. " requires a parent", "parent") end
+        return M.invalid("parent_type", "item type " .. item_type.id .. " cannot sit under " .. parent.type, "parent")
     end
-    if not allowed then return M.invalid("parent_type", "item type " .. item_type.id .. " cannot sit under " .. parent.type, "parent") end
-    if M.depth_of(parent.path) + 1 > consts.LIMITS.depth then
+    if parent and M.depth_of(parent.path) + 1 > consts.LIMITS.depth then
         return M.invalid("depth", "hierarchy is limited to " .. consts.LIMITS.depth .. " levels", "parent")
     end
     return nil

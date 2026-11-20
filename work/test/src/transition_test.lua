@@ -190,6 +190,33 @@ local function define()
             test.eq(view(h, id).state, "review")
         end)
 
+        test.it("keeps fields required by the current state on ordinary edits", function()
+            local d = fixture.declaration(fixture.fresh_prefix())
+            d.fields[#d.fields + 1] = { code = "resolution", form = "text" }
+            d.item_types[1].fields[#d.item_types[1].fields + 1] = "resolution"
+            d.item_types[1].process = "issue"
+            d.processes[#d.processes + 1] = { id = "issue", initial = "open", states = {
+                { id = "open", category = "started" }, { id = "done", category = "completed", require = { "resolution" } },
+            }, transitions = { { id = "finish", from = { "open" }, to = "done" }, { id = "reopen", from = { "done" }, to = "open" } } }
+            local h = fixture.board({ declaration = d })
+            local id = steps.create(h, "epic")
+            test.eq(move(h, id, "finish", { values = { resolution = "fixed" } }).status, "applied")
+            local version = steps.version(h, id)
+            for _, op in ipairs({ { clear = { "resolution" } }, { unset = { "resolution" } } }) do
+                op.op, op.item = "set", id
+                local refused = steps.one(h, op)
+                test.eq(refused.status, "invalid")
+                test.eq(refused.findings[1].code, "required_field")
+                test.eq(refused.findings[1].field, "resolution")
+            end
+            test.eq(view(h, id).state, "done")
+            test.eq(view(h, id).values.resolution, "fixed")
+            test.eq(steps.version(h, id), version)
+            test.eq(steps.one(h, { op = "set", item = id, values = { title = "Edited", resolution = "duplicate" } }).status, "applied")
+            test.eq(move(h, id, "reopen", { clear = { "resolution" } }).status, "applied")
+            test.is_nil(view(h, id).values.resolution)
+        end)
+
         test.it("applies set effects: now, actor, copy, literal and clear", function()
             local h = board()
             local id = task(h)

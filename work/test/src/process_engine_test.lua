@@ -9,7 +9,7 @@ type Map = { [string]: unknown }
 
 local function definition(): Map
     return { key_prefix = fixture.fresh_prefix(), fields = { { code = "owner", type = "principal" }, { code = "points", form = "int", index = "number" } },
-        item_types = { { id = "task", process = "flow", fields = { "owner", "points" }, parent_types = { "task" } } },
+        item_types = { { id = "task", process = "flow", fields = { "owner", "points" }, parent_types = { "root", "task" } } },
         processes = { { id = "flow", initial = "todo", states = {
             { id = "todo", category = "unstarted" }, { id = "doing", category = "started" },
             { id = "done", category = "completed" }, { id = "canceled", category = "canceled" },

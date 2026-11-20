@@ -25,7 +25,7 @@ local function declaration(): Map
             { code = "symmetric", type = "rollup", form = "int", of = "relates", fn = "count" },
         },
         item_types = { { id = "parent", process = "work", fields = { "count", "total", "costs", "minimum", "maximum", "average", "first", "last", "done", "recent", "ranked", "related", "symmetric" } },
-            { id = "child", process = "work", parent_types = { "parent" }, fields = { "points", "cost", "title", "due", "priority", "symmetric" } } },
+            { id = "child", process = "work", parent_types = { "root", "parent" }, fields = { "points", "cost", "title", "due", "priority", "symmetric" } } },
         relation_types = { { id = "blocks" }, { id = "relates", symmetric = true } },
         processes = { { id = "work", initial = "todo", states = { { id = "todo", category = "started" }, { id = "shipped", category = "completed" },
             { id = "dropped", category = "canceled" } }, transitions = { { id = "finish", from = "any", to = "shipped" }, { id = "cancel", from = "any", to = "dropped" } } } },

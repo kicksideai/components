@@ -96,13 +96,15 @@ local function plan_create(ctx: types.PrepareContext, op: types.Op): types.OpPla
     if type(op.parent) == "string" then
         local found, perr = M.locate(ctx, op.parent)
         if perr or not found then return perr or M.invalid("unknown_parent", "unknown parent", "parent") end
-        local violation = M.parent_violation(board, item_type, found)
-        if violation then return violation end
-        local limit = M.child_limit(ctx, found)
-        if limit then return limit end
         parent = found
     elseif op.parent ~= nil then
         return M.invalid("invalid_parent", "parent is an item id", "parent")
+    end
+    local violation = M.parent_violation(item_type, parent)
+    if violation then return violation end
+    if parent then
+        local limit = M.child_limit(ctx, parent)
+        if limit then return limit end
     end
     local doc: domain.Document = {}
     local steps, serr = value_steps(board, item_type, doc, op, true)
@@ -169,6 +171,8 @@ local function plan_set(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     local settled, ferr, werr = flow.settle(ctx.board, work, ctx.actor, ctx.now, when.check(ctx, model), p, model, ctx.auto)
     if werr then return M.failed(werr) end
     if ferr then return M.refused(group, ferr) end
+    local missing = flow.active_requirements(model, work, p)
+    if missing then return M.refused(group, missing) end
     for _, event in ipairs(settled or {}) do events[#events + 1] = event end
     item.work = work.work
     item.document, item.state, item.category, item.visit, item.version = work.document, work.state, work.category, work.visit, work.version
