@@ -8,10 +8,10 @@ entries:
     title: Kickside Work
     description: Work tracking on Kickside threads - boards of typed items with per-item concurrency, change history and a projected read model.
 - name: dep.kickside.component
-  version: '>=0.3.21'
+  version: '>=0.3.27'
   kind: ns.dependency
   meta:
-    comment: Board components, ACL checks and deletion.
+    comment: Board components, shared-view registration, ACL checks and deletion.
   component: kickside/component
 - name: dep.kickside.core
   version: '>=0.3.37'

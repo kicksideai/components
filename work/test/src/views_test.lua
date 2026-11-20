@@ -178,6 +178,9 @@ local function define()
                 assert(h.call("grant", { subject_id = pair[1].id, mask = pair[2] }))
             end
             local id = assert(writer.call("create_view", { board_id = h.id, title = "Shared", view = { type = "list" } })).view_id
+            local record = assert(writer.call("get_meta", {}, id))
+            test.eq(record.parent_id, h.id)
+            test.eq(record.meta.owner, h.id)
             for _, member in ipairs({ writer, reader }) do
                 for _, request in ipairs({ { "POST", "/rename", { title = "Refused" } }, { "DELETE", "", {} } }) do
                     local denied = member.http(request[1], "/api/work/views/" .. id .. request[2], request[3])

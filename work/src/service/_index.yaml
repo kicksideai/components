@@ -257,6 +257,7 @@ entries:
   - registry
   - security
   imports: &id002
+    child_registration: kickside.component.binding:child_registration
     values: kickside.work.domain:values
     registry_values: kickside.work.domain:registry_values
     component: kickside.component:component
