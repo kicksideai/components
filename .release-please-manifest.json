@@ -9,5 +9,6 @@
   "pim": "0.1.10",
   "pim-admin": "0.1.7",
   "work-admin": "0.1.7",
-  "work-search": "0.1.0"
+  "work-search": "0.1.0",
+  "work-planning": "0.1.0"
 }
