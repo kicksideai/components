@@ -14,7 +14,10 @@ and policy are edited as one schema draft. Reading a section must not create
 absent fields in the draft. A review snapshots the declaration, removals, initial
 plugin configuration and schema generation. Editing any reviewed input invalidates
 the review. Apply sends that snapshot with its expected generation; backend
-validation and ACL failures remain visible. Refresh does not overwrite a dirty
+validation and ACL failures show the message and the typed code when supplied.
+Review results appear above the selected editor, and focus moves to the review
+heading or error. The Apply action follows the review details and only appears
+for an applicable plan. Refresh does not overwrite a dirty
 draft, and replies for an old catalog cannot replace the current catalog's draft.
 
 Declared fields remain editable in type, cardinality and scope; declaration
@@ -27,6 +30,10 @@ an alphanumeric character, then alphanumeric characters, underscores, dots or
 hyphens. Declaration codes retain their separate grammar. Adding, retiring and
 restoring terms require catalog WRITE independently of ADMIN; term reads and
 schema editing remain available to an administrator without WRITE.
+Schema definition add forms use the same validation for typed input, the
+button and Enter. A duplicate shows an inline message within its definition
+list. Field codes are unique within their field group and requirement codes
+within their family.
 Term writes use PIM's apply endpoint and only term-shaped requests. Active plugin
 configuration saves separately and must preserve unrelated schema drafts and
 other unsaved plugin configuration. Deployment policy defaults are read through
@@ -63,7 +70,9 @@ which loads the existing `kickside-share` widget with Component access/share URL
 It owns principal selection, grant validation and last-owner protection.
 
 Term panels state that term changes save immediately. Retirement asks for host
-confirmation before writing; restoration remains immediate. Term reads clear
+confirmation before writing; restoration remains immediate. Administration
+lists active and retired terms in the same paginated list and offers only active
+terms as parents. Term reads clear
 previous errors at the start and expose Retry while keeping failed reads visible.
 On narrow settings panes, definition rows stack their metadata below the title
 and keep their actions in view. Vocabulary terms show the label first, followed
@@ -71,6 +80,11 @@ by the code and any parent, with the same retire or restore action.
 Built-in type configuration comes from the backend's `config_schema` metadata
 and renders through the shared `wc-schema-form`, including Quantity units and
 canonical unit. Conversion factors and record members use its structured inputs.
+
+Family variation axes are single-value fields from the selected field groups,
+with no dimensions and a value form other than text or record. Each field can
+be assigned to one variation level. Other unassigned fields can still be
+owned by a level.
 
 Form layout and History are peer settings sections. Layout edits the same declaration
 as Fields: arrow controls and drag/drop reorder fields within their own field group;

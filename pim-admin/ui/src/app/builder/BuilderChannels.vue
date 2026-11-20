@@ -1,15 +1,15 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { CODE, setList } from '../../state'
+import { setList } from '../../state'
+import AddSchemaCode from './AddSchemaCode.vue'
 import DefinitionList from '../../shared/DefinitionList.vue'
 import DefinitionRow from '../../shared/DefinitionRow.vue'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Select from 'primevue/select'
-import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 // Channels (where products are released, judged by requirement sets) and
 // sources (where values come from, limited to the aspects they may write).
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import type { ChannelDecl, Declaration, RemoveDecl, SchemaView, SourceDecl } from '../../types'
 import { humanize } from '../../forms'
@@ -23,23 +23,15 @@ const sources = computed(() => props.draft.sources ?? [])
 const requirementIds = computed(() => [...new Set((props.draft.families ?? []).flatMap((f) => (f.requirements ?? []).map((r) => r.id)))].map((id) => ({ value: id })))
 const familyOptions = computed(() => (props.draft.families ?? []).filter((f) => f.code !== 'generic').map((f) => ({ value: f.code, label: humanize(f.code) })))
 const aspectOptions = computed(() => (props.draft.aspects ?? []).map((a) => ({ value: a.namespace, label: humanize(a.namespace) })))
-const newChannel = ref('')
-const newSource = ref('')
-function addChannel() {
-  const id = newChannel.value.trim()
-  if (!CODE.test(id) || channels.value.some((c) => c.id === id)) return
+function addChannel(id: string) {
   (props.draft.channels ??= []).push({ id, requirements: [] })
-  newChannel.value = ''
 }
 function removeChannel(c: ChannelDecl) {
   channels.value.splice(channels.value.indexOf(c), 1)
   if (props.schema.declaration.channels?.some((x) => x.id === c.id)) emit('remove', 'channels', c.id)
 }
-function addSource() {
-  const id = newSource.value.trim()
-  if (!CODE.test(id) || sources.value.some((s) => s.id === id)) return
+function addSource(id: string) {
   (props.draft.sources ??= []).push({ id, ordering: 'none', writes: [] })
-  newSource.value = ''
 }
 function removeSource(s: SourceDecl) {
   sources.value.splice(sources.value.indexOf(s), 1)
@@ -59,7 +51,9 @@ function removeSource(s: SourceDecl) {
           <div class="pim-f pim-w-half"><div class="pim-f-label"><label>Families</label><span class="pim-f-note">empty means every family</span></div><ChipPicker :model-value="c.families ?? []" :options="familyOptions" @update:model-value="setList(c, 'families', $event)" /></div>
         </div>
       </DefinitionRow>
-      <template #add><div class="row pim-add-row"><InputText v-model="newChannel" type="text" placeholder="new_channel" @keydown.enter.prevent="addChannel" class="mono" /><Button type="button" :disabled="!CODE.test(newChannel)" @click="addChannel" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add channel</Button></div></template>
+      <template #add>
+        <AddSchemaCode label="Channel code" action="Add channel" :existing="channels.map(item => item.id)" @add="addChannel" />
+      </template>
     </DefinitionList>
     <DefinitionList :count="sources.length" :columns="['code', 'details']">
       <template #head><header class="pim-bsection-head"><h3>Sources</h3></header></template>
@@ -75,7 +69,9 @@ function removeSource(s: SourceDecl) {
           <div class="pim-f pim-w-full"><div class="pim-f-label"><label>Writes</label><span class="pim-f-note">field groups this source may set</span></div><ChipPicker :model-value="s.writes ?? []" :options="aspectOptions" @update:model-value="setList(s, 'writes', $event)" /></div>
         </div>
       </DefinitionRow>
-      <template #add><div class="row pim-add-row"><InputText v-model="newSource" type="text" placeholder="new_source" @keydown.enter.prevent="addSource" class="mono" /><Button type="button" :disabled="!CODE.test(newSource)" @click="addSource" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add source</Button></div></template>
+      <template #add>
+        <AddSchemaCode label="Source code" action="Add source" :existing="sources.map(item => item.id)" @add="addSource" />
+      </template>
     </DefinitionList>
   </div>
 </template>

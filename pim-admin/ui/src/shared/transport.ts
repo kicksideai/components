@@ -15,6 +15,16 @@ export class ApiError extends Error {
     this.status = status
   }
 }
+export interface ErrorNotice { message: string; code?: string }
+
+export function errorNotice(error: unknown, message: string): ErrorNotice {
+  const code = error instanceof ApiError ? error.details?.code : undefined
+  return {
+    message: error instanceof Error ? error.message : message,
+    code: typeof code === 'string' ? code : undefined,
+  }
+}
+
 export function unwrap<T>(data: unknown, what: string): T {
   const body = data as { success?: boolean; error?: string; data?: T }
   if (body && typeof body === 'object' && body.success === false) throw new ApiError(body, what)

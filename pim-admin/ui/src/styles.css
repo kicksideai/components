@@ -62,14 +62,21 @@
 .pim-stack.tight { gap: 8px; }
 .pim-attr-row:hover { background: var(--kx-overlay-hover); }
 .pim-add-row { padding: 12px 14px; gap: 8px; }
+.pim-add-code-error { flex-basis: 100%; margin: 0; color: var(--p-message-error-color); }
 .pim-level { padding: 10px 12px; border: 1px solid var(--p-content-border-color); border-radius: 10px; }
 .pim-level-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+.pim-axis-help { margin: 0 0 6px; }
 .pim-terms { margin-top: 10px; }
 
 .pim-picker-chips { align-items: center; }
-.pim-chip-entry { width: 150px; }
+.pim-chip-entry { width: 150px; max-width: 100%; }
 .pim-plan .pim-plan-list { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
-.pim-plan .pim-plan-list li { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.pim-plan .pim-plan-list li { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; }
+.pim-plan .pim-group-head { flex-wrap: wrap; }
+.pim-plan h3, .pim-builder-main > [tabindex="-1"] { scroll-margin-block: 24px; }
+.pim-plan .pim-card-body > p { margin: 0; }
+.pim-error-copy { color: var(--p-text-color); overflow-wrap: anywhere; }
+.pim-error-code { display: block; font-size: 12px; overflow-wrap: anywhere; }
 .pim-editor-surface { border: 0; padding: 0; margin: 0; min-width: 0; }
 .pim-scope-filters h2 { margin: 0 0 12px; }
 

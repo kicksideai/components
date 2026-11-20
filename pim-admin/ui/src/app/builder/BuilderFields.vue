@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import { FIELD_WIDTHS, fieldWidth, humanize } from '../../forms'
-import { CODE, moveField as move } from '../../state'
+import { moveField as move } from '../../state'
+import AddSchemaCode from './AddSchemaCode.vue'
 import DefinitionList from '../../shared/DefinitionList.vue'
 import DefinitionRow from '../../shared/DefinitionRow.vue'
 import MultiSelect from 'primevue/multiselect'
@@ -113,27 +114,18 @@ function drop(a: AspectDecl, index: number) {
   if (dragging.value?.namespace === a.namespace) move(a.attributes ?? [], dragging.value.index, index)
   dragging.value = null
 }
-const newAspect = ref('')
-function addAspect() {
-  const ns = newAspect.value.trim()
-  if (!CODE.test(ns) || aspects.value.some((a) => a.namespace === ns)) return
-  (props.draft.aspects ??= []).push({ namespace: ns, attributes: [] })
-  newAspect.value = ''
+function addAspect(namespace: string) {
+  (props.draft.aspects ??= []).push({ namespace, attributes: [] })
 }
 function removeAspect(a: AspectDecl) {
   const i = aspects.value.indexOf(a)
   if (i >= 0) aspects.value.splice(i, 1)
   if (props.schema.declaration.aspects?.some((x) => x.namespace === a.namespace)) emit('remove', 'aspects', a.namespace)
 }
-const newCode = ref<Record<string, string>>({})
-function addAttribute(a: AspectDecl) {
-  const code = (newCode.value[a.namespace] ?? '').trim()
-  const list = a.attributes ?? (a.attributes = [])
-  if (!CODE.test(code) || list.some((x) => x.code === code)) return
+function addAttribute(a: AspectDecl, code: string) {
   const text = props.options.types.find((t) => t.id === 'kickside.pim.types:text') ?? props.options.types[0]
   const attr: AttributeDecl = { code, type: text?.id ?? '' }
-  list.push(attr)
-  newCode.value[a.namespace] = ''
+  ;(a.attributes ??= []).push(attr)
   open.value[key(a.namespace, attr)] = true
 }
 function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
@@ -225,17 +217,13 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
           </div>
           <div class="row end"><Button type="button" @click="removeAttribute(a, attr)" text severity="secondary" size="small"><Icon icon="tabler:trash" /> Remove field</Button></div>
       </DefinitionRow>
-      <template #add><div class="row pim-add-row">
-          <InputText v-model="newCode[a.namespace]" type="text" placeholder="new_field" @keydown.enter.prevent="addAttribute(a)" class="mono" />
-          <Button type="button" :disabled="!CODE.test(newCode[a.namespace] ?? '')" @click="addAttribute(a)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add field</Button>
-      </div></template>
+      <template #add>
+        <AddSchemaCode label="Field code" action="Add field" :existing="a.attributes?.map(field => field.code)" @add="addAttribute(a, $event)" />
+      </template>
     </DefinitionList>
     <section class="form">
-      <div class="pim-aspect row pim-add-row">
-        <InputText v-model="newAspect" type="text" placeholder="new_field_group" @keydown.enter.prevent="addAspect" class="mono" />
-        <Button type="button" :disabled="!CODE.test(newAspect)" @click="addAspect" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add field group</Button>
-        <span class="muted small">A field group contains fields and can be written by named sources only.</span>
-      </div>
+      <AddSchemaCode class="pim-aspect" label="Field group code" action="Add field group"
+        :existing="aspects.map(a => a.namespace)" @add="addAspect" />
     </section>
   </div>
 </template>

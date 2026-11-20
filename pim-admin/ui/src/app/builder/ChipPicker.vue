@@ -9,7 +9,7 @@ import Button from 'primevue/button'
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 
-const props = defineProps<{ modelValue: string[]; options?: { value: string; label?: string }[]; free?: boolean; placeholder?: string; disabled?: boolean }>()
+const props = defineProps<{ modelValue: string[]; options?: { value: string; label?: string }[]; free?: boolean; placeholder?: string; disabled?: boolean; dropdown?: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string[]] }>()
 const entry = ref('')
 
@@ -36,9 +36,12 @@ function labelOf(v: string): string {
 
 <template>
   <div class="pim-chips pim-picker-chips">
-    <template v-if="options && options.length > 10">
-      <span v-for="v in modelValue" :key="v" class="row">{{ labelOf(v) }}<Button v-if="!disabled" type="button" :aria-label="'Remove ' + v" @click="remove(v)" size="small" text severity="secondary"><Icon icon="tabler:x" /></Button></span>
-      <Select v-if="!disabled" :model-value="''" :aria-label="placeholder ?? 'Add'" @update:model-value="toggle($event)" class="pim-chip-entry" :options="[{ value: '', label: String(placeholder ?? 'Add…') }, ...(options.filter((x) => !has(x.value))).map((o) => ({ value: o.value, label: String(o.label ?? o.value) }))]" option-label="label" option-value="value" appendTo="self" />
+    <template v-if="options && (dropdown || options.length > 10)">
+      <span v-for="v in modelValue" :key="v" class="row">{{ labelOf(v) }}<Button v-if="!disabled" type="button" :aria-label="'Remove ' + labelOf(v)" @click="remove(v)" size="small" text severity="secondary"><Icon icon="tabler:x" aria-hidden="true" /></Button></span>
+      <Select v-if="!disabled" :model-value="null" :placeholder="placeholder ?? 'Add…'" :aria-label="placeholder ?? 'Add'"
+        @update:model-value="toggle($event)" class="pim-chip-entry"
+        :options="options.filter(option => !has(option.value)).map(option => ({ value: option.value, label: option.label ?? option.value }))"
+        option-label="label" option-value="value" appendTo="self" />
     </template>
     <template v-else-if="options">
       <SelectButton :model-value="modelValue.filter(v => options!.some(o => o.value === v))" :options="options.map(o => ({ value: o.value, label: o.label ?? o.value }))" option-label="label" option-value="value" multiple :disabled="disabled" :aria-label="placeholder ?? 'Selected values'" @update:model-value="emit('update:modelValue', [...$event, ...modelValue.filter(v => !options!.some(o => o.value === v))])" />

@@ -28,7 +28,7 @@ export const pim = {
     const cacheKey = JSON.stringify([id, vocabulary, after])
     let page = termPages.get(cacheKey)
     if (!page) {
-      page = get<ListTermsResult>(`${BASE}/${encodeURIComponent(id)}/terms`, 'terms', { vocabulary, limit: '50', ...(after ? { after } : {}) })
+      page = get<ListTermsResult>(`${BASE}/${encodeURIComponent(id)}/terms`, 'terms', { vocabulary, retired: 'true', limit: '50', ...(after ? { after } : {}) })
       termPages.set(cacheKey, page)
       void page.catch(() => { if (termPages.get(cacheKey) === page) termPages.delete(cacheKey) })
     }

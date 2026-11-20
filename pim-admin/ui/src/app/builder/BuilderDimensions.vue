@@ -1,13 +1,12 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { CODE } from '../../state'
+import AddSchemaCode from './AddSchemaCode.vue'
 import DefinitionList from '../../shared/DefinitionList.vue'
 import DefinitionRow from '../../shared/DefinitionRow.vue'
-import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 // Dimensions: the contexts values vary by (locale, channel…), their members
 // and which member falls back to which.
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import type { Declaration, DimensionDecl, RemoveDecl, SchemaView } from '../../types'
 import { humanize } from '../../forms'
@@ -16,12 +15,8 @@ import ChipPicker from './ChipPicker.vue'
 const props = defineProps<{ draft: Declaration; schema: SchemaView }>()
 const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string] }>()
 const dims = computed(() => props.draft.dimensions ?? [])
-const newName = ref('')
-function add() {
-  const name = newName.value.trim()
-  if (!CODE.test(name) || dims.value.some((d) => d.name === name)) return
+function add(name: string) {
   (props.draft.dimensions ??= []).push({ name, members: [] })
-  newName.value = ''
 }
 // usedBy names the fields and requirements that still depend on a dimension;
 // the engine refuses to drop a dimension they use, so the builder says so first.
@@ -70,11 +65,9 @@ function setFallback(d: DimensionDecl, m: string, list: string[]) {
       </div>
     </DefinitionRow>
     <template #add>
-    <div class="row pim-add-row">
-      <InputText v-model="newName" type="text" placeholder="new_dimension" @keydown.enter.prevent="add" class="mono" />
-      <Button type="button" :disabled="!CODE.test(newName)" @click="add" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add dimension</Button>
-      <span class="muted small">A dimension lets a value differ per member, with fallbacks between members.</span>
-    </div>
+      <AddSchemaCode label="Dimension code" action="Add dimension" :existing="dims.map(d => d.name)" @add="add">
+        <span class="muted small">A dimension lets a value differ per member, with fallbacks between members.</span>
+      </AddSchemaCode>
     </template>
   </DefinitionList>
 </template>
