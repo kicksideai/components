@@ -124,6 +124,9 @@ local POSTGRES = {
         PRIMARY KEY (board_id, from_id, type, to_board_id, to_id))]],
     [[CREATE INDEX kickside_work_link_target ON kickside_work_link (to_board_id, to_id, board_id, from_id, type)]],
     [[CREATE INDEX kickside_work_link_type ON kickside_work_link (board_id, type, from_id)]],
+    [[CREATE INDEX kickside_work_link_outward_page ON kickside_work_link (board_id, from_id, seq, type, to_board_id, to_id)]],
+    [[CREATE INDEX kickside_work_link_inward_page ON kickside_work_link (to_board_id, to_id, seq, board_id, from_id, type)]],
+    [[CREATE INDEX kickside_work_link_target_page ON kickside_work_link (to_board_id, to_id, board_id, seq, from_id, type)]],
     [[CREATE TABLE kickside_work_change (
         board_id text NOT NULL,
         seq bigint NOT NULL,

@@ -156,6 +156,7 @@ entries:
   modules: [json]
   imports:
     access: kickside.work.read:access
+    cursor_codec: kickside.work.read:cursor_codec
     reader: kickside.work.read:reader
     read_rows: kickside.work.persist:read_rows
     store: kickside.work.persist:store
