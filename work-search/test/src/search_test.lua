@@ -103,6 +103,11 @@ local function define()
             end
             assert(found, "issue board pack is absent")
             test.eq(found.requires[1], PLUGIN)
+            local created = checked(admin("create", { title = "Searchable issues", pack = PACK, idempotency_key = (uuid.v4()) }))
+            local schema = checked(admin("get_schema", {}, created.board_id :: string))
+            test.eq(#schema.declaration.scopes, 1)
+            test.eq(schema.declaration.scopes[1], TEXT)
+            test.not_nil(checked(admin("plugin_context", { plugin = PLUGIN }, created.board_id :: string)).attachment_id)
         end)
 
         test.it("rejects public resolver calls outside the Work search compiler", function()
@@ -202,6 +207,55 @@ local function define()
             test.eq(err:details().code, "search_unavailable")
         end)
 
+        test.it("checks that an indexed revision still matches the visible Work item", function()
+            local admin = session(true)
+            local id = create(admin, declaration(TEXT))
+            local first = apply(admin, id, { op = "create", type = "issue", values = { title = "Quartz" } }).item
+            local second = apply(admin, id, { op = "create", type = "issue", values = { title = "Quartz" } }).item
+            indexed(admin, id, "quartz", 2)
+            local attachment = checked(admin("plugin_context", { plugin = PLUGIN }, id)).attachment_id :: string
+            local generation = assert(state(attachment)).active.id
+            local db = assert(sql.get("app:db"))
+            assert(db:execute("UPDATE kickside_work_search_row SET source_seq=0 WHERE generation_id=$1 AND item_id=$2", { generation, first }))
+            db:release()
+
+            local items = assert(find(admin, id, "quartz"))
+            test.eq(#items, 1)
+            test.eq(items[1].id, second)
+        end)
+
+        test.it("checks live board access and visibility and preserves Work ordering across pages", function()
+            local admin, admin_id = session(true)
+            local member, member_id = session(false)
+            local schema = declaration(TEXT)
+            schema.fields[3] = { code = "audience", form = "text", index = "key" }
+            schema.item_types[1].fields[3] = "audience"
+            schema.visibility = { field = "audience", bypass = "admin", levels = {
+                { id = "team", holders = { { user = admin_id } } },
+            } }
+            local id = create(admin, schema)
+            checked(admin("grant", { subject_id = member_id, mask = 1 }, id))
+
+            local first = apply(admin, id, { op = "create", type = "issue", values = { title = "Citrine" } }).item
+            apply(admin, id, { op = "create", type = "issue", values = { title = "Citrine", audience = "team" } })
+            local last = apply(admin, id, { op = "create", type = "issue", values = { description = "Citrine" } }).item
+            indexed(admin, id, "citrine", 3)
+            local request = { where = { ["and"] = { { match = "citrine" }, { field = "type", op = "eq", value = "issue" } } },
+                order = { field = "key", dir = "asc" }, limit = 1 }
+            local one = checked(member("query", request, id))
+            test.eq(one.items[1].id, first)
+            test.not_nil(one.after)
+            request.after = one.after
+            local two = checked(member("query", request, id))
+            test.eq(two.items[1].id, last)
+            test.is_nil(two.after)
+
+            checked(admin("revoke", { subject_id = member_id }, id))
+            local denied, err = member("query", { where = { match = "citrine" } }, id)
+            test.is_nil(denied)
+            test.not_nil(err)
+            test.is_true(err:kind() == errors.PERMISSION_DENIED or err:kind() == errors.NOT_FOUND)
+        end)
     end)
 end
 return { run = test.run_cases(define) }

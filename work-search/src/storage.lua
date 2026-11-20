@@ -34,33 +34,47 @@ function M.load(db: sql.DB | sql.Transaction, attachment_id: string): (State?, e
     return state :: State?, decode_err
 end
 
+local function lookup(tx: sql.Transaction, dialect: string, attachment_id: string, schema: integer, scope: string, text: string, limit: integer): ({ Candidate }?, error?)
+    local state, err = M.load(tx, attachment_id)
+    if err then return nil, err end
+    local active = state and not state.deleting and state.active
+    if not active or active.schema ~= schema or active.scope ~= scope then
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Work Search is building its index",
+            details = { code = "search_indexing" } })
+    end
+    local key = text:match("^%s*([a-zA-Z][a-zA-Z0-9]*%-%d+)%s*$")
+    if key then
+        local rows, err = tx:query([[SELECT item_id, item_key, source_seq FROM kickside_work_search_row
+            WHERE generation_id=$1 AND item_key=$2]], { active.id, key:upper() })
+        return rows :: { Candidate }?, err
+    end
+    local runner = {
+        type = function(): string return dialect end,
+        query = function(_self: unknown, statement: string, args: { unknown })
+            return tx:query(statement, args)
+        end,
+    }
+    local rows, err = index.lexical_search(runner, SPEC, text, { partition = active.id, limit = limit })
+    return rows :: { Candidate }?, err :: error?
+end
+
 function M.candidates(attachment_id: string, schema: integer, scope: string, text: string, limit: integer): ({ Candidate }?, error?)
     local db, err = M.open()
     if err or not db then return nil, err end
-    local state, load_err = M.load(db, attachment_id)
-    local active = state and not state.deleting and state.active
-    local rows: { Candidate }? = nil
-    if not load_err then
-        if not active or active.schema ~= schema or active.scope ~= scope then
-            load_err = errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Work Search is building its index",
-                details = { code = "search_indexing" } })
-        else
-            local key = text:match("^%s*([a-zA-Z][a-zA-Z0-9]*%-%d+)%s*$")
-            if key then
-                local matches
-                matches, load_err = db:query([[SELECT item_id, item_key, source_seq FROM kickside_work_search_row
-                    WHERE generation_id=$1 AND item_key=$2]], { active.id, key:upper() })
-                rows = matches :: { Candidate }?
-            else
-                local matches, search_err = index.lexical_search(db, SPEC, text, { partition = active.id, limit = limit })
-                rows, load_err = matches :: { Candidate }?, search_err :: error?
-            end
-        end
+    local dialect = db:type()
+    local tx, begin_err = db:begin()
+    if begin_err or not tx then db:release(); return nil, begin_err end
+    -- The serving pointer and its rows belong to the same snapshot during retirement.
+    if dialect == sql.type.POSTGRES then
+        local _, snapshot_err = tx:execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY", {})
+        if snapshot_err then tx:rollback(); db:release(); return nil, snapshot_err end
     end
+    local rows, read_err = lookup(tx, dialect, attachment_id, schema, scope, text, limit)
+    local _, rollback_err = tx:rollback()
     local _, release_err = db:release()
-    return rows, load_err or release_err
+    if read_err or rollback_err or release_err then return nil, read_err or rollback_err or release_err end
+    return rows, nil
 end
-
 
 -- Competing fold and teardown pages serialize on the attachment's state row.
 function M.write<T>(attachment_id: string, board_id: string, operation: (sql.Transaction, boolean, State) -> (T?, error?)): (T?, error?)

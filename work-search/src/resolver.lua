@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local ctx = require("ctx")
 local security = require("security")
+local time = require("time")
 local work = require("work")
 local storage = require("storage")
 
@@ -8,10 +9,20 @@ local PLUGIN = "kickside.work_search:plugin"
 local PROJECTION = "kickside.work_search:items"
 local TEXT = "kickside.work_search:text"
 local KEY = "kickside.work_search:key"
+local VERIFICATION_BATCH = 100
+local VERIFICATION_LIMIT = 2000
+
 type Request = { board_id: string, query: string, limit: integer }
 type Selection = { board_id: string, scope: string, generation: integer, as_of: integer }
 type Projection = { parked: boolean, error: unknown? }
 type Context = { attachment_id: string, lifecycle: { state: string }, projections: { [string]: Projection } }
+type Item = { id: string, key: string, updated_seq: integer }
+type Page = { items: { Item }, generation: integer, as_of: integer, incomplete: boolean?, reindexing: boolean, after: unknown? }
+
+local function pending(code: string, message: string): error
+    return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = message, details = { code = code } })
+end
+
 local function resolve_ids(request: Request): ({ ids: { string } }?, error?)
     local selected = ctx.get("work_search") :: Selection?
     if not security.can("kickside.work.search.resolve", "kickside.work:search_resolver")
@@ -31,10 +42,41 @@ local function resolve_ids(request: Request): ({ ids: { string } }?, error?)
             details = { code = "search_unavailable" } })
     end
 
-    local rows, index_err = storage.candidates(context.attachment_id, selected.generation, selected.scope, request.query, request.limit)
+    local deadline = time.now():utc():add(1500 * time.MILLISECOND):format(time.RFC3339NANO)
+    local rows, index_err = storage.candidates(context.attachment_id, selected.generation, selected.scope, request.query, VERIFICATION_LIMIT + 1)
     if index_err or not rows then return nil, index_err end
     local ids: { string } = {}
-    for _, row in ipairs(rows) do ids[#ids + 1] = row.item_id end
+    for first = 1, math.min(#rows, VERIFICATION_LIMIT), VERIFICATION_BATCH do
+        local last = math.min(#rows, VERIFICATION_LIMIT, first + VERIFICATION_BATCH - 1)
+        local keys: { string } = {}
+        for i = first, last do keys[#keys + 1] = rows[i].item_key end
+        local raw_page, read_err = board:query({ board_id = request.board_id, min_seq = selected.as_of,
+            where = { field = "key", op = "in", value = keys }, limit = #keys, budget = { deadline = deadline } })
+        if read_err and read_err:kind() == errors.TIMEOUT then
+            return nil, pending("search_verification_budget", "Work Search candidate verification reached its deadline")
+        end
+        if read_err or not raw_page then return nil, read_err end
+        local page = raw_page :: Page
+        if page.generation ~= selected.generation or page.as_of ~= selected.as_of then
+            return nil, pending("search_snapshot_changed", "Work changed while verifying search candidates")
+        end
+        if page.reindexing or page.incomplete or page.after then
+            return nil, pending("search_verification_pending", "Work Search could not verify its candidate page")
+        end
+        local current: { [string]: Item } = {}
+        for _, item in ipairs(page.items) do current[item.key] = item end
+        for i = first, last do
+            local row = rows[i]
+            local item = current[row.item_key]
+            if item and item.id == row.item_id and item.updated_seq == row.source_seq then
+                ids[#ids + 1] = item.id
+                if #ids == request.limit then return { ids = ids }, nil end
+            end
+        end
+    end
+    if #rows > VERIFICATION_LIMIT then
+        return nil, pending("search_verification_budget", "Work Search could not fill its candidate budget")
+    end
     return { ids = ids }, nil
 end
 

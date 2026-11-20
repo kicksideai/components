@@ -28,6 +28,9 @@ Search returns `search_indexing` while the current schema's index is being built
 `board.plugin_context` reports the projection's lifecycle and cursor. A parked
 worker returns `search_unavailable`. If Work changes during verification or too
 many candidates require verification, the query returns a retryable error.
+The state feed indexes items visible to the registered projection actor. On a
+board with item visibility and administrator bypass, an administrator's projection
+can cover all live items.
 Search stores live lexical rows and feeds' continuation positions. It keeps a
 serving generation and space for one replacement, drains old rows in bounded
 pages, and does not store search queries or hit history.

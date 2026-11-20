@@ -42,6 +42,7 @@ entries:
     type: kickside.work.scope
     plugin: kickside.work_search:plugin
     resolve_ids: kickside.work_search:resolver
+    projection: kickside.work_search:items
     reads: [title, description]
 - name: key
   kind: registry.entry
@@ -49,6 +50,7 @@ entries:
     type: kickside.work.scope
     plugin: kickside.work_search:plugin
     resolve_ids: kickside.work_search:resolver
+    projection: kickside.work_search:items
     reads: []
 - name: attachment
   kind: contract.binding
@@ -72,7 +74,7 @@ entries:
   kind: function.lua
   source: file://resolver.lua
   method: resolve_ids
-  modules: [ctx, security]
+  modules: [ctx, security, time]
   imports:
     work: kickside.work_search:work
     storage: kickside.work_search:storage
@@ -162,6 +164,13 @@ entries:
     - kickside.work_search:resolver
     - kickside.work_search:resolve_ids
     actions: [registry.get, contract.get, contract.open, contract.call, funcs.call]
+    effect: allow
+- name: pack_trait_discovery
+  kind: security.policy
+  groups: [kickside.security.groups:members]
+  policy:
+    resources: [kickside.work_search:search]
+    actions: [registry.get]
     effect: allow
 - name: tool_access
   kind: security.policy
