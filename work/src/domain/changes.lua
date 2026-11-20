@@ -79,6 +79,7 @@ end
 
 local function relation_shape_changed(old: types.Relation, new: types.Relation): boolean
     return old.symmetric ~= new.symmetric or old.cardinality ~= new.cardinality
+        or not same(old.from_types, new.from_types) or not same(old.to_types, new.to_types)
 end
 
 function M.usage_targets(prev: types.Model, next: types.Model): types.UsageTargets

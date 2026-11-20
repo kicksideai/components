@@ -158,7 +158,7 @@ type ItemTypeDecl = {
     move_children: string?,
     id: string, title: string?, process: string, parent_types: { string | false }?, fields: { string }?, inherit: { string }?,
 }
-type RelationDecl = { id: string, outward: string?, inward: string?, cardinality: string?, symmetric: boolean? }
+type RelationDecl = { id: string, outward: string?, inward: string?, cardinality: string?, symmetric: boolean?, from_types: { string }?, to_types: { string }? }
 type PrincipalDecl = { kind: string, id: string }
 type TimerEffect = { emit: string?, transition: string? }
 type Timer = { id: string, after: string?, at_field: string?, by: string?, table: { [string]: string }?, interrupting: boolean? } & { [string]: unknown }
@@ -209,7 +209,7 @@ type Field = {
     formula: { expression: string, depends: { integer } }?, access: FieldAccess?, rollup: Rollup?, options: { Option }?, index: string, track: boolean, intervals: boolean,
 }
 type ItemType = { move_children: string?, plugin: string?, id: string, title: string, process: string, parent_types: { string | false }, fields: { string }, inherit: { string } }
-type Relation = { plugin: string?, id: string, outward: string, inward: string, cardinality: string, symmetric: boolean }
+type Relation = { plugin: string?, id: string, outward: string, inward: string, cardinality: string, symmetric: boolean, from_types: { string }?, to_types: { string }? }
 type State = {
     id: string, name: string, category: string, kind: string, awaiting: PrincipalSource?, stage: string?, assign: { PrincipalDecl }, require: { string }, invariants: { string }?, due: string?, timers: { Timer }?, run: Stage?, release_when: Release?, regions: { Region }?, join: string | integer | nil,
 }

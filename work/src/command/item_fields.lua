@@ -194,7 +194,7 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
     for _, candidate in ipairs(p.transitions) do
         if candidate.id == op.transition then t = candidate end
     end
-    if not t or (t.auto and t.people ~= true and not op.force) then
+    if not t or (not op.force and (t.people == false or (t.auto and t.people ~= true))) then
         return M.result("invalid", group, "unknown_transition", "process " .. p.id .. " has no transition " .. tostring(op.transition), "transition")
     end
     local state = process.state_of(p, item.state) :: domain.State

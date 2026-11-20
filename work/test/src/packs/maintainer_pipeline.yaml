@@ -1,0 +1,195 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: maintainer_pipeline
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Maintainer pipeline
+    version: 1.0.0
+    icon: tabler:git-pull-request
+    description: Screen, classify, implement, verify and ship maintenance work.
+  data:
+    schema:
+      fields:
+      - {code: title, form: text}
+      - code: size
+        type: option
+        index: key
+        options: [{id: small}, {id: large}]
+      - code: risk
+        type: option
+        index: key
+        options: [{id: low}, {id: high}]
+      - {code: area, form: text}
+      - {code: jira_key, form: text, index: key}
+      - {code: pr_url, form: text, index: key, track: true}
+      - {code: classification, form: text, track: true}
+      - {code: screening_summary, form: text}
+      - {code: design_summary, form: text}
+      - {code: escalation_reason, form: text, index: key}
+      - {code: owner, type: principal}
+      - {code: review_due, form: time}
+      - code: children_done
+        type: rollup
+        form: bool
+        index: key
+        of: children
+        fn: all
+        where: {field: state, op: eq, value: done}
+      item_types:
+      - id: feature
+        title: Feature
+        process: maintenance
+        fields: &fields [title, size, risk, area, jira_key, pr_url, classification, screening_summary, design_summary, escalation_reason, owner, review_due, children_done]
+      - {id: bug, title: Bug, process: maintenance, fields: *fields}
+      - {id: security, title: Security, process: maintenance, fields: *fields}
+      - {id: change, title: Change, process: maintenance, fields: *fields}
+      - {id: release, title: Release, process: maintenance, fields: *fields}
+      - id: subtask
+        title: Implementation sub-task
+        process: maintenance
+        fields: *fields
+        parent_types: [feature]
+        inherit: [owner, area]
+      relation_types:
+      - {id: blocks, outward: Blocks, inward: Blocked by}
+      - {id: implements, outward: Implements, inward: Implemented by, from_types: [change], to_types: [feature, bug]}
+      - {id: ships, outward: Ships, inward: Shipped by, from_types: [release]}
+    processes:
+    - id: maintenance
+      initial: intake
+      migration: pin
+      states:
+      - {id: intake, name: Intake, category: triage, require: [owner]}
+      - id: screening
+        name: Screening
+        category: triage
+        kind: automated
+        run: {stage: screening, on_pass: screened}
+      - id: triage
+        name: Triage
+        category: triage
+        kind: automated
+        run: {stage: triage, on_pass: classified}
+      - {id: classified, name: Classified, category: triage, require: [classification, size, risk, area]}
+      - id: design
+        name: Design
+        category: started
+        kind: automated
+        run: {stage: design, on_pass: design_proposed}
+      - id: design_review
+        name: Design review
+        category: started
+        kind: gate
+        release_when: &owner_approval {approvals: {min: 1, from: {field: owner}}}
+        timers:
+        - id: design_review_overdue
+          at_field: review_due
+          interrupting: true
+          then: {transition: review_overdue}
+      - id: security_review
+        name: Security review
+        category: started
+        kind: gate
+        release_when: *owner_approval
+      - id: conformance
+        name: Conformance
+        category: started
+        kind: automated
+        run: {stage: conformance, on_pass: conformant, on_fail: redesign}
+      - id: implement
+        name: Implement
+        category: started
+        kind: automated
+        run: {stage: implement, on_pass: implemented, max_visits: 2, on_exhausted: implementation_exhausted}
+      - id: test
+        name: Test
+        category: started
+        kind: automated
+        run: {stage: test, on_pass: tested, on_fail: repair_test, retry: {max: 2, backoff: PT0.1S}}
+      - id: verification
+        name: Verification
+        category: started
+        kind: automated
+        run: {stage: verification, on_pass: verified, on_fail: repair_verification}
+      - {id: merge_candidate, name: Merge candidate, category: started}
+      - {id: escalated, name: Escalated, category: started, kind: gate, release_when: *owner_approval}
+      - {id: merge_prep, name: Merge prep, category: started, kind: gate, release_when: *owner_approval}
+      - {id: release_prep, name: Release prep, category: started, kind: gate, release_when: *owner_approval}
+      - {id: done, name: Done, category: completed}
+      transitions:
+      - {id: screen, from: [intake], to: screening}
+      - {id: screened, from: [screening], to: triage, people: false}
+      - {id: classified, from: [triage], to: classified, people: false}
+      - id: fast_track
+        from: [classified]
+        to: implement
+        order: 1
+        auto: true
+        when:
+          and:
+          - {field: type, op: eq, value: bug}
+          - {field: size, op: eq, value: small}
+          - {field: risk, op: eq, value: low}
+      - id: start_design
+        from: [classified]
+        to: design
+        order: 2
+        auto: true
+        when: {field: type, op: in, value: [feature, bug]}
+      - id: review_security
+        from: [classified]
+        to: security_review
+        auto: true
+        when: {field: type, op: eq, value: security}
+      - {id: check_conformance, from: [classified], to: conformance, auto: true, default: true}
+      - {id: design_proposed, from: [design], to: design_review, people: false}
+      - {id: review_approved, from: [design_review, security_review], to: conformance, auto: true}
+      - id: review_overdue
+        from: [design_review]
+        to: escalated
+        people: false
+        set: [{field: escalation_reason, value: design_review_overdue}]
+      - {id: conformant, from: [conformance], to: implement, people: false}
+      - {id: redesign, from: [conformance], to: design, people: false}
+      - id: implemented
+        from: [implement]
+        to: test
+        people: false
+        when: {field: pr_url, op: is_null, value: false}
+      - {id: tested, from: [test], to: verification, people: false}
+      - {id: verified, from: [verification], to: merge_candidate, people: false}
+      - {id: repair_test, from: [test], to: implement, people: false}
+      - {id: repair_verification, from: [verification], to: implement, people: false}
+      - id: implementation_exhausted
+        from: [classified, conformance, test, verification]
+        to: escalated
+        people: false
+        set: [{field: escalation_reason, value: implementation_exhausted}]
+      - id: resume_overdue_review
+        from: [escalated]
+        to: conformance
+        auto: true
+        when: {field: escalation_reason, op: eq, value: design_review_overdue}
+      - id: review_exhausted
+        from: [escalated]
+        to: merge_candidate
+        auto: true
+        when: {field: escalation_reason, op: eq, value: implementation_exhausted}
+      - id: ready_to_merge
+        name: Ready to merge
+        from: [merge_candidate]
+        to: merge_prep
+        when:
+          or:
+          - {field: type, op: neq, value: feature}
+          - {field: children_done, op: eq, value: true}
+      - {id: merge_approved, from: [merge_prep], to: release_prep, auto: true}
+      - {id: release_approved, from: [release_prep], to: done, auto: true}
+    views: []
+    automations: []
+    traits: []
+    requires: []
+    starter: {items: [], default: false}

@@ -237,7 +237,7 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
                 if verr then return nil, verr end
                 for _, entry in ipairs(narrowing) do
                     if entry.change.class ~= "refused" then
-                        local valid, ref_err = references_match(entry.field, item, matches, until_at)
+                        local valid, ref_err = references_match(entry.field :: domain.Field, item, matches, until_at)
                         if ref_err then return nil, ref_err end
                         if not valid then
                             entry.change.class = "refused"
