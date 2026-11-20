@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12](https://github.com/kicksideai/components/compare/work-v0.1.11...work-v0.1.12) (2026-11-20)
+
+
+### Features
+
+* **work:** expose per-field edit capabilities ([68de4c4](https://github.com/kicksideai/components/commit/68de4c4d46ab4b782a2fa4e4607572512e5d47f9))
+
 ## [0.1.11](https://github.com/kicksideai/components/compare/work-v0.1.10...work-v0.1.11) (2026-11-20)
 
 
