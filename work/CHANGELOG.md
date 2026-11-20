@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.16](https://github.com/kicksideai/components/compare/work-v0.1.15...work-v0.1.16) (2026-11-20)
+
+
+### Features
+
+* **work:** page grouped queries and sum measures ([#192](https://github.com/kicksideai/components/issues/192)) ([c0b0349](https://github.com/kicksideai/components/commit/c0b0349523e87ea2243466fe8f4544c1406cba5e))
+
+
+### Bug Fixes
+
+* **work:** derive tool schemas from contract vocabulary ([#227](https://github.com/kicksideai/components/issues/227)) ([d04e69b](https://github.com/kicksideai/components/commit/d04e69b1ab4bc9e78eb9f9391912f99967122bf1))
+
 ## [0.1.15](https://github.com/kicksideai/components/compare/work-v0.1.14...work-v0.1.15) (2026-11-20)
 
 
