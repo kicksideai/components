@@ -61,14 +61,9 @@ function M.demand(db: storage.Executor, board_id: string, kind: string): ({ doma
     return db:query("SELECT key, status, job_id FROM kickside_work_job WHERE board_id = $1 AND job_type = $2", { board_id, kind })
 end
 
--- Board-wide rank facts address the retained row order; item work admits only
--- active subjects. These populations have different replay semantics.
+-- Board-wide rank facts address the retained row order.
 function M.population(db: storage.Executor, board_id: string): (integer?, error?)
     return store.count(db, "SELECT COUNT(*) AS n FROM kickside_work_item WHERE board_id = $1", { board_id })
-end
-
-function M.work_population(db: storage.Executor, board_id: string): (integer?, error?)
-    return store.count(db, "SELECT COUNT(*) AS n FROM kickside_work_item WHERE board_id = $1 AND life <> 'purged'", { board_id })
 end
 
 function M.long_ranks(db: storage.Executor, board_id: string, limit: integer): (integer?, error?)

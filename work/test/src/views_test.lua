@@ -2,8 +2,157 @@
 local test = require("test")
 local scoped = require("scoped")
 local steps = require("steps")
+local fixture = require("fixture")
 local function define()
     test.describe("saved work views", function()
+        test.it("runs an explicit board selection through the cross-board cursor", function()
+            local owner, viewer = scoped.admin(), scoped.member()
+            local anchor, source, other = scoped.board(owner), scoped.board(owner), scoped.board(owner)
+            for _, board in ipairs({ anchor, source, other }) do
+                assert(board.call("grant", { subject_id = viewer.id, mask = 1 }))
+            end
+            local home = steps.create(anchor, "task", { estimate = 0 })
+            local first = steps.create(source, "task", { estimate = 1 })
+            local second = steps.create(other, "task", { estimate = 2 })
+            local view = { type = "list", boards = { source.id, other.id }, order = { field = "estimate" }, columns = { "title", "estimate" } }
+            local id = assert(owner.call("create_view", { board_id = anchor.id, view = view })).view_id
+            local path = "/api/work/views/" .. id
+            local get = viewer.http("GET", path)
+            test.eq(get.status, 200)
+            test.eq(get.body.data.board_id, anchor.id)
+            test.eq(get.body.data.view.boards[1], source.id)
+            local page = viewer.http("POST", path .. "/run", { limit = 1 })
+            test.eq(page.status, 200)
+            test.eq(page.body.data.items[1].id, first)
+            local cursor = page.body.data.cross_after
+            test.not_nil(cursor)
+            test.eq(viewer.http("POST", path .. "/run", { cross_after = cursor, after = { id = first } }).status, 400)
+            test.eq(viewer.http("POST", path .. "/run", { after = { id = first } }).status, 400)
+            test.eq(viewer.http("POST", path .. "/run", { min_seq = 0 }).status, 400)
+            test.eq(owner.http("POST", path .. "/run", { cross_after = cursor }).status, 400)
+            page = viewer.http("POST", path .. "/run", { limit = 1, cross_after = cursor })
+            test.eq(page.status, 200)
+            test.eq(page.body.data.items[1].id, second)
+            test.is_nil(page.body.data.cross_after)
+
+            local schema = fixture.declaration(other.prefix)
+            schema.fields[#schema.fields + 1] = { code = "detail", form = "text" }
+            schema.item_types[3].fields[#schema.item_types[3].fields + 1] = "detail"
+            assert(other.call("apply_schema", { declaration = schema }))
+            test.eq(viewer.http("POST", path .. "/run", { cross_after = cursor }).status, 400)
+            cursor = assert(viewer.call("run_view", { view_id = id, limit = 1 })).cross_after
+            test.not_nil(cursor)
+
+            view.boards = { other.id }
+            assert(owner.call("save_view", { view_id = id, view = view }))
+            test.eq(viewer.http("POST", path .. "/run", { cross_after = cursor }).status, 400)
+            test.eq(assert(viewer.call("run_view", { view_id = id })).items[1].id, second)
+            view.boards = nil
+            assert(owner.call("save_view", { view_id = id, view = view }))
+            test.is_nil(assert(viewer.call("get_view", { view_id = id })).view.boards)
+            test.eq(assert(viewer.call("run_view", { view_id = id, min_seq = 0 })).items[1].id, home)
+        end)
+
+        test.it("returns a private placeholder in the anchor list when selected board access is revoked", function()
+            local owner, viewer = scoped.admin(), scoped.member()
+            local anchor, selected = scoped.board(owner), scoped.board(owner)
+            for _, board in ipairs({ anchor, selected }) do
+                assert(board.call("grant", { subject_id = viewer.id, mask = 1 }))
+            end
+            local view = { type = "list", boards = { selected.id }, columns = { "estimate" }, where = { field = "estimate", op = "eq", value = 782 } }
+            local id = assert(owner.call("create_view", { board_id = anchor.id, title = "Private selection", view = view })).view_id
+            assert(owner.call("create_view", { board_id = anchor.id, view = { type = "list" } }))
+            local shown = assert(viewer.call("list_views", { board_id = anchor.id, limit = 1 }))
+            test.eq(shown.views[1].view.boards[1], selected.id)
+            assert(selected.call("revoke", { subject_id = viewer.id }))
+            local path = "/api/work/views/" .. id
+            for _, response in ipairs({ viewer.http("GET", path), viewer.http("POST", path .. "/run", {}) }) do
+                test.eq(response.status, 403)
+                test.eq(response.body.details.code, "access_denied")
+                test.is_nil(response.body.details.board_id)
+                local leaked = response.raw:find(selected.id, 1, true)
+                test.is_nil(leaked)
+            end
+            local listed = assert(viewer.call("list_views", { board_id = anchor.id, limit = 1 }))
+            local entry = listed.views[1]
+            test.eq(entry.view_id, id)
+            test.eq(entry.board_id, anchor.id)
+            test.eq(entry.status, "unavailable")
+            test.is_nil(entry.title)
+            test.is_nil(entry.view)
+            test.eq(listed.after, shown.after)
+            test.not_nil(assert(viewer.call("list_views", { board_id = anchor.id, after = listed.after })).views[1].view)
+        end)
+
+        test.it("resolves readable boards as the viewer and invalidates a changed expansion", function()
+            local owner, viewer = scoped.admin(), scoped.member()
+            local anchor, selected = scoped.board(owner), scoped.board(owner)
+            assert(anchor.call("grant", { subject_id = viewer.id, mask = 1 }))
+            local home = steps.create(anchor, "task", { estimate = 1 })
+            steps.create(anchor, "task", { estimate = 2 })
+            local next_item = steps.create(selected, "task", { estimate = 3 })
+            local id = assert(owner.call("create_view", { board_id = anchor.id, view = { type = "list", boards = "readable", order = { field = "estimate" } } })).view_id
+            local page = assert(viewer.call("run_view", { view_id = id, limit = 1 }))
+            test.eq(page.items[1].id, home)
+            test.not_nil(page.cross_after)
+            test.eq(#page.cross_after.selection, 1)
+            assert(selected.call("grant", { subject_id = viewer.id, mask = 1 }))
+            local stale = viewer.http("POST", "/api/work/views/" .. id .. "/run", { cross_after = page.cross_after })
+            test.eq(stale.status, 400)
+            test.eq(assert(viewer.call("get_view", { view_id = id })).view.boards, "readable")
+            page = assert(viewer.call("run_view", { view_id = id }))
+            test.eq(page.items[3].id, next_item)
+        end)
+
+        test.it("admits filters, columns, scopes and sort on every selected board before saving", function()
+            local owner, reader, writer = scoped.admin(), scoped.member(), scoped.member()
+            local anchor = scoped.board(owner)
+            local d = fixture.declaration(fixture.fresh_prefix())
+            d.fields[2] = { code = "estimate", form = "time", index = "key" }
+            local other = scoped.board(owner, d)
+            assert(anchor.call("apply_schema", { declaration = {
+                plugins = { { use = "app:work_plugin" } }, scopes = { "app:work_scope" },
+            } }))
+            assert(anchor.call("grant", { subject_id = reader.id, mask = 1 }))
+            assert(anchor.call("grant", { subject_id = writer.id, mask = 2 }))
+            assert(other.call("grant", { subject_id = writer.id, mask = 1 }))
+            local shared = assert(writer.call("create_view", { board_id = anchor.id, view = { type = "list", boards = { other.id } } })).view_id
+            assert(other.call("grant", { subject_id = reader.id, mask = 1 }))
+            test.eq(assert(reader.call("get_view", { view_id = shared })).view.boards[1], other.id)
+            assert(other.call("revoke", { subject_id = reader.id }))
+            local id = assert(reader.call("create_view", { board_id = anchor.id, personal = true, view = { type = "list" } })).view_id
+            local path = "/api/work/views/" .. id
+            local view = { type = "list", boards = { anchor.id, other.id } }
+            test.eq(reader.http("POST", path .. "/save", { view = view }).status, 403)
+            assert(other.call("grant", { subject_id = reader.id, mask = 1 }))
+            for _, options in ipairs({
+                { columns = { "estimate" } },
+                { where = { field = "estimate", op = "eq", value = 5 } },
+                { order = { field = "estimate" } },
+                { order = { { field = "number" }, { field = "rank" } } },
+                { group_by = "state" },
+            }) do
+                options.type, options.boards = view.type, view.boards
+                local response = reader.http("POST", path .. "/save", { view = options })
+                test.eq(response.status, 400, response.raw)
+            end
+            local _, scope_err = owner.call("create_view", { board_id = anchor.id, view = {
+                type = "list", boards = { anchor.id, other.id }, scopes = { { id = "app:work_scope" } },
+            } })
+            test.eq(scope_err:kind(), errors.INVALID)
+            test.eq(scope_err:details().code, "plugin_seam_unowned")
+            local ids: { string } = {}
+            for i = 1, 51 do ids[i] = tostring(i) end
+            test.eq(reader.http("POST", path .. "/save", { view = { type = "list", boards = ids } }).status, 400)
+            test.is_nil(assert(reader.call("get_view", { view_id = id })).view.boards)
+            view.boards = { other.id }
+            assert(reader.call("save_view", { view_id = id, view = view }))
+            test.eq(assert(reader.call("get_view", { view_id = id })).view.boards[1], other.id)
+            assert(anchor.call("revoke", { subject_id = reader.id }))
+            test.eq(reader.http("POST", path .. "/run", {}).status, 403)
+            test.eq(reader.http("GET", path).status, 403)
+        end)
+
         test.it("lets a personal owner rename through the contract and save a title with board READ", function()
             local owner, reader = scoped.admin(), scoped.member()
             local h = scoped.board(owner)
