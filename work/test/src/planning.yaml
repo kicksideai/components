@@ -6,6 +6,9 @@ entries:
   kind: ns.dependency
   component: kickside/work-planning
   version: '*'
+  parameters:
+  - name: kickside.work.planning:api_router
+    value: app:api
 - name: planning_test
   kind: function.lua
   meta: {type: test, suite: kickside_work_planning, timeout: 300s}

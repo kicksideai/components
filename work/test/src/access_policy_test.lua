@@ -75,7 +75,7 @@ local function exact(policy_id: string, expected: { [string]: boolean })
             test.eq(policy:evaluate(actor, "access", id), expected[id] and "allow" or "undefined", id)
         end
     end
-    test.eq(seen, 38)
+    test.eq(seen, 42)
     test.eq(policy:evaluate(actor, "access", "kickside.work.api:get.endpoint.unlisted"), "undefined")
 end
 
@@ -214,6 +214,14 @@ local function define()
         test.it("admits members to exactly the member endpoints and administrators to board creation", function()
             exact("kickside.work.security:member_endpoints", MEMBER_ENDPOINTS)
             exact("kickside.work.security:admin_endpoints", ADMIN_ENDPOINTS)
+            exact("kickside.work.templates:member_endpoints", {
+                ["kickside.work.templates.api:list.endpoint"] = true,
+                ["kickside.work.templates.api:instantiate.endpoint"] = true,
+            })
+            exact("kickside.work.planning:member_endpoints", {
+                ["kickside.work.planning.api:plan_close.endpoint"] = true,
+                ["kickside.work.planning.api:close.endpoint"] = true,
+            })
         end)
 
         test.it("publishes a member policy and an administration policy that include private ones", function()
@@ -276,6 +284,26 @@ local function define()
                 local res, err = http_client.request(c[1], c[2], { body = "{}", headers = { ["Content-Type"] = "application/json" } })
                 test.is_nil(err, c[2])
                 test.eq(res.status_code, 401, c[1] .. " " .. c[2])
+            end
+        end)
+
+        test.it("requires authentication and module access for each plugin endpoint", function()
+            local outsider = scoped.outsider()
+            local board = "00000000-0000-0000-0000-000000000000"
+            local templates = "/api/work/boards/" .. board .. "/templates"
+            local cases = {
+                { "GET", templates },
+                { "POST", templates .. "/instantiate" },
+                { "POST", "/api/work/sprints/plan_close" },
+                { "POST", "/api/work/sprints/close" },
+            }
+            for _, c in ipairs(cases) do
+                local res, err = http_client.request(c[1], "http://127.0.0.1:19239" .. c[2], {
+                    body = "{}", headers = { ["Content-Type"] = "application/json" },
+                })
+                test.is_nil(err, c[2])
+                test.eq(res.status_code, 401, c[2])
+                test.eq(outsider.http(c[1], c[2]).status, 403, c[2])
             end
         end)
     end)

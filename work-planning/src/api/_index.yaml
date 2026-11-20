@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.planning.api
+entries:
+- name: plan_close
+  kind: function.lua
+  source: file://plan_close.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: plan_close.endpoint
+  kind: http.endpoint
+  method: POST
+  func: plan_close
+  path: /work/sprints/plan_close
+- name: close
+  kind: function.lua
+  source: file://close.lua
+  method: handler
+  imports:
+    access: kickside.work.api:access
+- name: close.endpoint
+  kind: http.endpoint
+  method: POST
+  func: close
+  path: /work/sprints/close
