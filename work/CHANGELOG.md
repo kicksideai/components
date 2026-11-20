@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.25](https://github.com/kicksideai/components/compare/work-v0.1.24...work-v0.1.25) (2026-11-20)
+
+
+### Bug Fixes
+
+* **work:** distinguish top-level placement from user item types ([51da163](https://github.com/kicksideai/components/commit/51da1630383ca9d7ffbea2102339262dbc1c52ca))
+* **work:** distinguish top-level placement from user item types ([5c23889](https://github.com/kicksideai/components/commit/5c238899816bd81eb3bb791c8f24cd5bb4aac726))
+* **work:** validate stored references when adopting target types ([180f13e](https://github.com/kicksideai/components/commit/180f13eabf7897034dd1679794ec87e43327eaa5))
+* **work:** validate stored references when adopting target types ([ce01e5c](https://github.com/kicksideai/components/commit/ce01e5c2bdacb48fa1194d349a7232c8555b58b6))
+
 ## [0.1.24](https://github.com/kicksideai/components/compare/work-v0.1.23...work-v0.1.24) (2026-11-20)
 
 
