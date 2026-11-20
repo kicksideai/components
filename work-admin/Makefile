@@ -6,7 +6,7 @@ WORK_ADMIN_PG_PORT ?= 5434
 SHELL := bash
 .SHELLFLAGS := -o pipefail -ec
 
-.PHONY: setup lockrefresh ui-kit ui-setup ui-lock ui-test test-ui typecheck build lint strict check test test-pg pack verify publish
+.PHONY: setup lockrefresh ui-kit ui-setup ui-lock ui-test test-ui typecheck build lint strict check test test-pg test-published test-scope pack verify publish
 setup: ui-setup
 	cd test && $(WIPPY) install
 lockrefresh:
@@ -37,11 +37,15 @@ test:
 	cd test && WIPPY="$(WIPPY)" ./run.sh $(WIPPY_ARGS)
 test-pg:
 	$(MAKE) test WIPPY_ARGS="--profile postgres --set vars.pg_port=$(WORK_ADMIN_PG_PORT) $(WIPPY_ARGS)"
+test-published:
+	WIPPY="$(WIPPY)" node scripts/test-variant.mjs published $(WIPPY_ARGS)
+test-scope:
+	WIPPY="$(WIPPY)" node scripts/test-variant.mjs custom-scope $(WIPPY_ARGS)
 pack:
 	cd test && $(WIPPY) pack --module kickside/work-admin --embed kickside.work.admin:ui_fs .wippy/work-admin.wapp
 	mkdir -p .wippy/pack
 	TMPDIR="$(CURDIR)/.wippy/pack" $(WIPPY) publish --config . --version $(VERSION) --dry-run --create --module-visibility private --module-type plugin --embed kickside.work.admin:ui_fs
-verify: setup build typecheck ui-test lint strict check test pack
+verify: setup build typecheck ui-test lint strict check test test-published test-scope pack
 publish:
 	@echo "Releases use the repository's Release Please workflow." >&2
 	@exit 1

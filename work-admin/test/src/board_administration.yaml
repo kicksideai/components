@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+  - name: board_administration_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_work_admin, timeout: 300s }
+    source: file://board_administration_test.lua
+    method: run
+    modules: [json, uuid]
+    imports:
+      test: wippy.test:test
+      session: app:session
+      fixture: app:fixture
+  - name: settings_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.work.plugin
+      attachment: app:ui_attachment
+      seams: [app:settings_integer_field, app:settings_reference_field, app:settings_quantity_field]
+  - name: settings_integer_field
+    kind: registry.entry
+    meta:
+      type: kickside.work.type
+      title: Installed integer field
+      plugin: app:settings_plugin
+      form: int
+      indexes: [none, number]
+  - name: settings_reference_field
+    kind: registry.entry
+    meta:
+      type: kickside.work.type
+      title: Installed reference field
+      plugin: app:settings_plugin
+      form: ref
+      config_schema:
+        type: object
+        properties:
+          target: { type: string }
+        required: [target]
+  - name: settings_quantity_field
+    kind: registry.entry
+    meta:
+      type: kickside.work.type
+      title: Installed measurement field
+      plugin: app:settings_plugin
+      form: quantity
+      config_schema:
+        type: object
+        properties:
+          canonical: { type: string }
+          units: { type: object }
+        required: [canonical, units]
+  - name: settings_view_type
+    kind: registry.entry
+    meta:
+      type: kickside.work.ui.view
+      id: list
+      config_schema: { type: object, additionalProperties: false }
+  - name: settings_declarations_access
+    kind: security.policy
+    groups: [kickside.security.groups:members]
+    policy:
+      resources: [app:settings_plugin, app:settings_integer_field, app:settings_reference_field, app:settings_quantity_field, app:settings_view_type]
+      actions: [registry.get, registry.find]
+      effect: allow

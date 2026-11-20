@@ -27,7 +27,7 @@ entries:
     kind: function.lua
     source: file://principals.lua
     method: post
-    modules: [http, contract, security]
+    modules: [http, contract, security, json]
     imports:
       types: kickside.work.admin:types
       component: kickside.component:component

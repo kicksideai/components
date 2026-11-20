@@ -23,8 +23,10 @@ end
 
 -- member persists a user of the platform Members group, which carries no
 -- permissive harness policy.
-function M.member(id: string): security.Actor
-    return persist(id, { M.PLATFORM_MEMBERS })
+function M.member(id: string, work_tools: boolean?): security.Actor
+    local groups = { M.PLATFORM_MEMBERS }
+    if work_tools then groups[#groups + 1] = "app.security:work_mcp_tools" end
+    return persist(id, groups)
 end
 
 -- outsider persists a user of no group.
@@ -33,7 +35,7 @@ function M.outsider(id: string): security.Actor
 end
 
 function M.admin(id: string): security.Actor
-    return persist(id, { M.PLATFORM_MEMBERS, "app.security:work_admin" })
+    return persist(id, { M.PLATFORM_MEMBERS, "app.security:work_admin", "app.security:work_mcp_tools" })
 end
 
 return M

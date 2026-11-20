@@ -45,6 +45,8 @@ entries:
   policy:
     resources:
     - app:work_call
+    - app:publish_flow
+    - app:register_schemaless_board
     actions:
     - funcs.call
     effect: allow
@@ -261,6 +263,7 @@ entries:
   - json
   - http_client
   - contract
+  - time
   imports: &id002
     actors: app:actors
     execution_identity: kickside.execution:execution_identity
@@ -320,12 +323,32 @@ entries:
   kind: function.lua
   source: file://work_call.lua
   method: run
-  modules:
+  modules: &work_call_modules
   - contract
   - security
   - registry
-  imports:
+  - funcs
+  - uuid
+  imports: &work_call_imports
     component: kickside.component:component
+    envelope: kickside.component:envelope
+    threads: kickside.work.persist:threads
+    prefix_registry: kickside.work.persist:registry
+- name: register_schemaless_board
+  kind: function.lua
+  source: file://work_call.lua
+  method: register_schemaless
+  modules: *work_call_modules
+  imports: *work_call_imports
+  security:
+    policies: [app:schemaless_fixture_create]
+- name: schemaless_fixture_create
+  kind: security.policy
+  meta: {private: true, service_only: true, producers: [app:register_schemaless_board]}
+  policy:
+    resources: [kickside.work.binding:board]
+    actions: [component.kind.create, component.kind.update]
+    effect: allow
 - name: fixture
   kind: library.lua
   source: file://fixture.lua
