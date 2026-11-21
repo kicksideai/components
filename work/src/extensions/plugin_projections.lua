@@ -57,10 +57,13 @@ local function converge(board_id: string, row: types.PluginState, settings: type
         local p = projections[index]
         local mode = p.input == "state" and "cursor_only" or "prefetch_events"
         local previous: local_types.Config? = nil
+        local parked = false
         local raw, perr = client:get_projection_cursor({ thread_id = board_id, kind = p.kind, projection_key = PREFIX .. row.plugin })
         if perr and perr:kind() ~= errors.NOT_FOUND then return nil, perr end
         if raw then
-            local body = (raw :: local_types.Pair).projection.body
+            local pair = raw :: local_types.Pair
+            parked = pair.cursor.status == "invalid"
+            local body = pair.projection.body
             if type(body) == "string" then
                 local decoded, jerr = json.decode(body)
                 if jerr then return nil, jerr end
@@ -69,14 +72,16 @@ local function converge(board_id: string, row: types.PluginState, settings: type
             local definition = body :: local_types.Body
             previous = definition.worker_config
         end
-        local reset = previous ~= nil and (not values.equal(previous.config, config) or previous.revision ~= p.revision)
-        if previous and previous.revision ~= p.revision and previous.start_seq == row.revision then
+        local changed = previous ~= nil and (not values.equal(previous.config, config) or previous.revision ~= p.revision)
+        local reset = changed or parked
+        if previous and reset and (changed or p.input == "state") and previous.start_seq == row.revision then
             local _, rerr = client:append_events({ writes = { { thread_id = board_id, events = { { type = consts.EVENTS.PLUGIN_REBUILD,
                 subject = "plugin:" .. row.plugin, body = { plugin = row.plugin } } } } } })
             return rerr == nil, rerr
         end
         if not previous or reset or previous.input ~= p.input then
             local start_seq = previous and not reset and previous.start_seq or p.start_seq or row.revision
+            if previous and parked and not changed and p.input == "events" then start_seq = previous.start_seq end
             local events: { { type: string } } = {}
             if p.input == "state" then
                 for _, event_type in pairs(consts.EVENTS) do events[#events + 1] = { type = event_type } end
@@ -89,7 +94,7 @@ local function converge(board_id: string, row: types.PluginState, settings: type
                 worker_config = { plugin = row.plugin, board_id = board_id, attachment_id = row.attachment_id, config = config,
                     input = p.input, revision = p.revision, start_seq = start_seq } })
             if rerr then
-                if p.start_seq and (not previous or reset) and rerr:kind() == errors.CONFLICT then
+                if p.input == "events" and rerr:kind() == errors.CONFLICT then
                     -- Core checks retention atomically when it installs the cursor. Read the floor only to describe a refusal.
                     local boundary, berr = client:prune_boundary({ thread_id = board_id })
                     if berr then return nil, berr end
