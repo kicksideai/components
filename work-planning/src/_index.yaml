@@ -9,7 +9,7 @@ entries:
 - name: dep.work
   kind: ns.dependency
   component: kickside/work
-  version: '>=0.1.25'
+  version: '>=0.1.31'
 - name: pack
   kind: registry.entry
   meta:
@@ -27,22 +27,28 @@ entries:
       - {code: planning_start, form: time, index: key, title: Start date}
       - {code: planning_end, form: time, index: key, title: End date}
       - {code: planning_goal, form: text, title: Goal}
-      - {code: current_sprint, type: item, config: {item_type: sprint}, index: key, track: true, title: Current sprint}
+      - {code: current_sprint, type: item, config: {item_type: sprint, item_states: [planned, active]}, index: key, track: true, title: Current sprint}
       - {code: milestone, type: item, config: {item_type: milestone}, index: key, track: true, title: Milestone}
       item_types:
       - {id: issue, title: Issue, process: planning_issue, fields: [title, current_sprint, milestone]}
-      - {id: sprint, title: Sprint, process: planning_period, fields: [name, planning_start, planning_end, planning_goal]}
+      - {id: sprint, title: Sprint, process: planning_sprint, fields: [name, planning_start, planning_end, planning_goal]}
       - {id: milestone, title: Milestone, process: planning_period, fields: [name, planning_start, planning_end, planning_goal]}
     processes:
     - id: planning_period
       initial: planned
-      states:
+      states: &period_states
       - {id: planned, name: Planned, category: unstarted, require: [name]}
       - {id: active, name: Active, category: started, require: [name, planning_start, planning_end]}
       - {id: closed, name: Closed, category: completed, require: [name]}
       transitions:
-      - {id: start, from: [planned], to: active, guards: ['kickside.work.planning:date_order']}
+      - &start_period {id: start, from: [planned], to: active, guards: ['kickside.work.planning:date_order']}
       - {id: close, from: [active], to: closed}
+    - id: planning_sprint
+      initial: planned
+      states: *period_states
+      transitions:
+      - *start_period
+      - {id: close, from: [active], to: closed, command: 'kickside.work.planning:close'}
     - id: planning_issue
       initial: open
       states:

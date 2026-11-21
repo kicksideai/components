@@ -12,6 +12,7 @@ function M.named_refusal(state: types.State, transition: types.Transition): type
 end
 
 function M.eligible(transition: types.Transition, state: string, auto: boolean?): boolean
+    if transition.command then return false end
     if auto ~= nil and transition.auto ~= auto then return false end
     if transition.any then return true end
     for _, source in ipairs(transition.from) do

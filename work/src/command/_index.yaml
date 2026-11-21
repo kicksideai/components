@@ -250,6 +250,7 @@ entries:
   meta: *id001
   source: file://item_fields.lua
   modules:
+  - security
   - uuid
   imports:
     seams: kickside.work.domain:seams

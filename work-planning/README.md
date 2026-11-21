@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Work Planning
 
-Work Planning requires `kickside/work` 0.1.25 or newer for typed sprint and
-milestone references, including upgrades of existing Planning boards.
+Work Planning requires `kickside/work` 0.1.31 or newer for previewed sprint
+closure and state-restricted sprint references.
 
 Install `kickside.work.planning:pack` through Work pack plan and apply. On a new
 board, Work board creation can install it in the same request. Installation
@@ -12,10 +12,13 @@ and apply the pack.
 Sprint and Milestone carry `name`, `planning_start`, `planning_end`, and optional
 `planning_goal`. Both start in `planned`. The `start` transition to `active`
 requires dates in order. Work accepts calendar dates and UTC timestamps for the
-date fields. The `close` transition leads to `closed`.
+date fields. Close a milestone with its `close` transition. Close a sprint with
+the Planning preview and commit described below.
 
 Issue items carry indexed, tracked `current_sprint` and `milestone` references
-that accept Sprint and Milestone items respectively.
+that accept Sprint and Milestone items respectively. New assignments require a
+planned or active sprint. Issues can retain an existing reference to a closed
+sprint.
 On a populated board, use the same pack plan with
 `plugin_configs["kickside.work.planning:plugin"].issue_types` set to the IDs
 of any custom issue types that should gain these fields. The plan describes
@@ -23,19 +26,13 @@ schema changes and identifies conflicts that require explicit resolutions.
 Pass the same configuration to apply with the planned generation and resolved
 choices. Adopted types keep their existing process and items.
 
-For boards installed with untyped Planning references, run `pack_plan` and
-`pack_apply` to adopt the target types in a new schema generation. Work checks
-stored references on live and trashed items. Each target must be live, readable
-by the caller, and of the required type. A refusal identifies the affected
-field. Correct the references or restore target availability and retry.
-Conforming boards keep their field IDs and existing item values.
-
 `kickside.work.planning:sprints.plan_close` previews an active sprint. Pass its
 board and item IDs, plus the ID of a different planned or active sprint to roll
 unfinished issues into it. Omit the destination for the backlog. The preview
 returns the affected item IDs and versions, the Work snapshot, and a token bound
 to the caller and that snapshot. Completed and canceled issues stay on the
-source sprint. Trash is excluded.
+source sprint. Trash is excluded from rollover and keeps its membership if
+restored later.
 
 Preview requires live board WRITE, visibility of the entire live sprint
 membership, and write access to the membership field on each unfinished issue.

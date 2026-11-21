@@ -25,7 +25,7 @@ type Value = Scalar | { Scalar }
 -- Field configuration a form reads: decimal scale and range, text case and
 -- pattern, reference target, record members, quantity units and currency.
 type FieldConfig = {
-    scale: integer?, range: { integer }?, case: string?, target: string?, item_type: string?, members: { [string]: MemberSpec }?,
+    scale: integer?, range: { integer }?, case: string?, target: string?, item_type: string?, item_states: { string }?, members: { [string]: MemberSpec }?,
     units: { [string]: string }?, canonical: string?, currency: string?, pattern: string?, format: string?,
 }
 type MemberSpec = FieldConfig & { form: string, cardinality: string? }
@@ -176,7 +176,7 @@ type StateDecl = {
 type EffectDecl = { field: string, value: unknown, clear: boolean?, copy: string? }
 type TransitionDecl = {
     id: string, name: string?, from: unknown, to: string, require: { string }?, set: { EffectDecl }?, auto: boolean?, people: boolean?, order: integer?,
-    default: boolean?, when: unknown, guards: { string }?,
+    default: boolean?, when: unknown, guards: { string }?, command: string?,
 }
 type ProcessDecl = {
     id: string, name: string?, states: { StateDecl }, initial: string?, transitions: { TransitionDecl }?, migration: string?,
@@ -217,7 +217,7 @@ type State = {
 type Effect = { field: string, op: string, value: Value?, from: string? }
 type Transition = {
     id: string, name: string, from: { string }, any: boolean, to: string, require: { string }, set: { Effect }, auto: boolean, people: boolean?,
-    order: integer, default: boolean, when: unknown, guards: { string }?,
+    order: integer, default: boolean, when: unknown, guards: { string }?, command: string?,
 }
 type HookActor = { id: string?, groups: { string } }
 type GuardRequest = { config: JsonObject, actor: HookActor, transition: Transition?,

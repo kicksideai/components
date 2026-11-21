@@ -72,7 +72,7 @@ M.STATE_KINDS = { human = true, automated = true, gate = true, parallel = true }
 M.PROCESS_KEYS = { id = true, name = true, initial = true, states = true, transitions = true, migration = true, map = true }
 M.STATE_KEYS = { awaiting = true, id = true, name = true, category = true, kind = true, stage = true, assign = true, require = true, due = true,
     timers = true, run = true, release_when = true, regions = true, join = true, invariants = true }
-M.TRANSITION_KEYS = { people = true, id = true, name = true, from = true, to = true, require = true, set = true, auto = true, order = true, default = true, when = true, guards = true }
+M.TRANSITION_KEYS = { people = true, id = true, name = true, from = true, to = true, require = true, set = true, auto = true, order = true, default = true, when = true, guards = true, command = true }
 M.TIMER_KEYS = { id = true, after = true, at_field = true, by = true, table = true, interrupting = true, future = true, ["repeat"] = true, ["then"] = true }
 M.STAGE_KEYS = { flow_ref = true, max_visits = true, on_exhausted = true, timeout = true, stage = true, retry = true, on_fail = true, on_pass = true, on_cancel = true }
 M.RETRY_KEYS = { max = true, backoff = true }

@@ -114,7 +114,20 @@ local function compile_field(decl: types.FieldDecl, id: integer, entries: { type
         if config.item_type ~= nil and not valid_id(config.item_type) then
             return nil, invalid("item reference config.item_type must be an item type id", { code = "invalid_field_config", field = decl.code })
         end
-        config = { target = consts.ITEM_TARGET, item_type = config.item_type }
+        local states = config.item_states
+        if states ~= nil then
+            if type(states) ~= "table" or #states == 0 or #states > consts.LIMITS.states then
+                return nil, invalid("item reference config.item_states lists allowed target states", { code = "invalid_field_config", field = decl.code })
+            end
+            local seen: { [string]: boolean } = {}
+            for _, state in ipairs(states) do
+                if not valid_id(state) or seen[state] then
+                    return nil, invalid("item reference config.item_states contains distinct state ids", { code = "invalid_field_config", field = decl.code })
+                end
+                seen[state] = true
+            end
+        end
+        config = { target = consts.ITEM_TARGET, item_type = config.item_type, item_states = states }
     end
     if kind == "formula" and type(decl.expression) ~= "string" then return nil, invalid("formula requires an expression", { code = "formula_invalid", field = decl.code }) end
     if kind == "rich_text" and config.format ~= "json" then return nil, invalid("rich_text declares config.format json", { code = "rich_text_format", field = decl.code }) end

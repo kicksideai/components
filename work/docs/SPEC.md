@@ -27,7 +27,7 @@ Omit `parent_types` or use an empty list for a root-only item type. A nonempty l
 
 A state’s `require` list applies on entry and after ordinary edits settle. Work checks the item’s resulting state and each active parallel region in the item’s process generation. A missing value returns `required_field` on the corresponding field. An edit that leaves a state may clear a field that the resulting states no longer require.
 
-An item reference field can declare `config.item_type` as the target item type ID. Work checks each written reference after resolving its live, visible target, including targets on another board. A type mismatch returns `invalid_reference` on the field. Fields with no target type accept any visible, live item type.
+An item reference field can declare `config.item_type` as the target item type ID and `config.item_states` as the allowed target state IDs. Work checks each written reference after resolving its live, visible target, including targets on another board. A type or state mismatch returns `invalid_reference` on the field. State restrictions govern new assignments. Existing references remain when their target transitions.
 
 Directed relations can declare `from_types` and `to_types` as nonempty lists of item type IDs. Source types are declared on the owning board. Target types are matched against the live, visible item after resolving its destination board and any move aliases. An omitted list allows any type at that endpoint. A link with a mismatched endpoint returns `relation_source_type` on `item` or `relation_target_type` on `target`. Symmetric relations omit the directional lists. Work refuses changes to endpoint lists while the relation has links, using the existing relation shape check.
 
@@ -36,6 +36,8 @@ Move alias resolution follows up to 32 redirects. Moves redirect retained aliase
 A cross-board move admits at most 5,000 live subtree items and 5,000 outgoing relation edges. Planning returns `move_edge_limit` before preparing destination operations when the source selection exceeds the edge allowance. Mapped links use the ordinary endpoint validation.
 
 A transition with `people: false` is reserved for the process engine and board ADMIN force. A direct named transition without force receives `unknown_transition`. Stage reports and state timers can take that route.
+
+A transition with `command` names the service that owns its admission. Taking it requires service authority for `work.transition.command` on that name, including when the caller requests board ADMIN force. Work excludes these edges from ordinary transition discovery and process routing. The Planning pack uses this rule to close sprints through its preview and commit command while milestones close through their ordinary transition. The preview moves or clears unfinished live membership. Completed, canceled and trashed issues retain their assignment. New assignments require a planned or active sprint.
 
 ## Agent pipelines
 

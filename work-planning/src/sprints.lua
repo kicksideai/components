@@ -14,6 +14,7 @@ local work = require("work")
 local M = {}
 local CONTRACT = "kickside.work.planning:sprints"
 local PLUGIN = "kickside.work.planning:plugin"
+local CLOSE = "kickside.work.planning:close"
 local FIELD = "current_sprint"
 
 type PreviewRequest = { board_id: string, sprint_id: string, rollover_id: string? }
@@ -58,10 +59,28 @@ local function members(request: PreviewRequest): (reads.EditSelection?, error?)
         membership, FIELD)
 end
 
-local function get(board_id: string, item_id: string, transitions: boolean?): (reads.GetResult?, error?)
-    local result, err = board_client.call("get", { board_id = board_id, item = { id = item_id },
-        include = transitions and { "transitions" } or nil })
+local function get(board_id: string, item_id: string): (reads.GetResult?, error?)
+    local result, err = board_client.call("get", { board_id = board_id, item = { id = item_id } })
     return result :: reads.GetResult?, err
+end
+
+local function can_close(schema: reads.SchemaView, item: reads.ItemView): boolean
+    local compiled = schema.compiled :: work.Compiled
+    local process_id: string? = nil
+    for _, item_type in ipairs(compiled.item_types) do
+        if item_type.id == item.type then process_id = item_type.process; break end
+    end
+    for _, process in ipairs(compiled.processes) do
+        if process.id == process_id and process.generation == item.process_generation then
+            for _, transition in ipairs(process.transitions) do
+                if transition.id == "close" and transition.to == "closed" and transition.command == CLOSE then
+                    if transition.any then return true end
+                    for _, state in ipairs(transition.from) do if state == item.state then return true end end
+                end
+            end
+        end
+    end
+    return false
 end
 
 function M.plan_close(input: unknown): (Preview?, error?)
@@ -70,7 +89,7 @@ function M.plan_close(input: unknown): (Preview?, error?)
     local request = input :: PreviewRequest
     local schema, schema_err = active_schema(request.board_id)
     if schema_err or not schema then return nil, schema_err end
-    local source, source_err = get(request.board_id, request.sprint_id, true)
+    local source, source_err = get(request.board_id, request.sprint_id)
     if source_err or not source then return nil, source_err end
     if not source.access.write then
         return nil, problem(errors.PERMISSION_DENIED, "planning_write_required", "Sprint closure requires board WRITE.")
@@ -78,11 +97,7 @@ function M.plan_close(input: unknown): (Preview?, error?)
     if source.item.type ~= "sprint" or source.item.state ~= "active" or source.item.life ~= "live" then
         return nil, problem(errors.INVALID, "planning_sprint_inactive", "Choose an active sprint.")
     end
-    local can_close = false
-    for _, transition in ipairs(source.transitions or {}) do
-        if transition.id == "close" and transition.to == "closed" then can_close = true end
-    end
-    if not can_close then
+    if not can_close(schema, source.item) then
         return nil, problem(errors.PERMISSION_DENIED, "planning_close_denied", "The sprint cannot transition to closed.")
     end
     if source.as_of ~= schema.as_of or source.generation ~= schema.generation then return nil, stale() end
