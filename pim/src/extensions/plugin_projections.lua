@@ -151,7 +151,7 @@ function M.batch(input: { catalog_id: string }): ({ done: boolean, reconcile: bo
         if err then
             local retryable=err:retryable()==true or (err:retryable()==nil and (err:kind()==errors.UNAVAILABLE or err:kind()==errors.INTERNAL))
             if retryable then retry_error=retry_error or err; pending=true end
-            lifecycle = { state = retryable and "pending" or "failed", error = { kind = err:kind(), code = err:details().code :: string?, message = tostring(err) } }
+            lifecycle = { state = retryable and "pending" or "failed", error = plugins.lifecycle_error(err) }
         end
         local _, serr = store.transaction("plugin lifecycle", function(tx: types.Executor, dialect: string): (boolean?, error?)
             local current, rerr = store.catalog(tx, input.catalog_id, dialect)

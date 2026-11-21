@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.29](https://github.com/kicksideai/components/compare/work-v0.1.28...work-v0.1.29) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work:** bound waits, stage reads, alias resolution and search writes ([#287](https://github.com/kicksideai/components/issues/287)) ([66d4b19](https://github.com/kicksideai/components/commit/66d4b196c6249cba691a79df5d1185d0c9c78723))
+
 ## [0.1.28](https://github.com/kicksideai/components/compare/work-v0.1.27...work-v0.1.28) (2026-11-21)
 
 

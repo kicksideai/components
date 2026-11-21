@@ -489,9 +489,10 @@ a list, and the options listing):
 { plugin: <id>, interface_version?: integer, title, description, icon, installed: boolean, active: boolean,
   attachment_id?: string, config?: object,          -- the validated effective configuration
   requires: [..], tools: [..],
-  lifecycle: { state: "pending" | "ready" | "failed", error?: { kind, code, message } },
-  projections: { <kind>: { last_seq, parked, bootstrapping, error? } },
-  problem?: { code, message, field? } }
+  lifecycle: { state: "pending" | "ready" | "failed", error?: { kind, code, message, field?, projection?, start_seq?, max_pruned_seq? } },
+  projections: { <kind>: { cursor_id, last_seq, status, parked, bootstrapping, error? } },
+  problem?: { code, message, field? },
+  references?: { fields, scopes, checks, plugins, shell_bindings } }
 ```
 
 `get_schema.plugins` lists active and installed plugins whose metadata the caller
@@ -499,7 +500,12 @@ can read. Both it and `schema_options.plugins` include the accepted
 `interface_version` for loaded manifests. The options listing also includes
 `config_schema`. The catalog's committed declaration and fields remain readable
 with catalog READ. An explicit `plugin_context` request also requires registry
-access to the requested plugin.
+access to the requested plugin. For a missing or incompatible active plugin,
+references identify affected catalog fields, filter sets, readiness checks,
+dependent plugins and any affected or unavailable catalog app binding. Schema
+admission retains installed seam ownership in the compiled schema so the
+catalog can explain those references after an uninstall. A missing required
+configuration setting identifies its field.
 
 Plugins declare deployment defaults through `kickside.settings:definition`
 entries in their `settings` namespace; deployment admins edit those values on
@@ -730,6 +736,9 @@ configured by writing registry entries.
 - Plugin teardown (`deletable` binding of the attachment) deletes the plugin's
   rows in bounded primary-key pages and answers the platform's native
   continuation while rows remain; the attachment association is removed last.
+  Deactivation refuses with `plugin_cleanup_unavailable` when the attachment's
+  deletion binding is absent. Restore the package that provides the binding
+  before deactivating the plugin.
 
 The attachment is owned by the catalog (`owner` meta = `catalog_id`). Its
 credentials (`credential_schema`) are stripped on export; its execution

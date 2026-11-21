@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.15](https://github.com/kicksideai/components/compare/pim-v0.1.14...pim-v0.1.15) (2026-11-21)
+
+
+### Bug Fixes
+
+* **pim:** expose plugin recovery details and protect attachment cleanup ([#288](https://github.com/kicksideai/components/issues/288)) ([b1cc82e](https://github.com/kicksideai/components/commit/b1cc82eb47c6453f1a09b2a80900df019732c46e))
+
 ## [0.1.14](https://github.com/kicksideai/components/compare/pim-v0.1.13...pim-v0.1.14) (2026-11-21)
 
 
