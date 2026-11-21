@@ -23,6 +23,11 @@ local function run(input: unknown): (types.JsonObject?, error?)
     local lease = clock.offset(15 * 60)
     local reserved, reserve_err = writer.reserve_asset(catalog_id, version, lease)
     if reserve_err or not reserved then return nil, reserve_err end
+    -- An older catalog selector can reach the appended sequence without folding the reservation.
+    local pending, pending_err = store.with_db(function(db: types.Executor)
+        return asset_rows.require_reservation(db, catalog_id, version, lease)
+    end)
+    if pending_err or not pending then return nil, pending_err end
     local asset, adopt_err = funcs.call("kickside.uploads:adopt_component_upload",
         { component_id = catalog_id, version_id = version, upload_id = request.upload_id, lease_until = lease })
     if adopt_err then return nil, adopt_err end

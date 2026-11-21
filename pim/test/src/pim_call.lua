@@ -80,6 +80,12 @@ function M.run(input: unknown): (unknown, error?)
             max_ticks = req.max_ticks or 1000,
         })
     end
+    if op == "register_catalog_projection" then
+        return invoke(open("kickside.core:threads"), "register_projection", {
+            thread_id = id, kind = "kickside.pim:catalog_model", worker_ref = "func://kickside.pim.persist:projection",
+            worker_input_mode = "prefetch_events", events = {input = req.inputs}, ensure = true,
+        })
+    end
     if op == "projection_padding" then
         local client = open("kickside.core:threads")
         for n=1,200 do

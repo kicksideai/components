@@ -251,7 +251,12 @@ retiring or deleting a referenced term or product fails with a capped count;
 a product's references to itself do not hold it, and survive its trash and restore.
 `asset` targets are immutable Uploads originals owned by the catalog.
 `adopt_asset({catalog_id?, upload_id})` requires catalog WRITE and a completed
-personal upload owned by the caller. The result carries a new `asset` reference
+personal upload owned by the caller. Before copying bytes, PIM requires the
+catalog ledger to contain the live reservation for this version. A missing
+reservation returns `CONFLICT` with code `asset_reservation_unavailable`.
+For populated catalogs upgraded with an older projection selector, the owner
+must update the selector before retrying. Previously created versions missing
+from the ledger require separate reconciliation. The result carries a new `asset` reference
 for product apply. Catalog READ authorizes its original bytes through Uploads
 for product, channel, release and agent consumers. PIM validates ownership,
 existence, media type and size at assignment, including nested record members.
