@@ -28,7 +28,11 @@ local function check_item(ctx: types.Context): (types.Match?, error?)
             local head, head_err = feeds.head(tx, board)
             if head_err or not head then return nil, head_err end
             local match: types.Match? = nil
-            if item.life == "live" and not (item.work and item.work.regions) and item.state == input.state then
+            if item.life == "live" and item.work and item.work.regions then
+                return nil, errors.new({ kind = errors.INVALID, message = "Work item waits require a single active state",
+                    details = { code = "work_wait_parallel_unsupported" } })
+            end
+            if item.life == "live" and item.state == input.state then
                 match = { id = item.item_id, state = input.state, version = item.version }
             end
             return { cursor = head, item = match }, nil
