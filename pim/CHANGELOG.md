@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.14](https://github.com/kicksideai/components/compare/pim-v0.1.13...pim-v0.1.14) (2026-11-21)
+
+
+### Bug Fixes
+
+* **pim:** acknowledge writes at their committed sequence ([#281](https://github.com/kicksideai/components/issues/281)) ([b614b88](https://github.com/kicksideai/components/commit/b614b88d0084303815d481ea0d442bbf1fafaa9d))
+* **pim:** cover the full catalog schema and edge cases ([#280](https://github.com/kicksideai/components/issues/280)) ([c0c0e49](https://github.com/kicksideai/components/commit/c0c0e495153af8aaf4bc7bdc5647716db238a019))
+* **pim:** fence proposals and scope command receipts ([#275](https://github.com/kicksideai/components/issues/275)) ([37056f5](https://github.com/kicksideai/components/commit/37056f506169cf819e5f62f0eb6c98df8f7f2092))
+* **pim:** isolate plugin failures and recover projections ([#282](https://github.com/kicksideai/components/issues/282)) ([8116bf1](https://github.com/kicksideai/components/commit/8116bf16c7b629cd0b9c756595a5c96ec55fbefd))
+
 ## [0.1.13](https://github.com/kicksideai/components/compare/pim-v0.1.12...pim-v0.1.13) (2026-11-21)
 
 
