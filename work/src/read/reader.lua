@@ -71,7 +71,10 @@ local function get_schema(request: types.SchemaGetRequest, context: types.ReadCo
                 local rerr = merr
                 if manifest then resolved, rerr = manifests.resolve_schema(manifest, { board_id = request.board_id, config = plugin.config, current = current }) end
                 if resolved and not rerr then rerr = plugin_schema.check(resolved.fragment) end
-                if rerr then plugin.lifecycle = { state = "failed", error = plugins.failure(rerr) }
+                if rerr then
+                    local failure = plugins.failure(rerr)
+                    failure.source = "schema_provider"
+                    plugin.lifecycle = { state = "failed", error = failure }
                 else plugin.outdated = (resolved and resolved.digest or nil) ~= plugin.digest or (resolved and resolved.version or nil) ~= plugin.version end
             end
         end

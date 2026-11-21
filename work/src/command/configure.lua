@@ -21,14 +21,16 @@ function M.configure_plugin(request: types.ConfigureRequest): (types.ConfigureRe
     if aerr then return nil, aerr end
     local manifest, merr = manifests.load(request.plugin)
     if merr or not manifest then return nil, merr end
-    local app: domain.JsonObject = {}
-    if manifest.settings then
-        local values, verr = defaults.namespace(manifest.settings)
-        if verr or not values then return nil, verr end
-        app = values
+    if request.config ~= nil then
+        local app: domain.JsonObject = {}
+        if manifest.settings then
+            local values, verr = defaults.namespace(manifest.settings)
+            if verr or not values then return nil, verr end
+            app = values
+        end
+        local _, cerr = manifests.effective(manifest, app, request.config)
+        if cerr then return nil, cerr end
     end
-    local _, cerr = manifests.effective(manifest, app, request.config)
-    if cerr then return nil, cerr end
     local snapshot, snapshot_err = access.with_snapshot(request.board_id, nil, function(tx: types.Executor, board: domain.Board, _dialect: string): (types.ConfigureSelection?, error?)
         local plugin, rerr = plugin_rows.active(tx, board.board_id, request.plugin)
         if rerr then return nil, rerr end
@@ -41,7 +43,7 @@ function M.configure_plugin(request: types.ConfigureRequest): (types.ConfigureRe
     local selected = snapshot.plugin
     local client, oerr = threads.open()
     if oerr or not client then return nil, oerr end
-    local event: domain.Event = { trace_context = trace_context, type = consts.EVENTS.PLUGIN_CONFIGURED, subject = "plugin:" .. request.plugin,
+    local event: domain.Event = { trace_context = trace_context, type = request.config ~= nil and consts.EVENTS.PLUGIN_CONFIGURED or consts.EVENTS.PLUGIN_REBUILD, subject = "plugin:" .. request.plugin,
         body = { plugin = request.plugin, config = request.config, attachment = selected.attachment_id,
             actor = guard.actor_id(), at = guard.stamp_now(), source = "api" } }
     local seq, err = append.writes(client, request.board_id, { { group = event.subject, events = { event }, ops = {}, expect_subject = "schema", expect_version = snapshot.schema_version, caller_expect = true } })
