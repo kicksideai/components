@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/kicksideai/components/compare/pim-admin-v0.1.9...pim-admin-v0.1.10) (2026-11-21)
+
+
+### Bug Fixes
+
+* **pim-admin:** simplify catalog schema editing ([#322](https://github.com/kicksideai/components/issues/322)) ([bf9ab36](https://github.com/kicksideai/components/commit/bf9ab36df2f41cd20f03795137a8595c9bc23220))
+
 ## [0.1.9](https://github.com/kicksideai/components/compare/pim-admin-v0.1.8...pim-admin-v0.1.9) (2026-11-21)
 
 
