@@ -309,10 +309,15 @@ type ProjectionStates = (types.Plugin, types.PluginIntent?) -> ({ [string]: type
 -- list reports installed and active plugins whose metadata the caller can read.
 function M.list(states: { [string]: types.PluginIntent }?, membership: { [string]: types.PluginEntry }?,
     projections: ProjectionStates?): ({ types.PluginOption }?, error?)
-    local ids, err = M.find()
-    if err or not ids then return nil, err end
-    local installed: { [string]: boolean } = {}
-    for _, id in ipairs(ids) do installed[id] = true end
+    local entries, err = manifests()
+    if err or not entries then return nil, err end
+    local ids: { string } = {}
+    local installed: { [string]: registry.Entry } = {}
+    for _, entry in ipairs(entries) do
+        local id = tostring(entry.id)
+        ids[#ids + 1] = id
+        installed[id] = entry
+    end
     for id in pairs(membership or {}) do if not installed[id] then ids[#ids + 1] = id end end
     table.sort(ids)
     local out: { types.PluginOption } = {}
@@ -326,7 +331,10 @@ function M.list(states: { [string]: types.PluginIntent }?, membership: { [string
                 local _, cerr = M.merged(p, {}, state.config)
                 if cerr then lerr = cerr end
             end
-            local entry: types.PluginOption = { plugin = id, installed = installed[id] == true, active = active,
+            local manifest = installed[id]
+            local title = manifest and manifest.meta and manifest.meta.title
+            local entry: types.PluginOption = { plugin = id, installed = manifest ~= nil, active = active,
+                title = type(title) == "string" and title or nil,
                 requires = {}, tools = {}, lifecycle = active and { state = "pending" } or { state = "ready" }, projections = {}, config_schema = {} }
             if state and active then
                 entry.attachment_id, entry.config, entry.lifecycle = state.attachment_id, state.config, state.lifecycle

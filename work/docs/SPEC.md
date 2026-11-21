@@ -15,7 +15,7 @@ Manifests with `meta.type: kickside.work.plugin` declare interface version 1, an
 
 The published seams are declarative field types over the existing value forms, guards for transitions and state checks, concrete operands, SQL query and search scopes, and search resolver bindings. Field configuration can use the validators of its declared form. Work refuses stored-value reinterpretation through the ordinary schema review. Guard, check and operand calls have a one-second execution limit. Guards return up to 64 findings and result data is bounded to 65,536 canonical JSON bytes. A board adopts each scope ID once. A scope that declares a backing projection names a kind on its owning manifest.
 
-State workers consume the bounded `plugin_feed` pages. Event workers receive selected retained events. Resync preserves healthy unchanged registrations and rebuilds a parked state projection from current items. A parked event projection replays from its registered start and reports the retained floor if that start is gone. Changing a declared revision resets the corresponding worker. An independent view type can bind a saved view to a registered web component. Removing the view type makes run return `view_type_unavailable` and preserves the saved definition for repair.
+State workers consume the bounded `plugin_feed` pages. Event workers receive selected retained events. Board ADMIN can omit `config` from `configure_plugin` to retry an active attachment using its saved overrides. Resync preserves healthy unchanged registrations and rebuilds a parked state projection from current items. A parked event projection replays from its registered start and reports the retained floor if that start is gone. Changing a declared revision resets the corresponding worker. An independent view type can bind a saved view to a registered web component. Removing the view type makes run return `view_type_unavailable` and preserves the saved definition for repair.
 
 ## Work queries and saved views
 
@@ -50,7 +50,7 @@ Move alias resolution follows up to 32 redirects. Moves redirect retained aliase
 
 A cross-board move admits at most 5,000 live subtree items and 5,000 outgoing relation edges. Planning returns `move_edge_limit` before preparing destination operations when the source selection exceeds the edge allowance. Mapped links use the ordinary endpoint validation.
 
-A transition with `people: false` is reserved for the process engine and board ADMIN force. A direct named transition without force receives `unknown_transition`. Stage reports and state timers can take that route.
+A transition with `people: false` is reserved for the process engine and board ADMIN force. A direct named transition without force receives `unknown_transition`. Stage reports and state timers can take that route. When `people` is omitted, discovery hides stage outcome routes, while an otherwise eligible non-automatic route still accepts a direct call by name.
 
 A transition with `command` names the service that owns its admission. Taking it requires service authority for `work.transition.command` on that name, including when the caller requests board ADMIN force. Work excludes these edges from ordinary transition discovery and process routing. The Planning pack uses this rule to close sprints through its preview and commit command while milestones close through their ordinary transition. The preview moves or clears unfinished live membership. Completed, canceled and trashed issues retain their assignment. New assignments require a planned or active sprint.
 
