@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.28](https://github.com/kicksideai/components/compare/work-v0.1.27...work-v0.1.28) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work:** harden third-party plugin lifecycle and callbacks ([#279](https://github.com/kicksideai/components/issues/279)) ([14e93d5](https://github.com/kicksideai/components/commit/14e93d516acbd8f2a2e6283dc226e02c58e315dd))
+* **work:** type schema narrowing and stabilize harness checks ([#283](https://github.com/kicksideai/components/issues/283)) ([87a3a63](https://github.com/kicksideai/components/commit/87a3a636b1ec63d38bce9adee8e0368caddc19e7))
+
 ## [0.1.27](https://github.com/kicksideai/components/compare/work-v0.1.26...work-v0.1.27) (2026-11-21)
 
 
