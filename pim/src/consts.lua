@@ -27,6 +27,8 @@ M.EVENTS = {
     PRODUCT_MOVED = NS .. "product.moved",
     PRODUCT_DELETED = NS .. "product.deleted",
     PRODUCT_RESTORED = NS .. "product.restored",
+    ASSET_RESERVED = NS .. "asset.reserved",
+    ASSETS_REAPING = NS .. "assets.reaping",
     PRODUCT_PURGED = NS .. "product.purged",
     TERM_CHANGED = NS .. "term.changed",
     MODEL_RELEASE_REQUESTED = NS .. "model.release_requested",
@@ -40,6 +42,7 @@ M.EVENTS = {
 M.STATUSES = { active = true, draft = true, archived = true }
 
 M.LIMITS = {
+    asset_bytes = 25 * 1024 * 1024,
     items = catalog_limits.items,
     -- merge_inline is how many products a term merge rewrites in its own
     -- command; the rest wait for the term merge job.

@@ -4,8 +4,8 @@ local types = require("types")
 local M = {}
 
 type Shape = types.ValueShape & { vocabulary: string? }
-type Mapper = (types.Ref, string, string?) -> types.Ref
-type Reference = { value: types.Ref, path: string, vocabulary: string? }
+type Mapper = (types.Ref, string, string?, types.AttributeConfig?) -> types.Ref
+type Reference = { value: types.Ref, path: string, vocabulary: string?, media: types.AttributeConfig? }
 M.Reference = Reference
 
 local function segment(name: string): string
@@ -36,7 +36,7 @@ function M.map(shape: Shape, value: types.Value, fn: Mapper): types.Value
             end
             return out or current
         end
-        if form == "ref" then return fn(current :: types.Ref, path, vocabulary) end
+        if form == "ref" then return fn(current :: types.Ref, path, vocabulary, config.target == "asset" and config or nil) end
         if form ~= "record" then return current end
         local record = current :: types.Record
         local out: types.Record? = nil
@@ -57,10 +57,18 @@ function M.map(shape: Shape, value: types.Value, fn: Mapper): types.Value
     return walk(shape.form, shape.cardinality, shape.config, shape.vocabulary, value, shape.cardinality == "one" and "0" or "")
 end
 
+function M.has_asset(config: types.AttributeConfig): boolean
+    if config.target == "asset" then return true end
+    for _, member in pairs(config.members or {}) do
+        if M.has_asset(member) then return true end
+    end
+    return false
+end
+
 function M.collect(shape: Shape, value: types.Value): { Reference }
     local out: { Reference } = {}
-    M.map(shape, value, function(ref: types.Ref, path: string, vocabulary: string?): types.Ref
-        out[#out + 1] = { value = ref, path = path, vocabulary = vocabulary }
+    M.map(shape, value, function(ref: types.Ref, path: string, vocabulary: string?, media: types.AttributeConfig?): types.Ref
+        out[#out + 1] = { value = ref, path = path, vocabulary = vocabulary, media = media }
         return ref
     end)
     return out

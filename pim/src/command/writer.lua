@@ -121,6 +121,16 @@ local function run(catalog_id: string, idempotency: types.Idempotency?, fingerpr
     return out :: types.CommandResult, nil
 end
 
+function M.reserve_asset(catalog_id: string, version_id: string, lease: string): (types.CommandResult?, error?)
+    return run(catalog_id, nil, {asset_id = version_id}, nil, function(db: types.Executor): (types.Plan?, error?)
+        local deleting, err = db:query("SELECT 1 FROM kickside_pim_cleanup WHERE catalog_id=$1", {catalog_id})
+        if err then return nil, err end
+        if deleting and #deleting > 0 then return nil, failure.catalog_not_initialized() end
+        local event: types.Event = {type = EV.ASSET_RESERVED, subject = "assets", body = {asset_id = version_id, lease_until = lease}}
+        return {result = {}, events = {event}}, nil
+    end)
+end
+
 type SchemaPlan = { generation: integer, class: string, changes: { types.SchemaChange }, refused: { types.SchemaChange },
     effective: types.Declaration, compiled: types.Compiled, configs: { [string]: types.JsonObject }, unchanged: boolean }
 

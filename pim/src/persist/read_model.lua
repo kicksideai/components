@@ -152,8 +152,8 @@ function M.links(db: types.Executor, dialect: string, catalog_id: string, kind: 
     -- Keep the reference seek as the driver and resolve each SKU by primary key.
     local join = dialect == sql.type.POSTGRES
         and [[ JOIN LATERAL (SELECT sku FROM kickside_pim_product p
-            WHERE p.catalog_id = r.catalog_id AND p.product_id = r.product_id OFFSET 0) p ON TRUE]]
-        or [[ CROSS JOIN kickside_pim_product p ON p.catalog_id = r.catalog_id AND p.product_id = r.product_id]]
+            WHERE p.catalog_id = r.catalog_id AND p.product_id = r.product_id AND p.state = 'live' OFFSET 0) p ON TRUE]]
+        or [[ CROSS JOIN kickside_pim_product p ON p.catalog_id = r.catalog_id AND p.product_id = r.product_id AND p.state = 'live']]
     local statement = [[SELECT r.product_id, p.sku, r.attribute_id, r.ctx, r.path FROM kickside_pim_ref r]]
         .. join .. " WHERE r.catalog_id = $1 AND r.kind = $2 AND r.target = $3"
     if after then

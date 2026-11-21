@@ -134,6 +134,29 @@ entries:
         receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
       required: [product_id]
 
+  - name: asset.reserved
+    kind: registry.entry
+    meta: {type: kickside.core.threads.event, internal: true, comment: Reserve a media version and wake catalog retention.}
+    schema:
+      type: object
+      additionalProperties: false
+      required: [asset_id, lease_until]
+      properties:
+        asset_id: {type: string}
+        lease_until: {type: string}
+        actor: {type: string}
+        at: {type: string}
+
+  - name: assets.reaping
+    kind: registry.entry
+    meta: {type: kickside.core.threads.event, internal: true, comment: Fence unreferenced asset versions before storage collection.}
+    schema:
+      type: object
+      additionalProperties: false
+      required: [ids]
+      properties:
+        ids: {type: array, minItems: 1, maxItems: 50, items: {type: string}}
+
   - name: product.purged
     kind: registry.entry
     meta: { type: kickside.core.threads.event, comment: "A trashed product past the trash window is purged; a tombstone remains." }

@@ -53,7 +53,7 @@ type BoardSummary = {
     access: domain.BoardAccess, ui_app: string?,
     board_id: string, title: string, description: string, icon: string, key_prefix: string?, item_count: integer?, open_count: integer?, completed_count: integer?, trashed_count: integer?, generation: integer?, status: string?,
 }
-type ListRequest = { limit: integer?, after: integer?, ui_app: string? }
+type ListRequest = { limit: integer?, after: integer?, ui_app: string?, include_counts: boolean? }
 type ListResult = { boards: { BoardSummary }, next: integer? }
 
 -- OpPlan is the planned result of one op: its status, the events it appends and

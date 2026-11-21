@@ -5,6 +5,7 @@ local values = require("values")
 local bulk = require("bulk")
 local types = require("types")
 local references = require("references")
+local asset_rows = require("asset_rows")
 
 local M = {}
 
@@ -67,6 +68,14 @@ function M.flush_derived(tx: types.Executor, catalog_id: string, compiled: types
     for id in pairs(batch.derived) do ids[#ids + 1] = id end
     table.sort(ids)
     local scope = "catalog_id = $1"
+    local removed: { [string]: boolean } = {}
+    local used: { [string]: boolean } = {}
+    local has_assets = compiled.has_assets == true
+    if has_assets and #ids > 0 then
+        local old, err = asset_rows.products(tx, catalog_id, ids)
+        if err or not old then return err end
+        removed = old
+    end
     local err = bulk.delete_in(tx, "kickside_pim_ref", scope, { catalog_id }, "product_id", ids)
     if not err then err = bulk.delete_in(tx, "kickside_pim_unique_value", scope, { catalog_id }, "product_id", ids) end
     if err then return err end
@@ -74,11 +83,18 @@ function M.flush_derived(tx: types.Executor, catalog_id: string, compiled: types
     local unique_rows: { types.SqlParams } = {}
     for _, id in ipairs(ids) do
         local product = batch.cache[id]
-        if product and product.state == "live" then
+        if product and (product.state == "live" or (has_assets and product.state == "trashed")) then
             local refs, uniques, derr = M.derived_rows(compiled, product)
             if derr or not refs or not uniques then return derr end
-            for _, r in ipairs(refs) do ref_rows[#ref_rows + 1] = { catalog_id, id, r.attribute_id, r.ctx, r.path, r.kind, r.target } end
-            for _, u in ipairs(uniques) do unique_rows[#unique_rows + 1] = { catalog_id, u.attribute_id, u.key, id } end
+            for _, r in ipairs(refs) do
+                if product.state == "live" or r.kind == "asset" then
+                    ref_rows[#ref_rows + 1] = { catalog_id, id, r.attribute_id, r.ctx, r.path, r.kind, r.target }
+                    if r.kind == "asset" then used[r.target] = true end
+                end
+            end
+            if product.state == "live" then
+                for _, u in ipairs(uniques) do unique_rows[#unique_rows + 1] = { catalog_id, u.attribute_id, u.key, id } end
+            end
         end
     end
     err = bulk.insert(tx, "kickside_pim_ref", { { name = "catalog_id" }, { name = "product_id" }, { name = "attribute_id" },
@@ -87,6 +103,14 @@ function M.flush_derived(tx: types.Executor, catalog_id: string, compiled: types
         err = bulk.insert(tx, "kickside_pim_unique_value", { { name = "catalog_id" }, { name = "attribute_id" }, { name = "value_key" },
             { name = "product_id" } }, unique_rows)
     end
+    for id in pairs(used) do
+        if removed[id] then
+            removed[id] = nil
+            used[id] = nil
+        end
+    end
+    if not err and next(used) then err = asset_rows.protect(tx, catalog_id, used) end
+    if not err and next(removed) then err = asset_rows.schedule(tx, catalog_id, removed) end
     return err
 end
 

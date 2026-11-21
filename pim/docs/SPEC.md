@@ -249,8 +249,17 @@ reference retains path `0`.
 kind, target)` (5.3). `term` and `product` targets must exist and be active;
 retiring or deleting a referenced term or product fails with a capped count;
 a product's references to itself do not hold it, and survive its trash and restore.
-`asset` targets are uploads owned by the catalog. `component` targets must be
-readable by the principal. PIM resolves components through the Component read
+`asset` targets are immutable Uploads originals owned by the catalog.
+`adopt_asset({catalog_id?, upload_id})` requires catalog WRITE and a completed
+personal upload owned by the caller. The result carries a new `asset` reference
+for product apply. Catalog READ authorizes its original bytes through Uploads
+for product, channel, release and agent consumers. PIM validates ownership,
+existence, media type and size at assignment, including nested record members.
+Media fields accept exact MIME types or major-type wildcards in `media_types`
+and a `max_bytes` ceiling of at most 25 MiB. Asset references require authored
+values. A catalog import can reattach only versions its destination owns.
+
+`component` targets must be readable by the principal. PIM resolves components through the Component read
 contract and embeds their title (or ID when there is no title) in releases.
 Other link-kind targets are resolved by their owner (3.3).
 
@@ -355,7 +364,7 @@ projection or a rebuild, and never define key or order (0.4).
 
 Built-in pack `kickside.pim.types`: `text`, `rich_text`, `identifier`,
 `integer`, `number`, `quantity`, `money`, `boolean`, `date`, `datetime`,
-`select` (term), `reference` (product), `link` (bound link kind), `record`.
+`select` (term), `reference` (product), `asset` (product media), `link` (bound link kind), `record`.
 Built-in type metadata declares `config_schema` for supported representation
 settings: text/identifier key matching, integer and decimal scale/range,
 Money currency, Quantity units/canonical unit and numeric index settings, and
@@ -1677,7 +1686,7 @@ backfill commits.
   (`cost = interactive`) into `r_<set>` and `findings`.
 - `release(catalog, items: [{product, expect_version}])` (≤ 100): at head
   `S`, build the item view from `product` rows, embed referenced term labels,
-  asset hashes and link `describe` results, evaluate the item's channels with `interactive + release`
+  original asset version IDs, SHA-256 digests and link `describe` results, evaluate the item's channels with `interactive + release`
   checks, append `pim.product.released` with a new release ID, the snapshot and
   its hash only when the snapshot or requested publications change. Each ID
   identifies the immutable record of that event, including its generation and
@@ -1807,7 +1816,7 @@ ordered changes and merges bounded pages in the feed's `(updated_seq, product_id
 | event ports | `kickside.automation.port` | one per event type; wake-ups, not state |
 | Blocks | `kickside.block` (`kickside.pim.blocks`) | `get_product`, `query_products`, `apply`, `release`: one function Block per composed contract method; config `catalog_id` through the catalog picker, input = the method's request without it, run as the Flow's caller. The Wait for PIM product Block also configures its timeout. |
 | Agent tools | `agent.trait` `kickside.pim.traits:pim_readonly` | `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMTerms` → `list_terms`, `PIMQuery` → `query`, `PIMGet` → `get`, `PIMExplain` → `explain`, `PIMHistory` → `list_history`, `PIMLinks` → `list_links`, `PIMProposals` → `list_proposals`, `PIMReleases` → `list_releases`, `PIMReleaseGet` → `get_release`, `PIMModelReleaseGet` → `get_model_release`, `PIMWaitForProduct` → `wait_for_product`, `PIMPublications` → `list_publications`, `PIMChanges` → `list_changes` |
-| Agent tools | `agent.trait` `kickside.pim.traits:pim_trait` | `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMTerms` → `list_terms`, `PIMQuery` → `query`, `PIMGet` → `get`, `PIMExplain` → `explain`, `PIMHistory` → `list_history`, `PIMLinks` → `list_links`, `PIMProposals` → `list_proposals`, `PIMReleases` → `list_releases`, `PIMReleaseGet` → `get_release`, `PIMModelReleaseGet` → `get_model_release`, `PIMWaitForProduct` → `wait_for_product`, `PIMPublications` → `list_publications`, `PIMChanges` → `list_changes`, `PIMApply` → `apply`, `PIMPropose` → `propose`, `PIMDecide` → `decide`, `PIMRelease` → `release`, `PIMWithdraw` → `withdraw` |
+| Agent tools | `agent.trait` `kickside.pim.traits:pim_trait` | `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMTerms` → `list_terms`, `PIMQuery` → `query`, `PIMGet` → `get`, `PIMExplain` → `explain`, `PIMHistory` → `list_history`, `PIMLinks` → `list_links`, `PIMProposals` → `list_proposals`, `PIMReleases` → `list_releases`, `PIMReleaseGet` → `get_release`, `PIMModelReleaseGet` → `get_model_release`, `PIMWaitForProduct` → `wait_for_product`, `PIMPublications` → `list_publications`, `PIMChanges` → `list_changes`, `PIMAdoptAsset` → `adopt_asset`, `PIMApply` → `apply`, `PIMPropose` → `propose`, `PIMDecide` → `decide`, `PIMRelease` → `release`, `PIMWithdraw` → `withdraw` |
 | Agent tools | `agent.trait` `kickside.pim.traits:pim_admin` | `PIMCatalogCreate` → `create`, `PIMCatalogUpdate` → `update`, `PIMSchemaPlan` → `plan_schema`, `PIMSchemaApply` → `apply_schema`, `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMConfigurePlugin` → `configure_plugin`, `PIMRebuild` → `rebuild` |
 
 Feeds are cursor-resumable over durable state, so a plugin installed a year
@@ -2100,6 +2109,14 @@ and its generation. Current/rebuilding/pending schema state protects its
 required generations. Live value references, term children, pending merges and
 current schema defaults protect terms. Release snapshots contain their own term
 labels. Zero-count attribute usage rows are collected in bounded pages.
+
+Authored product values, including restorable trash, and retained release
+snapshots protect their media versions. Removing the last reference makes an
+original collectible. The catalog owner reserves an adoption for up to 15
+minutes while it awaits assignment. Collection fences eligible versions at the
+catalog thread head before releasing their bytes through Uploads. Catalog
+teardown drains the entire ownership ledger before reporting completion.
+
 
 One owner invocation has a shared budget of 500 examined/deleted rows and visits
 at most ten catalogs. Teardown reserves at most half the budget, and each

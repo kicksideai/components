@@ -52,6 +52,12 @@ entries:
       comment: Deployment defaults for audit, trash and tombstone policy.
     component: kickside/settings
 
+  - name: dep.kickside.uploads
+    version: ">=0.3.33"
+    kind: ns.dependency
+    meta: {comment: Component-owned media originals and their content provider.}
+    component: kickside/uploads
+
   - name: dep.wippy.migration
     version: "*"
     kind: ns.dependency
@@ -73,6 +79,8 @@ entries:
       comment: Database for PIM tables; must be the Core database so projection folds and jobs share transactions.
     targets:
       - entry: kickside.pim.migrations:01_catalog
+        path: .meta.target_db
+      - entry: kickside.pim.migrations:02_assets
         path: .meta.target_db
       - entry: kickside.pim.persist:config
         path: .meta.db_id

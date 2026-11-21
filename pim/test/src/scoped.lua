@@ -104,8 +104,8 @@ end
 
 -- catalog creates a catalog with the reference schema and terms as the session
 -- and returns a handle whose calls run as the session.
-function M.catalog(session: Session): fixture.Handle
-    local created, err = session.call("create", { idempotency_key = (uuid.v4()), title = "Scoped catalog", declaration = fixture.DECLARATION })
+function M.catalog(session: Session, bare: boolean?): fixture.Handle
+    local created, err = session.call("create", { idempotency_key = (uuid.v4()), title = "Scoped catalog", declaration = not bare and fixture.DECLARATION or nil })
     assert(not err, tostring(err))
     local id = (created :: Json).catalog_id :: string
     local handle: fixture.Handle = {
@@ -113,7 +113,7 @@ function M.catalog(session: Session): fixture.Handle
         call = function(op: string, request: unknown): (unknown, error?) return session.call(op, request, id) end,
         async = function(_: string, _: unknown): (unknown, error?) return nil, nil end,
     }
-    fixture.seed_terms(handle)
+    if not bare then fixture.seed_terms(handle) end
     return handle
 end
 

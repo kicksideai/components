@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.30](https://github.com/kicksideai/components/compare/work-v0.1.29...work-v0.1.30) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work:** bound grouped reads, search, move edges and board discovery ([#289](https://github.com/kicksideai/components/issues/289)) ([c171f3e](https://github.com/kicksideai/components/commit/c171f3e26ade8ef043efdbecbf6fb7c589c6b6e0))
+* **work:** move template storage and sprint routes to their owners ([#286](https://github.com/kicksideai/components/issues/286)) ([691a489](https://github.com/kicksideai/components/commit/691a489435dacfc553c7fe2dd72817adf6b8c18c))
+* **work:** retain ownership of the published sprint routes ([#295](https://github.com/kicksideai/components/issues/295)) ([25eed73](https://github.com/kicksideai/components/commit/25eed7373da8e95ba0d3511a1d451416a678cb77))
+
 ## [0.1.29](https://github.com/kicksideai/components/compare/work-v0.1.28...work-v0.1.29) (2026-11-21)
 
 

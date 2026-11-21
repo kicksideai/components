@@ -271,6 +271,7 @@ entries:
       actor: {id: 'system:kickside.pim.retention'}
       policies: [kickside.pim.security:module_runtime, kickside.pim.security:retention_db_access, kickside.pim.security:purge_output_publish, kickside.pim.security:catalog_delete_report, kickside.pim.security:subject_retirement]
     imports:
+      assets: kickside.pim.retention:assets
       creations: kickside.pim.persist:creations
       archive_rows: kickside.pim.persist:archive_rows
       references: kickside.pim.domain:references

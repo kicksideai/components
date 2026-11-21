@@ -98,6 +98,26 @@ entries:
   - name: link
     kind: registry.entry
     meta: { type: kickside.pim.type, title: Link, form: ref, indexes: [none, key], comment: A reference to an entity a plugin owns; config.target names the bound link kind. }
+  - name: asset
+    kind: registry.entry
+    meta:
+      type: kickside.pim.type
+      title: Product media
+      form: ref
+      target: asset
+      indexes: [none, key]
+      config_schema:
+        type: object
+        additionalProperties: false
+        properties:
+          media_types:
+            type: array
+            title: Allowed media types
+            description: Exact media types or a type wildcard such as image/*.
+            items: { type: string }
+            minItems: 1
+            maxItems: 32
+          max_bytes: { type: integer, title: Maximum bytes, minimum: 1, maximum: 26214400 }
   - name: quantity
     kind: registry.entry
     meta:

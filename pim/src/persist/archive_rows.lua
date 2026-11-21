@@ -2,6 +2,7 @@
 -- Age-ordered candidate pages: protected rows consume budget and advance the
 -- cursor, so neither their number nor their position makes a pass unbounded.
 local types=require("types")
+local asset_rows=require("asset_rows")
 local M={}
 type Key=string|integer
 type Cursor={at:string,keys:{Key}}
@@ -62,6 +63,8 @@ function M.page(tx:types.Executor,catalog:types.Catalog,name:string,before:strin
         if kerr then return nil,nil,nil,kerr end
         if not keep then
             if name=="release" then
+                local pin_err=asset_rows.unpin_release(tx,catalog.catalog_id,row.release_id :: string)
+                if pin_err then return nil,nil,nil,pin_err end
                 local _,uerr=tx:execute("UPDATE kickside_pim_product SET release_id=NULL WHERE catalog_id=$1 AND release_id=$2",{catalog.catalog_id,row.release_id})
                 if uerr then return nil,nil,nil,uerr end
             end

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-"""Measure production queries against the actual initial migration."""
+"""Measure production queries against the PIM migration schema."""
 import re
 import sqlite3
 import unittest
@@ -12,11 +12,30 @@ class QueryPlans(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(":memory:")
         migration = (ROOT / "src/migrations/01_catalog.lua").read_text().split("local POSTGRES = {", 1)[1].split("local SQLITE", 1)[0]
-        for statement in re.findall(r"\[\[(.*?)\]\]", migration, re.S):
+        assets = (ROOT / "src/migrations/02_assets.lua").read_text()
+        for statement in re.findall(r"\[\[(.*?)\]\]", migration + assets, re.S):
             self.db.execute(statement)
         self.db.executemany("INSERT INTO kickside_pim_publication VALUES('catalog','web',?,?,'published',1,'2000')", [(f"{n:05}", f"{n:05}") for n in range(4000)])
     def tearDown(self):
         self.db.close()
+    def test_asset_retention_seeks_only_collectible_versions(self):
+        source = (ROOT / "src/persist/asset_rows.lua").read_text()
+        self.db.execute("""INSERT INTO kickside_pim_catalog
+            (catalog_id,generation,compiled,digest,layout_digest,item_table,applied_seq,product_count,item_count,trashed_count,tombstone_floor_seq,created_at,updated_at)
+            VALUES('catalog',1,'{}','','','',1,0,0,0,0,'','')""")
+        self.db.executemany("INSERT INTO kickside_pim_asset(catalog_id,asset_id,due_at,reaping) VALUES('catalog',?,?,?)",
+                            [(f"{n:05}", None, 0) for n in range(10000)] +
+                            [("due", "2000", 0), ("later", "2100", 0), ("reaping", "2000", 1)])
+        for method, bindings, index in (
+            ("due", ("catalog", "2026", 10), "kickside_pim_asset_due"),
+            ("deadline", ("catalog", "2026"), "kickside_pim_asset_due"),
+        ):
+            query = re.search(rf"function M\.{method}.*?db:query\(\[\[(.*?)\]\]", source, re.S).group(1)
+            plan = str(self.db.execute("EXPLAIN QUERY PLAN " + query, named(bindings)).fetchall())
+            self.assertIn(index, plan)
+            self.assertNotIn("TEMP B-TREE", plan)
+            print(f"asset retention {method} plan:", plan)
+
     def test_release_seeks_product(self):
         source = (ROOT / "src/command/releases.lua").read_text()
         query = re.search(r"query\(\[\[(SELECT p\.channel, p\.release_id, r\.hash.*?)\]\]", source, re.S).group(1)

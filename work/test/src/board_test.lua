@@ -38,6 +38,23 @@ local function define()
             test.is_true(found[second])
             test.is_nil(found[hidden])
 
+            test.not_nil(page.boards[1].item_count)
+            local discovery = assert(reader.call("list", { ui_app = app, limit = 1, include_counts = false }))
+            test.eq(discovery.boards[1].board_id, page.boards[1].board_id)
+            test.eq(discovery.boards[1].ui_app, app)
+            test.is_true(discovery.boards[1].access.read)
+            test.eq(discovery.next, page.next)
+            for _, field in ipairs({ "item_count", "open_count", "completed_count", "trashed_count" }) do
+                test.is_nil(discovery.boards[1][field])
+            end
+            local discovered = reader.http("GET", "?ui_app=app%3Atracker_ui&limit=1&after=" .. discovery.next .. "&include_counts=false")
+            test.eq(discovered.status, 200)
+            test.eq(discovered.body.data.boards[1].board_id, next_page.boards[1].board_id)
+            test.is_nil(discovered.body.data.boards[1].item_count)
+            test.is_nil(discovered.body.data.next)
+            local invalid_mode = reader.http("GET", "?include_counts=maybe")
+            test.eq(invalid_mode.status, 400)
+
             local _, denied = reader.call("update", { ui_app = alternate }, first)
             test.eq(denied:kind(), errors.PERMISSION_DENIED)
             local _, invalid = owner.call("update", { ui_app = "app:tracker_pack" }, first)

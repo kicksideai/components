@@ -9,17 +9,7 @@ entries:
 - name: dep.work
   kind: ns.dependency
   component: kickside/work
-  version: '>=0.1.30'
-- name: api_router
-  kind: ns.requirement
-  meta:
-    value_kind: http.router
-    comment: Use the same authenticated router as kickside.work:api_router, with token_auth and endpoint_firewall.
-  targets:
-  - entry: kickside.work.api.sprints:plan_close.endpoint
-    path: .meta.router
-  - entry: kickside.work.api.sprints:close.endpoint
-    path: .meta.router
+  version: '>=0.1.25'
 - name: pack
   kind: registry.entry
   meta:

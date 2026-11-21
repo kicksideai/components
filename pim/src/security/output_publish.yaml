@@ -61,11 +61,19 @@ entries:
       actions: threads.output.publish
       effect: allow
 
+  - name: asset_reserve_publish
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: kickside.pim.events:asset.reserved
+      actions: threads.output.publish
+      effect: allow
+
   - name: purge_output_publish
     kind: security.policy
     meta: { private: true, service_only: true, comment: The retention owner publishes purges. }
     policy:
-      resources: kickside.pim.events:product.purged
+      resources: [kickside.pim.events:product.purged, kickside.pim.events:assets.reaping]
       actions: threads.output.publish
       effect: allow
 

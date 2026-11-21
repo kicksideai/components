@@ -328,7 +328,8 @@ local function define()
                 seen[tool.registry_id] = true
                 n = n + 1
             end
-            test.eq(n, 28)
+            test.is_true(seen["kickside.pim.traits:adopt_asset"])
+            test.eq(n, 29)
         end)
         test.it("covers contracts with matching schemas and exact tool policies", function()
             conformance.check()
@@ -359,7 +360,7 @@ local function define()
             local working = assert(registry.get("kickside.pim.traits:pim_trait"))
             local admin = assert(registry.get("kickside.pim.traits:pim_admin"))
             test.eq(#reads.data.tools, 16)
-            test.eq(#working.data.tools, 21)
+            test.eq(#working.data.tools, 22)
             test.eq(#admin.data.tools, 10)
             test.eq(reads.data.build_func_id, "kickside.pim.traits:build_reads")
             test.eq(working.data.build_func_id, "kickside.pim.traits:build")
@@ -370,7 +371,7 @@ local function define()
             end
             local working_set: Map = {}
             for id in pairs(reads_set) do working_set[id] = true end
-            for _, method in ipairs({ "apply", "propose", "decide", "release", "withdraw" }) do working_set["kickside.pim.traits:" .. method] = true end
+            for _, method in ipairs({ "adopt_asset", "apply", "propose", "decide", "release", "withdraw" }) do working_set["kickside.pim.traits:" .. method] = true end
             local admin_set: Map = {}
             for _, method in ipairs({ "create_catalog", "update", "plan_schema", "apply_schema", "configure_plugin", "rebuild", "list_catalogs", "get_schema", "schema_options", "policy_defaults" }) do admin_set["kickside.pim.traits:" .. method] = true end
             for _, role in ipairs({ { entry = reads, expected = reads_set }, { entry = working, expected = working_set }, { entry = admin, expected = admin_set } }) do

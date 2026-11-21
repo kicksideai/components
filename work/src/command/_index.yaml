@@ -399,6 +399,7 @@ entries:
     peers: kickside.work.read:peers
     domain: kickside.work:types
     store: kickside.work.persist:store
+    tree_rows: kickside.work.persist:tree_rows
     component: kickside.component:component
     principals: kickside.work.read:principals
     guard: kickside.work.command:guard
