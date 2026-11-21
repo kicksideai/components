@@ -422,7 +422,7 @@ end
 -- settled maps an accepted proposal's apply result to its final status:
 -- accepted when applied, conflict when only stale versions stopped it (the
 -- proposal can be decided again), failed when an item is refused outright.
-local function settled(applied: types.ApplyResult): string
+local function settled(applied: types.ApplyResult): types.DecisionStatus
     if applied.applied then return "accepted" end
     for _, o in ipairs(applied.outcomes) do
         local kind = o.outcome
@@ -439,7 +439,7 @@ local function get_proposal(db: types.Executor, catalog_id: string, id: string):
 end
 
 local function decision(proposal: types.Proposal): types.DecideResult
-    return { proposal_id = proposal.proposal_id, status = proposal.status, result = proposal.result }
+    return { proposal_id = proposal.proposal_id, status = proposal.status :: types.DecisionStatus, result = proposal.result }
 end
 
 local function decided(status: string): error

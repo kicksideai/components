@@ -8,6 +8,7 @@ local layout = require("layout")
 local select = require("select")
 local fixture = require("fixture")
 local consts = require("consts")
+local base64 = require("base64")
 
 local CATALOG = "ordered-pages"
 local SERIES = "WITH RECURSIVE series(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM series WHERE n < 12000) "
@@ -198,7 +199,7 @@ local function define()
             test.is_false(page.estimated == true)
 
             local sorted = assert(h.call("query", { where = where, sort = { field = "core.stage", dir = "desc" },
-                after = { id = "p439999", v = "ready" } })) :: types.QueryResult
+                after = base64.encode('{"id":"p439999","key":"ready"}') })) :: types.QueryResult
             test.eq(#sorted.items, 1)
             test.eq(sorted.items[1].sku, "p440000")
             test.is_nil(sorted.after)

@@ -1,62 +1,149 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-// Keep the runtime declaration shape and tool adapters on the published grammar.
 import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { isDeepStrictEqual } from 'node:util'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const declaration = JSON.parse(await readFile(resolve(root, 'src/schema/declaration.json'), 'utf8'))
+const readJSON = async path => JSON.parse(await readFile(resolve(root, path), 'utf8'))
+const declaration = await readJSON('src/schema/declaration.json')
+const { methods, tools, definitions, limits } = await readJSON('src/contracts/vocabulary.json')
 const check = process.argv.includes('--check')
+const license = 'SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0'
+const generated = 'Generated from the catalog vocabulary by scripts/generate-contracts.mjs.'
+
+definitions.declaration = declaration
+
+function limit(name) {
+  const value = limits[name]
+  if (!Number.isSafeInteger(value) || value < 1) throw new Error(`Invalid PIM limit ${name}`)
+  return value
+}
+
+function expand(value) {
+  if (typeof value === 'string') return value.replace(/@\{(\w+)\}/g, (_, name) => limit(name))
+  if (Array.isArray(value)) return value.map(expand)
+  if (!value || typeof value !== 'object') return value
+  if (value.$pim_limit) return limit(value.$pim_limit)
+  const { $pim_ref: reference, ...fields } = value
+  if (reference && !Object.hasOwn(definitions, reference)) throw new Error(`Unknown PIM schema ${reference}`)
+  return {
+    ...(reference ? expand(definitions[reference]) : {}),
+    ...Object.fromEntries(Object.entries(fields).map(([key, member]) => [key, expand(member)])),
+  }
+}
+
 async function output(path, value) {
   const file = resolve(root, path)
-  if (await readFile(file, 'utf8').catch(() => '') === value) return
+  const current = await readFile(file, 'utf8').catch(error => {
+    if (error.code === 'ENOENT') return ''
+    throw error
+  })
+  if (current === value) return
   if (check) throw new Error(`Regenerate contract schemas: ${path}`)
   await writeFile(file, value)
 }
-const contracts = new Map()
-let method
-let side
-let text = await readFile(resolve(root, 'src/_index.yaml'), 'utf8')
-text = text.split('\n').map(line => {
-  const named = line.match(/^      - name: (.+)$/)
-  if (named) method = named[1]
-  if (/^        (input|output)_schemas:/.test(line)) side = line.includes('input_') ? 'input' : 'output'
-  const match = line.match(/^(\s+definition: )'(\{.*\})'$/)
-  if (!match) return line
-  const original = JSON.parse(match[2].replaceAll("''", "'"))
-  const schema = structuredClone(original)
-  if (side === 'input' && ['create', 'plan_schema', 'apply_schema'].includes(method)) schema.properties.declaration = declaration
-  if (side === 'output' && method === 'list_changes') {
-    schema.properties.next = {
-      ...contracts.get('list_changes:input').properties.cursor,
-      description: 'Pass this continuation unchanged to read the next page. Restart from zero if this page reports a gap.',
-    }
-  }
-  contracts.set(`${method}:${side}`, schema)
-  if (isDeepStrictEqual(schema, original)) return line
-  return match[1] + "'" + JSON.stringify(schema).replaceAll("'", "''") + "'"
-}).join('\n')
-await output('src/_index.yaml', text)
-text = await readFile(resolve(root, 'src/traits/tools.yaml'), 'utf8')
-text = text.split('\n').map(line => {
-  const named = line.match(/^  - name: (.+)$/)
-  if (named) method = ({ create_catalog: 'create', list_catalogs: 'list' })[named[1]] || named[1]
-  const match = line.match(/^(\s+)(input|output)_schema: /)
-  if (!match) return line
-  const schema = structuredClone(contracts.get(`${method}:${match[2]}`))
-  if (!schema) throw new Error(`Missing contract schema for ${method}`)
-  if (match[2] === 'output') {
-    schema.properties.success = { type: 'boolean', const: true, description: 'True when the contract call completes successfully.' }
-    schema.required = [...(schema.required || []), 'success']
-  }
-  const original = JSON.parse(line.slice(line.indexOf(": '") + 3, -1).replaceAll("''", "'"))
-  if (isDeepStrictEqual(schema, original)) return line
-  return `${match[1]}${match[2]}_schema: '${JSON.stringify(schema).replaceAll("'", "''")}'`
-}).join('\n')
-await output('src/traits/tools.yaml', text)
 
-const proposed = contracts.get('propose:input').properties
+const yamlString = value => "'" + value.replaceAll("'", "''") + "'"
+const yamlSchema = schema => yamlString(JSON.stringify(schema))
+const contracts = expand(methods)
+const methodEntries = Object.entries(contracts).map(([name, { description, input, output }]) => [
+  `      - name: ${name}`,
+  ...(description ? [`        description: ${yamlString(description)}`] : []),
+  '        input_schemas:',
+  '          - format: application/schema+json',
+  `            definition: ${yamlSchema(input)}`,
+  '        output_schemas:',
+  '          - format: application/schema+json',
+  `            definition: ${yamlSchema(output)}`,
+].join('\n'))
+
+await output('src/contracts/catalog.yaml', `# ${license}
+# ${generated}
+version: "1.0"
+namespace: kickside.pim
+entries:
+  - name: catalog
+    kind: contract.definition
+    meta:
+      title: PIM catalog
+      comment: The catalog service - schema, products, reads, proposals and releases. Every method runs under the caller's identity.
+    methods:
+${methodEntries.join('\n')}
+`)
+
+const toolEntries = Object.entries(expand(tools)).map(([name, tool]) => {
+  const { input, output } = contracts[tool.method ?? name]
+  const result = structuredClone(output)
+  result.properties.success = { type: 'boolean', const: true, description: 'True when the contract call completes successfully.' }
+  result.required = [...(result.required ?? []), 'success']
+  return `  - name: ${name}
+    kind: function.lua
+    meta:
+      type: tool
+      title: ${tool.alias}
+      llm_alias: ${tool.alias}
+      llm_description: ${yamlString(tool.description)}
+      mcp: { required_scopes: [${tool.scope}] }
+      input_schema: ${yamlSchema(input)}
+      output_schema: ${yamlSchema(result)}
+    source: file://pim_tool.lua
+    method: ${name}
+    modules: [ctx]
+    imports: { catalog_client: kickside.pim:client }
+`
+})
+
+await output('src/traits/tools.yaml', `# ${license}
+# ${generated}
+version: "1.0"
+namespace: kickside.pim.traits
+entries:
+${toolEntries.join('\n')}`)
+
+const blocks = {
+  query_products: {
+    method: 'query',
+    titles: { where: 'Filter', text: 'Text', family: 'Family', status: 'Status', ready: 'Readiness', sort: 'Sort',
+      count: 'Count matches', limit: 'Page size', after: 'After', published: 'Published on channel', scopes: 'Plugin scopes',
+      min_seq: 'Read after sequence', columns: 'Columns' },
+  },
+  apply: {
+    method: 'apply',
+    titles: { expected_generation: 'Expected schema generation', items: 'Items', mode: 'Mode', source: 'Source',
+      origin: 'Origin', idempotency: 'Idempotency', trace_context: 'Trace', provenance: 'Provenance' },
+  },
+  release: { method: 'release', titles: { items: 'Items', idempotency: 'Idempotency', trace_context: 'Trace' } },
+}
+const blockPath = 'src/blocks/_index.yaml'
+const slots = new Set(Object.keys(blocks).flatMap(name => [`${name}:input`, `${name}:output`]))
+let blockName
+const blockSource = await readFile(resolve(root, blockPath), 'utf8')
+const blockText = blockSource.split('\n').map(line => {
+  const named = line.match(/^  - name: (.+)$/)
+  if (named) blockName = named[1]
+  const block = blocks[blockName]
+  const shape = line.match(/^        (input|output): \{/)
+  if (!block || !shape) return line
+  const side = shape[1]
+  if (!slots.delete(`${blockName}:${side}`)) throw new Error(`Duplicate Block schema ${blockName}:${side}`)
+  const schema = structuredClone(contracts[block.method][side])
+  if (side === 'input') {
+    delete schema.properties.catalog_id
+    for (const [key, title] of Object.entries(block.titles)) schema.properties[key].title = title
+  }
+  return `        ${side}: ${JSON.stringify(schema)}`
+}).join('\n')
+if (slots.size) throw new Error(`Missing Block schemas: ${[...slots].join(', ')}`)
+await output(blockPath, blockText)
+
+await output('src/contracts/limits.lua', `-- ${license}
+-- ${generated}
+return {
+${Object.keys(limits).map(name => `    ${name} = ${limit(name)},`).join('\n')}
+}
+`)
+
+const proposed = contracts.propose.input.properties
 const proposalItems = structuredClone(proposed.items)
 proposalItems.items.properties.product = {
   type: 'object', required: ['id'], additionalProperties: false,
@@ -81,9 +168,9 @@ const decided = {
   type: 'object', additionalProperties: false, required: ['proposal_id', 'decision', 'status', 'actor', 'at'],
   properties: {
     ...proposalFields,
-    decision: contracts.get('decide:input').properties.decision,
-    status: { type: 'string', enum: ['accepted', 'conflict', 'failed', 'rejected'] },
-    result: contracts.get('apply:output'),
+    decision: contracts.decide.input.properties.decision,
+    status: { type: 'string', enum: [...contracts.decide.output.properties.status.enum].sort() },
+    result: contracts.apply.output,
   },
 }
 await output('src/events/proposals.yaml', `# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0

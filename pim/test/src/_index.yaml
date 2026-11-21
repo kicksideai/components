@@ -652,7 +652,7 @@ entries:
     meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Item-table filters, keyset paging, text search and the get, explain and links views. }
     source: file://query_test.lua
     method: run
-    modules: [json]
+    modules: [json, base64]
     imports:
       test: wippy.test:test
       fixture: app:fixture
@@ -1047,7 +1047,7 @@ entries:
     meta: { type: test, suite: kickside_pim, timeout: 600s, comment: Plugins and extension seams under hostile declarations and misbehaving plugin code. }
     source: file://hardening_test.lua
     method: run
-    modules: [json]
+    modules: [json, base64]
     imports:
       test: wippy.test:test
       fixture: app:fixture
@@ -1392,6 +1392,7 @@ entries:
     meta: { type: test, suite: kickside_pim, timeout: 300s }
     source: file://ordered_pages_test.lua
     method: run
+    modules: [base64]
     imports:
       test: wippy.test:test
       store: kickside.pim.persist:store

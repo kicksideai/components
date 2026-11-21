@@ -219,7 +219,9 @@ type PluginConfiguredBody = { plugin: string, config: JsonObject, actor: string?
 type PluginRebuildBody = { plugin: string, actor: string?, at: string?, receipt: Receipt? }
 type ProposalSubmittedBody = { proposal_id: string, generation: integer, base: { [string]: integer }, items: { ApplyItem },
     source: string?, origin: Origin?, provenance: JsonObject?, actor: string?, at: string? }
-type ProposalDecidedBody = { proposal_id: string, decision: "accept" | "reject", status: string, result: ApplyResult?,
+type DecisionStatus = "accepted" | "rejected" | "conflict" | "failed"
+type ProposalStatus = "pending" | DecisionStatus
+type ProposalDecidedBody = { proposal_id: string, decision: "accept" | "reject", status: DecisionStatus, result: ApplyResult?,
     actor: string?, at: string? }
 type EventBody = PluginRebuildBody | PluginConfiguredBody | SchemaBody | ProductBody | TermBody | ReleaseBody | WithdrawBody | ModelReleaseBody
     | ProposalSubmittedBody | ProposalDecidedBody
@@ -250,8 +252,10 @@ type FindingDetail = {
 type CodedFinding = FindingDetail & { code: string, message: string? }
 type ExtensionFinding = FindingDetail & { message: string }
 type Finding = CodedFinding | ExtensionFinding
+type OutcomeStatus = "created" | "updated" | "unchanged" | "conflict" | "invalid" | "forbidden"
+    | "released" | "queued" | "not_ready" | "withdrawn"
 type Outcome = {
-    index: integer?, outcome: string, product_id: string?, sku: string?, version: integer?,
+    index: integer?, outcome: OutcomeStatus, product_id: string?, sku: string?, version: integer?,
     term: string?, trashed: boolean?, restored: boolean?, findings: { Finding }?,
     request_id: string?, job_id: string?, release_id: string?, hash: string?, channels: { string }?, rewritten: integer?, deferred: integer?,
 }
@@ -300,11 +304,11 @@ type ProposeRequest = { items: { ApplyItem }, source: string?, origin: Origin?, 
 type Proposal = {
     proposal_id: string, source: string?, origin: JsonObject, provenance: JsonObject?, items: { ApplyItem }, base: { [string]: integer },
     generation: integer,
-    status: string, result: ApplyResult?, created_by: string, created_at: string, decided_by: string?, decided_at: string?,
+    status: ProposalStatus, result: ApplyResult?, created_by: string, created_at: string, decided_by: string?, decided_at: string?,
 }
-type ProposeResult = { proposal_id: string, status: string }
+type ProposeResult = { proposal_id: string, status: "pending" }
 type DecideRequest = { proposal_id: string, decision: string, trace_context: TraceContext? }
-type DecideResult = { proposal_id: string, status: string, result: ApplyResult? }
+type DecideResult = { proposal_id: string, status: DecisionStatus, result: ApplyResult? }
 type RebuildResult = { rebuilding: boolean }
 -- Read contracts (spec 7). Every read result carries the projection position it
 -- describes.
@@ -323,7 +327,11 @@ type GetResult = ReadStamp & {
 -- Where is a filter tree as requested; kickside.pim.persist:tree reads it.
 type Where = { [string]: unknown }
 type Sort = { field: string, ctx: { [string]: string }?, dir: string? }
-type Cursor = { id: string, v: ColumnValue? }
+-- Cursor is the SQL keyset position. QueryToken is its opaque public form.
+type SortValue = string | integer
+type Cursor = { id: string, v: SortValue? }
+type QueryToken = string
+type QueryPosition = { id: string, key: string?, decimal: string? }
 -- Reader is a caller admitted to read one catalog; allows answers whether it
 -- holds an access level (read, write, admin) there; actor is who it reads as,
 -- for $actor operands.
@@ -348,14 +356,14 @@ type ScopeQuery = { id: string, where: { [string]: { [string]: unknown } } }
 -- AdmittedScope is a scope query whose scope the reader's access allows.
 type AdmittedScope = { scope: Scope, where: { [string]: { [string]: unknown } } }
 type QueryRequest = {
-    where: Where?, text: string?, family: string?, status: string?, sort: Sort?, limit: integer?, after: Cursor?, count: boolean?,
+    where: Where?, text: string?, family: string?, status: string?, sort: Sort?, limit: integer?, after: QueryToken?, count: boolean?,
     ready: ReadyFilter?, published: PublishedFilter?, parent: ProductRef?, root: ProductRef?, scopes: { ScopeQuery }?,
     min_seq: integer?, columns: { string }?, context: Ctx?,
 }
 -- values holds the resolved value of each requested column in the request's
 -- context; a value that resolves to nothing is absent.
 type QueryItem = { product_id: string, sku: string, version: integer, status: string, family: string, values: { [string]: Value }? }
-type QueryResult = ReadStamp & { items: { QueryItem }, after: Cursor?, total: integer?, estimated: boolean?, incomplete: boolean? }
+type QueryResult = ReadStamp & { items: { QueryItem }, after: QueryToken?, total: integer?, estimated: boolean?, incomplete: boolean? }
 type AttributeView = {
     id: integer, type: string, form: string, scope: { string }, cardinality: string, index: string,
     index_contexts: { string }, unique: boolean, vocabulary: string?, default: Value?, plugin: string?, config: AttributeConfig,
@@ -498,15 +506,16 @@ return {
         SchemaChange = SchemaChange, ContextValues = ContextValues, Snapshot = Snapshot,
     CheckProduct = CheckProduct, CheckInput = CheckInput, CheckResult = CheckResult, FindingDetail = FindingDetail, Finding = Finding,
     CodedFinding = CodedFinding, ExtensionFinding = ExtensionFinding,
-    Outcome = Outcome, ColumnValue = ColumnValue, ItemRow = ItemRow, Names = Names, ProductRef = ProductRef,
+    Outcome = Outcome, OutcomeStatus = OutcomeStatus, ColumnValue = ColumnValue, ItemRow = ItemRow, Names = Names, ProductRef = ProductRef,
     ValueEntry = ValueEntry, CreateSpec = CreateSpec, TermRef = TermRef, ExpectVersion = ExpectVersion,
     ApplyItem = ApplyItem, Idempotency = Idempotency, ApplyRequest = ApplyRequest, ApplyResult = ApplyResult,
     SchemaRequest = SchemaRequest, SchemaResult = SchemaResult, SchemaPlanResult = SchemaPlanResult,
     ReleaseItem = ReleaseItem, ReleaseRequest = ReleaseRequest, ProposeRequest = ProposeRequest, Proposal = Proposal,
     ProposeResult = ProposeResult, DecideRequest = DecideRequest, DecideResult = DecideResult, RebuildResult = RebuildResult,
+    ProposalStatus = ProposalStatus, DecisionStatus = DecisionStatus,
         TypeMeta = TypeMeta, ReadStamp = ReadStamp, ResolvedValue = ResolvedValue, ProductView = ProductView,
     GetRequest = GetRequest, GetResult = GetResult, Where = Where, Executor = Executor, Origin = Origin, TraceContext = TraceContext, Sort = Sort,
-        Cursor = Cursor, ReadyFilter = ReadyFilter,
+    Cursor = Cursor, SortValue = SortValue, QueryToken = QueryToken, QueryPosition = QueryPosition, ReadyFilter = ReadyFilter,
     QueryRequest = QueryRequest, QueryItem = QueryItem, QueryResult = QueryResult, AttributeView = AttributeView,
     SchemaView = SchemaView, HistoryRequest = HistoryRequest, HistoryEntry = HistoryEntry, HistoryResult = HistoryResult,
     ProposalCursor = ProposalCursor, ProposalsRequest = ProposalsRequest, ProposalsResult = ProposalsResult, PublicationState = PublicationState,

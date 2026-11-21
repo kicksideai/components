@@ -37,7 +37,7 @@ local function decode(r: types.Row): (types.Proposal?, error?)
     local result: types.ApplyResult? = r.result :: types.ApplyResult?
     return { proposal_id = r.proposal_id :: string, source = narrow.text(r.source), origin = origin, items = items,
         base = r.base :: { [string]: integer }, generation = r.generation :: integer,
-        status = r.status :: string, result = result, created_by = r.created_by :: string, created_at = r.created_at :: string,
+        status = r.status :: types.ProposalStatus, result = result, created_by = r.created_by :: string, created_at = r.created_at :: string,
         decided_by = narrow.text(r.decided_by), decided_at = narrow.text(r.decided_at) } , nil
 end
 

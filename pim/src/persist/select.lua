@@ -167,7 +167,12 @@ function M.items(r: types.Reader, t: types.Table, dialect: string, q: types.Item
         local target, err = resolve(q.sort.field, q.sort.ctx)
         if err or not target then return nil, err or invalid("unknown field " .. tostring(q.sort.field)) end
         if target.set then return nil, invalid(q.sort.field .. " holds several values and cannot sort") end
+        if q.after and q.after.v ~= nil and (type(q.after.v) == "number") ~= (target.kind == "number") then
+            return nil, invalid("after does not match the query sort")
+        end
         sort_column = target.column
+    elseif q.after and q.after.v ~= nil then
+        return nil, invalid("after does not match the query sort")
     end
     local sort_sql = sort_column and "i." .. sort_column or nil
     local sort_value = (sort_sql or "NULL") .. " AS sort_value"
@@ -290,7 +295,7 @@ end
 
 -- cursor_of reads a row's position as a keyset cursor.
 function M.cursor_of(row: types.Row, sort_column: string?): types.Cursor
-    local v: types.ColumnValue? = nil
+    local v: types.SortValue? = nil
     if sort_column then
         local raw = row.sort_value
         if type(raw) == "number" then v = math.tointeger(raw) elseif type(raw) == "string" then v = raw end

@@ -49,7 +49,7 @@ entries:
 
   - name: snapshot_reader
     kind: library.lua
-    modules: [registry]
+    modules: [registry, base64, json]
     meta:
       comment: Product reads and item queries; every answer reports as_of.
     source: file://snapshot_reader.lua

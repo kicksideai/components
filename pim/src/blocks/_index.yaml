@@ -22,14 +22,14 @@ entries:
           additionalProperties: false
           required: [product]
           properties:
-            product: &product_ref
+            product:
               type: object
               title: Product
               additionalProperties: false
               properties:
                 id: { type: string }
                 sku: { type: string }
-            context: &context
+            context:
               type: object
               title: Context
               description: Dimension values the attributes resolve in, such as locale or channel.
@@ -100,90 +100,9 @@ entries:
     data:
       block:
         api_version: kickside.block/v1
-        input:
-          type: object
-          additionalProperties: false
-          properties:
-            where:
-              type: object
-              title: Filter
-              description: "Filter tree: {and: [node]}, {or: [node]}, {not: node} or a leaf {field, ctx?, op, value}."
-            text: { type: string, title: Text }
-            family: { type: string, title: Family }
-            status: { type: string, title: Status }
-            ready:
-              type: object
-              title: Readiness
-              additionalProperties: false
-              required: [set, value]
-              properties:
-                set: { type: string }
-                value: { type: boolean }
-            sort:
-              type: object
-              title: Sort
-              additionalProperties: false
-              required: [field]
-              properties:
-                field: { type: string }
-                ctx: *context
-                dir: { type: string, enum: [asc, desc] }
-            count: { type: boolean, title: Count matches }
-            limit: { type: integer, title: Page size }
-            after:
-              type: object
-              title: After
-              additionalProperties: false
-              required: [id]
-              properties:
-                id: { type: string }
-                v: { type: [string, integer] }
-            published:
-              type: object
-              title: Published on channel
-              additionalProperties: false
-              properties:
-                channel: { type: string }
-            parent: *product_ref
-            root: *product_ref
-            scopes:
-              type: array
-              title: Plugin scopes
-              items:
-                type: object
-                additionalProperties: false
-                required: [id]
-                properties:
-                  id: { type: string }
-                  where: { type: object }
-            min_seq: { type: integer, title: Read after sequence }
-            columns: { type: array, title: Columns, items: { type: string } }
-            context: *context
+        input: {"type":"object","properties":{"where":{"$ref":"#filterNode","description":"Filter tree of and, or, not or {field, ctx, op, value}; omit to match all, with at most 6 levels, 64 leaves and 500 values.","title":"Filter"},"text":{"type":"string","description":"Text matching a sku prefix or searchable attribute words; omit or use an empty string to skip text filtering.","title":"Text"},"family":{"type":"string","description":"Family code declared by PIMSchemaGet; omit on creation for generic or the parent family.","title":"Family"},"status":{"type":"string","enum":["active","draft","archived"],"description":"Product lifecycle status to match; omit to include every status.","title":"Status"},"ready":{"type":"object","required":["set","value"],"properties":{"set":{"type":"string","description":"Requirement set id declared by PIMSchemaGet for the family being queried."},"value":{"type":"boolean","description":"True to match ready products or false to match products with unmet requirements."}},"additionalProperties":false,"description":"Requirement set and readiness boolean to filter by; omit to include both ready and unready items.","title":"Readiness"},"sort":{"type":"object","required":["field"],"additionalProperties":false,"properties":{"field":{"type":"string","description":"Indexed attribute code from PIMSchemaGet; use ctx for a contextual field."},"ctx":{"type":"object","additionalProperties":{"type":"string"},"description":"Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."},"dir":{"type":"string","enum":["asc","desc"],"description":"Ascending or descending field order with product id as the tie breaker; omit for asc."}},"description":"Indexed single-valued field and direction; omit to order by product id.","title":"Sort"},"count":{"type":"boolean","description":"Return a count capped at 10000 matches within 200000 scanned rows, with estimated when capped; omit to skip counting.","title":"Count matches"},"limit":{"type":"integer","minimum":1,"maximum":200,"default":50,"description":"Maximum rows returned, from 1 to 200; omit for 50.","title":"Page size"},"after":{"type":"string","minLength":1,"description":"Opaque PIMQuery continuation to pass unchanged as after with the same query.","title":"After"},"published":{"type":"object","properties":{"channel":{"type":"string","description":"Active publication channel from the current schema. Omit to match any published channel."}},"additionalProperties":false,"description":"Filter to products published in channel, or in any channel if channel is omitted; omit to include unpublished products.","title":"Published on channel"},"parent":{"type":"object","properties":{"id":{"type":"string","description":"Product id returned by PIMGet or PIMQuery; takes precedence over sku."},"sku":{"type":"string","description":"Live product sku, at most 128 bytes for creation; ignored when id is supplied."}},"additionalProperties":false,"description":"Product reference {id} or {sku}; id takes precedence, and PIMGet resolves a sku to its product_id.","anyOf":[{"required":["id"]},{"required":["sku"]}]},"root":{"type":"object","properties":{"id":{"type":"string","description":"Product id returned by PIMGet or PIMQuery; takes precedence over sku."},"sku":{"type":"string","description":"Live product sku, at most 128 bytes for creation; ignored when id is supplied."}},"additionalProperties":false,"description":"Product reference {id} or {sku}; id takes precedence, and PIMGet resolves a sku to its product_id. Must name a root product; omit to include every root.","anyOf":[{"required":["id"]},{"required":["sku"]}]},"scopes":{"type":"array","description":"Plugin scope filters listed by PIMSchemaOptions and adopted in PIMSchemaGet; omit for no plugin filters.","items":{"type":"object","required":["id"],"properties":{"id":{"type":"string","description":"Scope registry id listed by PIMSchemaOptions and adopted by this catalog in PIMSchemaGet."},"where":{"type":"object","description":"Filter names and {operator: value} objects declared by this scope in PIMSchemaOptions; omit for scope membership only."}},"additionalProperties":false},"title":"Plugin scopes"},"min_seq":{"type":"integer","description":"Minimum applied catalog sequence required for this read; omit for the current projection, or receive projection_behind if it lags.","title":"Read after sequence"},"columns":{"type":"array","items":{"type":"string"},"description":"Attribute codes from PIMSchemaGet to resolve per item, at most 12; omit to return product summaries only.","maxItems":12,"title":"Columns"},"context":{"type":"object","additionalProperties":{"type":"string"},"description":"Dimension-to-member map from PIMSchemaGet, such as {\"locale\":\"en\"}; omit dimensions to resolve their wildcard values."}},"additionalProperties":false,"definitions":{"filterNode":{"$anchor":"filterNode","oneOf":[{"type":"object","properties":{"field":{"type":"string","description":"Indexed attribute code from PIMSchemaGet; use ctx for a contextual field."},"ctx":{"type":"object","additionalProperties":{"type":"string"},"description":"Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."},"op":{"type":"string","enum":["eq","neq","in","nin","is_null","lt","lte","gt","gte","between","contains","starts_with","has"],"description":"Comparison supported by the indexed field; has is for sets, ranges for ordered fields, and text operators for single text fields."},"value":{"description":"Operand matching the field type; in and nin take lists, between takes [low, high], is_null takes a boolean, and other operators take one value."}},"required":["field","op","value"],"additionalProperties":false},{"type":"object","properties":{"and":{"type":"array","minItems":1,"items":{"$ref":"#filterNode"},"description":"Non-empty list of filter nodes that must all match, within the tree limits."}},"required":["and"],"additionalProperties":false},{"type":"object","properties":{"or":{"type":"array","minItems":1,"items":{"$ref":"#filterNode"},"description":"Non-empty list of filter nodes of which at least one must match, within the tree limits."}},"required":["or"],"additionalProperties":false},{"type":"object","properties":{"not":{"$ref":"#filterNode","description":"Filter node whose match is inverted, including empty values, within the tree limits."}},"required":["not"],"additionalProperties":false}]}}}
         config: *catalog_config
-        output:
-          type: object
-          additionalProperties: true
-          required: [items]
-          properties:
-            items:
-              type: array
-              items:
-                type: object
-                required: [product_id, sku, version, status, family]
-                properties:
-                  product_id: { type: string }
-                  sku: { type: string }
-                  version: { type: integer }
-                  status: { type: string }
-                  family: { type: string }
-                  values: { type: object }
-            after: { type: object }
-            total: { type: integer }
-            estimated: { type: boolean }
-            incomplete: { type: boolean }
-            as_of: { type: integer }
-            generation: { type: integer }
-            rebuilding: { type: boolean }
+        output: {"type":"object","required":["items"],"properties":{"as_of":{"type":"integer","description":"Applied catalog sequence represented by this answer."},"generation":{"type":"integer","description":"Schema generation associated with this result."},"rebuilding":{"type":"boolean","description":"Whether the catalog has a materialized view rebuild pending."},"items":{"type":"array","items":{"type":"object","required":["product_id","sku","version","status","family"],"properties":{"product_id":{"type":"string"},"sku":{"type":"string"},"version":{"type":"integer"},"status":{"type":"string"},"family":{"type":"string"},"values":{"type":"object"}}},"description":"Page of matching items."},"after":{"type":"string","minLength":1,"description":"Opaque PIMQuery continuation to pass unchanged as after with the same query."},"total":{"type":"integer","description":"Matching row count; read estimated to determine whether it is capped."},"estimated":{"type":"boolean","description":"Whether the returned total is capped by counting or scan limits."},"incomplete":{"type":"boolean","description":"Whether the scan limit prevents this page from covering all matches."}}}
         error: *error
         ports: *ports
         presentation:
@@ -205,74 +124,9 @@ entries:
     data:
       block:
         api_version: kickside.block/v1
-        input:
-          type: object
-          additionalProperties: false
-          required: [items]
-          properties:
-            items:
-              type: array
-              title: Items
-              minItems: 1
-              items: { type: object, additionalProperties: true }
-            mode: { type: string, title: Mode, enum: [atomic, independent] }
-            source: { type: string, title: Source }
-            expected_generation: { type: integer, title: Expected schema generation, description: Require the schema generation the command was built against. }
-            origin:
-              type: object
-              title: Origin
-              description: "Canonical provenance: what produced this change."
-              additionalProperties: false
-              required: [type, id]
-              properties:
-                type: { type: string }
-                id: { type: string }
-            idempotency: &idempotency
-              type: object
-              title: Idempotency
-              additionalProperties: false
-              required: [namespace, key]
-              properties:
-                namespace: { type: string }
-                key: { type: string }
-            trace_context: &trace_context
-              type: object
-              title: Trace
-              additionalProperties: false
-              properties:
-                trace_id: { type: string }
-                run_id: { type: string }
-                caused_by_event_id: { type: string }
-                correlation_key: { type: string }
-            provenance: { type: object, title: Provenance, description: "Reported detail beside origin: model, confidence, evidence." }
+        input: {"type":"object","properties":{"expected_generation":{"type":"integer","description":"Schema generation the command was built against. A mismatch rejects the entire command with schema_generation_conflict.","title":"Expected schema generation"},"items":{"type":"array","items":{"type":"object","properties":{"product":{"type":"object","properties":{"id":{"type":"string","description":"Existing product id from PIMGet or PIMQuery; ignored on creation, required for restore, and takes precedence over sku for ordinary edits."},"sku":{"type":"string","description":"Live sku for an existing product, or a new sku of 1..128 bytes for creation; id takes precedence for ordinary edits."}},"additionalProperties":false,"description":"Existing product: {id} or {sku}, with id precedence; creation requires {sku} and restore requires {id} from PIMHistory or an earlier PIMGet.","anyOf":[{"required":["id"]},{"required":["sku"]}]},"create":{"type":"object","properties":{"family":{"description":"Family code declared by PIMSchemaGet; omit on creation for generic or the parent family."},"parent":{"type":"object","properties":{"id":{"type":"string","description":"Product id returned by PIMGet or PIMQuery; takes precedence over sku."},"sku":{"type":"string","description":"Live product sku, at most 128 bytes for creation; ignored when id is supplied."}},"additionalProperties":false,"description":"Product reference {id} or {sku}; id takes precedence, and PIMGet resolves a sku to its product_id. Omit to create a root product.","anyOf":[{"required":["id"]},{"required":["sku"]}]}},"additionalProperties":false,"description":"Create a new product with product.sku; omit to edit an existing product."},"upsert":{"type":"boolean","description":"Create a missing sku or edit its live product without a version check when seq is absent; omit for normal create or edit semantics."},"expect_version":{"description":"Product version from PIMGet, or \"any\" to bypass the check; required for existing products unless a sequenced source supplies seq."},"seq":{"description":"Source sequence integer, required for sequence-ordered sources from PIMSchemaGet; stale sequences leave the product unchanged."},"set":{"type":"array","items":{"type":"object","properties":{"attr":{"description":"Attribute code declared by PIMSchemaGet, such as core.name."},"ctx":{"description":"Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."},"value":{"description":"Value in the declared attribute type from PIMSchemaGet; set requires a value, while clear and unset ignore it."},"source":{"type":"string","description":"Source metadata used only by catalog import; omit because public commands ignore this per-value field."}},"additionalProperties":false},"description":"Values to write as {attr, ctx, value}; omit to leave values unchanged."},"clear":{"type":"array","items":{"type":"object","properties":{"attr":{"description":"Attribute code declared by PIMSchemaGet, such as core.name."},"ctx":{"description":"Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."},"value":{"description":"Ignored for clear and unset; omit because these operations use only attr and ctx."},"source":{"type":"string","description":"Source metadata used only by catalog import; omit because public commands ignore this per-value field."}},"additionalProperties":false},"description":"Attribute coordinates to block inherited values explicitly; omit to leave values unchanged."},"unset":{"type":"array","items":{"type":"object","properties":{"attr":{"description":"Attribute code declared by PIMSchemaGet, such as core.name."},"ctx":{"description":"Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."},"value":{"description":"Ignored for clear and unset; omit because these operations use only attr and ctx."},"source":{"type":"string","description":"Source metadata used only by catalog import; omit because public commands ignore this per-value field."}},"additionalProperties":false},"description":"Attribute coordinates whose local override is removed so inheritance resumes; omit to leave values unchanged."},"move":{"type":"object","properties":{"parent":{"type":"object","properties":{"id":{"type":"string","description":"Product id returned by PIMGet or PIMQuery; takes precedence over sku."},"sku":{"type":"string","description":"Live product sku, at most 128 bytes for creation; ignored when id is supplied."}},"additionalProperties":false,"description":"Product reference {id} or {sku}; id takes precedence, and PIMGet resolves a sku to its product_id.","anyOf":[{"required":["id"]},{"required":["sku"]}]}},"additionalProperties":false,"description":"Move a childless variant to a parent one level up under the same root; omit to keep its parent."},"status":{"description":"Accepted values: active, draft, archived. Omit on creation for active or on edits to retain the current status; invalid values produce an item outcome."},"delete":{"type":"boolean","description":"Move a childless, unreferenced product to trash as a separate item; omit to retain it."},"restore":{"type":"boolean","description":"Restore a trashed product addressed only by product.id from PIMHistory; send as a separate item, or omit for normal edits."},"term":{"type":"object","properties":{"vocabulary":{"description":"Vocabulary code declared by PIMSchemaGet; list its term codes with PIMTerms."},"code":{"description":"Term code within the vocabulary, as listed by PIMTerms or chosen for a new term."}},"additionalProperties":false,"description":"Vocabulary and term code to create or edit instead of a product; omit for product operations."},"labels":{"description":"Locale-to-label map for a term; omit to preserve existing labels."},"parent":{"type":"string","description":"Parent term code in this vocabulary from PIMTerms; omit to preserve it, or use an empty string for no parent."},"retired":{"type":"boolean","description":"Whether the term is retired; omit on term edits to preserve its current state."},"term_merge":{"type":"object","properties":{"vocabulary":{"description":"Vocabulary code declared by PIMSchemaGet; list its term codes with PIMTerms."},"from":{"description":"Live source term code in this vocabulary from PIMTerms; it is retired after merging."},"into":{"description":"Live destination term code in this vocabulary from PIMTerms; it receives the redirected references."}},"additionalProperties":false,"description":"Retire a term and redirect references to another; up to 500 products update inline and the remainder use a job."}},"additionalProperties":false},"minItems":1,"description":"Ordered product or term commands, from 1 to 500; later commands see earlier accepted commands.","maxItems":500,"title":"Items"},"mode":{"type":"string","enum":["atomic","independent"],"description":"Use atomic to append only when every item succeeds, or independent to append successful items; omit for atomic.","title":"Mode"},"source":{"type":"string","description":"Source id declared by PIMSchemaGet; omit for a caller-authored change.","title":"Source"},"origin":{"type":"object","required":["type","id"],"additionalProperties":false,"description":"Producer type and id recorded as command provenance; omit when no producer is reported.","properties":{"type":{"type":"string","description":"Caller-reported producer category; use a consistent category for the originating capability."},"id":{"type":"string","description":"Caller-reported producer identifier within the origin type."}},"title":"Origin"},"idempotency":{"type":"object","required":["namespace","key"],"properties":{"namespace":{"type":"string","description":"Caller-chosen non-empty scope for the idempotency key within this catalog.","minLength":1},"key":{"type":"string","description":"Non-empty request key within the namespace; reuse only for the same command.","minLength":1}},"additionalProperties":false,"description":"Non-empty namespace and key identifying the same command on replay; omit to append without replay protection.","title":"Idempotency"},"trace_context":{"type":"object","additionalProperties":false,"description":"Trace identifiers attached to appended events; omit when the command has no trace.","properties":{"trace_id":{"type":"string","description":"Trace identifier shared by related work; omit when unavailable."},"run_id":{"type":"string","description":"Execution run identifier that produces this command; omit when unavailable."},"caused_by_event_id":{"type":"string","description":"Event identifier that causes this command; omit for work without a parent event."},"correlation_key":{"type":"string","description":"Caller-chosen correlation identifier across related events; omit when unavailable."}},"title":"Trace"},"provenance":{"type":"object","description":"Caller-reported evidence, confidence or model details stored beside the origin; omit when unavailable.","title":"Provenance"}},"required":["items"],"additionalProperties":false}
         config: *catalog_config
-        output: &command_result
-          type: object
-          additionalProperties: true
-          required: [outcomes, applied]
-          properties:
-            outcomes:
-              type: array
-              items:
-                type: object
-                required: [outcome]
-                properties:
-                  index: { type: integer }
-                  outcome: { type: string }
-                  product_id: { type: string }
-                  sku: { type: string }
-                  version: { type: integer }
-                  term: { type: string }
-                  findings: { type: array, items: { type: object } }
-                  release_id: { type: string }
-                  hash: { type: string }
-                  channels: { type: array, items: { type: string } }
-                  rewritten: { type: integer }
-                  deferred: { type: integer }
-            applied: { type: boolean }
-            seq: { type: integer }
-            as_of: { type: integer }
-            replayed: { type: boolean }
+        output: {"type":"object","required":["outcomes","applied"],"properties":{"outcomes":{"type":"array","items":{"type":"object","required":["outcome"],"properties":{"index":{"type":"integer"},"outcome":{"type":"string","enum":["created","updated","unchanged","conflict","invalid","forbidden"],"description":"Per-item result in request order."},"product_id":{"type":"string"},"sku":{"type":"string"},"version":{"type":"integer"},"term":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"attribute":{"type":"string"},"holder":{"type":"string"},"product_id":{"type":"string"},"set":{"type":"string"},"check":{"type":"string"},"context":{"type":"string"},"channel":{"type":"string"},"version":{"type":"integer"},"code":{"type":"string","description":"Machine-readable finding code when the validator supplies one."},"message":{"type":"string","description":"Human-readable explanation of the finding."}},"anyOf":[{"required":["code"]},{"required":["message"]}]}},"rewritten":{"type":"integer"},"deferred":{"type":"integer"},"trashed":{"type":"boolean"},"restored":{"type":"boolean"}}},"description":"Per-item outcomes, identifiers, versions and refusal findings in request order."},"applied":{"type":"boolean","description":"Atomic mode commits only when all items succeed; independent mode reports true even when every item is refused."},"seq":{"type":"integer","description":"Sequence at which this command completes."},"as_of":{"type":"integer","description":"Applied catalog sequence represented by this answer."},"replayed":{"type":"boolean","description":"Whether this result reuses a previously completed command."}}}
         error: *error
         ports: *ports
         presentation:
@@ -294,26 +148,9 @@ entries:
     data:
       block:
         api_version: kickside.block/v1
-        input:
-          type: object
-          additionalProperties: false
-          required: [items]
-          properties:
-            items:
-              type: array
-              title: Items
-              minItems: 1
-              items:
-                type: object
-                additionalProperties: false
-                properties:
-                  product: *product_ref
-                  expect_version: { type: integer }
-                  channels: { type: array, items: { type: string } }
-            idempotency: *idempotency
-            trace_context: *trace_context
+        input: {"type":"object","properties":{"items":{"type":"array","minItems":1,"items":{"type":"object","properties":{"product":{"type":"object","properties":{"id":{"type":"string","description":"Product id returned by PIMGet or PIMQuery; takes precedence over sku."},"sku":{"type":"string","description":"Live product sku, at most 128 bytes for creation; ignored when id is supplied."}},"additionalProperties":false,"description":"Product reference {id} or {sku}; id takes precedence, and PIMGet resolves a sku to its product_id.","anyOf":[{"required":["id"]},{"required":["sku"]}]},"expect_version":{"description":"Exact product version returned by PIMGet; a mismatch produces a conflict outcome."},"channels":{"type":"array","items":{},"description":"Channel codes from PIMSchemaGet; omit to consider every channel, or pass an empty list to select none."}},"additionalProperties":false,"required":["product"]},"description":"Product references and channel selections to release, from 1 to 100 entries.","maxItems":100,"title":"Items"},"idempotency":{"type":"object","required":["namespace","key"],"properties":{"namespace":{"type":"string","description":"Caller-chosen non-empty scope for the idempotency key within this catalog.","minLength":1},"key":{"type":"string","description":"Non-empty request key within the namespace; reuse only for the same command.","minLength":1}},"additionalProperties":false,"description":"Non-empty namespace and key identifying the same command on replay; omit to append without replay protection.","title":"Idempotency"},"trace_context":{"type":"object","additionalProperties":false,"description":"Trace identifiers attached to appended events; omit when the command has no trace.","properties":{"trace_id":{"type":"string","description":"Trace identifier shared by related work; omit when unavailable."},"run_id":{"type":"string","description":"Execution run identifier that produces this command; omit when unavailable."},"caused_by_event_id":{"type":"string","description":"Event identifier that causes this command; omit for work without a parent event."},"correlation_key":{"type":"string","description":"Caller-chosen correlation identifier across related events; omit when unavailable."}},"title":"Trace"}},"required":["items"],"additionalProperties":false}
         config: *catalog_config
-        output: *command_result
+        output: {"type":"object","required":["outcomes","applied"],"properties":{"outcomes":{"type":"array","items":{"type":"object","required":["outcome"],"properties":{"index":{"type":"integer"},"outcome":{"type":"string","enum":["released","queued","unchanged","conflict","invalid","not_ready"],"description":"Per-item result in request order."},"product_id":{"type":"string"},"sku":{"type":"string"},"version":{"type":"integer"},"findings":{"type":"array","items":{"type":"object","properties":{"attribute":{"type":"string"},"holder":{"type":"string"},"product_id":{"type":"string"},"set":{"type":"string"},"check":{"type":"string"},"context":{"type":"string"},"channel":{"type":"string"},"version":{"type":"integer"},"code":{"type":"string","description":"Machine-readable finding code when the validator supplies one."},"message":{"type":"string","description":"Human-readable explanation of the finding."}},"anyOf":[{"required":["code"]},{"required":["message"]}]}},"release_id":{"type":"string"},"hash":{"type":"string"},"channels":{"type":"array","items":{"type":"string"}},"request_id":{"type":"string","description":"Request ID of the new or existing model release job."},"job_id":{"type":"string","description":"Jobs ID of the new or existing model release job."}},"if":{"properties":{"outcome":{"const":"queued"}}},"then":{"required":["request_id","job_id"]}},"description":"Per-item outcomes, identifiers, versions and refusal findings in request order."},"applied":{"type":"boolean","description":"Whether any release, model release request or withdrawal event is appended."},"seq":{"type":"integer","description":"Sequence at which this command completes."},"as_of":{"type":"integer","description":"Applied catalog sequence represented by this answer."},"replayed":{"type":"boolean","description":"Whether this result reuses a previously completed command."}}}
         error: *error
         ports: *ports
         presentation:
