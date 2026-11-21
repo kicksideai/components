@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/kicksideai/components/compare/work-search-v0.1.2...work-search-v0.1.3) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work:** bound grouped reads, search, move edges and board discovery ([#289](https://github.com/kicksideai/components/issues/289)) ([c171f3e](https://github.com/kicksideai/components/commit/c171f3e26ade8ef043efdbecbf6fb7c589c6b6e0))
+
 ## [0.1.2](https://github.com/kicksideai/components/compare/work-search-v0.1.1...work-search-v0.1.2) (2026-11-21)
 
 
