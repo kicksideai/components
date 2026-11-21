@@ -270,6 +270,14 @@ entries:
       actions: [registry.get, registry.find, funcs.call, contract.get, contract.open, contract.call]
       effect: allow
 
+  - name: event_metadata
+    kind: security.policy
+    groups: [kickside.security.groups:members]
+    policy:
+      resources: [app.compliance:certificate.approved, app.compliance:catalog_outputs]
+      actions: [registry.get, registry.find]
+      effect: allow
+
   - name: tool_access
     kind: security.policy
     groups: [kickside.security.groups:members]
@@ -289,3 +297,4 @@ entries:
       fixture: app:fixture
       agent_cases: app:agent_plugin_cases
       prune: kickside.core.retention:prune
+      scoped: app:scoped

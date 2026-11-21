@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local test = require("test")
 local fixture = require("fixture")
+local scoped = require("scoped")
 local agent_cases = require("agent_cases")
 local registry = require("registry")
 local sql = require("sql")
@@ -381,6 +382,19 @@ local function define()
             assert(ok, tostring(err))
         end)
 
+        test.it("applies unrelated catalog schema while an inactive plugin has an unreadable worker", function()
+            local h = scoped.catalog(scoped.member())
+            local manifest = version(1)
+            manifest.projections[2].worker_ref = "func://app:scoped_plugin_worker"
+            changed(PLUGIN, manifest, nil, function()
+                local result = call(h, "apply_schema", { declaration = { aspects = { {
+                    namespace = "independent",
+                    attributes = { { code = "title", type = "kickside.pim.types:text" } },
+                } } } })
+                test.eq(result.class, "additive")
+            end)
+        end)
+
         test.it("paces state backfill over multiple pages and isolates a lagging catalog", function()
             prepare_tables()
             local h = fixture.catalog({ bare = true })
@@ -566,14 +580,19 @@ local function define()
                     call(h, "update", { ui_app = "" })
                     test.is_nil(call(h, "get_catalog").ui_app)
                 end)
+                changed(SCOPE, nil, nil, function()
+                    local _, stale = h.call("query", query)
+                    test.eq(stale:details().code, "unknown_scope")
+                    call(h, "apply_schema", { declaration = {
+                        families = { { code = "supplier_item", aspects = { "base" },
+                            requirements = { { id = "web", require = { "base.label" } } } } },
+                        remove = { plugins = { PLUGIN }, scopes = { SCOPE }, sources = { "supplier_compliance" } },
+                    } })
+                    local _, err = h.call("plugin_context", { plugin = PLUGIN })
+                    test.eq(err:details().code, "plugin_inactive")
+                end)
+                await(function() return count(h.id) == 0 and {} end, "disabled attachment did not clean its replica")
             end)
-            call(h, "apply_schema", { declaration = {
-                families = { { code = "supplier_item", aspects = { "base" }, requirements = { { id = "web", require = { "base.label" } } } } },
-                remove = { plugins = { PLUGIN }, scopes = { SCOPE }, sources = { "supplier_compliance" } },
-            } })
-            local _, err = h.call("plugin_context", { plugin = PLUGIN })
-            test.eq(err:details().code, "plugin_inactive")
-            await(function() return count(h.id) == 0 and {} end, "disabled attachment did not clean its replica")
             local _, stale = h.call("query", query)
             test.not_nil(stale)
         end)

@@ -281,13 +281,20 @@ function M.load(id: string): (types.Plugin?, error?)
         attachment = m.attachment :: string, requires = requires, seams = seams, config_schema = schema, schema = source, projections = projections, tools = tools }, nil
 end
 
--- find lists the ids of the installed manifests.
-function M.find(): ({ string }?, error?)
+local function manifests(): ({ registry.Entry }?, error?)
     local entries, err = registry.find({ [".kind"] = "registry.entry", ["meta.type"] = M.TYPE })
     if err then return nil, errors.wrap(err, "plugin lookup failed") end
+    local sorted = entries or {}
+    table.sort(sorted, function(a: registry.Entry, b: registry.Entry): boolean return tostring(a.id) < tostring(b.id) end)
+    return sorted, nil
+end
+
+-- find lists the ids of the installed manifests.
+function M.find(): ({ string }?, error?)
+    local entries, err = manifests()
+    if err or not entries then return nil, err end
     local ids: { string } = {}
-    for _, e in ipairs(entries or {}) do ids[#ids + 1] = tostring(e.id) end
-    table.sort(ids)
+    for _, entry in ipairs(entries) do ids[#ids + 1] = tostring(entry.id) end
     return ids, nil
 end
 
@@ -372,18 +379,24 @@ function M.admit(compiled: types.Compiled, previous: types.Compiled?): error?
     local was = previous and previous.plugins or {}
     local owners: { [string]: string } = {}
     local conflicts: { [string]: string } = {}
-    local installed, err = M.find()
+    local installed, err = manifests()
     if err or not installed then return err end
-    for _, id in ipairs(installed) do
-        local plugin, lerr = M.load(id)
-        if lerr and lerr:kind() ~= errors.INVALID then return lerr end
-        if plugin then
-            for _, seam in ipairs(plugin.seams or {}) do
+    for _, entry in ipairs(installed) do
+        local id = tostring(entry.id)
+        local meta = entry.meta :: types.JsonObject
+        -- Compilation has already checked active manifests. Ownership of a
+        -- seam is declared independently of the worker, provider and tools.
+        if meta.interface_version == nil or meta.interface_version == M.INTERFACE_VERSION then
+            local seams, serr = identities(id, "seams", meta.seams)
+            if serr and active[id] then return serr end
+            for _, seam in ipairs(seams or {}) do
                 if owners[seam] then conflicts[seam] = conflicts[seam] or id
                 else owners[seam] = id end
             end
             if active[id] then
-                for _, required in ipairs(plugin.requires or {}) do
+                local requires, rerr = identities(id, "requires", meta.requires)
+                if rerr then return rerr end
+                for _, required in ipairs(requires or {}) do
                     if not active[required] then return invalid("required plugin is inactive", { code = "plugin_required", plugin = id, required = required }) end
                 end
             end

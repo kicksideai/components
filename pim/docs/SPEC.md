@@ -418,6 +418,8 @@ keeps its native kind and code; only a truly missing or malformed entry becomes
 one of these `errors.INVALID` codes (`plugin_inactive` is `errors.NOT_FOUND`).
 The same code set applies to types, scopes and link kinds: `unknown_type`,
 `unknown_scope`, `unknown_link_kind`.
+Seam admission reads ownership from the installed declarations. Resolving a
+catalog schema checks the runtime dependencies of plugins active there.
 
 A plugin declares itself once with a `kickside.pim.plugin` entry:
 
