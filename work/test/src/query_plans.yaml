@@ -23,6 +23,7 @@ entries:
     steps: app:steps
     store: kickside.work.persist:store
     tables: kickside.work.domain:layout
+    read_rows: kickside.work.persist:read_rows
 - name: query_text_search_plugin
   kind: registry.entry
   meta:

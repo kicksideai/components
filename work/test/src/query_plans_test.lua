@@ -4,17 +4,51 @@ local fixture = require("fixture")
 local steps = require("steps")
 local store = require("store")
 local tables = require("tables")
+local read_rows = require("read_rows")
 
-local function explain(db, statement: string, args)
+local function explain(db, statement: string, args, tx: any?)
     local pg = db:type() == "postgres"
     local prefix = pg and "EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF) " or "EXPLAIN QUERY PLAN "
-    local result = assert(db:query(prefix .. statement, args))
+    local executor = tx or db
+    local result = assert(executor:query(prefix .. statement, args))
     local lines = {}
     for _, row in ipairs(result) do lines[#lines + 1] = pg and row["QUERY PLAN"] or row.detail end
     return table.concat(lines, "\n")
 end
 
 local function define()
+    test.describe("stage-run query plans", function()
+        test.it("seeks a deep cursor by visit and attempt and can read only the current visits", function()
+            local db = assert(store.open())
+            local tx = assert(db:begin())
+            assert(tx:execute([[WITH RECURSIVE visits(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM visits WHERE n<10000),
+                attempts(n) AS (VALUES(1), (2), (3))
+                INSERT INTO kickside_work_stage_run (board_id,item_id,visit,attempt,state,started)
+                SELECT 'stage-plan','item',visits.n,attempts.n,'build','2026' FROM visits CROSS JOIN attempts]], {}))
+            assert(tx:execute("ANALYZE kickside_work_stage_run", {}))
+
+            local plan = ""
+            local probe = { query = function(_, statement, params)
+                plan = explain(db, statement, params, tx)
+                return tx:query(statement, params)
+            end }
+            local deep = assert(read_rows.stage_runs(probe :: any, "stage-plan", "item", 4, 10, 2))
+            local current = assert(read_rows.stage_runs(tx, "stage-plan", "item", 10, nil, nil, { 15, 4 }))
+            assert(tx:rollback())
+            db:release()
+
+            test.eq(#deep, 4)
+            test.eq(deep[1].visit, 10); test.eq(deep[1].attempt, 1)
+            test.eq(deep[4].visit, 9); test.eq(deep[4].attempt, 1)
+            test.eq(#current, 6)
+            test.eq(current[1].visit, 15); test.eq(current[1].attempt, 3)
+            test.eq(current[6].visit, 4); test.eq(current[6].attempt, 1)
+            print("DEEP STAGE-RUN PLAN\n" .. plan)
+            test.is_true(plan:find("(visit,attempt)<(?,?)", 1, true) ~= nil
+                or plan:find("ROW(visit, attempt) <", 1, true) ~= nil, plan)
+        end)
+    end)
+
     test.describe("Work indexed query plans", function()
         local board, db, title, set_lookup
         test.before_all(function()
