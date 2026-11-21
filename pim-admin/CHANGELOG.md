@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.13](https://github.com/kicksideai/components/compare/pim-admin-v0.1.12...pim-admin-v0.1.13) (2026-11-21)
+
+
+### Bug Fixes
+
+* **pim-admin:** keep family field pickers in catalog order ([#332](https://github.com/kicksideai/components/issues/332)) ([2e2d531](https://github.com/kicksideai/components/commit/2e2d53167365201e1b97be5c9129db402439178e))
+
 ## [0.1.12](https://github.com/kicksideai/components/compare/pim-admin-v0.1.11...pim-admin-v0.1.12) (2026-11-21)
 
 
