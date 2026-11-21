@@ -32,16 +32,16 @@ local function define()
                 return {client=client,thread={id=h.id,kind="test",source="test"},actor="test",deadline_ms=1000,
                     fingerprint={op=noop and "noop" or "effectful"},idempotency={namespace="race",key="key"},
                     receipt=function(marker) return receipts.get(h.id,marker) end,
-                    reserve=function(marker,hashed,s,at) return receipts.reserve(h.id,marker,hashed,s,at) end,
-                    noop=function(marker,hashed,result,s,at) return receipts.noop(h.id,marker,hashed,result,s,at) end,
-                    build=build or function(s) return {result={class="unchanged"},events={},as_of=s},nil end}
+                    reserve=function(marker,hashed,position,at) return receipts.reserve(h.id,marker,hashed,position,at) end,
+                    noop=function(marker,hashed,result,position,at) return receipts.noop(h.id,marker,hashed,result,position,at) end,
+                    build=build or function(s) return {result={class="unchanged"},events={},as_of=s,catalog_seq=s},nil end}
             end
             local winner
             local out,err=pipeline.run(command(not noop_first,function(s)
                 winner=assert(pipeline.run(command(noop_first,function(n)
-                    return {result={class="unchanged"},events=noop_first and {} or {{type="test",body={}}},as_of=n,expect={head=n}},nil
+                    return {result={class="unchanged"},events=noop_first and {} or {{type="test",body={}}},as_of=n,catalog_seq=n,expect={head=n}},nil
                 end)))
-                return {result={class="unchanged"},events=noop_first and {{type="test",body={}}} or {},as_of=s,expect={head=s}},nil
+                return {result={class="unchanged"},events=noop_first and {{type="test",body={}}} or {},as_of=s,catalog_seq=s,expect={head=s}},nil
             end))
             test.is_nil(out)
             test.eq(err and err:details().code,"idempotency_conflict")
@@ -58,9 +58,9 @@ local function define()
                 return {client=client,thread={id=h.id,kind="test",source="test"},actor="test",deadline_ms=1000,
                     fingerprint={op=noop and "noop" or "effectful"},idempotency={namespace="pending",key="key"},
                     receipt=function(marker) return receipts.get(h.id,marker) end,
-                    reserve=function(marker,hashed,s,at) return receipts.reserve(h.id,marker,hashed,s,at) end,
-                    noop=function(marker,hashed,result,s,at) return receipts.noop(h.id,marker,hashed,result,s,at) end,
-                    build=function(s) return {result={class="unchanged"},events=noop and {} or {{type="test",body={}}},as_of=s,expect={head=s}},nil end}
+                    reserve=function(marker,hashed,position,at) return receipts.reserve(h.id,marker,hashed,position,at) end,
+                    noop=function(marker,hashed,result,position,at) return receipts.noop(h.id,marker,hashed,result,position,at) end,
+                    build=function(s) return {result={class="unchanged"},events=noop and {} or {{type="test",body={}}},as_of=s,catalog_seq=s,expect={head=s}},nil end}
             end
             client.append_events=function(_self,r)
                 local out,err=pipeline.run(command(true))

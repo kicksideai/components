@@ -7,6 +7,7 @@ local registry = require("registry")
 local types = require("types")
 local M = {}
 type Receipt = types.Receipt
+type Position = { catalog_seq: integer, as_of: integer }
 local function get(db: types.Executor,catalog_id: string,marker: string): (Receipt?,integer?,error?)
     local rows,qerr=db:query("SELECT * FROM kickside_pim_receipt WHERE catalog_id=$1 AND marker=$2 AND expires_at > $3",{catalog_id,marker,clock.now()})
     if qerr then return nil,nil,qerr end
@@ -46,7 +47,7 @@ function M.record(tx:types.Executor,catalog_id:string,receipt:Receipt,seq:intege
 end
 -- Both paths reserve under the fold's catalog lock. A zero-count non-noop is
 -- a pending hash reservation, completed only by the fold or an eventless result.
-local function reserve(catalog_id: string,marker: string,hashed: string,seq: integer,at: string,result: types.JsonObject?): (boolean?,error?)
+local function reserve(catalog_id: string,marker: string,hashed: string,position: Position,at: string,result: types.JsonObject?): (boolean?,error?)
     return store.transaction("command key reservation",function(tx: types.Executor,dialect: string): (boolean?,error?)
         local catalog,cerr=store.catalog(tx,catalog_id,dialect)
         if cerr then return nil,cerr end
@@ -61,17 +62,17 @@ local function reserve(catalog_id: string,marker: string,hashed: string,seq: int
             return nil,errors.new({kind=errors.CONFLICT,message="idempotency key reused with a different request",details={code="idempotency_conflict"}})
         end
         if prior and (prior.noop or prior.event_count~=0) then return false,nil end
-        if catalog.applied_seq~=seq then return false,nil end
+        if catalog.applied_seq ~= position.catalog_seq then return false, nil end
         if prior and not result then return true,nil end
-        local err=record(tx,catalog_id,{marker=marker,request_hash=hashed,result=result or {},event_count=0,noop=result~=nil},seq,at)
+        local err=record(tx,catalog_id,{marker=marker,request_hash=hashed,result=result or {},event_count=0,noop=result~=nil},position.as_of,at)
         if err then return nil,err end
         return true,nil
     end)
 end
-function M.reserve(catalog_id: string,marker: string,hashed: string,seq: integer,at: string): (boolean?,error?)
-    return reserve(catalog_id,marker,hashed,seq,at,nil)
+function M.reserve(catalog_id: string,marker: string,hashed: string,position: Position,at: string): (boolean?,error?)
+    return reserve(catalog_id,marker,hashed,position,at,nil)
 end
-function M.noop(catalog_id: string,marker: string,hashed: string,result: types.JsonObject,seq: integer,at: string): (boolean?,error?)
-    return reserve(catalog_id,marker,hashed,seq,at,result)
+function M.noop(catalog_id: string,marker: string,hashed: string,result: types.JsonObject,position: Position,at: string): (boolean?,error?)
+    return reserve(catalog_id,marker,hashed,position,at,result)
 end
 return M

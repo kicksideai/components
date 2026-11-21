@@ -19,18 +19,22 @@ local M = {}
 -- it, its external-id source.
 type Thread = { id: string, kind: string, source: string }
 -- Attempt is one try: the result to answer, the events to append, the append
--- guard, and the position the result reflects when nothing is appended.
-type Attempt = { result: types.JsonObject, events: { types.Event }, expect: threads.Expect?, as_of: integer, receipt_after_fold: boolean? }
+-- guard, the covered thread position, and the catalog position read by the plan.
+type Attempt = { result: types.JsonObject, events: { types.Event }, expect: threads.Expect?,
+    as_of: integer, catalog_seq: integer, receipt_after_fold: boolean? }
+type ReceiptPosition = { catalog_seq: integer, as_of: integer }
 -- Build makes an attempt at the projection's position.
 type Build = (integer) -> (Attempt?, error?)
 type Command = {
     client: threads.Client, thread: Thread, actor: string, deadline_ms: integer, deadline: clock.Deadline?, fingerprint: unknown,
-    reserve: ((string,string,integer,string) -> (boolean?,error?))?,
-    noop: ((string,string,types.JsonObject,integer,string) -> (boolean?,error?))?,
-    receipt: ((string) -> (types.Receipt?, integer?, error?))?, idempotency: types.Idempotency?, trace_context: types.TraceContext?, build: Build,
+    reserve: ((string,string,ReceiptPosition,string) -> (boolean?,error?))?,
+    noop: ((string,string,types.JsonObject,ReceiptPosition,string) -> (boolean?,error?))?,
+    receipt: ((string) -> (types.Receipt?, integer?, error?))?, receipt_requires_head: boolean?,
+    idempotency: types.Idempotency?, trace_context: types.TraceContext?, build: Build,
 }
 M.Thread = Thread
 M.Attempt = Attempt
+M.ReceiptPosition = ReceiptPosition
 M.Build = Build
 M.Command = Command
 
@@ -50,14 +54,15 @@ function M.marker(idempotency: types.Idempotency, actor: string): string
         .. #actor .. ":" .. actor
 end
 
--- covered waits until the projection reaches the thread head; missing the
--- deadline is a retryable unavailability.
-local function covered(c: Command, deadline: clock.Deadline): (integer?, error?)
-    local caught, err = threads.catch_up(c.client, c.thread.id, c.thread.kind, deadline)
+-- Missing the requested projection position is a retryable unavailability.
+local function covered(c: Command, deadline: clock.Deadline, target_seq: integer?): (integer?, error?)
+    local caught, err = threads.catch_up(c.client, c.thread.id, c.thread.kind, deadline, target_seq)
     if err or not caught then return nil, err end
     local last_seq = caught.last_seq
     if not caught.done or not last_seq then
-        return nil, errors.new({ details = { code = "projection_behind" }, kind = errors.UNAVAILABLE, retryable = true, message = "the projection did not reach the thread head" })
+        local position = target_seq and "the target sequence" or "the thread head"
+        return nil, errors.new({ details = { code = "projection_behind" }, kind = errors.UNAVAILABLE, retryable = true,
+            message = "the projection did not reach " .. position })
     end
     return last_seq, nil
 end
@@ -72,7 +77,7 @@ end
 -- replay answers from the receipt of an earlier run of the same command, or
 -- nil when there is none. A receipt with another request hash means the key was
 -- reused for a different request.
-local function replay(c: Command, marker: string, hashed: string, as_of: integer, deadline: clock.Deadline): (types.JsonObject?, error?)
+local function replay(c: Command, marker: string, hashed: string, as_of: integer?, deadline: clock.Deadline): (types.JsonObject?, error?)
     local read_receipt = c.receipt
     if not read_receipt then return nil, failure.corrupt("idempotent command has no receipt reader") end
     local receipt, seq, ferr = read_receipt(marker)
@@ -89,13 +94,14 @@ local function replay(c: Command, marker: string, hashed: string, as_of: integer
     if not count or count < (receipt.noop and 0 or 1) then
         return nil, failure.corrupt("stored receipt has no valid event count")
     end
-    local final_seq = not receipt.noop and seq + count - 1 or nil
-    if (final_seq or seq) > as_of then
-        local caught, cerr = covered(c, deadline)
-        if cerr or not caught then return nil, cerr end
-        as_of = caught
+    local result_seq = not receipt.noop and seq + count - 1 or nil
+    local target = result_seq or seq
+    if not as_of or as_of < target then
+        local cerr: error?
+        as_of, cerr = covered(c, deadline, target)
+        if cerr or not as_of then return nil, cerr end
     end
-    return stamp(stored, final_seq, as_of, true), nil
+    return stamp(stored, result_seq, as_of, true), nil
 end
 
 -- run executes a command and returns its result with seq, as_of and, for a
@@ -116,6 +122,10 @@ function M.run(c: Command): (types.JsonObject?, error?)
         hashed = request_hash({ actor = c.actor, command = c.fingerprint })
     end
     while not clock.passed(until_at) do
+        if marker and hashed and not c.receipt_requires_head then
+            local replayed, rerr = replay(c, marker, hashed, nil, until_at)
+            if rerr or replayed then return replayed, rerr end
+        end
         local last_seq, cerr = covered(c, until_at)
         if cerr or not last_seq then return nil, cerr end
         if marker and hashed then
@@ -132,6 +142,7 @@ function M.run(c: Command): (types.JsonObject?, error?)
             end
             return nil, berr
         end
+        local position: ReceiptPosition = { catalog_seq = attempt.catalog_seq, as_of = attempt.as_of }
         local events: {types.Event} = attempt.events
         local noop = #events == 0
         if noop and marker and hashed then
@@ -150,7 +161,7 @@ function M.run(c: Command): (types.JsonObject?, error?)
                     end
                 end
                 if successful then
-                    local saved,err=c.noop(marker,hashed,attempt.result,attempt.as_of,clock.now())
+                    local saved,err=c.noop(marker, hashed, attempt.result, position, clock.now())
                     if err then return nil,err end
                     retry=saved~=true
                 end
@@ -169,13 +180,13 @@ function M.run(c: Command): (types.JsonObject?, error?)
         if marker then
             local body = events[attempt.receipt_after_fold and #events or 1].body :: types.JsonObject
             body.receipt = { request_hash = hashed, result = attempt.result, event_count = #events,
-                marker = marker, noop = noop, after_fold = attempt.receipt_after_fold or nil }
+                marker = marker, noop = false, after_fold = attempt.receipt_after_fold or nil }
         end
         if c.trace_context then
             for _, event in ipairs(events) do event.trace_context = c.trace_context end
         end
         local reserved,rerr=true,nil :: error?
-        if marker and hashed and c.reserve then reserved,rerr=c.reserve(marker,hashed,attempt.as_of,at) end
+        if marker and hashed and c.reserve then reserved,rerr=c.reserve(marker, hashed, position, at) end
         if rerr then return nil,rerr end
         local max_seq: integer?
         local aerr: error?
@@ -183,17 +194,20 @@ function M.run(c: Command): (types.JsonObject?, error?)
         else aerr=errors.new({kind=errors.CONFLICT,message="projection moved",details={reason="head_mismatch"}}) end
         if aerr then
             if marker and hashed and aerr:kind()==errors.CONFLICT then
+                if not c.receipt_requires_head then
+                    local winner, werr = replay(c, marker, hashed, nil, until_at)
+                    if werr or winner then return winner, werr end
+                end
                 local as_of,cerr=covered(c,until_at)
                 if cerr or not as_of then return nil,cerr end
                 local winner,werr=replay(c,marker,hashed,as_of,until_at)
-                if werr then return nil,werr end
-                if winner then return winner,nil end
+                if werr or winner then return winner, werr end
             end
             if not threads.mismatch(aerr, "head_mismatch") and not threads.mismatch(aerr, "version_mismatch") then
                 return nil, errors.wrap(aerr, "append failed")
             end
         else
-            local as_of, derr = covered(c, until_at)
+            local as_of, derr = covered(c, until_at, max_seq :: integer)
             if derr or not as_of then return nil, derr end
             if marker and hashed and attempt.receipt_after_fold then
                 local result, rerr = replay(c, marker, hashed, as_of, until_at)
@@ -201,9 +215,7 @@ function M.run(c: Command): (types.JsonObject?, error?)
                 if not result then return nil, failure.corrupt("projected release receipt is missing") end
                 return stamp(result, max_seq, as_of, nil), nil
             end
-            local result_seq = max_seq
-            if noop then result_seq = nil end
-            return stamp(attempt.result, result_seq, as_of, nil), nil
+            return stamp(attempt.result, max_seq, as_of, nil), nil
         end
         end
     end

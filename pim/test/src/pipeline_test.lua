@@ -57,7 +57,7 @@ end
 
 local function one_event(last_seq: integer): (pipeline.Attempt?, error?)
     return { result = { outcome = "done" }, events = { event("app:a", { n = 1 }, "s") },
-        expect = { head = last_seq }, as_of = last_seq }, nil
+        expect = { head = last_seq }, as_of = last_seq, catalog_seq = last_seq }, nil
 end
 
 local function define()
@@ -91,10 +91,78 @@ local function define()
             test.is_nil(sent.events[1].external)
         end)
 
+        local function append_with_later_head(): (Fake, pipeline.Command)
+            local f = fake()
+            local build = function(head: integer): (pipeline.Attempt?, error?)
+                return { result = { outcome = "done" }, events = { event("app:a", {}), event("app:b", {}) },
+                    expect = { head = head }, as_of = head, catalog_seq = head }, nil
+            end
+            return f, command(f, build, { idempotency = { namespace = "n", key = "k" } })
+        end
+
+        local function hold_later_append(f: Fake)
+            local head = f.last_seq + 1
+            f.catch_up_projection = function(self: Fake, request: Map): (unknown, error?)
+                local target = (request.target_seq or head) :: integer
+                local done = target <= self.last_seq
+                return { done = done, last_seq = self.last_seq }, nil
+            end
+        end
+
+        test.it("acknowledges the append while a later event is still pending", function()
+            local f, c = append_with_later_head()
+            c.idempotency = nil
+            local append = f.append_events
+            f.append_events = function(self: Fake, request: Map): (unknown, error?)
+                local out, err = append(self, request)
+                hold_later_append(self)
+                return out, err
+            end
+            local out, err = pipeline.run(c)
+            assert(out, tostring(err))
+            test.eq(out.seq, 12)
+            test.eq(out.as_of, 12)
+        end)
+
+        test.it("waits through the last receipt event while a later event is still pending", function()
+            local f, c = append_with_later_head()
+            assert(pipeline.run(c))
+            local first = f.appended[1].events[1]
+            f.markers[assert(first.external).external_id] = { seq = 11, body = first.body }
+            hold_later_append(f)
+            local target: unknown = nil
+            local catch_up = f.catch_up_projection
+            f.catch_up_projection = function(self: Fake, request: Map): (unknown, error?)
+                target = request.target_seq
+                return catch_up(self, request)
+            end
+            local out, err = pipeline.run(c)
+            assert(out, tostring(err))
+            test.eq(target, 12)
+            test.eq(out.seq, 12)
+            test.eq(out.as_of, 12)
+            test.is_true(out.replayed == true)
+            test.eq(#f.appended, 1)
+        end)
+
+        test.it("checks sourced replay only after covering the sampled head", function()
+            local f, c = append_with_later_head()
+            c.receipt_requires_head = true
+            assert(pipeline.run(c))
+            local first = f.appended[1].events[1]
+            f.markers[assert(first.external).external_id] = { seq = 11, body = first.body }
+            hold_later_append(f)
+            local lookups = f.marker_lookups
+            local out, err = pipeline.run(c)
+            test.is_nil(out)
+            test.eq(assert(err):details().code, "projection_behind")
+            test.eq(f.marker_lookups, lookups)
+        end)
+
         test.it("answers without appending when the attempt has no events", function()
             local f = fake()
             local out = assert(pipeline.run(command(f, function(last_seq: integer): (pipeline.Attempt?, error?)
-                return { result = { outcome = "unchanged" }, events = {}, as_of = last_seq }, nil
+                return { result = { outcome = "unchanged" }, events = {}, as_of = last_seq, catalog_seq = last_seq }, nil
             end))) :: { [string]: unknown }
             test.eq(out.as_of, 10)
             test.is_nil(out.seq)
@@ -199,7 +267,8 @@ local function define()
         test.it("marks every event of an idempotent command and stores the receipt on the first", function()
             local f = fake()
             local out = assert(pipeline.run(command(f, function(last_seq: integer): (pipeline.Attempt?, error?)
-                return { result = { outcome = "done" }, events = { event("app:a", {}), event("app:b", {}) }, expect = { head = last_seq }, as_of = last_seq }, nil
+                return { result = { outcome = "done" }, events = { event("app:a", {}), event("app:b", {}) },
+                    expect = { head = last_seq }, as_of = last_seq, catalog_seq = last_seq }, nil
             end, { idempotency = { namespace = "ns", key = "k" } }))) :: { [string]: unknown }
             test.eq(out.outcome, "done")
             local sent = f.appended[1].events
@@ -233,6 +302,7 @@ local function define()
             local out = assert(pipeline.run(command(f, function(s: integer): (pipeline.Attempt?, error?)
                 builds = builds + 1
                 f.markers["r:2:ns2:k22:u1"] = { seq = 11, body = { receipt = { request_hash = (winner :: Map).receipt.request_hash, result = { outcome = "winner" }, event_count = 1 } } }
+                hold_later_append(f)
                 return one_event(s)
             end, { idempotency = { namespace = "ns", key = "k2" } }))) :: Map
             test.eq(out.outcome, "winner")
@@ -247,7 +317,7 @@ local function define()
             local hash = ((f.appended[1].events[1].body :: Map).receipt :: Map).request_hash
             local out = assert(pipeline.run(command(f, function(s: integer): (pipeline.Attempt?, error?)
                 f.markers["r:2:ns2:k32:u1"] = { seq = 11, body = { receipt = { request_hash = hash, result = { outcome = "winner" }, event_count = 1 } } }
-                return { result = { outcome = "unchanged" }, events = {}, as_of = s }, nil
+                return { result = { outcome = "unchanged" }, events = {}, as_of = s, catalog_seq = s }, nil
             end, { idempotency = { namespace = "ns", key = "k3" } }))) :: Map
             test.eq(out.outcome, "winner")
             test.is_true(out.replayed == true)
@@ -260,7 +330,7 @@ local function define()
             local out = assert(pipeline.run(command(f, function(s: integer): (pipeline.Attempt?, error?)
                 f.markers["r:2:ns4:race2:u1"] = { seq = 11, body = { receipt = { request_hash = hashed,
                     result = { outcomes = {{outcome="updated"}} }, event_count = 1 } } }
-                return { result = { outcomes = {{outcome="unchanged"}} }, events = {}, expect={head=s}, as_of=s }, nil
+                return { result = { outcomes = {{outcome="unchanged"}} }, events = {}, expect={head=s}, as_of=s, catalog_seq=s }, nil
             end, { idempotency = { namespace = "ns", key = "race" },
                 thread={id="t1",kind="app:model",source="app"} }))) :: Map
             test.eq(out.outcomes[1].outcome,"updated")
@@ -271,7 +341,8 @@ local function define()
         test.it("keeps the guard the attempt names", function()
             local f = fake()
             assert(pipeline.run(command(f, function(s: integer): (pipeline.Attempt?, error?)
-                return { result = {}, events = { event("app:a", {}) }, expect = { subject = "i:1", version = 3 }, as_of = s }, nil
+                return { result = {}, events = { event("app:a", {}) }, expect = { subject = "i:1", version = 3 },
+                    as_of = s, catalog_seq = s }, nil
             end)))
             local sent = f.appended[1].expect :: Map
             test.eq(sent.subject, "i:1")
@@ -282,7 +353,7 @@ local function define()
         test.it("appends without a guard when the attempt names none", function()
             local f = fake()
             assert(pipeline.run(command(f, function(s: integer): (pipeline.Attempt?, error?)
-                return { result = {}, events = { event("app:a", {}) }, as_of = s }, nil
+                return { result = {}, events = { event("app:a", {}) }, as_of = s, catalog_seq = s }, nil
             end)))
             test.is_nil(f.appended[1].expect)
         end)

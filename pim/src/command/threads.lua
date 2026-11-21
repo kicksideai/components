@@ -55,10 +55,10 @@ function M.open(): (Client?, error?)
     return client :: Client, nil
 end
 
--- catch_up waits until the thread's projection of kind covers the thread head
--- or the deadline passes; done reports whether it got there.
-function M.catch_up(c: Client, thread_id: string, kind: string, deadline: clock.Deadline): (CatchUp?, error?)
-    local result, err = c:catch_up_projection({ thread_id = thread_id, kind = kind, max_ticks = 1000, deadline = deadline.at })
+-- Wait for a committed sequence, or the sampled thread head during admission.
+function M.catch_up(c: Client, thread_id: string, kind: string, deadline: clock.Deadline, target_seq: integer?): (CatchUp?, error?)
+    local result, err = c:catch_up_projection({ thread_id = thread_id, kind = kind, max_ticks = 1000,
+        deadline = deadline.at, target_seq = target_seq })
     if err then return nil, errors.wrap(err, "projection catch-up failed") end
     local done = field(result, "done") == true
     local last_seq = narrow.int(field(result, "last_seq"))
