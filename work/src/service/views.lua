@@ -51,11 +51,16 @@ local function validate_fields(view: types.View, model: domain.Model, requires: 
     return nil
 end
 
+local function view_type(id: string): (domain.JsonObject?, error?)
+    local matches, err = registry.find({ [".kind"] = "registry.entry", ["meta.type"] = "kickside.work.ui.view", ["meta.id"] = id })
+    if err or not matches or #matches ~= 1 then return nil, err end
+    return registry_values.canonical(matches[1].meta or {}) :: domain.JsonObject, nil
+end
+
 function M.validate(board_id: string, view: types.View, proposed: domain.Compiled?): error?
-    local matches, merr = registry.find({ [".kind"] = "registry.entry", ["meta.type"] = "kickside.work.ui.view", ["meta.id"] = view.type })
+    local meta, merr = view_type(view.type)
     if merr then return merr end
-    if not matches or #matches ~= 1 then return invalid("view type is unavailable") end
-    local meta = registry_values.canonical(matches[1].meta or {})
+    if not meta then return invalid("view type is unavailable") end
     local requires = meta.requires :: types.ViewRequirements?
     if requires and requires.group_by and not view.group_by then return invalid("view type requires group_by") end
     local config_schema = meta.config_schema
@@ -223,9 +228,17 @@ function M.run(input: unknown): (reads.QueryResult?, error?)
     local context, err = load(request.view_id, component.ACCESS.READ :: integer)
     if err or not context then return nil, err end
     local view = context.view
+    local aerr = access.admit(context.board_id)
+    if aerr then return nil, aerr end
+    local meta, merr = view_type(view.type)
+    if merr then return nil, merr end
+    if not meta then
+        local serr = selection_error(view)
+        if serr then return nil, serr end
+        return nil, errors.new({ kind = errors.UNAVAILABLE, message = "saved view type is unavailable",
+            details = { code = "view_type_unavailable", view_type = view.type } })
+    end
     if view.boards then
-        local aerr = access.admit(context.board_id)
-        if aerr then return nil, aerr end
         if request.min_seq ~= nil then return nil, invalid("min_seq requires a single-board view") end
     end
     local first = request.after == nil
