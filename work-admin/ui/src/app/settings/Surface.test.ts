@@ -31,8 +31,8 @@ it('opens a sole board directly and lets the operator return to the rail', async
 })
 it.each([false, true])('uses a single settings surface with embedded=%s', async embedded => {
   const wrapper = mount(BoardSettings, { props: { boardId: 'b', embedded } }); wrappers.push(wrapper); await flushPromises()
-  expect(wrapper.findAll('.work-ia-head')).toHaveLength(1)
-  const rail = wrapper.get('.work-section-layout > nav[aria-label="Board settings sections"]')
+  expect(wrapper.findAll('.system-section-head')).toHaveLength(1)
+  const rail = wrapper.get('.work-section-layout nav[aria-label="Board settings sections"]')
   expect(rail.findAll('.kx-settings-rail-item').map(option => option.text())).toEqual([
     embedded ? 'All boards' : 'Back to board', 'General', 'Item types', 'Fields', 'Links', 'Workflow', 'Access', 'Plugins',
   ])
@@ -43,7 +43,7 @@ it.each([false, true])('uses a single settings surface with embedded=%s', async 
   expect(rail.get('[aria-current="true"]').text()).toBe('Workflow')
   await rail.get('[aria-current="true"]').trigger('click')
   expect(rail.get('[aria-current="true"]').text()).toBe('Workflow')
-  expect(wrapper.get('.kx-main-scroll').text()).toContain('How does work move?')
+  expect(wrapper.get('.kx-main-scroll').text()).toContain('Select a state or transition to edit how work moves.')
   expect(wrapper.get('.kx-main-scroll > header h1').text()).toBe('Workflow')
 })
 it.each<[Component, Declaration]>([

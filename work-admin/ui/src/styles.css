@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 @import "@kickside/ui-kit/kx-settings-rail.css";
+@import "@kickside/ui-kit/kx-settings-head.css";
 @import "@kickside/ui-kit/kx-disclosure.css";
 @import "@wippy-fe/theme/theme-config.css";
 @import "@kickside/ui-kit/kx-tokens.css";
@@ -60,50 +61,17 @@ h3, h4 { font-size: 14px; font-weight: 600; }
 .work-admin-shell.work-board-selected { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
 .work-admin-main { min-width: 0; min-height: 0; overflow: hidden; }
 .work-admin-main > .kx-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
-/* System directory rows follow the Security roles list. ListRail supplies the shared shell and header. */
-.picker-search { flex: none; padding: 8px 10px; }
-.picker-search-input { width: 100%; }
-.picker-search-input::-webkit-search-cancel-button { display: none; }
-.picker-search-clear { position: absolute; right: 0; top: 0; height: 100%; }
-.picker-search:has(.picker-search-clear) .picker-search-input { padding-inline-end: 34px; }
-.work-board-directory .kx-rail-body { padding: 0 8px 10px; }
-.picker-group {
-  margin: 0; padding: 10px 6px 4px;
-  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
-  color: var(--p-text-muted-color);
-}
-.picker-list { margin: 0; padding: 0; list-style: none; }
-.picker-row {
-  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 8px 10px; border: none; border-radius: var(--kx-radius-8);
-  background: transparent; color: var(--p-text-color); cursor: pointer;
-  text-align: left; transition: background .12s; font: inherit;
-}
-.picker-row:hover:where(:not(:disabled)) { background: var(--kx-overlay-hover); }
-.picker-row[aria-current="true"] { background: color-mix(in srgb, var(--p-primary-color) 14%, transparent); }
-.picker-row:disabled { color: var(--p-text-muted-color); cursor: default; }
-.picker-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.picker-message { color: var(--p-text-muted-color); font-size: 11.5px; line-height: 1.3; padding: 7px 10px; }
-
-:is(.picker-row, .kx-settings-rail-item):focus:not(:focus-visible) { outline: none; box-shadow: none; }
-:is(.picker-row, .kx-settings-rail-item):focus-visible {
-  outline: var(--p-focus-ring-width, 2px) var(--p-focus-ring-style, solid) var(--p-focus-ring-color, currentColor);
-  outline-offset: -2px;
-  box-shadow: none;
-}
-
 .work-settings-shell { min-width: 0; height: 100%; display: flex; flex-direction: column; container: work-settings-screen / inline-size; }
 .work-settings-shell > .kx-head, .work-detail-head { flex: none; }
 .work-detail-head { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 18px var(--kickside-system-surface-gutter, 24px) 14px; }
 .work-detail-title { font-size: 16px; font-weight: 700; }
 .work-draft-actions { margin-left: auto; }
-.work-dirty { background: var(--kx-wash-warn); color: var(--p-warn-700); border-radius: 8px; padding: 7px 11px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .work-advanced { margin-left: auto; white-space: nowrap; }
 .work-section-layout { flex: 1; min-height: 0; display: flex; align-items: stretch; }
 .work-section-layout > .kx-main { flex: 1; }
 .work-section-layout .kx-settings-rail-group { overflow-wrap: anywhere; }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .work-section-layout { flex-direction: column; }
 }
 .work-settings-content { container-type: inline-size; overflow-x: hidden; padding: 18px var(--kickside-system-surface-gutter, 24px) 28px; }
@@ -460,9 +428,6 @@ button.work-content-action { padding: 0; border: 0; background: transparent; }
   .work-ia .work-process-inspecting :is(.work-process-canvas, .work-process-list) { display: none; }
   .work-ia .work-process-sideform { height: auto; max-height: none; overflow: visible; }
 }
-@container (max-width: 480px) {
-  .work-ia-head .work-discard .p-button-label { display: none; }
-}
 @media (max-width: 640px) {
   .work-review-layout > :is(header, footer), .work-review-content { padding: 14px 16px; }
 }
@@ -471,10 +436,3 @@ button.work-content-action { padding: 0; border: 0; background: transparent; }
     animation-duration: 0s !important; transition-duration: 0s !important;
   }
 }
-
-/* System Settings pane header. Actions share the header and wrap on narrow screens. */
-.system-section-head { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0; }
-.system-section-head-text { flex: 1 1 180px; min-width: 0; }
-.system-section-head-text h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.2px; color: var(--p-text-color); }
-.system-section-head-text p { margin: 2px 0 0; font-size: 13px; color: var(--p-text-muted-color); }
-.system-section-head .kx-head-actions { justify-content: flex-end; }

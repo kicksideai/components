@@ -115,7 +115,10 @@ entries:
       focus-back:
         type: boolean
         default: false
-        description: Focus the back arrow when the settings are opened from the picker.
+        description: Focus the first rail action when opening settings from the picker.
+      directory-count:
+        type: number
+        description: Board count in the embedded System picker.
   events:
     navigate:
       type: object
@@ -134,6 +137,15 @@ entries:
           type: boolean
       required:
       - dirty
+    directory-action:
+      type: object
+      description: Open the create form or application defaults from the embedded rail.
+      properties:
+        name:
+          type: string
+          enum: [create, defaults]
+      required:
+      - name
 - name: defaults_block
   kind: registry.entry
   meta:

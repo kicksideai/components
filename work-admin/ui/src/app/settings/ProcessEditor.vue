@@ -165,9 +165,6 @@ async function remove(p: Process) {
 </script>
 <template>
   <section ref="editor" class="work-process-editor work-stack" aria-label="Process editor" @keydown.esc="inspector && closeInspector()">
-    <div v-if="process" class="work-ia-toolbar">
-      <div><h3>{{ process.name || 'Workflow' }}</h3><p class="work-muted">Select a state or a named transition to edit it.</p></div>
-    </div>
     <p v-if="error && !selectedTransition" class="kx-err" role="alert">{{ error }}</p>
     <p
       v-for="issue in issues?.filter((i) => i.code === 'process ' + process?.id) ?? []"
@@ -196,6 +193,7 @@ async function remove(p: Process) {
           ]"
           @update:model-value="selectProcess"
         />
+        <strong v-else>{{ process.name || 'Untitled process' }}</strong>
         <Button label="Add state" severity="secondary" outlined size="small" @click="addState(process, $event.currentTarget as HTMLElement)"
           ><template #icon><Icon icon="tabler:plus" /></template
         ></Button>
