@@ -1595,7 +1595,8 @@ and seeks live products only for families whose removal, axis change or authored
 owner move could be refused. The plan reports changed checks and requirements as
 semantic findings. It lists additions to named sections such
 as families, sources, dimensions and members, plus changes to the relative form
-order of retained attributes in each aspect. The highest listed class takes
+order of retained attributes in each aspect. Channel additions are additive.
+Channel updates and removals are semantic. The highest listed class takes
 precedence when changes are combined:
 
 | Class | Examples | Effect |
