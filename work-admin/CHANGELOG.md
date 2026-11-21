@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11](https://github.com/kicksideai/components/compare/work-admin-v0.1.10...work-admin-v0.1.11) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work-admin:** list installed board configuration options ([#318](https://github.com/kicksideai/components/issues/318)) ([58a2137](https://github.com/kicksideai/components/commit/58a2137bf6fdc0a233997a2c80d44ae5986cfc0a))
+
 ## [0.1.10](https://github.com/kicksideai/components/compare/work-admin-v0.1.9...work-admin-v0.1.10) (2026-11-21)
 
 
