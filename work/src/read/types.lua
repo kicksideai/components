@@ -83,6 +83,7 @@ type QueryGroup = QueryGroupRow & { groups: { QueryGroupRow }? }
 type GroupKey = string | integer
 type GroupPosition = { parent: GroupKey?, child: GroupKey? }
 type GroupBucket = { key: GroupKey?, count: integer, rows: { domain.Row }, totals: { [integer]: string }?, children: { GroupBucket }? }
+type GroupPage = { buckets: { GroupBucket }?, after: string?, limited: boolean, scanned: integer }
 type CrossCandidate = { board: string, index: integer, key: domain.Cursor, item: ItemView }
 type QueryResult = ReadStamp & { incomplete: boolean?, group_limited: boolean?, groups: { QueryGroup }?, group_after: string?, positions: { [string]: ReadStamp }?, cross_after: CrossCursor?, items: { ItemView }, after: domain.Cursor?, reindexing: boolean }
 type EditMember = { item_id: string, version: integer }
@@ -116,7 +117,8 @@ type TransitionGroup = { candidates: { TransitionCandidate }, items: { domain.It
     model: domain.Model, process: domain.Process }
 return { AwaitingView = AwaitingView, GateView = GateView, ApprovalView = ApprovalView, StageRun = StageRun, StageRunsRequest = StageRunsRequest, StageRunsResult = StageRunsResult, JsonObject = JsonObject, PluginFeedRequest = PluginFeedRequest, PluginFeed = PluginFeed, PluginContext = PluginContext, PluginSelection = PluginSelection, PluginAdmission = PluginAdmission, PluginOptions = PluginOptions, PluginContextRequest = PluginContextRequest, TransitionCandidate = TransitionCandidate, TransitionGroup = TransitionGroup, Redactor = Redactor, BudgetUsage = BudgetUsage, ReadBudget = ReadBudget, ReadAllowance = ReadAllowance, SchemaPlugin = SchemaPlugin, QueryGroupRow = QueryGroupRow, QueryGroup = QueryGroup,
     Count = Count, Plan = Plan, BoundedPlan = BoundedPlan, MeasureColumn = MeasureColumn, MeasureValue = MeasureValue,
-    GroupKey = GroupKey, GroupSeek = GroupSeek, GroupPosition = GroupPosition, GroupBucket = GroupBucket, CrossCandidate = CrossCandidate,
+    GroupKey = GroupKey, GroupSeek = GroupSeek, GroupPosition = GroupPosition, GroupBucket = GroupBucket, GroupPage = GroupPage,
+    CrossCandidate = CrossCandidate,
     ReferenceOrder = ReferenceOrder, BoardSelection = BoardSelection, BoardAdmission = BoardAdmission,
     CrossAdmission = CrossAdmission, CrossCursor = CrossCursor, QueryPage = QueryPage,
     LinksRequest = LinksRequest, LinkPeer = LinkPeer, RelationView = RelationView, LinksResult = LinksResult,

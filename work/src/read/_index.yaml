@@ -121,15 +121,26 @@ entries:
   kind: library.lua
   source: file://cursor_codec.lua
   modules: [base64, crypto, env]
+- name: groups
+  kind: library.lua
+  source: file://groups.lua
+  modules: [json, security]
+  imports:
+    access: kickside.work.read:access
+    budget: kickside.work.read:budget
+    cursor_codec: kickside.work.read:cursor_codec
+    rollup: kickside.work.domain:rollup
+    values: kickside.work.domain:values
+    window: kickside.work.read:window
+    domain: kickside.work:types
+    types: kickside.work.read:types
 - name: query
   kind: library.lua
   source: file://query.lua
   modules:
   - security
-  - json
   imports:
-    rollup: kickside.work.domain:rollup
-    values: kickside.work.domain:values
+    groups: kickside.work.read:groups
     cursor_codec: kickside.work.read:cursor_codec
     awaiting: kickside.work.read:awaiting
     principals: kickside.work.read:principals
