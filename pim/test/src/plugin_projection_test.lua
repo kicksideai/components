@@ -435,11 +435,23 @@ local function define()
             test.is_true(assert(attachment(h)).component_id ~= attached.component_id)
         end)
 
-        test.it("recreates a missing attachment under the confirmed activation", function()
+        test.it("reuses the confirmed activation receipt for a new physical attachment", function()
+            local function registration(id: unknown): Map
+                local db = assert(sql.get("app:db"))
+                local stored, err = db:query([[SELECT c.secrets_incarnation,r.catalog_id,r.component_id,r.request,r.token,r.reserved_at
+                    FROM kickside_pim_creation r JOIN kickside_components c ON CAST(c.component_id AS TEXT)=r.component_id
+                    WHERE c.component_id=$1]], {id})
+                assert(db:release())
+                assert(stored, tostring(err))
+                return assert(stored[1]) :: Map
+            end
             local h = fixture.catalog()
             activate(h, true)
             wait_for(h, false)
             local before = assert(attachment(h))
+            local initial = registration(before.component_id)
+            test.is_true(type(initial.secrets_incarnation) == "string" and initial.secrets_incarnation ~= "")
+            test.is_nil(initial.reserved_at)
             rows(h) -- initialize the plugin's fold table used by its deletion hook
             local deleted = assert((h.executor :: funcs.Executor):call("app:pim_call", {
                 op="delete_component",catalog_id=before.component_id,request={}
@@ -449,6 +461,12 @@ local function define()
             assert(h.call("plugin_sync", {}))
             wait_for(h, false)
             local after = assert(attachment(h))
+            local replacement = registration(after.component_id)
+            test.is_true(type(replacement.secrets_incarnation) == "string" and replacement.secrets_incarnation ~= "")
+            test.is_true(initial.secrets_incarnation ~= replacement.secrets_incarnation)
+            for _, key in ipairs({"catalog_id", "component_id", "request", "token", "reserved_at"}) do
+                test.is_true(initial[key] == replacement[key], "PIM creation receipt changed at " .. key)
+            end
             test.eq(after.component_id, before.component_id)
             test.eq((after.private_context :: Map).pim_creation, (before.private_context :: Map).pim_creation)
             test.eq((after.meta :: Map).owner, h.id)
