@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.32](https://github.com/kicksideai/components/compare/work-v0.1.31...work-v0.1.32) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work:** enforce prepared transitions and preserve command compatibility ([#304](https://github.com/kicksideai/components/issues/304)) ([fddde16](https://github.com/kicksideai/components/commit/fddde162787404aeec738ed0c80cc40b86ceefa3))
+
 ## [0.1.31](https://github.com/kicksideai/components/compare/work-v0.1.30...work-v0.1.31) (2026-11-21)
 
 
