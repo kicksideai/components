@@ -224,6 +224,10 @@ Forms, never plugins, define:
   declared `range` (else rejected at write); quantities order by the
   canonical amount rounded half-up at that scale.
 
+Decimal strings reduce trailing zeros before the mantissa and exponent bounds
+are tested. Time keys preserve every significant fractional digit and treat
+trailing zeros as part of the same instant.
+
 Quantity config: `units: { <unit>: "<decimal factor>" }`, `canonical`
 (factor exactly `1`), `scale`, `range`. Values are entered as `"1.5 lb"` or
 `{ value, unit }` and keep the authored unit. `money` is a `dec` with a
@@ -246,8 +250,9 @@ kind, target)` (5.3). `term` and `product` targets must exist and be active;
 retiring or deleting a referenced term or product fails with a capped count;
 a product's references to itself do not hold it, and survive its trash and restore.
 `asset` targets are uploads owned by the catalog. `component` targets must be
-readable by the principal. Link-kind targets are resolved by their owner
-(3.3).
+readable by the principal. PIM resolves components through the Component read
+contract and embeds their title (or ID when there is no title) in releases.
+Other link-kind targets are resolved by their owner (3.3).
 
 ### 2.6 Resolution
 
@@ -948,9 +953,9 @@ checks:
   `(parent, axis_key)` is unique.
 - `unique` attributes: scope `()`, cardinality one, unique catalog-wide by
   key. SKU is unique catalog-wide among live products.
-- Depth ≤ 2; descendants per root ≤ 2,000 (max 20,000). Items move between
-  parents of the same family; products with live descendants cannot move or
-  be deleted.
+- A hierarchy can be two levels deep and each root can have up to 2,000 live
+  descendants. Items move between parents of the same family. Products with
+  live descendants cannot move or be deleted.
 - **Vocabularies** hold terms (labels, parent, data, retired) changed by
   `apply` term items; codes unique per vocabulary; no cycles; a term in use
   cannot be retired. `term.merge` (§6) re-points values.
@@ -1070,9 +1075,9 @@ skipped, so a redelivered batch is a no-op. Per event it updates `product`,
 `ref`, `unique_value`, `attribute_usage`, `change`, counters, item rows (the
 item, or every item under a changed model), terms, releases and
 publications, and schedules jobs with `jobs.enqueue_tx`. Every product row
-whose resolved view changes gets `updated_seq` = the event seq: a model edit
-stamps each recomputed descendant (≤ 20,000), so the `list_changes` feed reports
-inherited changes.
+whose resolved view changes gets `updated_seq` = the event seq. A model edit
+stamps each recomputed descendant, so the `list_changes` feed reports inherited
+changes.
 
 The fold reads consecutive product edits together and writes independent leaf
 creations and edits in batches. Operations that change hierarchy, state or
@@ -1415,8 +1420,9 @@ body satisfies its declared schema.
 
 ## 7. Reads
 
-Text search requires every maximal Unicode letter/number token, in any order,
-across indexed text. Indexing and queries use that same token grammar on both
+Text search requires every token, in any order, across indexed text. A token
+starts with a Unicode letter or number and continues through letters, numbers
+and combining marks. Indexing and queries use the same token grammar on both
 engines. Punctuation, including quotes, separates tokens; quotes do not request
 phrases. Both engines use default Unicode case folding for text and SKU prefixes
 and preserve accents. Each distinct token uses a lexeme of at most 65 bytes,
@@ -1613,7 +1619,8 @@ and seeks live products only for families whose removal, axis change or authored
 owner move could be refused. The plan reports changed checks and requirements as
 semantic findings. It lists additions to named sections such
 as families, sources, dimensions and members, plus changes to the relative form
-order of retained attributes in each aspect. The highest listed class takes
+order of retained attributes in each aspect. Channel additions are additive.
+Channel updates and removals are semantic. The highest listed class takes
 precedence when changes are combined:
 
 | Class | Examples | Effect |
@@ -1972,7 +1979,7 @@ Proposals expire after 30 days, including pending proposals.
 | dimensions / members / candidates | 4 / 64 / 64 |
 | per family: contexts / attributes / checks | 256 / 1,000 / 100 |
 | indexed columns per catalog | 400 |
-| depth / descendants per root | 2 / 2,000 (max 20,000) |
+| depth / live descendants per root | 2 / 2,000 |
 | scopes per query / predicates per scope | 4 / 8 |
 | link targets resolved per command | 2,000 |
 | term merge inline / job batch | 500 / 500 products |
@@ -2003,7 +2010,8 @@ values before a declaration is accepted.
 Capacity model: 10M items × 100 values, 20 indexed → one 10M-row item table
 with ~20–40 indexed columns. Release gate (benchmarks ship with the
 implementing PRs): both engines, 1M / 10M items, imports with concurrent
-edits, 20,000-descendant root, full rebuild, feed backfill from zero.
+edits, a synthetic 20,000-descendant projection workload, full rebuild, and
+feed backfill from zero.
 
 ## 17. Installation
 

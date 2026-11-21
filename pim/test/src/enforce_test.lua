@@ -51,6 +51,7 @@ local function define()
 
             enforced(h, { status_check(nil, nil, false) })
             fixture.boot(h)
+            steps.rebuilt(h)
             local leaf = assert(steps.get(h, "RDG-moss-40"))
             test.eq(#leaf.readiness.web, 0)
             local release = assert(h.call("release", { items = { { product = { sku = "RDG-moss-40" },

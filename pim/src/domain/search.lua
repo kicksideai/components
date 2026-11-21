@@ -4,7 +4,7 @@ local casefold = require("casefold")
 local hash = require("hash")
 local text = require("text")
 local M = { fold = casefold.fold }
-local WORDS = assert(text.regexp.compile([[\p{L}[\p{L}\p{N}]*|\p{N}[\p{L}\p{N}]*]]))
+local WORDS = assert(text.regexp.compile([[[\p{L}\p{N}][\p{L}\p{M}\p{N}]*]]))
 
 local function hex_byte(byte: string): string
     return string.format("%02x", byte:byte())

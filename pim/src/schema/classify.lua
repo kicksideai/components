@@ -213,6 +213,14 @@ function M.changes(prev: types.Compiled?, next: types.Compiled, facts: Facts,
     for code in pairs(next.vocabularies) do
         if not prev.vocabularies[code] then add(out, "vocabulary " .. code, "additive", "added") end
     end
+    for id, channel in pairs(next.channels) do
+        local before = prev.channels[id]
+        if not before then add(out, "channel " .. id, "additive", "added")
+        elseif not values.equal(before, channel) then add(out, "channel " .. id, "semantic", "changed") end
+    end
+    for id in pairs(prev.channels) do
+        if not next.channels[id] then add(out, "channel " .. id, "semantic", "removed") end
+    end
     for id, s in pairs(next.sources) do
         local before = prev.sources[id]
         if not before then add(out, "source " .. id, "additive", "added")

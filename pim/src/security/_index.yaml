@@ -244,6 +244,9 @@ entries:
         - kickside.pim.extensions:type_functions
         - kickside.pim.extensions:scopes
         - kickside.pim.extensions:links
+        - kickside.pim.extensions:component_target
+        - kickside.pim.extensions:component_resolve
+        - kickside.pim.extensions:component_describe
         - kickside.pim.extensions:plugin_feed
         - kickside.pim.types:text
         - kickside.pim.types:rich_text

@@ -130,6 +130,31 @@ entries:
     imports:
       types: kickside.pim:types
 
+  - name: component_target
+    kind: contract.binding
+    meta: { kind: component, title: Component }
+    contracts:
+      - contract: kickside.pim:link_target
+        methods:
+          resolve: kickside.pim.extensions:component_resolve
+          describe: kickside.pim.extensions:component_describe
+
+  - name: component_resolve
+    kind: function.lua
+    source: file://component_targets.lua
+    method: resolve
+    imports:
+      component: kickside.component:component
+      types: kickside.pim:types
+
+  - name: component_describe
+    kind: function.lua
+    source: file://component_targets.lua
+    method: describe
+    imports:
+      component: kickside.component:component
+      types: kickside.pim:types
+
   - name: plugin_feed
     kind: library.lua
     source: file://plugin_feed.lua
