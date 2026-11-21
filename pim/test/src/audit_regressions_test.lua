@@ -221,7 +221,9 @@ local function define()
             test.eq(result.outcomes[1].outcome,"unchanged")
             test.eq(assert(h.call("get_schema",{})).as_of,before)
             local db=assert(store.open())
-            local row=assert(db:query("SELECT expires_at FROM kickside_pim_receipt WHERE catalog_id=$1 AND marker='r:5:quiet3:one'",{h.id}))[1]
+            local actor=h.actor:id()
+            local row=assert(db:query("SELECT expires_at FROM kickside_pim_receipt WHERE catalog_id=$1 AND marker=$2",
+                {h.id,"r:5:quiet3:one"..#actor..":"..actor}))[1]
             assert(db:release())
             test.not_nil(row)
             test.is_true(row.expires_at < require("clock").after(require("clock").now(),91))
@@ -254,7 +256,9 @@ local function define()
             local h=fixture.catalog()
             assert(h.call("apply",{idempotency={namespace="audit",key="receipt"},items={{product={sku="RECEIPT"},create={}}}}))
             local db=assert(store.open())
-            local rows,err=db:query("SELECT request_hash, result, expires_at FROM kickside_pim_receipt WHERE catalog_id=$1 AND marker='r:5:audit7:receipt'",{h.id})
+            local actor=h.actor:id()
+            local rows,err=db:query("SELECT request_hash, result, expires_at FROM kickside_pim_receipt WHERE catalog_id=$1 AND marker=$2",
+                {h.id,"r:5:audit7:receipt"..#actor..":"..actor})
             assert(db:release())
             test.is_nil(err,tostring(err))
             test.eq(#rows,1)

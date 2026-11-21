@@ -158,7 +158,10 @@ ${Object.keys(limits).map(name => `    ${name} = ${limit(name)},`).join('\n')}
 `)
 
 const proposed = contracts.propose.input.properties
+const proposalResult = contracts.propose.output
 const proposalItems = structuredClone(proposed.items)
+delete proposalItems.items.properties.expect_version
+proposalItems.description = 'Value or status edits stored with the captured product ids.'
 proposalItems.items.properties.product = {
   type: 'object', required: ['id'], additionalProperties: false,
   properties: { id: { type: 'string', description: 'Product id captured at submission.' } },
@@ -176,6 +179,13 @@ const submitted = {
     generation: { type: 'integer', minimum: 1, description: 'Schema generation that validated the proposal.' },
     base: { type: 'object', additionalProperties: { type: 'integer' }, description: 'Product versions by product id.' },
     items: proposalItems, source: proposed.source, origin: proposed.origin, provenance: proposed.provenance,
+    receipt: {
+      type: 'object', additionalProperties: false, required: ['marker', 'request_hash', 'result', 'event_count', 'noop'],
+      properties: {
+        marker: { type: 'string' }, request_hash: { type: 'string' }, result: proposalResult,
+        event_count: { type: 'integer', const: 1 }, noop: { type: 'boolean', const: false },
+      },
+    },
   },
 }
 const decided = {

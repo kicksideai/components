@@ -66,7 +66,7 @@ end
 -- run executes one command through the command pipeline under the
 -- head guard, giving the planner the catalog, thread head and deployment policy.
 local function run(catalog_id: string, idempotency: types.Idempotency?, fingerprint: unknown, trace_context: types.TraceContext?,
-    build: Build, deadline: clock.Deadline?): (types.CommandResult?, error?)
+    build: Build, deadline: clock.Deadline?, source: string?): (types.CommandResult?, error?)
     local base, oerr = defaults.read()
     if oerr or not base then return nil, oerr end
     local current, rerr = store.with_db(function(db: types.Executor): (types.Catalog?, error?)
@@ -77,10 +77,20 @@ local function run(catalog_id: string, idempotency: types.Idempotency?, fingerpr
     local operating = policy.effective(base, current.compiled.policy)
     local c, cerr = threads.open()
     if not c then return nil, cerr end
+    local actor = actor_id()
     local out, err = pipeline.run({
-        client = c, actor = actor_id(), deadline_ms = operating.command_deadline_ms, deadline = deadline, fingerprint = fingerprint,
+        client = c, actor = actor, deadline_ms = operating.command_deadline_ms, deadline = deadline, fingerprint = fingerprint,
             trace_context = trace_context, idempotency = idempotency,
-        receipt = function(marker: string) return receipts.get(catalog_id, marker) end,
+        receipt = function(marker: string): (types.Receipt?, integer?, error?)
+            if source then
+                local catalog, err = store.with_db(function(db: types.Executor) return store.catalog(db, catalog_id) end)
+                if err then return nil, nil, err end
+                if not catalog then return nil, nil, failure.catalog_not_initialized() end
+                local _, access_err = items.authorize_source(catalog, source, actor)
+                if access_err then return nil, nil, access_err end
+            end
+            return receipts.get(catalog_id, marker)
+        end,
         reserve = function(marker: string,hashed: string,seq: integer,at: string) return receipts.reserve(catalog_id,marker,hashed,seq,at) end,
         noop = function(marker: string,hashed: string,result: types.JsonObject,seq: integer,at: string) return receipts.noop(catalog_id,marker,hashed,result,seq,at) end,
         thread = { id = catalog_id, kind = consts.PROJECTION_KIND, source = consts.EXTERNAL_SOURCE },
@@ -336,7 +346,7 @@ local function execute(catalog_id: string, request: types.ApplyRequest, deadline
             local result = { outcomes = planned.outcomes, applied = planned.ok or mode == "independent" }
             if mode == "atomic" and not planned.ok then return { result = result, events = {} }, nil end
             return { result = result, events = planned.events }, nil
-        end, deadline)
+        end, deadline, request.source)
     if err then return nil, err end
     return out :: types.ApplyResult, nil
 end
@@ -392,12 +402,16 @@ function M.propose(catalog_id: string, request: types.ProposeRequest): (types.Pr
     if access_err then return nil, access_err end
     if #request.items == 0 then return nil, invalid("items required") end
     if #request.items > consts.LIMITS.items then return nil, invalid("too many items") end
-    local id = uuid.v7() :: string
+    local fingerprint = { op = "propose", items = request.items, source = request.source,
+        expected_generation = request.expected_generation, origin = request.origin, provenance = request.provenance }
     local bytes = #values.canonical(request)
     local prepared: items.Prepared = { refined = {}, links = {} }
-    local out, err = run(catalog_id, nil, nil, request.trace_context,
+    local out, err = run(catalog_id, request.idempotency, fingerprint, request.trace_context,
         function(db: types.Executor, catalog: types.Catalog, _head: integer, settings: types.Policy): (types.Plan?, error?)
-            if request.source and not catalog.compiled.sources[request.source] then return nil, failure.unknown_source(request.source) end
+            local _, source_err = items.authorize_source(catalog, request.source, actor_id())
+            if source_err then return nil, source_err end
+            local conflict = require_generation(request.expected_generation, catalog.generation)
+            if conflict then return nil, conflict end
             local effective = policy.effective(settings, catalog.compiled.policy)
             if bytes > effective.proposal_bytes then return nil, invalid("proposal exceeds configured byte budget", { code = "proposal_budget_exceeded" }) end
             local count, qerr = proposal_rows.count(db, catalog_id, effective.proposal_count)
@@ -408,15 +422,17 @@ function M.propose(catalog_id: string, request: types.ProposeRequest): (types.Pr
             local planned, perr = items.plan(db, catalog, proposals.plan_request(captured, request.source), actor_id(), settings, prepared, true)
             if perr or not planned then return nil, perr end
             if not planned.ok then return nil, invalid("proposal items are invalid at the catalog head", { outcomes = planned.outcomes :: { types.JsonObject } }) end
+            local id = uuid.v7() :: string
             local body: types.ProposalSubmittedBody = { proposal_id = id, generation = catalog.generation, base = captured.base,
                 items = captured.items, source = request.source, origin = request.origin, provenance = request.provenance }
             return { result = { proposal_id = id, status = "pending" },
                 events = { { type = EV.PROPOSAL_SUBMITTED, subject = "proposals", body = body } } }, nil
-        end)
+        end, nil, request.source)
     if err or not out then return nil, err end
     local merr = publish_proposal_count(catalog_id)
     if merr then return nil, merr end
-    return { proposal_id = id, status = "pending" }, nil
+    local recorded = out :: types.ProposeResult
+    return { proposal_id = recorded.proposal_id, status = recorded.status }, nil
 end
 
 -- settled maps an accepted proposal's apply result to its final status:

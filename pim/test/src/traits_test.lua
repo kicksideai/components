@@ -90,6 +90,63 @@ local function define()
                 test.eq(schema.properties.outcomes.items.properties[field].type, "string", field)
             end
         end)
+        for _, stale in ipairs({ "product", "schema" }) do
+            test.it("refuses a proposal prepared against a stale " .. stale, function()
+                local h = fixture.catalog()
+                fixture.boot(h)
+                local product = assert(tool(h, "get", { catalog_id = h.id, product = { sku = "RDG" } })).product
+                local generation = assert(tool(h, "get_schema", { catalog_id = h.id })).generation
+                local request = { catalog_id = h.id, expected_generation = generation,
+                    idempotency = { namespace = "agent", key = "review" }, items = {
+                    { product = { sku = "RDG-moss-40" }, set = { { attr = "core.gtin", value = "agent-gtin" } } },
+                    { product = { id = product.product_id }, expect_version = product.version,
+                        set = { { attr = "core.care", value = "Agent's edit" } } },
+                } }
+                if stale == "product" then
+                    local edited = assert(h.call("apply", { items = { { product = { id = product.product_id },
+                        expect_version = product.version, set = { { attr = "core.care", value = "Human edit" } } } } }))
+                    test.eq(edited.outcomes[1].outcome, "updated")
+                else
+                    assert(h.call("apply_schema", { declaration = { vocabularies = { { code = "agent_review" } } } }))
+                end
+                local out, err = tool(h, "propose", request)
+                test.is_nil(out)
+                test.eq(assert(err):kind(), errors.CONFLICT)
+                local details = assert(err):details()
+                if stale == "product" then
+                    test.eq(details.code, "version_conflict")
+                    test.eq(details.product_id, product.product_id)
+                    test.eq(details.expect_version, product.version)
+                    test.eq(details.version, product.version + 1)
+                else
+                    test.eq(details.code, "schema_generation_conflict")
+                    test.eq(details.expected_generation, generation)
+                    test.eq(details.generation, generation + 1)
+                end
+                test.eq(#assert(h.call("list_proposals", {})).proposals, 0)
+
+                request.expected_generation = assert(tool(h, "get_schema", { catalog_id = h.id })).generation
+                request.items[2].expect_version = assert(tool(h, "get", { catalog_id = h.id, product = { sku = "RDG" } })).product.version
+                local accepted = assert(tool(h, "propose", request))
+                test.eq(accepted.status, "pending")
+                test.eq(assert(tool(h, "propose", request)).proposal_id, accepted.proposal_id)
+                local saved = assert(h.call("list_proposals", {})).proposals[1]
+                test.eq(saved.proposal_id, accepted.proposal_id)
+                test.eq(saved.generation, request.expected_generation)
+                test.eq(saved.base[product.product_id], request.items[2].expect_version)
+            end)
+        end
+
+        test.it("publishes optional proposal fences and an idempotency key in the tool schema", function()
+            local schema = assert(json.decode(metadata("propose").input_schema :: string))
+            local request = { expected_generation = 1, idempotency = { namespace = "agent", key = "enrichment" },
+                items = { { product = { sku = "RDG" }, expect_version = 1, status = "draft" } } }
+            local valid, err = json.validate(schema, request)
+            test.is_true(valid, tostring(err))
+            request.items[1].expect_version = "any"
+            test.is_false(json.validate(schema, request))
+        end)
+
         test.it("uses context addressing, gives call ids precedence and preserves contract refusals", function()
             local h = fixture.catalog()
             local other = fixture.catalog()

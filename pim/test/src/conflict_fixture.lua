@@ -26,7 +26,7 @@ function M.interleave_guarded_receipt(id: string, request: types.ApplyRequest)
     catalog_id, guarded_request, revocation = id, request, nil
 end
 
-function M.interrupt_decision(phase: string)
+function M.interrupt_command(phase: string)
     interruption = phase
 end
 
@@ -36,7 +36,7 @@ function M.run(command: pipeline.Command): (unknown, error?)
         interruption = nil
         local client = command.client
         local appended = false
-        local interrupted = errors.new({ kind = errors.UNAVAILABLE, message = "interrupted proposal decision" })
+        local interrupted = errors.new({ kind = errors.UNAVAILABLE, message = "interrupted proposal command" })
         command.client = {
             append_events = function(_, request)
                 if phase == "append" then return nil, interrupted end

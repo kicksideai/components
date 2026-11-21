@@ -368,23 +368,21 @@ local function referenced_skus(list: { types.ApplyItem }): { string }
     return out
 end
 
-function M.source_access(source: types.Source, actor: string): error?
+function M.authorize_source(catalog: types.Catalog, id: string?, actor: string): (types.Source?, error?)
+    if id == nil then return nil, nil end
+    local source = catalog.compiled.sources[id]
+    if not source then return nil, failure.unknown_source(id) end
     if next(source.principals) and not source.principals[actor] then
-        return errors.new({ details = { code = "source_access_denied" }, kind = errors.PERMISSION_DENIED,
+        return nil, errors.new({ details = { code = "source_access_denied" }, kind = errors.PERMISSION_DENIED,
             message = "principal is not bound to source " .. source.id })
     end
-    return nil
+    return source, nil
 end
 
 function M.plan(db: types.Executor, catalog: types.Catalog, request: types.ApplyRequest, actor: string, defaults: types.Policy,
     prepared: Prepared?, proposal: boolean?): (PlanResult?, error?)
-    local source: types.Source?
-    if request.source ~= nil then
-        source = catalog.compiled.sources[request.source]
-        if not source then return nil, failure.unknown_source(request.source) end
-        local access_err = M.source_access(source, actor)
-        if access_err then return nil, access_err end
-    end
+    local source, access_err = M.authorize_source(catalog, request.source, actor)
+    if access_err then return nil, access_err end
     local st = item_state.new_state(db, catalog, actor, source)
     st.items = request.items
     local perr = item_state.read_skus(st, referenced_skus(request.items))
