@@ -3,6 +3,7 @@ local channel = require("channel")
 local fixture = require("fixture")
 local json = require("json")
 local registry = require("registry")
+local retention_rows = require("retention_rows")
 local scoped = require("scoped")
 local sql = require("sql")
 local steps = require("steps")
@@ -927,6 +928,11 @@ end
 
 local function retention_until(catalog_id: string, done: () -> boolean)
     for _ = 1, 80 do
+        -- Start each bounded owner pass at the catalog whose assets we are checking.
+        local db = assert(sql.get("app:db"))
+        local cursor_err = retention_rows.advance(db, {catalog_id = catalog_id, inclusive = 1, product_after = ""})
+        db:release()
+        assert(not cursor_err, tostring(cursor_err))
         local result, err = funcs.call("kickside.pim.retention:owner", {})
         assert(not err and result and result.success, tostring(err) .. " " .. json.encode(result))
         for _, blocked in ipairs(result.blocked or {}) do
