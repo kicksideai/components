@@ -12,19 +12,33 @@ local domain = require("domain")
 local H = {}
 local locate, done = context.locate, context.done
 
+function H.validate(op: types.Op, keyed: boolean): domain.Finding?
+    if op.kind == "progress" then
+        if not keyed then return M.finding("stage_progress_key_required", "progress reports require a command key") end
+        if op.outcome ~= nil or op.outputs ~= nil or op.progress == nil then
+            return M.finding("stage_progress_invalid", "progress reports require progress and omit outcome and outputs")
+        end
+    elseif not consts.STAGE_OUTCOMES[op.outcome :: string] then
+        return M.finding("stage_outcome_invalid", "outcome is passed, failed or canceled")
+    end
+    return nil
+end
+
 function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
+    local invalid = H.validate(op, ctx.keyed == true)
+    if invalid then return M.refused(M.FREE, invalid) end
     local target, err = locate(ctx, op)
     if not target then return err :: types.OpPlan end
     local previous, perr = read_rows.stage_run(ctx.db, ctx.board.board_id, target.item.item_id, op.visit :: integer, op.attempt :: integer)
     if perr then return M.failed(perr) end
-    if previous and previous.outcome then return M.invalid("stage_attempt_finished", "stage attempt already finishes") end
+    if previous and previous.outcome then return M.invalid("stage_attempt_finished", "stage attempt already finished") end
     local item: domain.StateItem = target.item
     local state: domain.State = target.state
     if state.kind ~= "automated" then return M.invalid("stage_state_required", "report requires an automated state") end
     if op.visit ~= item.visit then return M.invalid("stage_visit_mismatch", "report visit differs from the current visit") end
     local work = item.work :: domain.ProcessData
     if op.attempt ~= work.attempt then return M.invalid("stage_attempt_mismatch", "report attempt differs from the current attempt") end
-    if work.waiting then return M.invalid("stage_attempt_finished", "stage attempt already finishes") end
+    if work.waiting then return M.invalid("stage_attempt_finished", "stage attempt already finished") end
     if op.progress then
         local progress = canonical_json.object(op.progress) :: domain.JsonObject
         local encoded, encode_err = canonical_json.encode(progress)
@@ -33,17 +47,12 @@ function H.plan(ctx: types.PrepareContext, op: types.Op): types.OpPlan
         op.progress = progress
     end
     if op.kind == "progress" then
-        if not ctx.keyed then return M.invalid("stage_progress_key_required", "progress reports require a command key") end
-        if op.outcome ~= nil or op.outputs ~= nil or op.progress == nil then
-            return M.invalid("stage_progress_invalid", "progress reports require progress and omit outcome and outputs")
-        end
         local group = M.item_group(item.item_id)
         local event = M.event(consts.EVENTS.STAGE_PROGRESSED, group,
             { item = item.item_id, state = item.state, visit = op.visit, attempt = op.attempt, progress = op.progress })
         item.version = item.version + 1
         return done(ctx, item, group, { event })
     end
-    if not consts.STAGE_OUTCOMES[op.outcome :: string] then return M.invalid("stage_outcome_invalid", "outcome is passed, failed or canceled") end
     if #values.canonical(op.outputs or {}) > consts.LIMITS.stage_outputs then return M.invalid("stage_outputs_limit", "stage outputs exceed 64 KB") end
     return H.finish(ctx, target, op, {})
 end

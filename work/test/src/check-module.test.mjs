@@ -211,7 +211,11 @@ test('operation descriptions and declaration enums match their owning dispatch s
         : parent?.properties?.id && Object.keys(parent.properties).length === 2 ? 'PRINCIPAL_KINDS' : undefined : undefined)
       || (name === 'cardinality' && path.includes('fields') ? 'CARDINALITIES' : undefined)
     if (constant && !path.includes('ops') && !path.includes('ops_template')) assert.deepEqual(node.enum?.toSorted(), sets[constant], path.join('.'))
-    for (const [name, value] of Object.entries(node.properties || {})) enums(value, [...path, name], node)
+    for (const [name, value] of Object.entries(node.properties || {})) {
+      const report = node['x-work-command-variants']?.report
+      const property = name === 'outcome' && report ? report.oneOf[1].properties.outcome : value
+      enums(property, [...path, name], node)
+    }
     for (const name of ['items', 'additionalProperties']) if (typeof node[name] === 'object') enums(node[name], path, parent)
     for (const name of ['anyOf', 'oneOf', 'allOf']) for (const branch of node[name] || []) enums(branch, path, parent)
   }

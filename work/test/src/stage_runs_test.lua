@@ -166,13 +166,26 @@ local function define()
             local request = { item = id, kind = "progress", visit = 1, attempt = 2, progress = { step = 2 } }
             local no_key, key_err = h.call("report", request)
             test.is_nil(no_key); test.eq(key_err:kind(), errors.INVALID)
+            test.eq(key_err:details().code, "stage_progress_key_required")
             request.key, request.outputs = "with-output", { artifact = "premature" }
             local with_outputs, outputs_err = h.call("report", request)
             test.is_nil(with_outputs); test.eq(outputs_err:kind(), errors.INVALID)
+            test.eq(outputs_err:details().code, "stage_progress_invalid")
             local no_outcome, outcome_err = h.call("report", { item = id, visit = 1, attempt = 2 })
             test.is_nil(no_outcome); test.eq(outcome_err:kind(), errors.INVALID)
+            test.eq(outcome_err:details().code, "stage_outcome_invalid")
             local op = { op = "report", item = id, kind = "progress", visit = 1, attempt = 2, progress = { step = 2 } }
-            test.eq(steps.one(h, op).findings[1].code, "stage_progress_key_required")
+            local unkeyed = steps.one(h, op).findings[1]
+            test.eq(unkeyed.code, key_err:details().code)
+            test.eq(unkeyed.message, key_err:message())
+            local missing = steps.one(h, { op = "report", item = id, visit = 1, attempt = 2 }).findings[1]
+            test.eq(missing.code, outcome_err:details().code)
+            test.eq(missing.message, outcome_err:message())
+            op.outputs = request.outputs
+            local mixed_fields = assert(steps.apply(h, { op }, { key = "mixed-fields" })).outcomes[1].findings[1]
+            test.eq(mixed_fields.code, outputs_err:details().code)
+            test.eq(mixed_fields.message, outputs_err:message())
+            op.outputs = nil
             local batch = assert(steps.apply(h, {
                 { op = "report", item = id, visit = 1, attempt = 2, outcome = "failed" }, op,
             }, { key = "mixed" }))
@@ -180,7 +193,7 @@ local function define()
             test.eq(batch.outcomes[2].findings[1].code, "stage_attempt_finished")
         end)
 
-        test.it("publishes the same checkpoint over the report tool and HTTP", function()
+        test.it("accepts checkpoints and outcomes through WorkReport and WorkApply", function()
             local h = scoped.board(scoped.admin(), transition_process())
             local item = steps.create(h, "task")
             local worker = scoped.member()
@@ -204,6 +217,24 @@ local function define()
             test.not_nil(run.progress)
             test.eq(json.encode(run.progress), "{}")
             test.is_nil(run.finished_at)
+
+            local terminal = assert(tool:call("kickside.work.traits:report", {
+                item = item, visit = 1, attempt = 1, outcome = "passed", outputs = { artifact = "report" },
+            }))
+            test.eq(terminal.outcomes[1].status, "applied")
+            test.eq(assert(steps.get(h, item)).item.state, "done")
+
+            local batch_item = steps.create(h, "task")
+            local result = assert(tool:call("kickside.work.traits:apply", { key = "batch", ops = {
+                { op = "report", item = batch_item, visit = 1, attempt = 1, kind = "progress", progress = { step = 2 } },
+                { op = "report", item = batch_item, visit = 1, attempt = 1, outcome = "passed", outputs = { artifact = "apply" } },
+            } }))
+            test.eq(result.outcomes[1].status, "applied")
+            test.eq(result.outcomes[2].status, "applied")
+            local applied = assert(worker.call("list_stage_runs", { item = { id = batch_item } }, h.id)).stage_runs[1]
+            test.eq(applied.progress.step, 2)
+            test.eq(applied.outputs.artifact, "apply")
+            test.eq(applied.outcome, "passed")
         end)
     end)
 
