@@ -2550,7 +2550,7 @@ const Kl = { class: "pim-table form pim-layout" }, Gl = {
       return [...x.value.keys()].filter((U) => n.aspects?.includes(U.split(".")[0]));
     }
     function w(n, U, o) {
-      const u = U[o] ?? [], X = new Set(M(n).flatMap((ae) => [...ae.axes ?? [], ...ae.own ?? []])), Y = c(n).filter((ae) => !X.has(ae) && (o === "own" || x.value.get(ae)));
+      const u = U[o] ?? [], X = new Set(M(n).flatMap((ae) => [...ae.axes ?? [], ...ae.own ?? []])), Y = c(n).filter((ae) => u.includes(ae) || !X.has(ae) && (o === "own" || x.value.get(ae)));
       return E(Y, u);
     }
     const r = N(() => t.draft.channels ?? []);
