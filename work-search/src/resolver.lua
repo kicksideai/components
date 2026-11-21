@@ -43,11 +43,11 @@ local function resolve_ids(request: Request): ({ ids: { string } }?, error?)
     end
 
     local deadline = time.now():utc():add(1500 * time.MILLISECOND):format(time.RFC3339NANO)
-    local rows, index_err = storage.candidates(context.attachment_id, selected.generation, selected.scope, request.query, VERIFICATION_LIMIT + 1)
+    local rows, index_err = storage.candidates(context.attachment_id, selected.generation, selected.scope, request.query, VERIFICATION_LIMIT)
     if index_err or not rows then return nil, index_err end
     local ids: { string } = {}
-    for first = 1, math.min(#rows, VERIFICATION_LIMIT), VERIFICATION_BATCH do
-        local last = math.min(#rows, VERIFICATION_LIMIT, first + VERIFICATION_BATCH - 1)
+    for first = 1, #rows, VERIFICATION_BATCH do
+        local last = math.min(#rows, first + VERIFICATION_BATCH - 1)
         local keys: { string } = {}
         for i = first, last do keys[#keys + 1] = rows[i].item_key end
         local raw_page, read_err = board:query({ board_id = request.board_id, min_seq = selected.as_of,
@@ -69,13 +69,12 @@ local function resolve_ids(request: Request): ({ ids: { string } }?, error?)
             local row = rows[i]
             local item = current[row.item_key]
             if item and item.id == row.item_id and item.updated_seq == row.source_seq then
+                if #ids == request.limit then
+                    return nil, pending("search_verification_budget", "Work Search found too many visible matches")
+                end
                 ids[#ids + 1] = item.id
-                if #ids == request.limit then return { ids = ids }, nil end
             end
         end
-    end
-    if #rows > VERIFICATION_LIMIT then
-        return nil, pending("search_verification_budget", "Work Search could not fill its candidate budget")
     end
     return { ids = ids }, nil
 end

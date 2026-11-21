@@ -7,7 +7,7 @@ A UI module registers a `registry.entry` with `meta.type: kickside.work.ui.app`,
 
 `board.create` and `WorkCreateBoard` accept an optional `ui_app` registry entry ID. A pack can preset it with `data.ui_app` and an explicit creation argument takes precedence. Applying or updating a pack on an existing board leaves its binding in place. Board ADMIN can set `ui_app` with `board.update` or `WorkUpdateBoard`, or clear the setting with an empty string. Work validates new bindings against registered UI apps before any write. Existing unbound boards can be assigned a UI through the same update command.
 
-`board.list`, `WorkListBoards`, and `GET /work/boards` expose each readable board’s optional `ui_app` ID. Pass that ID as `ui_app` to filter discovery before pagination. Follow `next` with the same filter. Discovery uses Component’s READ-filtered metadata query and the existing caller-visible board counts.
+`board.list`, `WorkListBoards`, and `GET /work/boards` expose each readable board’s optional `ui_app` ID. Pass that ID as `ui_app` to filter discovery before pagination. Follow `next` with the same filter. Discovery uses Component’s READ-filtered metadata query. Pass `include_counts: false` (HTTP `include_counts=false`) to return board metadata and access without reading items. The default includes exact caller-visible item counts. Pagination uses Component’s offset within the readable, filtered directory.
 
 ## Plugin extensions
 
@@ -16,6 +16,10 @@ Manifests with `meta.type: kickside.work.plugin` declare interface version 1, an
 The published seams are declarative field types over the existing value forms, guards for transitions and state checks, concrete operands, SQL query and search scopes, and search resolver bindings. Field configuration can use the validators of its declared form. Work refuses stored-value reinterpretation through the ordinary schema review. Guard, check and operand calls have a one-second execution limit. Guards return up to 64 findings and result data is bounded to 65,536 canonical JSON bytes. A board adopts each scope ID once. A scope that declares a backing projection names a kind on its owning manifest.
 
 State workers consume the bounded `plugin_feed` pages. Event workers receive selected retained events. Resync preserves healthy unchanged registrations and rebuilds a parked state projection from current items. A parked event projection replays from its registered start and reports the retained floor if that start is gone. Changing a declared revision resets the corresponding worker. An independent view type can bind a saved view to a registered web component. Removing the view type makes run return `view_type_unavailable` and preserves the saved definition for repair.
+
+## Grouped reads
+
+Single-level queries with no selection filter or plugin scope use a keyset seek when an existing index covers the group key and item ID. The walk handles missing keys last and budgets inspected rows before applying visibility. The separately capped top-level item page keeps its requested order. A page returns the requested number of complete groups or reaches the end of the selection. Two-level and other group shapes still return exact results when their candidate selection fits the allowance, including full totals for a parent repeated across subgroup pages. A group page that exceeds its allowance returns `incomplete: true` and `group_limited: true` without groups or a group continuation.
 
 ## Item write invariants
 
@@ -28,6 +32,8 @@ An item reference field can declare `config.item_type` as the target item type I
 Directed relations can declare `from_types` and `to_types` as nonempty lists of item type IDs. Source types are declared on the owning board. Target types are matched against the live, visible item after resolving its destination board and any move aliases. An omitted list allows any type at that endpoint. A link with a mismatched endpoint returns `relation_source_type` on `item` or `relation_target_type` on `target`. Symmetric relations omit the directional lists. Work refuses changes to endpoint lists while the relation has links, using the existing relation shape check.
 
 Move alias resolution follows up to 32 redirects. Moves redirect retained aliases to the new destination. If a chain still exceeds the limit, resolution returns `key_alias_hop_limit`.
+
+A cross-board move admits at most 5,000 live subtree items and 5,000 outgoing relation edges. Planning returns `move_edge_limit` before preparing destination operations when the source selection exceeds the edge allowance. Mapped links use the ordinary endpoint validation.
 
 A transition with `people: false` is reserved for the process engine and board ADMIN force. A direct named transition without force receives `unknown_transition`. Stage reports and state timers can take that route.
 

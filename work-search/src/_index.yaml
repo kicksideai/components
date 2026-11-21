@@ -19,6 +19,7 @@ entries:
   targets:
   - { entry: 'kickside.work_search:storage_config', path: .meta.db_id }
   - { entry: 'kickside.work_search:01_search', path: .meta.target_db }
+  - { entry: 'kickside.work_search:02_streaming_matches', path: .meta.target_db }
   - { entry: 'kickside.work_search:storage_db_access', path: .policy.resources }
 - name: storage_config
   kind: registry.entry
@@ -148,6 +149,16 @@ entries:
     tags: [work-search]
     timestamp: '2026-11-19T03:00:00Z'
   source: file://01_search.lua
+  method: migrate
+  imports:
+    migration: wippy.migration:migration
+- name: 02_streaming_matches
+  kind: function.lua
+  meta:
+    type: migration
+    tags: [work-search]
+    timestamp: '2026-11-21T03:00:00Z'
+  source: file://02_streaming_matches.lua
   method: migrate
   imports:
     migration: wippy.migration:migration

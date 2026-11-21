@@ -18,8 +18,9 @@ plan and apply operations to activate the plugin and adopt one scope:
 
 Use WorkFindItems or `board.query` with `{ "where": { "match": "search text" } }`.
 Combine `match` with ordinary Work filters and pass the returned Work cursor to
-the next query. Search admits at most 1,000 current, visible candidates per board
-before Work applies its filters and ordering. An exact current issue key can be
+the next query. Search collects at most 2,000 lexical candidates in the active generation, then
+verifies up to 1,000 current, visible matches for Work to filter and order.
+An overflow returns `UNAVAILABLE/search_verification_budget`. An exact current issue key can be
 searched in any ASCII letter case. The Work Search trait exposes the read tools
 and the Work Search administration trait exposes schema and pack tools. Enable
 them with the `kickside.work_search:tool_access` policy. Work enforces board

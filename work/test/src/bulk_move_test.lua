@@ -183,6 +183,32 @@ local function define()
             test.eq(item.values.estimate, 4)
             test.eq(call(b, "list_links", { item = { id = result.item } }).links[1].type, "depends")
         end)
+        test.it("refuses a subtree with more than 5000 outgoing edges before validating mapped links", function()
+            local a, b = fixture.board(), fixture.board()
+            grant(a, b)
+            local root = steps.create(a, "task")
+            local creates = {}
+            for i = 1, 100 do creates[i] = { op = "create", type = "task", parent = root } end
+            local children = call(a, "apply", { ops = creates }).outcomes
+            local last: string = ""
+            for _, child in ipairs(children) do
+                test.eq(child.status, "applied")
+                if child.item > last then last = child.item end
+            end
+            local db = assert(sql.get("app:db"))
+            -- A retained projection fixture with a known population even when peer validation fails.
+            for _, source in ipairs({ root, last }) do
+                assert(db:execute([[WITH RECURSIVE edges(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM edges WHERE n < 2501)
+                    INSERT INTO kickside_work_link (board_id, from_id, type, to_board_id, to_id, at, seq)
+                    SELECT $1, $2, 'blocks', $3, CAST(n AS TEXT), '', 1 FROM edges]], { a.id, source, b.id }))
+            end
+            db:release()
+            local plan = call(a, "plan_move", move_request(b, root, "edge-limit"))
+            test.is_false(plan.allowed)
+            test.eq(plan.findings[1].code, "move_edge_limit")
+            test.eq(#plan.links, 0)
+            test.eq(call(b, "count", {}).total, 0)
+        end)
         test.it("accepts a move plan and command without an optional idempotency key", function()
             local a, b = fixture.board(), fixture.board()
             grant(a, b)

@@ -61,6 +61,19 @@ function M.link(db: sql.DB | sql.Transaction, board_id: string, from: string, ty
         AND to_board_id = $4 AND to_id = $5]], { board_id, from, type_id, to_board, to_id })
 end
 
+function M.outgoing(tx: sql.Transaction, board_id: string, sources: { string }, limit: integer): ({ domain.Row }?, error?)
+    local args: domain.SqlParams = { board_id }
+    local marks: { string } = {}
+    for i, source in ipairs(sources) do
+        args[i + 1] = source
+        marks[i] = "$" .. (i + 1)
+    end
+    args[#args + 1] = limit
+    return tx:query([[SELECT from_id, type, to_board_id, to_id FROM kickside_work_link
+        WHERE board_id = $1 AND from_id IN (]] .. table.concat(marks, ",") .. [[)
+        ORDER BY from_id, type, to_board_id, to_id LIMIT $]] .. #args, args)
+end
+
 function M.outgoing_count(db: sql.DB | sql.Transaction, board_id: string, item_id: string, type_id: string): ({ domain.Row }?, error?)
     return db:query("SELECT COUNT(*) AS n FROM kickside_work_link WHERE board_id = $1 AND from_id = $2 AND type = $3", { board_id, item_id, type_id })
 end
