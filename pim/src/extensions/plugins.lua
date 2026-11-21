@@ -324,7 +324,7 @@ function M.list(states: { [string]: types.PluginIntent }?, membership: { [string
                 entry.problem = { code = details.code :: string, message = tostring(lerr), field = details.field :: string? }
                 if active then entry.lifecycle = { state = "failed", error = { kind = lerr:kind(), code = details.code :: string?, message = tostring(lerr) } } end
             end
-            if projections and p and active and not lerr and entry.lifecycle.state ~= "failed" then
+            if projections and p and active and not lerr then
                 local live, perr = projections(p, state)
                 if perr then return nil, perr end
                 entry.projections = live or {}
@@ -367,6 +367,7 @@ function M.admit(compiled: types.Compiled, previous: types.Compiled?): error?
     local active = compiled.plugins
     local was = previous and previous.plugins or {}
     local owners: { [string]: string } = {}
+    local conflicts: { [string]: string } = {}
     local installed, err = M.find()
     if err or not installed then return err end
     for _, id in ipairs(installed) do
@@ -374,8 +375,8 @@ function M.admit(compiled: types.Compiled, previous: types.Compiled?): error?
         if lerr and lerr:kind() ~= errors.INVALID then return lerr end
         if plugin then
             for _, seam in ipairs(plugin.seams or {}) do
-                if owners[seam] and owners[seam] ~= id then return invalid("seam has multiple owners", { plugin = id, field = "seams" }) end
-                owners[seam] = id
+                if owners[seam] then conflicts[seam] = conflicts[seam] or id
+                else owners[seam] = id end
             end
             if active[id] then
                 for _, required in ipairs(plugin.requires or {}) do
@@ -386,6 +387,10 @@ function M.admit(compiled: types.Compiled, previous: types.Compiled?): error?
     end
     local function seam(id: string): error?
         local owner = owners[id]
+        if conflicts[id] then
+            return invalid("schema names a seam claimed by multiple plugins",
+                { code = "plugin_seam_conflict", seam = id, plugin = owner, conflicting_plugin = conflicts[id] })
+        end
         if owner and not active[owner] then
             return invalid("schema names an inactive plugin's seam", { code = was[owner] and "plugin_seam_in_use" or "plugin_seam_unowned", plugin = owner, seam = id })
         end

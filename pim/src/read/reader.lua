@@ -316,17 +316,13 @@ function M.plugin_context(catalog_id: string, plugin: string): (types.PluginCont
     if derr or not declaration then return nil, derr end
     local _, cerr = plugins.merged(declaration, {}, state.config)
     if cerr then return nil, cerr end
-    local projections: { [string]: types.PluginProjectionState } = {}
-    if state.lifecycle.state ~= "failed" then
-        local live, perr = plugin_projections.states(catalog_id, declaration, state)
-        if perr then return nil, perr end
-        projections = live or {}
-    end
+    local projections, perr = plugin_projections.states(catalog_id, declaration, state)
+    if perr then return nil, perr end
     local binding, berr = registry.get("kickside.pim.binding:catalog")
     if berr then return nil, berr end
     local retention = (binding :: { meta: { retention: { event_days: integer } } }).meta.retention
     return { attachment_id = state.attachment_id, config = state.config, lifecycle = state.lifecycle,
-        projections = projections, retention = { event_days = retention.event_days } }, nil
+        projections = projections or {}, retention = { event_days = retention.event_days } }, nil
 end
 function M.get_schema(catalog_id: string, request: types.GetSchemaRequest?): (types.SchemaView?, error?)
     local caller, access_err = access.reader(catalog_id)
