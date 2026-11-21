@@ -57,8 +57,13 @@ for (let index = 0; index < registries.length; index += 1) {
   const registry = registries[index]
   const file = yamlFiles[index]
   for (const entry of registry.entries) {
-    if (typeof entry.default === 'string' && /^app[:.]/.test(entry.default)) report(`${relative(root, file)}:${entry.name} selects a host-owned default`)
-    entries.push({ ...entry, id: `${registry.namespace}:${entry.name}` })
+    const id = `${registry.namespace}:${entry.name}`
+    const isDefaultRouter = id === 'kickside.work:api_router' && entry.kind === 'ns.requirement'
+      && entry.meta?.value_kind === 'http.router' && entry.default === 'app:api'
+    if (typeof entry.default === 'string' && /^app[:.]/.test(entry.default) && !isDefaultRouter) {
+      report(`${relative(root, file)}:${entry.name} selects a host-owned default`)
+    }
+    entries.push({ ...entry, id })
   }
   for (const failure of checkDependencies(registry.entries)) report(`${relative(root, file)}:${failure}`)
 }

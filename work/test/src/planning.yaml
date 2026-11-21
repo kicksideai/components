@@ -6,9 +6,15 @@ entries:
   kind: ns.dependency
   component: kickside/work-planning
   version: '*'
-  parameters:
-  - name: kickside.work.planning:api_router
-    value: app:api
+- name: planning_api
+  kind: http.router
+  meta:
+    server: gateway
+  middleware: [token_auth]
+  post_middleware: [endpoint_firewall]
+  options:
+    token_store: kickside.users.security:tokens
+  prefix: /api/planning
 - name: planning_test
   kind: function.lua
   meta: {type: test, suite: kickside_work_planning, timeout: 300s}

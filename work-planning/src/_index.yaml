@@ -12,6 +12,7 @@ entries:
   version: '>=0.1.30'
 - name: api_router
   kind: ns.requirement
+  default: app:api
   meta:
     value_kind: http.router
     comment: Use the same authenticated router as kickside.work:api_router, with token_auth and endpoint_firewall.

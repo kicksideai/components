@@ -61,6 +61,7 @@ entries:
     path: .meta.db_id
 - name: api_router
   kind: ns.requirement
+  default: app:api
   meta:
     value_kind: http.router
     comment: Authenticated HTTP router the work endpoints attach to. Must run token_auth and endpoint_firewall.

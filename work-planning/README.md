@@ -53,11 +53,13 @@ request with the same key and preview returns the Work receipt.
 The Work trait contributes `WorkPlanCloseSprint` and `WorkCloseSprint` on boards
 with Planning active.
 
-Bind `kickside.work.planning:api_router` on the `kickside/work-planning`
-dependency to the same router ID supplied to `kickside.work:api_router`. The
-router must run `token_auth` and `endpoint_firewall`. Planning owns the two
-sprint endpoints and its member policy grants access. Both endpoints call the
-Planning contract as the request actor and return the standard Work HTTP envelope.
+Work and Planning both default to `app:api`. If the host binds
+`kickside.work:api_router` to a custom router, bind
+`kickside.work.planning:api_router` on the `kickside/work-planning` dependency
+to the same router ID. The router must run `token_auth` and
+`endpoint_firewall`. Planning owns the two sprint endpoints and its member
+policy grants access. Both endpoints call the Planning contract as the request
+actor and return the standard Work HTTP envelope.
 
 - `POST /work/sprints/plan_close` accepts `board_id`, `sprint_id`, and optional
   `rollover_id`.

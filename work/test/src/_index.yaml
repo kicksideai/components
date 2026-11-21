@@ -204,8 +204,6 @@ entries:
     value: 17
   - name: kickside.work:target_db
     value: app:db
-  - name: kickside.work:api_router
-    value: app:api
   - name: kickside.work:registry_admin_grant
     value:
       subject_id: app.security:work_admin

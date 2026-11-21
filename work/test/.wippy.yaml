@@ -55,6 +55,11 @@ vars:
   pg_username: kickside
   pg_password: kickside
 profiles:
+  planning-router:
+    override:
+      app:dep.planning:parameters:
+      - name: kickside.work.planning:api_router
+        value: app:planning_api
   postgres:
     override:
       app:db:kind: db.sql.postgres

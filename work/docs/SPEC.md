@@ -53,7 +53,7 @@ A board with `kickside.work.templates:plugin` keeps up to 128 immutable template
 
 The Templates plugin initializes the catalog table on the Work target database. The additive migration preserves existing versions.
 
-Use `GET /work/boards/{id}/templates` to list active versions, then `POST /work/boards/{id}/templates/instantiate` with `template_id`, `version`, `key`, and optional `overrides`. The endpoints use the authenticated `kickside.work:api_router` and the Work Templates member policy. They call the Templates contract as the request actor and return the standard Work HTTP envelope.
+Use `GET /work/boards/{id}/templates` to list active versions, then `POST /work/boards/{id}/templates/instantiate` with `template_id`, `version`, `key`, and optional `overrides`. The endpoints use the Work Templates member policy and the authenticated `kickside.work:api_router`, which defaults to `app:api`. They call the Templates contract as the request actor and return the standard Work HTTP envelope.
 
 ### Recurring tasks
 

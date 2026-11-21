@@ -238,7 +238,7 @@ local function define()
             end
         end)
 
-        test.it("defaults the scope to platform Members and binds every host resource without defaults", function()
+        test.it("defaults to platform Members and app:api and requires a database binding", function()
             local scope = assert(registry.get("kickside.work.security:user_security_scope"))
             test.eq(scope.meta.value_kind, "security.scope")
             test.eq(scope.data.default, "kickside.security.groups:members")
@@ -247,12 +247,12 @@ local function define()
             for _, id in ipairs({ "module_access", "module_runtime", "member_endpoints" }) do
                 test.eq(targets["kickside.work.security:" .. id], ".groups +=", id)
             end
-            local expected = { ["kickside.work:api_router"] = "http.router", ["kickside.work:target_db"] = "db.sql" }
-            for id, kind in pairs(expected) do
-                local requirement = assert(registry.get(id))
-                test.eq(requirement.meta.value_kind, kind, id)
-                test.is_nil(requirement.data.default, id)
-            end
+            local router = assert(registry.get("kickside.work:api_router"))
+            test.eq(router.meta.value_kind, "http.router")
+            test.eq(router.data.default, "app:api")
+            local db = assert(registry.get("kickside.work:target_db"))
+            test.eq(db.meta.value_kind, "db.sql")
+            test.is_nil(db.data.default)
         end)
 
         test.it("declares the board retention, projection and cleanup", function()
