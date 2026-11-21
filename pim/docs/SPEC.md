@@ -801,7 +801,8 @@ from current records. Event workers receive facts from the reset point forward.
   reports progress. It acknowledges the triggering range only when `done` is
   true and its writes commit. `done` requires the host materialization to reach
   the catalog thread head sampled before reading the page, with no rebuild or
-  remaining page.
+  remaining page. The native catalog cursor covers filtered plugin-owned facts
+  that do not update the PIM read model.
   The worker does no paging logic, event decoding, attachment or configuration
   lookup and never interprets the token. `bootstrap` stays true until the feed
   reaches the registration position after a (re)registration; per-kind
@@ -812,8 +813,8 @@ from current records. Event workers receive facts from the reset point forward.
   from the registration point in bounded native platform batches. The worker
   obtains attachment and configuration context from `plugin_context`. It is for
   reactions to facts (a record was purged), not for building a model of state.
-- A worker error parks that projection only; the host and the other plugins
-  continue. `projections[kind]` shows `last_seq`, `parked`, `bootstrapping`, `error`.
+- A deterministic worker error parks that projection only. The host and other
+  plugins continue while Core manages transient worker failures. `projections[kind]` shows `last_seq`, `parked`, `bootstrapping`, `error`.
   A stopped or invalid cursor reports `parked`. A missing or superseded
   registration leaves the other cursors' status visible.
   Exact-id callback policies admit the platform process group; direct member

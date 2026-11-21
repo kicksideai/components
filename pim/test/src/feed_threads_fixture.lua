@@ -15,7 +15,7 @@ function M.open(): (threads.Client?, error?)
         end,
         get_projection_cursor = function(_: unknown, request: {[string]: unknown}): (unknown, error?)
             local raw,err=client:get_projection_cursor(request)
-            if not err and raw and mismatch then
+            if not err and raw and mismatch and request.projection_key then
                 local pair=raw :: {projection:{body:unknown}}
                 local body=type(pair.projection.body)=="string" and assert(json.decode(pair.projection.body :: string)) or pair.projection.body
                 body.worker_config.config={marker="another-registration"}

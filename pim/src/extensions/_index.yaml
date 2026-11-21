@@ -135,6 +135,7 @@ entries:
     source: file://plugin_feed.lua
     modules: [json]
     imports:
+      consts: kickside.pim:consts
       failure: kickside.pim:failure
       values: kickside.pim.domain:values
       access: kickside.pim.read:access
