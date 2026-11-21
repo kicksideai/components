@@ -10,6 +10,18 @@ function M.reserve(db: types.Executor, catalog: string, id: string, lease: strin
     return err
 end
 
+function M.require_reservation(db: types.Executor, catalog: string, id: string, lease: string): (boolean?, error?)
+    local rows, err = db:query([[SELECT 1 FROM kickside_pim_asset
+        WHERE catalog_id=$1 AND asset_id=$2 AND adopting=1 AND reaping=0 AND due_at=$3 AND due_at>$4
+        AND NOT EXISTS (SELECT 1 FROM kickside_pim_cleanup WHERE catalog_id=$1)]], {catalog, id, lease, clock.now()})
+    if err then return nil, err end
+    if not rows or #rows == 0 then
+        return nil, errors.new({kind = errors.CONFLICT, message = "catalog asset reservation is unavailable",
+            details = {code = "asset_reservation_unavailable"}})
+    end
+    return true, nil
+end
+
 function M.adopted(db: types.Executor, catalog: string, id: string): error?
     local result, err = db:execute([[UPDATE kickside_pim_asset SET adopting=0
         WHERE catalog_id=$1 AND asset_id=$2 AND reaping=0 AND adopting=1]], {catalog, id})

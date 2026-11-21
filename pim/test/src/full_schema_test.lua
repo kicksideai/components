@@ -939,6 +939,37 @@ local function retention_until(catalog_id: string, done: () -> boolean)
 end
 
 local function media_cases()
+    test.it("requires the materialized reservation before copying a personal upload", function()
+        local owner = scoped.member()
+        local h = catalog(owner)
+        local source = upload(owner, "reservation.png", "image/png", PNG)
+        local current, previous = {}, {}
+        for _, declaration in ipairs(assert(registry.get("kickside.pim.binding:catalog")).meta.projections) do
+            if declaration.kind == "kickside.pim:catalog_model" then
+                for _, event in ipairs(declaration.events.input) do
+                    local input = {type = event.type, via = "thread"}
+                    current[#current + 1] = input
+                    if event.type ~= "kickside.pim.events:asset.reserved" and event.type ~= "kickside.pim.events:assets.reaping" then
+                        previous[#previous + 1] = input
+                    end
+                end
+            end
+        end
+        test.eq(#previous + 2, #current)
+        call(h, "register_catalog_projection", {inputs = previous})
+        refused(h, "adopt_asset", {upload_id = source}, errors.CONFLICT, "asset_reservation_unavailable")
+        test.eq(catalog_fixture.count_rows("SELECT COUNT(*) AS n FROM kickside_pim_asset WHERE catalog_id=$1", {h.id}), 0)
+        test.eq(catalog_fixture.count_rows("SELECT COUNT(*) AS n FROM kickside_uploads WHERE actor_id=$1",
+            {"upload-component:" .. h.id}), 0)
+        test.eq(send_media(owner, "GET", "/uploads/" .. source .. "/raw").body, PNG)
+
+        call(h, "register_catalog_projection", {inputs = current})
+        local asset = attach(h, source)
+        test.eq(catalog_fixture.count_rows([[SELECT COUNT(*) AS n FROM kickside_pim_asset
+            WHERE catalog_id=$1 AND asset_id=$2 AND adopting=0]], {h.id, asset}), 1)
+        test.eq(send_media(owner, "GET", "/uploads/" .. asset .. "/raw").body, PNG)
+    end)
+
     test.it("refuses a missing nested catalog asset as an invalid reference", function()
         local h = catalog()
         outcome(create(h, "MEDIA-MISSING", {media_value("missing")}), "invalid", "invalid_reference")
