@@ -3,6 +3,7 @@ local sql = require("sql")
 local uuid = require("uuid")
 local component = require("component")
 local store = require("store")
+local tree_rows = require("tree_rows")
 local principals = require("principals")
 local guard = require("guard")
 local items = require("items")
@@ -18,6 +19,8 @@ local consts = require("consts")
 local peers = require("peers")
 local limits = require("limits")
 local M = {}
+local EDGE_LIMIT = 5000
+local SOURCE_BATCH = 100
 
 local function refused(plan: types.MovePlan, code: string, message: string): types.MovePlan
     plan.allowed = false
@@ -115,22 +118,35 @@ local function build(tx: sql.Transaction, source: domain.Board, target: domain.B
             old_key = store.key_of(source.key_prefix, item.number) }
         plan.items[#plan.items + 1] = move
     end
+    local edges: { [string]: { domain.Row } } = {}
+    local remaining = EDGE_LIMIT
+    for first = 1, #plan.items, SOURCE_BATCH do
+        local sources: { string } = {}
+        for i = first, math.min(first + SOURCE_BATCH - 1, #plan.items) do
+            sources[#sources + 1] = plan.items[i].from
+        end
+        local links, lerr = tree_rows.outgoing(tx, source.board_id, sources, remaining + 1)
+        if lerr or not links then return nil, lerr end
+        if #links > remaining then
+            return refused(plan, "move_edge_limit", "move holds at most " .. EDGE_LIMIT .. " outgoing relation edges"), nil
+        end
+        remaining = remaining - #links
+        for _, link in ipairs(links) do
+            local from = link.from_id :: string
+            local outgoing = edges[from] or {}
+            outgoing[#outgoing + 1], edges[from] = link, outgoing
+        end
+    end
     local linked: { [string]: boolean } = {}
     for _, item in ipairs(plan.items) do
-        local links, lerr = tx:query([[SELECT * FROM kickside_work_link WHERE board_id = $1 AND from_id = $2
-            ORDER BY board_id,from_id,type,to_board_id,to_id]], { source.board_id, item.from })
-        if lerr then return nil, lerr end
-        for _, link in ipairs(links or {}) do
-            local outward = link.board_id == source.board_id and ids[link.from_id :: string] ~= nil
-            local from = outward and ids[link.from_id :: string] or ids[link.to_id :: string]
-            local peer_board = outward and link.to_board_id :: string or link.board_id :: string
-            local peer_id = outward and link.to_id :: string or link.from_id :: string
+        for _, link in ipairs(edges[item.from] or {}) do
+            local peer_board, peer_id = link.to_board_id :: string, link.to_id :: string
             if peer_board == source.board_id and ids[peer_id] then peer_board, peer_id = target.board_id, ids[peer_id] end
             local relation = mapping.relations and mapping.relations[link.type :: string] or link.type :: string
-            local key = from .. ":" .. relation .. ":" .. peer_board .. ":" .. peer_id
+            local key = item.item .. ":" .. relation .. ":" .. peer_board .. ":" .. peer_id
             if not linked[key] then
                 linked[key] = true
-                plan.links[#plan.links + 1] = { item = from, type = relation, target = { board = peer_board, item = peer_id } }
+                plan.links[#plan.links + 1] = { item = item.item, type = relation, target = { board = peer_board, item = peer_id } }
             end
         end
     end

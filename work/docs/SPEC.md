@@ -33,6 +33,8 @@ Directed relations can declare `from_types` and `to_types` as nonempty lists of 
 
 Move alias resolution follows up to 32 redirects. Moves redirect retained aliases to the new destination. If a chain still exceeds the limit, resolution returns `key_alias_hop_limit`.
 
+A cross-board move admits at most 5,000 live subtree items and 5,000 outgoing relation edges. Planning returns `move_edge_limit` before preparing destination operations when the source selection exceeds the edge allowance. Mapped links use the ordinary endpoint validation.
+
 A transition with `people: false` is reserved for the process engine and board ADMIN force. A direct named transition without force receives `unknown_transition`. Stage reports and state timers can take that route.
 
 ## Agent pipelines
