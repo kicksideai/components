@@ -5,6 +5,7 @@ local steps = require("steps")
 local store = require("store")
 local tables = require("tables")
 local read_rows = require("read_rows")
+local tree_rows = require("tree_rows")
 
 local function explain(db, statement: string, args, tx: any?)
     local pg = db:type() == "postgres"
@@ -46,6 +47,56 @@ local function define()
             print("DEEP STAGE-RUN PLAN\n" .. plan)
             test.is_true(plan:find("(visit,attempt)<(?,?)", 1, true) ~= nil
                 or plan:find("ROW(visit, attempt) <", 1, true) ~= nil, plan)
+        end)
+    end)
+
+    test.describe("move subtree query plans", function()
+        test.it("streams deep descendants from the ancestor index with a capped read", function()
+            local board = fixture.board()
+            local db = assert(store.open())
+            local tx = assert(db:begin())
+            local ancestors = tables.names(board.id).set
+            assert(tx:execute([[WITH RECURSIVE numbers(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM numbers WHERE n<25000),
+                items(item_id,number,parent_id,path,life) AS (
+                    SELECT 'other-' || n,n,'other-parent','/other-parent/other-' || n || '/','live' FROM numbers
+                    UNION ALL SELECT 'root',25001,NULL,'/root/','live'
+                    UNION ALL SELECT 'one',25002,'root','/root/one/','live'
+                    UNION ALL SELECT 'two',25003,'one','/root/one/two/','live'
+                    UNION ALL SELECT 'three',25004,'two','/root/one/two/three/','live'
+                    UNION ALL SELECT 'four',25005,'three','/root/one/two/three/four/','live'
+                    UNION ALL SELECT 'gone',25006,'root','/root/gone/','purged'
+                    UNION ALL SELECT 'kept',25007,'gone','/root/gone/kept/','live'
+                )
+                INSERT INTO kickside_work_item (board_id,item_id,number,type,state,category,process_generation,visit,parent_id,path,version,life,document,created_seq,updated_seq,created_at,updated_at)
+                SELECT $1,item_id,number,'task','open','started',1,1,parent_id,path,1,life,'{}',0,0,'','' FROM items]], { board.id }))
+            assert(tx:execute("INSERT INTO " .. ancestors .. [[ (item_id,col,value_key)
+                SELECT item_id,'path_under','root' FROM kickside_work_item
+                    WHERE board_id=$1 AND item_id<>'root' AND item_id NOT LIKE 'other-%'
+                UNION ALL SELECT item_id,'path_under',parent_id FROM kickside_work_item
+                    WHERE board_id=$1 AND item_id LIKE 'other-%']], { board.id }))
+            assert(tx:execute("ANALYZE kickside_work_item", {}))
+            assert(tx:execute("ANALYZE " .. ancestors, {}))
+            local plan = ""
+            local probe = { query = function(_, statement, params)
+                plan = explain(db, statement, params, tx)
+                return tx:query(statement, params)
+            end }
+            local root = assert(store.item(tx, board.id, "root"))
+            local rows = assert(tree_rows.live_subtree(probe :: any, root, 5001, db:type()))
+            local capped = assert(tree_rows.live_subtree(tx, root, 3, db:type()))
+            assert(tx:rollback())
+            db:release()
+
+            test.eq(#rows, 6)
+            for i, id in ipairs({ "root", "one", "two", "kept", "three", "four" }) do test.eq(rows[i].item_id, id) end
+            test.eq(#capped, 3)
+            print("MOVE SUBTREE PLAN\n" .. plan)
+            test.is_true(plan:find(ancestors .. "_lookup", 1, true) ~= nil, plan)
+            test.is_true(plan:find("col=? AND value_key=?", 1, true) ~= nil
+                or plan:find("Index Cond:", 1, true) ~= nil and plan:find("value_key =", 1, true) ~= nil, plan)
+            test.is_nil(plan:find("Sort", 1, true), plan)
+            test.is_nil(plan:find("TEMP B-TREE", 1, true), plan)
+            test.is_nil(plan:find("Bitmap", 1, true), plan)
         end)
     end)
 
