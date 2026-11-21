@@ -47,8 +47,11 @@ function removeSource(s: SourceDecl) {
 <template>
   <div class="pim-stack">
     <DefinitionList v-if="view !== 'sources'" :count="channels.length" :columns="['details']">
-      <template #head><header class="pim-bsection-head pim-ia-group-head"><div><h3>Release destinations</h3><p class="muted small">Choose which families can be released to each destination and what those products need first.</p></div></header>
-        <AddSchemaCode v-if="canEdit" label="Channel name" action="Add channel" from-name :existing="channels.map(item => item.id)" @add="addChannel" />
+      <template #head>
+        <header class="pim-bsection-head pim-list-header">
+          <div><h3>Release destinations</h3><p class="muted small">Choose which families can be released to each destination and what those products need first.</p></div>
+          <AddSchemaCode v-if="canEdit" label="Channel name" action="Add channel" from-name :existing="channels.map(item => item.id)" @add="addChannel" />
+        </header>
       </template>
       <DefinitionRow v-for="c in channels" :key="c.id" :title="humanize(c.id)">
         <template #details>
@@ -63,8 +66,11 @@ function removeSource(s: SourceDecl) {
       </DefinitionRow>
     </DefinitionList>
     <DefinitionList v-if="view !== 'channels'" :count="sources.length" :columns="['details']">
-      <template #head><header class="pim-bsection-head pim-ia-group-head"><div><h3>Data sources</h3><p class="muted small">Control who can send updates and which fields each source can change.</p></div></header>
-        <AddSchemaCode v-if="canEdit" label="Source name" action="Add source" from-name :existing="sources.map(item => item.id)" @add="addSource" />
+      <template #head>
+        <header class="pim-bsection-head pim-list-header">
+          <div><h3>Data sources</h3><p class="muted small">Control who can send updates and which fields each source can change.</p></div>
+          <AddSchemaCode v-if="canEdit" label="Source name" action="Add source" from-name :existing="sources.map(item => item.id)" @add="addSource" />
+        </header>
       </template>
       <DefinitionRow v-for="s in sources" :key="s.id" :title="humanize(s.id)">
         <template #details><span class="muted small">{{ s.writes?.length ? s.writes.map(humanize).join(', ') : 'No field groups selected' }}</span></template>

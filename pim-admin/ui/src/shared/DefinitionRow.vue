@@ -12,13 +12,12 @@ const columns = inject(definitionColumns, computed(() => [
 ]))
 const open = defineModel<boolean>('open', { default: false })
 const bodyId = useId()
-const emit = defineEmits<{ 'head-keydown': [event: KeyboardEvent]; 'head-drop': [event: DragEvent]; 'head-dragover': [event: DragEvent] }>()
 </script>
 <template>
   <section class="pim-definition">
-    <header class="pim-definition-head" :class="headClass" @keydown="emit('head-keydown', $event)" @drop="emit('head-drop', $event)" @dragover="emit('head-dragover', $event)">
+    <header class="pim-definition-head" :class="headClass">
       <InteractiveSurface class="pim-definition-toggle" :class="toggleClass" :aria-expanded="open" :aria-controls="open ? bodyId : undefined" @click="open = !open">
-        <span class="pim-definition-lead" data-column="lead"><slot name="handle" /><Icon icon="tabler:chevron-right" class="pim-definition-chevron" aria-hidden="true" /></span>
+        <span class="pim-definition-lead" data-column="lead"><Icon icon="tabler:chevron-right" class="pim-definition-chevron" aria-hidden="true" /></span>
         <span class="pim-row-title" data-column="name">{{ title }}</span>
         <span class="pim-definition-meta">
           <span v-for="column in columns" :key="column" :class="'pim-definition-' + column" :data-column="column">

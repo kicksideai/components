@@ -6,6 +6,7 @@ import { moveField as move } from '../../state'
 import AddSchemaCode from './AddSchemaCode.vue'
 import DefinitionList from '../../shared/DefinitionList.vue'
 import DefinitionRow from '../../shared/DefinitionRow.vue'
+import NativeDialog from '../../shared/NativeDialog.vue'
 import MultiSelect from 'primevue/multiselect'
 import SelectButton from 'primevue/selectbutton'
 import Tag from 'primevue/tag'
@@ -16,7 +17,7 @@ import Button from 'primevue/button'
 // Aspects and their attributes. Each aspect is a section of the draft; each
 // attribute row edits the declaration fields the engine understands, with the
 // options the registry offers: types, their indexes and config, link kinds.
-import { computed, ref, toRaw, useId, watch } from 'vue'
+import { computed, nextTick, ref, toRaw, useId, watch } from 'vue'
 import { fieldTypeTitle, humanLabel } from '../../shared/labels'
 import { Icon } from '@iconify/vue'
 import type { AspectDecl, AttributeDecl, Declaration, RemoveDecl, SchemaOptions, SchemaView, TypeOption } from '../../types'
@@ -136,23 +137,23 @@ function addContext(attr: AttributeDecl) {
   list.push(tuple)
 }
 
-const dragging = ref<{ namespace: string; index: number } | null>(null)
-function moveByKey(event: KeyboardEvent, aspect: AspectDecl, index: number) {
-  if (!canEdit.value || !event.altKey) return
-  const direction = { ArrowUp: -1, ArrowDown: 1 }[event.key]
-  if (direction === undefined) return
-  event.preventDefault()
-  move(aspect.attributes ?? [], index, index + direction)
-}
+const groupSettings = ref<AspectDecl>()
+const groupSettingsTitle = computed(() => groupSettings.value ? humanize(groupSettings.value.namespace) + ' settings' : '')
 
-function drop(a: AspectDecl, index: number) {
-  if (canEdit.value && dragging.value?.namespace === a.namespace) move(a.attributes ?? [], dragging.value.index, index)
-  dragging.value = null
+async function reorder(event: MouseEvent, attributes: AttributeDecl[], index: number, target: number) {
+  const control = event.currentTarget as HTMLButtonElement
+  const actions = control.parentElement
+  move(attributes, index, target)
+  await nextTick()
+  // The moved button can become disabled at either end of the list.
+  if (control.disabled) actions?.querySelector<HTMLButtonElement>('button:enabled')?.focus({ preventScroll: true })
+  else control.focus({ preventScroll: true })
 }
 function addAspect(namespace: string) {
   (props.draft.aspects ??= []).push({ namespace, attributes: [] })
 }
 function removeAspect(a: AspectDecl) {
+  groupSettings.value = undefined
   const i = aspects.value.indexOf(a)
   if (i >= 0) aspects.value.splice(i, 1)
   if (props.schema.declaration.aspects?.some((x) => x.namespace === a.namespace)) emit('remove', 'aspects', a.namespace)
@@ -178,34 +179,30 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
     <div class="form pim-card-body pad pim-ia-action pim-family-filter">
       <div><h3>Field groups</h3><p>Families share fields through groups. A change to a shared field applies to each family that uses it.</p></div>
       <Select v-if="families.length" v-model="family" aria-label="Show fields for a family" placeholder="All families" :options="familyOptions" option-label="label" option-value="value" append-to="self" />
+      <AddSchemaCode v-if="canEdit && !family" label="Field group name" action="Add field group" from-name
+        :existing="aspects.map(a => a.namespace)" @add="addAspect" />
     </div>
-    <AddSchemaCode v-if="canEdit && !family" class="pim-ia-inline-add" label="Field group name" action="Add field group" from-name
-      :existing="aspects.map(a => a.namespace)" @add="addAspect" />
     <p v-if="family && !visibleAspects.length" class="form pim-card-body pad muted">This family has no field groups yet. Open the family to choose which groups it uses.</p>
     <DefinitionList v-for="a in visibleAspects" :key="a.namespace" :count="a.attributes?.length ?? 0" :columns="['kind', 'details', 'usage']">
       <template #head>
-        <header class="pim-bsection-head pim-ia-group-head">
+        <header class="pim-bsection-head pim-list-header">
           <div>
             <h3>{{ humanize(a.namespace) }}</h3>
             <p class="small muted">{{ usedBy(a.namespace).length ? 'Used by ' + usedBy(a.namespace).join(', ') : 'Unused by families' }}</p>
           </div>
-        </header>
-        <AddSchemaCode v-if="canEdit" label="Field name" action="Add field" from-name :existing="a.attributes?.map(field => field.code)" @add="addAttribute(a, $event)" />
-        <Disclosure class="pim-ia-disclosure pim-group-settings" label="Field group settings">
-          <div class="pim-source-permissions">
-            <label :for="'writers-' + a.namespace">Sources allowed to write</label>
-            <MultiSelect :disabled="!canEdit" :input-id="'writers-' + a.namespace" aria-label="Sources allowed to write" :model-value="a.write?.sources ?? []" :options="sources" option-label="label" option-value="value" placeholder="Any source" appendTo="self" @update:model-value="a.write = { sources: $event }" />
-            <span v-if="canEdit" class="small muted">Leave empty to allow any source to write this field group.</span>
+          <div class="row pim-list-actions">
+            <AddSchemaCode v-if="canEdit" label="Field name" action="Add field" from-name :existing="a.attributes?.map(field => field.code)" @add="addAttribute(a, $event)" />
+            <Button type="button" :aria-label="humanize(a.namespace) + ' settings'" :title="humanize(a.namespace) + ' settings'"
+              aria-haspopup="dialog" severity="secondary" text size="small" @click="groupSettings = a">
+              <Icon icon="tabler:settings" aria-hidden="true" />
+            </Button>
           </div>
-          <Button v-if="canEdit" type="button" @click="removeAspect(a)" text severity="secondary" size="small"><Icon icon="tabler:trash" aria-hidden="true" /> Remove field group</Button>
-        </Disclosure>
+        </header>
       </template>
       <DefinitionRow v-for="(attr, i) in a.attributes ?? []" :key="key(a.namespace, attr)"
         v-model:open="open[key(a.namespace, attr)]" :title="humanize(attr.code)"
         :kind="fieldTypeTitle(typeOf(attr))" :usage="usage(a.namespace)"
-        class="pim-attr" head-class="pim-attr-row" toggle-class="field-toggle"
-        @head-dragover.prevent @head-drop.prevent="drop(a, i)" @head-keydown="moveByKey($event, a, i)">
-        <template #handle><span v-if="canEdit" class="pim-grip" draggable="true" aria-hidden="true" @click.stop @dragstart.stop="dragging = { namespace: a.namespace, index: i }" @dragend="dragging = null"><Icon icon="tabler:grip-vertical" /></span></template>
+        class="pim-attr" head-class="pim-attr-row" toggle-class="field-toggle">
         <template #details>
           <Tag v-if="attr.cardinality && attr.cardinality !== 'one'" class="kx-tag-sm" severity="secondary">{{ CARDINALITIES.find(c => c.value === attr.cardinality)?.label }}</Tag>
           <Tag v-if="attr.scope?.length" class="kx-tag-sm" severity="secondary">per {{ attr.scope.map(humanize).join(', ') }}</Tag>
@@ -213,8 +210,8 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
           <Tag v-if="attr.unique" class="kx-tag-sm" severity="secondary">unique</Tag>
         </template>
         <template v-if="canEdit" #actions>
-          <Button type="button" :disabled="i === 0" :aria-label="'Move ' + humanize(attr.code) + ' earlier'" @click="move(a.attributes!, i, i - 1)" text severity="secondary" size="small"><Icon icon="tabler:arrow-up" /></Button>
-          <Button type="button" :disabled="i === (a.attributes?.length ?? 0) - 1" :aria-label="'Move ' + humanize(attr.code) + ' later'" @click="move(a.attributes!, i, i + 1)" text severity="secondary" size="small"><Icon icon="tabler:arrow-down" /></Button>
+          <Button type="button" :disabled="i === 0" :aria-label="'Move ' + humanize(attr.code) + ' earlier'" @click="reorder($event, a.attributes!, i, i - 1)" text severity="secondary"><Icon icon="tabler:arrow-up" aria-hidden="true" /></Button>
+          <Button type="button" :disabled="i === (a.attributes?.length ?? 0) - 1" :aria-label="'Move ' + humanize(attr.code) + ' later'" @click="reorder($event, a.attributes!, i, i + 1)" text severity="secondary"><Icon icon="tabler:arrow-down" aria-hidden="true" /></Button>
         </template>
           <div class="pim-fields">
             <div class="pim-f pim-w-third"><div class="pim-f-label"><label :id="fieldId(a.namespace, attr, 'type')">Type</label></div>
@@ -278,5 +275,21 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
           <div v-if="canEdit" class="row end"><Button type="button" @click="removeAttribute(a, attr)" text severity="secondary" size="small"><Icon icon="tabler:trash" /> Remove field</Button></div>
       </DefinitionRow>
     </DefinitionList>
+    <NativeDialog :visible="!!groupSettings" :label="groupSettingsTitle" @close="groupSettings = undefined">
+      <section v-if="groupSettings" class="pim-ia-dialog" @keydown.esc.prevent="groupSettings = undefined">
+        <header class="pim-ia-dialog-head"><h2 tabindex="-1" autofocus>{{ groupSettingsTitle }}</h2></header>
+        <div class="pim-source-permissions">
+          <label :id="fieldPrefix + '-writers'">Sources allowed to write</label>
+          <MultiSelect :disabled="!canEdit" :aria-labelledby="fieldPrefix + '-writers'"
+            :model-value="groupSettings.write?.sources ?? []" :options="sources"
+            option-label="label" option-value="value" placeholder="Any source" append-to="self"
+            @update:model-value="groupSettings.write = { sources: $event }" />
+        </div>
+        <footer class="dialog-actions pim-group-dialog-actions">
+          <Button v-if="canEdit" type="button" label="Remove field group" severity="danger" text @click="removeAspect(groupSettings)" />
+          <Button type="button" label="Done" severity="secondary" outlined @click="groupSettings = undefined" />
+        </footer>
+      </section>
+    </NativeDialog>
   </div>
 </template>

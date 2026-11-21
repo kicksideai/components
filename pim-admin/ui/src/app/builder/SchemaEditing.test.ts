@@ -117,9 +117,9 @@ it('only offers eligible family fields as axes while keeping other fields availa
   await w.get('.pim-definition-toggle').trigger('click')
   const pickers = w.findAllComponents(ChipPicker)
   const codes = (index: number) => pickers[index].props('options')!.map(option => option.value)
-  expect(codes(1)).toEqual(['core.first', 'core.available', 'external.size'])
-  expect(codes(3)).toEqual(['core.available', 'external.size'])
-  expect(codes(4)).toEqual(expect.arrayContaining(['core.identifier', 'core.record', 'core.scoped', 'core.many', 'external.caption']))
+  expect(codes(0)).toEqual(['core.first', 'core.available', 'external.size'])
+  expect(codes(2)).toEqual(['core.available', 'external.size'])
+  expect(codes(3)).toEqual(expect.arrayContaining(['core.identifier', 'core.record', 'core.scoped', 'core.many', 'external.caption']))
 })
 
 it('shows each blocked change once and keeps it ahead of other review details', async () => {

@@ -4,6 +4,7 @@ import { setList } from '../../state'
 import AddSchemaCode from './AddSchemaCode.vue'
 import DefinitionList from '../../shared/DefinitionList.vue'
 import DefinitionRow from '../../shared/DefinitionRow.vue'
+import MultiSelect from 'primevue/multiselect'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
@@ -32,6 +33,11 @@ const aspectOptions = computed(() => {
   const plugin = [...new Set(pluginFields.value.map(([code]) => code.split('.')[0]))]
   return [...declared, ...plugin.filter((p) => !declared.includes(p))].map((ns) => ({ value: ns, label: humanize(ns) }))
 })
+function fieldGroups(family: FamilyDecl) {
+  const options = aspectOptions.value
+  const missing = (family.aspects ?? []).filter(value => !options.some(option => option.value === value))
+  return [...options, ...missing.map(value => ({ value, label: humanize(value) }))]
+}
 const typeForms = computed(() => new Map(props.options.types.map(type => [type.id, type.form])))
 function fieldLabel(code: string): string {
   const [group, field] = code.split('.', 2)
@@ -117,12 +123,15 @@ function setContext(r: RequirementDecl, dim: string, member: string) {
         <Tag v-if="levels(f).length" severity="secondary" :value="levels(f).length + (levels(f).length === 1 ? ' variant level' : ' variant levels')" />
         <span class="muted small">{{ channelsFor(f).join(', ') || 'No release channels' }}</span>
       </template>
-      <template v-if="canEdit" #actions><Button type="button" @click="remove(f)" :aria-label="'Remove ' + humanize(f.code)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
       <div class="pim-aspect">
         <div class="pim-ia-action pim-family-fields">
-          <div class="pim-fields">
-          <div class="pim-f pim-w-full"><div class="pim-f-label"><label :id="fieldId(f, 'groups')">Field groups</label><span class="pim-f-note">the fields this family's products carry</span></div>
-            <ChipPicker :disabled="!canEdit" :labelledby="fieldId(f, 'groups')" :model-value="f.aspects ?? []" :options="aspectOptions" @update:model-value="setList(f, 'aspects', $event)" /></div>
+          <div class="pim-f">
+            <div class="pim-f-label"><label :id="fieldId(f, 'groups')">Field groups</label></div>
+            <p :id="fieldId(f, 'groups-help')" class="muted small pim-axis-help">Choose the groups that appear on this family’s product forms.</p>
+            <MultiSelect :disabled="!canEdit" :aria-labelledby="fieldId(f, 'groups')" :aria-describedby="fieldId(f, 'groups-help')"
+              :model-value="f.aspects ?? []" :options="fieldGroups(f)" option-label="label" option-value="value"
+              placeholder="Choose field groups" display="chip" append-to="self"
+              @update:model-value="setList(f, 'aspects', $event)" />
           </div>
           <Button v-if="f.aspects?.length" type="button" label="View family fields" severity="secondary" outlined size="small" @click="emit('fields', f.code)" />
         </div>
@@ -146,24 +155,34 @@ function setContext(r: RequirementDecl, dim: string, member: string) {
               </div>
             </div>
           </div>
-          <Button v-if="canEdit" type="button" @click="addLevel(f)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add level</Button>
+          <Button v-if="canEdit" type="button" class="pim-add-level" @click="addLevel(f)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add level</Button>
         </div>
       </div>
       <div class="pim-aspect">
-        <header class="pim-aspect-head"><h3>Release requirements</h3><span class="muted small">what a channel needs before a product is ready</span></header>
+        <header class="pim-family-requirements-head">
+          <h3>Release requirements</h3>
+          <p class="muted small">Choose what products need before they can be released to a channel.</p>
+        </header>
         <div class="pim-stack tight">
           <div v-for="(r, ri) in requirements(f)" :key="r.id" class="pim-level">
             <div class="pim-level-head"><div><strong>{{ humanize(r.id) }}</strong><p class="muted small">{{ channelsFor(f, r.id).join(', ') || 'Unused by channels' }}</p></div><Button v-if="canEdit" type="button" aria-label="Remove requirement" @click="requirements(f).splice(ri, 1)" text severity="secondary" size="small"><Icon icon="tabler:x" /></Button></div>
             <div class="pim-fields">
-              <div v-for="d in dimensions" :key="d.name" class="pim-f pim-w-third"><div class="pim-f-label"><label :id="fieldId(f, r.id + '-context-' + d.name)">{{ humanize(d.name) }}</label><span class="pim-f-note">context</span></div>
+              <div v-for="d in dimensions" :key="d.name" class="pim-f pim-w-third"><div class="pim-f-label"><label :id="fieldId(f, r.id + '-context-' + d.name)">{{ humanize(d.name) }}</label></div>
                 <Select :disabled="!canEdit" :aria-labelledby="fieldId(f, r.id + '-context-' + d.name)" :model-value="contextOf(r, d.name)" @update:model-value="setContext(r, d.name, $event)" :options="[{ value: '', label: 'not stated' }, { value: 'all', label: 'all members' }, ...(d.members).map((m) => ({ value: m, label: String(m) }))]" option-label="label" option-value="value" appendTo="self" /></div>
-              <div class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(f, r.id + '-required')">Required</label><span class="pim-f-note">must hold a value</span></div><ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, r.id + '-required')" :model-value="r.require ?? []" placeholder="Add a required field" :options="attributesOf(f)" @update:model-value="setList(r, 'require', $event)" /></div>
-              <div class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(f, r.id + '-authored')">Entered for this context</label><span class="pim-f-note">must be set in the context itself, not by fallback</span></div><ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, r.id + '-authored')" :model-value="r.authored ?? []" placeholder="Add a field to author" :options="attributesOf(f)" @update:model-value="setList(r, 'authored', $event)" /></div>
+              <div class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(f, r.id + '-required')">Required</label></div>
+                <p class="muted small pim-axis-help">These fields must have a value.</p>
+                <ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, r.id + '-required')" :model-value="r.require ?? []" placeholder="Add a required field" :options="attributesOf(f)" @update:model-value="setList(r, 'require', $event)" /></div>
+              <div class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(f, r.id + '-authored')">Entered for this context</label></div>
+                <p class="muted small pim-axis-help">These fields need a value set directly for the selected context.</p>
+                <ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, r.id + '-authored')" :model-value="r.authored ?? []" placeholder="Add a field to author" :options="attributesOf(f)" @update:model-value="setList(r, 'authored', $event)" /></div>
             </div>
           </div>
           <AddSchemaCode v-if="canEdit" label="Requirement name" action="Add requirement" from-name
             :existing="requirements(f).map(r => r.id)" @add="addRequirement(f, $event)" />
         </div>
+      </div>
+      <div v-if="canEdit" class="pim-aspect pim-family-remove">
+        <Button type="button" label="Remove family" severity="danger" text size="small" @click="remove(f)" />
       </div>
     </DefinitionRow>
     </DefinitionList>
