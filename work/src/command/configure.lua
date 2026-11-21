@@ -30,11 +30,9 @@ function M.configure_plugin(request: types.ConfigureRequest): (types.ConfigureRe
     local _, cerr = manifests.effective(manifest, app, request.config)
     if cerr then return nil, cerr end
     local snapshot, snapshot_err = access.with_snapshot(request.board_id, nil, function(tx: types.Executor, board: domain.Board, _dialect: string): (types.ConfigureSelection?, error?)
-        local rows, rerr = plugin_rows.list(tx, board.board_id)
+        local plugin, rerr = plugin_rows.active(tx, board.board_id, request.plugin)
         if rerr then return nil, rerr end
-        for _, row in ipairs(rows or {}) do
-            if row.active and row.plugin == request.plugin then return { plugin = row, schema_version = board.schema_version }, nil end
-        end
+        if plugin then return { plugin = plugin, schema_version = board.schema_version }, nil end
         return nil, errors.new({ kind = errors.NOT_FOUND, message = "plugin is inactive", details = { code = "plugin_inactive", plugin = request.plugin } })
     end, { admitted = { [request.board_id] = true }, holders = {} })
     if snapshot_err or not snapshot then return nil, snapshot_err end

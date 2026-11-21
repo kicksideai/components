@@ -2,7 +2,6 @@
 -- The host owns durable feed positions and bootstrap state.
 local access = require("access")
 local feeds = require("feeds")
-local manifests = require("manifests")
 local threads = require("threads")
 local cursor_reader = require("cursor_reader")
 local json = require("json")
@@ -20,13 +19,11 @@ function M.decode(token: string): (local_types.FeedToken?, error?)
     return decoded :: local_types.FeedToken, nil
 end
 
-function M.page(request: types.PluginFeedRequest, context: types.PluginContext): (types.PluginFeed?, error?)
+function M.page(request: types.PluginFeedRequest, admission: types.PluginAdmission): (types.PluginFeed?, error?)
     local settings, settings_err = limits.read()
     if settings_err or not settings then return nil, settings_err end
-    local plugin, perr = manifests.load(request.plugin)
-    if perr or not plugin then return nil, perr end
     local declared = false
-    for _, p in ipairs(plugin.projections) do
+    for _, p in ipairs(admission.manifest.projections) do
         if p.kind == request.kind and p.input == "state" then declared = true end
     end
     if not declared then return nil, errors.new({ kind = errors.INVALID, message = "plugin declares no such state projection", details = { code = "plugin_projection_invalid" } }) end
@@ -75,7 +72,7 @@ function M.page(request: types.PluginFeedRequest, context: types.PluginContext):
     if not page.has_more and (page.as_of :: integer) >= token.start_seq then token.bootstrapping = false end
     local encoded, eerr = json.encode(token)
     if eerr or not encoded then return nil, eerr end
-    return { attachment_id = context.attachment_id :: string, config = context.config :: types.JsonObject, bootstrap = bootstrap, reset = reset, generation = page.generation :: integer,
+    return { attachment_id = admission.state.attachment_id, config = admission.config, bootstrap = bootstrap, reset = reset, generation = page.generation :: integer,
         changes = page.items, token = encoded, done = not page.has_more and (page.as_of :: integer) >= (head :: { event_count: integer }).event_count }, nil
 end
 return M

@@ -12,22 +12,27 @@ local types = require("types")
 local domain = require("domain")
 local M = {}
 
+function M.active(request: types.PluginContextRequest, context: types.ReadContext?): (types.PluginAdmission?, error?)
+    local selected, err = access.with_snapshot(request.board_id, nil, function(tx: types.Executor, board: domain.Board): (types.PluginSelection?, error?)
+        local row, rerr = rows.active(tx, board.board_id, request.plugin)
+        if rerr then return nil, rerr end
+        if row then return { state = row }, nil end
+        return nil, errors.new({ kind = errors.NOT_FOUND, message = "plugin is inactive", details = { code = "plugin_inactive", plugin = request.plugin } })
+    end, context)
+    if err or not selected then return nil, err end
+    local manifest, merr = manifests.load(request.plugin)
+    if merr or not manifest then return nil, merr end
+    local config, cerr = plugins.effective(manifest, selected.state.config)
+    if cerr or not config then return nil, cerr end
+    return { state = selected.state, manifest = manifest, config = config }, nil
+end
+
 function M.context(request: types.PluginContextRequest): (types.PluginContext?, error?)
     return budget.run(request, function(context: types.ReadContext): (types.PluginContext?, error?)
-        local selected, err = access.with_snapshot(request.board_id, nil, function(tx: types.Executor, board: domain.Board, _dialect: string): (types.PluginSelection?, error?)
-            local desired, derr = rows.list(tx, board.board_id)
-            if derr then return nil, derr end
-            for _, row in ipairs(desired or {}) do
-                if row.active and row.plugin == request.plugin then return { state = row }, nil end
-            end
-            return nil, errors.new({ kind = errors.NOT_FOUND, message = "plugin is inactive", details = { code = "plugin_inactive", plugin = request.plugin } })
-        end, context)
+        local selected, err = M.active(request, context)
         if err or not selected then return nil, err end
-        local manifest, merr = manifests.load(request.plugin)
-        if merr or not manifest then return nil, merr end
-        local config, cerr = plugins.effective(manifest, selected.state.config)
-        if cerr then return nil, cerr end
-        return { attachment_id = selected.state.attachment_id, interface_version = manifest.interface_version, config = config, lifecycle = selected.state.lifecycle,
+        local state, manifest = selected.state, selected.manifest
+        return { attachment_id = state.attachment_id, interface_version = manifest.interface_version, config = selected.config, lifecycle = state.lifecycle,
             projections = states.states(request.board_id, manifest) }, nil
     end)
 end
