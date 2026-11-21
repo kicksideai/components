@@ -11,10 +11,10 @@ reset target until an accepted read reaches it, even if a notification supersede
 the first read; that reset is consumed once. Other concurrent drafts stay stale.
 Board selection and Back ask through the shared host confirmation before
 replacing an unsaved schema or metadata draft. Settings report both through the widget boundary. Saving or canceling metadata clears its pending state independently of the schema draft.
-The board picker and selected board each use the full pane. Back to boards
-returns focus to the selected row. General, Items, Workflow, Access, and Plugins
-use the shared UI-kit rail and scrolling pane. The board header keeps Share
-and the draft actions available across all five sections. Board titles wrap in both
+The picker and opened board use the same rail frame and controls. All boards
+returns focus to the selected row. All sections use the shared UI Kit rail and
+scrolling pane. Access contains Share board. The section header shows draft
+actions when board settings have unsaved changes. Board titles wrap in both
 surfaces, and the definition lists place metadata and row actions below the title
 when the available space cannot fit the desktop columns. Field controls have
 programmatic labels, and the reorder handle and row disclosure each have their
@@ -94,8 +94,9 @@ problem reason. A missing title is shown as Unnamed pack. Valid packs and Empty 
 
 Board settings open in General. The Board setup rail group contains Item types,
 Fields, Links and Workflow. Management contains Access and Plugins. In System, All boards is the first item in the section rail and
-returns the operator to the board directory. The board name heads the rail.
-The section's content header holds Share board, Discard and Review changes.
+returns the operator to the board directory. The directory title, count and
+actions are visible in both states. The board name groups its General settings.
+A draft shows Unsaved changes, Discard and Review changes in the section header.
 Review changes keeps the active section behind the review. Schema changes use
 the existing plan/apply snapshot. Board identity,
 the opening-app binding, sharing and settings for already active plugins use

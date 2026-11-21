@@ -5,7 +5,7 @@ import { PrimeVuePlugin } from '@wippy-fe/theme/primevue-plugin'
 import type { Component } from 'vue'
 import type { ComponentProps } from './types'
 import stylesText from './styles.css?inline'
-interface Events { navigate: { route: string }; 'back-to-boards': Record<string, never>; 'dirty-change': { dirty: boolean } }
+interface Events { navigate: { route: string }; 'back-to-boards': Record<string, never>; 'dirty-change': { dirty: boolean }; 'directory-action': { name: 'create' | 'defaults' } }
 export function element(rootComponent: Component, propsSchema: WippyPropsSchema) {
   return class extends WippyVueElement<ComponentProps, Events> {
     static get wippyConfig(): WippyElementConfig<ComponentProps> {

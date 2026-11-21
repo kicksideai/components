@@ -9,7 +9,7 @@ import { schema } from '../../test/fixtures'
 import VisibilityEditor from './VisibilityEditor.vue'
 import StateSettings from './StateSettings.vue'
 import ApproversEditor from './ApproversEditor.vue'
-import SettingsHead from './SettingsHead.vue'
+import BoardShare from './BoardShare.vue'
 import type { Declaration, Field } from '../../types'
 import { getButton } from '../../test/controls'
 import { clone, requestDeclaration } from './model'
@@ -62,7 +62,7 @@ it('describes state entry requirements and gate visit self-approval accurately',
   expect(a.text()).toContain('The person who moves the item here cannot approve this visit')
 })
 it('uses the shared Share widget and reports a saved access change', async () => {
-  const w = mount(SettingsHead, { props: { title: 'General', description: 'What is this board for?', board: { board_id: 'board/a', title: 'Delivery' }, authorized: true, busy: false } }); wrappers.push(w)
+  const w = mount(BoardShare, { props: { board: { board_id: 'board/a', title: 'Delivery' }, busy: false } }); wrappers.push(w)
   await getButton(w, 'Share board').trigger('click'); await flushPromises()
   const share = w.get('kickside-share')
   expect(JSON.parse(share.attributes('config')!)).toEqual({ resource_id: 'board/a', title: 'Delivery', access_url: '/api/v1/component-access/grants/board%2Fa', share_url: '/api/v1/component-access/share/board%2Fa' })

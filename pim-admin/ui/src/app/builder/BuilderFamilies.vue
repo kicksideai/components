@@ -112,11 +112,10 @@ function setContext(r: RequirementDecl, dim: string, member: string) {
 
 <template>
   <div class="pim-stack">
-    <div class="form pim-card-body pad pim-ia-action">
-      <div><h3>Product families</h3><p>Choose what to collect, what varies between versions, and what products need before release.</p></div>
-      <AddSchemaCode v-if="canEdit" label="Family name" action="Add family" from-name :existing="families.map(item => item.code)" @add="add" />
-    </div>
     <DefinitionList :count="families.length" :columns="['details']">
+      <template v-if="canEdit" #head>
+        <AddSchemaCode label="Family name" action="Add family" from-name :existing="families.map(item => item.code)" @add="add" />
+      </template>
     <DefinitionRow v-for="f in families" :key="f.code" v-model:open="open[f.code]" :title="humanize(f.code)">
       <template #details>
         <span class="muted small">{{ attributesOf(f).length }} fields</span>

@@ -7,6 +7,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import ListRail from '@kickside/ui-kit/ListRail.vue'
+import SettingsDirectoryActions from '@kickside/ui-kit/SettingsDirectoryActions.vue'
 import { Icon } from '@iconify/vue'
 import CreateBoard from '../CreateBoard.vue'
 import { ensureTag } from '../mount'
@@ -39,18 +40,25 @@ function select(id: string, focus = true) {
   currentBoard.value = selected.value = id
 }
 async function backToBoards() {
-  if (!await mayLeave()) return
+  if (!await mayLeave()) return false
   dirty.value = false
   selected.value = ''
   await nextTick()
   const target = list.value?.querySelector<HTMLButtonElement>('[aria-current="true"]') ?? searchField.value?.querySelector('input')
   target?.focus()
+  return true
 }
 function createBoard() {
   offerDirectOpen = false
   creating.value = true
 }
-function defaults() { host.navigate('/system/settings') }
+async function directoryAction(action: 'create' | 'defaults') {
+  if (action === 'defaults') {
+    if (await mayLeave()) host.navigate('/system/settings')
+    return
+  }
+  if (!selected.value || await backToBoards()) createBoard()
+}
 
 watch(boards, rows => {
   if (currentBoard.value && !rows.some(board => board.board_id === currentBoard.value && canAdmin(board.access))) {
@@ -75,15 +83,10 @@ async function created(id: string) {
 }
 </script>
 <template>
-  <main class="kx-shell work-admin-shell" :class="{ 'work-board-selected': selected }">
-    <ListRail v-if="!selected" class="work-board-directory" title="Boards" :count="hasLoaded ? boards.length : undefined">
+  <main class="kx-shell kx-settings-shell work-admin-shell" :class="{ 'work-board-selected': selected && ready }">
+    <ListRail v-if="!selected || !ready" settings class="work-board-directory" title="Boards" :count="hasLoaded ? boards.length : undefined">
       <template #actions>
-        <Button type="button" text aria-label="Create board" title="Create board" @click="createBoard">
-          <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
-        </Button>
-        <Button type="button" text aria-label="Application defaults" title="Application defaults" @click="defaults">
-          <template #icon><Icon icon="tabler:settings" aria-hidden="true" /></template>
-        </Button>
+        <SettingsDirectoryActions create-label="Create board" @create="directoryAction('create')" @defaults="directoryAction('defaults')" />
       </template>
       <template #toolbar>
         <div ref="searchField" class="picker-search">
@@ -103,7 +106,7 @@ async function created(id: string) {
       </div>
       <ul v-if="boardGroups.length" ref="list" class="picker-list">
         <li v-for="group in boardGroups" :key="group.heading">
-          <h2 class="picker-group">{{ group.heading }}</h2>
+          <h2 v-if="boardGroups.length > 1 || group.heading !== 'Available'" class="picker-group">{{ group.heading }}</h2>
           <ul class="picker-list">
             <li v-for="board in group.boards" :key="board.board_id">
               <button type="button" class="picker-row work-rail-row"
@@ -121,6 +124,7 @@ async function created(id: string) {
     </ListRail>
     <section ref="detail" class="work-admin-main" aria-label="Board settings detail" tabindex="-1">
       <kickside-work-board-settings v-if="selected && ready" :key="selected" :board-id="selected" embedded="true" :focus-back="String(focusBack)"
+        :directory-count="hasLoaded ? boards.length : undefined" @directory-action="directoryAction($event.detail.name)"
         @back-to-boards="backToBoards" @dirty-change="dirty = $event.detail.dirty" />
       <p v-else-if="selected && widgetLoading" class="kx-loading" role="status">Loading board settings…</p>
       <p v-else-if="selected" class="kx-err" role="alert">Board settings are unavailable.<Button label="Back to boards" severity="secondary" text @click="backToBoards" /><Button label="Reload settings" severity="secondary" outlined @click="loadSettings"><template #icon><Icon icon="tabler:refresh" /></template></Button></p>

@@ -22,23 +22,20 @@ import ProcessEditor from './ProcessEditor.vue'
 import ProcessMigration from './ProcessMigration.vue'
 import RelationsEditor from './RelationsEditor.vue'
 import PluginsEditor from './PluginsEditor.vue'
-import SettingsActions from './SettingsActions.vue'
-import SettingsHead from './SettingsHead.vue'
-import SectionSummary from './SectionSummary.vue'
+import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
+import SettingsDraftActions from '@kickside/ui-kit/SettingsDraftActions.vue'
+import SettingsDirectoryActions from '@kickside/ui-kit/SettingsDirectoryActions.vue'
 import BoardAccessSettings from './BoardAccessSettings.vue'
 import GeneralSettings from './GeneralSettings.vue'
 import { stateTitle } from './process'
 import SchemaReview from './SchemaReview.vue'
 import PackReview from './PackReview.vue'
 import { availablePack, planUpgrade, upgradeRequest, type AvailablePack, type PackPlan, type PackRequest } from '../../packs'
-const props = defineProps<{ boardId: string; embedded?: boolean; focusBack?: boolean }>()
-const emit = defineEmits<{ 'dirty-change': [dirty: boolean] }>()
+const props = defineProps<{ boardId: string; embedded?: boolean; focusBack?: boolean; directoryCount?: number }>()
+const emit = defineEmits<{ 'dirty-change': [dirty: boolean]; 'directory-action': [name: 'create' | 'defaults'] }>()
 const go = useNavigate()
 const draftForm = useId()
 const pane = ref<HTMLElement>()
-const head = ref<InstanceType<typeof SettingsHead>>()
-const grantsVersion = ref(0)
-function shared() { grantsVersion.value++; void load() }
 let resetGeneration: number | undefined, resetDraft = ''
 const draftSnapshot = () => JSON.stringify([request.value, configs.value, packRequest.value, [...invalid.value]])
 type Section = 'General' | 'Item types' | 'Fields' | 'Links' | 'Workflow' | 'Access' | 'Plugins'
@@ -75,7 +72,7 @@ const sectionDescriptions: Record<Section, string> = {
   'Item types': 'Choose the fields, parent relationships and workflow for each kind of work.',
   Fields: 'Choose what information people can capture on items.',
   Links: 'Show relationships on both items, such as “Blocks” and “Blocked by.”',
-  Workflow: 'How does work move?',
+  Workflow: 'Select a state or transition to edit how work moves.',
   Access: 'Who can use this board?',
   Plugins: 'Choose which plugins this board uses.',
 }
@@ -99,7 +96,6 @@ const settingsGroups = computed(() => authorized.value && schema.value ? [
   { heading: board.value?.title || 'Board settings', items: [{ value: 'General', label: 'General', icon: 'tabler:settings' }] },
   ...sectionGroups,
 ] : [])
-const guardedTransitions = computed(() => processes.value.flatMap(p => p.transitions ?? []).filter(t => t.when || t.guards?.length || t.require?.length).length)
 const stateCounts = ref<Awaited<ReturnType<typeof work.stateCounts>>>()
 const countsError = ref(false)
 const beginCounts = latestRequest()
@@ -328,26 +324,25 @@ let stop = () => {}
 watch(() => props.boardId, id => { stop(); stop = on(`component.${id}`, () => { void load() }) }, { immediate: true })
 useHostVisibilityRefresh(load)
 onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
-// Chromium preserves focus-visible when a pointer clicks the already focused button.
-function focusRailWithPointer(event: PointerEvent) {
-  if (event.button === 0 && event.target instanceof Element) {
-    event.target.closest<HTMLButtonElement>('.kx-settings-rail-item:focus-visible')?.blur()
-  }
-}
 </script>
 <template>
   <section class="work-settings-shell work-ia" :class="{ 'work-embedded': embedded }">
     <div class="work-section-layout">
-      <SettingsRail ref="rail" label="Board settings sections" :value="tab"
-        :groups="settingsGroups" :leading-item="allBoards" @update:value="selectSection" @pointerdown="focusRailWithPointer" />
+      <SettingsRail ref="rail" label="Board settings sections" :value="tab" :title="embedded ? 'Boards' : undefined" :count="directoryCount"
+        :groups="settingsGroups" :leading-item="allBoards" @update:value="selectSection">
+        <template v-if="embedded" #actions>
+          <SettingsDirectoryActions create-label="Create board" @create="emit('directory-action', 'create')" @defaults="emit('directory-action', 'defaults')" />
+        </template>
+      </SettingsRail>
       <div class="kx-main">
         <div ref="pane" class="kx-main-scroll work-settings-content" role="region" :aria-label="tab">
-          <SettingsHead v-if="authorized && schema" ref="head" :title="tab" :description="sectionDescriptions[tab]"
-            :board="board" :authorized="authorized" :busy="busy" @shared="shared">
-            <SettingsActions :dirty="dirty" :busy="busy" :checking-removal="checkingRemoval"
-              :disabled="!dirty || busy || checkingRemoval || migrationPending || stale || !!invalid.size"
-              @discard="discard" @primary="openReview" />
-          </SettingsHead>
+          <SettingsSectionHead v-if="authorized && schema" :title="tab" :description="sectionDescriptions[tab]">
+            <template v-if="dirty" #actions>
+              <SettingsDraftActions :busy="busy" :discard-disabled="checkingRemoval"
+                :review-disabled="checkingRemoval || migrationPending || stale || !!invalid.size"
+                @discard="discard" @review="openReview" />
+            </template>
+          </SettingsSectionHead>
           <div v-if="error" class="kx-err work-alert-actions">
             <p role="alert">{{ error }}</p>
             <Button label="Retry" severity="secondary" outlined @click="load()" />
@@ -385,19 +380,13 @@ function focusRailWithPointer(event: PointerEvent) {
                   :draft="draft" :guard-removal="guardRemoval" />
 
                 <section v-if="visited.has('Workflow')" v-show="tab === 'Workflow'" class="work-ia-section">
-                  <SectionSummary :facts="[
-                    processes.length + (processes.length === 1 ? ' workflow' : ' workflows'),
-                    processes.reduce((count, process) => count + process.states.length, 0) + ' states',
-                    guardedTransitions + (guardedTransitions === 1 ? ' move has requirements' : ' moves have requirements'),
-                    ...(typeof board?.open_count === 'number' ? [board.open_count + ' open items'] : []),
-                  ]" />
                   <p v-if="countsError" class="work-muted">Item counts are unavailable. <Button label="Reload counts" text @click="loadCounts(boardId)" /></p>
                   <ProcessEditor :board-id="boardId" :draft="draft" :guard-removal="guardRemoval" :issues="issues" :counts="stateCounts" :count-types="schema.declaration.item_types" :guards="options?.guards"
                     @validity="(key, valid) => validity('process:' + key, valid)" />
                 </section>
 
                 <BoardAccessSettings v-if="visited.has('Access')" v-show="tab === 'Access'" :active="tab === 'Access'" :board-id="boardId"
-                  :draft="draft" :grants-version="grantsVersion" @share="head?.share()" @validity="validity('visibility', $event)" />
+                  :draft="draft" :board="board" :busy="busy" @validity="validity('visibility', $event)" />
 
                 <section v-if="visited.has('Plugins')" v-show="tab === 'Plugins'" class="work-ia-section">
                   <PluginsEditor :board-id="boardId" :draft="draft" :schema="latest ?? schema" :options="options?.schema_options.plugins ?? []"

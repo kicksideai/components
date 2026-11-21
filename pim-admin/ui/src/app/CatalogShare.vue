@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { api } from '@wippy-fe/proxy'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { Icon } from '@iconify/vue'
@@ -11,7 +11,6 @@ import { requestGeneration } from '../shared/requests'
 import type { CatalogAccess } from '../types'
 
 const props = defineProps<{ catalogId: string; title: string; access: CatalogAccess }>()
-const emit = defineEmits<{ summary: [value: string] }>()
 const open = ref(false), loading = ref(false), error = ref('')
 const counts = ref<{ people: number; groups: number }>()
 const countsFailed = ref(false)
@@ -28,7 +27,6 @@ const summary = computed(() => {
   const { people, groups } = counts.value
   return people + (people === 1 ? ' person' : ' people') + ' and ' + groups + (groups === 1 ? ' group' : ' groups') + ' with direct access'
 })
-watch(summary, value => emit('summary', value), { immediate: true })
 async function loadGrants() {
   if (!props.access.admin) return
   const read = reads.begin()
@@ -59,7 +57,7 @@ async function share() {
     <section class="form pim-card-body pad pim-ia-action">
       <div>
         <h3>Members and sharing</h3>
-        <p v-if="access.admin">Invite people or groups and choose what they can do in this catalog.</p>
+        <p>{{ summary }}</p>
       </div>
       <Button v-if="access.admin" type="button" label="Share catalog" :loading="loading" @click="share">
         <template #icon><Icon icon="tabler:share" aria-hidden="true" /></template>

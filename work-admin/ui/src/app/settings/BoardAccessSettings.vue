@@ -7,13 +7,13 @@ import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { Icon } from '@iconify/vue'
-import type { Declaration } from '../../types'
+import type { BoardRow, Declaration } from '../../types'
 import { usePrincipalNames } from '../../principals'
-import SectionSummary from './SectionSummary.vue'
+import BoardShare from './BoardShare.vue'
 import VisibilityEditor from './VisibilityEditor.vue'
 
-const props = defineProps<{ boardId: string; draft: Declaration; active: boolean; grantsVersion: number }>()
-defineEmits<{ share: []; validity: [valid: boolean] }>()
+const props = defineProps<{ boardId: string; draft: Declaration; active: boolean; board?: BoardRow; busy: boolean }>()
+defineEmits<{ validity: [valid: boolean] }>()
 interface Grant { subject_id: string; subject_type?: 'user' | 'group'; full_name?: string; email?: string; access_mask: number; owner?: boolean }
 interface Capability { key: string; bit: number; label: string }
 const grants = ref<Grant[]>()
@@ -32,13 +32,6 @@ function memberPermissions(grant: Grant) {
 }
 const grantsError = ref(false)
 const beginRead = latestRequest()
-const facts = computed(() => [
-  ...(grants.value ? [
-    memberPeople.value + (memberPeople.value === 1 ? ' person with direct access' : ' people with direct access'),
-    memberGroups.value + (memberGroups.value === 1 ? ' group with access' : ' groups with access'),
-  ] : [grantsError.value ? 'Member summary unavailable' : 'Loading members…']),
-  props.draft.visibility ? 'Item visibility rules set' : 'No item visibility rules',
-])
 async function load() {
   const current = beginRead()
   grantsError.value = false
@@ -56,21 +49,18 @@ async function load() {
   }
 }
 onUnmounted(() => beginRead())
-watch(() => [props.active, props.boardId, props.grantsVersion], () => { if (props.active) void load() }, { immediate: true })
+watch(() => [props.active, props.boardId], () => { if (props.active) void load() }, { immediate: true })
 </script>
 
 <template>
   <section class="work-ia-section">
-    <SectionSummary :facts="facts" />
     <section class="work-settings-list" aria-labelledby="work-sharing-title">
       <div class="work-settings-row">
         <div class="work-row-main">
           <h3 id="work-sharing-title" class="work-row-title">Members and sharing</h3>
-          <p class="work-muted work-small">Invite people and groups, or change the access they already have.</p>
+          <p v-if="grants" class="work-muted work-small">{{ memberPeople }} {{ memberPeople === 1 ? 'person' : 'people' }} and {{ memberGroups }} {{ memberGroups === 1 ? 'group' : 'groups' }} with direct access</p>
         </div>
-        <Button label="Manage access" severity="secondary" outlined @click="$emit('share')">
-          <template #icon><Icon icon="tabler:users" aria-hidden="true" /></template>
-        </Button>
+        <BoardShare v-if="board" :board="board" :busy="busy" @shared="load" />
       </div>
       <ul v-if="memberPreview.length" class="work-member-preview" aria-label="People and groups with direct access">
         <li v-for="member in memberPreview" :key="member.subject_type + member.subject_id" class="work-settings-row">
@@ -83,7 +73,7 @@ watch(() => [props.active, props.boardId, props.grantsVersion], () => { if (prop
         </li>
       </ul>
       <p v-if="grants && grants.length > memberPreview.length" class="work-settings-row work-muted work-small">
-        See all {{ grants.length }} people and groups in Manage access.
+        See all {{ grants.length }} people and groups under Share board.
       </p>
       <p v-else-if="grants && !grants.length" class="work-settings-row work-muted">No direct grants yet.</p>
       <div v-else-if="grantsError" class="work-settings-row">
@@ -92,7 +82,7 @@ watch(() => [props.active, props.boardId, props.grantsVersion], () => { if (prop
       </div>
       <p v-else-if="!grants" class="work-settings-row work-muted" role="status">Loading members…</p>
     </section>
-    <Disclosure class="work-settings-card work-disclosure" label="Advanced · Item visibility">
+    <Disclosure class="work-settings-card work-disclosure" :label="draft.visibility ? 'Advanced · Item visibility rules set' : 'Advanced · Item visibility'">
       <VisibilityEditor :board-id="boardId" :draft="draft" @validity="$emit('validity', $event)" />
     </Disclosure>
   </section>

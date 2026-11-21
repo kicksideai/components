@@ -176,8 +176,7 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
 
 <template>
   <div class="pim-stack">
-    <div class="form pim-card-body pad pim-ia-action pim-family-filter">
-      <div><h3>Field groups</h3><p>Families share fields through groups. A change to a shared field applies to each family that uses it.</p></div>
+    <div v-if="families.length || (canEdit && !family)" class="pim-ia-action">
       <Select v-if="families.length" v-model="family" aria-label="Show fields for a family" placeholder="All families" :options="familyOptions" option-label="label" option-value="value" append-to="self" />
       <AddSchemaCode v-if="canEdit && !family" label="Field group name" action="Add field group" from-name
         :existing="aspects.map(a => a.namespace)" @add="addAspect" />

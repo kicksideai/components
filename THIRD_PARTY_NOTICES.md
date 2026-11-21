@@ -49,7 +49,7 @@ License: LicenseRef-KickSide-Community-1.0
 
 Lockfiles: `docscout/ui/package-lock.json`
 
-### npm: @kickside/ui-kit@1.7.5
+### npm: @kickside/ui-kit@1.7.6
 
 License: LicenseRef-KickSide-Community-1.0
 

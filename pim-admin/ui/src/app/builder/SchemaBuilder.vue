@@ -12,7 +12,9 @@ import NativeDialog from '../../shared/NativeDialog.vue'
 import CatalogShare from '../CatalogShare.vue'
 import LayoutEditor from '../LayoutEditor.vue'
 import HistoryPanel from '../HistoryPanel.vue'
-import SettingsActions from './SettingsActions.vue'
+import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
+import SettingsDraftActions from '@kickside/ui-kit/SettingsDraftActions.vue'
+import SettingsDirectoryActions from '@kickside/ui-kit/SettingsDirectoryActions.vue'
 import { clone } from '../../state'
 // Schema edits are reviewed and applied together; vocabulary terms save immediately.
 import { computed, nextTick, onUnmounted, ref, useId, watch, type ComponentPublicInstance } from 'vue'
@@ -26,7 +28,7 @@ import BuilderVocabularies from './BuilderVocabularies.vue'
 import BuilderFamilies from './BuilderFamilies.vue'
 import BuilderChannels from './BuilderChannels.vue'
 import BuilderPlugins from './BuilderPlugins.vue'
-import { pluginPending, pluginStatus } from './plugin-state'
+import { pluginPending } from './plugin-state'
 import BuilderPolicy from './BuilderPolicy.vue'
 import BuilderDeclaration from './BuilderDeclaration.vue'
 import { requestGeneration } from '../../shared/requests'
@@ -35,8 +37,8 @@ import { humanize } from '../../forms'
 import { humanLabel } from '../../shared/labels'
 import { presentError, SCHEMA_CONFLICT } from '../../shared/transport'
 
-const props = defineProps<{ catalogId: string; embedded?: boolean; title?: string; catalog?: CatalogRow; backLabel?: string; focusBack?: boolean }>()
-const emit = defineEmits<{ applied: [generation: number]; back: []; 'dirty-changed': [dirty: boolean] }>()
+const props = defineProps<{ catalogId: string; embedded?: boolean; title?: string; catalog?: CatalogRow; backLabel?: string; focusBack?: boolean; directoryCount?: number }>()
+const emit = defineEmits<{ applied: [generation: number]; back: []; 'dirty-changed': [dirty: boolean]; 'directory-action': [name: 'create' | 'defaults'] }>()
 
 const navigation = {
   General: { question: 'What is this catalog for?', items: [
@@ -63,7 +65,6 @@ type Section = keyof typeof navigation
 const section = ref<Section>('General')
 const view = ref('Overview')
 const familyFilter = ref('')
-const accessSummary = ref('')
 const advanced = ref<'defaults' | 'declaration'>()
 const advancedVisible = ref(false)
 const content = ref<HTMLElement>()
@@ -240,9 +241,13 @@ const setupEmpty = computed(() => !fieldCount.value && !groups.value.length && !
 const channels = computed(() => draft.value.channels ?? [])
 const sources = computed(() => draft.value.sources ?? [])
 const activePlugins = computed(() => schema.value?.plugins.filter(plugin => plugin.active) ?? [])
+const productCount = computed(() => props.catalog?.product_count ?? props.catalog?.item_count)
 const overview = computed(() => [
   { section: 'Products' as const, label: 'Product setup', icon: 'tabler:packages',
-    summary: [count(families.value.length, 'family', 'families'), count(fieldCount.value + contributedFields.value, 'field')].join(' · '),
+    summary: [
+      ...(typeof productCount.value === 'number' ? [count(productCount.value, 'product')] : []),
+      count(families.value.length, 'family', 'families'), count(fieldCount.value + contributedFields.value, 'field'),
+    ].join(' · '),
     detail: families.value.map(family => humanize(family.code)).join(', ') || 'Create a family for products that share the same fields.' },
   { section: 'Values' as const, label: 'Allowed values', icon: 'tabler:list-details',
     summary: [count(draft.value.dimensions?.length ?? 0, 'dimension'), count(draft.value.vocabularies?.length ?? 0, 'vocabulary', 'vocabularies')].join(' · '),
@@ -257,52 +262,16 @@ const overview = computed(() => [
 const questions: Record<string, string> = {
   Overview: navigation.General.question,
   History: 'What changed in this catalog?',
-  Families: 'Which product forms and variants can editors use?',
-  Fields: 'What values can products store?',
+  Families: 'Choose what each family collects, how products vary, and what they need before release.',
+  Fields: 'Manage product fields and the groups that families share.',
   'Form layout': 'In what order will editors see fields?',
   Dimensions: 'Where can product values differ?',
   Vocabularies: 'Which terms can product editors choose?',
-  Channels: 'Where can products be published?',
-  Sources: 'Which systems can send product data?',
+  Channels: 'Choose where each family can publish and what products need before release.',
+  Sources: 'Control who can send product updates and which fields each source can change.',
   Access: navigation.Access.question,
   Plugins: navigation.Plugins.question,
 }
-const facts = computed(() => {
-  const data = draft.value
-  switch (view.value) {
-    case 'Overview': {
-      const products = props.catalog?.product_count ?? props.catalog?.item_count
-      return [
-        ...(typeof products === 'number' ? [count(products, 'product')] : []),
-        ...(schema.value?.rebuilding ? ['Updating product readiness'] : []),
-        ...(dirty.value ? ['Unsaved changes are reflected below'] : []),
-      ]
-    }
-    case 'History': return ['Recent catalog settings changes']
-    case 'Families': return [
-      count(families.value.length, 'family', 'families'),
-      count(families.value.filter(family => family.variation?.length).length, 'family with variants', 'families with variants'),
-    ]
-    case 'Fields':
-    case 'Form layout': return [count(fieldCount.value + contributedFields.value, 'field'), count(groups.value.length, 'field group')]
-    case 'Dimensions': return [count(data.dimensions?.length ?? 0, 'dimension')]
-    case 'Vocabularies': return [count(data.vocabularies?.length ?? 0, 'vocabulary', 'vocabularies')]
-    case 'Channels': return [
-      count(data.channels?.length ?? 0, 'channel'),
-      ...(!data.channels?.length ? ['Add a channel to give products a release destination'] : []),
-    ]
-    case 'Sources': return [count(data.sources?.length ?? 0, 'source')]
-    case 'Access': return accessSummary.value ? [accessSummary.value] : []
-    case 'Plugins': return [
-      count(data.plugins?.length ?? 0, 'plugin') + ' selected',
-      (options.value?.plugins.filter(plugin => plugin.installed).length ?? 0) + ' available',
-      count(data.scopes?.length ?? 0, 'filter set') + ' selected',
-      ...(schema.value?.plugins.some(plugin => plugin.active && ['failed', 'config', 'reset', 'paused', 'degraded', 'uninstalled'].includes(pluginStatus(plugin, schema.value!.as_of)?.kind ?? '')) ? ['Some plugins need attention'] : []),
-    ]
-    default: return []
-  }
-})
-
 // request is what Apply sends: the draft plus the removals the sections recorded.
 const request = computed<Declaration>(() => {
   const out = clone(draft.value)
@@ -545,39 +514,33 @@ function remove(kind: keyof RemoveDecl, id: string) {
   if (!list.includes(id)) removed.value = { ...removed.value, [kind]: [...list, id] }
 }
 
-// Chromium preserves focus-visible when a pointer clicks the already focused button.
-function focusRailWithPointer(event: PointerEvent) {
-  if (event.button === 0 && event.target instanceof Element) {
-    event.target.closest<HTMLButtonElement>('.kx-settings-rail-item:focus-visible')?.blur()
-  }
-}
 </script>
 <template>
   <section class="pim-builder" :class="{ embedded }">
     <div class="pim-section-layout">
       <SettingsRail v-if="allCatalogs || (schema && options)" ref="rail" label="Catalog settings sections" :value="view"
-        :groups="settingsGroups" :leading-item="allCatalogs" @update:value="selectView" @pointerdown="focusRailWithPointer" />
+        :title="embedded ? 'Catalogs' : undefined" :count="directoryCount" :groups="settingsGroups" :leading-item="allCatalogs" @update:value="selectView">
+        <template v-if="embedded" #actions>
+          <SettingsDirectoryActions create-label="Create catalog" @create="emit('directory-action', 'create')" @defaults="emit('directory-action', 'defaults')" />
+        </template>
+      </SettingsRail>
       <div class="kx-main">
         <section ref="content" class="kx-main-scroll" :aria-label="view">
-          <header v-if="schema && options" class="system-section-head">
-            <div class="system-section-head-text">
-              <h1>{{ view }}</h1>
-              <p>{{ questions[view] }}</p>
-            </div>
-            <div class="kx-head-actions">
-              <SettingsActions :access="schema.access" :dirty="dirty" :busy="busy" :valid="valid && !stale && schemaDirty"
+          <SettingsSectionHead v-if="schema && options" :title="view" :description="questions[view]">
+            <template v-if="editable && dirty" #actions>
+              <SettingsDraftActions :busy="busy" :review-disabled="!valid || stale || !schemaDirty"
                 @discard="discard" @review="review" />
-            </div>
-          </header>
+            </template>
+          </SettingsSectionHead>
           <div class="pim-builder-main">
             <AdminError v-if="error" ref="errorPanel" :error="error" tabindex="-1">
               <Button v-if="stale" type="button" severity="secondary" outlined size="small" :disabled="busy" @click="reloadSettings">Reload settings</Button>
               <Button v-else-if="!schema || !options" type="button" severity="secondary" outlined size="small" @click="load()">Retry</Button>
             </AdminError>
             <Message v-if="saved" severity="success" role="status">{{ saved }}</Message>
+            <Message v-if="schema?.rebuilding && view === 'Overview'" severity="info" role="status">Updating product readiness</Message>
             <div v-if="loading && (!schema || !options)" class="kx-loading" role="status">Loading catalog settings…</div>
             <fieldset v-else-if="schema && options" class="pim-editor-surface" :disabled="busy" :inert="busy">
-              <p v-if="facts.length" class="muted pim-section-facts">{{ facts.join(' · ') }}</p>
               <Message v-if="!editable" severity="info">You can view this catalog’s settings.</Message>
 
               <div :key="view" class="pim-ia-content">
@@ -618,7 +581,7 @@ function focusRailWithPointer(event: PointerEvent) {
                   <BuilderVocabularies v-else :catalog-id="catalogId" :draft="draft" :schema="schema" @remove="remove" />
                 </template>
                 <BuilderChannels v-else-if="section === 'Channels'" :catalog-id="catalogId" :draft="draft" :schema="schema" :view="view === 'Sources' ? 'sources' : 'channels'" @remove="remove" />
-                <CatalogShare v-else-if="section === 'Access'" :catalog-id="catalogId" :title="title || 'Catalog'" :access="schema.access" @summary="accessSummary = $event" />
+                <CatalogShare v-else-if="section === 'Access'" :catalog-id="catalogId" :title="title || 'Catalog'" :access="schema.access" />
                 <BuilderPlugins v-else :draft="draft" :schema="schema" :options="options" :plugin-configs="pluginConfigs" :stale="stale" @configure="configure" @remove="remove" @reset="resetPlugin"
                   @refresh="refreshPluginStatus(true)" @resume="resumePluginProjection" @review="review" @clear-shell-binding="clearShellBinding" />
               </div>
