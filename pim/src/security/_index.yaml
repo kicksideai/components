@@ -70,6 +70,7 @@ entries:
         - kickside.pim.events:product.deleted
         - kickside.pim.events:product.restored
         - kickside.pim.events:product.purged
+        - kickside.pim.events:asset.reserved
         - kickside.pim.events:assets.reaping
         - kickside.pim.events:term.changed
         - kickside.pim.events:model.release_requested
@@ -243,6 +244,7 @@ entries:
         - kickside.pim.events:product.deleted
         - kickside.pim.events:product.restored
         - kickside.pim.events:product.purged
+        - kickside.pim.events:asset.reserved
         - kickside.pim.events:assets.reaping
         - kickside.pim.events:term.changed
         - kickside.pim.events:product.released

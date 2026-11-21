@@ -230,8 +230,9 @@ type DecisionStatus = "accepted" | "rejected" | "conflict" | "failed"
 type ProposalStatus = "pending" | DecisionStatus
 type ProposalDecidedBody = { proposal_id: string, decision: "accept" | "reject", status: DecisionStatus, result: ApplyResult?,
     actor: string?, at: string? }
+type AssetReserveBody = { asset_id: string, lease_until: string, actor: string?, at: string?, receipt: Receipt? }
 type AssetReapBody = { ids: {string}, actor: string?, at: string?, receipt: Receipt? }
-type EventBody = AssetReapBody | PluginRebuildBody | PluginConfiguredBody | SchemaBody | ProductBody | TermBody | ReleaseBody | WithdrawBody | ModelReleaseBody
+type EventBody = AssetReserveBody | AssetReapBody | PluginRebuildBody | PluginConfiguredBody | SchemaBody | ProductBody | TermBody | ReleaseBody | WithdrawBody | ModelReleaseBody
     | ProposalSubmittedBody | ProposalDecidedBody
 -- External identity makes a retried command idempotent.
 type External = { external_source: string, external_id: string }

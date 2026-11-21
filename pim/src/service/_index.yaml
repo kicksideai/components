@@ -9,9 +9,11 @@ entries:
     method: run
     modules: [funcs, uuid]
     security:
-      policies: [kickside.pim.security:upload_adopt_call, kickside.pim.security:upload_adopt]
+      policies: [kickside.pim.security:upload_adopt_call, kickside.pim.security:upload_adopt, kickside.pim.security:asset_reserve_publish]
     imports:
       component: kickside.component:component
+      clock: kickside.pim:clock
+      writer: kickside.pim.command:writer
       asset_rows: kickside.pim.persist:asset_rows
       locate: kickside.pim.read:locate
       requests: kickside.pim:requests

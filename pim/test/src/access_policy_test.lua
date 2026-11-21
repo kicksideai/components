@@ -80,7 +80,7 @@ local function define()
             local holders: { [string]: integer } = {}
             local members = assert(security.named_scope("kickside.security.groups:members"))
             for _, name in ipairs({ "schema_output_publish", "item_output_publish", "release_output_publish",
-                "withdraw_output_publish", "purge_output_publish", "proposal_submit_publish", "proposal_decide_publish" }) do
+                "withdraw_output_publish", "purge_output_publish", "asset_reserve_publish", "proposal_submit_publish", "proposal_decide_publish" }) do
                 local id = "kickside.pim.security:" .. name
                 local entry = assert(registry.get(id))
                 test.is_true(entry.meta.private == true, name)
@@ -93,7 +93,7 @@ local function define()
                 for _, event in ipairs(resources) do holders[event] = (holders[event] or 0) + 1 end
             end
             local declared = binding.meta.events.output
-            test.eq(#declared, 16)
+            test.eq(#declared, 17)
             test.eq(#binding.meta.events.input, 0)
             local member = security.new_actor("pim-member", {})
             for _, shape in ipairs(declared) do

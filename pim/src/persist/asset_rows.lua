@@ -4,14 +4,10 @@ local time = require("time")
 local types = require("types")
 
 local M = {}
-local GRACE_SECONDS = 15 * 60
-
-function M.reserve(db: types.Executor, catalog: string, id: string): (string?, error?)
-    local lease = clock.offset(GRACE_SECONDS)
+function M.reserve(db: types.Executor, catalog: string, id: string, lease: string): error?
     local _, err = db:execute("INSERT INTO kickside_pim_asset (catalog_id, asset_id, due_at) VALUES ($1,$2,$3)",
         {catalog, id, lease})
-    if err then return nil, err end
-    return lease, nil
+    return err
 end
 
 function M.adopted(db: types.Executor, catalog: string, id: string): error?

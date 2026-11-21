@@ -133,7 +133,7 @@ local function define()
             end
         end)
 
-        test.it("publishes ports for public catalog events and keeps the asset fence internal", function()
+        test.it("publishes ports for public catalog events and keeps asset lifecycle events internal", function()
             local binding = assert(registry.get("kickside.pim.binding:catalog"))
             local outputs = {}
             local internal = {}
@@ -142,8 +142,10 @@ local function define()
                 if event.meta.internal == true then internal[#internal + 1] = o.type
                 else outputs[o.type] = true end
             end
-            test.eq(#internal, 1)
-            test.eq(internal[1], "kickside.pim.events:assets.reaping")
+            test.eq(#internal, 2)
+            table.sort(internal)
+            test.eq(internal[1], "kickside.pim.events:asset.reserved")
+            test.eq(internal[2], "kickside.pim.events:assets.reaping")
             local ports = assert(registry.find({ [".kind"] = "registry.entry", ["meta.type"] = "kickside.automation.port" }))
             local seen = {}
             for _, p in ipairs(ports) do

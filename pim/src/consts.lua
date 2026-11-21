@@ -27,6 +27,7 @@ M.EVENTS = {
     PRODUCT_MOVED = NS .. "product.moved",
     PRODUCT_DELETED = NS .. "product.deleted",
     PRODUCT_RESTORED = NS .. "product.restored",
+    ASSET_RESERVED = NS .. "asset.reserved",
     ASSETS_REAPING = NS .. "assets.reaping",
     PRODUCT_PURGED = NS .. "product.purged",
     TERM_CHANGED = NS .. "term.changed",

@@ -451,7 +451,7 @@ end
 -- FOLDED lists the event types the catalog projection folds.
 local FOLDED: { [string]: boolean } = {
     [EV.MODEL_RELEASE_REQUESTED] = true, [EV.SCHEMA_APPLIED] = true, [EV.TERM_CHANGED] = true, [EV.PRODUCT_RELEASED] = true, [EV.PRODUCT_WITHDRAWN] = true,
-    [EV.PROPOSAL_SUBMITTED] = true, [EV.PROPOSAL_DECIDED] = true, [EV.ASSETS_REAPING] = true,
+    [EV.PROPOSAL_SUBMITTED] = true, [EV.PROPOSAL_DECIDED] = true, [EV.ASSETS_REAPING] = true, [EV.ASSET_RESERVED] = true,
 }
 for t in pairs(PRODUCT_EVENTS) do FOLDED[t] = true end
 
@@ -488,6 +488,10 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
                     return proposal_rows.submit(tx, catalog_id, step.body :: types.ProposalSubmittedBody)
                 end
                 return proposal_rows.decide(tx, catalog_id, step.body :: types.ProposalDecidedBody)
+            end
+            if step.type == EV.ASSET_RESERVED then
+                if not catalog then return failure.corrupt("catalog event before its schema") end
+                return asset_rows.reserve(tx, catalog_id, step.body.asset_id :: string, step.body.lease_until :: string)
             end
             if step.type == EV.ASSETS_REAPING then
                 if not catalog then return failure.corrupt("catalog event before its schema") end
