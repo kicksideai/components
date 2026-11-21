@@ -62,6 +62,15 @@ function M.channel_seen(db: types.Executor, catalog_id: string, channel: string)
     return #(rows or {}) > 0, nil
 end
 
+function M.publication_state(db: types.Executor, catalog_id: string, product_id: string, channel: string): (string?, error?)
+    local rows, err = db:query("SELECT state FROM kickside_pim_publication WHERE catalog_id = $1 AND channel = $2 AND product_id = $3",
+        { catalog_id, channel, product_id })
+    if err then return nil, errors.wrap(err, "publication state read failed") end
+    local row = rows and rows[1]
+    if not row then return nil, nil end
+    return store.need(row, "state")
+end
+
 function M.publication_floor(db: types.Executor, catalog_id: string, channel: string, after: types.PublicationCursor): (types.Row?, error?)
     local seen = after.expiry_floor or { seq = 0, product_id = "" }
     local rows, err = db:query([[WITH floor AS (

@@ -10,4 +10,6 @@ return {
     feed_page = 500,
     count = 10000,
     scan = 200000,
+    wait_max_ms = 60000,
+    wait_default_ms = 30000,
 }

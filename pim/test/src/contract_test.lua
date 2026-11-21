@@ -17,7 +17,8 @@ type Map = { [string]: unknown }
 
 local METHODS = { "create", "list", "update", "get_schema", "plan_schema", "apply_schema", "get", "query", "list_history", "apply", "propose",
     "decide", "list_proposals", "release", "withdraw", "rebuild",
-    "list_links", "explain", "list_changes", "list_publications", "get_release", "list_releases", "list_terms", "schema_options" }
+    "list_links", "explain", "list_changes", "list_publications", "get_release", "get_model_release", "wait_for_product",
+    "list_releases", "list_terms", "schema_options" }
 
 local function define()
     test.describe("request parsing", function()
@@ -69,8 +70,18 @@ local function define()
             local outcome = (released.outcomes :: { Map })[1]
             test.not_nil(outcome.release_id, tostring(outcome.outcome))
             shaped("get_release", { release_id = outcome.release_id })
+            local matched = shaped("wait_for_product", { product = { sku = sku }, predicate = { status = "active" } })
+            test.eq(matched.status, "matched")
+            local timed = shaped("wait_for_product", { product = { sku = sku }, predicate = { status = "archived" },
+                cursor = matched.cursor, timeout_ms = 100 })
+            test.eq(timed.status, "timed_out")
+            test.is_nil(timed.product)
             shaped("list_releases", { product = { sku = sku } })
             shaped("withdraw", { items = { { product = { sku = sku } } } })
+            local queued = shaped("release", { items = { { product = { sku = "RDG" }, expect_version = steps.version(h, "RDG") } } })
+            local intent = (queued.outcomes :: { Map })[1]
+            test.eq(intent.outcome, "queued")
+            test.eq(shaped("get_model_release", { request_id = intent.request_id }).job_id, intent.job_id)
         end)
 
         test.it("carries the caller's trace context onto the events it appends", function()
@@ -103,6 +114,10 @@ local function define()
                 { "release", { items = { { product = { sku = 5 } } } } },
                 { "decide", { proposal_id = 5, decision = "accept" } },
                 { "query", { limit = 1.5 } },
+                { "get_model_release", { request_id = "" } },
+                { "wait_for_product", { product = { sku = "RDG" }, predicate = { status = "active", complete = { locale = "en" } } } },
+                { "wait_for_product", { product = { sku = "RDG" }, predicate = { complete = { locale = "en", channel = "web" } } } },
+                { "wait_for_product", { product = { sku = "RDG" }, predicate = { status = "active" }, timeout_ms = 60001 } },
             } :: { { unknown } }) do
                 local op = case[1] :: string
                 local out, err = h.call(op, case[2])

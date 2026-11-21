@@ -63,6 +63,7 @@ entries:
         - kickside.pim.blocks:query_products
         - kickside.pim.blocks:apply
         - kickside.pim.blocks:release
+        - kickside.pim.blocks:wait_for_product
       actions:
         - registry.get
         - registry.find
@@ -138,7 +139,9 @@ entries:
         - kickside.pim.api:list_releases
         - kickside.pim.api:list_releases.endpoint
         - kickside.pim.api:get_release
+        - kickside.pim.api:get_model_release
         - kickside.pim.api:get_release.endpoint
+        - kickside.pim.api:get_model_release.endpoint
         - kickside.pim.api:withdraw
         - kickside.pim.api:withdraw.endpoint
         - kickside.pim.api:rebuild
@@ -160,10 +163,12 @@ entries:
         - kickside.pim.blocks:query_products
         - kickside.pim.blocks:apply
         - kickside.pim.blocks:release
+        - kickside.pim.blocks:wait_for_product
         - kickside.pim.blocks:get_product.run
         - kickside.pim.blocks:query_products.run
         - kickside.pim.blocks:apply.run
         - kickside.pim.blocks:release.run
+        - kickside.pim.blocks:wait_for_product.run
         - kickside.pim.command:threads
         - kickside.pim.command:pipeline
         - kickside.pim.command:items
@@ -273,6 +278,7 @@ entries:
         - kickside.pim.portability:result
         - kickside.pim.read:access
         - kickside.pim.read:reader
+        - kickside.pim.read:wait
         - kickside.pim.read:feeds
         - kickside.pim.read:releases
         - kickside.pim.read:locate
@@ -305,6 +311,8 @@ entries:
         - kickside.pim.service:list_changes
         - kickside.pim.service:list_publications
         - kickside.pim.service:get_release
+        - kickside.pim.service:get_model_release
+        - kickside.pim.service:wait_for_product
         - kickside.pim.service:list_terms
         - kickside.pim.service:schema_options
         - kickside.pim.service:list_releases
@@ -373,6 +381,7 @@ entries:
         - kickside.pim.api:list_changes.endpoint
         - kickside.pim.api:list_publications.endpoint
         - kickside.pim.api:get_release.endpoint
+        - kickside.pim.api:get_model_release.endpoint
         - kickside.pim.api:list_releases.endpoint
         - kickside.pim.api:list_terms.endpoint
         - kickside.pim.api:schema_options.endpoint
@@ -493,6 +502,8 @@ entries:
       - kickside.pim.traits:list_proposals
       - kickside.pim.traits:list_releases
       - kickside.pim.traits:get_release
+      - kickside.pim.traits:get_model_release
+      - kickside.pim.traits:wait_for_product
       - kickside.pim.traits:list_publications
       - kickside.pim.traits:list_changes
       - kickside.pim.traits:apply

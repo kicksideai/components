@@ -121,6 +121,8 @@ entries:
           list_changes: kickside.pim.service:list_changes
           list_publications: kickside.pim.service:list_publications
           get_release: kickside.pim.service:get_release
+          get_model_release: kickside.pim.service:get_model_release
+          wait_for_product: kickside.pim.service:wait_for_product
           list_releases: kickside.pim.service:list_releases
           list_terms: kickside.pim.service:list_terms
           schema_options: kickside.pim.service:schema_options

@@ -120,6 +120,10 @@ entries:
     method: GET
     path: /pim/catalogs/{id}/releases/{release_id}
     access: READ
+  - operation: get_model_release
+    method: GET
+    path: /pim/catalogs/{id}/model-releases/{request_id}
+    access: READ
   - operation: withdraw
     method: POST
     path: /pim/catalogs/{id}/withdrawals

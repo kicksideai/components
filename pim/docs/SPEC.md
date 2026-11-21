@@ -1417,8 +1417,7 @@ exhausted its scan budget. Residual filters apply only within that budget.
 Reads run in one read snapshot and return `as_of`. PostgreSQL snapshots use
 a read-only repeatable-read transaction; SQLite uses one read transaction.
 An export reads its declaration, terms and every product page in that same
-snapshot. A `min_seq` beyond the committed projection answers `unavailable`
-without waiting. During a rebuild reads report `rebuilding: true`.
+snapshot. During a rebuild snapshot reads report `rebuilding: true`.
 
 Every request is parsed at the service boundary against its method's input
 schema in the contract definition before the method acts; a malformed request
@@ -1441,13 +1440,14 @@ and the number of live products with incompatible values. The compiler checks
 defaults, and restoring a trashed product checks its values against the active
 schema.
 
-Reads serve committed read-model state and never wait on the projection. A read
-naming a `min_seq` the projection has yet to reach answers `unavailable`
-(retryable, `details.code = projection_behind`) at once; commands wait for
-coverage before they answer, so a caller reads its own writes.
+Snapshot reads serve committed read-model state. A snapshot read naming a
+`min_seq` the projection has yet to reach answers `unavailable`
+(retryable, `details.code = projection_behind`) at once. Commands wait for
+coverage before they answer so callers can read their own writes.
+`wait_for_product` can wait for its sequence fence over projection notifications (§12).
 
 HTTP follows the contract: reads are `GET` with query parameters (`/schema`,
-`/product`, `/history`, `/proposals`, `/releases`, `/releases/{release_id}`,
+`/product`, `/history`, `/proposals`, `/releases`, `/releases/{release_id}`, `/model-releases/{request_id}`,
 `/links`, `/explain`, `/changes`, `/publications`), commands and the filter query
 are `POST` (`/schema`, `/schema/plan`, `/query`, `/apply`, `/proposals`,
 `/proposals/{proposal_id}/decision`, `/releases`, `/withdrawals`, `/rebuild`,
@@ -1490,6 +1490,8 @@ The catalog is the security unit: READ sees every item of the catalog.
 | `list_history({ product?, before?, limit? })` | change rows newest first (5.6) |
 | `list_links({ kind, target, cursor?, limit? })` | products referencing a target, for every ref kind (`product`, `term`, `asset`, `component`, link kinds), from `ref(catalog_id, kind, target)` |
 | `get_release({ release_id })` | the immutable snapshot, hash, version, generation and channels |
+| `get_model_release({ request_id })` | queued model-release progress and status in the addressed catalog (§9) |
+| `wait_for_product({ product, predicate, cursor?, min_seq?, timeout_ms? })` | a deadline-bound wait over a live product in the addressed catalog (§12) |
 | `list_releases({ product, before?, limit? })` | a product's immutable release snapshots and metadata, newest first |
 | `get_schema({ generation? })` | the declaration and compiled public parts of the head (including an initially empty schema), or of a past generation; `plugins` is the per-catalog state list in §3.2 |
 | `plugin_context({ catalog_id, plugin })` | contract-only READ; `{ attachment_id, config, lifecycle, projections }` for an active plugin (§3.2) |
@@ -1548,6 +1550,7 @@ the caller can read. ADMIN and WRITE are independent grants, not implied by READ
 | `schema_options` | GET | `/pim/catalogs/{id}/schema/options` | READ |
 | `list_releases` | GET | `/pim/catalogs/{id}/releases` | READ |
 | `get_release` | GET | `/pim/catalogs/{id}/releases/{release_id}` | READ |
+| `get_model_release` | GET | `/pim/catalogs/{id}/model-releases/{request_id}` | READ |
 | `withdraw` | POST | `/pim/catalogs/{id}/withdrawals` | WRITE |
 | `rebuild` | POST | `/pim/catalogs/{id}/rebuild` | ADMIN |
 | `list_links` | GET | `/pim/catalogs/{id}/links` | READ |
@@ -1662,6 +1665,13 @@ backfill commits.
   request over already-published items reaches `done`. A refused item surfaces a
   native error on the Jobs row. Completed tasks expire 180 days after completion;
   abandoned unfinished tasks expire 180 days after request creation.
+  With catalog READ, `get_model_release` takes the queued outcome's `request_id`.
+  It returns the request, model and job ids, plus `after_product` once a page
+  completes. Its status is `queued`, `running`, `done`, `failed`, `cancelled`, or
+  `expired` when the Jobs row has been pruned before the PIM request records
+  completion. `done` means the scan finished and can include items skipped for
+  readiness. A request absent from the addressed catalog returns
+  `model_release_absent`.
 - `withdraw`, trashing and channel removal append or imply withdrawals.
 - An item naming a channel the schema lacks is `invalid` in `release` and `withdraw`.
 - Publication is the only channel-visibility signal. `status` is editorial:
@@ -1745,9 +1755,9 @@ ordered changes and merges bounded pages in the feed's `(updated_seq, product_id
 | `kickside.pim.flow.sink:products` | `kickside.data:writable` | `upsert` items as a registered source; idempotency `sink/(origin, sink_op, key)` |
 | collection ports | `kickside.automation.port` | standalone `kickside.pim.source:products_port`, `publications_port` and `proposals_port` bind their corresponding pullables |
 | event ports | `kickside.automation.port` | one per event type; wake-ups, not state |
-| Blocks | `kickside.block` (`kickside.pim.blocks`) | `get_product`, `query_products`, `apply`, `release`: one function Block per composed contract method; config `catalog_id` through the catalog picker, input = the method's request without it, run as the Flow's caller |
-| Agent tools | `agent.trait` `kickside.pim.traits:pim_readonly` | `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMTerms` → `list_terms`, `PIMQuery` → `query`, `PIMGet` → `get`, `PIMExplain` → `explain`, `PIMHistory` → `list_history`, `PIMLinks` → `list_links`, `PIMProposals` → `list_proposals`, `PIMReleases` → `list_releases`, `PIMReleaseGet` → `get_release`, `PIMPublications` → `list_publications`, `PIMChanges` → `list_changes` |
-| Agent tools | `agent.trait` `kickside.pim.traits:pim_trait` | `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMTerms` → `list_terms`, `PIMQuery` → `query`, `PIMGet` → `get`, `PIMExplain` → `explain`, `PIMHistory` → `list_history`, `PIMLinks` → `list_links`, `PIMProposals` → `list_proposals`, `PIMReleases` → `list_releases`, `PIMReleaseGet` → `get_release`, `PIMPublications` → `list_publications`, `PIMChanges` → `list_changes`, `PIMApply` → `apply`, `PIMPropose` → `propose`, `PIMDecide` → `decide`, `PIMRelease` → `release`, `PIMWithdraw` → `withdraw` |
+| Blocks | `kickside.block` (`kickside.pim.blocks`) | `get_product`, `query_products`, `apply`, `release`: one function Block per composed contract method; config `catalog_id` through the catalog picker, input = the method's request without it, run as the Flow's caller. The Wait for PIM product Block also configures its timeout. |
+| Agent tools | `agent.trait` `kickside.pim.traits:pim_readonly` | `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMTerms` → `list_terms`, `PIMQuery` → `query`, `PIMGet` → `get`, `PIMExplain` → `explain`, `PIMHistory` → `list_history`, `PIMLinks` → `list_links`, `PIMProposals` → `list_proposals`, `PIMReleases` → `list_releases`, `PIMReleaseGet` → `get_release`, `PIMModelReleaseGet` → `get_model_release`, `PIMWaitForProduct` → `wait_for_product`, `PIMPublications` → `list_publications`, `PIMChanges` → `list_changes` |
+| Agent tools | `agent.trait` `kickside.pim.traits:pim_trait` | `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMTerms` → `list_terms`, `PIMQuery` → `query`, `PIMGet` → `get`, `PIMExplain` → `explain`, `PIMHistory` → `list_history`, `PIMLinks` → `list_links`, `PIMProposals` → `list_proposals`, `PIMReleases` → `list_releases`, `PIMReleaseGet` → `get_release`, `PIMModelReleaseGet` → `get_model_release`, `PIMWaitForProduct` → `wait_for_product`, `PIMPublications` → `list_publications`, `PIMChanges` → `list_changes`, `PIMApply` → `apply`, `PIMPropose` → `propose`, `PIMDecide` → `decide`, `PIMRelease` → `release`, `PIMWithdraw` → `withdraw` |
 | Agent tools | `agent.trait` `kickside.pim.traits:pim_admin` | `PIMCatalogCreate` → `create`, `PIMCatalogUpdate` → `update`, `PIMSchemaPlan` → `plan_schema`, `PIMSchemaApply` → `apply_schema`, `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMConfigurePlugin` → `configure_plugin`, `PIMRebuild` → `rebuild` |
 
 Feeds are cursor-resumable over durable state, so a plugin installed a year
@@ -1757,6 +1767,37 @@ later builds its read model from the state feed's beginning. For declared
 position (§3.11). Direct feed consumers remain
 idempotent by `item_key` + `source_version`. The state-feed cursor is independent
 of the event registration position; event history never replays from zero.
+
+### Wait for a product
+
+The **Wait for PIM product** Block and `PIMWaitForProduct` use the caller's catalog
+READ access and resolve one live product by id or SKU. Supply one predicate from this list.
+
+- `{ status = "active" }` matches the exact editorial status (`active`,
+  `draft`, or `archived`).
+- `{ complete = { channel = "web" } }` requires an item carried by the channel
+  and complete on every requirement set named by it.
+- `{ complete = { locale = "en" } }` requires an item complete on at least one
+  applicable requirement context and on all other applicable contexts. A context
+  applies if its locale matches or if it is independent of locale. Completeness
+  evaluates required and authored values with normal inheritance and fallback.
+  Release commands also evaluate family checks and editorial status.
+- `{ publication = { channel = "web", state = "published" } }` matches the
+  recorded `published` or `withdrawn` state for the item and channel.
+
+The wait reads the current product at the committed catalog sequence and
+rechecks on Core projection cursor notifications. Each check reads one product
+and the data for its predicate. Publication-only changes can wake the wait even
+when the product's version is unchanged. The wait accepts the change feed's
+`{ seq, product_id, expiry_floor? }` cursor and optional `min_seq` as sequence
+fences. It preserves the cursor's expiry floor. Each observation checks the
+current snapshot, so an older cursor can resume across trimmed feed history.
+Use the returned cursor for another wait on the same product and catalog.
+
+The default timeout is 30,000 ms and the accepted range is 1–60,000 ms. The Block
+sets `catalog_id` and `timeout_ms` in config. The result and its Block port are
+`matched` or `timed_out`. Both return a cursor, and a match includes the product
+id, SKU, status and version.
 
 ## 13. Access
 

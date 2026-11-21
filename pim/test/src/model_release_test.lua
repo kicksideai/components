@@ -14,6 +14,20 @@ local function await_done(job_id: string)
     test.eq(assert(jobs.get_job(job_id)).status, "done")
 end
 
+local function queue_fixture(catalog_id: string, scheduled_at: string?): string
+    local db = assert(store.open())
+    local tx = assert(db:begin())
+    local request_id = "release-status"
+    local job = assert(jobs.enqueue_tx(tx, db:type(), { namespace = "pim", scope = catalog_id, key = request_id,
+        owner_locator = { kind = "component", id = catalog_id }, job_type = "kickside.pim.jobs:release_model",
+        max_attempts = 1, scheduled_at = scheduled_at, immutable_payload = { catalog_id = catalog_id, request_id = request_id } }))
+    assert(tx:execute([[INSERT INTO kickside_pim_release_job (catalog_id, request_id, model_id, root, identity, job_id, after_product, done)
+        VALUES ($1, $2, 'model', 1, '{}', $3, 'last-on-page', 0)]], { catalog_id, request_id, job.id }))
+    assert(tx:commit())
+    assert(db:release())
+    return job.id :: string
+end
+
 local function define()
     test.describe("model release jobs", function()
         test.it("returns one job for the same model version within a batch and across active requests", function()
@@ -134,6 +148,16 @@ local function define()
             local replay = assert(requester.call("release", request, h.id))
             test.eq(replay.outcomes[1].job_id, job_id)
             test.is_true(replay.replayed)
+            local ref = { request_id = first.outcomes[1].request_id }
+            local status, status_err = requester.call("get_model_release", ref, h.id)
+            assert(status, tostring(status_err))
+            test.eq(status.job_id, job_id)
+            test.eq(status.request_id, ref.request_id)
+            test.eq(status.model_id, model.product_id)
+            local elsewhere = scoped.catalog(requester)
+            local missing, missing_err = elsewhere.call("get_model_release", ref)
+            test.is_nil(missing)
+            test.eq(missing_err:kind(), errors.NOT_FOUND)
             local count = 0
             for _ = 1, 200 do
                 count = #assert(h.call("list_publications", { channel = "web" })).items
@@ -151,6 +175,9 @@ local function define()
             assert(db:release())
             test.eq(count, 5)
             test.eq(assert(jobs.get_job(job_id)).status, "done")
+            local completed = assert(requester.call("get_model_release", ref, h.id))
+            test.eq(completed.status, "done")
+            test.not_nil(completed.after_product)
             test.eq(assert(jobs.get_job(job_id)).job_type, "kickside.pim.jobs:release_model")
             test.eq(#assert(h.call("list_releases", { product = { sku = "RDG-moss-40" } })).releases, 0)
             local history = assert(h.call("list_history", { limit = 10 }))
@@ -162,6 +189,38 @@ local function define()
                 end
             end
             test.eq(released, 5)
+        end)
+
+        test.it("exposes queued page progress and cancellation to catalog readers over HTTP", function()
+            local owner, reader = scoped.member(), scoped.member()
+            local h = scoped.catalog(owner)
+            assert(h.call("grant", { subject_id = reader.id, mask = 1 }))
+            local job_id = queue_fixture(h.id, "2090-01-01T00:00:00Z")
+            local request = { request_id = "release-status" }
+            local queued = reader.invoke(h.id, "get_model_release", request)
+            test.eq(queued.status, 200)
+            test.eq(queued.body.data.job_id, job_id)
+            test.eq(queued.body.data.status, "queued")
+            test.eq(queued.body.data.after_product, "last-on-page")
+            test.is_nil(queued.body.data.identity)
+            test.is_true(assert(jobs.cancel(job_id)).canceled)
+            test.eq(assert(reader.call("get_model_release", request, h.id)).status, "cancelled")
+        end)
+
+        test.it("reports a terminal worker failure through the catalog contract", function()
+            local h = fixture.catalog()
+            local job_id = queue_fixture(h.id, nil)
+            local _, err = jobs.nudge_workers()
+            test.is_nil(err, tostring(err))
+            local until_time = time.now():add(10 * time.SECOND)
+            local status = assert(h.call("get_model_release", { request_id = "release-status" }))
+            while status.status ~= "failed" and time.now():before(until_time) do
+                time.sleep("50ms")
+                status = assert(h.call("get_model_release", { request_id = "release-status" }))
+            end
+            test.eq(status.status, "failed")
+            test.eq(status.job_id, job_id)
+            test.eq(status.after_product, "last-on-page")
         end)
     end)
 end

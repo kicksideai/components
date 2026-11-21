@@ -12,6 +12,7 @@ local locate = require("locate")
 local requests = require("requests")
 local plugin_feed = require("plugin_feed")
 local types = require("types")
+local wait = require("wait")
 
 local M = {}
 
@@ -162,6 +163,14 @@ end)
 
 M.get_release = with_catalog("get_release", function(id: string, input: unknown): (types.GetReleaseResult?, error?)
     return release_reads.get_release(id, input :: types.GetReleaseRequest)
+end)
+
+M.get_model_release = with_catalog("get_model_release", function(id: string, input: unknown): (types.ModelReleaseResult?, error?)
+    return release_reads.get_model_release(id, input :: types.ModelReleaseRequest)
+end)
+
+M.wait_for_product = with_catalog("wait_for_product", function(id: string, input: unknown): (types.WaitProductResult?, error?)
+    return wait.product(id, input :: types.WaitProductRequest)
 end)
 
 M.list_releases = with_catalog("list_releases", function(id: string, input: unknown): (types.ReleasesResult?, error?)

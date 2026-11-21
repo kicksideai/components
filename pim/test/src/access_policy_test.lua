@@ -28,6 +28,7 @@ local ENDPOINTS = {
     ["kickside.pim.api:list_changes.endpoint"] = true,
     ["kickside.pim.api:list_publications.endpoint"] = true,
     ["kickside.pim.api:get_release.endpoint"] = true,
+    ["kickside.pim.api:get_model_release.endpoint"] = true,
     ["kickside.pim.api:list_releases.endpoint"] = true,
     ["kickside.pim.api:list_terms.endpoint"] = true,
     ["kickside.pim.api:schema_options.endpoint"] = true,

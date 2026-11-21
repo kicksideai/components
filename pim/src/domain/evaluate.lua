@@ -68,9 +68,10 @@ local function label(ctx: types.Ctx): string
 end
 
 -- requirement returns the findings of one requirement set for an item.
-function M.requirement(compiled: types.Compiled, item: types.Product, lineage: types.Lineage, req: types.Requirement): { types.Finding }
+function M.requirement(compiled: types.Compiled, item: types.Product, lineage: types.Lineage, req: types.Requirement,
+    contexts: { types.Ctx }?): { types.Finding }
     local findings: { types.Finding } = {}
-    for _, ctx in ipairs(req.contexts) do
+    for _, ctx in ipairs(contexts or req.contexts) do
         for _, code in ipairs(req.require) do
             local attr = compiled.attributes[code]
             local r = attr and resolve.resolve(compiled, item, lineage, attr, ctx)
@@ -87,6 +88,24 @@ function M.requirement(compiled: types.Compiled, item: types.Product, lineage: t
         end
     end
     return findings
+end
+
+-- locale_complete checks the family's applicable requirements for one locale.
+-- A requirement without a locale applies in every locale.
+function M.locale_complete(compiled: types.Compiled, item: types.Product, lineage: types.Lineage, locale: string): boolean
+    local applicable = false
+    local family = compiled.families[item.family]
+    for _, req in ipairs(family.requirements) do
+        local contexts: { types.Ctx } = {}
+        for _, ctx in ipairs(req.contexts) do
+            if not ctx.locale or ctx.locale == locale then contexts[#contexts + 1] = ctx end
+        end
+        if #contexts > 0 then
+            applicable = true
+            if #M.requirement(compiled, item, lineage, req, contexts) > 0 then return false end
+        end
+    end
+    return applicable
 end
 
 -- item returns findings per requirement set of the item's family; view-wide

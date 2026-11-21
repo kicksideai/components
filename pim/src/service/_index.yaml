@@ -21,6 +21,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -51,6 +52,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -67,6 +69,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -85,6 +88,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -101,6 +105,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -119,6 +124,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -139,6 +145,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -155,6 +162,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -171,6 +179,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -187,6 +196,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -206,6 +216,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -224,6 +235,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -244,6 +256,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -260,6 +273,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -279,6 +293,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -298,6 +313,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -314,6 +330,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -330,6 +347,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -346,6 +364,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -362,6 +381,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -378,6 +398,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -394,6 +415,41 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
+      requests: kickside.pim:requests
+      plugin_feed: kickside.pim.extensions:plugin_feed
+
+  - name: get_model_release
+    kind: function.lua
+    meta: { comment: "kickside.pim:catalog get_model_release." }
+    source: file://catalog.lua
+    method: get_model_release
+    imports:
+      writer: kickside.pim.command:writer
+      reader: kickside.pim.read:reader
+      create: kickside.pim.command:create
+      locate: kickside.pim.read:locate
+      types: kickside.pim:types
+      feeds: kickside.pim.read:feeds
+      release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
+      requests: kickside.pim:requests
+      plugin_feed: kickside.pim.extensions:plugin_feed
+
+  - name: wait_for_product
+    kind: function.lua
+    meta: { comment: "kickside.pim:catalog wait_for_product." }
+    source: file://catalog.lua
+    method: wait_for_product
+    imports:
+      writer: kickside.pim.command:writer
+      reader: kickside.pim.read:reader
+      create: kickside.pim.command:create
+      locate: kickside.pim.read:locate
+      types: kickside.pim:types
+      feeds: kickside.pim.read:feeds
+      release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -410,6 +466,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -428,6 +485,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -444,6 +502,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
   - name: configure_plugin
@@ -463,6 +522,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -481,6 +541,7 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
 
@@ -499,5 +560,6 @@ entries:
       types: kickside.pim:types
       feeds: kickside.pim.read:feeds
       release_reads: kickside.pim.read:releases
+      wait: kickside.pim.read:wait
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed

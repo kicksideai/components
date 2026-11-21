@@ -15,7 +15,8 @@ local M = {}
 local CATALOG_METHODS = { create = true, list = true, get_catalog = true, update = true, get_schema = true, plan_schema = true, apply_schema = true, get = true,
     query = true, list_history = true, apply = true, propose = true, decide = true, list_proposals = true, release = true, withdraw = true, rebuild = true,
     list_links = true, explain = true, list_changes = true, list_publications = true, get_release = true, list_releases = true, list_terms = true,
-    schema_options = true, configure_plugin = true, plugin_feed = true, plugin_context = true }
+    schema_options = true, configure_plugin = true, plugin_feed = true, plugin_context = true,
+    get_model_release = true, wait_for_product = true }
 
 type Service = { [string]: (Service, unknown) -> (unknown, error?) }
 

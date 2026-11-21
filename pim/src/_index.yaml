@@ -131,6 +131,8 @@ entries:
         path: .meta.router
       - entry: kickside.pim.api:get_release.endpoint
         path: .meta.router
+      - entry: kickside.pim.api:get_model_release.endpoint
+        path: .meta.router
       - entry: kickside.pim.api:list_releases.endpoint
         path: .meta.router
       - entry: kickside.pim.api:list_terms.endpoint

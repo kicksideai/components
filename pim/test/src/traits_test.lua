@@ -158,6 +158,9 @@ local function define()
             local release = call("release", { items = { { product = { id = product.product_id }, expect_version = product.version, channels = { "web" } } } }).outcomes[1]
             test.eq(release.outcome, "released")
             test.eq(call("get_release", { release_id = release.release_id }).release.release_id, release.release_id)
+            local waited = call("wait_for_product", { product = { id = product.product_id }, predicate = { publication = { channel = "web", state = "published" } } })
+            test.eq(waited.status, "matched")
+            test.eq(waited.product.product_id, product.product_id)
             test.eq(call("list_releases", { product = { id = product.product_id } }).releases[1].release_id, release.release_id)
             test.eq(call("list_publications", { channel = "web" }).items[1].product_id, product.product_id)
             test.is_true(#call("list_changes", {}).items > 0, "changes are listed")
@@ -167,6 +170,12 @@ local function define()
             test.is_true(#call("list_links", { kind = "product", target = product.product_id }).items > 0, "references are listed")
             call("withdraw", { items = { { product = { id = product.product_id }, channels = { "web" } } } })
             test.eq(assert(h.call("get", { product = { id = product.product_id } })).publications[1].state, "withdrawn")
+            local model = assert(h.call("get", { product = { sku = "RDG" } })).product
+            local queued = call("release", { items = { { product = { id = model.product_id }, expect_version = model.version } } }).outcomes[1]
+            test.eq(queued.outcome, "queued")
+            local status = call("get_model_release", { request_id = queued.request_id })
+            test.eq(status.job_id, queued.job_id)
+            test.eq(status.model_id, model.product_id)
         end)
         test.it("configures active plugins and resumes rebuilds as catalog ADMIN", function()
             local h = fixture.catalog()
@@ -262,7 +271,7 @@ local function define()
                 seen[tool.registry_id] = true
                 n = n + 1
             end
-            test.eq(n, 26)
+            test.eq(n, 28)
         end)
         test.it("covers contracts with matching schemas and exact tool policies", function()
             conformance.check()
@@ -292,14 +301,14 @@ local function define()
             local reads = assert(registry.get("kickside.pim.traits:pim_readonly"))
             local working = assert(registry.get("kickside.pim.traits:pim_trait"))
             local admin = assert(registry.get("kickside.pim.traits:pim_admin"))
-            test.eq(#reads.data.tools, 14)
-            test.eq(#working.data.tools, 19)
+            test.eq(#reads.data.tools, 16)
+            test.eq(#working.data.tools, 21)
             test.eq(#admin.data.tools, 10)
             test.eq(reads.data.build_func_id, "kickside.pim.traits:build_reads")
             test.eq(working.data.build_func_id, "kickside.pim.traits:build")
             test.is_nil(admin.data.build_func_id)
             local reads_set: Map = {}
-            for _, method in ipairs({ "list_catalogs", "get_schema", "schema_options", "list_terms", "query", "get", "explain", "list_history", "list_links", "list_proposals", "list_releases", "get_release", "list_publications", "list_changes" }) do
+            for _, method in ipairs({ "list_catalogs", "get_schema", "schema_options", "list_terms", "query", "get", "explain", "list_history", "list_links", "list_proposals", "list_releases", "get_release", "get_model_release", "wait_for_product", "list_publications", "list_changes" }) do
                 reads_set["kickside.pim.traits:" .. method] = true
             end
             local working_set: Map = {}

@@ -30,6 +30,8 @@ Three public traits call `kickside.pim:catalog` as the calling agent. The readon
 - `PIMProposals` → `list_proposals`
 - `PIMReleases` → `list_releases`
 - `PIMReleaseGet` → `get_release`
+- `PIMModelReleaseGet` → `get_model_release`
+- `PIMWaitForProduct` → `wait_for_product`
 - `PIMPublications` → `list_publications`
 - `PIMChanges` → `list_changes`
 
@@ -47,6 +49,8 @@ Three public traits call `kickside.pim:catalog` as the calling agent. The readon
 - `PIMProposals` → `list_proposals`
 - `PIMReleases` → `list_releases`
 - `PIMReleaseGet` → `get_release`
+- `PIMModelReleaseGet` → `get_model_release`
+- `PIMWaitForProduct` → `wait_for_product`
 - `PIMPublications` → `list_publications`
 - `PIMChanges` → `list_changes`
 - `PIMApply` → `apply`
@@ -70,6 +74,10 @@ Three public traits call `kickside.pim:catalog` as the calling agent. The readon
 Catalog rebuild is product-owned maintenance in the administration trait. `schema_provider` and `link_target` remain provider seams outside the traits. The readonly trait uses `kickside.pim.traits:build_reads` and the working trait `kickside.pim.traits:build` to contribute tools declared by active catalog plugins, or all installed plugin declarations when context omits `catalog_id`. Readonly contributes only tools whose sole required scope is `state.read`. Administration contributes no plugin tools. Plugins ship exact `tool_access` policies and no traits. Missing or non-tool declarations fail with `plugin_tool_invalid`; inactive plugin contracts refuse with `plugin_inactive`.
 
 The platform MCP server expands static trait tools only; dynamic plugin contributions require upstream MCP support.
+
+Use **Wait for PIM product** in a Flow to wait for a live product's status, field completeness for a channel or locale, or recorded channel publication state. Set the catalog and timeout in the Block config. Route `matched` to the next step, or carry the returned cursor into another invocation on `timed_out`. The same wait is available through `PIMWaitForProduct`.
+
+Inspect each release outcome. A `queued` model release supplies `request_id` and `job_id`. Read `PIMModelReleaseGet` with that `request_id` to see the last completed page and whether the scan finished, failed, or was cancelled.
 
 ```sh
 make setup

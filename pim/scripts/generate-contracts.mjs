@@ -113,22 +113,36 @@ const blocks = {
       origin: 'Origin', idempotency: 'Idempotency', trace_context: 'Trace', provenance: 'Provenance' },
   },
   release: { method: 'release', titles: { items: 'Items', idempotency: 'Idempotency', trace_context: 'Trace' } },
+  wait_for_product: { method: 'wait_for_product', titles: {}, configTitles: { timeout_ms: 'Timeout (ms)' } },
 }
 const blockPath = 'src/blocks/_index.yaml'
-const slots = new Set(Object.keys(blocks).flatMap(name => [`${name}:input`, `${name}:output`]))
+const slots = new Set(Object.entries(blocks).flatMap(([name, block]) => [
+  `${name}:input`, `${name}:output`, ...(block.configTitles ? [`${name}:config`] : []),
+]))
 let blockName
 const blockSource = await readFile(resolve(root, blockPath), 'utf8')
 const blockText = blockSource.split('\n').map(line => {
   const named = line.match(/^  - name: (.+)$/)
   if (named) blockName = named[1]
   const block = blocks[blockName]
-  const shape = line.match(/^        (input|output): \{/)
+  const shape = line.match(/^        (input|output|config): \{/)
   if (!block || !shape) return line
   const side = shape[1]
+  const configTitles = block.configTitles ?? {}
+  if (side === 'config' && !block.configTitles) return line
   if (!slots.delete(`${blockName}:${side}`)) throw new Error(`Duplicate Block schema ${blockName}:${side}`)
+  if (side === 'config') {
+    const fields = contracts[block.method].input.properties
+    const properties = {
+      catalog_id: { type: fields.catalog_id.type, minLength: 1, title: 'Catalog', picker: 'wc-component-picker', class: 'pim_catalog', value_field: 'id' },
+      ...Object.fromEntries(Object.entries(configTitles).map(([key, title]) => [key, { ...fields[key], title }])),
+    }
+    return `        config: ${JSON.stringify({ type: 'object', properties, required: ['catalog_id'], additionalProperties: false })}`
+  }
   const schema = structuredClone(contracts[block.method][side])
   if (side === 'input') {
     delete schema.properties.catalog_id
+    for (const key of Object.keys(configTitles)) delete schema.properties[key]
     for (const [key, title] of Object.entries(block.titles)) schema.properties[key].title = title
   }
   return `        ${side}: ${JSON.stringify(schema)}`
