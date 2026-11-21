@@ -29,6 +29,7 @@ type UpdateResult = { board_id: string, status: string, seq: integer?, as_of: in
 type CreateRequest = { pack: string?, version: string?, starter: boolean?, trace_context: domain.TraceContext?, plugin_configs: { [string]: JsonObject }?, idempotency_key: string, title: string?, parent_id: string?, declaration: Declaration?, ui_app: string? }
 
 type SchemaSnapshot = { board: domain.Board?, declaration: Declaration? }
+type ReferenceNarrowing = { field: domain.Field, target_type: string, change: SchemaChange }
 
 type SchemaPlan = {
     generation: integer, class: string, changes: { SchemaChange }, refused: { SchemaChange },
@@ -117,6 +118,6 @@ return { ProcessTarget = ProcessTarget, Map = Map, BulkRequest = BulkRequest, Lo
     Executor = Executor,
     PrepareContext = PrepareContext, PathMove = PathMove, SubtreeStats = SubtreeStats, TargetRef = TargetRef, Op = Op, ApplyRequest = ApplyRequest, SchemaRequest = SchemaRequest, CreateRequest = CreateRequest,
     Finding = Finding, Outcome = Outcome, ApplyResult = ApplyResult, SchemaResult = SchemaResult,
-    SchemaSnapshot = SchemaSnapshot, SchemaPlan = SchemaPlan, SchemaPlanResult = SchemaPlanResult, ResumeMigrationRequest = ResumeMigrationRequest, ResumeMigrationResult = ResumeMigrationResult, UpdateRequest = UpdateRequest, UpdateResult = UpdateResult, CreateResult = CreateResult, BoardSummary = BoardSummary, ListRequest = ListRequest, ListResult = ListResult,
+    SchemaSnapshot = SchemaSnapshot, ReferenceNarrowing = ReferenceNarrowing, SchemaPlan = SchemaPlan, SchemaPlanResult = SchemaPlanResult, ResumeMigrationRequest = ResumeMigrationRequest, ResumeMigrationResult = ResumeMigrationResult, UpdateRequest = UpdateRequest, UpdateResult = UpdateResult, CreateResult = CreateResult, BoardSummary = BoardSummary, ListRequest = ListRequest, ListResult = ListResult,
     OpPlan = OpPlan, Write = Write, Planned = Planned,
 }

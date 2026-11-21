@@ -446,14 +446,18 @@ local function define()
             test.eq(tonumber(reconfigured.secrets_generation), 2)
 
             assert(board.call("apply_schema", { declaration = { plugins = {} } }))
-            steps.deleted(attachment_id)
+            steps.wait_for("credential plugin deactivation", function(): boolean
+                local status = plugin_view(board, plugin, "get_schema")
+                assert(status.lifecycle.state ~= "failed", json.encode(status.lifecycle))
+                return status.active == false and status.lifecycle.state == "ready"
+            end)
+            steps.deleted(attachment_id, "deactivated credential attachment deletion")
             assert(board.call("apply_schema", activation))
             local reactivated = ready_attachment("first")
             test.is_true(reactivated ~= attachment_id)
             test.eq(credential_attachment(reactivated).owner, board.id)
             assert(board.call("delete", {}))
-            steps.deleted(board.id)
-            steps.deleted(reactivated)
+            steps.reaped(board, reactivated)
         end)
 
         test.it("bootstraps live items after their source events expire", function()
