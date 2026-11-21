@@ -335,6 +335,8 @@ entries:
   imports:
     domain: kickside.work:types
     store: kickside.work.persist:store
+    tables: kickside.work.domain:layout
+    storage: kickside.work.persist:types
 - name: types
   kind: library.lua
   source: file://types.lua

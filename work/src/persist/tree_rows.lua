@@ -2,8 +2,42 @@
 -- Hierarchy paths and relation populations under a command snapshot.
 local sql = require("sql")
 local store = require("store")
+local tables = require("tables")
 local domain = require("domain")
+local storage = require("storage")
 local M = {}
+
+-- The generated ancestor key follows the materialized path even if a parent is no longer live.
+function M.live_subtree(db: sql.Transaction, root: domain.Item, limit: integer, dialect: string): ({ storage.SubtreeMember }?, error?)
+    local ancestors = tables.names(root.board_id).set
+    local prefix = "SELECT i.item_id, i.parent_id, length(i.path) AS path_length FROM " .. ancestors .. " s CROSS JOIN "
+    local item = "i.board_id = $1 AND i.item_id = s.item_id AND i.life = 'live'"
+    local ancestor = "s.col = 'path_under' AND s.value_key = $2"
+    local statement = prefix .. "kickside_work_item i WHERE " .. item .. " AND " .. ancestor
+    if dialect == sql.type.POSTGRES then
+        -- Keep item lookups inside the ordered ancestor range so the limit can stop the walk.
+        statement = prefix .. "LATERAL (SELECT i.item_id, i.parent_id, i.path FROM kickside_work_item i WHERE "
+            .. item .. " LIMIT 1) i WHERE " .. ancestor
+    end
+    local descendants, err = db:query(statement .. " ORDER BY s.item_id LIMIT $3", { root.board_id, root.item_id, limit - 1 })
+    if err or not descendants then return nil, err end
+
+    -- The index supplies ID order. Append complete layers to keep parents before their children.
+    local layers: { [integer]: { storage.SubtreeMember } } = {}
+    local last = #root.path
+    for _, row in ipairs(descendants) do
+        local length = row.path_length :: integer
+        local layer = layers[length] or {}
+        layer[#layer + 1] = { item_id = row.item_id :: string, parent_id = row.parent_id :: string? }
+        layers[length] = layer
+        last = math.max(last, length)
+    end
+    local rows: { storage.SubtreeMember } = { { item_id = root.item_id, parent_id = root.parent_id } }
+    for length = #root.path + 1, last do
+        for _, row in ipairs(layers[length] or {}) do rows[#rows + 1] = row end
+    end
+    return rows, nil
+end
 
 function M.subtree(db: sql.DB | sql.Transaction, board_id: string, moves: { domain.PathMove }, path: string, depth: integer): (domain.SubtreeStats?, error?)
     local params: domain.SqlParams = { board_id }

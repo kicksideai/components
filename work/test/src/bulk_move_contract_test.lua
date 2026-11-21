@@ -78,6 +78,44 @@ local function define()
             test.not_nil(mapping[live])
             test.eq(call(a, "get", { item = { id = trash } }).item.life, "trashed")
         end)
+        test.it("moves a nested subtree through the deepest allowed level in parent order", function()
+            local a, b = operations.board(), operations.board()
+            grant(a, b); gate(a, true)
+            local ancestor = steps.create(a, "task")
+            local root = steps.create(a, "task", nil, ancestor)
+            local sibling = steps.create(a, "task", nil, ancestor)
+            local branch = steps.create(a, "task", nil, root)
+            local other = steps.create(a, "task", nil, root)
+            local middle = steps.create(a, "task", nil, branch)
+            local leaf = steps.create(a, "task", { title = "deep leaf" }, middle)
+            local leaf_key = call(a, "get", { item = { id = leaf } }).item.key
+            local input = request(b, root, "deep-subtree")
+            local plan = call(a, "plan_move", input)
+            test.is_true(plan.allowed)
+            local first, second = branch, other
+            if other < branch then first, second = other, branch end
+            local expected = { root, first, second, middle, leaf }
+            local parent = { [branch] = root, [other] = root, [middle] = branch, [leaf] = middle }
+            local copied: { [string]: string } = {}
+            test.eq(#plan.items, #expected)
+            for i, id in ipairs(expected) do
+                local item = plan.items[i]
+                test.eq(item.from, id)
+                local source_parent = parent[id]
+                if source_parent then
+                    test.not_nil(copied[source_parent])
+                    test.eq(item.parent, copied[source_parent])
+                else
+                    test.is_nil(item.parent)
+                end
+                copied[id] = item.item
+            end
+            test.eq(moved(a, input).processed, #expected)
+            local relocated = call(a, "get", { item = { key = leaf_key } }).item
+            test.eq(relocated.board_id, b.id)
+            test.eq(relocated.values.title, "deep leaf")
+            test.eq(call(a, "get", { item = { id = sibling } }).item.parent, ancestor)
+        end)
         test.it("refuses invalid mapped states entry requirements WIP field collisions and parent types", function()
             local a = operations.board()
             local id = steps.create(a, "task", { estimate = 3, labels = { "label" } })
@@ -409,13 +447,21 @@ local function define()
             test.eq(hidden.findings[1].code, "move_subtree_unavailable")
             local large = steps.create(a, "task")
             local db = assert(sql.get("app:db"))
-            assert(db:execute([[WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM numbers WHERE n < 5000)
+            local tx = assert(db:begin())
+            local ancestors = tables.names(a.id).set
+            assert(tx:execute([[WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM numbers WHERE n < 5000)
                 INSERT INTO kickside_work_item (board_id,item_id,number,type,state,category,process_generation,visit,parent_id,path,version,life,document,created_seq,updated_seq,created_at,updated_at)
                 SELECT $1,'subtree-' || n,n+100,'task','open','started',1,1,$2,'/' || $2 || '/subtree-' || n || '/',1,'live','{}',0,0,'','' FROM numbers]], { a.id, large }))
+            assert(tx:execute("INSERT INTO " .. ancestors .. [[ (item_id,col,value_key)
+                SELECT item_id,'path_under',parent_id FROM kickside_work_item WHERE board_id=$1 AND parent_id=$2]], { a.id, large }))
+            assert(tx:commit())
             db:release()
             local plan = call(a, "plan_move", request(b, large, "large"))
             db = assert(sql.get("app:db"))
-            assert(db:execute("DELETE FROM kickside_work_item WHERE board_id = $1 AND item_id LIKE 'subtree-%'", { a.id }))
+            tx = assert(db:begin())
+            assert(tx:execute("DELETE FROM " .. ancestors .. " WHERE col='path_under' AND value_key=$1", { large }))
+            assert(tx:execute("DELETE FROM kickside_work_item WHERE board_id = $1 AND item_id LIKE 'subtree-%'", { a.id }))
+            assert(tx:commit())
             db:release()
             test.is_false(plan.allowed)
             test.eq(plan.findings[1].code, "move_subtree_limit")

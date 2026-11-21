@@ -19,6 +19,7 @@ local consts = require("consts")
 local peers = require("peers")
 local limits = require("limits")
 local M = {}
+local SUBTREE_LIMIT = 5000
 local EDGE_LIMIT = 5000
 local SOURCE_BATCH = 100
 
@@ -48,18 +49,17 @@ local function build(tx: sql.Transaction, source: domain.Board, target: domain.B
     local root, rerr = items.read(ctx, request.item)
     if rerr then return nil, rerr end
     if not root or root.life ~= "live" then return refused(plan, "move_item_unavailable", "move requires a live visible item"), nil end
-    local rows, err = tx:query([[SELECT item_id, parent_id FROM kickside_work_item WHERE board_id = $1 AND life = 'live'
-        AND substr(path,1,$2) = $3 ORDER BY length(path), item_id LIMIT 5001]], { source.board_id, #root.path, root.path })
-    if err then return nil, err end
-    if #(rows or {}) > 5000 then return refused(plan, "move_subtree_limit", "move holds at most 5000 subtree items"), nil end
+    local rows, err = tree_rows.live_subtree(tx, root, SUBTREE_LIMIT + 1, dialect)
+    if err or not rows then return nil, err end
+    if #rows > SUBTREE_LIMIT then return refused(plan, "move_subtree_limit", "move holds at most 5000 subtree items"), nil end
     local mapping = request.map
     local ids: { [string]: string } = {}
-    for _, row in ipairs(rows or {}) do ids[row.item_id :: string] = uuid.v4() end
+    for _, row in ipairs(rows) do ids[row.item_id] = uuid.v4() end
     plan.item = ids[root.item_id]
     local parents: { [string]: boolean } = {}
-    for _, row in ipairs(rows or {}) do if type(row.parent_id) == "string" then parents[row.parent_id] = true end end
-    for _, row in ipairs(rows or {}) do
-        local id = row.item_id :: string
+    for _, row in ipairs(rows) do if row.parent_id then parents[row.parent_id] = true end end
+    for _, row in ipairs(rows) do
+        local id = row.item_id
         local item, ierr = items.read(ctx, id)
         if ierr then return nil, ierr end
         if not item or item.life ~= "live" then return refused(plan, "move_subtree_unavailable", "every subtree item is live and visible"), nil end

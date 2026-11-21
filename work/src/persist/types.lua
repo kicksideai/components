@@ -13,5 +13,7 @@ type Cleanup = { success: boolean, needs_continue: boolean, deleted: integer }
 
 type StageRun = { item_id: string, state: string, visit: integer, attempt: integer, started: string, finished: string?, outcome: string? }
 
+type SubtreeMember = { item_id: string, parent_id: string? }
+
 type Seed = { id: string, seq: integer, event_no: integer }
-return { StageRun = StageRun, Seed = Seed, OwnedTable = OwnedTable, Cleanup = Cleanup, Executor = Executor, Column = Column, Finder = Finder, ProjectionOutput = ProjectionOutput, MetaInput = MetaInput, Published = Published }
+return { SubtreeMember = SubtreeMember, StageRun = StageRun, Seed = Seed, OwnedTable = OwnedTable, Cleanup = Cleanup, Executor = Executor, Column = Column, Finder = Finder, ProjectionOutput = ProjectionOutput, MetaInput = MetaInput, Published = Published }

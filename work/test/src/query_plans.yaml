@@ -24,6 +24,7 @@ entries:
     store: kickside.work.persist:store
     tables: kickside.work.domain:layout
     read_rows: kickside.work.persist:read_rows
+    tree_rows: kickside.work.persist:tree_rows
 - name: query_text_search_plugin
   kind: registry.entry
   meta:
