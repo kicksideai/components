@@ -58,6 +58,7 @@ local function converge(catalog_id: string, id: string, intent: types.PluginInte
     local active=plugin :: types.Plugin
     local _, _, aerr = attachments.ensure(catalog_id, id, intent.generation, active.attachment :: string, active.title, intent.config, intent.attachment_id)
     if aerr then return nil, aerr end
+    local floor: integer? = nil
     for _, p in ipairs((plugin and plugin.projections) or {}) do
         local previous: types.JsonObject? = nil
         local pair, perr = client:get_projection_cursor({thread_id=catalog_id,kind=p.kind,projection_key=key})
@@ -78,6 +79,17 @@ local function converge(catalog_id: string, id: string, intent: types.PluginInte
         end
         local reset = previous ~= nil and (previous.start_seq ~= intent.seq or not values.equal(previous.config, intent.config) or previous.revision ~= p.revision or previous.attachment_id ~= intent.attachment_id)
         if not previous or reset then
+            if floor == nil then
+                local boundary, berr = client:prune_boundary({ thread_id = catalog_id })
+                if berr then return nil, berr end
+                floor = assert(boundary).max_pruned_seq
+            end
+            if intent.seq <= floor then
+                return nil, errors.new({ kind = errors.CONFLICT, retryable = false,
+                    message = "Plugin projection history was pruned. Reset the plugin to register at a new catalog event.",
+                    details = { code = "plugin_projection_history_pruned", plugin = id, projection = p.kind,
+                        start_seq = intent.seq, max_pruned_seq = floor } })
+            end
             local inputs: { { type: string } } = {}
             local events = p.events
             if p.input == "state" then
@@ -112,7 +124,7 @@ function M.batch(input: { catalog_id: string }): ({ done: boolean, reconcile: bo
     local active_plugins=false
     for id,intent in pairs(catalog.plugin_state) do
         active_plugins=active_plugins or intent.active==true
-        if intent.lifecycle.state=="pending" or (intent.active and intent.lifecycle.state=="ready") then
+        if intent.lifecycle.state=="pending" or intent.active then
             if id>(catalog.plugin_after or "") then ids[#ids+1]=id
             elseif intent.lifecycle.state=="pending" then wrapped_pending=true end
         end
@@ -125,7 +137,13 @@ function M.batch(input: { catalog_id: string }): ({ done: boolean, reconcile: bo
         local intent = catalog.plugin_state[id] :: types.PluginIntent
         local plugin: types.Plugin?=nil
         local err: error?=nil
-        if intent.active then plugin,err=plugins.load(id); active_plugins=true end
+        if intent.active then
+            plugin, err = plugins.load(id)
+            if plugin then
+                local _, config_err = plugins.merged(plugin, {}, intent.config)
+                err = config_err
+            end
+        end
         local complete = false
         if not err then complete, err = converge(input.catalog_id, id, intent, plugin) end
         pending = pending or (not complete and not err)

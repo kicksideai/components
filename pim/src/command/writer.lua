@@ -303,7 +303,7 @@ function M.apply_schema(catalog_id: string, request: types.SchemaRequest): (type
 end
 
 -- configure_plugin records validated attachment configuration at the command head.
-function M.configure_plugin(catalog_id: string, request: { plugin: string, config: types.JsonObject }): (types.CommandResult?, error?)
+function M.configure_plugin(catalog_id: string, request: types.PluginConfigRequest): (types.CommandResult?, error?)
     local access_err = require_access(catalog_id, component.ACCESS.ADMIN)
     if access_err then return nil, access_err end
     return run(catalog_id, nil, request, nil, function(_db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
@@ -315,7 +315,7 @@ function M.configure_plugin(catalog_id: string, request: { plugin: string, confi
         local config, err = plugins.effective(plugin, request.config)
         if err or not config then return nil, err end
         local intent=catalog.plugin_state[request.plugin]
-        if intent and values.equal(intent.config,config) then return {result={class="unchanged"},events={}},nil end
+        if not request.reset and intent and values.equal(intent.config,config) then return {result={class="unchanged"},events={}},nil end
         return { result = {}, events = { { type = EV.PLUGIN_CONFIGURED, subject = "plugin:" .. request.plugin,
             body = { plugin = request.plugin, config = config } } } }, nil
     end)

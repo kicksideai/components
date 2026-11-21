@@ -76,3 +76,11 @@ entries:
       resources: [kickside.pim.events:plugin.rebuild]
       actions: threads.output.publish
       effect: allow
+
+  - name: lifecycle_prune_boundary
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: [pim.catalog]
+      actions: threads.prune_boundary.read
+      effect: allow

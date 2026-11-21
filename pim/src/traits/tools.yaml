@@ -399,10 +399,10 @@ entries:
       type: tool
       title: PIMConfigurePlugin
       llm_alias: PIMConfigurePlugin
-      llm_description: 'Replace configuration for an active plugin without changing schema generation; requires catalog ADMIN and returns the command sequence. Catalog id comes from the call, then trait context when omitted.'
+      llm_description: 'Replace configuration or reset projections for an active plugin without changing schema generation; requires catalog ADMIN and returns the command sequence. Catalog id comes from the call, then trait context when omitted.'
       mcp: { required_scopes: [state.write] }
-      input_schema: '{"type":"object","properties":{"catalog_id":{"type":"string","description":"Catalog component id returned by PIMCatalogs; the contract resolves an omitted id only when exactly one catalog is readable."},"plugin":{"type":"string","minLength":1,"description":"Active plugin registry id from PIMSchemaGet; activate new plugins with PIMSchemaApply."},"config":{"type":"object","description":"Replacement catalog configuration validated against the plugin config_schema from PIMSchemaOptions."}},"required":["plugin","config"],"additionalProperties":false}'
-      output_schema: '{"type":"object","properties":{"seq":{"type":"integer","description":"Sequence at which configuration changes."},"as_of":{"type":"integer","description":"Applied catalog sequence represented by this answer."},"success":{"type":"boolean","const":true,"description":"True when the contract call completes successfully."}},"required":["success"]}'
+      input_schema: '{"type":"object","properties":{"catalog_id":{"type":"string","description":"Catalog component id returned by PIMCatalogs; the contract resolves an omitted id only when exactly one catalog is readable."},"plugin":{"type":"string","minLength":1,"description":"Active plugin registry id from PIMSchemaGet; activate new plugins with PIMSchemaApply."},"config":{"type":"object","description":"Replacement catalog configuration validated against the plugin config_schema from PIMSchemaOptions."},"reset":{"type":"boolean","description":"Start the plugin projections at a fresh catalog event even when configuration is unchanged."}},"required":["plugin","config"],"additionalProperties":false}'
+      output_schema: '{"type":"object","properties":{"seq":{"type":"integer","description":"Sequence of the configuration or reset event."},"as_of":{"type":"integer","description":"Applied catalog sequence represented by this answer."},"success":{"type":"boolean","const":true,"description":"True when the contract call completes successfully."}},"required":["success"]}'
     source: file://pim_tool.lua
     method: configure_plugin
     modules: [ctx]
