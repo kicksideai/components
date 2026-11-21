@@ -108,7 +108,6 @@ entries:
     fixture: app:fixture
     steps: app:steps
 - name: cross_board_test
-  modules: [time]
   kind: function.lua
   meta:
     type: test

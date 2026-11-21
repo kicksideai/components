@@ -3,7 +3,6 @@ local test = require("test")
 local scoped = require("scoped")
 local fixture = require("fixture")
 local steps = require("steps")
-local time = require("time")
 local store = require("store")
 local directory_probe = require("directory_probe")
 local component = require("component")
@@ -94,7 +93,7 @@ local function define()
             test.eq(mismatch.status, 400)
             test.eq(#mismatch.body.details.boards, 2)
         end)
-        test.it("reads 50 boards with 25 visibility rules within two seconds through HTTP", function()
+        test.it("reads all 50 boards through HTTP within a 50-candidate budget", function()
             local admin, member = scoped.admin(), scoped.member()
             local first
             for i = 1, 50 do
@@ -110,20 +109,25 @@ local function define()
                 steps.create(h, "task", { estimate = i })
                 if i % 2 == 0 then steps.create(h, "task", { level = "internal", estimate = i }) end
             end
-            for run = 1, 3 do
+            local function read(rows: integer)
                 local calls = directory_probe.calls(member.id)
-                local started = time.now():unix_nano()
-                local response = member.http("POST", "/" .. first .. "/query", { boards = "readable", order = { field = "estimate" }, limit = 100 })
-                local elapsed = (time.now():unix_nano() - started) / 1e9
-                local db = assert(store.open())
-                assert(db:execute("CREATE TABLE IF NOT EXISTS app_work_cross_board_benchmark (board_id TEXT PRIMARY KEY, engine TEXT, seconds DOUBLE PRECISION)", {}))
-                assert(db:execute("INSERT INTO app_work_cross_board_benchmark (board_id, engine, seconds) VALUES ($1,$2,$3)", { first .. ":" .. run, db:type(), elapsed }))
-                db:release()
+                local response = member.http("POST", "/" .. first .. "/query", {
+                    boards = "readable", order = { field = "estimate" }, limit = 100, budget = { rows = rows },
+                })
                 test.eq(directory_probe.calls(member.id) - calls, 1)
                 test.eq(response.status, 200, tostring(response.body.message))
-                test.eq(#response.body.data.items, 50)
-                test.is_true(elapsed < 2, tostring(elapsed))
+                return response.body.data
             end
+            local partial = read(49)
+            test.is_true(partial.incomplete)
+            test.not_nil(partial.cross_after)
+            test.is_true(#partial.items <= 49)
+
+            local complete = read(50)
+            test.is_false(complete.incomplete)
+            test.is_nil(complete.cross_after)
+            test.eq(#complete.items, 50)
+            for estimate, item in ipairs(complete.items) do test.eq(item.values.estimate, estimate) end
         end)
 
         test.it("refreshes groups per request and keeps ADMIN local to each board", function()

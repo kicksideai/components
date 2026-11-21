@@ -74,7 +74,7 @@ end
 
 -- A type constraint can retain an item's stored field ID and references when
 -- every non-cleared member already points to a visible item of the required type.
-local function references_match(field: domain.Field, item: domain.Item, cache: { [string]: boolean },
+local function references_match(field: domain.Field, target_type: string, item: domain.Item, cache: { [string]: boolean },
     deadline: domain.Deadline): (boolean, error?)
     local stored = fields.value(field, item)
     if stored == nil then return true, nil end
@@ -84,12 +84,12 @@ local function references_match(field: domain.Field, item: domain.Item, cache: {
         if type(ref) ~= "table" or ref[1] ~= consts.ITEM_TARGET or type(ref[2]) ~= "string" then return false, nil end
         local board_id, item_id = ref[2]:match("^([^/]+)/(.+)$")
         if not board_id or not item_id then return false, nil end
-        local key = (field.config.item_type :: string) .. ":" .. ref[2]
+        local key = target_type .. ":" .. ref[2]
         if cache[key] == nil then
             if clock.passed(deadline) then
                 return false, errors.new({ kind = errors.TIMEOUT, message = "schema validation deadline passed", details = { code = "schema_validation_deadline" } })
             end
-            local matches, err = peers.visible(board_id, item_id, field.config.item_type)
+            local matches, err = peers.visible(board_id, item_id, target_type)
             if err then return false, err end
             cache[key] = matches
         end
@@ -189,15 +189,16 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
     for _, p in ipairs(request.declaration.processes or {}) do maps[p.id] = p.map or {} end
     local delta = changes.changes(board and board.compiled or nil, compiled, usage, maps)
     local refused: { domain.SchemaChange } = {}
-    local narrowing: { { field: domain.Field, change: domain.SchemaChange } } = {}
+    local narrowing: { types.ReferenceNarrowing } = {}
     local other_refusal = false
     for _, c in ipairs(delta) do
         if c.class == "refused" then
             local field = next_model.fields[c.code]
             local before = board and field and board.model.by_id[field.id]
+            local target_type = field and field.config.item_type
             if c.what == "config.item_type" and before and before.type == "item" and not before.config.item_type
-                and field and field.type == "item" and field.config.item_type then
-                narrowing[#narrowing + 1] = { field = field, change = c }
+                and field and field.type == "item" and target_type then
+                narrowing[#narrowing + 1] = { field = field, target_type = target_type, change = c }
             else
                 other_refusal = true
             end
@@ -210,7 +211,6 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
         for _, field in ipairs(compiled.fields) do
             for _, code in ipairs(affected) do if field.code == code then selected[#selected + 1] = field end end
         end
-        local representation = { fields = selected } :: domain.Compiled
         local until_at, deadline_err = limits.deadline("command_deadline_ms")
         if deadline_err or not until_at then return nil, deadline_err end
         local settings, settings_err = limits.read()
@@ -233,11 +233,12 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
             local matches: { [string]: boolean } = {}
             for _, item in ipairs(items or {}) do
                 if clock.passed(until_at) then return nil, errors.new({ kind = errors.TIMEOUT, message = "schema validation deadline passed", details = { code = "schema_validation_deadline" } }) end
-                local _, verr = fields.document(representation, item.document)
+                local _, verr = fields.document(selected, item.document)
                 if verr then return nil, verr end
-                for _, entry in ipairs(narrowing) do
+                for index = 1, #narrowing do
+                    local entry = narrowing[index]
                     if entry.change.class ~= "refused" then
-                        local valid, ref_err = references_match(entry.field :: domain.Field, item, matches, until_at)
+                        local valid, ref_err = references_match(entry.field, entry.target_type, item, matches, until_at)
                         if ref_err then return nil, ref_err end
                         if not valid then
                             entry.change.class = "refused"
