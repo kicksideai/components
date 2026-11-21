@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/kicksideai/components/compare/work-planning-v0.1.3...work-planning-v0.1.4) (2026-11-21)
+
+
+### Features
+
+* **work-planning:** adopt stock sprint closure on retained boards ([9fc9362](https://github.com/kicksideai/components/commit/9fc936254ba9a0b3168bac7d34c625e4cfedcf24))
+
 ## [0.1.3](https://github.com/kicksideai/components/compare/work-planning-v0.1.2...work-planning-v0.1.3) (2026-11-21)
 
 
