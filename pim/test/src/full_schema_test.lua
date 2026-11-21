@@ -1039,6 +1039,45 @@ local function define()
     test.describe("full schema media", media_cases)
     test.describe("full schema evolution", schema_evolution)
     test.describe("full schema integrations", replay_and_extensions)
+    test.describe("full schema agent tools", function()
+        test.it("adopts a personal upload through the agent tool with catalog WRITE", function()
+            local owner, member = scoped.member(), scoped.member()
+            local h = catalog(owner)
+            local source = upload(member, "agent-photo.png", "image/png", PNG)
+            local tool_id = "kickside.pim.traits:adopt_asset"
+            local meta = assert(registry.get(tool_id)).meta
+            local input_schema = assert(json.decode(meta.input_schema))
+            local request = {upload_id = source}
+            test.is_true(json.validate(input_schema, request))
+            test.is_false(json.validate(input_schema, {catalog_id = h.id}))
+            test.is_false(json.validate(input_schema, {upload_id = "not-a-uuid"}))
+
+            local executor = funcs.new():with_actor(member.actor):with_scope(member.scope):with_context({catalog_id = h.id})
+            call(h, "grant", {subject_id = member.id, mask = 1})
+            local denied, access_err = executor:call(tool_id, request)
+            test.is_nil(denied)
+            test.eq(assert(access_err):kind(), errors.PERMISSION_DENIED)
+
+            call(h, "grant", {subject_id = member.id, mask = 3})
+            local result, err = executor:call(tool_id, request)
+            assert(result and not err, tostring(err))
+            test.is_true(json.validate(assert(json.decode(meta.output_schema)), result))
+            local asset = result.asset :: types.Ref
+            test.eq(asset.ref[1], "asset")
+            test.is_true(asset.ref[2] ~= source)
+            local applied, apply_err = executor:call("kickside.pim.traits:apply", {items = {
+                {product = {sku = "AGENT-MEDIA"}, create = {family = "standalone"}, set = {media_value(asset.ref[2])}},
+            }})
+            assert(applied and not apply_err, tostring(apply_err))
+            outcome(applied.outcomes[1] :: types.Outcome, "created")
+
+            local foreign = upload(owner, "foreign-photo.png", "image/png", PNG)
+            local refused_asset, owner_err = executor:call(tool_id, {upload_id = foreign})
+            test.is_nil(refused_asset)
+            test.eq(assert(owner_err):kind(), errors.PERMISSION_DENIED)
+            test.eq(assert(owner_err):details().code, "asset_adoption_denied")
+        end)
+    end)
 end
 
 return { run = test.run_cases(define) }

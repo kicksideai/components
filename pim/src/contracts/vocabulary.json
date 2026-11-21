@@ -1895,6 +1895,11 @@
       "description": "With catalog READ, read product changes and deletion markers in sequence and product id order, then pass next unchanged with the same filters. If gap is present, discard the local replica and omit the cursor to restart, using the catalog id from the call or trait context.",
       "scope": "state.read"
     },
+    "adopt_asset": {
+      "alias": "PIMAdoptAsset",
+      "scope": "state.write",
+      "description": "Adopt a completed upload you own into a catalog you can write. Use the returned asset reference as a media field value in PIMApply."
+    },
     "apply": {
       "alias": "PIMApply",
       "description": "Create or change products, hierarchy and terms with catalog WRITE and applicable attribute access. Even when success is true, check applied, every outcome and each finding code before advancing (an atomic refusal applies none, and independent mode can refuse every item).",

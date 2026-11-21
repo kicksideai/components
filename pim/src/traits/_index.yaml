@@ -52,7 +52,7 @@ entries:
             description: Catalog id used when the call omits it.
         additionalProperties: false
     prompt: |
-      Read and change catalog products and terms, review proposals, publish releases and withdraw publications. Supply catalog_id in the call or configure it in trait context; a call id wins. PIMApply names products by sku or id with expect_version and contextual values as {attr, ctx, value}. Pair with the administration trait when you also need catalog structure or configuration.
+      Read and change catalog products and terms, review proposals, publish releases and withdraw publications. Supply catalog_id in the call or configure it in trait context; a call id wins. PIMApply names products by sku or id with expect_version and contextual values as {attr, ctx, value}. PIMAdoptAsset accepts a completed upload ID you own. Apply its returned asset reference to a media field. Pair with the administration trait for catalog structure or configuration.
     build_func_id: kickside.pim.traits:build
     tools:
       - kickside.pim.traits:list_catalogs
@@ -71,6 +71,7 @@ entries:
       - kickside.pim.traits:wait_for_product
       - kickside.pim.traits:list_publications
       - kickside.pim.traits:list_changes
+      - kickside.pim.traits:adopt_asset
       - kickside.pim.traits:apply
       - kickside.pim.traits:propose
       - kickside.pim.traits:decide
