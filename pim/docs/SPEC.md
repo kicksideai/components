@@ -1626,10 +1626,12 @@ backfill commits.
 - `release(catalog, items: [{product, expect_version}])` (≤ 100): at head
   `S`, build the item view from `product` rows, embed referenced term labels,
   asset hashes and link `describe` results, evaluate the item's channels with `interactive + release`
-  checks, append `pim.product.released` with the snapshot and its hash only when
-  the snapshot or requested publications change. An unchanged release returns
-  the existing ID/hash and appends nothing when the requested channels already
-  publish that hash, independently of the latest product release pointer, including duplicate items within
+  checks, append `pim.product.released` with a new release ID, the snapshot and
+  its hash only when the snapshot or requested publications change. Each ID
+  identifies the immutable record of that event, including its generation and
+  channels. When every ready requested channel already publishes the hash,
+  the command appends nothing and returns the release ID of the first such
+  channel in identifier order. This also applies to duplicate items within
   one release command.
   A missing or malformed expected version returns an item `conflict` with
   finding code `invalid_version`. A mismatched integer returns an item

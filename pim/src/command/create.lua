@@ -109,11 +109,10 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
     local result=raw :: component_types.ServiceEnvelope?
     local cerr=rawerr :: error?
     if not cerr then cerr=envelope.error_of(result,"register") end
-    local created=result~=nil and result.success==true and cerr==nil
-    if not created then
+    if cerr then
         local winner, werr = existing(catalog_id, request)
         if werr then return nil, werr end
-        if not winner then return nil, errors.wrap(cerr or "missing", "catalog create failed") end
+        if not winner then return nil, errors.wrap(cerr, "catalog create failed") end
         return { catalog_id = catalog_id, title = title, generation = 1, replayed = true }, nil
     end
 

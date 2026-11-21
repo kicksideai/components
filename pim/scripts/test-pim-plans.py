@@ -19,9 +19,10 @@ class QueryPlans(unittest.TestCase):
         self.db.close()
     def test_release_seeks_product(self):
         source = (ROOT / "src/command/releases.lua").read_text()
-        query = re.search(r'query\("(SELECT p.channel,.*?p.product_id=\$2)"', source).group(1)
+        query = re.search(r"query\(\[\[(SELECT p\.channel, p\.release_id, r\.hash.*?)\]\]", source, re.S).group(1)
         plan = str(self.db.execute("EXPLAIN QUERY PLAN " + query, named(("catalog", "00100"))).fetchall())
         self.assertIn("catalog_id=? AND product_id=?", plan)
+        print("release publication lookup plan:", plan)
     def test_proposal_quota_and_decision_use_indexed_access(self):
         source = (ROOT / "src/persist/proposal_rows.lua").read_text()
         quota = re.search(r"\[\[(SELECT COUNT\(\*\) AS n FROM.*?)\]\]", source, re.S).group(1)

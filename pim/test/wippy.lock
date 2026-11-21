@@ -5,6 +5,9 @@ modules:
     - name: kickside/agents
       version: 0.2.17
       hash: cead30dc7cc99d19e0d33ba764bba12303b8f629dd51361b0847089103ae03df
+    - name: kickside/automation
+      version: 0.2.30
+      hash: 2e3157c6ca087c537a4751fbf88e0f4d1eaf79e4b4673cd262ec41784f42fb42
     - name: kickside/blocks
       version: 0.1.43
       hash: 8f2653eeb19879facb00c6b06d6fa291956a43a108097e682f8bae9a426f4ade

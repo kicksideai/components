@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+  - name: outdoor_catalog
+    kind: registry.entry
+    dimensions:
+      - { name: market, members: [us, de] }
+      - { name: language, members: [en, de] }
+    vocabularies:
+      - { code: colours }
+      - { code: categories, hierarchical: true }
+    aspects:
+      - namespace: merchandise
+        write: { sources: [supplier] }
+        attributes:
+          - { code: category, type: 'kickside.pim.types:select', vocabulary: categories }
+          - { code: colour, type: 'kickside.pim.types:select', vocabulary: colours, index: key }
+          - { code: size, type: 'kickside.pim.types:integer', index: number }
+          - { code: barcode, type: 'kickside.pim.types:identifier', unique: true, index: key }
+      - namespace: copy
+        attributes:
+          - { code: name, type: 'kickside.pim.types:text', scope: [language] }
+          - { code: description, type: 'kickside.pim.types:text', scope: [market, language] }
+      - namespace: logistics
+        attributes:
+          - { code: case_pack, type: 'kickside.pim.types:integer' }
+    families:
+      - code: hiking_boots
+        aspects: [merchandise, copy, logistics]
+        variation:
+          - { axes: [merchandise.colour] }
+          - { axes: [merchandise.size], own: [merchandise.barcode, logistics.case_pack] }
+        requirements:
+          - id: online_us
+            context: { market: us, language: en }
+            require: [copy.name, merchandise.barcode]
+            authored: [copy.description]
+          - id: online_de
+            context: { market: de, language: de }
+            require: [copy.name, merchandise.barcode]
+            authored: [copy.description]
+          - id: wholesale_de
+            context: { market: de, language: de }
+            require: [copy.name, merchandise.barcode, logistics.case_pack]
+        checks:
+          - check: app:outdoor_case_pack_check
+            reads: [logistics.case_pack]
+            enforce: write
+      - code: trekking_poles
+        aspects: [merchandise, copy, logistics]
+        requirements:
+          - id: online_us
+            context: { market: us, language: en }
+            require: [copy.name, merchandise.barcode]
+          - id: online_de
+            context: { market: de, language: de }
+            require: [copy.name, merchandise.barcode]
+    channels:
+      - { id: online, requirements: [online_us, online_de] }
+      - { id: wholesale, families: [hiking_boots], requirements: [wholesale_de] }
+
+  - name: outdoor_case_pack_check
+    kind: function.lua
+    meta: { type: kickside.pim.check }
+    source: file://outdoor_case_pack_check.lua
+    method: run
+    imports:
+      types: kickside.pim:types
+
+  - name: outdoor_catalog_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 90s }
+    source: file://outdoor_catalog_test.lua
+    method: run
+    modules: [json, registry, time]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      scoped: app:scoped
+      steps: app:steps
+      types: kickside.pim:types

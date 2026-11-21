@@ -461,6 +461,15 @@ entries:
     version: "*"
     component: kickside/contract
 
+  - name: dep.automation
+    kind: ns.dependency
+    version: "*"
+    component: kickside/automation
+    parameters:
+      - { name: kickside.automation:target_db, value: app:db }
+      - { name: kickside.automation:api_router, value: app:api }
+      - { name: kickside.automation:ui_server, value: app:gateway }
+
   - name: dep.security
     kind: ns.dependency
     version: "*"
