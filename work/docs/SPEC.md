@@ -27,7 +27,7 @@ An item reference field can declare `config.item_type` as the target item type I
 
 Directed relations can declare `from_types` and `to_types` as nonempty lists of item type IDs. Source types are declared on the owning board. Target types are matched against the live, visible item after resolving its destination board and any move aliases. An omitted list allows any type at that endpoint. A link with a mismatched endpoint returns `relation_source_type` on `item` or `relation_target_type` on `target`. Symmetric relations omit the directional lists. Work refuses changes to endpoint lists while the relation has links, using the existing relation shape check.
 
-A transition with `people: false` is reserved for the process engine and board ADMIN force. A direct named transition without force receives `unknown_transition`. Stage reports and state timers can take that route.
+A transition with `people: false` is reserved for the process engine and board ADMIN force. A direct named transition without force receives `unknown_transition`. Stage reports and state timers can take that route. When `people` is omitted, discovery hides stage outcome routes, while an otherwise eligible non-automatic route still accepts a direct call by name.
 
 ## Agent pipelines
 
