@@ -10,7 +10,7 @@ import { schema } from '../../test/fixtures'
 const wrappers: ReturnType<typeof mount>[] = []
 afterEach(() => wrappers.splice(0).forEach(w => w.unmount()))
 
-it('gives short and long titles separate code, kind, flag, usage and action columns', () => {
+it('gives short and long titles separate kind, flag, usage and action columns', () => {
   const draft = schema().declaration
   draft.fields = [
     { code: 'short', title: 'A', form: 'text' },
@@ -20,7 +20,7 @@ it('gives short and long titles separate code, kind, flag, usage and action colu
   const w = mount(FieldsEditor, { attachTo: document.body, props: { draft } }); wrappers.push(w)
   const rows = w.findAll('.work-definition-head')
   expect(w.get('.work-definition-columns').text()).toContain('NameIdentifierKindDetailsUsed by')
-  expect(rows.map(row => row.get('.work-definition-code').text())).toEqual(['short', 'long', 'third', 'fourth'])
+  expect(rows.every(row => row.get('.work-definition-code').text() === '')).toBe(true)
   expect(rows.map(row => row.get('.work-definition-kind').text())).toEqual(['Text', 'Whole number', 'Text', 'Text'])
   expect(rows[1].text()).toContain('Tracked')
 })

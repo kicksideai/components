@@ -11,7 +11,6 @@ import FieldsEditor from './FieldsEditor.vue'
 import ConfigForm from './ConfigForm.vue'
 import StateSettings from './StateSettings.vue'
 import DurationControl from './DurationControl.vue'
-import PolicyEditor from './PolicyEditor.vue'
 import ProcessEditor from './ProcessEditor.vue'
 import PluginsEditor from './PluginsEditor.vue'
 import { requestDeclaration } from './model'
@@ -127,7 +126,7 @@ it('activates declarations in the draft and configures an active plugin through 
   const w = mount(PluginsEditor, { props: { boardId: 'b', draft, schema: view, options: [{ plugin: 'app:plugin', installed: true, active: false, requires: [], tools: [], lifecycle: { state: 'ready' as const }, projections: {}, title: 'Enhancement', config_schema: { type: 'object', properties: { threshold: { type: 'integer' } } } }], configs } })
   await flushPromises()
   await w.getComponent(InputNumber).setValue(3)
-  await button(w, 'Save configuration').trigger('click'); await flushPromises()
+  await button(w, 'Save plugin settings').trigger('click'); await flushPromises()
   expect(settings.configure).toHaveBeenCalledWith('b', 'app:plugin', { threshold: 3 })
   await w.get('input[type=checkbox]').setValue(false)
   expect(draft.plugins).toEqual([]); expect(configs).toEqual({}); w.unmount()
@@ -139,12 +138,14 @@ it('shows host lifecycle and per-kind projection progress', async () => {
   view.plugins = [{ plugin: 'app:plugin', installed: true, active: true, requires: [], tools: [], lifecycle: { state: 'ready' }, attachment_id: 'attachment', config: { threshold: 2 }, projections: { index: { last_seq: 23, parked: true, bootstrapping: false, error: 'Projection paused' } } }]
   const w = mount(PluginsEditor, { props: { boardId: 'b', draft: view.declaration, schema: view, options: [{ plugin: 'app:plugin', installed: true, active: false, requires: [], tools: [], lifecycle: { state: 'ready' as const }, projections: {}, title: 'Enhancement', config_schema: { type: 'object', properties: {} } }], configs: {} } })
   await flushPromises()
-  expect(w.text()).toContain('Active')
-  expect(w.text()).toContain('Attachment configured')
+  expect(w.text()).toContain('On')
+  expect(w.get('.work-definition-kind').text()).toBe('Needs reset')
+  expect(w.text()).not.toContain('Ready to use')
+  expect(button(w, 'Reset projection').attributes('disabled')).toBeUndefined()
   expect(w.text()).toContain('23'); expect(w.text()).toContain('Stopped: Projection paused'); expect(w.text()).toContain('Projection paused')
-  expect(w.find('.work-config-fields').exists()).toBe(true)
+  expect(w.find('.work-config-fields').exists()).toBe(false)
   await w.setProps({ schema: { ...view, plugins: [{ ...view.plugins![0], lifecycle: { state: 'pending' }, projections: {} }] } })
-  expect(w.text()).toContain('Configuring attachment')
+  expect(w.text()).toContain('Getting ready')
   expect(w.text()).not.toContain('Last sequence')
   w.unmount()
 })
@@ -156,7 +157,7 @@ it('uses the supplied host lifecycle without fetching historical schemas', async
   vi.mocked(work.schema).mockImplementation(async (_id, generation) => ({ ...view, generation: generation ?? 7, plugins: generation && generation < 3 ? [] : view.plugins }))
   const w = mount(PluginsEditor, { props: { boardId: 'b', draft: view.declaration, schema: view, options: [{ plugin: 'app:plugin', installed: true, active: false, requires: [], tools: [], lifecycle: { state: 'ready' as const }, projections: {}, title: 'Enhancement', config_schema: {} }], configs: {} } })
   await flushPromises()
-  expect(w.text()).toContain('Attachment configured')
+  expect(w.text()).toContain('Ready to use')
   expect(work.schema).not.toHaveBeenCalled()
   w.unmount()
 })
@@ -164,9 +165,9 @@ it('keeps an attachment pending until Work reports lifecycle completion', async 
   const view = schema(); view.declaration.plugins = [{ use: 'app:plugin' }]
   view.plugins = [{ plugin: 'app:plugin', installed: true, active: true, requires: [], tools: [], lifecycle: { state: 'pending' }, projections: {}, attachment_id: 'attachment' }]
   const w = mount(PluginsEditor, { props: { boardId: 'b', draft: view.declaration, schema: view, options: [{ plugin: 'app:plugin', installed: true, active: false, requires: [], tools: [], lifecycle: { state: 'ready' as const }, projections: {}, title: 'Enhancement', config_schema: {} }], configs: {} } })
-  await flushPromises(); expect(w.text()).toContain('Configuring attachment')
+  await flushPromises(); expect(w.text()).toContain('Getting ready')
   await w.setProps({ schema: { ...view, plugins: [{ ...view.plugins![0], lifecycle: { state: 'ready' } }] } })
-  expect(w.text()).toContain('Attachment configured'); w.unmount()
+  expect(w.text()).toContain('Ready to use'); w.unmount()
 })
 
 it('edits stage safety limits and their board defaults', async () => {
@@ -179,10 +180,8 @@ it('edits stage safety limits and their board defaults', async () => {
   w.findAllComponents(InputNumber).find(c => c.find('input[aria-label="Maximum visits"]').exists())!.vm.$emit('update:modelValue', 3)
   await selectControl(w, 'When visits are exhausted').setValue('stop')
   expect(process.states[0].run).toMatchObject({ timeout: 'PT2H', max_visits: 3, on_exhausted: 'stop' })
-  w.unmount()
-  const policy = mount(PolicyEditor, { props: { draft } })
-  policy.findAllComponents(DurationControl).find(c => c.props('label') === 'Default attempt timeout')!.vm.$emit('update:modelValue', 'PT3H')
-  policy.findAllComponents(InputNumber).find(c => c.find('input[aria-label="Default maximum visits"]').exists())!.vm.$emit('update:modelValue', 4)
+  w.findAllComponents(DurationControl).find(c => c.props('label') === 'Default attempt timeout')!.vm.$emit('update:modelValue', 'PT3H')
+  w.findAllComponents(InputNumber).find(c => c.find('input[aria-label="Default maximum visits"]').exists())!.vm.$emit('update:modelValue', 4)
   expect(draft.policy).toMatchObject({ stage_timeout: 'PT3H', stage_max_visits: 4 })
-  policy.unmount()
+  w.unmount()
 })

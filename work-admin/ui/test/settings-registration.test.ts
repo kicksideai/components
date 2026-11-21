@@ -17,3 +17,14 @@ it('announces the shared settings component with both host inputs and an emitted
   const access = entries('src/security/_index.yaml')
   for (const name of ['module_access', 'member_endpoints']) expect(access.find(entry => entry.name === name)?.policy?.resources).toContain('kickside.work.admin:board_settings')
 })
+
+it('documents every published entry at the shared mount and points to the module check', () => {
+  const readme = readFileSync(resolve(root, 'README.md'), 'utf8')
+  const views = entries('src/_index.yaml').filter(entry => entry.meta?.type === 'view.component')
+  expect(views).toHaveLength(3)
+  for (const view of views) {
+    expect(readme).toContain('/' + view.meta!.base_path + '/' + view.meta!.entry_point)
+    expect(existsSync(resolve(root, 'static', String(view.meta!.entry_point)))).toBe(true)
+  }
+  expect(readme).toContain('make check')
+})

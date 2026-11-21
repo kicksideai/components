@@ -1,17 +1,18 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import FieldControl from '../FieldControl.vue'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
-import type { Declaration, Process, Transition } from '../../types'
+import type { Declaration, InstalledRule, Process, Transition } from '../../types'
 import ChipPicker from './ChipPicker.vue'
 import ConditionEditor from './ConditionEditor.vue'
 import JsonInput from './JsonInput.vue'
 import { stateTitle } from './process'
-const props = defineProps<{ transition: Transition & { people?: boolean }; process: Process; draft: Declaration; boardId?: string }>()
+const props = defineProps<{ transition: Transition; process: Process; draft: Declaration; boardId?: string; guards?: InstalledRule[] }>()
 const emit = defineEmits<{ validity: [key: string, valid: boolean] }>()
 function addEffect() { (props.transition.set ??= []).push({ field: props.draft.fields?.[0]?.code ?? '', value: '' }) }
 function changeEffect(index: number, mode: string) {
@@ -32,14 +33,6 @@ function changeEffect(index: number, mode: string) {
         :options="process.states.map((s) => ({ label: stateTitle(s), value: s.id }))"
     /></label>
     <label class="work-row"
-      ><span class="work-spacer">Happens automatically</span
-      ><ToggleSwitch :model-value="transition.auto" @update:model-value="transition.auto = $event; if (!$event) delete transition.default" aria-label="Automatic transition"
-    /></label>
-    <label class="work-row"
-      ><span class="work-spacer">Default automatic transition</span
-      ><ToggleSwitch v-model="transition.default" :disabled="!transition.auto" aria-label="Default transition"
-    /></label>
-    <label class="work-row"
       ><span class="work-spacer">Works from any state</span
       ><ToggleSwitch
         :model-value="transition.from === 'any'"
@@ -58,6 +51,32 @@ function changeEffect(index: number, mode: string) {
       :options="draft.fields?.map((f) => ({ value: f.code, label: f.title || f.code })) ?? []"
       v-model="transition.require"
     />
+    <h4 class="work-process-group">Only when</h4>
+    <ConditionEditor
+      label="Allow this transition when"
+      :draft="draft"
+      :board-id="boardId"
+      :model-value="transition.when"
+      @update:model-value="transition.when = $event"
+      @validity="emit('validity', 'when', $event)"
+    />
+    <ChipPicker v-if="guards?.length || transition.guards?.length" label="Installed checks"
+      :options="[...(guards ?? []).map(check => ({ value: check.id, label: check.title })), ...(transition.guards ?? []).filter(id => !guards?.some(check => check.id === id)).map(id => ({ value: id, label: guards ? 'Unavailable check' : 'Configured check' }))]"
+      v-model="transition.guards" />
+    <p v-for="check in guards?.filter(check => transition.guards?.includes(check.id)) ?? []" :key="check.id" class="work-muted work-small">
+      {{ check.description || check.title + ' can stop this transition.' }}
+      <span v-if="check.reads?.length"> Checks {{ check.reads.map(code => draft.fields?.find(field => field.code === code)?.title || 'a configured field').join(', ') }}.</span>
+    </p>
+    <Disclosure class="work-disclosure" label="Advanced transition settings">
+      <div class="work-stack">
+    <label class="work-row"
+      ><span class="work-spacer">Happens automatically</span
+      ><ToggleSwitch :model-value="transition.auto" @update:model-value="transition.auto = $event; if (!$event) delete transition.default" aria-label="Automatic transition"
+    /></label>
+    <label class="work-row"
+      ><span class="work-spacer">Default automatic transition</span
+      ><ToggleSwitch v-model="transition.default" :disabled="!transition.auto" aria-label="Default transition"
+    /></label>
     <h4 class="work-process-group">Also sets</h4>
     <div
       v-for="(effect, index) in transition.set ?? []"
@@ -116,17 +135,10 @@ function changeEffect(index: number, mode: string) {
       ><template #icon><Icon icon="tabler:plus" /></template
     ></Button>
 
-    <label class="work-stack work-tight">Offer to people<Select :model-value="transition.people" aria-label="Offer to people" appendTo="self" optionLabel="label" optionValue="value" :options="[{ label: 'Work default', value: undefined }, { label: 'Offer explicitly', value: true }, { label: 'Hide from people', value: false }]" @update:model-value="transition.people = $event" /></label>
+    <label class="work-stack work-tight">Offer to people<Select :model-value="transition.people" aria-label="Offer to people" appendTo="self" optionLabel="label" optionValue="value" :options="[{ label: 'Work default', value: undefined }, { label: 'Offer explicitly', value: true }, { label: 'Process engine only', value: false }]" @update:model-value="transition.people = $event" />
+      <span class="work-muted work-small">Work default can hide a stage route from the list while still allowing it by name. Process engine only reserves the route for the engine and board administrators using force.</span>
+    </label>
     <label class="work-stack work-tight">Evaluation order<InputNumber :model-value="transition.order ?? null" aria-label="Transition order" :min="0" :useGrouping="false" @update:model-value="transition.order = $event ?? undefined" /></label>
-    <h4 class="work-process-group">Only when</h4>
-    <ConditionEditor
-      label="Allow this transition when"
-      :draft="draft"
-      :board-id="boardId"
-      :model-value="transition.when"
-      @update:model-value="transition.when = $event"
-      @validity="emit('validity', 'when', $event)"
-    />
     <JsonInput
       label="Set values"
       :model-value="transition.set"
@@ -142,5 +154,7 @@ function changeEffect(index: number, mode: string) {
       @validity="emit('validity', 'guards', $event)"
     />
 
+      </div>
+    </Disclosure>
   </div>
 </template>

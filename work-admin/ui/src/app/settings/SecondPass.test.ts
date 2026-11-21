@@ -2,10 +2,10 @@
 import { afterEach, expect, it } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { reactive } from 'vue'
-import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import OptionsEditor from './OptionsEditor.vue'
-import PolicyEditor from './PolicyEditor.vue'
+import GeneralSettings from './GeneralSettings.vue'
+import { schema } from '../../test/fixtures'
 import VisibilityEditor from './VisibilityEditor.vue'
 import StateSettings from './StateSettings.vue'
 import ApproversEditor from './ApproversEditor.vue'
@@ -15,20 +15,14 @@ import { getButton } from '../../test/controls'
 import { clone, requestDeclaration } from './model'
 const wrappers: VueWrapper[] = []
 afterEach(() => { wrappers.splice(0).forEach(w => w.unmount()) })
-it('explains each zero retention window according to the backend policy', () => {
-  const w = mount(PolicyEditor, { props: { draft: {} } }); wrappers.push(w)
-  const row = (label: string) => w.findAll('.work-settings-row').find(r => r.find(`[aria-label="${label}"]`).exists())!.text()
-  expect(row('Audit days')).toContain('Zero selects 365 days')
-  expect(row('Interval days')).toContain('Zero selects 365 days')
-  expect(row('Trash days')).toContain('Zero allows immediate cleanup')
-  expect(row('Tombstone days')).toContain('Zero allows immediate cleanup')
-})
-it('edits and clears the per-board comments limit with the declared bounds', async () => {
-  const draft = reactive<Declaration>({}), w = mount(PolicyEditor, { props: { draft } }); wrappers.push(w)
-  const control = w.findAllComponents(InputNumber).find(c => c.props('ariaLabel') === 'Comments per item')!
-  expect(control).toBeDefined(); expect(control.props()).toMatchObject({ min: 1, max: 100000 })
-  await control.setValue(250); expect(draft.policy).toEqual({ comments_per_item: 250 })
-  await control.setValue(null); expect(draft.policy?.comments_per_item).toBeUndefined()
+it('explains stored overrides and clears a comments limit to inherit the application default', async () => {
+  const draft = reactive<Declaration>({ policy: { comments_per_item: 250, audit_days: 0, trash_days: 0 } })
+  const w = mount(GeneralSettings, { props: { draft, schema: schema(), active: false, countsError: false, draftForm: 'draft', disabled: false, canUpgrade: false, canInstall: false } }); wrappers.push(w)
+  expect(w.text()).toContain('Change history retention · 365 days')
+  expect(w.text()).toContain('Trash retention · Clean up immediately')
+  expect(w.text()).toContain('Comments per item · 250')
+  await getButton(w, 'Use default for comments per item').trigger('click')
+  expect(draft.policy?.comments_per_item).toBeUndefined()
 })
 it('accepts Work option ids and rejects only empty or duplicate ids', async () => {
   const field = reactive<Field>({ code: 'size', form: 'text', type: 'option', options: [{ id: 'XL' }, { id: '42' }, { id: 'blue-green' }] })
@@ -67,12 +61,13 @@ it('describes state entry requirements and gate visit self-approval accurately',
   const a = mount(ApproversEditor, { props: { approvals: { min: 1, from: [] } } }); wrappers.push(a)
   expect(a.text()).toContain('The person who moves the item here cannot approve this visit')
 })
-it.each([true, false])('mounts the shared Share widget only for ADMIN, embedded=%s', async embedded => {
-  const props = { embedded, board: { board_id: 'board/a', title: 'Delivery' }, authorized: true, dirty: false, busy: false, checkingRemoval: false, reviewed: false, disabled: true }
-  const w = mount(SettingsHead, { props }); wrappers.push(w)
+it('uses the shared Share widget and reports a saved access change', async () => {
+  const w = mount(SettingsHead, { props: { title: 'General', description: 'What is this board for?', board: { board_id: 'board/a', title: 'Delivery' }, authorized: true, busy: false } }); wrappers.push(w)
   await getButton(w, 'Share board').trigger('click'); await flushPromises()
-  expect(JSON.parse(w.get('kickside-share').attributes('config')!)).toEqual({ resource_id: 'board/a', title: 'Delivery', access_url: '/api/v1/component-access/grants/board%2Fa', share_url: '/api/v1/component-access/share/board%2Fa' })
-  await w.setProps({ authorized: false })
+  const share = w.get('kickside-share')
+  expect(JSON.parse(share.attributes('config')!)).toEqual({ resource_id: 'board/a', title: 'Delivery', access_url: '/api/v1/component-access/grants/board%2Fa', share_url: '/api/v1/component-access/share/board%2Fa' })
+  await share.trigger('changed')
+  expect(w.emitted('shared')).toEqual([[]])
+  await share.trigger('close')
   expect(w.find('kickside-share').exists()).toBe(false)
-  expect(w.find('[aria-label="Share board"]').exists()).toBe(false)
 })

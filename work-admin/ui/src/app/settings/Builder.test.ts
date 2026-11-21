@@ -8,7 +8,8 @@ import { reactive } from 'vue'
 import FieldsEditor from './FieldsEditor.vue'
 import TypesEditor from './TypesEditor.vue'
 import RelationsEditor from './RelationsEditor.vue'
-import PolicyEditor from './PolicyEditor.vue'
+import GeneralSettings from './GeneralSettings.vue'
+import { schema } from '../../test/fixtures'
 import OptionsEditor from './OptionsEditor.vue'
 import ProcessEditor from './ProcessEditor.vue'
 import StateSettings from './StateSettings.vue'
@@ -21,7 +22,7 @@ it('lists field users and retains a field when Work refuses its removal', async 
   const draft = reactive<Declaration>({ fields: [{ id: 1, code: 'title', form: 'text' }], item_types: [{ id: 'task', title: 'Task', process: 'flow', fields: ['title'] }] })
   const guardRemoval = vi.fn().mockResolvedValue('Items still hold values in this field.')
   const w = mount(FieldsEditor, { props: { draft, guardRemoval } })
-  expect(w.get('.work-used-by').text()).toContain('Task')
+  expect(w.get('.work-definition-usage').text()).toContain('Task')
   await button(w, 'Remove field').trigger('click'); await flushPromises()
   expect(guardRemoval).toHaveBeenCalledWith('fields', 'title'); expect(draft.fields).toHaveLength(1)
   expect(w.get('[role=alert]').text()).toContain('Items still hold values')
@@ -42,10 +43,10 @@ it('keeps inherited fields within carried fields and explains parent type remova
 it('creates types with humanized titles and carries parent references across ID edits', async () => {
   const draft = reactive<Declaration>({ processes: [flow()], item_types: [] })
   const w = mount(TypesEditor, { props: { draft } })
-  await w.get('input').setValue('delivery_task'); await button(w, 'Add type').trigger('click')
+  await w.get('input').setValue('Delivery task'); await button(w, 'Add type').trigger('click')
   expect(draft.item_types![0]).toMatchObject({ id: 'delivery_task', title: 'Delivery task', process: 'flow' })
   draft.item_types!.push({ id: 'child', fields: [], process: 'flow', parent_types: ['delivery_task'] }); await flushPromises()
-  await w.find('article input').setValue('parent_task')
+  await w.get('article .kx-disclosure input').setValue('parent_task')
   expect(draft.item_types![1].parent_types).toEqual(['parent_task']); w.unmount()
 })
 it('edits option identity, labels and token colors, with keyboard reordering and removal', async () => {
@@ -64,19 +65,19 @@ it('guards relation removal and previews directional and symmetric labels', asyn
   const w = mount(RelationsEditor, { props: { draft, guardRemoval: vi.fn().mockResolvedValue('Links still use this relation type.') } })
   expect(w.get('.work-relation-preview').text()).toContain('is blocked by')
   await w.get('[aria-label="Same meaning in both directions"]').setValue(true); expect(w.get('.work-relation-preview').text()).not.toContain('is blocked by')
-  await button(w, 'Remove relation').trigger('click'); await flushPromises()
+  await button(w, 'Remove link type').trigger('click'); await flushPromises()
   expect(w.get('[role=alert]').text()).toContain('Links still use'); expect(draft.relation_types).toHaveLength(1); w.unmount()
 })
-it('sets capacity and retention, clears overrides, and removes stale limits', async () => {
+it('clears a stored board override and a limit on a removed state in their own sections', async () => {
   const draft = reactive<Declaration>({ processes: [flow()], policy: { audit_days: 30, wip: { removed: { limit: 1 } } } })
-  const w = mount(PolicyEditor, { props: { draft } })
-  await w.findAllComponents(InputNumber).find(control => control.props('ariaLabel') === 'active WIP limit')!.setValue(4); await w.get('[aria-label="active hard WIP limit"]').setValue(true)
-  expect(draft.policy!.wip!.active).toEqual({ limit: 4, hard: true })
-  await w.findAllComponents(InputNumber).find(control => control.props('ariaLabel') === 'active WIP limit')!.setValue(null); expect(draft.policy!.wip!.active).toBeUndefined()
-  expect(w.get('[aria-label="active hard WIP limit"]').attributes('disabled')).toBeDefined()
-  await button(w, 'Remove stale limit').trigger('click'); expect(draft.policy!.wip!.removed).toBeUndefined()
-  const retention = w.findAllComponents(InputNumber).find(control => control.props('placeholder') === 'Installation default')!
-  await retention.setValue(null); expect(draft.policy!.audit_days).toBeUndefined(); w.unmount()
+  const workflow = mount(ProcessEditor, { props: { draft } })
+  await button(workflow, 'Clear limit for removed state 1').trigger('click')
+  expect(draft.policy!.wip!.removed).toBeUndefined()
+  workflow.unmount()
+  const general = mount(GeneralSettings, { props: { draft, schema: schema(), active: false, countsError: false, draftForm: 'draft', disabled: false, canUpgrade: false, canInstall: false } })
+  await button(general, 'Use default for change history retention').trigger('click')
+  expect(draft.policy!.audit_days).toBeUndefined()
+  general.unmount()
 })
 it('renders node categories, labeled edges and capacity, and selects nodes and edges', async () => {
   const process = flow()
@@ -145,7 +146,8 @@ it('edits field titles, cardinality, indexing, tracking and field access', async
   const draft = reactive<Declaration>({ fields: [{ code: 'points', form: 'int' }] })
   const w = mount(FieldsEditor, { props: { draft } })
   await w.get('[aria-label="Field title"]').setValue('Estimate')
-  await w.findAllComponents(Select)[1].setValue('set'); await w.findAllComponents(Select)[2].setValue('number')
+  await w.findAllComponents(Select).find(control => control.props('ariaLabel') === 'Values allowed')!.setValue('set')
+  await w.findAllComponents(Select).find(control => control.props('ariaLabel') === 'Allow filters to use')!.setValue('number')
   await w.findAll('[type=checkbox]')[0].setValue(true); await w.findAll('[type=checkbox]')[1].setValue(true)
   expect(draft.fields![0]).toMatchObject({ title: 'Estimate', cardinality: 'set', index: 'number', track: true, intervals: true })
   expect(w.find('[aria-label="Who can read"]').exists()).toBe(true); await flushPromises()

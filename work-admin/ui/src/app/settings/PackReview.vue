@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import Select from 'primevue/select'
 import type { PackPlan, PackRequest } from '../../packs'
 import type { Declaration } from '../../types'
@@ -24,7 +25,7 @@ function map(process: string, state: string, value: string) { ((props.request.ma
   <section v-if="plan.conflicts.length" class="work-stack" aria-label="Pack conflicts"><h3>Local edits conflict</h3><p class="work-muted work-small">Choose which declaration to keep for each conflict, then review again.</p>
     <div v-for="conflict in plan.conflicts" :key="conflict.path" class="work-stack work-tight">
       <label class="work-stack work-tight work-pack-review-field">{{ conflictTitle(conflict.path) }}<Select :model-value="request.resolutions?.[conflict.path]" :aria-label="'Resolution for ' + conflictTitle(conflict.path)" :disabled="disabled" appendTo="self" placeholder="Choose a resolution" optionLabel="label" optionValue="value" :options="[{ label: 'Keep local edits', value: 'local' }, { label: 'Use pack changes', value: 'incoming' }]" @update:model-value="resolve(conflict.path, $event)" /></label>
-      <details class="work-json-disclosure"><summary>Compare declarations</summary><div class="work-config-fields"><section><h4>Local edits</h4><pre class="work-json-example">{{ comparison(conflict.local_value) }}</pre></section><section><h4>Pack changes</h4><pre class="work-json-example">{{ comparison(conflict.incoming) }}</pre></section></div></details>
+      <Disclosure class="work-json-disclosure" label="Compare declarations"><div class="work-config-fields"><section><h4>Local edits</h4><pre class="work-json-example">{{ comparison(conflict.local_value) }}</pre></section><section><h4>Pack changes</h4><pre class="work-json-example">{{ comparison(conflict.incoming) }}</pre></section></div></Disclosure>
     </div>
   </section>
   <section v-if="Object.keys(plan.maps).length" class="work-stack" aria-label="Pack state maps"><h3>Required state maps</h3><p class="work-muted work-small">Review the proposed destinations for existing items. Each destination is editable.</p>

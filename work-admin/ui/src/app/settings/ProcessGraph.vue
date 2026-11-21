@@ -3,22 +3,32 @@
 import { installGraphStyles } from './processGraphStyles'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
-import { initialGraphView } from './graphViewport'
+import { initialGraphView, readableScale } from './graphViewport'
 import { computed, onMounted, onBeforeUnmount, ref, useId, watch } from 'vue'
 import type { Declaration, Process, State, Transition } from '../../types'
 import { graphLines } from './processLayout'
 import { processLayout, stateTitle, transitionTitle, type GraphNode } from './process'
-const props = defineProps<{ process: Process; draft: Declaration; selectedState?: State; selectedTransition?: Transition }>()
+const props = defineProps<{ process: Process; draft: Declaration; selectedState?: State; selectedTransition?: Transition; fitOnOpen?: boolean }>()
 const emit = defineEmits<{ state: [value: State, opener: SVGElement]; transition: [value: Transition, opener: SVGElement]; connect: [from: string, to: string, opener: SVGElement]; removeTransition: [event: KeyboardEvent]; clear: [] }>()
 const prefix = useId().replace(/:/g, '_'), connecting = ref(''), canvas = ref<HTMLElement>(), svg = ref<SVGSVGElement>()
 let dragPointer: number | undefined
 const viewportWidth = ref(900), overview = ref(false)
 const baseHeight = computed(() => viewportWidth.value < 700 ? 420 : 480)
-const layout = computed(() => processLayout(props.process, props.draft, { width: viewportWidth.value, height: baseHeight.value }))
+const layout = computed(() => processLayout(props.process, props.draft, {
+  width: viewportWidth.value, height: baseHeight.value,
+  direction: props.fitOnOpen ? 'TB' : undefined,
+}))
 const zoom = ref(1), pan = ref({ x: 0, y: 0 }), ghost = ref({ x: 0, y: 0 })
 // The SVG height and viewBox must change together, without waiting for a resize
 // notification about a height this component set itself.
-const viewport = computed(() => ({ width: viewportWidth.value, height: overview.value ? Math.max(baseHeight.value, layout.value.height * Math.min(1, viewportWidth.value / layout.value.width)) : baseHeight.value }))
+const fitScale = computed(() => {
+  const scale = Math.min(1, viewportWidth.value / layout.value.width)
+  return props.fitOnOpen ? Math.max(readableScale, scale) : scale
+})
+const viewport = computed(() => ({
+  width: viewportWidth.value,
+  height: overview.value ? Math.max(baseHeight.value, Math.ceil(layout.value.height * fitScale.value)) : baseHeight.value,
+}))
 const visibleStates = computed(() => layout.value.nodes.filter(n => n.x - n.width / 2 >= pan.value.x && n.x + n.width / 2 <= pan.value.x + viewport.value.width / zoom.value && n.y - n.height / 2 >= pan.value.y && n.y + n.height / 2 <= pan.value.y + viewport.value.height / zoom.value).length)
 function initialView() {
   overview.value = false
@@ -29,10 +39,16 @@ const viewBox = computed(() => `${pan.value.x} ${pan.value.y} ${viewport.value.w
 const source = computed(() => layout.value.nodes.find(n => n.state.id === connecting.value))
 function fit() {
   overview.value = true
-  zoom.value = Math.min(1, viewport.value.width / layout.value.width)
-  pan.value = { x: (layout.value.width - viewport.value.width / zoom.value) / 2, y: 0 }
+  zoom.value = fitScale.value
+  const width = viewport.value.width / zoom.value
+  const initial = layout.value.nodes.find(node => node.state.id === props.process.initial)
+  pan.value = {
+    x: layout.value.width > width && initial ? initial.x - width / 2 : (layout.value.width - width) / 2,
+    y: 0,
+  }
 }
 function magnify(factor: number) {
+  if (props.fitOnOpen) overview.value = false
   const next = Math.max(.02, Math.min(3, zoom.value * factor)), ratio = 1 / zoom.value - 1 / next
   pan.value = { x: pan.value.x + viewport.value.width * ratio / 2, y: pan.value.y + viewport.value.height * ratio / 2 }; zoom.value = next
 }
@@ -42,10 +58,15 @@ function reveal(node: { x: number; y: number; width: number; height: number }) {
 }
 function revealSelection() {
   const selected = layout.value.nodes.find(n => n.state === props.selectedState) ?? layout.value.edges.find(e => e.transition === props.selectedTransition)
-  if (selected) reveal(selected)
+  if (!selected) {
+    if (props.fitOnOpen && overview.value) fit()
+    return
+  }
+  reveal(selected)
 }
 watch([layout, () => props.selectedState, () => props.selectedTransition], revealSelection, { flush: 'post' })
-watch(() => props.process.id, () => { cancelInteraction(); initialView() }, { flush: 'post' })
+function resetView() { if (props.fitOnOpen) fit(); else initialView() }
+watch(() => props.process.id, () => { cancelInteraction(); resetView() }, { flush: 'post' })
 function canvasKey(event: KeyboardEvent) {
   if (event.target !== canvas.value) return
   if (event.key === '+' || event.key === '=') { event.preventDefault(); magnify(1.2) }
@@ -135,7 +156,8 @@ onMounted(() => {
       const previousWidth = viewport.value.width
       viewportWidth.value = rect.width
       if (initial || Math.abs(rect.width - previousWidth) > 1) {
-        if (overview.value) fit(); else initialView()
+        if (initial) resetView()
+        else if (overview.value) fit(); else initialView()
         initial = false
       }
       revealSelection()
@@ -150,7 +172,7 @@ function icon(state: State) {
 }
 </script>
 <template>
-  <section ref="canvas" class="work-process-canvas" aria-label="Process map" tabindex="0"
+  <section ref="canvas" class="work-process-canvas" :class="{ 'work-process-scrollable': fitOnOpen && overview }" aria-label="Process map" tabindex="0"
     @keydown="canvasKey" @keydown.esc.stop="escape" @pointerdown="pointerDown" @pointermove="pointerMove" @pointerup="pointerUp" @pointerleave="cancelDrag" @pointercancel="cancelInteraction" @wheel="wheel">
     <p v-if="connecting" class="work-process-instruction" role="status">Choose the next stop. Escape cancels.</p>
     <svg ref="svg" :style="{ height: viewport.height + 'px' }" :viewBox="viewBox" role="group" aria-label="States and transitions">
@@ -183,10 +205,10 @@ function icon(state: State) {
       </g>
       <path v-if="source" :d="`M ${layout.direction === 'TB' ? source.x : source.x + source.width / 2} ${layout.direction === 'TB' ? source.y + source.height / 2 : source.y} L ${ghost.x} ${ghost.y}`" class="work-connect-ghost" />
     </svg>
-    <div v-if="!overview && visibleStates < process.states.length" class="work-process-more" role="status">
-      <span>{{ visibleStates }} of {{ process.states.length }} states in view · More {{ layout.direction === 'TB' ? 'below' : 'to the right' }}</span>
-      <Button label="Show full process" size="small" text @click="fit()" />
+    <div v-if="visibleStates < process.states.length" class="work-process-more" role="status">
+      <span>{{ visibleStates }} of {{ process.states.length }} states in view · Pan to see more</span>
+      <Button v-if="!overview" label="Fit map" size="small" text @click="fit()" />
     </div>
-    <div class="work-process-legend"><span>{{ process.states.length }} states · {{ Math.round(zoom * 100) }}%</span><span><i></i>Transition</span><span><i class="work-return-key"></i>Return / loop</span><span>Drag to pan · Ctrl + scroll to zoom · Fit for full process</span></div>
+    <div class="work-process-legend"><span>{{ process.states.length }} states · {{ Math.round(zoom * 100) }}%</span><span><i></i>Transition</span><span><i class="work-return-key"></i>Return / loop</span><span>Drag to pan · Ctrl + scroll to zoom · Fit to reset the view</span></div>
   </section>
 </template>

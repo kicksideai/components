@@ -1,0 +1,99 @@
+<!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
+<script setup lang="ts">
+import Disclosure from '@kickside/ui-kit/Disclosure.vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
+import { api } from '@wippy-fe/proxy'
+import { latestRequest } from '@kickside/ui-kit/latestRequest'
+import Button from 'primevue/button'
+import Tag from 'primevue/tag'
+import { Icon } from '@iconify/vue'
+import type { Declaration } from '../../types'
+import { usePrincipalNames } from '../../principals'
+import SectionSummary from './SectionSummary.vue'
+import VisibilityEditor from './VisibilityEditor.vue'
+
+const props = defineProps<{ boardId: string; draft: Declaration; active: boolean; grantsVersion: number }>()
+defineEmits<{ share: []; validity: [valid: boolean] }>()
+interface Grant { subject_id: string; subject_type?: 'user' | 'group'; full_name?: string; email?: string; access_mask: number; owner?: boolean }
+interface Capability { key: string; bit: number; label: string }
+const grants = ref<Grant[]>()
+const capabilities = ref<Capability[]>([])
+const memberGroups = computed(() => grants.value?.filter(grant => grant.subject_type === 'group').length ?? 0)
+const memberPeople = computed(() => (grants.value?.length ?? 0) - memberGroups.value)
+const memberPreview = computed(() => [...(grants.value ?? [])]
+  .sort((a, b) => Number(!!b.owner) - Number(!!a.owner) || b.access_mask - a.access_mask).slice(0, 6))
+const memberRefs = computed(() => memberPreview.value.map(grant => ({ id: grant.subject_id, kind: grant.subject_type ?? 'user' })))
+const names = usePrincipalNames(() => props.boardId, memberRefs)
+function memberName(grant: Grant) {
+  return grant.full_name || names.label({ id: grant.subject_id, kind: grant.subject_type ?? 'user', email: grant.email })
+}
+function memberPermissions(grant: Grant) {
+  return capabilities.value.filter(capability => (grant.access_mask & capability.bit) === capability.bit)
+}
+const grantsError = ref(false)
+const beginRead = latestRequest()
+const facts = computed(() => [
+  ...(grants.value ? [
+    memberPeople.value + (memberPeople.value === 1 ? ' person with direct access' : ' people with direct access'),
+    memberGroups.value + (memberGroups.value === 1 ? ' group with access' : ' groups with access'),
+  ] : [grantsError.value ? 'Member summary unavailable' : 'Loading members…']),
+  props.draft.visibility ? 'Item visibility rules set' : 'No item visibility rules',
+])
+async function load() {
+  const current = beginRead()
+  grantsError.value = false
+  try {
+    const [{ data }, model] = await Promise.all([
+      api.get('/api/v1/component-access/grants/' + encodeURIComponent(props.boardId)),
+      api.get('/api/v1/components/access-model'),
+    ])
+    if (!current()) return
+    if (!data?.success || !Array.isArray(data.access)) throw new Error('Grants unavailable')
+    grants.value = data.access
+    capabilities.value = model.data?.success && Array.isArray(model.data.capabilities) ? model.data.capabilities : []
+  } catch {
+    if (current()) { grants.value = undefined; grantsError.value = true }
+  }
+}
+onUnmounted(() => beginRead())
+watch(() => [props.active, props.boardId, props.grantsVersion], () => { if (props.active) void load() }, { immediate: true })
+</script>
+
+<template>
+  <section class="work-ia-section">
+    <SectionSummary :facts="facts" />
+    <section class="work-settings-list" aria-labelledby="work-sharing-title">
+      <div class="work-settings-row">
+        <div class="work-row-main">
+          <h3 id="work-sharing-title" class="work-row-title">Members and sharing</h3>
+          <p class="work-muted work-small">Invite people and groups, or change the access they already have.</p>
+        </div>
+        <Button label="Manage access" severity="secondary" outlined @click="$emit('share')">
+          <template #icon><Icon icon="tabler:users" aria-hidden="true" /></template>
+        </Button>
+      </div>
+      <ul v-if="memberPreview.length" class="work-member-preview" aria-label="People and groups with direct access">
+        <li v-for="member in memberPreview" :key="member.subject_type + member.subject_id" class="work-settings-row">
+          <Icon :icon="member.subject_type === 'group' ? 'tabler:users' : 'tabler:user'" aria-hidden="true" />
+          <strong class="work-spacer">{{ memberName(member) }}</strong>
+          <Tag v-if="member.owner" severity="secondary" value="Owner" />
+          <span v-else class="work-chips">
+            <Tag v-for="permission in memberPermissions(member)" :key="permission.key" severity="secondary" :value="permission.label" />
+          </span>
+        </li>
+      </ul>
+      <p v-if="grants && grants.length > memberPreview.length" class="work-settings-row work-muted work-small">
+        See all {{ grants.length }} people and groups in Manage access.
+      </p>
+      <p v-else-if="grants && !grants.length" class="work-settings-row work-muted">No direct grants yet.</p>
+      <div v-else-if="grantsError" class="work-settings-row">
+        <p class="work-spacer work-muted" role="alert">Member summary is unavailable.</p>
+        <Button label="Reload members" severity="secondary" text @click="load" />
+      </div>
+      <p v-else-if="!grants" class="work-settings-row work-muted" role="status">Loading members…</p>
+    </section>
+    <Disclosure class="work-settings-card work-disclosure" label="Advanced · Item visibility">
+      <VisibilityEditor :board-id="boardId" :draft="draft" @validity="$emit('validity', $event)" />
+    </Disclosure>
+  </section>
+</template>

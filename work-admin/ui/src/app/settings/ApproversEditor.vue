@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { useDisplay } from '../../forms'
 import { Icon } from '@iconify/vue'
 import Tag from 'primevue/tag'
@@ -44,7 +45,7 @@ function remove(index: number) { if (Array.isArray(props.approvals.from)) props.
     <p v-else class="work-muted work-small" role="status">The principal picker is unavailable.</p>
     <div v-if="Array.isArray(approvals.from)" class="work-chips"><Tag v-for="(principal, index) in approvals.from" :key="principal.kind + ':' + principal.id" class="kx-tag-sm" severity="secondary">{{ principalLabel(principal) }}<Button :aria-label="'Remove approver ' + (index + 1)" text severity="secondary" size="small" @click="remove(index)"><Icon icon="tabler:x" aria-hidden="true" /></Button></Tag></div>
     <label class="work-row work-small"><span class="work-spacer">The person who moves the item here cannot approve this visit</span><ToggleSwitch v-model="approvals.prevent_self" aria-label="The person who moves the item here cannot approve this visit" /></label>
-    <details class="work-process-options"><summary>Approval options</summary><label class="work-stack work-tight">Approval source<Select :model-value="mode" @update:model-value="changeMode($event)" appendTo="self" optionLabel="label" optionValue="value" :options="[{ label: 'Group members', value: 'group' }, { label: 'People and groups', value: 'principals' }, { label: 'Principal field', value: 'field' }]" /></label></details>
+    <Disclosure class="work-process-options" label="Approval options"><label class="work-stack work-tight">Approval source<Select :model-value="mode" @update:model-value="changeMode($event)" appendTo="self" optionLabel="label" optionValue="value" :options="[{ label: 'Group members', value: 'group' }, { label: 'People and groups', value: 'principals' }, { label: 'Principal field', value: 'field' }]" /></label></Disclosure>
     <p v-if="Array.isArray(approvals.from) && !reachable" class="work-error work-small" role="alert">Select at least {{ approvals.min }} distinct principals, or lower the minimum.</p>
     <p v-else-if="'group' in approvals.from && !approvals.from.group" class="work-muted work-small">Choose the group that can approve this state.</p>
   </section>

@@ -4,8 +4,11 @@ import { provide } from 'vue'
 import { useEvents, useProps } from '@wippy-fe/webcomponent-vue'
 import BoardSettings from './BoardSettings.vue'
 import { navigatorKey, pathOf } from '../route'
-const props = useProps<{ boardId?: string; embedded?: boolean }>()
-const emit = useEvents<{ navigate: { route: string }; 'dirty-change': { dirty: boolean } }>()
-provide(navigatorKey, next => emit('navigate', { route: pathOf(next) }))
+const props = useProps<{ boardId?: string; embedded?: boolean; focusBack?: boolean }>()
+const emit = useEvents<{ navigate: { route: string }; 'back-to-boards': Record<string, never>; 'dirty-change': { dirty: boolean } }>()
+provide(navigatorKey, next => {
+  if (props.value.embedded && next.name === 'boards') emit('back-to-boards', {})
+  else emit('navigate', { route: pathOf(next) })
+})
 </script>
-<template><BoardSettings :board-id="props.boardId ?? ''" :embedded="props.embedded" @dirty-change="emit('dirty-change', { dirty: $event })" /></template>
+<template><BoardSettings :board-id="props.boardId ?? ''" :embedded="props.embedded" :focus-back="props.focusBack" @dirty-change="emit('dirty-change', { dirty: $event })" /></template>

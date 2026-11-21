@@ -11,8 +11,10 @@ reset target until an accepted read reaches it, even if a notification supersede
 the first read; that reset is consumed once. Other concurrent drafts stay stale.
 Board selection and Back ask through the shared host confirmation before
 replacing an unsaved schema or metadata draft. Settings report both through the widget boundary. Saving or canceling metadata clears its pending state independently of the schema draft.
-On narrow screens, the board list and selected settings each use the full pane.
-Back to boards returns focus to the selected row. Board titles wrap in both
+The board picker and selected board each use the full pane. Back to boards
+returns focus to the selected row. General, Items, Workflow, Access, and Plugins
+use the shared UI-kit rail and scrolling pane. The board header keeps Share
+and the draft actions available across all five sections. Board titles wrap in both
 surfaces, and the definition lists place metadata and row actions below the title
 when the available space cannot fit the desktop columns. Field controls have
 programmatic labels, and the reorder handle and row disclosure each have their
@@ -31,8 +33,9 @@ ordered by span so longer returns sit farther out and nested returns do not cros
 or share segments. Self loops occupy the nearest compact track. Every return chip
 is centered on a horizontal segment with a gap in the painted line on both sides;
 in top-to-bottom maps this leg may extend below the source departure to reserve the complete padded chip height before reaching the exterior vertical spine.
-All routes use the same corner radius (short segments cap it to their clearance). Short desktop flows run left to right;
-narrow viewports and main paths longer than eight states use top-to-bottom ranks.
+All routes use the same corner radius (short segments cap it to their clearance).
+Wide settings maps lay out the process left to right and wrap long node and
+transition labels in compact cards. Narrow maps use top-to-bottom ranks.
 Card bounds reserve complete wrapped titles, captions, capacity, global actions
 and port clearance. Transition chips participate in layout and share one opaque,
 token-backed style. Rectilinear A* routing avoids padded card and chip bounds;
@@ -45,12 +48,10 @@ Completed/canceled states have no outgoing connection control, including when a
 reopen transition is declared. Global transitions appear once as editable actions
 on their target.
 
-The initial view fits the complete graph when its scale is at least 80%; otherwise
-it anchors readable text on the declared initial state and reports the visible
-state count and continuation direction with a Show full process action. Fit fits
-the width and expands the canvas height so long vertical processes remain readable
-through the settings surface's normal scrolling. The fixture matrix's overviews
-stay at least 80%. The SVG height and viewBox use the same calculated height in
+The settings map fits the complete graph on first open. Workflows with more
+than six states open in List when the editor is narrower than 480 pixels.
+Both layouts preserve the same editor actions. Fit restores the whole map after
+panning or zooming. The inspector focuses the chosen card or transition at a readable scale when the fitted overview is smaller. The SVG height and viewBox use the same calculated height in
 each render, including Fit and orientation changes, without waiting for a later
 resize notification to reconcile them. Zoom centers on the canvas. Dragging pans, Ctrl+wheel and pinch
 zoom, and arrow keys move between states. The map accepts arrow-key panning,
@@ -91,37 +92,55 @@ stay fixed. Invalid installed pack summaries remain disabled choices with their
 problem reason. A missing title is shown as Unnamed pack. Valid packs and Empty board remain usable.
 
 
-Board sharing is an ADMIN-only header action that mounts the existing
-`kickside-share` widget for the board component's grants/share routes. The widget
-owns grant/revoke and its overlay. Board identity editing uses `wc-icon-picker`
-and the existing metadata update, preserving every other metadata field.
+Board settings open in five sections: General, Items, Workflow, Access and
+Plugins. In System, All boards is the first item in the section rail and
+returns the operator to the board directory. The board name heads the rail.
+The section's content header holds Share board, Discard and Review changes.
+Review changes keeps the active section behind the review. Schema changes use
+the existing plan/apply snapshot. Board identity,
+the opening-app binding, sharing and settings for already active plugins use
+their existing independent write endpoints. Board identity uses `wc-icon-picker`.
+The administrator can choose a registered opening app by title where the Work
+binding contract is available. Clearing the selection uses the installation
+default.
+
+Items keeps type placement, field definitions and link definitions together.
+Opening a type’s field list filters it and preselects placement when adding a
+field inline. Item reference fields can choose a named target type. Top-level
+placement beside named parents uses Work’s boolean marker. Integration
+identifiers and configuration without a structured form are local disclosures.
+Workflow shows caller-visible item counts for the committed workflow and edits
+limits and requirements on the state where they apply. Map and List use the
+same transition inspector. Installed checks and query filters come from Work
+registry metadata.
+
+Access is an ADMIN-only section. The board header and Access open the same shared
+`kickside-share` widget for the board component’s grants and share routes.
+The widget owns grant/revoke and its overlay. Per-item visibility lives in Access under Advanced.
 
 Native dialogs within the settings ShadowRoot are an owner-approved exception
 to shared overlays. They retain browser top-layer modality, Escape handling,
-focus restoration and busy handling; shared headers and principal/schema widgets
-remain in use. There is no Advanced section: all declaration controls remain in
-their respective sections. Display labels use plain words; stored enum values and
-identifiers are unchanged.
+focus restoration and busy handling. Shared headers and principal/schema
+widgets remain in use.
 
-Board administration links to application settings, whose Work block links back
-to board administration. That block composes the existing
-`kickside-settings-provider` for `kickside.work`; all application settings remain
-owned, validated and saved by the shared platform renderer. This module adds no
-private settings editor. Boards can override comments per item in 1..100000;
-blank inherits the application default. Blank retention windows also inherit.
-Zero audit/interval days selects 365 days; zero trash/tombstone days permits
-immediate cleanup. State requirements apply on entry. Human-state due duration
-measures elapsed time in that state. Self-approval prevention excludes the person
-who entered the current gate visit.
+Board administration links to application settings. That block composes the
+existing `kickside-settings-provider` for `kickside.work`. Application defaults
+owns audit, retention and comments limits. General shows existing overrides and
+allows an administrator to return to the installation defaults through schema
+review. Zero audit/interval days selects 365 days. Zero trash/tombstone days
+permits immediate cleanup. State requirements apply on entry. Human-state due
+duration measures elapsed time in that state. Self-approval prevention excludes
+the person who entered the current gate visit.
 
 Option IDs are nonempty, distinct strings without the field-identifier pattern. Their validity uses the editor instance identity so field removal or reordering cannot strand an invalid key.
 Kind lists built-in and installed plugin field types together. Selecting a plugin
 type updates the value form, clears incompatible search support and shows its
 schema-defined configuration beside the field properties. Required configuration
 blocks review, and the form reports validity only when it changes.
-At narrow widths, the selected board uses the full width and Back to boards uses
-the same draft confirmation as board selection. The Fields list keeps each row
-and the Add field action within the available width.
+The Fields list keeps each row and the Add field action within the available width.
+Existing items follow workflow changes. Review asks for a destination when
+an occupied state is removed and confirmation when an occupied state is renamed.
+The checked plan authorizes Apply against its exact draft.
 Visibility supports eligible single text fields and option fields, explicit level
 IDs, shared holder selection, and the complete JSON declaration path. The backend
 validates limits and creates the required exact index.

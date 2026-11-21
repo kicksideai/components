@@ -55,9 +55,16 @@ for selection. No board, kanban, list, table, backlog or item view is bundled.
 ## Build and verification
 
 Use Wippy v0.3.60a or newer and Node 22. The build materializes the locked
-UI Kit artifact without adding it to the host import map. The two ES-module
-entry points and shared chunks live in `static/`, served at
-`/kickside-work-admin` and embedded in the published module.
+UI Kit artifact without adding it to the host import map. The three ES-module
+entry points and their shared chunks live in `static/` and are embedded in the
+published module.
+
+- `/kickside-work-admin/admin.js` opens System → Work.
+- `/kickside-work-admin/settings.js` opens the embeddable board settings.
+- `/kickside-work-admin/defaults.js` opens Work application defaults.
+
+Run `make check` to verify the registry entries, the installed package and the
+assets for all three components.
 
 ```sh
 make setup build typecheck ui-test lint strict check test test-published test-scope pack

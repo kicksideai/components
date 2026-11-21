@@ -28,3 +28,8 @@ it('uses Work pack routes with explicit maps, resolutions and the frozen request
   expect(api.post).toHaveBeenNthCalledWith(1, '/api/v1/work/boards/a%2Fb/pack_plan', request)
   expect(api.post).toHaveBeenNthCalledWith(2, '/api/v1/work/boards/a%2Fb/pack_apply', { ...request, key: 'upgrade-key' })
 })
+
+it('retries a named plugin without posting replacement configuration', async () => {
+  await settings.configure('b', 'app:plugin')
+  expect(api.post).toHaveBeenCalledExactlyOnceWith('/api/v1/work/boards/b/configure_plugin', { plugin: 'app:plugin' })
+})

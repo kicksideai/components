@@ -7,21 +7,33 @@ import FieldsEditor from './FieldsEditor.vue'
 import TypesEditor from './TypesEditor.vue'
 import RelationsEditor from './RelationsEditor.vue'
 import OptionsEditor from './OptionsEditor.vue'
-import PolicyEditor from './PolicyEditor.vue'
+import GeneralSettings from './GeneralSettings.vue'
+import { schema } from '../../test/fixtures'
+import StateSettings from './StateSettings.vue'
 import type { Declaration, Field } from '../../types'
 import { getButton } from '../../test/controls'
 it.each([
   [FieldsEditor, 'Add field', 'fields'],
   [TypesEditor, 'Add type', 'item_types'],
-  [RelationsEditor, 'Add relation', 'relation_types'],
+  [RelationsEditor, 'Add link type', 'relation_types'],
 ] as const)('creates definitions on user writes, leaving absent collections absent on reads', async (component, action, key) => {
   const draft = reactive<Declaration>({}), w = mount(component, { props: { draft } })
   expect(draft).toEqual({})
-  await w.get('input').setValue('new_entry'); await getButton(w, action).trigger('click')
+  if (key === 'fields') {
+    await getButton(w, action).trigger('click')
+    await w.get('[aria-label="Field name"]').setValue('New entry')
+    await getButton(w, 'Add to draft').trigger('click')
+  } else {
+    await w.get('input').setValue('New entry')
+    await getButton(w, action).trigger('click')
+  }
   expect(draft[key]).toHaveLength(1); w.unmount()
 })
 it('creates policy only when a policy control changes', async () => {
-  const draft = reactive<Declaration>({}), w = mount(PolicyEditor, { props: { draft } })
+  const draft = reactive<Declaration>({})
+  const state = { id: 'run', kind: 'automated', category: 'started', run: { stage: 'Build' } }
+  const process = { id: 'flow', initial: 'run', states: [state] }
+  const w = mount(StateSettings, { props: { draft, state, process } })
   expect(draft).toEqual({})
   const visits = w.findAllComponents(InputNumber).find(c => c.props('ariaLabel') === 'Default maximum visits')!
   await visits.setValue(7); expect(draft.policy?.stage_max_visits).toBe(7)
@@ -33,7 +45,7 @@ it('leaves absent options untouched until Add option', async () => {
   await getButton(w, 'Add option').trigger('click'); expect(field.options).toHaveLength(1); w.unmount()
 })
 it('edits the item key prefix through the schema draft', async () => {
-  const draft = reactive<Declaration>({ key_prefix: 'OLD' }), w = mount(PolicyEditor, { props: { draft } })
+  const draft = reactive<Declaration>({ key_prefix: 'OLD' }), w = mount(GeneralSettings, { props: { draft, schema: schema(), active: false, countsError: false, draftForm: 'draft', disabled: false, canUpgrade: false, canInstall: false } })
   await w.get('[aria-label="Item key prefix"]').setValue('NEW')
   expect(draft).toEqual({ key_prefix: 'NEW' }); w.unmount()
 })

@@ -3,7 +3,7 @@ import type { Principal } from './principals'
 export type ComponentProps = Record<string, unknown>
 export type Values = Record<string, unknown>
 export interface BoardAccess { read: boolean; write: boolean; admin: boolean }
-export interface BoardRow { board_id: string; title: string; description?: string; icon?: string; key_prefix?: string; item_count?: number; open_count?: number; generation?: number; status?: string; access?: BoardAccess }
+export interface BoardRow { board_id: string; title: string; description?: string; icon?: string; ui_app?: string; key_prefix?: string; item_count?: number; open_count?: number; generation?: number; status?: string; access?: BoardAccess }
 export interface Option { id: string; label?: string; order?: number; color?: string; category?: string }
 export type Holder = { group: string } | { user: string } | { service: string } | { field: string }
 export type FieldForm = 'text' | 'int' | 'dec' | 'quantity' | 'bool' | 'time' | 'ref' | 'record'
@@ -12,14 +12,15 @@ export interface Field {
   config?: { scale?: number; target?: string; format?: string; units?: Record<string, string>; canonical?: string; [key: string]: unknown }
   access?: { read?: Holder[]; write?: Holder[] }; index?: string; track?: boolean; intervals?: boolean; expression?: string; of?: string; fn?: string; field?: string; by?: 'rank' | 'time'; where?: unknown
 }
-export interface ItemType { id: string; title?: string; process: string; fields: string[]; parent_types?: string[]; inherit?: string[]; move_children?: string }
+export interface ItemType { id: string; title?: string; process: string; fields: string[]; parent_types?: (string | false)[]; inherit?: string[]; move_children?: string }
 export type PrincipalSource = { group: string } | { field: string } | Principal[]
 export interface State { id: string; name?: string; category: string; kind?: string; awaiting?: PrincipalSource; regions?: { id: string; initial: string }[]; join?: string | number; run?: { stage: string; flow_ref?: { kind: 'flow'; id: string; version: number }; timeout?: string; max_visits?: number; on_exhausted?: string; on_pass?: string; on_cancel?: string; retry?: { max: number; backoff: string }; on_fail?: string }; release_when?: { approvals?: { min: number; from: PrincipalSource; prevent_self?: boolean }; wait?: string; when?: unknown }; timers?: Timer[]; assign?: { kind: string; id: string }[]; require?: string[]; invariants?: string[]; due?: string }
-export interface Transition { id: string; name?: string; to: string; from: string[] | 'any'; auto?: boolean; require?: string[]; default?: boolean; order?: number; set?: { field: string; value?: unknown; clear?: boolean; copy?: string }[]; when?: unknown; guards?: string[] }
+export interface Transition { id: string; name?: string; to: string; from: string[] | 'any'; auto?: boolean; people?: boolean; require?: string[]; default?: boolean; order?: number; set?: { field: string; value?: unknown; clear?: boolean; copy?: string }[]; when?: unknown; guards?: string[] }
 export interface Process { id: string; name?: string; initial: string; generation?: number; states: State[]; transitions?: Transition[]; migration?: string; map?: Record<string, string> }
+export interface RelationType { id: string; outward?: string; inward?: string; cardinality?: string; symmetric?: boolean; from_types?: string[]; to_types?: string[] }
 export interface Declaration {
   key_prefix?: string; fields?: Field[]; item_types?: ItemType[]; processes?: Process[]
-  relation_types?: { id: string; outward?: string; inward?: string; cardinality?: string; symmetric?: boolean }[]
+  relation_types?: RelationType[]
   plugins?: { use: string }[]; scopes?: string[]; visibility?: { field: string; levels: { id: string; holders: Holder[] }[]; bypass?: string }; remove?: Partial<Record<'fields' | 'item_types' | 'processes' | 'relation_types', string[]>> & { visibility?: boolean }
   policy?: { comments_per_item?: number; stage_timeout?: string; stage_max_visits?: number; wip?: Record<string, { limit: number; hard?: boolean }>; audit?: string; audit_days?: number; trash_days?: number; tombstone_days?: number; interval_days?: number }
 }
@@ -38,17 +39,20 @@ export interface StageRun { visit: number; attempt: number; state: string; outco
 export interface GetResult { stage_runs?: StageRun[]; item: Item; transitions?: EligibleTransition[]; as_of: number }
 export interface Cursor { id: string; v?: string | number | boolean; keys?: { v?: string | number | boolean }[] }
 export interface Group { field: string; value?: unknown; count: number; items: Item[]; after?: Cursor; groups?: Group[] }
+export type StateCounts = Record<string, Record<string, number>>
+export interface InstalledRule { id: string; title: string; plugin: string; reads?: string[]; description?: string }
 export interface Query {
-  where?: Values; group_by?: string; sub_group_by?: string; order?: { field: string; dir?: string } | { field: string; dir?: string }[]
+  where?: Values; group_by?: string; sub_group_by?: string; group_after?: string; order?: { field: string; dir?: string } | { field: string; dir?: string }[]
   limit?: number; after?: Cursor; include?: string[]; scopes?: { id: string; where: Values }[]
 }
-export interface QueryResult { items: Item[]; groups?: Group[]; after?: Cursor; as_of: number; reindexing: boolean; incomplete?: boolean }
+export interface QueryResult { items: Item[]; groups?: Group[]; group_after?: string; after?: Cursor; as_of: number; reindexing: boolean; incomplete?: boolean }
 export interface Finding { code: string; message?: string; field?: string }
-export interface PluginOption extends PluginState { title?: string; description?: string; config_schema: Record<string, unknown> }
+export interface PluginOption extends PluginState { title?: string; description?: string; config_schema?: Record<string, unknown> }
 export interface FieldTypeOption { id: string; title: string; form: FieldForm; indexes?: string[]; config_schema?: Values }
-export interface AdminOptions { access: BoardAccess; schema_options: { plugins: PluginOption[]; field_types?: FieldTypeOption[] }; installed_types?: FieldTypeOption[] }
+export interface BoardApp { id: string; title: string }
+export interface AdminOptions { access: BoardAccess; schema_options: { plugins: PluginOption[]; field_types?: FieldTypeOption[] }; installed_types?: FieldTypeOption[]; guards?: InstalledRule[]; filters?: InstalledRule[]; board_apps?: BoardApp[] }
 export const emptyOptions = (): AdminOptions => ({ access: { read: false, write: false, admin: false }, schema_options: { plugins: [] } })
 
 export interface Timer { id: string; after?: string; at_field?: string; by?: string; table?: Record<string, string>; repeat?: string; interrupting?: boolean; then?: { emit?: string; transition?: string } }
 export interface PluginProjection { last_seq: number; parked: boolean; bootstrapping: boolean; error?: string | { message: string; kind?: string; code?: string } }
-export interface PluginState { plugin: string; installed: boolean; active: boolean; config?: Record<string, unknown>; attachment_id?: string; requires: string[]; tools: string[]; lifecycle: { state: 'pending' | 'ready' | 'failed'; error?: { kind: string; code?: string; message: string } }; projections: Record<string, PluginProjection>; problem?: { code: string; message: string; field?: string }; outdated?: boolean }
+export interface PluginState { plugin: string; title?: string; icon?: string; installed: boolean; active: boolean; config?: Record<string, unknown>; attachment_id?: string; requires: string[]; tools: string[]; lifecycle: { state: 'pending' | 'ready' | 'failed'; error?: { kind: string; code?: string; message: string; floor?: number; source?: 'schema_provider' } }; projections: Record<string, PluginProjection>; problem?: { code: string; message: string; field?: string }; outdated?: boolean }
