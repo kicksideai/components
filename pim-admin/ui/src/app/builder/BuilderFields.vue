@@ -145,9 +145,9 @@ async function reorder(event: MouseEvent, attributes: AttributeDecl[], index: nu
   const actions = control.parentElement
   move(attributes, index, target)
   await nextTick()
-  // The moved button can become disabled at either end of the list.
-  if (control.disabled) actions?.querySelector<HTMLButtonElement>('button:enabled')?.focus({ preventScroll: true })
-  else control.focus({ preventScroll: true })
+  // At either end, focus the remaining arrow on the moved row.
+  const nextControl = control.isConnected ? control : actions?.querySelector('button')
+  nextControl?.focus({ preventScroll: true })
 }
 function addAspect(namespace: string) {
   (props.draft.aspects ??= []).push({ namespace, attributes: [] })
@@ -177,12 +177,12 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
 <template>
   <div class="pim-stack">
     <div v-if="families.length || (canEdit && !family)" class="pim-ia-action">
-      <Select v-if="families.length" v-model="family" aria-label="Show fields for a family" placeholder="All families" :options="familyOptions" option-label="label" option-value="value" append-to="self" />
+      <Select v-if="families.length" v-model="family" class="pim-family-filter" aria-label="Show fields for a family" placeholder="All families" :options="familyOptions" option-label="label" option-value="value" append-to="self" />
       <AddSchemaCode v-if="canEdit && !family" label="Field group name" action="Add field group" from-name
         :existing="aspects.map(a => a.namespace)" @add="addAspect" />
     </div>
     <p v-if="family && !visibleAspects.length" class="form pim-card-body pad muted">This family has no field groups yet. Open the family to choose which groups it uses.</p>
-    <DefinitionList v-for="a in visibleAspects" :key="a.namespace" :count="a.attributes?.length ?? 0" :columns="['kind', 'details', 'usage']">
+    <DefinitionList v-for="a in visibleAspects" :key="a.namespace" :count="a.attributes?.length ?? 0" :columns="['kind', 'details', 'usage']" :show-actions="canEdit">
       <template #head>
         <header class="pim-bsection-head pim-list-header">
           <div>
@@ -209,8 +209,8 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
           <Tag v-if="attr.unique" class="kx-tag-sm" severity="secondary">unique</Tag>
         </template>
         <template v-if="canEdit" #actions>
-          <Button type="button" :disabled="i === 0" :aria-label="'Move ' + humanize(attr.code) + ' earlier'" @click="reorder($event, a.attributes!, i, i - 1)" text severity="secondary"><Icon icon="tabler:arrow-up" aria-hidden="true" /></Button>
-          <Button type="button" :disabled="i === (a.attributes?.length ?? 0) - 1" :aria-label="'Move ' + humanize(attr.code) + ' later'" @click="reorder($event, a.attributes!, i, i + 1)" text severity="secondary"><Icon icon="tabler:arrow-down" aria-hidden="true" /></Button>
+          <Button v-if="i > 0" type="button" :aria-label="'Move ' + humanize(attr.code) + ' earlier'" @click="reorder($event, a.attributes!, i, i - 1)" text size="small" severity="secondary"><Icon icon="tabler:arrow-up" aria-hidden="true" /></Button>
+          <Button v-if="i < (a.attributes?.length ?? 0) - 1" type="button" class="pim-move-later" :aria-label="'Move ' + humanize(attr.code) + ' later'" @click="reorder($event, a.attributes!, i, i + 1)" text size="small" severity="secondary"><Icon icon="tabler:arrow-down" aria-hidden="true" /></Button>
         </template>
           <div class="pim-fields">
             <div class="pim-f pim-w-third"><div class="pim-f-label"><label :id="fieldId(a.namespace, attr, 'type')">Type</label></div>

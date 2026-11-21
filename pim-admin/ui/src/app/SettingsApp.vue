@@ -27,5 +27,5 @@ function leaveSettings() {
 }
 </script>
 <template>
-  <SchemaBuilder v-if="catalogId" :key="catalogId" :catalog-id="catalogId" :title="catalog?.title || 'Catalog'" :catalog="catalog" :embedded="props.embedded" :focus-back="props.focusBack" :directory-count="props.directoryCount" @directory-action="emit('directory-action', { name: $event })" :back-label="props.embedded ? 'Back to catalogs' : 'Back to catalog settings'" @back="leaveSettings" @dirty-changed="emit('dirty-changed', { dirty: $event })" />
+  <SchemaBuilder v-if="catalogId" :key="catalogId" :catalog-id="catalogId" :title="catalog?.title || 'Catalog'" :catalog="catalog" :embedded="props.embedded" :focus-back="props.focusBack" :directory-count="props.directoryCount" :back-label="props.embedded ? 'Back to catalogs' : 'Back to catalog settings'" @back="leaveSettings" @dirty-changed="emit('dirty-changed', { dirty: $event })" />
 </template>

@@ -37,6 +37,9 @@
 .pim-definition-details { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
 .pim-definition-usage { text-align: right; font-size: 12px; color: var(--p-text-muted-color); }
 .pim-definition-actions { display: flex; align-items: center; justify-content: end; gap: 4px; }
+.pim-definition-actions-heading { text-align: center; }
+.pim-attr-row .pim-definition-actions:not(:empty) { display: grid; grid-template-columns: repeat(2, 36px); }
+.pim-attr-row .pim-move-later { grid-column: 2; }
 .pim-definition-body { grid-column: 1 / -1; width: 100cqw; position: sticky; left: 0; min-width: 0; }
 .pim-row-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }
 .pim-definition-body { padding: 0 16px 16px; }
@@ -82,6 +85,7 @@
 .pim-ia-action { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pim-plugin-recovery > button { justify-self: start; }
 .pim-ia-action > div:first-child { flex: 1 0 min(220px, 100%); min-width: 0; }
+.pim-ia-action > .pim-family-filter:first-child { flex: 0 1 192px; }
 .pim-ia-action > .pim-add-row, .pim-list-header .pim-add-row, .pim-aspect .pim-add-row { padding: 0; }
 .pim-list-header { align-items: center; border-bottom: 1px solid var(--p-content-border-color); }
 .pim-list-header p { margin: 0; }

@@ -39,16 +39,24 @@ function fieldGroups(family: FamilyDecl) {
   return [...options, ...missing.map(value => ({ value, label: humanize(value) }))]
 }
 const typeForms = computed(() => new Map(props.options.types.map(type => [type.id, type.form])))
-function fieldLabel(code: string): string {
-  const [group, field] = code.split('.', 2)
-  return field ? `${humanize(field)} (${humanize(group)})` : humanize(group)
+function fieldOptions(available: string[], selected: string[] = []) {
+  const names = new Map<string, number>()
+  const fields = [...new Set([...available, ...selected])].map(value => {
+    const [group, field] = value.split('.', 2)
+    const label = humanize(field ?? group)
+    names.set(label, (names.get(label) ?? 0) + 1)
+    return { value, label, group: field ? humanize(group) : undefined }
+  })
+  return fields.map(({ value, label, group }) => ({
+    value, label, detail: names.get(label)! > 1 ? group : undefined,
+  }))
 }
 const fieldsByCode = computed(() => {
-  const fields = new Map<string, { value: string; label: string; canBeAxis: boolean }>()
+  const fields = new Map<string, boolean>()
   function add(code: string, form: string | undefined, scope: string[] = [], cardinality = 'one') {
     // compile_family requires one unscoped value and excludes text and records.
     const canBeAxis = !!form && form !== 'text' && form !== 'record' && scope.length === 0 && cardinality === 'one'
-    fields.set(code, { value: code, label: fieldLabel(code), canBeAxis })
+    fields.set(code, canBeAxis)
   }
   for (const group of props.draft.aspects ?? []) {
     for (const field of group.attributes ?? []) {
@@ -60,16 +68,14 @@ const fieldsByCode = computed(() => {
   return fields
 })
 function attributesOf(family: FamilyDecl) {
-  return [...fieldsByCode.value.values()].filter(field => family.aspects?.includes(field.value.split('.')[0]))
+  return [...fieldsByCode.value.keys()].filter(code => family.aspects?.includes(code.split('.')[0]))
 }
 function variationOptions(family: FamilyDecl, level: VariationDecl, kind: 'axes' | 'own') {
   const selected = level[kind] ?? []
   const claimed = new Set(levels(family).flatMap(other => [...(other.axes ?? []), ...(other.own ?? [])]))
-  const available = attributesOf(family).filter(field => selected.includes(field.value) ||
-    (!claimed.has(field.value) && (kind === 'own' || field.canBeAxis)))
+  const available = attributesOf(family).filter(code => !claimed.has(code) && (kind === 'own' || fieldsByCode.value.get(code)))
   // Selected fields can be removed even after a change to their field group or type.
-  return [...available, ...selected.filter(code => !available.some(field => field.value === code))
-    .map(code => ({ value: code, label: fieldLabel(code) }))]
+  return fieldOptions(available, selected)
 }
 const channels = computed(() => props.draft.channels ?? [])
 function channelsFor(family: FamilyDecl, requirement?: string) {
@@ -170,10 +176,10 @@ function setContext(r: RequirementDecl, dim: string, member: string) {
                 <Select :disabled="!canEdit" :aria-labelledby="fieldId(f, r.id + '-context-' + d.name)" :model-value="contextOf(r, d.name)" @update:model-value="setContext(r, d.name, $event)" :options="[{ value: '', label: 'not stated' }, { value: 'all', label: 'all members' }, ...(d.members).map((m) => ({ value: m, label: String(m) }))]" option-label="label" option-value="value" appendTo="self" /></div>
               <div class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(f, r.id + '-required')">Required</label></div>
                 <p class="muted small pim-axis-help">These fields must have a value.</p>
-                <ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, r.id + '-required')" :model-value="r.require ?? []" placeholder="Add a required field" :options="attributesOf(f)" @update:model-value="setList(r, 'require', $event)" /></div>
+                <ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, r.id + '-required')" :model-value="r.require ?? []" placeholder="Add a required field" :options="fieldOptions(attributesOf(f), r.require)" @update:model-value="setList(r, 'require', $event)" /></div>
               <div class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(f, r.id + '-authored')">Entered for this context</label></div>
                 <p class="muted small pim-axis-help">These fields need a value set directly for the selected context.</p>
-                <ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, r.id + '-authored')" :model-value="r.authored ?? []" placeholder="Add a field to author" :options="attributesOf(f)" @update:model-value="setList(r, 'authored', $event)" /></div>
+                <ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, r.id + '-authored')" :model-value="r.authored ?? []" placeholder="Add a field to author" :options="fieldOptions(attributesOf(f), r.authored)" @update:model-value="setList(r, 'authored', $event)" /></div>
             </div>
           </div>
           <AddSchemaCode v-if="canEdit" label="Requirement name" action="Add requirement" from-name
