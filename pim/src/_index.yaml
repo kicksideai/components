@@ -53,7 +53,7 @@ entries:
     component: kickside/settings
 
   - name: dep.kickside.uploads
-    version: "*"
+    version: ">=0.3.33"
     kind: ns.dependency
     meta: {comment: Component-owned media originals and their content provider.}
     component: kickside/uploads

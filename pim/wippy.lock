@@ -33,8 +33,8 @@ modules:
       version: 0.3.9
       hash: 8d4b0dcfc9aec8b64a23712c4437b4933cd32e10cc4d20cf251f1293a13a1515
     - name: kickside/uploads
-      version: 0.3.19
-      hash: 3bab5ed17a2fa88a3073257936f7543b51f7739728351825c504861a03306e9d
+      version: 0.3.33
+      hash: d3015eee98fb392d69f9b1954a671848b5ad7ece6d05766964fe91b4a109f32f
     - name: wippy/agent
       version: 0.5.13
       hash: 857b603fc6f036b053380bf6c8f00f42f6eb2720fe3df5f8fcb436a35dfdddf1
