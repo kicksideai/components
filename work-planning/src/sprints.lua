@@ -3,6 +3,7 @@ local board_client = require("board_client")
 local codec = require("codec")
 local commands = require("commands")
 local consts = require("consts")
+local funcs = require("funcs")
 local hash = require("hash")
 local query = require("query")
 local reads = require("reads")
@@ -14,7 +15,7 @@ local work = require("work")
 local M = {}
 local CONTRACT = "kickside.work.planning:sprints"
 local PLUGIN = "kickside.work.planning:plugin"
-local CLOSE = "kickside.work.planning:close"
+local CLOSE = "kickside.work.planning:prepare_close"
 local FIELD = "current_sprint"
 
 type PreviewRequest = { board_id: string, sprint_id: string, rollover_id: string? }
@@ -81,7 +82,7 @@ local function can_close(schema: reads.SchemaView, source: reads.GetResult): boo
     for _, process in ipairs(compiled.processes) do
         if process.id == process_id and process.generation == item.process_generation then
             for _, transition in ipairs(process.transitions) do
-                if transition.id == "close" and transition.to == "closed" and transition.command == CLOSE then
+                if transition.id == "close" and transition.to == "closed" and transition.prepare_command == CLOSE then
                     if transition.any then return true end
                     for _, state in ipairs(transition.from) do if state == item.state then return true end end
                 end
@@ -130,7 +131,7 @@ function M.plan_close(input: unknown): (Preview?, error?)
     return { snapshot = snapshot, token = token }, nil
 end
 
-function M.close(input: unknown): (commands.ApplyResult?, error?)
+function M.prepare_close(input: unknown): (commands.ApplyRequest?, error?)
     local invalid = requests.parse("close", input, CONTRACT)
     if invalid then return nil, invalid end
     local request = input :: CloseRequest
@@ -166,9 +167,13 @@ function M.close(input: unknown): (commands.ApplyResult?, error?)
         ops[#ops + 1] = op
     end
     ops[#ops + 1] = { op = "transition", item = snapshot.sprint_id, transition = "close", expect_version = snapshot.sprint_version }
-    local result, err = board_client.call("apply", { board_id = snapshot.board_id, mode = "atomic",
+    return { board_id = snapshot.board_id, mode = "atomic",
         key = "planning-close/" .. request.key, expected_head = snapshot.head, ops = ops, source = "planning",
-        origin = { close_key = request.key, sprint_id = snapshot.sprint_id, rollover_id = snapshot.rollover_id } })
+        origin = { close_key = request.key, sprint_id = snapshot.sprint_id, rollover_id = snapshot.rollover_id } }, nil
+end
+
+function M.close(input: unknown): (commands.ApplyResult?, error?)
+    local result, err = funcs.call("kickside.work.service:transition_command", { command = CLOSE, input = input })
     if err and (err:details() or {}).code == "head_changed" then return nil, stale() end
     return result :: commands.ApplyResult?, err
 end

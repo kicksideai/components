@@ -199,7 +199,12 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
     if not t or (not op.force and (t.people == false or (t.auto and t.people ~= true))) then
         return M.result("invalid", group, "unknown_transition", "process " .. p.id .. " has no transition " .. tostring(op.transition), "transition")
     end
-    if t.command then
+    local authority = ctx.transition_authority
+    if t.prepare_command then
+        if not authority or authority.owner ~= t.prepare_command or authority.operation ~= op then
+            return M.result("denied", group, "transition_command_required", "transition must run through " .. t.prepare_command, "transition")
+        end
+    elseif t.command then
         local permitted, err = security.can("work.transition.command", t.command)
         if err then return M.failed(err) end
         if not permitted then return M.result("denied", group, "transition_command_required", "transition must run through " .. t.command, "transition") end

@@ -176,7 +176,7 @@ type StateDecl = {
 type EffectDecl = { field: string, value: unknown, clear: boolean?, copy: string? }
 type TransitionDecl = {
     id: string, name: string?, from: unknown, to: string, require: { string }?, set: { EffectDecl }?, auto: boolean?, people: boolean?, order: integer?,
-    default: boolean?, when: unknown, guards: { string }?, command: string?,
+    default: boolean?, when: unknown, guards: { string }?, command: string?, prepare_command: string?,
 }
 type ProcessDecl = {
     id: string, name: string?, states: { StateDecl }, initial: string?, transitions: { TransitionDecl }?, migration: string?,
@@ -217,7 +217,7 @@ type State = {
 type Effect = { field: string, op: string, value: Value?, from: string? }
 type Transition = {
     id: string, name: string, from: { string }, any: boolean, to: string, require: { string }, set: { Effect }, auto: boolean, people: boolean?,
-    order: integer, default: boolean, when: unknown, guards: { string }?, command: string?,
+    order: integer, default: boolean, when: unknown, guards: { string }?, command: string?, prepare_command: string?,
 }
 type HookActor = { id: string?, groups: { string } }
 type GuardRequest = { config: JsonObject, actor: HookActor, transition: Transition?,

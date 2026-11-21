@@ -9,8 +9,10 @@ entries:
     service_only: true
     producers: ['kickside.work.planning:close']
   policy:
-    resources: ['kickside.work.planning:close']
-    actions: work.transition.command
+    resources:
+    - kickside.work.service:transition_command
+    - kickside.work.planning:prepare_close
+    actions: [funcs.call, registry.get]
     effect: allow
 - name: module_access
   kind: security.policy

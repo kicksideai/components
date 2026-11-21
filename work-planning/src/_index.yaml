@@ -9,7 +9,7 @@ entries:
 - name: dep.work
   kind: ns.dependency
   component: kickside/work
-  version: '>=0.1.31'
+  version: '>=0.1.32'
 - name: pack
   kind: registry.entry
   meta:
@@ -48,7 +48,7 @@ entries:
       states: *period_states
       transitions:
       - *start_period
-      - {id: close, from: [active], to: closed, command: 'kickside.work.planning:close'}
+      - {id: close, from: [active], to: closed, prepare_command: 'kickside.work.planning:prepare_close'}
     - id: planning_issue
       initial: open
       states:

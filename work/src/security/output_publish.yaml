@@ -25,6 +25,7 @@ entries:
     service_only: true
     producers:
     - kickside.work.service:apply
+    - kickside.work.service:transition_command
     - kickside.work.service:approve
     - kickside.work.service:report
     - kickside.work.service:complete_stage

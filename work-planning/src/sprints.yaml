@@ -45,7 +45,7 @@ entries:
     output_schema: *plan_output
   source: file://sprints.lua
   method: plan_close
-  modules: [hash, security]
+  modules: [funcs, hash, security]
   imports: &sprint_imports
     board_client: kickside.work:client
     codec: kickside.work.read:cursor_codec
@@ -70,7 +70,14 @@ entries:
     output_schema: *close_output
   source: file://sprints.lua
   method: close
-  modules: [hash, security]
+  modules: [funcs, hash, security]
   imports: *sprint_imports
   security:
     policies: ['kickside.work.planning:commit_sprint']
+- name: prepare_close
+  kind: function.lua
+  meta: { type: kickside.work.transition_command, private: true }
+  source: file://sprints.lua
+  method: prepare_close
+  modules: [funcs, hash, security]
+  imports: *sprint_imports

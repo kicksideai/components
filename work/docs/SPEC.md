@@ -52,7 +52,15 @@ A cross-board move admits at most 5,000 live subtree items and 5,000 outgoing re
 
 A transition with `people: false` is reserved for the process engine and board ADMIN force. A direct named transition without force receives `unknown_transition`. Stage reports and state timers can take that route. When `people` is omitted, discovery hides stage outcome routes, while an otherwise eligible non-automatic route still accepts a direct call by name.
 
-A transition with `command` names the service that owns its admission. Taking it requires service authority for `work.transition.command` on that name, including when the caller requests board ADMIN force. Work excludes these edges from ordinary transition discovery and process routing. The Planning pack uses this rule to close sprints through its preview and commit command while milestones close through their ordinary transition. The preview moves or clears unfinished live membership. Completed, canceled and trashed issues retain their assignment. New assignments require a planned or active sprint.
+A transition with `prepare_command` names a registered `function.lua` with `meta.type: kickside.work.transition_command`. The owning service calls `kickside.work.service:transition_command` with `{ command, input }`. Work invokes the named function with `input` under the authenticated actor. The preparation function validates the caller's request and returns an atomic Apply request with a key, expected head and exactly one transition operation. Work checks the owner on the item's pinned process when applying that operation. Ordinary Work Apply and Bulk, including ADMIN force, cannot run these transitions.
+
+The existing `command` field continues to authorize ordinary Apply according to the host's `work.transition.command` policy for the declared owner. A host must restrict that legacy action to its producing services. KickSide App 0.2.57 excludes it from the administrator wildcard. Use at most one of `command` and `prepare_command` on a manual transition. Work excludes both from ordinary transition discovery and process routing.
+
+The Planning pack uses this rule to close sprints through its preview and commit command. Milestones close through their ordinary transition. The preview moves or clears unfinished live membership. Completed, canceled and trashed issues retain their assignment. New assignments require a planned or active sprint.
+
+### Adopting Work-owned preparation
+
+Providers can adopt `prepare_command` in a new process generation. The producing service needs `funcs.call` on the dispatcher and its preparation function and `registry.get` on the preparation function. Preserve the original atomic key, expected head, operations, source, and origin when callers may retry a previously committed request. Keep the original service and its exact policy available while any live or restorable item remains pinned to a generation with `command`. Verify execution on affected generations and replay of a committed request before retiring the legacy service.
 
 ## Agent pipelines
 

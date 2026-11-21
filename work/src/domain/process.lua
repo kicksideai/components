@@ -153,7 +153,12 @@ local function compile_transition(decl: types.TransitionDecl, ids: { [string]: b
     local default = decl.default == true
     if decl.auto ~= nil and type(decl.auto) ~= "boolean" then return nil, invalid(where .. " auto is true or false") end
     if decl.people ~= nil and type(decl.people) ~= "boolean" then return nil, invalid(where .. " people is true or false") end
-    if decl.command ~= nil and (type(decl.command) ~= "string" or not decl.command:match("^[^:]+:[^:]+$") or auto or decl.people ~= nil) then
+    local owner = decl.command
+    if decl.prepare_command ~= nil then
+        if owner ~= nil then return nil, invalid(where .. " takes either command or prepare_command") end
+        owner = decl.prepare_command
+    end
+    if owner ~= nil and (type(owner) ~= "string" or not owner:match("^[^:]+:[^:]+$") or auto or decl.people ~= nil) then
         return nil, invalid(where .. " command names the owner of a manual transition")
     end
     if decl.default ~= nil and type(decl.default) ~= "boolean" then return nil, invalid(where .. " default is true or false") end
@@ -173,7 +178,8 @@ local function compile_transition(decl: types.TransitionDecl, ids: { [string]: b
         set[#set + 1] = effect
     end
     return { id = decl.id, name = decl.name or decl.id, from = from, any = any, to = decl.to, require = require, set = set, auto = auto,
-        order = decl.order or 0, default = default, when = decl.when, guards = decl.guards, people = decl.people, command = decl.command }, nil
+        order = decl.order or 0, default = default, when = decl.when, guards = decl.guards, people = decl.people,
+        command = decl.command, prepare_command = decl.prepare_command }, nil
 end
 
 -- Automatic edges without effects form an acyclic graph, including conditional branches.
@@ -269,7 +275,9 @@ function M.compile(decl: types.ProcessDecl, by_key: { [string]: types.Field }, p
         end
         if s.run and s.run.on_exhausted then
             local route = seen[s.run.on_exhausted]
-            if not route or route.auto or route.command then return nil, invalid("on_exhausted names a process transition", "stage_on_exhausted_unknown") end
+            if not route or route.auto or route.command or route.prepare_command then
+                return nil, invalid("on_exhausted names a process transition", "stage_on_exhausted_unknown")
+            end
             exhausted[s.id] = { route }
             local sources: { string } = {}
             if s.id == decl.initial then sources[#sources + 1] = "*" end

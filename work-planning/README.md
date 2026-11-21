@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Work Planning
 
-Work Planning requires `kickside/work` 0.1.31 or newer for previewed sprint
+Work Planning requires `kickside/work` 0.1.32 or newer for command-owned sprint
 closure and state-restricted sprint references.
 
 Install `kickside.work.planning:pack` through Work pack plan and apply. On a new

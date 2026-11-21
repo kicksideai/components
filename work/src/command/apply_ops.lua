@@ -263,7 +263,7 @@ local function run_atomic(ctx: types.ApplyContext, provider: types.AtomicProvide
         local db, derr = store.open()
         if not db then return nil, derr end
         local actor, at = guard.actor_id(), guard.stamp_now()
-        local board, plans, berr = prepare_snapshot.read(db, ctx.board_id, ops, all, actor, at, ctx.settings, ctx.until_at, ctx.base ~= nil)
+        local board, plans, berr = prepare_snapshot.read(db, ctx.board_id, ops, all, actor, at, ctx.settings, ctx.until_at, ctx.base ~= nil, ctx.transition_authority)
         db:release()
         if berr then return nil, berr end
         if not board then return nil, errors.new({ details = { code = "board_schema_missing" }, kind = errors.NOT_FOUND, message = "board has no schema" }) end
@@ -435,7 +435,7 @@ local function run_independent(ctx: types.ApplyContext): (types.ApplyResult?, er
 end
 
 -- apply(request) runs item ops. Needs WRITE; deleting and restoring also need DELETE.
-function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?, provider: types.AtomicProvider?): (types.ApplyResult?, error?)
+function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?, provider: types.AtomicProvider?, authority: types.TransitionAuthority?): (types.ApplyResult?, error?)
     local context, trace_err = receipts.trace(request.trace_context, "work.apply")
     if trace_err then return nil, trace_err end
     request.trace_context = context
@@ -464,7 +464,7 @@ function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?, provid
     local hashed = provider and receipts.request_hash(provider.fingerprint) or hash_apply(request, mode, request.ops, source)
     local ctx: types.ApplyContext = {
         settings = settings, c = c, board_id = board_id, request = request, ops = request.ops, source = source,
-        hashed = hashed, base = key and (namespace .. "/" .. key) or nil,
+        transition_authority = authority, hashed = hashed, base = key and (namespace .. "/" .. key) or nil,
         until_at = until_at, generation = uuid.v4(),
     }
     if mode == "atomic" then return run_atomic(ctx, provider) end
