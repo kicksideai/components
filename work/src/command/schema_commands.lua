@@ -315,7 +315,12 @@ end
 
 -- apply_schema(request) appends the declaration as the next generation, expecting
 -- the thread head. Needs ADMIN.
-function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?, boundary: domain.Deadline?): (types.SchemaResult?, error?)
+local function head_changed(): error
+    return errors.new({ kind = errors.CONFLICT, message = "Board head changed. Review the schema change again.",
+        details = { code = "head_changed" } })
+end
+
+function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?, boundary: domain.Deadline?, reviewed: types.ReviewedSchema?): (types.SchemaResult?, error?)
     local context, trace_err = receipts.trace(request.trace_context, "work.schema")
     if trace_err then return nil, trace_err end
     request.trace_context = context
@@ -332,7 +337,7 @@ function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?,
     if request.key ~= nil then
         if request.key == "" then return nil, guard.invalid("key must not be empty") end
         marker = "schema/" .. request.key
-        hashed = receipts.request_hash({ op = "schema", board_id = board_id, pack = request.pack, declaration = request.declaration, expected_generation = request.expected_generation, source = request.source or "api", origin = request.origin, plugin_configs = request.plugin_configs })
+        hashed = receipts.request_hash({ op = "schema", board_id = board_id, pack = request.pack, declaration = request.declaration, expected_generation = request.expected_generation, source = request.source or "api", origin = request.origin, plugin_configs = request.plugin_configs, reviewed = reviewed and reviewed.fingerprint })
     end
     local function replay(): (types.SchemaResult?, error?)
         if not marker or not hashed then return nil, nil end
@@ -362,7 +367,12 @@ function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?,
         local head = 0
         if not berr and snapshot then
             head = math.max(board and board.applied_seq or 0, last_seq)
-            plan, perr = plan_schema(db, snapshot, board_id, request, frozen)
+            if reviewed then
+                if head ~= reviewed.head then perr = head_changed()
+                else plan, perr = reviewed.plan(db, snapshot) end
+            else
+                plan, perr = plan_schema(db, snapshot, board_id, request, frozen)
+            end
         end
         db:release()
         local stored, rerr = replay()
@@ -373,8 +383,10 @@ function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?,
             return nil, guard.invalid("schema change reinterprets stored values", { code = "migration_required",
                 changes = plan.refused :: { domain.JsonObject }, migration = migration_hint(plan.refused) })
         end
-        local _, binding_err = funcs.call("kickside.work.service:stage_binding", { board_id = board_id, compiled = plan.compiled, install = true })
-        if binding_err then return nil, binding_err :: error end
+        if not reviewed then
+            local _, binding_err = funcs.call("kickside.work.service:stage_binding", { board_id = board_id, compiled = plan.compiled, install = true })
+            if binding_err then return nil, binding_err :: error end
+        end
         if plan.unchanged and not marker then
             return { generation = plan.generation, class = "unchanged", changes = {}, as_of = head }, nil
         end
@@ -408,6 +420,7 @@ function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?,
         if aerr then
             local stored, rerr = replay()
             if rerr or stored then return stored, rerr end
+            if reviewed and threads.mismatch(aerr, "head_mismatch") then return nil, head_changed() end
             if plan.claim and threads.mismatch(aerr, "version_mismatch") then return nil, registry.taken(plan.compiled.key_prefix) end
             if not threads.mismatch(aerr, "head_mismatch") and not threads.mismatch(aerr, "version_mismatch") then return nil, errors.wrap(aerr, "board append failed") end
         else

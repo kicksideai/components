@@ -41,6 +41,10 @@ type SchemaPlan = {
     maps: domain.StateMaps, declaration: Declaration, compiled: domain.Compiled, digest: string,
     unchanged: boolean, claim: boolean, migrates: boolean,
 }
+type ReviewedSchema = {
+    head: integer, fingerprint: string,
+    plan: (db: sql.DB, snapshot: SchemaSnapshot) -> (SchemaPlan?, error?),
+}
 
 -- Results. A status is applied, unchanged, conflict, invalid, denied or unavailable.
 type Finding = domain.Finding
@@ -122,6 +126,7 @@ type Input = { job: Job, payload: Locator }
 type ProcessTarget = { model: domain.Model, item: domain.StateItem, definition: domain.Process, state: domain.State }
 return { ProcessTarget = ProcessTarget, Map = Map, BulkRequest = BulkRequest, Locator = Locator, Owner = Owner, Status = Status, MoveMap = MoveMap, MoveRequest = MoveRequest, MoveItem = MoveItem, MoveLink = MoveLink, MovePlan = MovePlan, Job = Job, Input = Input, ConfigureSelection = ConfigureSelection, ConfigureRequest = ConfigureRequest, ConfigureResult = ConfigureResult,
     ApplyContext = ApplyContext, TransitionAuthority = TransitionAuthority, AtomicPreparation = AtomicPreparation, AtomicProvider = AtomicProvider,
+    ReviewedSchema = ReviewedSchema,
     Durable = Durable,
     Executor = Executor,
     PrepareContext = PrepareContext, PathMove = PathMove, SubtreeStats = SubtreeStats, TargetRef = TargetRef, Op = Op, ApplyRequest = ApplyRequest, SchemaRequest = SchemaRequest, CreateRequest = CreateRequest,

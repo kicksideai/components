@@ -2,6 +2,7 @@
 -- Point reads and pages share one transition catalogue and batched predicate evaluation.
 local store = require("store")
 local process = require("process")
+local transition_rules = require("transition_rules")
 local seams = require("seams")
 local conditions = require("conditions")
 local predicates = require("predicates")
@@ -35,7 +36,7 @@ function M.list(tx: types.Executor, board: domain.Board, items: { domain.Item },
             local function leaving(active: domain.Item, region: string?): error?
                 local state = process.state_of(definition :: domain.Process, active.state) :: domain.State
                 for _, t in ipairs(process.people(definition :: domain.Process, active.state)) do
-                    if not process.named_refusal(state, t) then
+                    if not transition_rules.owner(board.compiled, item.type, definition.id, t) and not process.named_refusal(state, t) then
                         local key = identity .. ":" .. t.id .. ":" .. (region or "")
                         local group = by_key[key]
                         if not group then

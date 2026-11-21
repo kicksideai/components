@@ -96,6 +96,8 @@ entries:
     - kickside.work.service:create
     - kickside.work.service:update
     - kickside.work.service:apply_schema
+    - kickside.work.service:plan_transition_adoption
+    - kickside.work.service:apply_transition_adoption
     - kickside.work.service:apply
     - kickside.work.service:transition_command
     - kickside.work.service:configure_plugin

@@ -14,6 +14,7 @@ local plugins = require("plugins")
 local policy = require("policy")
 local access_rules = require("access_rules")
 local search = require("search")
+local transition_rules = require("transition_rules")
 
 local fields_validator = require("fields")
 local M = {}
@@ -371,6 +372,8 @@ function M.compile(prev: types.Compiled?, decl: types.Declaration, generation: i
     end
     local compiled: types.Compiled = { visibility = decl.visibility, key_prefix = decl.key_prefix :: string, fields = fields, item_types = item_types, relation_types = relations,
         processes = processes, plugins = chosen, scopes = decl.scopes or {}, policy = effective_policy, policy_overrides = decl.policy or {}, next_field_id = next_id, counter_field = counter }
+    local transition_err = transition_rules.compile(prev, compiled)
+    if transition_err then return nil, transition_err end
     local seam_err = seams.validate(compiled)
     if seam_err then return nil, seam_err end
     local access_err = access_rules.validate(compiled)

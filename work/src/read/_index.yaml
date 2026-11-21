@@ -262,6 +262,7 @@ entries:
   kind: library.lua
   source: file://transitions.lua
   imports:
+    transition_rules: kickside.work.domain:transition_rules
     flow: kickside.work.command:flow
     prepare: kickside.work.command:prepare_context
     when: kickside.work.command:when

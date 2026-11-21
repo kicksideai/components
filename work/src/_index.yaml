@@ -69,6 +69,10 @@ entries:
     path: .meta.router
   - entry: kickside.work.api.sprints:close.endpoint
     path: .meta.router
+  - entry: kickside.work.api.sprints:plan_adoption.endpoint
+    path: .meta.router
+  - entry: kickside.work.api.sprints:apply_adoption.endpoint
+    path: .meta.router
   - entry: kickside.work.templates.api:list.endpoint
     path: .meta.router
   - entry: kickside.work.templates.api:instantiate.endpoint
