@@ -333,7 +333,7 @@ type ComponentRow = { component_id: string?, impl_id: string?, parent_id: string
 
 type Write = {
     group: string, thread_id: string?, events: { Event }, ops: { integer }, expect_subject: string?, expect_version: integer?, expect_head: integer?,
-    guards: { [string]: integer }?, caller_expect: boolean,
+    expect_schema_version: integer?, guards: { [string]: integer }?, caller_expect: boolean,
 }
 
 type PathMove = { previous: string, path: string }

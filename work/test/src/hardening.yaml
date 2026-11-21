@@ -37,6 +37,7 @@ entries:
     delivery_probe: app:stage_delivery_probe
     append: kickside.work.persist:append
     apply_ack_probe: app:apply_ack_probe
+    schema_guard_probe: app:schema_guard_probe
 - name: apply_ack_probe
   kind: library.lua
   source: file://apply_ack_probe.lua

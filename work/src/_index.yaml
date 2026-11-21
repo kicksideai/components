@@ -14,10 +14,10 @@ entries:
     comment: Board components, owned view and plugin attachment registration, ACL checks and deletion.
   component: kickside/component
 - name: dep.kickside.core
-  version: '>=0.3.37'
+  version: '>=0.3.47'
   kind: ns.dependency
   meta:
-    comment: Board threads, sequence-targeted projection waits, and startup provisioning of the prefix registry.
+    comment: Board threads, subject and schema append guards, projection waits, and prefix registry provisioning.
   component: kickside/core
 - name: dep.kickside.jobs
   version: '>=0.1.83'

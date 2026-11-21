@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: schema_guard_probe
+  kind: library.lua
+  source: file://schema_guard_probe.lua
+  modules: [funcs, json, sql]
+  imports:
+    domain: kickside.work:types
+- name: schema_guard_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work_schema_guard, timeout: 300s}
+  source: file://schema_guard_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    operations: app:operation_steps
+    probe: app:schema_guard_probe
