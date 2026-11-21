@@ -28,7 +28,7 @@ entries:
     tools:
     - kickside.work.traits:get_schema
     attachment: app:ui_attachment
-    seams: [app:score_type]
+    seams: [app:score_type, app:admin_check, app:admin_filter, app:hidden_check, app:hidden_filter]
     config_schema:
       type: object
       properties:
@@ -37,6 +37,52 @@ entries:
           minimum: 1
           default: 1
       additionalProperties: false
+- name: admin_check
+  kind: function.lua
+  meta:
+    type: kickside.work.guard
+    plugin: app:ui_plugin
+    title: Check release title
+    reads: [title]
+    cost: interactive
+    enforce: write
+  source: file://attachment.lua
+  method: guard
+- name: admin_filter
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: app:ui_plugin
+    title: Release filter
+    table: release_index
+    board_column: board_id
+    item_column: item_id
+    filters: {release: {column: release, type: text, ops: [eq]}}
+- name: uninstalled_filter
+  kind: registry.entry
+  meta: {type: kickside.work.scope, plugin: 'app:missing_plugin', title: Uninstalled filter}
+- name: unowned_check
+  kind: function.lua
+  meta: {type: kickside.work.guard, plugin: 'app:ui_plugin', title: Undeclared check}
+  source: file://attachment.lua
+  method: guard
+- name: hidden_check
+  kind: function.lua
+  meta: {type: kickside.work.guard, plugin: 'app:ui_plugin', title: Hidden check}
+  source: file://attachment.lua
+  method: guard
+- name: hidden_filter
+  kind: registry.entry
+  meta: {type: kickside.work.scope, plugin: 'app:ui_plugin', title: Hidden filter}
+- name: admin_board_app
+  kind: registry.entry
+  meta: {type: kickside.work.ui.app, title: Release app, icon: 'tabler:rocket', page: /releases}
+- name: invalid_board_app
+  kind: registry.entry
+  meta: {type: kickside.work.ui.app, title: Invalid app, icon: 'tabler:rocket', page: //external}
+- name: hidden_board_app
+  kind: registry.entry
+  meta: {type: kickside.work.ui.app, title: Hidden app, icon: 'tabler:rocket', component: hidden-board}
 - name: malformed_ui_plugin
   kind: registry.entry
   meta:
@@ -78,6 +124,12 @@ entries:
   policy:
     resources:
     - app:ui_plugin
+    - app:admin_check
+    - app:admin_filter
+    - app:uninstalled_filter
+    - app:unowned_check
+    - app:admin_board_app
+    - app:invalid_board_app
     - app:malformed_ui_plugin
     - app:ui_attachment
     actions:

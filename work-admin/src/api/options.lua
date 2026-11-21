@@ -7,6 +7,7 @@ local component = require("component")
 local http_errors = require("http_errors")
 local plugins = require("plugins")
 local types = require("types")
+local catalog = require("catalog")
 local M = {}
 local function fail(res: http.Response, err: error)
     res:set_status(http_errors.classify(err))
@@ -38,6 +39,7 @@ function M.get()
         granted[level] = access_err == nil
     end
     local options: types.SchemaOptions = { plugins = {}, field_types = {} }
+    local choices = catalog.empty()
     if granted.admin then
         local found, options_err = board:schema_options({ board_id = id })
         if options_err then
@@ -48,10 +50,14 @@ function M.get()
         elseif found then
             options = found
         end
+        local discover, discovery_err = catalog.load(found)
+        if discovery_err then return fail(res, discovery_err) end
+        choices = assert(discover)
     else
         local _, read_err = board:get_schema({ board_id = id })
         if read_err and not schema_missing(read_err) then return fail(res, read_err) end
     end
-    res:write_json({ success = true, data = { access = granted, schema_options = options, installed_types = options.field_types } })
+    res:write_json({ success = true, data = { access = granted, schema_options = options, installed_types = options.field_types,
+        guards = choices.guards, filters = choices.filters, board_apps = choices.board_apps } })
 end
 return M

@@ -83,3 +83,23 @@ it('shows the named opening app and changes it through the board update', async 
     expect(work.updateBoard).toHaveBeenCalledWith('b', { ui_app: 'app:releases' })
   } finally { w.unmount() }
 })
+
+it('keeps a stale app visible and offers a replacement from the installed list', async () => {
+  vi.mocked(work.updateBoard).mockResolvedValue({ board_id: 'b', status: 'updated' })
+  const boardApps = [{ id: 'app:tracker', title: 'Tracker' }]
+  const w = mount(BoardIdentity, { props: { detail: true, board: { ...board, ui_app: 'app:removed' }, boardApps } })
+  try {
+    expect(w.text()).toContain('Opens in Unavailable app')
+    await getButton(w, 'Edit board').trigger('click')
+    const { default: Select } = await import('primevue/select')
+    const picker = w.getComponent(Select)
+    expect(picker.props('options')).toEqual([
+      { id: '', title: 'Installation default' },
+      ...boardApps,
+      { id: 'app:removed', title: 'Unavailable app', disabled: true },
+    ])
+    await picker.setValue('app:tracker')
+    await w.get('form').trigger('submit')
+    expect(work.updateBoard).toHaveBeenCalledWith('b', { ui_app: 'app:tracker' })
+  } finally { w.unmount() }
+})
