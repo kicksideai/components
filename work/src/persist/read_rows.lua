@@ -99,7 +99,7 @@ function M.stage_runs(tx: sql.DB | sql.Transaction, board_id: string, item_id: s
     local where = "board_id = $1 AND item_id = $2"
     if visit and attempt then
         params[3], params[4] = visit, attempt
-        where = where .. " AND (visit < $3 OR (visit = $3 AND attempt < $4))"
+        where = where .. " AND (visit, attempt) < ($3, $4)"
     end
     if visits then
         local markers: { string } = {}

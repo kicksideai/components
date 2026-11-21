@@ -1009,14 +1009,20 @@ on their first fact. A release that creates jobs carries them on its final fact,
 so the fold stores the job IDs in the receipt after all jobs are created.
 The fold persists receipts atomically with projection coverage.
 Successful no-ops append no event: PIM records their result only in
-its receipt store, under the catalog lock with a captured-position and winner
-recheck. A moved position rebuilds the attempt.
+its receipt store, under the catalog lock with a recheck of the materialized
+catalog position and winning receipt. A moved catalog position rebuilds the
+attempt. The covered thread position can be ahead of the materialized catalog
+when Core advances past events that PIM does not consume. The thread position
+guards appends and is stored as the result position for no-op receipts.
+
 The catalog and authenticated actor scope each namespace and key. The actor
 participates in the event deduplication marker and request hash. Replay requires
-current catalog access and, for a sourced command, current permission to act
-as the source. PIM catches up before checking that source permission and
-looking up the receipt. It returns the original outcome. A different request
-under the same scoped key returns `CONFLICT / idempotency_conflict`.
+current catalog access. Before looking up a sourced command's receipt, PIM
+catches up to the sampled head and checks current permission to act as the source.
+A committed command waits for projection coverage through its last event. A
+replay of a stored receipt waits through the receipt's last event, or through
+its saved thread position for a no-op, and returns the original outcome. A
+different request under the same scoped key returns `CONFLICT / idempotency_conflict`.
 Receipts expire after the catalog event-retention window (currently the catalog
 binding's 90 days); retention removes at most the shared bounded page budget. No-op responses retain an absent domain `seq` and report the
 covering `as_of`. Failed atomic commands create no receipt. Concurrent deliveries

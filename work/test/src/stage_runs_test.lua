@@ -7,6 +7,7 @@ local funcs = require("funcs")
 local json = require("json")
 local scoped = require("scoped")
 local time = require("time")
+local materializer = require("materializer")
 
 type Map = { [string]: unknown }
 local function declaration(): Map
@@ -45,6 +46,60 @@ local function report(h: fixture.Handle, id: string, visit: integer, outcome: st
 end
 local function define()
     test.describe("stage progress", function()
+        test.it("coalesces checkpoint writes in one fold and preserves terminal ordering", function()
+            local h = fixture.board({ declaration = transition_process() })
+            local ids, versions = {}, {}
+            for i = 1, 4 do
+                ids[i] = steps.create(h, "task")
+                versions[i] = steps.version(h, ids[i])
+            end
+            local db = assert(store.open())
+            local tx = assert(db:begin())
+            local board = assert(store.board(tx, h.id))
+            local events = {}
+            local function report_fact(id, kind, progress, outcome)
+                events[#events + 1] = { seq = board.applied_seq + #events + 1,
+                    type = "kickside.work.events:stage." .. kind, body = {
+                        item = id, state = "triage", visit = 1, attempt = 1,
+                        actor = "test", at = "2026-01-01T00:00:00.000000000Z", progress = progress, outcome = outcome,
+                    } }
+            end
+            for step = 1, 3 do
+                for _, id in ipairs(ids) do report_fact(id, "progressed", { step = step }, nil) end
+            end
+            report_fact(ids[3], "reported", nil, "passed")
+            report_fact(ids[4], "reported", { step = 4 }, "passed")
+
+            local updates = 0
+            local probe = {
+                query = function(_, statement, args) return tx:query(statement, args) end,
+                execute = function(_, statement, args)
+                    if statement:find("UPDATE kickside_work_stage_run", 1, true) then updates = updates + 1 end
+                    return tx:execute(statement, args)
+                end,
+            }
+            local folded, err = materializer.fold(probe :: any, db:type(), h.id, events, events[#events].seq, 5000)
+            assert(folded, steps.detail(err))
+            local attempts, items = {}, {}
+            for i, id in ipairs(ids) do
+                attempts[i] = assert(tx:query([[SELECT progress, outcome FROM kickside_work_stage_run
+                    WHERE board_id=$1 AND item_id=$2 AND visit=1 AND attempt=1]], { h.id, id }))[1]
+                items[i] = assert(store.item(tx, h.id, id))
+            end
+            local history = assert(tx:query("SELECT count(*) AS n FROM kickside_work_change WHERE board_id=$1 AND seq>$2",
+                { h.id, board.applied_seq }))[1].n
+            assert(tx:rollback())
+            db:release()
+
+            test.eq(history, #events)
+            for i, attempt in ipairs(attempts) do
+                test.eq(json.decode(attempt.progress).step, i == 4 and 4 or 3)
+                test.eq(store.text(attempt.outcome), i >= 3 and "passed" or nil)
+                test.eq(items[i].version, versions[i] + (i >= 3 and 4 or 3))
+            end
+            test.eq(updates, 1, "open attempts share one set-based checkpoint write")
+        end)
+
         test.it("checkpoints an active attempt and replays its keyed receipt after completion", function()
             local h = fixture.board({ declaration = transition_process() })
             local id = steps.create(h, "task")

@@ -19,6 +19,7 @@ entries:
     test: wippy.test:test
     fixture: app:fixture
     steps: app:steps
+    clock: kickside.work.domain:clock
     defaults: kickside.work.settings:defaults
     jobs: kickside.core.jobs:jobs
 - name: deferred_probe

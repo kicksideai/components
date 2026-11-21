@@ -29,3 +29,16 @@ entries:
   imports:
     migration: wippy.migration:migration
   method: migrate
+- name: 03_move_alias_indexes
+  kind: function.lua
+  meta:
+    type: migration
+    tags:
+    - work
+    - board
+    comment: Indexes move alias resolution and redirection by item identity.
+    timestamp: '2026-11-21T00:00:03Z'
+  source: file://03_move_alias_indexes.lua
+  imports:
+    migration: wippy.migration:migration
+  method: migrate

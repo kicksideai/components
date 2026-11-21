@@ -120,10 +120,7 @@ local function define()
             assert(h.call("apply_schema", { declaration = { plugins = {} } }))
             local absent = assert(h.call("get_schema", {}))
             for _, plugin in ipairs(absent.plugins) do test.eq(plugin.active, false) end
-            steps.wait_for("removed attachment", function(): boolean
-                local missing, missing_err = admin.call("attachment_context", { id = attachment })
-                return missing == nil and missing_err ~= nil
-            end)
+            steps.deleted(attachment, "deactivated plugin attachment deletion")
         end)
 
         test.it("refuses unknown ungranted and malformed activation and unlisted query seams", function()
@@ -181,11 +178,7 @@ local function define()
             attachment_rows.seed(attachment)
             test.eq(attachment_rows.count(attachment), 1)
             test.not_nil(assert(h.call("delete", {})))
-            steps.deleted(h.id)
-            steps.wait_for("owned attachment reaper", function(): boolean
-                local context, err = admin.call("attachment_context", { id = attachment })
-                return context == nil and err ~= nil
-            end)
+            steps.reaped(h, attachment)
             test.eq(attachment_rows.count(attachment), 0)
         end)
 

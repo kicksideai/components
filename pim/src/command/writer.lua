@@ -81,6 +81,8 @@ local function run(catalog_id: string, idempotency: types.Idempotency?, fingerpr
     local out, err = pipeline.run({
         client = c, actor = actor, deadline_ms = operating.command_deadline_ms, deadline = deadline, fingerprint = fingerprint,
             trace_context = trace_context, idempotency = idempotency,
+        -- A sourced replay checks permission through the sampled catalog head.
+        receipt_requires_head = source ~= nil,
         receipt = function(marker: string): (types.Receipt?, integer?, error?)
             if source then
                 local catalog, err = store.with_db(function(db: types.Executor) return store.catalog(db, catalog_id) end)
@@ -91,8 +93,12 @@ local function run(catalog_id: string, idempotency: types.Idempotency?, fingerpr
             end
             return receipts.get(catalog_id, marker)
         end,
-        reserve = function(marker: string,hashed: string,seq: integer,at: string) return receipts.reserve(catalog_id,marker,hashed,seq,at) end,
-        noop = function(marker: string,hashed: string,result: types.JsonObject,seq: integer,at: string) return receipts.noop(catalog_id,marker,hashed,result,seq,at) end,
+        reserve = function(marker: string, hashed: string, position: pipeline.ReceiptPosition, at: string)
+            return receipts.reserve(catalog_id, marker, hashed, position, at)
+        end,
+        noop = function(marker: string, hashed: string, result: types.JsonObject, position: pipeline.ReceiptPosition, at: string)
+            return receipts.noop(catalog_id, marker, hashed, result, position, at)
+        end,
         thread = { id = catalog_id, kind = consts.PROJECTION_KIND, source = consts.EXTERNAL_SOURCE },
         build = function(last_seq: integer): (pipeline.Attempt?, error?)
             local function attempt(db: types.Executor, catalog: types.Catalog?): (pipeline.Attempt?, error?)
@@ -100,8 +106,8 @@ local function run(catalog_id: string, idempotency: types.Idempotency?, fingerpr
                 local head=math.max(catalog.applied_seq,last_seq)
                 local plan,berr=build(db,catalog,head,base)
                 if berr or not plan then return nil,berr end
-                return {result=plan.result :: types.JsonObject,events=plan.events,expect={head=head},as_of=head,
-                    receipt_after_fold=plan.receipt_after_fold},nil
+                return { result = plan.result :: types.JsonObject, events = plan.events, expect = { head = head },
+                    as_of = head, catalog_seq = catalog.applied_seq, receipt_after_fold = plan.receipt_after_fold }, nil
             end
             return store.with_db(function(db): (pipeline.Attempt?, error?)
                 local catalog, rerr = store.catalog(db, catalog_id)
@@ -264,7 +270,7 @@ function M.commit_initial_schema(client: threads.Client, catalog_id: string, pla
         thread = { id = catalog_id, kind = consts.PROJECTION_KIND, source = consts.EXTERNAL_SOURCE },
         build = function(head: integer): (pipeline.Attempt?, error?)
             if head ~= 0 then return nil, failure.catalog_not_initialized() end
-            return { result = plan.result :: types.JsonObject, events = plan.events, expect = { head = 0 }, as_of = 0 }, nil
+            return { result = plan.result :: types.JsonObject, events = plan.events, expect = { head = 0 }, as_of = 0, catalog_seq = 0 }, nil
         end,
     })
     return commit_err

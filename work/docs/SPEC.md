@@ -27,6 +27,8 @@ An item reference field can declare `config.item_type` as the target item type I
 
 Directed relations can declare `from_types` and `to_types` as nonempty lists of item type IDs. Source types are declared on the owning board. Target types are matched against the live, visible item after resolving its destination board and any move aliases. An omitted list allows any type at that endpoint. A link with a mismatched endpoint returns `relation_source_type` on `item` or `relation_target_type` on `target`. Symmetric relations omit the directional lists. Work refuses changes to endpoint lists while the relation has links, using the existing relation shape check.
 
+Move alias resolution follows up to 32 redirects. Moves redirect retained aliases to the new destination. If a chain still exceeds the limit, resolution returns `key_alias_hop_limit`.
+
 A transition with `people: false` is reserved for the process engine and board ADMIN force. A direct named transition without force receives `unknown_transition`. Stage reports and state timers can take that route. When `people` is omitted, discovery hides stage outcome routes, while an otherwise eligible non-automatic route still accepts a direct call by name.
 
 ## Agent pipelines
@@ -35,7 +37,7 @@ The Agent Queue pack composes a principal field, an absolute time field and a pr
 
 A `report` with `kind: progress` requires a keyed command and the active visit and attempt. It replaces the attempt's latest progress with an object of at most 65,536 canonical JSON bytes. The corresponding `stage.progressed` fact does not route the item, affect the attempt deadline or set the terminal fields. Terminal reports apply the same progress bound and preserve the checkpoint when they omit progress. Terminal outputs use their existing independent size limit.
 
-The Wait for Work item Block matches the current live item state under board and item READ. It resumes the unfiltered change feed from the given cursor or from a head snapshot and listens for commits to the board's projection. A feed gap causes a new head snapshot and point read. The Block returns `matched` with the item id, state and version, or `timed_out`. Both outcomes carry a feed cursor. A wait lives for the current Block invocation.
+The Wait for Work item Block matches the current live item state under board and item READ. It checks the item when the Block starts and after commits to the board's projection. The optional input cursor can carry a previous wait's position. Each invocation starts from the current projection. The Block returns `matched` with the item id, state and version, or `timed_out`. Both outcomes carry the unfiltered feed head from the latest item read, with the caller's access stamp and current retention floor. A wait lives for the current Block invocation.
 
 ## Work Templates
 

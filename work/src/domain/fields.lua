@@ -74,8 +74,8 @@ function M.validate(field: types.Field, value: types.Value): error?
     return nil
 end
 
-function M.document(compiled: types.Compiled, doc: types.Document): (string?, error?)
-    for _, field in ipairs(compiled.fields) do
+function M.document(fields: { types.Field }, doc: types.Document): (string?, error?)
+    for _, field in ipairs(fields) do
         local value = document.value(doc, field.id)
         if value ~= nil then
             local err = M.validate(field, value)

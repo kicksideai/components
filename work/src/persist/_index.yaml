@@ -397,6 +397,7 @@ entries:
     process: kickside.work.domain:process
     durations: kickside.work.domain:process_time
     fold_batch: kickside.work.persist:fold_batch
+    limits: kickside.work.settings:limits
     types: kickside.work:types
 - name: fold_rank
   kind: library.lua

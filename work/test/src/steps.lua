@@ -10,6 +10,7 @@ local retention = require("retention")
 local retention_types = require("retention_types")
 local domain = require("domain")
 local clock = require("clock")
+local lifecycle = require("lifecycle")
 
 local M = {}
 
@@ -84,14 +85,29 @@ function M.rebuilt(id: string, kind: string)
     end)
 end
 
--- deleted waits until the component deletion job has removed the board.
-function M.deleted(id: string)
-    M.wait_for("component deletion", function(): boolean
-        local db = assert(sql.get("app:db"))
-        local rows = assert(db:query("SELECT component_id FROM kickside_components WHERE component_id = $1", { id }))
-        db:release()
-        return #rows == 0
-    end)
+local function component_exists(id: string): boolean
+    local db = assert(sql.get("app:db"))
+    local rows = assert(db:query("SELECT component_id FROM kickside_components WHERE component_id = $1", { id }))
+    db:release()
+    return #rows ~= 0
+end
+
+-- deleted waits until the component deletion job has removed the component.
+function M.deleted(id: string, what: string?)
+    M.wait_for(what or "component deletion", function(): boolean return not component_exists(id) end)
+end
+
+function M.reaped(board: fixture.Handle, attachment: string)
+    M.deleted(board.id, "owner board deletion")
+    -- The board's delete callback has committed the report. Catch up to the
+    -- current lifecycle head through the worker that processes that report.
+    local result, err = board.call("contract_request", {
+        contract = "kickside.core:threads", method = "catch_up_projection",
+        value = { thread_id = lifecycle.thread_id(), kind = "lifecycle.reap" },
+    })
+    assert(result, M.detail(err))
+    assert(result.done == true, "the lifecycle reaper did not reach the deletion report")
+    assert(not component_exists(attachment), "an owned attachment remains after lifecycle reaping")
 end
 
 -- apply runs one command and returns its result.

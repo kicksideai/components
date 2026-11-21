@@ -134,7 +134,7 @@ local function plan_create(ctx: types.PrepareContext, op: types.Op): types.OpPla
     document.apply_patch(virtual.document, steps :: { domain.PatchStep })
     local entry_err = entered and flow.entry(board.model, entered, virtual.document, p)
     if entry_err then return M.refused(M.FREE, entry_err) end
-    local field, verr = fields.document(board.compiled, virtual.document)
+    local field, verr = fields.document(board.compiled.fields, virtual.document)
     if verr then return M.invalid("invalid_value", verr:message(), field) end
     local settled, ferr, werr = flow.settle(board, virtual, ctx.actor, ctx.now, when.check(ctx, board.model), p, board.model, ctx.auto)
     if werr then return M.failed(werr) end

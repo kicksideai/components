@@ -8,6 +8,7 @@ local time = require("time")
 local sql = require("sql")
 local json = require("json")
 local index = require("index")
+local storage = require("storage")
 
 type Map = { [string]: unknown }
 type Call = (string, Map, string?) -> (unknown, error?)
@@ -160,6 +161,97 @@ local function define()
             indexed(admin, id, "silvertail", 0)
             apply(admin, id, { op = "restore", item = issue })
             test.eq(indexed(admin, id, "silvertail", 1)[1].id, issue)
+        end)
+
+        test.it("advances a progress page without rewriting lexical content", function()
+            local admin = session(true)
+            local schema = declaration(TEXT)
+            schema.processes[1].states[1].kind = "automated"
+            schema.processes[1].states[1].run = { stage = "build" }
+            local id = create(admin, schema)
+            local first = apply(admin, id, { op = "create", type = "issue", values = { title = "Viridian" } }).item
+            local second = apply(admin, id, { op = "create", type = "issue", values = { title = "Viridian" } }).item
+            indexed(admin, id, "viridian", 2)
+
+            local attachment = checked(admin("plugin_context", { plugin = PLUGIN }, id)).attachment_id :: string
+            local generation = assert(state(attachment)).active.id
+            local db = assert(sql.get("app:db"))
+            local sqlite = db:type() == sql.type.SQLITE
+            assert(db:execute("CREATE TABLE app_work_search_lexical_writes (row_id BIGINT NOT NULL)", {}))
+            if sqlite then
+                assert(db:execute([[CREATE TRIGGER app_work_search_lexical_write AFTER INSERT ON kickside_work_search_fts_content
+                    BEGIN INSERT INTO app_work_search_lexical_writes VALUES (NEW.id); END]], {}))
+            else
+                assert(db:execute([[CREATE FUNCTION app_work_search_lexical_write() RETURNS trigger LANGUAGE plpgsql AS $$
+                    BEGIN INSERT INTO app_work_search_lexical_writes VALUES (NEW.row_id); RETURN NEW; END $$]], {}))
+                assert(db:execute([[CREATE TRIGGER app_work_search_lexical_write AFTER UPDATE OF content, item_key ON kickside_work_search_row
+                    FOR EACH ROW EXECUTE FUNCTION app_work_search_lexical_write()]], {}))
+            end
+            local function writes(): integer
+                return assert(db:query([[SELECT COUNT(*) AS n FROM app_work_search_lexical_writes w
+                    JOIN kickside_work_search_row r ON r.row_id=w.row_id WHERE r.generation_id=$1]], { generation }))[1].n :: integer
+            end
+
+            local progress = checked(admin("apply", { key = "checkpoint-page", ops = {
+                { op = "report", item = first, visit = 1, attempt = 1, kind = "progress", progress = { step = 1 } },
+                { op = "report", item = second, visit = 1, attempt = 1, kind = "progress", progress = { step = 1 } },
+            } }, id))
+            test.eq(progress.outcomes[1].status, "applied")
+            test.eq(progress.outcomes[2].status, "applied")
+            indexed(admin, id, "viridian", 2)
+            local progress_writes = writes()
+            local advanced = assert(db:query([[SELECT COUNT(*) AS n FROM kickside_work_search_row r
+                JOIN kickside_work_item i ON i.board_id=$1 AND i.item_id=r.item_id
+                WHERE r.generation_id=$2 AND r.source_seq=i.updated_seq]], { id, generation }))[1].n
+
+            apply(admin, id, { op = "set", item = first, values = { title = "Cerulean" } })
+            local edited = indexed(admin, id, "cerulean", 1)[1].id
+            local still_matches = indexed(admin, id, "viridian", 1)[1].id
+            local edit_writes = writes() - progress_writes
+            if sqlite then
+                assert(db:execute("DROP TRIGGER app_work_search_lexical_write", {}))
+            else
+                assert(db:execute("DROP TRIGGER app_work_search_lexical_write ON kickside_work_search_row", {}))
+                assert(db:execute("DROP FUNCTION app_work_search_lexical_write()", {}))
+            end
+            assert(db:execute("DROP TABLE app_work_search_lexical_writes", {}))
+            db:release()
+
+            test.eq(advanced, 2)
+            test.eq(edited, first)
+            test.eq(still_matches, second)
+            test.eq(edit_writes, 1)
+            test.eq(progress_writes, 0)
+        end)
+
+        test.it("seeks by item for a full page of unchanged search documents", function()
+            local db = assert(sql.get("app:db"))
+            local sqlite = db:type() == sql.type.SQLITE
+            local tx = assert(db:begin())
+            assert(tx:execute([[WITH RECURSIVE numbers(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM numbers WHERE n<25000)
+                INSERT INTO kickside_work_search_row (generation_id,item_id,item_key,source_seq,content)
+                SELECT 'plan-generation','item-' || n,'KEY-' || n,1,'topic' FROM numbers]], {}))
+            assert(tx:execute("ANALYZE kickside_work_search_row", {}))
+            local documents: { storage.Document } = {}
+            for i = 1, 200 do
+                documents[i] = { item_id = "item-" .. i, item_key = "KEY-" .. i, source_seq = 2, content = "topic" }
+            end
+            local plan = ""
+            local probe = { query = function(_, statement, params)
+                local prefix = sqlite and "EXPLAIN QUERY PLAN " or "EXPLAIN (COSTS OFF) "
+                for _, row in ipairs(assert(tx:query(prefix .. statement, params))) do
+                    plan = plan .. (sqlite and row.detail or row["QUERY PLAN"]) .. "\n"
+                end
+                return tx:query(statement, params)
+            end }
+            local err = storage.put_page(probe :: any, sqlite, "plan-generation", documents)
+            assert(tx:rollback())
+            db:release()
+            test.is_nil(err, tostring(err))
+            test.is_true(plan:find("SEARCH held USING INDEX", 1, true) ~= nil
+                or plan:find("Index Cond:", 1, true) ~= nil, plan)
+            test.is_nil(plan:find("SCAN held", 1, true), plan)
+            test.is_nil(plan:find("Seq Scan on kickside_work_search_row", 1, true), plan)
         end)
 
         test.it("rebuilds a generation after a state-feed gap", function()

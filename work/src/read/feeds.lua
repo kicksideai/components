@@ -40,7 +40,20 @@ end
 -- changes pages items in (updated_seq, item_id) order up to the projection
 -- position. Trashed items are deletes. A cursor below the durable floor gets a
 -- gap: the consumer resyncs from zero.
-local function list_changes(request: types.ChangesRequest, context: types.ReadContext, at_head: boolean?): (types.ChangesResult?, error?)
+local function access_stamp(board: domain.Board, selection: unknown?): string
+    if board.caller == nil and selection == nil then return board.key_prefix end
+    local actor = security.actor()
+    return tostring(hash.sha256(values.canonical({ board.digest, board.caller, key_prefix = board.key_prefix,
+        memberships = board.memberships, selection = selection, actor = selection and actor and actor:id() or nil })))
+end
+
+local function feed_floor(tx: types.Executor, board: domain.Board): (integer?, error?)
+    local boundary, err = thread_reader.prune_boundary(tx, board.board_id)
+    if err or not boundary then return nil, err end
+    return math.max(board.tombstone_floor_seq, boundary.max_pruned_seq :: integer), nil
+end
+
+local function list_changes(request: types.ChangesRequest, context: types.ReadContext): (types.ChangesResult?, error?)
     local filter_err = selection(request.selection, 1)
     if filter_err then return nil, filter_err end
     local unsupported = access.non_item(request)
@@ -52,22 +65,12 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
     local cursor: types.ChangesCursor = request.cursor or { seq = 0, item_id = "" }
     local catalog: { [string]: domain.Field } = {}
     local result, read_err = access.with_snapshot(request.board_id, request.min_seq, function(tx: types.Executor, board: domain.Board, dialect: string): (types.ChangesResult?, error?)
-        local stamp = board.key_prefix
-        local caller_specific = board.caller ~= nil or request.selection ~= nil
-        if caller_specific then
-            local actor = security.actor()
-            stamp = tostring(hash.sha256(values.canonical({ board.digest, board.caller, key_prefix = board.key_prefix, memberships = board.memberships, selection = request.selection,
-                actor = request.selection and actor and actor:id() or nil })))
-        end
+        local stamp = access_stamp(board, request.selection)
         if cursor.seq > 0 and stamp ~= cursor.access then
             return { items = {}, next = { seq = 0, item_id = "", access = stamp }, has_more = false, gap = { floor = board.applied_seq } }, nil
         end
-        local boundary, boundary_err = thread_reader.prune_boundary(tx, board.board_id)
-        if boundary_err or not boundary then return nil, boundary_err end
-        local floor: integer = math.max(board.tombstone_floor_seq, boundary.max_pruned_seq :: integer)
-        if at_head then
-            return { items = {}, next = { seq = board.applied_seq, item_id = "", access = stamp, floor = floor }, has_more = false }, nil
-        end
+        local floor, floor_err = feed_floor(tx, board)
+        if floor_err or not floor then return nil, floor_err end
         catalog = peers.catalog(board)
         if cursor.seq > 0 and cursor.seq < floor and (cursor.floor or 0) < floor then
             return { items = {}, next = cursor, has_more = false, gap = { floor = floor } }, nil
@@ -173,13 +176,10 @@ function M.list_changes(request: types.ChangesRequest): (types.ChangesResult?, e
     return budget.run(request, function(context: types.ReadContext): (types.ChangesResult?, error?) return list_changes(request, context) end)
 end
 
-function M.head(board_id: string, read_budget: types.ReadBudget): (types.ChangesCursor?, error?)
-    local request = { board_id = board_id, budget = read_budget }
-    local result, err = budget.run(request, function(context: types.ReadContext): (types.ChangesResult?, error?)
-        return list_changes(request, context, true)
-    end)
-    if err or not result then return nil, err end
-    return result.next, nil
+function M.head(tx: types.Executor, board: domain.Board): (types.ChangesCursor?, error?)
+    local floor, err = feed_floor(tx, board)
+    if err or not floor then return nil, err end
+    return { seq = board.applied_seq, item_id = "", access = access_stamp(board), floor = floor }, nil
 end
 
 return M

@@ -549,6 +549,7 @@ entries:
     fixture: app:fixture
     steps: app:steps
     store: kickside.work.persist:store
+    materializer: kickside.work.persist:materializer
 - name: gate_reads_test
   kind: function.lua
   meta: {type: test, suite: kickside_work, timeout: 300s}

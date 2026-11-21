@@ -167,6 +167,7 @@ function M.fold(tx: sql.Transaction, dialect: string, board_id: string, events: 
     end
     if not board then return result, nil end
     err = fold_batch.flush(tx, batch)
+    if not err then err = fold_process.flush_checkpoints(tx, batch) end
     if not err and fold_rollup.filtered(board) then err = index_rows.changed(tx, dialect, board, applied, result.last_seq) end
     if not err then err = bulk.insert(tx, "kickside_work_change", HISTORY_COLUMNS, batch.history) end
     if not err then err = fold_rollup.finish(tx, board, batch, dialect) end
