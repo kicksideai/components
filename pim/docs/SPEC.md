@@ -1399,8 +1399,9 @@ body satisfies its declared schema.
 
 ## 7. Reads
 
-Text search requires every maximal Unicode letter/number token, in any order,
-across indexed text. Indexing and queries use that same token grammar on both
+Text search requires every token, in any order, across indexed text. A token
+starts with a Unicode letter or number and continues through letters, numbers
+and combining marks. Indexing and queries use the same token grammar on both
 engines. Punctuation, including quotes, separates tokens; quotes do not request
 phrases. Both engines use default Unicode case folding for text and SKU prefixes
 and preserve accents. Each distinct token uses a lexeme of at most 65 bytes,
