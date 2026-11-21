@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.27](https://github.com/kicksideai/components/compare/work-v0.1.26...work-v0.1.27) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work:** enforce process-only transitions and typed relations ([#271](https://github.com/kicksideai/components/issues/271)) ([fd3b221](https://github.com/kicksideai/components/commit/fd3b221c527edd9a8e8baa625768f072ca975cd1))
+* **work:** support recoverable agent pipelines ([#270](https://github.com/kicksideai/components/issues/270)) ([2be8562](https://github.com/kicksideai/components/commit/2be8562ed54dd0d24e9e86cd0b4adc1832e36fdc))
+
 ## [0.1.26](https://github.com/kicksideai/components/compare/work-v0.1.25...work-v0.1.26) (2026-11-20)
 
 
