@@ -79,7 +79,13 @@ function M.endpoint(method: string, param: string?, contract_id: string?)
         end
     end
     if method == "list" and contract_id == "kickside.work:packs" then input.pack = req:query("pack") end
-    if method == "list" and contract_id == nil then input.ui_app = req:query("ui_app") end
+    if method == "list" and contract_id == nil then
+        input.ui_app = req:query("ui_app")
+        local counts = req:query("include_counts")
+        if counts == "true" then input.include_counts = true
+        elseif counts == "false" then input.include_counts = false
+        elseif counts ~= nil then input.include_counts = counts end
+    end
     local status, body = M.call(method, input, contract_id)
     M.respond(res, status, body)
 end

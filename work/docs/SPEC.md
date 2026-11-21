@@ -7,7 +7,7 @@ A UI module registers a `registry.entry` with `meta.type: kickside.work.ui.app`,
 
 `board.create` and `WorkCreateBoard` accept an optional `ui_app` registry entry ID. A pack can preset it with `data.ui_app` and an explicit creation argument takes precedence. Applying or updating a pack on an existing board leaves its binding in place. Board ADMIN can set `ui_app` with `board.update` or `WorkUpdateBoard`, or clear the setting with an empty string. Work validates new bindings against registered UI apps before any write. Existing unbound boards can be assigned a UI through the same update command.
 
-`board.list`, `WorkListBoards`, and `GET /work/boards` expose each readable board’s optional `ui_app` ID. Pass that ID as `ui_app` to filter discovery before pagination. Follow `next` with the same filter. Discovery uses Component’s READ-filtered metadata query and the existing caller-visible board counts.
+`board.list`, `WorkListBoards`, and `GET /work/boards` expose each readable board’s optional `ui_app` ID. Pass that ID as `ui_app` to filter discovery before pagination. Follow `next` with the same filter. Discovery uses Component’s READ-filtered metadata query. Pass `include_counts: false` (HTTP `include_counts=false`) to return board metadata and access without reading items. The default includes exact caller-visible item counts. Pagination uses Component’s offset within the readable, filtered directory.
 
 ## Plugin extensions
 

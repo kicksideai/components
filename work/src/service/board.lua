@@ -42,8 +42,10 @@ function M.list(input: unknown): (commands.ListResult?, error?)
     if berr or not boards then return nil, berr end
     local more = #boards > limit
     if more then table.remove(boards) end
-    local cerr = locate.counts(boards)
-    if cerr then return nil, cerr end
+    if request.include_counts ~= false then
+        local cerr = locate.counts(boards)
+        if cerr then return nil, cerr end
+    end
     return { boards = boards, next = more and (after + limit) or nil }, nil
 end
 
