@@ -77,7 +77,7 @@ type Where = { [string]: unknown }
 type Sort = { field: string, ctx: { [string]: string }?, dir: string? }
 type Cursor = { id: string, phase: string?, position: string?, v: ColumnValue?, keys: { { v: ColumnValue? } }? }
 type Measure = { id: string, op: "sum", field: string }
-type ItemQuery = { scan: integer?, groups: { string }?, measures: { Measure }?, sorts: { Sort }?, where: Where?, after: Cursor?, count: integer?, peer_visibility: VisibilityCondition? }
+type ItemQuery = { scan: integer?, live_only: boolean?, groups: { string }?, measures: { Measure }?, sorts: { Sort }?, where: Where?, after: Cursor?, count: integer?, peer_visibility: VisibilityCondition? }
 -- ColumnTarget is the generated column a filter or sort names: the value shape normalizes
 -- request values, coerce maps a request shorthand onto the canonical form first, and
 -- field_id names the field in the change table.

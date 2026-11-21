@@ -26,7 +26,43 @@ local function define()
                 test.eq(group.count, 1)
             end
             test.not_nil(page.group_after)
-            page = assert(h.call("query", { group_by = "estimate", group_after = page.group_after, limit = 1, order = order }))
+            local narrow = assert(h.call("query", { group_by = "estimate", group_limit = 1, limit = 1,
+                order = order, budget = { rows = 4 } }))
+            test.is_false(narrow.incomplete)
+            test.eq(narrow.groups[1].value, 1)
+            test.eq(narrow.groups[1].count, 1)
+            test.not_nil(narrow.group_after)
+
+            local position = page.group_after
+            local explained = assert(h.call("explain", { group_by = "estimate", group_after = position,
+                group_limit = 1, limit = 1, order = order, budget = { rows = 4 } }))
+            test.is_true(explained.plan.statement:find(" > ", 1, true) ~= nil)
+            local args = explained.plan.args
+            test.eq(args[#args - 1], 200)
+            test.eq(args[#args], 5)
+            local deep = assert(h.call("query", { group_by = "estimate", group_after = position, group_limit = 1,
+                limit = 1, order = order, budget = { rows = 4 } }))
+            test.is_false(deep.incomplete)
+            test.eq(deep.items[1].id, page.items[1].id)
+            test.eq(deep.groups[1].value, 201)
+            test.eq(deep.groups[1].count, 2)
+            test.not_nil(deep.group_after)
+            local limited = assert(h.call("query", { group_by = "estimate", group_after = position, group_limit = 1,
+                limit = 1, order = order, budget = { rows = 1 } }))
+            test.is_true(limited.incomplete)
+            test.is_true(limited.group_limited)
+            test.is_nil(limited.groups)
+            test.is_nil(limited.group_after)
+
+            local missing = assert(h.call("query", { group_by = "estimate", group_after = deep.group_after,
+                limit = 1, order = order, budget = { rows = 2 } }))
+            test.is_false(missing.incomplete)
+            test.eq(#missing.groups, 1)
+            test.is_nil(missing.groups[1].value)
+            test.eq(missing.groups[1].count, 1)
+            test.is_nil(missing.group_after)
+
+            page = assert(h.call("query", { group_by = "estimate", group_after = position, limit = 1, order = order }))
             test.eq(#page.groups, 2)
             test.eq(page.groups[1].value, 201)
             test.eq(page.groups[1].count, 2)
@@ -83,6 +119,7 @@ local function define()
             measure_request.budget = { rows = 1 }
             page = assert(h.call("query", measure_request))
             test.eq(page.incomplete, true)
+            test.is_true(page.group_limited)
             test.is_nil(page.groups)
             test.is_nil(page.group_after)
         end)

@@ -13,7 +13,8 @@ type Count = { statement: string, args: { unknown }, cap: integer, beyond: strin
 type BoundedPlan = { scans: { sql.SelectBuilder }, scan: integer, dialect: string, order: { domain.Sort },
     statement: (sql.SelectBuilder, integer, integer) -> (string, { unknown }) }
 type MeasureColumn = { id: string, scale: integer, decimal_key: boolean }
-type Plan = { bounded: BoundedPlan?, query: sql.SelectBuilder, tails: { sql.SelectBuilder },
+type GroupSeek = (boolean, GroupKey?, string?, integer) -> (string, { unknown })
+type Plan = { group_seek: GroupSeek?, bounded: BoundedPlan?, query: sql.SelectBuilder, tails: { sql.SelectBuilder },
     count: Count?, groups: integer, measures: { MeasureColumn }?, take: integer }
 type ReadStamp = { as_of: integer?, generation: integer? }
 type PluginSelection = ReadStamp & { state: domain.PluginState }
@@ -72,7 +73,7 @@ type BoardSelection = { string } | string
 type BoardAdmission = { generation: integer, digest: string, caller: domain.AccessCaller? }
 type CrossAdmission = { ids: { string }, boards: { [string]: BoardAdmission }, sort: domain.Sort, reference: boolean }
 type CrossCursor = { id: string, boards: { [string]: domain.Cursor }, frontiers: { [string]: domain.Cursor | boolean }, selection: { string } }
-type QueryPage = ReadStamp & { incomplete: boolean?, scanned: integer?, groups: { QueryGroup }?, group_after: string?, items: { ItemView }, cursors: { domain.Cursor }, following: domain.Cursor?, after: domain.Cursor?, reindexing: boolean }
+type QueryPage = ReadStamp & { incomplete: boolean?, group_limited: boolean?, scanned: integer?, groups: { QueryGroup }?, group_after: string?, items: { ItemView }, cursors: { domain.Cursor }, following: domain.Cursor?, after: domain.Cursor?, reindexing: boolean }
 type ReadBudget = { rows: integer?, deadline: string? }
 type ReadAllowance = { rows: integer, remaining: integer, deadline: domain.Deadline }
 type QueryRequest = { budget: ReadBudget?, include: { string }?, group_by: string?, sub_group_by: string?, group_after: string?, group_limit: integer?, measures: { domain.Measure }?, boards: BoardSelection?, cross_after: CrossCursor?, board_id: string, where: domain.Where?, scopes: { domain.ScopeQuery }?, order: Order?, after: domain.Cursor?, limit: integer?, min_seq: integer?, include_trashed: boolean? }
@@ -83,7 +84,7 @@ type GroupKey = string | integer
 type GroupPosition = { parent: GroupKey?, child: GroupKey? }
 type GroupBucket = { key: GroupKey?, count: integer, rows: { domain.Row }, totals: { [integer]: string }?, children: { GroupBucket }? }
 type CrossCandidate = { board: string, index: integer, key: domain.Cursor, item: ItemView }
-type QueryResult = ReadStamp & { incomplete: boolean?, groups: { QueryGroup }?, group_after: string?, positions: { [string]: ReadStamp }?, cross_after: CrossCursor?, items: { ItemView }, after: domain.Cursor?, reindexing: boolean }
+type QueryResult = ReadStamp & { incomplete: boolean?, group_limited: boolean?, groups: { QueryGroup }?, group_after: string?, positions: { [string]: ReadStamp }?, cross_after: CrossCursor?, items: { ItemView }, after: domain.Cursor?, reindexing: boolean }
 type EditMember = { item_id: string, version: integer }
 type EditSelection = ReadStamp & { members: { EditMember }, over_limit: boolean? }
 type CountResult = ReadStamp & { incomplete: boolean?, total: integer?, estimated: boolean?, reindexing: boolean }
@@ -115,7 +116,7 @@ type TransitionGroup = { candidates: { TransitionCandidate }, items: { domain.It
     model: domain.Model, process: domain.Process }
 return { AwaitingView = AwaitingView, GateView = GateView, ApprovalView = ApprovalView, StageRun = StageRun, StageRunsRequest = StageRunsRequest, StageRunsResult = StageRunsResult, JsonObject = JsonObject, PluginFeedRequest = PluginFeedRequest, PluginFeed = PluginFeed, PluginContext = PluginContext, PluginSelection = PluginSelection, PluginAdmission = PluginAdmission, PluginOptions = PluginOptions, PluginContextRequest = PluginContextRequest, TransitionCandidate = TransitionCandidate, TransitionGroup = TransitionGroup, Redactor = Redactor, BudgetUsage = BudgetUsage, ReadBudget = ReadBudget, ReadAllowance = ReadAllowance, SchemaPlugin = SchemaPlugin, QueryGroupRow = QueryGroupRow, QueryGroup = QueryGroup,
     Count = Count, Plan = Plan, BoundedPlan = BoundedPlan, MeasureColumn = MeasureColumn, MeasureValue = MeasureValue,
-    GroupKey = GroupKey, GroupPosition = GroupPosition, GroupBucket = GroupBucket, CrossCandidate = CrossCandidate,
+    GroupKey = GroupKey, GroupSeek = GroupSeek, GroupPosition = GroupPosition, GroupBucket = GroupBucket, CrossCandidate = CrossCandidate,
     ReferenceOrder = ReferenceOrder, BoardSelection = BoardSelection, BoardAdmission = BoardAdmission,
     CrossAdmission = CrossAdmission, CrossCursor = CrossCursor, QueryPage = QueryPage,
     LinksRequest = LinksRequest, LinkPeer = LinkPeer, RelationView = RelationView, LinksResult = LinksResult,

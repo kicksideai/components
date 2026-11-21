@@ -68,6 +68,59 @@ local function scope_predicate(r: domain.Reader, sq: domain.AdmittedScope): (str
         args, nil
 end
 
+-- Only use a group walk whose order is covered by an existing index.
+local function group_index(t: domain.GeneratedTable, column: string, live_only: boolean?): string?
+    for _, field in ipairs(t.layout.columns) do
+        if field.column == column then return "" end
+    end
+    for _, index in ipairs(t.indexes) do
+        if index[1] == column and index[2] == "item_id" then return "" end
+        if live_only and index[1] == "life" and index[2] == column and index[3] == "item_id" then
+            return "i.life = 'live' AND "
+        end
+    end
+    return nil
+end
+
+local function group_seek(t: domain.GeneratedTable, dialect: string, column: string, prefix: string, selection: { string },
+    sorts: { string }, conditions: { domain.Condition }): types.GroupSeek
+    local columns = { table.unpack(selection) }
+    for i, key in ipairs(sorts) do
+        columns[#columns + 1] = key .. (i == 1 and " AS sort_value" or " AS sort_value_" .. i)
+    end
+    local predicates: { string } = {}
+    local match_args: { unknown } = {}
+    for _, condition in ipairs(conditions) do
+        predicates[#predicates + 1] = "(" .. condition.sql .. ")"
+        for _, arg in ipairs(condition.args) do match_args[#match_args + 1] = arg end
+    end
+    columns[#columns + 1] = "CASE WHEN " .. table.concat(predicates, " AND ") .. " THEN 1 ELSE 0 END AS group_match"
+    local order = " ORDER BY " .. column .. ", i.item_id"
+    return function(nulls: boolean, key: types.GroupKey?, id: string?, limit: integer): (string, { unknown })
+        local args = { table.unpack(match_args) }
+        local range = column .. " IS NOT NULL"
+        if nulls then
+            range = column .. " IS NULL"
+            if id then range = range .. " AND i.item_id > ?"; args[#args + 1] = id end
+        elseif id then
+            range = "(" .. column .. ", i.item_id) > (?, ?)"
+            args[#args + 1], args[#args + 2] = key, id
+        elseif key ~= nil then
+            range = column .. " > ?"
+            args[#args + 1] = key
+        end
+        args[#args + 1] = limit
+        -- Apply admission after the indexed window, so hidden or deleted rows spend the allowance.
+        local query = "SELECT " .. table.concat(columns, ", ") .. " FROM (SELECT i.* FROM " .. t.names.item
+            .. " i WHERE " .. prefix .. range .. order .. " LIMIT ?) i" .. order
+        if dialect == sql.type.POSTGRES then
+            local n = 0
+            query = query:gsub("%?", function(): string n = n + 1; return "$" .. n end)
+        end
+        return query, args
+    end
+end
+
 -- items builds the page query of q over t for reader r; the query fetches limit + 1
 -- rows so the caller knows whether another page follows. q.count, when set, is the
 -- cap of the count the plan also carries.
@@ -189,7 +242,12 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
             ranges = { condition }
         end
     end
-    local take = q.groups and q.scan or math.min(limit, q.scan or limit)
+    local seek: types.GroupSeek? = nil
+    if #group_columns == 1 and not q.where and #admitted == 0 then
+        local prefix = group_index(t, group_columns[1]:sub(3), q.live_only)
+        if prefix ~= nil then seek = group_seek(t, dialect, group_columns[1], prefix, selection, columns, clauses) end
+    end
+    local take = q.groups and not seek and q.scan or math.min(limit, q.scan or limit)
     local pages: { sql.SelectBuilder } = {}
     local scans: { sql.SelectBuilder } = {}
     for i, range in ipairs(ranges) do
@@ -201,7 +259,7 @@ function M.items(r: domain.Reader, t: domain.GeneratedTable, dialect: string, q:
         end
     end
     local first = table.remove(pages, 1)
-    local plan: types.Plan = { query = first:limit(take + 1), tails = pages, count = counted, groups = #group_columns,
+    local plan: types.Plan = { group_seek = seek, query = first:limit(take + 1), tails = pages, count = counted, groups = #group_columns,
         measures = measures, take = take }
     if #scans > 0 then
         -- The walk already checked ownership and board visibility.

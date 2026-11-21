@@ -68,6 +68,7 @@ local function define()
             for i = 1, 5 do steps.create(h, "task", { estimate = i }) end
             local page = assert(h.call("query", { group_by = "estimate", budget = { rows = 2 } }))
             test.is_true(page.incomplete)
+            test.is_true(page.group_limited)
             test.is_nil(page.groups)
             test.not_nil(page.after)
         end)
