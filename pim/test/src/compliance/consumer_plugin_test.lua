@@ -620,6 +620,12 @@ local function define()
             changed(PLUGIN, nil, nil, function()
                 changed("app.compliance:attachment", nil, nil, function()
                     local before = call(h, "get_schema")
+                    test.eq(plugin(h).title, "Supplier compliance")
+                    local option_title
+                    for _, option in ipairs(call(h, "schema_options").plugins) do
+                        if option.plugin == PLUGIN then option_title = option.title end
+                    end
+                    test.eq(option_title, "Supplier compliance")
                     local _, review = h.call("plan_schema", request)
                     test.not_nil(review)
                     test.eq(review:details().code, "plugin_cleanup_unavailable")

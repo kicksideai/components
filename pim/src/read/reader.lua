@@ -364,6 +364,27 @@ local function plugin_views(catalog_id: string, states: { [string]: types.Plugin
         return plugin_projections.states(catalog_id, plugin, intent)
     end)
     if err or not views then return nil, err end
+    local by_attachment: { [string]: types.PluginOption } = {}
+    local attachment_ids: { string } = {}
+    for _, view in ipairs(views) do
+        local id = view.attachment_id
+        if view.active and not view.installed and id then
+            by_attachment[id] = view
+            attachment_ids[#attachment_ids + 1] = id
+        end
+    end
+    -- The readable catalog's own attachment retains the package title after
+    -- uninstall. Only fetch metadata for the exact attachments missing titles.
+    for start = 1, #attachment_ids, 100 do
+        local ids: { string } = {}
+        for i = start, math.min(start + 99, #attachment_ids) do ids[#ids + 1] = attachment_ids[i] end
+        local rows, title_err = component.list_system({ component_ids = ids, include = { meta = true }, limit = #ids })
+        if title_err then return nil, title_err end
+        for _, row in ipairs(rows or {}) do
+            local title = row.meta and row.meta.title
+            if type(title) == "string" and title ~= "" then by_attachment[row.component_id].title = title end
+        end
+    end
     local refs_err = add_plugin_references(catalog_id, views, compiled)
     if refs_err then return nil, refs_err end
     return views, nil

@@ -507,7 +507,9 @@ a list, and the options listing):
 `get_schema.plugins` lists active and installed plugins whose metadata the caller
 can read. Both it and `schema_options.plugins` include the accepted
 `interface_version` for loaded manifests. The options listing also includes
-`config_schema`. The catalog's committed declaration and fields remain readable
+`config_schema`. A listed plugin uses the title of its readable manifest.
+An uninstalled active plugin uses its catalog attachment's stored title.
+The catalog's committed declaration and fields remain readable
 with catalog READ. An explicit `plugin_context` request also requires registry
 access to the requested plugin. For a missing or incompatible active plugin,
 references identify affected catalog fields, filter sets, readiness checks,
