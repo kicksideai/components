@@ -247,7 +247,12 @@ local function define()
         test.it("lists the installed manifests", function()
             local ids = assert(plugins.find())
             test.is_true(#ids >= 3)
-            for _, id in ipairs(ids) do test.is_true(id:find("^app:") ~= nil) end
+            local installed_consumer = false
+            for _, id in ipairs(ids) do
+                test.is_true(id:find("^app:") ~= nil or id == "app.compliance:plugin")
+                if id == "app.compliance:plugin" then installed_consumer = true end
+            end
+            test.is_true(installed_consumer)
         end)
 
         test.it("refuses secret-shaped config at any depth", function()

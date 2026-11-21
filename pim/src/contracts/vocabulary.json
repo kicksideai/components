@@ -519,7 +519,8 @@
         "properties": {
           "catalog_id": {"$pim_ref": "catalog_id"},
           "plugin": {"type": "string", "minLength": 1, "description": "Active plugin registry id from PIMSchemaGet; activate new plugins with PIMSchemaApply."},
-          "config": {"type": "object", "description": "Replacement catalog configuration validated against the plugin config_schema from PIMSchemaOptions."}
+          "config": {"type": "object", "description": "Replacement catalog configuration validated against the plugin config_schema from PIMSchemaOptions."},
+          "reset": {"type": "boolean", "description": "Start the plugin projections at a fresh catalog event even when configuration is unchanged."}
         },
         "required": ["plugin", "config"],
         "additionalProperties": false
@@ -527,7 +528,7 @@
       "output": {
         "type": "object",
         "properties": {
-          "seq": {"type": "integer", "description": "Sequence at which configuration changes."},
+          "seq": {"type": "integer", "description": "Sequence of the configuration or reset event."},
           "as_of": {"type": "integer", "description": "Applied catalog sequence represented by this answer."}
         }
       }
@@ -1909,7 +1910,7 @@
     },
     "configure_plugin": {
       "alias": "PIMConfigurePlugin",
-      "description": "Replace configuration for an active plugin without changing schema generation; requires catalog ADMIN and returns the command sequence. Catalog id comes from the call, then trait context when omitted.",
+      "description": "Replace configuration or reset projections for an active plugin without changing schema generation; requires catalog ADMIN and returns the command sequence. Catalog id comes from the call, then trait context when omitted.",
       "scope": "state.write"
     },
     "rebuild": {

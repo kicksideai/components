@@ -5,6 +5,7 @@ local feeds = require("feeds")
 local store = require("store")
 local plugins = require("plugins")
 local threads = require("threads")
+local consts = require("consts")
 local json = require("json")
 local types = require("types")
 local values=require("values")
@@ -43,6 +44,7 @@ function M.page(catalog_id: string, request: types.PluginFeedRequest): (types.Pl
     local pair: Pair?=nil
     local registration_error: error?=nil
     local body: Body?=nil
+    local host_position = 0
     if declared then
         local raw,rerr=client:get_projection_cursor({thread_id=catalog_id,kind=request.kind,projection_key="kickside.pim.plugin:"..request.plugin})
         registration_error=rerr
@@ -54,6 +56,19 @@ function M.page(catalog_id: string, request: types.PluginFeedRequest): (types.Pl
                 if jerr then registration_error=failure.corrupt("stored plugin projection body is malformed","body") else decoded=out end
             end
             body=decoded :: Body?
+        end
+    end
+    -- The native cursor also covers facts the catalog model filters out. Capture
+    -- its position before opening the snapshot that will serve the feed page.
+    if pair and not registration_error then
+        local native, err = client:get_projection_cursor({ thread_id = catalog_id, kind = consts.PROJECTION_KIND })
+        if err then
+            registration_error = err
+        else
+            local cursor = native and (native :: { cursor: { last_seq: integer } }).cursor
+            local position = cursor and math.tointeger(cursor.last_seq)
+            if position then host_position = position
+            else registration_error = failure.corrupt("catalog cursor position is malformed", "last_seq") end
         end
     end
     local result,_,serr=store.snapshot(catalog_id,function(tx: types.Executor,catalog: types.Catalog,dialect: string): (types.PluginFeed?,error?)
@@ -87,16 +102,15 @@ function M.page(catalog_id: string, request: types.PluginFeedRequest): (types.Pl
         page, ferr = feeds.changes_snapshot(tx,dialect,catalog,{},200)
         if ferr or not page then return nil, ferr end
     end
-    page.as_of=catalog.applied_seq
-    page.rebuilding=catalog.rebuild_after~=nil
+    local covered = math.max(catalog.applied_seq, host_position)
     local bootstrap = token.bootstrapping
-    local caught_up = not page.has_more and not page.rebuilding
+    local caught_up = not page.has_more and catalog.rebuild_after == nil
     token.cursor = page.next
-    if caught_up and (page.as_of :: integer) >= token.start_seq then token.bootstrapping = false end
+    if caught_up and covered >= token.start_seq then token.bootstrapping = false end
     local encoded, eerr = json.encode(token)
     if eerr or not encoded then return nil, eerr end
     return { attachment_id = intent.attachment_id :: string, config = config :: types.JsonObject, bootstrap = bootstrap,
-        gap = gap, changes = page.items, token = encoded, done = caught_up and (page.as_of :: integer) >= head.event_count }, nil
+        gap = gap, changes = page.items, token = encoded, done = caught_up and covered >= head.event_count }, nil
     end)
     return result,serr
 end

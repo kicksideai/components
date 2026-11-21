@@ -39,7 +39,7 @@ entries:
     kind: function.lua
     security:
       groups: [kickside.pim.security:manifest_reader]
-      policies: [kickside.pim.security:lifecycle_output_publish, kickside.component:attachment_seal_access]
+      policies: [kickside.pim.security:lifecycle_output_publish, kickside.pim.security:lifecycle_prune_boundary, kickside.component:attachment_seal_access]
     source: file://plugin_projections.lua
     method: batch
     modules: [sql, json]
@@ -71,7 +71,7 @@ entries:
     meta:
       comment: Runs family check functions through funcs.
     source: file://checks.lua
-    modules: [funcs]
+    modules: [funcs, time, channel]
     imports:
       shape: kickside.pim:shape
       types: kickside.pim:types
@@ -135,6 +135,7 @@ entries:
     source: file://plugin_feed.lua
     modules: [json]
     imports:
+      consts: kickside.pim:consts
       failure: kickside.pim:failure
       values: kickside.pim.domain:values
       access: kickside.pim.read:access

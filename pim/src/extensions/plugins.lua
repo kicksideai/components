@@ -50,8 +50,12 @@ local function projection_declarations(plugin: string, raw: unknown): ({ types.P
             return nil, invalid_projection(plugin, "projection kinds must be nonempty and distinct")
         end
         if p.input ~= "state" and p.input ~= "events" then return nil, invalid_projection(plugin, "projection input must be state or events") end
-        local revision = p.revision or 1
-        if type(revision) ~= "number" or (revision :: number) % 1 ~= 0 or (revision :: number) < 1 then return nil, invalid_projection(plugin, "projection revision must be a positive integer") end
+        local revision = 1
+        if p.revision ~= nil then
+            local explicit = type(p.revision) == "number" and math.tointeger(p.revision) or nil
+            if not explicit or explicit < 1 then return nil, invalid_projection(plugin, "projection revision must be a positive integer") end
+            revision = explicit
+        end
         local ref = p.worker_ref
         local id = type(ref) == "string" and (ref :: string):match("^func://(.+)$") or nil
         if not id then return nil, invalid_projection(plugin, "plugin workers require a func:// reference") end
@@ -80,7 +84,7 @@ local function projection_declarations(plugin: string, raw: unknown): ({ types.P
         end
         for _, event in ipairs((p.events or {}) :: { string }) do events[#events + 1] = event end
         kinds[p.kind :: string] = true
-        out[#out + 1] = { kind = p.kind :: string, worker_ref = ref :: string, input = p.input :: string, revision = math.tointeger(revision) :: integer, events = events }
+        out[#out + 1] = { kind = p.kind :: string, worker_ref = ref :: string, input = p.input :: string, revision = revision, events = events }
     end
     return out, nil
 end
@@ -277,13 +281,20 @@ function M.load(id: string): (types.Plugin?, error?)
         attachment = m.attachment :: string, requires = requires, seams = seams, config_schema = schema, schema = source, projections = projections, tools = tools }, nil
 end
 
--- find lists the ids of the installed manifests.
-function M.find(): ({ string }?, error?)
+local function manifests(): ({ registry.Entry }?, error?)
     local entries, err = registry.find({ [".kind"] = "registry.entry", ["meta.type"] = M.TYPE })
     if err then return nil, errors.wrap(err, "plugin lookup failed") end
+    local sorted = entries or {}
+    table.sort(sorted, function(a: registry.Entry, b: registry.Entry): boolean return tostring(a.id) < tostring(b.id) end)
+    return sorted, nil
+end
+
+-- find lists the ids of the installed manifests.
+function M.find(): ({ string }?, error?)
+    local entries, err = manifests()
+    if err or not entries then return nil, err end
     local ids: { string } = {}
-    for _, e in ipairs(entries or {}) do ids[#ids + 1] = tostring(e.id) end
-    table.sort(ids)
+    for _, entry in ipairs(entries) do ids[#ids + 1] = tostring(entry.id) end
     return ids, nil
 end
 
@@ -324,7 +335,7 @@ function M.list(states: { [string]: types.PluginIntent }?, membership: { [string
                 entry.problem = { code = details.code :: string, message = tostring(lerr), field = details.field :: string? }
                 if active then entry.lifecycle = { state = "failed", error = { kind = lerr:kind(), code = details.code :: string?, message = tostring(lerr) } } end
             end
-            if projections and p and active and not lerr and entry.lifecycle.state ~= "failed" then
+            if projections and p and active and not lerr then
                 local live, perr = projections(p, state)
                 if perr then return nil, perr end
                 entry.projections = live or {}
@@ -367,18 +378,25 @@ function M.admit(compiled: types.Compiled, previous: types.Compiled?): error?
     local active = compiled.plugins
     local was = previous and previous.plugins or {}
     local owners: { [string]: string } = {}
-    local installed, err = M.find()
+    local conflicts: { [string]: string } = {}
+    local installed, err = manifests()
     if err or not installed then return err end
-    for _, id in ipairs(installed) do
-        local plugin, lerr = M.load(id)
-        if lerr and lerr:kind() ~= errors.INVALID then return lerr end
-        if plugin then
-            for _, seam in ipairs(plugin.seams or {}) do
-                if owners[seam] and owners[seam] ~= id then return invalid("seam has multiple owners", { plugin = id, field = "seams" }) end
-                owners[seam] = id
+    for _, entry in ipairs(installed) do
+        local id = tostring(entry.id)
+        local meta = entry.meta :: types.JsonObject
+        -- Compilation has already checked active manifests. Ownership of a
+        -- seam is declared independently of the worker, provider and tools.
+        if meta.interface_version == nil or meta.interface_version == M.INTERFACE_VERSION then
+            local seams, serr = identities(id, "seams", meta.seams)
+            if serr and active[id] then return serr end
+            for _, seam in ipairs(seams or {}) do
+                if owners[seam] then conflicts[seam] = conflicts[seam] or id
+                else owners[seam] = id end
             end
             if active[id] then
-                for _, required in ipairs(plugin.requires or {}) do
+                local requires, rerr = identities(id, "requires", meta.requires)
+                if rerr then return rerr end
+                for _, required in ipairs(requires or {}) do
                     if not active[required] then return invalid("required plugin is inactive", { code = "plugin_required", plugin = id, required = required }) end
                 end
             end
@@ -386,6 +404,10 @@ function M.admit(compiled: types.Compiled, previous: types.Compiled?): error?
     end
     local function seam(id: string): error?
         local owner = owners[id]
+        if conflicts[id] then
+            return invalid("schema names a seam claimed by multiple plugins",
+                { code = "plugin_seam_conflict", seam = id, plugin = owner, conflicting_plugin = conflicts[id] })
+        end
         if owner and not active[owner] then
             return invalid("schema names an inactive plugin's seam", { code = was[owner] and "plugin_seam_in_use" or "plugin_seam_unowned", plugin = owner, seam = id })
         end

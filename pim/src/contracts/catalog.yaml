@@ -76,10 +76,10 @@ entries:
       - name: configure_plugin
         input_schemas:
           - format: application/schema+json
-            definition: '{"type":"object","properties":{"catalog_id":{"type":"string","description":"Catalog component id returned by PIMCatalogs; the contract resolves an omitted id only when exactly one catalog is readable."},"plugin":{"type":"string","minLength":1,"description":"Active plugin registry id from PIMSchemaGet; activate new plugins with PIMSchemaApply."},"config":{"type":"object","description":"Replacement catalog configuration validated against the plugin config_schema from PIMSchemaOptions."}},"required":["plugin","config"],"additionalProperties":false}'
+            definition: '{"type":"object","properties":{"catalog_id":{"type":"string","description":"Catalog component id returned by PIMCatalogs; the contract resolves an omitted id only when exactly one catalog is readable."},"plugin":{"type":"string","minLength":1,"description":"Active plugin registry id from PIMSchemaGet; activate new plugins with PIMSchemaApply."},"config":{"type":"object","description":"Replacement catalog configuration validated against the plugin config_schema from PIMSchemaOptions."},"reset":{"type":"boolean","description":"Start the plugin projections at a fresh catalog event even when configuration is unchanged."}},"required":["plugin","config"],"additionalProperties":false}'
         output_schemas:
           - format: application/schema+json
-            definition: '{"type":"object","properties":{"seq":{"type":"integer","description":"Sequence at which configuration changes."},"as_of":{"type":"integer","description":"Applied catalog sequence represented by this answer."}}}'
+            definition: '{"type":"object","properties":{"seq":{"type":"integer","description":"Sequence of the configuration or reset event."},"as_of":{"type":"integer","description":"Applied catalog sequence represented by this answer."}}}'
       - name: plugin_context
         input_schemas:
           - format: application/schema+json

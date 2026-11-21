@@ -131,6 +131,7 @@ type Fragment = { aspects: { AspectDecl }?, vocabularies: { VocabularyDecl }? }
 -- PluginView is what get_schema reports per installed plugin: the catalog's
 -- choice, what the plugin runs with, or why it cannot run.
 type PluginProblem = { code: string, message: string, field: string? }
+type PluginConfigRequest = { plugin: string, config: JsonObject, reset: boolean? }
 type PluginFeedRequest = { catalog_id: string, plugin: string, kind: string, token: string? }
 -- On a gap, clear the catalog replica before applying changes and commit both with the replacement token.
 type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, gap: FeedGap?, changes: { ChangeItem }, token: string, done: boolean }
@@ -566,5 +567,5 @@ return {
     TypeFinding = TypeFinding, Plugin = Plugin, PluginProjection = PluginProjection, PluginProjectionState = PluginProjectionState,
     TypeFunctionRequest = TypeFunctionRequest, NormalizeResult = NormalizeResult, ValidateResult = ValidateResult,
     PluginManifest = PluginManifest, PluginProjectionDeclaration = PluginProjectionDeclaration, ProviderRequest = ProviderRequest, ProviderResult = ProviderResult,
-    PluginFeedRequest = PluginFeedRequest, PluginFeed = PluginFeed, PluginContext = PluginContext, PluginIntent = PluginIntent, PluginLifecycle = PluginLifecycle, PluginSchemaSource = PluginSchemaSource, ResolveContext = ResolveContext,
+    PluginConfigRequest = PluginConfigRequest, PluginFeedRequest = PluginFeedRequest, PluginFeed = PluginFeed, PluginContext = PluginContext, PluginIntent = PluginIntent, PluginLifecycle = PluginLifecycle, PluginSchemaSource = PluginSchemaSource, ResolveContext = ResolveContext,
 }

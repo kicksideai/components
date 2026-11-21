@@ -89,6 +89,21 @@ function M.run(input: unknown): (unknown, error?)
         end
         return true,nil
     end
+    if op == "remove_plugin_projection" then
+        return invoke(open("kickside.core:threads"), "remove_projection", {
+            thread_id = id, kind = req.kind, projection_key = req.projection_key,
+        })
+    end
+    if op == "pause_plugin_projection" then
+        return invoke(open("kickside.core:threads"), "pause_projection", {
+            thread_id = id, kind = req.kind, projection_key = req.projection_key,
+        })
+    end
+    if op == "resume_plugin_projection" then
+        return invoke(open("kickside.core:threads"), "resume_projection", {
+            thread_id = id, kind = req.kind, projection_key = req.projection_key,
+        })
+    end
     if op == "plugin_projections" then
         return invoke(open("kickside.core:threads"), "list_projections", { thread_id = id, limit = 1000 })
     end

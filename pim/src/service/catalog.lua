@@ -77,7 +77,7 @@ M.apply_schema = with_catalog("apply_schema", function(id: string, input: unknow
 end)
 
 M.configure_plugin = with_catalog("configure_plugin", function(id: string, input: unknown): (types.CommandResult?, error?)
-    return writer.configure_plugin(id, input :: { plugin: string, config: types.JsonObject })
+    return writer.configure_plugin(id, input :: types.PluginConfigRequest)
 end)
 
 M.plugin_context = with_catalog("plugin_context", function(id: string, input: unknown): (types.PluginContext?, error?)

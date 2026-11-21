@@ -401,7 +401,7 @@ One `registry.entry`, `meta.type: kickside.pim.plugin`, declares a plugin.
 | `settings` | deployment defaults for configuration values only; a deployment default never activates a plugin |
 | `schema` | optional schema provider (declaration fragment for the catalog's schema) |
 | `requires` | plugin ids that must be active on the same catalog |
-| `seams` | ids of the types, scopes, checks, guards and link kinds this plugin owns; a catalog's schema may name a seam only while its owning plugin is active there |
+| `seams` | ids of the types, scopes, checks and link kinds this plugin owns; a catalog's schema may name a seam only while its owning plugin is active there |
 | `projections` | §3.11 |
 | `tools` | agent tool ids contributed while active (§3.12) |
 
@@ -410,12 +410,16 @@ structured `problem { code, message, field? }`; it is never activatable, and it
 never fails a listing, a read, the host projection or another plugin. Codes:
 `unknown_plugin` (id names no plugin entry), `plugin_invalid` (malformed
 declaration), `plugin_tool_invalid`, `plugin_projection_invalid`,
+`plugin_interface_version_unsupported`,
 `plugin_required` (a dependency is not active), `plugin_seam_unowned`,
+`plugin_seam_conflict` (the schema names a seam claimed by multiple plugins),
 `plugin_config_invalid`, `plugin_inactive`. A registry or dependency failure
 keeps its native kind and code; only a truly missing or malformed entry becomes
 one of these `errors.INVALID` codes (`plugin_inactive` is `errors.NOT_FOUND`).
 The same code set applies to types, scopes and link kinds: `unknown_type`,
 `unknown_scope`, `unknown_link_kind`.
+Seam admission reads ownership from the installed declarations. Resolving a
+catalog schema checks the runtime dependencies of plugins active there.
 
 A plugin declares itself once with a `kickside.pim.plugin` entry:
 
@@ -455,8 +459,9 @@ Configuration is attachment data, never part of the schema declaration and
 never a registry entry. Initial values come with the activating schema command
 (`plugin_configs: { <plugin id>: { ... } }` on `create` or `apply_schema`);
 later changes go through the host contract method
-`configure_plugin { catalog_id, plugin, config }` (ADMIN), which appends one
-catalog fact event. Both validate the effective configuration (deployment
+`configure_plugin { catalog_id, plugin, config, reset? }` (ADMIN), which appends one
+catalog fact event when configuration changes or the caller supplies `reset: true`.
+Both validate the effective configuration (deployment
 defaults overlaid by the catalog's values) against `config_schema` before
 anything is appended; an invalid effective configuration refuses with
 `plugin_config_invalid` and nothing changes. The validated effective configuration is a snapshot at
@@ -597,6 +602,8 @@ Pure: `{ config, view, product: { product_id, sku, family, level } }` →
 `interactive` checks into readiness; release adds `release` checks. Checks
 are the only plugin code in the fold; a failure is a `check_unavailable`
 finding, never a stalled projection.
+Each invocation has 250 ms to return. PIM cancels an overdue call and
+rejects a findings list whose JSON representation exceeds 8 KiB.
 
 `enforce: write` turns the check's findings into item rejections. Compile
 accepts it only for `cost: interactive` checks whose `reads` are owned at
@@ -711,7 +718,9 @@ configured by writing registry entries.
   attachments, registers and removes plugin projections, and writes `lifecycle`
   per plugin. A plugin whose declaration is invalid or missing is left as it is
   (nothing is torn down on an invalid declaration) and reported `failed` with
-  its `problem`; every other plugin and the host continue.
+  its `problem`; every other plugin and the host continue. Convergence validates
+  stored configuration against the installed manifest before applying it. The
+  periodic pass revisits failed active declarations after package and configuration changes.
 - Catalog deletion tears down every attachment through the same lifecycle.
 - Plugin teardown (`deletable` binding of the attachment) deletes the plugin's
   rows in bounded primary-key pages and answers the platform's native
@@ -768,6 +777,10 @@ is caused by a catalog event (activation, `configure_plugin`, or a host-appended
 `plugin.rebuild` fact when only `revision` changed) and starts at that event:
 `start_seq` is the causing event's sequence. History before it is not delivered:
 it may already be pruned. Unchanged configuration and revision preserve the cursor.
+If a required registration starts in pruned history, lifecycle reports
+`plugin_projection_history_pruned`. An administrator can submit the current
+configuration with `reset: true` to start at a fresh fact. State workers rebuild
+from current records. Event workers receive facts from the reset point forward.
 
 - `input: state` is the way a plugin builds a read model of the catalog's records.
   The platform invokes the plugin's `worker_ref` itself as the registered worker,
@@ -790,7 +803,8 @@ it may already be pruned. Unchanged configuration and revision preserve the curs
   reports progress. It acknowledges the triggering range only when `done` is
   true and its writes commit. `done` requires the host materialization to reach
   the catalog thread head sampled before reading the page, with no rebuild or
-  remaining page.
+  remaining page. The native catalog cursor covers filtered plugin-owned facts
+  that do not update the PIM read model.
   The worker does no paging logic, event decoding, attachment or configuration
   lookup and never interprets the token. `bootstrap` stays true until the feed
   reaches the registration position after a (re)registration; per-kind
@@ -801,8 +815,10 @@ it may already be pruned. Unchanged configuration and revision preserve the curs
   from the registration point in bounded native platform batches. The worker
   obtains attachment and configuration context from `plugin_context`. It is for
   reactions to facts (a record was purged), not for building a model of state.
-- A worker error parks that projection only; the host and the other plugins
-  continue. `projections[kind]` shows `last_seq`, `parked`, `bootstrapping`, `error`.
+- A deterministic worker error parks that projection only. The host and other
+  plugins continue while Core manages transient worker failures. `projections[kind]` shows `last_seq`, `parked`, `bootstrapping`, `error`.
+  A stopped or invalid cursor reports `parked`. A missing or superseded
+  registration leaves the other cursors' status visible.
   Exact-id callback policies admit the platform process group; direct member
   calls to plugin workers are refused. The host has no nested worker adapter.
 
@@ -1541,7 +1557,7 @@ the caller can read. ADMIN and WRITE are independent grants, not implied by READ
 | `get_schema` | GET | `/pim/catalogs/{id}/schema` | READ |
 | `apply_schema` | POST | `/pim/catalogs/{id}/schema` | ADMIN |
 | `plan_schema` | POST | `/pim/catalogs/{id}/schema/plan` | ADMIN |
-| `configure_plugin` | POST | `/pim/catalogs/{id}/plugins/configure` (body `{plugin, config}`) | ADMIN |
+| `configure_plugin` | POST | `/pim/catalogs/{id}/plugins/configure` (body `{plugin, config, reset?}`) | ADMIN |
 | `get` | GET | `/pim/catalogs/{id}/product` | READ |
 | `query` | POST | `/pim/catalogs/{id}/query` | READ |
 | `list_history` | GET | `/pim/catalogs/{id}/history` | READ |
@@ -1564,7 +1580,7 @@ the caller can read. ADMIN and WRITE are independent grants, not implied by READ
 | shell extensions | GET | `/pim-ui/catalogs/{id}/extensions` | READ |
 
 `plugin_context` and `plugin_feed` require catalog READ and are contract only;
-they have no HTTP route or agent tool. `configure_plugin` has no agent tool.
+they have no HTTP route or agent tool.
 `create` and
 `apply_schema` accept `plugin_configs` separately from `declaration`; the
 existing `PIMCatalogCreate` and `PIMSchemaApply` inputs carry that field.
@@ -1875,7 +1891,7 @@ and `job_id` for tracking.
   | `create` | CREATE | optional initial declaration (empty when omitted) and separate `plugin_configs?`; always establishes generation 1 |
   | `apply_schema` | ADMIN | declaration, `expected_generation?`, idempotency and separate `plugin_configs?` |
   | `plan_schema` | ADMIN | schema request with initial `plugin_configs?`; validates without append |
-  | `configure_plugin { catalog_id, plugin, config }` | ADMIN | validates effective attachment configuration before appending one catalog fact |
+  | `configure_plugin { catalog_id, plugin, config, reset? }` | ADMIN | validates effective attachment configuration before appending one catalog fact |
   | `plugin_context { catalog_id, plugin }` | READ | contract only; active plugin context (§3.2) |
   | `plugin_feed { catalog_id, plugin, kind, token? }` | READ | contract only; bounded durable state page and opaque token (§3.11) |
 

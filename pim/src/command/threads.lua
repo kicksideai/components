@@ -14,6 +14,7 @@ type Request = { [string]: unknown }
 type Client = {
     retire_subjects: (self: Client, request: {thread_id: string, subjects: {string}}) -> ({thread_id: string, retired: integer}?, error?),
     find: (self: Client, request: Request) -> ({ event_count: integer }?, error?),
+    prune_boundary: (self: Client, request: Request) -> ({ max_pruned_seq: integer }?, error?),
     register_projection: (self: Client, request: Request) -> (unknown, error?),
     remove_projection: (self: Client, request: Request) -> (unknown, error?),
     list_projections: (self: Client, request: Request) -> (unknown, error?),
