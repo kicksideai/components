@@ -42,6 +42,7 @@ it('configures text visibility with explicit levels and retains the shared holde
   const choices = w.getComponent(Select).props('options') as { value: string }[]
   expect(choices.map(c => c.value)).toEqual(['', 'visibility'])
   await w.getComponent(Select).setValue('visibility')
+  await getButton(w, 'Add level').trigger('click')
   await w.get('[aria-label="New visibility level"]').setValue('Internal')
   await getButton(w, 'Add level').trigger('click'); await flushPromises()
   expect(draft.visibility).toEqual({ field: 'visibility', levels: [{ id: 'Internal', holders: [] }] })

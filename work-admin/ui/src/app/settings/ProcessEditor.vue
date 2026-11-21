@@ -20,6 +20,7 @@ const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; iss
 const emit = defineEmits<{ validity: [key: string, valid: boolean] }>()
 const processes = computed(() => props.draft.processes ?? [])
 const creating = ref(false), newName = ref(''), selected = ref(''), error = ref(''), mode = ref('Map'), target = ref('')
+const choosingTarget = ref(false)
 const selectedState = ref<State>(), selectedTransition = ref<Transition>(), graph = ref<InstanceType<typeof ProcessGraph>>()
 const editor = ref<HTMLElement>(), inspector = ref<HTMLElement>(), tools = ref<HTMLElement>(), editingName = ref(false)
 type InspectorOpener = HTMLElement | SVGElement
@@ -46,7 +47,7 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect())
 watch(process, () => { modeChosen.value = false; defaultMode() })
 
-function clear() { editingName.value = false; selectedState.value = undefined; selectedTransition.value = undefined; error.value = ''; inspectorOpener = undefined }
+function clear() { editingName.value = false; choosingTarget.value = false; selectedState.value = undefined; selectedTransition.value = undefined; error.value = ''; inspectorOpener = undefined }
 async function closeInspector() {
   const opener = inspectorOpener
   clear()
@@ -68,8 +69,15 @@ async function focusInspector() {
   }
 }
 function chooseState(state: State, opener?: InspectorOpener) {
-  inspectorOpener = opener; editingName.value = false; selectedState.value = state; selectedTransition.value = undefined; target.value = ''; error.value = ''
+  inspectorOpener = opener; editingName.value = false; choosingTarget.value = false; selectedState.value = state; selectedTransition.value = undefined; target.value = ''; error.value = ''
   void focusInspector()
+}
+async function showTarget(open: boolean) {
+  target.value = ''
+  choosingTarget.value = open
+  await nextTick()
+  const control = open ? '[role="combobox"]' : 'button'
+  inspector.value?.querySelector<HTMLElement>('.work-next-transition ' + control)?.focus()
 }
 function chooseTransition(transition: Transition, opener?: InspectorOpener) {
   inspectorOpener = opener; editingName.value = false; selectedTransition.value = transition; selectedState.value = undefined; error.value = ''
@@ -87,7 +95,6 @@ const visibleGuards = computed(() => (props.guards ?? []).filter(guard =>
   props.draft.plugins?.some(plugin => plugin.use === guard.plugin)))
 const staleLimits = computed(() => Object.keys(props.draft.policy?.wip ?? {}).filter(id =>
   !processes.value.some(workflow => workflow.states.some(state => state.id === id))))
-function selectProcess(value: string) { if (value === '__new') creating.value = true; else selected.value = value }
 function add() {
   const name = newName.value.trim()
   if (!name) return
@@ -187,11 +194,8 @@ async function remove(p: Process) {
           appendTo="self"
           optionLabel="label"
           optionValue="value"
-          :options="[
-            ...processes.map((p) => ({ label: p.name || 'Untitled process', value: p.id })),
-            { label: 'New process…', value: '__new' },
-          ]"
-          @update:model-value="selectProcess"
+          :options="processes.map(p => ({ label: p.name || 'Untitled process', value: p.id }))"
+          @update:model-value="selected = $event"
         />
         <strong v-else>{{ process.name || 'Untitled process' }}</strong>
         <Button label="Add state" severity="secondary" outlined size="small" @click="addState(process, $event.currentTarget as HTMLElement)"
@@ -246,7 +250,6 @@ async function remove(p: Process) {
           aria-label="Process layout"
         />
         <Button
-          v-if="processes.length === 1"
           label="New process"
           aria-label="New process"
           text
@@ -331,27 +334,21 @@ async function remove(p: Process) {
                 ['triage', 'backlog', ...categories].map((value) => ({ label: categoryTitle(value), value }))
               "
           /></label>
-          <h4 class="work-process-group">Next stop</h4>
-          <Select
-            v-model="target"
-            aria-label="Add transition to…"
-            placeholder="Add transition to…"
-            appendTo="self"
-            optionLabel="label"
-            optionValue="value"
-            :options="
-              process.states.filter((s) => s !== state).map((s) => ({ label: stateTitle(s), value: s.id }))
-            "
-          />
-          <Button
-            label="Add transition"
-            severity="secondary"
-            outlined
-            size="small"
-            :disabled="!target"
-            @click="connect(state.id, target)"
-            ><template #icon><Icon icon="tabler:arrow-right" /></template
-          ></Button>
+          <div class="work-next-transition work-stack work-tight">
+            <Button v-if="!choosingTarget" label="Add transition" severity="secondary" outlined size="small"
+              aria-expanded="false" :disabled="process.states.length < 2" @click="showTarget(true)">
+              <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
+            </Button>
+            <template v-else>
+              <Select v-model="target" aria-label="Next state" placeholder="Choose the next state" appendTo="self"
+                optionLabel="label" optionValue="value"
+                :options="process.states.filter(s => s !== state).map(s => ({ label: stateTitle(s), value: s.id }))" />
+              <div class="work-row work-wrap">
+                <Button label="Add transition" size="small" :disabled="!target" @click="connect(state.id, target)" />
+                <Button label="Cancel" severity="secondary" text size="small" @click="showTarget(false)" />
+              </div>
+            </template>
+          </div>
           <footer class="work-process-inspector-foot">
             <Button
               label="Remove state"

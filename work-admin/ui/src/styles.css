@@ -89,7 +89,7 @@ label.work-stack, .work-settings-grid label, .work-chip-picker legend { font-siz
 .work-definition-scroll::-webkit-scrollbar-thumb { background: var(--p-content-border-color); border-radius: 6px; }
 .work-field-builder { display: grid; gap: 0; grid-template-columns: 52px minmax(160px, 1.4fr) minmax(120px, 1fr) 140px minmax(120px, 1.2fr) 120px auto; min-width: 936px; }
 .work-definitions-types, .work-definitions-relations { grid-template-columns: 24px minmax(160px, 1.4fr) minmax(120px, 1fr) 140px minmax(120px, 1fr) auto; min-width: 720px; }
-.work-definitions-plugins { grid-template-columns: 24px minmax(160px, 1fr) 140px minmax(120px, 1fr) auto; min-width: 560px; }
+.work-field-builder.work-definitions-plugins { grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .work-definition-columns, .work-definition, .work-definition-head { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; min-width: 0; }
 .work-definition-head, .work-definition-columns { align-items: center; column-gap: 8px; padding: 12px 16px; }
 .work-definition-columns { padding-block: 8px; border-bottom: 1px solid var(--p-content-border-color); font-size: 12px; font-weight: 600; color: var(--p-text-muted-color); }
@@ -98,7 +98,7 @@ label.work-stack, .work-settings-grid label, .work-chip-picker legend { font-siz
 .work-definition-handle { grid-column: 1; }
 .work-definition-toggle > svg { width: 16px; height: 16px; }
 .work-definition-toggle .work-row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.work-definition-details { display: contents; }
+.work-definition-lead, .work-definition-details { display: contents; }
 .work-definition-code { min-width: 0; }
 .work-definition-code .work-mono { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
 .work-definition-kind { min-width: 0; }
@@ -107,7 +107,6 @@ label.work-stack, .work-settings-grid label, .work-chip-picker legend { font-siz
 .work-definition-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0; min-width: 0; }
 .work-definition-body, .work-field-builder > .work-add-definition, .work-field-builder > .kx-empty { grid-column: 1 / -1; }
 .work-definitions-types .work-definition-flags, .work-definitions-relations .work-definition-flags { display: none; }
-.work-definitions-plugins .work-definition-code, .work-definitions-plugins .work-definition-usage { display: none; }
 .work-definition-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .work-definition-description { grid-column: 1 / -1; padding-left: 32px; font-size: 12px; color: var(--p-text-muted-color); }
 .work-field-builder > .work-definition { border: 0; border-bottom: 1px solid var(--p-content-border-color); border-radius: 0; }
@@ -133,11 +132,17 @@ label.work-stack, .work-settings-grid label, .work-chip-picker legend { font-siz
   .work-definition-actions { grid-area: 2 / 3; }
   .work-definition-description { padding-left: 0; overflow-wrap: anywhere; }
 }
-@container (width < 410px) {
-  .work-definitions-plugins .work-definition-details { grid-column: 1 / -1; }
-  .work-definitions-plugins .work-definition-actions { grid-area: 3 / 1 / 4 / -1; justify-content: flex-start; }
-  .work-definitions-plugins .work-definition-actions > .work-spacer { display: none; }
+.work-definitions-plugins .work-definition-head {
+  grid-template: "lead control" auto "status control" auto / minmax(0, 1fr) auto;
+  gap: 0 16px;
 }
+.work-definitions-plugins .work-definition-lead { display: grid; grid-area: lead; min-width: 0; gap: 2px; }
+.work-definitions-plugins .work-definition-toggle .work-row-title { white-space: normal; overflow-wrap: anywhere; }
+.work-definitions-plugins .work-definition-description { padding-left: 24px; overflow-wrap: anywhere; }
+.work-definitions-plugins .work-definition-details { display: contents; }
+.work-definitions-plugins .work-definition-details > :not(.work-definition-kind), .work-definitions-plugins .work-definition-kind:empty { display: none; }
+.work-definitions-plugins .work-definition-kind { grid-area: status; margin: 4px 0 0 24px; }
+.work-definitions-plugins .work-definition-actions { grid-area: control; justify-self: end; }
 .work-config-widget { display: block; max-width: 440px; }
 .work-config-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; max-width: 760px; }
 .work-config-field { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -159,8 +164,12 @@ label.work-stack, .work-settings-grid label, .work-chip-picker legend { font-siz
 .work-settings-card { padding: 16px; border: 1px solid var(--p-content-border-color); border-radius: var(--kx-radius-14); }
 .work-reorder-handle { cursor: grab; touch-action: none; }
 .work-reorder-handle:active { cursor: grabbing; }
-.work-add-definition { align-items: end; padding: 16px; border: 1px solid var(--p-content-border-color); border-radius: var(--kx-radius-14); flex-wrap: wrap; }
-.work-add-definition > label { width: min(260px, 100%); }
+.work-field-builder > .work-add-definition { padding: 12px 16px; }
+.work-add-editor { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.work-add-editor > label { width: min(240px, 100%); min-width: 0; }
+.work-add-editor > label > .p-inputtext { width: 100%; min-width: 0; }
+.work-add-editor:has(> .work-chip-picker) { display: grid; }
+.work-form-actions > .work-add-definition:has(.work-add-editor) { flex-basis: 100%; }
 .work-option-builder { border-top: 1px solid var(--p-content-border-color); padding-top: 14px; }
 .work-option-row { display: grid; grid-template-columns: 28px minmax(120px, 1fr) minmax(100px, .7fr) minmax(130px, 1fr) auto; gap: 8px; align-items: end; padding: 8px 0; }
 .work-color-swatch { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--p-text-muted-color); }
@@ -171,6 +180,12 @@ label.work-stack, .work-settings-grid label, .work-chip-picker legend { font-siz
 .work-swatch-danger { background: var(--p-danger-500); }
 .work-chip-picker { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
 .work-chip-picker legend { padding: 0; margin-bottom: 8px; }
+.work-chip-picker > .p-inputtext { min-width: 0; width: 100%; }
+.work-chip-picker .p-selectbutton { display: flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
+.work-chip-picker .p-selectbutton > .p-togglebutton {
+  min-width: 0; max-width: 100%; border: 1px solid var(--p-content-border-color); border-radius: var(--p-border-radius-md);
+  white-space: normal; overflow-wrap: anywhere;
+}
 .work-schema-plan, .work-advanced-settings { margin-top: 20px; }
 .work-schema-plan { min-width: 0; overflow-wrap: anywhere; }
 .work-schema-plan .work-settings-table td { vertical-align: top; }
@@ -378,10 +393,12 @@ button.work-content-action { padding: 0; border: 0; background: transparent; }
 .work-ia-section { display: grid; gap: 16px; min-width: 0; }
 .work-ia-card-row, .work-ia-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .work-ia-card-row > div, .work-ia-toolbar > div:first-child { flex: 1 0 min(220px, 100%); }
-.work-board-details-identity { display: grid; gap: 12px; }
-.work-board-details-identity .work-identity-edit { grid-template-columns: minmax(0, 1fr); }
-.work-board-details .work-settings-row > .p-inputtext { width: 104px; }
-.work-board-details .work-settings-row > .work-row-main { flex-basis: 150px; }
+.work-board-details .work-settings-row { flex-wrap: nowrap; gap: 12px; }
+.work-board-details .work-settings-row > .work-row-main { flex: 1; }
+.work-board-details .work-settings-row > :is(.p-inputtext, .p-select) { width: clamp(118px, 44%, 260px); min-width: 0; }
+.work-board-details .work-settings-row:has(+ .work-board-appearance) { border-bottom: 0; }
+.work-board-details .work-board-appearance { margin: 0 16px 12px; }
+.work-board-summary { padding-inline: 2px; }
 .work-member-preview { list-style: none; margin: 0; padding: 0; }
 .work-member-preview > .work-settings-row { gap: 8px; padding-block: 12px; }
 .work-member-preview > .work-settings-row:not(:last-child), .work-member-preview:has(+ p) { border-bottom: 1px solid var(--p-content-border-color); }

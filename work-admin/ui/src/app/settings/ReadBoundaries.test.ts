@@ -13,20 +13,15 @@ import StateSettings from './StateSettings.vue'
 import type { Declaration, Field } from '../../types'
 import { getButton } from '../../test/controls'
 it.each([
-  [FieldsEditor, 'Add field', 'fields'],
-  [TypesEditor, 'Add type', 'item_types'],
-  [RelationsEditor, 'Add link type', 'relation_types'],
-] as const)('creates definitions on user writes, leaving absent collections absent on reads', async (component, action, key) => {
+  [FieldsEditor, 'Add field', 'Field name', 'fields'],
+  [TypesEditor, 'Add item type', 'Item type name', 'item_types'],
+  [RelationsEditor, 'Add link type', 'Link name', 'relation_types'],
+] as const)('creates definitions on user writes, leaving absent collections absent on reads', async (component, action, label, key) => {
   const draft = reactive<Declaration>({}), w = mount(component, { props: { draft } })
   expect(draft).toEqual({})
-  if (key === 'fields') {
-    await getButton(w, action).trigger('click')
-    await w.get('[aria-label="Field name"]').setValue('New entry')
-    await getButton(w, 'Add to draft').trigger('click')
-  } else {
-    await w.get('input').setValue('New entry')
-    await getButton(w, action).trigger('click')
-  }
+  await getButton(w, action).trigger('click')
+  await w.get(`[aria-label="${label}"]`).setValue('New entry')
+  await getButton(w, action).trigger('click')
   expect(draft[key]).toHaveLength(1); w.unmount()
 })
 it('creates policy only when a policy control changes', async () => {

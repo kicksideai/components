@@ -70,7 +70,7 @@ it('uses the custom type’s form, index choices and configuration for a new fie
   try {
     await w.get('button[aria-label="Add field"]').trigger('click')
     await w.get('[aria-label="Field name"]').setValue('Score')
-    await w.get('button[aria-label="Add to draft"]').trigger('click')
+    await w.get('button[aria-label="Add field"]').trigger('click')
     const control = (label: string) => w.findAll('label').find(item => item.text().startsWith(label))!.getComponent(Select)
     await control('Allow filters to use').setValue('key')
     const kind = control('Kind')

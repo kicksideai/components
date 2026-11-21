@@ -7,40 +7,41 @@ import DefinitionList from './DefinitionList.vue'
 import Checkbox from 'primevue/checkbox'
 import ChipPicker from './ChipPicker.vue'
 import Select from 'primevue/select'
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import type { Declaration, RelationType } from '../../types'
 import { humanize } from '../../forms'
 import { removeEntry, type RemovalGuard } from './model'
+import AddDefinitionRow from './AddDefinitionRow.vue'
 const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard }>()
 const relations = computed(() => props.draft.relation_types ?? [])
 const sourceTypes = computed(() => (props.draft.item_types ?? []).map(type => ({ value: type.id, label: type.title || humanize(type.id) })))
-const targetEntry = reactive(new WeakMap<RelationType, string>())
 function setEndpoints(relation: RelationType, field: 'from_types' | 'to_types', ids: string[]) {
   if (ids.length) relation[field] = ids
   else delete relation[field]
 }
-function validTarget(relation: RelationType, value = '') {
-  const id = value.trim()
-  return /^[a-z][a-z0-9_]{0,39}$/.test(id) && !relation.to_types?.includes(id)
+function targetIssue(relation: RelationType, id: string) {
+  if (!/^[a-z][a-z0-9_]{0,39}$/.test(id)) return 'Start with a lowercase letter and use only lowercase letters, numbers or underscores.'
+  if (relation.to_types?.includes(id)) return 'This ID is already in use.'
 }
-function addTarget(relation: RelationType) {
-  const id = targetEntry.get(relation)?.trim()
-  if (!id || !validTarget(relation, id)) return
+function addTarget(relation: RelationType, id: string) {
   setEndpoints(relation, 'to_types', [...(relation.to_types ?? []), id])
-  targetEntry.delete(relation)
 }
-const id = ref(''), error = ref(''), busy = ref(false)
-const valid = computed(() => !!id.value.trim())
-function newId() {
-  const slug = id.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40)
-  const stem = /^[a-z]/.test(slug) ? slug : 'link_' + (slug || 'new')
+const error = ref(''), busy = ref(false)
+function newId(title: string) {
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  const stem = (/^[a-z]/.test(slug) ? slug : 'link_' + (slug || 'new')).slice(0, 40)
   let code = stem, suffix = 2
-  while (relations.value.some(link => link.id === code)) code = stem + '_' + suffix++
+  while (relations.value.some(link => link.id === code)) {
+    const ending = '_' + suffix++
+    code = stem.slice(0, 40 - ending.length) + ending
+  }
   return code
 }
-function add() { if (!valid.value) return; (props.draft.relation_types ??= []).push({ id: newId(), outward: id.value.trim(), inward: id.value.trim(), cardinality: 'many' }); id.value = '' }
+function add(title: string) {
+  (props.draft.relation_types ??= []).push({ id: newId(title), outward: title, inward: title, cardinality: 'many' })
+}
 async function remove(id: string) {
   if (busy.value) return
   busy.value = true; error.value = ''
@@ -106,18 +107,14 @@ async function remove(id: string) {
         <ChipPicker label="Source item types" :options="sourceTypes" :model-value="relation.from_types"
           @update:model-value="setEndpoints(relation, 'from_types', $event)" />
         <div class="work-stack work-tight">
-          <label class="work-stack work-tight">Target type ID
-            <InputText :model-value="targetEntry.get(relation) ?? ''" @update:model-value="targetEntry.set(relation, $event ?? '')" aria-label="Target type ID" placeholder="e.g. release"
-              maxlength="40" @keydown.enter.stop.prevent="addTarget(relation)" />
-          </label>
           <p class="work-muted work-small">Use the type ID from this board or a peer board. Leave either end empty to allow any type there.</p>
-          <Button label="Add target type" severity="secondary" outlined size="small"
-            :disabled="!validTarget(relation, targetEntry.get(relation))" @click="addTarget(relation)" />
           <div v-if="relation.to_types?.length" class="work-chips">
             <Button v-for="type in relation.to_types" :key="type" severity="secondary" text size="small"
               :label="type + ' ×'" :aria-label="'Remove target type ' + type"
               @click="setEndpoints(relation, 'to_types', relation.to_types.filter(id => id !== type))" />
           </div>
+          <AddDefinitionRow action="Add target type" label="Target type ID" :maxlength="40"
+            :validate="id => targetIssue(relation, id)" @add="id => addTarget(relation, id)" />
         </div>
       </div>
       <Disclosure class="work-disclosure" label="Advanced link settings">
@@ -140,20 +137,7 @@ async function remove(id: string) {
       v-if="!relations.length"
       class="kx-empty"
     >No link types yet. Add one to connect related work.</p>
-    <div class="work-row work-add-definition">
-      <label class="work-stack work-tight">New link name
-        <InputText
-          v-model="id"
-          placeholder="e.g. Blocks"
-          @keydown.enter.prevent="add"
-        />
-      </label>
-      <Button
-        label="Add link type"
-        severity="secondary"
-        :disabled="!valid"
-        @click="add" outlined><template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template></Button>
-    </div>
+    <AddDefinitionRow action="Add link type" label="Link name" @add="add" />
     </DefinitionList>
   </section>
 </template>

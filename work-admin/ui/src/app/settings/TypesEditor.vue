@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
-import { Icon } from '@iconify/vue'
 import DefinitionRow from './DefinitionRow.vue'
 import DefinitionList from './DefinitionList.vue'
 import Select from 'primevue/select'
@@ -14,13 +13,13 @@ import type { Declaration, ItemType } from '../../types'
 import { fieldTitle, humanize } from '../../forms'
 import { removeEntry, type RemovalGuard, type SchemaChange, changeReason } from './model'
 import ChipPicker from './ChipPicker.vue'
+import AddDefinitionRow from './AddDefinitionRow.vue'
 const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[] }>()
 const types = computed(() => props.draft.item_types ?? [])
-const id = ref(''), error = ref(''), removing = ref('')
-const base = computed(() => id.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40))
-const valid = computed(() => !!id.value.trim())
-function newId() {
-  const stem = /^[a-z]/.test(base.value) ? base.value : 'type_' + (base.value || 'new')
+const error = ref(''), removing = ref('')
+function newId(title: string) {
+  const base = title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  const stem = /^[a-z]/.test(base) ? base : 'type_' + (base || 'new')
   let key = stem.slice(0, 40), suffix = 2
   while (types.value.some(type => type.id === key)) {
     const ending = '_' + suffix++
@@ -28,7 +27,9 @@ function newId() {
   }
   return key
 }
-function add() { if (!valid.value) return; (props.draft.item_types ??= []).push({ id: newId(), title: id.value.trim(), process: props.draft.processes?.[0]?.id ?? '', fields: [] }); id.value = '' }
+function add(title: string) {
+  (props.draft.item_types ??= []).push({ id: newId(title), title, process: props.draft.processes?.[0]?.id ?? '', fields: [] })
+}
 function rename(type: ItemType, id: string) {
   const before = type.id
   type.id = id
@@ -67,7 +68,7 @@ async function remove(type: ItemType) {
       </div></Disclosure>
     </DefinitionRow>
     <p v-if="!types.length" class="kx-empty">Add a type for the work people create, such as a delivery task or customer request.</p>
-    <div class="work-row work-add-definition"><label class="work-stack work-tight">New item type name<InputText v-model="id" placeholder="e.g. Customer request" @keydown.enter.prevent="add" /></label><Button label="Add type" severity="secondary" :disabled="!valid" @click="add" outlined><template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template></Button></div>
+    <AddDefinitionRow action="Add item type" label="Item type name" @add="add" />
     </DefinitionList>
   </section>
 </template>

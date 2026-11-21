@@ -28,9 +28,12 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
   const errors: string[] = [], requests: { path: string; body: Record<string, unknown> }[] = []
   page.on('pageerror', e => errors.push(e.message))
   let view = schema(), hold = false, held: Route | undefined, createdTitle = '', description = ''
+  let boardTitle = 'Delivery', boardApp: string | undefined
   if (mode === 'board-setup') {
     view.declaration.plugins = [{ use: 'fixture:enhancements' }]
     view.plugins = [{ plugin: 'fixture:enhancements', active: true, installed: true, requires: [], tools: [], lifecycle: { state: 'ready' }, projections: {} }]
+    view.declaration.fields!.push(...['Acceptance criteria', 'Resolution notes', 'Escalation reason', 'External issue tracker reference', 'Final trailing choice']
+      .map((title, index) => ({ code: 'extra_' + index, title, form: 'text' as const })))
   }
   if (mode === 'process') { view.declaration.processes = [cicd]; view.compiled.processes = [cicd] }
   if (mode === 'process-editing') {
@@ -46,9 +49,11 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
     const path = new URL(route.request().url()).pathname, body = route.request().postDataJSON() as Record<string, unknown> ?? {}
     requests.push({ path, body })
     const reply = (data: unknown) => route.fulfill({ json: { success: true, data } })
+    if (path.includes('/component-access/grants/')) return route.fulfill({ json: { success: true, access: [] } })
+    if (path.endsWith('/components/access-model')) return route.fulfill({ json: { success: true, capabilities: [] } })
     if (path.endsWith('/query')) return reply({ items: [], groups: [] })
     if (path.endsWith('/packs')) return reply({ packs: [{ id: 'broken:pack', title: 'Broken installed pack', problem: { code: 'invalid_pack', message: 'Pack data is malformed' } }, { id: 'release:pack', title: 'Release pipeline', version: '1.0.0', icon: 'tabler:route', description: 'Release work', requires: [], plugins: [] }] })
-    if (path.endsWith('/options')) return reply({ access, schema_options: { plugins: [{ plugin: 'fixture:enhancements', title: 'Board enhancements', installed: true, requires: [], config_schema: { type: 'object', properties: { threshold: { type: 'integer', title: 'Threshold' } } } }] }, board_apps: [{ id: 'fixture:tracker', title: 'Tracker' }], installed_types: [{ id: 'fixture:rating', title: 'Rating' }] })
+    if (path.endsWith('/options')) return reply({ access, schema_options: { plugins: [{ plugin: 'fixture:enhancements', title: 'Board enhancements', description: 'Adds tools for planning and tracking work on this board.', installed: true, requires: [], config_schema: { type: 'object', properties: { threshold: { type: 'integer', title: 'Threshold' }, aliases: { title: 'Aliases', type: 'array', items: { type: 'string' } } } } }] }, board_apps: [{ id: 'fixture:tracker', title: 'Tracker' }], installed_types: [{ id: 'fixture:rating', title: 'Rating' }] })
     if (path.endsWith('/state_counts')) return reply({ task: { todo: 2, doing: 1 } })
     if (path.endsWith('/get_schema')) {
       if (path.includes('/new/')) return reply({ generation: 1, declaration: { key_prefix: 'WORK' }, compiled: {}, key_prefix: 'WORK', as_of: 1 })
@@ -69,10 +74,18 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
       hold = true
       return reply({ generation: view.generation, class: 'cosmetic' })
     }
-    if (path.endsWith('/update')) { description = String(body.description); return reply({ board_id: 'new', status: 'updated' }) }
+    if (path.endsWith('/update')) {
+      if (path.includes('/b/')) {
+        if (typeof body.title === 'string') boardTitle = body.title
+        if (typeof body.ui_app === 'string') boardApp = body.ui_app
+        return reply({ board_id: 'b', status: 'updated' })
+      }
+      description = String(body.description)
+      return reply({ board_id: 'new', status: 'updated' })
+    }
     if (path.endsWith('/boards')) {
       if (route.request().method() === 'POST') { createdTitle = String(body.title); return reply({ board_id: 'new', generation: 1 }) }
-      return reply({ boards: [{ board_id: 'b', title: 'Delivery', item_count: 3, open_count: 3, access }, { board_id: 'other', title: 'Other board', access }, { board_id: 'long', title: longBoardName, access }, ...(createdTitle ? [{ board_id: 'new', title: createdTitle, description, access }] : [])] })
+      return reply({ boards: [{ board_id: 'b', title: boardTitle, ui_app: boardApp, item_count: 3, open_count: 3, access }, { board_id: 'other', title: 'Other board', access }, { board_id: 'long', title: longBoardName, access }, ...(createdTitle ? [{ board_id: 'new', title: createdTitle, description, access }] : [])] })
     }
     throw new Error('Unexpected fixture request: ' + path)
   })
@@ -143,22 +156,165 @@ it('shows plugin activation on the switch and marks a pending change', async () 
   } finally { await page.close() }
 }, 30000)
 
-it('leads General with board details and keeps the board summary compact', async () => {
+it.each([1440, 390])('keeps the plugin description beside the switch at %i px', async width => {
+  const { page } = await fixture('board-setup', false, width)
+  try {
+    await boardSection(page, 'Plugins').click()
+    const panel = page.getByRole('region', { name: 'Plugins', exact: true })
+    const title = panel.getByRole('button', { name: 'Board enhancements', exact: true })
+    const description = panel.getByText('Adds tools for planning and tracking work on this board.')
+    const toggle = panel.getByRole('switch', { name: 'Enable Board enhancements' })
+    await toggle.waitFor()
+    const [t, d, s] = (await Promise.all([title.boundingBox(), description.boundingBox(), toggle.boundingBox()]))!
+    expect(d!.y).toBeGreaterThanOrEqual(t!.y + t!.height - 1)
+    expect(d!.x + d!.width).toBeLessThan(s!.x)
+    expect(Math.abs(s!.y + s!.height / 2 - (t!.y + d!.y + d!.height) / 2)).toBeLessThanOrEqual(4)
+    const refresh = panel.getByRole('button', { name: 'Refresh status', exact: true })
+    expect(await refresh.evaluate(button => !!button.closest('header'))).toBe(true)
+  } finally { await page.close() }
+}, 30000)
+
+it.each([
+  ['Item types', 'Add item type', 'Item type name', 'Customer request'],
+  ['Fields', 'Add field', 'Field name', 'Customer account'],
+  ['Links', 'Add link type', 'Link name', 'Depends on'],
+])('opens and cancels the inline add row for %s', async (section, action, label, value) => {
+  const { page } = await fixture('board-setup', false, 390)
+  try {
+    await boardSection(page, section).click()
+    const panel = page.getByRole('region', { name: section, exact: true })
+    const add = panel.getByRole('button', { name: action, exact: true })
+    const name = panel.getByRole('textbox', { name: label, exact: true })
+    expect(await panel.getByRole('textbox').count()).toBe(0)
+    await add.press('Enter')
+    expect(await name.evaluate(input => (input.getRootNode() as Document | ShadowRoot).activeElement === input)).toBe(true)
+    await name.fill(value)
+    await name.press('Escape')
+    expect(await name.count()).toBe(0)
+    expect(await add.evaluate(button => (button.getRootNode() as Document | ShadowRoot).activeElement === button)).toBe(true)
+    await add.press('Enter')
+    await name.fill(value)
+    await name.press('Enter')
+    await panel.getByRole('button', { name: value, exact: true }).waitFor({ timeout: 2000 })
+    expect(await name.count()).toBe(0)
+  } finally { await page.close() }
+}, 30000)
+
+it('adds workflows and states from actions with no permanent add input', async () => {
+  const { page } = await fixture('board-setup', false, 390)
+  try {
+    await boardSection(page, 'Workflow').click()
+    const panel = page.getByRole('region', { name: 'Workflow', exact: true })
+    const processName = panel.getByRole('textbox', { name: 'New process name' })
+    expect(await processName.isVisible()).toBe(false)
+    await panel.getByRole('button', { name: 'New process', exact: true }).press('Enter')
+    await processName.fill('Customer intake')
+    await processName.press('Enter')
+    const process = panel.getByRole('combobox', { name: 'Process', exact: true })
+    await expect.poll(() => process.innerText()).toBe('Customer intake')
+    await process.click()
+    expect(await panel.getByRole('option', { name: 'New process…', exact: true }).count()).toBe(0)
+    await process.press('Escape')
+    const stateName = panel.getByRole('textbox', { name: 'State name', exact: true })
+    expect(await stateName.isVisible()).toBe(false)
+    await panel.getByRole('button', { name: 'Add state', exact: true }).press('Enter')
+    await stateName.fill('Waiting for customer')
+    await stateName.press('Enter')
+    await panel.getByRole('button', { name: 'Close state editor' }).press('Enter')
+    await panel.getByRole('button', { name: 'Edit state Waiting for customer' }).press('Enter')
+    const inspector = panel.getByRole('complementary', { name: 'State inspector' })
+    const destination = inspector.getByRole('combobox', { name: 'Next state', exact: true })
+    expect(await destination.isVisible()).toBe(false)
+    await inspector.getByRole('button', { name: 'Add transition', exact: true }).press('Enter')
+    await destination.press('ArrowDown')
+    await inspector.getByRole('option', { name: 'To do', exact: true }).click()
+    await inspector.getByRole('button', { name: 'Add transition', exact: true }).click()
+    await panel.getByRole('textbox', { name: 'Transition name', exact: true }).waitFor()
+  } finally { await page.close() }
+}, 30000)
+
+it('adds a link target, visibility level and plugin value on demand', async () => {
   const { page } = await fixture('board-setup')
+  try {
+    await boardSection(page, 'Links').click()
+    await page.getByRole('button', { name: 'blocks', exact: true }).click()
+    const target = page.getByRole('textbox', { name: 'Target type ID' })
+    expect(await target.isVisible()).toBe(false)
+    await page.getByRole('button', { name: 'Add target type', exact: true }).click()
+    await target.fill('release')
+    await target.press('Enter')
+    await page.getByRole('button', { name: 'Remove target type release' }).waitFor()
+
+    await boardSection(page, 'Access').click()
+    const visibilityField = page.getByRole('combobox', { name: 'Visibility field', exact: true })
+    await page.getByText('Advanced · Item visibility', { exact: true }).click()
+    await visibilityField.click()
+    await page.getByRole('option', { name: 'Description', exact: true }).click()
+    const level = page.getByRole('textbox', { name: 'New visibility level' })
+    expect(await level.isVisible()).toBe(false)
+    await page.getByRole('button', { name: 'Add level', exact: true }).click()
+    await level.fill('Internal')
+    await level.press('Enter')
+    await page.getByText('Internal', { exact: true }).waitFor()
+
+    await boardSection(page, 'Plugins').click()
+    await page.getByRole('button', { name: 'Board enhancements', exact: true }).click()
+    const alias = page.getByRole('textbox', { name: 'Add aliases' })
+    expect(await alias.isVisible()).toBe(false)
+    await page.getByRole('button', { name: 'Add value', exact: true }).click()
+    await alias.fill('Triage')
+    await alias.press('Enter')
+    await page.getByText('Triage', { exact: true }).waitFor()
+  } finally { await page.close() }
+}, 30000)
+
+it('leads General with board details and keeps the board summary compact', async () => {
+  const { page, requests } = await fixture('board-setup')
   try {
     const panel = page.getByRole('region', { name: 'General', exact: true })
     const details = panel.getByRole('region', { name: 'Board details', exact: true })
     const summary = panel.getByRole('region', { name: 'Board summary', exact: true })
-    await details.getByRole('textbox', { name: 'Item key prefix', exact: true }).waitFor()
+    const name = details.getByRole('textbox', { name: 'Board name', exact: true })
+    const app = details.getByRole('combobox', { name: 'Board app', exact: true })
+    const prefix = details.getByRole('textbox', { name: 'Item key prefix', exact: true })
+    await prefix.waitFor()
     expect(await panel.getByText('Board at a glance', { exact: true }).count()).toBe(0)
     expect(await panel.getByText('Starting setup', { exact: true }).count()).toBe(0)
     expect(await panel.getByText('Opens in Installation default', { exact: true }).count()).toBe(0)
     expect((await details.boundingBox())!.y).toBeLessThan((await summary.boundingBox())!.y)
-    await summary.getByText('3 open · 3 total', { exact: true }).waitFor()
+    await summary.getByText(/3 open · 3 total/).waitFor()
     expect(await summary.getByRole('heading', { name: 'Items by state' }).count()).toBe(0)
-    await details.getByRole('button', { name: 'Edit board', exact: true }).click()
-    await details.getByRole('textbox', { name: 'Title', exact: true }).waitFor()
-    await details.getByRole('combobox', { name: 'Open board in', exact: true }).waitFor()
+    expect(await summary.getByRole('heading', { name: 'Board pack', exact: true }).count()).toBe(0)
+    expect(await details.getByRole('button', { name: 'Edit board', exact: true }).count()).toBe(0)
+    expect(await name.inputValue()).toBe('Delivery')
+    const controls = await Promise.all([name.boundingBox(), app.locator('..').boundingBox(), prefix.boundingBox()])
+    expect(controls.every(rect => rect?.x === controls[0]?.x && rect?.width === controls[0]?.width)).toBe(true)
+    await name.fill('Release operations')
+    await app.click()
+    await details.getByRole('option', { name: 'Tracker', exact: true }).click()
+    await prefix.fill('RELEASE')
+    await details.getByRole('button', { name: 'Save board details', exact: true }).click()
+    await expect.poll(() => requests.find(request => request.path.endsWith('/update'))?.body).toEqual({
+      title: 'Release operations', ui_app: 'fixture:tracker',
+    })
+    await panel.getByRole('button', { name: 'Review changes', exact: true }).click()
+    await expect.poll(() => (requests.find(request => request.path.endsWith('/plan_schema'))?.body.declaration as ReturnType<typeof schema>['declaration'] | undefined)?.key_prefix).toBe('RELEASE')
+  } finally { await page.close() }
+}, 30000)
+
+it.each(['light', 'dark'] as const)('wraps every item type field choice into the 390 px editor in %s', async colorScheme => {
+  const { page } = await fixture('board-setup', false, 390, { colorScheme, hasTouch: true })
+  try {
+    await boardSection(page, 'Item types').click()
+    await page.getByRole('button', { name: 'Task', exact: true }).click()
+    const picker = page.getByRole('group', { name: 'Fields', exact: true }).first()
+    const last = picker.getByRole('button', { name: 'Final trailing choice', exact: true })
+    await last.waitFor()
+    const [p, l] = await Promise.all([picker.boundingBox(), last.boundingBox()])
+    expect(l!.x + l!.width).toBeLessThanOrEqual(Math.min(p!.x + p!.width, 390))
+    expect(l!.y).toBeGreaterThan((await picker.getByRole('button', { name: 'Title', exact: true }).boundingBox())!.y)
+    await last.tap()
+    expect(await last.getAttribute('aria-pressed')).toBe('true')
   } finally { await page.close() }
 }, 30000)
 
@@ -359,7 +515,7 @@ it.each([1440, 390])('wraps a long board name in navigation and settings at %s p
       const lines = Array.from(text.getClientRects())
       return lines.length > 1 && lines.every(line => line.left >= rail.left && line.right <= rail.right)
     })).toBe(true)
-    expect(await page.getByRole('button', { name: 'Edit board', exact: true }).isVisible()).toBe(true)
+    expect(await page.getByRole('textbox', { name: 'Board name', exact: true }).isVisible()).toBe(true)
   } finally { await page.close() }
 }, 30000)
 
@@ -493,7 +649,7 @@ it('confirms leaving an edited board description and clears the prompt after Can
   const { page, errors } = await fixture('admin')
   try {
     await page.getByLabel('Settings for Delivery', { exact: true }).click()
-    await page.getByRole('button', { name: 'Edit board' }).click()
+    await page.getByRole('button', { name: 'Board description and icon' }).click()
     const description = page.getByRole('textbox', { name: 'Description', exact: true })
     await description.fill('Unsaved release notes')
     const back = page.getByRole('button', { name: 'All boards', exact: true })

@@ -1,5 +1,5 @@
 import { defineComponent as k, ref as n, onMounted as u, openBlock as t, createElementBlock as o, createElementVNode as l, createVNode as d, unref as s, createTextVNode as m } from "vue";
-import { e as f, a as g } from "./mount-DH3Id7d9.js";
+import { e as f, a as g } from "./mount-CDzcrCyw.js";
 import "pinia";
 import { host as v, define as y } from "@wippy-fe/proxy";
 import c from "primevue/button";

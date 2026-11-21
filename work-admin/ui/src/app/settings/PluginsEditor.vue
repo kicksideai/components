@@ -94,7 +94,6 @@ async function submit(id: string, retry = false) {
 </script>
 <template>
   <section class="work-stack" aria-label="Plugins editor">
-    <div class="work-form-actions"><Button label="Refresh status" severity="secondary" outlined :disabled="!!busy || disabled" @click="emit('refresh')"><template #icon><Icon icon="tabler:refresh" aria-hidden="true" /></template></Button></div>
     <p v-if="!options.length" class="kx-loading">No installed plugins are visible to you.</p>
     <div v-if="error" class="kx-err" role="alert">{{ error }}</div><p v-if="saved" class="work-notice" role="status">{{ saved }}</p>
     <DefinitionList columns="plugins" :count="options.length">
@@ -104,11 +103,10 @@ async function submit(id: string, retry = false) {
         :kind="selected(plugin.plugin) !== active(plugin.plugin) ? 'Pending review' : issue?.status"
         class="work-stack">
         <template #actions>
-          <label v-if="issue?.kind !== 'missing'" class="work-row">
-            <ToggleSwitch :model-value="selected(plugin.plugin)" :aria-label="'Enable ' + (plugin.title || 'plugin')"
-              :disabled="activationDisabled || (!!plugin.problem && !selected(plugin.plugin))"
-              @update:model-value="toggle(plugin.plugin, $event)" />On this board
-          </label>
+          <ToggleSwitch v-if="issue?.kind !== 'missing'" :model-value="selected(plugin.plugin)"
+            :aria-label="'Enable ' + (plugin.title || plugin.plugin)"
+            :disabled="activationDisabled || (!!plugin.problem && !selected(plugin.plugin))"
+            @update:model-value="toggle(plugin.plugin, $event)" />
         </template>
         <p v-if="plugin.requires.length" class="work-muted work-small">Requires {{ plugin.requires.map(id => options.find(p => p.plugin === id)?.title || 'Another capability').join(', ') }}</p>
         <p v-if="current?.outdated" class="work-notice">The stored declaration differs from the installed plugin. Review activation to update it.</p>

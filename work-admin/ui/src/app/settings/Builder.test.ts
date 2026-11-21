@@ -43,7 +43,9 @@ it('keeps inherited fields within carried fields and explains parent type remova
 it('creates types with humanized titles and carries parent references across ID edits', async () => {
   const draft = reactive<Declaration>({ processes: [flow()], item_types: [] })
   const w = mount(TypesEditor, { props: { draft } })
-  await w.get('input').setValue('Delivery task'); await button(w, 'Add type').trigger('click')
+  await button(w, 'Add item type').trigger('click')
+  await w.get('[aria-label="Item type name"]').setValue('Delivery task')
+  await button(w, 'Add item type').trigger('click')
   expect(draft.item_types![0]).toMatchObject({ id: 'delivery_task', title: 'Delivery task', process: 'flow' })
   draft.item_types!.push({ id: 'child', fields: [], process: 'flow', parent_types: ['delivery_task'] }); await flushPromises()
   await w.get('article .kx-disclosure input').setValue('parent_task')

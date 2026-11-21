@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import { work } from '../../api'
@@ -14,6 +14,7 @@ const props = defineProps<{
   draftForm: string; disabled: boolean
   packTitle?: string; outdated?: boolean; upgradeReason?: string; canUpgrade: boolean; canInstall: boolean; packError?: string
 }>()
+const prefixId = useId()
 defineEmits<{ upgrade: []; install: []; retry: []; saved: []; 'dirty-change': [dirty: boolean] }>()
 const overrides = {
   comments_per_item: 'Comments per item', audit: 'Change history', audit_days: 'Change history retention',
@@ -83,42 +84,28 @@ const history = computed(() => {
 <template>
   <section class="work-ia-section work-ia-general">
     <section class="work-settings-list work-board-details" aria-label="Board details">
-      <div class="work-settings-row work-board-details-identity">
-        <div class="work-stack work-tight">
-          <h3 class="work-row-title">Board name</h3>
-          <p>{{ board?.title }}</p>
-          <p v-if="board?.description" class="work-muted work-small">{{ board.description }}</p>
+      <BoardIdentity :key="board?.board_id" :board="board" :board-apps="boardApps" detail
+        @dirty-change="$emit('dirty-change', $event)" @saved="$emit('saved')">
+        <div class="work-settings-row">
+          <div class="work-row-main">
+            <label class="work-row-title" :for="prefixId">Item key prefix</label>
+            <p class="work-muted work-small">Shown on items, for example {{ draft.key_prefix || 'WORK' }}-1.</p>
+          </div>
+          <InputText :id="prefixId" v-model="draft.key_prefix" :form="draftForm" :disabled="disabled" aria-label="Item key prefix"
+            required pattern="[A-Z][A-Z0-9]{1,9}" maxlength="10" />
         </div>
-        <BoardIdentity :key="board?.board_id" :board="board" :board-apps="boardApps" detail
-          @dirty-change="$emit('dirty-change', $event)" @saved="$emit('saved')" />
-      </div>
-      <div class="work-settings-row">
-        <div class="work-row-main">
-          <h3 class="work-row-title">Item key prefix</h3>
-          <p class="work-muted work-small">Shown on items, for example {{ draft.key_prefix || 'WORK' }}-1.</p>
-        </div>
-        <InputText v-model="draft.key_prefix" :form="draftForm" :disabled="disabled" aria-label="Item key prefix"
-          required pattern="[A-Z][A-Z0-9]{1,9}" maxlength="10" />
-      </div>
+      </BoardIdentity>
     </section>
 
-    <section class="work-settings-list" aria-label="Board summary">
-      <header class="work-settings-row">
-        <h3 class="work-row-main work-row-title">Board summary</h3>
-        <p v-if="board?.open_count !== undefined && board.item_count !== undefined" class="work-muted">
-          {{ board.open_count }} open · {{ board.item_count }} total
-        </p>
-      </header>
-      <div class="work-settings-row">
-        <div class="work-row-main">
-          <h4 class="work-row-title">Board pack</h4>
-          <p class="work-muted work-small">{{ packTitle || 'No pack installed' }}<span v-if="outdated"> · Update available</span></p>
-        </div>
-        <p v-if="packError" class="kx-err" role="alert">{{ packError }}</p>
-        <Button v-if="packError" label="Reload packs" severity="secondary" outlined @click="$emit('retry')" />
-        <Button v-else-if="!packTitle" label="Install pack" severity="secondary" outlined :disabled="!canInstall" @click="$emit('install')" />
-        <Button v-else-if="outdated" label="Update pack" severity="secondary" outlined :disabled="!canUpgrade" :title="upgradeReason" @click="$emit('upgrade')" />
-      </div>
+    <section class="work-board-summary work-row work-wrap work-small" aria-label="Board summary">
+      <p class="work-muted">
+        <span v-if="board?.open_count !== undefined && board.item_count !== undefined">{{ board.open_count }} open · {{ board.item_count }} total · </span>
+        {{ packTitle || 'No pack installed' }}<span v-if="outdated"> · Update available</span>
+      </p>
+      <p v-if="packError" class="kx-err" role="alert">{{ packError }}</p>
+      <Button v-if="packError" label="Reload packs" severity="secondary" outlined size="small" @click="$emit('retry')" />
+      <Button v-else-if="!packTitle" label="Install pack" severity="secondary" outlined size="small" :disabled="!canInstall" @click="$emit('install')" />
+      <Button v-else-if="outdated" label="Update pack" severity="secondary" outlined size="small" :disabled="!canUpgrade" :title="upgradeReason" @click="$emit('upgrade')" />
     </section>
 
     <Disclosure class="work-disclosure" label="Recent setup changes">

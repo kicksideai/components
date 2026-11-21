@@ -17,6 +17,7 @@ it('uses schema labels and help, chips for strings, and themed scalar controls',
   expect(w.find('details').exists()).toBe(false); expect(w.find('.p-chip').text()).toContain('text/plain')
   expect(w.findComponent(InputNumber).exists()).toBe(true); expect(w.findComponent(ToggleSwitch).exists()).toBe(true)
   expect(w.getComponent(Select).props('appendTo')).toBe('self')
+  await w.get('[aria-label="Add value"]').trigger('click')
   await w.get('[aria-label="Add allowed file types"]').setValue('image/png')
   await w.get('[aria-label="Add allowed file types"]').trigger('keydown', { key: 'Enter' })
   expect(w.emitted('update:modelValue')?.at(-1)).toEqual([{ max_files: 5, allowed_types: ['text/plain', 'image/png'] }]); w.unmount()
