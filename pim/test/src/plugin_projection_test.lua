@@ -439,8 +439,8 @@ local function define()
             local function registration(id: unknown): Map
                 local db = assert(sql.get("app:db"))
                 local stored, err = db:query([[SELECT c.secrets_incarnation,r.catalog_id,r.component_id,r.request,r.token,r.reserved_at
-                    FROM kickside_pim_creation r JOIN kickside_components c ON c.component_id=$1
-                    WHERE r.component_id=$2]], {id, id})
+                    FROM kickside_pim_creation r JOIN kickside_components c ON CAST(c.component_id AS TEXT)=r.component_id
+                    WHERE c.component_id=$1]], {id})
                 assert(db:release())
                 assert(stored, tostring(err))
                 return assert(stored[1]) :: Map
