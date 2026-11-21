@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11](https://github.com/kicksideai/components/compare/pim-admin-v0.1.10...pim-admin-v0.1.11) (2026-11-21)
+
+
+### Bug Fixes
+
+* unify the Work and PIM admin settings shells ([#324](https://github.com/kicksideai/components/issues/324)) ([afb5262](https://github.com/kicksideai/components/commit/afb52623c76d651cc8cedcb6ae7c0509410684c0))
+
 ## [0.1.10](https://github.com/kicksideai/components/compare/pim-admin-v0.1.9...pim-admin-v0.1.10) (2026-11-21)
 
 
