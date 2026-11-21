@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local append = require("append")
 local apply_ack_probe = require("apply_ack_probe")
+local schema_guard_probe = require("schema_guard_probe")
 local sql = require("sql")
 local M = {}
 function M.writes(client, board_id, writes): (integer?, error?)
@@ -15,7 +16,8 @@ function M.writes(client, board_id, writes): (integer?, error?)
             { type = "kickside.work.events:item.ranked", subject = "command", body = { item = rows[1].item_id } },
         } } } }))
     end
-    local seq, err = append.writes(client,board_id,writes)
+    local observed = schema_guard_probe.interleave(client, board_id)
+    local seq, err = append.writes(observed,board_id,writes)
     if seq and not err then apply_ack_probe.after_append(client, board_id, writes, seq) end
     return seq, err
 end

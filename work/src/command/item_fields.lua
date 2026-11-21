@@ -247,7 +247,9 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
     if ferr then return M.refused(group, ferr) end
     item.work = work.work
     item.document, item.state, item.category, item.visit, item.version = work.document, work.state, work.category, work.visit, work.version
-    return M.done(ctx, item, group, events :: { domain.Event })
+    local plan = M.done(ctx, item, group, events :: { domain.Event })
+    plan.schema_version = ctx.board.schema_version
+    return plan
 end
 
 

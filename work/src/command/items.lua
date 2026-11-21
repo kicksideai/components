@@ -221,6 +221,7 @@ function M.writes(plans: { types.OpPlan }, indices: { integer }, ops: { types.Op
                 out[#out + 1] = write
             end
             if plan.head then write.expect_head = plan.head end
+            if plan.schema_version ~= nil then write.expect_schema_version = plan.schema_version end
             if plan.guards then
                 write.guards = write.guards or {}
                 for subject, version in pairs(plan.guards) do write.guards[subject] = version end

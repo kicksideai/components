@@ -11,6 +11,7 @@ function M.writes(c: domain.ThreadClient, board_id: string, writes: { domain.Wri
     end
     local fenced: { [string]: { [string]: unknown } } = {}
     local advances: { [string]: { [string]: integer } } = {}
+    local schema_checked: { [string]: boolean } = {}
     for _, write in ipairs(writes) do
         local thread = write.thread_id or board_id
         if heads[thread] ~= nil then
@@ -41,9 +42,17 @@ function M.writes(c: domain.ThreadClient, board_id: string, writes: { domain.Wri
                 local expect: { [string]: unknown } = {}
                 if batch.subject and batch.version ~= nil then
                     expect.subject, expect.version = batch.subject, batch.version + (versions[batch.subject] or 0)
+                    if write.expect_schema_version ~= nil and not schema_checked[thread] and batch.subject == write.expect_subject then
+                        -- All named transition writes in this transaction share the board snapshot.
+                        expect.also = { subject = "schema", version = write.expect_schema_version }
+                        schema_checked[thread] = true
+                    end
                 end
                 for _, event in ipairs(batch.events) do versions[event.subject] = (versions[event.subject] or 0) + 1 end
                 list[#list + 1] = { thread_id = thread, events = batch.events, expect = next(expect) and expect or nil }
+            end
+            if write.expect_schema_version ~= nil and not schema_checked[thread] then
+                return nil, errors.new({ kind = errors.INTERNAL, message = "named transition has no item append guard" })
             end
         end
     end

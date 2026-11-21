@@ -65,7 +65,7 @@ type ListResult = { boards: { BoardSummary }, next: integer? }
 -- the write group they join. Ops of one group share one write and one expect.
 type OpPlan = {
     error: domain.CommandError?, status: string, events: { Event }, group: string, item: string?, comment: string?, version: integer?, findings: { Finding }?,
-    guards: { [string]: integer }?, expected: integer?, head: integer?,
+    guards: { [string]: integer }?, expected: integer?, head: integer?, schema_version: integer?,
     route: { id: string, model: domain.Model, region: string? }?,
 }
 -- Write is one append: the events of a group and the subject version it expects, on the
