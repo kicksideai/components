@@ -8,12 +8,12 @@ local types = require("types")
 local shape = require("shape")
 local M = {}
 
-local DEADLINE_MS = 250
+local CHECK_TIMEOUT = "250ms"
 local MAX_FINDINGS_BYTES = 8192
 
 -- A check runs under the caller's frame, with its own budget even during fold.
 local function invoke(fn: string, input: types.CheckInput): (unknown, error?)
-    local timer, terr = time.timer(DEADLINE_MS)
+    local timer, terr = time.timer(CHECK_TIMEOUT)
     if terr then return nil, terr end
     local pending, err = funcs.new():async(fn, input)
     if err then
@@ -33,14 +33,24 @@ local function invoke(fn: string, input: types.CheckInput): (unknown, error?)
     return payload:data()
 end
 
+local function invalid(fn: string, field: string, message: string): error
+    return errors.new({ kind = errors.INVALID, retryable = false, message = fn .. " " .. message,
+        details = { code = "check_result_invalid", field = field } })
+end
+
 function M.run(fn: string, input: types.CheckInput): ({ types.Finding }?, error?)
     local out, err = invoke(fn, input)
     if err then return nil, err end
-    local findings = type(out) == "table" and (out :: { [string]: unknown }).findings or nil
-    if shape.budget(findings, MAX_FINDINGS_BYTES) or not shape.findings(findings) then
-        return nil, errors.new({ kind = errors.INVALID, retryable = false, message = fn .. " returned malformed or oversized findings",
-            details = { code = "check_result_invalid", field = "findings" } })
+    if type(out) ~= "table" then return nil, invalid(fn, "result", "returned no result") end
+    local findings = (out :: { [string]: unknown }).findings
+    if shape.budget(findings, MAX_FINDINGS_BYTES) then return nil, invalid(fn, "findings", "returned oversized findings") end
+    if shape.array_length(findings) == nil then return nil, invalid(fn, "findings", "returned no findings list") end
+    for _, finding in ipairs(findings :: { unknown }) do
+        if type(finding) ~= "table" or type((finding :: { [string]: unknown }).message) ~= "string" then
+            return nil, invalid(fn, "message", "returned a finding without a message")
+        end
     end
+    if not shape.findings(findings) then return nil, invalid(fn, "finding", "returned malformed finding fields") end
     return findings :: { types.Finding }, nil
 end
 
