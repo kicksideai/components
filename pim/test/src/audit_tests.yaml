@@ -255,6 +255,7 @@ entries:
       values: kickside.pim.domain:values
       types: kickside.pim:types
       creations: app:r3_creations
+      ui_app: kickside.pim.command:ui_app
 
   - name: r3_retention_rows
     kind: library.lua

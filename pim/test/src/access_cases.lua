@@ -28,7 +28,7 @@ local REQUESTS: { [string]: Map } = {
     decide = { proposal_id = MISSING, decision = "reject" },
     plan_schema = { declaration = { vocabularies = { { code = "probe" } } } },
     apply_schema = { declaration = {}, expected_generation = 9999 },
-    rebuild = {},
+    rebuild = {}, update = { ui_app = "" },
 }
 M.REQUESTS = REQUESTS
 
@@ -36,7 +36,7 @@ local NEEDS: { [string]: integer } = {
     get_schema = READ, query = READ, get = READ, list_history = READ, list_links = READ, explain = READ, list_changes = READ,
     list_publications = READ, list_proposals = READ, get_release = READ, list_releases = READ, list_terms = READ, schema_options = READ, propose = READ,
     apply = WRITE, release = WRITE, withdraw = WRITE, decide = WRITE,
-    plan_schema = ADMIN, apply_schema = ADMIN, rebuild = ADMIN,
+    plan_schema = ADMIN, apply_schema = ADMIN, rebuild = ADMIN, update = ADMIN,
 }
 M.NEEDS = NEEDS
 
@@ -55,7 +55,7 @@ local ROUTES: { [string]: { string } } = {
     get = { "GET", "/product" }, query = { "POST", "/query" }, list_history = { "GET", "/history" }, apply = { "POST", "/apply" },
     propose = { "POST", "/proposals" }, list_proposals = { "GET", "/proposals" }, decide = { "POST", "/proposals/{proposal_id}/decision" },
     release = { "POST", "/releases" }, list_releases = { "GET", "/releases" }, get_release = { "GET", "/releases/{release_id}" }, list_terms = { "GET", "/terms" },
-    schema_options = { "GET", "/schema/options" },
+    schema_options = { "GET", "/schema/options" }, update = { "POST", "/settings" },
     withdraw = { "POST", "/withdrawals" }, rebuild = { "POST", "/rebuild" }, list_links = { "GET", "/links" },
     explain = { "GET", "/explain" }, list_changes = { "GET", "/changes" }, list_publications = { "GET", "/publications" },
 }

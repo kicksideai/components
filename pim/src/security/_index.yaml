@@ -106,7 +106,9 @@ entries:
         - kickside.pim.api:list.endpoint
         - kickside.pim.api:get_catalog.endpoint
         - kickside.pim.api:create
+        - kickside.pim.api:update
         - kickside.pim.api:create.endpoint
+        - kickside.pim.api:update.endpoint
         - kickside.pim.api:get_schema
         - kickside.pim.api:get_schema.endpoint
         - kickside.pim.api:apply_schema
@@ -171,6 +173,9 @@ entries:
         - kickside.pim.command:releases
         - kickside.pim.command:proposals
         - kickside.pim.command:create
+        - kickside.pim.command:ui_app
+        - kickside.pim.command:ui_app_key
+        - kickside.pim.command:authorize_ui_app
         - kickside.pim.command:terms
         - kickside.pim.domain:values
         - kickside.pim.domain:policy
@@ -278,6 +283,7 @@ entries:
         - kickside.pim.security:tool_access
         - kickside.pim.security:plugin_defer
         - kickside.pim.service:create
+        - kickside.pim.service:update
         - kickside.pim.service:list
         - kickside.pim.service:get_catalog
         - kickside.pim.service:get_schema
@@ -347,6 +353,7 @@ entries:
         - kickside.pim.api:list.endpoint
         - kickside.pim.api:get_catalog.endpoint
         - kickside.pim.api:create.endpoint
+        - kickside.pim.api:update.endpoint
         - kickside.pim.api:get_schema.endpoint
         - kickside.pim.api:plan_schema.endpoint
         - kickside.pim.api:configure_plugin.endpoint
@@ -395,7 +402,7 @@ entries:
     meta:
       private: true
       service_only: true
-      comment: Lets the catalog meta publisher write public meta on catalog components only.
+      comment: Lets PIM services write public meta on catalog components only.
     policy:
       resources: '*'
       actions: component.runtime_meta.write
@@ -494,6 +501,7 @@ entries:
       - kickside.pim.traits:release
       - kickside.pim.traits:withdraw
       - kickside.pim.traits:create_catalog
+      - kickside.pim.traits:update
       - kickside.pim.traits:plan_schema
       - kickside.pim.traits:apply_schema
       - kickside.pim.traits:configure_plugin

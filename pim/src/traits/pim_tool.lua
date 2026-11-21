@@ -41,6 +41,7 @@ function M.decide(args: Map): (Map?, error?) return run("decide", args, ctx.get(
 function M.release(args: Map): (Map?, error?) return run("release", args, ctx.get("catalog_id")) end
 function M.withdraw(args: Map): (Map?, error?) return run("withdraw", args, ctx.get("catalog_id")) end
 function M.create_catalog(args: Map): (Map?, error?) return run("create", args, nil) end
+function M.update(args: Map): (Map?, error?) return run("update", args, ctx.get("catalog_id")) end
 function M.plan_schema(args: Map): (Map?, error?) return run("plan_schema", args, ctx.get("catalog_id")) end
 function M.apply_schema(args: Map): (Map?, error?) return run("apply_schema", args, ctx.get("catalog_id")) end
 

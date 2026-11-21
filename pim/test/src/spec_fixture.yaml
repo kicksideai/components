@@ -56,6 +56,10 @@ entries:
     method: POST
     path: /pim/catalogs
     access: CREATE
+  - operation: update
+    method: POST
+    path: /pim/catalogs/{id}/settings
+    access: ADMIN
   - operation: get_schema
     method: GET
     path: /pim/catalogs/{id}/schema

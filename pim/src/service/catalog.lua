@@ -46,7 +46,7 @@ end
 function M.list(input: unknown): (types.ListResult?, error?)
     local perr = requests.parse("list", input)
     if perr then return nil, perr end
-    local request = (input or {}) :: { limit: integer?, after: integer?, text: string?, admin_only: boolean? }
+    local request = (input or {}) :: types.ListRequest
     local limit=request.limit or 50
     local catalogs, err, after = locate.readable(limit, request.after, nil, request)
     if err or not catalogs then return nil, err end

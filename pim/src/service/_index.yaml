@@ -12,6 +12,7 @@ entries:
       groups: [kickside.pim.security:manifest_reader]
       policies:
         - kickside.pim.security:schema_output_publish
+        - kickside.pim.security:catalog_public_meta
     imports:
       writer: kickside.pim.command:writer
       reader: kickside.pim.read:reader
@@ -22,6 +23,20 @@ entries:
       release_reads: kickside.pim.read:releases
       requests: kickside.pim:requests
       plugin_feed: kickside.pim.extensions:plugin_feed
+
+  - name: update
+    kind: function.lua
+    meta: { comment: "kickside.pim:catalog update." }
+    source: file://update.lua
+    method: update
+    security:
+      policies:
+        - kickside.pim.security:catalog_public_meta
+    imports:
+      locate: kickside.pim.read:locate
+      requests: kickside.pim:requests
+      types: kickside.pim:types
+      ui_app: kickside.pim.command:ui_app
 
   - name: list
     kind: function.lua

@@ -12,7 +12,7 @@ local conflict_fixture = require("conflict_fixture")
 local conflict_writer = require("conflict_writer")
 local M = {}
 
-local CATALOG_METHODS = { create = true, list = true, get_catalog = true, get_schema = true, plan_schema = true, apply_schema = true, get = true,
+local CATALOG_METHODS = { create = true, list = true, get_catalog = true, update = true, get_schema = true, plan_schema = true, apply_schema = true, get = true,
     query = true, list_history = true, apply = true, propose = true, decide = true, list_proposals = true, release = true, withdraw = true, rebuild = true,
     list_links = true, explain = true, list_changes = true, list_publications = true, get_release = true, list_releases = true, list_terms = true,
     schema_options = true, configure_plugin = true, plugin_feed = true, plugin_context = true }
@@ -102,6 +102,9 @@ function M.run(input: unknown): (unknown, error?)
     if op == "portable" then
         local inst = open("kickside.contract:portable", "kickside.pim.binding:catalog", { component_id = id })
         return invoke(inst, req.method, req.args)
+    end
+    if op == "set_component_meta" then
+        return assert(component.get_service()):set_meta({ component_id = id, fields = req })
     end
     if op == "component_meta" then
         local rows, err = component.query({ component_ids = { id }, include = { meta = true }, limit = 1 })

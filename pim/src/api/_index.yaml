@@ -63,6 +63,19 @@ entries:
     func: create
     path: /pim/catalogs
 
+  - name: update
+    kind: function.lua
+    source: file://update.lua
+    method: handler
+    imports: { access: 'kickside.pim.api:access' }
+
+  - name: update.endpoint
+    kind: http.endpoint
+    meta: { comment: Updates catalog settings. }
+    method: POST
+    func: update
+    path: /pim/catalogs/{id}/settings
+
   - name: get_schema
     kind: function.lua
     meta: { comment: "GET /pim/catalogs/{id}/schema - the declaration and compiled schema." }

@@ -58,6 +58,7 @@ Three public traits call `kickside.pim:catalog` as the calling agent. The readon
 `kickside.pim.traits:pim_admin`:
 
 - `PIMCatalogCreate` → `create`
+- `PIMCatalogUpdate` → `update`
 - `PIMSchemaPlan` → `plan_schema`
 - `PIMSchemaApply` → `apply_schema`
 - `PIMConfigurePlugin` → `configure_plugin`
@@ -125,7 +126,8 @@ inherit deployment settings.
 
 `GET /pim/catalogs` and `PIMCatalogs` accept `limit` (1–100) and the returned
 `after` offset. Use `text` to search catalog IDs and public metadata, including
-titles. Use `admin_only` to require both read and administration access.
+titles. Use `admin_only` to require both read and administration access, and
+`ui_app` to select catalogs bound to a specific registered UI app.
 Pass the same filters with each continuation.
 `get_catalog` and `GET /pim/catalogs/{id}/summary` resolve one exact readable
 catalog independently of discovery pages.

@@ -3,7 +3,7 @@
 local access = require("access")
 
 local function handler()
-    access.read("list", { text = { "text" }, bool = { "admin_only" }, int = { "limit", "after" } }, false)
+    access.read("list", { text = { "text", "ui_app" }, bool = { "admin_only" }, int = { "limit", "after" } }, false)
 end
 
 return { handler = handler }

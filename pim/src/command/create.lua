@@ -15,6 +15,7 @@ local writer = require("writer")
 local store = require("store")
 local types = require("types")
 local values = require("values")
+local ui_app = require("ui_app")
 
 local creations=require("creations")
 local M = {}
@@ -77,10 +78,22 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
     local schema_request: types.SchemaRequest = { declaration = input.declaration or {}, plugin_configs = input.plugin_configs }
     local digest, herr = hash.sha256(values.canonical(schema_request))
     if herr or not digest then return nil, herr or failure.corrupt("initial schema request hash is missing") end
-    local request: types.JsonObject = { title = title, parent_id = parent_id, schema_hash = tostring(digest) }
+    local request: types.JsonObject = { title = title, parent_id = parent_id, schema_hash = tostring(digest),
+        pack = input.pack, ui_app = input.ui_app }
     local found, ferr = existing(catalog_id, request)
     if ferr then return nil, ferr end
     if found then return { catalog_id = catalog_id, title = title, generation = 1, replayed = true }, nil end
+
+    local binding = input.ui_app
+    if input.pack then
+        local preset, preset_err = ui_app.preset(input.pack)
+        if preset_err then return nil, preset_err end
+        binding = binding or preset
+    end
+    if binding then
+        local binding_err = ui_app.validate(binding)
+        if binding_err then return nil, binding_err end
+    end
 
     local plan, serr = writer.prepare_initial_schema(catalog_id, schema_request)
     if serr or not plan then return nil, serr end
@@ -92,7 +105,7 @@ function M.create(input: types.CreateRequest): (types.CreateResult?, error?)
     local raw,rawerr=service:register({component_id=catalog_id,impl_id=consts.CATALOG_IMPL,
         parent_id=parent_id~="" and parent_id or nil,private_context={pim_creation=token},
         thread={thread_class=consts.THREAD_CLASS,attrs=json.encode({owner_principal={kind="user",id=(security.actor() :: security.Actor):id()},user_ids={(security.actor() :: security.Actor):id()}}),parent_id=parent_id~="" and parent_id or nil},
-        meta={title=title,icon=ICON,type="thread",thread_class=consts.THREAD_CLASS}})
+        meta={title=title,icon=ICON,type="thread",thread_class=consts.THREAD_CLASS,pim_ui_app=binding}})
     local result=raw :: component_types.ServiceEnvelope?
     local cerr=rawerr :: error?
     if not cerr then cerr=envelope.error_of(result,"register") end

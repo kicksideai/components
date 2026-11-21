@@ -9,6 +9,7 @@ local ENDPOINTS = {
     ["kickside.pim.api:list.endpoint"] = true,
     ["kickside.pim.api:get_catalog.endpoint"] = true,
     ["kickside.pim.api:create.endpoint"] = true,
+    ["kickside.pim.api:update.endpoint"] = true,
     ["kickside.pim.api:get_schema.endpoint"] = true,
     ["kickside.pim.api:plan_schema.endpoint"] = true,
     ["kickside.pim.api:apply_schema.endpoint"] = true,

@@ -60,6 +60,10 @@ local function define()
             local created = assert(tool(h, "create_catalog", { idempotency_key = "tool-create", title = "Agent catalog" }))
             test.not_nil(created.catalog_id)
             test.is_true(#assert(tool(h, "list_catalogs", {})).catalogs >= 2, "created catalog appears in listing")
+            local ui = "app:catalog_tracker_ui"
+            test.eq(call("update", { ui_app = ui }).ui_app, ui)
+            test.eq(assert(tool(h, "list_catalogs", { ui_app = ui })).catalogs[1].catalog_id, h.id)
+            test.is_nil(call("update", { ui_app = "" }).ui_app)
             test.eq(call("get_schema", {}).generation, 1)
             test.eq(call("policy_defaults", {}).audit_days, 365)
             test.is_true(#call("schema_options", {}).types > 0, "schema types are listed")
@@ -185,7 +189,7 @@ local function define()
                 seen[tool.registry_id] = true
                 n = n + 1
             end
-            test.eq(n, 25)
+            test.eq(n, 26)
         end)
         test.it("covers contracts with matching schemas and exact tool policies", function()
             conformance.check()
@@ -196,7 +200,7 @@ local function define()
             local admin = assert(registry.get("kickside.pim.traits:pim_admin"))
             test.eq(#reads.data.tools, 14)
             test.eq(#working.data.tools, 19)
-            test.eq(#admin.data.tools, 9)
+            test.eq(#admin.data.tools, 10)
             test.eq(reads.data.build_func_id, "kickside.pim.traits:build_reads")
             test.eq(working.data.build_func_id, "kickside.pim.traits:build")
             test.is_nil(admin.data.build_func_id)
@@ -208,7 +212,7 @@ local function define()
             for id in pairs(reads_set) do working_set[id] = true end
             for _, method in ipairs({ "apply", "propose", "decide", "release", "withdraw" }) do working_set["kickside.pim.traits:" .. method] = true end
             local admin_set: Map = {}
-            for _, method in ipairs({ "create_catalog", "plan_schema", "apply_schema", "configure_plugin", "rebuild", "list_catalogs", "get_schema", "schema_options", "policy_defaults" }) do admin_set["kickside.pim.traits:" .. method] = true end
+            for _, method in ipairs({ "create_catalog", "update", "plan_schema", "apply_schema", "configure_plugin", "rebuild", "list_catalogs", "get_schema", "schema_options", "policy_defaults" }) do admin_set["kickside.pim.traits:" .. method] = true end
             for _, role in ipairs({ { entry = reads, expected = reads_set }, { entry = working, expected = working_set }, { entry = admin, expected = admin_set } }) do
                 local actual: Map = {}
                 for _, id in ipairs(role.entry.data.tools) do

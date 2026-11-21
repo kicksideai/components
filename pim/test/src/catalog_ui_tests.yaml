@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app
+entries:
+  - name: catalog_ui_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim }
+    source: file://catalog_ui_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      scoped: app:scoped
+      scope_fixture: app:scope_fixture
+
+  - name: catalog_tracker_ui
+    kind: registry.entry
+    meta:
+      type: kickside.pim.ui.app
+      title: Tracker
+      icon: tabler:packages
+      page: /catalog-tracker
+      packs: [app:catalog_tracker_pack]
+
+  - name: catalog_alternate_ui
+    kind: registry.entry
+    meta:
+      type: kickside.pim.ui.app
+      title: Alternate
+      icon: tabler:table
+      component: alternate-catalog
+
+  - name: catalog_invalid_ui
+    kind: registry.entry
+    meta:
+      type: kickside.pim.ui.app
+      title: Invalid
+      icon: tabler:table
+      page: //example.com/catalog
+
+  - name: catalog_tracker_pack
+    kind: registry.entry
+    meta: { type: kickside.pim.pack, title: Tracker }
+    data: { ui_app: 'app:catalog_tracker_ui' }
+
+  - name: catalog_ui_discovery
+    kind: security.policy
+    groups: [kickside.security.groups:members]
+    policy:
+      resources: [app:catalog_tracker_ui, app:catalog_alternate_ui, app:catalog_invalid_ui, app:catalog_tracker_pack]
+      actions: [registry.get, registry.find]
+      effect: allow
