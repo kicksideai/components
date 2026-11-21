@@ -17,6 +17,7 @@ local CONTRACT = "kickside.work.planning:sprints"
 local PLUGIN = "kickside.work.planning:plugin"
 local CLOSE = "kickside.work.planning:prepare_close"
 local FIELD = "current_sprint"
+local ADOPTION = "kickside.work.planning:legacy_sprint_close_adoption"
 
 type PreviewRequest = { board_id: string, sprint_id: string, rollover_id: string? }
 type Snapshot = PreviewRequest & { head: integer, generation: integer, sprint_version: integer, members: { reads.EditMember } }
@@ -66,15 +67,23 @@ local function get(board_id: string, item_id: string, transitions: boolean?): (r
     return result :: reads.GetResult?, err
 end
 
-local function can_close(schema: reads.SchemaView, source: reads.GetResult): boolean
+local function can_close(schema: reads.SchemaView, source: reads.GetResult): (boolean, error?)
     -- Work evaluates ordinary exits against the sprint's retained process
     -- and the caller's access. Older Planning boards use an ordinary close.
     for _, transition in ipairs(source.transitions or {}) do
-        if transition.id == "close" and transition.to == "closed" and not transition.region then return true end
+        if transition.id == "close" and transition.to == "closed" and not transition.region then return true, nil end
     end
     -- Work does not advertise command-owned exits in ordinary discovery.
     local item = source.item
     local compiled = schema.compiled :: work.Compiled
+    local rule = compiled.transition_rules and compiled.transition_rules["sprint/close"]
+    if rule and rule.command == CLOSE then
+        local held, err = board_client.call("get_schema", { board_id = item.board_id, generation = item.process_generation })
+        if err or not held then return false, err end
+        local retained = held :: reads.SchemaView
+        if retained.as_of ~= schema.as_of or retained.generation ~= item.process_generation then return false, stale() end
+        compiled = retained.compiled :: work.Compiled
+    end
     local process_id: string? = nil
     for _, item_type in ipairs(compiled.item_types) do
         if item_type.id == item.type then process_id = item_type.process; break end
@@ -82,14 +91,15 @@ local function can_close(schema: reads.SchemaView, source: reads.GetResult): boo
     for _, process in ipairs(compiled.processes) do
         if process.id == process_id and process.generation == item.process_generation then
             for _, transition in ipairs(process.transitions) do
-                if transition.id == "close" and transition.to == "closed" and transition.prepare_command == CLOSE then
-                    if transition.any then return true end
-                    for _, state in ipairs(transition.from) do if state == item.state then return true end end
+                local adopted = rule and rule.command == CLOSE and rule.process == process.id
+                if transition.id == "close" and transition.to == "closed" and (transition.prepare_command == CLOSE or adopted) then
+                    if transition.any then return true, nil end
+                    for _, state in ipairs(transition.from) do if state == item.state then return true, nil end end
                 end
             end
         end
     end
-    return false
+    return false, nil
 end
 
 function M.plan_close(input: unknown): (Preview?, error?)
@@ -107,7 +117,9 @@ function M.plan_close(input: unknown): (Preview?, error?)
         return nil, problem(errors.INVALID, "planning_sprint_inactive", "Choose an active sprint.")
     end
     if source.as_of ~= schema.as_of or source.generation ~= schema.generation then return nil, stale() end
-    if not can_close(schema, source) then
+    local allowed, close_err = can_close(schema, source)
+    if close_err then return nil, close_err end
+    if not allowed then
         return nil, problem(errors.PERMISSION_DENIED, "planning_close_denied", "The sprint cannot transition to closed.")
     end
     if request.rollover_id then
@@ -176,6 +188,23 @@ function M.close(input: unknown): (commands.ApplyResult?, error?)
     local result, err = funcs.call("kickside.work.service:transition_command", { command = CLOSE, input = input })
     if err and (err:details() or {}).code == "head_changed" then return nil, stale() end
     return result :: commands.ApplyResult?, err
+end
+
+function M.plan_adoption(input: unknown): (unknown, error?)
+    local invalid = requests.parse("plan_adoption", input, CONTRACT)
+    if invalid then return nil, invalid end
+    local request = input :: work.Row
+    return funcs.call("kickside.work.service:plan_transition_adoption", { board_id = request.board_id, selector = ADOPTION })
+end
+
+function M.apply_adoption(input: unknown): (unknown, error?)
+    local invalid = requests.parse("apply_adoption", input, CONTRACT)
+    if invalid then return nil, invalid end
+    local request = input :: { review: work.Row }
+    if request.review.selector ~= ADOPTION then
+        return nil, problem(errors.INVALID, "invalid_transition_adoption", "This review is not for Planning sprint closure.")
+    end
+    return funcs.call("kickside.work.service:apply_transition_adoption", input)
 end
 
 return M
