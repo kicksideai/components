@@ -72,8 +72,8 @@ function M.tolerant(schema: types.JsonObject): types.JsonObject
 end
 
 -- budget bounds the complete caller input before recursive schema or domain work.
-function M.budget(input: unknown): error?
-    local remaining = consts.LIMITS.request_bytes
+function M.budget(input: unknown, max_bytes: integer?): error?
+    local remaining = max_bytes or consts.LIMITS.request_bytes
     local function charge(n: integer): boolean
         remaining = remaining - n
         return remaining >= 0

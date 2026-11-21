@@ -71,7 +71,7 @@ entries:
     meta:
       comment: Runs family check functions through funcs.
     source: file://checks.lua
-    modules: [funcs]
+    modules: [funcs, time, channel]
     imports:
       shape: kickside.pim:shape
       types: kickside.pim:types
