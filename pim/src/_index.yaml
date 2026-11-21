@@ -80,6 +80,8 @@ entries:
     targets:
       - entry: kickside.pim.migrations:01_catalog
         path: .meta.target_db
+      - entry: kickside.pim.migrations:02_assets
+        path: .meta.target_db
       - entry: kickside.pim.persist:config
         path: .meta.db_id
       - entry: kickside.pim.security:retention_db_access

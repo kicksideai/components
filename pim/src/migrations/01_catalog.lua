@@ -103,16 +103,6 @@ local POSTGRES = {
     [[CREATE INDEX kickside_pim_product_changes ON kickside_pim_product (catalog_id, updated_seq, product_id)]],
     [[CREATE INDEX kickside_pim_product_family_changes ON kickside_pim_product (catalog_id, family, updated_seq, product_id)]],
     [[CREATE INDEX kickside_pim_product_parent ON kickside_pim_product (catalog_id, parent_id)]],
-    [[CREATE TABLE kickside_pim_asset (
-        catalog_id text NOT NULL,
-        asset_id text NOT NULL,
-        due_at text,
-        reaping integer NOT NULL DEFAULT 0,
-        adopting integer NOT NULL DEFAULT 1,
-        PRIMARY KEY (catalog_id, asset_id))]],
-    [[CREATE INDEX kickside_pim_asset_due ON kickside_pim_asset(catalog_id, due_at, asset_id)
-        WHERE due_at IS NOT NULL AND reaping=0]],
-    [[CREATE INDEX kickside_pim_asset_reaping ON kickside_pim_asset(catalog_id, asset_id) WHERE reaping=1]],
     [[CREATE TABLE kickside_pim_ref (
         catalog_id text NOT NULL,
         product_id text NOT NULL,
@@ -264,7 +254,6 @@ local DROP = {
     "DROP TABLE kickside_pim_attribute_usage",
     "DROP TABLE kickside_pim_unique_value",
     "DROP TABLE kickside_pim_ref",
-    "DROP TABLE kickside_pim_asset",
     "DROP TABLE kickside_pim_product",
     "DROP TABLE kickside_pim_term",
     "DROP TABLE kickside_pim_generation",

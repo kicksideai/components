@@ -585,6 +585,7 @@ entries:
         - kickside.pim.persist:projection_committed
         - kickside.pim.binding:delete_func
         - kickside.pim.migrations:01_catalog
+        - kickside.pim.migrations:02_assets
         - kickside.pim.jobs:rebuild
         - kickside.pim.jobs:import
         - kickside.pim.jobs:import_batch
