@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.14](https://github.com/kicksideai/components/compare/work-admin-v0.1.13...work-admin-v0.1.14) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work-admin:** refine board settings controls and list editing ([#326](https://github.com/kicksideai/components/issues/326)) ([36750d0](https://github.com/kicksideai/components/commit/36750d0504b27a86708672af5e4351f361703613))
+
 ## [0.1.13](https://github.com/kicksideai/components/compare/work-admin-v0.1.12...work-admin-v0.1.13) (2026-11-21)
 
 
