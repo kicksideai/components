@@ -38,7 +38,7 @@ end
 function M.releases(catalog_id: string, request: types.ReleasesRequest): (types.ReleasesResult?, error?)
     local caller, access_err = access.reader(catalog_id)
     if access_err or not caller then return nil, access_err end
-    local limit = request.limit or 50
+    local limit = request.limit or consts.LIMITS.page_default
     if limit < 1 or limit > consts.LIMITS.page then return nil, access.invalid("limit must be 1.." .. consts.LIMITS.page) end
     return access.with_snapshot(caller, function(tx: types.Executor, _catalog: types.Catalog, _dialect: string): (types.ReleasesResult?, error?)
         local ref = request.product

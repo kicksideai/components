@@ -31,7 +31,7 @@ type State = {
 M.State = State
 M.PendingTerm = PendingTerm
 
-function M.fail(outcome: string, message: string, detail: types.FindingDetail?): types.Outcome
+function M.fail(outcome: types.OutcomeStatus, message: string, detail: types.FindingDetail?): types.Outcome
     local d: types.FindingDetail = detail or {}
     local finding: types.Finding = { message = message, attribute = d.attribute, holder = d.holder, version = d.version,
         product_id = d.product_id, code = d.code, set = d.set, check = d.check, context = d.context }

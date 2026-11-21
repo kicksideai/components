@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Stable PIM identifiers, event types and limits.
 
+local catalog_limits = require("catalog_limits")
 local M = {}
 
 M.DB_CONFIG = "kickside.pim.persist:config"
@@ -39,12 +40,12 @@ M.EVENTS = {
 M.STATUSES = { active = true, draft = true, archived = true }
 
 M.LIMITS = {
-    items = 500,
+    items = catalog_limits.items,
     -- merge_inline is how many products a term merge rewrites in its own
     -- command; the rest wait for the term merge job.
     merge_inline = 500,
     -- columns is how many attributes a query may resolve per item.
-    columns = 12,
+    columns = catalog_limits.columns,
     document_bytes = 262144,
     dimensions = 4,
     members = 64,
@@ -55,13 +56,15 @@ M.LIMITS = {
     request_bytes = 4194304,
     request_depth = 16,
     request_entries = 4096,
-    page = 200,
-    count = 10000,
-    scan = 200000,
+    page = catalog_limits.page,
+    page_default = catalog_limits.page_default,
+    feed_page = catalog_limits.feed_page,
+    count = catalog_limits.count,
+    scan = catalog_limits.scan,
     term_depth = 64,
     requirement_sets = 64,
     snapshot_bytes = 524288,
-    release_items = 100,
+    release_items = catalog_limits.release_items,
     fold_rows = 20000,
     merge_holders = 20000,
     sku_bytes = 128,

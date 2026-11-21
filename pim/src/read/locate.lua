@@ -31,7 +31,8 @@ local function committed(ids: { string }): ({ [string]: types.Row }?, error?)
 end
 
 -- Page the actor-scoped component directory and look up committed state by id.
-function M.readable(limit: integer, offset: integer?, exact: string?, filters: types.ListRequest?): ({ types.CatalogSummary }?, error?, integer?)
+function M.readable(maximum: integer?, offset: integer?, exact: string?, filters: types.ListRequest?): ({ types.CatalogSummary }?, error?, integer?)
+    local limit = maximum or consts.LIMITS.page_default
     local start = offset or 0
     local mask = component.ACCESS.READ
     if filters and filters.admin_only then mask = mask | component.ACCESS.ADMIN end

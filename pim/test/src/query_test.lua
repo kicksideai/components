@@ -7,6 +7,7 @@ local fixture = require("fixture")
 local steps = require("steps")
 local types = require("types")
 local json = require("json")
+local base64 = require("base64")
 
 type Map = { [string]: unknown }
 
@@ -28,7 +29,7 @@ end
 -- drain pages a query with limit per page and returns the skus in order.
 local function drain(h: fixture.Handle, request: Map, limit: integer): { string }
     local out: { string } = {}
-    local after: types.Cursor? = nil
+    local after: types.QueryToken? = nil
     for _ = 1, 50 do
         local page_request: Map = { limit = limit, after = after }
         for k, v in pairs(request) do page_request[k] = v end
@@ -36,6 +37,7 @@ local function drain(h: fixture.Handle, request: Map, limit: integer): { string 
         for _, item in ipairs(page.items) do out[#out + 1] = item.sku end
         after = page.after
         if not after then return out end
+        test.eq(type(after), "string")
     end
     error("query paging did not end")
 end
@@ -192,6 +194,26 @@ local function define()
     end)
 
     test.describe("sorting and paging", function()
+        test.it("round-trips an opaque continuation past a 64-bit sort key", function()
+            local h = fixture.catalog({ bare = true })
+            assert(h.call("apply_schema", { declaration = { aspects = { { namespace = "core", attributes = {
+                { code = "rank", type = "kickside.pim.types:integer", index = "number", config = { scale = 1 } },
+            } } } } }))
+            for i, rank in ipairs({ "9007199254740991", "9007199254740990" }) do
+                local created = assert(h.call("apply", { items = { { product = { sku = "RANK-" .. i }, create = {},
+                    set = { { attr = "core.rank", value = rank } } } } }))
+                test.eq(created.outcomes[1].outcome, "created")
+            end
+            local sort = { field = "core.rank", dir = "desc" }
+            local first = assert(query(h, { sort = sort, limit = 1 }))
+            test.eq(first.items[1].sku, "RANK-1")
+            local wire = assert(json.decode(assert(json.encode(first))))
+            test.eq(type(wire.after), "string")
+            local second = assert(query(h, { sort = sort, limit = 1, after = wire.after }))
+            test.eq(second.items[1].sku, "RANK-2")
+            test.is_nil(second.after)
+        end)
+
         test.it("pages a number sort with nulls last in both directions", function()
             local h = fixture.catalog()
             fixture.boot(h)
@@ -243,6 +265,10 @@ local function define()
                 { after = {} },
                 { after = { id = 5 } },
                 { sort = { field = "core.size" }, after = { id = "x", v = { 1 } } },
+                { after = "not base64" },
+                { after = base64.encode('{"id":"x","decimal":90071992547409910}') },
+                { sort = { field = "core.size" }, after = base64.encode('{"id":"x","decimal":"9223372036854775808"}') },
+                { sort = { field = "core.size" }, after = base64.encode('{"id":"x","key":"40"}') },
                 { where = { field = "core.name", op = "eq", value = "x", ctx = "en" } },
                 { where = { field = "core.size", op = "eq", value = 1, ctx = { locale = 1 } } },
             } :: { Map }) do

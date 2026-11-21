@@ -1,0 +1,1655 @@
+{
+  "$comment": "SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0",
+  "limits": {"items": 500, "release_items": 100, "columns": 12, "page": 200, "page_default": 50, "discovery_page": 100, "feed_page": 500, "count": 10000, "scan": 200000},
+  "definitions": {
+    "catalog_id": {
+      "type": "string",
+      "description": "Catalog component id returned by PIMCatalogs; the contract resolves an omitted id only when exactly one catalog is readable."
+    },
+    "product_ref": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string", "description": "Product id returned by PIMGet or PIMQuery; takes precedence over sku."},
+        "sku": {"type": "string", "description": "Live product sku, at most 128 bytes for creation; ignored when id is supplied."}
+      },
+      "additionalProperties": false,
+      "description": "Product reference {id} or {sku}; id takes precedence, and PIMGet resolves a sku to its product_id.",
+      "anyOf": [{"required": ["id"]}, {"required": ["sku"]}]
+    },
+    "idempotency": {
+      "type": "object",
+      "required": ["namespace", "key"],
+      "properties": {
+        "namespace": {"type": "string", "description": "Caller-chosen non-empty scope for the idempotency key within this catalog.", "minLength": 1},
+        "key": {"type": "string", "description": "Non-empty request key within the namespace; reuse only for the same command.", "minLength": 1}
+      },
+      "additionalProperties": false,
+      "description": "Non-empty namespace and key identifying the same command on replay; omit to append without replay protection."
+    },
+    "trace_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Trace identifiers attached to appended events; omit when the command has no trace.",
+      "properties": {
+        "trace_id": {"type": "string", "description": "Trace identifier shared by related work; omit when unavailable."},
+        "run_id": {"type": "string", "description": "Execution run identifier that produces this command; omit when unavailable."},
+        "caused_by_event_id": {"type": "string", "description": "Event identifier that causes this command; omit for work without a parent event."},
+        "correlation_key": {"type": "string", "description": "Caller-chosen correlation identifier across related events; omit when unavailable."}
+      }
+    },
+    "origin": {
+      "type": "object",
+      "required": ["type", "id"],
+      "additionalProperties": false,
+      "description": "Producer type and id recorded as command provenance; omit when no producer is reported.",
+      "properties": {
+        "type": {"type": "string", "description": "Caller-reported producer category; use a consistent category for the originating capability."},
+        "id": {"type": "string", "description": "Caller-reported producer identifier within the origin type."}
+      }
+    },
+    "provenance": {"type": "object", "description": "Caller-reported evidence, confidence or model details stored beside the origin; omit when unavailable."},
+    "read_stamp": {
+      "as_of": {"type": "integer", "description": "Applied catalog sequence represented by this answer."},
+      "generation": {"type": "integer", "description": "Schema generation associated with this result."},
+      "rebuilding": {"type": "boolean", "description": "Whether the catalog has a materialized view rebuild pending."}
+    },
+    "query_token": {"type": "string", "minLength": 1, "description": "Opaque PIMQuery continuation to pass unchanged as after with the same query."},
+    "discovery_cursor": {"type": "integer", "minimum": 0},
+    "page": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": {"$pim_limit": "page"},
+      "default": {"$pim_limit": "page_default"},
+      "description": "Maximum rows returned, from 1 to @{page}; omit for @{page_default}."
+    },
+    "terms_page": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": {"$pim_limit": "page"},
+      "default": {"$pim_limit": "page"},
+      "description": "Maximum rows returned, from 1 to @{page}; omit for @{page}."
+    },
+    "feed_page": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": {"$pim_limit": "feed_page"},
+      "default": {"$pim_limit": "feed_page"},
+      "description": "Maximum rows returned, from 1 to @{feed_page}; omit for @{feed_page}."
+    },
+    "discovery_page": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": {"$pim_limit": "discovery_page"},
+      "default": {"$pim_limit": "page_default"},
+      "description": "Maximum rows returned, from 1 to @{discovery_page}; omit for @{page_default}."
+    },
+    "history_cursor": {"type": "string", "description": "Continuation returned by the same listing tool; pass it unchanged with the same filters, or omit for the first page."},
+    "terms_cursor": {"type": "string", "description": "Continuation returned by the same listing tool; pass it unchanged with the same filters, or omit for the first page."},
+    "links_cursor": {
+      "type": "object",
+      "required": ["product_id", "attribute_id", "ctx", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "product_id": {"type": "string", "description": "Product id copied unchanged from the previous page continuation."},
+        "attribute_id": {"type": "integer", "description": "Internal attribute number copied unchanged from the previous page continuation."},
+        "ctx": {"type": "string", "description": "Canonical context string copied unchanged from the previous page continuation."},
+        "path": {"type": "string", "description": "Reference path copied unchanged from the previous page continuation."}
+      },
+      "description": "Continuation returned by the same listing tool; pass it unchanged with the same filters, or omit for the first page."
+    },
+    "proposals_cursor": {
+      "type": "object",
+      "required": ["created_at", "proposal_id"],
+      "properties": {
+        "created_at": {"type": "string", "description": "Creation timestamp copied unchanged from the previous page continuation."},
+        "proposal_id": {"type": "string", "description": "Proposal id returned by PIMPropose or PIMProposals."}
+      },
+      "additionalProperties": false,
+      "description": "Continuation returned by the same listing tool; pass it unchanged with the same filters, or omit for the first page."
+    },
+    "releases_cursor": {"type": "integer", "description": "Continuation returned by the same listing tool; pass it unchanged with the same filters, or omit for the first page."},
+    "publications_cursor": {
+      "type": "object",
+      "required": ["seq", "product_id"],
+      "properties": {
+        "seq": {"type": "integer", "minimum": 0, "description": "Sequence copied unchanged from the previous page continuation."},
+        "product_id": {"type": "string", "description": "Product id copied unchanged from the previous page continuation."},
+        "expiry_floor": {
+          "type": "object",
+          "required": ["seq", "product_id"],
+          "properties": {
+            "seq": {"type": "integer", "minimum": 0, "description": "Sequence of the greatest expired withdrawal observed on the previous page."},
+            "product_id": {"type": "string", "description": "Product id of that withdrawal, which distinguishes withdrawals at the same sequence."}
+          },
+          "additionalProperties": false,
+          "description": "Withdrawal expiry boundary observed by the previous page."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Continuation returned by the same listing tool; pass it unchanged with the same filters, or omit for the first page."
+    },
+    "changes_cursor": {
+      "type": "object",
+      "properties": {
+        "seq": {"type": "integer", "description": "Sequence copied unchanged from the previous page continuation.", "minimum": 0},
+        "product_id": {"type": "string", "description": "Product id copied unchanged from the previous page continuation."},
+        "expiry_floor": {"type": "integer", "minimum": 0, "description": "Tombstone floor observed by the page that issued this continuation."}
+      },
+      "required": ["seq", "product_id"],
+      "additionalProperties": false,
+      "description": "Pass the previous page continuation unchanged with the same filters. Omit to start or restart from zero."
+    },
+    "release_record": {
+      "type": "object",
+      "required": ["release_id", "product_id", "version", "generation", "snapshot", "hash", "channels", "seq", "created_at"],
+      "properties": {
+        "release_id": {"type": "string"},
+        "product_id": {"type": "string"},
+        "version": {"type": "integer"},
+        "generation": {"type": "integer"},
+        "snapshot": {"type": "object"},
+        "hash": {"type": "string"},
+        "channels": {"type": "array", "items": {"type": "string"}},
+        "seq": {"type": "integer"},
+        "created_at": {"type": "string"}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "properties": {
+        "attribute": {"type": "string"},
+        "holder": {"type": "string"},
+        "product_id": {"type": "string"},
+        "set": {"type": "string"},
+        "check": {"type": "string"},
+        "context": {"type": "string"},
+        "channel": {"type": "string"},
+        "version": {"type": "integer"},
+        "code": {"type": "string", "description": "Machine-readable finding code when the validator supplies one."},
+        "message": {"type": "string", "description": "Human-readable explanation of the finding."}
+      },
+      "anyOf": [{"required": ["code"]}, {"required": ["message"]}]
+    },
+    "outcome": {"type": "object", "required": ["outcome"]},
+    "apply_result": {
+      "type": "object",
+      "required": ["outcomes", "applied"],
+      "properties": {
+        "outcomes": {"type": "array", "items": {"$pim_ref": "apply_outcome"}, "description": "Per-item outcomes, identifiers, versions and refusal findings in request order."},
+        "applied": {"type": "boolean", "description": "Atomic mode commits only when all items succeed; independent mode reports true even when every item is refused."},
+        "seq": {"type": "integer", "description": "Sequence at which this command completes."},
+        "as_of": {"type": "integer", "description": "Applied catalog sequence represented by this answer."},
+        "replayed": {"type": "boolean", "description": "Whether this result reuses a previously completed command."}
+      }
+    },
+    "apply_outcome": {
+      "$pim_ref": "outcome",
+      "properties": {
+        "index": {"type": "integer"},
+        "outcome": {"type": "string", "enum": ["created", "updated", "unchanged", "conflict", "invalid", "forbidden"], "description": "Per-item result in request order."},
+        "product_id": {"type": "string"},
+        "sku": {"type": "string"},
+        "version": {"type": "integer"},
+        "term": {"type": "string"},
+        "findings": {"type": "array", "items": {"$pim_ref": "finding"}},
+        "rewritten": {"type": "integer"},
+        "deferred": {"type": "integer"},
+        "trashed": {"type": "boolean"},
+        "restored": {"type": "boolean"}
+      }
+    },
+    "release_outcome": {
+      "$pim_ref": "outcome",
+      "properties": {
+        "index": {"type": "integer"},
+        "outcome": {"type": "string", "enum": ["released", "queued", "unchanged", "conflict", "invalid", "not_ready"], "description": "Per-item result in request order."},
+        "product_id": {"type": "string"},
+        "sku": {"type": "string"},
+        "version": {"type": "integer"},
+        "findings": {"type": "array", "items": {"$pim_ref": "finding"}},
+        "release_id": {"type": "string"},
+        "hash": {"type": "string"},
+        "channels": {"type": "array", "items": {"type": "string"}},
+        "request_id": {"type": "string", "description": "Request ID of the new or existing model release job."},
+        "job_id": {"type": "string", "description": "Jobs ID of the new or existing model release job."}
+      },
+      "if": {"properties": {"outcome": {"const": "queued"}}},
+      "then": {"required": ["request_id", "job_id"]}
+    },
+    "withdraw_outcome": {
+      "$pim_ref": "outcome",
+      "properties": {
+        "index": {"type": "integer"},
+        "outcome": {"type": "string", "enum": ["withdrawn", "unchanged", "invalid"], "description": "Per-item result in request order."},
+        "product_id": {"type": "string"},
+        "sku": {"type": "string"},
+        "version": {"type": "integer"},
+        "findings": {"type": "array", "items": {"$pim_ref": "finding"}}
+      }
+    },
+    "apply_product_ref": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Existing product id from PIMGet or PIMQuery; ignored on creation, required for restore, and takes precedence over sku for ordinary edits."
+        },
+        "sku": {"type": "string", "description": "Live sku for an existing product, or a new sku of 1..128 bytes for creation; id takes precedence for ordinary edits."}
+      },
+      "additionalProperties": false,
+      "description": "Existing product: {id} or {sku}, with id precedence; creation requires {sku} and restore requires {id} from PIMHistory or an earlier PIMGet.",
+      "anyOf": [{"required": ["id"]}, {"required": ["sku"]}]
+    }
+  },
+  "methods": {
+    "create": {
+      "description": "Create a catalog for the caller. Idempotent per caller and key; establishes the first schema generation, empty when declaration is omitted.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "idempotency_key": {"type": "string", "description": "Caller-scoped non-empty request key, trimmed to at most 255 bytes; reuse only for the same catalog creation."},
+          "title": {"type": "string", "description": "Catalog display title; omit or use a blank title for Catalog."},
+          "parent_id": {"type": "string", "description": "Parent component id for the new catalog; omit to create a catalog without a parent."},
+          "declaration": {"$pim_ref": "declaration"},
+          "plugin_configs": {"type": "object", "additionalProperties": {"type": "object"}, "description": "Initial configuration keyed by plugin id for plugins activated by this command."},
+          "pack": {"type": "string", "description": "Catalog pack registry entry id supplying the UI app preset.", "minLength": 1},
+          "ui_app": {"type": "string", "description": "Registered catalog UI app id. Overrides the pack preset.", "minLength": 1}
+        },
+        "required": ["idempotency_key"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["catalog_id", "title", "generation", "replayed"],
+        "properties": {
+          "catalog_id": {"type": "string", "description": "Created catalog component id for subsequent catalog calls."},
+          "title": {"type": "string", "description": "Catalog display title."},
+          "generation": {"type": "integer", "description": "Schema generation associated with this result."},
+          "replayed": {"type": "boolean", "description": "Whether this result reuses a previously completed command."}
+        }
+      }
+    },
+    "list": {
+      "description": "List the catalogs the caller can read, optionally filtered by UI app, text and administration access.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {"$pim_ref": "discovery_page"},
+          "after": {"$pim_ref": "discovery_cursor", "description": "Discovery offset returned by PIMCatalogs; reuse it with the same filters or omit for the first page."},
+          "text": {"type": "string", "description": "Case-insensitive substring of the catalog id, implementation id, or public metadata such as the title."},
+          "admin_only": {"type": "boolean", "description": "True to require both READ and ADMIN on each returned catalog."},
+          "ui_app": {"type": "string", "description": "Filter readable catalogs by registered UI app id before pagination.", "minLength": 1}
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["catalogs"],
+        "properties": {
+          "catalogs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["catalog_id", "title", "access"],
+              "properties": {
+                "catalog_id": {"type": "string"},
+                "title": {"type": "string"},
+                "product_count": {"type": "integer"},
+                "item_count": {"type": "integer"},
+                "generation": {"type": "integer"},
+                "status": {"type": "string"},
+                "access": {
+                  "type": "object",
+                  "required": ["read", "write", "admin"],
+                  "properties": {"read": {"type": "boolean"}, "write": {"type": "boolean"}, "admin": {"type": "boolean"}},
+                  "additionalProperties": false
+                },
+                "ui_app": {"type": "string", "description": "Registered catalog UI app id, when bound."}
+              }
+            },
+            "description": "Caller-readable catalogs with ids, titles and independent access grants."
+          },
+          "after": {"$pim_ref": "discovery_cursor", "description": "Next discovery offset; omitted at the end."}
+        }
+      }
+    },
+    "update": {
+      "description": "Set or clear a catalog's UI app. Requires catalog ADMIN.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"type": "string", "description": "Catalog component id from PIMCatalogs. Omit to use the sole readable catalog."},
+          "ui_app": {"type": "string", "description": "Registered catalog UI app id. Pass an empty string to clear the binding."}
+        },
+        "required": ["ui_app"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"type": "string", "description": "Updated catalog component id."},
+          "ui_app": {"type": "string", "description": "Registered catalog UI app id, when bound."}
+        },
+        "required": ["catalog_id"],
+        "additionalProperties": false
+      }
+    },
+    "get_catalog": {
+      "description": "Exact caller-readable catalog summary.",
+      "input": {"type": "object", "properties": {"catalog_id": {"type": "string", "minLength": 1}}, "required": ["catalog_id"], "additionalProperties": false},
+      "output": {
+        "type": "object",
+        "required": ["catalog_id", "title", "access"],
+        "properties": {
+          "catalog_id": {"type": "string"},
+          "title": {"type": "string"},
+          "product_count": {"type": "integer"},
+          "item_count": {"type": "integer"},
+          "generation": {"type": "integer"},
+          "status": {"type": "string"},
+          "access": {
+            "type": "object",
+            "required": ["read", "write", "admin"],
+            "properties": {"read": {"type": "boolean"}, "write": {"type": "boolean"}, "admin": {"type": "boolean"}},
+            "additionalProperties": false
+          },
+          "ui_app": {"type": "string", "description": "Registered catalog UI app id, when bound."}
+        }
+      }
+    },
+    "get_schema": {
+      "description": "Active or past schema generation: declaration and compiled public parts.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "generation": {"type": "integer", "description": "Historical schema generation to read; omit for the current schema."}
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["schema_generation", "declaration", "attributes", "families", "access"],
+        "properties": {
+          "$pim_ref": "read_stamp",
+          "schema_generation": {"type": "integer", "description": "Requested schema generation represented by the declaration and compiled fields."},
+          "declaration": {"type": "object", "description": "Effective schema declaration stored for this generation."},
+          "attributes": {"type": "object", "description": "Compiled attribute definitions keyed by attribute code."},
+          "families": {"type": "object", "description": "Compiled family definitions keyed by family code."},
+          "channels": {"type": "object", "description": "Compiled publication channels keyed by channel code."},
+          "dimensions": {"type": "array", "items": {"type": "object"}, "description": "Declared dimensions and their valid members and resolution chains."},
+          "vocabularies": {"type": "object", "description": "Vocabulary definitions keyed by vocabulary code."},
+          "sources": {"type": "object", "description": "Source definitions keyed by source id, including write and ordering rules."},
+          "scopes": {"type": "object", "description": "Available query scope definitions."},
+          "plugins": {
+            "type": "array",
+            "description": "Installed and active plugins with configuration, lifecycle and projection progress.",
+            "items": {
+              "type": "object",
+              "required": ["plugin", "installed", "active", "requires", "tools", "lifecycle", "projections"],
+              "properties": {
+                "plugin": {"type": "string"},
+                "interface_version": {"type": "integer", "minimum": 1, "description": "Host interface version accepted for this plugin."},
+                "title": {"type": "string"},
+                "description": {"type": "string"},
+                "icon": {"type": "string"},
+                "installed": {"type": "boolean"},
+                "active": {"type": "boolean"},
+                "attachment_id": {"type": "string"},
+                "config": {"type": "object"},
+                "requires": {"type": "array", "items": {"type": "string"}},
+                "tools": {"type": "array", "items": {"type": "string"}},
+                "lifecycle": {"type": "object"},
+                "projections": {"type": "object"},
+                "problem": {"type": "object", "required": ["code", "message"], "properties": {"code": {"type": "string"}, "message": {"type": "string"}, "field": {"type": "string"}}}
+              }
+            }
+          },
+          "access": {
+            "type": "object",
+            "required": ["read", "write", "admin"],
+            "properties": {"read": {"type": "boolean"}, "write": {"type": "boolean"}, "admin": {"type": "boolean"}},
+            "additionalProperties": false,
+            "description": "Independent read, write and admin grants of the caller."
+          }
+        }
+      }
+    },
+    "policy_defaults": {
+      "description": "Read deployment policy defaults from Settings under the caller's identity. Requires catalog READ and ADMIN.",
+      "input": {"type": "object", "properties": {"catalog_id": {"$pim_ref": "catalog_id"}}, "additionalProperties": false},
+      "output": {
+        "type": "object",
+        "required": [
+          "audit",
+          "audit_days",
+          "trash_days",
+          "tombstone_days",
+          "proposal_days",
+          "completed_work_days",
+          "abandoned_work_days",
+          "import_days",
+          "pending_creation_days",
+          "proposal_count",
+          "proposal_bytes",
+          "command_deadline_ms",
+          "maintenance_rows",
+          "maintenance_catalogs",
+          "rebuild_rows",
+          "job_batches",
+          "import_rows"
+        ],
+        "properties": {
+          "audit": {"type": "string", "enum": ["fields", "off"], "description": "Field audit mode inherited by catalogs."},
+          "audit_days": {"type": "integer", "description": "Effective change history retention in days."},
+          "trash_days": {"type": "integer", "description": "Days a trashed product can be restored."},
+          "tombstone_days": {"type": "integer", "description": "Days a product tombstone stays in the changes feed."},
+          "proposal_days": {"type": "integer", "description": "Days to retain proposals in the review inbox."},
+          "completed_work_days": {"type": "integer", "description": "Days to retain completed work records."},
+          "abandoned_work_days": {"type": "integer", "description": "Days to retain abandoned work records."},
+          "import_days": {"type": "integer", "description": "Days to retain completed import records."},
+          "pending_creation_days": {"type": "integer", "description": "Days to retain pending catalog creation records."},
+          "proposal_count": {"type": "integer", "description": "Maximum retained proposals per catalog."},
+          "proposal_bytes": {"type": "integer", "description": "Maximum bytes per proposal request."},
+          "command_deadline_ms": {"type": "integer", "description": "Command deadline in milliseconds."},
+          "maintenance_rows": {"type": "integer", "description": "Maximum rows per maintenance batch."},
+          "maintenance_catalogs": {"type": "integer", "description": "Maximum catalogs per maintenance batch."},
+          "rebuild_rows": {"type": "integer", "description": "Maximum rows per index rebuild batch."},
+          "job_batches": {"type": "integer", "description": "Maximum batches per background job run."},
+          "import_rows": {"type": "integer", "description": "Maximum rows per import batch."}
+        }
+      }
+    },
+    "plan_schema": {
+      "description": "Classify a declaration against the catalog without applying it.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "declaration": {"$pim_ref": "declaration"},
+          "expected_generation": {"type": "integer", "description": "Current schema generation from PIMSchemaGet; omit to plan against the current generation without a concurrency check."},
+          "plugin_configs": {"type": "object", "additionalProperties": {"type": "object"}, "description": "Initial configuration keyed by plugin id for plugins activated by this command."}
+        },
+        "required": ["declaration"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["generation", "class", "changes", "refused"],
+        "properties": {
+          "generation": {"type": "integer", "description": "Schema generation associated with this result."},
+          "class": {"type": "string", "description": "Classification of the planned or applied schema change."},
+          "changes": {"type": "array", "items": {"type": "object"}, "description": "Schema changes with their classifications."},
+          "refused": {"type": "array", "items": {"type": "object"}, "description": "Schema changes that require a data migration."},
+          "migration": {"type": "string", "description": "Suggested migration sequence when the plan refuses changes."}
+        }
+      }
+    },
+    "apply_schema": {
+      "description": "Merge a declaration into the active schema: named entries replace, omitted stay, remove destroys.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "declaration": {"$pim_ref": "declaration"},
+          "expected_generation": {"type": "integer", "description": "Current schema generation from PIMSchemaGet; omit to plan against the current generation without a concurrency check."},
+          "idempotency": {"$pim_ref": "idempotency"},
+          "trace_context": {"$pim_ref": "trace_context"},
+          "plugin_configs": {"type": "object", "additionalProperties": {"type": "object"}, "description": "Initial configuration keyed by plugin id for plugins activated by this command."}
+        },
+        "required": ["declaration"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["generation", "class"],
+        "properties": {
+          "generation": {"type": "integer", "description": "Schema generation associated with this result."},
+          "class": {"type": "string", "description": "Classification of the planned or applied schema change."},
+          "changes": {"type": "array", "items": {"type": "object"}, "description": "Schema changes with their classifications."},
+          "seq": {"type": "integer", "description": "Sequence at which this command completes."},
+          "as_of": {"type": "integer", "description": "Applied catalog sequence represented by this answer."},
+          "replayed": {"type": "boolean", "description": "Whether this result reuses a previously completed command."}
+        }
+      }
+    },
+    "configure_plugin": {
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "plugin": {"type": "string", "minLength": 1, "description": "Active plugin registry id from PIMSchemaGet; activate new plugins with PIMSchemaApply."},
+          "config": {"type": "object", "description": "Replacement catalog configuration validated against the plugin config_schema from PIMSchemaOptions."}
+        },
+        "required": ["plugin", "config"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "seq": {"type": "integer", "description": "Sequence at which configuration changes."},
+          "as_of": {"type": "integer", "description": "Applied catalog sequence represented by this answer."}
+        }
+      }
+    },
+    "plugin_context": {
+      "input": {
+        "type": "object",
+        "properties": {"catalog_id": {"type": "string"}, "plugin": {"type": "string", "minLength": 1}},
+        "required": ["plugin"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {"type": "string"},
+          "config": {"type": "object"},
+          "lifecycle": {"type": "object"},
+          "projections": {"type": "object"},
+          "retention": {"type": "object", "properties": {"event_days": {"type": "integer"}}, "required": ["event_days"], "additionalProperties": false}
+        }
+      }
+    },
+    "plugin_feed": {
+      "description": "One bounded durable state page for an active declared state projection. READ; contract only. Pass the opaque token unchanged.",
+      "input": {
+        "type": "object",
+        "required": ["catalog_id", "plugin", "kind"],
+        "properties": {
+          "catalog_id": {"type": "string", "minLength": 1, "description": "Catalog component id."},
+          "plugin": {"type": "string", "minLength": 1, "description": "Active plugin registry id."},
+          "kind": {"type": "string", "minLength": 1, "description": "Declared state projection kind."},
+          "token": {"type": "string", "description": "Opaque token from the previous feed page; omit to bootstrap."}
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["attachment_id", "config", "bootstrap", "changes", "token", "done"],
+        "properties": {
+          "attachment_id": {"type": "string"},
+          "config": {"type": "object"},
+          "bootstrap": {"type": "boolean"},
+          "gap": {
+            "type": "object",
+            "description": "Present on the first page replacing an expired token. Clear the catalog replica before applying changes and commit both with the replacement token.",
+            "required": ["floor"],
+            "properties": {"floor": {"type": "integer"}},
+            "additionalProperties": false
+          },
+          "changes": {"type": "array", "items": {"type": "object"}},
+          "token": {"type": "string"},
+          "done": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "get": {
+      "description": "One product with every value resolved for a context, and readiness for items.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "product": {"$pim_ref": "product_ref"},
+          "context": {
+            "type": "object",
+            "additionalProperties": {"type": "string"},
+            "description": "Dimension-to-member map from PIMSchemaGet, such as {\"locale\":\"en\"}; omit dimensions to resolve their wildcard values."
+          },
+          "min_seq": {
+            "type": "integer",
+            "description": "Minimum applied catalog sequence required for this read; omit for the current projection, or receive projection_behind if it lags."
+          }
+        },
+        "required": ["product"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["product", "values", "publications"],
+        "properties": {
+          "$pim_ref": "read_stamp",
+          "product": {
+            "type": "object",
+            "required": ["product_id", "sku", "family", "root_id", "level", "is_item", "version", "status"],
+            "properties": {
+              "product_id": {"type": "string"},
+              "sku": {"type": "string"},
+              "family": {"type": "string"},
+              "parent_id": {"type": "string"},
+              "root_id": {"type": "string"},
+              "level": {"type": "integer"},
+              "is_item": {"type": "boolean"},
+              "version": {"type": "integer"},
+              "status": {"type": "string"}
+            },
+            "description": "Product identity, hierarchy, status and current version."
+          },
+          "values": {"type": "object", "description": "Resolved caller-visible attribute values keyed by attribute code."},
+          "readiness": {"type": "object", "description": "Requirement and channel readiness findings."},
+          "release_id": {"type": "string", "description": "Most recent release id for this product; consult publications for current channel states."},
+          "publications": {"type": "array", "items": {"type": "object"}, "description": "Publication channel, release id and state for this product."}
+        }
+      }
+    },
+    "query": {
+      "description": "Items filtered by indexed values, readiness, text, family and status, paged by keyset.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "where": {
+            "$ref": "#filterNode",
+            "description": "Filter tree of and, or, not or {field, ctx, op, value}; omit to match all, with at most 6 levels, 64 leaves and 500 values."
+          },
+          "text": {"type": "string", "description": "Text matching a sku prefix or searchable attribute words; omit or use an empty string to skip text filtering."},
+          "family": {"type": "string", "description": "Family code declared by PIMSchemaGet; omit on creation for generic or the parent family."},
+          "status": {"type": "string", "enum": ["active", "draft", "archived"], "description": "Product lifecycle status to match; omit to include every status."},
+          "ready": {
+            "type": "object",
+            "required": ["set", "value"],
+            "properties": {
+              "set": {"type": "string", "description": "Requirement set id declared by PIMSchemaGet for the family being queried."},
+              "value": {"type": "boolean", "description": "True to match ready products or false to match products with unmet requirements."}
+            },
+            "additionalProperties": false,
+            "description": "Requirement set and readiness boolean to filter by; omit to include both ready and unready items."
+          },
+          "sort": {
+            "type": "object",
+            "required": ["field"],
+            "additionalProperties": false,
+            "properties": {
+              "field": {"type": "string", "description": "Indexed attribute code from PIMSchemaGet; use ctx for a contextual field."},
+              "ctx": {
+                "type": "object",
+                "additionalProperties": {"type": "string"},
+                "description": "Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."
+              },
+              "dir": {"type": "string", "enum": ["asc", "desc"], "description": "Ascending or descending field order with product id as the tie breaker; omit for asc."}
+            },
+            "description": "Indexed single-valued field and direction; omit to order by product id."
+          },
+          "count": {"type": "boolean", "description": "Return a count capped at @{count} matches within @{scan} scanned rows, with estimated when capped; omit to skip counting."},
+          "limit": {"$pim_ref": "page"},
+          "after": {"$pim_ref": "query_token"},
+          "published": {
+            "type": "object",
+            "properties": {"channel": {"type": "string", "description": "Active publication channel from the current schema. Omit to match any published channel."}},
+            "additionalProperties": false,
+            "description": "Filter to products published in channel, or in any channel if channel is omitted; omit to include unpublished products."
+          },
+          "parent": {"$pim_ref": "product_ref"},
+          "root": {
+            "$pim_ref": "product_ref",
+            "description": "Product reference {id} or {sku}; id takes precedence, and PIMGet resolves a sku to its product_id. Must name a root product; omit to include every root."
+          },
+          "scopes": {
+            "type": "array",
+            "description": "Plugin scope filters listed by PIMSchemaOptions and adopted in PIMSchemaGet; omit for no plugin filters.",
+            "items": {
+              "type": "object",
+              "required": ["id"],
+              "properties": {
+                "id": {"type": "string", "description": "Scope registry id listed by PIMSchemaOptions and adopted by this catalog in PIMSchemaGet."},
+                "where": {"type": "object", "description": "Filter names and {operator: value} objects declared by this scope in PIMSchemaOptions; omit for scope membership only."}
+              },
+              "additionalProperties": false
+            }
+          },
+          "min_seq": {
+            "type": "integer",
+            "description": "Minimum applied catalog sequence required for this read; omit for the current projection, or receive projection_behind if it lags."
+          },
+          "columns": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Attribute codes from PIMSchemaGet to resolve per item, at most @{columns}; omit to return product summaries only.",
+            "maxItems": {"$pim_limit": "columns"}
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {"type": "string"},
+            "description": "Dimension-to-member map from PIMSchemaGet, such as {\"locale\":\"en\"}; omit dimensions to resolve their wildcard values."
+          }
+        },
+        "additionalProperties": false,
+        "definitions": {
+          "filterNode": {
+            "$anchor": "filterNode",
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "field": {"type": "string", "description": "Indexed attribute code from PIMSchemaGet; use ctx for a contextual field."},
+                  "ctx": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                    "description": "Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."
+                  },
+                  "op": {
+                    "type": "string",
+                    "enum": ["eq", "neq", "in", "nin", "is_null", "lt", "lte", "gt", "gte", "between", "contains", "starts_with", "has"],
+                    "description": "Comparison supported by the indexed field; has is for sets, ranges for ordered fields, and text operators for single text fields."
+                  },
+                  "value": {
+                    "description": "Operand matching the field type; in and nin take lists, between takes [low, high], is_null takes a boolean, and other operators take one value."
+                  }
+                },
+                "required": ["field", "op", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "and": {"type": "array", "minItems": 1, "items": {"$ref": "#filterNode"}, "description": "Non-empty list of filter nodes that must all match, within the tree limits."}
+                },
+                "required": ["and"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "or": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {"$ref": "#filterNode"},
+                    "description": "Non-empty list of filter nodes of which at least one must match, within the tree limits."
+                  }
+                },
+                "required": ["or"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {"not": {"$ref": "#filterNode", "description": "Filter node whose match is inverted, including empty values, within the tree limits."}},
+                "required": ["not"],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "$pim_ref": "read_stamp",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["product_id", "sku", "version", "status", "family"],
+              "properties": {
+                "product_id": {"type": "string"},
+                "sku": {"type": "string"},
+                "version": {"type": "integer"},
+                "status": {"type": "string"},
+                "family": {"type": "string"},
+                "values": {"type": "object"}
+              }
+            },
+            "description": "Page of matching items."
+          },
+          "after": {"$pim_ref": "query_token", "description": "Opaque PIMQuery continuation to pass unchanged as after with the same query."},
+          "total": {"type": "integer", "description": "Matching row count; read estimated to determine whether it is capped."},
+          "estimated": {"type": "boolean", "description": "Whether the returned total is capped by counting or scan limits."},
+          "incomplete": {"type": "boolean", "description": "Whether the scan limit prevents this page from covering all matches."}
+        }
+      }
+    },
+    "list_history": {
+      "description": "Change history newest first, optionally for one product: lifecycle, schema, release and term entries always, value changes when the audit policy records them.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "product": {"$pim_ref": "product_ref"},
+          "before": {"$pim_ref": "history_cursor"},
+          "limit": {"$pim_ref": "page"},
+          "min_seq": {
+            "type": "integer",
+            "description": "Minimum applied catalog sequence required for this read; omit for the current projection, or receive projection_behind if it lags."
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["entries"],
+        "properties": {
+          "$pim_ref": "read_stamp",
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["seq", "n", "subject", "kind", "actor", "at"],
+              "properties": {
+                "seq": {"type": "integer"},
+                "n": {"type": "integer"},
+                "subject": {"type": "string"},
+                "sku": {"type": "string"},
+                "kind": {"type": "string"},
+                "attribute_id": {"type": "integer"},
+                "attribute": {"type": "string"},
+                "ctx": {"type": "string"},
+                "actor": {"type": "string"},
+                "source": {"type": "string"},
+                "at": {"type": "string"}
+              }
+            },
+            "description": "Caller-visible change history entries, newest first."
+          },
+          "next": {"$pim_ref": "history_cursor", "description": "Continuation to pass unchanged to this tool for the next page."}
+        }
+      }
+    },
+    "apply": {
+      "description": "Create, change, move, trash and restore products and change terms in one command.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "expected_generation": {"type": "integer", "description": "Schema generation the command was built against. A mismatch rejects the entire command with schema_generation_conflict."},
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product": {"$pim_ref": "apply_product_ref"},
+                "create": {
+                  "type": "object",
+                  "properties": {
+                    "family": {"description": "Family code declared by PIMSchemaGet; omit on creation for generic or the parent family."},
+                    "parent": {
+                      "$pim_ref": "product_ref",
+                      "description": "Product reference {id} or {sku}; id takes precedence, and PIMGet resolves a sku to its product_id. Omit to create a root product."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "Create a new product with product.sku; omit to edit an existing product."
+                },
+                "upsert": {
+                  "type": "boolean",
+                  "description": "Create a missing sku or edit its live product without a version check when seq is absent; omit for normal create or edit semantics."
+                },
+                "expect_version": {"description": "Product version from PIMGet, or \"any\" to bypass the check; required for existing products unless a sequenced source supplies seq."},
+                "seq": {"description": "Source sequence integer, required for sequence-ordered sources from PIMSchemaGet; stale sequences leave the product unchanged."},
+                "set": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "attr": {"description": "Attribute code declared by PIMSchemaGet, such as core.name."},
+                      "ctx": {"description": "Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."},
+                      "value": {"description": "Value in the declared attribute type from PIMSchemaGet; set requires a value, while clear and unset ignore it."},
+                      "source": {"type": "string", "description": "Source metadata used only by catalog import; omit because public commands ignore this per-value field."}
+                    },
+                    "additionalProperties": false
+                  },
+                  "description": "Values to write as {attr, ctx, value}; omit to leave values unchanged."
+                },
+                "clear": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "attr": {"description": "Attribute code declared by PIMSchemaGet, such as core.name."},
+                      "ctx": {"description": "Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."},
+                      "value": {"description": "Ignored for clear and unset; omit because these operations use only attr and ctx."},
+                      "source": {"type": "string", "description": "Source metadata used only by catalog import; omit because public commands ignore this per-value field."}
+                    },
+                    "additionalProperties": false
+                  },
+                  "description": "Attribute coordinates to block inherited values explicitly; omit to leave values unchanged."
+                },
+                "unset": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "attr": {"description": "Attribute code declared by PIMSchemaGet, such as core.name."},
+                      "ctx": {"description": "Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."},
+                      "value": {"description": "Ignored for clear and unset; omit because these operations use only attr and ctx."},
+                      "source": {"type": "string", "description": "Source metadata used only by catalog import; omit because public commands ignore this per-value field."}
+                    },
+                    "additionalProperties": false
+                  },
+                  "description": "Attribute coordinates whose local override is removed so inheritance resumes; omit to leave values unchanged."
+                },
+                "move": {
+                  "type": "object",
+                  "properties": {"parent": {"$pim_ref": "product_ref"}},
+                  "additionalProperties": false,
+                  "description": "Move a childless variant to a parent one level up under the same root; omit to keep its parent."
+                },
+                "status": {
+                  "description": "Accepted values: active, draft, archived. Omit on creation for active or on edits to retain the current status; invalid values produce an item outcome."
+                },
+                "delete": {"type": "boolean", "description": "Move a childless, unreferenced product to trash as a separate item; omit to retain it."},
+                "restore": {"type": "boolean", "description": "Restore a trashed product addressed only by product.id from PIMHistory; send as a separate item, or omit for normal edits."},
+                "term": {
+                  "type": "object",
+                  "properties": {
+                    "vocabulary": {"description": "Vocabulary code declared by PIMSchemaGet; list its term codes with PIMTerms."},
+                    "code": {"description": "Term code within the vocabulary, as listed by PIMTerms or chosen for a new term."}
+                  },
+                  "additionalProperties": false,
+                  "description": "Vocabulary and term code to create or edit instead of a product; omit for product operations."
+                },
+                "labels": {"description": "Locale-to-label map for a term; omit to preserve existing labels."},
+                "parent": {"type": "string", "description": "Parent term code in this vocabulary from PIMTerms; omit to preserve it, or use an empty string for no parent."},
+                "retired": {"type": "boolean", "description": "Whether the term is retired; omit on term edits to preserve its current state."},
+                "term_merge": {
+                  "type": "object",
+                  "properties": {
+                    "vocabulary": {"description": "Vocabulary code declared by PIMSchemaGet; list its term codes with PIMTerms."},
+                    "from": {"description": "Live source term code in this vocabulary from PIMTerms; it is retired after merging."},
+                    "into": {"description": "Live destination term code in this vocabulary from PIMTerms; it receives the redirected references."}
+                  },
+                  "additionalProperties": false,
+                  "description": "Retire a term and redirect references to another; up to 500 products update inline and the remainder use a job."
+                }
+              },
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "description": "Ordered product or term commands, from 1 to @{items}; later commands see earlier accepted commands.",
+            "maxItems": {"$pim_limit": "items"}
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["atomic", "independent"],
+            "description": "Use atomic to append only when every item succeeds, or independent to append successful items; omit for atomic."
+          },
+          "source": {"type": "string", "description": "Source id declared by PIMSchemaGet; omit for a caller-authored change."},
+          "origin": {"$pim_ref": "origin"},
+          "idempotency": {"$pim_ref": "idempotency"},
+          "trace_context": {"$pim_ref": "trace_context"},
+          "provenance": {"$pim_ref": "provenance"}
+        },
+        "required": ["items"],
+        "additionalProperties": false
+      },
+      "output": {"$pim_ref": "apply_result"}
+    },
+    "propose": {
+      "description": "Store items as a proposal for review (catalog READ).",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product": {"$pim_ref": "product_ref"},
+                "set": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "attr": {"description": "Attribute code declared by PIMSchemaGet, such as core.name."},
+                      "ctx": {"description": "Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."},
+                      "value": {"description": "Value in the declared attribute type from PIMSchemaGet; set requires a value, while clear and unset ignore it."},
+                      "source": {"type": "string", "description": "Source metadata used only by catalog import; omit because public commands ignore this per-value field."}
+                    },
+                    "additionalProperties": false
+                  },
+                  "description": "Values to write as {attr, ctx, value}; omit to leave values unchanged."
+                },
+                "clear": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "attr": {"description": "Attribute code declared by PIMSchemaGet, such as core.name."},
+                      "ctx": {"description": "Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."},
+                      "value": {"description": "Ignored for clear and unset; omit because these operations use only attr and ctx."},
+                      "source": {"type": "string", "description": "Source metadata used only by catalog import; omit because public commands ignore this per-value field."}
+                    },
+                    "additionalProperties": false
+                  },
+                  "description": "Attribute coordinates to block inherited values explicitly; omit to leave values unchanged."
+                },
+                "unset": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "attr": {"description": "Attribute code declared by PIMSchemaGet, such as core.name."},
+                      "ctx": {"description": "Dimension-to-member map from PIMSchemaGet for every dimension in the attribute scope; omit only for attributes without dimensions."},
+                      "value": {"description": "Ignored for clear and unset; omit because these operations use only attr and ctx."},
+                      "source": {"type": "string", "description": "Source metadata used only by catalog import; omit because public commands ignore this per-value field."}
+                    },
+                    "additionalProperties": false
+                  },
+                  "description": "Attribute coordinates whose local override is removed so inheritance resumes; omit to leave values unchanged."
+                },
+                "status": {
+                  "description": "Accepted values: active, draft, archived. Omit on creation for active or on edits to retain the current status; invalid values produce an item outcome."
+                }
+              },
+              "additionalProperties": false,
+              "required": ["product"]
+            },
+            "minItems": 1,
+            "description": "Value or status edits for existing products, from 1 to @{items}; versions are captured at proposal creation.",
+            "maxItems": {"$pim_limit": "items"}
+          },
+          "source": {"type": "string", "description": "Source id declared by PIMSchemaGet; omit for a caller-authored change."},
+          "origin": {"$pim_ref": "origin"},
+          "provenance": {"$pim_ref": "provenance"},
+          "trace_context": {"$pim_ref": "trace_context", "required": ["trace_id"]}
+        },
+        "required": ["items"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["proposal_id", "status"],
+        "properties": {
+          "proposal_id": {"type": "string", "description": "Stored proposal id to pass to PIMDecide."},
+          "status": {"type": "string", "description": "Current proposal status.", "enum": ["pending"]}
+        }
+      }
+    },
+    "decide": {
+      "description": "Accept or reject a proposal (catalog WRITE).",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "proposal_id": {"type": "string", "description": "Proposal id returned by PIMPropose or PIMProposals."},
+          "decision": {
+            "type": "string",
+            "enum": ["accept", "reject"],
+            "description": "Accept to apply the proposal at its captured versions, or reject to close it without applying."
+          },
+          "trace_context": {"$pim_ref": "trace_context", "required": ["trace_id"]}
+        },
+        "required": ["proposal_id", "decision"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["proposal_id", "status"],
+        "properties": {
+          "proposal_id": {"type": "string", "description": "Stored proposal id to pass to PIMDecide."},
+          "status": {"type": "string", "description": "Current proposal status.", "enum": ["accepted", "rejected", "conflict", "failed"]},
+          "result": {"$pim_ref": "apply_result", "description": "Per-item application result, present when acceptance was attempted."}
+        }
+      }
+    },
+    "list_proposals": {
+      "description": "List proposals, optionally by status.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "status": {
+            "type": "string",
+            "enum": ["pending", "accepted", "rejected", "conflict", "failed"],
+            "description": "Proposal decision state to match; omit to include every state."
+          },
+          "limit": {"$pim_ref": "page"},
+          "after": {"$pim_ref": "proposals_cursor"}
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["proposals"],
+        "properties": {
+          "proposals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["proposal_id", "status", "created_by", "created_at", "generation"],
+              "properties": {
+                "proposal_id": {"type": "string"},
+                "source": {"type": "string"},
+                "origin": {"type": "object"},
+                "status": {"type": "string", "enum": ["pending", "accepted", "rejected", "conflict", "failed"]},
+                "created_by": {"type": "string"},
+                "created_at": {"type": "string"},
+                "generation": {"type": "integer", "minimum": 1, "description": "Schema generation used to validate the proposal."},
+                "decided_by": {"type": "string"},
+                "decided_at": {"type": "string"}
+              }
+            },
+            "description": "Stored proposals with their ids, edits, base versions and decision state."
+          },
+          "next": {"$pim_ref": "proposals_cursor", "description": "Continuation to pass unchanged to this tool for the next page."},
+          "has_more": {"type": "boolean", "description": "Whether another page is available after the returned continuation."}
+        }
+      }
+    },
+    "release": {
+      "description": "Release items as immutable snapshots to the channels they are ready for.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "product": {"$pim_ref": "product_ref"},
+                "expect_version": {"description": "Exact product version returned by PIMGet; a mismatch produces a conflict outcome."},
+                "channels": {"type": "array", "items": {}, "description": "Channel codes from PIMSchemaGet; omit to consider every channel, or pass an empty list to select none."}
+              },
+              "additionalProperties": false,
+              "required": ["product"]
+            },
+            "description": "Product references and channel selections to release, from 1 to @{release_items} entries.",
+            "maxItems": {"$pim_limit": "release_items"}
+          },
+          "idempotency": {"$pim_ref": "idempotency"},
+          "trace_context": {"$pim_ref": "trace_context"}
+        },
+        "required": ["items"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["outcomes", "applied"],
+        "properties": {
+          "outcomes": {"type": "array", "items": {"$pim_ref": "release_outcome"}, "description": "Per-item outcomes, identifiers, versions and refusal findings in request order."},
+          "applied": {"type": "boolean", "description": "Whether any release, model release request or withdrawal event is appended."},
+          "seq": {"type": "integer", "description": "Sequence at which this command completes."},
+          "as_of": {"type": "integer", "description": "Applied catalog sequence represented by this answer."},
+          "replayed": {"type": "boolean", "description": "Whether this result reuses a previously completed command."}
+        }
+      }
+    },
+    "withdraw": {
+      "description": "Withdraw items from channels.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "product": {"$pim_ref": "product_ref"},
+                "channels": {"type": "array", "items": {}, "description": "Channel codes from PIMSchemaGet; omit to consider every channel, or pass an empty list to select none."}
+              },
+              "additionalProperties": false,
+              "required": ["product"]
+            },
+            "description": "Product references and channel selections to withdraw, from 1 to @{release_items} entries.",
+            "maxItems": {"$pim_limit": "release_items"}
+          },
+          "idempotency": {"$pim_ref": "idempotency"},
+          "trace_context": {"$pim_ref": "trace_context"}
+        },
+        "required": ["items"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["outcomes", "applied"],
+        "properties": {
+          "outcomes": {"type": "array", "items": {"$pim_ref": "withdraw_outcome"}, "description": "Per-item outcomes, identifiers, versions and refusal findings in request order."},
+          "applied": {"type": "boolean", "description": "Whether any release, model release request or withdrawal event is appended."},
+          "seq": {"type": "integer", "description": "Sequence at which this command completes."},
+          "as_of": {"type": "integer", "description": "Applied catalog sequence represented by this answer."},
+          "replayed": {"type": "boolean", "description": "Whether this result reuses a previously completed command."}
+        }
+      }
+    },
+    "rebuild": {
+      "description": "Wake the catalog's rebuild after a failed run; it resumes from its cursor. Needs ADMIN.",
+      "input": {"type": "object", "properties": {"catalog_id": {"$pim_ref": "catalog_id"}}, "additionalProperties": false},
+      "output": {
+        "type": "object",
+        "properties": {"rebuilding": {"type": "boolean", "description": "Whether a catalog rebuild is pending after the wake request."}},
+        "required": ["rebuilding"]
+      }
+    },
+    "list_links": {
+      "description": "Live products whose values reference a target, for every ref kind.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "kind": {"type": "string", "description": "Link kind id listed by PIMSchemaOptions; use the kind that owns the target."},
+          "target": {"type": "string", "description": "Target id in the identity format defined by the link kind from PIMSchemaOptions."},
+          "after": {"$pim_ref": "links_cursor"},
+          "limit": {"$pim_ref": "page"}
+        },
+        "required": ["kind", "target"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "$pim_ref": "read_stamp",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["product_id", "sku", "attribute_id", "ctx", "path"],
+              "properties": {
+                "product_id": {"type": "string"},
+                "sku": {"type": "string"},
+                "attribute": {"type": "string"},
+                "attribute_id": {"type": "integer"},
+                "ctx": {"type": "string"},
+                "path": {"type": "string"}
+              }
+            },
+            "description": "Page of matching items."
+          },
+          "next": {"$pim_ref": "links_cursor", "description": "Continuation to pass unchanged to this tool for the next page."}
+        }
+      }
+    },
+    "explain": {
+      "description": "How a value resolved: candidate contexts, resolution and readiness findings.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "product": {"$pim_ref": "product_ref"},
+          "attr": {"type": "string", "description": "Attribute code declared by PIMSchemaGet, such as core.name."},
+          "context": {
+            "type": "object",
+            "additionalProperties": {"type": "string"},
+            "description": "Dimension-to-member map from PIMSchemaGet, such as {\"locale\":\"en\"}; omit dimensions to resolve their wildcard values."
+          }
+        },
+        "required": ["product", "attr"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["attribute", "candidates", "resolution"],
+        "properties": {
+          "$pim_ref": "read_stamp",
+          "attribute": {"type": "string", "description": "Public definition of the explained attribute."},
+          "candidates": {"type": "array", "items": {"type": "string"}, "description": "Caller-visible candidate values considered during resolution."},
+          "resolution": {"type": "object", "description": "Resolved value, state, source, context and owning product."},
+          "findings": {"type": "object", "description": "Readiness findings for the explained attribute."}
+        }
+      }
+    },
+    "list_changes": {
+      "description": "Product changes in (updated_seq, product_id) order; resumable from a cursor; deletes for trashed and purged products.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "cursor": {"$pim_ref": "changes_cursor"},
+          "limit": {"$pim_ref": "feed_page"},
+          "families": {"type": "array", "items": {"type": "string"}, "description": "Family codes from PIMSchemaGet to include; omit for every family."}
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["items", "has_more"],
+        "properties": {
+          "$pim_ref": "read_stamp",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["product_id", "op", "updated_seq"],
+              "properties": {
+                "product_id": {"type": "string"},
+                "op": {"type": "string"},
+                "updated_seq": {"type": "integer"},
+                "sku": {"type": "string"},
+                "family": {"type": "string"},
+                "parent_id": {"type": "string"},
+                "root_id": {"type": "string"},
+                "level": {"type": "integer"},
+                "status": {"type": "string"},
+                "version": {"type": "integer"},
+                "values": {"type": "object"},
+                "terms": {
+                  "type": "array",
+                  "description": "Current labels for the terms referenced by this state record.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "vocabulary": {"type": "string", "description": "Vocabulary containing the referenced term."},
+                      "code": {"type": "string", "description": "Term code within its vocabulary."},
+                      "labels": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Current localized term labels."},
+                      "parent": {"type": "string", "description": "Parent term code when present."},
+                      "retired": {"type": "boolean", "description": "Whether the term is retired."}
+                    },
+                    "required": ["vocabulary", "code", "labels", "retired"],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            },
+            "description": "Page of matching items."
+          },
+          "next": {"$pim_ref": "changes_cursor", "description": "Pass this continuation unchanged to read the next page. Restart from zero if this page reports a gap."},
+          "has_more": {"type": "boolean", "description": "Whether another page is available after the returned continuation."},
+          "gap": {"type": "object", "description": "Feed reset information when the supplied cursor no longer covers available history."}
+        }
+      }
+    },
+    "list_publications": {
+      "description": "One channel's publication changes in seq order.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "channel": {"type": "string", "description": "Current channel code from PIMSchemaGet, or a previously published channel code from PIMGet publications."},
+          "after": {"$pim_ref": "publications_cursor"},
+          "limit": {"$pim_ref": "feed_page"}
+        },
+        "required": ["channel"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["items", "next", "has_more"],
+        "properties": {
+          "$pim_ref": "read_stamp",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["product_id", "state", "seq", "updated_at"],
+              "properties": {
+                "product_id": {"type": "string"},
+                "state": {"type": "string"},
+                "seq": {"type": "integer"},
+                "updated_at": {"type": "string"},
+                "release_id": {"type": "string"},
+                "hash": {"type": "string"},
+                "version": {"type": "integer"},
+                "snapshot": {"type": "object"}
+              }
+            },
+            "description": "Page of matching items."
+          },
+          "next": {"$pim_ref": "publications_cursor", "description": "Continuation to pass unchanged to this tool for the next page."},
+          "has_more": {"type": "boolean", "description": "Whether another page is available after the returned continuation."}
+        }
+      }
+    },
+    "get_release": {
+      "description": "One immutable release by id.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "release_id": {"type": "string", "description": "Immutable release id returned by PIMReleases or PIMGet publications."}
+        },
+        "required": ["release_id"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["release"],
+        "properties": {"$pim_ref": "read_stamp", "release": {"$pim_ref": "release_record", "description": "Immutable release metadata and self-contained snapshot."}}
+      }
+    },
+    "list_terms": {
+      "description": "A vocabulary's terms by code: live ones, or every one with retired; parent narrows to one term's children.",
+      "input": {
+        "type": "object",
+        "required": ["vocabulary"],
+        "properties": {
+          "catalog_id": {"$pim_ref": "catalog_id"},
+          "vocabulary": {"type": "string", "description": "Vocabulary code declared by PIMSchemaGet; list its term codes with PIMTerms."},
+          "parent": {"type": "string", "description": "Parent term code in this vocabulary from PIMTerms; omit to preserve it, or use an empty string for no parent."},
+          "retired": {"type": "boolean", "description": "True for retired terms or false for live terms; omit to include both."},
+          "limit": {"$pim_ref": "terms_page"},
+          "after": {"$pim_ref": "terms_cursor"}
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["terms"],
+        "properties": {
+          "$pim_ref": "read_stamp",
+          "terms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["code", "labels", "retired"],
+              "properties": {"code": {"type": "string"}, "labels": {"type": "object"}, "parent": {"type": "string"}, "retired": {"type": "boolean"}}
+            },
+            "description": "Vocabulary terms with codes, labels, parent and retirement state."
+          },
+          "next": {"$pim_ref": "terms_cursor", "description": "Continuation to pass unchanged to this tool for the next page."}
+        }
+      }
+    },
+    "schema_options": {
+      "description": "What a catalog's schema may name from the registry: attribute types, product scopes, plugins and bound link kinds the caller may read.",
+      "input": {"type": "object", "properties": {"catalog_id": {"$pim_ref": "catalog_id"}}, "additionalProperties": false},
+      "output": {
+        "type": "object",
+        "required": ["types", "scopes", "plugins", "link_kinds"],
+        "properties": {
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "form", "indexes"],
+              "properties": {
+                "id": {"type": "string"},
+                "title": {"type": "string"},
+                "form": {"type": "string"},
+                "indexes": {"type": "array", "items": {"type": "string"}},
+                "target": {"type": "string"},
+                "config_schema": {"type": "object"},
+                "problem": {"type": "string"}
+              }
+            },
+            "description": "Installed attribute types and their configuration schemas."
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "access", "filters"],
+              "properties": {"id": {"type": "string"}, "title": {"type": "string"}, "access": {"type": "string"}, "filters": {"type": "object"}, "problem": {"type": "string"}}
+            },
+            "description": "Available query scope definitions."
+          },
+          "plugins": {
+            "type": "array",
+            "description": "Installed and active plugins with configuration, lifecycle and projection progress.",
+            "items": {
+              "type": "object",
+              "required": ["plugin", "installed", "active", "requires", "tools", "lifecycle", "projections", "config_schema"],
+              "properties": {
+                "plugin": {"type": "string"},
+                "interface_version": {"type": "integer", "minimum": 1, "description": "Host interface version accepted for this plugin."},
+                "title": {"type": "string"},
+                "description": {"type": "string"},
+                "icon": {"type": "string"},
+                "installed": {"type": "boolean"},
+                "active": {"type": "boolean"},
+                "attachment_id": {"type": "string"},
+                "config": {"type": "object"},
+                "requires": {"type": "array", "items": {"type": "string"}},
+                "tools": {"type": "array", "items": {"type": "string"}},
+                "lifecycle": {"type": "object"},
+                "projections": {"type": "object"},
+                "problem": {"type": "object", "required": ["code", "message"], "properties": {"code": {"type": "string"}, "message": {"type": "string"}, "field": {"type": "string"}}},
+                "config_schema": {"type": "object"}
+              }
+            }
+          },
+          "link_kinds": {
+            "type": "array",
+            "items": {"type": "object", "required": ["kind", "binding"], "properties": {"kind": {"type": "string"}, "binding": {"type": "string"}, "title": {"type": "string"}}},
+            "description": "Installed readable link kinds and their identity descriptions."
+          }
+        }
+      }
+    },
+    "list_releases": {
+      "description": "A product's immutable release snapshots and metadata, newest first.",
+      "input": {
+        "type": "object",
+        "properties": {"catalog_id": {"$pim_ref": "catalog_id"}, "product": {"$pim_ref": "product_ref"}, "before": {"$pim_ref": "releases_cursor"}, "limit": {"$pim_ref": "page"}},
+        "required": ["product"],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "required": ["releases"],
+        "properties": {
+          "$pim_ref": "read_stamp",
+          "releases": {"type": "array", "items": {"$pim_ref": "release_record"}, "description": "Immutable release snapshots and metadata, newest first."},
+          "next": {"$pim_ref": "releases_cursor", "description": "Continuation to pass unchanged to this tool for the next page."}
+        }
+      }
+    }
+  },
+  "tools": {
+    "list_catalogs": {
+      "method": "list",
+      "alias": "PIMCatalogs",
+      "description": "List catalogs readable by the authenticated caller; requires catalog READ for each returned catalog. Returns catalog ids, titles and independent access grants.",
+      "scope": "state.read"
+    },
+    "get_schema": {
+      "alias": "PIMSchemaGet",
+      "description": "Read a current or historical catalog schema with compiled attributes, families, channels and plugin declarations; requires catalog READ and returns the schema generation and declaration. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "schema_options": {
+      "alias": "PIMSchemaOptions",
+      "description": "List installed attribute types, scopes, plugins with their declared tools, and readable link kinds before planning a schema; requires catalog READ and returns configuration schemas and available options. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "list_terms": {
+      "alias": "PIMTerms",
+      "description": "List vocabulary terms by code with optional parent, retirement and paging filters; requires catalog READ and returns terms and the continuation cursor. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "query": {
+      "alias": "PIMQuery",
+      "description": "Find products using text, fields and scopes declared by PIMSchemaGet with catalog READ. For paging, reuse the opaque after token with the same query, including after an incomplete page.",
+      "scope": "state.read"
+    },
+    "get": {
+      "alias": "PIMGet",
+      "description": "Read a product by sku or id from PIMQuery with contextual values, readiness and publications; requires catalog READ and returns the product and its caller-visible attribute values. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "explain": {
+      "alias": "PIMExplain",
+      "description": "Explain a product from PIMGet and an attribute from PIMSchemaGet, including resolution candidates and readiness findings; requires catalog READ and returns the caller-visible explanation. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "list_history": {
+      "alias": "PIMHistory",
+      "description": "Read catalog change history newest first, optionally for a product from PIMGet; requires catalog READ and returns caller-visible entries and a continuation cursor. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "list_links": {
+      "alias": "PIMLinks",
+      "description": "Find live products referencing a target in a link kind from PIMSchemaOptions; requires catalog READ and returns references and a continuation cursor. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "list_proposals": {
+      "alias": "PIMProposals",
+      "description": "List proposals with an optional status filter; requires catalog READ and returns proposals and a continuation cursor. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "list_releases": {
+      "alias": "PIMReleases",
+      "description": "List immutable releases of a product resolved by PIMGet newest first; requires catalog READ and returns immutable release snapshots and metadata and a continuation cursor. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "get_release": {
+      "alias": "PIMReleaseGet",
+      "description": "Read an immutable release using its id from PIMReleases or PIMGet; requires catalog READ and returns its snapshot and release metadata. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "list_publications": {
+      "alias": "PIMPublications",
+      "description": "Read publication changes in sequence order for a channel from PIMSchemaGet or PIMGet publications; requires catalog READ and returns a page of changes and a continuation cursor. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "list_changes": {
+      "alias": "PIMChanges",
+      "description": "With catalog READ, read product changes and deletion markers in sequence and product id order, then pass next unchanged with the same filters. If gap is present, discard the local replica and omit the cursor to restart, using the catalog id from the call or trait context.",
+      "scope": "state.read"
+    },
+    "apply": {
+      "alias": "PIMApply",
+      "description": "Create or change products, hierarchy and terms with catalog WRITE and applicable attribute access. Even when success is true, check applied, every outcome and each finding code before advancing (an atomic refusal applies none, and independent mode can refuse every item).",
+      "scope": "state.write"
+    },
+    "propose": {
+      "alias": "PIMPropose",
+      "description": "Store value or status edits for products from PIMGet for review with catalog READ. Check status for pending and retain proposal_id for a later decision.",
+      "scope": "state.write"
+    },
+    "decide": {
+      "alias": "PIMDecide",
+      "description": "Accept or reject a proposal from PIMPropose or PIMProposals with catalog WRITE. Even when success is true, check status and, if result is present, check applied and every outcome and finding code before advancing.",
+      "scope": "state.write"
+    },
+    "release": {
+      "alias": "PIMRelease",
+      "description": "Release ready items or queue model releases with catalog WRITE. Check every outcome and finding code even when success is true, then use request_id and job_id to track queued work and verify publication separately.",
+      "scope": "state.write"
+    },
+    "withdraw": {
+      "alias": "PIMWithdraw",
+      "description": "Withdraw publications for products from PIMGet with catalog WRITE. Check every outcome and finding code before advancing, even when success is true.",
+      "scope": "state.write"
+    },
+    "create_catalog": {
+      "method": "create",
+      "alias": "PIMCatalogCreate",
+      "description": "Create a catalog owned by the caller with an optional initial schema; requires an authenticated creator. Returns the catalog id and initial generation, with an empty schema when declaration is omitted.",
+      "scope": "state.write"
+    },
+    "update": {
+      "alias": "PIMCatalogUpdate",
+      "description": "Set the registered UI app for a catalog, or clear it with an empty ui_app. Requires catalog ADMIN.",
+      "scope": "state.write"
+    },
+    "plan_schema": {
+      "alias": "PIMSchemaPlan",
+      "description": "Classify a declaration using types and plugins from PIMSchemaOptions without applying it; requires catalog ADMIN and returns the plan, compatibility classification and findings. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "apply_schema": {
+      "alias": "PIMSchemaApply",
+      "description": "Apply a declaration reviewed with PIMSchemaPlan, replacing named entries, keeping omissions and destroying remove entries; requires catalog ADMIN and returns the new generation and change classification. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.write"
+    },
+    "policy_defaults": {
+      "alias": "PIMPolicyDefaults",
+      "description": "Read deployment policy defaults a catalog inherits from Settings with catalog READ and ADMIN and access to the PIM Settings namespace. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.read"
+    },
+    "configure_plugin": {
+      "alias": "PIMConfigurePlugin",
+      "description": "Replace configuration for an active plugin without changing schema generation; requires catalog ADMIN and returns the command sequence. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.write"
+    },
+    "rebuild": {
+      "alias": "PIMRebuild",
+      "description": "Resume a pending catalog materialized view rebuild after failure; requires catalog ADMIN and returns whether rebuilding is pending. Catalog id comes from the call, then trait context when omitted.",
+      "scope": "state.write"
+    }
+  }
+}

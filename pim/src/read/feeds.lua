@@ -2,6 +2,7 @@
 -- Feeds (spec 12): cursor-resumable pages over durable state, so a consumer can
 -- build its read model from cursor zero at any time and follow it.
 local store = require("store")
+local consts = require("consts")
 local read_model = require("read_model")
 local narrow = require("narrow")
 local snapshot = require("snapshot")
@@ -11,7 +12,7 @@ local types = require("types")
 local M = {}
 
 
-local PAGE = 500
+local PAGE = consts.LIMITS.feed_page
 
 local function page_limit(limit: integer?): (integer?, error?)
     local n = limit or PAGE

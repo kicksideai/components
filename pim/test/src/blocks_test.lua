@@ -75,6 +75,14 @@ local function define()
             local page = must(h, "query_products", { family = "footwear", where = { field = "core.color", op = "eq", value = "moss" }, columns = { "core.size" }, limit = 10 })
             test.eq(#(page.items :: { Map }), 3, "the three sized moss items")
             for _, item in ipairs(page.items :: { Map }) do test.is_true(tostring(item.sku):find("^RDG%-moss%-") ~= nil, tostring(item.sku)) end
+            local first = must(h, "query_products", { limit = 1 })
+            local query = entry(NS .. "query_products").data.block
+            test.eq(type(first.after), "string")
+            test.is_true(json.validate(query.output, first))
+            local resume = { limit = 1, after = first.after }
+            test.is_true(json.validate(query.input, resume))
+            local next_page = must(h, "query_products", resume)
+            test.is_true(first.items[1].product_id ~= next_page.items[1].product_id)
             local applied = must(h, "apply", { items = { { product = { sku = "RDG-moss-40" }, expect_version = "any", set = { { attr = "core.gtin", value = "BLOCK40" } } } } })
             test.eq(((applied.outcomes :: { Map })[1]).outcome, "updated")
             assert(h.call("settle", {}))

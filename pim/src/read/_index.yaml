@@ -17,7 +17,7 @@ entries:
 
   - name: reader
     kind: library.lua
-    modules: [registry]
+    modules: [registry, base64, json]
     meta:
       comment: Product reads and item queries; every answer reports as_of.
     source: file://reader.lua
@@ -47,6 +47,7 @@ entries:
       comment: Cursor-resumable feeds over durable state - product changes and channel publications.
     source: file://feeds.lua
     imports:
+      consts: kickside.pim:consts
       narrow: kickside.pim:narrow
       store: kickside.pim.persist:store
       read_model: kickside.pim.persist:read_model

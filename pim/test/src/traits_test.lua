@@ -15,8 +15,81 @@ local function tool(h: fixture.Handle, name: string, args: Map): (Map?, error?)
     return out :: Map, nil
 end
 
+local function metadata(name: string): Map
+    return assert(registry.get("kickside.pim.traits:" .. name)).meta :: Map
+end
+
 local function define()
     test.describe("agent tools", function()
+        test.it("advertises the fixed batch and column ceilings enforced by the catalog", function()
+            local h = fixture.catalog()
+            for _, case in ipairs({
+                { method = "apply", property = "items", value = {}, max = 500 },
+                { method = "propose", property = "items", value = { product = { sku = "example" } }, max = 500 },
+                { method = "release", property = "items", value = { product = { sku = "example" } }, max = 100 },
+                { method = "withdraw", property = "items", value = { product = { sku = "example" } }, max = 100 },
+                { method = "query", property = "columns", value = "core.size", max = 12 },
+            }) do
+                local entries = {}
+                for i = 1, case.max do entries[i] = case.value end
+                local request = { [case.property] = entries }
+                local schema = assert(json.decode(metadata(case.method).input_schema :: string))
+                test.is_true(json.validate(schema, request), case.method .. " ceiling")
+                entries[#entries + 1] = case.value
+                local _, err = h.call(case.method, request)
+                test.not_nil(err, case.method)
+                test.eq((err :: error):kind(), errors.INVALID, case.method)
+                test.is_false(json.validate(schema, request), case.method .. " overflow")
+            end
+        end)
+        test.it("requires both receipt key parts to be nonempty", function()
+            local schema = assert(json.decode(metadata("apply").input_schema :: string))
+            for _, key in ipairs({ { namespace = "", key = "key" }, { namespace = "scope", key = "" } }) do
+                test.is_false(json.validate(schema, { items = { {} }, idempotency = key }))
+            end
+            test.is_true(json.validate(schema, { items = { {} }, idempotency = { namespace = "scope", key = "key" } }))
+        end)
+        test.it("advertises feed limits and immutable release snapshots", function()
+            for _, name in ipairs({ "list_changes", "list_publications" }) do
+                local schema = assert(json.decode(metadata(name).input_schema :: string))
+                test.eq(schema.properties.limit.default, 500, name)
+                test.is_true(json.validate(schema.properties.limit, 500), name)
+                test.is_false(json.validate(schema.properties.limit, 501), name)
+            end
+            test.is_true((metadata("list_releases").llm_description :: string):find("snapshots", 1, true) ~= nil)
+        end)
+        test.it("describes individual refusals even when an independent call succeeds", function()
+            local h = fixture.catalog()
+            local result = assert(tool(h, "apply", { catalog_id = h.id, mode = "independent", items = {
+                { product = { sku = "missing" }, expect_version = "any" },
+            } }))
+            test.is_true(result.success == true)
+            test.is_true(result.applied == true)
+            test.eq(result.outcomes[1].outcome, "invalid")
+            test.eq(result.outcomes[1].findings[1].code, "invalid_reference")
+            local meta = metadata("apply")
+            local schema = assert(json.decode(meta.output_schema :: string))
+            test.is_true(json.validate(schema, result))
+            result.outcomes[1].outcome = "undocumented_status"
+            test.is_false(json.validate(schema, result))
+            test.is_true((meta.llm_description :: string):find("every outcome", 1, true) ~= nil)
+            test.eq(schema.properties.outcomes.items.properties.findings.items.properties.code.type, "string")
+        end)
+        test.it("publishes request and job ids as fields of queued release outcomes", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local model = assert(h.call("get", { product = { sku = "RDG" } })).product
+            local result = assert(tool(h, "release", { catalog_id = h.id, items = {
+                { product = { id = model.product_id }, expect_version = model.version, channels = { "web" } },
+            } }))
+            test.eq(result.outcomes[1].outcome, "queued")
+            local schema = assert(json.decode(metadata("release").output_schema :: string))
+            test.is_true(json.validate(schema, result))
+            for _, field in ipairs({ "request_id", "job_id" }) do
+                test.eq(type(result.outcomes[1][field]), "string", field)
+                test.eq(schema.properties.outcomes.items.properties[field].type, "string", field)
+            end
+        end)
         test.it("uses context addressing, gives call ids precedence and preserves contract refusals", function()
             local h = fixture.catalog()
             local other = fixture.catalog()

@@ -3,6 +3,8 @@ local failure=require("failure")
 -- Reads (spec 7): one product with its resolved view, and item queries over the
 -- generated item table. Every answer reports as_of, the folded catalog seq.
 local consts = require("consts")
+local base64 = require("base64")
+local json = require("json")
 local store = require("store")
 local read_model = require("read_model")
 local proposal_rows = require("proposal_rows")
@@ -141,17 +143,48 @@ local function field_resolver(compiled: types.Compiled, pending: { [string]: boo
     end
 end
 
+local function query_token(cursor: types.Cursor): string
+    local key = cursor.v
+    local wire: types.QueryPosition = { id = cursor.id }
+    if type(key) == "number" then
+        wire.decimal = tostring(key)
+    else
+        wire.key = key
+    end
+    return base64.encode(assert(json.encode(wire)))
+end
+
+local function query_position(token: types.QueryToken): types.Cursor?
+    local raw = base64.decode(token)
+    local decoded = raw and json.decode(raw)
+    if type(decoded) ~= "table" then return nil end
+    local wire = decoded :: { [string]: unknown }
+    if type(wire.id) ~= "string" or wire.id == "" then return nil end
+    for key in pairs(wire) do
+        if key ~= "id" and key ~= "key" and key ~= "decimal" then return nil end
+    end
+    if wire.decimal ~= nil then
+        if wire.key ~= nil or type(wire.decimal) ~= "string" or not wire.decimal:match("^%-?%d+$") then return nil end
+        local number = tonumber(wire.decimal)
+        if not number or math.type(number) ~= "integer" then return nil end
+        return { id = wire.id, v = number :: integer }
+    end
+    if wire.key ~= nil and type(wire.key) ~= "string" then return nil end
+    return { id = wire.id, v = wire.key :: string? }
+end
+
 -- query(catalog_id, { where?, text?, family?, status?, sort?, limit?, after?, count? })
 -- where is a filter tree (kickside.pim.persist:tree).
 function M.query(catalog_id: string, request: types.QueryRequest?): (types.QueryResult?, error?)
     local caller, access_err = access.reader(catalog_id)
     if access_err or not caller then return nil, access_err end
     local q: types.QueryRequest = request or {}
-    local limit = q.limit or 50
+    local limit = q.limit or consts.LIMITS.page_default
     if limit < 1 or limit > consts.LIMITS.page then return nil, invalid("limit must be 1.." .. consts.LIMITS.page) end
-    local after = q.after
-    if after ~= nil and (type(after.id) ~= "string" or (after.v ~= nil and type(after.v) ~= "string" and math.type(after.v) ~= "integer")) then
-        return nil, invalid("after must be a query cursor")
+    local after: types.Cursor? = nil
+    if q.after then
+        after = query_position(q.after)
+        if not after then return nil, invalid("after must be a PIMQuery continuation") end
     end
     local admitted, scope_err = scopes.admit(caller, q.scopes)
     if scope_err or not admitted then return nil, scope_err end
@@ -212,7 +245,7 @@ function M.query(catalog_id: string, request: types.QueryRequest?): (types.Query
             local cerr = schema.check_context(compiled.dimensions, q.context)
             if cerr then return nil, cerr end
         end
-        local page: types.ItemQuery = { where = q.where, text = q.text, sort = q.sort, after = q.after,
+        local page: types.ItemQuery = { where = q.where, text = q.text, sort = q.sort, after = after,
             count = q.count and consts.LIMITS.count or nil, scan = consts.LIMITS.scan }
         local plan, berr = select.items(caller, layout.of(catalog.item_table, compiled.layout), dialect, page, resolve_field, admitted,
             conditions, { "version", "status", "family" })
@@ -245,11 +278,9 @@ function M.query(catalog_id: string, request: types.QueryRequest?): (types.Query
                 end
             end
         end
-        local after: types.Cursor? = nil
-        if #rows > limit then
-            after = select.cursor_of(rows[limit], plan.sort_column)
-        end
-        return { items = out, after = stopped or after, total = total, estimated = estimated, incomplete = stopped ~= nil or nil }, nil
+        local position = stopped or (#rows > limit and select.cursor_of(rows[limit], plan.sort_column) or nil)
+        return { items = out, after = position and query_token(position) or nil,
+            total = total, estimated = estimated, incomplete = stopped ~= nil or nil }, nil
     end, q.min_seq)
 end
 
@@ -370,7 +401,7 @@ end
 function M.list_terms(catalog_id: string, request: types.ListTermsRequest): (types.ListTermsResult?, error?)
     local caller, access_err = access.reader(catalog_id)
     if access_err or not caller then return nil, access_err end
-    local limit = request.limit or 200
+    local limit = request.limit or consts.LIMITS.page
     if limit < 1 or limit > consts.LIMITS.page then return nil, invalid("limit must be 1.." .. consts.LIMITS.page) end
     return with_snapshot(caller, function(tx: types.Executor, catalog: types.Catalog, _dialect: string): (types.ListTermsResult?, error?)
         if not catalog.compiled.vocabularies[request.vocabulary] then return nil, invalid("unknown vocabulary " .. tostring(request.vocabulary)) end
@@ -394,7 +425,7 @@ function M.history(catalog_id: string, request: types.HistoryRequest?): (types.H
     local caller, access_err = access.reader(catalog_id)
     if access_err or not caller then return nil, access_err end
     local q: types.HistoryRequest = request or {}
-    local limit = q.limit or 50
+    local limit = q.limit or consts.LIMITS.page_default
     if limit < 1 or limit > consts.LIMITS.page then return nil, invalid("limit must be 1.." .. consts.LIMITS.page) end
     if q.before ~= nil then
         local seq, n = history.cursor(tostring(q.before))
@@ -461,7 +492,7 @@ function M.proposals(catalog_id: string, request: types.ProposalsRequest?): (typ
     local caller, access_err = access.reader(catalog_id)
     if access_err or not caller then return nil, access_err end
     local q: types.ProposalsRequest = request or {}
-    local limit = q.limit or 50
+    local limit = q.limit or consts.LIMITS.page_default
     if limit < 1 or limit > consts.LIMITS.page then return nil, invalid("limit must be 1.." .. consts.LIMITS.page) end
     local db, err = store.open()
     if not db then return nil, err end
@@ -480,7 +511,7 @@ end
 function M.links(catalog_id: string, request: types.LinksRequest): (types.LinksResult?, error?)
     local caller, access_err = access.reader(catalog_id)
     if access_err or not caller then return nil, access_err end
-    local limit = request.limit or 50
+    local limit = request.limit or consts.LIMITS.page_default
     if limit < 1 or limit > consts.LIMITS.page then return nil, invalid("limit must be 1.." .. consts.LIMITS.page) end
     local after = request.after
     if after ~= nil and (type(after.product_id) ~= "string" or math.type(after.attribute_id) ~= "integer"

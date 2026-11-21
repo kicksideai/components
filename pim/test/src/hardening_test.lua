@@ -9,6 +9,7 @@ local steps = require("steps")
 local store = require("store")
 local types = require("types")
 local json = require("json")
+local base64 = require("base64")
 
 type Map = { [string]: unknown }
 
@@ -309,8 +310,8 @@ local function define()
             local expected = {}
             for _, item in ipairs(assert(h.call("query", {})).items) do expected[item.product_id] = true end
             for _, request in ipairs({
-                { after = { id = DROP } },
-                { sort = { field = "core.gtin" }, after = { id = DROP, v = DROP } },
+                { after = base64.encode(assert(json.encode({ id = DROP }))) },
+                { sort = { field = "core.gtin" }, after = base64.encode(assert(json.encode({ id = DROP, key = DROP }))) },
             } :: { Map }) do
                 local out, err = h.call("query", request)
                 test.is_nil(err)

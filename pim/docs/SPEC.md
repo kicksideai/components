@@ -1490,12 +1490,16 @@ The catalog is the security unit: READ sees every item of the catalog.
 | `list_history({ product?, before?, limit? })` | change rows newest first (5.6) |
 | `list_links({ kind, target, cursor?, limit? })` | products referencing a target, for every ref kind (`product`, `term`, `asset`, `component`, link kinds), from `ref(catalog_id, kind, target)` |
 | `get_release({ release_id })` | the immutable snapshot, hash, version, generation and channels |
-| `list_releases({ product, before?, limit? })` | a product's releases newest first |
+| `list_releases({ product, before?, limit? })` | a product's immutable release snapshots and metadata, newest first |
 | `get_schema({ generation? })` | the declaration and compiled public parts of the head (including an initially empty schema), or of a past generation; `plugins` is the per-catalog state list in §3.2 |
 | `plugin_context({ catalog_id, plugin })` | contract-only READ; `{ attachment_id, config, lifecycle, projections }` for an active plugin (§3.2) |
 | `plugin_feed({ catalog_id, plugin, kind, token? })` | contract-only READ; one bounded state page `{ attachment_id, config, bootstrap, gap?, changes, token, done }` for an active declared state projection (§3.11) |
 | `explain({ product, attr, context })` | the resolution steps (2.6) and the findings behind readiness |
 | `list_changes`, `list_publications` | the feeds (§12) |
+
+Query pages return an opaque string in `after` when there is another page or the
+scan stops early. Pass it unchanged with the same query, even if an incomplete
+page has no matches. A JSON round trip preserves the full signed 64-bit position.
 
 `where` is the record engine's filter tree: a node is one of `{ and: [node] }`,
 `{ or: [node] }`, `{ not: node }` or a leaf `{ field, ctx?, op, value }`, nesting
@@ -1790,6 +1794,21 @@ Request parsers derive method schemas once per registry version, using the
 published Lua `registry.current_version():id()` for invalidation. Byte-integer
 definitions validate every byte and convert in chunks of at most 4,096 bytes.
 Malformed bytes return `INTERNAL / contract_schema_invalid`.
+
+The vocabulary in `src/contracts/vocabulary.json` generates the catalog method
+schemas, tool schemas and Lua limits. The same definitions supply the query and
+mutation Block schemas. Run `node scripts/generate-contracts.mjs` after changing
+the vocabulary. Apply and proposal batches admit up to 500 items. Release and
+withdrawal batches admit up to 100. Queries admit up to 12 projected columns.
+PIMChanges and PIMPublications allow up to 500 rows and use 500 by default.
+
+An agent should check each mutation outcome and its finding codes before
+advancing. `success: true` means the tool received a contract result. For
+PIMApply, an atomic refusal has `applied: false` and writes none of the batch.
+Independent mode reports `applied: true` even when every item was refused.
+PIMDecide also reports the decision status and any application result. In a
+PIMRelease outcome, `queued` means work is pending and supplies `request_id`
+and `job_id` for tracking.
 
 - Contract `kickside.pim:catalog` (binding `kickside.pim.service:catalog`):
   `create`, `list`, `get_schema`, `plan_schema`, `apply_schema`, `get`,
