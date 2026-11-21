@@ -133,10 +133,17 @@ local function define()
             end
         end)
 
-        test.it("publish an event port for every catalog output event", function()
+        test.it("publishes ports for public catalog events and keeps the asset fence internal", function()
             local binding = assert(registry.get("kickside.pim.binding:catalog"))
             local outputs = {}
-            for _, o in ipairs(binding.meta.events.output) do outputs[o.type] = true end
+            local internal = {}
+            for _, o in ipairs(binding.meta.events.output) do
+                local event = assert(registry.get(o.type))
+                if event.meta.internal == true then internal[#internal + 1] = o.type
+                else outputs[o.type] = true end
+            end
+            test.eq(#internal, 1)
+            test.eq(internal[1], "kickside.pim.events:assets.reaping")
             local ports = assert(registry.find({ [".kind"] = "registry.entry", ["meta.type"] = "kickside.automation.port" }))
             local seen = {}
             for _, p in ipairs(ports) do
@@ -151,12 +158,14 @@ local function define()
             for t in pairs(outputs) do test.is_true(seen[t] == true, t) end
         end)
 
-        test.it("emit only event bodies their declared schemas accept, for every event type", function()
+        test.it("emits a schema-valid body for every public catalog event", function()
             local h = fixture.catalog()
             every_event(h)
             local binding = assert(registry.get("kickside.pim.binding:catalog"))
             local declared: { [string]: boolean } = {}
-            for _, o in ipairs(binding.meta.events.output) do declared[o.type] = true end
+            for _, o in ipairs(binding.meta.events.output) do
+                if not assert(registry.get(o.type)).meta.internal then declared[o.type] = true end
+            end
             local page = assert(h.call("events", {}))
             local rows: { types.RawEvent } = page.events
             local seen: { [string]: boolean } = {}

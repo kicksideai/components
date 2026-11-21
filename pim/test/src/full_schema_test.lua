@@ -986,6 +986,17 @@ local function media_cases()
         test.eq(send_media(reader, "GET", first_raw).body, PNG)
         retention_until(h.id, function() return not upload_exists(first) end)
         test.is_false(assert(fs.get("app:exports")):exists(first_path))
+        local fence_id = "kickside.pim.events:assets.reaping"
+        local schema = assert(registry.get(fence_id)).data.schema
+        local fenced = false
+        for _, event in ipairs(call(h, "events", {}).events) do
+            if event.type == fence_id then
+                local body = type(event.body) == "string" and assert(json.decode(event.body)) or event.body
+                test.is_true(json.validate(schema, body))
+                fenced = fenced or body.ids[1] == first
+            end
+        end
+        test.is_true(fenced)
         test.eq(send_media(reader, "GET", first_raw).status_code, 404)
         outcome(edit(h, "MEDIA", {set = {media_value(first)}}), "invalid", "invalid_reference")
         test.eq(send_media(reader, "GET", "/uploads/" .. second .. "/raw").body, replacement_bytes)

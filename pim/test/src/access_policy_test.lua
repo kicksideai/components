@@ -93,7 +93,7 @@ local function define()
                 for _, event in ipairs(resources) do holders[event] = (holders[event] or 0) + 1 end
             end
             local declared = binding.meta.events.output
-            test.eq(#declared, 15)
+            test.eq(#declared, 16)
             test.eq(#binding.meta.events.input, 0)
             local member = security.new_actor("pim-member", {})
             for _, shape in ipairs(declared) do

@@ -16,7 +16,7 @@ entries:
             definition: '{"type":"object","required":["upload_id"],"additionalProperties":false,"properties":{"catalog_id":{"type":"string","description":"Catalog component id returned by PIMCatalogs; the contract resolves an omitted id only when exactly one catalog is readable."},"upload_id":{"type":"string","minLength":36,"maxLength":36,"description":"UUID of a completed upload owned by the caller."}}}'
         output_schemas:
           - format: application/schema+json
-            definition: '{"type":"object","required":["asset"],"additionalProperties":false,"properties":{"asset":{"type":"object","required":["ref"],"properties":{"ref":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"string"}}}}}}'
+            definition: '{"type":"object","required":["asset"],"additionalProperties":false,"properties":{"asset":{"type":"object","description":"Catalog-owned reference to write to a media field.","required":["ref"],"properties":{"ref":{"type":"array","description":"Two entries containing the asset kind and immutable upload version ID.","minItems":2,"maxItems":2,"items":{"type":"string"}}}}}}'
       - name: create
         description: 'Create a catalog for the caller. Idempotent per caller and key; establishes the first schema generation, empty when declaration is omitted.'
         input_schemas:

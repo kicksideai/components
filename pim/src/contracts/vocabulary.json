@@ -253,7 +253,7 @@
       },
       "output": {
         "type":"object","required":["asset"],"additionalProperties":false,
-        "properties":{"asset":{"type":"object","required":["ref"],"properties":{"ref":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"string"}}}}}
+        "properties":{"asset":{"type":"object","description":"Catalog-owned reference to write to a media field.","required":["ref"],"properties":{"ref":{"type":"array","description":"Two entries containing the asset kind and immutable upload version ID.","minItems":2,"maxItems":2,"items":{"type":"string"}}}}}
       }
     },
     "create": {

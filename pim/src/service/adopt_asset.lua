@@ -25,13 +25,11 @@ local function run(input: unknown): (types.JsonObject?, error?)
         local deleting, derr = tx:query("SELECT 1 FROM kickside_pim_cleanup WHERE catalog_id=$1", {catalog_id})
         if derr then return nil, derr end
         if deleting and #deleting > 0 then return nil, failure.catalog_not_initialized() end
-        local rerr = asset_rows.reserve(tx, catalog_id, version)
-        if rerr then return nil, rerr end
-        return true, nil
+        return asset_rows.reserve(tx, catalog_id, version)
     end)
     if reserve_err or not reserved then return nil, reserve_err end
     local asset, adopt_err = funcs.call("kickside.uploads:adopt_component_upload",
-        { component_id = catalog_id, version_id = version, upload_id = request.upload_id })
+        { component_id = catalog_id, version_id = version, upload_id = request.upload_id, lease_until = reserved })
     if adopt_err then return nil, adopt_err end
     if not asset then return nil, failure.corrupt("asset adoption returned no version") end
     local _, finish_err = store.transaction("finish catalog asset", function(tx: types.Executor, _dialect: string)

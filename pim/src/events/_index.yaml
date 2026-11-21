@@ -136,7 +136,7 @@ entries:
 
   - name: assets.reaping
     kind: registry.entry
-    meta: {type: kickside.core.threads.event, comment: Fence unreferenced asset versions before storage collection.}
+    meta: {type: kickside.core.threads.event, internal: true, comment: Fence unreferenced asset versions before storage collection.}
     schema:
       type: object
       additionalProperties: false
