@@ -240,8 +240,9 @@ function M.run(input: unknown): (reads.QueryResult?, error?)
     if view.boards then
         if request.min_seq ~= nil then return nil, invalid("min_seq requires a single-board view") end
     end
-    local first = request.after == nil
-    local result, qerr = cross_board.query({ group_by = first and view.group_by or nil, sub_group_by = first and view.sub_group_by or nil,
+    -- The top-level item cursor continues the flat page of a grouped view.
+    local grouped = request.after == nil
+    local result, qerr = cross_board.query({ group_by = grouped and view.group_by or nil, sub_group_by = grouped and view.sub_group_by or nil,
         board_id = context.board_id, where = view.where, order = view.order, scopes = view.scopes, boards = view.boards,
         limit = request.limit, after = request.after, cross_after = request.cross_after, group_after = request.group_after,
         group_limit = request.group_limit, measures = request.measures, min_seq = request.min_seq }, view.columns or {})

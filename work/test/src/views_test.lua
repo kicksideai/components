@@ -337,6 +337,13 @@ local function define()
             test.eq(group.items[1].id, first)
             test.not_nil(group.after)
             test.eq(page.items[1].id, first)
+            for _, grouped in ipairs({ { group_limit = 1 }, { group_after = "group" },
+                { measures = { { id = "total", op = "sum", field = "estimate" } } } }) do
+                grouped.view_id, grouped.limit, grouped.after = id, 1, page.after
+                local mixed, err = member.call("run_view", grouped)
+                test.is_nil(mixed)
+                test.eq(err:details().code, "invalid_shape")
+            end
             page = assert(member.call("run_view", { view_id = id, limit = 1, after = page.after }))
             test.eq(page.items[1].id, second)
             page = assert(member.call("run_view", { view_id = id, limit = 1, after = page.after }))

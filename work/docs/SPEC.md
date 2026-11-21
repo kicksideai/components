@@ -17,13 +17,24 @@ The published seams are declarative field types over the existing value forms, g
 
 State workers consume the bounded `plugin_feed` pages. Event workers receive selected retained events. Resync preserves healthy unchanged registrations and rebuilds a parked state projection from current items. A parked event projection replays from its registered start and reports the retained floor if that start is gone. Changing a declared revision resets the corresponding worker. An independent view type can bind a saved view to a registered web component. Removing the view type makes run return `view_type_unavailable` and preserves the saved definition for repair.
 
-## Grouped reads
-
-Single-level queries with no selection filter or plugin scope use a keyset seek when an existing index covers the group key and item ID. The walk handles missing keys last and budgets inspected rows before applying visibility. The separately capped top-level item page keeps its requested order. A page returns the requested number of complete groups or reaches the end of the selection. Two-level and other group shapes still return exact results when their candidate selection fits the allowance, including full totals for a parent repeated across subgroup pages. A group page that exceeds its allowance returns `incomplete: true` and `group_limited: true` without groups or a group continuation.
-
-## Saved views
+## Work queries and saved views
 
 Renaming a saved view requires its personal owner or board ADMIN. Saving a definition requires view WRITE and admission to its board selection. If save includes a title, the rename authority applies as well. Work saves the new title and definition in one component transaction.
+
+`kickside.work:view` creates, lists, reads, saves, renames, deletes and runs saved views. Shared views are owned by the anchor board and placed beneath it. Personal views sit at root. Deletion requires the personal owner or board ADMIN and reports `deleted` or `in_progress` while component cleanup completes. Lists page in creation order under the caller's read access. The binding is `kickside.work.binding:view` and its class is `kickside.work:view`.
+
+- Single-board flat items use the top-level `after` cursor. Keep the selection and order. A saved grouped view also returns a flat item page. Continue it with `after` and flat arguments such as `limit` and `min_seq`.
+- Single-board groups use `group_after`. Keep the board, viewer, generation, selection and grouping. Send `group_limit` and `measures` on the first grouped request and subsequent group pages.
+- Items within a group or subgroup use that bucket's `after` cursor. Run a flat query filtered to the bucket using the same item order.
+- Cross-board flat items use `cross_after`. Keep the original selection, viewer authority, filters and sort. Restart without the cursor if the selection, authority or schema invalidates it.
+
+Pass each returned cursor unchanged and use one continuation mode per request. Single-board queries support up to three sort keys, nulls last, and `min_seq` as a minimum committed sequence. Group pages follow the group keys with missing keys last. `group_limit` defaults to 200 and accepts 1 through 200. Two-level pages spend that limit on subgroups. A parent that spans pages repeats with its full count and measures. Each call reads a committed snapshot and reports `as_of`. A read waiting on a needed index omits groups and `group_after`. Inspect `reindexing` before using the result.
+
+Single-level queries with no selection filter or plugin scope seek past the previous group key when an existing index covers the group key and item ID. Inspected rows spend the read allowance before visibility is applied. The separately capped top-level item page keeps its requested order. The group page returns the requested number of complete groups or reaches the end of the selection. Two-level and other group shapes produce exact results when their candidate selection fits the allowance. A group page over its allowance returns `incomplete: true` and `group_limited: true` and omits groups and `group_after`.
+
+Grouped queries and saved-view runs accept up to four sums with unique IDs in `measures`. A sum uses `{ id, op: "sum", field }` and requires board-wide READ on an indexed scalar `int` or `dec` field. Counts and sums cover the same caller-visible, filtered rows. Totals are exact base-ten strings, including totals beyond JSON's safe integer range. Cleared and absent values contribute nothing. A measure with no values is `null`.
+
+A saved view can select up to 50 distinct boards or use `view.boards: "readable"`, expanded for the current viewer on every run. Create and save validate compatible filters, columns, scopes and one indexed sort key across the selection. Cross-board queries are flat and use a single sort key. Get and run require READ on the anchor and selected boards. When a selected board becomes inaccessible, those methods return a generic access denial. The anchor list returns only `view_id`, `board_id` and `status: "unavailable"` for that entry and advances its continuation. Work stores the selection expression and runs under the viewer's live authority.
 
 ## Item write invariants
 
