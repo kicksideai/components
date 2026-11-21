@@ -10,12 +10,6 @@ type Candidate = { item_id: string, item_key: string, source_seq: integer }
 type Document = Candidate & { content: string }
 
 local M = { Generation = Generation, State = State, Candidate = Candidate, Document = Document }
-local SPEC = {
-    vectors = "", vector_key = "",
-    rows = "kickside_work_search_row", row_key = "row_id", partition = "generation_id",
-    columns = { "item_id", "item_key", "source_seq" }, fts = "kickside_work_search_fts",
-    fts_key = "rowid", tsvector = "search_vector", lexical_scope = true,
-}
 
 function M.open(): (sql.DB?, error?)
     local entry, err = registry.get("kickside.work_search:storage_config")
@@ -49,14 +43,39 @@ local function lookup(tx: sql.Transaction, dialect: string, attachment_id: strin
             WHERE generation_id=$1 AND item_key=$2]], { active.id, key:upper() })
         return rows :: { Candidate }?, err
     end
-    local runner = {
-        type = function(): string return dialect end,
-        query = function(_self: unknown, statement: string, args: { unknown })
-            return tx:query(statement, args)
-        end,
-    }
-    local rows, err = index.lexical_search(runner, SPEC, text, { partition = active.id, limit = limit })
-    return rows :: { Candidate }?, err :: error?
+    local sqlite = dialect == sql.type.SQLITE
+    local match = index.lexical_query(text, sqlite)
+    if not match then return {}, nil end
+    local token = index.lexical_scope_token(active.id)
+    local matches, match_err
+    if sqlite then
+        matches, match_err = tx:query([[SELECT rowid AS row_id FROM kickside_work_search_fts
+            WHERE kickside_work_search_fts MATCH $1 LIMIT $2]],
+            { 'scope_token : "' .. token .. '" AND content : (' .. match .. ')', limit + 1 })
+    else
+        -- GiST can stream a capped match set. A bitmap scan builds every match before LIMIT runs.
+        local _, plan_err = tx:query([[SELECT set_config('enable_bitmapscan', 'off', true),
+            set_config('enable_seqscan', 'off', true)]], {})
+        if plan_err then return nil, plan_err end
+        matches, match_err = tx:query([[SELECT row_id FROM kickside_work_search_row
+            WHERE search_vector @@ (to_tsquery('simple', $1) && to_tsquery('simple', $2))
+            LIMIT $3]], { match, token .. "@scope.invalid:D", limit + 1 })
+    end
+    if match_err or not matches then return nil, match_err end
+    if #matches > limit then
+        return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true,
+            message = "Work Search found too many lexical matches to verify", details = { code = "search_verification_budget" } })
+    end
+    if #matches == 0 then return {}, nil end
+    local args: { unknown } = { active.id }
+    local marks: { string } = {}
+    for i, row in ipairs(matches) do
+        marks[i] = "$" .. (i + 1)
+        args[i + 1] = row.row_id
+    end
+    local rows, read_err = tx:query([[SELECT item_id, item_key, source_seq FROM kickside_work_search_row
+        WHERE generation_id=$1 AND row_id IN (]] .. table.concat(marks, ",") .. ")", args)
+    return rows :: { Candidate }?, read_err
 end
 
 function M.candidates(attachment_id: string, schema: integer, scope: string, text: string, limit: integer): ({ Candidate }?, error?)

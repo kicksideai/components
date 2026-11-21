@@ -336,12 +336,45 @@ local function define()
                 SELECT $1,'foreign-'||n,'FOREIGN-'||n,1,$2 FROM ]] .. source, { foreign, foreign_content }))
             if sqlite then
                 assert(tx:execute([[INSERT INTO kickside_work_search_fts (rowid,content,scope_token)
-                    SELECT row_id,content,$2 FROM kickside_work_search_row WHERE generation_id=$1]],
-                    { foreign, index.lexical_scope_token(foreign) }))
+                    SELECT row_id,content,$1 FROM kickside_work_search_row WHERE generation_id=$2]],
+                    { index.lexical_scope_token(foreign), foreign }))
             end
             assert(tx:commit())
             db:release()
             test.eq(indexed(member, id, "roadmap", 1)[1].id, own)
+        end)
+
+        test.it("reports a broad active generation before verifying Work candidates", function()
+            local admin = session(true)
+            local id = create(admin, declaration(TEXT))
+            local item = apply(admin, id, { op = "create", type = "issue", values = { title = "Commonword" } }).item
+            local found = indexed(admin, id, "commonword", 1)[1]
+            local db = assert(sql.get("app:db"))
+            local sqlite = db:type() == sql.type.SQLITE
+            local active = assert(db:query("SELECT generation_id FROM kickside_work_search_row WHERE item_id=$1", { item }))[1].generation_id
+            local tx = assert(db:begin())
+            -- Seed stale lexical candidates without issuing thousands of Work commands.
+            assert(tx:execute([[WITH RECURSIVE counter(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM counter WHERE n<2000)
+                INSERT INTO kickside_work_search_row (generation_id,item_id,item_key,source_seq,content)
+                SELECT $1,'stale-'||n,'STALE-'||n,1,'commonword' FROM counter]], { active }))
+            if sqlite then
+                assert(tx:execute([[INSERT INTO kickside_work_search_fts (rowid,content,scope_token)
+                    SELECT row_id,content,$1 FROM kickside_work_search_row WHERE generation_id=$2 AND item_id <> $3]],
+                    { index.lexical_scope_token(active), active, item }))
+                local matches = assert(tx:query([[SELECT count(*) AS n FROM kickside_work_search_fts
+                    WHERE kickside_work_search_fts MATCH $1]], {
+                    'scope_token : "' .. index.lexical_scope_token(active) .. '" AND content : commonword',
+                }))
+                test.eq(matches[1].n, 2001)
+            end
+            assert(tx:commit())
+            db:release()
+
+            local result, err = admin("query", { where = { match = "commonword" } }, id)
+            test.is_nil(result)
+            test.eq(err:details().code, "search_verification_budget")
+            test.is_true(tostring(err):find("too many lexical matches", 1, true) ~= nil, tostring(err))
+            test.eq(indexed(admin, id, found.key:lower(), 1)[1].id, item)
         end)
 
         test.it("checks live board access and visibility and preserves Work ordering across pages", function()
