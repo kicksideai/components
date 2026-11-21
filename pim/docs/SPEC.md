@@ -224,6 +224,10 @@ Forms, never plugins, define:
   declared `range` (else rejected at write); quantities order by the
   canonical amount rounded half-up at that scale.
 
+Decimal strings reduce trailing zeros before the mantissa and exponent bounds
+are tested. Time keys preserve every significant fractional digit and treat
+trailing zeros as part of the same instant.
+
 Quantity config: `units: { <unit>: "<decimal factor>" }`, `canonical`
 (factor exactly `1`), `scale`, `range`. Values are entered as `"1.5 lb"` or
 `{ value, unit }` and keep the authored unit. `money` is a `dec` with a

@@ -94,11 +94,15 @@ local function parse_dec(raw: unknown): (types.Dec?, error?)
     elseif type(raw) == "string" then
         local sign, int, frac = raw:match("^([%-]?)(%d+)%.?(%d*)$")
         if not int then return nil, invalid("invalid decimal: " .. raw) end
-        local digits = (int .. frac):gsub("^0+(%d)", "%1")
-        m = math.tointeger(tonumber(digits))
-        if m == nil then return nil, invalid("decimal out of range: " .. raw) end
-        if sign == "-" then m = -m end
-        e = -#frac
+        local digits = int .. frac
+        local first = digits:find("[1-9]")
+        if not first then return { m = 0, e = 0 }, nil end
+        local trailing = (digits:reverse():find("[1-9]") :: integer) - 1
+        local last = #digits - trailing
+        e = trailing - #frac
+        if last - first >= 15 or e < -12 or e > 12 then return nil, invalid("decimal out of range") end
+        local mantissa = math.tointeger(tonumber(digits:sub(first, last))) :: integer
+        return { m = sign == "-" and -mantissa or mantissa, e = e }, nil
     else
         return nil, invalid("decimal value required")
     end
@@ -244,12 +248,13 @@ local function normalize_scalar(form: string, raw: unknown, config: types.Attrib
     return nil, invalid("unknown form: " .. tostring(form))
 end
 
--- time_key gives every instant nine fractional digits, so keys compare in time
--- order as text. A date stays a date.
+-- Strip trailing fractional zeros and the UTC suffix. A proper prefix then
+-- sorts before the longer fraction with the same initial digits.
 local function time_key(text: string): string
     local stem, fraction = text:match("^(.-T%d%d:%d%d:%d%d)%.?(%d*)Z$")
     if not stem then return text end
-    return stem .. "." .. (fraction .. "000000000"):sub(1, 9) .. "Z"
+    local significant = fraction:match("^(.*[1-9])") or ""
+    return stem .. "." .. significant
 end
 
 function M.key(form: string, value: types.Scalar, config: types.AttributeConfig?): (string?, error?)
