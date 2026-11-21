@@ -34,7 +34,7 @@ it.each([false, true])('uses a single settings surface with embedded=%s', async 
   expect(wrapper.findAll('.work-ia-head')).toHaveLength(1)
   const rail = wrapper.get('.work-section-layout > nav[aria-label="Board settings sections"]')
   expect(rail.findAll('.kx-settings-rail-item').map(option => option.text())).toEqual([
-    embedded ? 'All boards' : 'Back to board', 'General', 'Items', 'Workflow', 'Access', 'Plugins',
+    embedded ? 'All boards' : 'Back to board', 'General', 'Item types', 'Fields', 'Links', 'Workflow', 'Access', 'Plugins',
   ])
   expect(rail.get('.kx-settings-rail-group').text()).toBe('Delivery')
   expect(wrapper.get('.kx-main-scroll > header h1').text()).toBe('General')

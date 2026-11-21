@@ -92,8 +92,8 @@ stay fixed. Invalid installed pack summaries remain disabled choices with their
 problem reason. A missing title is shown as Unnamed pack. Valid packs and Empty board remain usable.
 
 
-Board settings open in five sections: General, Items, Workflow, Access and
-Plugins. In System, All boards is the first item in the section rail and
+Board settings open in General. The Board setup rail group contains Item types,
+Fields, Links and Workflow. Management contains Access and Plugins. In System, All boards is the first item in the section rail and
 returns the operator to the board directory. The board name heads the rail.
 The section's content header holds Share board, Discard and Review changes.
 Review changes keeps the active section behind the review. Schema changes use
@@ -102,17 +102,19 @@ the opening-app binding, sharing and settings for already active plugins use
 their existing independent write endpoints. Board identity uses `wc-icon-picker`.
 The administrator can choose a registered opening app by title where the Work
 binding contract is available. Clearing the selection uses the installation
-default.
+default. General leads with the board name, app and key prefix, followed by
+open and total item counts, pack actions and a recent changes disclosure.
 
-Items keeps type placement, field definitions and link definitions together.
-Opening a type’s field list filters it and preselects placement when adding a
-field inline. Item reference fields can choose a named target type. Top-level
+Expand an item type to edit the fields it uses. Fields defines fields shared by
+the board and can filter by item type. Links defines relationships that appear
+on both items. Item reference fields can choose a named target type. Top-level
 placement beside named parents uses Work’s boolean marker. Integration
 identifiers and configuration without a structured form are local disclosures.
 Workflow shows caller-visible item counts for the committed workflow and edits
 limits and requirements on the state where they apply. Map and List use the
 same transition inspector. Installed checks and query filters come from Work
-registry metadata.
+registry metadata. The Plugins switch shows whether a plugin is selected for
+the board. A badge signals a pending change or a health issue.
 
 Access is an ADMIN-only section. The board header and Access open the same shared
 `kickside-share` widget for the board component’s grants and share routes.

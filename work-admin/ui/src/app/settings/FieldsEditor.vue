@@ -136,12 +136,11 @@ const openedField = ref('')
 </script>
 <template>
   <section class="work-stack" aria-label="Fields editor">
-    <header class="work-ia-toolbar">
-      <div><h3>Fields</h3><p class="work-muted">Choose what people can capture on each item.</p></div>
-      <Select :model-value="currentType?.id ?? ''" aria-label="Filter fields by item type" appendTo="self" optionLabel="label" optionValue="value"
+    <div class="work-form-actions work-wrap">
+      <Select :model-value="currentType?.id ?? ''" aria-label="Filter fields by item type" placeholder="All item types" appendTo="self" optionLabel="label" optionValue="value"
         :options="[{ value: '', label: 'All item types' }, ...typeChoices]" @update:model-value="emit('update:itemType', $event)" />
       <Button label="Add field" :aria-expanded="adding" :disabled="adding" @click="startAdd"><template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template></Button>
-    </header>
+    </div>
     <section v-if="adding" ref="addArea" class="work-settings-card work-stack" aria-label="Add field" @keydown.esc.stop="adding = false">
         <header><h3>Add field</h3><p class="work-muted">Choose what the field captures and which items show it.</p></header>
         <label class="work-stack work-tight">Field name<InputText v-model="name" aria-label="Field name" maxlength="255" @keydown.enter.prevent="add" /></label>

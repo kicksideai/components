@@ -28,6 +28,10 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
   const errors: string[] = [], requests: { path: string; body: Record<string, unknown> }[] = []
   page.on('pageerror', e => errors.push(e.message))
   let view = schema(), hold = false, held: Route | undefined, createdTitle = '', description = ''
+  if (mode === 'board-setup') {
+    view.declaration.plugins = [{ use: 'fixture:enhancements' }]
+    view.plugins = [{ plugin: 'fixture:enhancements', active: true, installed: true, requires: [], tools: [], lifecycle: { state: 'ready' }, projections: {} }]
+  }
   if (mode === 'process') { view.declaration.processes = [cicd]; view.compiled.processes = [cicd] }
   if (mode === 'process-editing') {
     const process = view.declaration.processes![0]
@@ -44,7 +48,8 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
     const reply = (data: unknown) => route.fulfill({ json: { success: true, data } })
     if (path.endsWith('/query')) return reply({ items: [], groups: [] })
     if (path.endsWith('/packs')) return reply({ packs: [{ id: 'broken:pack', title: 'Broken installed pack', problem: { code: 'invalid_pack', message: 'Pack data is malformed' } }, { id: 'release:pack', title: 'Release pipeline', version: '1.0.0', icon: 'tabler:route', description: 'Release work', requires: [], plugins: [] }] })
-    if (path.endsWith('/options')) return reply({ access, schema_options: { plugins: [{ plugin: 'fixture:enhancements', title: 'Board enhancements', requires: [], config_schema: { type: 'object', properties: { threshold: { type: 'integer', title: 'Threshold' } } } }] }, installed_types: [{ id: 'fixture:rating', title: 'Rating' }] })
+    if (path.endsWith('/options')) return reply({ access, schema_options: { plugins: [{ plugin: 'fixture:enhancements', title: 'Board enhancements', installed: true, requires: [], config_schema: { type: 'object', properties: { threshold: { type: 'integer', title: 'Threshold' } } } }] }, board_apps: [{ id: 'fixture:tracker', title: 'Tracker' }], installed_types: [{ id: 'fixture:rating', title: 'Rating' }] })
+    if (path.endsWith('/state_counts')) return reply({ task: { todo: 2, doing: 1 } })
     if (path.endsWith('/get_schema')) {
       if (path.includes('/new/')) return reply({ generation: 1, declaration: { key_prefix: 'WORK' }, compiled: {}, key_prefix: 'WORK', as_of: 1 })
       if (hold) { hold = false; held = route; return }
@@ -67,7 +72,7 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
     if (path.endsWith('/update')) { description = String(body.description); return reply({ board_id: 'new', status: 'updated' }) }
     if (path.endsWith('/boards')) {
       if (route.request().method() === 'POST') { createdTitle = String(body.title); return reply({ board_id: 'new', generation: 1 }) }
-      return reply({ boards: [{ board_id: 'b', title: 'Delivery', access }, { board_id: 'other', title: 'Other board', access }, { board_id: 'long', title: longBoardName, access }, ...(createdTitle ? [{ board_id: 'new', title: createdTitle, description, access }] : [])] })
+      return reply({ boards: [{ board_id: 'b', title: 'Delivery', item_count: 3, open_count: 3, access }, { board_id: 'other', title: 'Other board', access }, { board_id: 'long', title: longBoardName, access }, ...(createdTitle ? [{ board_id: 'new', title: createdTitle, description, access }] : [])] })
     }
     throw new Error('Unexpected fixture request: ' + path)
   })
@@ -78,10 +83,84 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
 function boardSection(page: Page, name: string) {
   return page.getByRole('navigation', { name: 'Board settings sections' }).getByRole('button', { name, exact: true })
 }
-async function openItems(page: Page, section: string) {
-  await boardSection(page, 'Items').click()
-  await page.getByRole('tab', { name: section, exact: true }).click()
-}
+it('opens Item types, Fields and Links directly from Board setup and keeps their drafts', async () => {
+  const { page } = await fixture('board-setup', false, 390)
+  try {
+    for (const name of ['Item types', 'Fields', 'Links']) {
+      const section = boardSection(page, name)
+      await section.press('Enter')
+      expect(await section.getAttribute('aria-current')).toBe('true')
+      const content = page.getByRole('region', { name, exact: true })
+      await content.getByRole('heading', { name, exact: true }).first().waitFor()
+      expect(await content.getByRole('tablist').count()).toBe(0)
+      if (name === 'Item types') {
+        await content.getByRole('button', { name: 'Task', exact: true }).press('Enter')
+        await content.getByRole('textbox', { name: 'Title', exact: true }).fill('Delivery task')
+      }
+      if (name === 'Fields') {
+        const filter = content.getByRole('combobox', { name: 'Filter fields by item type' })
+        expect(await filter.innerText()).toBe('All item types')
+        await filter.click()
+        await content.getByRole('option', { name: 'Delivery task', exact: true }).click()
+        expect(await filter.innerText()).toBe('Delivery task')
+      }
+    }
+    await boardSection(page, 'Item types').press('Enter')
+    expect(await page.getByRole('textbox', { name: 'Title', exact: true }).inputValue()).toBe('Delivery task')
+  } finally { await page.close() }
+}, 30000)
+
+it('uses one keyboard-operable disclosure to edit the fields assigned to an item type', async () => {
+  const { page } = await fixture('board-setup')
+  try {
+    await boardSection(page, 'Item types').click()
+    expect(await page.getByRole('button', { name: 'Fields for Task', includeHidden: true }).count()).toBe(0)
+    const row = page.locator('.work-definition').filter({ has: page.getByRole('button', { name: 'Task', exact: true }) })
+    const toggle = row.getByRole('button', { name: 'Task', exact: true })
+    expect(await toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(await row.locator('.work-definition-head').getByRole('button').count()).toBe(1)
+    await toggle.press('Enter')
+    expect(await toggle.getAttribute('aria-expanded')).toBe('true')
+    await row.getByRole('group', { name: 'Fields', exact: true }).first().waitFor()
+    await toggle.press('Space')
+    expect(await toggle.getAttribute('aria-expanded')).toBe('false')
+  } finally { await page.close() }
+}, 30000)
+
+it('shows plugin activation on the switch and marks a pending change', async () => {
+  const { page } = await fixture('board-setup')
+  try {
+    await boardSection(page, 'Plugins').click()
+    const panel = page.getByRole('region', { name: 'Plugins', exact: true })
+    const toggle = panel.getByRole('switch', { name: 'Enable Board enhancements' })
+    await toggle.waitFor()
+    expect(await panel.getByText('On', { exact: true }).count()).toBe(0)
+    expect(await panel.getByText(/enabled in this setup/).count()).toBe(0)
+    expect(await toggle.getAttribute('aria-checked')).toBe('true')
+    await toggle.press('Space')
+    expect(await toggle.getAttribute('aria-checked')).toBe('false')
+    await panel.getByText('Pending review', { exact: true }).waitFor()
+  } finally { await page.close() }
+}, 30000)
+
+it('leads General with board details and keeps the board summary compact', async () => {
+  const { page } = await fixture('board-setup')
+  try {
+    const panel = page.getByRole('region', { name: 'General', exact: true })
+    const details = panel.getByRole('region', { name: 'Board details', exact: true })
+    const summary = panel.getByRole('region', { name: 'Board summary', exact: true })
+    await details.getByRole('textbox', { name: 'Item key prefix', exact: true }).waitFor()
+    expect(await panel.getByText('Board at a glance', { exact: true }).count()).toBe(0)
+    expect(await panel.getByText('Starting setup', { exact: true }).count()).toBe(0)
+    expect(await panel.getByText('Opens in Installation default', { exact: true }).count()).toBe(0)
+    expect((await details.boundingBox())!.y).toBeLessThan((await summary.boundingBox())!.y)
+    await summary.getByText('3 open · 3 total', { exact: true }).waitFor()
+    expect(await summary.getByRole('heading', { name: 'Items by state' }).count()).toBe(0)
+    await details.getByRole('button', { name: 'Edit board', exact: true }).click()
+    await details.getByRole('textbox', { name: 'Title', exact: true }).waitFor()
+    await details.getByRole('combobox', { name: 'Open board in', exact: true }).waitFor()
+  } finally { await page.close() }
+}, 30000)
 
 async function processEditing(width: number, theme: 'light' | 'dark', hasTouch = false) {
   const context = await fixture('process-editing', false, width, { colorScheme: theme, hasTouch })
@@ -211,15 +290,14 @@ it('creates with the declared body, updates description, and keeps an invalid pa
 
 it.each([
   { tab: 'Fields', kind: 'Text', action: 'Move Title later', editor: 'Field title' },
-  { tab: 'Item types', kind: 'Delivery', action: 'Fields for Task', editor: 'Title' },
+  { tab: 'Item types', kind: 'Delivery', action: 'Task', editor: 'Title' },
   { tab: 'Links', kind: 'Different each way', action: 'Remove link type', editor: 'Shown on this item' },
-  { tab: 'Plugins', kind: 'Off', action: 'Enable Board enhancements', editor: 'Threshold' },
+  { tab: 'Plugins', kind: undefined, action: 'Enable Board enhancements', editor: 'Threshold' },
 ])('fits $tab rows and keeps their editing controls reachable at 390 px', async ({ tab, kind, action, editor }) => {
   const { page } = await fixture('admin', false, 390)
   try {
     await page.getByRole('button', { name: 'Settings for Delivery', exact: true }).click()
-    if (tab === 'Plugins') await boardSection(page, tab).click()
-    else await openItems(page, tab)
+    await boardSection(page, tab).click()
     const list = page.locator('.work-definition-scroll:visible')
     const row = list.locator('.work-definition').first()
     await row.waitFor()
@@ -227,12 +305,15 @@ it.each([
     const pane = page.getByRole('region', { name: 'Board settings detail' })
     expect((await pane.boundingBox())!.width).toBeGreaterThan(320)
     const header = row.locator('.work-definition-head')
-    expect(await header.getByText(kind, { exact: true }).isVisible()).toBe(true)
+    if (kind) expect(await header.getByText(kind, { exact: true }).isVisible()).toBe(true)
     const editAction = tab === 'Plugins' ? header.getByRole('switch', { name: action }) : header.getByRole('button', { name: action })
     const actionBox = await editAction.boundingBox()
     const listBox = (await list.boundingBox())!
     expect(actionBox!.x + actionBox!.width).toBeLessThanOrEqual(listBox.x + listBox.width + 1)
-    if (tab === 'Plugins') await editAction.click()
+    if (tab === 'Plugins') {
+      expect(await editAction.getAttribute('aria-checked')).toBe('false')
+      await editAction.click()
+    }
     await row.locator('.work-definition-toggle').click()
     await row.getByLabel(editor, { exact: true }).waitFor()
   } finally { await page.close() }
@@ -246,7 +327,7 @@ it('returns from narrow board settings through the shared discard confirmation',
     await board.press('Enter')
     await board.waitFor({ state: 'hidden' })
     expect(await back.evaluate(element => (element.getRootNode() as ShadowRoot).activeElement === element)).toBe(true)
-    await openItems(page, 'Fields')
+    await boardSection(page, 'Fields').click()
     await page.locator('.work-field-row .work-definition-toggle').first().click()
     const title = page.getByLabel('Field title', { exact: true }).first()
     await title.fill('Draft title')
@@ -285,7 +366,7 @@ it.each([1440, 390])('wraps a long board name in navigation and settings at %s p
 it('exposes field controls by their labels and separates the keyboard reorder handle', async () => {
   const { page } = await fixture('settings')
   try {
-    await openItems(page, 'Fields')
+    await boardSection(page, 'Fields').click()
     const row = page.locator('.work-field-row').first()
     const disclosure = row.locator('.work-definition-toggle')
     await disclosure.press('Enter')
@@ -359,7 +440,7 @@ it('keeps process list details readable beside the edit actions at 390 px', asyn
 it('resets a successful Apply once when its read is superseded by a notification', async () => {
   const f = await fixture('settings'), { page } = f
   try {
-    await openItems(page, 'Fields')
+    await boardSection(page, 'Fields').click()
     await page.locator('.work-field-row .work-definition-toggle').first().click()
     await page.getByLabel('Field title', { exact: true }).first().fill('Summary')
     await page.getByRole('button', { name: 'Review changes', exact: true }).click()
@@ -392,7 +473,7 @@ it('asks before discarding a board draft and preserves it when the operator canc
   const { page, errors } = await fixture('admin')
   try {
     await page.getByLabel('Settings for Delivery', { exact: true }).click()
-    await openItems(page, 'Fields')
+    await boardSection(page, 'Fields').click()
     await page.locator('.work-field-row .work-definition-toggle').first().click()
     await page.getByLabel('Field title', { exact: true }).first().fill('Unsaved summary')
     const back = page.getByRole('button', { name: 'All boards', exact: true })
@@ -434,7 +515,7 @@ it('fits board fields and the add action in a 390px settings surface', async () 
   try {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.getByLabel('Settings for Delivery', { exact: true }).click()
-    await openItems(page, 'Fields')
+    await boardSection(page, 'Fields').click()
     const fields = page.getByRole('region', { name: 'Fields editor' })
     await fields.waitFor()
     const details = await page.getByRole('region', { name: 'Board settings detail' }).boundingBox()

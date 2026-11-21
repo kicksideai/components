@@ -17,7 +17,7 @@ const wrappers: VueWrapper[] = []
 afterEach(() => { wrappers.splice(0).forEach(w => w.unmount()) })
 it('explains stored overrides and clears a comments limit to inherit the application default', async () => {
   const draft = reactive<Declaration>({ policy: { comments_per_item: 250, audit_days: 0, trash_days: 0 } })
-  const w = mount(GeneralSettings, { props: { draft, schema: schema(), active: false, countsError: false, draftForm: 'draft', disabled: false, canUpgrade: false, canInstall: false } }); wrappers.push(w)
+  const w = mount(GeneralSettings, { props: { draft, schema: schema(), active: false, draftForm: 'draft', disabled: false, canUpgrade: false, canInstall: false } }); wrappers.push(w)
   expect(w.text()).toContain('Change history retention · 365 days')
   expect(w.text()).toContain('Trash retention · Clean up immediately')
   expect(w.text()).toContain('Comments per item · 250')

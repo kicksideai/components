@@ -45,7 +45,7 @@ it('leaves absent options untouched until Add option', async () => {
   await getButton(w, 'Add option').trigger('click'); expect(field.options).toHaveLength(1); w.unmount()
 })
 it('edits the item key prefix through the schema draft', async () => {
-  const draft = reactive<Declaration>({ key_prefix: 'OLD' }), w = mount(GeneralSettings, { props: { draft, schema: schema(), active: false, countsError: false, draftForm: 'draft', disabled: false, canUpgrade: false, canInstall: false } })
+  const draft = reactive<Declaration>({ key_prefix: 'OLD' }), w = mount(GeneralSettings, { props: { draft, schema: schema(), active: false, draftForm: 'draft', disabled: false, canUpgrade: false, canInstall: false } })
   await w.get('[aria-label="Item key prefix"]').setValue('NEW')
   expect(draft).toEqual({ key_prefix: 'NEW' }); w.unmount()
 })

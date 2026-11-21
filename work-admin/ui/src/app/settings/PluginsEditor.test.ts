@@ -44,7 +44,7 @@ it('places Reset and Save plugin settings together at standard size and validate
   const w = mount(PluginsEditor, { props: { boardId: 'b', schema: { ...schema(), plugins: [{ plugin: 'app:plugin', installed: true, active: true, lifecycle: { state: 'ready' as const }, projections: {}, requires: [], tools: [], config: { limit: 2 } }] }, draft: { plugins: [{ use: 'app:plugin' }] }, options: [{ plugin: 'app:plugin', installed: true, active: false, lifecycle: { state: 'ready' as const }, projections: {}, requires: [], tools: [], title: 'Files', config_schema: { properties: { limit: { type: 'integer', minimum: 1 } } } }], configs: {} } })
   try {
     await w.get('[aria-expanded]').trigger('click'); await flushPromises()
-    const actions = w.get('.work-form-actions')
+    const actions = w.get('.work-definition-body .work-form-actions')
     expect(actions.findAll('button').map(b => b.text())).toEqual(['Reset', 'Save plugin settings'])
     expect(actions.find('.p-button-sm').exists()).toBe(false)
     expect(actions.findAll('button')[1].attributes('disabled')).toBeDefined()

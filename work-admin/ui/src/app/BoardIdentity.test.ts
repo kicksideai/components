@@ -75,7 +75,7 @@ it('shows the named opening app and changes it through the board update', async 
   const boardApps = [{ id: 'app:tracker', title: 'Tracker' }, { id: 'app:releases', title: 'Release workspace' }]
   const w = mount(BoardIdentity, { props: { detail: true, board: { ...board, ui_app: 'app:tracker' }, boardApps } })
   try {
-    expect(w.text()).toContain('Opens in Tracker')
+    expect(w.text()).toContain('Board appTracker')
     await getButton(w, 'Edit board').trigger('click')
     const { default: Select } = await import('primevue/select')
     await w.getComponent(Select).setValue('app:releases')
@@ -89,12 +89,12 @@ it('keeps a stale app visible and offers a replacement from the installed list',
   const boardApps = [{ id: 'app:tracker', title: 'Tracker' }]
   const w = mount(BoardIdentity, { props: { detail: true, board: { ...board, ui_app: 'app:removed' }, boardApps } })
   try {
-    expect(w.text()).toContain('Opens in Unavailable app')
+    expect(w.text()).toContain('Board appUnavailable app')
     await getButton(w, 'Edit board').trigger('click')
     const { default: Select } = await import('primevue/select')
     const picker = w.getComponent(Select)
     expect(picker.props('options')).toEqual([
-      { id: '', title: 'Installation default' },
+      { id: '', title: 'Default app' },
       ...boardApps,
       { id: 'app:removed', title: 'Unavailable app', disabled: true },
     ])

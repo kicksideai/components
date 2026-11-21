@@ -16,7 +16,7 @@ const editing = ref(false), title = ref(''), description = ref(''), icon = ref('
 const admin = computed(() => props.board?.access?.admin === true)
 const original = ref({ title: '', description: '', icon: '', app: '' })
 const appChoices = computed(() => [
-  { id: '', title: 'Installation default' },
+  { id: '', title: 'Default app' },
   ...(props.boardApps ?? []),
   ...(props.board?.ui_app && !props.boardApps?.some(choice => choice.id === props.board?.ui_app)
     ? [{ id: props.board.ui_app, title: props.boardApps ? 'Unavailable app' : 'Configured board app', disabled: true }] : []),
@@ -65,8 +65,8 @@ async function save() {
       </label>
       <div class="work-row"><Button label="Save" severity="secondary" type="submit" :disabled="!title.trim() || busy" :loading="busy" outlined><template #icon><Icon icon="tabler:device-floppy" aria-hidden="true" /></template></Button><Button label="Cancel" severity="secondary" :disabled="busy" @click="cancel" outlined><template #icon><Icon icon="tabler:x" aria-hidden="true" /></template></Button></div>
     </form>
-    <div v-else-if="detail" class="work-row work-wrap work-identity-detail">
-      <p class="work-spacer">Opens in <strong>{{ currentApp }}</strong></p>
+    <div v-else-if="detail" class="work-row work-wrap">
+      <div class="work-spacer"><h3 class="work-row-title">Board app</h3><p class="work-muted work-small">{{ currentApp }}</p></div>
       <Button v-if="admin" label="Edit board" severity="secondary" outlined @click.stop="begin">
         <template #icon><Icon icon="tabler:pencil" aria-hidden="true" /></template>
       </Button>
