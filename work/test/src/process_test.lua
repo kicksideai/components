@@ -36,6 +36,22 @@ end
 
 local function define()
     test.describe("process compile", function()
+        test.it("accepts a prepared manual transition with one command owner", function()
+            local h = fixture.board({ bare = true })
+            local decl = flow(h.prefix)
+            local transition = decl.processes[1].transitions[2]
+            transition.prepare_command = "app:prepare_finish"
+            assert(h.call("plan_schema", { declaration = decl }))
+            transition.command = "app:legacy_finish"
+            refused(h, decl, "two command owners", "invalid_schema")
+            transition.command = nil
+            transition.auto = true
+            refused(h, decl, "prepared automatic transition", "invalid_schema")
+            transition.auto = nil
+            decl.processes[1].states[2].kind = "automated"
+            decl.processes[1].states[2].run = { stage = "build", on_pass = "finish" }
+            refused(h, decl, "prepared stage route", "stage_on_pass_unknown")
+        end)
         test.it("rejects a declared stage outcome route marked automatic", function()
             local h = fixture.board({ bare = true })
             local decl = flow(h.prefix)

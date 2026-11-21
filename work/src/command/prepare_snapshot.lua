@@ -30,7 +30,7 @@ function M.board(tx: types.Executor, board_id: string, admitted: domain.Board?, 
     return board, nil
 end
 
-function M.read(db: sql.DB, board_id: string, ops: { types.Op }, indices: { integer }, actor: string, at: string, settings: domain.Policy, deadline: domain.Deadline?, keyed: boolean?): (domain.Board?, { types.OpPlan }, error?)
+function M.read(db: sql.DB, board_id: string, ops: { types.Op }, indices: { integer }, actor: string, at: string, settings: domain.Policy, deadline: domain.Deadline?, keyed: boolean?, authority: types.TransitionAuthority?): (domain.Board?, { types.OpPlan }, error?)
     local access: { [string]: boolean } = {}
     local function cache(id: string, mask: integer): error?
         local key = id .. ":" .. mask
@@ -162,6 +162,7 @@ function M.read(db: sql.DB, board_id: string, ops: { types.Op }, indices: { inte
     if board and not berr then
         local ctx = items.context(tx, board, actor, at, db:type())
         ctx.keyed = keyed
+        ctx.transition_authority = authority
         ctx.access = access
         ctx.peer_boards = peers
         ctx.peer_errors = peer_errors

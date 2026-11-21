@@ -95,6 +95,22 @@ entries:
     policies:
     - kickside.work.security:sync_call
     - kickside.work.security:apply_output_publish
+- name: transition_command
+  kind: function.lua
+  meta: { private: true }
+  source: file://transition_command.lua
+  method: run
+  modules: [funcs, registry]
+  imports:
+    apply_ops: kickside.work.command:apply_ops
+    commands: kickside.work.command:types
+    guard: kickside.work.command:guard
+    locate: kickside.work.command:locate
+    requests: kickside.work.service:requests
+  security:
+    policies:
+    - kickside.work.security:sync_call
+    - kickside.work.security:apply_output_publish
 - name: get
   kind: function.lua
   meta:

@@ -73,7 +73,9 @@ type OpPlan = {
 type Write = domain.Write
 type Planned = { plans: { OpPlan }, writes: { Write }, ok: boolean }
 
+type TransitionAuthority = { owner: string, operation: Op }
 type PrepareContext = {
+    transition_authority: TransitionAuthority?,
     importing: boolean?,
     keyed: boolean?,
     auto: domain.AutoBudget,
@@ -91,6 +93,7 @@ type Executor = sql.DB | sql.Transaction
 type Durable = { receipt: domain.Receipt, seq: integer }
 
 type ApplyContext = {
+    transition_authority: TransitionAuthority?,
     claim_version: integer?, generation: string,
     settings: domain.Policy,
     c: domain.ThreadClient, board_id: string, request: ApplyRequest, ops: { Op }, hashed: string,
@@ -118,7 +121,7 @@ type Input = { job: Job, payload: Locator }
 
 type ProcessTarget = { model: domain.Model, item: domain.StateItem, definition: domain.Process, state: domain.State }
 return { ProcessTarget = ProcessTarget, Map = Map, BulkRequest = BulkRequest, Locator = Locator, Owner = Owner, Status = Status, MoveMap = MoveMap, MoveRequest = MoveRequest, MoveItem = MoveItem, MoveLink = MoveLink, MovePlan = MovePlan, Job = Job, Input = Input, ConfigureSelection = ConfigureSelection, ConfigureRequest = ConfigureRequest, ConfigureResult = ConfigureResult,
-    ApplyContext = ApplyContext, AtomicPreparation = AtomicPreparation, AtomicProvider = AtomicProvider,
+    ApplyContext = ApplyContext, TransitionAuthority = TransitionAuthority, AtomicPreparation = AtomicPreparation, AtomicProvider = AtomicProvider,
     Durable = Durable,
     Executor = Executor,
     PrepareContext = PrepareContext, PathMove = PathMove, SubtreeStats = SubtreeStats, TargetRef = TargetRef, Op = Op, ApplyRequest = ApplyRequest, SchemaRequest = SchemaRequest, CreateRequest = CreateRequest,

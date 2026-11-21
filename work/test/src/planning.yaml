@@ -6,15 +6,25 @@ entries:
   kind: ns.dependency
   component: kickside/work-planning
   version: '*'
+- name: planning_ambient_command
+  kind: security.policy
+  policy: {resources: '*', actions: [work.transition.command, funcs.call, registry.get], effect: allow}
+- name: planning_other_command
+  kind: function.lua
+  meta: { type: kickside.work.transition_command }
+  source: file://planning_test.lua
+  method: prepare
+  modules: [uuid]
+  imports: &planning_imports
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    operations: app:operation_steps
+    steps: app:steps
 - name: planning_test
   kind: function.lua
   meta: {type: test, suite: kickside_work_planning, timeout: 300s}
   source: file://planning_test.lua
   method: run
   modules: [uuid]
-  imports:
-    test: wippy.test:test
-    scoped: app:scoped
-    fixture: app:fixture
-    operations: app:operation_steps
-    steps: app:steps
+  imports: *planning_imports

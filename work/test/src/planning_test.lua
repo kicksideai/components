@@ -393,7 +393,7 @@ local function define()
         end)
 
         test.it("requires a preview to close a sprint and refuses new membership after closure", function()
-            local owner, writer = scoped.admin(), scoped.member()
+            local owner, writer = scoped.admin("app:planning_ambient_command"), scoped.member()
             local board = create_board(owner)
             assert(board.call("grant", { subject_id = writer.id, mask = 3 }))
             local source = sprint(board, "sprint", true)
@@ -403,13 +403,35 @@ local function define()
             local bypass = assert(writer.call("apply", { ops = { direct }, source = "planning",
                 origin = { close_key = "spoofed", sprint_id = source } }, board.id)).outcomes[1]
             test.eq(bypass.findings and bypass.findings[1].code, "transition_command_required")
+            local wildcard = steps.one(board, direct)
+            test.eq(wildcard.findings and wildcard.findings[1].code, "transition_command_required")
             direct.force = true
             local forced = steps.one(board, direct)
             test.eq(forced.findings[1].code, "transition_command_required")
+            operations.gate(board, true)
+            local key = assert(steps.get(board, source)).item.key
+            for _, force in ipairs({ false, true }) do
+                local bulk = assert(board.call("bulk", { key = "protected-bulk-" .. tostring(force),
+                    query = { where = { field = "key", op = "eq", value = key } },
+                    ops_template = { { op = "transition", transition = "close", force = force } } }))
+                local status = operations.finished(board, bulk.bulk_id)
+                test.eq(status.denied, 1)
+                test.eq(status.applied, 0)
+            end
             local offered = assert(steps.get(board, source, { "transitions" })).transitions
             test.is_nil(find(offered, "close", "id"))
             local preview = assert(planning(writer, "plan_close", { board_id = board.id, sprint_id = source }))
-            test.is_true(assert(planning(writer, "close", { key = "protected-close", snapshot = preview.snapshot, token = preview.token })).applied)
+            local desc = { board_id = board.id, key = "other-command", expected_head = preview.snapshot.head,
+                mode = "atomic", ops = { { op = "transition", item = source, transition = "close" } } }
+            local alternate = assert(owner.call("direct", { target = "kickside.work.service:transition_command",
+                input = { command = "app:planning_other_command", input = desc } }))
+            test.eq(alternate.outcomes[1].findings[1].code, "transition_command_required")
+            local request = { key = "protected-close", snapshot = preview.snapshot, token = preview.token }
+            local closed = assert(planning(writer, "close", request))
+            test.is_true(closed.applied)
+            local replay = assert(planning(writer, "close", request))
+            test.is_true(replay.replayed)
+            test.eq(replay.seq, closed.seq)
             test.is_nil(assert(steps.get(board, member)).item.values.current_sprint)
             local values = { current_sprint = { board = board.id, item = source } }
             for _, op in ipairs({ { op = "create", type = "issue", values = values }, { op = "set", item = other, values = values } }) do
@@ -543,4 +565,4 @@ local function define()
 
 end
 
-return { run = test.run_cases(define) }
+return { run = test.run_cases(define), prepare = function(input: unknown): unknown return input end }

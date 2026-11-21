@@ -89,10 +89,12 @@ function M.member(): Session
 end
 
 -- admin is a user of the Members group and the work administration group.
-function M.admin(): Session
+function M.admin(extra_policy: string?): Session
     M.initialize()
     local actor = actors.real((uuid.v4()), true)
-    return open(actor, assert(security.named_scope(actors.ADMIN_GROUP)))
+    local scope = assert(security.named_scope(actors.ADMIN_GROUP))
+    if extra_policy then scope = scope:with(assert(security.policy(extra_policy))) end
+    return open(actor, scope)
 end
 
 -- outsider is a user outside every module group.
