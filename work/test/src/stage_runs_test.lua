@@ -410,6 +410,30 @@ local function define()
             local late = assert(h.call("report", { item = id, visit = 1, attempt = 1, outcome = "passed" }))
             test.eq(late.outcomes[1].findings[1].code, "stage_attempt_finished")
         end)
+        test.it("keeps omitted and process-only stage routes distinct for discovery and named use", function()
+            local d = transition_process()
+            d.processes[1].states[1].run.on_pass = "passed"
+            d.processes[1].states[1].run.on_cancel = "canceled"
+            d.processes[1].transitions[2].people = false
+            d.processes[1].transitions[4] = { id = "manual", from = { "triage" }, to = "done", people = true }
+            local h = fixture.board({ declaration = d })
+            local writer, writer_id = fixture.user(h)
+            assert(h.call("grant", { subject_id = writer_id, mask = 3 }))
+            local named = steps.create(h, "task")
+            local forced = steps.create(h, "task")
+
+            local visible = assert(writer("get", { item = { id = named }, include = { "transitions" } })).transitions
+            test.eq(#visible, 1)
+            test.eq(visible[1].id, "manual")
+            local function move_as_writer(item: string, transition: string, force: boolean?): Map
+                local result = assert(writer("apply", { ops = { { op = "transition", item = item, transition = transition, force = force } } }))
+                return result.outcomes[1] :: Map
+            end
+            test.eq(move_as_writer(named, "passed").status, "applied")
+            test.eq(move_as_writer(forced, "canceled").findings[1].code, "unknown_transition")
+            test.eq(move_as_writer(forced, "canceled", true).findings[1].code, "process_force_denied")
+            test.eq(steps.one(h, { op = "transition", item = forced, transition = "canceled", force = true }).status, "applied")
+        end)
         test.it("lets a writer stop a stage only when the named transition condition holds", function()
             local d = transition_process()
             d.processes[1].transitions[4] = { id = "stop", from = "any", to = "canceled", when = { field = "title", op = "eq", value = "stop" } }

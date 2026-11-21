@@ -412,6 +412,23 @@ local function define()
             test.eq(steps.get(h, id).item.values.risk, 3)
         end)
 
+        test.it("reports a schema provider failure separately from attachment setup", function()
+            local h = fixture.board()
+            enable(h)
+            local view = call(h, "get_schema", {})
+            settled(h, view.as_of :: integer)
+            revise(PLUGIN, function(meta) meta.schema = { provider = NS .. "missing_provider" } end)
+            local checked = call(h, "get_schema", { check_plugins = true })
+            for _, plugin in ipairs(checked.plugins) do
+                if plugin.plugin == PLUGIN then
+                    test.eq(plugin.lifecycle.state, "failed")
+                    test.eq(plugin.lifecycle.error.source, "schema_provider")
+                    return
+                end
+            end
+            error("Change Review is missing from the checked schema")
+        end)
+
         test.it("rolls back a failed index batch and replays a parked state projection under admin control", function()
             local h = fixture.board()
             enable(h)
@@ -427,9 +444,16 @@ local function define()
             test.eq(body(h, REGISTER).token, old.token)
             test.eq(#call(h, "query", { scopes = { { id = REGISTER, where = { risk = { eq = 5 } } } } }).items, 1)
             test.eq(steps.one(h, { op = "set", item = item, values = { title = "Corrected" } }).status, "applied")
-            assert(h.call("plugin_sync", {}))
+            local before = active(h)
+            local reader, reader_id = fixture.user(h)
+            assert(h.call("grant", { subject_id = reader_id, mask = 1 }))
+            local _, denied = reader("configure_plugin", { plugin = PLUGIN })
+            test.eq(assert(denied):kind(), errors.PERMISSION_DENIED)
+            local retry = call(h, "configure_plugin", { plugin = PLUGIN })
+            test.eq(retry.attachment_id, before.attachment_id)
             local repaired = call(h, "get", { item = { id = item } }).as_of :: integer
             settled(h, repaired)
+            test.eq(assert(json.encode(active(h).config)), assert(json.encode(before.config)))
             test.eq(#call(h, "query", { where = { match = "corrected" }, min_seq = repaired }).items, 1)
         end)
     end)

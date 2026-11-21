@@ -119,7 +119,7 @@ type PluginSchema = { fragment: JsonObject, version: string?, digest: string }
 type ResolveContext = { board_id: string, config: JsonObject, current: PluginSchema? }
 -- Plugin is a loaded manifest.
 type PluginProjection = { kind: string, worker_ref: string, input: string, revision: integer, events: { string }, start_seq: integer? }
-type PluginError = { kind: string, code: string?, message: string, floor: integer? }
+type PluginError = { kind: string, code: string?, message: string, floor: integer?, source: string? }
 type PluginProblem = { code: string, message: string, field: string? }
 type PluginLifecycle = { state: string, error: PluginError? }
 type PluginProjectionState = { last_seq: integer, start_seq: integer?, parked: boolean, bootstrapping: boolean, error: unknown? }
