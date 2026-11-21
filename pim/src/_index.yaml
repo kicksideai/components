@@ -18,17 +18,17 @@ entries:
     component: kickside/component
 
   - name: dep.kickside.core
-    version: ">=0.3.22"
+    version: ">=0.3.36"
     kind: ns.dependency
     meta:
-      comment: Catalog threads, subjects, projections, retention and Unicode case folding.
+      comment: Catalog threads, sequence-targeted projection waits, retention and Unicode case folding.
     component: kickside/core
 
   - name: dep.kickside.jobs
-    version: ">=0.1.83"
+    version: ">=0.1.99"
     kind: ns.dependency
     meta:
-      comment: Rebuild jobs and projection cancellation notifications used by Core 0.3.22.
+      comment: Rebuild jobs, projection cancellation notifications and iterative worker dispatch.
     component: kickside/jobs
 
   - name: dep.kickside.contract

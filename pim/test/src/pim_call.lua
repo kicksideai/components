@@ -114,6 +114,10 @@ function M.run(input: unknown): (unknown, error?)
         local threads = open("kickside.core:threads")
         return invoke(threads, "list_events", { thread_id = id, from_seq = 1, ascending = true, limit = 1000 })
     end
+    if op == "inventory_stock_changed" then
+        return invoke(open("kickside.core:threads"), "append_events", { thread_id = id,
+            events = { { type = "app:inventory.stock.changed", body = req } } })
+    end
     if op == "grant" then
         local service = assert(component.get_service())
         return service:grant_subtree({ root_component_id = id, subject = { subject_id = req.subject_id, subject_type = "user" },

@@ -72,7 +72,7 @@ local function define()
                 else assert(tx:execute("INSERT INTO kickside_pim_cleanup(catalog_id,cleaned) VALUES($1,0)",{h.id})) end
                 return true,nil
             end))
-            local saved,err=receipts.noop(h.id,"late","hash",{class="unchanged"},seq,clock.now())
+            local saved,err=receipts.noop(h.id,"late","hash",{class="unchanged"},{catalog_seq=seq,as_of=seq},clock.now())
             test.is_nil(saved);test.not_nil(err)
             db=assert(store.open());test.eq(#assert(db:query("SELECT marker FROM kickside_pim_receipt WHERE catalog_id=$1 AND marker='late'",{h.id})),0);assert(db:release())
         end)

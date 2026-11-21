@@ -9,6 +9,7 @@ local json = require("json")
 local store = require("store")
 local types = require("types")
 local requests = require("requests")
+local catalog_fixture = require("catalog_fixture")
 
 type Map = { [string]: unknown }
 
@@ -22,6 +23,17 @@ end
 local function decide(h: fixture.Handle, id: string, decision: string): (types.DecideResult?, error?)
     local out, err = h.call("decide", { proposal_id = id, decision = decision })
     return out :: types.DecideResult?, err
+end
+
+local function stock_changed(h: fixture.Handle, product_id: string): integer
+    local before = catalog_fixture.catalog(h).applied_seq
+    local event, err = h.call("inventory_stock_changed", { product_id = product_id })
+    assert(event, tostring(err))
+    local settled = assert(h.call("settle", {}))
+    test.eq(settled.last_seq, before + 1)
+    test.eq(settled.last_seq, event.max_seq)
+    test.eq(catalog_fixture.catalog(h).applied_seq, before)
+    return event.max_seq
 end
 
 local function define()
@@ -134,6 +146,55 @@ local function define()
             test.eq(origin.provenance.confidence, 0.97)
             local again = h.call("decide", { proposal_id = p.proposal_id, decision = "accept" })
             test.eq(again.status, "accepted")
+        end)
+
+        test.it("accepts after an Inventory-only append", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local original = assert(h.call("get", { product = { sku = "RDG" } })) :: types.GetResult
+            local proposed = assert(propose(h, { { product = { sku = "RDG" },
+                set = { { attr = "core.care", value = "approved" } } } }))
+            stock_changed(h, original.product.product_id)
+            local accepted, err = decide(h, proposed.proposal_id, "accept")
+            assert(accepted, tostring(err))
+            test.eq(accepted.status, "accepted")
+            local after = assert(h.call("get", { product = { sku = "RDG" } })) :: types.GetResult
+            test.eq(after.values["core.care"].value, "approved")
+        end)
+
+        test.it("commits and replays a keyed edit after an Inventory-only append", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local before = assert(h.call("get", { product = { sku = "RDG" } })) :: types.GetResult
+            local thread_seq = stock_changed(h, before.product.product_id)
+
+            local request = { idempotency = { namespace = "test", key = "after-stock" },
+                items = { { product = { sku = "RDG" }, expect_version = before.product.version,
+                    set = { { attr = "core.care", value = "edited" } } } } }
+            local applied, apply_err = h.call("apply", request)
+            assert(applied, tostring(apply_err))
+            test.eq(applied.seq, thread_seq + 1)
+            local replayed = assert(h.call("apply", request))
+            test.eq(replayed.seq, applied.seq)
+            test.is_true(replayed.replayed)
+        end)
+
+        test.it("records and replays a keyed no-op after an Inventory-only append", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local before = assert(h.call("get", { product = { sku = "RDG" } })) :: types.GetResult
+            local thread_seq = stock_changed(h, before.product.product_id)
+            local request = { idempotency = { namespace = "test", key = "after-stock-noop" },
+                items = { { product = { sku = "RDG" }, expect_version = before.product.version } } }
+            local out, err = h.call("apply", request)
+            assert(out, tostring(err))
+            test.eq(out.outcomes[1].outcome, "unchanged")
+            test.is_nil(out.seq)
+            test.eq(out.as_of, thread_seq)
+            local replayed = assert(h.call("apply", request))
+            test.is_nil(replayed.seq)
+            test.eq(replayed.as_of, thread_seq)
+            test.is_true(replayed.replayed)
         end)
 
         test.it("refuses acceptance after a proposed attribute code is reused", function()

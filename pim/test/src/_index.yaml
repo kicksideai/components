@@ -1152,6 +1152,7 @@ entries:
       steps: app:steps
       test: wippy.test:test
       fixture: app:fixture
+      catalog_fixture: app:catalog_fixture
       store: kickside.pim.persist:store
       types: kickside.pim:types
 
@@ -1305,6 +1306,30 @@ entries:
       test: wippy.test:test
       driver: kickside.pim.persist:fold_driver
       types: kickside.pim:types
+
+  - name: inventory_outputs
+    kind: contract.binding
+    meta:
+      class: [pim.catalog]
+      events:
+        input: []
+        output:
+          - { type: app:inventory.stock.changed, system_only: true }
+    contracts:
+      - contract: kickside.contract:component
+        methods:
+          get_status: kickside.core.threads:thread_status
+
+  - name: inventory.stock.changed
+    kind: registry.entry
+    meta:
+      type: kickside.core.threads.event
+      output_kind: app:inventory_outputs
+    schema:
+      type: object
+      required: [product_id]
+      properties:
+        product_id: { type: string }
 
   - name: pipeline_test
     kind: function.lua
