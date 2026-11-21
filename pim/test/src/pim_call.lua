@@ -84,6 +84,7 @@ function M.run(input: unknown): (unknown, error?)
         return invoke(open("kickside.core:threads"), "register_projection", {
             thread_id = id, kind = "kickside.pim:catalog_model", worker_ref = "func://kickside.pim.persist:projection",
             worker_input_mode = "prefetch_events", events = {input = req.inputs}, ensure = true,
+            projection_key = req.projection_key, cursor_key = req.cursor_key,
         })
     end
     if op == "projection_padding" then
@@ -102,7 +103,7 @@ function M.run(input: unknown): (unknown, error?)
     end
     if op == "pause_plugin_projection" then
         return invoke(open("kickside.core:threads"), "pause_projection", {
-            thread_id = id, kind = req.kind, projection_key = req.projection_key,
+            thread_id = id, kind = req.kind, projection_key = req.projection_key, cursor_key = req.cursor_key,
         })
     end
     if op == "resume_plugin_projection" then

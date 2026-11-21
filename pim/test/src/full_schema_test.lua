@@ -938,21 +938,48 @@ local function retention_until(catalog_id: string, done: () -> boolean)
     error("media retention did not drain")
 end
 
+local function catalog_projection_inputs(): { {type: string, via: string} }
+    for _, declaration in ipairs(assert(registry.get("kickside.pim.binding:catalog")).meta.projections) do
+        if declaration.kind == "kickside.pim:catalog_model" then
+            local inputs = {}
+            for _, event in ipairs(declaration.events.input) do
+                inputs[#inputs + 1] = {type = event.type, via = "thread"}
+            end
+            return inputs
+        end
+    end
+    error("catalog projection declaration missing")
+end
+
 local function media_cases()
+    test.it("adopts media through the catalog cursor while other cursors of the same kind are paused", function()
+        local owner = scoped.member()
+        local h = catalog(owner)
+        local inputs = catalog_projection_inputs()
+        for _, address in ipairs({
+            {projection_key = "default", cursor_key = "sibling"},
+            {projection_key = "archive", cursor_key = "default"},
+        }) do
+            call(h, "register_catalog_projection", {inputs = inputs, projection_key = address.projection_key, cursor_key = address.cursor_key})
+            local paused = call(h, "pause_plugin_projection", {kind = "kickside.pim:catalog_model",
+                projection_key = address.projection_key, cursor_key = address.cursor_key})
+            test.eq(paused.status, "paused")
+        end
+        local source = upload(owner, "sibling.png", "image/png", PNG)
+        local asset = attach(h, source)
+        test.eq(send_media(owner, "GET", "/uploads/" .. asset .. "/raw").body, PNG)
+        test.eq(catalog_fixture.count_rows([[SELECT COUNT(*) AS n FROM kickside_projection_cursor
+            WHERE thread_id=$1 AND status='paused']], {h.id}), 2)
+    end)
+
     test.it("requires the materialized reservation before copying a personal upload", function()
         local owner = scoped.member()
         local h = catalog(owner)
         local source = upload(owner, "reservation.png", "image/png", PNG)
-        local current, previous = {}, {}
-        for _, declaration in ipairs(assert(registry.get("kickside.pim.binding:catalog")).meta.projections) do
-            if declaration.kind == "kickside.pim:catalog_model" then
-                for _, event in ipairs(declaration.events.input) do
-                    local input = {type = event.type, via = "thread"}
-                    current[#current + 1] = input
-                    if event.type ~= "kickside.pim.events:asset.reserved" and event.type ~= "kickside.pim.events:assets.reaping" then
-                        previous[#previous + 1] = input
-                    end
-                end
+        local current, previous = catalog_projection_inputs(), {}
+        for _, input in ipairs(current) do
+            if input.type ~= "kickside.pim.events:asset.reserved" and input.type ~= "kickside.pim.events:assets.reaping" then
+                previous[#previous + 1] = input
             end
         end
         test.eq(#previous + 2, #current)
