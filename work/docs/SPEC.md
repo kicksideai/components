@@ -35,7 +35,7 @@ The Agent Queue pack composes a principal field, an absolute time field and a pr
 
 A `report` with `kind: progress` requires a keyed command and the active visit and attempt. It replaces the attempt's latest progress with an object of at most 65,536 canonical JSON bytes. The corresponding `stage.progressed` fact does not route the item, affect the attempt deadline or set the terminal fields. Terminal reports apply the same progress bound and preserve the checkpoint when they omit progress. Terminal outputs use their existing independent size limit.
 
-The Wait for Work item Block matches the current live item state under board and item READ. It resumes the unfiltered change feed from the given cursor or from a head snapshot and listens for commits to the board's projection. A feed gap causes a new head snapshot and point read. The Block returns `matched` with the item id, state and version, or `timed_out`. Both outcomes carry a feed cursor. A wait lives for the current Block invocation.
+The Wait for Work item Block matches the current live item state under board and item READ. It checks the item when the Block starts and after commits to the board's projection. The optional input cursor can carry a previous wait's position. Each invocation starts from the current projection. The Block returns `matched` with the item id, state and version, or `timed_out`. Both outcomes carry the unfiltered feed head from the latest item read, with the caller's access stamp and current retention floor. A wait lives for the current Block invocation.
 
 ## Work Templates
 
