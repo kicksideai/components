@@ -52,19 +52,27 @@ local function readiness(tx: types.Executor, catalog: types.Catalog, item: types
     return out, nil
 end
 
+function M.live_product(tx: types.Executor, catalog_id: string, ref: types.ProductRef): (types.Product?, error?)
+    local p: types.Product?
+    local err: error?
+    if type(ref.id) == "string" then p, err = store.product(tx, catalog_id, ref.id)
+    elseif type(ref.sku) == "string" then p, err = store.product_by_sku(tx, catalog_id, ref.sku)
+    else return nil, invalid("product id or sku required") end
+    if err then return nil, err end
+    if not p or p.state ~= "live" then
+        return nil, errors.new({ kind = errors.NOT_FOUND, message = "product not found", details = { code = "product_not_found" } })
+    end
+    return p, nil
+end
+
 -- get(catalog_id, { product = {id|sku}, context? }) -> product, values resolved for context
 function M.get(catalog_id: string, request: types.GetRequest): (types.GetResult?, error?)
     local caller, access_err = access.reader(catalog_id)
     if access_err or not caller then return nil, access_err end
     local ref: types.ProductRef = request and request.product or {}
     return with_snapshot(caller, function(tx: types.Executor, catalog: types.Catalog, _dialect: string): (types.GetResult?, error?)
-        local p: types.Product?
-        local err: error?
-        if type(ref.id) == "string" then p, err = store.product(tx, catalog_id, ref.id)
-        elseif type(ref.sku) == "string" then p, err = store.product_by_sku(tx, catalog_id, ref.sku)
-        else return nil, invalid("product id or sku required") end
-        if err then return nil, err end
-        if not p or p.state ~= "live" then return nil, errors.new({ kind = errors.NOT_FOUND, message = "product not found", details = { code = "product_not_found" } }) end
+        local p, err = M.live_product(tx, catalog_id, ref)
+        if err or not p then return nil, err end
         local compiled = catalog.compiled
         local cerr = schema.check_context(compiled.dimensions, request.context)
         if cerr then return nil, cerr end

@@ -20,6 +20,7 @@ local REQUESTS: { [string]: Map } = {
     list_links = { kind = "product", target = MISSING }, explain = { product = { sku = "RDG" }, attr = "core.care" },
     list_changes = { limit = 1 }, list_publications = { channel = "web", limit = 1 }, list_proposals = { limit = 1 },
     get_release = { release_id = MISSING }, list_releases = { product = { sku = "RDG" }, limit = 1 }, list_terms = { vocabulary = "colors", limit = 1 },
+    get_model_release = { request_id = MISSING },
     schema_options = {},
     propose = { items = { { product = { sku = "RDG" }, set = { { attr = "core.care", value = "p" } } } } },
     apply = { items = { { product = { sku = "RDG" }, expect_version = 9999, status = "draft" } } },
@@ -35,6 +36,7 @@ M.REQUESTS = REQUESTS
 local NEEDS: { [string]: integer } = {
     get_schema = READ, query = READ, get = READ, list_history = READ, list_links = READ, explain = READ, list_changes = READ,
     list_publications = READ, list_proposals = READ, get_release = READ, list_releases = READ, list_terms = READ, schema_options = READ, propose = READ,
+    get_model_release = READ,
     apply = WRITE, release = WRITE, withdraw = WRITE, decide = WRITE,
     plan_schema = ADMIN, apply_schema = ADMIN, rebuild = ADMIN, update = ADMIN,
 }
@@ -55,6 +57,7 @@ local ROUTES: { [string]: { string } } = {
     get = { "GET", "/product" }, query = { "POST", "/query" }, list_history = { "GET", "/history" }, apply = { "POST", "/apply" },
     propose = { "POST", "/proposals" }, list_proposals = { "GET", "/proposals" }, decide = { "POST", "/proposals/{proposal_id}/decision" },
     release = { "POST", "/releases" }, list_releases = { "GET", "/releases" }, get_release = { "GET", "/releases/{release_id}" }, list_terms = { "GET", "/terms" },
+    get_model_release = { "GET", "/model-releases/{request_id}" },
     schema_options = { "GET", "/schema/options" }, update = { "POST", "/settings" },
     withdraw = { "POST", "/withdrawals" }, rebuild = { "POST", "/rebuild" }, list_links = { "GET", "/links" },
     explain = { "GET", "/explain" }, list_changes = { "GET", "/changes" }, list_publications = { "GET", "/publications" },
@@ -71,7 +74,8 @@ end
 
 -- admitted checks successful behavior or the exact domain refusal for probes.
 function M.admitted(method: string, out: unknown, err: error?)
-    local codes = { get_release = "release_not_found", decide = "proposal_not_found", apply_schema = "schema_generation_conflict" }
+    local codes = { get_release = "release_not_found", get_model_release = "model_release_absent",
+        decide = "proposal_not_found", apply_schema = "schema_generation_conflict" }
     local code = codes[method]
     if code then
         test.is_nil(out, method)

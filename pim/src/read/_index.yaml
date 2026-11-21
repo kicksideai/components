@@ -55,14 +55,35 @@ entries:
       access: kickside.pim.read:access
       types: kickside.pim:types
 
+  - name: wait
+    kind: library.lua
+    source: file://wait.lua
+    modules: [time]
+    imports:
+      access: kickside.pim.read:access
+      clock: kickside.pim:clock
+      consts: kickside.pim:consts
+      evaluate: kickside.pim.domain:evaluate
+      limits: kickside.pim:catalog_limits
+      projection_reader: kickside.core.projections.persist:reader
+      read_model: kickside.pim.persist:read_model
+      reader: kickside.pim.read:reader
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+      waiters: kickside.core.threads:cursor_waiters
+
   - name: releases
     kind: library.lua
+    modules: [sql]
     meta:
       comment: Release reads - one release by id, and a product's releases newest first.
     source: file://releases.lua
     imports:
       consts: kickside.pim:consts
+      failure: kickside.pim:failure
+      jobs: kickside.core.jobs:jobs
       store: kickside.pim.persist:store
+      release_jobs: kickside.pim.persist:release_jobs
       read_model: kickside.pim.persist:read_model
       access: kickside.pim.read:access
       types: kickside.pim:types

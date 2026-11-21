@@ -32,6 +32,8 @@ entries:
       - kickside.pim.traits:list_proposals
       - kickside.pim.traits:list_releases
       - kickside.pim.traits:get_release
+      - kickside.pim.traits:get_model_release
+      - kickside.pim.traits:wait_for_product
       - kickside.pim.traits:list_publications
       - kickside.pim.traits:list_changes
 
@@ -65,6 +67,8 @@ entries:
       - kickside.pim.traits:list_proposals
       - kickside.pim.traits:list_releases
       - kickside.pim.traits:get_release
+      - kickside.pim.traits:get_model_release
+      - kickside.pim.traits:wait_for_product
       - kickside.pim.traits:list_publications
       - kickside.pim.traits:list_changes
       - kickside.pim.traits:apply

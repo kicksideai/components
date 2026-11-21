@@ -33,6 +33,8 @@ function M.list_links(args: Map): (Map?, error?) return run("list_links", args, 
 function M.list_proposals(args: Map): (Map?, error?) return run("list_proposals", args, ctx.get("catalog_id")) end
 function M.list_releases(args: Map): (Map?, error?) return run("list_releases", args, ctx.get("catalog_id")) end
 function M.get_release(args: Map): (Map?, error?) return run("get_release", args, ctx.get("catalog_id")) end
+function M.get_model_release(args: Map): (Map?, error?) return run("get_model_release", args, ctx.get("catalog_id")) end
+function M.wait_for_product(args: Map): (Map?, error?) return run("wait_for_product", args, ctx.get("catalog_id")) end
 function M.list_publications(args: Map): (Map?, error?) return run("list_publications", args, ctx.get("catalog_id")) end
 function M.list_changes(args: Map): (Map?, error?) return run("list_changes", args, ctx.get("catalog_id")) end
 function M.apply(args: Map): (Map?, error?) return run("apply", args, ctx.get("catalog_id")) end

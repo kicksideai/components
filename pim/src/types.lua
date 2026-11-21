@@ -390,6 +390,16 @@ type ProposalsRequest = { status: string?, limit: integer?, after: ProposalCurso
 type FeedGap = { floor: integer }
 type FeedPosition = { seq: integer, product_id: string }
 type ChangesCursor = FeedPosition & { expiry_floor: integer? }
+type WaitPredicate = {
+    status: string?,
+    complete: { channel: string?, locale: string? }?,
+    publication: { channel: string, state: string }?,
+}
+type WaitProductRequest = {
+    product: ProductRef, predicate: WaitPredicate, cursor: ChangesCursor?, min_seq: integer?, timeout_ms: integer?,
+}
+type WaitProductMatch = { product_id: string, sku: string, status: string, version: integer }
+type WaitProductResult = { status: "matched" | "timed_out", cursor: ChangesCursor, product: WaitProductMatch? }
 type ChangesRequest = { cursor: ChangesCursor?, limit: integer?, families: { string }? }
 type ChangeTerm = TermView & { vocabulary: string }
 type ChangeItem = {
@@ -416,6 +426,11 @@ type ReleaseRecord = {
 }
 type GetReleaseRequest = { release_id: string }
 type GetReleaseResult = ReadStamp & { release: ReleaseRecord }
+type ModelReleaseRequest = { request_id: string }
+type ModelReleaseStatus = "queued" | "running" | "done" | "failed" | "cancelled" | "expired"
+type ModelReleaseResult = ReadStamp & {
+    request_id: string, model_id: string, job_id: string, status: ModelReleaseStatus, after_product: string?,
+}
 -- TermView is a vocabulary term as a reader sees it.
 type TermView = { code: string, labels: { [string]: string }, parent: string?, retired: boolean }
 type ListTermsRequest = { vocabulary: string, parent: string?, retired: boolean?, limit: integer?, after: string? }
@@ -525,10 +540,12 @@ return {
         FeedPosition = FeedPosition, ChangesCursor = ChangesCursor,
         ChangesRequest = ChangesRequest,
     ChangeTerm = ChangeTerm, ChangeItem = ChangeItem, ChangesResult = ChangesResult, PublicationsRequest = PublicationsRequest,
+    WaitPredicate = WaitPredicate, WaitProductRequest = WaitProductRequest, WaitProductMatch = WaitProductMatch, WaitProductResult = WaitProductResult,
     PublicationCursor = PublicationCursor, PublicationItem = PublicationItem, PublicationsResult = PublicationsResult, LinksCursor = LinksCursor,
     LinksRequest = LinksRequest, LinkRow = LinkRow, LinksResult = LinksResult, ReleaseRecord = ReleaseRecord,
     TermView = TermView, ListTermsRequest = ListTermsRequest, ListTermsResult = ListTermsResult,
     GetReleaseRequest = GetReleaseRequest, GetReleaseResult = GetReleaseResult, ReleasesRequest = ReleasesRequest,
+    ModelReleaseRequest = ModelReleaseRequest, ModelReleaseStatus = ModelReleaseStatus, ModelReleaseResult = ModelReleaseResult,
     ReleasesResult = ReleasesResult, GetSchemaRequest = GetSchemaRequest, SchemaOptionsRequest = SchemaOptionsRequest, TypeOption = TypeOption, ScopeFilterOption = ScopeFilterOption,
     ScopeOption = ScopeOption, PluginOption = PluginOption, LinkKindOption = LinkKindOption, SchemaOptions = SchemaOptions, ExplainRequest = ExplainRequest,
     ExplainResult = ExplainResult, CreateRequest = CreateRequest, CreateResult = CreateResult,

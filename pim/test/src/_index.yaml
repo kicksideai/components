@@ -1782,10 +1782,11 @@ entries:
     meta: { type: test, suite: kickside_pim, timeout: 300s, comment: Catalog Blocks - valid kickside.block/v1 declarations over the catalog contract, lowered to function nodes and run as the caller. }
     source: file://blocks_test.lua
     method: run
-    modules: [registry, json, funcs]
+    modules: [registry, json, funcs, time]
     imports:
       test: wippy.test:test
       fixture: app:fixture
+      scoped: app:scoped
       block_contract: kickside.blocks:contract
       block_lower: kickside.blocks:lower
 

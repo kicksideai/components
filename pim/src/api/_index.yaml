@@ -316,6 +316,22 @@ entries:
     func: get_release
     path: /pim/catalogs/{id}/releases/{release_id}
 
+  - name: get_model_release
+    kind: function.lua
+    meta: { comment: "GET /pim/catalogs/{id}/model-releases/{request_id} - model release job status." }
+    source: file://get_model_release.lua
+    method: handler
+    imports:
+      access: kickside.pim.api:access
+
+  - name: get_model_release.endpoint
+    kind: http.endpoint
+    meta:
+      comment: Catalog endpoint behind the authenticated API router.
+    method: GET
+    func: get_model_release
+    path: /pim/catalogs/{id}/model-releases/{request_id}
+
   - name: withdraw
     kind: function.lua
     meta: { comment: "POST /pim/catalogs/{id}/withdrawals - withdraw products from channels." }

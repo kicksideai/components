@@ -144,6 +144,10 @@ local function define()
             local page = h.call("list_changes", { cursor = early }) :: types.ChangesResult
             test.not_nil(page.gap)
             test.eq(#page.items, 0)
+            local waited = assert(h.call("wait_for_product", { product = { sku = "RDG-moss-40" },
+                predicate = { status = "active" }, cursor = early, timeout_ms = 1000 }))
+            test.eq(waited.status, "matched")
+            test.is_true(waited.cursor.seq >= page.gap.floor)
             local fresh = drain(h, nil)
             test.is_nil(fresh[victim.product_id])
         end)
@@ -171,6 +175,13 @@ local function define()
             test.eq(stale.next.expiry_floor, second.next.expiry_floor)
             test.eq(#stale.items, 0)
             test.is_false(stale.has_more)
+
+            local product = first.items[1]
+            local waited = assert(h.call("wait_for_product", { product = { id = product.product_id },
+                predicate = { status = product.status }, cursor = stale.next, timeout_ms = 1000 }))
+            test.eq(waited.status, "matched")
+            test.is_true(waited.cursor.seq >= stale.gap.floor)
+            test.eq(waited.cursor.expiry_floor, stale.next.expiry_floor)
 
             local cursor, count = nil, 0
             for _ = 1, 9 do

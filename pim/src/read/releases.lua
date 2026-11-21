@@ -2,7 +2,11 @@
 -- Release reads: current publications protect immutable snapshots; unreferenced
 -- releases expire after the catalog audit window.
 local consts = require("consts")
+local failure = require("failure")
+local jobs = require("jobs")
 local store = require("store")
+local release_jobs = require("release_jobs")
+local sql = require("sql")
 local read_model = require("read_model")
 local access = require("access")
 local types = require("types")
@@ -31,6 +35,35 @@ function M.get_release(catalog_id: string, request: types.GetReleaseRequest): (t
         local release, rerr = record(row)
         if rerr then return nil, rerr end
         return { release = release }, nil
+    end)
+end
+
+local JOB_STATUS: { [string]: types.ModelReleaseStatus } = {
+    pending = "queued", running = "running", done = "done", dead = "failed", cancelled = "cancelled",
+}
+
+function M.get_model_release(catalog_id: string, request: types.ModelReleaseRequest): (types.ModelReleaseResult?, error?)
+    local caller, access_err = access.reader(catalog_id)
+    if access_err or not caller then return nil, access_err end
+    return access.with_snapshot(caller, function(tx: types.Executor, _: types.Catalog, _dialect: string): (types.ModelReleaseResult?, error?)
+        local task, err = release_jobs.get(tx, catalog_id, request.request_id)
+        if err or not task then return nil, err end
+        local status: types.ModelReleaseStatus = "done"
+        if task.done ~= 1 then
+            -- Release tasks and their Jobs rows are enqueued in the same database.
+            local states, jerr = jobs.get_job_statuses_tx(tx :: sql.Transaction, { task.job_id })
+            if jerr then return nil, jerr end
+            local job_status = states and states[task.job_id]
+            if not job_status then
+                status = "expired"
+            else
+                local current = JOB_STATUS[job_status :: string]
+                if not current then return nil, failure.corrupt("unknown model release job status") end
+                status = current
+            end
+        end
+        return { request_id = task.request_id, model_id = task.model_id, job_id = task.job_id, status = status,
+            after_product = task.after_product ~= "" and task.after_product or nil }, nil
     end)
 end
 

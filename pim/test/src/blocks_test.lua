@@ -6,7 +6,9 @@ local test = require("test")
 local registry = require("registry")
 local json = require("json")
 local funcs = require("funcs")
+local time = require("time")
 local fixture = require("fixture")
+local scoped = require("scoped")
 local block_contract = require("block_contract")
 local block_lower = require("block_lower")
 
@@ -106,6 +108,95 @@ local function define()
             local _, denied = (other.executor :: funcs.Executor):call(target("get_product"), { input = { product = { sku = "RDG" } }, config = { catalog_id = h.id } })
             test.not_nil(denied)
             test.is_true((denied :: error):kind() == errors.PERMISSION_DENIED or (denied :: error):kind() == errors.NOT_FOUND, tostring(denied))
+        end)
+
+        test.it("lowers the published product wait with its configured catalog and deadline", function()
+            local e = entry(NS .. "wait_for_product")
+            test.is_nil(block_contract.validate(e))
+            local plan, err = block_lower.plan(e, { config = { catalog_id = "catalog-1", timeout_ms = 2000 } })
+            assert(plan, tostring(err))
+            local config = (plan :: Map).config :: Map
+            test.eq(config.func_id, target("wait_for_product"))
+            local args = config.args :: Map
+            test.eq((args.config :: Map).timeout_ms, 2000)
+        end)
+
+        test.it("waits as a catalog reader for target status and resumes from the returned cursor", function()
+            local owner, reader, outsider = scoped.member(), scoped.member(), scoped.member()
+            local h = scoped.catalog(owner)
+            fixture.boot(h)
+            assert(h.call("grant", { subject_id = reader.id, mask = 1 }))
+            local client = funcs.new():with_actor(reader.actor):with_scope(reader.scope)
+            local fn = target("wait_for_product")
+            local config = { catalog_id = h.id, timeout_ms = 5000 }
+            local input: Map = { product = { sku = "RDG-moss-40" }, predicate = { status = "active" } }
+            local first = assert(client:call(fn, { input = input, config = config }))
+            test.eq(first.status, "matched")
+            input.cursor, input.predicate = first.cursor, { status = "draft" }
+            input.min_seq = first.cursor.seq + 1
+            local pending = assert(client:async(fn, { input = input, config = config }))
+            time.sleep("100ms")
+            assert(h.call("apply", { items = { { product = { sku = "RDG-moss-41" }, expect_version = "any", status = "draft" } } }))
+            assert(h.call("apply", { items = { { product = { sku = "RDG-moss-40" }, expect_version = "any", status = "draft" } } }))
+            assert(pending:response():receive())
+            local response, err = pending:result()
+            assert(response, tostring(err))
+            local matched = response:data()
+            test.eq(matched.status, "matched")
+            test.eq(matched.product.sku, "RDG-moss-40")
+            test.eq(matched.product.status, "draft")
+            test.is_true(matched.cursor.seq > first.cursor.seq)
+
+            input.cursor, input.predicate = matched.cursor, { status = "archived" }
+            config.timeout_ms = 100
+            local timed = assert(client:call(fn, { input = input, config = config }))
+            test.eq(timed.status, "timed_out")
+            test.is_nil(timed.product)
+            input.predicate, input.min_seq = { status = "draft" }, matched.cursor.seq + 1
+            local fenced = assert(client:call(fn, { input = input, config = config }))
+            test.eq(fenced.status, "timed_out")
+            test.eq(fenced.cursor.seq, matched.cursor.seq)
+            local _, denied = funcs.new():with_actor(outsider.actor):with_scope(outsider.scope):call(fn, { input = input, config = config })
+            test.not_nil(denied)
+        end)
+
+        test.it("matches channel and locale completeness and wakes for a publication-only change", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local fn = target("wait_for_product")
+            local client = h.executor :: funcs.Executor
+            local config = { catalog_id = h.id, timeout_ms = 5000 }
+            local input: Map = { product = { sku = "RDG-moss-40" }, predicate = { complete = { channel = "web" } } }
+            local ready = assert(client:call(fn, { input = input, config = config }))
+            test.eq(ready.status, "matched")
+            input.predicate = { complete = { locale = "en" } }
+            test.eq(assert(client:call(fn, { input = input, config = config })).status, "matched")
+            input.predicate = { complete = { locale = "de" } }
+            config.timeout_ms = 100
+            test.eq(assert(client:call(fn, { input = input, config = config })).status, "timed_out")
+            config.timeout_ms = 5000
+            local completing = assert(client:async(fn, { input = input, config = config }))
+            time.sleep("100ms")
+            local edited = assert(h.call("apply", { items = { { product = { sku = "RDG" }, expect_version = "any",
+                set = { { attr = "marketing.description", ctx = { locale = "de" }, value = "Fuer den Heimweg." } } } } }))
+            test.eq(edited.outcomes[1].outcome, "updated")
+            assert(completing:response():receive())
+            local completion = assert(completing:result()):data()
+            test.eq(completion.status, "matched")
+            input.predicate = { complete = { channel = "marketplace" } }
+            test.eq(assert(client:call(fn, { input = input, config = config })).status, "matched")
+
+            input.cursor, input.predicate = completion.cursor, { publication = { channel = "web", state = "published" } }
+            local pending = assert(client:async(fn, { input = input, config = config }))
+            time.sleep("100ms")
+            local release = assert(h.call("release", { items = { { product = input.product, expect_version = ready.product.version, channels = { "web" } } } }))
+            test.eq(release.outcomes[1].outcome, "released")
+            assert(pending:response():receive())
+            local response, err = pending:result()
+            assert(response, tostring(err))
+            local matched = response:data()
+            test.eq(matched.status, "matched")
+            test.is_true(matched.cursor.seq > completion.cursor.seq)
         end)
     end)
 end

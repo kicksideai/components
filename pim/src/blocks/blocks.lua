@@ -22,6 +22,7 @@ local function run(method: string, args: unknown): (unknown, error?)
     local input: Map = {}
     for k, v in pairs((type(a.input) == "table" and a.input or {}) :: Map) do input[k] = v end
     input.catalog_id = catalog_id
+    if method == "wait_for_product" then input.timeout_ms = config.timeout_ms end
     local client, err = catalog_client.open()
     if err or not client then return nil, err end
     local fn = client[method]
@@ -33,5 +34,6 @@ function M.get_product(args: unknown): (unknown, error?) return run("get", args)
 function M.query_products(args: unknown): (unknown, error?) return run("query", args) end
 function M.apply(args: unknown): (unknown, error?) return run("apply", args) end
 function M.release(args: unknown): (unknown, error?) return run("release", args) end
+function M.wait_for_product(args: unknown): (unknown, error?) return run("wait_for_product", args) end
 
 return M

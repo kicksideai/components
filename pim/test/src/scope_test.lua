@@ -76,8 +76,10 @@ local function define()
                     if level.mask > 0 then grant(h, caller, level.mask) end
                     local reply = caller.invoke(h.id, method, access_cases.REQUESTS[method])
                     if admitted then
-                        if method == "get_release" or method == "decide" or method == "apply_schema" then
-                            local code = method == "get_release" and "release_not_found" or (method == "decide" and "proposal_not_found" or "schema_generation_conflict")
+                        local codes = { get_release = "release_not_found", get_model_release = "model_release_absent",
+                            decide = "proposal_not_found", apply_schema = "schema_generation_conflict" }
+                        local code = codes[method]
+                        if code then
                             test.eq(reply.status, method == "apply_schema" and 409 or 404, method .. " " .. json.encode(reply.body))
                             test.eq((reply.body.details :: Map).code, code, method)
                             test.eq(reply.body.kind, method == "apply_schema" and errors.CONFLICT or errors.NOT_FOUND, method)
