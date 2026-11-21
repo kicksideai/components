@@ -95,11 +95,6 @@ local function load(view_id: string, mask: integer): (types.ViewContext?, error?
     return context :: types.ViewContext, nil
 end
 
-local function title_error(title: string): error?
-    if not title:find("%S") then return invalid("view title is nonblank text", "invalid_view_title") end
-    return nil
-end
-
 local function denied(): error
     return errors.new({ kind = errors.PERMISSION_DENIED, message = "view owner or board ADMIN required", details = { code = "access_denied" } })
 end
@@ -125,15 +120,19 @@ local function managed(view_id: string): (types.ViewContext?, error?)
     return context, nil
 end
 
+local function title_command(view_id: string, title: string): ({ type: string, payload: { fields: { [string]: string } } }?, error?)
+    local context, err = managed(view_id)
+    if err or not context then return nil, err end
+    return { type = "SET_META", payload = { fields = { title = title } } }, nil
+end
+
 function M.rename(input: unknown): (types.ViewResult?, error?)
     local perr = requests.parse("rename", input, "kickside.work:view")
     if perr then return nil, perr end
     local request = input :: types.RenameViewRequest
-    local terr = title_error(request.title)
-    if terr then return nil, terr end
-    local context, err = managed(request.view_id)
-    if err or not context then return nil, err end
-    local updated, uerr = component.set_meta(request.view_id, { title = request.title }, { trusted_runtime = true })
+    local change, err = title_command(request.view_id, request.title)
+    if err or not change then return nil, err end
+    local updated, uerr = component.set_meta(request.view_id, change.payload.fields, { trusted_runtime = true })
     if uerr or not updated then return nil, uerr :: error? end
     return { view_id = request.view_id }, nil
 end
@@ -200,11 +199,11 @@ function M.save(input: unknown, revision: integer?): (types.ViewResult?, error?)
     local perr = requests.parse("save", input, "kickside.work:view")
     if perr then return nil, perr end
     local request = input :: types.SaveViewRequest
+    local title: component_types.Command? = nil
     if request.title ~= nil then
-        local terr = title_error(request.title)
+        local terr: error?
+        title, terr = title_command(request.view_id, request.title)
         if terr then return nil, terr end
-        local context, aerr = managed(request.view_id)
-        if aerr or not context then return nil, aerr end
     end
     local context, err = load(request.view_id, component.ACCESS.WRITE :: integer)
     if err or not context then return nil, err end
@@ -215,7 +214,7 @@ function M.save(input: unknown, revision: integer?): (types.ViewResult?, error?)
     local verr = M.validate(context.board_id, request.view)
     if verr then return nil, verr end
     local commands: { component_types.Command } = { { type = "PATCH_CONTEXT", payload = { patch = { view = request.view } } } }
-    if request.title ~= nil then commands[#commands + 1] = { type = "SET_META", payload = { fields = { title = request.title } } } end
+    if title then commands[#commands + 1] = title end
     local updated, uerr = component.update(request.view_id, commands, { expected_revision = revision })
     if uerr or not updated then return nil, uerr :: error? end
     return { view_id = request.view_id }, nil

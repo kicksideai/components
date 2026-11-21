@@ -21,6 +21,10 @@ State workers consume the bounded `plugin_feed` pages. Event workers receive sel
 
 Single-level queries with no selection filter or plugin scope use a keyset seek when an existing index covers the group key and item ID. The walk handles missing keys last and budgets inspected rows before applying visibility. The separately capped top-level item page keeps its requested order. A page returns the requested number of complete groups or reaches the end of the selection. Two-level and other group shapes still return exact results when their candidate selection fits the allowance, including full totals for a parent repeated across subgroup pages. A group page that exceeds its allowance returns `incomplete: true` and `group_limited: true` without groups or a group continuation.
 
+## Saved views
+
+Renaming a saved view requires its personal owner or board ADMIN. Saving a definition requires view WRITE and admission to its board selection. If save includes a title, the rename authority applies as well. Work saves the new title and definition in one component transaction.
+
 ## Item write invariants
 
 Omit `parent_types` or use an empty list for a root-only item type. A nonempty list allows the listed item type IDs as parents. Include JSON `false` to also allow top-level placement. For example, `["root", false]` allows a parent item whose type ID is `root` and also allows the item at the top level. Creating or reparenting an item at root when its type requires a parent returns `parent_required` on `parent`.

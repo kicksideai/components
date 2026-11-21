@@ -12,6 +12,16 @@ const rulesPath = resolve(root, 'scripts/module-rules.mjs')
 const handler = (name) => ({ id: `kickside.work.api:${name}`, kind: 'function.lua', method: 'handler' })
 const endpoint = (name, func = name) => ({ id: `kickside.work.api:${name}.endpoint`, kind: 'http.endpoint', func })
 
+test('saved-view title commands publish the owner or board ADMIN requirement', async () => {
+  const { parseYamlDocuments } = await import(rulesPath)
+  const [document] = await parseYamlDocuments([await readFile(resolve(root, 'src/contracts/view.yaml'), 'utf8')])
+  const methods = document.entries.find(entry => entry.name === 'view').methods
+  assert.match(methods.find(method => method.name === 'rename').description, /owner or a board administrator/)
+  const save = methods.find(method => method.name === 'save').description
+  assert.match(save, /view WRITE/)
+  assert.match(save, /title.*owner or.*board ADMIN/i)
+})
+
 test('requirement literal types are declared under value_type', async () => {
   const { parseYamlDocuments } = await import(rulesPath)
   const source = resolve(root, 'src')
