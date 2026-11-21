@@ -1,0 +1,139 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+  - name: full_schema
+    kind: registry.entry
+    dimensions:
+      - { name: channel, members: [web, retail] }
+      - { name: locale, members: [en, de, de-at], fallback: { de-at: [de] } }
+      - { name: market, members: [eu, us] }
+    vocabularies:
+      - { code: finishes }
+      - { code: categories, hierarchical: true }
+    aspects:
+      - namespace: item
+        attributes:
+          - { code: name, type: 'kickside.pim.types:text', scope: [locale], index: text, index_contexts: [{ locale: en }], width: quarter }
+          - { code: copy, type: 'kickside.pim.types:rich_text', scope: [channel, locale], index: text, index_contexts: [{ channel: web, locale: en }] }
+          - { code: label, type: 'kickside.pim.types:text', scope: [channel], default: Standard }
+          - { code: market_copy, type: 'kickside.pim.types:text', scope: [market, locale, channel] }
+          - { code: identifier, type: 'kickside.pim.types:identifier', unique: true, index: key, config: { case: insensitive } }
+          - { code: rank, type: 'kickside.pim.types:integer', index: number }
+          - { code: fraction, type: 'kickside.pim.types:number' }
+          - { code: weight, type: 'kickside.pim.types:quantity', index: number, config: { units: { g: '1', kg: '1000', lb: '453.59237' }, canonical: g, scale: 2, range: [-10000, 10000] } }
+          - { code: price, type: 'kickside.pim.types:money', index: number, config: { currency: EUR, scale: 2 } }
+          - { code: enabled, type: 'kickside.pim.types:boolean', index: key, default: false }
+          - { code: introduced, type: 'kickside.pim.types:date', index: key }
+          - { code: changed_at, type: 'kickside.pim.types:datetime', index: key }
+          - { code: category, type: 'kickside.pim.types:select', vocabulary: categories, index: key }
+          - { code: finishes, type: 'kickside.pim.types:select', vocabulary: finishes, index: key, cardinality: set }
+          - { code: related, type: 'kickside.pim.types:reference', index: key }
+          - { code: depot, type: 'kickside.pim.types:link', index: key, config: { target: app.location } }
+          - code: packages
+            type: 'kickside.pim.types:record'
+            cardinality: list
+            config:
+              members:
+                title: { form: text }
+                aliases: { form: text, cardinality: list }
+                details:
+                  form: record
+                  members:
+                    targets:
+                      form: record
+                      members:
+                        'term/~': { form: ref, target: term, vocabulary: categories }
+                        image: { form: ref, target: asset }
+                        owner: { form: ref, target: component }
+          - { code: finish, type: 'kickside.pim.types:select', vocabulary: finishes, index: key }
+          - { code: size, type: 'kickside.pim.types:integer', index: number }
+          - { code: annotations, type: 'kickside.pim.types:text', cardinality: list }
+          - { code: spare, type: 'kickside.pim.types:text' }
+      - namespace: inventory
+        write: { sources: [supplier] }
+        attributes:
+          - { code: stock, type: 'kickside.pim.types:integer' }
+    families:
+      - code: model
+        aspects: [item, inventory, quality]
+        variation:
+          - { axes: [item.finish] }
+          - { axes: [item.size], own: [item.identifier, inventory.stock] }
+        requirements:
+          - id: web_en
+            context: { channel: web, locale: en }
+            require: [item.name, item.identifier, item.category, item.enabled]
+            authored: [item.copy]
+          - id: retail_de
+            context: { channel: retail, locale: de }
+            require: [item.name, item.identifier, item.category, item.label]
+            authored: [item.copy]
+      - code: standalone
+        aspects: [item, inventory, quality]
+        requirements:
+          - { id: web_en, context: { channel: web, locale: en }, require: [item.category] }
+          - { id: retail_de, context: { channel: retail, locale: de }, require: [item.category] }
+    sources:
+      - { id: supplier, ordering: sequence, audit: true, writes: [inventory] }
+    channels:
+      - { id: web, families: [model, standalone], requirements: [web_en] }
+      - { id: retail, families: [model, standalone], requirements: [retail_de] }
+    plugins:
+      - { use: 'app:full_schema_plugin' }
+    scopes: ['app:stock_scope']
+    policy: { audit_days: 30 }
+
+  - name: full_schema_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      seams: ['app:full_schema_code']
+      schema:
+        template:
+          aspects:
+            - namespace: quality
+              attributes:
+                - { code: stamp, type: 'app:full_schema_code', index: key, config: { length: 3 } }
+
+  - name: full_schema_code
+    kind: registry.entry
+    meta:
+      type: kickside.pim.type
+      form: text
+      indexes: [none, key]
+      config_schema: { type: object, properties: { length: { type: integer, minimum: 1 } }, additionalProperties: false }
+      functions: { normalize: 'app:full_schema_normalize', validate: 'app:full_schema_validate' }
+
+  - name: full_schema_normalize
+    kind: function.lua
+    source: file://type_value_fixture.lua
+    method: normalize
+
+  - name: full_schema_validate
+    kind: function.lua
+    source: file://type_value_fixture.lua
+    method: validate
+
+  - name: full_schema_category_check
+    kind: function.lua
+    meta: { type: kickside.pim.check }
+    source: file://full_schema_category_check.lua
+    method: run
+    imports:
+      types: kickside.pim:types
+
+  - name: full_schema_cases
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://full_schema_test.lua
+    method: run
+    modules: [json, registry, time, channel, sql]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      scoped: app:scoped
+      types: kickside.pim:types
+      catalog_fixture: app:catalog_fixture
