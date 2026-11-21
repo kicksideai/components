@@ -41,7 +41,7 @@ local function update(tx: sql.Transaction, board_id: string, feed: types.PluginF
                 { value.risk or sql.NULL, board_id, item.item_id })
             if werr then return werr end
             if value.title == "Crash after write" then
-                return errors.new({ kind = errors.INVALID, message = "review register failed after an index write" })
+                error(errors.new({ kind = errors.INVALID, message = "review register crashed after an index write" }))
             end
         end
     end
