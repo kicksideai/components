@@ -40,10 +40,11 @@ local function text(value: unknown): string
 end
 
 local function index_page(tx: sql.Transaction, sqlite: boolean, target: storage.Generation, page: Page): error?
+    local documents: { storage.Document } = {}
     for _, change in ipairs(page.changes) do
-        local err: error?
         if change.op == "delete" then
-            err = storage.remove(tx, sqlite, target.id, change.item_id)
+            local err = storage.remove(tx, sqlite, target.id, change.item_id)
+            if err then return err end
         else
             local key = change.key :: string
             local content = key
@@ -51,12 +52,10 @@ local function index_page(tx: sql.Transaction, sqlite: boolean, target: storage.
                 local values = change.values or {}
                 content = table.concat({ key, text(values.title), text(values.description) }, " ")
             end
-            err = storage.put(tx, sqlite, target.id,
-                { item_id = change.item_id, item_key = key, source_seq = change.updated_seq }, content)
+            documents[#documents + 1] = { item_id = change.item_id, item_key = key, source_seq = change.updated_seq, content = content }
         end
-        if err then return err end
     end
-    return nil
+    return storage.put_page(tx, sqlite, target.id, documents)
 end
 
 local function load(attachment_id: string): (storage.State?, error?)

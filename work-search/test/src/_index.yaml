@@ -290,6 +290,7 @@ entries:
     test: wippy.test:test
     actors: app:actors
     index: kickside.search_index:index
+    storage: kickside.work_search:storage
 - name: dep.views
   kind: ns.dependency
   version: '*'
