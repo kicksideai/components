@@ -350,6 +350,48 @@ local function define()
     end)
 
     test.describe("close sprint commit", function()
+        test.it("closes a retained sprint using its Work transition and honors its predicate", function()
+            local owner = scoped.admin()
+            local declaration = assert(create_board(owner).call("get_schema", {})).declaration
+            declaration.key_prefix = fixture.fresh_prefix()
+            declaration.plugins = { { use = PLUGIN } }
+            for _, field in ipairs(declaration.fields) do field.id = nil end
+            find(declaration.fields, "name", "code").index = "key"
+            find(declaration.item_types, "sprint", "id").process = "planning_period"
+            local period = assert(find(declaration.processes, "planning_period", "id"))
+            period.migration = "pin"
+            local transition = assert(find(period.transitions, "close", "id"))
+            transition.when = { field = "name", op = "eq", value = "Period" }
+            local board = scoped.board(owner, declaration)
+            local source = sprint(board, "sprint", true)
+            local restricted = sprint(board, "sprint", true)
+            local target = sprint(board, "sprint", false)
+            local member = issue(board, source)
+            test.eq(steps.one(board, { op = "set", item = restricted, values = { name = "Hold" } }).status, "applied")
+
+            transition.when.value = "New policy"
+            assert(board.call("apply_schema", { declaration = { processes = { period } } }))
+            local schema = assert(board.call("get_schema", {}))
+            local current = assert(find(schema.compiled.processes, "planning_period", "id"))
+            local held = assert(steps.get(board, source)).item.process_generation
+            test.is_true(current.generation > held)
+
+            local denied, err = planning(owner, "plan_close", { board_id = board.id, sprint_id = restricted })
+            test.is_nil(denied)
+            test.eq(err:details().code, "planning_close_denied")
+            test.eq(assert(steps.get(board, restricted)).item.state, "active")
+
+            local preview, preview_err = planning(owner, "plan_close", { board_id = board.id, sprint_id = source, rollover_id = target })
+            assert(preview, steps.detail(preview_err))
+            test.eq(preview.snapshot.members[1].item_id, member)
+            local closed = assert(planning(owner, "close", { key = "retained-close", snapshot = preview.snapshot, token = preview.token }))
+            test.is_true(closed.applied)
+            local item = assert(steps.get(board, source)).item
+            test.eq(item.state, "closed")
+            test.eq(item.process_generation, held)
+            test.eq(assert(steps.get(board, member)).item.values.current_sprint.item, target)
+        end)
+
         test.it("requires a preview to close a sprint and refuses new membership after closure", function()
             local owner, writer = scoped.admin(), scoped.member()
             local board = create_board(owner)

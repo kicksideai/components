@@ -59,12 +59,20 @@ local function members(request: PreviewRequest): (reads.EditSelection?, error?)
         membership, FIELD)
 end
 
-local function get(board_id: string, item_id: string): (reads.GetResult?, error?)
-    local result, err = board_client.call("get", { board_id = board_id, item = { id = item_id } })
+local function get(board_id: string, item_id: string, transitions: boolean?): (reads.GetResult?, error?)
+    local result, err = board_client.call("get", { board_id = board_id, item = { id = item_id },
+        include = transitions and { "transitions" } or nil })
     return result :: reads.GetResult?, err
 end
 
-local function can_close(schema: reads.SchemaView, item: reads.ItemView): boolean
+local function can_close(schema: reads.SchemaView, source: reads.GetResult): boolean
+    -- Work evaluates ordinary exits against the sprint's retained process
+    -- and the caller's access. Older Planning boards use an ordinary close.
+    for _, transition in ipairs(source.transitions or {}) do
+        if transition.id == "close" and transition.to == "closed" and not transition.region then return true end
+    end
+    -- Work does not advertise command-owned exits in ordinary discovery.
+    local item = source.item
     local compiled = schema.compiled :: work.Compiled
     local process_id: string? = nil
     for _, item_type in ipairs(compiled.item_types) do
@@ -89,7 +97,7 @@ function M.plan_close(input: unknown): (Preview?, error?)
     local request = input :: PreviewRequest
     local schema, schema_err = active_schema(request.board_id)
     if schema_err or not schema then return nil, schema_err end
-    local source, source_err = get(request.board_id, request.sprint_id)
+    local source, source_err = get(request.board_id, request.sprint_id, true)
     if source_err or not source then return nil, source_err end
     if not source.access.write then
         return nil, problem(errors.PERMISSION_DENIED, "planning_write_required", "Sprint closure requires board WRITE.")
@@ -97,10 +105,10 @@ function M.plan_close(input: unknown): (Preview?, error?)
     if source.item.type ~= "sprint" or source.item.state ~= "active" or source.item.life ~= "live" then
         return nil, problem(errors.INVALID, "planning_sprint_inactive", "Choose an active sprint.")
     end
-    if not can_close(schema, source.item) then
+    if source.as_of ~= schema.as_of or source.generation ~= schema.generation then return nil, stale() end
+    if not can_close(schema, source) then
         return nil, problem(errors.PERMISSION_DENIED, "planning_close_denied", "The sprint cannot transition to closed.")
     end
-    if source.as_of ~= schema.as_of or source.generation ~= schema.generation then return nil, stale() end
     if request.rollover_id then
         if request.rollover_id == request.sprint_id then return nil, ineligible() end
         local target, target_err = get(request.board_id, request.rollover_id)
