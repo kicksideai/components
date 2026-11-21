@@ -333,7 +333,13 @@ function M.compile(prev: types.Compiled?, decl: types.Declaration, generation: i
     if rollup_err then return nil, rollup_err end
     local chosen, activation_err = plugins.compile(decl.plugins, configs)
     if activation_err then return nil, activation_err end
+    local seen_scopes: { [string]: boolean } = {}
     for _, id in ipairs(decl.scopes or {}) do
+        if seen_scopes[id] then
+            return nil, errors.new({ kind = errors.INVALID, message = "scope must be adopted once: " .. id,
+                details = { code = "plugin_scope_duplicate", scope = id } })
+        end
+        seen_scopes[id] = true
         local err = plugins.seam(id, chosen, true, "scope")
         if err then return nil, err end
     end

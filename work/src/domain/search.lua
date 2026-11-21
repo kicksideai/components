@@ -5,6 +5,7 @@ local registry_values = require("registry_values")
 local registry = require("registry")
 local contract = require("contract")
 local plugins = require("plugins")
+local manifests = require("manifests")
 local scopes = require("scopes")
 local types = require("types")
 local rules = require("rules")
@@ -38,6 +39,19 @@ function M.validate_scope(compiled: types.Compiled, id: string): error?
     local entry, err = registry.get(id)
     if err or not entry then return err end
     local meta = registry_values.canonical(entry.meta or {})
+    local projection, perr = scopes.projection(id, meta)
+    if perr then return perr end
+    if projection then
+        local manifest, merr = manifests.load(projection.plugin)
+        if merr or not manifest then return merr end
+        local declared = false
+        for _, candidate in ipairs(manifest.projections) do
+            if candidate.kind == projection.kind then declared = true; break end
+        end
+        if not declared then
+            return invalid("plugin_scope_projection_unknown", id .. " names an undeclared projection " .. projection.kind)
+        end
+    end
     if meta.resolve_ids == nil then return nil end
     if type(meta.resolve_ids) ~= "string" then return invalid("unknown_scope", "resolve_ids names a binding") end
     return validate_reads(compiled, (meta.reads or {}) :: { string }, true)

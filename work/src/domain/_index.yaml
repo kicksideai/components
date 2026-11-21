@@ -261,9 +261,11 @@ entries:
   kind: library.lua
   source: file://seams.lua
   modules:
+  - channel
   - funcs
   - registry
   - security
+  - time
   imports:
     registry_values: kickside.work.domain:registry_values
     rules: kickside.work.domain:access_rules
@@ -287,6 +289,7 @@ entries:
     rules: kickside.work.domain:access_rules
     registry_values: kickside.work.domain:registry_values
     plugins: kickside.work.domain:plugins
+    manifests: kickside.work.domain:manifests
     scopes: kickside.work.read:scopes
     types: kickside.work:types
 - name: types

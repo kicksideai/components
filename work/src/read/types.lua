@@ -17,6 +17,7 @@ type Plan = { bounded: BoundedPlan?, query: sql.SelectBuilder, tails: { sql.Sele
     count: Count?, groups: integer, measures: { MeasureColumn }?, take: integer }
 type ReadStamp = { as_of: integer?, generation: integer? }
 type PluginSelection = ReadStamp & { state: domain.PluginState }
+type PluginAdmission = { state: domain.PluginState, manifest: domain.Plugin, config: JsonObject }
 type PluginOptions = ReadStamp & { plugins: { domain.PluginView }, field_types: { domain.FieldTypeOption } }
 type PluginContext = { attachment_id: string?, interface_version: integer, config: JsonObject?, lifecycle: domain.PluginLifecycle, projections: { [string]: domain.PluginProjectionState } }
 type PluginContextRequest = { board_id: string, plugin: string }
@@ -112,7 +113,7 @@ type Redactor = (string, unknown) -> (unknown, error?)
 type TransitionCandidate = { item: domain.Item, root: domain.Item, transition: domain.Transition, region: string? }
 type TransitionGroup = { candidates: { TransitionCandidate }, items: { domain.Item }, where: unknown, require: { string },
     model: domain.Model, process: domain.Process }
-return { AwaitingView = AwaitingView, GateView = GateView, ApprovalView = ApprovalView, StageRun = StageRun, StageRunsRequest = StageRunsRequest, StageRunsResult = StageRunsResult, JsonObject = JsonObject, PluginFeedRequest = PluginFeedRequest, PluginFeed = PluginFeed, PluginContext = PluginContext, PluginSelection = PluginSelection, PluginOptions = PluginOptions, PluginContextRequest = PluginContextRequest, TransitionCandidate = TransitionCandidate, TransitionGroup = TransitionGroup, Redactor = Redactor, BudgetUsage = BudgetUsage, ReadBudget = ReadBudget, ReadAllowance = ReadAllowance, SchemaPlugin = SchemaPlugin, QueryGroupRow = QueryGroupRow, QueryGroup = QueryGroup,
+return { AwaitingView = AwaitingView, GateView = GateView, ApprovalView = ApprovalView, StageRun = StageRun, StageRunsRequest = StageRunsRequest, StageRunsResult = StageRunsResult, JsonObject = JsonObject, PluginFeedRequest = PluginFeedRequest, PluginFeed = PluginFeed, PluginContext = PluginContext, PluginSelection = PluginSelection, PluginAdmission = PluginAdmission, PluginOptions = PluginOptions, PluginContextRequest = PluginContextRequest, TransitionCandidate = TransitionCandidate, TransitionGroup = TransitionGroup, Redactor = Redactor, BudgetUsage = BudgetUsage, ReadBudget = ReadBudget, ReadAllowance = ReadAllowance, SchemaPlugin = SchemaPlugin, QueryGroupRow = QueryGroupRow, QueryGroup = QueryGroup,
     Count = Count, Plan = Plan, BoundedPlan = BoundedPlan, MeasureColumn = MeasureColumn, MeasureValue = MeasureValue,
     GroupKey = GroupKey, GroupPosition = GroupPosition, GroupBucket = GroupBucket, CrossCandidate = CrossCandidate,
     ReferenceOrder = ReferenceOrder, BoardSelection = BoardSelection, BoardAdmission = BoardAdmission,

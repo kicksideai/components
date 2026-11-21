@@ -1,0 +1,229 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app.review_plugin
+entries:
+- name: plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    interface_version: 1
+    title: Change Review
+    description: Review operational changes by risk, with a searchable register and approval audit.
+    attachment: app.review_plugin:attachment
+    schema: {provider: 'app.review_plugin:schema'}
+    seams: [app.review_plugin:risk, app.review_plugin:review, app.review_plugin:threshold, app.review_plugin:register, app.review_plugin:exact]
+    tools: [app.review_plugin:changes]
+    config_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        threshold: {type: integer, minimum: 1, maximum: 10}
+    projections:
+    - {kind: 'app.review_plugin:register', input: state, worker_ref: 'func://app.review_plugin:state'}
+    - kind: app.review_plugin:audit
+      input: events
+      worker_ref: func://app.review_plugin:events
+      events: [kickside.work.events:item.created]
+- name: attachment
+  kind: contract.binding
+  meta:
+    placement: {parents: [root], fixed: true}
+  contracts:
+  - contract: kickside.contract:component
+    methods: {get_status: 'kickside.core.threads:thread_status'}
+  - contract: kickside.contract:deletable
+    context_required: [component_id]
+    methods: {delete: 'app.review_plugin:delete'}
+- name: risk
+  kind: registry.entry
+  meta:
+    type: kickside.work.type
+    plugin: app.review_plugin:plugin
+    title: Change risk score
+    form: int
+    indexes: [number]
+    config_schema:
+      type: object
+      properties:
+        range: {type: array, items: {type: integer}, minItems: 2, maxItems: 2}
+      required: [range]
+      additionalProperties: false
+- name: review
+  kind: function.lua
+  meta: {type: kickside.work.guard, plugin: 'app.review_plugin:plugin', reads: [title, risk]}
+  source: file://hooks.lua
+  method: guard
+  modules: [time]
+  imports: {types: 'kickside.work:types'}
+- name: threshold
+  kind: function.lua
+  meta: {type: kickside.work.operand, plugin: 'app.review_plugin:plugin'}
+  source: file://hooks.lua
+  method: operand
+  modules: [time]
+  imports: {types: 'kickside.work:types'}
+- name: schema
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:schema_provider
+    methods: {resolve: 'app.review_plugin:provide'}
+- name: provide
+  kind: function.lua
+  source: file://hooks.lua
+  method: provide
+  modules: [time]
+  imports: {types: 'kickside.work:types'}
+- name: register
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: app.review_plugin:plugin
+    projection: app.review_plugin:register
+    table: work_test_review_register
+    board_column: board_id
+    item_column: item_id
+    match: [title]
+    filters:
+      risk: {column: risk, type: integer, ops: [eq, gte]}
+- name: exact
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: app.review_plugin:plugin
+    reads: [title]
+    projection: app.review_plugin:register
+    resolve_ids: app.review_plugin:resolver
+- name: resolver
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:search_resolver
+    methods: {resolve_ids: 'app.review_plugin:resolve_ids'}
+- name: state
+  kind: function.lua
+  meta: {type: projection.worker}
+  source: file://register.lua
+  method: state
+  modules: [sql, ctx]
+  imports: &register_imports
+    board: kickside.work:client
+    component: kickside.component:component
+    scopes: kickside.work.read:scopes
+    types: kickside.work.read:types
+- name: events
+  kind: function.lua
+  meta: {type: projection.worker}
+  source: file://register.lua
+  method: events
+  modules: [sql, ctx]
+  imports: *register_imports
+- name: delete
+  kind: function.lua
+  source: file://register.lua
+  method: delete
+  modules: [sql, ctx]
+  imports: *register_imports
+- name: initialize
+  kind: function.lua
+  source: file://register.lua
+  method: initialize
+  modules: [sql, ctx]
+  imports: *register_imports
+- name: resolve_ids
+  kind: function.lua
+  source: file://register.lua
+  method: resolve_ids
+  modules: [sql, ctx]
+  imports: *register_imports
+- name: changes
+  kind: function.lua
+  meta:
+    type: tool
+    title: List reviewed changes
+    llm_alias: ListReviewedChanges
+    llm_description: List indexed operational changes for a Change Review board.
+    mcp: {required_scopes: [state.read]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string"}},"required":["board_id"],"additionalProperties":false}'
+    output_schema: '{"type":"object"}'
+  source: file://register.lua
+  method: list
+  modules: [sql, ctx]
+  imports: *register_imports
+- name: table
+  kind: registry.entry
+  meta:
+    type: kickside.work.ui.view
+    id: change_review
+    plugin: app.review_plugin:plugin
+    component_tag: work-test-change-register
+    config_schema:
+      type: object
+      properties: {show_score: {type: boolean}}
+      additionalProperties: false
+- name: ui_files
+  kind: fs.directory
+  directory: ./src/review_plugin/ui
+  auto_init: true
+- name: ui
+  kind: http.static
+  meta: {server: 'app:gateway'}
+  path: /work-test-change-register
+  fs: app.review_plugin:ui_files
+  options:
+    mime_types: {.js: application/javascript}
+- name: component
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Change register
+    description: Display the operational changes returned by the Work saved view, with the change title and risk score.
+    tag_name: work-test-change-register
+    announced: true
+    auto_register: true
+    base_path: work-test-change-register
+    entry_point: register.js
+    props:
+      items: {type: array, default: [], description: Visible changes returned by the saved view}
+- name: pack
+  kind: registry.entry
+  meta: {type: kickside.work.pack, title: Change Review, icon: tabler:checklist, description: Review the risk of operational changes., version: '1.0.0'}
+  data:
+    schema:
+      fields: [{code: title, form: text}]
+      plugins: [{use: 'app.review_plugin:plugin'}]
+      scopes: [app.review_plugin:register, app.review_plugin:exact]
+    views:
+    - id: change-register
+      title: Change register
+      view: {type: change_review, columns: [title, risk]}
+    requires: [app.review_plugin:plugin]
+    automations: []
+    traits: []
+    starter: {items: [], default: false}
+- name: competing_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    interface_version: 1
+    attachment: app.review_plugin:attachment
+    schema:
+      template:
+        fields: [{code: risk, form: int}]
+- name: worker_access
+  kind: security.policy
+  groups: [wippy.security:process]
+  policy:
+    resources: [app.review_plugin:state, app.review_plugin:events]
+    actions: [registry.get, funcs.call]
+    effect: allow
+- name: review_plugin_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work, timeout: 300s}
+  source: file://review_plugin_test.lua
+  method: run
+  modules: [registry, funcs, json, channel, time, sql, http_client]
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    steps: app:steps
+    clock: kickside.work.domain:clock
+    core_prune: kickside.core.retention:prune

@@ -68,7 +68,6 @@ entries:
     limits: kickside.work.settings:limits
     access: kickside.work.read:access
     feeds: kickside.work.read:feeds
-    manifests: kickside.work.domain:manifests
     threads: kickside.work.persist:threads
     types: kickside.work.read:types
     local_types: kickside.work.extensions:types

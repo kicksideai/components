@@ -9,6 +9,14 @@ A UI module registers a `registry.entry` with `meta.type: kickside.work.ui.app`,
 
 `board.list`, `WorkListBoards`, and `GET /work/boards` expose each readable board’s optional `ui_app` ID. Pass that ID as `ui_app` to filter discovery before pagination. Follow `next` with the same filter. Discovery uses Component’s READ-filtered metadata query and the existing caller-visible board counts.
 
+## Plugin extensions
+
+Manifests with `meta.type: kickside.work.plugin` declare interface version 1, an attachment binding, optional deployment settings and board configuration, dependencies, seam IDs, tools, projections, and a schema source. Schema sources are static templates or `kickside.work:schema_provider` bindings. Packs compose those sources with a board schema and saved views.
+
+The published seams are declarative field types over the existing value forms, guards for transitions and state checks, concrete operands, SQL query and search scopes, and search resolver bindings. Field configuration can use the validators of its declared form. Work refuses stored-value reinterpretation through the ordinary schema review. Guard, check and operand calls have a one-second execution limit. Guards return up to 64 findings and result data is bounded to 65,536 canonical JSON bytes. A board adopts each scope ID once. A scope that declares a backing projection names a kind on its owning manifest.
+
+State workers consume the bounded `plugin_feed` pages. Event workers receive selected retained events. Resync preserves healthy unchanged registrations and rebuilds a parked state projection from current items. A parked event projection replays from its registered start and reports the retained floor if that start is gone. Changing a declared revision resets the corresponding worker. An independent view type can bind a saved view to a registered web component. Removing the view type makes run return `view_type_unavailable` and preserves the saved definition for repair.
+
 ## Item write invariants
 
 Omit `parent_types` or use an empty list for a root-only item type. A nonempty list allows the listed item type IDs as parents. Include JSON `false` to also allow top-level placement. For example, `["root", false]` allows a parent item whose type ID is `root` and also allows the item at the top level. Creating or reparenting an item at root when its type requires a parent returns `parent_required` on `parent`.

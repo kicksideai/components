@@ -8,6 +8,22 @@ local domain = require("domain")
 local storage = require("storage")
 local jobs = require("jobs")
 local M = {}
+local function decode(raw: domain.Row): (domain.PluginState?, error?)
+    local row, err = codec.object(raw, { "plugin", "attachment_id", "impl_id" },
+        { "active", "revision", "applied_revision" }, { "config", "lifecycle", "progress" })
+    if err or not row then return nil, err end
+    return { plugin = row.plugin :: string, attachment_id = row.attachment_id :: string,
+        revision = row.revision :: integer, applied_revision = row.applied_revision :: integer,
+        impl_id = row.impl_id :: string, config = row.config :: domain.JsonObject, active = row.active == 1,
+        lifecycle = row.lifecycle :: domain.PluginLifecycle, progress = row.progress :: domain.PluginProgress }, nil
+end
+
+function M.active(tx: storage.Executor, board_id: string, plugin: string): (domain.PluginState?, error?)
+    local rows, err = tx:query("SELECT * FROM kickside_work_plugin WHERE board_id = $1 AND plugin = $2 AND active = 1", { board_id, plugin })
+    if err or not rows or not rows[1] then return nil, err end
+    return decode(rows[1])
+end
+
 function M.list(tx: storage.Executor, board_id: string, pending: boolean?, limit: integer?): ({ domain.PluginState }?, error?)
     local where = pending and " AND revision > applied_revision" or ""
     local params: domain.SqlParams = {board_id}
@@ -16,13 +32,9 @@ function M.list(tx: storage.Executor, board_id: string, pending: boolean?, limit
     if err then return nil, err end
     local out: { domain.PluginState } = {}
     for _, raw in ipairs(rows or {}) do
-        local row, row_err = codec.object(raw, { "plugin", "attachment_id", "impl_id" },
-            { "active", "revision", "applied_revision" }, { "config", "lifecycle", "progress" })
+        local row, row_err = decode(raw)
         if row_err or not row then return nil, row_err end
-        out[#out + 1] = { plugin = row.plugin :: string, attachment_id = row.attachment_id :: string,
-            revision = row.revision :: integer, applied_revision = row.applied_revision :: integer,
-            impl_id = row.impl_id :: string, config = row.config :: domain.JsonObject, active = row.active == 1,
-            lifecycle = row.lifecycle :: domain.PluginLifecycle, progress = row.progress :: domain.PluginProgress }
+        out[#out + 1] = row
     end
     return out, nil
 end

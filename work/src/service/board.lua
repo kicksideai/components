@@ -77,9 +77,9 @@ function M.plugin_feed(input: unknown): (reads.PluginFeed?, error?)
     local err = requests.parse("plugin_feed", input)
     if err then return nil, err end
     local request = input :: reads.PluginFeedRequest
-    local context, cerr = plugin_access.context(request)
-    if cerr or not context then return nil, cerr end
-    return plugin_feed.page(request, context)
+    local admission, aerr = plugin_access.active(request)
+    if aerr or not admission then return nil, aerr end
+    return plugin_feed.page(request, admission)
 end
 
 function M.schema_options(input: unknown): (unknown, error?)

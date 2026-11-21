@@ -2,6 +2,8 @@
 local registry_values = require("registry_values")
 -- Pure plugin seams retain the ambient caller and return bounded concrete results.
 local funcs = require("funcs")
+local channel = require("channel")
+local time = require("time")
 local registry = require("registry")
 local security = require("security")
 local plugins = require("plugins")
@@ -10,6 +12,24 @@ local values = require("values")
 local types = require("types")
 local rules = require("rules")
 local M = {}
+local MAX_RESULT_BYTES = 65536
+
+local function invoke(id: string, request: types.GuardRequest | types.OperandRequest): (unknown, error?)
+    local future, err = funcs.async(id, request)
+    if err or not future then return nil, err end
+    local timer = time.timer("1s")
+    local deadline = timer:channel()
+    local selected = channel.select({ future:response():case_receive(), deadline:case_receive() })
+    if selected.channel == deadline then
+        future:cancel()
+        return nil, errors.new({ kind = errors.TIMEOUT, message = "plugin hook exceeded its execution limit",
+            details = { code = "plugin_hook_timeout", hook = id } })
+    end
+    timer:stop()
+    local payload, failure = future:result()
+    if failure or not payload then return nil, failure end
+    return payload:data()
+end
 
 local function invalid(code: string, message: string): error
     return errors.new({ kind = errors.INVALID, message = message, details = { code = code } })
@@ -58,6 +78,37 @@ local function actor(board: types.Board?): types.HookActor
     return { id = current and current:id(), groups = groups }
 end
 
+local function invalid_guard(message: string): error
+    return errors.new({ kind = errors.UNAVAILABLE, message = message, details = { code = "guard_result_invalid" } })
+end
+
+local function guard_result(answer: unknown): (types.GuardResult?, error?)
+    if type(answer) ~= "table" or type(answer.allow) ~= "boolean" or type(answer.findings) ~= "table" or #answer.findings > 64 then
+        return nil, invalid_guard("guard returns allow and bounded findings")
+    end
+    local bytes = 0
+    for key, finding in pairs(answer.findings) do
+        if type(key) ~= "number" or math.tointeger(key) == nil or key < 1 or key > #answer.findings then
+            return nil, invalid_guard("guard findings are a list")
+        end
+        if type(finding) ~= "table" or type(finding.code) ~= "string" or type(finding.message) ~= "string"
+            or (finding.field ~= nil and type(finding.field) ~= "string") then
+            return nil, invalid_guard("guard finding requires code and message and may name a field")
+        end
+        for name in pairs(finding) do
+            if name ~= "code" and name ~= "message" and name ~= "field" then
+                return nil, invalid_guard("guard finding contains an unknown property")
+            end
+        end
+        bytes = bytes + #finding.code + #finding.message + #(finding.field or "")
+        if bytes > MAX_RESULT_BYTES then return nil, invalid_guard("guard findings hold at most 64 KB") end
+    end
+    if #values.canonical(answer.findings) > MAX_RESULT_BYTES then
+        return nil, invalid_guard("guard findings hold at most 64 KB")
+    end
+    return answer :: types.GuardResult, nil
+end
+
 function M.guard(board: types.Board, item: types.Item, transition: types.Transition?, ids: { string }?): (boolean, { types.Finding }?, error?)
     if #(ids or {}) > 0 and board.caller_error then return false, nil, board.caller_error end
     for _, id in ipairs(ids or {}) do
@@ -77,22 +128,10 @@ function M.guard(board: types.Board, item: types.Item, transition: types.Transit
         end
         local request: types.GuardRequest = { config = {}, item = { id = item.item_id, type = item.type, state = item.state,
             category = item.category, parent = item.parent_id, rank = item.rank, values = held }, transition = transition, actor = actor(board) }
-        local answer, aerr = funcs.call(id, request)
+        local answer, aerr = invoke(id, request)
         if aerr then return false, nil, errors.wrap(aerr, "guard " .. id .. " unavailable") end
-        if type(answer) ~= "table" or type(answer.allow) ~= "boolean" or type(answer.findings) ~= "table" or #answer.findings > 64 then
-            return false, nil, errors.new({ kind = errors.UNAVAILABLE, message = "guard returns allow and bounded findings", details = { code = "guard_result_invalid" } })
-        end
-        for key in pairs(answer.findings) do
-            if type(key) ~= "number" or math.tointeger(key) == nil or key < 1 or key > #answer.findings then
-                return false, nil, errors.new({ kind = errors.UNAVAILABLE, message = "guard findings are a list", details = { code = "guard_result_invalid" } })
-            end
-        end
-        for _, finding in ipairs(answer.findings) do
-            if type(finding) ~= "table" or type(finding.code) ~= "string" or type(finding.message) ~= "string" then
-                return false, nil, errors.new({ kind = errors.UNAVAILABLE, message = "guard finding requires code and message", details = { code = "guard_result_invalid" } })
-            end
-        end
-        local result = answer :: types.GuardResult
+        local result, rerr = guard_result(answer)
+        if rerr or not result then return false, nil, rerr end
         if not result.allow then return false, result.findings, nil end
     end
     return true, {}, nil
@@ -105,7 +144,7 @@ function M.operand(reader: types.Reader, raw: unknown): (types.OperandResult?, e
     local meta, err = load(raw.id, "operand", reader.plugins)
     if err or not meta then return nil, err end
     local request: types.OperandRequest = { board_id = reader.board_id, config = raw.config or {}, actor = actor(nil) }
-    local answer, aerr = funcs.call(raw.id, request)
+    local answer, aerr = invoke(raw.id, request)
     if aerr then return nil, errors.wrap(aerr, "operand unavailable") end
     local remaining = 4096
     local active: { [table]: boolean } = {}
@@ -137,7 +176,7 @@ function M.operand(reader: types.Reader, raw: unknown): (types.OperandResult?, e
     end
     local result_err = concrete(answer, 1)
     if result_err then return nil, result_err end
-    if #values.canonical(answer) > 65536 then return nil, invalid("operand_result_invalid", "operand result holds at most 64 KB") end
+    if #values.canonical(answer) > MAX_RESULT_BYTES then return nil, invalid("operand_result_invalid", "operand result holds at most 64 KB") end
     return answer :: types.OperandResult, nil
 end
 return M
