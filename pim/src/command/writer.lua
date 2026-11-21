@@ -90,7 +90,8 @@ local function run(catalog_id: string, idempotency: types.Idempotency?, fingerpr
                 local head=math.max(catalog.applied_seq,last_seq)
                 local plan,berr=build(db,catalog,head,base)
                 if berr or not plan then return nil,berr end
-                return {result=plan.result :: types.JsonObject,events=plan.events,expect={head=head},as_of=head},nil
+                return {result=plan.result :: types.JsonObject,events=plan.events,expect={head=head},as_of=head,
+                    receipt_after_fold=plan.receipt_after_fold},nil
             end
             return store.with_db(function(db): (pipeline.Attempt?, error?)
                 local catalog, rerr = store.catalog(db, catalog_id)
@@ -371,7 +372,8 @@ local function run_plan(catalog_id: string, request: types.ReleaseRequest, op: s
         function(db: types.Executor, catalog: types.Catalog, _head: integer): (types.Plan?, error?)
             local planned, perr = plan(db, catalog, request)
             if perr or not planned then return nil, perr end
-            return { result = { outcomes = planned.outcomes, applied = #planned.events > 0 }, events = planned.events }, nil
+            return { result = { outcomes = planned.outcomes, applied = #planned.events > 0 }, events = planned.events,
+                receipt_after_fold = planned.receipt_after_fold }, nil
         end, deadline)
     if err then return nil, err end
     return out :: types.ApplyResult, nil
@@ -507,10 +509,12 @@ function M.release(catalog_id: string, request: types.ReleaseRequest, deadline: 
     local out, err = run_plan(catalog_id, request, "release", releases.release, deadline)
     if err or not out then return nil, err end
     for _, outcome in ipairs(out.outcomes) do
-        if outcome.request_id then
-            local task,terr=store.with_db(function(db): (release_jobs.Task?,error?) return release_jobs.get(db,catalog_id,outcome.request_id :: string) end)
-            if terr then return nil,terr end
-            outcome.job_id = (task :: release_jobs.Task).job_id
+        if outcome.request_id and not outcome.job_id then
+            return store.with_db(function(db): (types.ApplyResult?, error?)
+                local jerr = release_jobs.attach_ids(db, catalog_id, out.outcomes)
+                if jerr then return nil, jerr end
+                return out, nil
+            end)
         end
     end
     return out, nil

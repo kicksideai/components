@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local store=require("store")
 local types=require("types")
-type FoldResult={last_seq: integer,jobs:{string},rebuild_job:string?}
+type FoldResult={last_seq: integer,previous_seq: integer,jobs:{string},rebuild_job:string?}
 local M={}
 M.FoldResult=FoldResult
 local failing=false
@@ -12,7 +12,7 @@ function M.open(): (unknown,error?)
 end
 function M.fold(): (unknown,error?)
     if failing then return nil,errors.new({kind=errors.INVALID,retryable=false,message="fold failed",details={code="fold_failed"}}) end
-    return {last_seq=1,jobs={}},nil
+    return {last_seq=1,previous_seq=0,jobs={}},nil
 end
 function M.transaction<T>(what: string,fn: (types.Executor,string)->(T?,error?)): (T?,error?)
     local db=assert(M.open())

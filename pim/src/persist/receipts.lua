@@ -6,8 +6,7 @@ local clock = require("clock")
 local registry = require("registry")
 local types = require("types")
 local M = {}
-type Receipt = {request_hash: string?, result: types.JsonObject?, event_count: integer?, noop: boolean?, marker: string?}
-M.Receipt = Receipt
+type Receipt = types.Receipt
 local function get(db: types.Executor,catalog_id: string,marker: string): (Receipt?,integer?,error?)
     local rows,qerr=db:query("SELECT * FROM kickside_pim_receipt WHERE catalog_id=$1 AND marker=$2 AND expires_at > $3",{catalog_id,marker,clock.now()})
     if qerr then return nil,nil,qerr end

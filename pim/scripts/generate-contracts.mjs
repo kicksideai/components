@@ -27,6 +27,12 @@ text = text.split('\n').map(line => {
   const original = JSON.parse(match[2].replaceAll("''", "'"))
   const schema = structuredClone(original)
   if (side === 'input' && ['create', 'plan_schema', 'apply_schema'].includes(method)) schema.properties.declaration = declaration
+  if (side === 'output' && method === 'list_changes') {
+    schema.properties.next = {
+      ...contracts.get('list_changes:input').properties.cursor,
+      description: 'Pass this continuation unchanged to read the next page. Restart from zero if this page reports a gap.',
+    }
+  }
   contracts.set(`${method}:${side}`, schema)
   if (isDeepStrictEqual(schema, original)) return line
   return match[1] + "'" + JSON.stringify(schema).replaceAll("'", "''") + "'"

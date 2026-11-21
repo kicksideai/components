@@ -143,6 +143,7 @@ entries:
     modules: [json, funcs, sql]
     imports:
       receipts: kickside.pim.persist:receipts
+      release_jobs: kickside.pim.persist:release_jobs
       store: kickside.pim.persist:store
       materializer: kickside.pim.persist:materializer
       jobs: kickside.core.jobs:jobs
@@ -289,6 +290,7 @@ entries:
       values: kickside.pim.domain:values
       types: kickside.pim:types
       jobs: kickside.core.jobs:jobs
+      lifecycle_enqueue: kickside.core.jobs.persist:lifecycle_enqueue
       consts: kickside.pim:consts
 
   - name: receipts

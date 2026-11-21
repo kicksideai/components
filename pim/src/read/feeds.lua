@@ -34,12 +34,11 @@ function M.changes(catalog_id: string, request: types.ChangesRequest): (types.Ch
     end)
 end
 
-function M.changes_snapshot(tx: types.Executor,dialect: string,catalog: types.Catalog,request: types.ChangesRequest,limit: integer,observed_floor_seq: integer?): (types.ChangesResult?,error?)
+function M.changes_snapshot(tx: types.Executor,dialect: string,catalog: types.Catalog,request: types.ChangesRequest,limit: integer): (types.ChangesResult?,error?)
     local catalog_id=catalog.catalog_id
-    local cursor=request.cursor or {seq=0,product_id=""}
+    local cursor: types.ChangesCursor = request.cursor or {seq=0,product_id=""}
         local floor = catalog.tombstone_floor_seq
-        -- A plugin token can page through older rows after observing this floor.
-        if cursor.seq > 0 and cursor.seq < floor and floor > (observed_floor_seq or 0) then
+        if cursor.seq > 0 and cursor.seq < floor and floor > (cursor.expiry_floor or 0) then
             return { items = {}, next = cursor, has_more = false, gap = { floor = floor } }, nil
         end
         local ceiling = catalog.applied_seq
@@ -80,7 +79,8 @@ function M.changes_snapshot(tx: types.Executor,dialect: string,catalog: types.Ca
             items[i] = item
         end
         local last = items[#items]
-        local next_cursor: types.ChangesCursor = last and { seq = last.updated_seq, product_id = last.product_id } or cursor
+        local next_cursor: types.ChangesCursor = { seq = last and last.updated_seq or cursor.seq,
+            product_id = last and last.product_id or cursor.product_id, expiry_floor = floor > 0 and floor or nil }
         return { items = items, next = next_cursor, has_more = #(rows or {}) > limit }, nil
 end
 

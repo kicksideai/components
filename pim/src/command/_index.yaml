@@ -125,6 +125,7 @@ entries:
       links: kickside.pim.extensions:links
       consts: kickside.pim:consts
       store: kickside.pim.persist:store
+      release_jobs: kickside.pim.persist:release_jobs
       evaluate: kickside.pim.domain:evaluate
       checks: kickside.pim.extensions:checks
       snapshot: kickside.pim.domain:snapshot

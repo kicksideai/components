@@ -9,6 +9,7 @@ local types = require("types")
 local consts = require("consts")
 
 local receipts = require("receipts")
+local release_jobs = require("release_jobs")
 local json = require("json")
 local sql=require("sql")
 local M = {}
@@ -66,12 +67,20 @@ function M.run(raw: unknown): (Output?, error?)
         end
     end
     for _, event in ipairs(input.events or {}) do
-        if event.seq <= folded.last_seq then
+        if event.seq > folded.previous_seq and event.seq <= folded.last_seq then
             local body: unknown = event.body
             if type(body)=="string" then body=assert(json.decode(body)) end
             local r=(body :: types.JsonObject).receipt
             if type(r)=="table" then
-                local rerr=receipts.record(tx,catalog_id,r :: receipts.Receipt,event.seq :: integer,(body :: types.JsonObject).at :: string)
+                local receipt = r :: types.Receipt
+                local first_seq = event.seq
+                if receipt.after_fold then
+                    local outcomes = (receipt.result :: types.JsonObject).outcomes :: { types.Outcome }
+                    local jerr = release_jobs.attach_ids(tx, catalog_id, outcomes)
+                    if jerr then return nil, jerr end
+                    first_seq = first_seq - (receipt.event_count :: integer) + 1
+                end
+                local rerr=receipts.record(tx,catalog_id,receipt,first_seq,(body :: types.JsonObject).at :: string)
                 if rerr then return nil,rerr end
             end
         end

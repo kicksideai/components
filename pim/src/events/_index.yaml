@@ -181,7 +181,7 @@ entries:
         channels: { type: array, items: { type: string } }
         actor: { type: string }
         at: { type: string, description: Command time, RFC3339 UTC. }
-        receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
+        receipt: { type: object, description: Command receipt for an idempotent release. }
       required: [product_id, release_id, version, generation, snapshot, hash, channels]
 
   - name: product.withdrawn
@@ -204,16 +204,17 @@ entries:
     schema:
       type: object
       additionalProperties: false
-      required: [request_id, product_id, root, identity]
+      required: [request_id, product_id, version, root, identity]
       properties:
         request_id: { type: string }
         product_id: { type: string }
+        version: { type: integer, minimum: 1 }
         root: { type: boolean }
         identity: { type: object }
         channels: { type: array, items: { type: string } }
         actor: { type: string }
         at: { type: string }
-        receipt: { type: object }
+        receipt: { type: object, description: Command receipt completed by the fold after it creates the release jobs. }
 
   - name: plugin.configured
     kind: registry.entry

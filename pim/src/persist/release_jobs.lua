@@ -5,12 +5,53 @@ local types = require("types")
 local values = require("values")
 local sql = require("sql")
 local jobs = require("jobs")
+local lifecycle_enqueue = require("lifecycle_enqueue")
 local consts = require("consts")
 local clock=require("clock")
 local M = {}
+type Reference = { request_id: string, job_id: string? }
+M.Reference = Reference
 type Task = { request_id: string, model_id: string, root: integer, identity: types.JsonObject, channels: { string }?,
     trace_context: types.TraceContext?, job_id: string, after_product: string, batch: types.ReleaseRequest?, done: integer }
 M.Task = Task
+
+local function identity(catalog_id: string, model_id: string, version: integer): { namespace: string, scope: string, key: string }
+    return { namespace = "pim", scope = "release_model:" .. catalog_id, key = model_id .. ":" .. version }
+end
+
+-- The Jobs unique index covers exactly pending and running rows. The immutable
+-- payload carries the request ID even when PIM's task rows have been retained away.
+function M.active(db: types.Executor, catalog_id: string, model_id: string, version: integer): (Reference?, error?)
+    local key, kerr = lifecycle_enqueue.identity_parts({ job_identity = identity(catalog_id, model_id, version) }, "")
+    if kerr or not key then return nil, kerr end
+    local rows, err = db:query([[SELECT id, CAST(payload AS text) AS payload FROM kickside_job
+        WHERE job_identity = $1 AND status IN ('pending','running')]], { key })
+    if err or not rows or not rows[1] then return nil, err end
+    local job, derr = store.decode_row(rows[1], { id = "text", payload = "json" })
+    if derr or not job then return nil, derr end
+    return { request_id = (job.payload :: types.JsonObject).request_id :: string, job_id = job.id :: string }, nil
+end
+
+-- Complete release outcomes using primary-key seeks, once per new job in the batch.
+function M.attach_ids(db: types.Executor, catalog_id: string, outcomes: { types.Outcome }): error?
+    local ids: { [string]: string } = {}
+    for _, outcome in ipairs(outcomes) do
+        local request_id = outcome.request_id
+        if request_id and not outcome.job_id then
+            if not ids[request_id] then
+                local rows, err = db:query("SELECT job_id FROM kickside_pim_release_job WHERE catalog_id = $1 AND request_id = $2",
+                    { catalog_id, request_id })
+                if err then return err end
+                if not rows or not rows[1] then
+                    return errors.new({ kind = errors.NOT_FOUND, message = "model release request is missing", details = { code = "model_release_absent" } })
+                end
+                ids[request_id] = rows[1].job_id :: string
+            end
+            outcome.job_id = ids[request_id]
+        end
+    end
+    return nil
+end
 
 function M.get(tx: types.Executor, catalog_id: string, request_id: string): (Task?, error?)
     local rows, err = tx:query("SELECT * FROM kickside_pim_release_job WHERE catalog_id = $1 AND request_id = $2", { catalog_id, request_id })
@@ -25,7 +66,8 @@ function M.get(tx: types.Executor, catalog_id: string, request_id: string): (Tas
 end
 
 function M.record(tx: sql.Transaction, dialect: string, catalog_id: string, body: types.ModelReleaseBody,trace: types.TraceContext?): (string?, error?)
-    local job, err = jobs.enqueue_tx(tx, dialect, { namespace = "pim", scope = "release_model", key = body.request_id,
+    local key = identity(catalog_id, body.product_id, body.version)
+    local job, err = jobs.enqueue_tx(tx, dialect, { namespace = key.namespace, scope = key.scope, key = key.key,
         owner_locator = { kind = "component", id = catalog_id }, job_type = consts.RELEASE_OWNER, max_attempts = 5,trace_context=trace,
         immutable_payload = { catalog_id = catalog_id, request_id = body.request_id } })
     if err then return nil, err end

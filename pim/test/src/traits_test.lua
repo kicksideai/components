@@ -194,6 +194,27 @@ local function define()
         test.it("covers contracts with matching schemas and exact tool policies", function()
             conformance.check()
         end)
+        test.it("advertises round-trippable changes continuations and requires queued release identifiers", function()
+            local changes = assert(registry.get("kickside.pim.traits:list_changes"))
+            local request_schema = assert(json.decode(changes.meta.input_schema))
+            local result_schema = assert(json.decode(changes.meta.output_schema))
+            local cursor = { seq = 7, product_id = "product", expiry_floor = 10 }
+            test.is_true(json.validate(request_schema, { cursor = cursor }))
+            local gap = assert(json.decode([[{"success":true,"items":[],"has_more":false,
+                "next":{"seq":7,"product_id":"product","expiry_floor":10},"gap":{"floor":11}}]]))
+            test.is_true(json.validate(result_schema, gap))
+            test.is_false(json.validate(request_schema, { cursor = { seq = 7, product_id = "product", expiry_floor = -1 } }))
+
+            local release = assert(registry.get("kickside.pim.traits:release"))
+            local release_schema = assert(json.decode(release.meta.output_schema))
+            local outcome = { outcome = "queued", request_id = "request", job_id = "job" }
+            local result = { success = true, applied = false, outcomes = { outcome } }
+            test.is_true(json.validate(release_schema, result))
+            outcome.job_id = nil
+            test.is_false(json.validate(release_schema, result))
+            outcome.outcome = "unknown"
+            test.is_false(json.validate(release_schema, result))
+        end)
         test.it("separates read, working and administration roles", function()
             local reads = assert(registry.get("kickside.pim.traits:pim_readonly"))
             local working = assert(registry.get("kickside.pim.traits:pim_trait"))

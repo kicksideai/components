@@ -28,7 +28,7 @@ local attachments = require("attachments")
 local M = {}
 
 type IdSet = { [string]: boolean }
-type FoldResult = { rebuild_job: string?, jobs: { string }, last_seq: integer }
+type FoldResult = { rebuild_job: string?, jobs: { string }, last_seq: integer, previous_seq: integer }
 -- Batch is what one fold accumulates and writes once at its end: the products
 -- it loaded or saved, the items to recompute, products whose ref and unique rows
 -- change, attribute usage deltas, history rows, and the counter changes it
@@ -468,8 +468,8 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
     row_budget: integer): (FoldResult?, error?)
     local catalog, err = store.catalog(tx, catalog_id, dialect)
     if err then return nil, err end
-    local result: FoldResult = { last_seq = to_seq, jobs = {} }
     local applied = catalog and catalog.applied_seq or 0
+    local result: FoldResult = { last_seq = to_seq, previous_seq = applied, jobs = {} }
     local batch: Batch = { cache = {}, ids = {}, rows = 0, derived = {}, usage = {}, history = {}, products = 0, items = 0, trashed = 0,
         product_writes = {}, product_inserts = false, prefetched = {}, prefetched_through = 0 }
     local pending = false

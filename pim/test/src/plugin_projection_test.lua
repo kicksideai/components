@@ -243,9 +243,9 @@ local function define()
             test.eq(#third.changes,0)
             test.is_false(third.bootstrap)
             test.is_true(third.done)
-            -- PIM 0.1.4 persisted the same continuation before it recorded the observed floor.
+            -- The position alone carries no observation of the tombstone floor.
             local saved=assert(json.decode(second.token))
-            saved.tombstone_floor_seq=nil
+            saved.cursor.expiry_floor=nil
             local saved_token=assert(json.encode(saved))
             local function resume_saved(): Map
                 return assert(h.call("plugin_feed",{plugin="app:state_plugin",kind="app:state_fold",token=saved_token}))

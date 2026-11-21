@@ -984,8 +984,10 @@ Events ≤ 4 MB; a release snapshot ≤ 512 KB.
 
 Idempotency: successful commands, including successful no-ops, record receipts
 in `kickside_pim_receipt`. Effectful commands carry the request hash and outcome
-on their first fact, whose fold persists the receipt atomically with projection
-coverage. Successful no-ops append no event: PIM records their result only in
+on their first fact. A release that creates jobs carries them on its final fact,
+so the fold stores the job IDs in the receipt after all jobs are created.
+The fold persists receipts atomically with projection coverage.
+Successful no-ops append no event: PIM records their result only in
 its receipt store, under the catalog lock with a captured-position and winner
 recheck. A moved position rebuilds the attempt.
 A replay first catches up and consults the PIM store, returning the original
@@ -1118,8 +1120,9 @@ declared `system_only: true`; the fold drops the document and refs and keeps a
 tombstone row (`product_id`, `sku`, `state = purged`, `state_at`, `updated_seq`) so feeds
 report the delete to consumers that come later. Tombstones older than
 `tombstone_days` are removed by the retention owner, which advances
-`catalog.tombstone_floor_seq`; a feed page whose cursor is below it carries
-the pullable's `source_gap`, and the consumer resyncs from cursor zero.
+`catalog.tombstone_floor_seq`. The changes continuation carries the observed
+floor. A floor newer than both that observation and the nonzero cursor position
+causes a gap, and the consumer resyncs from cursor zero.
 
 ### 5.8 Jobs and retention
 
@@ -1639,7 +1642,12 @@ backfill commits.
   Releasing an active model with its current version appends
   `model.release_requested`; the fold persists `release_job` and enqueues the
   one-shot `release_model` job together. Its outcome is `queued` with the durable
-  `request_id` and Jobs `job_id`, including receipt replay. The worker releases
+  `request_id` and Jobs `job_id`, including receipt replay after job retention.
+  A request for the same catalog, model and version reuses a pending or running
+  job, including its original actor and channel selection. Reuse adds no release
+  request fact and returns `applied: false` when the batch appends no other facts.
+  A terminal job leaves that model version free for another release request.
+  The worker releases
   ready active item descendants as the captured requesting actor. Each page
   freezes its exact version-checked command before execution and advances its
   durable position from the frozen command's final product id after that command
@@ -1699,11 +1707,18 @@ withdrawals. Channel plugins consume the publications feed (§12).
 ## 12. Integration surface
 
 The catalog contract exposes the feeds as methods (`list_changes({ catalog_id,
-cursor, limit, families? })`, `list_publications({ catalog_id, channel,
+cursor: { seq, product_id, expiry_floor? }, limit, families? })`, `list_publications({ catalog_id, channel,
 after: { seq, product_id, expiry_floor? }, limit })`); a plugin may call them directly. The sink, the sources,
 the event ports, the Blocks and the agent tools live in `kickside/pim` as thin
 bindings over the catalog contract (the `kickside/pim-flow` split of §17
 moves them unchanged).
+
+Start `list_changes` without a cursor or with `{ seq: 0, product_id: "" }`.
+Pass each `next` continuation unchanged. It carries the `expiry_floor` observed
+by that page, so a bootstrap can read live rows older than the floor. If the
+floor advances past the continuation, `gap: { floor }` reports the new floor
+with an empty page and the original cursor. Clear the replica and restart from
+zero. The products pullable carries the same continuation as `next_cursor`.
 
 Publication retention removes expired withdrawals and advances the channel's
 expiry boundary to the greatest deleted `(seq, product_id)` in one transaction.
