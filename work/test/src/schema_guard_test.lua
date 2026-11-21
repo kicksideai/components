@@ -100,12 +100,16 @@ local function define()
             local h = board()
             local first, second = steps.create(h, "task"), steps.create(h, "task")
             probe.arm(h.id, schema_change())
-            local result = apply(h, { finish(first, 1), finish(second, 1) }, { mode = "atomic" })
+            local result = apply(h, { finish(first, 1), finish(second, 1) }, { mode = "atomic", key = "schema-race" })
             test.is_true(result.applied)
             local calls = probe.calls(h.id)
             test.eq(#calls, 2)
             test.eq(calls[1].writes[1].expect.also.version, 1)
             test.eq(calls[2].writes[1].expect.also.version, 2)
+            local first_delivery = calls[1].writes[1].events[1].external
+            local retry_delivery = calls[2].writes[1].events[1].external
+            test.eq(first_delivery.external_id, retry_delivery.external_id)
+            test.is_true(first_delivery.external_source ~= retry_delivery.external_source)
             for _, item in ipairs({ first, second }) do
                 test.eq(assert(steps.get(h, item)).item.state, "done")
                 test.eq(assert(steps.get(h, item)).item.version, 2)

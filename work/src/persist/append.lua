@@ -43,7 +43,8 @@ function M.writes(c: domain.ThreadClient, board_id: string, writes: { domain.Wri
                 if batch.subject and batch.version ~= nil then
                     expect.subject, expect.version = batch.subject, batch.version + (versions[batch.subject] or 0)
                     if write.expect_schema_version ~= nil and not schema_checked[thread] and batch.subject == write.expect_subject then
-                        -- All named transition writes in this transaction share the board snapshot.
+                        -- Named transitions share the snapshot and are newly planned events.
+                        -- Keyed attempts stamp fresh delivery identities after checking receipts.
                         expect.also = { subject = "schema", version = write.expect_schema_version }
                         schema_checked[thread] = true
                     end
