@@ -337,8 +337,11 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
       <div class="kx-main">
         <div ref="pane" class="kx-main-scroll work-settings-content" role="region" :aria-label="tab">
           <SettingsSectionHead v-if="authorized && schema" :title="tab" :description="sectionDescriptions[tab]">
-            <template v-if="dirty" #actions>
-              <SettingsDraftActions :busy="busy" :discard-disabled="checkingRemoval"
+            <template v-if="dirty || tab === 'Plugins'" #actions>
+              <Button v-if="tab === 'Plugins'" label="Refresh status" severity="secondary" outlined :disabled="busy || loading" @click="load()">
+                <template #icon><Icon icon="tabler:refresh" aria-hidden="true" /></template>
+              </Button>
+              <SettingsDraftActions v-if="dirty" :busy="busy" :discard-disabled="checkingRemoval"
                 :review-disabled="checkingRemoval || migrationPending || stale || !!invalid.size"
                 @discard="discard" @review="openReview" />
             </template>

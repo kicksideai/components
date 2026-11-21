@@ -21,6 +21,7 @@ it('edits directed source types and peer target IDs and requires clearing them b
   expect(symmetric.props('disabled')).toBe(true)
   expect(wrapper.text()).toContain('Clear the source and target types to use the same meaning in both directions.')
   await wrapper.get('[aria-label="Remove target type peer_task"]').trigger('click')
+  await wrapper.get('[aria-label="Add target type"]').trigger('click')
   const target = wrapper.get('input[aria-label="Target type ID"]')
   await target.setValue('peer_release')
   await target.trigger('keydown', { key: 'Enter' })

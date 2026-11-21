@@ -103,19 +103,23 @@ the opening-app binding, sharing and settings for already active plugins use
 their existing independent write endpoints. Board identity uses `wc-icon-picker`.
 The administrator can choose a registered opening app by title where the Work
 binding contract is available. Clearing the selection uses the installation
-default. General leads with the board name, app and key prefix, followed by
-open and total item counts, pack actions and a recent changes disclosure.
+default. General presents the board name, app and key prefix as inline controls.
+Name, app, description and icon save together through the metadata action.
+Item counts and pack status share one line above the recent changes disclosure.
 
 Expand an item type to edit the fields it uses. Fields defines fields shared by
 the board and can filter by item type. Links defines relationships that appear
-on both items. Item reference fields can choose a named target type. Top-level
+on both items. Add actions open the corresponding editor on demand. Cancel and
+Escape close the inline name editor and return focus to its Add action. Field
+choices wrap within the available width, including when an individual label is
+long. Item reference fields can choose a named target type. Top-level
 placement beside named parents uses Work’s boolean marker. Integration
 identifiers and configuration without a structured form are local disclosures.
 Workflow shows caller-visible item counts for the committed workflow and edits
 limits and requirements on the state where they apply. Map and List use the
 same transition inspector. Installed checks and query filters come from Work
-registry metadata. The Plugins switch shows whether a plugin is selected for
-the board. A badge signals a pending change or a health issue.
+registry metadata. Each plugin row places its title and description beside the
+activation switch. A badge signals a pending change or a health issue.
 
 Access is an ADMIN-only section. The board header and Access open the same shared
 `kickside-share` widget for the board component’s grants and share routes.
@@ -148,7 +152,7 @@ Visibility supports eligible single text fields and option fields, explicit leve
 IDs, shared holder selection, and the complete JSON declaration path. The backend
 validates limits and creates the required exact index.
 
-Plugin status is explicitly the last read snapshot. Refresh status uses the same
+Plugin status is explicitly the last read snapshot. Refresh status in the Plugins header uses the same
 load path while preserving schema drafts and open editors for the same generation, and reporting newer schema generations
 as stale. Pack requirements use exact `plugin` manifest identities. Upgrade and
 initial installation share pack planning/apply, frozen generation/maps/conflict

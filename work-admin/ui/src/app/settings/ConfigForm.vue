@@ -8,12 +8,13 @@ import InputNumber from 'primevue/inputnumber'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Select from 'primevue/select'
 import Chip from 'primevue/chip'
+import AddDefinitionRow from './AddDefinitionRow.vue'
 import JsonInput from './JsonInput.vue'
 import { ensureTag } from '../mount'
 import { configErrors, configFields, stringArray } from './config'
 const props = defineProps<{ schema: Record<string, unknown>; modelValue: Record<string, unknown>; disabled?: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Record<string, unknown>]; validity: [valid: boolean] }>()
-const text = ref<Record<string, string>>({}), invalid = ref(new Set<string>()), ready = ref(false), widgetLoading = ref(false)
+const invalid = ref(new Set<string>()), ready = ref(false), widgetLoading = ref(false)
 const id = useId()
 const fields = computed(() => configFields(props.schema))
 const errors = computed(() => configErrors(props.schema, props.modelValue))
@@ -28,7 +29,6 @@ watch(() => picked.value.length > 0, present => { if (present) void loadPicker()
 onBeforeUnmount(() => emit('validity', true))
 function update(key: string, value: unknown) { const next = { ...props.modelValue }; if (value === undefined || value === null) delete next[key]; else next[key] = value; emit('update:modelValue', next) }
 function strings(key: string): string[] { const value = props.modelValue[key]; return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [] }
-function add(key: string) { const value = text.value[key]?.trim(); if (value) { update(key, [...strings(key), value]); text.value[key] = '' } }
 function validity(key: string, valid: boolean) { if (valid) invalid.value.delete(key); else invalid.value.add(key) }
 function pickerChange(event: Event) { emit('update:modelValue', { ...props.modelValue, ...record((event as CustomEvent<unknown>).detail) }) }
 </script>
@@ -39,11 +39,13 @@ function pickerChange(event: Event) { emit('update:modelValue', { ...props.model
     <p v-else-if="picked.length" role="alert" class="kx-err">The configuration widget is unavailable.<Button label="Reload configuration widget" severity="secondary" outlined @click="loadPicker" /></p>
     <div class="work-config-fields">
       <div v-for="field in scalar" :key="field.key" class="work-config-field">
-        <label class="work-config-label" :for="id + '-' + field.key">{{ field.title }}</label>
+        <span v-if="stringArray(field.schema)" class="work-config-label">{{ field.title }}</span>
+        <label v-else class="work-config-label" :for="id + '-' + field.key">{{ field.title }}</label>
         <Select v-if="Array.isArray(field.schema.enum)" :input-id="id + '-' + field.key" :model-value="modelValue[field.key] ?? field.schema.default" :options="field.schema.enum" appendTo="self" :aria-label="field.title" :disabled="disabled" @update:model-value="update(field.key, $event)" />
         <div v-else-if="stringArray(field.schema)" class="work-config-chips">
           <Chip v-for="(value, index) in strings(field.key)" :key="index" :label="value" :removable="!disabled" @remove="update(field.key, strings(field.key).filter((_, i) => i !== index))" />
-          <InputText :id="id + '-' + field.key" v-model="text[field.key]" :aria-label="'Add ' + field.title.toLocaleLowerCase()" :disabled="disabled" placeholder="Type and press Enter" @keydown.enter.stop.prevent="add(field.key)" @blur="add(field.key)" />
+          <AddDefinitionRow v-if="!disabled" action="Add value" :label="'Add ' + field.title.toLocaleLowerCase()"
+            @add="update(field.key, [...strings(field.key), $event])" />
         </div>
         <InputNumber v-else-if="['integer', 'number'].includes(String(field.schema.type))" :input-id="id + '-' + field.key" :model-value="(modelValue[field.key] ?? field.schema.default) as number | undefined" :max-fraction-digits="field.schema.type === 'integer' ? 0 : 8" :use-grouping="false" :aria-label="field.title" :disabled="disabled" :invalid="!!errors[field.key]" @update:model-value="update(field.key, $event)" />
         <ToggleSwitch v-else-if="field.schema.type === 'boolean'" :input-id="id + '-' + field.key" :model-value="Boolean(modelValue[field.key] ?? field.schema.default)" :aria-label="field.title" :disabled="disabled" @update:model-value="update(field.key, $event)" />

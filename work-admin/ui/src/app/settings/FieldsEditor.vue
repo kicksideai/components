@@ -9,8 +9,9 @@ import ConditionEditor from './ConditionEditor.vue'
 import HoldersPicker from './HoldersPicker.vue'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
-import { computed, nextTick, ref } from 'vue'
+import { computed, ref } from 'vue'
 import ChipPicker from './ChipPicker.vue'
+import AddDefinitionRow from './AddDefinitionRow.vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import { fieldTitle, humanize } from '../../forms'
@@ -24,8 +25,7 @@ import { configFields } from './config'
 const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[]; boardId?: string; installedTypes?: FieldTypeOption[]; itemType?: string }>()
 const emit = defineEmits<{ validity: [key: string, valid: boolean]; 'update:itemType': [type: string] }>()
 const fields = computed(() => props.draft.fields ?? [])
-const addArea = ref<HTMLElement>()
-const name = ref(''), adding = ref(false), newKind = ref('text'), placement = ref<string[]>([])
+const newKind = ref('text'), placement = ref<string[]>([])
 const typeChoices = computed(() => (props.draft.item_types ?? []).map(type => ({ value: type.id, label: type.title || humanize(type.id) })))
 const currentType = computed(() => props.draft.item_types?.find(type => type.id === props.itemType))
 const shown = computed(() => fields.value.map((field, index) => ({ field, index })).filter(({ field }) => !currentType.value || currentType.value.fields.includes(field.code)))
@@ -106,17 +106,11 @@ function rename(field: Field, input: HTMLInputElement) {
   try { renameField(props.draft, field, input.value); delete reason.value[field.code] }
   catch (e) { reason.value[field.code] = (e as Error).message; input.value = field.code }
 }
-async function startAdd() {
-  name.value = ''
+function startAdd() {
   newKind.value = 'text'
   placement.value = currentType.value ? [currentType.value.id] : []
-  adding.value = true
-  await nextTick()
-  addArea.value?.querySelector('input')?.focus()
 }
-function add() {
-  const title = name.value.trim()
-  if (!title) return
+function add(title: string) {
   const slug = title.normalize('NFKD').replace(/\p{Mark}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
   const base = (/^[a-z]/.test(slug) ? slug : `field_${slug || 'new'}`).slice(0, 40)
   let code = base, suffix = 2
@@ -130,7 +124,6 @@ function add() {
   for (const type of props.draft.item_types ?? []) if (placement.value.includes(type.id)) type.fields.push(code)
   if (currentType.value && !placement.value.includes(currentType.value.id)) emit('update:itemType', '')
   openedField.value = code
-  adding.value = false
 }
 const openedField = ref('')
 </script>
@@ -139,15 +132,11 @@ const openedField = ref('')
     <div class="work-form-actions work-wrap">
       <Select :model-value="currentType?.id ?? ''" aria-label="Filter fields by item type" placeholder="All item types" appendTo="self" optionLabel="label" optionValue="value"
         :options="[{ value: '', label: 'All item types' }, ...typeChoices]" @update:model-value="emit('update:itemType', $event)" />
-      <Button label="Add field" :aria-expanded="adding" :disabled="adding" @click="startAdd"><template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template></Button>
-    </div>
-    <section v-if="adding" ref="addArea" class="work-settings-card work-stack" aria-label="Add field" @keydown.esc.stop="adding = false">
-        <header><h3>Add field</h3><p class="work-muted">Choose what the field captures and which items show it.</p></header>
-        <label class="work-stack work-tight">Field name<InputText v-model="name" aria-label="Field name" maxlength="255" @keydown.enter.prevent="add" /></label>
+      <AddDefinitionRow action="Add field" label="Field name" :maxlength="255" @open="startAdd" @add="add">
         <label class="work-stack work-tight">Kind<Select v-model="newKind" aria-label="New field kind" appendTo="self" :options="kindOptions" optionLabel="label" optionValue="value" /></label>
         <ChipPicker v-if="typeChoices.length" label="Show on item types" :options="typeChoices" v-model="placement" />
-        <footer class="work-dialog-actions"><Button label="Cancel" severity="secondary" outlined @click="adding = false" /><Button label="Add to draft" :disabled="!name.trim()" @click="add" /></footer>
-    </section>
+      </AddDefinitionRow>
+    </div>
     <p v-if="!shown.length" class="work-settings-card work-muted">No fields here yet. Add a field to capture information.</p>
     <DefinitionList v-reorder columns="fields" :count="shown.length">
     <DefinitionRow :title="fieldTitle(field)" :initial-open="openedField === field.code" :kind="customType(field)?.title || forms.find(f => f.value === kind(field))?.label || humanize(kind(field))"

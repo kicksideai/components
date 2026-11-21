@@ -138,7 +138,7 @@ it('shows host lifecycle and per-kind projection progress', async () => {
   view.plugins = [{ plugin: 'app:plugin', installed: true, active: true, requires: [], tools: [], lifecycle: { state: 'ready' }, attachment_id: 'attachment', config: { threshold: 2 }, projections: { index: { last_seq: 23, parked: true, bootstrapping: false, error: 'Projection paused' } } }]
   const w = mount(PluginsEditor, { props: { boardId: 'b', draft: view.declaration, schema: view, options: [{ plugin: 'app:plugin', installed: true, active: false, requires: [], tools: [], lifecycle: { state: 'ready' as const }, projections: {}, title: 'Enhancement', config_schema: { type: 'object', properties: {} } }], configs: {} } })
   await flushPromises()
-  expect(w.text()).toContain('On')
+  expect(w.get('[role="switch"]').attributes('aria-checked')).toBe('true')
   expect(w.get('.work-definition-kind').text()).toBe('Needs reset')
   expect(w.text()).not.toContain('Ready to use')
   expect(button(w, 'Reset projection').attributes('disabled')).toBeUndefined()

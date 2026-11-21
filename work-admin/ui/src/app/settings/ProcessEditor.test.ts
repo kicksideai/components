@@ -32,7 +32,8 @@ it('adds after the selected stop and focuses its name without mutating other sta
 it('edits the same draft through List and Map and provides the keyboard connection path', async () => {
   const { draft, w } = editor()
   await w.get('.work-graph-node').trigger('click')
-  const picker = w.findAllComponents(Select).find(c => c.props('ariaLabel') === 'Add transition to…')!
+  await w.get('[aria-label="State inspector"] button[aria-label="Add transition"]').trigger('click')
+  const picker = w.findAllComponents(Select).find(c => c.props('ariaLabel') === 'Next state')!
   await picker.setValue('done')
   await w.get('[aria-label="State inspector"] button[aria-label="Add transition"]').trigger('click')
   expect(draft.processes![0].transitions!.at(-1)).toMatchObject({ from: ['todo'], to: 'done' })
@@ -60,14 +61,14 @@ it('guards referenced removal and edits a shared limit without seeding one on se
   await limit.setValue(null)
   expect(draft.policy!.wip!.todo).toBeUndefined()
 })
-it('keeps the process selector conditional and puts creation last', async () => {
+it('keeps the process selector conditional and uses one creation action', async () => {
   const { draft, w } = editor()
   expect(w.find('[aria-label="Process"]').exists()).toBe(false)
   draft.processes!.push({ id: 'other', name: 'Other flow', initial: 'ready', states: [{ id: 'ready', name: 'Ready', category: 'unstarted' }] })
   await flushPromises()
   const picker = w.findAllComponents(Select).find(c => c.props('ariaLabel') === 'Process')!
-  expect(picker.props('options')?.at(-1)).toEqual({ label: 'New process…', value: '__new' })
-  await picker.setValue('__new'); await flushPromises()
+  expect(picker.props('options')?.map(option => option.value)).toEqual(['delivery', 'other'])
+  await w.get('button[aria-label="New process"]').trigger('click'); await flushPromises()
   expect(w.get('dialog').attributes('open')).toBeDefined()
   expect(w.find('.work-process-controls [aria-label^="Existing items"]').exists()).toBe(false)
 })
