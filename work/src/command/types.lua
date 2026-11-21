@@ -24,7 +24,10 @@ type Op = {
 }
 type ApplyRequest = { expected_head: integer?, trace_context: domain.TraceContext?, board_id: string, key: string?, mode: string?, ops: { Op }, source: string?, origin: JsonObject? }
 type AtomicPreparation = { ops: { Op }, admit: (domain.Board) -> error? }
-type AtomicProvider = { namespace: string, fingerprint: JsonObject, prepare: () -> (AtomicPreparation?, error?) }
+type AtomicProvider = {
+    namespace: string, fingerprint: JsonObject, prepare: () -> (AtomicPreparation?, error?),
+    legacy_ops: (() -> ({ Op }?, error?))?,
+}
 type SchemaRequest = { pack: JsonObject?, trace_context: domain.TraceContext?, plugin_configs: { [string]: JsonObject }?, board_id: string, declaration: Declaration, expected_generation: integer?, key: string?, source: string?, origin: JsonObject? }
 type UpdateRequest = { board_id: string, title: string?, description: string?, icon: string?, key_prefix: string?, ui_app: string? }
 type UpdateResult = { board_id: string, status: string, seq: integer?, as_of: integer? }

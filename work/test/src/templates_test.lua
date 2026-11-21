@@ -6,6 +6,7 @@ local steps = require("steps")
 local uuid = require("uuid")
 local sql = require("sql")
 local time = require("time")
+local hash = require("hash")
 
 local CONTRACT = "kickside.work.templates:templates"
 local PLUGIN = "kickside.work.templates:plugin"
@@ -188,6 +189,24 @@ return { run = test.run_cases(function()
             local _, archived = instantiate(h, first, "new")
             code(archived, "template_archived")
             test.eq(#assert(h.call("query", {})).items, 1)
+        end)
+
+        test.it("refuses an unrelated WorkApply receipt at a former Templates key", function()
+            local h = fixture.board()
+            activate(h)
+            local template = publish(h, "Preset")
+            local key = "collision"
+            local generic = assert(h.call("apply", {
+                key = "work-templates/request/" .. tostring(hash.sha256(key)),
+                ops = { { op = "create", type = "task", values = { title = "Unrelated item" } } },
+            }))
+            test.is_true(generic.applied)
+            local replay, err = instantiate(h, template, key)
+            test.is_nil(replay)
+            code(err, "idempotency_conflict")
+            local items = assert(h.call("query", {})).items
+            test.eq(#items, 1)
+            test.eq(items[1].id, generic.outcomes[1].item)
         end)
 
         test.it("checks stored field identities when schema changes and keeps successful replays", function()

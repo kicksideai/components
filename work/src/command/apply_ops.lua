@@ -128,6 +128,27 @@ local function groups_of(ops: { types.Op }, indices: { integer }): ({ string }, 
     return order, groups
 end
 
+local function hash_apply(request: types.ApplyRequest, mode: string, ops: { types.Op }, source: string): string
+    return receipts.request_hash({ op = "apply", mode, ops, source, origin = request.origin, expected_head = request.expected_head })
+end
+
+local function read_legacy_claim(ctx: types.ApplyContext, provider: types.AtomicProvider?): (types.Durable?, error?)
+    local key = ctx.request.key
+    if not provider or not provider.legacy_ops or not key then return nil, nil end
+    local hit, err = receipts.command(ctx.board_id, "apply/" .. provider.namespace .. "/" .. key)
+    if err or not hit then return nil, err end
+    -- The former namespace was shared with WorkApply. Check the full request
+    -- fingerprint, including the resolved operation, before returning its result.
+    local ops, oerr = provider.legacy_ops()
+    if oerr then return nil, oerr end
+    if not ops or hit.receipt.request_hash ~= hash_apply(ctx.request, "atomic", ops, ctx.source) then
+        return nil, receipts.conflict_of()
+    end
+    local outcomes = stored_outcomes(hit)
+    if #outcomes ~= 1 or outcomes[1].status ~= "applied" then return nil, receipts.conflict_of() end
+    return hit, nil
+end
+
 local function read_claim(ctx: types.ApplyContext, key: string): (types.Durable?, error?)
     local command, err = receipts.command(ctx.board_id, key)
     if err then return nil, err end
@@ -221,6 +242,9 @@ local function run_atomic(ctx: types.ApplyContext, provider: types.AtomicProvide
         if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
         local last_seq, cu_err = receipts.covered(ctx.board_id, ctx.until_at)
         if cu_err or not last_seq then return nil, cu_err end
+        local legacy, legacy_err = read_legacy_claim(ctx, provider)
+        if legacy_err then return nil, legacy_err end
+        if legacy then return finish(ctx, stored_outcomes(legacy), true, legacy.seq, true) end
         if expected_head ~= nil and last_seq ~= expected_head then
             local replay, replay_err = stored_claim(ctx)
             if replay_err then return nil, replay_err end
@@ -252,6 +276,11 @@ local function run_atomic(ctx: types.ApplyContext, provider: types.AtomicProvide
         local hit, recovery_err = stored_claim(ctx)
         if recovery_err then return nil, recovery_err end
         if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
+        if board.applied_seq > last_seq then
+            local legacy, legacy_err = read_legacy_claim(ctx, provider)
+            if legacy_err then return nil, legacy_err end
+            if legacy then return finish(ctx, stored_outcomes(legacy), true, legacy.seq, true) end
+        end
         if expected_head ~= nil and board.applied_seq > expected_head then return nil, head_changed() end
         if prepared then
             local admission_err = prepared.admit(board)
@@ -432,11 +461,10 @@ function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?, provid
     if deadline_err or not until_at then return nil, deadline_err end
     if boundary and boundary.ns < until_at.ns then until_at = boundary end
     local namespace = provider and ("provider/" .. provider.namespace) or "apply"
-    local fingerprint = provider and provider.fingerprint or
-        { op = "apply", mode, request.ops, source, origin = request.origin, expected_head = request.expected_head }
+    local hashed = provider and receipts.request_hash(provider.fingerprint) or hash_apply(request, mode, request.ops, source)
     local ctx: types.ApplyContext = {
         settings = settings, c = c, board_id = board_id, request = request, ops = request.ops, source = source,
-        hashed = receipts.request_hash(fingerprint), base = key and (namespace .. "/" .. key) or nil,
+        hashed = hashed, base = key and (namespace .. "/" .. key) or nil,
         until_at = until_at, generation = uuid.v4(),
     }
     if mode == "atomic" then return run_atomic(ctx, provider) end

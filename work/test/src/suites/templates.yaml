@@ -7,7 +7,7 @@ entries:
   meta: {type: test, suite: kickside_work}
   source: file://../templates_test.lua
   method: run
-  modules: [uuid, sql, time]
+  modules: [uuid, sql, time, hash]
   imports:
     test: wippy.test:test
     fixture: app:fixture

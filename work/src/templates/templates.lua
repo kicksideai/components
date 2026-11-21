@@ -158,7 +158,21 @@ local function instantiate(input: unknown, replay_window: integer?, replay_only:
             return presets.current(board, version)
         end }, nil
     end
-    local result, aerr = apply.apply(request, nil, { namespace = "work-templates/" .. channel, fingerprint = origin, prepare = prepare })
+    local function legacy_ops(): ({ commands.Op }?, error?)
+        local version, _, verr = version_of(req :: types.Pinned)
+        if verr then
+            local code = (verr:details() or {}).code
+            if code == "plugin_inactive" or code == "template_version_not_found" then return nil, nil end
+            return nil, verr
+        end
+        if not version then return nil, nil end
+        local preset = presets.merge(version, req.overrides)
+        if not preset then return nil, nil end
+        return { preset :: commands.Op }, nil
+    end
+    local result, aerr = apply.apply(request, nil, {
+        namespace = "work-templates/" .. channel, fingerprint = origin, prepare = prepare, legacy_ops = legacy_ops,
+    })
     if aerr or not result then return nil, aerr end
     local outcome = result.outcomes[1]
     local oerr = outcomes.error(outcome.status, outcome.findings, outcome.error)
