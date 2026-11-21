@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.13](https://github.com/kicksideai/components/compare/pim-v0.1.12...pim-v0.1.13) (2026-11-21)
+
+
+### Bug Fixes
+
+* **pim:** add notification-driven product waits ([#277](https://github.com/kicksideai/components/issues/277)) ([757dbfd](https://github.com/kicksideai/components/commit/757dbfd1073f9a7b9079e9116ee9bc7212ffbe6c))
+* **pim:** align agent tool contracts and query continuations ([#274](https://github.com/kicksideai/components/issues/274)) ([d695f4f](https://github.com/kicksideai/components/commit/d695f4face85019a7737e6efc9718f0cb6138c8f))
+* **pim:** bind catalogs to registered UI apps ([#272](https://github.com/kicksideai/components/issues/272)) ([e95fae1](https://github.com/kicksideai/components/commit/e95fae1c860db146a60b1bcd5d4b782dac3a3e49))
+* **pim:** deduplicate model releases and resume change feeds ([#276](https://github.com/kicksideai/components/issues/276)) ([3abbc23](https://github.com/kicksideai/components/commit/3abbc2357e8bb6d18f0bf98a2314cb3be235c0d1))
+* **pim:** give each channel release an immutable identity ([#273](https://github.com/kicksideai/components/issues/273)) ([3edabe6](https://github.com/kicksideai/components/commit/3edabe65fe0581b31ca01238752d2937d997d134))
+
 ## [0.1.12](https://github.com/kicksideai/components/compare/pim-v0.1.11...pim-v0.1.12) (2026-11-20)
 
 

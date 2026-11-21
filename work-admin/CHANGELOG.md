@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/kicksideai/components/compare/work-admin-v0.1.8...work-admin-v0.1.9) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work-admin:** make process transitions editable from the map ([#262](https://github.com/kicksideai/components/issues/262)) ([0526b91](https://github.com/kicksideai/components/commit/0526b9154d5fad2ebe97b8e01e86b8b42aece9dc))
+
 ## [0.1.8](https://github.com/kicksideai/components/compare/work-admin-v0.1.7...work-admin-v0.1.8) (2026-11-20)
 
 
