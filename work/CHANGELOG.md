@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.33](https://github.com/kicksideai/components/compare/work-v0.1.32...work-v0.1.33) (2026-11-21)
+
+
+### Features
+
+* **work:** adopt reviewed transition command rules ([03d3a77](https://github.com/kicksideai/components/commit/03d3a77f4bb27ff9db7da39fa3b6002145804b12))
+* **work:** guard named transitions against schema changes ([9adf45d](https://github.com/kicksideai/components/commit/9adf45dfccfcd6fc8ffbe424e5f0632cdc5e2238))
+
 ## [0.1.32](https://github.com/kicksideai/components/compare/work-v0.1.31...work-v0.1.32) (2026-11-21)
 
 
