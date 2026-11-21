@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12](https://github.com/kicksideai/components/compare/work-admin-v0.1.11...work-admin-v0.1.12) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work-admin:** simplify board setup navigation and settings ([#320](https://github.com/kicksideai/components/issues/320)) ([72e520c](https://github.com/kicksideai/components/commit/72e520c37c47badd6a500a5dc1d988d786b83b57))
+
 ## [0.1.11](https://github.com/kicksideai/components/compare/work-admin-v0.1.10...work-admin-v0.1.11) (2026-11-21)
 
 
