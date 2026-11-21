@@ -250,8 +250,9 @@ kind, target)` (5.3). `term` and `product` targets must exist and be active;
 retiring or deleting a referenced term or product fails with a capped count;
 a product's references to itself do not hold it, and survive its trash and restore.
 `asset` targets are uploads owned by the catalog. `component` targets must be
-readable by the principal. Link-kind targets are resolved by their owner
-(3.3).
+readable by the principal. PIM resolves components through the Component read
+contract and embeds their title (or ID when there is no title) in releases.
+Other link-kind targets are resolved by their owner (3.3).
 
 ### 2.6 Resolution
 
