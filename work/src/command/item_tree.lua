@@ -76,6 +76,14 @@ local function link_key(board_id: string, from: string, type_id: string, target:
     return table.concat({ board_id, from, type_id, target.board, target.item }, "|")
 end
 
+local function allows_type(allowed: { string }?, item_type: string): boolean
+    if not allowed then return true end
+    for _, id in ipairs(allowed) do
+        if id == item_type then return true end
+    end
+    return false
+end
+
 local function plan_link(ctx: types.PrepareContext, op: types.Op, linking: boolean): types.OpPlan
     local item, perr = M.locate(ctx, op.item)
     if perr or not item then return perr or M.invalid("item_required", "item required", "item") end
@@ -106,11 +114,18 @@ local function plan_link(ctx: types.PrepareContext, op: types.Op, linking: boole
         existing = rows ~= nil and rows[1] ~= nil
     end
     if linking then
-        local _, err = references.resolve(ctx, target)
+        local peer, err = references.resolve(ctx, target)
         if err then
             if err.status == "invalid" then return M.result("invalid", group, "unknown_target", "target item is unavailable", "target") end
             if err.status == "denied" then return M.result("denied", group, "target_denied", "target board is unavailable", "target") end
             return err
+        end
+        if not allows_type(relation.from_types, item.type) then
+            return M.result("invalid", group, "relation_source_type", "relation " .. relation.id .. " does not allow source type " .. item.type, "item")
+        end
+        local target_type = (peer :: domain.Item).type
+        if not allows_type(relation.to_types, target_type) then
+            return M.result("invalid", group, "relation_target_type", "relation " .. relation.id .. " does not allow target type " .. target_type, "target")
         end
     end
     if linking == existing then return M.done(ctx, item, group, {}) end

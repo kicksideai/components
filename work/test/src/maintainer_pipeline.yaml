@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: maintainer_pipeline_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work, timeout: 300s}
+  source: file://maintainer_pipeline_test.lua
+  method: run
+  modules: [json, registry, time]
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
+    steps: app:steps

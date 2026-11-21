@@ -244,14 +244,42 @@ local function compile_item_types(decl: types.Declaration, fields: { [string]: t
     return out, nil
 end
 
-local function compile_relations(decl: types.Declaration): ({ types.Relation }?, error?)
+local function endpoint_types(relation: string, field: string, list: { string }?, local_types: { [string]: boolean }?): ({ string }?, error?)
+    if list == nil then return nil, nil end
+    local details: types.JsonObject = { code = "relation_endpoint_types", relation = relation, field = field }
+    if #list < 1 or #list > consts.LIMITS.item_types then
+        return nil, invalid(field .. " must list between 1 and " .. tostring(consts.LIMITS.item_types) .. " item types", details)
+    end
+    local seen: { [string]: boolean } = {}
+    local sorted: { string } = {}
+    for _, id in ipairs(list) do
+        if not valid_id(id) or seen[id] or (local_types and not local_types[id]) then
+            return nil, invalid(field .. " contains an invalid, duplicate or unknown item type: " .. tostring(id), details)
+        end
+        seen[id] = true
+        sorted[#sorted + 1] = id
+    end
+    table.sort(sorted)
+    return sorted, nil
+end
+
+local function compile_relations(decl: types.Declaration, item_types: { types.ItemType }): ({ types.Relation }?, error?)
     local out: { types.Relation } = {}
+    local local_types: { [string]: boolean } = {}
+    for _, item_type in ipairs(item_types) do local_types[item_type.id] = true end
     for _, r in ipairs((decl.relation_types or {})) do
         if not valid_id(r.id) then return nil, invalid("relation type id must match " .. consts.ID_PATTERN) end
         local cardinality = r.cardinality or "many"
         if cardinality ~= "one" and cardinality ~= "many" then return nil, invalid("relation " .. r.id .. " has unknown cardinality " .. tostring(cardinality)) end
+        if r.symmetric and (r.from_types or r.to_types) then
+            return nil, invalid("symmetric relations cannot declare directional endpoint types", { code = "relation_endpoint_types", relation = r.id })
+        end
+        local from_types, ferr = endpoint_types(r.id, "from_types", r.from_types, local_types)
+        if ferr then return nil, ferr end
+        local to_types, terr = endpoint_types(r.id, "to_types", r.to_types)
+        if terr then return nil, terr end
         out[#out + 1] = { id = r.id, outward = r.outward or r.id, inward = r.inward or r.id, cardinality = cardinality,
-            symmetric = r.symmetric == true }
+            symmetric = r.symmetric == true, from_types = from_types, to_types = to_types }
     end
     return out, nil
 end
@@ -297,7 +325,7 @@ function M.compile(prev: types.Compiled?, decl: types.Declaration, generation: i
     if terr or not item_types then return nil, terr end
     local carried = process_fields_carried(processes, item_types)
     if carried then return nil, carried end
-    local relations, rerr = compile_relations(decl)
+    local relations, rerr = compile_relations(decl, item_types)
     if rerr or not relations then return nil, rerr end
     local formula_err = formula.compile(fields)
     if formula_err then return nil, formula_err end
