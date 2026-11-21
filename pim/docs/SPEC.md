@@ -937,9 +937,9 @@ checks:
   `(parent, axis_key)` is unique.
 - `unique` attributes: scope `()`, cardinality one, unique catalog-wide by
   key. SKU is unique catalog-wide among live products.
-- Depth ≤ 2; descendants per root ≤ 2,000 (max 20,000). Items move between
-  parents of the same family; products with live descendants cannot move or
-  be deleted.
+- A hierarchy can be two levels deep and each root can have up to 2,000 live
+  descendants. Items move between parents of the same family. Products with
+  live descendants cannot move or be deleted.
 - **Vocabularies** hold terms (labels, parent, data, retired) changed by
   `apply` term items; codes unique per vocabulary; no cycles; a term in use
   cannot be retired. `term.merge` (§6) re-points values.
@@ -1055,9 +1055,9 @@ skipped, so a redelivered batch is a no-op. Per event it updates `product`,
 `ref`, `unique_value`, `attribute_usage`, `change`, counters, item rows (the
 item, or every item under a changed model), terms, releases and
 publications, and schedules jobs with `jobs.enqueue_tx`. Every product row
-whose resolved view changes gets `updated_seq` = the event seq: a model edit
-stamps each recomputed descendant (≤ 20,000), so the `list_changes` feed reports
-inherited changes.
+whose resolved view changes gets `updated_seq` = the event seq. A model edit
+stamps each recomputed descendant, so the `list_changes` feed reports inherited
+changes.
 
 The fold reads consecutive product edits together and writes independent leaf
 creations and edits in batches. Operations that change hierarchy, state or
@@ -1910,7 +1910,7 @@ Proposals expire after 30 days, including pending proposals.
 | dimensions / members / candidates | 4 / 64 / 64 |
 | per family: contexts / attributes / checks | 256 / 1,000 / 100 |
 | indexed columns per catalog | 400 |
-| depth / descendants per root | 2 / 2,000 (max 20,000) |
+| depth / live descendants per root | 2 / 2,000 |
 | scopes per query / predicates per scope | 4 / 8 |
 | link targets resolved per command | 2,000 |
 | term merge inline / job batch | 500 / 500 products |
@@ -1941,7 +1941,8 @@ values before a declaration is accepted.
 Capacity model: 10M items × 100 values, 20 indexed → one 10M-row item table
 with ~20–40 indexed columns. Release gate (benchmarks ship with the
 implementing PRs): both engines, 1M / 10M items, imports with concurrent
-edits, 20,000-descendant root, full rebuild, feed backfill from zero.
+edits, a synthetic 20,000-descendant projection workload, full rebuild, and
+feed backfill from zero.
 
 ## 17. Installation
 
