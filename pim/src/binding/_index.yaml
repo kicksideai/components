@@ -100,6 +100,7 @@ entries:
           get_catalog: kickside.pim.service:get_catalog
           get_schema: kickside.pim.service:get_schema
           policy_defaults: kickside.pim.service:policy_defaults
+          update: kickside.pim.service:update
           configure_plugin: kickside.pim.service:configure_plugin
           plugin_feed: kickside.pim.service:plugin_feed
           plugin_context: kickside.pim.service:plugin_context

@@ -428,12 +428,16 @@ type ExplainResult = ReadStamp & {
 type ProposalsResult = { proposals: { Proposal }, next: ProposalCursor?, has_more: boolean }
 
 -- Catalog lifecycle contracts.
-type CreateRequest = { idempotency_key: string, title: string?, parent_id: string?, declaration: Declaration?, plugin_configs: { [string]: JsonObject }? }
+type CreateRequest = { idempotency_key: string, title: string?, parent_id: string?, declaration: Declaration?, plugin_configs: { [string]: JsonObject }?,
+    pack: string?, ui_app: string? }
 type CreateResult = { catalog_id: string, title: string, generation: integer, replayed: boolean }
-type CatalogSummary = { access: CatalogAccess, catalog_id: string, title: string, product_count: integer?, item_count: integer?, generation: integer?, status: string? }
+type UpdateRequest = { catalog_id: string?, ui_app: string }
+type UpdateResult = { catalog_id: string, ui_app: string? }
+type CatalogSummary = { access: CatalogAccess, catalog_id: string, title: string, ui_app: string?, product_count: integer?, item_count: integer?, generation: integer?, status: string? }
+type ListRequest = { limit: integer?, after: integer?, text: string?, admin_only: boolean?, ui_app: string? }
 type ListResult = { catalogs: { CatalogSummary },after:integer? }
 -- ComponentRow is the part of a component query row PIM reads.
-type ComponentMeta = { title: string?, product_count: number?, item_count: number?, generation: number?, status: string? }
+type ComponentMeta = { title: string?, pim_ui_app: string?, product_count: number?, item_count: number?, generation: number?, status: string? }
 type ComponentRow = { access_level: unknown, component_id: string?, impl_id: string?, parent_id: string?, meta: ComponentMeta? }
 
 -- Portable catalog export (spec 12): data/schema.json, terms.jsonl, products-NNNNNN.jsonl.
@@ -515,6 +519,7 @@ return {
     ReleasesResult = ReleasesResult, GetSchemaRequest = GetSchemaRequest, SchemaOptionsRequest = SchemaOptionsRequest, TypeOption = TypeOption, ScopeFilterOption = ScopeFilterOption,
     ScopeOption = ScopeOption, PluginOption = PluginOption, LinkKindOption = LinkKindOption, SchemaOptions = SchemaOptions, ExplainRequest = ExplainRequest,
     ExplainResult = ExplainResult, CreateRequest = CreateRequest, CreateResult = CreateResult,
+    UpdateRequest = UpdateRequest, UpdateResult = UpdateResult, ListRequest = ListRequest,
     CatalogAccess = CatalogAccess, CatalogSummary = CatalogSummary, ListResult = ListResult, ComponentMeta = ComponentMeta, ComponentRow = ComponentRow,
         ExportedValue = ExportedValue, ExportedTerm = ExportedTerm,
     ExportedProduct = ExportedProduct, PortableArgs = PortableArgs, IdMap = IdMap, PortableManifest = PortableManifest,

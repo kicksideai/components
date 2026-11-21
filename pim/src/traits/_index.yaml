@@ -91,6 +91,7 @@ entries:
       Create catalogs, plan or apply schema changes, inspect inherited deployment policy defaults, configure active plugins and resume catalog rebuilds. Pair this administration trait with the working trait for product reads and writes. PIMSchemaPlan classifies changes before PIMSchemaApply; named entries replace, omitted entries stay and declaration.remove destroys. Supply catalog_id in the call or configure it in trait context; a call id wins.
     tools:
       - kickside.pim.traits:create_catalog
+      - kickside.pim.traits:update
       - kickside.pim.traits:plan_schema
       - kickside.pim.traits:apply_schema
       - kickside.pim.traits:policy_defaults

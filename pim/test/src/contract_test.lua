@@ -15,7 +15,7 @@ local summary_locate = require("summary_locate")
 
 type Map = { [string]: unknown }
 
-local METHODS = { "create", "list", "get_schema", "plan_schema", "apply_schema", "get", "query", "list_history", "apply", "propose",
+local METHODS = { "create", "list", "update", "get_schema", "plan_schema", "apply_schema", "get", "query", "list_history", "apply", "propose",
     "decide", "list_proposals", "release", "withdraw", "rebuild",
     "list_links", "explain", "list_changes", "list_publications", "get_release", "list_releases", "list_terms", "schema_options" }
 
@@ -33,6 +33,7 @@ local function define()
                 return out :: Map
             end
             shaped("list", {})
+            shaped("update", { ui_app = "" })
             shaped("get_schema", {})
             shaped("plan_schema", { declaration = { vocabularies = { { code = "probe" } } } })
             shaped("apply_schema", { declaration = { vocabularies = { { code = "probe" } } } })

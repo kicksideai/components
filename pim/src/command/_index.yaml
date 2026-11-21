@@ -141,6 +141,32 @@ entries:
       store: kickside.pim.persist:store
       types: kickside.pim:types
 
+  - name: ui_app
+    kind: library.lua
+    source: file://ui_app.lua
+    modules: [registry, security]
+    imports:
+      component: kickside.component:component
+      consts: kickside.pim:consts
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
+  - name: ui_app_key
+    kind: registry.entry
+    meta: { type: kickside.component.owned_meta_key, key: pim_ui_app }
+    validator: kickside.pim.command:authorize_ui_app
+
+  - name: authorize_ui_app
+    kind: function.lua
+    source: file://ui_app.lua
+    method: authorize
+    modules: [registry, security]
+    imports:
+      component: kickside.component:component
+      consts: kickside.pim:consts
+      failure: kickside.pim:failure
+      types: kickside.pim:types
+
   - name: create
     kind: library.lua
     meta:
@@ -151,6 +177,7 @@ entries:
       component_types: kickside.component:types
       envelope: kickside.component:envelope
       creations: kickside.pim.persist:creations
+      ui_app: kickside.pim.command:ui_app
       failure: kickside.pim:failure
       component: kickside.component:component
       consts: kickside.pim:consts

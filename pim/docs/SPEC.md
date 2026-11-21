@@ -1,6 +1,14 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # kickside/pim — Product Information Module specification
 
+## Catalog UI binding
+
+A UI module registers a `registry.entry` with `meta.type: kickside.pim.ui.app`, a title, an icon, and one destination. Use `meta.page` for a local catalog-route prefix or `meta.component` for a web component tag. Append a slash and the encoded catalog component ID to the route, or pass the ID to the component as its `catalog-id` property. An optional `meta.packs` list names suitable PIM packs. Grant registry discovery for these entries to callers who can use them.
+
+`create` and `PIMCatalogCreate` accept an optional `ui_app` registry entry ID. The optional `pack` names a `kickside.pim.pack` registry entry with a `data.ui_app` preset. An explicit creation argument takes precedence. Catalog ADMIN can set the binding through `update`, `PIMCatalogUpdate`, or `POST /pim/catalogs/{id}/settings`. Pass an empty string to clear it. PIM validates the effective binding against the caller-visible registry before writing it. Schema application preserves the binding.
+
+`list`, `PIMCatalogs`, and `GET /pim/catalogs` expose the optional binding for each readable catalog. Pass `ui_app` to apply the exact filter before pagination and use the same filter with each `after` offset. The exact catalog summary also returns the binding when set.
+
 This document specifies the core backend and its extension contracts in `kicksideai/components/pim`. UI shells and plugin implementations are separate modules; their declarations below describe integration boundaries, not bundled deliverables. The admin module is delivered separately, with consumer UI planned later.
 
 PIM is the product record: identity, typed values per context, hierarchy,
@@ -1516,6 +1524,7 @@ the caller can read. ADMIN and WRITE are independent grants, not implied by READ
 |---|---|---|---|
 | `list` | GET | `/pim/catalogs` | READ |
 | `create` | POST | `/pim/catalogs` | CREATE |
+| `update` | POST | `/pim/catalogs/{id}/settings` (body `{ui_app}`) | ADMIN |
 | `get_schema` | GET | `/pim/catalogs/{id}/schema` | READ |
 | `apply_schema` | POST | `/pim/catalogs/{id}/schema` | ADMIN |
 | `plan_schema` | POST | `/pim/catalogs/{id}/schema/plan` | ADMIN |
@@ -1718,7 +1727,7 @@ ordered changes and merges bounded pages in the feed's `(updated_seq, product_id
 | Blocks | `kickside.block` (`kickside.pim.blocks`) | `get_product`, `query_products`, `apply`, `release`: one function Block per composed contract method; config `catalog_id` through the catalog picker, input = the method's request without it, run as the Flow's caller |
 | Agent tools | `agent.trait` `kickside.pim.traits:pim_readonly` | `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMTerms` → `list_terms`, `PIMQuery` → `query`, `PIMGet` → `get`, `PIMExplain` → `explain`, `PIMHistory` → `list_history`, `PIMLinks` → `list_links`, `PIMProposals` → `list_proposals`, `PIMReleases` → `list_releases`, `PIMReleaseGet` → `get_release`, `PIMPublications` → `list_publications`, `PIMChanges` → `list_changes` |
 | Agent tools | `agent.trait` `kickside.pim.traits:pim_trait` | `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMTerms` → `list_terms`, `PIMQuery` → `query`, `PIMGet` → `get`, `PIMExplain` → `explain`, `PIMHistory` → `list_history`, `PIMLinks` → `list_links`, `PIMProposals` → `list_proposals`, `PIMReleases` → `list_releases`, `PIMReleaseGet` → `get_release`, `PIMPublications` → `list_publications`, `PIMChanges` → `list_changes`, `PIMApply` → `apply`, `PIMPropose` → `propose`, `PIMDecide` → `decide`, `PIMRelease` → `release`, `PIMWithdraw` → `withdraw` |
-| Agent tools | `agent.trait` `kickside.pim.traits:pim_admin` | `PIMCatalogCreate` → `create`, `PIMSchemaPlan` → `plan_schema`, `PIMSchemaApply` → `apply_schema`, `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMConfigurePlugin` → `configure_plugin`, `PIMRebuild` → `rebuild` |
+| Agent tools | `agent.trait` `kickside.pim.traits:pim_admin` | `PIMCatalogCreate` → `create`, `PIMCatalogUpdate` → `update`, `PIMSchemaPlan` → `plan_schema`, `PIMSchemaApply` → `apply_schema`, `PIMCatalogs` → `list`, `PIMSchemaGet` → `get_schema`, `PIMSchemaOptions` → `schema_options`, `PIMConfigurePlugin` → `configure_plugin`, `PIMRebuild` → `rebuild` |
 
 Feeds are cursor-resumable over durable state, so a plugin installed a year
 later builds its read model from the state feed's beginning. For declared
