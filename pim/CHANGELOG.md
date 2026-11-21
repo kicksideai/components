@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.16](https://github.com/kicksideai/components/compare/pim-v0.1.15...pim-v0.1.16) (2026-11-21)
+
+
+### Bug Fixes
+
+* **pim:** expose asset adoption to catalog agents ([#298](https://github.com/kicksideai/components/issues/298)) ([0c864e3](https://github.com/kicksideai/components/commit/0c864e351fea43f11d13125f48c1f5a5afc33258))
+* **pim:** migrate catalog asset ledgers on upgrade ([#293](https://github.com/kicksideai/components/issues/293)) ([a6e7f27](https://github.com/kicksideai/components/commit/a6e7f27c0c003ee6888887a7cd224dcc14f3cc72))
+* **pim:** retain plugin titles in catalog recovery ([#296](https://github.com/kicksideai/components/issues/296)) ([980e0f0](https://github.com/kicksideai/components/commit/980e0f0dce3b0c17f9847f92bd568aed1b1d215e))
+* **pim:** support catalog-owned product images and files ([#292](https://github.com/kicksideai/components/issues/292)) ([767fbfe](https://github.com/kicksideai/components/commit/767fbfe7d93b2f675231a63217123886cb5c12bb))
+
 ## [0.1.15](https://github.com/kicksideai/components/compare/pim-v0.1.14...pim-v0.1.15) (2026-11-21)
 
 
