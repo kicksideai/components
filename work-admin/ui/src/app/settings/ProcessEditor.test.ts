@@ -34,12 +34,15 @@ it('edits the same draft through List and Map and provides the keyboard connecti
   await w.get('.work-graph-node').trigger('click')
   const picker = w.findAllComponents(Select).find(c => c.props('ariaLabel') === 'Add transition to…')!
   await picker.setValue('done')
-  await w.get('button[aria-label="Add transition"]').trigger('click')
+  await w.get('[aria-label="State inspector"] button[aria-label="Add transition"]').trigger('click')
   expect(draft.processes![0].transitions!.at(-1)).toMatchObject({ from: ['todo'], to: 'done' })
   expect(w.find('[aria-label="Transition inspector"]').exists()).toBe(true)
   await w.get('[aria-label="Close transition editor"]').trigger('click')
   await w.getComponent(SelectButton).setValue('List')
-  await w.get('input[aria-label="Name of To do"]').setValue('Ready')
+  await w.get('[aria-label="Edit state To do"]').trigger('click')
+  await w.get('[aria-label="Rename state"]').trigger('click')
+  await w.get('[aria-label="State name"]').setValue('Ready')
+  await w.get('[aria-label="Close state editor"]').trigger('click')
   await w.getComponent(SelectButton).setValue('Map')
   expect(w.get('[aria-label="Edit state Ready"]').text()).toContain('Ready')
   expect(draft.processes![0].initial).toBe('todo')
@@ -79,26 +82,29 @@ it('opens the initial-state menu in the owning shadow root with platform styling
   expect(document.querySelector('.p-select-overlay')).toBeNull()
   host.remove()
 })
-it('changes existing-item policy and maps removed states through Review without seeding defaults', async () => {
-  const original = schema().declaration, draft = reactive(structuredClone(original))
-  draft.processes![0].states = draft.processes![0].states.filter(s => s.id !== 'doing')
-  const before = JSON.stringify(draft), w = mount(ProcessMigration, { props: { draft, original } }); wrappers.push(w)
-  expect(JSON.stringify(draft)).toBe(before)
-  const selects = w.findAllComponents(Select)
-  await selects[1].setValue('todo')
-  expect(draft.processes![0].map).toEqual({ doing: 'todo' })
-  await selects[0].setValue('pin')
-  expect(draft.processes![0].migration).toBe('pin')
-  expect(w.findAllComponents(Select)).toHaveLength(1)
+it('asks where items in a removed state should go and confirms an occupied rename', async () => {
+  const process = schema().declaration.processes![0]
+  const removed = process.states[1]
+  process.states = process.states.filter(state => state !== removed)
+  const w = mount(ProcessMigration, { props: {
+    removed: [{ process, state: removed, count: 2 }],
+    renamed: [{ process, state: process.states[0], name: 'Ready', count: 1 }],
+    confirmed: false,
+  } }); wrappers.push(w)
+  await w.getComponent(Select).setValue('todo')
+  expect(w.emitted('destination')).toEqual([[process, 'doing', 'todo']])
+  expect(w.text()).toContain('To do becomes Ready for 1 item.')
+  await w.get('input[type="checkbox"]').setValue(true)
+  expect(w.emitted('update:confirmed')).toEqual([[true]])
 })
 it('selection and clearing leave an absent transition collection untouched', async () => {
   const draft = reactive<Declaration>({ processes: [{ id: 'flow', initial: 'ready', states: [{ id: 'ready', name: 'Ready', category: 'unstarted' }] }] })
   const w = mount(ProcessEditor, { props: { draft } }); wrappers.push(w)
   const before = JSON.stringify(draft)
   await w.get('.work-graph-node').trigger('click')
-  await w.get('.work-process-editor').trigger('keydown', { key: 'Escape' })
+  await w.get('.work-process-editor').trigger('keydown', { key: 'Escape' }); await flushPromises()
   expect(JSON.stringify(draft)).toBe(before)
-  expect(w.find('.work-process-sideform').exists()).toBe(false)
+  await expect.poll(() => w.find('.work-process-sideform').exists()).toBe(false)
 })
 
 it('renames the inspector title in place and keeps transition references stable', async () => {
@@ -117,7 +123,9 @@ it('shows the humanized id in List when a transition has no display name', async
   const { draft, w } = editor()
   draft.processes![0].transitions![0].name = undefined; draft.processes![0].transitions![0].id = 'approved'
   await w.getComponent(SelectButton).setValue('List')
-  expect(w.get('input[aria-label="Name of Approved"]').attributes('placeholder')).toBe('Approved')
+  expect(w.find('[aria-label="Edit transition Approved"]').exists()).toBe(true)
+  await w.get('[aria-label="Edit transition Approved"]').trigger('click')
+  expect(w.get('[aria-label="Transition name"]').attributes('placeholder')).toBe('Approved')
 })
 it('keeps generated process identifiers valid and unique for long human names', async () => {
   const { w, draft } = editor()

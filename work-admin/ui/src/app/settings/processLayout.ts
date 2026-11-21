@@ -39,19 +39,24 @@ export function graphPath(points: Point[]): string {
   const last = points.at(-1)!
   return path + ` L ${last.x} ${last.y}`
 }
-export function processLayout(process: Process, draft: Declaration = {}, viewport = { width: 1400, height: 480 }) {
-  const direction = viewport.width < 750 || mainPath(process).length > 8 ? 'TB' : 'LR'
+export function processLayout(
+  process: Process, draft: Declaration = {},
+  viewport: { width: number; height: number; direction?: 'TB' | 'LR' } = { width: 1400, height: 480 },
+) {
+  const direction = viewport.direction ?? (viewport.width < 750 || mainPath(process).length > 8 ? 'TB' : 'LR')
+  const compact = viewport.direction === 'LR' && mainPath(process).length > 6
   const graph = new dagre.graphlib.Graph({ multigraph: true })
   graph.setGraph({ rankdir: direction, ranker: 'network-simplex', acyclicer: 'greedy', nodesep: 32, edgesep: 32, ranksep: 24, marginx: 32, marginy: 32 })
   graph.setDefaultEdgeLabel(() => ({}))
   const main = mainPath(process), mainIds = new Map(main.map((s, i) => [s.id, i]))
   const nodes: GraphNode[] = process.states.map(state => {
     const badges = (process.transitions ?? []).filter(t => t.from === 'any' && t.to === state.id)
-    const title = graphLines(stateTitle(state)), caption = graphLines(stateCaption(state, process))
+    const title = graphLines(stateTitle(state), compact ? 13 : 28)
+    const caption = graphLines(stateCaption(state, process), compact ? 13 : 28)
     const badgeLines = badges.flatMap(t => graphLines(transitionTitle(t) + ' works from any state'))
     const limit = draft.policy?.wip?.[state.id]?.limit
     const limitWidth = limit === undefined ? 0 : textWidth(' · limit ' + limit)
-    const width = Math.max(168, ...title.map(line => textWidth(line) + 58), ...caption.map((line, i) => textWidth(line) + 32 + (i === caption.length - 1 ? limitWidth : 0)), ...badgeLines.map(line => textWidth(line) + 32))
+    const width = Math.max(compact ? 122 : 168, ...title.map(line => textWidth(line) + 58), ...caption.map((line, i) => textWidth(line) + 32 + (i === caption.length - 1 ? limitWidth : 0)), ...badgeLines.map(line => textWidth(line) + 32))
     const height = Math.max(80, 42 + title.length * 18 + caption.length * 16 + badgeLines.length * 18)
     // Include the fixed port stubs in Dagre's rank reservations.
     graph.setNode(state.id, { width: width + (direction === 'LR' ? 36 : 0), height: height + (direction === 'TB' ? 36 : 0) })
@@ -59,8 +64,8 @@ export function processLayout(process: Process, draft: Declaration = {}, viewpor
   })
   const ids = new Set(nodes.map(n => n.state.id))
   const routes = (process.transitions ?? []).flatMap(transition => transition.from === 'any' ? [] : transition.from.filter(from => ids.has(from) && ids.has(transition.to)).map(from => {
-    const key = `${transition.id}-${from}`, lines = graphLines(transitionTitle(transition))
-    const width = Math.max(72, ...lines.map(line => textWidth(line) + 24)), height = Math.max(24, lines.length * 16 + 10)
+    const key = `${transition.id}-${from}`, lines = graphLines(transitionTitle(transition), compact ? 12 : 28)
+    const width = Math.max(compact ? 60 : 72, ...lines.map(line => textWidth(line) + 24)), height = Math.max(24, lines.length * 16 + 10)
     return { transition, from, key, lines, width, height }
   }))
   // DFS removes only cycle-closing arcs before ranking. Returns get compact

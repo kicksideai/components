@@ -49,7 +49,7 @@ it('shows a readable refusal with the backend reason code', () => {
   expect(alert.text()).toContain('Priority')
   expect(alert.text()).toContain('Routine')
   expect(alert.text()).toContain('Items still hold values in this option field.')
-  expect(alert.text()).toContain('Reason code')
+  expect(alert.text()).toContain('Technical details')
   expect(alert.get('code').text()).toBe('options.remove')
   expect(alert.text()).not.toMatch(/priority_code|42/)
   expect(w.get('tbody tr').text()).toContain('Critical')

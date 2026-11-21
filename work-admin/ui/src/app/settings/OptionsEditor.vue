@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { Icon } from '@iconify/vue'
 import Select from 'primevue/select'
 import { computed, onBeforeUnmount, useId, watch } from 'vue'
@@ -26,13 +27,13 @@ function add() {
 }
 </script>
 <template>
-  <section class="work-stack work-tight work-option-builder"><header class="work-row"><h4>Options</h4><span class="work-muted work-small">Stable IDs keep existing values when labels change.</span><span class="work-spacer"></span></header>
+  <section class="work-stack work-tight work-option-builder"><header class="work-row"><h4>Options</h4><span class="work-muted work-small">Renaming a choice keeps it selected on existing items.</span><span class="work-spacer"></span></header>
     <div v-reorder class="work-stack work-tight"><div v-for="(option, index) in options" :key="index" class="work-option-row work-reorder-entry">
       <Button type="button" class="work-icon-button work-reorder-handle" aria-label="Drag option; arrow keys reorder" @keydown.up.prevent="reorder(index, index - 1)" @keydown.down.prevent="reorder(index, index + 1)" severity="secondary" text size="small"><Icon icon="tabler:grip-vertical" aria-hidden="true" /></Button>
-      <label class="work-stack work-tight work-small">Label<InputText v-model="option.label" aria-label="Option label" /></label><label class="work-stack work-tight work-small">ID<InputText v-model="option.id" class="work-option-code" required aria-label="Option ID" /></label>
+      <label class="work-stack work-tight work-small">Label<InputText v-model="option.label" aria-label="Option label" /></label><Disclosure class="work-disclosure" label="Advanced"><label class="work-stack work-tight work-small">Integration identifier<InputText v-model="option.id" class="work-option-code" required aria-label="Option ID" /></label></Disclosure>
       <div class="work-stack work-tight"><label class="work-stack work-tight work-small">Color<span class="work-row"><span class="work-color-swatch" :class="'work-swatch-' + (option.color || 'secondary')" aria-hidden="true"></span><Select v-model="option.color" aria-label="Option color" appendTo="self" optionLabel="label" optionValue="value" optionDisabled="disabled" :options="[{ label: 'Default', value: undefined, disabled: false }, ...(colors ?? []).map((color) => ({ label: (color), value: (color), disabled: false }))]" /></span></label><label class="work-stack work-tight work-small">Category<Select :model-value="option.category" aria-label="Option category" appendTo="self" optionLabel="label" optionValue="value" showClear :options="['triage', 'backlog', ...categories].map(value => ({ label: categoryTitle(value), value }))" @update:model-value="option.category = $event || undefined" /></label></div>
 
       <div class="work-row"><Button aria-label="Option earlier" severity="secondary" size="small" :disabled="index === 0" @click="reorder(index, index - 1)" text><Icon icon="tabler:arrow-up" aria-hidden="true" /></Button><Button aria-label="Option later" severity="secondary" size="small" :disabled="index === options.length - 1" @click="reorder(index, index + 1)" text><Icon icon="tabler:arrow-down" aria-hidden="true" /></Button><Button label="Remove" aria-label="Remove option" severity="secondary" text size="small" @click="options.splice(index, 1)"><template #icon><Icon icon="tabler:trash" aria-hidden="true" /></template></Button></div>
-    </div><p v-if="!valid" class="kx-err" role="alert">Option IDs must be nonempty and unique.</p><div class="work-add-option"><Button label="Add option" severity="secondary" size="small" @click="add" outlined><template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template></Button></div></div><p v-if="!options.length" class="work-muted work-small">Add the choices people can select for this field.</p>
+    </div><p v-if="!valid" class="kx-err" role="alert">Each choice needs a unique integration identifier.</p><div class="work-add-option"><Button label="Add option" severity="secondary" size="small" @click="add" outlined><template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template></Button></div></div><p v-if="!options.length" class="work-muted work-small">Add the choices people can select for this field.</p>
   </section>
 </template>

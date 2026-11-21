@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 
-const props = defineProps<{ visible: boolean; label: string; busy?: boolean }>()
+const props = defineProps<{ visible: boolean; label: string; busy?: boolean; returnFocus?: HTMLElement }>()
 const emit = defineEmits<{ close: [] }>()
 const dialog = ref<HTMLDialogElement | null>(null)
 let opener: HTMLElement | null = null
@@ -12,7 +12,7 @@ async function sync() {
   if (!element) return
   if (props.visible && !element.open) {
     const root = element.getRootNode() as Document | ShadowRoot
-    opener = root.activeElement as HTMLElement | null
+    opener = props.returnFocus ?? root.activeElement as HTMLElement | null
     element.showModal()
   } else if (!props.visible && element.open) {
     element.close()

@@ -73,7 +73,7 @@ entries:
     icon: tabler:layout-kanban
     description: Open Work administration to create a board or select an existing one.
       The component uses the signed-in user and takes no props. Board administrators
-      review field, process, visibility and plugin changes before applying a draft.
+      review item, workflow, visibility and plugin changes before applying a draft.
     props: {}
 - name: settings_tab
   kind: registry.entry
@@ -98,9 +98,9 @@ entries:
     base_path: kickside-work-admin
     entry_point: settings.js
     icon: tabler:adjustments
-    description: Board fields, item types, process, policy, relations and plugins
-      with one draft reviewed before applying. Embedded mode fits inside a System
-      detail pane.
+    description: Manage a board’s identity, items, workflow, access and plugins.
+      Use Review changes to check and apply a draft. Embedded mode fits inside the
+      Work Administration detail pane.
   props:
     type: object
     properties:
@@ -112,6 +112,10 @@ entries:
         type: boolean
         default: false
         description: Renders a detail header inside an existing System surface.
+      focus-back:
+        type: boolean
+        default: false
+        description: Focus the back arrow when the settings are opened from the picker.
   events:
     navigate:
       type: object
@@ -120,6 +124,9 @@ entries:
           type: string
       required:
       - route
+    back-to-boards:
+      type: object
+      description: Returns the embedded board settings to the Work administration picker.
     dirty-change:
       type: object
       properties:

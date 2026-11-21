@@ -11,5 +11,5 @@ export const settings = {
   plan: (id: string, review: Reviewed) => post<SchemaPlan>(`${board(id)}/plan_schema`, body(review), 'Schema plan'),
   apply: (id: string, review: Reviewed, key: string) => post<{ generation: number; class: string }>(`${board(id)}/apply_schema`, { ...body(review), key }, 'Apply schema'),
   resume: (id: string) => post<{ resumed: boolean; job_id: string }>(`${board(id)}/resume_migration`, {}, 'Resume migration'),
-  configure: (id: string, plugin: string, config: Record<string, unknown>) => post<{ attachment_id: string }>(`${board(id)}/configure_plugin`, { plugin, config }, 'Configure plugin'),
+  configure: (id: string, plugin: string, config?: Record<string, unknown>) => post<{ attachment_id: string }>(`${board(id)}/configure_plugin`, { plugin, ...(config === undefined ? {} : { config }) }, 'Configure plugin'),
 }

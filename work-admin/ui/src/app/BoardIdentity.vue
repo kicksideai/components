@@ -6,27 +6,38 @@ import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
+import Select from 'primevue/select'
 import { ensureTag } from './mount'
 import { work } from '../api'
-import type { BoardRow } from '../types'
-const props = defineProps<{ board?: BoardRow; compact?: boolean; detail?: boolean; subtitle?: string }>()
+import type { BoardApp, BoardRow } from '../types'
+const props = defineProps<{ board?: BoardRow; boardApps?: BoardApp[]; compact?: boolean; detail?: boolean; subtitle?: string }>()
 const emit = defineEmits<{ saved: []; 'dirty-change': [dirty: boolean] }>()
-const editing = ref(false), title = ref(''), description = ref(''), icon = ref(''), iconReady = ref(false), busy = ref(false), error = ref(''), message = ref('')
+const editing = ref(false), title = ref(''), description = ref(''), icon = ref(''), app = ref(''), iconReady = ref(false), busy = ref(false), error = ref(''), message = ref('')
 const admin = computed(() => props.board?.access?.admin === true)
-const original = ref({ title: '', description: '', icon: '' })
+const original = ref({ title: '', description: '', icon: '', app: '' })
+const appChoices = computed(() => [
+  { id: '', title: 'Installation default' },
+  ...(props.boardApps ?? []),
+  ...(props.board?.ui_app && !props.boardApps?.some(choice => choice.id === props.board?.ui_app)
+    ? [{ id: props.board.ui_app, title: props.boardApps ? 'Unavailable app' : 'Configured board app', disabled: true }] : []),
+])
+const currentApp = computed(() => appChoices.value.find(choice => choice.id === (props.board?.ui_app ?? ''))?.title)
+const canChooseApp = computed(() => !!props.boardApps?.length || !!props.board?.ui_app)
 function begin() {
-  original.value = { title: props.board?.title ?? '', icon: props.board?.icon ?? '', description: props.board?.description ?? '' }
+  original.value = { title: props.board?.title ?? '', icon: props.board?.icon ?? '', description: props.board?.description ?? '', app: props.board?.ui_app ?? '' }
   title.value = original.value.title
   icon.value = original.value.icon
   description.value = original.value.description
+  app.value = original.value.app
   error.value = ''; message.value = ''; editing.value = true
   void ensureTag('wc-icon-picker').then(ready => iconReady.value = ready)
 }
 const changes = computed(() => {
-  const patch: { title?: string; description?: string; icon?: string } = {}
+  const patch: { title?: string; description?: string; icon?: string; ui_app?: string } = {}
   if (title.value.trim() !== original.value.title) patch.title = title.value.trim()
   if (description.value !== original.value.description) patch.description = description.value
   if (icon.value !== original.value.icon) patch.icon = icon.value
+  if (app.value !== original.value.app) patch.ui_app = app.value
   return patch
 })
 watch(admin, allowed => { if (!allowed) cancel() })
@@ -48,13 +59,23 @@ async function save() {
       <label class="work-stack work-tight">Title<InputText v-model="title" required autofocus :disabled="busy" /></label>
       <label class="work-stack work-tight">Description<Textarea v-model="description" rows="1" :disabled="busy" /></label>
       <div class="work-stack work-tight"><span>Board icon</span><wc-icon-picker v-if="iconReady" :value="icon" fallback="tabler:layout-kanban" :inert="busy || undefined" @select="icon = ($event as CustomEvent<string>).detail" /><p v-else class="work-muted work-small">The icon picker is unavailable.</p></div>
+      <label v-if="detail && canChooseApp" class="work-stack work-tight">Open board in
+        <Select v-model="app" aria-label="Open board in" :options="appChoices" optionLabel="title" optionValue="id" optionDisabled="disabled" appendTo="self" :disabled="busy" />
+        <span class="work-muted work-small">This is where people open the board from Work navigation.</span>
+      </label>
       <div class="work-row"><Button label="Save" severity="secondary" type="submit" :disabled="!title.trim() || busy" :loading="busy" outlined><template #icon><Icon icon="tabler:device-floppy" aria-hidden="true" /></template></Button><Button label="Cancel" severity="secondary" :disabled="busy" @click="cancel" outlined><template #icon><Icon icon="tabler:x" aria-hidden="true" /></template></Button></div>
     </form>
+    <div v-else-if="detail" class="work-row work-wrap work-identity-detail">
+      <p class="work-spacer">Opens in <strong>{{ currentApp }}</strong></p>
+      <Button v-if="admin" label="Edit board" severity="secondary" outlined @click.stop="begin">
+        <template #icon><Icon icon="tabler:pencil" aria-hidden="true" /></template>
+      </Button>
+    </div>
     <template v-else>
       <div class="work-row">
         <div class="work-row work-board-title">
           <Icon v-if="board?.icon" :icon="board.icon" aria-hidden="true" />
-          <component :is="compact || detail ? 'h2' : 'h1'" :class="detail ? 'work-detail-title' : compact ? 'kx-card-name' : 'kx-title'">{{ board?.title || 'Untitled board' }}</component>
+          <component :is="compact ? 'h2' : 'h1'" :class="compact ? 'kx-card-name' : 'kx-title'">{{ board?.title || 'Untitled board' }}</component>
         </div>
         <slot v-if="compact" name="title-end" />
         <span v-if="compact" class="work-identity-actions">

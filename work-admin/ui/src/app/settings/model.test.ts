@@ -108,3 +108,13 @@ it('preserves rollup ordering and predicate literals when a field code matches t
   expect(draft.fields![1].by).toBe('time')
   expect(draft.fields![1].where).toEqual({ field: 'deadline', op: 'eq', value: { field: 'time' } })
 })
+
+
+it('sends plugin selections without replaying server-owned schema fragments', () => {
+  const plugin = { use: 'app:planning', schema: { fragment: { fields: [{ code: 'start' }] }, digest: 'pinned' } }
+  const original = { ...schema().declaration, plugins: [plugin] }
+  const draft = clone(original)
+  draft.fields!.push({ code: 'new_field', form: 'text' })
+  expect(requestDeclaration(draft, original).plugins).toEqual([{ use: 'app:planning' }])
+  expect(draft.plugins[0]).toEqual(plugin)
+})

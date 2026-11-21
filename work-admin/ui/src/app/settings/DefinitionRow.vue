@@ -4,8 +4,8 @@ import { ref, useSlots } from 'vue'
 import ContentAction from '../ContentAction.vue'
 import Tag from 'primevue/tag'
 import { Icon } from '@iconify/vue'
-defineProps<{ title: string; code?: string; kind?: string; description?: string }>()
-const open = ref(false)
+const props = defineProps<{ title: string; code?: string; kind?: string; description?: string; initialOpen?: boolean }>()
+const open = ref(!!props.initialOpen)
 const slots = useSlots()
 </script>
 <template>
@@ -13,7 +13,7 @@ const slots = useSlots()
     <header class="work-definition-head" :class="{ 'work-definition-has-handle': slots.handle }">
       <div v-if="slots.handle" class="work-definition-handle"><slot name="handle" /></div>
       <ContentAction class="work-definition-toggle" :aria-expanded="open" @activate="open = !open">
-        <Icon :icon="open ? 'tabler:chevron-down' : 'tabler:chevron-right'" aria-hidden="true" />
+        <Icon icon="tabler:chevron-right" aria-hidden="true" />
         <span class="work-row-title" :title="title">{{ title }}</span>
       </ContentAction>
       <div class="work-definition-details">
@@ -25,6 +25,8 @@ const slots = useSlots()
       <div class="work-definition-actions"><slot name="actions" /></div>
       <p v-if="description" class="work-definition-description">{{ description }}</p>
     </header>
-    <div v-show="open" class="work-definition-body work-stack"><slot /></div>
+    <Transition name="work-panel">
+      <div v-show="open" :inert="!open" class="work-definition-body work-stack"><slot /></div>
+    </Transition>
   </article>
 </template>

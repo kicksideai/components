@@ -23,21 +23,21 @@ beforeEach(() => {
 it('shows named provenance and reviews conflicts and editable map defaults before applying exactly the reviewed request', async () => {
   const w = mount(BoardSettings, { props: { boardId: 'b' } }); await flushPromises()
   try {
-    expect(w.get('.kx-head-sub').text()).toContain('Delivery flow 1.0.0 · Outdated')
-    await button(w, 'Upgrade pack').trigger('click'); await flushPromises()
+    expect(w.get('.work-ia-general').text()).toContain('Delivery flow · Update available')
+    await button(w, 'Update pack').trigger('click'); await flushPromises()
     expect(settings.packApply).not.toHaveBeenCalled(); expect(w.get('[aria-label="Schema review"]').text()).toContain('Local edits conflict')
     expect(w.get('[aria-label="Pack conflicts"]').text()).toContain('Local delivery')
     expect(w.get('[aria-label="Pack conflicts"]').text()).toContain('Updated delivery')
     expect(w.text()).toContain('5a336e3c-753c-49fe-8bf4-ab2742406a9b'); expect(w.text()).toContain('example.private:capability')
-    expect(button(w, 'Apply').attributes('disabled')).toBeDefined()
+    expect(button(w, 'Apply changes').attributes('disabled')).toBeDefined()
     const selects = w.findAllComponents(Select)
     await selects.find(s => s.props('ariaLabel') === 'Resolution for Delivery')!.setValue('incoming')
     const map = selects.find(s => s.props('ariaLabel') === 'Move items from To do')!
     expect(map.props('modelValue')).toBe('ready'); await map.setValue('done')
-    await button(w, 'Review changes').trigger('click'); await flushPromises()
+    await button(w, 'Check impact').trigger('click'); await flushPromises()
     const request = vi.mocked(settings.packPlan).mock.calls.at(-1)![1]
     expect(request).toEqual({ pack: pack.id, version: '2.0.0', expected_generation: 1, resolutions: { 'processes.delivery': 'incoming' }, maps: { delivery: { todo: 'done' } } })
-    await button(w, 'Apply').trigger('click'); await flushPromises()
+    await button(w, 'Apply changes').trigger('click'); await flushPromises()
     expect(settings.packApply).toHaveBeenCalledWith('b', request, expect.any(String)); expect(settings.apply).not.toHaveBeenCalled()
     expect(w.text()).not.toContain('app:delivery')
   } finally { w.unmount() }
@@ -46,26 +46,26 @@ it('keeps refused changes and their reason visible and prevents stale pack appli
   vi.mocked(settings.packPlan).mockResolvedValue({ ...result, class: 'refused', refused: [{ code: 'visibility', what: 'visibility.remove', class: 'refused' }], migration: 'Create a board and move its items.' })
   const w = mount(BoardSettings, { props: { boardId: 'b' } }); await flushPromises()
   try {
-    await button(w, 'Upgrade pack').trigger('click'); await flushPromises()
-    expect(w.text()).toContain('Create a board and move its items.'); expect(button(w, 'Apply').attributes('disabled')).toBeDefined()
+    await button(w, 'Update pack').trigger('click'); await flushPromises()
+    expect(w.text()).toContain('Create a board and move its items.'); expect(button(w, 'Apply changes').attributes('disabled')).toBeDefined()
     vi.mocked(work.schema).mockResolvedValue({ ...schema(), generation: 3 }); notify('component.b'); await flushPromises()
-    expect(w.text()).toContain('advances to generation 3'); expect(settings.packApply).not.toHaveBeenCalled()
+    expect(w.text()).toContain('Someone saved new settings while you were editing.'); expect(settings.packApply).not.toHaveBeenCalled()
   } finally { w.unmount() }
 })
 it('keeps conflicts visible when the default local choice has no schema changes', async () => {
   vi.mocked(settings.packPlan).mockResolvedValue({ ...result, changes: [], maps: {}, class: 'cosmetic' })
   const w = mount(BoardSettings, { props: { boardId: 'b' } }); await flushPromises()
-  try { await button(w, 'Upgrade pack').trigger('click'); await flushPromises(); expect(w.get('[aria-label="Pack conflicts"]').text()).toContain('Local edits conflict'); expect(button(w, 'Apply').attributes('disabled')).toBeDefined() }
+  try { await button(w, 'Update pack').trigger('click'); await flushPromises(); expect(w.get('[aria-label="Pack conflicts"]').text()).toContain('Local edits conflict'); expect(button(w, 'Apply changes').attributes('disabled')).toBeDefined() }
   finally { w.unmount() }
 })
 it('replans proposed default maps so Apply sends the exact reviewed request', async () => {
   vi.mocked(settings.packPlan).mockResolvedValue({ ...result, conflicts: [] })
   const w = mount(BoardSettings, { props: { boardId: 'b' } }); await flushPromises()
   try {
-    await button(w, 'Upgrade pack').trigger('click'); await flushPromises()
+    await button(w, 'Update pack').trigger('click'); await flushPromises()
     const reviewed = vi.mocked(settings.packPlan).mock.calls.at(-1)![1]
     expect(reviewed.maps).toEqual({ delivery: { todo: 'ready' } })
-    await button(w, 'Apply').trigger('click'); await flushPromises()
+    await button(w, 'Apply changes').trigger('click'); await flushPromises()
     expect(settings.packApply).toHaveBeenCalledWith('b', reviewed, expect.any(String))
   } finally { w.unmount() }
 })
@@ -82,16 +82,16 @@ it('reviews and applies initial plugin configuration for a pack upgrade', async 
   vi.mocked(settings.packPlan).mockResolvedValue({ ...result, conflicts: [], declaration: { ...result.declaration, plugins: [{ use: plugin.plugin }] } })
   vi.mocked(work.packs).mockResolvedValue([{ ...pack, plugins: [{ plugin: plugin.plugin, installed: true }] }])
   const w = mount(BoardSettings, { props: { boardId: 'b' } }); await flushPromises()
-  await button(w, 'Upgrade pack').trigger('click'); await flushPromises()
+  await button(w, 'Update pack').trigger('click'); await flushPromises()
   const { default: ConfigForm } = await import('./ConfigForm.vue')
   const form = w.findComponent(ConfigForm)
   expect(form.exists()).toBe(true)
-  expect(button(w, 'Review changes').attributes('disabled')).toBeDefined()
+  expect(button(w, 'Check impact').attributes('disabled')).toBeDefined()
   form.vm.$emit('update:modelValue', { folder: 'Documents' }); await flushPromises()
-  await button(w, 'Review changes').trigger('click'); await flushPromises()
+  await button(w, 'Check impact').trigger('click'); await flushPromises()
   const request = vi.mocked(settings.packPlan).mock.calls.at(-1)![1]
   expect(request).toMatchObject({ plugin_configs: { [plugin.plugin]: { folder: 'Documents' } } })
-  await button(w, 'Apply').trigger('click'); await flushPromises()
+  await button(w, 'Apply changes').trigger('click'); await flushPromises()
   expect(settings.packApply).toHaveBeenLastCalledWith('b', request, expect.any(String)); w.unmount()
 })
 
@@ -114,7 +114,7 @@ it('installs a discovered pack on an existing empty board through the reviewed p
     await w.get('form.work-dialog-box').trigger('submit'); await flushPromises()
     const request = vi.mocked(settings.packPlan).mock.calls.at(-1)![1]
     expect(request).toMatchObject({ pack: pack.id, expected_generation: 1 })
-    await button(w, 'Apply').trigger('click'); await flushPromises()
+    await button(w, 'Apply changes').trigger('click'); await flushPromises()
     expect(settings.packApply).toHaveBeenCalledWith('b', request, expect.any(String))
     expect(settings.apply).not.toHaveBeenCalled()
   } finally { w.unmount() }

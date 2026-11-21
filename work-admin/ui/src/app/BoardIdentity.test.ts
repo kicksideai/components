@@ -69,3 +69,17 @@ it('edits the board icon with the shared picker and sends only the changed icon'
   await w.get('form').trigger('submit'); await flushPromises()
   expect(work.updateBoard).toHaveBeenCalledWith('b', { icon: 'tabler:rocket' }); w.unmount()
 })
+
+it('shows the named opening app and changes it through the board update', async () => {
+  vi.mocked(work.updateBoard).mockResolvedValue({ board_id: 'b', status: 'updated' })
+  const boardApps = [{ id: 'app:tracker', title: 'Tracker' }, { id: 'app:releases', title: 'Release workspace' }]
+  const w = mount(BoardIdentity, { props: { detail: true, board: { ...board, ui_app: 'app:tracker' }, boardApps } })
+  try {
+    expect(w.text()).toContain('Opens in Tracker')
+    await getButton(w, 'Edit board').trigger('click')
+    const { default: Select } = await import('primevue/select')
+    await w.getComponent(Select).setValue('app:releases')
+    await w.get('form').trigger('submit'); await flushPromises()
+    expect(work.updateBoard).toHaveBeenCalledWith('b', { ui_app: 'app:releases' })
+  } finally { w.unmount() }
+})

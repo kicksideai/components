@@ -86,8 +86,8 @@ const actions: Record<string, string> = {
 
 function processChange(change: SchemaChange, before?: Process, after?: Process): ReviewCopy {
   const { what, detail, to } = change
-  const process = after?.name || before?.name || 'Untitled process'
-  const title = `${process} · ${actions[what] ?? 'Process changed'}`
+  const process = after?.name || before?.name || 'Untitled workflow'
+  const title = `${process} · ${actions[what] ?? 'Workflow changed'}`
   const oldState = what.startsWith('state.') ? before?.states.find(state => state.id === detail) : undefined
   const state = what.startsWith('state.') ? after?.states.find(state => state.id === detail) : undefined
   const oldTransition = what.startsWith('transition.') ? before?.transitions?.find(transition => transition.id === detail) : undefined
@@ -102,15 +102,15 @@ function processChange(change: SchemaChange, before?: Process, after?: Process):
   else if (transition) value = transitionTitle(transition)
   else if (oldTransition) value = transitionTitle(oldTransition)
   else if (what === 'initial') value = pair(stateTitle(before?.states.find(state => state.id === before.initial)), stateTitle(after?.states.find(state => state.id === after.initial)))
-  else if (what === 'name') value = pair(before?.name || 'Untitled process', after?.name || 'Untitled process')
+  else if (what === 'name') value = pair(before?.name || 'Untitled workflow', after?.name || 'Untitled workflow')
   return { title, details: value ? [value] : [] }
 }
 
 export function reviewCopy(change: SchemaChange, original: Declaration, draft: Declaration, holderName: (holder: Holder) => string): ReviewCopy {
   const { code, what, detail } = change
   if (code === 'schema' || what === 'visibility.remove') {
-    if (what === 'policy') return { title: 'Board policy', details: policyChanges(original, draft) }
-    if (what.startsWith('visibility')) return { title: 'Board visibility', details: visibilityChanges(original, draft, holderName) }
+    if (what === 'policy') return { title: 'Board limits and defaults', details: policyChanges(original, draft) }
+    if (what.startsWith('visibility')) return { title: 'Who can see items', details: visibilityChanges(original, draft, holderName) }
     if (what === 'key_prefix') return { title: 'Item key prefix', details: [pair(original.key_prefix ?? 'Default', draft.key_prefix ?? 'Default')] }
     const labels: Record<string, string> = { plugins: 'Board plugins changed', scopes: 'Saved query filters changed', 'rollup.recompute': 'Calculated totals will update' }
     return { title: labels[what] ?? 'Board settings changed', details: [] }
@@ -130,7 +130,7 @@ export function reviewCopy(change: SchemaChange, original: Declaration, draft: D
     const id = code.slice('relation '.length)
     const before = original.relation_types?.find(relation => relation.id === id), after = draft.relation_types?.find(relation => relation.id === id)
     const details = what === 'label' ? [pair([before?.outward, before?.inward].filter(Boolean).join(' / '), [after?.outward, after?.inward].filter(Boolean).join(' / '))] : []
-    return { title: `${after?.outward || before?.outward || 'Relation type'} · ${actions[what] ?? 'Relation type changed'}`, details }
+    return { title: `${after?.outward || before?.outward || 'Link type'} · ${actions[what] ?? 'Link type changed'}`, details }
   }
 
   const after = draft.fields?.find(field => field.code === code)

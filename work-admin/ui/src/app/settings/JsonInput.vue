@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import Textarea from 'primevue/textarea'
 import { onBeforeUnmount, ref, watch } from 'vue'
 const props = defineProps<{ label: string; modelValue?: unknown; shape?: 'object' | 'array'; hint?: string; example?: unknown }>()
@@ -18,5 +19,5 @@ function update(value: string) {
 }
 </script>
 <template>
-  <details class="work-json-disclosure"><summary>Edit as JSON · {{ label }}</summary><label class="work-stack work-tight"><span>{{ label }}</span><span v-if="hint" class="work-small work-muted">{{ hint }}</span><Textarea class="work-json-input" rows="3" :aria-label="label" :value="text" :aria-invalid="!!error" @input="update(($event.target as HTMLTextAreaElement).value)"></Textarea><span v-if="error" role="alert" class="work-error">{{ error }}</span></label><p class="work-small work-muted">Example</p><pre class="work-json-example">{{ JSON.stringify(example ?? (shape === 'array' ? [] : {}), null, 2) }}</pre></details>
+  <Disclosure class="work-json-disclosure" :label="`Edit as JSON · ${label}`"><label class="work-stack work-tight"><span>{{ label }}</span><span v-if="hint" class="work-small work-muted">{{ hint }}</span><Textarea class="work-json-input" rows="3" :aria-label="label" :value="text" :aria-invalid="!!error" @input="update(($event.target as HTMLTextAreaElement).value)"></Textarea><span v-if="error" role="alert" class="work-error">{{ error }}</span></label><p class="work-small work-muted">Example</p><pre class="work-json-example">{{ JSON.stringify(example ?? (shape === 'array' ? [] : {}), null, 2) }}</pre></Disclosure>
 </template>

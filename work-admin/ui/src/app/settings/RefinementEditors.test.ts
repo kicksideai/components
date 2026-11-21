@@ -6,7 +6,6 @@ import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import StateSettings from './StateSettings.vue'
-import PolicyEditor from './PolicyEditor.vue'
 import ProcessEditor from './ProcessEditor.vue'
 import FieldsEditor from './FieldsEditor.vue'
 import TypesEditor from './TypesEditor.vue'
@@ -15,17 +14,17 @@ import { schema } from '../../test/fixtures'
 import type { Declaration } from '../../types'
 const wrappers: ReturnType<typeof mount>[] = []
 afterEach(() => wrappers.splice(0).forEach(w => w.unmount()))
-it('edits WIP in a table with one header and preserves a blank limit as unrestricted', async () => {
+it('shows live occupancy beside the editable state limit and clears the limit', async () => {
   const draft = reactive(schema().declaration)
-  const w = mount(PolicyEditor, { props: { draft } }); wrappers.push(w)
-  expect(w.get('.work-wip-table thead').text()).toBe('StateLimitHard limit')
-  const rows = w.findAll('.work-wip-table tbody tr')
-  expect(rows).toHaveLength(draft.processes![0].states.length)
-  expect(rows[0].text()).not.toContain('Limit')
-  await rows[0].getComponent(InputNumber).setValue(4)
-  await rows[0].getComponent(ToggleSwitch).setValue(true)
+  const itemType = draft.item_types![0]
+  const w = mount(ProcessEditor, { props: { draft, countTypes: draft.item_types, counts: { [itemType.id]: { todo: 2 } } } }); wrappers.push(w)
+  await w.get('[aria-label="Edit state To do"]').trigger('click')
+  expect(w.get('aside').text()).toContain('2 items currently here')
+  const limit = w.findAllComponents(InputNumber).find(control => control.props('ariaLabel') === 'Items allowed here')!
+  await limit.setValue(4)
+  await w.get('[aria-label="Refuse moves over the limit"]').setValue(true)
   expect(draft.policy!.wip!.todo).toEqual({ limit: 4, hard: true })
-  await rows[0].getComponent(InputNumber).setValue(null)
+  await limit.setValue(null)
   expect(draft.policy!.wip!.todo).toBeUndefined()
 })
 it('selects states and transitions without altering the declaration, in the settings editor', async () => {
@@ -49,14 +48,14 @@ it('creates a named process through a small dialog', async () => {
 it('groups history switches and uses structured access controls without default JSON', async () => {
   const draft = reactive(schema().declaration)
   const w = mount(FieldsEditor, { props: { draft } }); wrappers.push(w)
-  await w.get('[aria-expanded]').trigger('click')
+  await w.get('.work-definition-toggle').trigger('click')
   const body = w.get('.work-definition-body')
   expect(body.get('.work-field-history').findAllComponents(ToggleSwitch)).toHaveLength(2)
   expect(body.text()).toContain('Who can read')
   expect(body.text()).toContain('Who can edit')
   expect(body.text()).not.toContain('Declared type')
   expect(body.findAllComponents(Select)).toHaveLength(3)
-  expect(body.findAll('textarea').filter(t => !t.element.closest('details'))).toHaveLength(0)
+  expect(body.findAll('textarea').filter(t => !t.element.closest('.kx-disclosure'))).toHaveLength(0)
 })
 it.each<[Component, Declaration]>([
   [TypesEditor, { item_types: [{ id: 'task', fields: [], process: 'flow' }] }],

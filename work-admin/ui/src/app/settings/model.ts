@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import type { BoardAccess, Holder, Declaration, Field, Schema } from '../../types'
+import type { BoardAccess, Holder, Declaration, Field, Process, Schema } from '../../types'
 import { effectiveMigration } from './process'
 import { ApiError, formatApiError } from '../../transport'
 export interface SchemaChange { code: string; class: string; what: string; detail?: string; to?: string; count?: number }
@@ -61,8 +61,23 @@ export function renameField(draft: Declaration, field: Field, code: string) {
     }
   }
 }
+function workflowSettings({ migration, map, ...workflow }: Process) {
+  return JSON.stringify(workflow)
+}
+
 export function requestDeclaration(draft: Declaration, original: Declaration): Declaration {
   const out = clone(draft)
+  for (const process of out.processes ?? []) {
+    const saved = original.processes?.find(workflow => workflow.id === process.id)
+    if (saved && workflowSettings(process) !== workflowSettings(saved)) process.migration = 'follow'
+    if (process.map) {
+      for (const [from, to] of Object.entries(process.map)) {
+        if (process.states.some(state => state.id === from) || !process.states.some(state => state.id === to)) delete process.map[from]
+      }
+      if (!Object.keys(process.map).length) delete process.map
+    }
+  }
+  if (out.plugins) out.plugins = out.plugins.map(({ use }) => ({ use }))
   for (const field of out.fields ?? []) {
     if (field.type?.includes(':')) delete field.form
   }

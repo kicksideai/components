@@ -6,14 +6,11 @@ import InputText from 'primevue/inputtext'
 import Tag from 'primevue/tag'
 import type { Process, State, Transition } from '../../types'
 import { categoryTitle, kindTitle, stateTitle, transitionTitle } from './process'
-defineProps<{ process: Process; selectedState?: State; selectedTransition?: Transition }>()
-defineEmits<{ state: [state: State, opener: HTMLElement]; transition: [transition: Transition, opener: HTMLElement]; removeState: [state: State]; removeTransition: [transition: Transition]; addTransition: [opener: HTMLElement] }>()
+defineProps<{ process: Process; selectedState?: State; selectedTransition?: Transition; counts?: Record<string, number> }>()
+defineEmits<{ state: [state: State, opener: HTMLElement]; transition: [transition: Transition, opener: HTMLElement]; removeState: [state: State]; removeTransition: [transition: Transition] }>()
 </script>
 <template>
   <section class="work-process-list work-stack" aria-label="Process list">
-    <label class="work-stack work-tight"
-      >Process name<InputText v-model="process.name" aria-label="Process name"
-    /></label>
     <h3>States</h3>
     <div class="work-table-scroll">
       <table class="work-settings-table work-process-table" role="table" aria-label="States">
@@ -27,7 +24,10 @@ defineEmits<{ state: [state: State, opener: HTMLElement]; transition: [transitio
         </thead>
         <tbody role="rowgroup">
           <tr v-for="state in process.states" :key="state.id" :aria-selected="selectedState === state" role="row">
-            <td role="cell"><InputText v-model="state.name" :aria-label="'Name of ' + stateTitle(state)" /></td>
+            <td role="cell">
+              <InputText v-model="state.name" :aria-label="'Name of ' + stateTitle(state)" />
+              <p v-if="counts" class="work-muted work-small">{{ counts[state.id] ?? 0 }} here</p>
+            </td>
             <td role="cell"><span class="work-process-cell-label" aria-hidden="true">Phase</span>{{ categoryTitle(state.category) }}</td>
             <td role="cell">
               <span class="work-process-cell-label" aria-hidden="true">Kind</span>
@@ -38,7 +38,7 @@ defineEmits<{ state: [state: State, opener: HTMLElement]; transition: [transitio
                 size="small"
                 text
                 severity="secondary"
-                aria-label="Edit state"
+                :aria-label="'Edit state ' + stateTitle(state)"
                 @click="$emit('state', state, $event.currentTarget as HTMLElement)"
                 ><Icon icon="tabler:pencil" /></Button
               ><Button
@@ -73,11 +73,9 @@ defineEmits<{ state: [state: State, opener: HTMLElement]; transition: [transitio
             role="row"
           >
             <td role="cell">
-              <InputText
-                v-model="transition.name"
-                :placeholder="transitionTitle(transition)"
-                :aria-label="'Name of ' + transitionTitle(transition)"
-              />
+              <InputText v-model="transition.name" :placeholder="transitionTitle(transition)"
+                :aria-label="'Name of ' + transitionTitle(transition)" />
+              <p v-if="transition.when || transition.require?.length || transition.guards?.length" class="work-muted">Has requirements</p>
             </td>
             <td role="cell">
               <span class="work-process-cell-label" aria-hidden="true">From</span>
@@ -95,7 +93,7 @@ defineEmits<{ state: [state: State, opener: HTMLElement]; transition: [transitio
                 size="small"
                 text
                 severity="secondary"
-                aria-label="Edit transition"
+                :aria-label="'Edit transition ' + transitionTitle(transition)"
                 @click="$emit('transition', transition, $event.currentTarget as HTMLElement)"
                 ><Icon icon="tabler:pencil" /></Button
               ><Button
@@ -111,8 +109,5 @@ defineEmits<{ state: [state: State, opener: HTMLElement]; transition: [transitio
         </tbody>
       </table>
     </div>
-    <Button label="Add transition" severity="secondary" outlined @click="$emit('addTransition', $event.currentTarget as HTMLElement)"
-      ><template #icon><Icon icon="tabler:plus" /></template
-    ></Button>
   </section>
 </template>

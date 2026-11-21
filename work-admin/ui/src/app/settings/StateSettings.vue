@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import InputNumber from 'primevue/inputnumber'
@@ -60,6 +61,22 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
       >
     </SelectButton>
 
+    <h4 class="work-process-group">Limit</h4>
+    <label class="work-row"
+      ><span class="work-spacer">Items allowed here</span
+      ><CapacityControl :draft="draft" :state="state.id" label="Items allowed here" /></label>
+    <label class="work-row"
+      ><span class="work-spacer"
+        >Refuse moves over the limit<small class="work-muted work-block">Off only warns</small></span
+      ><CapacityControl :draft="draft" :state="state.id" label="Refuse moves over the limit" hard /></label>
+    <h4 class="work-process-group">Required on entry</h4>
+    <ChipPicker
+      label="Required fields"
+      :options="draft.fields?.map((f) => ({ value: f.code, label: f.title || f.code })) ?? []"
+      v-model="state.require"
+    />
+    <DurationControl v-if="!state.kind || state.kind === 'human'" v-model="state.due" label="Time allowed in this state" @validity="(valid, key) => emit('validity', key, valid)" />
+
     <template v-if="state.kind === 'gate' && state.release_when">
       <h4 class="work-process-group">Approval</h4>
       <ApproversEditor
@@ -68,8 +85,7 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
         :approvals="state.release_when.approvals"
         @validity="emit('validity', 'approvers', $event)"
       />
-      <details class="work-process-options">
-        <summary>Release options</summary>
+      <Disclosure class="work-process-options" label="Release options">
         <div class="work-stack">
           <label class="work-row"
             ><span class="work-spacer">Require approvals</span
@@ -83,7 +99,7 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
             @validity="emit('validity', 'release', $event)"
           />
         </div>
-      </details>
+      </Disclosure>
     </template>
     <template v-if="state.kind === 'automated' && state.run">
       <h4 class="work-process-group">Automation</h4>
@@ -118,6 +134,7 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
       <label v-for="route in ([{ key: 'on_pass', label: 'On success' }, { key: 'on_cancel', label: 'On cancellation' }] as const)" :key="route.key" class="work-stack work-tight">{{ route.label }}<Select :model-value="state.run[route.key]" :aria-label="route.label" appendTo="self" optionLabel="label" optionValue="value" showClear :options="outcomeTransitions.map(t => ({ label: transitionTitle(t), value: t.id }))" @update:model-value="state.run[route.key] = $event || undefined" /></label>
       <label class="work-stack work-tight"
         >If it fails, go to<Select
+          aria-label="If it fails, go to"
           :model-value="state.run.on_fail"
           @update:model-value="failure"
           appendTo="self"
@@ -131,6 +148,14 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
             }))
           "
       /></label>
+      <Disclosure class="work-disclosure" label="Board automation defaults">
+        <div class="work-stack">
+          <p class="work-muted">These values apply to automated states without their own limit.</p>
+          <DurationControl :model-value="draft.policy?.stage_timeout" label="Default attempt timeout" @update:model-value="(draft.policy ??= {}).stage_timeout = $event" @validity="(valid, key) => emit('validity', key, valid)" />
+          <label class="work-row"><span class="work-spacer">Default maximum visits</span><InputNumber :model-value="draft.policy?.stage_max_visits ?? null" aria-label="Default maximum visits"
+            :min="1" :useGrouping="false" placeholder="5" @update:model-value="(draft.policy ??= {}).stage_max_visits = $event ?? undefined" /></label>
+        </div>
+      </Disclosure>
     </template>
     <template v-if="state.kind === 'parallel' && state.regions">
       <h4 class="work-process-group">Lanes</h4>
@@ -153,6 +178,7 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
         </div>
         <label class="work-stack work-tight"
           >Starts at<Select
+            aria-label="Lane starts at"
             v-model="region.initial"
             appendTo="self"
             optionLabel="label"
@@ -195,22 +221,8 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
         ><InputNumber v-model="state.join" :min="1" :max="state.regions.length" :useGrouping="false"
       /></label>
     </template>
-    <h4 class="work-process-group">Limit</h4>
-    <label class="work-row"
-      ><span class="work-spacer">Items allowed here</span
-      ><CapacityControl :draft="draft" :state="state.id" label="Items allowed here" /></label>
-    <label class="work-row"
-      ><span class="work-spacer"
-        >Refuse moves over the limit<small class="work-muted work-block">Off only warns</small></span
-      ><CapacityControl :draft="draft" :state="state.id" label="Refuse moves over the limit" hard /></label>
-    <h4 class="work-process-group">Required on entry</h4>
-    <ChipPicker
-      label="Required fields"
-      :options="draft.fields?.map((f) => ({ value: f.code, label: f.title || f.code })) ?? []"
-      v-model="state.require"
-    />
-    <DurationControl v-if="!state.kind || state.kind === 'human'" v-model="state.due" label="Time allowed in this state" @validity="(valid, key) => emit('validity', key, valid)" />
-
+    <Disclosure class="work-disclosure" label="Advanced state settings">
+      <div class="work-stack">
     <h4 class="work-process-group">Assignment and conditions</h4>
     <label class="work-stack work-tight">Stage label<InputText :model-value="state.stage" aria-label="Stage label" @update:model-value="state.stage = $event || undefined" /></label>
     <template v-if="!state.kind || state.kind === 'human' || state.kind === 'parallel'">
@@ -231,6 +243,8 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
       :draft="draft"
       @validity="(key, valid) => emit('validity', 'timer-' + key, valid)"
     />
+      </div>
+    </Disclosure>
 
   </section>
 </template>
