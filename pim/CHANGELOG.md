@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.17](https://github.com/kicksideai/components/compare/pim-v0.1.16...pim-v0.1.17) (2026-11-21)
+
+
+### Bug Fixes
+
+* **pim:** require a materialized reservation before adopting uploads ([#316](https://github.com/kicksideai/components/issues/316)) ([0d4e213](https://github.com/kicksideai/components/commit/0d4e213ad1673ce249c581fc2bc4f5fbafe018f9))
+
 ## [0.1.16](https://github.com/kicksideai/components/compare/pim-v0.1.15...pim-v0.1.16) (2026-11-21)
 
 
