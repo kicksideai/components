@@ -50,8 +50,10 @@ export interface Finding { code: string; message?: string; field?: string }
 export interface PluginOption extends PluginState { title?: string; description?: string; config_schema?: Record<string, unknown> }
 export interface FieldTypeOption { id: string; title: string; form: FieldForm; indexes?: string[]; config_schema?: Values }
 export interface BoardApp { id: string; title: string }
-export interface AdminOptions { access: BoardAccess; schema_options: { plugins: PluginOption[]; field_types?: FieldTypeOption[] }; installed_types?: FieldTypeOption[]; guards?: InstalledRule[]; filters?: InstalledRule[]; board_apps?: BoardApp[] }
-export const emptyOptions = (): AdminOptions => ({ access: { read: false, write: false, admin: false }, schema_options: { plugins: [] } })
+export interface AdminOptions { access: BoardAccess; schema_options: { plugins: PluginOption[]; field_types?: FieldTypeOption[] }; installed_types?: FieldTypeOption[]; guards: InstalledRule[]; filters: InstalledRule[]; board_apps: BoardApp[] }
+export const emptyOptions = (): AdminOptions => ({
+  access: { read: false, write: false, admin: false }, schema_options: { plugins: [] }, guards: [], filters: [], board_apps: [],
+})
 
 export interface Timer { id: string; after?: string; at_field?: string; by?: string; table?: Record<string, string>; repeat?: string; interrupting?: boolean; then?: { emit?: string; transition?: string } }
 export interface PluginProjection { last_seq: number; parked: boolean; bootstrapping: boolean; error?: string | { message: string; kind?: string; code?: string } }

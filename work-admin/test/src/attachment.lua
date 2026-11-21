@@ -3,4 +3,7 @@ local M = {}
 function M.delete(): { success: boolean }
     return { success = true }
 end
+function M.guard(): boolean
+    return true
+end
 return M

@@ -36,5 +36,13 @@ export const work = {
     return counts
   },
   item: (id: string, item: { id?: string; key?: string }) => post<GetResult>(`${board(id)}/get`, { item }, 'Item choice'),
-  options: (id: string) => get<AdminOptions>(`/api/v1/work-admin/boards/${encodeURIComponent(id)}/options`, 'Configuration options'),
+  async options(id: string): Promise<AdminOptions> {
+    const options = await get<AdminOptions>(`/api/v1/work-admin/boards/${encodeURIComponent(id)}/options`, 'Configuration options')
+    return {
+      ...options,
+      guards: Array.isArray(options.guards) ? options.guards : [],
+      filters: Array.isArray(options.filters) ? options.filters : [],
+      board_apps: Array.isArray(options.board_apps) ? options.board_apps : [],
+    }
+  },
 }

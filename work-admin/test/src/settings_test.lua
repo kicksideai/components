@@ -143,6 +143,33 @@ local function cases()
         end)
     end)
     test.describe("plugin configuration and caller scope", function()
+        for _, spec in ipairs({
+            { key = "guards", id = "app:admin_check", title = "Check release title", plugin = "app:ui_plugin" },
+            { key = "filters", id = "app:admin_filter", title = "Release filter", plugin = "app:ui_plugin" },
+            { key = "board_apps", id = "app:admin_board_app", title = "Release app" },
+        }) do
+            test.it("only offers installed and visible " .. spec.key .. " to board administrators", function()
+                local owner, reader = session.admin(), session.member()
+                local id = create(owner)
+                local offered = extensions(owner, id)[spec.key]
+                test.not_nil(offered, spec.key .. " must be present in the options response")
+                test.eq(#offered, 1)
+                test.eq(offered[1].id, spec.id)
+                test.eq(offered[1].title, spec.title)
+                test.eq(offered[1].plugin, spec.plugin)
+                if spec.key == "guards" then
+                    test.eq(offered[1].reads[1], "title")
+                elseif spec.key == "board_apps" then
+                    local updated = owner.post(path(id, "update"), { ui_app = offered[1].id })
+                    test.eq(updated.status, 200, json.encode(updated.body))
+                end
+                test.eq(reader.get("/work-admin/boards/" .. id .. "/options").status, 403)
+                assert(owner.call("grant", { subject_id = reader.id, mask = 1 }, id))
+                local read = extensions(reader, id)
+                test.is_false(read.access.admin)
+                test.eq(#read[spec.key], 0)
+            end)
+        end
         test.it("discovers scoped plugin choices and configures an active plugin against its schema", function()
             local owner, reader = session.admin(), session.member()
             local id = create(owner)

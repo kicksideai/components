@@ -2,6 +2,12 @@
 version: '1.0'
 namespace: kickside.work.admin.api
 entries:
+  - name: catalog
+    kind: library.lua
+    source: file://catalog.lua
+    modules: [registry]
+    imports:
+      types: kickside.work.admin:types
   - name: options
     kind: function.lua
     source: file://options.lua
@@ -9,6 +15,7 @@ entries:
     modules: [http, contract, security]
     imports:
       types: kickside.work.admin:types
+      catalog: kickside.work.admin.api:catalog
       component: kickside.component:component
       http_errors: kickside.contract:http_errors
       plugins: kickside.work.domain:plugins

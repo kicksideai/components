@@ -3,12 +3,33 @@ import { getButton } from '../../test/controls'
 import { expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import InputNumber from 'primevue/inputnumber'
+import { reactive } from 'vue'
+import ChipPicker from './ChipPicker.vue'
 import PluginsEditor from './PluginsEditor.vue'
 import { schema } from '../../test/fixtures'
 import { settings } from './api'
 import { projectionHealth } from './plugin-state'
 import { ApiError } from '../../transport'
 vi.mock('./api', () => ({ settings: { configure: vi.fn().mockResolvedValue({ attachment_id: 'attachment' }) } }))
+
+it('offers installed filters on their plugin and lets an administrator remove stale filters', async () => {
+  const plugin = { plugin: 'app:plugin', title: 'Search', installed: true, active: true, requires: [], tools: [],
+    lifecycle: { state: 'ready' as const }, projections: {} }
+  const draft = reactive({ plugins: [{ use: plugin.plugin }], scopes: ['app:removed'] })
+  const filters = [{ id: 'app:search', title: 'Release filter', plugin: plugin.plugin }]
+  const w = mount(PluginsEditor, { props: { boardId: 'b', schema: schema(), draft, options: [plugin], configs: {}, filters } })
+  try {
+    await w.get('.work-definition-toggle').trigger('click')
+    const picker = w.findAllComponents(ChipPicker).find(p => p.props('label') === 'Available filters')!
+    expect(picker.props('options')).toEqual([{ value: 'app:search', label: 'Release filter' }])
+    picker.vm.$emit('update:modelValue', ['app:search'])
+    expect(draft.scopes).toEqual(['app:removed', 'app:search'])
+    const unavailable = getButton(w, 'Unavailable query filters')
+    await unavailable.trigger('click')
+    await getButton(w, 'Remove unavailable filter 1').trigger('click')
+    expect(draft.scopes).toEqual(['app:search'])
+  } finally { w.unmount() }
+})
 it.each([
   [{ last_seq: 10, parked: false, bootstrapping: false }, 'Up to date'],
   [{ last_seq: 4, parked: false, bootstrapping: false }, 'Catching up'],
