@@ -312,7 +312,9 @@ type RawEvent = { id: string?, trace_context: TraceContext?, seq: unknown, type:
 type FoldEvent = { id: string?, trace_context: TraceContext?, seq: integer, type: string, body: EventBody }
 
 type FoldResult = { plugin_job: string?, last_seq: integer, reindex_job: string?, migration_job: string?, rebalance_job: string?, recompute_job: string? }
+type StageCheckpoint = { item_id: string, visit: integer, attempt: integer, progress: unknown }
 type FoldBatch = { trace_context: TraceContext?,
+    checkpoints: { [string]: StageCheckpoint }?,
     intervals: { SqlParams }?, interval_ends: { SqlParams }?, at: string?, times: { [integer]: string }?, cache: { [string]: Item }, dirty: { [string]: boolean }, history: { SqlParams }, rows: integer,
     observed: { [string]: integer }?, affected: { [string]: integer }?, rank_end: string?, written: { [integer]: integer }, board_id: string, usage: { [integer]: integer },
 }
@@ -365,6 +367,6 @@ return { SearchResults = SearchResults, StageBindingRequest = StageBindingReques
     CommentRow = CommentRow, CommentPosition = CommentPosition, LinkPosition = LinkPosition, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
 
     PatchStep = PatchStep, Target = Target, Receipt = Receipt, EventBody = EventBody, PatchEventBody = PatchEventBody, External = External, Event = Event,
-    FoldBatch = FoldBatch, FoldResult = FoldResult, RawEvent = RawEvent, FoldEvent = FoldEvent, ProjectionRange = ProjectionRange, ProjectionBody = ProjectionBody,
+    FoldBatch = FoldBatch, FoldResult = FoldResult, StageCheckpoint = StageCheckpoint, RawEvent = RawEvent, FoldEvent = FoldEvent, ProjectionRange = ProjectionRange, ProjectionBody = ProjectionBody,
     ProjectionInput = ProjectionInput, ComponentMeta = ComponentMeta, ComponentRow = ComponentRow,
 }
