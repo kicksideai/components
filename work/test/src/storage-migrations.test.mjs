@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
-import { run } from '../../scripts/module-rules.mjs'
+import { parseYamlDocuments, run } from '../../scripts/module-rules.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const capture = `
@@ -30,10 +31,49 @@ end
 dofile(arg[1])
 `
 
-async function statements(name, direction, engine = 'sqlite', state = 'legacy') {
-  const result = await run('lua', ['-', resolve(root, `src/migrations/${name}.lua`), direction, engine, state], {}, capture)
+async function migrationStatements(source, direction, engine = 'sqlite', state = 'legacy') {
+  const result = await run('lua', ['-', resolve(root, 'src', source), direction, engine, state], {}, capture)
   return result.split('\0').filter(Boolean)
 }
+
+function statements(name, direction, engine, state) {
+  return migrationStatements(`migrations/${name}.lua`, direction, engine, state)
+}
+
+test('Templates own additive catalog initialization on the Work database', async () => {
+  const [work, templates] = await parseYamlDocuments(await Promise.all([
+    readFile(resolve(root, 'src/_index.yaml'), 'utf8'),
+    readFile(resolve(root, 'src/templates/_index.yaml'), 'utf8'),
+  ]))
+  const db = work.entries.find(entry => entry.name === 'target_db')
+  for (const engine of ['sqlite', 'postgres']) {
+    for (const direction of ['up', 'down']) {
+      const core = await statements('01_work', direction, engine)
+      assert.doesNotMatch(core.join('\n'), /kickside_work_template_/)
+    }
+  }
+  const migration = templates.entries.find(entry => entry.meta?.type === 'migration')
+  assert.ok(migration, 'Templates must declare their catalog migration')
+  assert.ok(db.targets.some(target => target.entry === `${templates.namespace}:${migration.name}` && target.path === '.meta.target_db'))
+  const source = `templates/${migration.source.replace(/^file:\/\//, '')}`
+  const up = await migrationStatements(source, 'up')
+  const down = await migrationStatements(source, 'down')
+  const result = await run('python3', ['-c', `
+import json, sqlite3, sys
+up, down = json.load(sys.stdin)
+db = sqlite3.connect(':memory:')
+for sql in up: db.execute(sql)
+db.execute("INSERT INTO kickside_work_template_version (attachment_id, template_id, version, record, field_identities, type_identity) VALUES ('owner', 'bug', '1', '{}', '{}', 'issue')")
+for sql in up + down + up: db.execute(sql)
+row = db.execute("SELECT attachment_id, template_id, version, record, field_identities, type_identity, archived, expires_at FROM kickside_work_template_version").fetchone()
+indexes = db.execute("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'kickside_work_template_%' ORDER BY name").fetchall()
+print(json.dumps([row, indexes]))
+`], {}, JSON.stringify([up, down]))
+  assert.deepEqual(JSON.parse(result), [
+    ['owner', 'bug', '1', '{}', '{}', 'issue', 0, null],
+    [['kickside_work_template_active'], ['kickside_work_template_expiry']],
+  ])
+})
 
 test('Work rollback removes every fixed table including board metadata', async () => {
   const up = [...await statements('01_work', 'up'), ...await statements('02_board_ui_app', 'up'), ...await statements('03_move_alias_indexes', 'up')]

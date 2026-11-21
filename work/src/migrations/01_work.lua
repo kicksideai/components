@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Fixed work tables: boards, schema generations, items, key prefixes, receipts, links,
--- change history, value intervals, comments, board jobs and template versions.
+-- change history, value intervals, comments and board jobs.
 local operation_expiry = require("operation_expiry")
 
 local function run(db, statements)
@@ -197,15 +197,6 @@ local POSTGRES = {
     [[CREATE INDEX kickside_work_visibility_floor ON kickside_work_visibility (board_id, seq, item_id)]],
     [[CREATE INDEX kickside_work_comment_purge ON kickside_work_comment (board_id, item_id, comment_id)]],
     [[CREATE INDEX kickside_work_comment_deleted ON kickside_work_comment (board_id, edited_at, comment_id) WHERE deleted=1]],
-    [[CREATE TABLE kickside_work_template_version (
-        attachment_id text NOT NULL, template_id text NOT NULL, version text NOT NULL,
-        record text NOT NULL, field_identities text NOT NULL, type_identity text NOT NULL,
-        archived integer NOT NULL DEFAULT 0, expires_at text,
-        PRIMARY KEY (attachment_id, template_id, version))]],
-    [[CREATE INDEX kickside_work_template_active ON kickside_work_template_version
-        (attachment_id, template_id, version) WHERE archived = 0]],
-    [[CREATE INDEX kickside_work_template_expiry ON kickside_work_template_version
-        (expires_at, attachment_id, template_id, version) WHERE expires_at IS NOT NULL]],
 }
 
 local SQLITE = {}
@@ -224,7 +215,6 @@ for dialect, statements in pairs({ postgres = POSTGRES, sqlite = SQLITE }) do
 end
 
 local DROP = {
-    "DROP TABLE kickside_work_template_version",
     "DROP TABLE kickside_work_board_meta",
     "DROP TABLE kickside_work_key_alias",
     "DROP TABLE kickside_work_operation",

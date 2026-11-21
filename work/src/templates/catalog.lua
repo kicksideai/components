@@ -12,7 +12,6 @@ local values = require("values")
 local M = {}
 M.PLUGIN = "kickside.work.templates:plugin"
 M.CONTRACT = "kickside.work.templates:templates"
-M.PORT = "kickside.work.templates:recurring"
 local CAPACITY = 128
 local PAGE = 500
 

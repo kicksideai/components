@@ -1,8 +1,9 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Work Planning
 
-Work Planning requires `kickside/work` 0.1.25 or newer for typed sprint and
-milestone references, including upgrades of existing Planning boards.
+Work Planning requires `kickside/work` 0.1.30 or newer, which delegates the
+sprint HTTP endpoints to Planning and supports typed sprint and milestone
+references.
 
 Install `kickside.work.planning:pack` through Work pack plan and apply. On a new
 board, Work board creation can install it in the same request. Installation
@@ -52,10 +53,11 @@ request with the same key and preview returns the Work receipt.
 The Work trait contributes `WorkPlanCloseSprint` and `WorkCloseSprint` on boards
 with Planning active.
 
-Work mounts sprint preview and closure on the authenticated router already bound
-to `kickside.work:api_router`. The Work Planning member policy grants access to
-the two endpoints. Both call the Planning contract as the request actor and
-return the standard Work HTTP envelope.
+Bind `kickside.work.planning:api_router` on the `kickside/work-planning`
+dependency to the same router ID supplied to `kickside.work:api_router`. The
+router must run `token_auth` and `endpoint_firewall`. Planning owns the two
+sprint endpoints and its member policy grants access. Both endpoints call the
+Planning contract as the request actor and return the standard Work HTTP envelope.
 
 - `POST /work/sprints/plan_close` accepts `board_id`, `sprint_id`, and optional
   `rollover_id`.

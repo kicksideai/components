@@ -9,7 +9,7 @@ entries:
     tags:
     - work
     - board
-    comment: Fixed Work tables including the template catalog.
+    comment: Fixed Work tables.
     timestamp: '2026-11-03T00:00:01Z'
   source: file://01_work.lua
   imports:
