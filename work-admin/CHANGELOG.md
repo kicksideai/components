@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.15](https://github.com/kicksideai/components/compare/work-admin-v0.1.14...work-admin-v0.1.15) (2026-11-21)
+
+
+### Bug Fixes
+
+* polish Work and PIM admin settings ([#328](https://github.com/kicksideai/components/issues/328)) ([22a3fda](https://github.com/kicksideai/components/commit/22a3fda0de1df463bd3c4f8f4f9a53307a074aa0))
+
 ## [0.1.14](https://github.com/kicksideai/components/compare/work-admin-v0.1.13...work-admin-v0.1.14) (2026-11-21)
 
 
