@@ -24,7 +24,11 @@ local function shape(value: types.JsonObject, exclude: { string }): types.JsonOb
     return out
 end
 
-type Proof = { process: types.JsonObject, fields: { [string]: types.JsonObject } }
+type Definitions = { [string]: types.JsonObject }
+type Proof = {
+    process: { initial: string, migration: string, states: Definitions, transitions: Definitions },
+    fields: Definitions,
+}
 
 local function proof(compiled: types.Compiled, selector: types.TransitionSelector, field_ids: boolean): (Proof?, string?)
     local item_type: types.ItemType? = nil
@@ -38,7 +42,8 @@ local function proof(compiled: types.Compiled, selector: types.TransitionSelecto
     end
     local prefix = "processes." .. selector.process
     if not definition then return nil, prefix end
-    local states, routes = {}, {}
+    local states: Definitions = {}
+    local routes: Definitions = {}
     local edge: types.Transition? = nil
     for _, state in ipairs(definition.states) do
         states[state.id] = shape(state :: types.JsonObject, { "name" })
@@ -102,14 +107,18 @@ function M.diff(baseline: types.Compiled, current: types.Compiled, selector: typ
     end
     if wanted.process.initial ~= actual.process.initial then return prefix .. ".initial" end
     if wanted.process.migration ~= actual.process.migration then return prefix .. ".migration" end
-    for _, section in ipairs({ "states", "transitions" }) do
-        local old, new = wanted.process[section] :: types.JsonObject, actual.process[section] :: types.JsonObject
+    for _, section in ipairs({
+        { name = "states", old = wanted.process.states, new = actual.process.states },
+        { name = "transitions", old = wanted.process.transitions, new = actual.process.transitions },
+    }) do
         local mismatches: { string } = {}
-        for id, entry in pairs(old) do if not values.equal(entry, new[id]) then mismatches[#mismatches + 1] = id end end
-        for id in pairs(new) do if not old[id] then mismatches[#mismatches + 1] = id end end
+        for id, entry in pairs(section.old) do
+            if not values.equal(entry, section.new[id]) then mismatches[#mismatches + 1] = id end
+        end
+        for id in pairs(section.new) do if not section.old[id] then mismatches[#mismatches + 1] = id end end
         if #mismatches > 0 then
             table.sort(mismatches)
-            return prefix .. "." .. section .. "." .. mismatches[1]
+            return prefix .. "." .. section.name .. "." .. mismatches[1]
         end
     end
     return nil

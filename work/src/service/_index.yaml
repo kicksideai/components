@@ -135,7 +135,7 @@ entries:
     rules: kickside.work.domain:transition_rules
     schema: kickside.work.domain:schema
     schema_commands: kickside.work.command:schema_commands
-    store: kickside.work.persist:store
+    board_store: kickside.work.persist:store
   security:
     policies: [kickside.work.security:sync_call]
 - name: apply_transition_adoption

@@ -34,9 +34,13 @@ function M.invalid_json(res: http.Response)
 end
 
 
-function M.call(method: string, input: types.Body, contract_id: string?): (number, types.Envelope)
+function M.call(method: string, input: types.Body, contract_id: string?, optional_method: boolean?): (number, types.Envelope)
     local data, err = board_client.call(method, input, contract_id)
     if err then
+        if optional_method and (err:details() or {}).code == "method_unavailable" then
+            return failure(errors.new({ kind = errors.NOT_FOUND, message = "This operation requires a compatible installed module.",
+                details = { code = "method_unavailable", method = method } }))
+        end
         local status, body = failure(err)
         return status, body
     end
@@ -66,7 +70,7 @@ end
 -- endpoint answers one route: it opens the request, decodes the body, copies
 -- the route id into input[param] when a param is named and calls method on the
 -- board contract, or on contract_id when one is named.
-function M.endpoint(method: string, param: string?, contract_id: string?)
+function M.endpoint(method: string, param: string?, contract_id: string?, optional_method: boolean?)
     local res, req = begin()
     if not res or not req then return end
     local input = body_of(req)
@@ -86,7 +90,7 @@ function M.endpoint(method: string, param: string?, contract_id: string?)
         elseif counts == "false" then input.include_counts = false
         elseif counts ~= nil then input.include_counts = counts end
     end
-    local status, body = M.call(method, input, contract_id)
+    local status, body = M.call(method, input, contract_id, optional_method)
     M.respond(res, status, body)
 end
 

@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local board_store = require("board_store")
 local codec = require("codec")
 local clock = require("clock")
 local commands = require("commands")
@@ -20,7 +21,10 @@ local schema_commands = require("schema_commands")
 local sql = require("sql")
 local M = {}
 
-type Spec = domain.TransitionSelector & { pack: string, base_digest: string }
+type Spec = {
+    item_type: string, process: string, transition: string, command: string, plugin: string, fields: { string },
+    pack: string, base_digest: string,
+}
 type Cohort = { generation: integer, life: string, state: string, count: integer }
 type Review = {
     board_id: string, selector: string, head: integer, generation: integer,
@@ -97,7 +101,7 @@ local function cohorts(db: sql.Transaction, board: domain.Board, spec: Spec, dea
         local generation = record.process_generation :: integer
         local states = checked[generation]
         if not states then
-            local stored, err = store.generation(db, board.board_id, generation)
+            local stored, err = board_store.generation(db, board.board_id, generation)
             if err then return nil, nil, err end
             if not stored then return nil, refusing("process_generation", generation), nil end
             local path = rules.diff(board.compiled, stored.compiled, spec, true)
@@ -169,15 +173,15 @@ function M.plan(request: unknown): (Result?, error?)
     if err or not deadline then return nil, err end
     local head, err = receipts.covered(board_id, deadline)
     if err or not head then return nil, err end
-    local db, err = store.open()
+    local db, err = board_store.open()
     if err or not db then return nil, err end
     local tx, err = db:begin()
     if err or not tx then db:release(); return nil, err end
-    if db:type() == sql.type.POSTGRES then err = store.read_snapshot(tx, deadline) end
+    if db:type() == sql.type.POSTGRES then err = board_store.read_snapshot(tx, deadline) end
     local result: Result? = nil
     if not err then
         local board
-        board, err = store.board(tx, board_id)
+        board, err = board_store.board(tx, board_id)
         if board then result, err = inspect(tx, board, id, spec, pack.digest, head, deadline)
         elseif not err then err = invalid() end
     end
