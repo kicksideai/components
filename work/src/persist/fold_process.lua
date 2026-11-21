@@ -7,8 +7,10 @@ local store = require("store")
 local process = require("process")
 local durations = require("durations")
 local fold_batch = require("fold_batch")
+local limits = require("limits")
 local types = require("types")
 local M = {}
+local MAX_CHECKPOINTS_PER_UPDATE = 100
 
 local function schedule(tx: sql.Transaction, dialect: string, board: types.Board, item: types.Item, timer: string, deadline: string, attempt: integer?, trace_context: types.TraceContext?): error?
     local visit = item.work.visit or item.visit
@@ -86,6 +88,37 @@ function M.advance(tx: sql.Transaction, dialect: string, board_id: string, id: s
     return err
 end
 
+local function checkpoint_key(item_id: string, visit: integer, attempt: integer): string
+    return item_id .. ":" .. visit .. ":" .. attempt
+end
+
+function M.flush_checkpoints(tx: sql.Transaction, batch: types.FoldBatch): error?
+    if not batch.checkpoints or next(batch.checkpoints) == nil then return nil end
+    local settings, err = limits.read()
+    if err or not settings then return err end
+    local rows: { types.StageCheckpoint } = {}
+    for _, row in pairs(batch.checkpoints) do rows[#rows + 1] = row end
+    local size = math.min(settings.storage_batch, MAX_CHECKPOINTS_PER_UPDATE)
+    for first = 1, #rows, size do
+        local params: types.SqlParams = {}
+        local tuples: { string } = {}
+        for i = first, math.min(first + size - 1, #rows) do
+            local row, n = rows[i], #params
+            params[n + 1], params[n + 2], params[n + 3], params[n + 4] = row.item_id, row.visit, row.attempt, row.progress
+            tuples[#tuples + 1] = string.format("(CAST($%d AS text), CAST($%d AS integer), CAST($%d AS integer), CAST($%d AS text))",
+                n + 1, n + 2, n + 3, n + 4)
+        end
+        params[#params + 1] = batch.board_id
+        local err = fold_batch.exec(tx, "WITH pending(item_id, visit, attempt, progress) AS (VALUES " .. table.concat(tuples, ", ") .. [[)
+            UPDATE kickside_work_stage_run AS run SET progress = pending.progress FROM pending
+            WHERE run.item_id = pending.item_id AND run.visit = pending.visit AND run.attempt = pending.attempt
+                AND run.board_id = $]] .. #params, params)
+        if err then return err end
+    end
+    batch.checkpoints = nil
+    return nil
+end
+
 function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event: types.FoldEvent, batch: types.FoldBatch): error?
     local body = event.body
     local item, err = fold_batch.load(tx, board.board_id, batch, body.item)
@@ -115,10 +148,19 @@ function M.apply(tx: sql.Transaction, dialect: string, board: types.Board, event
         err = fold_batch.exec(tx, [[INSERT INTO kickside_work_stage_run (board_id,item_id,visit,attempt,state,started)
             VALUES ($1,$2,$3,$4,$5,$6)]], { board.board_id, item.item_id, body.visit, body.attempt, body.state, body.at })
     elseif event.type == consts.EVENTS.STAGE_PROGRESSED then
-        err = fold_batch.exec(tx, [[UPDATE kickside_work_stage_run SET progress=$1
-            WHERE board_id=$2 AND item_id=$3 AND visit=$4 AND attempt=$5]],
-            { progress, board.board_id, item.item_id, body.visit, body.attempt })
+        local visit, attempt = body.visit :: integer, body.attempt :: integer
+        batch.checkpoints = batch.checkpoints or {}
+        batch.checkpoints[checkpoint_key(item.item_id, visit, attempt)] = {
+            item_id = item.item_id, visit = visit, attempt = attempt, progress = progress,
+        }
     elseif event.type == consts.EVENTS.STAGE_REPORTED then
+        local key = checkpoint_key(item.item_id, body.visit :: integer, body.attempt :: integer)
+        local pending = batch.checkpoints and batch.checkpoints[key]
+        if pending then
+            -- Keep the latest checkpoint unless the terminal fact carries one.
+            if not body.progress then progress = pending.progress end
+            batch.checkpoints[key] = nil
+        end
         err = fold_batch.exec(tx, [[INSERT INTO kickside_work_stage_run (board_id,item_id,visit,attempt,state,started,finished,outcome,outputs,progress,flow_run)
             VALUES ($1,$2,$3,$4,$5,$6,$6,$7,$8,$9,$10)
             ON CONFLICT (board_id,item_id,visit,attempt) DO UPDATE SET finished=excluded.finished,outcome=excluded.outcome,

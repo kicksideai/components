@@ -89,6 +89,41 @@ local function define()
             test.eq(err:kind(), errors.NOT_FOUND)
             test.eq(err:details().code, "item_not_found")
         end)
+
+        test.it("returns a head cursor while an idle target shares a busy board", function()
+            local reader = scoped.admin()
+            local h = scoped.board(reader, fixture.workflow(fixture.fresh_prefix()))
+            local item = steps.create(h, "task", { title = "Idle" })
+            local client = funcs.new():with_actor(reader.actor):with_scope(reader.scope)
+            local input = { board_id = h.id, item = item, state = "todo" }
+            local first = assert(client:call("kickside.work.blocks:wait", { input = input }))
+
+            local ops = {}
+            for i = 1, 30 do ops[i] = { op = "create", type = "task", values = { title = "Unrelated " .. i } } end
+            local applied = assert(h.call("apply", { ops = ops }))
+            test.eq(applied.outcomes[#ops].status, "applied")
+            local head = assert(steps.get(h, item)).as_of
+            test.is_true(head > first.cursor.seq)
+
+            input.cursor, input.state = first.cursor, "canceled"
+            local timed, err = client:call("kickside.work.blocks:wait", { input = input, config = { timeout_ms = 200 } })
+            assert(timed, steps.detail(err))
+            test.eq(timed.status, "timed_out")
+            test.eq(timed.cursor.seq, head)
+            test.eq(timed.cursor.item_id, "", "a point wait returns the unfiltered feed head")
+            test.is_nil(timed.cursor.position)
+
+            local pending = assert(client:async("kickside.work.blocks:wait", { input = input, config = { timeout_ms = 5000 } }))
+            test.eq(steps.one(h, { op = "transition", item = item, transition = "cancel" }).status, "applied")
+            assert(pending:response():receive())
+            local result, wait_err = pending:result()
+            assert(result, steps.detail(wait_err))
+            local matched = result:data()
+            test.eq(matched.status, "matched")
+            test.eq(matched.item.id, item)
+            test.is_true(matched.cursor.seq > head)
+            test.eq(matched.cursor.item_id, "")
+        end)
     end)
 end
 return { run = test.run_cases(define) }

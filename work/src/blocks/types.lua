@@ -7,12 +7,12 @@ type Input = { board_id: string, item: string, state: string, cursor: reads.Chan
 type Config = { timeout_ms: integer? }
 type Match = { id: string, state: string, version: integer }
 type Result = { status: string, cursor: reads.ChangesCursor, item: Match? }
+type Observation = reads.ReadStamp & { cursor: reads.ChangesCursor, item: Match? }
 type Context = {
     input: Input,
     budget: reads.ReadBudget,
     deadline: domain.Deadline,
-    cursor: reads.ChangesCursor,
-    as_of: integer,
+    cursor: reads.ChangesCursor?,
 }
 type ProjectionCursor = { id: string, status: string }
 

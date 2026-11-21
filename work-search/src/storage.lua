@@ -7,8 +7,9 @@ local index = require("index")
 type Generation = { id: string, schema: integer, scope: string, registration: integer }
 type State = { revision: integer?, active: Generation?, building: Generation?, retired: string?, token: string?, deleting: boolean? }
 type Candidate = { item_id: string, item_key: string, source_seq: integer }
+type Document = Candidate & { content: string }
 
-local M = { Generation = Generation, State = State, Candidate = Candidate }
+local M = { Generation = Generation, State = State, Candidate = Candidate, Document = Document }
 local SPEC = {
     vectors = "", vector_key = "",
     rows = "kickside_work_search_row", row_key = "row_id", partition = "generation_id",
@@ -117,18 +118,49 @@ function M.save(tx: sql.Transaction, attachment_id: string, state: State): error
     return save_err
 end
 
-function M.put(tx: sql.Transaction, sqlite: boolean, generation: string, item: Candidate, content: string): error?
+local function put(tx: sql.Transaction, sqlite: boolean, generation: string, item: Document): error?
     local rows, err = tx:query([[INSERT INTO kickside_work_search_row (generation_id,item_id,item_key,source_seq,content)
         VALUES ($1,$2,$3,$4,$5) ON CONFLICT (generation_id,item_id) DO UPDATE
         SET item_key=excluded.item_key,source_seq=excluded.source_seq,content=excluded.content
-        RETURNING row_id]], { generation, item.item_id, item.item_key, item.source_seq, content })
+        RETURNING row_id]], { generation, item.item_id, item.item_key, item.source_seq, item.content })
     if err or not sqlite then return err end
     local row_id = rows[1].row_id
     local _, delete_err = tx:execute("DELETE FROM kickside_work_search_fts WHERE rowid=$1", { row_id })
     if delete_err then return delete_err end
     local _, insert_err = tx:execute("INSERT INTO kickside_work_search_fts (rowid,content,scope_token) VALUES ($1,$2,$3)",
-        { row_id, content, index.lexical_scope_token(generation) })
+        { row_id, item.content, index.lexical_scope_token(generation) })
     return insert_err
+end
+
+-- The feed supplies distinct item ids in a page of at most 200 changes.
+function M.put_page(tx: sql.Transaction, sqlite: boolean, generation: string, items: { Document }): error?
+    if #items == 0 then return nil end
+    local args: { unknown } = {}
+    local tuples: { string } = {}
+    local keys: { string } = {}
+    for i, item in ipairs(items) do
+        local n = #args
+        args[n + 1], args[n + 2], args[n + 3], args[n + 4] = item.item_id, item.item_key, item.source_seq, item.content
+        tuples[i] = string.format("(CAST($%d AS text), CAST($%d AS text), CAST($%d AS bigint), CAST($%d AS text))",
+            n + 1, n + 2, n + 3, n + 4)
+        keys[i] = "$" .. (n + 1)
+    end
+    args[#args + 1] = generation
+    -- Restrict the target by key before the join can choose to scan the generation.
+    local rows, err = tx:query("WITH incoming(change_id, item_key, source_seq, content) AS (VALUES " .. table.concat(tuples, ", ") .. [[)
+        UPDATE kickside_work_search_row AS held SET source_seq=incoming.source_seq FROM incoming
+        WHERE held.item_id=incoming.change_id AND held.item_key=incoming.item_key AND held.content=incoming.content
+            AND held.generation_id=$]] .. #args .. " AND held.item_id IN (" .. table.concat(keys, ", ") .. ") RETURNING item_id", args)
+    if err then return err end
+    local advanced: { [string]: boolean } = {}
+    for _, row in ipairs(rows or {}) do advanced[row.item_id :: string] = true end
+    for _, item in ipairs(items) do
+        if not advanced[item.item_id] then
+            local err = put(tx, sqlite, generation, item)
+            if err then return err end
+        end
+    end
+    return nil
 end
 
 function M.remove(tx: sql.Transaction, sqlite: boolean, generation: string, item_id: string): error?

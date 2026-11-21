@@ -227,18 +227,23 @@ function M.item_by_key(db: storage.Executor, key: string, board_id: string?): (t
 end
 
 -- endpoint follows retained move aliases without depending on intermediate tombstones.
+local MAX_ALIAS_HOPS = 32
+
 function M.endpoint(db: storage.Executor, target: types.Target): (types.Target?, error?)
     local current = target
     local seen: { [string]: boolean } = {}
-    while true do
+    for _ = 0, MAX_ALIAS_HOPS do
         local locator = current.board .. "/" .. current.item
         if seen[locator] then return nil, errors.new({ kind = errors.INTERNAL, message = "key aliases contain a cycle", details = { code = "key_alias_cycle" } }) end
         seen[locator] = true
-        local aliases, err = db:query("SELECT to_board_id,to_item_id FROM kickside_work_key_alias WHERE board_id = $1 AND item_id = $2 LIMIT 1", { current.board, current.item })
+        local aliases, err = db:query([[SELECT to_board_id,to_item_id FROM kickside_work_key_alias
+            WHERE board_id = $1 AND item_id = $2 ORDER BY key LIMIT 1]], { current.board, current.item })
         if err then return nil, err end
         if not aliases or not aliases[1] then return current, nil end
         current = { board = aliases[1].to_board_id :: string, item = aliases[1].to_item_id :: string }
     end
+    return nil, errors.new({ kind = errors.CONFLICT, message = "move alias chain exceeds " .. MAX_ALIAS_HOPS .. " redirects",
+        details = { code = "key_alias_hop_limit" } })
 end
 
 -- prefixes lists the prefixes a board holds.
