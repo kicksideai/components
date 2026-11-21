@@ -29,6 +29,7 @@ entries:
           - { code: category, type: 'kickside.pim.types:select', vocabulary: categories, index: key }
           - { code: finishes, type: 'kickside.pim.types:select', vocabulary: finishes, index: key, cardinality: set }
           - { code: related, type: 'kickside.pim.types:reference', index: key }
+          - { code: media, type: 'kickside.pim.types:asset', cardinality: list }
           - { code: depot, type: 'kickside.pim.types:link', index: key, config: { target: app.location } }
           - code: packages
             type: 'kickside.pim.types:record'
@@ -44,7 +45,7 @@ entries:
                       form: record
                       members:
                         'term/~': { form: ref, target: term, vocabulary: categories }
-                        image: { form: ref, target: asset }
+                        image: { form: ref, target: asset, media_types: ["image/*"], max_bytes: 128 }
                         owner: { form: ref, target: component }
           - { code: finish, type: 'kickside.pim.types:select', vocabulary: finishes, index: key }
           - { code: size, type: 'kickside.pim.types:integer', index: number }
@@ -129,7 +130,7 @@ entries:
     meta: { type: test, suite: kickside_pim, timeout: 300s }
     source: file://full_schema_test.lua
     method: run
-    modules: [json, registry, time, channel, sql]
+    modules: [json, registry, time, channel, sql, base64, hash, http_client, fs, funcs, uuid]
     imports:
       test: wippy.test:test
       fixture: app:fixture

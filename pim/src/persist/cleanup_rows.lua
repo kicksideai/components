@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Bounded deletion of catalog-owned rows, including generated tables.
 local store = require("store")
+local assets = require("asset_rows")
 local layout = require("layout")
 local types = require("types")
 local sql = require("sql")
@@ -64,6 +65,9 @@ end
 function M.catalog(tx: types.Executor, dialect: string, catalog_id: string, limit: integer): (boolean?, error?, integer?)
     local current, cerr = store.catalog(tx, catalog_id, dialect)
     if cerr then return nil, cerr end
+    local owned, asset_err = assets.collectable(tx, catalog_id, 1, true)
+    if asset_err then return nil, asset_err end
+    if owned and #owned > 0 then return false, nil, 0 end
     local remaining = limit
     if current then
         local generated = { layout.active(current) }

@@ -87,6 +87,8 @@ entries:
         - app:status_check
         - app:actor_check
         - app:full_schema_category_check
+        - app:full_schema_plugin
+        - app:full_schema_code
         - app:location_target
         - app:managed_location_target
         - app:offline_target

@@ -241,7 +241,37 @@ function M.check_refs(st: item_state.State, attr: types.Attribute, value: types.
     for _, occurrence in ipairs(references.collect(attr, value)) do
         local ref = occurrence.value.ref
         local kind, id = ref[1], ref[2]
-        if kind ~= "term" and kind ~= "product" then
+        if kind == "asset" and not stored then
+            if not st.assets then
+                local ids, ierr = requested_links(st, kind)
+                if ierr or not ids then return nil, ierr end
+                local found, ferr = links.describe(kind, st.catalog_id, ids)
+                if ferr or not found then return nil, ferr end
+                st.assets = found
+            end
+            local target = st.assets[id]
+            local media = occurrence.media
+            if not target or not target.data or not media then
+                return item_state.fail("invalid", attr.code .. ": unknown catalog asset",
+                    {attribute = attr.code, code = "invalid_reference"}), nil
+            end
+            local size, mime = target.data.size, target.data.content_type
+            if type(size) ~= "number" or size < 1 or size > (media.max_bytes or consts.LIMITS.asset_bytes) then
+                return item_state.fail("invalid", attr.code .. ": asset exceeds the field's byte limit",
+                    {attribute = attr.code, code = "asset_too_large"}), nil
+            end
+            if media.media_types then
+                local allowed = false
+                local wildcard = type(mime) == "string" and mime:match("^[^/]+/") or nil
+                for _, pattern in ipairs(media.media_types) do
+                    if pattern == mime or (wildcard and pattern == wildcard .. "*") then allowed = true end
+                end
+                if not allowed then
+                    return item_state.fail("invalid", attr.code .. ": media type is not allowed",
+                        {attribute = attr.code, code = "asset_media_type"}), nil
+                end
+            end
+        elseif kind ~= "term" and kind ~= "product" then
             if not stored then
                 local known, err = resolved_links(st, kind)
                 if err or not known then return nil, err end

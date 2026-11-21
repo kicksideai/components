@@ -1,6 +1,8 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Schema fan-out resumes from the rows left by each committed bounded page.
 local cleanup_rows = require("cleanup_rows")
+local asset_rows = require("asset_rows")
+local references = require("references")
 local types = require("types")
 local M = {}
 type Result = { rows: integer, more: boolean }
@@ -31,6 +33,13 @@ function M.run(tx: types.Executor, catalog: types.Catalog, event: types.SchemaEv
     for _, attr in pairs(before.attributes) do if not kept[attr.id] then removed[#removed + 1] = attr.id end end
     table.sort(removed)
     for _, id in ipairs(removed) do
+        local prior = (before.by_id or {})[id]
+        if prior and references.has_asset(prior.config) then
+            local n, more, err = asset_rows.drop_attribute(tx, catalog_id, id, budget - spent)
+            if err or not n then return nil, err end
+            spent = spent + n
+            if more then return { rows = spent, more = true }, nil end
+        end
         for _, t in ipairs({ { "kickside_pim_ref", "product_id, attribute_id, ctx, path" },
             { "kickside_pim_unique_value", "attribute_id, value_key" }, { "kickside_pim_attribute_usage", "attribute_id" } }) do
             local more, err = remove(t[1], t[2], "catalog_id = $1 AND attribute_id = $2", { catalog_id, id })

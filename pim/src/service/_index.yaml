@@ -3,6 +3,24 @@ version: "1.0"
 namespace: kickside.pim.service
 
 entries:
+  - name: adopt_asset
+    kind: function.lua
+    source: file://adopt_asset.lua
+    method: run
+    modules: [funcs, uuid]
+    security:
+      policies: [kickside.pim.security:upload_adopt_call, kickside.pim.security:upload_adopt, kickside.pim.security:asset_reserve_publish]
+    imports:
+      component: kickside.component:component
+      clock: kickside.pim:clock
+      writer: kickside.pim.command:writer
+      asset_rows: kickside.pim.persist:asset_rows
+      locate: kickside.pim.read:locate
+      requests: kickside.pim:requests
+      failure: kickside.pim:failure
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
   - name: create
     kind: function.lua
     meta: { comment: "kickside.pim:catalog create." }

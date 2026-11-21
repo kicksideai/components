@@ -62,6 +62,14 @@ local function link_targets(catalog_id: string, linked: { [string]: { [string]: 
         table.sort(ids)
         local described, err = links.describe(kind, catalog_id, ids)
         if err or not described then return nil, err end
+        if kind == "asset" then
+            for _, id in ipairs(ids) do
+                if not described[id] then
+                    return nil, errors.new({kind = errors.INVALID, message = "catalog asset is unavailable",
+                        details = {code = "invalid_reference", asset_id = id}})
+                end
+            end
+        end
         for id, target in pairs(described) do out[kind .. ":" .. id] = target end
     end
     return out, nil

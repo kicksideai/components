@@ -10,6 +10,7 @@ entries:
     source: file://compile.lua
     modules: [hash]
     imports:
+      references: kickside.pim.domain:references
       failure: kickside.pim:failure
       shape: kickside.pim:shape
       consts: kickside.pim:consts

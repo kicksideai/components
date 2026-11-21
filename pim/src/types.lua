@@ -35,6 +35,7 @@ type AttributeUsage = { products: integer, key_violations: integer, order_violat
 type AttributeConfig = {
     scale: integer?, range: { integer }?, case: string?, target: string?, members: { [string]: MemberSpec }?,
     units: { [string]: string }?, canonical: string?, currency: string?, pattern: string?,
+    media_types: { string }?, max_bytes: integer?,
 }
 type MemberSpec = AttributeConfig & { form: string, cardinality: string?, vocabulary: string? }
 -- ValueShape is what normalizing a value needs: its form, cardinality and config.
@@ -156,7 +157,7 @@ type Compiled = {
     attributes: { [string]: Attribute }, families: { [string]: Family }, sources: { [string]: Source },
     channels: { [string]: Channel }, scopes: { [string]: boolean }, plugins: { [string]: PluginEntry }, seam_owners: { [string]: string }?,
     layout: Layout, next_attribute_id: integer, layout_digest: string, digest: string,
-    by_id: { [integer]: Attribute }?,
+    by_id: { [integer]: Attribute }?, has_assets: boolean?,
 }
 type Catalog = {
     catalog_id: string, generation: integer, applied_seq: integer, compiled: Compiled,
@@ -229,7 +230,9 @@ type DecisionStatus = "accepted" | "rejected" | "conflict" | "failed"
 type ProposalStatus = "pending" | DecisionStatus
 type ProposalDecidedBody = { proposal_id: string, decision: "accept" | "reject", status: DecisionStatus, result: ApplyResult?,
     actor: string?, at: string? }
-type EventBody = PluginRebuildBody | PluginConfiguredBody | SchemaBody | ProductBody | TermBody | ReleaseBody | WithdrawBody | ModelReleaseBody
+type AssetReserveBody = { asset_id: string, lease_until: string, actor: string?, at: string?, receipt: Receipt? }
+type AssetReapBody = { ids: {string}, actor: string?, at: string?, receipt: Receipt? }
+type EventBody = AssetReserveBody | AssetReapBody | PluginRebuildBody | PluginConfiguredBody | SchemaBody | ProductBody | TermBody | ReleaseBody | WithdrawBody | ModelReleaseBody
     | ProposalSubmittedBody | ProposalDecidedBody
 -- External identity makes a retried command idempotent.
 type External = { external_source: string, external_id: string }
