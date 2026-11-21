@@ -10,7 +10,6 @@ local M = {}
 type Map = { [string]: unknown }
 
 local exclusions = {
-    ["kickside.pim:catalog.adopt_asset"] = "The design/pim-admin-ia branch owns the tool for adopting uploaded files.",
     ["kickside.pim:catalog.get_catalog"] = "Settings resolves one exact catalog; PIMCatalogs already exposes its summary to agents.",
     ["kickside.pim:catalog.plugin_feed"] = "State workers consume opaque feed tokens through the host contract only.",
     ["kickside.pim:catalog.plugin_context"] = "Plugin service admission uses the host contract only.",

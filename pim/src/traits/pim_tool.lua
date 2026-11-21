@@ -37,6 +37,7 @@ function M.get_model_release(args: Map): (Map?, error?) return run("get_model_re
 function M.wait_for_product(args: Map): (Map?, error?) return run("wait_for_product", args, ctx.get("catalog_id")) end
 function M.list_publications(args: Map): (Map?, error?) return run("list_publications", args, ctx.get("catalog_id")) end
 function M.list_changes(args: Map): (Map?, error?) return run("list_changes", args, ctx.get("catalog_id")) end
+function M.adopt_asset(args: Map): (Map?, error?) return run("adopt_asset", args, ctx.get("catalog_id")) end
 function M.apply(args: Map): (Map?, error?) return run("apply", args, ctx.get("catalog_id")) end
 function M.propose(args: Map): (Map?, error?) return run("propose", args, ctx.get("catalog_id")) end
 function M.decide(args: Map): (Map?, error?) return run("decide", args, ctx.get("catalog_id")) end

@@ -560,6 +560,7 @@ entries:
       - kickside.pim.traits:wait_for_product
       - kickside.pim.traits:list_publications
       - kickside.pim.traits:list_changes
+      - kickside.pim.traits:adopt_asset
       - kickside.pim.traits:apply
       - kickside.pim.traits:propose
       - kickside.pim.traits:decide

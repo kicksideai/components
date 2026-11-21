@@ -243,6 +243,21 @@ entries:
     modules: [ctx]
     imports: { catalog_client: kickside.pim:client }
 
+  - name: adopt_asset
+    kind: function.lua
+    meta:
+      type: tool
+      title: PIMAdoptAsset
+      llm_alias: PIMAdoptAsset
+      llm_description: 'Adopt a completed upload you own into a catalog you can write. Use the returned asset reference as a media field value in PIMApply.'
+      mcp: { required_scopes: [state.write] }
+      input_schema: '{"type":"object","required":["upload_id"],"additionalProperties":false,"properties":{"catalog_id":{"type":"string","description":"Catalog component id returned by PIMCatalogs; the contract resolves an omitted id only when exactly one catalog is readable."},"upload_id":{"type":"string","minLength":36,"maxLength":36,"description":"UUID of a completed upload owned by the caller."}}}'
+      output_schema: '{"type":"object","required":["asset","success"],"additionalProperties":false,"properties":{"asset":{"type":"object","description":"Catalog-owned reference to write to a media field.","required":["ref"],"properties":{"ref":{"type":"array","description":"Two entries containing the asset kind and immutable upload version ID.","minItems":2,"maxItems":2,"items":{"type":"string"}}}},"success":{"type":"boolean","const":true,"description":"True when the contract call completes successfully."}}}'
+    source: file://pim_tool.lua
+    method: adopt_asset
+    modules: [ctx]
+    imports: { catalog_client: kickside.pim:client }
+
   - name: apply
     kind: function.lua
     meta:
