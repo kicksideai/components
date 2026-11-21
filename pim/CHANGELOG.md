@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.18](https://github.com/kicksideai/components/compare/pim-v0.1.17...pim-v0.1.18) (2026-11-21)
+
+
+### Bug Fixes
+
+* **pim:** wait on the declared catalog projection cursor ([#329](https://github.com/kicksideai/components/issues/329)) ([8954dc1](https://github.com/kicksideai/components/commit/8954dc13fa442bbd3531b310a0560254bd7bfd79))
+
 ## [0.1.17](https://github.com/kicksideai/components/compare/pim-v0.1.16...pim-v0.1.17) (2026-11-21)
 
 
