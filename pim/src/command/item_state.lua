@@ -17,7 +17,7 @@ type State = {
     source: types.Source?, products: { [string]: types.Product }, skus: { [string]: string },
     freed: { [string]: boolean }, gone: { [string]: boolean }, uniques: { [string]: string }, released: { [string]: boolean }, axes: { [string]: string },
     vacated: { [string]: boolean }, stored_skus: { [string]: boolean }, siblings: { [string]: { [string]: string } },
-        terms: { [string]: PendingTerm }, counted: { [string]: integer }, added: { [string]: integer }, origin: types.Origin?, provenance: types.JsonObject?, approval_item_id: string?,
+        terms: { [string]: PendingTerm }, counted: { [string]: integer }, descendant_delta: { [string]: integer }, origin: types.Origin?, provenance: types.JsonObject?, approval_item_id: string?,
         import: boolean, proposal: boolean,
     audit: boolean, stored_terms: { [string]: PendingTerm | false },
     -- items are the command's items; links holds, per link kind the command
@@ -54,7 +54,7 @@ end
 function M.new_state(db: types.Executor, catalog: types.Catalog, actor: string, source: types.Source?): State
     return { db = db, catalog = catalog, compiled = catalog.compiled, catalog_id = catalog.catalog_id, actor = actor,
         source = source, products = {}, skus = {}, freed = {}, gone = {}, uniques = {}, released = {}, axes = {}, vacated = {},
-            stored_skus = {}, siblings = {}, terms = {}, counted = {}, added = {},
+            stored_skus = {}, siblings = {}, terms = {}, counted = {}, descendant_delta = {},
         import = false, proposal = false,
         audit = false, stored_terms = {}, items = {}, links = {}, refined = {} }
 end
@@ -215,7 +215,7 @@ function M.take_axis(st: State, p: types.Product, parent_id: string?, key: strin
 end
 
 -- has_room answers whether one more product fits under root, counting the
--- products the command's earlier accepted items add.
+-- net change from the command's earlier accepted items.
 function M.has_room(st: State, root: string): (boolean, error?)
     local stored = st.counted[root]
     if stored == nil then
@@ -224,14 +224,14 @@ function M.has_room(st: State, root: string): (boolean, error?)
         stored = n
         st.counted[root] = n
     end
-    return stored + (st.added[root] or 0) + 1 <= consts.LIMITS.descendants, nil
+    return stored + (st.descendant_delta[root] or 0) + 1 <= consts.LIMITS.descendants, nil
 end
 
 -- fork isolates a merge's provisional edits from the command's accepted state.
 function M.fork(st: State): State
     local out: { [string]: unknown } = {}
     for k, v in pairs(st :: { [string]: unknown }) do out[k] = v end
-    for _, name in ipairs({ "skus", "freed", "gone", "uniques", "released", "axes", "vacated", "stored_skus", "siblings", "terms", "counted", "added" }) do
+    for _, name in ipairs({ "skus", "freed", "gone", "uniques", "released", "axes", "vacated", "stored_skus", "siblings", "terms", "counted", "descendant_delta" }) do
         local copy: { [string]: unknown } = {}
         for k, v in pairs(out[name] :: { [string]: unknown }) do copy[k] = v end
         out[name] = copy

@@ -130,7 +130,7 @@ local function plan_create(st: item_state.State, item: types.ApplyItem): (types.
     p.axis_key = key
     p.document = built.document
     p.version = 1
-    if parent then st.added[p.root_id] = (st.added[p.root_id] or 0) + 1 end
+    if parent then st.descendant_delta[p.root_id] = (st.descendant_delta[p.root_id] or 0) + 1 end
     st.products[p.product_id] = p
     st.skus[sku] = p.product_id
     st.freed[sku] = nil
@@ -150,6 +150,7 @@ local function plan_delete(st: item_state.State, p: types.Product, seq: integer?
     if rerr then return nil, nil, rerr end
     if (refs :: integer) > 0 then return nil, item_state.fail("invalid", "product is referenced by " .. refs .. " values"), nil end
     p.state = "trashed"
+    if p.parent_id then st.descendant_delta[p.root_id] = (st.descendant_delta[p.root_id] or 0) - 1 end
     st.gone[p.product_id] = true
     p.version = p.version + 1
     st.freed[p.sku] = true
@@ -330,7 +331,7 @@ local function plan_restore(st: item_state.State, item: types.ApplyItem): (types
     end
     item_state.take_axis(st, p, p.parent_id, axis_key)
     p.axis_key=axis_key
-    if p.parent_id then st.added[p.root_id] = (st.added[p.root_id] or 0) + 1 end
+    if p.parent_id then st.descendant_delta[p.root_id] = (st.descendant_delta[p.root_id] or 0) + 1 end
     p.state = "live"
     p.version = p.version + 1
     st.freed[p.sku] = nil
