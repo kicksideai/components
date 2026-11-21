@@ -50,8 +50,12 @@ local function projection_declarations(plugin: string, raw: unknown): ({ types.P
             return nil, invalid_projection(plugin, "projection kinds must be nonempty and distinct")
         end
         if p.input ~= "state" and p.input ~= "events" then return nil, invalid_projection(plugin, "projection input must be state or events") end
-        local revision = p.revision or 1
-        if type(revision) ~= "number" or (revision :: number) % 1 ~= 0 or (revision :: number) < 1 then return nil, invalid_projection(plugin, "projection revision must be a positive integer") end
+        local revision = 1
+        if p.revision ~= nil then
+            local explicit = type(p.revision) == "number" and math.tointeger(p.revision) or nil
+            if not explicit or explicit < 1 then return nil, invalid_projection(plugin, "projection revision must be a positive integer") end
+            revision = explicit
+        end
         local ref = p.worker_ref
         local id = type(ref) == "string" and (ref :: string):match("^func://(.+)$") or nil
         if not id then return nil, invalid_projection(plugin, "plugin workers require a func:// reference") end
@@ -80,7 +84,7 @@ local function projection_declarations(plugin: string, raw: unknown): ({ types.P
         end
         for _, event in ipairs((p.events or {}) :: { string }) do events[#events + 1] = event end
         kinds[p.kind :: string] = true
-        out[#out + 1] = { kind = p.kind :: string, worker_ref = ref :: string, input = p.input :: string, revision = math.tointeger(revision) :: integer, events = events }
+        out[#out + 1] = { kind = p.kind :: string, worker_ref = ref :: string, input = p.input :: string, revision = revision, events = events }
     end
     return out, nil
 end
