@@ -32,6 +32,9 @@ function M.load(_id: string): (types.Plugin?,error?)
     if mode=="missing" then return nil,errors.new({kind=errors.INVALID,retryable=false,message="missing",details={code="unknown_plugin"}}) end
     return {id="a",interface_version=1,attachment="kind",projections={{kind="fold",input="state",revision=2,worker_ref="func://app:worker",events={}}}} :: types.Plugin,nil
 end
+function M.merged(_plugin: types.Plugin, _defaults: types.JsonObject, config: types.JsonObject): (types.JsonObject?, error?)
+    return config, nil
+end
 local function client(): unknown
     return {
         release=function()
@@ -39,6 +42,7 @@ local function client(): unknown
             return true,nil
         end,
         list_projections=function() return {projections={},projections_has_more=false},nil end,
+        prune_boundary=function() return {max_pruned_seq=0},nil end,
         get_projection_cursor=function()
             if mode=="unchanged" then return {projection={body={worker_config={revision=2,start_seq=12,config={},attachment_id="new"}}}},nil end
             if mode=="new_sequence" then return {projection={body={worker_config={revision=2,start_seq=11,config={},attachment_id="new"}}}},nil end

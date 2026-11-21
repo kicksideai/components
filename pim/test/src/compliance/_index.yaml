@@ -91,7 +91,7 @@ entries:
 
   - name: panel
     kind: registry.entry
-    meta: { type: view.component, title: Supplier compliance, tag_name: pim-test-compliance, base_path: pim-test-compliance, entry_point: panel.js }
+    meta: { type: view.component, announced: true, auto_register: true, title: Supplier compliance, tag_name: pim-test-compliance, base_path: pim-test-compliance, entry_point: panel.js }
     props: { type: object, properties: { catalog-id: { type: string } } }
 
   - name: panel_slot
@@ -116,19 +116,19 @@ entries:
 
   - name: certificate_component
     kind: registry.entry
-    meta: { type: view.component, title: Certificate editor, tag_name: pim-test-compliance-certificate, base_path: pim-test-compliance, entry_point: panel.js }
+    meta: { type: view.component, announced: true, auto_register: true, title: Certificate editor, tag_name: pim-test-compliance-certificate, base_path: pim-test-compliance, entry_point: panel.js }
 
   - name: supplier_component
     kind: registry.entry
-    meta: { type: view.component, title: Supplier lookup, tag_name: pim-test-compliance-supplier, base_path: pim-test-compliance, entry_point: panel.js }
+    meta: { type: view.component, announced: true, auto_register: true, title: Supplier lookup, tag_name: pim-test-compliance-supplier, base_path: pim-test-compliance, entry_point: panel.js }
 
   - name: region_component
     kind: registry.entry
-    meta: { type: view.component, title: Certificate region, tag_name: pim-test-compliance-region, base_path: pim-test-compliance, entry_point: panel.js }
+    meta: { type: view.component, announced: true, auto_register: true, title: Certificate region, tag_name: pim-test-compliance-region, base_path: pim-test-compliance, entry_point: panel.js }
 
   - name: audit_component
     kind: registry.entry
-    meta: { type: view.component, title: Certificate audit, tag_name: pim-test-compliance-audit, base_path: pim-test-compliance, entry_point: panel.js }
+    meta: { type: view.component, announced: true, auto_register: true, title: Certificate audit, tag_name: pim-test-compliance-audit, base_path: pim-test-compliance, entry_point: panel.js }
 
   - name: files
     kind: fs.directory
@@ -149,6 +149,53 @@ entries:
     kind: function.lua
     source: file://rules.lua
     method: validate
+  - name: approve
+    kind: function.lua
+    source: file://worker.lua
+    method: approve
+    modules: [sql, contract, security]
+    security:
+      policies: [app.compliance:publish_approval]
+
+  - name: publish_approval
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: [app.compliance:certificate.approved]
+      actions: [threads.output.publish]
+      effect: allow
+
+  - name: catalog_outputs
+    kind: contract.binding
+    meta:
+      title: Supplier approval events
+      class: [pim.catalog]
+      events:
+        output: [{ type: 'app.compliance:certificate.approved', system_only: true }]
+    contracts:
+      - contract: kickside.contract:component
+        methods: { get_status: 'kickside.core.threads:thread_status' }
+
+  - name: certificate.approved
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event, output_kind: 'app.compliance:catalog_outputs' }
+    schema:
+      type: object
+      additionalProperties: false
+      required: [product_id, certificate, version]
+      properties:
+        product_id: { type: string }
+        certificate: { type: string }
+        version: { type: integer }
+
+  - name: approval_port
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: Certificate approved, icon: 'tabler:shield-check' }
+    binding: kickside.pim.binding:catalog
+    event: app.compliance:certificate.approved
+    config_schema:
+      thread_id: { type: string, picker: wc-component-picker, class: pim_catalog, required: true, role: primary, title: Catalog }
+
   - name: resolve_schema
     kind: function.lua
     source: file://rules.lua
@@ -219,7 +266,7 @@ entries:
     kind: security.policy
     groups: [kickside.security.groups:members]
     policy:
-      resources: [app.compliance:plugin, app.compliance:attachment, app.compliance:certificate, app.compliance:approved, app.compliance:check, app.compliance:normalize, app.compliance:validate, app.compliance:schema, app.compliance:resolve_schema, app.compliance:supplier, app.compliance:resolve_supplier, app.compliance:describe_supplier, app.compliance:catalog_ui, app.compliance:pack, app.compliance:panel, app.compliance:panel_slot, app.compliance:certificate_editor, app.compliance:supplier_link, app.compliance:region_column, app.compliance:audit_action, app.compliance:certificate_component, app.compliance:supplier_component, app.compliance:region_component, app.compliance:audit_component]
+      resources: [app.compliance:plugin, app.compliance:approve, app.compliance:approval_port, app.compliance:attachment, app.compliance:certificate, app.compliance:approved, app.compliance:check, app.compliance:normalize, app.compliance:validate, app.compliance:schema, app.compliance:resolve_schema, app.compliance:supplier, app.compliance:resolve_supplier, app.compliance:describe_supplier, app.compliance:catalog_ui, app.compliance:pack, app.compliance:panel, app.compliance:panel_slot, app.compliance:certificate_editor, app.compliance:supplier_link, app.compliance:region_column, app.compliance:audit_action, app.compliance:certificate_component, app.compliance:supplier_component, app.compliance:region_component, app.compliance:audit_component]
       actions: [registry.get, registry.find, funcs.call, contract.get, contract.open, contract.call]
       effect: allow
 

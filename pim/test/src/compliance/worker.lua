@@ -63,7 +63,8 @@ function M.state(input: Callback): (Map?, error?)
             end
             if change_err then return change_err end
             if config.crash and i == 1 then
-                error("Compliance replica crashed after its first row")
+                error(errors.new({ kind = errors.INVALID, retryable = false,
+                    message = "Compliance replica crashed after its first row", details = { code = "compliance_mid_batch" } }))
             end
         end
         return nil
@@ -87,6 +88,26 @@ function M.events(input: Callback): (Map?, error?)
     end)
     if failure then return nil, failure end
     return { body = input.projection.body, last_seq = input.range.to_seq }, nil
+end
+
+function M.approve(input: { catalog_id: string, sku: string }): (unknown, error?)
+    local client = catalog()
+    local _, err = client:plugin_context({ catalog_id = input.catalog_id, plugin = PLUGIN })
+    if err then return nil, err end
+    local found, gerr = client:get({ catalog_id = input.catalog_id, product = { sku = input.sku } })
+    if gerr then return nil, gerr end
+    local product = found.product
+    local certificate = found.values["compliance.certificate"].value
+    if type(certificate) ~= "string" then
+        return nil, errors.new({ kind = errors.INVALID, message = "A certificate is required before approval" })
+    end
+    local threads, terr = assert(contract.get("kickside.core:threads")):with_actor(security.actor()):with_scope(security.scope()):open()
+    if terr then return nil, terr end
+    return threads:append_events({ thread_id = input.catalog_id, events = { {
+        type = "app.compliance:certificate.approved",
+        body = { product_id = product.product_id, certificate = certificate, version = product.version },
+        external = { external_source = PLUGIN, external_id = product.product_id .. ":" .. product.version },
+    } } })
 end
 
 function M.approved(input: { catalog_id: string, region: string }): (unknown, error?)

@@ -227,6 +227,33 @@ local function define()
             test.eq(denied:details().code, "plugin_inactive")
         end)
 
+        test.it("finishes a state feed when the final catalog fact comes from an automation port", function()
+            prepare_tables()
+            local h = fixture.catalog({ bare = true })
+            activate(h)
+            local product = put(h, "APPROVED", "EU-207")
+            settle(h, REPLICA)
+            local port = assert(registry.get("app.compliance:approval_port"))
+            test.eq(port.data.binding, "kickside.pim.binding:catalog")
+            local event_type = port.data.event
+            local request = { catalog_id = h.id, sku = "APPROVED" }
+            assert(h.executor:call("app.compliance:approve", request))
+            assert(h.executor:call("app.compliance:approve", request))
+            test.is_true(call(h, "settle").done)
+            local approvals = 0
+            for _, event in ipairs(call(h, "events").events) do
+                if event.type == event_type then
+                    local body = type(event.body) == "string" and assert(require("json").decode(event.body)) or event.body
+                    test.eq(body.product_id, product.product_id)
+                    approvals = approvals + 1
+                end
+            end
+            test.eq(approvals, 1)
+            local page = call(h, "plugin_feed", { plugin = PLUGIN, kind = REPLICA })
+            test.eq(#page.changes, 1)
+            test.is_true(page.done, "a filtered catalog fact cannot hold the feed open")
+        end)
+
         test.it("rejects a write-enforced broken check before committing the item", function()
             prepare_tables()
             local h = fixture.catalog({ bare = true })
@@ -502,11 +529,26 @@ local function define()
             end)
         end)
 
+        test.it("refuses a projection revision without a positive integer representation", function()
+            local h = fixture.catalog({ bare = true })
+            for _, invalid_revision in ipairs({ false, 0, 0.5, 1e20 }) do
+                local malformed = version(1)
+                malformed.projections[2].revision = invalid_revision
+                changed(PLUGIN, malformed, nil, function()
+                    local found = plugin(h)
+                    test.eq(found.problem and found.problem.code, "plugin_projection_invalid")
+                    local _, err = h.call("apply_schema", { declaration = { plugins = { { use = PLUGIN } } } })
+                    test.eq(err:details().code, "plugin_projection_invalid")
+                end)
+            end
+        end)
+
         test.it("keeps stored data readable after uninstall and refuses to disable while adopted seams remain", function()
             prepare_tables()
             local h = fixture.catalog({ bare = true })
             activate(h)
             put(h, "PERSISTENT", "EU-801")
+            call(h, "update", { ui_app = UI })
             settle(h, REPLICA)
             local _, in_use = h.call("apply_schema", { declaration = { remove = { plugins = { PLUGIN } } } })
             test.not_nil(in_use)
@@ -519,6 +561,11 @@ local function define()
                 test.eq(state.problem.code, "unknown_plugin")
                 test.eq(call(h, "get", { product = { sku = "PERSISTENT" } }).values["compliance.certificate"].value, "EU-801")
                 test.eq(#call(h, "query", query).items, 1)
+                changed(UI, nil, nil, function()
+                    test.eq(call(h, "get_catalog").ui_app, UI)
+                    call(h, "update", { ui_app = "" })
+                    test.is_nil(call(h, "get_catalog").ui_app)
+                end)
             end)
             call(h, "apply_schema", { declaration = {
                 families = { { code = "supplier_item", aspects = { "base" }, requirements = { { id = "web", require = { "base.label" } } } } },
@@ -530,6 +577,14 @@ local function define()
             local _, stale = h.call("query", query)
             test.not_nil(stale)
         end)
+        local failure_messages = {
+            error = "supplier check failed",
+            timeout = "supplier check exceeded its deadline",
+            scalar = "returned no result",
+            oversized = "returned oversized findings",
+            slow = "exceeded the family check deadline",
+            blocked = "exceeded the family check deadline",
+        }
         for _, mode in ipairs({ "error", "timeout", "scalar", "oversized", "slow", "blocked" }) do
             test.it("records " .. mode .. " checks as unavailable without preventing an ordinary write", function()
                 prepare_tables()
@@ -547,6 +602,7 @@ local function define()
                 local found = call(h, "get", { product = { sku = "PROBE" } })
                 test.eq(found.readiness.web[1].code, "check_unavailable")
                 test.eq(found.readiness.web[1].check, CHECK)
+                test.not_nil(found.readiness.web[1].message:find(failure_messages[mode], 1, true))
             end)
         end
 
