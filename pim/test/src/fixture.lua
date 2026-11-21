@@ -146,7 +146,7 @@ function M.boot(h: Handle): unknown
 end
 
 -- retain drains the retention owner's bounded continuation protocol.
-function M.retain(): (unknown, error?)
+function M.retain(owner: string?): (unknown, error?)
     local db = assert(store.open())
     assert(not retention_rows.advance(db, { catalog_id = "", inclusive = 0, product_after = "" }))
     db:release()
@@ -155,7 +155,7 @@ function M.retain(): (unknown, error?)
     local blocked={}
     local needs_continue = false
     for _ = 1, 1000 do
-        local out, err = funcs.call("kickside.pim.retention:owner", {})
+        local out, err = funcs.call(owner or "kickside.pim.retention:owner", {})
         if err then return nil, err end
         if out.error and not first_error then first_error = out.error end
         for _,item in ipairs(out.blocked or {}) do blocked[#blocked+1]=item end
