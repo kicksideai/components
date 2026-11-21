@@ -191,8 +191,9 @@ type CheckInput = { config: JsonObject, view: { [string]: ContextValues }, produ
 type CheckResult = { findings: { Finding } }
 
 -- Event bodies, one record per event family (spec 5.2). The writer adds actor,
--- at and, on the first event of an idempotent command, the receipt.
-type Receipt = { request_hash: string?, result: JsonObject?, event_count: integer? }
+-- at and the receipt of an idempotent command. Receipts that need projected
+-- values are carried by the final event so all results are available at commit.
+type Receipt = { request_hash: string?, result: JsonObject?, event_count: integer?, marker: string?, noop: boolean?, after_fold: boolean? }
 type SchemaBody = {
     generation: integer, declaration: Declaration, compiled: Compiled, class: string, changes: { SchemaChange }?,
     plugin_configs: { [string]: JsonObject }?, actor: string?, at: string?, receipt: Receipt?,
@@ -212,7 +213,8 @@ type ReleaseBody = {
     channels: { string }?, actor: string?, at: string?, receipt: Receipt?,
 }
 type WithdrawBody = { product_id: string, channels: { string }?, actor: string?, at: string?, receipt: Receipt? }
-type ModelReleaseBody = { request_id: string, product_id: string, root: boolean, identity: JsonObject, channels: { string }?, actor: string?, at: string?, receipt: Receipt? }
+type ModelReleaseBody = { request_id: string, product_id: string, version: integer, root: boolean, identity: JsonObject,
+    channels: { string }?, actor: string?, at: string?, receipt: Receipt? }
 type PluginConfiguredBody = { plugin: string, config: JsonObject, actor: string?, at: string?, receipt: Receipt? }
 type PluginRebuildBody = { plugin: string, actor: string?, at: string?, receipt: Receipt? }
 type ProposalSubmittedBody = { proposal_id: string, generation: integer, base: { [string]: integer }, items: { ApplyItem },
@@ -378,15 +380,16 @@ type ProposalsRequest = { status: string?, limit: integer?, after: ProposalCurso
 
 -- Feeds (spec 12): cursor-resumable over durable state.
 type FeedGap = { floor: integer }
-type ChangesCursor = { seq: integer, product_id: string }
+type FeedPosition = { seq: integer, product_id: string }
+type ChangesCursor = FeedPosition & { expiry_floor: integer? }
 type ChangesRequest = { cursor: ChangesCursor?, limit: integer?, families: { string }? }
 type ChangeTerm = TermView & { vocabulary: string }
 type ChangeItem = {
     product_id: string, op: string, updated_seq: integer, sku: string, family: string, parent_id: string?, root_id: string,
     level: integer, status: string, version: integer, values: { [string]: ContextValues }?, terms: { ChangeTerm }?,
 }
-type ChangesResult = ReadStamp & { items: { ChangeItem }, next: ChangesCursor?, has_more: boolean, gap: FeedGap? }
-type PublicationCursor = ChangesCursor & { expiry_floor: ChangesCursor? }
+type ChangesResult = ReadStamp & { items: { ChangeItem }, next: ChangesCursor, has_more: boolean, gap: FeedGap? }
+type PublicationCursor = FeedPosition & { expiry_floor: FeedPosition? }
 type PublicationsRequest = { channel: string, after: PublicationCursor?, limit: integer? }
 type PublicationItem = {
     product_id: string, state: string, seq: integer, updated_at: string, release_id: string?, hash: string?,
@@ -471,7 +474,7 @@ type TypeFunctionRequest = { config: JsonObject, values: { unknown } }
 type NormalizeResult = { results: { Normalized } }
 type ValidateResult = { results: { { findings: { TypeFinding } } } }
 type CommandResult = ApplyResult | SchemaResult | ProposeResult | DecideResult | { seq: integer?, as_of: integer?, replayed: boolean? }
-type Plan = { result: CommandResult, events: { Event } }
+type Plan = { result: CommandResult, events: { Event }, receipt_after_fold: boolean? }
 
 return {
     Json = Json, JsonObject = JsonObject, SqlParams = SqlParams, Row = Row, Dec = Dec, Quantity = Quantity, Ref = Ref, Record = Record,
@@ -509,7 +512,8 @@ return {
     ProposalCursor = ProposalCursor, ProposalsRequest = ProposalsRequest, ProposalsResult = ProposalsResult, PublicationState = PublicationState,
     PublishedFilter = PublishedFilter, ScopeQuery = ScopeQuery, PluginEntry = PluginEntry,
         PluginView = PluginView, PluginSchema = PluginSchema, Fragment = Fragment, LinkTarget = LinkTarget, Refined = Refined,
-        TermMerge = TermMerge, Merge = Merge, TermRefRow = TermRefRow, AdmittedScope = AdmittedScope, FeedGap = FeedGap, ChangesCursor = ChangesCursor,
+        TermMerge = TermMerge, Merge = Merge, TermRefRow = TermRefRow, AdmittedScope = AdmittedScope, FeedGap = FeedGap,
+        FeedPosition = FeedPosition, ChangesCursor = ChangesCursor,
         ChangesRequest = ChangesRequest,
     ChangeTerm = ChangeTerm, ChangeItem = ChangeItem, ChangesResult = ChangesResult, PublicationsRequest = PublicationsRequest,
     PublicationCursor = PublicationCursor, PublicationItem = PublicationItem, PublicationsResult = PublicationsResult, LinksCursor = LinksCursor,

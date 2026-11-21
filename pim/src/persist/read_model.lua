@@ -77,7 +77,7 @@ function M.publication_floor(db: types.Executor, catalog_id: string, channel: st
 end
 
 -- publications pages one channel in (seq, product_id) order with its releases.
-function M.publications(db: types.Executor, catalog_id: string, channel: string, after: types.ChangesCursor, limit: integer): ({ types.Row }?, error?)
+function M.publications(db: types.Executor, catalog_id: string, channel: string, after: types.FeedPosition, limit: integer): ({ types.Row }?, error?)
     local rows, err = db:query([[SELECT p.product_id, p.release_id, p.state, p.seq, p.updated_at, r.snapshot, r.hash, r.version
         FROM kickside_pim_publication p LEFT JOIN kickside_pim_release r ON r.catalog_id = p.catalog_id AND r.release_id = p.release_id
         WHERE p.catalog_id = $1 AND p.channel = $2 AND (p.seq, p.product_id) > ($3, $4) ORDER BY p.seq, p.product_id LIMIT $5]],

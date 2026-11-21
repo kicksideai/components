@@ -6,6 +6,7 @@ local hash = require("hash")
 local uuid = require("uuid")
 local consts = require("consts")
 local store = require("store")
+local release_jobs = require("release_jobs")
 local evaluate = require("evaluate")
 local checks = require("checks")
 local snapshot = require("snapshot")
@@ -17,7 +18,7 @@ local execution_identity = require("execution_identity")
 
 local M = {}
 
-type Planned = { outcomes: { types.Outcome }, events: { types.Event } }
+type Planned = { outcomes: { types.Outcome }, events: { types.Event }, receipt_after_fold: boolean? }
 M.Planned = Planned
 
 local EV = consts.EVENTS
@@ -83,6 +84,8 @@ function M.release(db: types.Executor, catalog: types.Catalog, request: types.Re
     local compiled = catalog.compiled
     local outcomes: { types.Outcome } = {}
     local events: { types.Event } = {}
+    local models: { [string]: release_jobs.Reference } = {}
+    local receipt_after_fold = false
     local published: { [string]: { [string]: { release_id: string, hash: string } } } = {}
     for index, item in ipairs(request.items) do
         local outcome: types.Outcome
@@ -104,12 +107,27 @@ function M.release(db: types.Executor, catalog: types.Catalog, request: types.Re
             outcome = { outcome = "conflict", product_id = p.product_id, version = p.version,
                 findings = { { code = "version_conflict", message = "product changed" } } }
         elseif p.is_item ~= 1 then
-            local identity, ierr = execution_identity.capture()
-            if ierr or not identity then return nil, ierr :: error? end
-            local request_id = uuid.v7() :: string
-            events[#events + 1] = { type = EV.MODEL_RELEASE_REQUESTED, subject = "model-release:" .. p.product_id,
-                body = { request_id = request_id, product_id = p.product_id, root = p.level == 0, identity = identity :: types.JsonObject, channels = item.channels } }
-            outcome = { outcome = "queued", product_id = p.product_id, version = p.version, request_id = request_id }
+            local model_key = p.product_id .. ":" .. p.version
+            local job = models[model_key]
+            if not job then
+                local jerr: error?
+                job, jerr = release_jobs.active(db, catalog.catalog_id, p.product_id, p.version)
+                if jerr then return nil, jerr end
+                if not job then
+                    local identity, ierr = execution_identity.capture()
+                    if ierr or not identity then return nil, ierr :: error? end
+                    local request_id = uuid.v7() :: string
+                    events[#events + 1] = { type = EV.MODEL_RELEASE_REQUESTED, subject = "model-release:" .. p.product_id,
+                        body = { request_id = request_id, product_id = p.product_id, version = p.version, root = p.level == 0,
+                            identity = identity :: types.JsonObject, channels = item.channels } }
+                    job = { request_id = request_id }
+                    receipt_after_fold = true
+                end
+                models[model_key] = job :: release_jobs.Reference
+            end
+            local reference = job :: release_jobs.Reference
+            outcome = { outcome = "queued", product_id = p.product_id, version = p.version,
+                request_id = reference.request_id, job_id = reference.job_id }
         else
             local lineage, lerr = store.lineage(db, catalog.catalog_id, p)
             if lerr or not lineage then return nil, lerr end
@@ -191,7 +209,7 @@ function M.release(db: types.Executor, catalog: types.Catalog, request: types.Re
         outcome.index = index
         outcomes[index] = outcome
     end
-    return { outcomes = outcomes, events = events }, nil
+    return { outcomes = outcomes, events = events, receipt_after_fold = receipt_after_fold }, nil
 end
 
 function M.withdraw(db: types.Executor, catalog: types.Catalog, request: types.ReleaseRequest): (Planned?, error?)

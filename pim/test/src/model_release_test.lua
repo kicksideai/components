@@ -6,8 +6,98 @@ local time = require("time")
 local jobs = require("jobs")
 local store = require("store")
 
+local function await_done(job_id: string)
+    for _ = 1, 200 do
+        if assert(jobs.get_job(job_id)).status == "done" then return end
+        time.after("50ms"):receive()
+    end
+    test.eq(assert(jobs.get_job(job_id)).status, "done")
+end
+
 local function define()
     test.describe("model release jobs", function()
+        test.it("returns one job for the same model version within a batch and across active requests", function()
+            local h = scoped.catalog(scoped.member())
+            fixture.boot(h)
+            local model = assert(h.call("get", { product = { sku = "RDG" } })).product
+            local item = { product = { id = model.product_id }, expect_version = model.version, channels = { "web" } }
+            local repeated = { product = item.product, expect_version = item.expect_version }
+            local first = assert(h.call("release", { items = { item, item }, idempotency = { namespace = "test", key = "first" } }))
+            local job = first.outcomes[1]
+            test.not_nil(job.job_id)
+            test.eq(first.outcomes[2].job_id, job.job_id, "a batch queues the same model version only once")
+            test.eq(first.outcomes[2].request_id, job.request_id)
+            await_done(job.job_id)
+
+            local function status(value: string)
+                local db = assert(store.open())
+                assert(db:execute([[UPDATE kickside_job SET status=$1, scheduled_at='2090-01-01T00:00:00Z',
+                    lease_until='2090-01-01T00:00:00Z' WHERE id=$2]], { value, job.job_id }))
+                assert(db:release())
+            end
+            for _, state in ipairs({ "pending", "running" }) do
+                status(state)
+                local duplicate = assert(h.call("release", { items = { repeated },
+                    idempotency = { namespace = "test", key = state } }))
+                status("done")
+                test.eq(duplicate.outcomes[1].request_id, job.request_id)
+                test.eq(duplicate.outcomes[1].job_id, job.job_id)
+                test.is_false(duplicate.applied)
+            end
+            local later = assert(h.call("release", { items = { item } })).outcomes[1]
+            test.not_nil(later.job_id)
+            test.is_true(later.job_id ~= job.job_id, "a terminal job leaves the version free to release again")
+            await_done(later.job_id)
+            local replay = assert(h.call("release", { items = { repeated },
+                idempotency = { namespace = "test", key = "pending" } }))
+            test.is_true(replay.replayed)
+            test.eq(replay.outcomes[1].job_id, job.job_id)
+
+            status("running")
+            local edit = assert(h.call("apply", { items = { { product = item.product, expect_version = item.expect_version,
+                set = { { attr = "core.care", value = "A newer model version" } } } } }))
+            local next_version = assert(h.call("release", { items = { { product = item.product, expect_version = edit.outcomes[1].version } } })).outcomes[1]
+            status("done")
+            test.eq(next_version.outcome, "queued")
+            test.is_true(next_version.job_id ~= job.job_id, "versions of the same model have separate active jobs")
+            await_done(next_version.job_id)
+        end)
+
+        test.it("replays model job IDs after completed-work retention removes their rows", function()
+            local h = scoped.catalog(scoped.member())
+            fixture.boot(h)
+            local items = {}
+            for _, sku in ipairs({ "RDG-moss-40", "RDG-moss", "RDG-slate" }) do
+                local product = assert(h.call("get", { product = { sku = sku } })).product
+                items[#items + 1] = { product = { id = product.product_id }, expect_version = product.version, channels = { "web" } }
+            end
+            local request = { items = items, idempotency = { namespace = "test", key = "retained-receipt" } }
+            local first = assert(h.call("release", request))
+            test.eq(first.outcomes[1].outcome, "released")
+            for i = 2, 3 do
+                test.eq(first.outcomes[i].outcome, "queued")
+                await_done(first.outcomes[i].job_id)
+            end
+            local db = assert(store.open())
+            assert(db:execute("UPDATE kickside_pim_release_job SET completed_at='2000-01-01T00:00:00Z' WHERE catalog_id=$1", { h.id }))
+            assert(db:release())
+            test.is_true(assert(fixture.retain()).success)
+            db = assert(store.open())
+            local rows = assert(db:query("SELECT request_id FROM kickside_pim_release_job WHERE catalog_id=$1", { h.id }))
+            assert(db:release())
+            test.eq(#rows, 0)
+
+            local replay, err = h.call("release", request)
+            test.is_nil(err, tostring(err))
+            test.is_true(replay.replayed)
+            test.eq(replay.seq, first.seq)
+            for i = 1, 3 do
+                test.eq(replay.outcomes[i].outcome, first.outcomes[i].outcome)
+                test.eq(replay.outcomes[i].request_id, first.outcomes[i].request_id)
+                test.eq(replay.outcomes[i].job_id, first.outcomes[i].job_id)
+            end
+        end)
+
         test.it("refuses a batch after its requester loses WRITE and leaves the task untouched", function()
             local owner, reader = scoped.member(), scoped.member()
             local h = scoped.catalog(owner)

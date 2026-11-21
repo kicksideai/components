@@ -138,6 +138,7 @@ entries:
       store: app:projection_audit_fixture
       materializer: app:projection_audit_materializer
       receipts: kickside.pim.persist:receipts
+      release_jobs: kickside.pim.persist:release_jobs
       jobs: kickside.core.jobs:jobs
       types: kickside.pim:types
       consts: kickside.pim:consts

@@ -147,6 +147,41 @@ local function define()
             local fresh = drain(h, nil)
             test.is_nil(fresh[victim.product_id])
         end)
+
+        test.it("restarts from zero across a retained floor and reports a later gap", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local function set_floor(offset: integer)
+                exec("UPDATE kickside_pim_catalog SET tombstone_floor_seq = applied_seq + $1 WHERE catalog_id = $2", { offset, h.id })
+            end
+            set_floor(-1)
+            local first = assert(h.call("list_changes", { cursor = { seq = 0, product_id = "" }, limit = 1 }))
+            test.is_nil(first.gap)
+            test.is_true(first.has_more)
+            local second = assert(h.call("list_changes", { cursor = first.next, limit = 1 }))
+            test.is_nil(second.gap, "the next page observes the bootstrap floor")
+            test.not_nil(first.next.expiry_floor)
+            test.eq(second.next.expiry_floor, first.next.expiry_floor)
+            test.is_true(first.items[1].product_id ~= second.items[1].product_id)
+
+            set_floor(0)
+            local stale = assert(h.call("list_changes", { cursor = second.next, limit = 1 }))
+            test.eq(assert(stale.gap).floor, second.next.expiry_floor + 1)
+            test.eq(stale.next.seq, second.next.seq)
+            test.eq(stale.next.expiry_floor, second.next.expiry_floor)
+            test.eq(#stale.items, 0)
+            test.is_false(stale.has_more)
+
+            local cursor, count = nil, 0
+            for _ = 1, 9 do
+                local page = assert(h.call("list_changes", { cursor = cursor, limit = 1 }))
+                test.is_nil(page.gap)
+                count = count + #page.items
+                cursor = page.next
+                if not page.has_more then break end
+            end
+            test.eq(count, 9)
+        end)
     end)
 
     test.describe("release reads", function()
