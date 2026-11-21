@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/kicksideai/components/compare/pim-admin-v0.1.8...pim-admin-v0.1.9) (2026-11-21)
+
+
+### Bug Fixes
+
+* **pim-admin:** reorganize catalog administration settings ([#314](https://github.com/kicksideai/components/issues/314)) ([cbb4ec0](https://github.com/kicksideai/components/commit/cbb4ec054347ffe6118034f86012918853a86108))
+
 ## [0.1.8](https://github.com/kicksideai/components/compare/pim-admin-v0.1.7...pim-admin-v0.1.8) (2026-11-20)
 
 

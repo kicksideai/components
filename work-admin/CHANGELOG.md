@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/kicksideai/components/compare/work-admin-v0.1.9...work-admin-v0.1.10) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work-admin:** reorganize board administration settings ([#313](https://github.com/kicksideai/components/issues/313)) ([578a6b6](https://github.com/kicksideai/components/commit/578a6b6e32098847518c363b7bef86157da25736))
+
 ## [0.1.9](https://github.com/kicksideai/components/compare/work-admin-v0.1.8...work-admin-v0.1.9) (2026-11-21)
 
 
