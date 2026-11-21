@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { computed, ref, useId } from 'vue'
+import { computed, nextTick, ref, useId } from 'vue'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -10,6 +10,8 @@ const props = defineProps<{ label: string; action: string; existing?: string[]; 
 const emit = defineEmits<{ add: [code: string] }>()
 
 const input = ref('')
+const editing = ref(false)
+const row = ref<HTMLDivElement>()
 const hintId = useId()
 const code = computed(() => {
   const value = input.value.trim()
@@ -25,21 +27,38 @@ const issue = computed(() => {
 })
 const canAdd = computed(() => !!code.value && !issue.value)
 
+async function start() {
+  editing.value = true
+  await nextTick()
+  row.value?.querySelector('input')?.focus()
+}
+
+async function close() {
+  editing.value = false
+  input.value = ''
+  await nextTick()
+  row.value?.querySelector('button')?.focus()
+}
+
 function add() {
   if (!canAdd.value) return
   emit('add', code.value)
-  input.value = ''
+  void close()
 }
 </script>
 
 <template>
-  <div class="row pim-add-row">
-    <InputText v-model="input" type="text" :placeholder="label" :aria-label="label" :invalid="!!issue"
-      :aria-describedby="issue ? hintId : undefined" :class="{ mono: !fromName }" @keydown.enter.prevent="add" />
-    <Button type="button" :disabled="!canAdd" severity="secondary" outlined size="small" @click="add">
+  <div ref="row" class="row pim-add-row">
+    <Button v-if="!editing" type="button" aria-expanded="false" severity="secondary" outlined size="small" @click="start">
       <Icon icon="tabler:plus" aria-hidden="true" /> {{ action }}
     </Button>
+    <div v-else class="row pim-add-editor" @keydown.esc.stop.prevent="close">
+      <InputText v-model="input" type="text" :placeholder="label" :aria-label="label" :invalid="!!issue"
+        :aria-describedby="issue ? hintId : undefined" :class="{ mono: !fromName }" @keydown.enter.prevent="add" />
+      <Button type="button" :disabled="!canAdd" size="small" @click="add">{{ action }}</Button>
+      <Button type="button" label="Cancel" text severity="secondary" size="small" @click="close" />
+      <p v-if="issue" :id="hintId" role="status" class="pim-add-code-error small">{{ issue }}</p>
+    </div>
     <slot />
-    <p v-if="issue" :id="hintId" role="status" class="pim-add-code-error small">{{ issue }}</p>
   </div>
 </template>

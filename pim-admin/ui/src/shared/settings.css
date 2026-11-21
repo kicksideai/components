@@ -113,15 +113,27 @@
 .pim-ia-action { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pim-plugin-recovery > button { justify-self: start; }
 .pim-ia-action > div:first-child { flex: 1 0 min(220px, 100%); min-width: 0; }
-.pim-ia-action > .pim-add-row { padding: 0; }
-.pim-ia-inline-add[class] { padding: 0; }
+.pim-ia-action > .pim-add-row, .pim-list-header .pim-add-row, .pim-aspect .pim-add-row { padding: 0; }
+.pim-list-header { align-items: center; border-bottom: 1px solid var(--p-content-border-color); }
+.pim-list-header p { margin: 0; }
+.pim-list-actions { flex-wrap: wrap; }
+.pim-list-actions > .p-button,
+.pim-attr-row .pim-definition-actions > .p-button { width: 36px; height: 36px; padding: 0; justify-content: center; flex: none; }
+.pim-attr-row .pim-definition-actions svg, .pim-list-actions > .p-button svg { width: 16px; height: 16px; }
 .pim-advanced-actions { display: grid; gap: 12px; }
 .pim-advanced-actions > .pim-ia-action + .pim-ia-action { border-top: 1px solid var(--p-content-border-color); padding-top: 12px; }
 .pim-family-fields { align-items: end; }
+.pim-family-fields .p-multiselect { width: 100%; min-width: 0; }
+.pim-family-fields .p-multiselect-label { flex-wrap: wrap; white-space: normal; }
+.pim-add-level { justify-self: start; }
+.pim-family-requirements-head { margin-bottom: 12px; }
+.pim-family-requirements-head h3 { margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--p-text-muted-color); }
+.pim-family-requirements-head p { margin: 0; }
 /* The family Select mounts its menu inside the component shadow root. */
 .pim-family-filter.form { overflow: visible; }
 .pim-field-advanced { margin-top: 14px; }
-.pim-group-settings { padding: 4px 16px 12px; }
+.pim-group-dialog-actions { flex-wrap: wrap; justify-content: space-between; }
+.pim-group-dialog-actions > :last-child { margin-inline-start: auto; }
 .pim-definition-meta > .pim-definition-details > span + span { margin-left: 6px; }
 .pim-ia-dialog { width: min(620px, 84vw); padding: 20px; display: grid; gap: 16px; }
 .pim-ia-dialog-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }

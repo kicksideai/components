@@ -62,8 +62,9 @@ an override. Edit the defaults in System → Settings → Products. Existing
 catalog overrides are preserved and can be edited or cleared in Technical schema.
 
 System labels catalog administration **Catalogs** and retains the capability
-boundary. Catalog ADMIN alone does not grant System access. Field group and
-family names create declaration keys according to the existing schema grammar.
+boundary. Catalog ADMIN alone does not grant System access. Add actions open
+inline name editors and add valid names to the draft. The names create
+declaration keys according to the existing schema grammar.
 Choose Single value, Ordered list or Unique set when editing a field. Closing
 Technical schema discards invalid local text. Valid edits stay in the common draft.
 
@@ -86,13 +87,17 @@ Built-in type configuration comes from the backend's `config_schema` metadata
 and renders through the shared `wc-schema-form`, including Quantity units and
 canonical unit. Conversion factors and record members use its structured inputs.
 
-Family variation axes are single-value fields from the selected field groups,
+Families show selected field groups in a multi-select. Family removal is
+available inside the expanded family. Family variation axes are single-value fields from the selected field groups,
 with no dimensions and a value form other than text or record. Each field can
 be assigned to one variation level. Other unassigned fields can still be
 owned by a level.
 
-Form layout is a Products view. History is a General view. Layout edits the same declaration
-as Fields: arrow controls and drag/drop reorder fields within their own field group;
+Fields uses keyboard-operable arrow buttons to reorder fields within a group.
+Each group header opens its settings dialog for source write permissions and
+group removal. Form layout is a Products view. History is a General view.
+Form layout edits the same declaration as Fields. In Form layout, arrow
+controls and drag/drop reorder fields within their own field group, and
 widths are full, half, third or quarter, using compiled defaults until explicitly edited.
 Plugin-owned groups remain read-only. Layout uses discovered field type titles,
 and plugin and scope summaries present readable field and filter names.

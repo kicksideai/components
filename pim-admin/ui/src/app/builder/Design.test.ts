@@ -35,19 +35,20 @@ it('keeps plugin configuration collapsed while its state and switch remain visib
   expect(w.find('.pim-definition-body').exists()).toBe(true)
   w.unmount()
 })
-it('reorders fields by keyboard and drag without opening their forms', async () => {
+it('moves fields within their group without opening their forms', async () => {
   const declaration = reactive(draft())
   const w = mount(BuilderFields, { props: { draft: declaration, schema: createSchema(), options } })
   expect(w.find('.pim-definition-body').exists()).toBe(false)
-  await w.findAll('.pim-attr-row')[1].trigger('keydown', { key: 'ArrowUp', altKey: true })
+  expect(w.find('[draggable="true"]').exists()).toBe(false)
+  expect(w.get('[aria-label="Move Name earlier"]').attributes('disabled')).toBeDefined()
+  await w.get('[aria-label="Move Title earlier"]').trigger('click')
   expect(declaration.aspects[0].attributes.map(a => a.code)).toEqual(['title', 'name'])
-  await w.findAll('.pim-grip')[0].trigger('dragstart')
-  await w.findAll('.pim-attr-row')[1].trigger('drop')
+  await w.get('[aria-label="Move Title later"]').trigger('click')
   expect(declaration.aspects[0].attributes.map(a => a.code)).toEqual(['name', 'title'])
   expect(w.find('.pim-definition-body').exists()).toBe(false)
   w.unmount()
 })
-it('limits field reorder shortcuts to the row header while its form is open', async () => {
+it('leaves field order unchanged when editing a field', async () => {
   const declaration = reactive(draft())
   const w = mount(BuilderFields, { props: { draft: declaration, schema: createSchema(), options } })
   await w.findAll('.field-toggle')[1].trigger('click')
@@ -70,6 +71,9 @@ it.each([
   const w = mount(component, { props: { catalogId: 'cat', draft: declaration, schema: createSchema(), options } })
   try {
     if (expand && component === BuilderFamilies) await w.get('.pim-definition-toggle').trigger('click')
+    const opener = w.findAll('button').find(b => b.text() === label)!
+    expect(w.find(`input[placeholder="${placeholder}"]`).exists()).toBe(false)
+    await opener.trigger('click')
     const input = w.get(`input[placeholder="${placeholder}"]`)
     const add = w.findAll('button').find(b => b.text() === label)!
     const before = JSON.stringify(declaration)
@@ -85,6 +89,8 @@ it.each([
     expect(add.attributes('disabled')).toBeUndefined()
     await input.trigger('keydown', { key: 'Enter' })
     expect(JSON.stringify(declaration)).not.toBe(before)
-    expect((input.element as HTMLInputElement).value).toBe('')
+    expect(w.find(`input[placeholder="${placeholder}"]`).exists()).toBe(false)
+    await w.findAll('button').find(b => b.text() === label)!.trigger('click')
+    expect((w.get(`input[placeholder="${placeholder}"]`).element as HTMLInputElement).value).toBe('')
   } finally { w.unmount() }
 })

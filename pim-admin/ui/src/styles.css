@@ -67,6 +67,7 @@
 .pim-stack.tight { gap: 8px; }
 .pim-attr-row:hover { background: var(--kx-overlay-hover); }
 .pim-add-row { padding: 12px 14px; gap: 8px; }
+.pim-add-editor { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .pim-add-code-error { flex-basis: 100%; margin: 0; color: var(--p-message-error-color); }
 .pim-level { padding: 10px 12px; border: 1px solid var(--p-content-border-color); border-radius: 10px; }
 .pim-level-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
@@ -96,7 +97,7 @@
 .pim-bsection-head h3, .pim-aspect-head h3, .pim-column-group h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--p-text-muted-color); }
 .pim-f .p-inputtext, .pim-f .p-textarea, .pim-f .p-select, .pim-f .p-inputnumber { width: 100%; min-width: 0; }
 .pim-add-row { display: flex; flex-wrap: wrap; }
-.pim-add-row .p-inputtext { max-width: 220px; }
+.pim-add-editor .p-inputtext { width: min(210px, 100%); min-width: 0; }
 .pim-json-edit { width: 100%; }
 
 kickside-pim-catalog-settings { display: block; height: 100%; min-height: 0; }

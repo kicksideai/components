@@ -104,7 +104,7 @@ it('names family field group, variation, and requirement controls', async () => 
     await settingsTab(wrapper, 'Families')
     await wrapper.get('.pim-definition-toggle').trigger('click')
     await render(page, wrapper.html())
-    expect(await page.getByRole('group', { name: 'Field groups', exact: true }).count()).toBe(1)
+    expect(await page.getByRole('combobox', { name: 'Field groups', exact: true }).count()).toBe(1)
     for (const name of ['Distinguish variants by', 'Other fields edited here', 'Required', 'Entered for this context', 'Locale']) {
       expect(await page.getByRole('combobox', { name, exact: true }).count()).toBe(1)
     }
