@@ -42,7 +42,7 @@ modules:
       version: 0.2.24
       hash: c1e42fd386cf9fa085d35918b28627a74fd90cdd14f9369d3e7924f3fe31e511
     - name: kickside/work
-      version: 0.1.26
+      version: 0.1.30
     - name: kickside/work-planning
       version: 0.0.0
     - name: kickside/workflows
