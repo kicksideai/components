@@ -102,6 +102,9 @@ function M.compile(decl: types.StateDecl, fields: { [string]: types.Field }): er
             local f = fields[timer.at_field]
             if not f or f.form ~= "time" or f.cardinality ~= "one" then return invalid("timer_field_invalid", "at_field names a single time field") end
         end
+        if timer.future ~= nil and (type(timer.future) ~= "boolean" or not timer.at_field) then
+            return invalid("timer_deadline_invalid", "future is boolean on an at_field timer")
+        end
         if timer.by then
             if not fields[timer.by] or type(timer.table) ~= "table" or next(timer.table) == nil then return invalid("timer_lookup_invalid", "timer by names a field and a duration table") end
             for _, value in pairs(timer.table) do local err = duration(value); if err then return err end end

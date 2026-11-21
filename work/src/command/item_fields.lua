@@ -53,10 +53,11 @@ local function value_steps(board: domain.Board, item_type: domain.ItemType, doc:
         if not f or not allowed[key] then
             return nil, M.invalid("unknown_field", "item type " .. item_type.id .. " has no field " .. key, key)
         end
-        local edit = rules.field_edit(board, f, authority)
+        local edit = rules.field_edit(board, f, authority, op.op == "transition")
         if edit == "field_denied" then return nil, M.result("denied", M.FREE, edit, "field " .. key .. " is denied", key) end
         if edit == "read_only" then
             if f.type == "counter" then return nil, M.invalid("invalid_value", "field " .. key .. " is assigned by the board", key) end
+            if f.transition_only then return nil, M.invalid("transition_field_required", "field " .. key .. " is written by transitions", key) end
             return nil, M.invalid(edit, "field " .. key .. " is computed", key)
         end
         if touched[key] then return nil, M.invalid("duplicate_field", "field " .. key .. " is written twice", key) end

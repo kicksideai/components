@@ -39,7 +39,7 @@ A transition with `people: false` is reserved for the process engine and board A
 
 ## Agent pipelines
 
-The Agent Queue pack composes a principal field, an absolute time field and a process timer. Its `claim` edge enters the claimed state with both fields present. `renew` re-enters that state on a new visit. The timer releases the current visit and clears the two fields. Workers use the item version from their last successful mutation as `expect_version` for their next mutation. A superseded version yields `version_mismatch`.
+The Agent Queue pack declares `claimant` and `claim_expires_at` as `transition_only` fields, so ordinary edits cannot change or clear them. `claim` enters the claimed state with both fields present. `renew` re-enters that state on a new visit. Its `at_field` timer has `future: true`, requiring the deadline to be later than the visit's entry time. Expiry releases the current visit and clears both fields. Workers cooperate under board WRITE and use the version from their last successful mutation as `expect_version` for their next mutation. A superseded version yields `version_mismatch`.
 
 WorkReport and WorkApply use the same report rules. A checkpoint supplies `kind: progress` and a `progress` object, omits `outcome` and `outputs`, and requires a command key. WorkApply takes the key on its batch. A terminal report supplies `outcome` (`passed`, `failed`, or `canceled`), omits `kind`, and can include `outputs` and a final `progress` object. WorkReport returns a request error for invalid report forms. WorkApply returns the same code and message in the operation's findings.
 

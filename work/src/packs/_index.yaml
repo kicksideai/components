@@ -14,8 +14,8 @@ entries:
     schema:
       fields:
       - {code: title, form: text, title: Title}
-      - {code: claimant, type: principal, index: key, title: Claimant}
-      - {code: claim_expires_at, form: time, title: Claim expires at}
+      - {code: claimant, type: principal, index: key, title: Claimant, transition_only: true}
+      - {code: claim_expires_at, form: time, title: Claim expires at, transition_only: true}
       item_types:
       - {id: task, title: Task, process: agent_queue, fields: [title, claimant, claim_expires_at]}
     processes:
@@ -30,6 +30,7 @@ entries:
         timers:
         - id: claim_expiry
           at_field: claim_expires_at
+          future: true
           interrupting: true
           then: {transition: release}
       - {id: done, name: Done, category: completed}

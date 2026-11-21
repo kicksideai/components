@@ -144,9 +144,9 @@ function M.field(board: types.Board, field: types.Field, mode: string, doc: type
     return allowed
 end
 
-function M.field_edit(board: types.Board, field: types.Field, doc: types.Document): types.FieldEdit
+function M.field_edit(board: types.Board, field: types.Field, doc: types.Document, transitioning: boolean?): types.FieldEdit
     if not M.field(board, field, "write", doc) then return "field_denied" end
-    if field.type == "rollup" or field.type == "formula" or field.type == "rank" or field.type == "counter" then
+    if (field.transition_only and not transitioning) or field.type == "rollup" or field.type == "formula" or field.type == "rank" or field.type == "counter" then
         return "read_only"
     end
     return "editable"

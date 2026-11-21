@@ -14,6 +14,47 @@ end
 
 local function define()
     test.describe("Agent Queue pack", function()
+        test.it("owns the lease fields through claim and renew", function()
+            local admin = scoped.admin()
+            local created = assert(admin.call("create", { title = "Agent Queue", idempotency_key = "lease-ownership",
+                pack = "kickside.work.packs:agent_queue", declaration = { key_prefix = fixture.fresh_prefix() } }))
+            local board = created.board_id :: string
+            local h: fixture.Handle = { id = board, prefix = "", actor = admin.actor, executor = admin,
+                call = function(method: string, request: unknown): (unknown, error?) return admin.call(method, request, board) end }
+            local claimant = { kind = "user", id = admin.id }
+            local item = steps.create(h, "task", { title = "Run job" })
+            local past = "2000-01-01T00:00:00Z"
+            local missed = steps.one(h, { op = "transition", item = item, transition = "claim",
+                values = { claimant = claimant, claim_expires_at = past } })
+            test.eq(missed.findings and missed.findings[1].code, "timer_deadline_not_future")
+            local initial = expiry("30s")
+            test.eq(steps.one(h, { op = "transition", item = item, transition = "claim",
+                values = { claimant = claimant, claim_expires_at = initial } }).status, "applied")
+            local claimed = assert(steps.get(h, item)).item
+            for _, op in ipairs({
+                { op = "set", item = item, values = { claim_expires_at = expiry("1m") } },
+                { op = "set", item = item, values = { claimant = { kind = "user", id = scoped.member().id } } },
+                { op = "set", item = item, clear = { "claim_expires_at" } },
+            }) do
+                local refused = steps.one(h, op)
+                test.eq(refused.findings[1].code, "transition_field_required")
+            end
+            test.eq(steps.one(h, { op = "set", item = item, values = { title = "Changed" } }).status, "applied")
+            local missed_renewal = steps.one(h, { op = "transition", item = item, transition = "renew",
+                values = { claim_expires_at = past } })
+            test.eq(missed_renewal.findings[1].code, "timer_deadline_not_future")
+            local extended = expiry("1m")
+            test.eq(steps.one(h, { op = "transition", item = item, transition = "renew",
+                values = { claim_expires_at = extended } }).status, "applied")
+            local stale = steps.one(h, { op = "timer", item = item, state = "claimed", timer = "claim_expiry",
+                visit = claimed.visit, scheduled_at = initial })
+            test.eq(stale.status, "unchanged")
+            local renewed = assert(steps.get(h, item)).item
+            test.is_true(renewed.visit > claimed.visit)
+            test.eq(renewed.values.claim_expires_at, extended)
+            test.eq(renewed.values.claimant.id, admin.id)
+        end)
+
         test.it("admits exactly one claimant, releases a crashed claim and fences the old winner", function()
             local admin = scoped.admin()
             local created, err = admin.call("create", { title = "Agent Queue", idempotency_key = "queue",
