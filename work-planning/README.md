@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Work Planning
 
-Work Planning requires `kickside/work` 0.1.32 or newer for command-owned sprint
-closure and state-restricted sprint references.
+Work Planning requires `kickside/work` 0.1.33 or newer for command-owned sprint
+closure, state-restricted sprint references, and stock-board adoption.
 
 Install `kickside.work.planning:pack` through Work pack plan and apply. On a new
 board, Work board creation can install it in the same request. Installation
@@ -58,3 +58,18 @@ return the standard Work HTTP envelope.
   `rollover_id`.
 - `POST /work/sprints/close` accepts the preview's unchanged `snapshot` and
   `token` with a `key`.
+
+## Require prepared closure on a retained stock board
+
+A board administrator can review the stock Planning pack's retained sprint
+process with `POST /work/sprints/plan_adoption` and the `board_id`.
+The review reports counts by held process generation, state, and lifecycle.
+It includes live and restorable sprints. A changed close rule or incompatible
+held generation reports the conflicting schema path.
+
+Pass the eligible result's unchanged `review` and `token` with a unique
+`key` to `POST /work/sprints/apply_adoption`. A board or pack change requires
+a new review. Retrying the same review and key returns the original receipt.
+Work records the adoption as one schema generation. Existing sprints keep
+their process generation and history, and milestones keep ordinary closure.
+Sprint closure then uses Planning's preview and commit.

@@ -23,6 +23,22 @@ entries:
     output_schemas:
     - format: application/schema+json
       definition: &close_output '{"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object"}},"applied":{"type":"boolean"},"seq":{"type":"integer","minimum":0},"as_of":{"type":"integer","minimum":0},"replayed":{"type":"boolean"}},"required":["outcomes","applied"],"additionalProperties":false}'
+  - name: plan_adoption
+    description: Review whether a board using the legacy stock Planning pack can require prepared sprint closure.
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255}},"required":["board_id"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"status":{"type":"string","enum":["eligible","ineligible","already_adopted"]},"cohorts":{"type":"array","items":{"type":"object"}},"conflict":{"type":"object"},"review":{"type":"object"},"token":{"type":"string"}},"required":["status"],"additionalProperties":false}'
+  - name: apply_adoption
+    description: Apply the unchanged review with its token and an idempotency key under live board ADMIN.
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"review":{"type":"object"},"token":{"type":"string","minLength":1,"maxLength":512},"key":{"type":"string","minLength":1,"maxLength":255}},"required":["review","token","key"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"generation":{"type":"integer","minimum":1},"class":{"type":"string"},"changes":{"type":"array","items":{"type":"object"}},"seq":{"type":"integer","minimum":1},"as_of":{"type":"integer","minimum":1},"replayed":{"type":"boolean"}},"required":["generation","class","changes"],"additionalProperties":false}'
 - name: sprints_binding
   kind: contract.binding
   contracts:
@@ -31,6 +47,8 @@ entries:
     methods:
       plan_close: kickside.work.planning:plan_close
       close: kickside.work.planning:close
+      plan_adoption: kickside.work.planning:plan_adoption
+      apply_adoption: kickside.work.planning:apply_adoption
 - name: plan_close
   kind: function.lua
   meta:
@@ -81,3 +99,31 @@ entries:
   method: prepare_close
   modules: [funcs, hash, security]
   imports: *sprint_imports
+- name: legacy_sprint_close_adoption
+  kind: registry.entry
+  meta: { type: kickside.work.transition_adoption, private: true }
+  data:
+    pack: kickside.work.planning:pack
+    base_digest: ab038d236b798e211aa66d1657e3dc9d7cede68e29f986faa9b0577b356ba635
+    plugin: kickside.work.planning:plugin
+    item_type: sprint
+    process: planning_period
+    transition: close
+    command: kickside.work.planning:prepare_close
+    fields: [name, planning_start, planning_end, planning_goal, current_sprint]
+- name: plan_adoption
+  kind: function.lua
+  source: file://sprints.lua
+  method: plan_adoption
+  modules: [funcs, hash, security]
+  imports: *sprint_imports
+  security:
+    policies: [kickside.work.planning:adopt_sprint_close]
+- name: apply_adoption
+  kind: function.lua
+  source: file://sprints.lua
+  method: apply_adoption
+  modules: [funcs, hash, security]
+  imports: *sprint_imports
+  security:
+    policies: [kickside.work.planning:adopt_sprint_close]

@@ -32,6 +32,8 @@ entries:
     - kickside.work.planning:sprints
     - kickside.work.planning:plan_close
     - kickside.work.planning:close
+    - kickside.work.planning:plan_adoption
+    - kickside.work.planning:apply_adoption
     actions: [registry.get, registry.find]
     effect: allow
 - name: module_runtime
@@ -47,10 +49,14 @@ entries:
     - kickside.work.planning:sprints
     - kickside.work.planning:plan_close
     - kickside.work.planning:close
+    - kickside.work.planning:plan_adoption
+    - kickside.work.planning:apply_adoption
     - kickside.work.planning:adopt_fields
     - kickside.work.planning:sprints_binding
     - kickside.work.api.sprints:plan_close
     - kickside.work.api.sprints:close
+    - kickside.work.api.sprints:plan_adoption
+    - kickside.work.api.sprints:apply_adoption
     actions: [contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
     effect: allow
 - name: member_endpoints
@@ -61,7 +67,23 @@ entries:
     resources:
     - kickside.work.api.sprints:plan_close.endpoint
     - kickside.work.api.sprints:close.endpoint
+    - kickside.work.api.sprints:plan_adoption.endpoint
+    - kickside.work.api.sprints:apply_adoption.endpoint
     actions: access
+    effect: allow
+- name: adopt_sprint_close
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers: ['kickside.work.planning:plan_adoption', 'kickside.work.planning:apply_adoption']
+  policy:
+    resources:
+    - kickside.work.service:plan_transition_adoption
+    - kickside.work.service:apply_transition_adoption
+    - kickside.work.planning:legacy_sprint_close_adoption
+    - kickside.work.planning:prepare_close
+    actions: [funcs.call, registry.get]
     effect: allow
 - name: user_security_scope
   kind: ns.requirement
