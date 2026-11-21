@@ -298,6 +298,12 @@ function M.find(): ({ string }?, error?)
     return ids, nil
 end
 
+function M.lifecycle_error(err: error): types.PluginLifecycleError
+    local detail = err:details()
+    return { kind = err:kind(), code = detail.code :: string?, message = tostring(err), field = detail.field :: string?,
+        projection = detail.projection :: string?, start_seq = detail.start_seq :: integer?, max_pruned_seq = detail.max_pruned_seq :: integer? }
+end
+
 type ProjectionStates = (types.Plugin, types.PluginIntent?) -> ({ [string]: types.PluginProjectionState }?, error?)
 
 -- list reports installed and active plugins whose metadata the caller can read.
@@ -333,7 +339,7 @@ function M.list(states: { [string]: types.PluginIntent }?, membership: { [string
             if lerr then
                 local details = lerr:details()
                 entry.problem = { code = details.code :: string, message = tostring(lerr), field = details.field :: string? }
-                if active then entry.lifecycle = { state = "failed", error = { kind = lerr:kind(), code = details.code :: string?, message = tostring(lerr) } } end
+                if active then entry.lifecycle = { state = "failed", error = M.lifecycle_error(lerr) } end
             end
             if projections and p and active and not lerr then
                 local live, perr = projections(p, state)
@@ -358,8 +364,22 @@ function M.merged(p: types.Plugin, app: types.JsonObject, own: types.JsonObject?
     for k, v in pairs(app) do config[k] = v end
     for k, v in pairs(own or {}) do config[k] = v end
     local err = shape.check(shape.tolerant(p.config_schema), config, p.id .. " config")
-    if err then return nil, errors.new({ kind = errors.INVALID, retryable = false, message = tostring(err),
-        details = { code = "plugin_config_invalid", plugin = p.id, field = "config" } }) end
+    if err then
+        local field: string? = nil
+        local message = tostring(err)
+        local required = p.config_schema.required
+        if type(required) == "table" then
+            for _, name in ipairs(required :: { unknown }) do
+                if type(name) == "string" and config[name] == nil then
+                    field = name
+                    message = "A required plugin setting is missing."
+                    break
+                end
+            end
+        end
+        return nil, errors.new({ kind = errors.INVALID, retryable = false, message = message,
+            details = { code = "plugin_config_invalid", plugin = p.id, field = field } })
+    end
     return config, nil
 end
 
@@ -402,8 +422,12 @@ function M.admit(compiled: types.Compiled, previous: types.Compiled?): error?
             end
         end
     end
+    compiled.seam_owners = {}
+    for seam_id, owner in pairs(owners) do
+        if active[owner] and not conflicts[seam_id] then compiled.seam_owners[seam_id] = owner end
+    end
     local function seam(id: string): error?
-        local owner = owners[id]
+        local owner = owners[id] or (previous and previous.seam_owners and previous.seam_owners[id])
         if conflicts[id] then
             return invalid("schema names a seam claimed by multiple plugins",
                 { code = "plugin_seam_conflict", seam = id, plugin = owner, conflicting_plugin = conflicts[id] })

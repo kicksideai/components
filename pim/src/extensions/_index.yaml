@@ -6,7 +6,7 @@ entries:
   - name: plugin_attachments
     kind: library.lua
     source: file://plugin_attachments.lua
-    modules: [hash]
+    modules: [hash, registry]
     imports:
       values: kickside.pim.domain:values
       component_types: kickside.component:types

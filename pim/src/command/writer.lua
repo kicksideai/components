@@ -27,6 +27,7 @@ local values = require("values")
 local defaults = require("defaults")
 local scopes = require("scopes")
 local plugins = require("plugins")
+local attachments = require("attachments")
 local links = require("links")
 local types = require("types")
 local failure = require("failure")
@@ -178,6 +179,14 @@ local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_
     if cerr or not next_compiled then return nil, cerr end
     local aerr = plugins.admit(next_compiled, prev)
     if aerr then return nil, aerr end
+    if catalog then
+        for id, intent in pairs(catalog.plugin_state) do
+            if intent.active and intent.attachment_id and not next_compiled.plugins[id] then
+                local cleanup_err = attachments.check_cleanup(intent.attachment_id)
+                if cleanup_err then return nil, cleanup_err end
+            end
+        end
+    end
     if prev then
         local herr = terms.check_hierarchy_change(db, catalog_id, prev.vocabularies, next_compiled.vocabularies)
         if herr then return nil, herr end
