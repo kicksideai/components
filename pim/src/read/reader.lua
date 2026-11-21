@@ -320,17 +320,8 @@ local function add_plugin_references(catalog_id: string, views: { types.PluginOp
         for owner in pairs(affected) do refs[owner].fields[#refs[owner].fields + 1] = code end
     end
     for scope in pairs(compiled.scopes) do
-        local owner = owners[scope]
-        if owner then
-            local ref = refs[owner]
-            if ref then ref.scopes[#ref.scopes + 1] = scope end
-        else
-            local installed, scope_err = registry.find({ [".id"] = scope, [".kind"] = "registry.entry", ["meta.type"] = "kickside.pim.scope" })
-            if scope_err then return scope_err end
-            if not installed or not installed[1] then
-                for _, ref in pairs(refs) do ref.scopes[#ref.scopes + 1] = scope end
-            end
-        end
+        local ref = refs[owners[scope]]
+        if ref then ref.scopes[#ref.scopes + 1] = scope end
     end
     for family, definition in pairs(compiled.families) do
         for _, check in ipairs(definition.checks) do

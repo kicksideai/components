@@ -6,7 +6,7 @@ entries:
     kind: library.lua
     source: file://lifecycle_audit_fixture.lua
     modules: [json]
-    imports: {types: 'kickside.pim:types', store: 'kickside.pim.persist:store'}
+    imports: {types: 'kickside.pim:types', store: 'kickside.pim.persist:store', plugins: 'kickside.pim.extensions:plugins'}
   - name: lifecycle_audit_probe
     kind: library.lua
     source: file://lifecycle_audit_probe.lua
@@ -37,7 +37,7 @@ entries:
   - name: attachment_audit_probe
     kind: library.lua
     source: file://attachment_audit_probe.lua
-    modules: [hash]
+    modules: [hash, registry]
     imports:
       registration: kickside.component.binding:child_registration
       component: app:lifecycle_audit_component
@@ -216,7 +216,7 @@ entries:
   - name: r3_attachments
     kind: library.lua
     source: file://r3_attachments.lua
-    modules: [hash]
+    modules: [hash, registry]
     imports:
       registration: app:r3_creation_store
       component: kickside.component:component

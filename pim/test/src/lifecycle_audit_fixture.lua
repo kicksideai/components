@@ -2,7 +2,8 @@
 local types=require("types")
 local store=require("store")
 local json=require("json")
-local M={}
+local plugins=require("plugins")
+local M={lifecycle_error=plugins.lifecycle_error}
 local mode=""
 local current: types.Catalog
 local removed=0
