@@ -95,7 +95,8 @@ available inside the expanded family. Family variation axes are single-value fie
 with no dimensions and a value form other than text or record. Each field can
 be assigned to one variation level. Other unassigned fields can still be
 owned by a level.
-Field pickers show the display name, with muted group text when options share a name.
+Field pickers follow catalog field group and field order. They show the display
+name, with muted group text when options share a name.
 
 Fields uses keyboard-operable arrow buttons to reorder fields within a group.
 The actions column shows only moves that are available. Focus stays on the

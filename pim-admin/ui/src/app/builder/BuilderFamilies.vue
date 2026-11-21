@@ -73,9 +73,10 @@ function attributesOf(family: FamilyDecl) {
 function variationOptions(family: FamilyDecl, level: VariationDecl, kind: 'axes' | 'own') {
   const selected = level[kind] ?? []
   const claimed = new Set(levels(family).flatMap(other => [...(other.axes ?? []), ...(other.own ?? [])]))
-  const available = attributesOf(family).filter(code => !claimed.has(code) && (kind === 'own' || fieldsByCode.value.get(code)))
-  // Selected fields can be removed even after a change to their field group or type.
-  return fieldOptions(available, selected)
+  const options = attributesOf(family).filter(code => selected.includes(code) ||
+    (!claimed.has(code) && (kind === 'own' || fieldsByCode.value.get(code))))
+  // Keep chips for selections outside the family's current field groups removable.
+  return fieldOptions(options, selected)
 }
 const channels = computed(() => props.draft.channels ?? [])
 function channelsFor(family: FamilyDecl, requirement?: string) {
