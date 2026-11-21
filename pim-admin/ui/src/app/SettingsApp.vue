@@ -2,28 +2,30 @@
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { useProps, useEvents, useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
-import CatalogShare from './CatalogShare.vue'
 import SchemaBuilder from './builder/SchemaBuilder.vue'
 import { requestGeneration } from '../shared/requests'
 import { pim } from '../api'
-const props = useProps<{ catalogId?: string; embedded?: boolean }>()
-const emit = useEvents<{ navigate: { route: string }; 'dirty-changed': { dirty: boolean } }>()
-const title = ref('')
+import type { CatalogRow, CatalogSettingsEvents } from '../types'
+const props = useProps<{ catalogId?: string; embedded?: boolean; focusBack?: boolean }>()
+const emit = useEvents<CatalogSettingsEvents>()
+const catalog = ref<CatalogRow>()
 const catalogId = computed(() => props.value.catalogId ?? '')
 const reads = requestGeneration()
-async function loadTitle() {
+async function loadCatalog() {
   const current = reads.begin(), id = catalogId.value
   try {
-    const catalog = await pim.catalogSummary(id)
-    if (reads.current(current)) title.value = catalog?.title || 'Untitled catalog'
-  } catch { if (reads.current(current)) title.value = '' }
+    const result = await pim.catalogSummary(id)
+    if (reads.current(current)) catalog.value = result
+  } catch { if (reads.current(current)) catalog.value = undefined }
 }
-watch(catalogId, () => { title.value = ''; void loadTitle() })
-useHostVisibilityRefresh(loadTitle)
+watch(catalogId, () => { catalog.value = undefined; void loadCatalog() })
+useHostVisibilityRefresh(loadCatalog)
 onUnmounted(() => { reads.begin() })
+function leaveSettings() {
+  if (props.value.embedded) emit('open-catalog-picker', {})
+  else emit('navigate', { route: '' })
+}
 </script>
 <template>
-  <SchemaBuilder v-if="catalogId" :key="catalogId" :catalog-id="catalogId" :title="title || 'Catalog'" :embedded="props.embedded" :back-label="props.embedded ? undefined : 'Back to catalog settings'" @back="emit('navigate', { route: '' })" @dirty-changed="emit('dirty-changed', { dirty: $event })">
-    <template #actions="{ access }"><CatalogShare v-if="access?.admin" :catalog-id="catalogId" :title="title || 'Catalog'" /></template>
-  </SchemaBuilder>
+  <SchemaBuilder v-if="catalogId" :key="catalogId" :catalog-id="catalogId" :title="catalog?.title || 'Catalog'" :catalog="catalog" :embedded="props.embedded" :focus-back="props.focusBack" :back-label="props.embedded ? 'Back to catalogs' : 'Back to catalog settings'" @back="leaveSettings" @dirty-changed="emit('dirty-changed', { dirty: $event })" />
 </template>

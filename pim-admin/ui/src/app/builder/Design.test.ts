@@ -19,10 +19,7 @@ for (const [name, component] of [['dimensions', BuilderDimensions], ['families',
   it(`keeps ${name} definitions collapsed until the row opens`, async () => {
     const w = mount(component, { props: { catalogId: 'cat', draft: draft(), schema: createSchema(), options } })
     expect(w.find('.pim-definition-body').exists()).toBe(false)
-    for (const list of w.findAll('.form')) {
-      if (!list.find('.pim-definition').exists()) continue
-      expect(list.element.lastElementChild?.classList.contains('pim-add-row')).toBe(true)
-    }
+    expect(w.find('.pim-add-row').exists()).toBe(true)
     expect(w.get('.pim-definition-toggle').attributes('aria-expanded')).toBe('false')
     await w.get('.pim-definition-toggle').trigger('click')
     expect(w.get('.pim-definition-toggle').attributes('aria-expanded')).toBe('true')
@@ -60,14 +57,14 @@ it('limits field reorder shortcuts to the row header while its form is open', as
 })
 
 it.each([
-  [BuilderFields, 'Field code', 'Add field', ' name ', true],
-  [BuilderFields, 'Field group code', 'Add field group', ' core ', false],
-  [BuilderDimensions, 'Dimension code', 'Add dimension', ' locale ', false],
-  [BuilderVocabularies, 'Vocabulary code', 'Add vocabulary', ' colors ', false],
-  [BuilderFamilies, 'Family code', 'Add family', ' apparel ', false],
-  [BuilderFamilies, 'Requirement code', 'Add requirement', ' ready ', true],
-  [BuilderChannels, 'Channel code', 'Add channel', ' web ', false],
-  [BuilderChannels, 'Source code', 'Add source', ' feed ', false],
+  [BuilderFields, 'Field name', 'Add field', ' name ', true],
+  [BuilderFields, 'Field group name', 'Add field group', ' core ', false],
+  [BuilderDimensions, 'Dimension name', 'Add dimension', ' locale ', false],
+  [BuilderVocabularies, 'Vocabulary name', 'Add vocabulary', ' colors ', false],
+  [BuilderFamilies, 'Family name', 'Add family', ' apparel ', false],
+  [BuilderFamilies, 'Requirement name', 'Add requirement', ' ready ', true],
+  [BuilderChannels, 'Channel name', 'Add channel', ' web ', false],
+  [BuilderChannels, 'Source name', 'Add source', ' feed ', false],
 ] as const)('explains a duplicate for %s (%s) and blocks both click and Enter', async (component, placeholder, label, duplicate, expand) => {
   const declaration = reactive({ ...draft(), families: [{ code: 'apparel', aspects: ['core'], requirements: [{ id: 'ready' }] }] })
   const w = mount(component, { props: { catalogId: 'cat', draft: declaration, schema: createSchema(), options } })

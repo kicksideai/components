@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+import { settingsTab } from '../test/settings-navigation'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import SelectButton from 'primevue/selectbutton'
@@ -19,7 +20,7 @@ beforeEach(() => {
 })
 it('refreshes the layout on return and notifications while preserving a dirty layout', async () => {
   const w = mount(LayoutEditor, { props: { catalogId: 'cat' } }); await flushPromises()
-  await w.findAll('[role=tab]').find(b => b.text() === 'Form layout')!.trigger('click')
+  await settingsTab(w, 'Form layout')
   const before = vi.mocked(pim.schema).mock.calls.length
   events.get('component.cat')?.(); await flushPromises()
   expect(pim.schema).toHaveBeenCalledTimes(before + 1)

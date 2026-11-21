@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+import { closeTechnicalSchema, openTechnicalSchema, settingsTab } from '../../test/settings-navigation'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { host } from '@wippy-fe/proxy'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -20,8 +21,9 @@ beforeEach(() => {
 })
 it('shows a planning transport failure as an error (M18)', async () => {
   const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } }); await flushPromises()
-  await w.findAll('[role=tab]').find(b => b.text() === 'Declaration')!.trigger('click')
+  await openTechnicalSchema(w)
   await w.get('textarea').setValue('{"aspects":[{"namespace":"other"}]}'); await w.get('textarea').trigger('blur')
+  await closeTechnicalSchema(w)
   vi.mocked(pim.planSchema).mockRejectedValue(new Error('Network offline'))
   await w.findAll('button').find(b => b.text() === 'Review changes')!.trigger('click'); await flushPromises()
   expect(w.get('[role=alert]').text()).toContain('Network offline'); expect(w.text()).not.toContain('Refused:'); w.unmount()
@@ -59,7 +61,7 @@ it('sends initial plugin configuration with the reviewed activation', async () =
   vi.mocked(pim.applySchema).mockResolvedValue({generation:2,class:'additive'})
   const w = mount(SchemaBuilder, {props:{catalogId:'cat'}})
   await flushPromises()
-  await w.findAll('[role=tab]').find(b=>b.text()==='Plugins & scopes')!.trigger('click')
+  await settingsTab(w, 'Plugins')
   const plugins = w.getComponent(BuilderPlugins)
   plugins.props('draft').plugins = [{use:'stock'}]
   plugins.props('pluginConfigs')!.stock = {hold_seconds:120}
@@ -67,7 +69,7 @@ it('sends initial plugin configuration with the reviewed activation', async () =
   await w.findAll('button').find(b=>b.text()==='Review changes')!.trigger('click')
   await flushPromises()
   expect(pim.planSchema).toHaveBeenLastCalledWith('cat', expect.objectContaining({plugins:[{use:'stock'}]}), schema.schema_generation, {stock:{hold_seconds:120}})
-  await w.findAll('button').find(b=>b.text()==='Apply')!.trigger('click')
+  await w.findAll('button').find(b=>b.text()==='Apply changes')!.trigger('click')
   await flushPromises()
   expect(pim.applySchema).toHaveBeenLastCalledWith('cat', expect.objectContaining({plugins:[{use:'stock'}]}), schema.schema_generation, {stock:{hold_seconds:120}})
   w.unmount()
@@ -81,7 +83,7 @@ it('configures an active plugin without applying its schema draft', async () => 
   vi.mocked(pim.configurePlugin).mockResolvedValue({seq:3})
   const w=mount(SchemaBuilder,{props:{catalogId:'cat'}})
   await flushPromises()
-  await w.findAll('[role=tab]').find(b=>b.text()==='Plugins & scopes')!.trigger('click')
+  await settingsTab(w, 'Plugins')
   const plugins=w.getComponent(BuilderPlugins)
   plugins.props('draft').policy={trash_days:45}
   plugins.vm.$emit('configure','stock',{hold_seconds:180})
@@ -110,8 +112,11 @@ it('preserves unsaved active configuration when applying a schema review', async
   vi.mocked(pim.applySchema).mockResolvedValue({ generation: 1, class: 'unchanged' })
   const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } }); await flushPromises()
   const vm = w.vm as unknown as { review: () => Promise<void>; apply: () => Promise<void>; pluginConfigs: Record<string, unknown> }
+  await settingsTab(w, 'Plugins')
+  w.getComponent(BuilderPlugins).props('draft').aspects![0].attributes![0].width = 'half'
   vm.pluginConfigs.stock = { enabled: false }; await flushPromises()
   await vm.review(); await vm.apply(); await flushPromises()
+  expect(pim.applySchema).toHaveBeenLastCalledWith('cat', expect.objectContaining({ aspects: expect.any(Array) }), 1, {})
   expect(vm.pluginConfigs.stock).toEqual({ enabled: false })
   w.unmount()
 })
@@ -123,16 +128,17 @@ it('opens an empty catalog in the schema editor and applies its first definition
   vi.mocked(pim.applySchema).mockResolvedValue({ generation: 2, class: 'additive' })
   const w = mount(SchemaBuilder, { props: { catalogId: 'new', embedded: true } })
   await flushPromises()
-  expect(w.text()).toContain('Generation 1')
-  expect(w.text()).toContain('Define its schema')
+  expect(w.text()).not.toMatch(/generation 1/i)
+  expect(w.text()).toContain('Set up products')
   expect(w.find('.p-message-error').exists()).toBe(false)
   expect(w.find('fieldset').attributes('disabled')).toBeUndefined()
-  await w.findAll('[role=tab]').find(b => b.text() === 'Declaration')!.trigger('click')
+  await openTechnicalSchema(w)
   const declaration = { aspects: [{ namespace: 'core', attributes: [{ code: 'name', type: 'kickside.pim.types:text' }] }] }
   await w.get('textarea').setValue(JSON.stringify(declaration)); await w.get('textarea').trigger('blur')
+  await closeTechnicalSchema(w)
   await w.findAll('button').find(b => b.text() === 'Review changes')!.trigger('click'); await flushPromises()
   expect(pim.planSchema).toHaveBeenLastCalledWith('new', declaration, 1, {})
-  await w.findAll('button').find(b => b.text() === 'Apply')!.trigger('click'); await flushPromises()
+  await w.findAll('button').find(b => b.text() === 'Apply changes')!.trigger('click'); await flushPromises()
   expect(pim.applySchema).toHaveBeenLastCalledWith('new', declaration, 1, {})
   w.unmount()
 })

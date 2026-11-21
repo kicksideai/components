@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { flushPromises, mount } from '@vue/test-utils'
 import { chromium, type Browser, type Page } from 'playwright'
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest'
+import { settingsTab } from '../test/settings-navigation'
 import { pim } from '../api'
 import { attribute, createSchema, pluginFixture } from '../test/fixtures'
 import type { SchemaOptions } from '../types'
@@ -10,7 +11,7 @@ import SchemaBuilder from './builder/SchemaBuilder.vue'
 
 vi.mock('../api', () => ({ pim: { schema: vi.fn(), schemaOptions: vi.fn() } }))
 
-const css = ['shared/base.css', 'shared/settings.css', 'styles.css']
+const css = ['../.wippy/npm/@kickside/ui-kit/kx-head.css', '../.wippy/npm/@kickside/ui-kit/kx-settings-rail.css', 'shared/base.css', 'shared/page-head.css', 'shared/settings.css', 'styles.css']
   .map(file => readFileSync(`src/${file}`, 'utf8').replace(/^@import .*;$/gm, ''))
   .join('\n')
 const options: SchemaOptions = {
@@ -30,16 +31,17 @@ async function render(page: Page, html: string) {
   await page.setContent(`<style>${css} body { margin: 0; }</style>${html}`)
 }
 
-it('wraps an unbroken catalog heading within the embedded settings header', async () => {
+it('wraps an unbroken catalog heading within the embedded settings rail', async () => {
   const title = 'Northstar'.repeat(20)
-  const wrapper = mount(SchemaBuilder, { props: { catalogId: 'cat', title, embedded: true } })
+  const wrapper = mount(SchemaBuilder, { props: { catalogId: 'cat', title, embedded: true, backLabel: 'All catalogs' } })
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
   try {
     await flushPromises()
     await render(page, wrapper.html())
-    const header = page.locator('.pim-detail-head')
-    const heading = header.getByRole('heading', { name: title })
-    expect(await header.evaluate(el => el.scrollWidth)).toBeLessThanOrEqual(390)
+    const rail = page.getByRole('navigation', { name: 'Catalog settings sections' })
+    expect(await rail.getByRole('button').first().innerText()).toBe('All catalogs')
+    const heading = rail.getByText(title, { exact: true })
+    expect(await rail.evaluate(el => el.scrollWidth)).toBeLessThanOrEqual(390)
     expect(await heading.evaluate(el => {
       const text = document.createRange()
       text.selectNodeContents(el)
@@ -63,13 +65,15 @@ it('associates field labels with their controls in each open row', async () => {
   const page = await browser.newPage()
   try {
     await flushPromises()
+    await settingsTab(wrapper, 'Fields')
     for (const toggle of wrapper.findAll('.field-toggle')) await toggle.trigger('click')
+    for (const toggle of wrapper.findAll('.pim-field-advanced .kx-disclosure-toggle')) await toggle.trigger('click')
     await render(page, wrapper.html())
     const rows = page.locator('.pim-definition-body')
     for (const [i, code] of ['name', 'description'].entries()) {
       const row = rows.nth(i)
-      expect(await row.getByRole('textbox', { name: 'Code', exact: true }).inputValue({ timeout: 1500 })).toBe(code)
-      for (const name of ['Type', 'Values', 'Index']) {
+      expect(await row.getByRole('textbox', { name: 'Integration key', exact: true }).inputValue({ timeout: 1500 })).toBe(code)
+      for (const name of ['Type', 'Values', 'Search and filters']) {
         expect(await row.getByRole('combobox', { name, exact: true }).count()).toBe(1)
       }
       expect(await row.getByRole('group', { name: 'Width', exact: true }).count()).toBe(1)
@@ -77,8 +81,8 @@ it('associates field labels with their controls in each open row', async () => {
       expect(await row.getByRole('switch', { name: 'Unique', exact: true }).count()).toBe(1)
     }
     expect(await rows.first().getByRole('combobox', { name: 'Locale', exact: true }).count()).toBe(1)
-    expect(await rows.first().getByRole('textbox', { name: 'Code', exact: true }).getAttribute('id'))
-      .not.toBe(await rows.last().getByRole('textbox', { name: 'Code', exact: true }).getAttribute('id'))
+    expect(await rows.first().getByRole('textbox', { name: 'Integration key', exact: true }).getAttribute('id'))
+      .not.toBe(await rows.last().getByRole('textbox', { name: 'Integration key', exact: true }).getAttribute('id'))
   } finally {
     wrapper.unmount()
     await page.close()
@@ -97,11 +101,11 @@ it('names family field group, variation, and requirement controls', async () => 
   const page = await browser.newPage()
   try {
     await flushPromises()
-    await wrapper.findAll('[role=tab]').find(tab => tab.text() === 'Families')!.trigger('click')
+    await settingsTab(wrapper, 'Families')
     await wrapper.get('.pim-definition-toggle').trigger('click')
     await render(page, wrapper.html())
     expect(await page.getByRole('group', { name: 'Field groups', exact: true }).count()).toBe(1)
-    for (const name of ['Axes', 'Also owned here', 'Required', 'Authored', 'Locale']) {
+    for (const name of ['Distinguish variants by', 'Other fields edited here', 'Required', 'Entered for this context', 'Locale']) {
       expect(await page.getByRole('combobox', { name, exact: true }).count()).toBe(1)
     }
   } finally {
@@ -122,18 +126,22 @@ it('names the dimension, channel, and source controls with their visible labels'
   try {
     await flushPromises()
     async function openSection(name: string) {
-      await wrapper.findAll('[role=tab]').find(tab => tab.text() === name)!.trigger('click')
+      await settingsTab(wrapper, name)
       for (const toggle of wrapper.findAll('.pim-definition-toggle')) await toggle.trigger('click')
       await render(page, wrapper.html())
     }
     await openSection('Dimensions')
-    expect.soft(await page.getByRole('textbox', { name: 'Members', exact: true }).count()).toBe(1)
+    expect.soft(await page.getByRole('textbox', { name: 'Allowed values', exact: true }).count()).toBe(1)
     expect.soft(await page.getByRole('group', { name: 'en falls back to', exact: true }).count()).toBe(1)
-    await openSection('Channels & sources')
-    for (const name of ['Requirements', 'Families', 'Writes', 'People and service accounts']) {
+    await openSection('Channels')
+    for (const name of ['Release requirements', 'Families']) {
       expect.soft(await page.getByRole('group', { name, exact: true }).count()).toBe(1)
     }
-    expect.soft(await page.getByRole('combobox', { name: 'Ordering', exact: true }).count()).toBe(1)
+    await openSection('Sources')
+    for (const name of ['Field groups it can update', 'People and service accounts']) {
+      expect.soft(await page.getByRole('group', { name, exact: true }).count()).toBe(1)
+    }
+    expect.soft(await page.getByRole('combobox', { name: 'Handle incoming updates', exact: true }).count()).toBe(1)
     expect.soft(await page.getByRole('switch', { name: 'Audit', exact: true }).count()).toBe(1)
   } finally {
     wrapper.unmount()
@@ -166,18 +174,18 @@ it('uses registry titles and readable field and filter labels in summaries', asy
   const wrapper = mount(SchemaBuilder, { props: { catalogId: 'cat', title: 'Apparel' } })
   try {
     await flushPromises()
-    const openTab = (name: string) => wrapper.findAll('[role=tab]').find(tab => tab.text() === name)!.trigger('click')
-    await openTab('Form layout')
+    await settingsTab(wrapper, 'Form layout')
     expect(wrapper.get('.pim-lcard.fixed').text()).toContain('Warehouse bin label')
     expect(wrapper.get('.pim-lcard.fixed').text()).not.toContain('app:')
-    await openTab('Plugins & scopes')
-    for (const toggle of wrapper.findAll('.pim-definition-toggle')) await toggle.trigger('click')
-    expect(wrapper.text()).toContain('Fields: Bin label.')
+    await settingsTab(wrapper, 'Plugins')
+    for (const toggle of wrapper.findAll('.pim-definition-toggle[aria-expanded="false"]')) await toggle.trigger('click')
+    expect(wrapper.text()).toContain('Adds fields for Bin label.')
     expect(wrapper.text()).toContain('Background update: Paused')
-    expect(wrapper.text()).toContain('plugin_projection_invalid')
     expect(wrapper.text()).toContain('Available units · Greater than, At least, Less than, At most, Equals')
     expect(wrapper.text()).toContain('Warehouse location · Equals, Is one of')
     expect(wrapper.text()).not.toMatch(/warehouse\.bin_label|available_units|warehouse_location|app:availability_projection/)
+    await wrapper.get('.pim-plugin-recovery .kx-disclosure-toggle').trigger('click')
+    expect(wrapper.get('.pim-plugin-recovery .pim-error-code').text()).toContain('plugin_projection_invalid')
   } finally { wrapper.unmount() }
 })
 
@@ -192,9 +200,11 @@ it.each([
   const page = await browser.newPage()
   try {
     await flushPromises()
+    await settingsTab(wrapper, 'Fields')
     await wrapper.get('.field-toggle').trigger('click')
+    await wrapper.get('.pim-field-advanced .kx-disclosure-toggle').trigger('click')
     await render(page, `<main style="background:${background}; --p-text-muted-color:${muted}">${wrapper.html()}</main>`)
-    const ratio = await page.getByText('renames keep values', { exact: true }).evaluate(note => {
+    const ratio = await page.getByText('renaming keeps stored values', { exact: true }).evaluate(note => {
       const canvas = document.createElement('canvas')
       canvas.width = canvas.height = 1
       const ctx = canvas.getContext('2d')!

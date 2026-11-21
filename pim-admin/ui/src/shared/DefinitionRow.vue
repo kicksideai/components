@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { computed, inject } from 'vue'
+import { computed, inject, useId } from 'vue'
 import InteractiveSurface from './InteractiveSurface.vue'
 import Tag from 'primevue/tag'
 import { Icon } from '@iconify/vue'
@@ -11,13 +11,14 @@ const columns = inject(definitionColumns, computed(() => [
   ...(props.code ? ['code' as const] : []), ...(props.kind ? ['kind' as const] : []),
 ]))
 const open = defineModel<boolean>('open', { default: false })
+const bodyId = useId()
 const emit = defineEmits<{ 'head-keydown': [event: KeyboardEvent]; 'head-drop': [event: DragEvent]; 'head-dragover': [event: DragEvent] }>()
 </script>
 <template>
   <section class="pim-definition">
     <header class="pim-definition-head" :class="headClass" @keydown="emit('head-keydown', $event)" @drop="emit('head-drop', $event)" @dragover="emit('head-dragover', $event)">
-      <InteractiveSurface class="pim-definition-toggle" :class="toggleClass" :aria-expanded="open" @click="open = !open">
-        <span class="pim-definition-lead" data-column="lead"><slot name="handle" /><Icon :icon="open ? 'tabler:chevron-down' : 'tabler:chevron-right'" aria-hidden="true" /></span>
+      <InteractiveSurface class="pim-definition-toggle" :class="toggleClass" :aria-expanded="open" :aria-controls="open ? bodyId : undefined" @click="open = !open">
+        <span class="pim-definition-lead" data-column="lead"><slot name="handle" /><Icon icon="tabler:chevron-right" class="pim-definition-chevron" aria-hidden="true" /></span>
         <span class="pim-row-title" data-column="name">{{ title }}</span>
         <span class="pim-definition-meta">
           <span v-for="column in columns" :key="column" :class="'pim-definition-' + column" :data-column="column">
@@ -30,6 +31,6 @@ const emit = defineEmits<{ 'head-keydown': [event: KeyboardEvent]; 'head-drop': 
       </InteractiveSurface>
       <div class="pim-definition-actions" data-column="actions"><slot name="actions" /></div>
     </header>
-    <div v-if="open" class="pim-definition-body"><slot /></div>
+    <Transition name="pim-expand"><div v-if="open" :id="bodyId" class="pim-definition-body"><slot /></div></Transition>
   </section>
 </template>

@@ -26,7 +26,10 @@ for (const width of [1500, 1100]) for (const component of builders) for (const r
   it(`aligns ${component.__name} columns at ${width}px with a ${rail}px settings rail`, async () => {
     const page = await browser.newPage({ viewport: { width, height: 1000 } })
     const { draft, options } = definitionFixtures()
-    const wrapper = mount(component, { props: { catalogId: 'cat', draft, schema: createSchema(), options } })
+    const wrapper = mount(component, {
+      props: { catalogId: 'cat', draft, schema: createSchema(), options },
+      global: { stubs: { transition: false } },
+    })
     try {
       for (const list of wrapper.findAll('.pim-definition-list')) await list.get('.pim-definition-toggle').trigger('click')
       await page.setContent('<div id="host"></div>')
@@ -80,8 +83,8 @@ for (const width of [1500, 1100]) for (const component of builders) for (const r
           expect(row[column]).toBeGreaterThan(0)
         }
         if (rows[0].kind !== undefined) {
-          expect(rows[0].kind).toBeGreaterThan(rows[0].code)
-          expect(rows[0].code).toBeGreaterThan(rows[0].name)
+          expect(rows[0].kind).toBeGreaterThan(rows[0].code ?? rows[0].name)
+          if (rows[0].code !== undefined) expect(rows[0].code).toBeGreaterThan(rows[0].name)
         }
       }
     } finally { wrapper.unmount(); await page.close() }
@@ -132,9 +135,17 @@ it('fits hierarchical terms and their actions at 390px with long codes', async (
     const panel = await page.locator('.pim-terms').boundingBox()
     const row = page.getByRole('listitem')
     const label = await row.getByText('Night blue', { exact: true }).boundingBox()
-    const termCode = await row.getByText(code, { exact: true }).boundingBox()
+    const parent = await row.getByText('Parent: Blue', { exact: true }).boundingBox()
+    expect(await row.getByText(code, { exact: true }).count()).toBe(0)
+    const keys = wrapper.get('.pim-ia-disclosure .kx-disclosure-toggle')
+    expect(keys.attributes('aria-expanded')).toBe('false')
+    await keys.trigger('click')
+    expect(keys.attributes('aria-expanded')).toBe('true')
+    await page.setContent(`<style>${css}</style><main style="margin-inline:16px">${wrapper.html()}</main>`)
+    const termCode = await page.getByText(code, { exact: true }).boundingBox()
+    expect(termCode!.x + termCode!.width).toBeLessThanOrEqual(panel!.x + panel!.width)
     const action = await row.getByRole('button', { name: 'Retire', exact: true }).boundingBox()
-    expect(label!.y).toBeLessThan(termCode!.y)
+    expect(label!.y).toBeLessThan(parent!.y)
     expect(action!.x + action!.width).toBeLessThanOrEqual(panel!.x + panel!.width)
   } finally { wrapper.unmount(); await page.close() }
 })

@@ -3,7 +3,7 @@
 import { nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 
 const props = defineProps<{ visible: boolean; label: string; busy?: boolean }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; closed: [] }>()
 const dialog = ref<HTMLDialogElement | null>(null)
 let opener: HTMLElement | null = null
 async function sync() {
@@ -17,6 +17,8 @@ async function sync() {
   } else if (!props.visible && element.open) {
     element.close()
     opener?.focus()
+    await Promise.allSettled(element.getAnimations?.().map(animation => animation.finished) ?? [])
+    if (!props.visible) emit('closed')
   }
 }
 function cancel(event: Event) {
@@ -29,7 +31,7 @@ onBeforeUnmount(() => { if (dialog.value?.open) dialog.value.close(); opener?.fo
 </script>
 
 <template>
-  <dialog ref="dialog" class="native-dialog" :aria-label="label" aria-modal="true" :aria-busy="busy || undefined" @cancel="cancel" @close="() => { if (visible && !busy) emit('close') }">
+  <dialog ref="dialog" class="native-dialog" :aria-label="label" aria-modal="true" :aria-busy="busy || undefined" @cancel="cancel">
     <slot />
   </dialog>
 </template>

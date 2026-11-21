@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "specification": "wippy-component-1.0",
   "title": "KickSide PIM administration",
-  "description": "Catalog schemas, vocabularies, policy and plugins for KickSide PIM.",
+  "description": "Product setup, allowed values, publishing, access and plugins for KickSide PIM catalogs.",
   "browser": "dist/admin.js",
   "files": [
     "dist/",
@@ -12,7 +12,7 @@
   ],
   "type": "module",
   "dependencies": {
-    "@kickside/ui-kit": "^1.7.2",
+    "@kickside/ui-kit": "^1.7.5",
     "@wippy-fe/theme": "0.0.70",
     "@wippy-fe/webcomponent-core": "0.0.70",
     "@wippy-fe/webcomponent-vue": "0.0.70",
@@ -42,7 +42,7 @@
   "wippy": {
     "tagName": "kickside-pim-admin",
     "type": "component",
-    "description": "Mount kickside-pim-admin without props in KickSide System settings. The signed-in operator can search the catalogs they administer and load further result pages on demand. Selecting a catalog opens its settings to edit schemas, vocabularies, plugins, and policy or review change history. The host supplies the PIM API and loads the catalog settings component.",
+    "description": "Mount kickside-pim-admin without props in KickSide System settings. The signed-in operator can search the catalogs they administer and load further result pages on demand. Selecting a catalog opens its overview and settings for products, values, channels, sharing and plugins. The operator reviews draft impact before applying changes. The host supplies the PIM API and loads the catalog settings component.",
     "props": {
       "type": "object",
       "properties": {}

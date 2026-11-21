@@ -66,9 +66,8 @@ entries:
     base_path: kickside-pim-admin
     entry_point: admin.js
     icon: tabler:packages
-    description: Catalog schema administration for KickSide PIM - attributes, families,
-      plugins and the declaration with plan and apply - mounted on the System page
-      for catalog administrators.
+    description: Search and create PIM catalogs from the System page. Select a catalog
+      to open its administration settings.
     props: {}
 - name: catalog_settings
   kind: registry.entry
@@ -81,9 +80,9 @@ entries:
     base_path: kickside-pim-admin
     entry_point: settings.js
     icon: tabler:settings
-    description: Catalog fields, families, dimensions, vocabularies, channels, plugins
-      and policy with one draft reviewed before apply. Embedded mode fits inside a
-      System detail pane.
+    description: Open a catalog overview, product setup, allowed values, publishing,
+      sharing and plugins. Review draft changes before applying. Embedded mode fits
+      inside a System detail pane.
   props:
     type: object
     properties:
@@ -95,7 +94,14 @@ entries:
         type: boolean
         default: false
         description: Displays a detail header within an existing System surface.
+      focus-back:
+        type: boolean
+        default: false
+        description: Focus the back arrow when the settings are opened from the picker.
   events:
+    open-catalog-picker:
+      type: object
+      description: Request the catalog picker from the embedded System surface.
     dirty-changed:
       type: object
       properties:

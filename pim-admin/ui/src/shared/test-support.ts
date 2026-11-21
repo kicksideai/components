@@ -13,11 +13,15 @@ vi.mock('@wippy-fe/proxy', () => ({
   loadByTagName: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('@wippy-fe/webcomponent-vue', async () => {
-  const { onMounted } = await import('vue')
+  const { onMounted, shallowRef } = await import('vue')
   return {
     useProps: vi.fn(() => hostProps),
     useEvents: () => hostEmit,
-    useHostVisibilityRefresh: (task: () => Promise<void>) => { visibility.task = task; onMounted(task) },
+    useHostVisibilityRefresh: (task: () => Promise<void>) => {
+      visibility.task = task
+      onMounted(task)
+      return shallowRef(true)
+    },
   }
 })
 vi.mock('@iconify/vue', () => ({ Icon: { template: '<span />' } }))

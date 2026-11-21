@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import AdminError from '../../shared/AdminError.vue'
 import Tag from 'primevue/tag'
 import AddSchemaCode from './AddSchemaCode.vue'
@@ -71,6 +72,10 @@ function toggle(code: string) {
 function form(code: string) {
   return term.value[code] ?? (term.value[code] = { code: '', label: '', parent: '' })
 }
+function parentLabel(code: string, parent: string) {
+  const entry = terms.value[code]?.find(t => t.code === parent)
+  return entry ? label(entry) : humanize(parent)
+}
 function parentOptions(code: string) {
   return [{ value: '', label: 'No parent' }, ...(terms.value[code] ?? [])
     .filter(t => !t.retired).map(t => ({ value: t.code, label: label(t) }))]
@@ -123,12 +128,12 @@ async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
 </script>
 
 <template>
-  <DefinitionList :count="vocabs.length" :columns="['code', 'details']">
-    <DefinitionRow :title="humanize(v.code)" :code="v.code" v-for="v in vocabs" :key="v.code">
+  <DefinitionList :count="vocabs.length" :columns="['details']">
+    <DefinitionRow :title="humanize(v.code)" v-for="v in vocabs" :key="v.code">
       <template #details><span class="muted small">{{ v.hierarchical ? 'Hierarchical' : 'Flat' }}</span></template>
       <template #actions><Button v-if="canEdit" type="button" :aria-label="'Remove ' + humanize(v.code)" @click="remove(v)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
       <div class="pim-aspect">
-        <label class="row small"><ToggleSwitch :disabled="!canEdit" :aria-label="'Hierarchical ' + v.code" :model-value="v.hierarchical === true" @update:model-value="$event ? (v.hierarchical = true) : delete v.hierarchical" /><span>Hierarchical</span></label>
+        <label class="row small"><ToggleSwitch :disabled="!canEdit" :aria-label="'Hierarchical ' + humanize(v.code)" :model-value="v.hierarchical === true" @update:model-value="$event ? (v.hierarchical = true) : delete v.hierarchical" /><span>Hierarchical</span></label>
         <Button v-if="declared(v.code)" type="button" @click="toggle(v.code)" severity="secondary" outlined size="small"><Icon icon="tabler:adjustments" aria-hidden="true" /> {{ open[v.code] ? 'Hide terms' : 'Terms' }}</Button>
         <span v-else-if="canEdit" class="muted small">Apply the schema before adding terms.</span>
         <div v-if="open[v.code]" class="pim-stack tight pim-terms">
@@ -141,16 +146,16 @@ async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
           </template>
           <div v-if="(terms[v.code] ?? []).length" class="pim-responsive-table">
             <table class="pim-grid compact" aria-label="Vocabulary terms">
-              <thead><tr><th>Code</th><th>Label</th><th v-if="v.hierarchical">Parent</th><th v-if="canEdit"></th></tr></thead>
+              <thead><tr><th>Term</th><th v-if="v.hierarchical">Parent</th><th v-if="canEdit"></th></tr></thead>
               <tbody><tr v-for="t in terms[v.code]" :key="t.code" :class="{ muted: t.retired }">
-                <td class="mono">{{ t.code }}</td><td>{{ label(t) }} <Tag v-if="t.retired" severity="secondary" value="Retired" /></td><td v-if="v.hierarchical" class="mono muted">{{ t.parent ?? '' }}</td>
+                <td>{{ label(t) }} <Tag v-if="t.retired" severity="secondary" value="Retired" /></td><td v-if="v.hierarchical" class="muted">{{ t.parent ? parentLabel(v.code, t.parent) : '—' }}</td>
                 <td v-if="canEdit" class="num"><Button type="button" :disabled="!canWrite || busy(v.code)" @click="retire(v, t, !t.retired)" text severity="secondary" size="small">{{ t.retired ? 'Restore' : 'Retire' }}</Button></td>
               </tr></tbody>
             </table>
             <ul role="list" class="pim-stacked-list" aria-label="Vocabulary terms">
               <li v-for="t in terms[v.code]" :key="t.code" class="pim-stacked-row" :class="{ muted: t.retired }">
                 <div>{{ label(t) }} <Tag v-if="t.retired" severity="secondary" value="Retired" /></div>
-                <div class="pim-stacked-meta muted small"><span class="mono">{{ t.code }}</span><span v-if="v.hierarchical && t.parent">Parent: {{ t.parent }}</span></div>
+                <div v-if="v.hierarchical && t.parent" class="pim-stacked-meta muted small">Parent: {{ parentLabel(v.code, t.parent) }}</div>
                 <Button v-if="canEdit" type="button" :disabled="!canWrite || busy(v.code)" @click="retire(v, t, !t.retired)" text severity="secondary" size="small">{{ t.retired ? 'Restore' : 'Retire' }}</Button>
               </li>
             </ul>
@@ -161,16 +166,21 @@ async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
             <Button type="button" :disabled="busy(v.code) || !cursors[v.code]" @click="loadTerms(v.code, cursors[v.code])" severity="secondary" outlined size="small"><Icon icon="tabler:chevron-right" aria-hidden="true" /> Next terms</Button>
           </div>
           <div v-if="canEdit" class="row wrap pim-add-row">
-            <InputText v-model="form(v.code).code" :disabled="!canWrite || busy(v.code)" type="text" placeholder="code" class="mono narrow" />
-            <InputText v-model="form(v.code).label" :disabled="!canWrite || busy(v.code)" type="text" placeholder="Label (en)" />
+            <InputText v-model="form(v.code).label" :disabled="!canWrite || busy(v.code)" aria-label="Term name in English" type="text" placeholder="Term name" />
+            <InputText v-model="form(v.code).code" :disabled="!canWrite || busy(v.code)" type="text" aria-label="Short term name" placeholder="Short name for imports" class="narrow" />
             <Select v-if="v.hierarchical" v-model="form(v.code).parent" :disabled="!canWrite || busy(v.code)" class="narrow" aria-label="Parent term" placeholder="No parent" :options="parentOptions(v.code)" option-label="label" option-value="value" appendTo="self" />
             <Button type="button" :disabled="!canWrite || busy(v.code) || !TERM_CODE.test(form(v.code).code)" @click="addTerm(v)" severity="secondary" outlined size="small"><Icon icon="tabler:plus" aria-hidden="true" /> Add term</Button>
           </div>
+          <Disclosure class="pim-ia-disclosure" label="Integration keys">
+            <dl v-if="(terms[v.code] ?? []).length" class="pim-config-overrides">
+              <template v-for="t in terms[v.code]" :key="t.code"><dt>{{ label(t) }}</dt><dd><code>{{ t.code }}</code></dd></template>
+            </dl>
+          </Disclosure>
         </div>
       </div>
     </DefinitionRow>
     <template v-if="canEdit" #add>
-      <AddSchemaCode label="Vocabulary code" action="Add vocabulary" :existing="vocabs.map(v => v.code)" @add="add">
+      <AddSchemaCode label="Vocabulary name" from-name action="Add vocabulary" :existing="vocabs.map(v => v.code)" @add="add">
         <span class="muted small">Select fields pick their values from a vocabulary's terms.</span>
       </AddSchemaCode>
     </template>

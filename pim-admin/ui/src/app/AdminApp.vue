@@ -1,14 +1,15 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import InteractiveSurface from '../shared/InteractiveSurface.vue'
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, useId, watch } from 'vue'
 import { host, on } from '@wippy-fe/proxy'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { componentMetaEvent } from '@kickside/ui-kit/componentRealtime'
 import { requestGeneration } from '../shared/requests'
 import Button from 'primevue/button'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
-import Tag from 'primevue/tag'
+import ListRail from '@kickside/ui-kit/ListRail.vue'
 import AdminError from '../shared/AdminError.vue'
 import { presentError } from '../shared/transport'
 import { Icon } from '@iconify/vue'
@@ -17,18 +18,56 @@ import type { CatalogRow } from '../types'
 import { ensureTag } from './mount'
 import CreateCatalog from './CreateCatalog.vue'
 
-const ready = ref(false), creating = ref(false)
-void ensureTag('kickside-pim-catalog-settings').then(value => { ready.value = value })
-async function created(id: string) { await load(); await selectCatalog(id) }
-const catalogs = ref<CatalogRow[]>()
-const selected = ref('')
-const dirty = ref(false)
-async function selectCatalog(id: string) {
-  if (id === selected.value) return
-  if (dirty.value && !await host.confirm({ header: 'Discard unsaved changes?', message: 'Switching catalogs will discard unsaved schema and plugin changes.', acceptLabel: 'Discard and switch', rejectLabel: 'Cancel' })) return
-  dirty.value = false
-  selected.value = id
+const ready = ref(false), loadingSettings = ref(false), creating = ref(false)
+const confirming = ref(false), dirty = ref(false)
+const focusBack = ref(false)
+const selected = ref(''), currentCatalog = ref('')
+const detail = ref<HTMLElement>(), list = ref<HTMLUListElement>(), searchField = ref<HTMLElement>()
+let offerDirectOpen = true
+
+async function loadSettings() {
+  loadingSettings.value = true
+  try { ready.value = await ensureTag('kickside-pim-catalog-settings') }
+  finally { loadingSettings.value = false }
 }
+void loadSettings()
+async function created(id: string) {
+  creating.value = false
+  selectCatalog(id)
+  if (query.value) {
+    search.value = ''
+    await nextTick()
+  }
+  await load()
+}
+function selectCatalog(id: string, focus = true) {
+  offerDirectOpen = false
+  focusBack.value = focus
+  if (focus) detail.value?.focus({ preventScroll: true })
+  currentCatalog.value = selected.value = id
+}
+async function backToCatalogs() {
+  if (confirming.value) return
+  if (dirty.value) {
+    confirming.value = true
+    try {
+      if (!await host.confirm({ header: 'Discard unsaved changes?', message: 'Returning to catalogs will discard unsaved settings and plugin changes.', acceptLabel: 'Discard changes', rejectLabel: 'Keep editing' })) return
+    } finally { confirming.value = false }
+  }
+  dirty.value = false
+  selected.value = ''
+  await nextTick()
+  const target = list.value?.querySelector<HTMLButtonElement>('[aria-current="true"]') ?? searchField.value?.querySelector('input')
+  target?.focus()
+}
+function createCatalog() {
+  offerDirectOpen = false
+  creating.value = true
+}
+function defaults() { host.navigate('/system/settings') }
+const catalogMetaId = useId()
+const catalogs = ref<CatalogRow[]>()
+const directoryCount = ref<number>()
 function dirtyChanged(event: Event) { dirty.value = (event as CustomEvent<{ dirty: boolean }>).detail.dirty }
 
 const search = ref('')
@@ -50,7 +89,18 @@ async function load(after?: number, text = query.value || undefined) {
     const admins = page.catalogs.filter(c => c.access.admin)
     catalogs.value = after == null ? admins : [...(catalogs.value ?? []), ...admins]
     next.value = page.after
-    if (!text && next.value == null && selected.value && !catalogs.value.some(c => c.catalog_id === selected.value)) selected.value = ''
+    if (!text && next.value == null) {
+      directoryCount.value = catalogs.value.length
+      if (currentCatalog.value && !catalogs.value.some(c => c.catalog_id === currentCatalog.value)) {
+        currentCatalog.value = selected.value = ''
+        dirty.value = false
+      }
+      if (offerDirectOpen) {
+        offerDirectOpen = false
+        const only = catalogs.value[0]
+        if (catalogs.value.length === 1 && only) selectCatalog(only.catalog_id, false)
+      }
+    }
   } catch (e) {
     if (reads.current(generation)) failed.value = { error: presentError(e, 'Could not load catalogs.'), after, text }
   }
@@ -61,6 +111,7 @@ function retry() {
   if (request) void load(request.after, request.text)
 }
 watch(query, () => {
+  offerDirectOpen = false
   reads.begin()
   clearTimeout(searchTimer)
   catalogs.value = undefined
@@ -81,32 +132,56 @@ useHostVisibilityRefresh(load)
 onUnmounted(() => { unsubscribe(); clearTimeout(searchTimer); reads.begin() })
 </script>
 <template>
-  <div class="pim-system">
-    <aside class="pim-rail" aria-label="Catalogs">
-      <div class="pim-railhead"><h2>Catalogs <Tag v-if="catalogs" severity="secondary" :value="String(catalogs.length)" /></h2>
-        <Button text size="small" aria-label="Create catalog" @click="creating = true"><Icon icon="tabler:plus" /></Button>
-      </div>
-      <InputText v-model="search" class="pim-rail-search" type="search" aria-label="Find a catalog" placeholder="Find a catalog…" />
-      <div class="pim-rail-list">
-        <InteractiveSurface v-for="c in catalogs" :key="c.catalog_id" class="pim-rail-row" :class="{ active: selected === c.catalog_id }" :aria-pressed="selected === c.catalog_id" @click="selectCatalog(c.catalog_id)">
-          <span>{{ c.title || 'Untitled catalog' }}</span>
-        </InteractiveSurface>
-      </div>
-      <AdminError v-if="query && failed" :error="failed.error" class="pim-rail-error">
-        <Button type="button" severity="secondary" outlined size="small" @click="retry">Retry</Button>
+  <main class="kx-shell pim-system" :class="{ 'pim-catalog-selected': selected }">
+    <ListRail v-if="!selected" class="pim-catalog-picker" title="Catalogs" :count="directoryCount ?? catalogs?.length">
+      <template #actions>
+        <Button type="button" text aria-label="Create catalog" title="Create catalog" @click="createCatalog">
+          <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
+        </Button>
+        <Button type="button" text aria-label="Application defaults" title="Application defaults" @click="defaults">
+          <template #icon><Icon icon="tabler:settings" aria-hidden="true" /></template>
+        </Button>
+      </template>
+      <template #toolbar>
+        <div ref="searchField" class="picker-search">
+          <IconField>
+            <InputIcon><Icon icon="tabler:search" aria-hidden="true" /></InputIcon>
+            <InputText type="search" v-model="search" class="picker-search-input" aria-label="Search catalogs" placeholder="Search catalogs…" />
+            <Button v-if="search" type="button" text severity="secondary" class="picker-search-clear" aria-label="Clear search" @click="search = ''; searchField?.querySelector('input')?.focus()">
+              <template #icon><Icon icon="tabler:x" aria-hidden="true" /></template>
+            </Button>
+          </IconField>
+        </div>
+      </template>
+      <AdminError v-if="failed" :error="failed.error">
+        <Button label="Retry" type="button" severity="secondary" outlined size="small" @click="retry" />
       </AdminError>
-      <div v-else-if="query && loading" class="small muted" role="status">Searching catalogs…</div>
-      <div v-else-if="query && catalogs?.length === 0 && next == null" class="small muted" role="status">No matching catalogs.</div>
-      <Button v-if="next != null" type="button" :disabled="loading || !!failed" @click="load(next)" severity="secondary" outlined size="small"><Icon icon="tabler:chevron-right" aria-hidden="true" /> Load more catalogs</Button>
-    </aside>
-    <main class="pim-system-main">
-      <AdminError v-if="!query && failed" :error="failed.error" class="pim-list-error">
-        <Button type="button" severity="secondary" outlined size="small" @click="retry">Retry</Button>
-      </AdminError>
-      <kickside-pim-catalog-settings v-if="selected && ready" :key="selected" :catalog-id="selected" embedded="true" @dirty-changed="dirtyChanged" />
-      <div v-else-if="loading" class="kx-loading" role="status">Loading catalogs…</div>
-      <div v-else-if="!failed && catalogs" class="kx-empty"><Icon icon="tabler:settings" class="kx-empty-ico" /><h3 class="kx-empty-title">Catalog settings</h3><p class="kx-empty-sub">Select a catalog to edit its schema, plugins and policy.</p></div>
-    </main>
+      <p v-else-if="loading" class="kx-loading" role="status">{{ query ? 'Searching catalogs…' : 'Loading catalogs…' }}</p>
+      <h2 v-if="catalogs?.length" class="picker-group">Available</h2>
+      <ul v-if="catalogs?.length" ref="list" class="picker-list">
+        <li v-for="catalog in catalogs" :key="catalog.catalog_id">
+          <button type="button" class="picker-row pim-catalog-row"
+            :aria-describedby="catalogMetaId + '-' + catalog.catalog_id"
+            :aria-current="currentCatalog === catalog.catalog_id ? 'true' : undefined" @click="selectCatalog(catalog.catalog_id)">
+            <span class="picker-name">{{ catalog.title || 'Untitled catalog' }}</span>
+            <span :id="catalogMetaId + '-' + catalog.catalog_id" class="picker-row-description">{{ typeof catalog.product_count === 'number' ? catalog.product_count + (catalog.product_count === 1 ? ' product' : ' products') : 'Product count unavailable' }}</span>
+          </button>
+        </li>
+      </ul>
+      <p v-if="!failed && !loading && query && !catalogs?.length && next == null" class="picker-message" role="status">No catalogs match. Try another name.</p>
+      <Button v-if="next != null" label="Load more catalogs" type="button" :disabled="loading || !!failed" @click="load(next)" severity="secondary" outlined size="small" />
+    </ListRail>
+    <section ref="detail" class="pim-system-main" aria-label="Catalog settings detail" tabindex="-1">
+      <kickside-pim-catalog-settings v-if="selected && ready" :key="selected" :catalog-id="selected" embedded="true" :focus-back="String(focusBack)"
+        @open-catalog-picker="backToCatalogs" @dirty-changed="dirtyChanged" />
+      <p v-else-if="selected && loadingSettings" class="kx-loading" role="status">Loading catalog settings…</p>
+      <p v-else-if="selected" class="kx-err" role="alert">Catalog settings are unavailable.<Button label="Back to catalogs" severity="secondary" text @click="backToCatalogs" /><Button label="Retry" severity="secondary" outlined @click="loadSettings" /></p>
+      <div v-else-if="catalogs && !failed" class="kx-empty">
+        <Icon class="kx-empty-ico" icon="tabler:adjustments" aria-hidden="true" />
+        <h2 class="kx-empty-title">{{ directoryCount === 0 ? 'No catalogs yet' : 'Choose a catalog' }}</h2>
+        <p class="kx-empty-sub">{{ directoryCount === 0 ? 'Create a catalog to set up families, fields, channels and access.' : 'Select a catalog to manage its families, fields, channels and access.' }}</p>
+      </div>
+    </section>
     <CreateCatalog :visible="creating" @close="creating = false" @created="created" />
-  </div>
+  </main>
 </template>

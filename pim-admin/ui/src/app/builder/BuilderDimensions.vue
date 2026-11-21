@@ -27,8 +27,8 @@ function add(name: string) {
 // the engine refuses to drop a dimension they use, so the builder says so first.
 function usedBy(d: DimensionDecl): string[] {
   const out: string[] = []
-  for (const a of props.draft.aspects ?? []) for (const x of a.attributes ?? []) if (x.scope?.includes(d.name)) out.push(a.namespace + '.' + x.code)
-  for (const f of props.draft.families ?? []) for (const r of f.requirements ?? []) if (r.context && d.name in r.context) out.push(f.code + ' requirement ' + r.id)
+  for (const a of props.draft.aspects ?? []) for (const x of a.attributes ?? []) if (x.scope?.includes(d.name)) out.push(`${humanize(x.code)} (${humanize(a.namespace)})`)
+  for (const f of props.draft.families ?? []) for (const r of f.requirements ?? []) if (r.context && d.name in r.context) out.push(`${humanize(r.id)} (${humanize(f.code)})`)
   return out
 }
 function remove(d: DimensionDecl) {
@@ -53,16 +53,16 @@ function setFallback(d: DimensionDecl, m: string, list: string[]) {
 </script>
 
 <template>
-  <DefinitionList :count="dims.length" :columns="['code', 'details', 'usage']">
-    <DefinitionRow :title="humanize(d.name)" :code="d.name" v-for="d in dims" :key="d.name" :usage="usedBy(d).length + (usedBy(d).length === 1 ? ' dependency' : ' dependencies')">
-      <template #details><span class="muted small">{{ d.members.length }} {{ d.members.length === 1 ? 'member' : 'members' }}</span></template>
+  <DefinitionList :count="dims.length" :columns="['details', 'usage']">
+    <DefinitionRow :title="humanize(d.name)" v-for="d in dims" :key="d.name" :usage="usedBy(d).length ? 'Used in ' + usedBy(d).length + ' places' : 'Unused'">
+      <template #details><span class="muted small">{{ d.members.map(humanize).join(', ') || 'No allowed values' }}</span></template>
       <template v-if="canEdit" #actions>
 
         <Button type="button" :disabled="usedBy(d).length > 0" :aria-label="'Remove ' + humanize(d.name)" :title="usedBy(d).length ? 'Take the dimension off these first' : ''" @click="remove(d)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
       <div class="pim-aspect">
         <p v-if="usedBy(d).length" class="small muted">Used by {{ usedBy(d).join(', ') }}</p>
         <div class="pim-fields">
-          <div class="pim-f pim-w-full"><div class="pim-f-label"><label :id="fieldId(d, 'members')">Members</label><span class="pim-f-note">the values this dimension takes</span></div>
+          <div class="pim-f pim-w-full"><div class="pim-f-label"><label :id="fieldId(d, 'members')">Allowed values</label><span class="pim-f-note">for example, English and French for Language</span></div>
             <ChipPicker :disabled="!canEdit" :labelledby="fieldId(d, 'members')" :model-value="d.members" free placeholder="add member" @update:model-value="setMembers(d, $event)" /></div>
           <div v-for="m in d.members" :key="m" class="pim-f pim-w-half"><div class="pim-f-label"><label :id="fieldId(d, 'fallback-' + encodeURIComponent(m))">{{ m }} falls back to</label><span class="pim-f-note">in order, when it has no value</span></div>
             <ChipPicker :disabled="!canEdit" :labelledby="fieldId(d, 'fallback-' + encodeURIComponent(m))" :model-value="fallbackOf(d, m)" :options="d.members.filter((x) => x !== m).map((x) => ({ value: x }))" @update:model-value="setFallback(d, m, $event)" /></div>
@@ -70,7 +70,7 @@ function setFallback(d: DimensionDecl, m: string, list: string[]) {
       </div>
     </DefinitionRow>
     <template v-if="canEdit" #add>
-      <AddSchemaCode label="Dimension code" action="Add dimension" :existing="dims.map(d => d.name)" @add="add">
+      <AddSchemaCode label="Dimension name" from-name action="Add dimension" :existing="dims.map(d => d.name)" @add="add">
         <span class="muted small">A dimension lets a value differ per member, with fallbacks between members.</span>
       </AddSchemaCode>
     </template>
