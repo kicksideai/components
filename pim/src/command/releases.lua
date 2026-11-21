@@ -83,8 +83,7 @@ function M.release(db: types.Executor, catalog: types.Catalog, request: types.Re
     local compiled = catalog.compiled
     local outcomes: { types.Outcome } = {}
     local events: { types.Event } = {}
-    local planned:{[string]:{release_id:string,hash:string}}={}
-    local published:{[string]:{[string]:{release_id:string,hash:string}}}={}
+    local published: { [string]: { [string]: { release_id: string, hash: string } } } = {}
     for index, item in ipairs(request.items) do
         local outcome: types.Outcome
         local expected = type(item.expect_version) == "number" and math.tointeger(item.expect_version) or nil
@@ -149,36 +148,39 @@ function M.release(db: types.Executor, catalog: types.Catalog, request: types.Re
                     outcome = { outcome = "invalid", product_id = p.product_id, findings = { { message = "release snapshot exceeds 512 KB" } } }
                 else
                     local digest = tostring(hash.sha256(text))
-                    local previous,rerr=db:query("SELECT release_id,hash FROM kickside_pim_release WHERE catalog_id=$1 AND release_id=$2",{catalog.catalog_id,p.release_id or ""})
-                    if rerr then return nil,rerr end
-                    local prior=planned[p.product_id] or (previous and previous[1])
-                    local same=prior~=nil and prior.hash==digest
-                    local release_id: string? = same and prior.release_id :: string or nil
-                    local publications,perr=db:query("SELECT p.channel,p.release_id,p.state,r.hash FROM kickside_pim_publication p LEFT JOIN kickside_pim_release r ON r.catalog_id=p.catalog_id AND r.release_id=p.release_id WHERE p.catalog_id=$1 AND p.product_id=$2",{catalog.catalog_id,p.product_id})
-                    if perr then return nil,perr end
-                    local current=published[p.product_id]
+                    local current = published[p.product_id]
                     if not current then
-                        current={}
-                        for _,pub in ipairs(publications or {}) do if pub.state=="published" then current[pub.channel :: string]={release_id=pub.release_id :: string,hash=pub.hash :: string} end end
-                        published[p.product_id]=current
+                        local publications, perr = db:query([[SELECT p.channel, p.release_id, r.hash
+                            FROM kickside_pim_publication p JOIN kickside_pim_release r
+                            ON r.catalog_id = p.catalog_id AND r.release_id = p.release_id
+                            WHERE p.catalog_id = $1 AND p.product_id = $2 AND p.state = 'published']],
+                            { catalog.catalog_id, p.product_id })
+                        if perr then return nil, perr end
+                        current = {}
+                        for _, pub in ipairs(publications or {}) do
+                            current[pub.channel :: string] = { release_id = pub.release_id :: string, hash = pub.hash :: string }
+                        end
+                        published[p.product_id] = current
                     end
-                    local unchanged=true
-                    for _,channel in ipairs(ready) do
-                        local pub=current[channel]
-                        if not pub or pub.hash~=digest then unchanged=false
-                        elseif not same then release_id=pub.release_id;same=true end
+                    local existing: string? = nil
+                    for _, channel in ipairs(ready) do
+                        local pub = current[channel]
+                        if not pub or pub.hash ~= digest then
+                            existing = nil
+                            break
+                        end
+                        existing = existing or pub.release_id
                     end
-                    if not release_id then release_id=uuid.v7() :: string end
-                    if not unchanged then
+                    local release_id = existing or uuid.v7() :: string
+                    if not existing then
                         events[#events + 1] = { type = EV.PRODUCT_RELEASED, subject = "r:" .. p.product_id,
                             body = { product_id = p.product_id, release_id = release_id, version = p.version,
                                 generation = catalog.generation, snapshot = snap, hash = digest, channels = ready } }
+                        for _, channel in ipairs(ready) do
+                            current[channel] = { release_id = release_id, hash = digest }
+                        end
                     end
-                    planned[p.product_id]={release_id=release_id,hash=digest}
-                    if not unchanged then
-                        for _,channel in ipairs(ready) do current[channel]={release_id=release_id,hash=digest} end
-                    end
-                    outcome = { outcome = unchanged and "unchanged" or "released", product_id = p.product_id, version = p.version,
+                    outcome = { outcome = existing and "unchanged" or "released", product_id = p.product_id, version = p.version,
                         findings = #blocked > 0 and blocked or nil }
                     outcome.release_id = release_id
                     outcome.hash = digest
