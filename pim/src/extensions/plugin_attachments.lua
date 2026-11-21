@@ -7,6 +7,7 @@ local creations=require("creations")
 local component_types=require("component_types")
 local envelope = require("envelope")
 local types = require("types")
+local registry = require("registry")
 local values = require("values")
 local M = {}
 
@@ -59,8 +60,39 @@ function M.ensure(catalog_id: string, plugin_id: string, generation: integer, ki
     return id, row == nil, nil
 end
 
+-- The component teardown hook is required to clear plugin-owned data.
+local function cleanup_binding(binding: string): error?
+    local entries, err = registry.find({ [".id"] = binding, [".kind"] = "contract.binding" })
+    if err then return err end
+    local entry = entries and entries[1]
+    local data = entry and entry.data
+    if type(data) == "table" then
+        local contracts = (data :: types.JsonObject).contracts
+        if type(contracts) == "table" then
+            for _, declared in ipairs(contracts :: { types.JsonObject }) do
+                if declared.contract == "kickside.contract:deletable" then return nil end
+            end
+        end
+    end
+    return errors.new({ kind = errors.UNAVAILABLE, retryable = true,
+        message = "Restore the package that provides the attachment deletion binding before deactivating this plugin.",
+        details = { code = "plugin_cleanup_unavailable", binding = binding } })
+end
+
+-- Read the exact attachment before deactivation or teardown. Once its binding
+-- is gone the component platform cannot distinguish it from a kind with no hook.
+function M.check_cleanup(id: string): error?
+    local rows, lookup_err = component.list_system({ component_ids = { id }, limit = 1 })
+    if lookup_err then return lookup_err end
+    local row = rows and rows[1]
+    if row then return cleanup_binding(row.impl_id) end
+    return nil
+end
+
 -- remove requests platform deletion once; completion belongs to the component lifecycle.
 function M.remove(id: string): error?
+    local cleanup_err = M.check_cleanup(id)
+    if cleanup_err then return cleanup_err end
     local service,serr=component.get_service()
     if serr or not service then return serr end
     local result,err=service:delete({component_id=id})

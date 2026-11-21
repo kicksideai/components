@@ -116,10 +116,13 @@ type Plugin = {
     id: string, interface_version: integer, title: string?, description: string?, icon: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?,
     projections: { PluginProjection }?, tools: { string }?, requires: { string }?, seams: { string }?,
 }
-type PluginLifecycle = { state: string, error: { kind: string, code: string?, message: string }? }
+type PluginLifecycleError = {
+    kind: string, code: string?, message: string, field: string?, projection: string?, start_seq: integer?, max_pruned_seq: integer?,
+}
+type PluginLifecycle = { state: string, error: PluginLifecycleError? }
 type PluginIntent = { removing: {string}?, projection_after: string?, active: boolean, generation: integer, seq: integer, attachment_id: string?, config: JsonObject, lifecycle: PluginLifecycle }
 type PluginProjection = { kind: string, worker_ref: string, input: string, revision: integer, events: { string } }
-type PluginProjectionState = { last_seq: integer, parked: boolean, bootstrapping: boolean, error: string? }
+type PluginProjectionState = { cursor_id: string, last_seq: integer, status: string, parked: boolean, bootstrapping: boolean, error: string? }
 -- What a provider resolves against: the catalog, the plugin's effective config
 -- and the copy the catalog holds.
 type ResolveContext = { catalog_id: string, config: JsonObject, current: PluginSchema? }
@@ -136,9 +139,10 @@ type PluginFeedRequest = { catalog_id: string, plugin: string, kind: string, tok
 -- On a gap, clear the catalog replica before applying changes and commit both with the replacement token.
 type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, gap: FeedGap?, changes: { ChangeItem }, token: string, done: boolean }
 type PluginContext = ReadStamp & { attachment_id: string?, config: JsonObject, lifecycle: PluginLifecycle, projections: { [string]: PluginProjectionState }, retention: { event_days: integer } }
+type PluginReferences = { fields: { string }, scopes: { string }, checks: { string }, plugins: { string }, shell_bindings: { string } }
 type PluginView = { plugin: string, interface_version: integer?, title: string?, description: string?, icon: string?, installed: boolean, active: boolean,
     attachment_id: string?, config: JsonObject?, requires: { string }, tools: { string }, lifecycle: PluginLifecycle,
-    projections: { [string]: PluginProjectionState }, problem: PluginProblem? }
+    projections: { [string]: PluginProjectionState }, problem: PluginProblem?, references: PluginReferences? }
 
 -- The generated layout: index columns per indexed attribute context, and one
 -- flag column per requirement set holding the item's readiness. Key and number
@@ -150,7 +154,7 @@ type Compiled = {
     policy: PolicyOverrides,
     dimensions: { Dimension }, vocabularies: { [string]: Vocabulary }, aspects: { [string]: Aspect },
     attributes: { [string]: Attribute }, families: { [string]: Family }, sources: { [string]: Source },
-    channels: { [string]: Channel }, scopes: { [string]: boolean }, plugins: { [string]: PluginEntry },
+    channels: { [string]: Channel }, scopes: { [string]: boolean }, plugins: { [string]: PluginEntry }, seam_owners: { [string]: string }?,
     layout: Layout, next_attribute_id: integer, layout_digest: string, digest: string,
     by_id: { [integer]: Attribute }?,
 }

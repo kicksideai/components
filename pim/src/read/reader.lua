@@ -22,6 +22,7 @@ local plugins = require("plugins")
 local plugin_projections = require("plugin_projections")
 local types = require("types")
 local registry = require("registry")
+local component = require("component")
 
 local M = {}
 
@@ -294,10 +295,87 @@ end
 
 -- get_schema(catalog_id) returns the active declaration and the compiled model's
 -- public parts: attributes, families, channels, dimensions and layout.
-local function plugin_views(catalog_id: string, states: { [string]: types.PluginIntent }, membership: { [string]: types.PluginEntry }): ({ types.PluginOption }?, error?)
-    return plugins.list(states, membership, function(plugin: types.Plugin, intent: types.PluginIntent?)
+local function add_plugin_references(catalog_id: string, views: { types.PluginOption }, compiled: types.Compiled): error?
+    local refs: { [string]: types.PluginReferences } = {}
+    for _, plugin in ipairs(views) do
+        if plugin.active and (not plugin.installed or plugin.problem and plugin.problem.code == "plugin_interface_version_unsupported") then
+            local reference: types.PluginReferences = { fields = {}, scopes = {}, checks = {}, plugins = {}, shell_bindings = {} }
+            refs[plugin.plugin], plugin.references = reference, reference
+        end
+    end
+    if next(refs) == nil then return nil end
+    local owners = compiled.seam_owners or {}
+    for code, attr in pairs(compiled.attributes) do
+        local affected: { [string]: boolean } = {}
+        local function mark(owner: string?)
+            if owner and refs[owner] then affected[owner] = true end
+        end
+        local function targets(config: types.AttributeConfig)
+            if config.target then mark(owners[config.target]) end
+            for _, member in pairs(config.members or {}) do targets(member) end
+        end
+        mark(compiled.aspects[attr.aspect].plugin)
+        mark(owners[attr.type])
+        targets(attr.config)
+        for owner in pairs(affected) do refs[owner].fields[#refs[owner].fields + 1] = code end
+    end
+    for scope in pairs(compiled.scopes) do
+        local owner = owners[scope]
+        if owner then
+            local ref = refs[owner]
+            if ref then ref.scopes[#ref.scopes + 1] = scope end
+        else
+            local installed, scope_err = registry.find({ [".id"] = scope, [".kind"] = "registry.entry", ["meta.type"] = "kickside.pim.scope" })
+            if scope_err then return scope_err end
+            if not installed or not installed[1] then
+                for _, ref in pairs(refs) do ref.scopes[#ref.scopes + 1] = scope end
+            end
+        end
+    end
+    for family, definition in pairs(compiled.families) do
+        for _, check in ipairs(definition.checks) do
+            local ref = refs[owners[check.fn]]
+            if ref then ref.checks[#ref.checks + 1] = family .. " · " .. check.fn end
+        end
+    end
+    for _, plugin in ipairs(views) do
+        for _, required in ipairs(plugin.requires) do
+            if plugin.active and refs[required] then refs[required].plugins[#refs[required].plugins + 1] = plugin.plugin end
+        end
+    end
+    local catalog, err = component.query({ component_ids = { catalog_id }, access_mask = component.ACCESS.READ, include = { meta = true }, limit = 1 })
+    if err then return err end
+    local row = catalog and catalog[1]
+    local binding = row and row.meta and row.meta.pim_ui_app
+    if type(binding) == "string" then
+        local owner = owners[binding]
+        if owner then
+            if refs[owner] then refs[owner].shell_bindings[1] = binding end
+        else
+            local apps, app_err = registry.find({ [".id"] = binding, [".kind"] = "registry.entry", ["meta.type"] = "kickside.pim.ui.app" })
+            if app_err then return app_err end
+            if not apps or not apps[1] then
+                for _, ref in pairs(refs) do ref.shell_bindings[1] = binding end
+            end
+        end
+    end
+    for _, ref in pairs(refs) do
+        table.sort(ref.fields)
+        table.sort(ref.scopes)
+        table.sort(ref.checks)
+        table.sort(ref.plugins)
+    end
+    return nil
+end
+
+local function plugin_views(catalog_id: string, states: { [string]: types.PluginIntent }, compiled: types.Compiled): ({ types.PluginOption }?, error?)
+    local views, err = plugins.list(states, compiled.plugins, function(plugin: types.Plugin, intent: types.PluginIntent?)
         return plugin_projections.states(catalog_id, plugin, intent)
     end)
+    if err or not views then return nil, err end
+    local refs_err = add_plugin_references(catalog_id, views, compiled)
+    if refs_err then return nil, refs_err end
+    return views, nil
 end
 function M.plugin_context(catalog_id: string, plugin: string): (types.PluginContext?, error?)
     local _, access_err = access.reader(catalog_id)
@@ -329,6 +407,7 @@ function M.get_schema(catalog_id: string, request: types.GetSchemaRequest?): (ty
     if access_err or not caller then return nil, access_err end
     local wanted = request and request.generation
     local captured: {[string]:types.PluginIntent}={}
+    local compiled: types.Compiled? = nil
     local view: types.SchemaView?, verr: error? = with_snapshot(caller, function(tx: types.Executor, catalog: types.Catalog,
         _dialect: string): (types.SchemaView?, error?)
         local g, err = store.generation(tx, catalog_id, wanted or catalog.generation)
@@ -343,15 +422,14 @@ function M.get_schema(catalog_id: string, request: types.GetSchemaRequest?): (ty
                 plugin = c.aspects[a.aspect].plugin, config = a.config, width = schema.width_of(a) }
         end
         captured=catalog.plugin_state
+        compiled=c
         return { access = { read = caller.allows("read"), write = caller.allows("write"), admin = caller.allows("admin") },
             schema_generation = wanted or catalog.generation, declaration = declaration, attributes = attributes,
             families = c.families, channels = c.channels or {},
             dimensions = c.dimensions, vocabularies = c.vocabularies, sources = c.sources, scopes = c.scopes or {}, plugins = {} }, nil
     end)
-    if verr or not view then return nil,verr end
-    local membership: {[string]:types.PluginEntry}={}
-    for _,entry in ipairs(view.declaration.plugins or {}) do membership[entry.use]=entry end
-    local views,perr=plugin_views(catalog_id,captured,membership)
+    if verr or not view or not compiled then return nil,verr end
+    local views,perr=plugin_views(catalog_id,captured,compiled)
     if perr or not views then return nil,perr end
     view.plugins=views
     return view, nil
@@ -390,7 +468,7 @@ function M.schema_options(catalog_id: string, _request: types.SchemaOptionsReque
     cerr = store.release(db, cerr)
     if cerr then return nil, cerr end
     if not catalog then return nil, failure.catalog_not_initialized() end
-    local plugin_list, perr = plugin_views(catalog_id, catalog.plugin_state, catalog.compiled.plugins)
+    local plugin_list, perr = plugin_views(catalog_id, catalog.plugin_state, catalog.compiled)
     if perr or not plugin_list then return nil, perr end
     local kinds, kerr = links.kinds()
     if kerr or not kinds then return nil, kerr end

@@ -94,6 +94,7 @@ entries:
       failure: kickside.pim:failure
       pipeline: kickside.pim.command:pipeline
       plugins: kickside.pim.extensions:plugins
+      attachments: kickside.pim.extensions:plugin_attachments
       links: kickside.pim.extensions:links
       scopes: kickside.pim.extensions:scopes
       types: kickside.pim:types

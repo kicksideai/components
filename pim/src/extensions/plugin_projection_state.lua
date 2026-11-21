@@ -8,7 +8,7 @@ local values=require("values")
 local failure=require("failure")
 local M = {}
 local PREFIX = "kickside.pim.plugin:"
-type Pair = { projection: { body: types.JsonObject }, cursor: { last_seq: integer, status: string, last_error: string? } }
+type Pair = { projection: { body: types.JsonObject }, cursor: { id: string, last_seq: integer, status: string, last_error: string? } }
 
 local function current(pair: Pair, projection: types.PluginProjection, intent: types.PluginIntent?): (types.PluginProjectionState?, error?)
     local decoded, err = json.decode(pair.projection.body :: string)
@@ -27,7 +27,7 @@ local function current(pair: Pair, projection: types.PluginProjection, intent: t
         bootstrapping = token.bootstrapping
     end
     local cursor = pair.cursor
-    return { last_seq = cursor.last_seq, parked = cursor.status == "invalid" or cursor.status == "paused",
+    return { cursor_id = cursor.id, last_seq = cursor.last_seq, status = cursor.status, parked = cursor.status == "invalid" or cursor.status == "paused",
         bootstrapping = bootstrapping, error = cursor.last_error }, nil
 end
 

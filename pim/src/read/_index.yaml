@@ -23,6 +23,7 @@ entries:
     source: file://reader.lua
     imports:
       defaults: kickside.pim.settings:defaults
+      component: kickside.component:component
       failure: kickside.pim:failure
       layout: kickside.pim.persist:layout
       plugins: kickside.pim.extensions:plugins

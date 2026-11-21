@@ -401,6 +401,18 @@
                 "tools": {"type": "array", "items": {"type": "string"}},
                 "lifecycle": {"type": "object"},
                 "projections": {"type": "object"},
+                "references": {
+                  "type": "object",
+                  "description": "Affected catalog references when an active plugin is missing or incompatible.",
+                  "required": ["fields", "scopes", "checks", "plugins", "shell_bindings"],
+                  "properties": {
+                    "fields": {"type": "array", "items": {"type": "string"}},
+                    "scopes": {"type": "array", "items": {"type": "string"}},
+                    "checks": {"type": "array", "items": {"type": "string"}},
+                    "plugins": {"type": "array", "items": {"type": "string"}},
+                    "shell_bindings": {"type": "array", "items": {"type": "string"}}
+                  }
+                },
                 "problem": {"type": "object", "required": ["code", "message"], "properties": {"code": {"type": "string"}, "message": {"type": "string"}, "field": {"type": "string"}}}
               }
             }
@@ -1743,6 +1755,18 @@
                 "tools": {"type": "array", "items": {"type": "string"}},
                 "lifecycle": {"type": "object"},
                 "projections": {"type": "object"},
+                "references": {
+                  "type": "object",
+                  "description": "Affected catalog references when an active plugin is missing or incompatible.",
+                  "required": ["fields", "scopes", "checks", "plugins", "shell_bindings"],
+                  "properties": {
+                    "fields": {"type": "array", "items": {"type": "string"}},
+                    "scopes": {"type": "array", "items": {"type": "string"}},
+                    "checks": {"type": "array", "items": {"type": "string"}},
+                    "plugins": {"type": "array", "items": {"type": "string"}},
+                    "shell_bindings": {"type": "array", "items": {"type": "string"}}
+                  }
+                },
                 "problem": {"type": "object", "required": ["code", "message"], "properties": {"code": {"type": "string"}, "message": {"type": "string"}, "field": {"type": "string"}}},
                 "config_schema": {"type": "object"}
               }
