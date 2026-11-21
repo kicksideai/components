@@ -4,7 +4,9 @@
 The System surface lists only catalogs whose backend response grants ADMIN.
 The catalog directory applies text and ADMIN filters before pagination. Each
 request loads one page. Load more and Retry keep the text, administration filter
-and page cursor. A successful read shows the selection prompt or empty result.
+and page cursor. A successful read shows the selection prompt or empty result. The picker and
+selected catalog share a rail frame with the same title, count and actions.
+A draft shows Unsaved changes, Discard and Review changes in the section header.
 Catalog creation selects General for the new catalog. Creation without a
 declaration opens the setup summary with Set up products. The first definitions
 use the same Review changes flow as later edits. The standalone settings

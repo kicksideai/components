@@ -10,6 +10,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import ListRail from '@kickside/ui-kit/ListRail.vue'
+import SettingsDirectoryActions from '@kickside/ui-kit/SettingsDirectoryActions.vue'
 import AdminError from '../shared/AdminError.vue'
 import { presentError } from '../shared/transport'
 import { Icon } from '@iconify/vue'
@@ -46,25 +47,34 @@ function selectCatalog(id: string, focus = true) {
   if (focus) detail.value?.focus({ preventScroll: true })
   currentCatalog.value = selected.value = id
 }
+async function mayLeave() {
+  if (confirming.value) return false
+  if (!dirty.value) return true
+  confirming.value = true
+  try {
+    return await host.confirm({ header: 'Discard unsaved changes?', message: 'Leaving these settings will discard unsaved catalog and plugin changes.', acceptLabel: 'Discard changes', rejectLabel: 'Keep editing' })
+  } finally { confirming.value = false }
+}
 async function backToCatalogs() {
-  if (confirming.value) return
-  if (dirty.value) {
-    confirming.value = true
-    try {
-      if (!await host.confirm({ header: 'Discard unsaved changes?', message: 'Returning to catalogs will discard unsaved settings and plugin changes.', acceptLabel: 'Discard changes', rejectLabel: 'Keep editing' })) return
-    } finally { confirming.value = false }
-  }
+  if (!await mayLeave()) return false
   dirty.value = false
   selected.value = ''
   await nextTick()
   const target = list.value?.querySelector<HTMLButtonElement>('[aria-current="true"]') ?? searchField.value?.querySelector('input')
   target?.focus()
+  return true
 }
 function createCatalog() {
   offerDirectOpen = false
   creating.value = true
 }
-function defaults() { host.navigate('/system/settings') }
+async function directoryAction(action: 'create' | 'defaults') {
+  if (action === 'defaults') {
+    if (await mayLeave()) host.navigate('/system/settings')
+    return
+  }
+  if (!selected.value || await backToCatalogs()) createCatalog()
+}
 const catalogMetaId = useId()
 const catalogs = ref<CatalogRow[]>()
 const directoryCount = ref<number>()
@@ -132,15 +142,10 @@ useHostVisibilityRefresh(load)
 onUnmounted(() => { unsubscribe(); clearTimeout(searchTimer); reads.begin() })
 </script>
 <template>
-  <main class="kx-shell pim-system" :class="{ 'pim-catalog-selected': selected }">
-    <ListRail v-if="!selected" class="pim-catalog-picker" title="Catalogs" :count="directoryCount ?? catalogs?.length">
+  <main class="kx-shell kx-settings-shell pim-system" :class="{ 'pim-catalog-selected': selected && ready }">
+    <ListRail v-if="!selected || !ready" settings class="pim-catalog-picker" title="Catalogs" :count="directoryCount ?? catalogs?.length">
       <template #actions>
-        <Button type="button" text aria-label="Create catalog" title="Create catalog" @click="createCatalog">
-          <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
-        </Button>
-        <Button type="button" text aria-label="Application defaults" title="Application defaults" @click="defaults">
-          <template #icon><Icon icon="tabler:settings" aria-hidden="true" /></template>
-        </Button>
+        <SettingsDirectoryActions create-label="Create catalog" @create="directoryAction('create')" @defaults="directoryAction('defaults')" />
       </template>
       <template #toolbar>
         <div ref="searchField" class="picker-search">
@@ -157,7 +162,6 @@ onUnmounted(() => { unsubscribe(); clearTimeout(searchTimer); reads.begin() })
         <Button label="Retry" type="button" severity="secondary" outlined size="small" @click="retry" />
       </AdminError>
       <p v-else-if="loading" class="kx-loading" role="status">{{ query ? 'Searching catalogs…' : 'Loading catalogs…' }}</p>
-      <h2 v-if="catalogs?.length" class="picker-group">Available</h2>
       <ul v-if="catalogs?.length" ref="list" class="picker-list">
         <li v-for="catalog in catalogs" :key="catalog.catalog_id">
           <button type="button" class="picker-row pim-catalog-row"
@@ -173,6 +177,7 @@ onUnmounted(() => { unsubscribe(); clearTimeout(searchTimer); reads.begin() })
     </ListRail>
     <section ref="detail" class="pim-system-main" aria-label="Catalog settings detail" tabindex="-1">
       <kickside-pim-catalog-settings v-if="selected && ready" :key="selected" :catalog-id="selected" embedded="true" :focus-back="String(focusBack)"
+        :directory-count="directoryCount ?? catalogs?.length" @directory-action="directoryAction($event.detail.name)"
         @open-catalog-picker="backToCatalogs" @dirty-changed="dirtyChanged" />
       <p v-else-if="selected && loadingSettings" class="kx-loading" role="status">Loading catalog settings…</p>
       <p v-else-if="selected" class="kx-err" role="alert">Catalog settings are unavailable.<Button label="Back to catalogs" severity="secondary" text @click="backToCatalogs" /><Button label="Retry" severity="secondary" outlined @click="loadSettings" /></p>

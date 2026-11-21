@@ -97,7 +97,10 @@ entries:
       focus-back:
         type: boolean
         default: false
-        description: Focus the back arrow when the settings are opened from the picker.
+        description: Focus the first rail action when opening settings from the picker.
+      directory-count:
+        type: number
+        description: Catalog count in the embedded System picker.
   events:
     open-catalog-picker:
       type: object
@@ -116,6 +119,15 @@ entries:
           type: string
       required:
       - route
+    directory-action:
+      type: object
+      description: Open the create form or application defaults from the embedded rail.
+      properties:
+        name:
+          type: string
+          enum: [create, defaults]
+      required:
+      - name
 - name: settings_tab
   kind: registry.entry
   meta:
