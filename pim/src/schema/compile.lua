@@ -10,6 +10,7 @@ local shape = require("shape")
 local types = require("types")
 local policy = require("policy")
 local sections = require("sections")
+local references = require("references")
 
 local contexts = require("contexts")
 local M = { ctx_key = contexts.ctx_key, chain = contexts.chain, check_context = contexts.check_context }
@@ -52,6 +53,22 @@ local function shape_problem(form: string, config: types.AttributeConfig, path: 
     if depth > 3 then return path .. ": record depth exceeds three" end
     if not values.FORMS[form] then return path .. ": unknown form " .. tostring(form) end
     if form == "ref" and not config.target then return path .. ": references need a target" end
+    if config.target == "asset" then
+        local limit = config.max_bytes
+        if limit ~= nil and (type(limit) ~= "number" or limit ~= math.floor(limit) or limit < 1 or limit > L.asset_bytes) then
+            return path .. ": max_bytes must be between 1 and " .. L.asset_bytes
+        end
+        if config.media_types ~= nil then
+            local count = shape.array_length(config.media_types)
+            if count == nil or count == 0 or count > 32 then return path .. ": media_types needs 1 to 32 entries" end
+            for _, mime in ipairs(config.media_types) do
+                if type(mime) ~= "string" or not (mime:match("^[%w!#$&^_.+%-]+/[%w!#$&^_.+%-]+$")
+                    or mime:match("^[%w!#$&^_.+%-]+/%*$")) or mime:lower() ~= mime then
+                    return path .. ": invalid media type"
+                end
+            end
+        end
+    end
     local members = config.members
     if members == nil then return nil end
     if type(members) ~= "table" then return path .. ": members must be an object" end
@@ -205,6 +222,9 @@ local function compile_attribute(ns: string, raw: types.AttributeDecl, dims: { t
     if raw.default ~= nil then
         local default, verr = values.normalize(attr, raw.default)
         if verr then return nil, invalid(code .. ": default " .. tostring(verr)) end
+        for _, occurrence in ipairs(references.collect(attr, default :: types.Value)) do
+            if occurrence.value.ref[1] == "asset" then return nil, invalid(code .. ": assets cannot be schema defaults") end
+        end
         local ierr = values.index_error(attr, default :: types.Value, false)
         if ierr then return nil, errors.wrap(ierr, code .. ": default cannot be indexed") end
         attr.default = default
@@ -483,8 +503,15 @@ function M.compile(prev: types.Compiled?, declaration: types.Declaration, lookup
     if plugin_err or not plugins then return nil, plugin_err end
     local overrides, bad_policy = policy.overrides(declaration.policy)
     if bad_policy or not overrides then return nil, invalid("policy: " .. tostring(bad_policy)) end
+    local has_assets: boolean? = nil
+    for _, attr in pairs(set.attributes) do
+        if references.has_asset(attr.config) then
+            has_assets = true
+            break
+        end
+    end
     local compiled: types.Compiled = {
-        policy = overrides,
+        policy = overrides, has_assets = has_assets,
         dimensions = public_dims, vocabularies = vocabularies, aspects = set.aspects,
         attributes = set.attributes, families = families, sources = sources, channels = channels, scopes = scopes, plugins = plugins,
         layout = columns_of,

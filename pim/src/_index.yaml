@@ -52,6 +52,12 @@ entries:
       comment: Deployment defaults for audit, trash and tombstone policy.
     component: kickside/settings
 
+  - name: dep.kickside.uploads
+    version: "*"
+    kind: ns.dependency
+    meta: {comment: Component-owned media originals and their content provider.}
+    component: kickside/uploads
+
   - name: dep.wippy.migration
     version: "*"
     kind: ns.dependency

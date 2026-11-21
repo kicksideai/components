@@ -10,6 +10,12 @@ local test = require("test")
 local time = require("time")
 local types = require("types")
 local catalog_fixture = require("catalog_fixture")
+local base64 = require("base64")
+local hash = require("hash")
+local http_client = require("http_client")
+local fs = require("fs")
+local funcs = require("funcs")
+local uuid = require("uuid")
 
 type Map = { [string]: unknown }
 local TYPE = "kickside.pim.types:"
@@ -36,8 +42,8 @@ local function refused(h: fixture.Handle, op: string, request: unknown, kind: st
     return problem
 end
 
-local function catalog(): fixture.Handle
-    local h = fixture.catalog({ bare = true })
+local function catalog(session: scoped.Session?): fixture.Handle
+    local h = session and scoped.catalog(session, true) or fixture.catalog({ bare = true })
     local declaration = assert(registry.get("app:full_schema")).data
     local request = { declaration = declaration, expected_generation = 1 }
     local plan = call(h, "plan_schema", request) :: types.SchemaPlanResult
@@ -873,10 +879,147 @@ local function replay_and_extensions()
     end)
 end
 
+local PNG = assert(base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jk9sAAAAASUVORK5CYII="))
+
+local function send_media(session: scoped.Session, method: string, path: string, body: string?, content_type: string?)
+    return assert(http_client.request(method, scoped.api_url() .. path, {
+        body = body, headers = {Authorization = "Bearer " .. session.token, ["Content-Type"] = content_type},
+    }))
+end
+
+local function upload(session: scoped.Session, filename: string, mime: string, bytes: string): string
+    local boundary = "pim-media-" .. uuid.v4()
+    local body = "--" .. boundary .. '\r\nContent-Disposition: form-data; name="file"; filename="' .. filename .. '"'
+        .. "\r\nContent-Type: " .. mime .. "\r\n\r\n" .. bytes .. "\r\n--" .. boundary .. "--\r\n"
+    local response = send_media(session, "POST", "/uploads", body, "multipart/form-data; boundary=" .. boundary)
+    test.is_true(response.status_code >= 200 and response.status_code < 300, response.body)
+    local id = (assert(json.decode(response.body)) :: {uuid: string}).uuid
+    assert(id, response.body)
+    for _ = 1, 200 do
+        local complete = catalog_fixture.count_rows([[SELECT COUNT(*) AS n FROM kickside_uploads
+            WHERE uuid=$1 AND storage_state='completed']], {id})
+        if complete == 1 then return id end
+        time.sleep("25ms")
+    end
+    error("upload did not complete " .. id)
+end
+
+local function attach(h: fixture.Handle, id: string): string
+    local asset = call(h, "adopt_asset", {upload_id = id}).asset :: types.Ref
+    test.eq(asset.ref[1], "asset")
+    return asset.ref[2]
+end
+
+local function media_value(id: string): types.ValueEntry
+    return {attr = "item.packages", value = {{title = "Pack", details = {targets = {image = ref("asset", id)}}}}}
+end
+
+local function upload_exists(id: string): boolean
+    return catalog_fixture.count_rows("SELECT COUNT(*) AS n FROM kickside_uploads WHERE uuid=$1", {id}) == 1
+end
+
+local function stored_path(id: string): string
+    local db = assert(sql.get("app:db"))
+    local rows = assert(db:query("SELECT storage_path FROM kickside_uploads WHERE uuid=$1", {id}))
+    db:release()
+    return rows[1].storage_path
+end
+
+local function retention_until(catalog_id: string, done: () -> boolean)
+    for _ = 1, 80 do
+        local result, err = funcs.call("kickside.pim.retention:owner", {})
+        assert(not err and result and result.success, tostring(err) .. " " .. json.encode(result))
+        for _, blocked in ipairs(result.blocked or {}) do
+            assert(blocked.component_id ~= catalog_id, tostring(blocked.error))
+        end
+        if done() then return end
+        time.sleep("10ms")
+    end
+    error("media retention did not drain")
+end
+
+local function media_cases()
+    test.it("refuses a missing nested catalog asset as an invalid reference", function()
+        local h = catalog()
+        outcome(create(h, "MEDIA-MISSING", {media_value("missing")}), "invalid", "invalid_reference")
+    end)
+
+    test.it("reads catalog media as a reader, snapshots immutable bytes and collects replaced and deleted assets", function()
+        local owner, reader = scoped.member(), scoped.member()
+        local h = catalog(owner)
+        local personal = upload(owner, "primary.png", "image/png", PNG)
+        local first = attach(h, personal)
+        local first_raw = "/uploads/" .. first .. "/raw"
+        outcome(create(h, "MEDIA", {{attr = "item.category", value = "boots"}, media_value(first)}), "created")
+        test.eq(send_media(reader, "GET", first_raw).status_code, 403)
+        local grant = call(h, "grant", {subject_id = reader.id, mask = 1})
+        test.is_true(grant.success, json.encode(grant))
+        local live = assert(reader.call("get", {product = {sku = "MEDIA"}}, h.id)) :: types.GetResult
+        local packs = (live.values["item.packages"].value :: unknown) :: {{details: {targets: {image: types.Ref}}}}
+        test.eq(packs[1].details.targets.image.ref[2], first)
+        local version_bytes = send_media(reader, "GET", first_raw)
+        test.eq(version_bytes.status_code, 200, version_bytes.body)
+        test.eq(version_bytes.body, PNG)
+        test.eq(send_media(owner, "DELETE", "/uploads/" .. personal).status_code, 200)
+        test.eq(send_media(reader, "GET", first_raw).body, PNG)
+
+        local previous = release(h, "MEDIA", {"web"})
+        outcome(previous, "released")
+        local captured = snapshot(h, previous.release_id)
+        local link = assert(assert(captured.snapshot.links)["asset:" .. first])
+        test.eq(assert(link.data).checksum, hash.sha256(PNG))
+        test.eq(assert(link.data).content_type, "image/png")
+        test.eq(assert(link.data).size, #PNG)
+
+        local replacement_bytes = PNG .. "replacement"
+        local second = attach(h, upload(owner, "replacement.png", "image/png", replacement_bytes))
+        test.is_true(first ~= second)
+        outcome(edit(h, "MEDIA", {set = {media_value(second)}}), "updated")
+        outcome(release(h, "MEDIA", {"web"}), "released")
+        outcome(edit(h, "MEDIA", {unset = {{attr = "item.packages"}}}), "updated")
+        local first_path = stored_path(first)
+        local db = assert(sql.get("app:db"))
+        assert(db:execute("UPDATE kickside_pim_release SET created_at='2000-01-01T00:00:00Z' WHERE catalog_id=$1 AND release_id=$2",
+            {h.id, previous.release_id}))
+        db:release()
+        test.eq(snapshot(h, previous.release_id).hash, captured.hash)
+        test.eq(send_media(reader, "GET", first_raw).body, PNG)
+        retention_until(h.id, function() return not upload_exists(first) end)
+        test.is_false(assert(fs.get("app:exports")):exists(first_path))
+        test.eq(send_media(reader, "GET", first_raw).status_code, 404)
+        outcome(edit(h, "MEDIA", {set = {media_value(first)}}), "invalid", "invalid_reference")
+        test.eq(send_media(reader, "GET", "/uploads/" .. second .. "/raw").body, replacement_bytes)
+
+        local second_path = stored_path(second)
+        test.is_true(call(h, "delete_component", {}).success)
+        retention_until(h.id, function() return not upload_exists(second) end)
+        test.is_false(assert(fs.get("app:exports")):exists(second_path))
+    end)
+
+    test.it("refuses cross-catalog, foreign, wrong-type, oversized and deleted upload references", function()
+        local owner, other = scoped.member(), scoped.member()
+        local h, foreign = catalog(owner), catalog(other)
+        local source = upload(owner, "photo.png", "image/png", PNG)
+        local asset = attach(h, source)
+        outcome(create(foreign, "FOREIGN", {media_value(asset)}), "invalid", "invalid_reference")
+        refused(foreign, "adopt_asset", {upload_id = source}, errors.PERMISSION_DENIED, "asset_adoption_denied")
+        outcome(create(h, "PERSONAL", {media_value(source)}), "invalid", "invalid_reference")
+
+        local text_asset = attach(h, upload(owner, "notes.txt", "text/plain", "shoe notes"))
+        outcome(create(h, "WRONG-TYPE", {media_value(text_asset)}), "invalid", "asset_media_type")
+        local large = attach(h, upload(owner, "large.png", "image/png", PNG .. string.rep("x", 128)))
+        outcome(create(h, "TOO-LARGE", {media_value(large)}), "invalid", "asset_too_large")
+
+        test.eq(send_media(owner, "DELETE", "/uploads/" .. source).status_code, 200)
+        refused(h, "adopt_asset", {upload_id = source}, errors.NOT_FOUND, "upload_not_found")
+    end)
+end
+
 local function define()
     test.describe("full schema contract", values_and_indexes)
     test.describe("full schema boundaries", boundaries)
     test.describe("full schema hierarchy and references", hierarchy_and_references)
+    test.describe("full schema media", media_cases)
     test.describe("full schema evolution", schema_evolution)
     test.describe("full schema integrations", replay_and_extensions)
 end

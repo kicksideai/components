@@ -3,6 +3,14 @@ version: "1.0"
 namespace: kickside.pim.persist
 
 entries:
+  - name: asset_rows
+    kind: library.lua
+    source: file://asset_rows.lua
+    modules: [time]
+    imports:
+      clock: kickside.pim:clock
+      types: kickside.pim:types
+
   - name: config
     kind: registry.entry
     meta:
@@ -111,6 +119,7 @@ entries:
     source: file://materializer.lua
     modules: [json, sql]
     imports:
+      asset_rows: kickside.pim.persist:asset_rows
       proposal_rows: kickside.pim.persist:proposal_rows
       failure: kickside.pim:failure
       attachments: kickside.pim.extensions:plugin_attachments
@@ -220,6 +229,7 @@ entries:
       comment: Rows derived from documents - refs, unique values and attribute usage.
     source: file://derived.lua
     imports:
+      asset_rows: kickside.pim.persist:asset_rows
       references: kickside.pim.domain:references
       values: kickside.pim.domain:values
       bulk: kickside.pim.persist:bulk
@@ -269,6 +279,7 @@ entries:
     source: file://cleanup_rows.lua
     modules: [sql]
     imports:
+      asset_rows: kickside.pim.persist:asset_rows
       store: kickside.pim.persist:store
       layout: kickside.pim.persist:layout
       types: kickside.pim:types
@@ -277,6 +288,8 @@ entries:
     kind: library.lua
     source: file://schema_cleanup.lua
     imports:
+      references: kickside.pim.domain:references
+      asset_rows: kickside.pim.persist:asset_rows
       cleanup_rows: kickside.pim.persist:cleanup_rows
       types: kickside.pim:types
 
@@ -318,4 +331,5 @@ entries:
     kind: library.lua
     source: file://archive_rows.lua
     imports:
+      asset_rows: kickside.pim.persist:asset_rows
       types: kickside.pim:types

@@ -134,6 +134,16 @@ entries:
         receipt: { type: object, description: Command receipt carried by the first event of an idempotent command. }
       required: [product_id]
 
+  - name: assets.reaping
+    kind: registry.entry
+    meta: {type: kickside.core.threads.event, comment: Fence unreferenced asset versions before storage collection.}
+    schema:
+      type: object
+      additionalProperties: false
+      required: [ids]
+      properties:
+        ids: {type: array, minItems: 1, maxItems: 50, items: {type: string}}
+
   - name: product.purged
     kind: registry.entry
     meta: { type: kickside.core.threads.event, comment: "A trashed product past the trash window is purged; a tombstone remains." }

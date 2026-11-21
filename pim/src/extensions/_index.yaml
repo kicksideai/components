@@ -130,6 +130,35 @@ entries:
     imports:
       types: kickside.pim:types
 
+  - name: asset_target
+    kind: contract.binding
+    meta: { kind: asset, title: Product media }
+    contracts:
+      - contract: kickside.pim:link_target
+        methods:
+          resolve: kickside.pim.extensions:asset_resolve
+          describe: kickside.pim.extensions:asset_describe
+
+  - name: asset_resolve
+    kind: function.lua
+    source: file://asset_targets.lua
+    method: resolve
+    modules: [contract, security, uuid]
+    imports:
+      asset_rows: kickside.pim.persist:asset_rows
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
+  - name: asset_describe
+    kind: function.lua
+    source: file://asset_targets.lua
+    method: describe
+    modules: [contract, security, uuid]
+    imports:
+      asset_rows: kickside.pim.persist:asset_rows
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
+
   - name: component_target
     kind: contract.binding
     meta: { kind: component, title: Component }

@@ -12,6 +12,7 @@ local defaults = require("defaults")
 local types = require("types")
 
 local cleanup = require("cleanup")
+local assets = require("assets")
 local error_envelope = require("error_envelope")
 
 local json=require("json")
@@ -139,7 +140,7 @@ local function prune(catalog_id:string,effective:types.Policy,limit:integer,curs
     end)
 end
 
-type Retained = { removed: integer, spent: integer, more: boolean, skipped: boolean?, deadline_ms: integer? }
+type Retained = { removed: integer, spent: integer, more: boolean, skipped: boolean?, deadline_ms: integer?, asset_error: error? }
 local function retain(c:threads.Client,base:types.Policy,catalog_id:string,r:types.Row,limit:integer,cycle:string): (Retained?,error?)
     local decoded,derr=store.decode_row(r,{compiled="json"})
     if derr or not decoded then return nil,derr end
@@ -156,6 +157,10 @@ local function retain(c:threads.Client,base:types.Policy,catalog_id:string,r:typ
     local deadline,qerr=retention_rows.deadline(db,catalog_id,effective)
     qerr=store.release(db,qerr)
     if qerr then return nil,qerr end
+    local media, media_err = assets.retain(c, catalog_id, math.min(10, (limit - MIN_RETENTION_ROWS) // 2))
+    if media_err or not media then return nil, media_err end
+    if media.deadline_ms then deadline = deadline and math.min(deadline, media.deadline_ms) or media.deadline_ms end
+    limit = limit - media.spent
     local share=math.max(1,limit//2)
     local purged,spent,last,skipped,perr=purge(c,catalog_id,effective.trash_days,share,cursor.trash or "")
     if perr or not purged or not spent or not last then return nil,perr end
@@ -183,7 +188,8 @@ local function retain(c:threads.Client,base:types.Policy,catalog_id:string,r:typ
         if derr or not removed then return nil,derr end
         pruned.removed=pruned.removed+removed
     end
-    return {removed=purged+pruned.removed,spent=spent+pruned.spent,more=spent==share or pruned.more,skipped=skipped,deadline_ms=deadline},nil
+    return {removed=purged+pruned.removed+media.deleted,spent=spent+pruned.spent+media.spent,
+        more=spent==share or pruned.more or media.more,skipped=skipped,deadline_ms=deadline,asset_error=media.error},nil
 end
 
 function M.run(_input:unknown): Result
@@ -227,7 +233,7 @@ function M.run(_input:unknown): Result
     local c,terr=threads.open()
     if terr or not c then return {success=false,error=terr} end
     local deleted=abandoned+expired+cleaned.deleted
-    spent=spent+cleaned.deleted
+    spent=spent+cleaned.spent
     local visited=cleaned.catalogs
     local scan_limit=CATALOGS-visited
     -- Keep one archive scan cycle across installation pages and repeat sweeps.
@@ -236,6 +242,7 @@ function M.run(_input:unknown): Result
     local last_catalog_id: string? = nil
     local deadline=position.deadline_ms
     if global_deadline then deadline=deadline and math.min(deadline,global_deadline) or global_deadline end
+    if cleaned.deadline_ms then deadline=deadline and math.min(deadline,cleaned.deadline_ms) or cleaned.deadline_ms end
     local scan_more=#page>scan_limit
     local backlog,deferred=position.pending==1 or abandon_more==true or expire_more,false
     for i=1,math.min(#page,scan_limit) do
@@ -254,6 +261,8 @@ function M.run(_input:unknown): Result
                 blocked[#blocked+1]={component_id=catalog_id,error=rerr}
                 spent=spent+limit
             elseif retained then
+                local asset_error = retained.asset_error
+                if asset_error then blocked[#blocked+1]={component_id=catalog_id,error=asset_error} end
                 deleted=deleted+retained.removed;spent=spent+retained.spent
                 backlog=backlog or retained.more
                 deferred=deferred or retained.skipped==true

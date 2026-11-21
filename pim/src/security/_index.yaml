@@ -8,6 +8,42 @@ namespace: kickside.pim.security
 # user_security_scope requirement binds the host group at install time.
 
 entries:
+  - name: upload_adopt_call
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.uploads:adopt_component_upload]
+      actions: [funcs.call]
+      effect: allow
+
+  - name: upload_adopt
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.uploads]
+      actions: [uploads.asset.adopt]
+      effect: allow
+
+  - name: upload_reap_call
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.uploads:reap_component_upload]
+      actions: [funcs.call]
+      effect: allow
+
+  - name: upload_reap
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: '*'
+      actions: [uploads.asset.reap]
+      effect: allow
+      conditions:
+        - field: meta.impl_id
+          operator: eq
+          value: kickside.pim.binding:catalog
+
   # kickside.pim.security:module_access
   - name: module_access
     kind: security.policy
@@ -34,6 +70,7 @@ entries:
         - kickside.pim.events:product.deleted
         - kickside.pim.events:product.restored
         - kickside.pim.events:product.purged
+        - kickside.pim.events:assets.reaping
         - kickside.pim.events:term.changed
         - kickside.pim.events:model.release_requested
         - kickside.pim.events:product.released
@@ -101,6 +138,15 @@ entries:
         - kickside.pim:family_check
         - kickside.pim:catalog
         - kickside.pim:link_target
+        - kickside.pim.extensions:asset_target
+        - kickside.pim.extensions:asset_resolve
+        - kickside.pim.extensions:asset_describe
+        - kickside.pim.persist:asset_rows
+        - kickside.pim.retention:assets
+        - kickside.pim:dep.kickside.uploads
+        - kickside.contract:content_provider
+        - kickside.uploads:content_provider
+        - kickside.uploads.binding:get_info_func
         - kickside.pim.api:access
         - kickside.pim.api:list
         - kickside.pim.api:get_catalog
@@ -197,6 +243,7 @@ entries:
         - kickside.pim.events:product.deleted
         - kickside.pim.events:product.restored
         - kickside.pim.events:product.purged
+        - kickside.pim.events:assets.reaping
         - kickside.pim.events:term.changed
         - kickside.pim.events:product.released
         - kickside.pim.events:product.withdrawn
@@ -259,6 +306,7 @@ entries:
         - kickside.pim.types:select
         - kickside.pim.types:reference
         - kickside.pim.types:link
+        - kickside.pim.types:asset
         - kickside.pim.types:quantity
         - kickside.pim.types:money
         - kickside.pim.types:record
@@ -322,6 +370,7 @@ entries:
         - kickside.pim.service:configure_plugin
         - kickside.pim.service:plugin_context
         - kickside.pim.service:plugin_feed
+        - kickside.pim.service:adopt_asset
         - kickside.pim.settings:block
         - kickside.pim.settings:audit
         - kickside.pim.settings:audit_days

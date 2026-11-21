@@ -45,6 +45,7 @@ entries:
           - { type: kickside.pim.events:product.deleted, system_only: true }
           - { type: kickside.pim.events:product.restored, system_only: true }
           - { type: kickside.pim.events:product.purged, system_only: true }
+          - { type: kickside.pim.events:assets.reaping, system_only: true }
           - { type: kickside.pim.events:term.changed, system_only: true }
           - { type: kickside.pim.events:model.release_requested, system_only: true }
           - { type: kickside.pim.events:product.released, system_only: true }
@@ -66,6 +67,7 @@ entries:
               - { type: kickside.pim.events:product.deleted }
               - { type: kickside.pim.events:product.restored }
               - { type: kickside.pim.events:product.purged }
+              - { type: kickside.pim.events:assets.reaping }
               - { type: kickside.pim.events:term.changed }
               - { type: kickside.pim.events:model.release_requested }
               - { type: kickside.pim.events:product.released }
@@ -109,6 +111,7 @@ entries:
           get: kickside.pim.service:get
           query: kickside.pim.service:query
           list_history: kickside.pim.service:list_history
+          adopt_asset: kickside.pim.service:adopt_asset
           apply: kickside.pim.service:apply
           propose: kickside.pim.service:propose
           decide: kickside.pim.service:decide

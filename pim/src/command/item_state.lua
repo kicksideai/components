@@ -23,7 +23,7 @@ type State = {
     -- items are the command's items; links holds, per link kind the command
     -- names, the ids its owner resolved, filled on first use so each kind is
     -- asked once per command.
-    items: { types.ApplyItem }, links: { [string]: { [string]: boolean } },
+    items: { types.ApplyItem }, links: { [string]: { [string]: boolean } }, assets: { [string]: types.LinkTarget }?,
     -- refined holds, per attribute id and canonical requested value, what the
     -- attribute type's functions made of it, for every value the command sets.
     refined: { [integer]: { [string]: types.Refined } },

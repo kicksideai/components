@@ -242,6 +242,20 @@
     }
   },
   "methods": {
+    "adopt_asset": {
+      "description": "Adopt a completed personal upload into this catalog and return the asset reference to use in apply.",
+      "input": {
+        "type":"object","required":["upload_id"],"additionalProperties":false,
+        "properties":{
+          "catalog_id":{"$pim_ref":"catalog_id"},
+          "upload_id":{"type":"string","minLength":36,"maxLength":36,"description":"UUID of a completed upload owned by the caller."}
+        }
+      },
+      "output": {
+        "type":"object","required":["asset"],"additionalProperties":false,
+        "properties":{"asset":{"type":"object","required":["ref"],"properties":{"ref":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"string"}}}}}
+      }
+    },
     "create": {
       "description": "Create a catalog for the caller. Idempotent per caller and key; establishes the first schema generation, empty when declaration is omitted.",
       "input": {

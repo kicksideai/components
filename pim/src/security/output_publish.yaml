@@ -65,7 +65,7 @@ entries:
     kind: security.policy
     meta: { private: true, service_only: true, comment: The retention owner publishes purges. }
     policy:
-      resources: kickside.pim.events:product.purged
+      resources: [kickside.pim.events:product.purged, kickside.pim.events:assets.reaping]
       actions: threads.output.publish
       effect: allow
 

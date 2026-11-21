@@ -12,7 +12,7 @@ local M = {}
 -- REPRESENTATION lists the attribute properties that define a stored value, its
 -- key or its order; INDEX those that shape its index.
 local REPRESENTATION = { "type", "form", "cardinality", "vocabulary", "scope" }
-local REPRESENTATION_CONFIG = { "scale", "range", "case", "members", "target", "units", "canonical", "currency" }
+local REPRESENTATION_CONFIG = { "scale", "range", "case", "members", "target", "units", "canonical", "currency", "media_types", "max_bytes" }
 local INDEX = { "index_contexts" }
 local RANK: { [string]: integer } = { cosmetic = 1, additive = 2, semantic = 3, refused = 4 }
 

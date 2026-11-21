@@ -19,6 +19,7 @@ local merge_rows = require("merge_rows")
 
 local document = require("document")
 local derived = require("derived")
+local asset_rows = require("asset_rows")
 local item_index = require("item_index")
 local schema_cleanup = require("schema_cleanup")
 local release_jobs = require("release_jobs")
@@ -343,6 +344,10 @@ local function apply_release(tx: sql.Transaction, catalog: types.Catalog, event:
         { catalog_id, b.release_id, b.product_id, b.version, b.generation, values.canonical(b.snapshot), b.hash,
             values.canonical(b.channels), event.seq, clock.now() })
     if err then return err end
+    if b.snapshot.links then
+        err = asset_rows.release(tx, catalog_id, b.release_id, b.snapshot.links)
+        if err then return err end
+    end
     err = exec(tx, "UPDATE kickside_pim_product SET release_id = $1 WHERE catalog_id = $2 AND product_id = $3",
         { b.release_id, catalog_id, b.product_id })
     if err then return err end
@@ -446,7 +451,7 @@ end
 -- FOLDED lists the event types the catalog projection folds.
 local FOLDED: { [string]: boolean } = {
     [EV.MODEL_RELEASE_REQUESTED] = true, [EV.SCHEMA_APPLIED] = true, [EV.TERM_CHANGED] = true, [EV.PRODUCT_RELEASED] = true, [EV.PRODUCT_WITHDRAWN] = true,
-    [EV.PROPOSAL_SUBMITTED] = true, [EV.PROPOSAL_DECIDED] = true,
+    [EV.PROPOSAL_SUBMITTED] = true, [EV.PROPOSAL_DECIDED] = true, [EV.ASSETS_REAPING] = true,
 }
 for t in pairs(PRODUCT_EVENTS) do FOLDED[t] = true end
 
@@ -483,6 +488,11 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
                     return proposal_rows.submit(tx, catalog_id, step.body :: types.ProposalSubmittedBody)
                 end
                 return proposal_rows.decide(tx, catalog_id, step.body :: types.ProposalDecidedBody)
+            end
+            if step.type == EV.ASSETS_REAPING then
+                if not catalog then return failure.corrupt("catalog event before its schema") end
+                local ids = step.body.ids :: {string}
+                return asset_rows.fence(tx, catalog_id, ids)
             end
             local event = typed(step)
             local herr: error?
