@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.31](https://github.com/kicksideai/components/compare/work-v0.1.30...work-v0.1.31) (2026-11-21)
+
+
+### Bug Fixes
+
+* **work:** consolidate grouped reads and index move planning ([#300](https://github.com/kicksideai/components/issues/300)) ([937c340](https://github.com/kicksideai/components/commit/937c340552bdd7df8a80840985dee21ea4032456))
+* **work:** expose named plugin recovery ([#284](https://github.com/kicksideai/components/issues/284)) ([a90146a](https://github.com/kicksideai/components/commit/a90146ab577061cd05a123e6977bb1e25c5799bf))
+* **work:** unify command and continuation contracts ([#291](https://github.com/kicksideai/components/issues/291)) ([d6b2fa7](https://github.com/kicksideai/components/commit/d6b2fa7430d4539207f39bcd96870f8f2b53f41b))
+
 ## [0.1.30](https://github.com/kicksideai/components/compare/work-v0.1.29...work-v0.1.30) (2026-11-21)
 
 
