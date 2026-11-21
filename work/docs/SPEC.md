@@ -27,6 +27,8 @@ An item reference field can declare `config.item_type` as the target item type I
 
 Directed relations can declare `from_types` and `to_types` as nonempty lists of item type IDs. Source types are declared on the owning board. Target types are matched against the live, visible item after resolving its destination board and any move aliases. An omitted list allows any type at that endpoint. A link with a mismatched endpoint returns `relation_source_type` on `item` or `relation_target_type` on `target`. Symmetric relations omit the directional lists. Work refuses changes to endpoint lists while the relation has links, using the existing relation shape check.
 
+Move alias resolution follows up to 32 redirects. Moves redirect retained aliases to the new destination. If a chain still exceeds the limit, resolution returns `key_alias_hop_limit`.
+
 A transition with `people: false` is reserved for the process engine and board ADMIN force. A direct named transition without force receives `unknown_transition`. Stage reports and state timers can take that route.
 
 ## Agent pipelines

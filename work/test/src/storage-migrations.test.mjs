@@ -36,8 +36,8 @@ async function statements(name, direction, engine = 'sqlite', state = 'legacy') 
 }
 
 test('Work rollback removes every fixed table including board metadata', async () => {
-  const up = [...await statements('01_work', 'up'), ...await statements('02_board_ui_app', 'up')]
-  const down = [...await statements('02_board_ui_app', 'down'), ...await statements('01_work', 'down')]
+  const up = [...await statements('01_work', 'up'), ...await statements('02_board_ui_app', 'up'), ...await statements('03_move_alias_indexes', 'up')]
+  const down = [...await statements('03_move_alias_indexes', 'down'), ...await statements('02_board_ui_app', 'down'), ...await statements('01_work', 'down')]
   const result = await run('python3', ['-c', `
 import json, sqlite3, sys
 up, down = json.load(sys.stdin)

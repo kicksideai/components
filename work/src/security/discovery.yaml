@@ -234,6 +234,7 @@ entries:
     - kickside.work.jobs:reindex_config
     - kickside.work.jobs:types
     - kickside.work.migrations:01_work
+    - kickside.work.migrations:03_move_alias_indexes
     - kickside.work.persist:access_rows
     - kickside.work.persist:append
     - kickside.work.persist:board_meta

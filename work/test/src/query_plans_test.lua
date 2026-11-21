@@ -49,6 +49,53 @@ local function define()
         end)
     end)
 
+    test.describe("move alias query plans", function()
+        test.it("seeks an endpoint miss and the inbound aliases to redirect", function()
+            local db = assert(store.open())
+            local tx = assert(db:begin())
+            assert(tx:execute([[WITH RECURSIVE numbers(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM numbers WHERE n<25000)
+                INSERT INTO kickside_work_key_alias (board_id,key,item_id,to_board_id,to_item_id,at)
+                SELECT 'alias-plan','AL-' || n,'origin-' || n,'target-board','target-' || n,'2026' FROM numbers]], {}))
+            assert(tx:execute("ANALYZE kickside_work_key_alias", {}))
+            local plan = ""
+            local probe = { query = function(_, statement, params)
+                plan = explain(db, statement, params, tx)
+                return tx:query(statement, params)
+            end }
+            local endpoint = assert(store.endpoint(probe :: any, { board = "alias-plan", item = "missing" }))
+            local incoming = explain(db, [[SELECT key FROM kickside_work_key_alias WHERE to_board_id=$1 AND to_item_id=$2]],
+                { "target-board", "target-24999" }, tx)
+            assert(tx:rollback())
+            db:release()
+            test.eq(endpoint.item, "missing")
+            test.is_true(plan:find("kickside_work_key_alias_endpoint", 1, true) ~= nil, plan)
+            test.is_true(incoming:find("kickside_work_key_alias_destination", 1, true) ~= nil, incoming)
+        end)
+
+        test.it("caps retained alias chains after 32 redirects", function()
+            local db = assert(store.open())
+            local tx = assert(db:begin())
+            assert(tx:execute([[WITH RECURSIVE numbers(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM numbers WHERE n<33)
+                INSERT INTO kickside_work_key_alias (board_id,key,item_id,to_board_id,to_item_id,at)
+                SELECT 'alias-chain','CHAIN-' || n,'item-' || n,'alias-chain','item-' || (n+1),'2026' FROM numbers]], {}))
+            local probes = 0
+            local counter = { query = function(_, statement, params)
+                probes = probes + 1
+                return tx:query(statement, params)
+            end }
+            local endpoint, err = store.endpoint(counter :: any, { board = "alias-chain", item = "item-1" })
+            local over_limit_probes = probes
+            local last = assert(store.endpoint(tx, { board = "alias-chain", item = "item-2" }))
+            assert(tx:rollback())
+            db:release()
+            test.is_nil(endpoint)
+            test.not_nil(err)
+            test.eq(err:details().code, "key_alias_hop_limit")
+            test.eq(over_limit_probes, 33)
+            test.eq(last.item, "item-34")
+        end)
+    end)
+
     test.describe("Work indexed query plans", function()
         local board, db, title, set_lookup
         test.before_all(function()
