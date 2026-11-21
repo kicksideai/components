@@ -11,7 +11,8 @@ reset target until an accepted read reaches it, even if a notification supersede
 the first read; that reset is consumed once. Other concurrent drafts stay stale.
 Board selection and Back ask through the shared host confirmation before
 replacing an unsaved schema or metadata draft. Settings report both through the widget boundary. Saving or canceling metadata clears its pending state independently of the schema draft.
-The picker and opened board use the same rail frame and controls. All boards
+The picker and opened board use the same rail frame, title and count. Create
+board and Application defaults are available from the directory. All boards
 returns focus to the selected row. All sections use the shared UI Kit rail and
 scrolling pane. Access contains Share board. The section header shows draft
 actions when board settings have unsaved changes. Board titles wrap in both

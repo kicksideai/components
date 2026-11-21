@@ -52,13 +52,6 @@ function createBoard() {
   offerDirectOpen = false
   creating.value = true
 }
-async function directoryAction(action: 'create' | 'defaults') {
-  if (action === 'defaults') {
-    if (await mayLeave()) host.navigate('/system/settings')
-    return
-  }
-  if (!selected.value || await backToBoards()) createBoard()
-}
 
 watch(boards, rows => {
   if (currentBoard.value && !rows.some(board => board.board_id === currentBoard.value && canAdmin(board.access))) {
@@ -86,7 +79,7 @@ async function created(id: string) {
   <main class="kx-shell kx-settings-shell work-admin-shell" :class="{ 'work-board-selected': selected && ready }">
     <ListRail v-if="!selected || !ready" settings class="work-board-directory" title="Boards" :count="hasLoaded ? boards.length : undefined">
       <template #actions>
-        <SettingsDirectoryActions create-label="Create board" @create="directoryAction('create')" @defaults="directoryAction('defaults')" />
+        <SettingsDirectoryActions create-label="Create board" @create="createBoard" @defaults="host.navigate('/system/settings')" />
       </template>
       <template #toolbar>
         <div ref="searchField" class="picker-search">
@@ -124,7 +117,7 @@ async function created(id: string) {
     </ListRail>
     <section ref="detail" class="work-admin-main" aria-label="Board settings detail" tabindex="-1">
       <kickside-work-board-settings v-if="selected && ready" :key="selected" :board-id="selected" embedded="true" :focus-back="String(focusBack)"
-        :directory-count="hasLoaded ? boards.length : undefined" @directory-action="directoryAction($event.detail.name)"
+        :directory-count="hasLoaded ? boards.length : undefined"
         @back-to-boards="backToBoards" @dirty-change="dirty = $event.detail.dirty" />
       <p v-else-if="selected && widgetLoading" class="kx-loading" role="status">Loading board settings…</p>
       <p v-else-if="selected" class="kx-err" role="alert">Board settings are unavailable.<Button label="Back to boards" severity="secondary" text @click="backToBoards" /><Button label="Reload settings" severity="secondary" outlined @click="loadSettings"><template #icon><Icon icon="tabler:refresh" /></template></Button></p>
