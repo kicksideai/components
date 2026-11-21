@@ -40,6 +40,12 @@ local function planning(caller, method, input)
     return caller.call("contract_request", { contract = SPRINTS, method = method, value = input })
 end
 
+local function close_sprint(caller, board, sprint_id)
+    local preview = assert(planning(caller, "plan_close", { board_id = board.id, sprint_id = sprint_id }))
+    local result = assert(planning(caller, "close", { key = uuid.v4(), snapshot = preview.snapshot, token = preview.token }))
+    test.is_true(result.applied)
+end
+
 local function sprint(board, type_id, active)
     local id = steps.create(board, type_id or "sprint", {
         name = "Period", planning_start = "2026-11-01", planning_end = "2026-11-14",
@@ -260,7 +266,7 @@ local function define()
             local board = create_board(owner)
             local source = sprint(board, "sprint", true)
             local target = sprint(board, "sprint", true)
-            test.eq(steps.one(board, { op = "transition", item = target, transition = "close" }).status, "applied")
+            close_sprint(owner, board, target)
             local milestone = sprint(board, "milestone", false)
             local unplanned = custom_board(owner)
             local other = sprint(create_board(owner), "sprint", false)
@@ -307,7 +313,7 @@ local function define()
             local source = sprint(board, "sprint", true)
             issue(board, source)
             assert(board.call("apply_schema", { declaration = { fields = {
-                { code = "current_sprint", type = "item", config = { item_type = "sprint" }, index = "key", track = true,
+                { code = "current_sprint", type = "item", config = { item_type = "sprint", item_states = { "planned", "active" } }, index = "key", track = true,
                     access = { write = { { user = owner.id } } } },
             } } }))
             assert(board.call("grant", { subject_id = writer.id, mask = 3 }))
@@ -344,6 +350,32 @@ local function define()
     end)
 
     test.describe("close sprint commit", function()
+        test.it("requires a preview to close a sprint and refuses new membership after closure", function()
+            local owner, writer = scoped.admin(), scoped.member()
+            local board = create_board(owner)
+            assert(board.call("grant", { subject_id = writer.id, mask = 3 }))
+            local source = sprint(board, "sprint", true)
+            local member = issue(board, source)
+            local other = steps.create(board, "issue")
+            local direct = { op = "transition", item = source, transition = "close" }
+            local bypass = assert(writer.call("apply", { ops = { direct }, source = "planning",
+                origin = { close_key = "spoofed", sprint_id = source } }, board.id)).outcomes[1]
+            test.eq(bypass.findings and bypass.findings[1].code, "transition_command_required")
+            direct.force = true
+            local forced = steps.one(board, direct)
+            test.eq(forced.findings[1].code, "transition_command_required")
+            local offered = assert(steps.get(board, source, { "transitions" })).transitions
+            test.is_nil(find(offered, "close", "id"))
+            local preview = assert(planning(writer, "plan_close", { board_id = board.id, sprint_id = source }))
+            test.is_true(assert(planning(writer, "close", { key = "protected-close", snapshot = preview.snapshot, token = preview.token })).applied)
+            test.is_nil(assert(steps.get(board, member)).item.values.current_sprint)
+            local values = { current_sprint = { board = board.id, item = source } }
+            for _, op in ipairs({ { op = "create", type = "issue", values = values }, { op = "set", item = other, values = values } }) do
+                test.eq(steps.one(board, op).findings[1].code, "invalid_reference")
+            end
+            local milestone = sprint(board, "milestone", true)
+            test.eq(steps.one(board, { op = "transition", item = milestone, transition = "close" }).status, "applied")
+        end)
         test.it("exposes sprint operations alongside the Work agent's pack administration tools", function()
             local board = fixture.board({ bare = true })
             test.eq(assert(board.call("pack_apply", { pack = PACK, expected_generation = 0, key = "planning-trait" })).status, "done")
@@ -442,7 +474,7 @@ local function define()
                 assert(board.call("apply_schema", { declaration = { fields = { { code = "estimate", form = "int" } } } }))
             end)
             stale("closed-destination", function()
-                assert(steps.one(board, { op = "transition", item = target, transition = "close" }).status == "applied")
+                close_sprint(owner, board, target)
             end)
             test.eq(assert(steps.get(board, open)).item.values.current_sprint.item, source)
         end)

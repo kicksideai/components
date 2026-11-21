@@ -25,7 +25,7 @@ type Value = Scalar | { Scalar }
 -- Field configuration a form reads: decimal scale and range, text case and
 -- pattern, reference target, record members, quantity units and currency.
 type FieldConfig = {
-    scale: integer?, range: { integer }?, case: string?, target: string?, item_type: string?, members: { [string]: MemberSpec }?,
+    scale: integer?, range: { integer }?, case: string?, target: string?, item_type: string?, item_states: { string }?, members: { [string]: MemberSpec }?,
     units: { [string]: string }?, canonical: string?, currency: string?, pattern: string?, format: string?,
 }
 type MemberSpec = FieldConfig & { form: string, cardinality: string? }
@@ -151,7 +151,7 @@ type Visibility = { field: string, levels: { { id: string, holders: { Holder } }
 type AccessCaller = { principal: PrincipalDecl, groups: { [string]: boolean }, admin: boolean }
 type FieldDecl = {
     access: FieldAccess?, id: integer?, code: string, title: string?, type: string?, form: string?, cardinality: string?, options: { OptionDecl }?,
-    config: FieldConfig?, index: string?, track: boolean?, intervals: boolean?,
+    config: FieldConfig?, index: string?, track: boolean?, intervals: boolean?, transition_only: boolean?,
     expression: string?, of: string?, fn: string?, field: string?, by: string?, where: unknown,
 }
 type ItemTypeDecl = {
@@ -161,7 +161,7 @@ type ItemTypeDecl = {
 type RelationDecl = { id: string, outward: string?, inward: string?, cardinality: string?, symmetric: boolean?, from_types: { string }?, to_types: { string }? }
 type PrincipalDecl = { kind: string, id: string }
 type TimerEffect = { emit: string?, transition: string? }
-type Timer = { id: string, after: string?, at_field: string?, by: string?, table: { [string]: string }?, interrupting: boolean? } & { [string]: unknown }
+type Timer = { id: string, after: string?, at_field: string?, by: string?, table: { [string]: string }?, interrupting: boolean?, future: boolean? } & { [string]: unknown }
 type PrincipalSource = { PrincipalDecl } | { group: string } | { field: string }
 type Approvals = { min: integer, from: PrincipalSource, prevent_self: boolean? }
 type Release = { approvals: Approvals?, wait: string?, when: unknown }
@@ -176,7 +176,7 @@ type StateDecl = {
 type EffectDecl = { field: string, value: unknown, clear: boolean?, copy: string? }
 type TransitionDecl = {
     id: string, name: string?, from: unknown, to: string, require: { string }?, set: { EffectDecl }?, auto: boolean?, people: boolean?, order: integer?,
-    default: boolean?, when: unknown, guards: { string }?,
+    default: boolean?, when: unknown, guards: { string }?, command: string?,
 }
 type ProcessDecl = {
     id: string, name: string?, states: { StateDecl }, initial: string?, transitions: { TransitionDecl }?, migration: string?,
@@ -204,7 +204,7 @@ type Option = { id: string, label: string, color: string?, order: integer, categ
 type Rollup = { of: string, fn: string, field: integer?, by: string?, where: unknown, reads: { integer } }
 type RecomputeRange = { after: string, through: string, generation: integer }
 type Field = {
-    plugin: string?,
+    plugin: string?, transition_only: boolean?,
     id: integer, code: string, title: string?, type: string, form: string, cardinality: string, config: FieldConfig,
     formula: { expression: string, depends: { integer } }?, access: FieldAccess?, rollup: Rollup?, options: { Option }?, index: string, track: boolean, intervals: boolean,
 }
@@ -217,7 +217,7 @@ type State = {
 type Effect = { field: string, op: string, value: Value?, from: string? }
 type Transition = {
     id: string, name: string, from: { string }, any: boolean, to: string, require: { string }, set: { Effect }, auto: boolean, people: boolean?,
-    order: integer, default: boolean, when: unknown, guards: { string }?,
+    order: integer, default: boolean, when: unknown, guards: { string }?, command: string?,
 }
 type HookActor = { id: string?, groups: { string } }
 type GuardRequest = { config: JsonObject, actor: HookActor, transition: Transition?,

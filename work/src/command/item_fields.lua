@@ -8,6 +8,7 @@ local uuid = require("uuid")
 local document = require("document")
 local fields = require("fields")
 local process = require("process")
+local security = require("security")
 local when = require("when")
 local seams = require("seams")
 
@@ -53,10 +54,11 @@ local function value_steps(board: domain.Board, item_type: domain.ItemType, doc:
         if not f or not allowed[key] then
             return nil, M.invalid("unknown_field", "item type " .. item_type.id .. " has no field " .. key, key)
         end
-        local edit = rules.field_edit(board, f, authority)
+        local edit = rules.field_edit(board, f, authority, op.op == "transition")
         if edit == "field_denied" then return nil, M.result("denied", M.FREE, edit, "field " .. key .. " is denied", key) end
         if edit == "read_only" then
             if f.type == "counter" then return nil, M.invalid("invalid_value", "field " .. key .. " is assigned by the board", key) end
+            if f.transition_only then return nil, M.invalid("transition_field_required", "field " .. key .. " is written by transitions", key) end
             return nil, M.invalid(edit, "field " .. key .. " is computed", key)
         end
         if touched[key] then return nil, M.invalid("duplicate_field", "field " .. key .. " is written twice", key) end
@@ -196,6 +198,11 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
     end
     if not t or (not op.force and (t.people == false or (t.auto and t.people ~= true))) then
         return M.result("invalid", group, "unknown_transition", "process " .. p.id .. " has no transition " .. tostring(op.transition), "transition")
+    end
+    if t.command then
+        local permitted, err = security.can("work.transition.command", t.command)
+        if err then return M.failed(err) end
+        if not permitted then return M.result("denied", group, "transition_command_required", "transition must run through " .. t.command, "transition") end
     end
     local state = process.state_of(p, item.state) :: domain.State
     local source = item.state

@@ -154,7 +154,10 @@ local function define()
                 test.not_nil(process.transitions.items.properties.guards)
                 test.not_nil(process.initial)
             end
-            same(methods.report.properties.outcome, consts.STAGE_OUTCOMES)
+            local report = methods.report["x-work-command-variants"].report
+            local apply_report = methods.apply.properties.ops.items["x-work-command-variants"].report
+            same(report.oneOf[2].properties.outcome, consts.STAGE_OUTCOMES)
+            same(apply_report.oneOf[2].properties.outcome, consts.STAGE_OUTCOMES)
             test.not_nil(methods.update.properties.key_prefix)
             test.not_nil(methods.apply.properties.trace_context)
             test.not_nil(methods.apply.properties.ops.items.properties.visit)

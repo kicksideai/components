@@ -9,6 +9,11 @@ local types = require("types")
 local M = require("prepare_context")
 local R = {}
 
+local function allowed_state(states: { string }, state: string): boolean
+    for _, allowed in ipairs(states) do if allowed == state then return true end end
+    return false
+end
+
 function R.target(raw: unknown, board_id: string): (domain.Target?, types.OpPlan?)
     if type(raw) ~= "table" then return nil, M.invalid("invalid_target", "relation target is { item, board? }", "target") end
     local ref = raw :: types.TargetRef
@@ -74,6 +79,10 @@ function R.patch(ctx: types.PrepareContext, patch: { domain.PatchStep }): types.
                 local target_type = field.config.item_type
                 if target_type and (peer :: domain.Item).type ~= target_type then
                     return M.invalid("invalid_reference", "field reference must target item type " .. target_type, field.code)
+                end
+                local states = field.config.item_states
+                if states and not allowed_state(states, (peer :: domain.Item).state) then
+                    return M.invalid("invalid_reference", "field reference must target a permitted item state", field.code)
                 end
             end
         end

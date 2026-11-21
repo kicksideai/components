@@ -67,7 +67,12 @@ function M.deadline(timer: types.Timer, item: types.Item, model: types.Model, en
             return nil, errors.new({ kind = errors.INVALID, message = "timer field must hold a calendar date or UTC instant in years 0001–9999",
                 details = { code = "timer_deadline_invalid", field = f.code } })
         end
-        return instant:utc():format(STAMP), nil
+        local deadline = instant:utc():format(STAMP)
+        if timer.future and deadline <= entered then
+            return nil, errors.new({ kind = errors.INVALID, message = "timer deadline must be after state entry",
+                details = { code = "timer_deadline_not_future", field = f.code } })
+        end
+        return deadline, nil
     end
     local duration = timer.after
     if timer.by then

@@ -101,18 +101,16 @@ local function conflict_outcomes(outcomes: { types.Outcome }, write: types.Write
     end
 end
 
-local function finish(ctx: types.ApplyContext, outcomes: { [integer]: types.Outcome }, applied: boolean, seq: integer?, replayed: boolean?): (types.ApplyResult?, error?)
+local function finish(ctx: types.ApplyContext, outcomes: { types.Outcome }, applied: boolean, seq: integer?, replayed: boolean?): (types.ApplyResult?, error?)
     local as_of = replayed and seq or nil
     if not as_of then
         local cu_err: error?
         as_of, cu_err = receipts.covered(ctx.board_id, ctx.until_at, seq)
         if cu_err or not as_of then return nil, cu_err end
     end
-    local list: { types.Outcome } = {}
-    for i = 1, #ctx.ops do list[i] = outcomes[i] end
-    local kerr = fill_keys(ctx.board_id, list, replayed)
+    local kerr = fill_keys(ctx.board_id, outcomes, replayed)
     if kerr then return nil, kerr end
-    return { outcomes = list, applied = applied, seq = seq, as_of = as_of, replayed = replayed }, nil
+    return { outcomes = outcomes, applied = applied, seq = seq, as_of = as_of, replayed = replayed }, nil
 end
 
 -- groups_of partitions op indices by the write group they join, in order of first appearance.
@@ -128,6 +126,27 @@ local function groups_of(ops: { types.Op }, indices: { integer }): ({ string }, 
         table.insert(groups[g], i)
     end
     return order, groups
+end
+
+local function hash_apply(request: types.ApplyRequest, mode: string, ops: { types.Op }, source: string): string
+    return receipts.request_hash({ op = "apply", mode, ops, source, origin = request.origin, expected_head = request.expected_head })
+end
+
+local function read_legacy_claim(ctx: types.ApplyContext, provider: types.AtomicProvider?): (types.Durable?, error?)
+    local key = ctx.request.key
+    if not provider or not provider.legacy_ops or not key then return nil, nil end
+    local hit, err = receipts.command(ctx.board_id, "apply/" .. provider.namespace .. "/" .. key)
+    if err or not hit then return nil, err end
+    -- The former namespace was shared with WorkApply. Check the full request
+    -- fingerprint, including the resolved operation, before returning its result.
+    local ops, oerr = provider.legacy_ops()
+    if oerr then return nil, oerr end
+    if not ops or hit.receipt.request_hash ~= hash_apply(ctx.request, "atomic", ops, ctx.source) then
+        return nil, receipts.conflict_of()
+    end
+    local outcomes = stored_outcomes(hit)
+    if #outcomes ~= 1 or outcomes[1].status ~= "applied" then return nil, receipts.conflict_of() end
+    return hit, nil
 end
 
 local function read_claim(ctx: types.ApplyContext, key: string): (types.Durable?, error?)
@@ -214,9 +233,7 @@ local function head_changed(): error
     return errors.new({ kind = errors.CONFLICT, message = "Board head changed.", details = { code = "head_changed" } })
 end
 
-local function run_atomic(ctx: types.ApplyContext, admit: ((domain.Board) -> error?)?): (types.ApplyResult?, error?)
-    local all: { integer } = {}
-    for i = 1, #ctx.ops do all[i] = i end
+local function run_atomic(ctx: types.ApplyContext, provider: types.AtomicProvider?): (types.ApplyResult?, error?)
     local expected_head = ctx.request.expected_head
     for _ = 1, consts.LIMITS.prepare_retries + 1 do
         if clock.passed(ctx.until_at) then break end
@@ -225,46 +242,63 @@ local function run_atomic(ctx: types.ApplyContext, admit: ((domain.Board) -> err
         if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
         local last_seq, cu_err = receipts.covered(ctx.board_id, ctx.until_at)
         if cu_err or not last_seq then return nil, cu_err end
+        local legacy, legacy_err = read_legacy_claim(ctx, provider)
+        if legacy_err then return nil, legacy_err end
+        if legacy then return finish(ctx, stored_outcomes(legacy), true, legacy.seq, true) end
         if expected_head ~= nil and last_seq ~= expected_head then
             local replay, replay_err = stored_claim(ctx)
             if replay_err then return nil, replay_err end
             if replay then return finish(ctx, stored_outcomes(replay), true, replay.seq, true) end
             return nil, head_changed()
         end
+        local ops, prepared = ctx.ops, nil :: types.AtomicPreparation?
+        if provider then
+            local prepare_err: error?
+            prepared, prepare_err = provider.prepare()
+            if prepare_err or not prepared then return nil, prepare_err end
+            ops = prepared.ops
+        end
+        local all: { integer } = {}
+        for i = 1, #ops do all[i] = i end
         local db, derr = store.open()
         if not db then return nil, derr end
         local actor, at = guard.actor_id(), guard.stamp_now()
-        local board, plans, berr = prepare_snapshot.read(db, ctx.board_id, ctx.ops, all, actor, at, ctx.settings, ctx.until_at, ctx.base ~= nil)
+        local board, plans, berr = prepare_snapshot.read(db, ctx.board_id, ops, all, actor, at, ctx.settings, ctx.until_at, ctx.base ~= nil)
         db:release()
         if berr then return nil, berr end
         if not board then return nil, errors.new({ details = { code = "board_schema_missing" }, kind = errors.NOT_FOUND, message = "board has no schema" }) end
         local outcomes: { types.Outcome } = {}
         local failed = false
-        for i = 1, #ctx.ops do
+        for i = 1, #ops do
             outcomes[i] = outcome_of(i, plans[i] :: types.OpPlan)
             if plans[i].status ~= "applied" and plans[i].status ~= "unchanged" then failed = true end
         end
         local hit, recovery_err = stored_claim(ctx)
         if recovery_err then return nil, recovery_err end
         if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
+        if board.applied_seq > last_seq then
+            local legacy, legacy_err = read_legacy_claim(ctx, provider)
+            if legacy_err then return nil, legacy_err end
+            if legacy then return finish(ctx, stored_outcomes(legacy), true, legacy.seq, true) end
+        end
         if expected_head ~= nil and board.applied_seq > expected_head then return nil, head_changed() end
-        if admit then
-            local admission_err = admit(board)
+        if prepared then
+            local admission_err = prepared.admit(board)
             if admission_err then return nil, admission_err end
         end
         if failed then
-            for i = 1, #ctx.ops do
+            for i = 1, #ops do
                 if plans[i].status == "applied" or plans[i].status == "unchanged" then roll_back(outcomes[i]) end
             end
             return finish(ctx, outcomes, false, nil, nil)
         end
-        local writes: { types.Write } = items.writes(plans, all, ctx.ops)
+        local writes: { types.Write } = items.writes(plans, all, ops)
         if #writes == 0 then return finish(ctx, outcomes, false, nil, nil) end
         for _, w in ipairs(writes) do
             -- The covered cursor includes sibling outputs the item projection skips.
             if not w.thread_id or w.thread_id == ctx.board_id then
                 -- A provider's admission describes this prepared board snapshot.
-                local head = admit and board.applied_seq or w.expect_head
+                local head = prepared and board.applied_seq or w.expect_head
                 w.expect_head = expected_head or (head and math.max(head, last_seq))
             end
             for _, raw in ipairs(w.events) do
@@ -285,7 +319,7 @@ local function run_atomic(ctx: types.ApplyContext, admit: ((domain.Board) -> err
         if not subject and not stale_head then return nil, errors.wrap(aerr, "board append failed") end
         for _, w in ipairs(writes) do
             if w.expect_subject == subject and w.caller_expect then
-                for i = 1, #ctx.ops do roll_back(outcomes[i]) end
+                for i = 1, #ops do roll_back(outcomes[i]) end
                 conflict_outcomes(outcomes, w, plans)
                 return finish(ctx, outcomes, false, nil, nil)
             end
@@ -401,7 +435,7 @@ local function run_independent(ctx: types.ApplyContext): (types.ApplyResult?, er
 end
 
 -- apply(request) runs item ops. Needs WRITE; deleting and restoring also need DELETE.
-function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?, admit: ((domain.Board) -> error?)?): (types.ApplyResult?, error?)
+function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?, provider: types.AtomicProvider?): (types.ApplyResult?, error?)
     local context, trace_err = receipts.trace(request.trace_context, "work.apply")
     if trace_err then return nil, trace_err end
     request.trace_context = context
@@ -413,8 +447,8 @@ function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?, admit:
     if request.expected_head ~= nil and (mode ~= "atomic" or math.tointeger(request.expected_head) == nil or request.expected_head < 0) then
         return nil, guard.invalid("expected_head requires atomic mode and a nonnegative board head")
     end
-    if admit and (mode ~= "atomic" or request.key == nil) then return nil, guard.invalid("guarded apply requires an atomic command key") end
-    if #request.ops == 0 then return nil, guard.invalid("ops required") end
+    if provider and (mode ~= "atomic" or request.key == nil) then return nil, guard.invalid("guarded apply requires an atomic command key") end
+    if not provider and #request.ops == 0 then return nil, guard.invalid("ops required") end
     if #request.ops > consts.LIMITS.ops then return nil, guard.invalid("an apply takes at most " .. consts.LIMITS.ops .. " ops") end
     local key = request.key
     if key ~= nil and (key == "" or #key > 255) then return nil, guard.invalid("key is 1 to 255 characters") end
@@ -426,12 +460,14 @@ function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?, admit:
     local until_at, deadline_err = limits.deadline("command_deadline_ms")
     if deadline_err or not until_at then return nil, deadline_err end
     if boundary and boundary.ns < until_at.ns then until_at = boundary end
+    local namespace = provider and ("provider/" .. provider.namespace) or "apply"
+    local hashed = provider and receipts.request_hash(provider.fingerprint) or hash_apply(request, mode, request.ops, source)
     local ctx: types.ApplyContext = {
         settings = settings, c = c, board_id = board_id, request = request, ops = request.ops, source = source,
-        hashed = receipts.request_hash({ op = "apply", mode, request.ops, source, origin = request.origin, expected_head = request.expected_head }), base = key and ("apply/" .. key) or nil,
+        hashed = hashed, base = key and (namespace .. "/" .. key) or nil,
         until_at = until_at, generation = uuid.v4(),
     }
-    if mode == "atomic" then return run_atomic(ctx, admit) end
+    if mode == "atomic" then return run_atomic(ctx, provider) end
     return run_independent(ctx)
 end
 

@@ -12,6 +12,16 @@ const rulesPath = resolve(root, 'scripts/module-rules.mjs')
 const handler = (name) => ({ id: `kickside.work.api:${name}`, kind: 'function.lua', method: 'handler' })
 const endpoint = (name, func = name) => ({ id: `kickside.work.api:${name}.endpoint`, kind: 'http.endpoint', func })
 
+test('saved-view title commands publish the owner or board ADMIN requirement', async () => {
+  const { parseYamlDocuments } = await import(rulesPath)
+  const [document] = await parseYamlDocuments([await readFile(resolve(root, 'src/contracts/view.yaml'), 'utf8')])
+  const methods = document.entries.find(entry => entry.name === 'view').methods
+  assert.match(methods.find(method => method.name === 'rename').description, /owner or a board administrator/)
+  const save = methods.find(method => method.name === 'save').description
+  assert.match(save, /view WRITE/)
+  assert.match(save, /title.*owner or.*board ADMIN/i)
+})
+
 test('requirement literal types are declared under value_type', async () => {
   const { parseYamlDocuments } = await import(rulesPath)
   const source = resolve(root, 'src')
@@ -211,7 +221,11 @@ test('operation descriptions and declaration enums match their owning dispatch s
         : parent?.properties?.id && Object.keys(parent.properties).length === 2 ? 'PRINCIPAL_KINDS' : undefined : undefined)
       || (name === 'cardinality' && path.includes('fields') ? 'CARDINALITIES' : undefined)
     if (constant && !path.includes('ops') && !path.includes('ops_template')) assert.deepEqual(node.enum?.toSorted(), sets[constant], path.join('.'))
-    for (const [name, value] of Object.entries(node.properties || {})) enums(value, [...path, name], node)
+    for (const [name, value] of Object.entries(node.properties || {})) {
+      const report = node['x-work-command-variants']?.report
+      const property = name === 'outcome' && report ? report.oneOf[1].properties.outcome : value
+      enums(property, [...path, name], node)
+    }
     for (const name of ['items', 'additionalProperties']) if (typeof node[name] === 'object') enums(node[name], path, parent)
     for (const name of ['anyOf', 'oneOf', 'allOf']) for (const branch of node[name] || []) enums(branch, path, parent)
   }

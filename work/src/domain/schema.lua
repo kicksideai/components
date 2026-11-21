@@ -114,7 +114,20 @@ local function compile_field(decl: types.FieldDecl, id: integer, entries: { type
         if config.item_type ~= nil and not valid_id(config.item_type) then
             return nil, invalid("item reference config.item_type must be an item type id", { code = "invalid_field_config", field = decl.code })
         end
-        config = { target = consts.ITEM_TARGET, item_type = config.item_type }
+        local states = config.item_states
+        if states ~= nil then
+            if type(states) ~= "table" or #states == 0 or #states > consts.LIMITS.states then
+                return nil, invalid("item reference config.item_states lists allowed target states", { code = "invalid_field_config", field = decl.code })
+            end
+            local seen: { [string]: boolean } = {}
+            for _, state in ipairs(states) do
+                if not valid_id(state) or seen[state] then
+                    return nil, invalid("item reference config.item_states contains distinct state ids", { code = "invalid_field_config", field = decl.code })
+                end
+                seen[state] = true
+            end
+        end
+        config = { target = consts.ITEM_TARGET, item_type = config.item_type, item_states = states }
     end
     if kind == "formula" and type(decl.expression) ~= "string" then return nil, invalid("formula requires an expression", { code = "formula_invalid", field = decl.code }) end
     if kind == "rich_text" and config.format ~= "json" then return nil, invalid("rich_text declares config.format json", { code = "rich_text_format", field = decl.code }) end
@@ -133,7 +146,7 @@ local function compile_field(decl: types.FieldDecl, id: integer, entries: { type
     local computed: { expression: string, depends: { integer } }? = nil
     if kind == "formula" then computed = { expression = decl.expression :: string, depends = {} } end
     return { formula = computed, access = decl.access, id = id, code = decl.code, title = decl.title, type = kind, form = form, cardinality = cardinality, config = config, options = options,
-        index = index, track = decl.track == true, intervals = decl.intervals == true }, nil
+        index = index, track = decl.track == true, intervals = decl.intervals == true, transition_only = decl.transition_only }, nil
 end
 
 local function compile_fields(prev: types.Compiled?, decl: types.Declaration): ({ types.Field }?, integer?, integer?, error?)
@@ -231,6 +244,7 @@ local function compile_item_types(decl: types.Declaration, fields: { [string]: t
         for _, key in ipairs((t.inherit or {})) do
             if not in_type[key] then return nil, invalid("item type " .. t.id .. " inherits " .. tostring(key) .. " which it does not carry", { item_type = t.id }) end
             if fields[key].type == "counter" or fields[key].type == "rollup" or fields[key].type == "rank" or fields[key].type == "formula" then return nil, invalid("a counter field cannot be inherited", { item_type = t.id }) end
+            if fields[key].transition_only then return nil, invalid("a transition-only field cannot be inherited", { item_type = t.id, field = tostring(key) }) end
         end
         for _, parent in ipairs((t.parent_types or {})) do
             if parent ~= false and not declared[parent] then return nil, invalid("item type " .. t.id .. " names unknown parent type " .. tostring(parent), { item_type = t.id }) end

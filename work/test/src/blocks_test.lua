@@ -124,6 +124,33 @@ local function define()
             test.is_true(matched.cursor.seq > head)
             test.eq(matched.cursor.item_id, "")
         end)
+
+        test.it("refuses an item with active parallel regions", function()
+            local owner = scoped.admin()
+            local h = scoped.board(owner, {
+                key_prefix = fixture.fresh_prefix(), fields = {},
+                item_types = { { id = "task", process = "flow", fields = {} } },
+                processes = { { id = "flow", initial = "todo", states = {
+                    { id = "todo", category = "unstarted" },
+                    { id = "parallel", category = "started", kind = "parallel", join = "all", regions = {
+                        { id = "qa", initial = "review" }, { id = "security", initial = "review" },
+                    } },
+                    { id = "review", category = "started" }, { id = "done", category = "completed" },
+                }, transitions = {
+                    { id = "start", from = { "todo" }, to = "parallel" },
+                    { id = "pass", from = { "review" }, to = "done" },
+                } } },
+            })
+            local item = steps.create(h, "task")
+            test.eq(steps.one(h, { op = "transition", item = item, transition = "start" }).status, "applied")
+            local client = funcs.new():with_actor(owner.actor):with_scope(owner.scope)
+            local result, err = client:call("kickside.work.blocks:wait", {
+                input = { board_id = h.id, item = item, state = "review" }, config = { timeout_ms = 200 },
+            })
+            test.is_nil(result)
+            test.eq(err:kind(), errors.INVALID)
+            test.eq(err:details().code, "work_wait_parallel_unsupported")
+        end)
     end)
 end
 return { run = test.run_cases(define) }

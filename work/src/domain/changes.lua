@@ -134,6 +134,8 @@ function M.field_changes(prev: { [string]: types.Field }, next: { [string]: type
             local now = attr :: { [string]: unknown }
             if attr.title ~= before.title then add(attr.code, "cosmetic", "title") end
             if attr.code ~= before.code then add(attr.code, "cosmetic", "renamed from " .. before.code) end
+            if (attr.transition_only == true) ~= (before.transition_only == true) then add(attr.code, "semantic", "transition_only") end
+            if not same(attr.config.item_states, before.config.item_states) then add(attr.code, "semantic", "config.item_states") end
             for _, f in ipairs(REPRESENTATION) do
                 if not same(was[f], now[f]) then add(attr.code, (f == "form" or used) and "refused" or "additive", f) end
             end

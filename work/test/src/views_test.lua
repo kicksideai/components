@@ -167,6 +167,13 @@ local function define()
             get = reader.http("GET", "/api/work/views/" .. id)
             test.eq(get.body.data.title, "Saved title")
             test.eq(get.body.data.view.columns[1], "estimate")
+            local refused = reader.http("POST", "/api/work/views/" .. id .. "/save", {
+                title = "Invalid update", view = { type = "missing-view-type" },
+            })
+            test.eq(refused.status, 400)
+            local current = assert(reader.call("get_view", { view_id = id }))
+            test.eq(current.title, "Saved title")
+            test.eq(current.view.columns[1], "estimate")
             local listed = reader.http("POST", "/" .. h.id .. "/list_views", {})
             test.eq(listed.body.data.views[1].title, "Saved title")
         end)
@@ -196,7 +203,12 @@ local function define()
             assert(writer.call("save_view", { view_id = id, view = { type = "list", columns = { "estimate" } } }))
             local renamed = admin.http("POST", "/api/work/views/" .. id .. "/rename", { title = "Admin title" })
             test.eq(renamed.status, 200)
+            local save_without_write = admin.http("POST", "/api/work/views/" .. id .. "/save", {
+                title = "Denied title", view = { type = "list", columns = { "title" } },
+            })
+            test.eq(save_without_write.status, 403)
             test.eq(writer.http("GET", "/api/work/views/" .. id).body.data.title, "Admin title")
+            test.eq(assert(writer.call("get_view", { view_id = id })).view.columns[1], "estimate")
             local deletion = admin.http("DELETE", "/api/work/views/" .. id)
             test.eq(deletion.status, 200)
             test.is_true(deletion.body.data.deleted or deletion.body.data.in_progress)
@@ -325,6 +337,13 @@ local function define()
             test.eq(group.items[1].id, first)
             test.not_nil(group.after)
             test.eq(page.items[1].id, first)
+            for _, grouped in ipairs({ { group_limit = 1 }, { group_after = "group" },
+                { measures = { { id = "total", op = "sum", field = "estimate" } } } }) do
+                grouped.view_id, grouped.limit, grouped.after = id, 1, page.after
+                local mixed, err = member.call("run_view", grouped)
+                test.is_nil(mixed)
+                test.eq(err:details().code, "invalid_shape")
+            end
             page = assert(member.call("run_view", { view_id = id, limit = 1, after = page.after }))
             test.eq(page.items[1].id, second)
             page = assert(member.call("run_view", { view_id = id, limit = 1, after = page.after }))

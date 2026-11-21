@@ -20,9 +20,7 @@ local peers = require("peers")
 local limits = require("limits")
 local M = {}
 
-local function version_of(input: types.Pinned, mode: integer, min_window: integer?): (types.Version?, string?, error?)
-    local aerr = access.admit(input.board_id, mode)
-    if aerr then return nil, nil, aerr end
+local function version_of(input: types.Pinned, min_window: integer?): (types.Version?, string?, error?)
     local db, err = store.open()
     if err or not db then return nil, nil, err end
     local attachment, cerr = catalog.attachment(db, input.board_id)
@@ -124,7 +122,9 @@ function M.archive(input: unknown): (types.Archive?, error?)
     local err = requests.parse("archive", input, catalog.CONTRACT)
     if err then return nil, err end
     local req = input :: types.Pinned
-    local version, attachment, verr = version_of(req, component.ACCESS.ADMIN)
+    local aerr = access.admit(req.board_id, component.ACCESS.ADMIN)
+    if aerr then return nil, aerr end
+    local version, attachment, verr = version_of(req)
     if verr or not version or not attachment then return nil, verr end
     local db, derr = store.open()
     if derr or not db then return nil, derr end
@@ -138,33 +138,41 @@ local function instantiate(input: unknown, replay_window: integer?, replay_only:
     local err = requests.parse("instantiate", input, catalog.CONTRACT)
     if err then return nil, err end
     local req = input :: types.Instantiate
-    local version, attachment, verr = version_of(req :: types.Pinned, component.ACCESS.WRITE, replay_window)
-    if verr or not version or not attachment then return nil, verr end
-    local preset, merr = presets.merge(version, req.overrides)
-    if merr or not preset then return nil, merr end
     local channel = replay_window and "occurrence" or "request"
-    local request: commands.ApplyRequest = { board_id = req.board_id, mode = "atomic", ops = { preset :: commands.Op },
-        key = "work-templates/" .. channel .. "/" .. tostring(hash.sha256(req.key)), source = "work-templates",
-        trace_context = trace, origin = { template_id = req.template_id, version = req.version, overrides_hash = tostring(hash.sha256(values.canonical(req.overrides or {}))) } }
-    local result, aerr = apply.apply(request, nil, function(board: domain.Board): error?
-        local db, derr = store.open()
-        if derr or not db then return derr end
-        local active, cerr = catalog.attachment(db, req.board_id)
-        local latest, lerr
-        if active == attachment and not cerr then latest, lerr = catalog.get(db, attachment, req.template_id, req.version) end
-        db:release()
-        if cerr or lerr then return cerr or lerr end
-        if not latest then
-            return catalog.problem(errors.NOT_FOUND, "template_version_not_found", "template attachment changed")
-        end
-        if latest.archived then
-            return catalog.problem(errors.CONFLICT, "template_archived", "template version is archived; pin an active version")
-        end
+    local origin: domain.JsonObject = { template_id = req.template_id, version = req.version,
+        overrides_hash = tostring(hash.sha256(values.canonical(req.overrides or {}))) }
+    local request: commands.ApplyRequest = { board_id = req.board_id, ops = {}, key = tostring(hash.sha256(req.key)),
+        source = "work-templates", trace_context = trace, origin = origin }
+    local function prepare(): (commands.AtomicPreparation?, error?)
         if replay_only then
-            return catalog.problem(errors.CONFLICT, "template_replay_unavailable", "the occurrence has no retained Work receipt")
+            return nil, catalog.problem(errors.CONFLICT, "template_replay_unavailable", "the occurrence has no retained Work receipt")
         end
-        return presets.current(board, latest)
-    end)
+        local version, _, verr = version_of(req :: types.Pinned, replay_window)
+        if verr or not version then return nil, verr end
+        if version.archived then
+            return nil, catalog.problem(errors.CONFLICT, "template_archived", "template version is archived; pin an active version")
+        end
+        local preset, merr = presets.merge(version, req.overrides)
+        if merr or not preset then return nil, merr end
+        return { ops = { preset :: commands.Op }, admit = function(board: domain.Board): error?
+            return presets.current(board, version)
+        end }, nil
+    end
+    local function legacy_ops(): ({ commands.Op }?, error?)
+        local version, _, verr = version_of(req :: types.Pinned)
+        if verr then
+            local code = (verr:details() or {}).code
+            if code == "plugin_inactive" or code == "template_version_not_found" then return nil, nil end
+            return nil, verr
+        end
+        if not version then return nil, nil end
+        local preset = presets.merge(version, req.overrides)
+        if not preset then return nil, nil end
+        return { preset :: commands.Op }, nil
+    end
+    local result, aerr = apply.apply(request, nil, {
+        namespace = "work-templates/" .. channel, fingerprint = origin, prepare = prepare, legacy_ops = legacy_ops,
+    })
     if aerr or not result then return nil, aerr end
     local outcome = result.outcomes[1]
     local oerr = outcomes.error(outcome.status, outcome.findings, outcome.error)
